@@ -4,7 +4,7 @@
 """
 import sys
 
-from fetch import Arch, detex, emit_cpp, extract, parse_tables
+from fetch import Arch, detex, emit_cpp, emit_spec, extract, parse_tables
 
 FIXTURE_PROSE = r"""
 \title{A Tiny Transformer}
@@ -207,6 +207,35 @@ def test_emit_html() -> None:
           f"({len(arch.fields)} fields, {len(arch.unresolved)} unresolved)")
 
 
+def test_emit_spec() -> None:
+    arch = extract("0000.00000", FIXTURE_PROSE)
+    # Paper-faithful dims: extracted numbers land in arch.custom.
+    spec = emit_spec(arch, corpus="c.txt", vocab="v.gguf", steps=40)
+    custom = spec["base"]["arch"]["custom"]
+    assert custom["d"] == 256 and custom["layers"] == 4 and custom["heads"] == 8
+    assert custom["d_ff"] == 1024
+    assert spec["base"]["train"]["steps"] == 40
+    assert spec["base"]["data"]["corpus"] == "c.txt"
+    # Flavors only when verdict says used/inherited; whatever is skipped
+    # must be named in the comment, never silently dropped.
+    for src, f in arch.fields.items():
+        if src in ("norm", "activation", "positional"):
+            dst = {"norm": "norm", "activation": "activation",
+                   "positional": "position"}[src]
+            if f.verdict in ("used", "inherited"):
+                assert custom.get(dst) == str(f.value)
+            else:
+                assert str(f.value) in spec["_comment"]
+    # House dims keep the mechanism, swap the scale.
+    house = emit_spec(arch, house_dims=True)["base"]["arch"]["custom"]
+    assert house["d"] == 128 and house["layers"] == 2
+    assert "d_ff" not in house  # ratio falls to the engine default
+    # Unresolved fields surface in the comment.
+    assert (not arch.unresolved or
+            all(u in spec["_comment"] for u in arch.unresolved))
+    print("emit_spec ok (paper-faithful + house dims, contract preserved)")
+
+
 if __name__ == "__main__":
     test_compact_notation()
     test_contribution_vs_mention()
@@ -216,5 +245,6 @@ if __name__ == "__main__":
     test_table()
     test_unresolved_reported()
     test_emit_html()
+    test_emit_spec()
     print("\n[PASS] all fetcher tests")
     sys.exit(0)
