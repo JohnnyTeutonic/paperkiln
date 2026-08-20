@@ -125,7 +125,17 @@ Not a constraint until far above this ladder.
   operand dedup (params upload once per window instead of once per
   use) plus the in-kernel transposes. The full §2 flag contract with
   DEVCHECK asserts activates in B2.1 when downloads are deferred.
-- **B2.1a (code landed 21 Aug 2026; T4 validation pending)** the op set
+- **B2.1a — T4-VALIDATED 21 Aug 2026** (receipts:
+  docs/receipts_b21a_t4_20260821.txt; Tesla T4, CC 7.5). Kernel parity:
+  elementwise bitwise 0.00e+00, activations <= 2.4e-07, rowwise worst
+  3.8e-06 (layernorm dgamma, column-sum order); composed-tape OFF vs ON:
+  loss bitwise 0.00e+00, all leaf grads <= 2.3e-10. gradcheck (27 ok)
+  and nn (22 ok, on the T4) reran green WITH the op set live — same FD
+  oracle. The run also caught and fixed a latent repo defect: three
+  CMake-referenced test files were never committed (paperkiln cbbed8b)
+  and coalfire's remote CMakeLists referenced the pre-31-Jul
+  train_wikitext (coalfire 9c0b023) — fresh clones of either repo had
+  been failing at CMake generate for weeks while local builds passed.** the op set
   itself: elementwise add/sub/mul/scale/axpy/fill, sigmoid fwd/bwd, GELU
   fwd/bwd (the CORRECT derivative), softmax rowwise fwd/bwd, layernorm
   fwd/bwd, rmsnorm fwd/bwd — src/cuda_ops.cu, one canonical entry per

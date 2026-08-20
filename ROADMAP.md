@@ -7,9 +7,11 @@ these are the engineering items that unlock it.*
    **B2.0 (T4-validated 13 Aug 2026)**: step-residency plumbing —
    Variable-owned device state, transpose-flag GEMM, epoch-scoped
    caches; CUDA training pin matched CPU to 2.33e-07, staleness probe
-   green (docs/CUDA_PHASE_B2.md). Remaining: **B2.1a code landed
-   21 Aug 2026** — full device op set (src/cuda_ops.cu) + attention
-   transpose-kill + test_cuda_ops gate, T4 validation pending; then
+   green (docs/CUDA_PHASE_B2.md). Remaining: **B2.1a
+   T4-VALIDATED 21 Aug 2026** — full device op set (src/cuda_ops.cu) +
+   attention transpose-kill, kernel parity <= 3.8e-06 worst / bitwise
+   elementwise, gradcheck+nn green with ops live (receipts in docs/);
+   then
    B2.1b (deferred downloads + DEVCHECK), B2.2 (embedding + CE
    scalar-only), B2.3 (optimizer on device). Adoption gated on a d=512 wall-clock
    win vs AVX. That is what actually GATES Rung C (d=512, T=512).

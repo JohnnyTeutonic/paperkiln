@@ -1,0 +1,523 @@
+[colab] Creating session 'b21_shard0'...
+[colab] Session READY (b21_shard0). Executing /mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/tools/colab_b21_validate.py...
++ git clone --depth 1 -b master https://github.com/JohnnyTeutonic/paperkiln.git microtorch
++ git clone --depth 1 https://github.com/JohnnyTeutonic/coalfire.cpp.git transformer_cpp
+== 1/3 configure (MICROTORCH_CUDA=ON) ==
+-- The CXX compiler identification is GNU 11.4.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- transformer_core from: /content/microtorch/../transformer_cpp
+-- The CUDA compiler identification is NVIDIA 12.8.93 with host compiler GNU 11.4.0
+-- Detecting CUDA compiler ABI info
+-- Detecting CUDA compiler ABI info - done
+-- Check for working CUDA compiler: /usr/local/cuda/bin/nvcc - skipped
+-- Detecting CUDA compile features
+-- Detecting CUDA compile features - done
+-- Found CUDAToolkit: /usr/local/cuda/targets/x86_64-linux/include (found version "12.8.93")
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE
+-- CUDA enabled - version 12.8.93
+-- CUDA architectures: 52
+-- OpenSSL found: 3.0.2
+CMake Deprecation Warning at build_cuda/_deps/json-src/CMakeLists.txt:1 (cmake_minimum_required):
+  Compatibility with CMake < 3.10 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier.
+
+
+-- Using the multi-header code from /content/microtorch/build_cuda/_deps/json-src/include/
+-- Found OpenMP_CXX: -fopenmp (found version "4.5")
+-- Found OpenMP_CUDA: -fopenmp (found version "4.5")
+-- Found OpenMP: TRUE (found version "4.5")
+-- OpenMP enabled for optimized matmul
+-- GCC/Clang optimizations enabled: -O3 -march=native
+-- 
+-- ================================
+-- CUDA-Enabled Build:
+--   - Core transformer with GPU acceleration
+--   - Per-channel quantization kernels
+--   - CUDA 12.8.93
+-- ================================
+-- 
+-- Configuring done (8.2s)
+-- Generating done (0.1s)
+-- Build files have been written to: /content/microtorch/build_cuda
+== 2/3 build ==
+[  2%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/architecture.cpp.o
+[  4%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/config.cpp.o
+[  4%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/lora.cpp.o
+[  6%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/logger.cpp.o
+[  9%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/scope_logger.cpp.o
+[ 11%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/components.cpp.o
+In file included from /content/transformer_cpp/src/components.cpp:11:
+/content/transformer_cpp/src/../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 11%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/matrix.cpp.o
+[ 13%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/matmul_optimized.cpp.o
+[ 16%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/tensor.cpp.o
+[ 18%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/utils.cpp.o
+[ 18%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/vector_ops.cpp.o
+In file included from /content/transformer_cpp/src/../include/memory_pool.hpp:8,
+                 from /content/transformer_cpp/src/../include/transformer.hpp:26,
+                 from /content/transformer_cpp/src/../include/utils.hpp:4,
+                 from /content/transformer_cpp/src/utils.cpp:1:
+/content/transformer_cpp/src/../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/transformer_cpp/src/utils.cpp:21:
+/content/transformer_cpp/src/../include/debug.hpp:85:21: warning: backslash-newline at end of file
+   85 | #define SCOPE_LOG() \
+      |                      
+/content/transformer_cpp/src/../include/debug.hpp:85: warning: "SCOPE_LOG" redefined
+In file included from /content/transformer_cpp/src/utils.cpp:3:
+/content/transformer_cpp/src/../include/scope_logger.hpp:47: note: this is the location of the previous definition
+   47 | #define SCOPE_LOG() debug::ScopeLogger scope_logger_instance = debug::ScopeLogger(__FUNCTION__, __FILE__, __LINE__)
+      | 
+[ 20%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/embeddings.cpp.o
+[ 23%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/layer_norm.cpp.o
+[ 25%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/feed_forward.cpp.o
+In file included from /content/transformer_cpp/src/feed_forward.cpp:5:
+/content/transformer_cpp/src/../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 25%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/attention.cpp.o
+In file included from /content/transformer_cpp/src/../include/memory_pool.hpp:8,
+                 from /content/transformer_cpp/src/../include/transformer.hpp:26,
+                 from /content/transformer_cpp/src/attention.cpp:15:
+/content/transformer_cpp/src/../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 27%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/transformer_layer.cpp.o
+In file included from /content/transformer_cpp/src/../include/memory_pool.hpp:8,
+                 from /content/transformer_cpp/src/../include/transformer.hpp:26,
+                 from /content/transformer_cpp/src/transformer_layer.cpp:1:
+/content/transformer_cpp/src/../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 30%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/transformer.cpp.o
+[ 30%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/lm_head.cpp.o
+In file included from /content/transformer_cpp/src/../include/memory_pool.hpp:8,
+                 from /content/transformer_cpp/src/../include/transformer.hpp:26,
+                 from /content/transformer_cpp/src/transformer.cpp:1:
+/content/transformer_cpp/src/../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/transformer_cpp/src/transformer.cpp:5:
+/content/transformer_cpp/src/../include/cuda/cublas_check.cuh:6:100: warning: backslash-newline at end of file
+    6 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+/content/transformer_cpp/src/../include/cuda/cublas_check.cuh:6: warning: "CUBLAS_CHECK" redefined
+In file included from /content/transformer_cpp/src/../include/memory_pool.hpp:8,
+                 from /content/transformer_cpp/src/../include/transformer.hpp:26,
+                 from /content/transformer_cpp/src/transformer.cpp:1:
+/content/transformer_cpp/src/../include/cuda/cuda_check.cuh:18: note: this is the location of the previous definition
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      | 
+[ 32%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/router.cpp.o
+[ 34%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/moe.cpp.o
+[ 37%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/gqa.cpp.o
+[ 37%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/vocabulary.cpp.o
+[ 39%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/tiktoken_tokenizer.cpp.o
+[ 41%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/gradient_checkpoint.cpp.o
+[ 44%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/cache.cpp.o
+[ 44%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/quantization.cpp.o
+[ 46%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/quantization_api.cpp.o
+In file included from /content/transformer_cpp/src/../include/memory_pool.hpp:8,
+                 from /content/transformer_cpp/src/../include/transformer.hpp:26,
+                 from /content/transformer_cpp/src/../include/quantization.hpp:3,
+                 from /content/transformer_cpp/src/quantization.cpp:1:
+/content/transformer_cpp/src/../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/transformer_cpp/src/../include/memory_pool.hpp:8,
+                 from /content/transformer_cpp/src/../include/transformer.hpp:26,
+                 from /content/transformer_cpp/src/../include/quantization.hpp:3,
+                 from /content/transformer_cpp/src/../include/quantization_api.hpp:3,
+                 from /content/transformer_cpp/src/quantization_api.cpp:1:
+/content/transformer_cpp/src/../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 48%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/model_saver.cpp.o
+In file included from /content/transformer_cpp/src/../include/memory_pool.hpp:8,
+                 from /content/transformer_cpp/src/../include/transformer.hpp:26,
+                 from /content/transformer_cpp/src/../include/model_saver.hpp:4,
+                 from /content/transformer_cpp/src/model_saver.cpp:1:
+/content/transformer_cpp/src/../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 51%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/gguf_export.cpp.o
+In file included from /content/transformer_cpp/src/../include/memory_pool.hpp:8,
+                 from /content/transformer_cpp/src/../include/transformer.hpp:26,
+                 from /content/transformer_cpp/src/gguf_export.cpp:7:
+/content/transformer_cpp/src/../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 51%] Building CXX object transformer_cpp/CMakeFiles/transformer_core.dir/src/safetensors_export.cpp.o
+In file included from /content/transformer_cpp/src/../include/memory_pool.hpp:8,
+                 from /content/transformer_cpp/src/../include/transformer.hpp:26,
+                 from /content/transformer_cpp/src/safetensors_export.cpp:19:
+/content/transformer_cpp/src/../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 53%] Building CUDA object transformer_cpp/CMakeFiles/transformer_core.dir/src/cuda/cuda_matrix.cu.o
+nvcc warning : Support for offline compilation for architectures prior to '<compute/sm/lto>_75' will be removed in a future release (Use -Wno-deprecated-gpu-targets to suppress warning).
+In file included from /content/transformer_cpp/src/cuda/cuda_matrix.cu:4:
+/content/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/transformer_cpp/src/cuda/cuda_matrix.cu:4:
+/content/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 55%] Building CUDA object transformer_cpp/CMakeFiles/transformer_core.dir/src/cuda/swiglu_kernels.cu.o
+nvcc warning : Support for offline compilation for architectures prior to '<compute/sm/lto>_75' will be removed in a future release (Use -Wno-deprecated-gpu-targets to suppress warning).
+In file included from /content/transformer_cpp/src/cuda/swiglu_kernels.cu:4:
+/content/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/transformer_cpp/src/cuda/swiglu_kernels.cu:4:
+/content/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 58%] Building CUDA object transformer_cpp/CMakeFiles/transformer_core.dir/src/cuda/quantization_kernels.cu.o
+nvcc warning : Support for offline compilation for architectures prior to '<compute/sm/lto>_75' will be removed in a future release (Use -Wno-deprecated-gpu-targets to suppress warning).
+In file included from /content/transformer_cpp/src/cuda/quantization_kernels.cu:2:
+/content/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/transformer_cpp/src/cuda/quantization_kernels.cu:2:
+/content/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 58%] Building CUDA object transformer_cpp/CMakeFiles/transformer_core.dir/src/cuda/matrix_ops.cu.o
+nvcc warning : Support for offline compilation for architectures prior to '<compute/sm/lto>_75' will be removed in a future release (Use -Wno-deprecated-gpu-targets to suppress warning).
+In file included from /content/transformer_cpp/src/cuda/matrix_ops.cu:4:
+/content/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/transformer_cpp/src/cuda/matrix_ops.cu:4:
+/content/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 60%] Building CUDA object transformer_cpp/CMakeFiles/transformer_core.dir/src/cuda/fused_attention_kernels.cu.o
+nvcc warning : Support for offline compilation for architectures prior to '<compute/sm/lto>_75' will be removed in a future release (Use -Wno-deprecated-gpu-targets to suppress warning).
+In file included from /content/transformer_cpp/src/cuda/fused_attention_kernels.cu:2:
+/content/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/transformer_cpp/src/cuda/fused_attention_kernels.cu:2:
+/content/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+/content/transformer_cpp/src/cuda/fused_attention_kernels.cu(71): warning #177-D: variable "score_idx" was declared but never referenced
+      int score_idx = head_idx * (batch_size * seq_len * batch_size * seq_len) +
+          ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/content/transformer_cpp/src/cuda/fused_attention_kernels.cu(279): warning #177-D: variable "grid_size" was declared but never referenced
+      int grid_size = (total_seq * hidden_size + block_size - 1) / block_size;
+          ^
+
+[ 62%] Building CUDA object transformer_cpp/CMakeFiles/transformer_core.dir/src/cuda/moe_kernel.cu.o
+nvcc warning : Support for offline compilation for architectures prior to '<compute/sm/lto>_75' will be removed in a future release (Use -Wno-deprecated-gpu-targets to suppress warning).
+[ 65%] Building CUDA object transformer_cpp/CMakeFiles/transformer_core.dir/src/cuda/router_kernel.cu.o
+nvcc warning : Support for offline compilation for architectures prior to '<compute/sm/lto>_75' will be removed in a future release (Use -Wno-deprecated-gpu-targets to suppress warning).
+[ 65%] Building CUDA object transformer_cpp/CMakeFiles/transformer_core.dir/src/cuda/layernorm_cuda.cu.o
+nvcc warning : Support for offline compilation for architectures prior to '<compute/sm/lto>_75' will be removed in a future release (Use -Wno-deprecated-gpu-targets to suppress warning).
+/content/transformer_cpp/src/cuda/layernorm_cuda.cu:1: warning: "USE_CUDA" redefined
+    1 | #define USE_CUDA
+      | 
+<command-line>: note: this is the location of the previous definition
+In file included from /content/transformer_cpp/src/cuda/layernorm_cuda.cu:2:
+/content/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+/content/transformer_cpp/src/cuda/layernorm_cuda.cu:1: warning: "USE_CUDA" redefined
+    1 | #define USE_CUDA
+      | 
+<command-line>: note: this is the location of the previous definition
+In file included from /content/transformer_cpp/src/cuda/layernorm_cuda.cu:2:
+/content/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 67%] Building CUDA object transformer_cpp/CMakeFiles/transformer_core.dir/src/cuda/loss_kernels.cu.o
+nvcc warning : Support for offline compilation for architectures prior to '<compute/sm/lto>_75' will be removed in a future release (Use -Wno-deprecated-gpu-targets to suppress warning).
+In file included from /content/transformer_cpp/src/cuda/loss_kernels.cu:2:
+/content/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/transformer_cpp/src/cuda/loss_kernels.cu:2:
+/content/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 69%] Building CUDA object transformer_cpp/CMakeFiles/transformer_core.dir/src/cuda/attention_ops.cu.o
+nvcc warning : Support for offline compilation for architectures prior to '<compute/sm/lto>_75' will be removed in a future release (Use -Wno-deprecated-gpu-targets to suppress warning).
+In file included from /content/transformer_cpp/src/cuda/attention_ops.cu:4:
+/content/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+In file included from /content/transformer_cpp/src/cuda/attention_ops.cu:4:
+/content/transformer_cpp/src/cuda/../../include/cuda/cuda_check.cuh:18:100: warning: backslash-newline at end of file
+   18 | #define CUBLAS_CHECK(call)                                                                         \
+      |                                                                                                     
+[ 72%] Linking CXX static library libtransformer_core.a
+[ 72%] Built target transformer_core
+[ 74%] Building CXX object CMakeFiles/microtorch.dir/src/autograd.cpp.o
+[ 76%] Building CXX object CMakeFiles/microtorch.dir/src/ops.cpp.o
+[ 79%] Building CXX object CMakeFiles/microtorch.dir/src/nn.cpp.o
+[ 79%] Building CXX object CMakeFiles/microtorch.dir/src/device.cpp.o
+[ 81%] Building CXX object CMakeFiles/microtorch.dir/src/device_cache.cpp.o
+[ 83%] Building CXX object CMakeFiles/microtorch.dir/src/safetensors.cpp.o
+[ 86%] Building CXX object CMakeFiles/microtorch.dir/src/gguf.cpp.o
+[ 86%] Building CXX object CMakeFiles/microtorch.dir/src/quant.cpp.o
+[ 88%] Building CXX object CMakeFiles/microtorch.dir/src/llama.cpp.o
+[ 90%] Building CXX object CMakeFiles/microtorch.dir/src/kimi_linear.cpp.o
+[ 93%] Building CXX object CMakeFiles/microtorch.dir/src/srd.cpp.o
+[ 93%] Building CXX object CMakeFiles/microtorch.dir/src/cerebellum.cpp.o
+[ 95%] Building CXX object CMakeFiles/microtorch.dir/src/mamba.cpp.o
+[ 97%] Building CUDA object CMakeFiles/microtorch.dir/src/cuda_resident.cu.o
+nvcc warning : Support for offline compilation for architectures prior to '<compute/sm/lto>_75' will be removed in a future release (Use -Wno-deprecated-gpu-targets to suppress warning).
+[100%] Building CUDA object CMakeFiles/microtorch.dir/src/cuda_ops.cu.o
+nvcc warning : Support for offline compilation for architectures prior to '<compute/sm/lto>_75' will be removed in a future release (Use -Wno-deprecated-gpu-targets to suppress warning).
+[100%] Linking CXX static library libmicrotorch.a
+[100%] Built target microtorch
+[ 68%] Built target transformer_core
+[ 95%] Built target microtorch
+[ 97%] Building CXX object CMakeFiles/test_gradcheck.dir/tests/test_gradcheck.cpp.o
+[100%] Linking CXX executable test_gradcheck
+[100%] Built target test_gradcheck
+[ 68%] Built target transformer_core
+[ 95%] Built target microtorch
+[ 97%] Building CXX object CMakeFiles/test_nn.dir/tests/test_nn.cpp.o
+[100%] Linking CXX executable test_nn
+[100%] Built target test_nn
+[ 70%] Built target transformer_core
+[ 97%] Built target microtorch
+[100%] Building CXX object CMakeFiles/test_lora_quant.dir/tests/test_lora_quant.cpp.o
+[100%] Linking CXX executable test_lora_quant
+[100%] Built target test_lora_quant
+[ 70%] Built target transformer_core
+[ 97%] Built target microtorch
+[100%] Building CXX object CMakeFiles/test_resident_parity.dir/tests/test_resident_parity.cpp.o
+[100%] Linking CXX executable test_resident_parity
+[100%] Built target test_resident_parity
+[ 70%] Built target transformer_core
+[ 97%] Built target microtorch
+[ 97%] Building CXX object CMakeFiles/test_step_residency.dir/tests/test_step_residency.cpp.o
+[100%] Linking CXX executable test_step_residency
+[100%] Built target test_step_residency
+[ 70%] Built target transformer_core
+[ 97%] Built target microtorch
+[ 97%] Building CXX object CMakeFiles/test_cuda_ops.dir/tests/test_cuda_ops.cpp.o
+[100%] Linking CXX executable test_cuda_ops
+[100%] Built target test_cuda_ops
+== 3/3 run gradchecks on CUDA ==
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+microtorch phase-1a gradcheck
+
+  [ok] matmul_optimized == naive matmul                     9.537e-07
+Using CUDA device: Tesla T4
+Compute capability: 7.5
+  [ok] dX vs finite differences                             5.275e-07
+  [ok] dW1 vs finite differences                            1.313e-05
+  [ok] db vs finite differences                             1.387e-06
+  [ok] dW2 vs finite differences                            1.198e-06
+  [ok] diamond accumulation: d(mean(a.*a)) == 2a/N          1.863e-09
+  [ok] sub: d(mean((p-q)^2)) signs on both branches         0.000e+00
+  [ok] gelu backward (microtorch) vs FD                     7.686e-07
+  [ok] legacy apply_gelu_derivative disagrees (canary)      2.491e-03
+  [ok] silu+mul_row: dx vs FD                               5.764e-07
+  [ok] mul_row: drow vs FD                                  7.892e-07
+  [ok] rmsnorm: dx vs FD                                    4.584e-06
+  [ok] rmsnorm: dw vs FD                                    3.665e-06
+  [ok] apply_rope: dqk vs FD                                1.034e-06
+  [ok] fused_attention(causal): dq FD                       9.074e-07
+  [ok] fused_attention(causal): dk FD                       1.673e-06
+  [ok] fused_attention(causal): dv FD                       1.294e-06
+  [ok] fused_attention(causal): forward parity              5.960e-08
+  [ok] fused_attention(causal+batch): dq FD                 6.487e-07
+  [ok] fused_attention(causal+batch): dk FD                 6.840e-07
+  [ok] fused_attention(causal+batch): dv FD                 4.962e-07
+  [ok] fused_attention(causal+batch): forward parity        0.000e+00
+  [ok] fused_attention(bidir+batch): dq FD                  9.019e-07
+  [ok] fused_attention(bidir+batch): dk FD                  1.739e-06
+  [ok] fused_attention(bidir+batch): dv FD                  8.959e-07
+  [ok] fused_attention(bidir+batch): forward parity         5.960e-08
+  [ok] NoGrad: no tape recorded                             0.000e+00
+  [ok] constant leaf never accumulated a grad               0.000e+00
+  [ok] zero_grad + rebuild: bit-identical grads             0.000e+00
+
+ALL MICROTORCH GRADCHECKS PASSED
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+microtorch phase-1b nn gate
+
+Using CUDA device: Tesla T4
+Compute capability: 7.5
+  [ok] FD through full model: wte.weight                    4.606e-03
+  [ok] FD through full model: wpe.weight                    3.018e-03
+  [ok] FD through full model: h.0.ln_1.weight               1.012e-05
+  [ok] FD through full model: h.0.ln_1.bias                 9.703e-06
+  [ok] FD through full model: h.0.attn.c_attn.weight        1.661e-05
+  [ok] FD through full model: h.0.attn.c_attn.bias          1.433e-05
+  [ok] FD through full model: h.0.attn.c_proj.weight        2.211e-05
+  [ok] FD through full model: h.0.attn.c_proj.bias          3.388e-03
+  [ok] FD through full model: h.0.ln_2.weight               1.103e-05
+  [ok] FD through full model: h.0.ln_2.bias                 1.467e-05
+  [ok] FD through full model: h.0.mlp.c_fc.weight           1.750e-05
+  [ok] FD through full model: h.0.mlp.c_fc.bias             1.297e-05
+  [ok] FD through full model: h.0.mlp.c_proj.weight         1.858e-05
+  [ok] FD through full model: h.0.mlp.c_proj.bias           3.060e-03
+  [ok] FD through full model: ln_f.weight                   9.426e-06
+  [ok] FD through full model: ln_f.bias                     8.066e-06
+  [ok] state_dict round trip: bit-identical loss            0.000e+00
+  [ok] strict load: missing key throws                      0.000e+00
+  [ok] strict load: unexpected key throws                   0.000e+00
+  [ok] SGD+momentum overfits one batch                      4.914e-06
+  [ok] AdamW overfits one batch                             1.322e-04
+  [ok] causal mask: past logits untouched by future edit    0.000e+00
+
+ALL NN CHECKS PASSED
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+=== int8 blockwise quantization ===
+  error within half-step everywhere; memory 0.27x of fp32
+=== QLinear vs fp32 Linear ===
+Using CUDA device: Tesla T4
+Compute capability: 7.5
+  max |QLinear - Linear| = 0.00470
+=== LoRA: identity delta at init ===
+  output identical to frozen base (B initialized to zero)
+=== LoRA: gradients hit adapters only ===
+  dB nonzero at step 0 (dA zero by B=0, as in the paper)
+  adapter step shifts the output; base W untouched
+=== LoRA: merged_weight equivalence ===
+  max |adapter - merged| = 0.0000004
+=== QLoRA: quantized base + adapters ===
+  base stored at 0.27x fp32 bytes
+  3 AdamW steps trained the adapters, outputs finite
+
+[PASS] all LoRA/QLoRA/quantization tests
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+test_resident_parity
+Using CUDA device: Tesla T4
+Compute capability: 7.5
+  [ok] phase A (round-trip) vs CPU reference                1.192e-06
+  [ok] resident_count after 2 uploads                       2.000e+00
+  [ok] B1 (both operands resident) vs CPU reference         1.431e-06
+  [ok] B1 (A resident, B temp) vs CPU reference             1.431e-06
+  [ok] mutate -> invalidate -> re-resident matches new ref  1.431e-06
+  [ok] evict_all empties the table                          0.000e+00
+all checks passed
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+1. no-op leg: residency+windows on CPU device is bitwise inert
+2. CUDA pin: step-resident training matches CPU (max w diff 6.89e-08)
+3. staleness probe: between-window host poke visible on device
+all step-residency checks passed
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+-- leg 1: kernel parity vs the CPU formulas --
+  [ok] add                                                  0.000e+00
+  [ok] sub                                                  0.000e+00
+  [ok] mul                                                  0.000e+00
+  [ok] scale                                                0.000e+00
+  [ok] axpy                                                 2.384e-07
+  [ok] fill                                                 0.000e+00
+  [ok] sigmoid_fwd                                          1.192e-07
+  [ok] sigmoid_bwd                                          0.000e+00
+  [ok] gelu_fwd (vs apply_gelu)                             1.192e-07
+  [ok] gelu_bwd                                             2.384e-07
+  [ok] softmax_fwd (vs apply_softmax)                       1.304e-08
+  [ok] softmax_bwd                                          3.725e-09
+  [ok] layernorm_fwd y                                      7.153e-07
+  [ok] layernorm_fwd xhat                                   5.960e-07
+  [ok] layernorm_bwd dgamma                                 3.815e-06
+  [ok] layernorm_bwd dbeta                                  0.000e+00
+  [ok] layernorm_bwd dx                                     4.768e-07
+  [ok] rmsnorm_fwd                                          7.153e-07
+  [ok] rmsnorm_bwd dw                                       3.189e-06
+  [ok] rmsnorm_bwd dx                                       2.384e-07
+-- leg 2: composed tape, device ops OFF vs ON --
+  [ok] loss                                                 0.000e+00
+  [ok] grad x                                               1.892e-10
+  [ok] grad gamma                                           1.746e-10
+  [ok] grad beta                                            2.328e-10
+  [ok] grad w                                               2.328e-10
+test_cuda_ops PASSED (B2.1a op set: kernel + tape parity)
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+microtorch phase-1a gradcheck
+
+  [ok] matmul_optimized == naive matmul                     9.537e-07
+Using CUDA device: Tesla T4
+Compute capability: 7.5
+  [ok] dX vs finite differences                             6.550e-07
+  [ok] dW1 vs finite differences                            1.313e-05
+  [ok] db vs finite differences                             1.385e-06
+  [ok] dW2 vs finite differences                            1.198e-06
+  [ok] diamond accumulation: d(mean(a.*a)) == 2a/N          1.863e-09
+  [ok] sub: d(mean((p-q)^2)) signs on both branches         0.000e+00
+  [ok] gelu backward (microtorch) vs FD                     7.686e-07
+  [ok] legacy apply_gelu_derivative disagrees (canary)      2.491e-03
+  [ok] silu+mul_row: dx vs FD                               5.764e-07
+  [ok] mul_row: drow vs FD                                  7.892e-07
+  [ok] rmsnorm: dx vs FD                                    4.484e-06
+  [ok] rmsnorm: dw vs FD                                    3.665e-06
+  [ok] apply_rope: dqk vs FD                                1.034e-06
+  [ok] fused_attention(causal): dq FD                       9.074e-07
+  [ok] fused_attention(causal): dk FD                       1.673e-06
+  [ok] fused_attention(causal): dv FD                       1.294e-06
+  [ok] fused_attention(causal): forward parity              8.941e-08
+  [ok] fused_attention(causal+batch): dq FD                 6.487e-07
+  [ok] fused_attention(causal+batch): dk FD                 6.840e-07
+  [ok] fused_attention(causal+batch): dv FD                 4.962e-07
+  [ok] fused_attention(causal+batch): forward parity        8.941e-08
+  [ok] fused_attention(bidir+batch): dq FD                  9.019e-07
+  [ok] fused_attention(bidir+batch): dk FD                  1.739e-06
+  [ok] fused_attention(bidir+batch): dv FD                  8.959e-07
+  [ok] fused_attention(bidir+batch): forward parity         8.941e-08
+  [ok] NoGrad: no tape recorded                             0.000e+00
+  [ok] constant leaf never accumulated a grad               0.000e+00
+  [ok] zero_grad + rebuild: bit-identical grads             0.000e+00
+
+ALL MICROTORCH GRADCHECKS PASSED
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+microtorch phase-1b nn gate
+
+Using CUDA device: Tesla T4
+Compute capability: 7.5
+  [ok] FD through full model: wte.weight                    4.606e-03
+  [ok] FD through full model: wpe.weight                    3.018e-03
+  [ok] FD through full model: h.0.ln_1.weight               1.253e-05
+  [ok] FD through full model: h.0.ln_1.bias                 9.703e-06
+  [ok] FD through full model: h.0.attn.c_attn.weight        1.661e-05
+  [ok] FD through full model: h.0.attn.c_attn.bias          9.695e-06
+  [ok] FD through full model: h.0.attn.c_proj.weight        2.212e-05
+  [ok] FD through full model: h.0.attn.c_proj.bias          3.397e-03
+  [ok] FD through full model: h.0.ln_2.weight               1.103e-05
+  [ok] FD through full model: h.0.ln_2.bias                 1.020e-05
+  [ok] FD through full model: h.0.mlp.c_fc.weight           1.750e-05
+  [ok] FD through full model: h.0.mlp.c_fc.bias             1.297e-05
+  [ok] FD through full model: h.0.mlp.c_proj.weight         1.858e-05
+  [ok] FD through full model: h.0.mlp.c_proj.bias           3.060e-03
+  [ok] FD through full model: ln_f.weight                   1.255e-05
+  [ok] FD through full model: ln_f.bias                     8.066e-06
+  [ok] state_dict round trip: bit-identical loss            0.000e+00
+  [ok] strict load: missing key throws                      0.000e+00
+  [ok] strict load: unexpected key throws                   0.000e+00
+  [ok] SGD+momentum overfits one batch                      4.914e-06
+  [ok] AdamW overfits one batch                             1.322e-04
+  [ok] causal mask: past logits untouched by future edit    0.000e+00
+
+ALL NN CHECKS PASSED
+CUDA validation PASSED (Phase A + B1 + B2.0 + B2.1a op set)
++ zip -q b21_results.zip validate.log
+B21_VALIDATION_DONE: PASSED
+[colab] Stopping session 'b21_shard0'...
+[colab] Session terminated.
+EXIT=0
