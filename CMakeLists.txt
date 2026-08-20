@@ -45,6 +45,7 @@ add_library(microtorch STATIC
     src/ops.cpp
     src/nn.cpp
     src/device.cpp
+    src/device_cache.cpp
     src/safetensors.cpp
     src/gguf.cpp
     src/quant.cpp
@@ -62,6 +63,12 @@ if(MICROTORCH_CUDA)
     # (its add_compile_definitions is directory-scoped and does not reach
     # microtorch's translation units).
     target_compile_definitions(microtorch PUBLIC MICROTORCH_CUDA USE_CUDA CUDA_AVAILABLE)
+    # Phase B1 residency (docs/CUDA_PHASE_B.md): microtorch-owned CUDA TU.
+    enable_language(CUDA)
+    set(CMAKE_CUDA_STANDARD 17)
+    target_sources(microtorch PRIVATE src/cuda_resident.cu)
+    # Phase B2.1a op set (docs/CUDA_PHASE_B2.md section 4): same TU rules.
+    target_sources(microtorch PRIVATE src/cuda_ops.cu)
 endif()
 
 enable_testing()
@@ -71,6 +78,22 @@ add_test(NAME gradcheck COMMAND test_gradcheck)
 
 add_executable(test_nn tests/test_nn.cpp)
 target_link_libraries(test_nn PRIVATE microtorch)
+
+add_executable(test_resident_parity tests/test_resident_parity.cpp)
+target_link_libraries(test_resident_parity PRIVATE microtorch)
+
+add_executable(test_step_residency tests/test_step_residency.cpp)
+target_link_libraries(test_step_residency PRIVATE microtorch)
+
+add_executable(test_cuda_ops tests/test_cuda_ops.cpp)
+target_link_libraries(test_cuda_ops PRIVATE microtorch)
+add_test(NAME step_residency COMMAND test_step_residency)
+
+add_executable(test_highway tests/test_highway.cpp)
+target_link_libraries(test_highway PRIVATE microtorch)
+
+add_executable(test_deep_swa tests/test_deep_swa.cpp)
+target_link_libraries(test_deep_swa PRIVATE microtorch)
 add_test(NAME nn COMMAND test_nn)
 
 add_executable(test_kimi_linear tests/test_kimi_linear.cpp)

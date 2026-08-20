@@ -1,0 +1,59 @@
+#!/usr/bin/env python3
+"""B2.1a T4 validation runner — paste into ONE Colab cell (T4 runtime), or
+fan out via the colab-sweep skill (it is argv-compatible: --shard I N is
+accepted and ignored; there is exactly one shard of work).
+
+Clones both repos at the required layout, runs tools/colab_cuda_validate.sh
+(which now carries the B2.1a gate: test_cuda_ops + gradcheck/nn rerun with
+MICROTORCH_DEVICE_OPS=1), and zips the logs.
+
+Colab cell:
+    !wget -q https://raw.githubusercontent.com/JohnnyTeutonic/paperkiln/master/tools/colab_b21_validate.py
+    !python colab_b21_validate.py
+
+PREREQUISITE: the working tree (branch below) must be pushed first —
+pushes need Jonathan's terminal (SSH key), never the assistant's shell.
+"""
+import argparse
+import subprocess
+import sys
+
+BRANCH = "master"  # update if validating from a feature branch
+PAPERKILN = "https://github.com/JohnnyTeutonic/paperkiln.git"
+COALFIRE = "https://github.com/JohnnyTeutonic/coalfire.cpp.git"
+DONE_MARKER = "B21_VALIDATION_DONE"
+
+
+def run(cmd, **kw):
+    print(f"+ {cmd}", flush=True)
+    return subprocess.run(cmd, shell=True, **kw).returncode
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--shard", nargs=2, type=int, default=[0, 1])
+    ap.parse_args()
+
+    rc = run(f"git clone --depth 1 -b {BRANCH} {PAPERKILN} microtorch")
+    rc |= run(f"git clone --depth 1 {COALFIRE} transformer_cpp")
+    if rc:
+        sys.exit("clone failed — was the branch pushed?")
+
+    with open("validate.log", "w") as log:
+        p = subprocess.Popen(
+            "bash microtorch/tools/colab_cuda_validate.sh",
+            shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            text=True)
+        for line in p.stdout:
+            print(line, end="", flush=True)
+            log.write(line)
+        p.wait()
+
+    run("zip -q b21_results.zip validate.log")
+    verdict = "PASSED" if p.returncode == 0 else f"FAILED rc={p.returncode}"
+    print(f"{DONE_MARKER}: {verdict}")
+    sys.exit(p.returncode)
+
+
+if __name__ == "__main__":
+    main()

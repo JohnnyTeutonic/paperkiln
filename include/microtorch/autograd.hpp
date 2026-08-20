@@ -13,6 +13,7 @@
 #include <memory>
 #include <vector>
 
+#include "microtorch/device_cache.hpp"
 #include "microtorch/primitives.hpp"
 
 namespace microtorch {
@@ -37,10 +38,19 @@ public:
     std::vector<Var> parents;
     std::function<void()> backward_fn;
 
+    // Phase B2 (docs/CUDA_PHASE_B2.md): device-resident copy of `data`,
+    // OWNED by this Variable so the buffer dies exactly when the tensor
+    // dies (no recycled-host-pointer aliasing). nullptr until a
+    // step-resident gemm caches here; always nullptr in CPU builds.
+    device::DevState* dev = nullptr;
+
     explicit Variable(Matrix d, bool rg = false) : data(std::move(d)), requires_grad(rg) {
         ++detail::g_live_vars;
     }
-    ~Variable() { --detail::g_live_vars; }
+    ~Variable() {
+        device::release_devstate(dev);
+        --detail::g_live_vars;
+    }
     Variable(const Variable&) = delete;
     Variable& operator=(const Variable&) = delete;
 

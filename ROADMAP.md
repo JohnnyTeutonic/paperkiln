@@ -3,11 +3,16 @@
 *Ordered backlog. Research (atlas/sparse attention) is the flagship;
 these are the engineering items that unlock it.*
 
-1. **CUDA past the dispatch seam.** Phase A (round-trip dispatch) and
-   Phase B1 (explicit residency, docs/CUDA_PHASE_B.md) are BOTH
-   T4-validated as of 12 Aug 2026. Remaining: Phase B2 training-step
-   residency (backward + Adam on-device; kernels exist per the audit)
-   — that is what actually GATES Rung C (d=512, T=512).
+1. **CUDA past the dispatch seam.** Phase A, Phase B1, and now Phase
+   **B2.0 (T4-validated 13 Aug 2026)**: step-residency plumbing —
+   Variable-owned device state, transpose-flag GEMM, epoch-scoped
+   caches; CUDA training pin matched CPU to 2.33e-07, staleness probe
+   green (docs/CUDA_PHASE_B2.md). Remaining: **B2.1a code landed
+   21 Aug 2026** — full device op set (src/cuda_ops.cu) + attention
+   transpose-kill + test_cuda_ops gate, T4 validation pending; then
+   B2.1b (deferred downloads + DEVCHECK), B2.2 (embedding + CE
+   scalar-only), B2.3 (optimizer on device). Adoption gated on a d=512 wall-clock
+   win vs AVX. That is what actually GATES Rung C (d=512, T=512).
 
    1a. **Deep SWA — DONE 12 Aug 2026 (same night it was discovered).**
    FlexLM takes attention=exact|swa with window/sinks at any depth;
@@ -31,8 +36,13 @@ these are the engineering items that unlock it.*
    mtsweep spec (paper-faithful or --house-dims; unresolved fields
    omitted loudly per the module contract). Proven live: 1706.03762
    fetched, extracted with evidence, and trained (flex family,
-   layernorm/relu/sinusoidal). Remaining: extraction patterns for new
-   mechanisms (highway, swa/window) so registry entries auto-seed.
+   layernorm/relu/sinusoidal). **Highway/SWA patterns landed 13 Aug
+   2026**: residual + attention flavor fields (attention one-sided by
+   design — only swa has a positive signature), window/sinks as aux
+   numerics that never swell `unresolved`, Mistral as a named-swa
+   ancestor, and emit_spec refuses windowless swa + scales degenerate
+   windows loudly. Emitted specs pass mtsweep --dry-run — registry
+   entries for both new mechanisms can auto-seed from papers.
 
 Reference docs: ARCHITECTURE_ATLAS.md (the lab charter),
 atlas/PAPER_PLAN.md (G1-G3 gaps), SPARSE_ATTENTION.md (research
@@ -71,9 +81,11 @@ scope-labelled per the scale-ladder doctrine).
 
 ## P2. Browser + accelerator targets (split from "paper-to-silicon")
 
-- P2a **WASM runtime (CHEAP, high demo value)**: Emscripten build of
-  the existing CPU engine; models run in-browser; the studio's demo
-  surface. Days of work; schedule after Rung B lands.
+- P2a **WASM runtime — SPIKE PROVEN 12 Aug 2026** (ember.cpp/WASM.md):
+  the inference core compiled to wasm UNMODIFIED in one em++ command
+  and ran coherent GGUF chat inference under node. Remaining for the
+  browser page: MEMFS model loading + a small JS API (a day, when demo
+  value calls — e.g. a certain Melbourne inference lab).
 - P2b **WebGPU backend**: bounded kernel-backend project, AFTER CUDA
   (item 1) — same dispatch seam, second target.
 - P2c Silicon/Verilog: DECLINED as a goal (HLS is its own field).
