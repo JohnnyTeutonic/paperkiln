@@ -1,0 +1,20 @@
+{
+  "_comment": "sparse_s1_boundary: locating B*(256). Identical to sparse_s1_scale Rung B (as amended, d=256/layers=2) except steps 1200 -> 3600. Pre-registered in PREREGISTRATION.md BEFORE any run; seeds match Rung B so Delta(400)/Delta(1200)/Delta(3600) are paired on the same seeds. Local CPU execution; out_root persistent, never /tmp (S1-d incident rule).",
+  "base": {
+    "arch": {"preset": "gpt2-nano",
+             "custom": {"d": 256, "heads": 8,
+                         "window": 64, "sinks": 1}},
+    "data": {"corpus": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/transformer_cpp/data/tinystories-txt/train-0-small.txt",
+              "vocab": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/transformer_cpp/releases/chat7b.gguf",
+              "vocab_cap": 4096, "T": 256},
+    "train": {"batch": 4, "lr": 0.001, "steps": 3600, "eval_every": 100,
+               "checkpoint_every": 1000000, "gradmap_every": 0},
+    "export": {"formats": []}
+  },
+  "factors": {
+    "arch.custom.attention": ["exact", "swa"]
+  },
+  "design": "grid",
+  "seeds": [1, 2, 3, 4, 5],
+  "out_root": "~/boundary_out"
+}
