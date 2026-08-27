@@ -1,0 +1,20 @@
+{
+  "_comment": "sparse_s1_seeds: B*(256) point-or-distribution. IDENTICAL to sparse_s1_boundary except seeds {6..15} (ten NEW paired seeds; boundary's {1..5} pool in at analysis under the protocol-drift guard). Pre-registered in PREREGISTRATION.md BEFORE any run. Local CPU (Rung B venue); out_root absolute and persistent, never /tmp (S1-d incident rule); mtsweep does not expand ~ (boundary execution-note rule).",
+  "base": {
+    "arch": {"preset": "gpt2-nano",
+             "custom": {"d": 256, "heads": 8,
+                         "window": 64, "sinks": 1}},
+    "data": {"corpus": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/transformer_cpp/data/tinystories-txt/train-0-small.txt",
+              "vocab": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/transformer_cpp/releases/chat7b.gguf",
+              "vocab_cap": 4096, "T": 256},
+    "train": {"batch": 4, "lr": 0.001, "steps": 3600, "eval_every": 100,
+               "checkpoint_every": 1000000, "gradmap_every": 0},
+    "export": {"formats": []}
+  },
+  "factors": {
+    "arch.custom.attention": ["exact", "swa"]
+  },
+  "design": "grid",
+  "seeds": [6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+  "out_root": "/home/jonat/seeds_out"
+}
