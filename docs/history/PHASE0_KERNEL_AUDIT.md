@@ -1,5 +1,5 @@
 # Phase 0 — transformer_core kernel audit
-*(DESIGN.md section 1's "phase-0 risk to check first": which primitives are
+*(docs/DESIGN.md section 1's "phase-0 risk to check first": which primitives are
 shape-general enough to be microtorch's autograd op set, and which are
 transformer-bound and stay behind.)*
 
@@ -13,7 +13,7 @@ gets a numerical parity test in phase 1a anyway (the tape's gradient checks
 double as the kernel audit's verification), so a misclassification here is
 caught one phase later, not shipped.
 
-**The CMake seam exists as DESIGN.md hoped:** `transformer_core` is a real
+**The CMake seam exists as docs/DESIGN.md hoped:** `transformer_core` is a real
 STATIC library target ([CMakeLists.txt:168](../transformer_cpp/CMakeLists.txt#L168)),
 already consumed by four in-repo executables via
 `target_link_libraries(... transformer_core)`. `add_subdirectory` +

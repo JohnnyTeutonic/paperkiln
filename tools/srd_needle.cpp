@@ -1,5 +1,5 @@
 // Needle-in-haystack associative recall: the sharpest test of V1's claim
-// (SPARSE_ATTENTION.md). Linear attention's compressed state should fail
+// (docs/SPARSE_ATTENTION.md). Linear attention's compressed state should fail
 // precise KV recall; exact attention should succeed; SRD graduates only if
 // it matches exact AND its gate concentrates on retrieval-critical
 // positions.
@@ -50,7 +50,7 @@ constexpr int FILL0 = 130, NFILL = 120;  // fill  [130, 250)
 // Vocab layout is unchanged; smaller nkeys/npairs just restrict draws.
 int g_npairs = 8, g_nkeys = 64;
 
-// ---- rung 2 (SRD_PREREG_R2.md): separating H_retrieval from H_novelty ----
+// ---- rung 2 (experiments/SRD_PREREG_R2.md): separating H_retrieval from H_novelty ----
 // The status-quo task partitions the vocabulary BY ROLE (keys [2,66),
 // values [66,130), filler [130,250)), so needle tokens are
 // distributionally distinct by construction and a prediction-residual
@@ -159,7 +159,7 @@ int main(int argc, char** argv) {
     // Model-init seed (shared by all four lanes, as always). CLI-exposed
     // for the rung-1 breakthrough replication; 7 reproduces every prior run.
     const unsigned seed = argc > 8 ? static_cast<unsigned>(std::atoi(argv[8])) : 7;
-    // Rung 2 (SRD_PREREG_R2.md): argv[9] = needle distribution
+    // Rung 2 (experiments/SRD_PREREG_R2.md): argv[9] = needle distribution
     // (distinct|indist), argv[10] = number of decoy pairs. Defaults
     // reproduce every prior run exactly.
     if (argc > 9) g_indist = std::string(argv[9]) == "indist";
@@ -229,7 +229,7 @@ int main(int argc, char** argv) {
         for (auto& lane : lanes) {
             lane.model.eval();
             double ce = 0, acc = 0, tail_g = 0, fill_g = 0;
-            // Rung-2 four-region profile (SRD_PREREG_R2.md): target vs
+            // Rung-2 four-region profile (experiments/SRD_PREREG_R2.md): target vs
             // non-target is the discrimination only H_retrieval predicts
             // (identical distribution, differing only in being asked for).
             double tgt_g = 0, non_g = 0, dec_g = 0;
@@ -326,7 +326,7 @@ int main(int argc, char** argv) {
     save_ckpt(steps);
     std::printf("done through %d; wrote %s_{train,probe}.csv\n", steps, prefix.c_str());
 
-    // ---- P5: matched-density controls (SRD_PREREG_R2.md, env-gated) ----
+    // ---- P5: matched-density controls (experiments/SRD_PREREG_R2.md, env-gated) ----
     // On the SAME trained srd weights, evaluate the probe set with the
     // gate REPLACED by three policies at equal density rho: the SRD
     // gate's own top-rho queries, a random rho subset, and a positional

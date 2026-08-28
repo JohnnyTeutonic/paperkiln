@@ -1,5 +1,5 @@
 #pragma once
-// V1: Surprise-Routed Density attention (SPARSE_ATTENTION.md section 2).
+// V1: Surprise-Routed Density attention (docs/SPARSE_ATTENTION.md section 2).
 //
 // Per-query density routed by prediction residual instead of attention-
 // affinity scores (the NSA/MoBA family's router). A small predictor learns
@@ -47,13 +47,13 @@ public:
     std::shared_ptr<cerebellum::RoutinePredictor> predictor;
     size_t H, dk;
 
-    // FALSIFIER (SPARSE_ATTENTION.md protocol): when set, the predictor
+    // FALSIFIER (docs/SPARSE_ATTENTION.md protocol): when set, the predictor
     // sees a row-permuted copy of x, so the gate keeps its distribution
     // but carries no information aligned to the query. If training
     // quality holds under this, the gate was not using surprise.
     bool shuffle_predictor = false;
     // Inference-time gate override for the matched-density controls
-    // (SRD_PREREG_R2.md P5): when non-empty and sized [T], it replaces
+    // (experiments/SRD_PREREG_R2.md P5): when non-empty and sized [T], it replaces
     // the router's gate verbatim (1 = exact path, 0 = linear path), so
     // the SAME trained weights can be evaluated under SRD-chosen,
     // random, or positional gating at equal density. Empty = normal.

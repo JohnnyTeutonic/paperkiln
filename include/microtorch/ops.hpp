@@ -71,7 +71,7 @@ Var ssm_scan(const Var& u, const Var& A, const Var& B, const Var& C, const Var& 
 // parallel executor can slot in
 // behind the same signature.
 
-// ---- sparse-attention research ops (SPARSE_ATTENTION.md V1) ----
+// ---- sparse-attention research ops (docs/SPARSE_ATTENTION.md V1) ----
 Var mul_col(const Var& x, const Var& c);       // x .* broadcast column c [rows, 1];
                                                // dc = rowsum(dY .* x) -- the
                                                // per-ROW twin of mul_row; the op

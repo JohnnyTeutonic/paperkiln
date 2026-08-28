@@ -37,7 +37,7 @@ Contributions follow the same rule:
 - **New knobs**: an A/B or a deterministic probe demonstrating the knob binds
   (see `swa_check` in transformer_cpp for the pattern). A knob that parses but
   does not bind is worse than no knob.
-- Research claims (SPARSE_ATTENTION.md territory) additionally follow
+- Research claims (docs/SPARSE_ATTENTION.md territory) additionally follow
   falsifiers-first: state what result would kill the idea before running it.
 
 ## Tests

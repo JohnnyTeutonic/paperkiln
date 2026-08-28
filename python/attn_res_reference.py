@@ -1,12 +1,12 @@
 """
-attn_res_reference.py
+python/attn_res_reference.py
 =====================
 A faithful *reference* implementation of Attention Residuals (AttnRes), the
 depth-attention mechanism used by Kimi K3 (arXiv:2607.24653, section 2.2,
 Eq. 8-10; original method is their ref [58]).
 
 This is the correctness anchor for the future C++ `microtorch` module and the
-`dit` backbone (see TECH_TRANSFER.md item 1). Like kda_reference.py it
+`dit` backbone (see docs/TECH_TRANSFER.md item 1). Like kda_reference.py it
 implements the definitional form and treats efficiency (online-softmax
 merging of inter/intra block terms) as out of scope.
 

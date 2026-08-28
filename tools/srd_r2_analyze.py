@@ -4,7 +4,7 @@
     python tools/srd_r2_analyze.py /tmp/srd_r2 [--md out.md]
     python tools/srd_r2_analyze.py --selftest
 
-Implements SRD_PREREG_R2.md exactly: RSI (retrieval-selectivity index),
+Implements experiments/SRD_PREREG_R2.md exactly: RSI (retrieval-selectivity index),
 DCI (decoy-chasing index), the concentration check, and the five
 predictions P1-P5 with their committed decision rules. Written BEFORE
 the runs; the analysis is not allowed to grow new tests after seeing

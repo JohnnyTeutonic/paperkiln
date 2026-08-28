@@ -1,7 +1,7 @@
 #pragma once
-// The autograd tape -- DESIGN.md phase 1a, the one genuinely new component.
+// The autograd tape -- docs/DESIGN.md phase 1a, the one genuinely new component.
 //
-// Reverse-mode at op granularity (settled in PHASE0_KERNEL_AUDIT.md
+// Reverse-mode at op granularity (settled in docs/history/PHASE0_KERNEL_AUDIT.md
 // section 6): a Variable owns a Matrix plus, when it was produced by an op
 // under grad, the closure that scatters its gradient to its parents.
 // backward() topologically sorts the tape from a scalar root and runs each

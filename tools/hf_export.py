@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""paperkiln -> Hugging Face export (ECOSYSTEM.md feature 4).
+"""paperkiln -> Hugging Face export (docs/ECOSYSTEM.md feature 4).
 
     python tools/hf_export.py OUT_DIR [--hf-dir OUT_DIR/hf]
 

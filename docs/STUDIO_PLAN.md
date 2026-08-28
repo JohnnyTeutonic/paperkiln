@@ -141,7 +141,7 @@ Next (more time arriving after the offer lands):
 5. M2 single-file UI over the event stream.
 6. M3 wheels + demo assets.
 
-Parallel research track (unchanged, SPARSE_ATTENTION.md): needle amendment
+Parallel research track (unchanged, docs/SPARSE_ATTENTION.md): needle amendment
 rerun (T=128, longer budget), multi-seed, then the paper-spine conversation.
 
 ## 9. Performance roadmap (triaged external review, 2026-07-30)

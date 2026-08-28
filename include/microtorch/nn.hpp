@@ -27,7 +27,7 @@ public:
     std::vector<std::pair<std::string, Var>> named_parameters() const;
     std::vector<Var> parameters() const;
     // Total scalar parameter count — the first Atlas structural feature
-    // (ARCHITECTURE_ATLAS.md stage 0).
+    // (atlas/ARCHITECTURE_ATLAS.md stage 0).
     size_t parameter_count() const;
     std::map<std::string, Matrix> state_dict() const;
     // strict: every entry must land on a parameter and every parameter must
@@ -193,7 +193,7 @@ private:
 };
 
 // Attention Residuals (AttnRes) — TECH_TRANSFER item 1; Kimi K3 arXiv
-// 2607.24653 section 2.2 Eq. 8-10; reference anchor attn_res_reference.py.
+// 2607.24653 section 2.2 Eq. 8-10; reference anchor python/attn_res_reference.py.
 //
 // A residual stream compresses every earlier layer into one running sum —
 // an RNN over depth. AttnRes replaces that with ATTENTION over depth:
@@ -237,7 +237,7 @@ private:
 // a loose band around 1 while preserving the singular DIRECTIONS —
 // approximately UV^T of the input's SVD. Iterates on the wide
 // orientation internally; commutes with transpose. Reference anchor:
-// muon_reference.py (golden-pinned in test_muon).
+// python/muon_reference.py (golden-pinned in test_muon).
 Matrix newton_schulz5(const Matrix& G, int steps = 5);
 
 // Muon optimizer with the K3 per-head refinement (TECH_TRANSFER item 3;

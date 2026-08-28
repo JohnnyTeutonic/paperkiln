@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Atlas stage 0b: behavioural feature extraction (ARCHITECTURE_ATLAS.md).
+"""Atlas stage 0b: behavioural feature extraction (atlas/ARCHITECTURE_ATLAS.md).
 
 Turns a finished mtstudio out_dir into one Atlas row: the structural echo
 from result.json joined with behavioural features computed from
@@ -84,7 +84,7 @@ def behavioural_features(events):
         # Stage-2 corpus, ~85% of >3x-median exceedances sat in the first
         # 5% of steps (median spike position: the 1% mark) — that is the
         # warmup story, and it was contaminating the instability story
-        # (ATLAS_STAGE2_RESULTS.md finding #6). Split them: spikes are
+        # (atlas/ATLAS_STAGE2_RESULTS.md finding #6). Split them: spikes are
         # counted over the post-warmup 95% against the post-warmup
         # median; the transient gets its own metric.
         warm = max(1, len(gnorms) // 20)

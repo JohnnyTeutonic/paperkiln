@@ -1,4 +1,4 @@
-// AttnRes receipts, mirroring attn_res_reference.py's self-test suite
+// AttnRes receipts, mirroring python/attn_res_reference.py's self-test suite
 // (the correctness anchor — TECH_TRANSFER item 1):
 //   1. shape + uniform-at-init (w=0: depth-attention over one source is
 //      exactly the identity)

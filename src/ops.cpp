@@ -934,12 +934,12 @@ Var fused_attention(const Var& q, const Var& k, const Var& v, float scale, size_
 }
 
 // Sliding-window causal attention with attention sinks (S1 baseline of
-// the sparse phase, SPARSE_ATTENTION.md): query i sees the first `sinks`
+// the sparse phase, docs/SPARSE_ATTENTION.md): query i sees the first `sinks`
 // positions of its block plus the last `window` positions up to i. The
 // field's default control (Longformer/Mistral lineage; sinks per
 // StreamingLLM). Cost intuition O(T·(w+s)·d); this reference
 // implementation still materializes [T,T] weights — the honest fast
-// kernel belongs to coalfire (ECOSYSTEM.md §1.1 role 4).
+// kernel belongs to coalfire (docs/ECOSYSTEM.md §1.1 role 4).
 //
 // EQUIVALENCE PIN (tests/test_swa.cpp): window >= seq_len with sinks=0
 // visits exactly fused_attention's causal range in exactly its order, so

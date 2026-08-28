@@ -6,7 +6,7 @@ mechanism validated in microtorch — not another commodity reimplementation.
 Survey date: 2026-07-30 (live arXiv sweep; refresh before each design round).
 
 > **CORRECTION — 2026-08-04 (rung 2, pre-registered:
-> [SRD_PREREG_R2.md](SRD_PREREG_R2.md)).** Wherever this document
+> [experiments/SRD_PREREG_R2.md](experiments/SRD_PREREG_R2.md)).** Wherever this document
 > describes the SRD gate as concentrating on "retrieval-critical
 > positions", read: **distributionally novel positions**. The 2×2
 > de-confounding experiment (12 runs, 3 seeds) showed the 5×-replicated
@@ -283,7 +283,7 @@ and gate mass concentrating on retrieval-critical tokens. Caveats to
 carry: single seed, 14.9% unk, optimizer moments reset at chunk
 boundaries (identical across lanes).
 
-### T=256 Colab run (2026-07-30, results_srd_parity_T256.csv)
+### T=256 Colab run (2026-07-30, experiments/srd_needle_2026_07/results_srd_parity_T256.csv)
 
 One T4, ~20 min, ~1 unit; vocab capped to 4096 (frequency-ordered), 300
 steps, otherwise the T=64 protocol. Final-100 paired stats:
@@ -310,7 +310,7 @@ structure:
 That is the next run. Two 5-sigma replications of the mechanism plus a
 clean regime negative is the right foundation for it.
 
-### Needle-in-haystack run (2026-07-30, results_needle_{train,probe}.csv)
+### Needle-in-haystack run (2026-07-30, experiments/srd_needle_2026_07/results_needle_{train,probe}.csv)
 
 tools/srd_needle.cpp, 600 steps, T=256, 8 KV pairs / 64 keys / 240-token
 gap, fresh sequences, fixed 32-probe eval every 25 steps.
@@ -340,7 +340,7 @@ of the router mechanism, and the first evidence it concentrates density
 at retrieval sites specifically -- the hardened-inference story's
 prerequisite.
 
-### Needle amendment run (2026-07-31, results_needle128_{train,probe}.csv)
+### Needle amendment run (2026-07-31, experiments/srd_needle_2026_07/results_needle128_{train,probe}.csv)
 
 The pre-registered amendment: 2000 steps at T=128 (shorter retrieval
 distance, 3.3x the training budget), same four lanes, 80 probes at
@@ -374,7 +374,7 @@ regime, and its "stable to step 600" split would also erode by 2000.
 A 2000-step T=256 run separates them; queued behind the batch>1 recall
 escalation.
 
-### Batch escalation run (B=4, 2026-07-31, results_needleB4_{train,probe}.csv)
+### Batch escalation run (B=4, 2026-07-31, experiments/srd_needle_2026_07/results_needleB4_{train,probe}.csv)
 
 B=4 x 1500 steps x T=128: 6,000 sequences (3x the previous run) at 4x
 per-step gradient SNR on the answer position.
@@ -402,7 +402,7 @@ the original task): the calibration ladder starts at 2 pairs / 8 keys /
 T=64 / B=4 and raises difficulty until exact stops forming the circuit --
 the lane comparison then runs at the hardest rung the control passes.
 
-### Calibration ladder + rung-1 breakthrough (2026-07-31, results_needle_ladder1_{train,probe}.csv)
+### Calibration ladder + rung-1 breakthrough (2026-07-31, experiments/srd_needle_2026_07/results_needle_ladder1_{train,probe}.csv)
 
 Ladder rungs (600 steps, B=4): 2p/8k/T64, 4p/16k/T64, 8p/32k/T128 -- all
 four lanes floor-bound at every rung, accuracy oscillating with no trend.
@@ -439,7 +439,7 @@ ordering srd < srd_f < exact. Also run: seed-7 extension to 6000 steps.
 **Both completed 2026-07-31. See the next section -- the replication
 FAILED and the claim above does not stand as written.**
 
-### REPLICATION: FAILED (2026-07-31, results_needle_r1s{1,2,3}_*.csv)
+### REPLICATION: FAILED (2026-07-31, experiments/srd_needle_2026_07/results_needle_r1s{1,2,3}_*.csv)
 
 Seeds 1, 2, 3 at rung 1 (2p/8k/T64/B4, 3000 steps), identical protocol.
 

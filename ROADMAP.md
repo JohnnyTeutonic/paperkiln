@@ -44,7 +44,7 @@ these are the engineering items that unlock it.*
    LoRA/QLoRA/int8: individually good, collectively they read as
    breadth, and breadth is what reviewers discount. **Nothing new goes
    in until the ladder is done.** SRD continues only via its
-   pre-registered test (SRD_PREREG_R2.md); otherwise it stands as the
+   pre-registered test (experiments/SRD_PREREG_R2.md); otherwise it stands as the
    honest partial negative it is. New mechanisms are still wanted —
    later, not now.
 
@@ -93,8 +93,8 @@ these are the engineering items that unlock it.*
    windows loudly. Emitted specs pass mtsweep --dry-run — registry
    entries for both new mechanisms can auto-seed from papers.
 
-Reference docs: ARCHITECTURE_ATLAS.md (the lab charter),
-atlas/PAPER_PLAN.md (G1-G3 gaps), SPARSE_ATTENTION.md (research
+Reference docs: atlas/ARCHITECTURE_ATLAS.md (the lab charter),
+atlas/PAPER_PLAN.md (G1-G3 gaps), docs/SPARSE_ATTENTION.md (research
 state). Scale ladder Rung B: experiments/sparse_s1_scale/.
 
 ---

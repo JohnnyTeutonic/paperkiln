@@ -24,7 +24,7 @@ residency: bytes that stay on the device across calls.
 - **B2 — training-step residency.** Forward activations, backward, and
   the Adam update live on-device between steps; host sees loss scalars
   and checkpoints only. The kernels exist in the vendored tree
-  (layernorm bwd, CE grad, Adam — see PHASE0_KERNEL_AUDIT.md); the
+  (layernorm bwd, CE grad, Adam — see docs/history/PHASE0_KERNEL_AUDIT.md); the
   work is tape-level buffer management. This is the actual Rung C
   unlock and it is NOT part of B1. **Design: docs/CUDA_PHASE_B2.md
   (13 Aug 2026)** — Variable-owned device state (kills the

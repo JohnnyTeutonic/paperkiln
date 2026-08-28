@@ -18,7 +18,7 @@ Notable changes to microtorch. Format loosely follows
   coherent TinyStories text through tinyllama.cpp.
 - **SRD (Surprise-Routed Density)** research tools: `srd_parity` (four-lane
   falsifier protocol), `srd_needle` (associative recall with batch, difficulty,
-  and seed knobs); results ledger in SPARSE_ATTENTION.md.
+  and seed knobs); results ledger in docs/SPARSE_ATTENTION.md.
 - **Mamba S4 through the tape**: `ops::ssm_scan` with real BPTT, FD-checked.
 - **CUDA seam** (`MICROTORCH_CUDA`): `device::matmul` dispatch through the
   transformer_core kernel tree, validated on Colab T4.

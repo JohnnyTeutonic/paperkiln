@@ -1,4 +1,4 @@
-// V1 Surprise-Routed Density tests (SPARSE_ATTENTION.md).
+// V1 Surprise-Routed Density tests (docs/SPARSE_ATTENTION.md).
 //
 //   1. FD gradchecks for the router ops: mul_col, rms_row, sigmoid,
 //      add_scalar (central differences, the phase-1a discipline)

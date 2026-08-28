@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Atlas stage 1: the sweep runner (ARCHITECTURE_ATLAS.md).
+"""Atlas stage 1: the sweep runner (atlas/ARCHITECTURE_ATLAS.md).
 
 A design matrix row IS a spec file — this tool makes that literal. It
 expands a sweep description into mtstudio specs, executes them (resumably,
@@ -24,7 +24,7 @@ Designs:
   grid  full factorial over the factor levels (any number of levels each)
   pb12  Plackett-Burman 12-run screen: up to 11 factors, each with
         exactly TWO levels — all main effects in 12 runs (x seeds).
-        The screening pass of ARCHITECTURE_ATLAS.md section 5.3.
+        The screening pass of atlas/ARCHITECTURE_ATLAS.md section 5.3.
 
 Seeds multiply the design; every run gets train.seed set. Aggregation
 groups runs into CELLS (identical factor values, seeds pooled) and

@@ -81,14 +81,14 @@ Minimal autograd engines are a well-populated genre. Six things here are not:
    designed to kill them — `SurpriseRoutedAttention::shuffle_predictor` feeds the
    router a permuted input so the gate keeps its distribution but loses its
    information. When a result fails, [the negative gets
-   published](SPARSE_ATTENTION.md), not buried.
+   published](docs/SPARSE_ATTENTION.md), not buried.
 5. **The loop actually closes, across two engines.** A model trained on this tape
    exports to byte-exact GGUF and produces coherent English inside
    `ember.cpp` — a *separately written* inference engine. Both halves of the
    pipeline are in this stack, and the studio's chat panel talks to it from the
    same page that trained the model.
 6. **It runs designed experiments on itself.** The
-   [Architecture Atlas](ARCHITECTURE_ATLAS.md) treats architecture comparison as
+   [Architecture Atlas](atlas/ARCHITECTURE_ATLAS.md) treats architecture comparison as
    a science: Plackett–Burman screens, token-matched factorials, multi-seed
    cells, findings published with effect sizes and standard errors — including
    the finding that its own best-cell ranking was inside seed noise while the
@@ -280,7 +280,7 @@ can consume a run.
 | **Kimi linear attention** | ✅ | O(n·d²) vs O(n²·d); drop-in `KimiLinearAttention` |
 | **Cerebellum selective gating** | ✅ | Prediction-residual gating; skips compute on routine tokens |
 | **Mamba / S4 state-space** | ✅ | Trainable through time: `ssm_scan` tape op, BPTT FD-gradchecked |
-| **Surprise-routed density (SRD)** | 🧪 | Falsifier passed 5-6σ twice; gate concentrates on retrieval sites (5x replicated). Recall claim **failed replication and the negative is published** — [SPARSE_ATTENTION.md](SPARSE_ATTENTION.md) |
+| **Surprise-routed density (SRD)** | 🧪 | Falsifier passed 5-6σ twice; gate concentrates on retrieval sites (5x replicated). Recall claim **failed replication and the negative is published** — [docs/SPARSE_ATTENTION.md](docs/SPARSE_ATTENTION.md) |
 | GPU kernels | 🧪 | matmul dispatches to transformer_core CUDA; phase B = resident tensors |
 
 ## Train something (C++)
@@ -362,7 +362,7 @@ Discrete state-space recurrence `x[t+1] = A·x[t] + B·u[t]` as a drop-in sequen
 backbone: O(1) memory per generated token instead of a growing KV cache.
 Trainable through time — `ssm_scan` is a tape op with BPTT verified against
 finite differences on all five inputs. The hardware-parallel scan is the next
-milestone (see [DESIGN.md](DESIGN.md)).
+milestone (see [docs/DESIGN.md](docs/DESIGN.md)).
 
 ### Surprise-routed density — [srd.hpp](include/microtorch/srd.hpp)
 
@@ -384,7 +384,7 @@ and what the next pre-registered test is.
 ## The Architecture Atlas — a cumulative science of neural architectures
 
 Leaderboards rank; they don't explain. The
-[Atlas](ARCHITECTURE_ATLAS.md) treats architecture comparison the way
+[Atlas](atlas/ARCHITECTURE_ATLAS.md) treats architecture comparison the way
 industrial statistics treats process optimization: designed experiments,
 multi-seed cells, effect sizes with standard errors, and published
 findings — negative ones included. Every mtstudio run already emits its
@@ -394,7 +394,7 @@ factors) as spec files, and `tools/atlas_analyze.py` turns the rows into
 main-effects tables.
 
 **Stage 2 is complete** — a 7-factor Plackett–Burman screen, 36 runs in
-one night on a laptop CPU ([full writeup](ATLAS_STAGE2_RESULTS.md), raw
+one night on a laptop CPU ([full writeup](atlas/ATLAS_STAGE2_RESULTS.md), raw
 rows in [experiments/atlas_stage2/](experiments/atlas_stage2/)):
 
 | Finding | Evidence |
@@ -605,8 +605,8 @@ docs/                 Doxygen config (make docs)
 - int4/NF4 quantization (QLoRA paper's datatype; int8 is the current base)
 - Parallel scan for Mamba (training-speed parity with attention)
 - Technique transfer from open-weight frontier reports — attention residuals,
-  KDA, Muon optimizer ([TECH_TRANSFER.md](TECH_TRANSFER.md))
-- **The Architecture Atlas** ([ARCHITECTURE_ATLAS.md](ARCHITECTURE_ATLAS.md)):
+  KDA, Muon optimizer ([docs/TECH_TRANSFER.md](docs/TECH_TRANSFER.md))
+- **The Architecture Atlas** ([atlas/ARCHITECTURE_ATLAS.md](atlas/ARCHITECTURE_ATLAS.md)):
   Stages 0–2 are **done** (structural echo in every run, taxonomy + constrained
   grammar, the PB12 screen with published findings) and Stage 3 (token-matched
   2⁴ factorial, interactions) is running; ahead lie the scale ladder,

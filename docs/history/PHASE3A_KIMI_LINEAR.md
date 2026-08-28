@@ -124,7 +124,7 @@ In causal mode, cumsum naturally implements causality:
 - `src/kimi_linear.cpp` ✅ NEW
 - `tests/test_kimi_linear.cpp` ✅ NEW
 - `CMakeLists.txt` ✅ UPDATED (added kimi_linear source + test)
-- `DESIGN.md` ✅ UPDATED (Phase 3a added to table)
+- `docs/DESIGN.md` ✅ UPDATED (Phase 3a added to table)
 
 ## Commits
 

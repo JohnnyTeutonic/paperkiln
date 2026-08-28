@@ -1,4 +1,4 @@
-// SRD graduation gate (SPARSE_ATTENTION.md protocol): TinyStories
+// SRD graduation gate (docs/SPARSE_ATTENTION.md protocol): TinyStories
 // training parity.
 //
 //   srd_parity <vocab.gguf> <corpus.txt> [steps=300] [T=64] [d=128] [csv]

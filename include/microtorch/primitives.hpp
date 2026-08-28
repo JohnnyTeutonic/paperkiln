@@ -1,7 +1,7 @@
 #pragma once
 // Canonical transformer_core entry points for microtorch.
 //
-// PHASE0_KERNEL_AUDIT.md section 3 found the same op defined in multiple
+// docs/history/PHASE0_KERNEL_AUDIT.md section 3 found the same op defined in multiple
 // translation units with DIVERGING contracts (gelu_backward three times,
 // softmax three times). This header is therefore a whitelist, not a
 // re-export: exactly one entry point per op family, and nothing else from

@@ -1,5 +1,5 @@
 #pragma once
-// The CPU/CUDA dispatch seam (DESIGN.md section 8.2).
+// The CPU/CUDA dispatch seam (docs/DESIGN.md section 8.2).
 //
 // Every matmul in the op set routes through device::matmul. Default build:
 // the blocked-AVX2 CPU path, bit-identical to before this header existed.

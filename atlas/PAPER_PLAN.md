@@ -38,9 +38,9 @@ between exact and linear attention paths.
 |---|---|---|
 | Mechanism | gate concentrates on needle positions | `SRD-gate-conc` (superseded) |
 | Replication | concentration replicated **5×** | same row |
-| Falsifier | shuffled-predictor lane worse at **5–6σ**, twice | `SPARSE_ATTENTION.md` graduation + T=256 runs |
+| Falsifier | shuffled-predictor lane worse at **5–6σ**, twice | `docs/SPARSE_ATTENTION.md` graduation + T=256 runs |
 | Downstream claim | recall improves | `SRD-recall` — **RETRACTED** |
-| De-confounding | needle vocab partitioned BY ROLE (keys/vals/filler), decoys crossed | `SRD_PREREG_R2.md` |
+| De-confounding | needle vocab partitioned BY ROLE (keys/vals/filler), decoys crossed | `experiments/SRD_PREREG_R2.md` |
 | Verdict | gate is a **novelty detector**, not a retrieval router | `R2-novelty` |
 
 The pivot: needles in the standard benchmark are out-of-distribution
@@ -63,7 +63,7 @@ claims, and the paper should say so in exactly those terms.
 1. **Pre-registration with committed direction.** Design, predictions,
    decision rules in version control before runs. Receipt: three
    pre-registrations in-repo with git timestamps preceding their own
-   result files (`SRD_PREREG_R2.md`, `experiments/sparse_s1_window/`).
+   result files (`experiments/SRD_PREREG_R2.md`, `experiments/sparse_s1_window/`).
 2. **A findings registry.** Each claim = one row: scope, effect, SE, t,
    seeds, manifest, receipts on disk, and a machine `check`. Status is
    mutable (`supported` / `replicated` / `superseded` / `retracted` /

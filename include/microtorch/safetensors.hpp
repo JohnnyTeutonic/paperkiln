@@ -1,5 +1,5 @@
 #pragma once
-// Phase 1c: the "torch.load story" DESIGN.md section 3 chose -- safetensors,
+// Phase 1c: the "torch.load story" docs/DESIGN.md section 3 chose -- safetensors,
 // not pickle. Format: 8-byte LE header length, JSON header
 // {name: {dtype, shape, data_offsets}}, raw little-endian tensor bytes.
 #include <map>

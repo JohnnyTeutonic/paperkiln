@@ -1,4 +1,4 @@
-// Muon receipts, mirroring muon_reference.py's self-test suite (the
+// Muon receipts, mirroring python/muon_reference.py's self-test suite (the
 // correctness anchor for this port — TECH_TRANSFER item 3):
 //   1. golden pin: newton_schulz5 against float64 values from a
 //      dependency-free rerun of the reference algorithm

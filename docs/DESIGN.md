@@ -106,7 +106,7 @@ Given no `conv2d` and a transformer core, the modern *and* max-reuse choice is a
 
 | Phase | Deliverable | Risk | Status |
 |---|---|---|---|
-| 0 | Audit `transformer_core` kernels for shape-generality; define `primitives.hpp`; CMake link works end-to-end | low — mostly known | **DONE 2026-07-29** (PHASE0_KERNEL_AUDIT.md; seam landmine was `CMAKE_SOURCE_DIR`, fixed) |
+| 0 | Audit `transformer_core` kernels for shape-generality; define `primitives.hpp`; CMake link works end-to-end | low — mostly known | **DONE 2026-07-29** (docs/history/PHASE0_KERNEL_AUDIT.md; seam landmine was `CMAKE_SOURCE_DIR`, fixed) |
 | 1a | Autograd tape over the general ops, wrapping existing forward+backward kernels; gradient-check vs finite differences | **medium — the core new work** | **DONE 2026-07-29** — `tests/test_gradcheck.cpp` 12/12, FD agreement 1e-6..1e-5; found + routed around the CPU gelu-derivative bug |
 | 1b | `Module`/`Parameter`/`state_dict`; `Linear`/`LayerNorm`/`Attention`/`Embedding` | low once 1a holds | **DONE 2026-07-29** — `tests/test_nn.cpp` 22/22: FD through a full pre-LN block per-parameter, state_dict round-trip, strict-load, SGD/AdamW overfit, causal mask |
 | 1c | safetensors `load_state_dict`; reproduce a small HF model's logits; fine-tune it | medium — name-mapping fiddly | **DONE 2026-07-29** — GPT-2 124M: max abs logit diff 4.3e-4 (rel 3.7e-6), argmax 8/8; fine-tune 3.49→1.94 through the tape (`tools/gpt2_parity.cpp`) |
@@ -122,7 +122,7 @@ Everything else is composition or reuse.
 names follow the HF convention exactly, so the loader needs only a
 "transformer." prefix strip and a rank-based skip of the causal-mask
 buffers. The one surprise was upstream: transformer_core's CPU GELU
-derivative is wrong, see PHASE0_KERNEL_AUDIT.md section 2.)*
+derivative is wrong, see docs/history/PHASE0_KERNEL_AUDIT.md section 2.)*
 
 ---
 

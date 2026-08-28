@@ -1,10 +1,10 @@
 # microtorch — autograd tape + nn API over transformer_core's primitives.
 #
-# The seam DESIGN.md section 1 proposed: consume transformer_cpp via
+# The seam docs/DESIGN.md section 1 proposed: consume transformer_cpp via
 # add_subdirectory and link the existing transformer_core STATIC target.
 # EXCLUDE_FROM_ALL so only transformer_core is built (as a dependency),
 # not that repo's executables. CUDA stays off here: phase 1a is CPU-first
-# per PHASE0_KERNEL_AUDIT.md section 6.
+# per docs/history/PHASE0_KERNEL_AUDIT.md section 6.
 cmake_minimum_required(VERSION 3.18)
 project(microtorch LANGUAGES CXX)
 
@@ -14,7 +14,7 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-# CUDA support (DESIGN.md section 8.2). OFF by default: the local machine
+# CUDA support (docs/DESIGN.md section 8.2). OFF by default: the local machine
 # never builds or runs CUDA (validated on Colab). ON: transformer_cpp's
 # CUDA_ENABLED kernel tree is compiled and device::matmul can dispatch to
 # CudaMatrix::matmul after device::set(Device::CUDA).
@@ -194,7 +194,7 @@ target_link_libraries(srd_parity PRIVATE microtorch)
 add_executable(srd_needle tools/srd_needle.cpp)
 target_link_libraries(srd_needle PRIVATE microtorch)
 
-# M1 (STUDIO_PLAN.md): the run-spec driver. One JSON describes the
+# M1 (docs/STUDIO_PLAN.md): the run-spec driver. One JSON describes the
 # lifecycle; the driver executes it and emits the JSONL event stream.
 add_executable(mtstudio tools/mtstudio.cpp)
 target_link_libraries(mtstudio PRIVATE microtorch nlohmann_json::nlohmann_json)

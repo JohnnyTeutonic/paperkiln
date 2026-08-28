@@ -202,7 +202,7 @@ comfortably larger than `d`. Two cheap, non-negotiable defences:
    finding; 55% is a picture.
 2. **Pre-register the protocol** — metric, method, `k`-selection rule — before
    looking at the embedding. Otherwise cluster count is a researcher degree of
-   freedom, and the SRD replication failure (SPARSE_ATTENTION.md, 2026-07-31) is
+   freedom, and the SRD replication failure (docs/SPARSE_ATTENTION.md, 2026-07-31) is
    the standing reminder of what that costs.
 
 ---
@@ -831,7 +831,7 @@ t = −6.2, throughput cost t = −2.4); lr decouples speed from quality
 is null on every metric. Cell *ranking* was inside seed noise while the
 18-vs-18 main effects were 6–10σ — the seed-lottery lesson, demonstrated
 in our own data. Full writeup with caveats and the Stage 3 prescription:
-`ATLAS_STAGE2_RESULTS.md`; raw rows in `experiments/atlas_stage2/`.
+`atlas/ATLAS_STAGE2_RESULTS.md`; raw rows in `experiments/atlas_stage2/`.
 
 **THE FINDINGS REGISTRY (added 2026-08-04, the programme's spine):**
 `atlas/findings.jsonl` — every claim as a machine-readable row with
@@ -849,7 +849,7 @@ interactions for surviving factors; fit the mixed-effects model.
 **STATUS 2026-08-03: DONE — 48/48.** Full 2^4 factorial on the Stage-2
 survivors {optimizer, lr, d, context} × 3 seeds at 3× the Stage-2 token
 budget, context TOKEN-MATCHED via a linked factor. Three headline
-results (`ATLAS_STAGE3_RESULTS.md`): (1) **lr × optimizer is a real
+results (`atlas/ATLAS_STAGE3_RESULTS.md`): (1) **lr × optimizer is a real
 interaction** (best_val t = −3.1, spikes t = −4.0): lr=3e-3 is the best
 setting under Muon and the worst under AdamW — Stage 2's "lr has no
 final-loss effect" was two opposite conditional effects averaging out,

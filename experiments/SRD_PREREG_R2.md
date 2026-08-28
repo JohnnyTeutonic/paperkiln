@@ -16,7 +16,7 @@ Established (do not re-litigate): the SRD gate's placement is
 information-dependent — the `shuffle_predictor` falsifier destroys
 alignment while preserving the gate's distribution, passing at 5–6σ
 twice, and tail-vs-filler concentration replicated across 5 runs
-(SPARSE_ATTENTION.md). Retracted: the recall-performance claim, which
+(docs/SPARSE_ATTENTION.md). Retracted: the recall-performance claim, which
 failed replication across seeds and is published as a negative.
 
 **The open question this rung answers.** Concentration is real. Its
@@ -127,7 +127,7 @@ converse test — remove novelty, see whether selectivity survives.
   (P5) becomes the headline claim to develop.
 - **Mechanism reclassified as a novelty detector:** P3 collapses and/or
   P4 ≈ 1 in ≥2 of 3 seeds. Then the 5× concentration replication stands
-  as a *true result about a different quantity* — SPARSE_ATTENTION.md
+  as a *true result about a different quantity* — docs/SPARSE_ATTENTION.md
   gets a correction stating that "retrieval-critical" was an
   over-reading of a novelty signal, and SRD's remaining value proposition
   is compute allocation, not retrieval.
@@ -227,7 +227,7 @@ reclassification does not wait on it: the gate-profile evidence is
 seed-consistent and decisive.
 
 **Registry:** SRD-gate-conc → superseded by R2-novelty (supported);
-R2-efficiency remains open/pending. SPARSE_ATTENTION.md carries the
+R2-efficiency remains open/pending. docs/SPARSE_ATTENTION.md carries the
 correction, as this document committed it would.
 
 ### Rung 2b addendum — 2026-08-04, same day: the calibration ladder

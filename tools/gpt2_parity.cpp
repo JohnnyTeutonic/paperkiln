@@ -1,4 +1,4 @@
-// Phase-1c success test, exactly as DESIGN.md section 3 defines it: load a
+// Phase-1c success test, exactly as docs/DESIGN.md section 3 defines it: load a
 // small pretrained HF model from safetensors, reproduce its logits within
 // tolerance, then fine-tune it through the new autograd.
 //

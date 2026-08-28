@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""coalfire.cpp -> events.jsonl adapter (ECOSYSTEM.md workstream C1).
+"""coalfire.cpp -> events.jsonl adapter (docs/ECOSYSTEM.md workstream C1).
 
 coalfire's trainer writes a human log ("Step 40 | ... | Loss: 5.1234 |
 PPL: ..."). This sidecar translates it into the paperkiln events.jsonl

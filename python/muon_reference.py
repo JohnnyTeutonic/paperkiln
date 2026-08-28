@@ -1,5 +1,5 @@
 """
-muon_reference.py
+python/muon_reference.py
 =================
 A *reference* implementation of Per-Head Muon, the optimizer variant Kimi K3
 uses for attention projections (arXiv:2607.24653, section 2.5), on top of
@@ -7,7 +7,7 @@ base Muon (their ref [54], Keller Jordan's "Muon: An Optimizer for Hidden
 Layers in Neural Networks").
 
 Correctness anchor for the future C++ `microtorch` optimizer
-(TECH_TRANSFER.md item 3). Reference-grade on purpose: plain float32, no
+(docs/TECH_TRANSFER.md item 3). Reference-grade on purpose: plain float32, no
 fused anything, loops where loops are clearest.
 
 Base Muon, per matrix parameter W with gradient G:
@@ -33,7 +33,7 @@ shared update direction while quiet heads get under-normalised updates;
 per-head orthogonalization equalizes update scale across heads. The
 self-test measures exactly this on a synthetic 100x head imbalance.
 
-STRUCTURAL PIN (same style as attn_res_reference.py's Block(S=1)==Full and
+STRUCTURAL PIN (same style as python/attn_res_reference.py's Block(S=1)==Full and
 for the same reason): per-head Muon with n_heads=1 partitions the matrix
 into one block and must match full-matrix Muon bit-for-bit. A transcription
 error has to be made twice, identically, to get past it.
@@ -43,7 +43,7 @@ parameters. Embeddings, output heads, biases, gains go to AdamW in every
 deployment of Muon we are transferring from; this class therefore refuses
 non-2D parameters instead of silently mistreating them.
 
-Run directly for a self-test:  python muon_reference.py
+Run directly for a self-test:  python python/muon_reference.py
 """
 from __future__ import annotations
 
