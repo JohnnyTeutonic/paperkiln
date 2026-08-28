@@ -503,9 +503,16 @@ RMSNorm/SwiGLU/RoPE), *TinyLlama* (22 layers, 32 heads, vocab 32000), plus
 the ten-paper flavor benchmark above. Offline fixture tests:
 `python papers/test_fetch.py` — no network needed in CI.
 
-This is the constrained config-delta approach: most transformer papers are deltas
-over a known skeleton, so extraction is pattern-matching with provenance, not
-free-form code generation.
+This is the constrained config-delta approach: most transformer papers are
+deltas over a known skeleton, so the search space is tractable — and the
+contribution is the part nobody else ships: **provenance**. Every extracted
+field carries the evidence that produced it (the table cell, the sentence,
+the equation it was read from), every unresolved field is surfaced loudly
+instead of silently defaulted, and a wrong assertion is treated as a bug,
+not a rounding error — the flavor benchmark's standing record is zero wrong
+assertions, enforced by an abstention-first scorer. Free-form code
+generation produces plausible architectures; evidence-linked extraction
+produces *auditable* ones. That difference is the tool.
 
 ## The training → inference pipeline
 

@@ -3,6 +3,53 @@
 *Ordered backlog. Research (atlas/sparse attention) is the flagship;
 these are the engineering items that unlock it.*
 
+---
+
+# UPLIFT PLAN — adopted 28 Aug 2026 (supersedes ordering below where they conflict)
+
+1. **THE SCALE LADDER IS THE KEYSTONE.** The one reviewer objection that
+   matters against Atlas is "does any of this hold past d=128/T=256/CPU?"
+   The strong claim available: *do cheap designed screens predict
+   expensive outcomes?* Same factor set at 3–4 rungs (d=128/256/512/768,
+   token-matched), report rank correlation (Kendall's τ) of effect
+   estimates across rungs. Factors that survive → screen architecture
+   decisions at ~1/1000 compute and trust the ranking (industrial value).
+   Factors that invert → the field's ablations are scale-sensitive and
+   currently run wrong (arguably the better paper). **No failure branch;
+   either outcome publishes.** The seed-noise finding stops being a
+   curiosity and becomes the setup for this result.
+2. **CUDA Phase B is the PREREQUISITE for the ladder, not
+   infrastructure.** Resident device tensors, params uploaded once,
+   activations on-device (B2.1b → B2.2 → B2.3 below). Without it the
+   ladder cannot be climbed; prioritise it as the enabling step for the
+   flagship research, ahead of everything else clamouring in the repo.
+3. **DECOUPLE THE EXTRACTOR — highest-leverage day of work in the
+   list.** papers/fetch.py has the widest possible audience and is
+   trapped behind a C++ build most of that audience will never run.
+   Ship it as a standalone pip package: `pip install paperkiln-fetch`;
+   `paperfetch 2302.13971 --emit hf` → a HuggingFace config handed
+   straight to `transformers`. hf_export.py already holds the layout
+   knowledge; the change is mostly plumbing. This is the artifact that
+   gets stars, citations, and drags readers back to the rest of the
+   repo — the only piece not adoption-gated behind a build step.
+4. **Extractor benchmark → proper D&B submission.** 26 papers is small.
+   Grow to 60–100 with ground truth, publish the annotation protocol,
+   and add a second task: architecture reconstruction fidelity
+   (systematise the Primer 110M→114M check: reconstruct N papers,
+   report parameter-count error, taxonomise failures). Target shape:
+   "we reconstruct 47 of 60 papers to within 5% of reported parameters,
+   and here is why the other 13 fail." Zero wrong assertions is the
+   headline.
+5. **MECHANISM FREEZE.** Kimi Linear, cerebellum gating, Mamba/S4, SRD,
+   LoRA/QLoRA/int8: individually good, collectively they read as
+   breadth, and breadth is what reviewers discount. **Nothing new goes
+   in until the ladder is done.** SRD continues only via its
+   pre-registered test (SRD_PREREG_R2.md); otherwise it stands as the
+   honest partial negative it is. New mechanisms are still wanted —
+   later, not now.
+
+---
+
 1. **CUDA past the dispatch seam.** Phase A, Phase B1, and now Phase
    **B2.0 (T4-validated 13 Aug 2026)**: step-residency plumbing —
    Variable-owned device state, transpose-flag GEMM, epoch-scoped
