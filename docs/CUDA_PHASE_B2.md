@@ -153,6 +153,30 @@ Not a constraint until far above this ladder.
   boundaries, DEVCHECK asserts on host reads. Slice-pointer audit for
   composed attention lands here (offset pointers into contiguous
   row-major buffers).
+
+  **B2.1b working checklist (opened 28 Aug 2026; execution in
+  progress — tick off as landed):**
+  1. [ ] `DevState` grows `d_grad` buffer + `host_valid`/`dev_valid`
+     flags for data and grad (include/microtorch/device_cache.hpp,
+     currently 130 lines; the §2 contract comment at line 87 names
+     this stage).
+  2. [ ] Write-through removed behind
+     `MICROTORCH_DEFER_DOWNLOADS=1`: kernels mark `dev_valid`,
+     invalidate `host_valid`; nothing copies down eagerly.
+  3. [ ] `materialize()` becomes the ONLY download boundary
+     (data+grad); explicit sweep API for checkpoint/eval callers.
+  4. [ ] `DEVCHECK` build flag: host reads of a dev-valid tensor
+     assert with the tensor's tag; studio smoke must run clean.
+  5. [ ] Slice-pointer audit for composed attention: offset pointers
+     into contiguous row-major buffers verified against the B2.1a
+     transpose-flag gemm paths.
+  6. [ ] Gate: extend tests/test_cuda_ops.cpp with a
+     deferred-downloads leg (OFF vs ON: loss + leaf grads within
+     B2.1a bounds); local nvcc compile-only.
+  7. [ ] T4 validation via colab_cuda_validate.sh per the contract
+     below; receipts into docs/, phase doc + ROADMAP updated.
+  Constraint for this pass: do not touch tools/mtstudio.cpp or
+  tools/parity_model.hpp (uncommitted WIP present, 28 Aug).
 - **B2.2** embedding + CE: the forward touches host only at the loss
   scalar.
 - **B2.3** AdamW/SGD on device; optimizer state uploads once at
