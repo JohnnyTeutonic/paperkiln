@@ -1,0 +1,21 @@
+{
+  "T": 256,
+  "accum": 1,
+  "attention": "exact",
+  "batch": 4,
+  "best_val": 5.10829496383667,
+  "checkpoint_activations": false,
+  "d": 128,
+  "early_stopped": false,
+  "family": "flex",
+  "final_step": 1200,
+  "heads": 4,
+  "layers": 2,
+  "lr": 0.0010000000474974513,
+  "name": "run_004_c00_s5",
+  "params": 1478144,
+  "seed": 5,
+  "steps_requested": 1200,
+  "tokens_per_second": 464.4801973335471,
+  "wall_seconds": 2645.537973533
+}

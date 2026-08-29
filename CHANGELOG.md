@@ -29,6 +29,30 @@ Notable changes to microtorch. Format loosely follows
 - CI: artifact actions v3 -> v4, coverage package list, codecov v5, lcov 2.x
   strictness; whole-tree clang-format so the style gate reflects reality.
 
+## 2026-08-29
+- CUDA Phase B2.1b T4-VALIDATED: deferred downloads behind
+  MICROTORCH_DEFER_DOWNLOADS=1 (value cache, materialize boundaries,
+  accumulate choke point); defer-vs-write-through composed-tape diffs
+  exactly 0.0. Receipts: docs/receipts_b21b_t4_20260829.txt.
+- The seed lottery exhibit: atlas/SEED_LOTTERY.md + tools/seed_lottery.py
+  render the banked boundary receipts as the case for multi-seed,
+  pre-registered ablation (two one-seed labs contradict 48% of the time
+  past 2000 steps). README gains the exhibit + the registry scoreboard.
+- CITATION.cff added.
+- sparse_s1_seeds pre-registered (B*(256): point or distribution; ten new
+  seeds); sweep in flight.
+- Rung B (sparse_s1_scale), the Highway registry pilot
+  (experiments/registry_0001_highway + registry/0001_highway_networks),
+  and their receipts brought under version control.
+
+## 2026-08-28
+- Repo root reorganised: results CSVs -> experiments/srd_needle_2026_07/,
+  atlas docs -> atlas/, completed phase docs -> docs/history/, design and
+  reference docs -> docs/; 38 files of cross-references rewritten.
+- ROADMAP: uplift plan adopted (scale ladder as keystone, CUDA-B as its
+  prerequisite, extractor decoupling, benchmark to D&B scale, mechanism
+  freeze). README: extractor provenance framing corrected.
+
 ## [0.1.0] — Phase 1-3 foundation
 
 - Reverse-mode autograd on a DAG tape; gradient checkpointing.

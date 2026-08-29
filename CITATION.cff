@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use paperkiln or the Architecture Atlas methodology, please cite it as below."
+title: "paperkiln: papers in, running models out — an educational, research-capable LLM training stack with a pre-registered findings registry"
+type: software
+authors:
+  - family-names: "Reich"
+    given-names: "Jonathan"
+repository-code: "https://github.com/JohnnyTeutonic/paperkiln"
+license: MIT
+keywords:
+  - transformers
+  - autograd
+  - reproducibility
+  - pre-registration
+  - ablation-methodology
+  - architecture-search
+  - sparse-attention
+  - CUDA
+abstract: >-
+  paperkiln is a readable C++ LLM training stack (tape, ops, Llama family,
+  quantisation, GGUF export) paired with an arXiv-to-architecture extractor
+  that attaches evidence snippets to every extracted value, and the
+  Architecture Atlas: a findings registry in which every architecture claim
+  is pre-registered before data exists, carries seed counts, paired tests
+  and budget scopes, and where retractions and supersessions are published
+  rows rather than deletions.

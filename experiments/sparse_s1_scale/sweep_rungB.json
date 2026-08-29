@@ -1,0 +1,20 @@
+{
+  "_comment": "sparse_s1_scale Rung B AS AMENDED (see PREREGISTRATION.md Amendment 1, pre-data): WIDTH-ONLY scaling d=128->256 at layers=2. The original layers=4 design is unimplementable: family=gpt2 pins layers==2 and FlexLM has no window/sinks (deep-SWA engine gap, see ROADMAP.md). Identical protocol to experiments/sparse_s1_budget otherwise. Paths are VM-side (/content).",
+  "base": {
+    "arch": {"preset": "gpt2-nano",
+             "custom": {"d": 256, "heads": 8,
+                         "window": 64, "sinks": 1}},
+    "data": {"corpus": "/content/corpus.txt",
+              "vocab": "/content/chat7b.gguf",
+              "vocab_cap": 4096, "T": 256},
+    "train": {"batch": 4, "lr": 0.001, "steps": 1200, "eval_every": 100,
+               "checkpoint_every": 1000000, "gradmap_every": 0},
+    "export": {"formats": []}
+  },
+  "factors": {
+    "arch.custom.attention": ["exact", "swa"]
+  },
+  "design": "grid",
+  "seeds": [1, 2, 3, 4, 5],
+  "out_root": "/content/out/sparse_s1_scale"
+}

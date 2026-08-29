@@ -1,0 +1,40 @@
+{
+ "base": {
+  "arch": {
+   "preset": "gpt2-nano",
+   "custom": {
+    "residual": "highway",
+    "gate_bias_init": -2.0,
+    "d_ff": 384
+   }
+  },
+  "data": {
+   "corpus": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/transformer_cpp/data/tinystories-txt/train-0-small.txt",
+   "vocab": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/transformer_cpp/releases/chat7b.gguf",
+   "vocab_cap": 4096,
+   "T": 256
+  },
+  "train": {
+   "batch": 4,
+   "lr": 0.001,
+   "steps": 1200,
+   "eval_every": 100,
+   "checkpoint_every": 1000000,
+   "gradmap_every": 0
+  },
+  "export": {
+   "formats": []
+  }
+ },
+ "factors": {},
+ "design": "grid",
+ "seeds": [
+  1,
+  2,
+  3,
+  4,
+  5
+ ],
+ "_comment": "registry #0001 pilot, HIGHWAY lane. Pre-registered in PREREGISTRATION.md BEFORE running. HIGHWAY lane, param-matched via d_ff 512->384 (+256 residual mismatch, documented in the prereg).",
+ "out_root": "/home/jonat/registry_0001_out/highway"
+}
