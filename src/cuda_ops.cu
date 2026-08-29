@@ -8,10 +8,13 @@
 // two against each other, and the same FD oracle that gates the CPU path
 // gates this one on T4).
 //
-// B2.1a semantics are WRITE-THROUGH: host in, host out, device round-trip
-// inside, so host data is never stale (B2.0's contract). This stage is
-// about landing the kernels under test; B2.1b defers the downloads and
-// activates the validity-flag contract + DEVCHECK. Per-call H2D/D2H
+// B2.1a semantics were WRITE-THROUGH: host in, host out, device
+// round-trip inside, so host data was never stale (B2.0's contract).
+// B2.1b (this revision) adds the deferred path: with
+// MICROTORCH_DEFER_DOWNLOADS=1 and a step window open, outputs stay in
+// the value cache (cuda_resident.cu), chained ops fetch them there, and
+// host storage is stale until device::materialize()/step_end(). With the
+// switch off every op behaves exactly as B2.1a. Per-call H2D/D2H
 // traffic makes these SLOWER than the CPU loops at small dims — that is
 // expected, measured, and irrelevant: the wall-clock claim is only ever
 // made by the Rung C benchmark after chaining exists.
@@ -69,6 +72,48 @@ struct DBuf {
     }
     DBuf(const DBuf&) = delete;
     DBuf& operator=(const DBuf&) = delete;
+};
+
+// ---- B2.1b seams (docs/CUDA_PHASE_B2.md checklist steps 2-3) ---------
+// In: operand fetch through the residency stack — stale-value hit or
+// B1-resident hit (owned=false), else temp upload (owned=true).
+// Out: with defer active (switch on + step window open) the result stays
+// in the value cache and host storage goes stale until materialize();
+// otherwise a temp buffer is written through on finish(), which is
+// exactly B2.1a's behaviour. Aux outputs (per-row stat vectors) remain
+// write-through: small, and consumed host-side by the CPU reference
+// formulas either way.
+struct In {
+    float* d = nullptr;
+    bool owned = false;
+    In(const float* h, size_t n)
+        : d(detail::vc_operand(h, n, owned)) {}
+    ~In() {
+        if (owned) cudaFree(d);
+    }
+    In(const In&) = delete;
+    In& operator=(const In&) = delete;
+};
+struct Out {
+    float* d = nullptr;
+    float* host = nullptr;
+    size_t n = 0;
+    bool deferred = false;
+    Out(float* h, size_t n_, bool need_current = false) : host(h), n(n_) {
+        d = detail::vc_output(h, n_, deferred, need_current, h);
+        if (!deferred) {
+            d = dalloc(n_);
+            if (need_current) h2d(d, h, n_);
+        }
+    }
+    void finish() {
+        if (!deferred) d2h(host, d, n);
+    }
+    ~Out() {
+        if (!deferred && d) cudaFree(d);
+    }
+    Out(const Out&) = delete;
+    Out& operator=(const Out&) = delete;
 };
 
 // ---- elementwise (grid-stride) --------------------------------------
@@ -398,100 +443,109 @@ constexpr int ROW_THREADS = 256;
 bool add(const Matrix& a, const Matrix& b, Matrix& y) {
     if (!active()) return false;
     const size_t n = a.rows() * a.cols();
-    DBuf da(a.get_data(), n), db(b.get_data(), n), dy(n);
+    In da(a.get_data(), n), db(b.get_data(), n);
+    Out dy(y.get_data(), n);
     k_add<<<ew_grid(n), NTHREADS>>>(da.d, db.d, dy.d, n);
     cuda_check(cudaGetLastError(), "add");
-    d2h(y.get_data(), dy.d, n);
+    dy.finish();
     return true;
 }
 
 bool sub(const Matrix& a, const Matrix& b, Matrix& y) {
     if (!active()) return false;
     const size_t n = a.rows() * a.cols();
-    DBuf da(a.get_data(), n), db(b.get_data(), n), dy(n);
+    In da(a.get_data(), n), db(b.get_data(), n);
+    Out dy(y.get_data(), n);
     k_sub<<<ew_grid(n), NTHREADS>>>(da.d, db.d, dy.d, n);
     cuda_check(cudaGetLastError(), "sub");
-    d2h(y.get_data(), dy.d, n);
+    dy.finish();
     return true;
 }
 
 bool mul(const Matrix& a, const Matrix& b, Matrix& y) {
     if (!active()) return false;
     const size_t n = a.rows() * a.cols();
-    DBuf da(a.get_data(), n), db(b.get_data(), n), dy(n);
+    In da(a.get_data(), n), db(b.get_data(), n);
+    Out dy(y.get_data(), n);
     k_mul<<<ew_grid(n), NTHREADS>>>(da.d, db.d, dy.d, n);
     cuda_check(cudaGetLastError(), "mul");
-    d2h(y.get_data(), dy.d, n);
+    dy.finish();
     return true;
 }
 
 bool scale(const Matrix& a, float s, Matrix& y) {
     if (!active()) return false;
     const size_t n = a.rows() * a.cols();
-    DBuf da(a.get_data(), n), dy(n);
+    In da(a.get_data(), n);
+    Out dy(y.get_data(), n);
     k_scale<<<ew_grid(n), NTHREADS>>>(da.d, s, dy.d, n);
     cuda_check(cudaGetLastError(), "scale");
-    d2h(y.get_data(), dy.d, n);
+    dy.finish();
     return true;
 }
 
 bool axpy(Matrix& y, float a, const Matrix& x) {
     if (!active()) return false;
     const size_t n = y.rows() * y.cols();
-    DBuf dy(y.get_data(), n), dx(x.get_data(), n);
+    In dx(x.get_data(), n);
+    Out dy(y.get_data(), n, /*need_current=*/true);
     k_axpy<<<ew_grid(n), NTHREADS>>>(dy.d, a, dx.d, n);
     cuda_check(cudaGetLastError(), "axpy");
-    d2h(y.get_data(), dy.d, n);
+    dy.finish();
     return true;
 }
 
 bool fill(Matrix& y, float v) {
     if (!active()) return false;
     const size_t n = y.rows() * y.cols();
-    DBuf dy(n);
+    Out dy(y.get_data(), n);
     k_fill<<<ew_grid(n), NTHREADS>>>(dy.d, v, n);
     cuda_check(cudaGetLastError(), "fill");
-    d2h(y.get_data(), dy.d, n);
+    dy.finish();
     return true;
 }
 
 bool sigmoid_fwd(const Matrix& x, Matrix& y) {
     if (!active()) return false;
     const size_t n = x.rows() * x.cols();
-    DBuf dx(x.get_data(), n), dy(n);
+    In dx(x.get_data(), n);
+    Out dy(y.get_data(), n);
     k_sigmoid_fwd<<<ew_grid(n), NTHREADS>>>(dx.d, dy.d, n);
     cuda_check(cudaGetLastError(), "sigmoid_fwd");
-    d2h(y.get_data(), dy.d, n);
+    dy.finish();
     return true;
 }
 
 bool sigmoid_bwd(const Matrix& s, const Matrix& dy, Matrix& dx) {
     if (!active()) return false;
     const size_t n = s.rows() * s.cols();
-    DBuf ds(s.get_data(), n), dgy(dy.get_data(), n), dgx(n);
+    In ds(s.get_data(), n), dgy(dy.get_data(), n);
+    Out dgx(dx.get_data(), n);
     k_sigmoid_bwd<<<ew_grid(n), NTHREADS>>>(ds.d, dgy.d, dgx.d, n);
     cuda_check(cudaGetLastError(), "sigmoid_bwd");
-    d2h(dx.get_data(), dgx.d, n);
+    dgx.finish();
     return true;
 }
 
 bool gelu_fwd(const Matrix& x, Matrix& y) {
     if (!active()) return false;
     const size_t n = x.rows() * x.cols();
-    DBuf dx(x.get_data(), n), dy(n);
+    In dx(x.get_data(), n);
+    Out dy(y.get_data(), n);
     k_gelu_fwd<<<ew_grid(n), NTHREADS>>>(dx.d, dy.d, n);
     cuda_check(cudaGetLastError(), "gelu_fwd");
-    d2h(y.get_data(), dy.d, n);
+    dy.finish();
     return true;
 }
 
 bool gelu_bwd(const Matrix& x, const Matrix& dy, Matrix& dx) {
     if (!active()) return false;
     const size_t n = x.rows() * x.cols();
-    DBuf dxi(x.get_data(), n), dgy(dy.get_data(), n), dgx(n);
+    In dxi(x.get_data(), n), dgy(dy.get_data(), n);
+    Out dgx(dx.get_data(), n);
     k_gelu_bwd<<<ew_grid(n), NTHREADS>>>(dxi.d, dgy.d, dgx.d, n);
     cuda_check(cudaGetLastError(), "gelu_bwd");
-    d2h(dx.get_data(), dgx.d, n);
+    dgx.finish();
     return true;
 }
 
@@ -500,11 +554,12 @@ bool softmax_fwd(const Matrix& x, Matrix& y) {
     const int R = static_cast<int>(x.rows());
     const int C = static_cast<int>(x.cols());
     const size_t n = static_cast<size_t>(R) * C;
-    DBuf dx(x.get_data(), n), dy(n);
+    In dx(x.get_data(), n);
+    Out dy(y.get_data(), n);
     k_softmax_fwd<<<R, ROW_THREADS, ROW_THREADS * sizeof(float)>>>(dx.d, dy.d,
                                                                    C);
     cuda_check(cudaGetLastError(), "softmax_fwd");
-    d2h(y.get_data(), dy.d, n);
+    dy.finish();
     return true;
 }
 
@@ -513,11 +568,12 @@ bool softmax_bwd(const Matrix& S, const Matrix& dY, Matrix& dX) {
     const int R = static_cast<int>(S.rows());
     const int C = static_cast<int>(S.cols());
     const size_t n = static_cast<size_t>(R) * C;
-    DBuf ds(S.get_data(), n), dgy(dY.get_data(), n), dgx(n);
+    In ds(S.get_data(), n), dgy(dY.get_data(), n);
+    Out dgx(dX.get_data(), n);
     k_softmax_bwd<<<R, ROW_THREADS, ROW_THREADS * sizeof(float)>>>(
         ds.d, dgy.d, dgx.d, C);
     cuda_check(cudaGetLastError(), "softmax_bwd");
-    d2h(dX.get_data(), dgx.d, n);
+    dgx.finish();
     return true;
 }
 
@@ -528,13 +584,14 @@ bool layernorm_fwd(const Matrix& x, const Matrix& gamma, const Matrix& beta,
     const int R = static_cast<int>(x.rows());
     const int C = static_cast<int>(x.cols());
     const size_t n = static_cast<size_t>(R) * C;
-    DBuf dx(x.get_data(), n), dg(gamma.get_data(), C), db(beta.get_data(), C);
-    DBuf dy(n), dxh(n), drs(R);
+    In dx(x.get_data(), n), dg(gamma.get_data(), C), db(beta.get_data(), C);
+    Out dy(y.get_data(), n), dxh(xhat.get_data(), n);
+    DBuf drs(static_cast<size_t>(R));
     k_layernorm_fwd<<<R, ROW_THREADS, ROW_THREADS * sizeof(float)>>>(
         dx.d, dg.d, db.d, eps, dy.d, dxh.d, drs.d, C);
     cuda_check(cudaGetLastError(), "layernorm_fwd");
-    d2h(y.get_data(), dy.d, n);
-    d2h(xhat.get_data(), dxh.d, n);
+    dy.finish();
+    dxh.finish();
     d2h(rstd.data(), drs.d, R);
     return true;
 }
@@ -547,22 +604,24 @@ bool layernorm_bwd(const Matrix& dY, const Matrix& xhat,
     const int R = static_cast<int>(dY.rows());
     const int C = static_cast<int>(dY.cols());
     const size_t n = static_cast<size_t>(R) * C;
-    DBuf ddy(dY.get_data(), n), dxh(xhat.get_data(), n);
+    In ddy(dY.get_data(), n), dxh(xhat.get_data(), n);
     if (want_dgb) {
-        DBuf ddg(static_cast<size_t>(C)), ddb(static_cast<size_t>(C));
+        Out ddg(dg->get_data(), static_cast<size_t>(C));
+        Out ddb(db->get_data(), static_cast<size_t>(C));
         const int grid = (C + NTHREADS - 1) / NTHREADS;
         k_colsum_dgb<<<grid, NTHREADS>>>(ddy.d, dxh.d, ddg.d, ddb.d, R, C);
         cuda_check(cudaGetLastError(), "layernorm_bwd dgb");
-        d2h(dg->get_data(), ddg.d, C);
-        d2h(db->get_data(), ddb.d, C);
+        ddg.finish();
+        ddb.finish();
     }
     if (want_dx) {
         DBuf drs(rstd.data(), static_cast<size_t>(R));
-        DBuf dgm(gamma.get_data(), static_cast<size_t>(C)), ddx(n);
+        In dgm(gamma.get_data(), static_cast<size_t>(C));
+        Out ddx(dx->get_data(), n);
         k_layernorm_bwd_dx<<<R, ROW_THREADS, 2 * ROW_THREADS * sizeof(float)>>>(
             ddy.d, dxh.d, drs.d, dgm.d, ddx.d, C);
         cuda_check(cudaGetLastError(), "layernorm_bwd dx");
-        d2h(dx->get_data(), ddx.d, n);
+        ddx.finish();
     }
     return true;
 }
@@ -573,11 +632,13 @@ bool rmsnorm_fwd(const Matrix& x, const Matrix& w, float eps, Matrix& y,
     const int R = static_cast<int>(x.rows());
     const int C = static_cast<int>(x.cols());
     const size_t n = static_cast<size_t>(R) * C;
-    DBuf dx(x.get_data(), n), dw(w.get_data(), C), dy(n), dri(R);
+    In dx(x.get_data(), n), dw(w.get_data(), C);
+    Out dy(y.get_data(), n);
+    DBuf dri(static_cast<size_t>(R));
     k_rmsnorm_fwd<<<R, ROW_THREADS, ROW_THREADS * sizeof(float)>>>(
         dx.d, dw.d, eps, dy.d, dri.d, C);
     cuda_check(cudaGetLastError(), "rmsnorm_fwd");
-    d2h(y.get_data(), dy.d, n);
+    dy.finish();
     d2h(rms_inv.data(), dri.d, R);
     return true;
 }
@@ -589,21 +650,22 @@ bool rmsnorm_bwd(const Matrix& dY, const Matrix& x,
     const int R = static_cast<int>(dY.rows());
     const int C = static_cast<int>(dY.cols());
     const size_t n = static_cast<size_t>(R) * C;
-    DBuf ddy(dY.get_data(), n), dxi(x.get_data(), n);
+    In ddy(dY.get_data(), n), dxi(x.get_data(), n);
     DBuf dri(rms_inv.data(), static_cast<size_t>(R));
     if (want_dw) {
-        DBuf ddw(static_cast<size_t>(C));
+        Out ddw(dw->get_data(), static_cast<size_t>(C));
         const int grid = (C + NTHREADS - 1) / NTHREADS;
         k_rmsnorm_bwd_dw<<<grid, NTHREADS>>>(ddy.d, dxi.d, dri.d, ddw.d, R, C);
         cuda_check(cudaGetLastError(), "rmsnorm_bwd dw");
-        d2h(dw->get_data(), ddw.d, C);
+        ddw.finish();
     }
     if (want_dx) {
-        DBuf dwv(w.get_data(), static_cast<size_t>(C)), ddx(n);
+        In dwv(w.get_data(), static_cast<size_t>(C));
+        Out ddx(dx->get_data(), n);
         k_rmsnorm_bwd_dx<<<R, ROW_THREADS, ROW_THREADS * sizeof(float)>>>(
             ddy.d, dxi.d, dri.d, dwv.d, ddx.d, C);
         cuda_check(cudaGetLastError(), "rmsnorm_bwd dx");
-        d2h(dx->get_data(), ddx.d, n);
+        ddx.finish();
     }
     return true;
 }

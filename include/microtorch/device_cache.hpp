@@ -94,6 +94,53 @@ bool step_resident_gemm(const Matrix& A, DevState** devA, Trans tA,
 void set_device_ops(bool on);   // master switch (default off)
 bool device_ops_enabled();
 
+// ---- Phase B2.1b: deferred downloads (docs/CUDA_PHASE_B2.md checklist)
+//
+// With the switch on (set_defer_downloads / env MICROTORCH_DEFER_DOWNLOADS=1)
+// AND a step window open, devops results and gemm outputs stay on-device in
+// an epoch-stamped value cache instead of writing through; chained ops find
+// them there and skip the H2D round-trip. Host storage for those buffers is
+// STALE until materialize()/materialize_all() downloads them. step_end() is
+// a materialize boundary in B2.1b (the optimizer still host-mutates between
+// windows), so cross-window staleness cannot exist — the same
+// killed-by-scope rule as B2.0. Outside a window, or with the switch off,
+// every op writes through exactly as B2.1a.
+
+void set_defer_downloads(bool on);  // master switch (default off)
+bool defer_downloads_enabled();
+
+// True iff the device holds a fresher copy of m's storage than the host.
+bool host_stale(const Matrix& m);
+// Download m's device-fresh copy into host storage (no-op if not stale).
+void materialize(const Matrix& m);
+// Download every stale buffer (step boundary, eval, checkpoint sweep).
+void materialize_all();
+// Throws if m is host-stale — the DEVCHECK assert. Call sites compile to
+// nothing unless MICROTORCH_DEVCHECK is defined at build time.
+void devcheck_host_read(const Matrix& m, const char* where);
+#ifdef MICROTORCH_DEVCHECK
+#define MT_DEVCHECK_HOST_READ(m, where) \
+    ::microtorch::device::devcheck_host_read((m), (where))
+#else
+#define MT_DEVCHECK_HOST_READ(m, where) ((void)0)
+#endif
+
+#ifdef MICROTORCH_CUDA
+namespace detail {
+// The devops/gemm seam onto the B2.1b value cache (cuda_resident.cu).
+// vc_operand: device pointer for an input — stale-value hit (owned=false),
+// B1-resident hit (owned=false), else temp upload (owned=true, caller
+// frees). vc_output: with defer active, a retained cache buffer for host
+// storage `key` (deferred=true, caller must NOT free and must NOT D2H);
+// when need_current, the buffer is preloaded from host_src unless the
+// cache already holds a fresh stale copy. Returns nullptr with
+// deferred=false when defer is inactive (caller does its own temp+D2H).
+float* vc_operand(const float* key, size_t n, bool& owned);
+float* vc_output(const float* key, size_t n, bool& deferred,
+                 bool need_current, const float* host_src);
+}  // namespace detail
+#endif
+
 namespace devops {
 // elementwise
 bool add(const Matrix& a, const Matrix& b, Matrix& y);    // y = a + b

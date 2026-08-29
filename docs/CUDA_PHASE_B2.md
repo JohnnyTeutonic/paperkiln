@@ -154,25 +154,40 @@ Not a constraint until far above this ladder.
   composed attention lands here (offset pointers into contiguous
   row-major buffers).
 
-  **B2.1b working checklist (opened 28 Aug 2026; execution in
-  progress — tick off as landed):**
-  1. [ ] `DevState` grows `d_grad` buffer + `host_valid`/`dev_valid`
-     flags for data and grad (include/microtorch/device_cache.hpp,
-     currently 130 lines; the §2 contract comment at line 87 names
-     this stage).
-  2. [ ] Write-through removed behind
-     `MICROTORCH_DEFER_DOWNLOADS=1`: kernels mark `dev_valid`,
-     invalidate `host_valid`; nothing copies down eagerly.
-  3. [ ] `materialize()` becomes the ONLY download boundary
-     (data+grad); explicit sweep API for checkpoint/eval callers.
-  4. [ ] `DEVCHECK` build flag: host reads of a dev-valid tensor
-     assert with the tensor's tag; studio smoke must run clean.
-  5. [ ] Slice-pointer audit for composed attention: offset pointers
-     into contiguous row-major buffers verified against the B2.1a
-     transpose-flag gemm paths.
+  **B2.1b working checklist (opened 28 Aug 2026; core landed
+  29 Aug 2026 — design note below):**
+  1. [x] Validity state — DESIGN AMENDED in implementation: instead of
+     growing `DevState` with per-Variable `d_grad`+flags, B2.1b adds a
+     VALUE CACHE (`g_vcache` in cuda_resident.cu): device-fresh op
+     outputs AND grads keyed by host data pointer, epoch-stamped, with
+     a `stale` flag = the validity contract. Param `DevState` slots
+     stay as B2.0 built them (params never go host-stale in B2.1b —
+     the optimizer host-mutates between windows). One mechanism covers
+     activations, intermediates, and grads uniformly.
+  2. [x] Deferral behind `MICROTORCH_DEFER_DOWNLOADS=1` (env read in
+     device.cpp set_from_env; setter `set_defer_downloads`). Active
+     only inside a step window (killed-by-scope, as B2.0). gemm and
+     all 15 devops entry points route outputs through
+     `detail::vc_output` (deferred: buffer retained, no D2H) and
+     inputs through `detail::vc_operand` / `window_operand`
+     (stale-value hit → no H2D re-upload). In-place axpy preloads the
+     buffer unless the cache already holds a fresh copy. Aux per-row
+     stat vectors stay write-through by design (small; host-consumed).
+  3. [x] `materialize(m)` / `materialize_all()` are the download
+     boundaries; `step_end()` materializes all when defer is on (the
+     optimizer/eval/checkpoint still read host between windows), so
+     cross-window staleness cannot exist. `host_stale(m)` exposed.
+  4. [~] `DEVCHECK`: `devcheck_host_read()` + `MT_DEVCHECK_HOST_READ`
+     macro land (compiled in under `-DMICROTORCH_DEVCHECK`); call-site
+     wiring through ops.cpp host-read points is the NEXT increment.
+  5. [ ] Slice-pointer audit for composed attention (offset pointers
+     into contiguous row-major buffers vs the B2.1a transpose-flag
+     gemm paths).
   6. [ ] Gate: extend tests/test_cuda_ops.cpp with a
      deferred-downloads leg (OFF vs ON: loss + leaf grads within
-     B2.1a bounds); local nvcc compile-only.
+     B2.1a bounds). Local check DONE for the core: both .cu TUs
+     compile clean under nvcc 12.6 + MSVC (29 Aug), CPU stubs
+     g++ -fsyntax-only clean.
   7. [ ] T4 validation via colab_cuda_validate.sh per the contract
      below; receipts into docs/, phase doc + ROADMAP updated.
   Constraint for this pass: do not touch tools/mtstudio.cpp or

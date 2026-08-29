@@ -56,6 +56,11 @@ void set_from_env() {
     if (const char* o = std::getenv("MICROTORCH_DEVICE_OPS")) {
         if (std::strcmp(o, "1") == 0) set_device_ops(true);
     }
+    // B2.1b: defer downloads inside step windows (no-op in CPU builds;
+    // inert without step residency, since deferral is window-scoped).
+    if (const char* dd = std::getenv("MICROTORCH_DEFER_DOWNLOADS")) {
+        if (std::strcmp(dd, "1") == 0) set_defer_downloads(true);
+    }
     const char* v = std::getenv("MICROTORCH_DEVICE");
     if (!v) return;
     if (std::strcmp(v, "cuda") == 0)

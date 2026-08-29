@@ -47,6 +47,22 @@ bool g_step_residency = false;         // B2 master switch
 bool g_in_step = false;                // inside step_begin()/step_end()
 unsigned long long g_epoch = 0;        // window stamp; 0 = never opened
 
+// ---- Phase B2.1b: the value cache -----------------------------------
+// Device-fresh op outputs, keyed by host data pointer. `stale` means the
+// device copy is FRESHER than host storage. Buffers are retained across
+// windows for reuse (dims permitting); staleness never survives a window
+// because step_end() materializes when defer is on.
+bool g_defer_downloads = false;
+struct VBuf {
+    float* d = nullptr;
+    size_t n = 0;
+    unsigned long long epoch = 0;
+    bool stale = false;
+};
+std::unordered_map<const float*, VBuf> g_vcache;
+
+bool defer_active() { return g_defer_downloads && g_in_step; }
+
 constexpr int TILE = 32;
 
 // C(M,N) = A(M,K) * B(K,N), row-major, bounds-checked edge tiles.
@@ -94,14 +110,28 @@ float* operand(const Matrix& m, bool& owned) {
     return upload(m.get_data(), m.rows() * m.cols() * sizeof(float));
 }
 
+// B2.1b: stale-value hit — the device copy of this host storage is
+// fresher than host memory, so it is the ONLY correct operand source.
+float* vcache_hit(const float* key, size_t n) {
+    auto it = g_vcache.find(key);
+    if (it != g_vcache.end() && it->second.stale && it->second.n == n)
+        return it->second.d;
+    return nullptr;
+}
+
 // B2 operand under an open window. Cache hit iff the slot was stamped
 // by THIS window; otherwise upload and (when a slot is given) cache +
-// stamp it. Slotless operands (grads, non-Var intermediates) are temp
-// uploads (owned=true). Falls back to the B1 table before uploading so
-// explicitly-resident params are never duplicated.
+// stamp it. Slotless operands (grads, non-Var intermediates) check the
+// B2.1b value cache first (a stale hit is mandatory — host is behind),
+// then temp-upload (owned=true). Falls back to the B1 table before
+// uploading so explicitly-resident params are never duplicated.
 float* window_operand(const Matrix& m, DevState** slot, bool& owned) {
     const size_t bytes = m.rows() * m.cols() * sizeof(float);
     if (slot == nullptr) {
+        if (float* v = vcache_hit(m.get_data(), m.rows() * m.cols())) {
+            owned = false;
+            return v;
+        }
         auto it = g_table.find(m.get_data());
         if (it != g_table.end() && it->second.rows == m.rows() &&
             it->second.cols == m.cols()) {
@@ -202,6 +232,11 @@ void invalidate(const Matrix& m) {
 void evict_all() {
     for (auto& kv : g_table) cudaFree(kv.second.d);
     g_table.clear();
+    // B2.1b value cache goes with it. Anything still stale is lost by
+    // explicit request — evict_all() is the caller saying "device state
+    // is disposable"; materialize first if the values matter.
+    for (auto& kv : g_vcache) cudaFree(kv.second.d);
+    g_vcache.clear();
 }
 
 size_t resident_count() { return g_table.size(); }
@@ -214,7 +249,91 @@ void step_begin() {
     ++g_epoch;
     g_in_step = true;
 }
-void step_end() { g_in_step = false; }
+void step_end() {
+    // B2.1b: the window edge is a materialize boundary — the optimizer,
+    // eval, and checkpointing still read host storage between windows.
+    if (g_defer_downloads) materialize_all();
+    g_in_step = false;
+}
+
+// ---- Phase B2.1b ----
+
+void set_defer_downloads(bool on) { g_defer_downloads = on; }
+bool defer_downloads_enabled() { return g_defer_downloads; }
+
+bool host_stale(const Matrix& m) {
+    auto it = g_vcache.find(m.get_data());
+    return it != g_vcache.end() && it->second.stale;
+}
+
+void materialize(const Matrix& m) {
+    auto it = g_vcache.find(m.get_data());
+    if (it == g_vcache.end() || !it->second.stale) return;
+    cuda_check(cudaMemcpy(const_cast<float*>(m.get_data()), it->second.d,
+                          it->second.n * sizeof(float),
+                          cudaMemcpyDeviceToHost), "D2H materialize");
+    it->second.stale = false;
+}
+
+void materialize_all() {
+    for (auto& kv : g_vcache) {
+        if (!kv.second.stale) continue;
+        cuda_check(cudaMemcpy(const_cast<float*>(kv.first), kv.second.d,
+                              kv.second.n * sizeof(float),
+                              cudaMemcpyDeviceToHost), "D2H materialize_all");
+        kv.second.stale = false;
+    }
+}
+
+void devcheck_host_read(const Matrix& m, const char* where) {
+    if (host_stale(m))
+        throw std::runtime_error(
+            std::string("DEVCHECK: host read of device-stale tensor at ") +
+            where);
+}
+
+namespace detail {
+
+float* vc_operand(const float* key, size_t n, bool& owned) {
+    if (float* v = vcache_hit(key, n)) {
+        owned = false;
+        return v;
+    }
+    auto it = g_table.find(key);
+    if (it != g_table.end() && it->second.rows * it->second.cols == n) {
+        owned = false;
+        return it->second.d;
+    }
+    owned = true;
+    return upload(key, n * sizeof(float));
+}
+
+float* vc_output(const float* key, size_t n, bool& deferred,
+                 bool need_current, const float* host_src) {
+    if (!defer_active()) {
+        deferred = false;
+        return nullptr;
+    }
+    VBuf& v = g_vcache[key];
+    const bool had_fresh = (v.d != nullptr && v.stale && v.n == n);
+    if (v.d != nullptr && v.n != n) {
+        cudaFree(v.d);
+        v.d = nullptr;
+    }
+    if (v.d == nullptr) {
+        cuda_check(cudaMalloc(&v.d, n * sizeof(float)), "malloc vcache");
+        v.n = n;
+    }
+    if (need_current && !had_fresh)
+        cuda_check(cudaMemcpy(v.d, host_src, n * sizeof(float),
+                              cudaMemcpyHostToDevice), "H2D vcache inout");
+    v.epoch = g_epoch;
+    v.stale = true;
+    deferred = true;
+    return v.d;
+}
+
+}  // namespace detail
 
 namespace detail {
 void release_devstate_impl(DevState* s) {
@@ -234,9 +353,15 @@ bool step_resident_gemm(const Matrix& A, DevState** devA, Trans tA,
     bool own_a = false, own_b = false;
     float* dA = window_operand(A, devA, own_a);
     float* dB = window_operand(B, devB, own_b);
-    float* dC = nullptr;
-    cuda_check(cudaMalloc(&dC, static_cast<size_t>(M) * N * sizeof(float)),
-               "malloc C");
+    // B2.1b: with defer active, C's buffer lives in the value cache and
+    // the download is skipped (host goes stale until materialize).
+    // Otherwise the B2.0 write-through path runs unchanged.
+    const size_t nC = static_cast<size_t>(M) * N;
+    bool deferred = false;
+    float* dC = detail::vc_output(C.get_data(), nC, deferred,
+                                  /*need_current=*/false, nullptr);
+    if (!deferred)
+        cuda_check(cudaMalloc(&dC, nC * sizeof(float)), "malloc C");
 
     dim3 block(TILE, TILE);
     dim3 grid((N + TILE - 1) / TILE, (M + TILE - 1) / TILE);
@@ -250,13 +375,11 @@ bool step_resident_gemm(const Matrix& A, DevState** devA, Trans tA,
     else
         gemm_tiled_ops<true, true><<<grid, block>>>(dA, dB, dC, M, N, K);
     cuda_check(cudaGetLastError(), "gemm_ops launch");
-    // Write-through (B2.0): C lands in host storage, so host data is
-    // never stale. Deferred download is B2.1's contract change.
-    cuda_check(cudaMemcpy(C.get_data(), dC,
-                          static_cast<size_t>(M) * N * sizeof(float),
-                          cudaMemcpyDeviceToHost), "D2H");
-
-    cudaFree(dC);
+    if (!deferred) {
+        cuda_check(cudaMemcpy(C.get_data(), dC, nC * sizeof(float),
+                              cudaMemcpyDeviceToHost), "D2H");
+        cudaFree(dC);
+    }
     if (own_a) cudaFree(dA);
     if (own_b) cudaFree(dB);
     return true;
