@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "paperkiln-fetch"
+version = "0.1.0"
+description = "Drop an arXiv id, get the paper's transformer architecture back - every value with the evidence snippet it was read from, emitted as a Hugging Face config or normalized JSON."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Jonathan Reich" }]
+keywords = ["arxiv", "transformers", "architecture-extraction", "provenance", "huggingface"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = ["requests"]
+
+[project.urls]
+Homepage = "https://github.com/JohnnyTeutonic/paperkiln"
+Repository = "https://github.com/JohnnyTeutonic/paperkiln"
+
+[project.scripts]
+paperfetch = "paperkiln_fetch.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

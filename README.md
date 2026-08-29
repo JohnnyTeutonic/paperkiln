@@ -99,6 +99,25 @@ Minimal autograd engines are a well-populated genre. Six things here are not:
    that never retract anything aren't more careful; they're less honest
    about resolution.
 
+## pip install paperkiln-fetch
+
+The extractor now ships standalone — no C++ build, no repo checkout:
+
+```bash
+pip install paperkiln-fetch          # (PyPI upload pending; until then:
+                                     #  pip install ./paperkiln_fetch)
+paperfetch 1706.03762                # evidence-carrying summary
+paperfetch 2302.13971 --emit-hf cfg.json
+```
+
+`--emit-hf` writes a config that `transformers.AutoConfig.from_pretrained`
+opens directly — llama- or gpt2-family, chosen from the extracted flavors
+— with every value's evidence snippet and every declared default riding
+inside it under the `_paperkiln` key. A Hugging Face config with
+citations built in. Package source: [paperkiln_fetch/](paperkiln_fetch/)
+(vendors `papers/fetch.py` verbatim; drift is CI-checkable via
+`python tools/sync_fetch_pkg.py --check`).
+
 ## The seed lottery
 
 Run five copies of an *identical* experiment — same code, same corpus, same
