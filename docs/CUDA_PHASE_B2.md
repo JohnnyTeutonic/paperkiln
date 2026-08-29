@@ -148,11 +148,20 @@ Not a constraint until far above this ladder.
   tests/test_cuda_ops.cpp (kernel parity vs the CPU formulas at 1e-6
   elementwise / 1e-5 rowwise, plus a composed-tape OFF-vs-ON leg), and
   colab_cuda_validate.sh now reruns gradcheck/nn with the op set live.
-- **B2.1b** deferred downloads: DevState grows grad buffers + the
-  section-2 validity flags, downloads happen only at materialize()
-  boundaries, DEVCHECK asserts on host reads. Slice-pointer audit for
-  composed attention lands here (offset pointers into contiguous
-  row-major buffers).
+- **B2.1b — T4-VALIDATED 29 Aug 2026** (receipts:
+  docs/receipts_b21b_t4_20260829.txt; Tesla T4, CC 7.5, CUDA 12.8).
+  Deferred downloads behind MICROTORCH_DEFER_DOWNLOADS=1: value cache
+  in cuda_resident.cu holds device-fresh outputs+grads (epoch-stamped,
+  stale-flagged), gemm + all 15 devops entries defer their D2H and
+  chain on-device; materialize()/step_end() are the download
+  boundaries; accumulate() is the grad choke point. THE HEADLINE:
+  defer-vs-write-through tape diffs all EXACTLY 0.00e+00 — deferral
+  changes scheduling, never values. Full suites green WITH deferral
+  live: test_cuda_ops legs 1-3, test_step_residency (CUDA pin 6.89e-08,
+  between-window poke visible), gradcheck 29/29, nn 22/22. Original
+  bullet's DevState-grows-grads design superseded by the value cache
+  (checklist item 1); slice audit closed (item 5: slicing copies;
+  recycled-address class killed by epoch guards).
 
   **B2.1b working checklist (opened 28 Aug 2026; core landed
   29 Aug 2026 — design note below):**

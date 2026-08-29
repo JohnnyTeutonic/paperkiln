@@ -59,8 +59,12 @@ these are the engineering items that unlock it.*
    attention transpose-kill, kernel parity <= 3.8e-06 worst / bitwise
    elementwise, gradcheck+nn green with ops live (receipts in docs/);
    then
-   B2.1b (deferred downloads + DEVCHECK), B2.2 (embedding + CE
-   scalar-only), B2.3 (optimizer on device). Adoption gated on a d=512 wall-clock
+   **B2.1b T4-VALIDATED 29 Aug 2026** (deferred downloads: value cache,
+   materialize boundaries, defer-vs-writethrough EXACTLY 0.0 on the
+   composed tape; receipts docs/receipts_b21b_t4_20260829.txt); next
+   B2.2 (embedding + CE scalar-only — includes moving the fused masked
+   attention softmax on-device, the biggest remaining forced
+   materialize), B2.3 (optimizer on device + device-side accumulate). Adoption gated on a d=512 wall-clock
    win vs AVX. That is what actually GATES Rung C (d=512, T=512).
 
    1a. **Deep SWA — DONE 12 Aug 2026 (same night it was discovered).**
