@@ -1,4 +1,5 @@
 #include "microtorch/autograd.hpp"
+#include "microtorch/device_cache.hpp"
 
 #include <stdexcept>
 #include <unordered_set>
@@ -14,6 +15,11 @@ size_t live_variables() {
 }
 
 void Variable::accumulate(const Matrix& g) {
+    // B2.1b: g may be a deferred device-fresh result (a gemm gradient);
+    // grad += g is host arithmetic, so download first. This makes grads
+    // host-authoritative for the whole step — full grad deferral is
+    // B2.3's device-side accumulate.
+    device::materialize(g);
     if (grad.rows() == 0) {
         grad = Matrix(data.rows(), data.cols());  // zero-filled by ctor
     }

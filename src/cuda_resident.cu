@@ -61,7 +61,12 @@ struct VBuf {
 };
 std::unordered_map<const float*, VBuf> g_vcache;
 
-bool defer_active() { return g_defer_downloads && g_in_step; }
+// Deferral requires the device op set to be live: with devops off, the
+// tape's CPU loops are the compute path, and they read host storage —
+// deferring gemm outputs under them would serve stale host bytes.
+bool defer_active() {
+    return g_defer_downloads && g_in_step && device_ops_enabled();
+}
 
 constexpr int TILE = 32;
 
@@ -112,9 +117,16 @@ float* operand(const Matrix& m, bool& owned) {
 
 // B2.1b: stale-value hit — the device copy of this host storage is
 // fresher than host memory, so it is the ONLY correct operand source.
+// The epoch guard kills the recycled-address class across windows: a
+// host allocation reusing a dead matrix's address cannot inherit its
+// stale entry, because step_end() materialized (un-staled) everything
+// and a prior window's stamp no longer matches. Within a window, tape
+// temporaries that die early are always materialized first by the
+// accumulate() choke point, so no stale entry outlives its matrix.
 float* vcache_hit(const float* key, size_t n) {
     auto it = g_vcache.find(key);
-    if (it != g_vcache.end() && it->second.stale && it->second.n == n)
+    if (it != g_vcache.end() && it->second.stale &&
+        it->second.epoch == g_epoch && it->second.n == n)
         return it->second.d;
     return nullptr;
 }
@@ -315,7 +327,8 @@ float* vc_output(const float* key, size_t n, bool& deferred,
         return nullptr;
     }
     VBuf& v = g_vcache[key];
-    const bool had_fresh = (v.d != nullptr && v.stale && v.n == n);
+    const bool had_fresh =
+        (v.d != nullptr && v.stale && v.epoch == g_epoch && v.n == n);
     if (v.d != nullptr && v.n != n) {
         cudaFree(v.d);
         v.d = nullptr;

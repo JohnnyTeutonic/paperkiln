@@ -58,6 +58,8 @@ Var matmul(const Var& a, const Var& b) {
 }
 
 Var add(const Var& a, const Var& b) {
+    device::materialize(a->data);
+    device::materialize(b->data);
     return record(a->data + b->data, {a, b}, [](Variable* self) {
         if (self->parents[0]->requires_grad) self->parents[0]->accumulate(self->grad);
         if (self->parents[1]->requires_grad) self->parents[1]->accumulate(self->grad);
@@ -65,6 +67,8 @@ Var add(const Var& a, const Var& b) {
 }
 
 Var sub(const Var& a, const Var& b) {
+    device::materialize(a->data);
+    device::materialize(b->data);
     return record(a->data - b->data, {a, b}, [](Variable* self) {
         if (self->parents[0]->requires_grad) self->parents[0]->accumulate(self->grad);
         if (self->parents[1]->requires_grad) {
@@ -74,6 +78,8 @@ Var sub(const Var& a, const Var& b) {
 }
 
 Var mul(const Var& a, const Var& b) {
+    device::materialize(a->data);
+    device::materialize(b->data);
     return record(a->data.hadamard(b->data), {a, b}, [](Variable* self) {
         const Var& a = self->parents[0];
         const Var& b = self->parents[1];
@@ -86,6 +92,7 @@ Var add_bias(const Var& x, const Var& b) {
     if (b->data.rows() != 1 || b->data.cols() != x->data.cols()) {
         throw std::runtime_error("add_bias: bias must be [1, cols(x)]");
     }
+    device::materialize(x->data);
     Matrix out = x->data;
     for (size_t i = 0; i < out.rows(); ++i)
         for (size_t j = 0; j < out.cols(); ++j) out(i, j) += b->data(0, j);
@@ -167,6 +174,7 @@ Var softmax_row(const Var& x) {
 }
 
 Var mean(const Var& x) {
+    device::materialize(x->data);
     Matrix out(1, 1);
     float sum = 0.0f;
     for (size_t i = 0; i < x->data.rows(); ++i)
@@ -182,6 +190,7 @@ Var mean(const Var& x) {
 }
 
 Var scale(const Var& x, float s) {
+    device::materialize(x->data);
     return record(x->data * s, {x}, [s](Variable* self) {
         if (self->parents[0]->requires_grad) {
             self->parents[0]->accumulate(self->grad * s);
@@ -190,6 +199,7 @@ Var scale(const Var& x, float s) {
 }
 
 Var transpose(const Var& x) {
+    device::materialize(x->data);
     return record(x->data.transpose(), {x}, [](Variable* self) {
         if (self->parents[0]->requires_grad) {
             self->parents[0]->accumulate(self->grad.transpose());
@@ -201,6 +211,7 @@ Var slice_cols(const Var& x, size_t j0, size_t j1) {
     if (j1 <= j0 || j1 > x->data.cols()) {
         throw std::runtime_error("slice_cols: bad range");
     }
+    device::materialize(x->data);
     Matrix out(x->data.rows(), j1 - j0);
     for (size_t i = 0; i < out.rows(); ++i)
         for (size_t j = 0; j < out.cols(); ++j) out(i, j) = x->data(i, j0 + j);
@@ -223,6 +234,7 @@ Var concat_cols(const std::vector<Var>& xs) {
         }
         cols += x->data.cols();
     }
+    for (const auto& x : xs) device::materialize(x->data);
     Matrix out(rows, cols);
     size_t off = 0;
     for (const auto& x : xs) {
@@ -348,6 +360,7 @@ Var embedding(const Var& table, const std::vector<int>& ids) {
 }
 
 Var cross_entropy(const Var& logits, const std::vector<int>& targets) {
+    device::materialize(logits->data);
     const size_t R = logits->data.rows(), C = logits->data.cols();
     if (targets.size() != R) {
         throw std::runtime_error("cross_entropy: one target per row");
@@ -379,6 +392,8 @@ Var mul_row(const Var& x, const Var& r) {
     if (r->data.rows() != 1 || r->data.cols() != x->data.cols()) {
         throw std::runtime_error("mul_row: r must be [1, cols(x)]");
     }
+    device::materialize(x->data);
+    device::materialize(r->data);
     Matrix out = x->data;
     for (size_t i = 0; i < out.rows(); ++i)
         for (size_t j = 0; j < out.cols(); ++j) out(i, j) *= r->data(0, j);
@@ -402,6 +417,7 @@ Var mul_row(const Var& x, const Var& r) {
 }
 
 Var silu(const Var& x) {
+    device::materialize(x->data);
     Matrix out = x->data;
     for (size_t i = 0; i < out.rows(); ++i)
         for (size_t j = 0; j < out.cols(); ++j) {
@@ -487,6 +503,7 @@ Var apply_rope(const Var& qk, const std::vector<int>& pos, float theta_base, siz
     if (head_dim % 2 != 0 || head_dim > d) {
         throw std::runtime_error("apply_rope: head_dim must be even and <= d");
     }
+    device::materialize(qk->data);
     // Cache angles for backward (position and frequency basis)
     auto pos_cache = std::make_shared<std::vector<int>>(pos);
     Matrix out = qk->data;
@@ -567,6 +584,9 @@ Var kimi_attention(const Var& q, const Var& k, const Var& v, bool causal, size_t
     if (T % sl != 0) throw std::runtime_error("kimi_attention: rows not a multiple of seq_len");
     const size_t B = T / sl;
     size_t head_dim = q->data.cols();
+    device::materialize(q->data);
+    device::materialize(k->data);
+    device::materialize(v->data);
     KimiLinearAttention kimi(head_dim);
 
     // Stacked mini-batch: linear attention's causal prefix sums must
@@ -615,6 +635,11 @@ Var ssm_scan(const Var& u, const Var& A, const Var& B, const Var& C, const Var& 
         C->data.rows() != 1 || C->data.cols() != n || D->data.rows() != 1 || D->data.cols() != 1) {
         throw std::runtime_error("ssm_scan: shape mismatch");
     }
+    device::materialize(u->data);
+    device::materialize(A->data);
+    device::materialize(B->data);
+    device::materialize(C->data);
+    device::materialize(D->data);
 
     // Forward scan; states are kept for the backward pass (O(T n) memory,
     // the standard BPTT trade).
@@ -677,6 +702,8 @@ Var mul_col(const Var& x, const Var& c) {
     if (c->data.cols() != 1 || c->data.rows() != x->data.rows()) {
         throw std::runtime_error("mul_col: c must be [rows(x), 1]");
     }
+    device::materialize(x->data);
+    device::materialize(c->data);
     Matrix out = x->data;
     for (size_t i = 0; i < out.rows(); ++i)
         for (size_t j = 0; j < out.cols(); ++j) out(i, j) *= c->data(i, 0);
@@ -702,6 +729,7 @@ Var mul_col(const Var& x, const Var& c) {
 }
 
 Var rms_row(const Var& x, float eps) {
+    device::materialize(x->data);
     const size_t R = x->data.rows(), C = x->data.cols();
     Matrix out(R, 1);
     for (size_t i = 0; i < R; ++i) {
@@ -749,6 +777,7 @@ Var sigmoid(const Var& x) {
 }
 
 Var add_scalar(const Var& x, float s) {
+    device::materialize(x->data);
     Matrix out = x->data;
     for (size_t i = 0; i < out.rows(); ++i)
         for (size_t j = 0; j < out.cols(); ++j) out(i, j) += s;
@@ -767,6 +796,7 @@ Var dropout(const Var& x, float p, unsigned long long seed) {
     // replays the same generator instead of storing a mask matrix.
     std::mt19937_64 rng(seed);
     std::uniform_real_distribution<float> u(0.0f, 1.0f);
+    device::materialize(x->data);
     Matrix out = x->data;
     for (size_t i = 0; i < out.rows(); ++i)
         for (size_t j = 0; j < out.cols(); ++j)
@@ -786,6 +816,7 @@ Var dropout(const Var& x, float p, unsigned long long seed) {
 }
 
 Var relu(const Var& x) {
+    device::materialize(x->data);
     Matrix out(x->data.rows(), x->data.cols());
     for (size_t i = 0; i < out.rows(); ++i)
         for (size_t j = 0; j < out.cols(); ++j) out(i, j) = std::max(0.0f, x->data(i, j));
@@ -807,6 +838,9 @@ namespace {
 // the data transform happens.
 Var inplace_unary(const Var& x, const std::function<void(Matrix&)>& fwd,
                   const std::function<void(const Matrix&, Matrix&)>& dydx_from_output) {
+    // B2.1b: the transform mutates host storage in place — download any
+    // deferred value first so host is the authority being transformed.
+    device::materialize(x->data);
     fwd(x->data);
     if (grad_enabled() && x->requires_grad) {
         auto orig = std::move(x->backward_fn);
@@ -875,6 +909,10 @@ Var fused_attention(const Var& q, const Var& k, const Var& v, float scale, size_
     // what the -1e9 additive mask produces after float32 underflow.
     auto A = std::make_shared<Matrix>(device::gemm(
         q->data, &q->dev, device::Trans::N, k->data, &k->dev, device::Trans::T));
+    // B2.1b: the scale+mask+softmax below is a host loop — download the
+    // (possibly deferred) gemm scores before touching them. Moving this
+    // fused masked softmax on-device is B2.2 territory.
+    device::materialize(*A);
     for (size_t i = 0; i < T; ++i) {
         const size_t b0 = (i / sl) * sl;
         const size_t lo = b0, hi = causal ? i + 1 : b0 + sl;  // visible: [lo, hi)
@@ -914,6 +952,7 @@ Var fused_attention(const Var& q, const Var& k, const Var& v, float scale, size_
         // no mask bookkeeping is needed).
         Matrix ds = device::gemm(self->grad, nullptr, device::Trans::N,
                                  v->data, &v->dev, device::Trans::T);
+        device::materialize(ds);  // B2.1b: host loop below
         for (size_t i = 0; i < T; ++i) {
             const size_t b0 = (i / sl) * sl;
             const size_t hi = causal ? i + 1 : b0 + sl;
@@ -966,6 +1005,7 @@ Var swa_attention(const Var& q, const Var& k, const Var& v, float scale, size_t 
 
     auto A = std::make_shared<Matrix>(device::gemm(
         q->data, &q->dev, device::Trans::N, k->data, &k->dev, device::Trans::T));
+    device::materialize(*A);  // B2.1b: host mask/softmax loop below
     for (size_t i = 0; i < T; ++i) {
         size_t b0, sink_hi, win_lo;
         ranges(i, b0, sink_hi, win_lo);
@@ -1009,6 +1049,7 @@ Var swa_attention(const Var& q, const Var& k, const Var& v, float scale, size_t 
         // A == 0, so ds vanishes there with no mask bookkeeping.
         Matrix ds = device::gemm(self->grad, nullptr, device::Trans::N,
                                  v->data, &v->dev, device::Trans::T);
+        device::materialize(ds);  // B2.1b: host loop below
         for (size_t i = 0; i < T; ++i) {
             const size_t b0 = (i / sl) * sl;
             float dot = 0.0f;

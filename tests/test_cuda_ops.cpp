@@ -8,6 +8,9 @@
 //      bound 1e-6. Rowwise ops reduce in parallel (order differs from the
 //      CPU's serial loop): bound 1e-5. Bitwise claims are reserved for
 //      same-backend pins (test_step_residency's rule).
+//   3. DEFERRED DOWNLOADS (B2.1b) — staleness-contract unit checks plus
+//      the same composed tape under deferral vs plain ops-ON, at the
+//      leg-2 bounds.
 //   2. TAPE PARITY — a composed graph (gelu -> layernorm -> softmax ->
 //      rmsnorm -> sigmoid -> mean) run twice on identical inputs, device
 //      ops OFF then ON: outputs and every leaf grad within 1e-4.
@@ -253,13 +256,14 @@ struct TapeRun {
     Matrix gx, ggamma, gbeta, gw;
 };
 
-TapeRun run_tape(unsigned seed) {
+TapeRun run_tape(unsigned seed, bool windowed = false) {
     using mt::Var;
     Var x = mt::make_var(filled(R, C, seed), true);
     Var gamma = mt::make_var(filled(1, C, seed + 1), true);
     Var beta = mt::make_var(filled(1, C, seed + 2), true);
     Var w = mt::make_var(filled(1, C, seed + 3), true);
 
+    if (windowed) device::step_begin();
     Var h = mt::ops::gelu(x);
     h = mt::ops::layernorm(h, gamma, beta, 1e-5f);
     h = mt::ops::softmax_row(h);
@@ -267,6 +271,7 @@ TapeRun run_tape(unsigned seed) {
     h = mt::ops::sigmoid(h);
     Var loss = mt::ops::mean(h);
     mt::backward(loss);
+    if (windowed) device::step_end();  // B2.1b materialize boundary
 
     return TapeRun{loss->data(0, 0), x->grad, gamma->grad, beta->grad,
                    w->grad};
@@ -293,6 +298,54 @@ void leg2_tape() {
           max_abs_diff(off.gw, on.gw));
 }
 
+// B2.1b: deferred downloads. Unit contract first (stale inside the
+// window, materialized at step_end, chained op consumes the stale
+// value on-device), then the full composed tape under deferral vs
+// plain ops-ON, at the leg-2 tolerances.
+void leg3_deferred() {
+    std::printf("-- leg 3: deferred downloads (B2.1b) --\n");
+    device::set_device_ops(true);
+    device::set_step_residency(true);
+    device::set_defer_downloads(true);
+
+    const Matrix a = filled(R, C, 7);
+    device::step_begin();
+    Matrix y(R, C), y2(R, C);
+    devops::gelu_fwd(a, y);
+    check(device::host_stale(y), "output stale inside window",
+          device::host_stale(y) ? 1.0 : 0.0);
+    devops::sigmoid_fwd(y, y2);  // consumes the stale value on-device
+    device::step_end();
+    check(!device::host_stale(y) && !device::host_stale(y2),
+          "materialized at step_end", 0.0);
+
+    device::set_defer_downloads(false);
+    device::step_begin();
+    Matrix ry(R, C), ry2(R, C);
+    devops::gelu_fwd(a, ry);
+    devops::sigmoid_fwd(ry, ry2);
+    device::step_end();
+    check(max_abs_diff(y2, ry2) <= EW_TOL,
+          "deferred chain == write-through", max_abs_diff(y2, ry2));
+
+    TapeRun on = run_tape(43);
+    device::set_defer_downloads(true);
+    TapeRun def = run_tape(43, /*windowed=*/true);
+    device::set_defer_downloads(false);
+    device::set_step_residency(false);
+
+    const double dloss = std::fabs(static_cast<double>(on.loss) - def.loss);
+    check(dloss <= 1e-5, "loss (defer vs write-through)", dloss);
+    check(max_abs_diff(on.gx, def.gx) <= 1e-4, "grad x",
+          max_abs_diff(on.gx, def.gx));
+    check(max_abs_diff(on.ggamma, def.ggamma) <= 1e-4, "grad gamma",
+          max_abs_diff(on.ggamma, def.ggamma));
+    check(max_abs_diff(on.gbeta, def.gbeta) <= 1e-4, "grad beta",
+          max_abs_diff(on.gbeta, def.gbeta));
+    check(max_abs_diff(on.gw, def.gw) <= 1e-4, "grad w",
+          max_abs_diff(on.gw, def.gw));
+}
+
 }  // namespace
 
 int main() {
@@ -306,9 +359,10 @@ int main() {
 
     leg1_kernels();
     leg2_tape();
+    leg3_deferred();
 
     if (g_failures == 0) {
-        std::printf("test_cuda_ops PASSED (B2.1a op set: kernel + tape parity)\n");
+        std::printf("test_cuda_ops PASSED (B2.1a kernels + tape parity + B2.1b deferred downloads)\n");
         return 0;
     }
     std::printf("test_cuda_ops: %d FAILURE(S)\n", g_failures);

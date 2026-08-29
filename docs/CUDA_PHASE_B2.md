@@ -177,19 +177,39 @@ Not a constraint until far above this ladder.
      boundaries; `step_end()` materializes all when defer is on (the
      optimizer/eval/checkpoint still read host between windows), so
      cross-window staleness cannot exist. `host_stale(m)` exposed.
-  4. [~] `DEVCHECK`: `devcheck_host_read()` + `MT_DEVCHECK_HOST_READ`
-     macro land (compiled in under `-DMICROTORCH_DEVCHECK`); call-site
-     wiring through ops.cpp host-read points is the NEXT increment.
-  5. [ ] Slice-pointer audit for composed attention (offset pointers
-     into contiguous row-major buffers vs the B2.1a transpose-flag
-     gemm paths).
-  6. [ ] Gate: extend tests/test_cuda_ops.cpp with a
-     deferred-downloads leg (OFF vs ON: loss + leaf grads within
-     B2.1a bounds). Local check DONE for the core: both .cu TUs
-     compile clean under nvcc 12.6 + MSVC (29 Aug), CPU stubs
-     g++ -fsyntax-only clean.
+  4. [x] Staleness enforcement wired 29 Aug — by MATERIALIZE-AT-ENTRY
+     rather than assert-only: `Variable::accumulate()` materializes its
+     input (the choke point that keeps every grad host-authoritative
+     until B2.3 moves accumulation on-device), every CPU-formula tape
+     op materializes the Matrix inputs it reads (22 sites in ops.cpp:
+     add/sub/mul/add_bias/mean/scale/transpose/slice/concat/embedding-
+     free ops/CE/mul_row/mul_col/silu/rope/kimi/ssm/rms_row/add_scalar/
+     dropout/relu/inplace_unary), and fused/swa attention materialize
+     their gemm scores + ds before the host mask/softmax loops (moving
+     that fused masked softmax on-device is B2.2 territory). The
+     devops-routed ops need nothing: their fall-throughs can only run
+     with devops off, and defer_active() is COUPLED to
+     device_ops_enabled() for exactly that reason. DEVCHECK's
+     `devcheck_host_read` + macro remain available as belt-and-braces
+     under `-DMICROTORCH_DEVCHECK`.
+  5. [x] Aliasing/recycling audit CLOSED 29 Aug. Findings: (a) current
+     tape slicing (slice_cols/concat_cols) COPIES, so no offset-pointer
+     aliasing reaches the value cache; kimi's rows_of offset views stay
+     on the host-only path (inputs materialized at entry). (b) The real
+     hazard was RECYCLED HOST ADDRESSES inheriting stale entries across
+     windows — closed by epoch-guarding vcache hits (a stale entry is
+     honoured only within the window that stamped it), plus the
+     accumulate() choke ensuring within-window temporaries are
+     materialized before they can die stale.
+  6. [x] tests/test_cuda_ops.cpp leg 3 added: staleness-contract units
+     (stale inside window; chained op consumes the stale value
+     on-device; materialized at step_end; deferred chain == write-
+     through at 1e-6) plus the composed tape under deferral vs plain
+     ops-ON at leg-2 tolerances. Local checks: both .cu TUs compile
+     clean under nvcc 12.6 + MSVC; CPU side g++ -fsyntax-only clean.
   7. [ ] T4 validation via colab_cuda_validate.sh per the contract
-     below; receipts into docs/, phase doc + ROADMAP updated.
+     below; receipts into docs/, phase doc + ROADMAP updated. THIS IS
+     THE ONLY OPEN ITEM — B2.1b is code-complete pending hardware.
   Constraint for this pass: do not touch tools/mtstudio.cpp or
   tools/parity_model.hpp (uncommitted WIP present, 28 Aug).
 - **B2.2** embedding + CE: the forward touches host only at the loss
