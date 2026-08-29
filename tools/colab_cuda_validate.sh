@@ -40,4 +40,11 @@ MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 ./test_cuda_ops
 # The FULL suites again with the op set live: same FD oracle, ops on GPU.
 MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 ./test_gradcheck
 MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 ./test_nn
-echo "CUDA validation PASSED (Phase A + B1 + B2.0 + B2.1a op set)"
+# Phase B2.1b gate: deferred downloads. test_cuda_ops leg 3 covers the
+# staleness contract; the full suites then rerun with deferral live --
+# step-windowed paths defer, everything else must be untouched.
+MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 MICROTORCH_STEP_RESIDENCY=1   MICROTORCH_DEFER_DOWNLOADS=1 ./test_cuda_ops
+MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 MICROTORCH_STEP_RESIDENCY=1   MICROTORCH_DEFER_DOWNLOADS=1 ./test_step_residency
+MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 MICROTORCH_STEP_RESIDENCY=1   MICROTORCH_DEFER_DOWNLOADS=1 ./test_gradcheck
+MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 MICROTORCH_STEP_RESIDENCY=1   MICROTORCH_DEFER_DOWNLOADS=1 ./test_nn
+echo "CUDA validation PASSED (Phase A + B1 + B2.0 + B2.1a op set + B2.1b deferred downloads)"
