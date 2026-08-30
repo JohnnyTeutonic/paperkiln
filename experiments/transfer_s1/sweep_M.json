@@ -1,0 +1,26 @@
+{
+  "_comment": "transfer_s1 ARM M (d=512, 16 heads so head_dim stays 32, 12 seeds, all 6 lanes). IDENTICAL to sweep_S.json except d and heads — width is the only factor that moves (PREREGISTRATION.md budget decision). Same seed list as S deliberately: seeds are not paired across arms (different runs), but reusing the list keeps the two arms' generators comparable and makes any per-seed anomaly traceable.",
+  "base": {
+    "arch": {"preset": "gpt2-nano",
+             "custom": {"d": 512, "heads": 16}},
+    "data": {"corpus": "/content/data/corpus.txt",
+             "vocab": "/content/data/chat7b.gguf",
+             "vocab_cap": 4096, "T": 256},
+    "train": {"batch": 4, "lr": 0.001, "steps": 3600, "eval_every": 100,
+              "checkpoint_every": 1000000, "gradmap_every": 0},
+    "export": {"formats": []}
+  },
+  "factors": {
+    "lane": [
+      {"arch.custom.attention": "exact"},
+      {"arch.custom.attention": "swa", "arch.custom.window": 16, "arch.custom.sinks": 1},
+      {"arch.custom.attention": "swa", "arch.custom.window": 32, "arch.custom.sinks": 1},
+      {"arch.custom.attention": "swa", "arch.custom.window": 64, "arch.custom.sinks": 1},
+      {"arch.custom.attention": "swa", "arch.custom.window": 128, "arch.custom.sinks": 1},
+      {"arch.custom.attention": "swa", "arch.custom.window": 64, "arch.custom.sinks": 0}
+    ]
+  },
+  "design": "grid",
+  "seeds": [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
+  "out_root": "/content/transfer_out/M"
+}

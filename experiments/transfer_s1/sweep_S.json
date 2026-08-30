@@ -1,0 +1,26 @@
+{
+  "_comment": "transfer_s1 ARM S (d=256, 12 seeds, all 6 lanes). Licensed by PREREGISTRATION.md in the same commit. Lanes are ONE factor with dict levels (mtsweep linked-factor form) because the six lanes are not a product: exact has no window/sinks. Venue CUDA (Phase B adopted 31 Aug 2026). Paths are VM-side; the launcher uploads corpus + vocab to /content/data.",
+  "base": {
+    "arch": {"preset": "gpt2-nano",
+             "custom": {"d": 256, "heads": 8}},
+    "data": {"corpus": "/content/data/corpus.txt",
+             "vocab": "/content/data/chat7b.gguf",
+             "vocab_cap": 4096, "T": 256},
+    "train": {"batch": 4, "lr": 0.001, "steps": 3600, "eval_every": 100,
+              "checkpoint_every": 1000000, "gradmap_every": 0},
+    "export": {"formats": []}
+  },
+  "factors": {
+    "lane": [
+      {"arch.custom.attention": "exact"},
+      {"arch.custom.attention": "swa", "arch.custom.window": 16, "arch.custom.sinks": 1},
+      {"arch.custom.attention": "swa", "arch.custom.window": 32, "arch.custom.sinks": 1},
+      {"arch.custom.attention": "swa", "arch.custom.window": 64, "arch.custom.sinks": 1},
+      {"arch.custom.attention": "swa", "arch.custom.window": 128, "arch.custom.sinks": 1},
+      {"arch.custom.attention": "swa", "arch.custom.window": 64, "arch.custom.sinks": 0}
+    ]
+  },
+  "design": "grid",
+  "seeds": [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
+  "out_root": "/content/transfer_out/S"
+}

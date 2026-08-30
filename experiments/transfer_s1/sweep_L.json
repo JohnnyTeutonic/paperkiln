@@ -1,0 +1,22 @@
+{
+  "_comment": "transfer_s1 ARM L (d=1024, 32 heads, 3 seeds, L1+L4 only). PRELIMINARY BY DESIGN: 3 seeds carry no inference (PREREGISTRATION.md power section) — this arm contributes a trend point at 16x params and is labelled preliminary everywhere it appears.",
+  "base": {
+    "arch": {"preset": "gpt2-nano",
+             "custom": {"d": 1024, "heads": 32}},
+    "data": {"corpus": "/content/data/corpus.txt",
+             "vocab": "/content/data/chat7b.gguf",
+             "vocab_cap": 4096, "T": 256},
+    "train": {"batch": 4, "lr": 0.001, "steps": 3600, "eval_every": 100,
+              "checkpoint_every": 1000000, "gradmap_every": 0},
+    "export": {"formats": []}
+  },
+  "factors": {
+    "lane": [
+      {"arch.custom.attention": "exact"},
+      {"arch.custom.attention": "swa", "arch.custom.window": 64, "arch.custom.sinks": 1}
+    ]
+  },
+  "design": "grid",
+  "seeds": [21, 22, 23],
+  "out_root": "/content/transfer_out/L"
+}

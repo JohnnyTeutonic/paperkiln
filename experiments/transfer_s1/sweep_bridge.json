@@ -1,0 +1,22 @@
+{
+  "_comment": "transfer_s1 NUMERICS BRIDGE (Threat 1 — the gate the panel is blocked on). d=256, L1 vs L4, the SAME five seeds {1..5} the banked CPU cohort used (sparse_s1_boundary), run on CUDA. Pass condition (fixed in PREREGISTRATION.md): per-seed Delta(3600) agrees in SIGN on >= 4/5 AND pooled mean Delta within 2 SE of the banked pooled mean. Failure HALTS the study and becomes its own finding. This cell also yields the first real M-arm-venue ms/step measurement, which decides whether M stays at 12 seeds or escalates to 18.",
+  "base": {
+    "arch": {"preset": "gpt2-nano",
+             "custom": {"d": 256, "heads": 8}},
+    "data": {"corpus": "/content/data/corpus.txt",
+             "vocab": "/content/data/chat7b.gguf",
+             "vocab_cap": 4096, "T": 256},
+    "train": {"batch": 4, "lr": 0.001, "steps": 3600, "eval_every": 100,
+              "checkpoint_every": 1000000, "gradmap_every": 0},
+    "export": {"formats": []}
+  },
+  "factors": {
+    "lane": [
+      {"arch.custom.attention": "exact"},
+      {"arch.custom.attention": "swa", "arch.custom.window": 64, "arch.custom.sinks": 1}
+    ]
+  },
+  "design": "grid",
+  "seeds": [1, 2, 3, 4, 5],
+  "out_root": "/content/transfer_out/bridge"
+}
