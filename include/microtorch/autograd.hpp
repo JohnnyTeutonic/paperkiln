@@ -48,6 +48,13 @@ public:
         ++detail::g_live_vars;
     }
     ~Variable() {
+        // B2.3c groundwork: a value-cache entry must never outlive its
+        // host buffer (the B2.2 lifetime rule made STRUCTURAL — with
+        // this, step_end()'s materialize_all can never write into freed
+        // memory through a dead Variable, and no dangling cache key can
+        // greet a recycled address). No-op on CPU builds.
+        device::discard(data);
+        device::discard(grad);
         device::release_devstate(dev);
         --detail::g_live_vars;
     }

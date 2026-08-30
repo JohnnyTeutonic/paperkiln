@@ -307,10 +307,24 @@ Not a constraint until far above this ladder.
      trajectories vs host). p updated in its RESIDENT slot moves to
      B2.3c with device-side accumulate.
   3. [ ] **B2.3c: device-side accumulate.** Variable::accumulate keeps
-     grad on-device (axpy into a grad slot) inside the step window;
-     the materialize choke moves from every accumulate to the
+     grad on-device (devops axpy: vcache Out(need_current) on grad, In
+     on the incoming g — a stale hit, no download) inside the step
+     window; the materialize choke moves from every accumulate to the
      clip/checkpoint boundary. clip_grad_norm needs a device norm
-     reduction (or materializes once).
+     reduction (or materializes once per param).
+     GROUNDWORK LANDED 30 Aug: ~Variable now discards its data and grad
+     value-cache entries, making the B2.2 lifetime rule STRUCTURAL — no
+     entry can outlive its host buffer through a dead Variable, and no
+     dangling cache key can greet a recycled address. (Also closes the
+     pre-existing dangling-non-stale-key exposure for dead activations.)
+     REMAINING AUDIT before the accumulate switch can flip: every
+     backward that HOST-reads self->grad must materialize it at entry —
+     survey says 13 direct `self->grad(` element reads plus the
+     two-callback elementwise form (record's dydx_from_output path,
+     which receives self->grad as its host gy) across ~30 record()
+     sites; embedding's scatter-add is the loudest. Same discipline as
+     B2.1b's 22 forward sites. Do the audit as its own pass with the
+     tape tests live — not as a rider on another change.
   4. [ ] T4 validation + the d=512 wall-clock adoption gate (the
      number that prices transfer_s1's M arm).
 
