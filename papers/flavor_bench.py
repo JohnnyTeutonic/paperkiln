@@ -458,6 +458,15 @@ def main() -> int:
     if g_new is not None and g_old is not None and g_new < g_old:
         print("REGRESSION: grouped AUROC under naive baseline")
         return 1
+    # A KNOWN_WRONG entry that no longer reproduces is a FIX, and stale
+    # entries would quietly re-license the bug. Report them loudly so the
+    # registry cannot drift into a permanent excuse list.
+    still_wrong = {(a, f) for a, f, _, _ in verdict_bad}
+    fixed = [k for k in KNOWN_WRONG if k not in still_wrong]
+    for aid, fieldname in fixed:
+        print(f"  FIXED: {aid} {fieldname} no longer misfires — delete its "
+              f"KNOWN_WRONG entry (it is now dead weight, and a stale "
+              f"entry would hide a regression)")
     novel = [b for b in verdict_bad if (b[0], b[1]) not in KNOWN_WRONG]
     if novel:
         print("FAIL: NEW wrong assertions exist (worse than abstaining)")

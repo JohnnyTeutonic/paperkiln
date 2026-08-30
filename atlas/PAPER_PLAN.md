@@ -217,9 +217,57 @@ ML tooling being distinguished from. State it in those terms.
 ## 7. The companion paper (separate, do not merge)
 
 Paper-to-model extraction: arXiv → architecture with base+delta
-inheritance resolution, measured against a 26-paper truth set
-(grouped AUROC 0.895 [0.761–1.000] vs naive 0.825; post-veto pooled
-0.819; 53/71 verdicts with 0 wrong). Its own gaps: truth set is small
-(29 papers as of 31 Aug 2026, target 40+ with a CI-band gate) and inheritance accounting needs an
-error taxonomy. Merging the two papers would give one paper doing both
-jobs at 70%.
+inheritance resolution, measured against a **40-paper truth set**
+(grouped AUROC 0.905 [0.789–1.000] vs naive 0.841; post-veto pooled
+0.825; 66/92 verdicts, 3 wrong, abstention-first). The CI-band target
+is met as of 31 Aug 2026. Merging the two papers would give one paper
+doing both jobs at 70%.
+
+### 7.1 The error taxonomy — no longer a gap, now a result
+
+This section used to read "inheritance accounting needs an error
+taxonomy". Growing the truth set 26 → 40 produced one, empirically,
+by breaking the extractor three times. **Every failure is a case where
+the paper's own sentence is locally misleading**, which is what makes
+them worth publishing rather than merely fixing:
+
+| # | failure | paper | what the text says | why it fools a scorer |
+|---|---|---|---|---|
+| 1 | **attributed adoption** | Megatron-LM | "both GPT-2 and BERT use GeLU … whereas the original transformer uses ReLU" | the model's own flavor is stated ONLY as a property of its ancestors; the contrasted alternative sits in a bare declarative clause and outscores it |
+| 2 | **future-work mention** | Cerebras-GPT | "features worth exploring in future work include … RoPE and ALiBi" | the strongest possible NON-adoption signal is scored as evidence FOR adoption; compounded by "a GPT-3-like architecture" not registering as an inheritance cue |
+| 3 | **compound name shadowing** | LaMDA | "gated-GELU activation" | a compound flavor name contains a simpler one as a substring; bare-GELU matches inside gated-GELU (which IS GeGLU) |
+
+Two families, and the split is the contribution:
+
+- **Evidential (1, 2).** What a paper *uses* is frequently stated
+  indirectly — attributed to an ancestor, inherited, or present only
+  under negation — while what it *does not* use often appears in a
+  crisp declarative sentence. Any scorer that prefers direct-looking
+  mentions inherits this bias. **The positive control matters here:**
+  Qwen2 says "we follow Qwen with the usage of SwiGLU … RMSNorm",
+  which is also attribution, and scores correctly. So the failure is
+  not attribution per se but attribution with no first-person adoption
+  verb — a well-defined syntactic case, not a vague weighting problem.
+- **Lexical (3).** Independent of evidence quality: the flavor lattice
+  needs longest-match-wins and a `gated-X → XGLU` normalisation. Note
+  the benchmark had been counting "family-level assertions (GLU naming
+  soup)" for weeks — circling this bug without catching it, because no
+  truth-set paper used the `gated-X` spelling until LaMDA.
+
+**Methodological point for the paper, and the reason this section is a
+result rather than an apology:** all three were invisible at 26 papers
+and none required a new metric — only more ground truth. A benchmark
+that reports zero errors is not measuring the hard cases; it is
+reporting that its truth set is too easy. The failures are registered
+in `flavor_bench.py::KNOWN_WRONG` with diagnoses and named fixes, the
+gate still fails on any NEW wrong assertion, and a KNOWN_WRONG entry
+that stops reproducing is reported as FIXED so the registry cannot
+decay into an excuse list.
+
+**Honest limitation to state in the paper:** the truth set is
+annotator-single (one reader, evidence quoted in-file). Fields a paper
+does not state are omitted rather than inferred from sibling models —
+e.g. InternLM2's norm/activation are left blank though it is in fact
+RMSNorm/SwiGLU, because the paper states them only in a related-work
+sentence about LLaMA. That rule costs coverage and buys the ability to
+say the truth set contains no guesses.
