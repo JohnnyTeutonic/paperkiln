@@ -62,9 +62,13 @@ these are the engineering items that unlock it.*
    **B2.1b T4-VALIDATED 29 Aug 2026** (deferred downloads: value cache,
    materialize boundaries, defer-vs-writethrough EXACTLY 0.0 on the
    composed tape; receipts docs/receipts_b21b_t4_20260829.txt); next
-   B2.2 (embedding + CE scalar-only — includes moving the fused masked
-   attention softmax on-device, the biggest remaining forced
-   materialize), B2.3 (optimizer on device + device-side accumulate). Adoption gated on a d=512 wall-clock
+   **B2.2 T4-VALIDATED 30 Aug 2026** (fused + swa masked attention
+   softmax on-device — the biggest forced materialize gone — plus
+   embedding gather and CE with the host receiving ONE float; 12/12
+   suites, 281 checks; receipts docs/receipts_b22_t4_20260830.txt; on
+   the way it surfaced and fixed the deferred-temporary-dies-stale
+   heap-corruption class via the new device::discard() primitive); next
+   B2.3 (optimizer on device + device-side accumulate). Adoption gated on a d=512 wall-clock
    win vs AVX. That is what actually GATES Rung C (d=512, T=512).
 
    1a. **Deep SWA — DONE 12 Aug 2026 (same night it was discovered).**

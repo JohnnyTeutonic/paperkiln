@@ -253,8 +253,27 @@ Not a constraint until far above this ladder.
   retained as fallback + reference; `test_cuda_ops` leg 5 composes
   embedding -> CE exactly as a model does and pins loss + scatter-add
   table grad across {off, on, defer}. Both TUs nvcc 12.6 clean; CPU
-  g++ -fsyntax-only clean. T4 validation of legs 4+5 rides the next
-  colab_cuda_validate.sh run.
+  g++ -fsyntax-only clean.
+  **T4-VALIDATED 30 Aug** (receipts docs/receipts_b22_t4_20260830.txt,
+  commit 5bcf0d1 = code-identical child of the 0457af9 fix): 12/12
+  suites, 281 checks, 0 fails on Tesla T4 / CUDA 12.8.93 — legs 4+5
+  green in BOTH test_cuda_ops invocations (DEVICE_OPS=1, and
+  +STEP_RESIDENCY+DEFER_DOWNLOADS) with identical numbers: worst leg-4
+  diff 3.725e-09 (swa), leg-5 ce loss 2.384e-07 / table grad 1.397e-09;
+  gradcheck 29/29 and nn 22/22 under all three env configs.
+  The road here banked a real bug class: the first T4 run SIGABRTed at
+  leg 4 with glibc heap corruption — a DEFERRED TEMPORARY DYING STALE
+  (closure-local ds freed while its vcache entry was still stale;
+  step_end()'s materialize_all() then D2H'd into the freed pointer).
+  Fixed by the new `device::discard(m)` primitive (drop the entry, no
+  download) wired into both attention backwards (ds + A, A also on the
+  v-only early return) and CE's backward (dl + P) — which doubles as an
+  optimization: A and P skip their pointless step_end downloads.
+  Confirmed both directions on one VM: pre-fix binary rc=134 at leg 4,
+  post-fix all legs green under MALLOC_CHECK_=3 MALLOC_PERTURB_=85
+  (docs/receipts_b22_mcheck_t4_20260830.txt). RULE FOR EVERY FUTURE
+  DEVOPS PATH: any deferred output that dies before step_end() MUST be
+  discarded or materialized — never left stale.
 - **B2.3** AdamW/SGD on device; optimizer state uploads once at
   construction; checkpoint = explicit materialize sweep. Full step
   resident.

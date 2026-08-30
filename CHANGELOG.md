@@ -20,8 +20,12 @@ Notable changes to microtorch. Format loosely follows
   receives one float, CE backward (P - onehot) * g with the gradient first
   touching host at accumulate() (B2.3's choke). Leg 5 composes
   embedding -> CE and pins loss + scatter-add table grad across
-  {off, on, defer}. B2.2 is code-complete pending T4 receipts; next: B2.3
-  (optimizer + accumulate on-device).
+  {off, on, defer}. **T4-VALIDATED 30 Aug** — 12/12 suites, 281 checks, 0
+  fails (receipts docs/receipts_b22_t4_20260830.txt); the first run's leg-4
+  heap-corruption crash (a deferred temporary dying stale, then step_end
+  downloading into the freed pointer) is fixed by the new
+  `device::discard()` primitive, confirmed both directions on T4. Next:
+  B2.3 (optimizer + accumulate on-device).
 - **Llama-family models** (`nn::Llama`): RMSNorm, RoPE, SwiGLU, GQA, tied
   embeddings; HF-native parameter names; module-level FD gradchecks.
 - **mtstudio**: spec-driven run driver (JSON spec -> train -> eval -> export),
