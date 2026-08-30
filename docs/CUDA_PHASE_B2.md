@@ -360,9 +360,27 @@ Not a constraint until far above this ladder.
      never outlive its host buffer — ~Variable discards data+grad,
      backward() discards consumed non-leaf grads, and rvalue accumulate
      discards temporaries.
-  5. [ ] The d=512 wall-clock adoption gate (CPU AVX vs B2, T=512, per
-     the validation contract) — the number that prices transfer_s1's
-     M arm and decides Rung C's engine.
+  5. [x] **ADOPTION GATE PASSED 31 Aug 2026 — B2 IS ADOPTED FOR RUNG C**
+     (receipts docs/receipts_b2gate_t4_20260831.txt, commit e9da26d,
+     Tesla T4, ParityLM T=512 L=4, 3 warmup + 6 timed steps).
+
+     | d | cpu ms/step | b2 ms/step | speedup | final loss cpu / b2 |
+     |---|---|---|---|---|
+     | 256 | 6530.22 | 308.88 | **21.1x** | 5.2485 / 5.2485 |
+     | 512 | 21785.61 | 714.86 | **30.5x** | 4.9382 / 4.9382 |
+
+     Engine ladder at d=256 (ms/step): cpu 6530 -> gpu 1095 -> ops 499
+     -> res 574 -> b2 309. The final losses are IDENTICAL at print
+     precision across all five engines at d=256 and across cpu/b2 at
+     d=512 — the gate times the same computation, which is the property
+     the first run lacked. Deferral verified live in the same run: the
+     b2 probe reports logits_stale=1 (activations genuinely staying on
+     device) with loss_dev == loss_host == the healthy engines' value
+     and matching row statistics. The speedup GROWS with width
+     (21x -> 30x), which is the expected direction: bigger matmuls
+     amortize the fixed per-step overhead the CPU path cannot.
+     Consequence: Rung C (d=512, T=512) runs on CUDA. A CPU cell that
+     took ~6 hours takes ~12 minutes.
      **FIRST BENCH RUN EXPOSED A CORRECTNESS BUG THE WHOLE SUITE
      MISSED (30 Aug 2026).** The gate is a measurement, but it was the
      first end-to-end training run at REAL shapes (vocab 4096, d=256/512,

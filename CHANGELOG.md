@@ -26,6 +26,11 @@ Notable changes to microtorch. Format loosely follows
   downloading into the freed pointer) is fixed by the new
   `device::discard()` primitive, confirmed both directions on T4. Next:
   B2.3 (optimizer + accumulate on-device).
+- **CUDA Phase B COMPLETE — adoption gate passed (31 Aug)**: B2 beats CPU
+  AVX **21x at d=256 and 30.5x at d=512** (T=512, L=4, Tesla T4) with
+  identically-converging trajectories (final losses match at print
+  precision). Rung C of the scale ladder runs on CUDA; a ~6-CPU-hour cell
+  becomes ~12 minutes. Receipts docs/receipts_b2gate_t4_20260831.txt.
 - **Fixed: deferred activations feeding a gemm uploaded stale host data.**
   `window_operand` consulted the B2.1b value cache only for slotless
   operands; every Variable's data carries a slot, so under deferral a gemm

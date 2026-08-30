@@ -1,0 +1,44 @@
+--- poll 1: VERIFY_COMMIT: e9da26dde7a40f3595fcb73e7bf3311d7cdd3c18
+--- poll 2: VERIFY_COMMIT: e9da26dde7a40f3595fcb73e7bf3311d7cdd3c18
+--- poll 3: ALL NN CHECKS PASSED
+--- poll 4: BENCH d=256 T=512 L=4 engine=gpu steps=6  ms_per_step=1095.30  tok_per_s=467  (final loss 5.2485)
+--- poll 5: BENCH d=256 T=512 L=4 engine=b2 steps=6  ms_per_step=308.88  tok_per_s=1658  (final loss 5.2485)
+--- poll 6: BENCH d=256 T=512 L=4 engine=b2 steps=6  ms_per_step=308.88  tok_per_s=1658  (final loss 5.2485)
+--- poll 7: BENCH d=256 T=512 L=4 engine=b2 steps=6  ms_per_step=308.88  tok_per_s=1658  (final loss 5.2485)
+  [ok] embedding->matmul->CE                                0.000e+00
+  [ok] grad W                                               0.000e+00
+  [ok] grad input                                           0.000e+00
+test_cuda_ops PASSED (B2.1a kernels + tape parity + B2.1b deferred downloads + B2.2 attention/embed/CE)
+  [ok] defer table grad                                     1.397e-09
+-- leg 6: optimizer steps (B2.3a) --
+  [ok] sgd+momentum 5-step trajectory                       1.192e-07
+  [ok] adamw 5-step trajectory                              1.192e-07
+-- leg 7: gemm reading a deferred activation (B2.3 regression) --
+  [ok] layernorm->matmul->mean                              0.000e+00
+  [ok] grad W                                               0.000e+00
+  [ok] grad input                                           0.000e+00
+  [ok] embedding->matmul->CE                                0.000e+00
+  [ok] grad W                                               0.000e+00
+  [ok] grad input                                           0.000e+00
+test_cuda_ops PASSED (B2.1a kernels + tape parity + B2.1b deferred downloads + B2.2 attention/embed/CE)
+ALL MICROTORCH GRADCHECKS PASSED
+ALL NN CHECKS PASSED
++ grep -E 'PROBE|BENCH'
+BENCH d=256 T=512 L=4 engine=cpu steps=6  ms_per_step=6530.22  tok_per_s=78  (final loss 5.2485)
++ grep -E 'PROBE|BENCH'
+PROBE engine=gpu logits_stale=0 loss_dev=8.3936 loss_host=8.3936 row0[min=-1.0804 max=1.0370 mean=-0.0002]
+BENCH d=256 T=512 L=4 engine=gpu steps=6  ms_per_step=1095.30  tok_per_s=467  (final loss 5.2485)
++ grep -E 'PROBE|BENCH'
+PROBE engine=ops logits_stale=0 loss_dev=8.3936 loss_host=8.3936 row0[min=-1.0804 max=1.0370 mean=-0.0002]
+BENCH d=256 T=512 L=4 engine=ops steps=6  ms_per_step=499.32  tok_per_s=1025  (final loss 5.2485)
++ grep -E 'PROBE|BENCH'
+PROBE engine=res logits_stale=0 loss_dev=8.3936 loss_host=8.3936 row0[min=-1.0804 max=1.0370 mean=-0.0002]
+BENCH d=256 T=512 L=4 engine=res steps=6  ms_per_step=574.12  tok_per_s=892  (final loss 5.2485)
++ grep -E 'PROBE|BENCH'
+PROBE engine=b2 logits_stale=1 loss_dev=8.3936 loss_host=8.3936 row0[min=-1.0804 max=1.0370 mean=-0.0002]
+BENCH d=256 T=512 L=4 engine=b2 steps=6  ms_per_step=308.88  tok_per_s=1658  (final loss 5.2485)
++ grep -E 'PROBE|BENCH'
+BENCH d=512 T=512 L=4 engine=cpu steps=6  ms_per_step=21785.61  tok_per_s=24  (final loss 4.9382)
++ grep -E 'PROBE|BENCH'
+PROBE engine=b2 logits_stale=1 loss_dev=8.4164 loss_host=8.4164 row0[min=-1.7346 max=1.7706 mean=-0.0023]
+BENCH d=512 T=512 L=4 engine=b2 steps=6  ms_per_step=714.86  tok_per_s=716  (final loss 4.9382)

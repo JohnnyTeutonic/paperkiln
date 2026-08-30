@@ -73,8 +73,16 @@ these are the engineering items that unlock it.*
    loss scalar and param grads at the boundary; 12/12 suites, 285
    checks; receipts docs/receipts_b23_t4_20260830.txt; the gate also
    caught+fixed dying-temporary corruption round two — see the phase
-   doc's standing lifetime rule). Adoption gated on a d=512 wall-clock
-   win vs AVX. That is what actually GATES Rung C (d=512, T=512).
+   doc's standing lifetime rule).
+   **ADOPTION GATE PASSED 31 Aug 2026 — CUDA PHASE B IS COMPLETE.**
+   B2 beats CPU AVX by **21x at d=256 and 30.5x at d=512** (T=512,
+   L=4, T4) on an identically-converging computation (final losses
+   match at print precision: 5.2485 and 4.9382). Rung C RUNS ON
+   CUDA: a cell that cost ~6 CPU-hours costs ~12 minutes. Receipts
+   docs/receipts_b2gate_t4_20260831.txt. The gate run also caught
+   the deferred-gemm staleness bug the 285-check suite missed —
+   the benchmark is now part of the correctness gate, not a
+   postscript (see docs/CUDA_PHASE_B2.md).
 
    1a. **Deep SWA — DONE 12 Aug 2026 (same night it was discovered).**
    FlexLM takes attention=exact|swa with window/sinks at any depth;
