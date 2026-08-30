@@ -85,6 +85,59 @@ int main(int argc, char** argv) {
         return loss->data(0, 0);
     };
 
+    // ZERO-HUNT mode (engine "hunt"): the defer bug zeroes the forward
+    // even at L=0, so replicate the minimal chain with raw ops —
+    // embedding -> add -> layernorm -> matmul — and zero-scan after
+    // every stage. First all-zero stage = the broken seam.
+    if (eng == "hunt") {
+        device::set_device_ops(true);
+        device::set_step_residency(true);
+        device::set_defer_downloads(true);
+        auto scan = [](const char* name, const Var& v) {
+            const bool st = device::host_stale(v->data);
+            device::materialize(v->data);
+            float mn = 1e30f, mx = -1e30f;
+            for (size_t i = 0; i < v->data.rows(); ++i)
+                for (size_t j = 0; j < v->data.cols(); ++j) {
+                    mn = std::min(mn, v->data(i, j));
+                    mx = std::max(mx, v->data(i, j));
+                }
+            std::printf("HUNT %-8s stale=%d min=%.5f max=%.5f\n", name,
+                        st ? 1 : 0, mn, mx);
+        };
+        std::mt19937 hg(11);
+        auto fill = [&](size_t r, size_t c) {
+            Matrix mm(r, c);
+            std::normal_distribution<float> nd(0.0f, 0.5f);
+            for (size_t i = 0; i < r; ++i)
+                for (size_t j = 0; j < c; ++j) mm(i, j) = nd(hg);
+            return mm;
+        };
+        Var tbl = make_var(fill(fc.vocab, d), true);
+        Var pet = make_var(fill(T, d), true);
+        Var gam = make_var(fill(1, d), true);
+        Var bet = make_var(fill(1, d), true);
+        Var w = make_var(fill(d, fc.vocab), true);
+        std::vector<int> pos(T);
+        for (size_t i = 0; i < T; ++i) pos[i] = static_cast<int>(i);
+
+        device::step_begin();
+        Var e = ops::embedding(tbl, ids);
+        scan("embed", e);
+        Var p = ops::embedding(pet, pos);
+        scan("posemb", p);
+        Var s = ops::add(e, p);
+        scan("add", s);
+        Var nn_ = ops::layernorm(s, gam, bet, 1e-5f);
+        scan("lnorm", nn_);
+        Var lg = ops::matmul(nn_, w);
+        scan("matmul", lg);
+        Var l2 = ops::cross_entropy(lg, y);
+        std::printf("HUNT ce loss=%.4f\n", l2->data(0, 0));
+        device::step_end();
+        return 0;
+    }
+
     // PROBE (bisection aid, 2026-08-30): under defer the loss sits at
     // exactly ln(vocab) from the first forward. Split forward-vs-CE in
     // one shot: run one NoGrad forward, compute the loss via the device
