@@ -44,10 +44,17 @@ def main():
     # Print the EXACT commits under test — the aggregation step must
     # refuse a log that lacks these lines (the 2026-08-30 lesson: a
     # stale results zip validated yesterday's binary and read as green).
-    run("echo VALIDATING_PAPERKILN_COMMIT: $(git -C microtorch rev-parse HEAD)")
-    run("echo VALIDATING_COALFIRE_COMMIT: $(git -C transformer_cpp rev-parse HEAD)")
+    # Captured via Python, not a shell echo: the echoed stdout of a
+    # subprocess failed to land in either log on the first rerun.
+    def _sha(repo):
+        return subprocess.run(f"git -C {repo} rev-parse HEAD", shell=True,
+                              capture_output=True, text=True).stdout.strip()
+    commit_lines = (f"VALIDATING_PAPERKILN_COMMIT: {_sha('microtorch')}\n"
+                    f"VALIDATING_COALFIRE_COMMIT: {_sha('transformer_cpp')}\n")
+    print(commit_lines, end="", flush=True)
 
     with open("validate.log", "w") as log:
+        log.write(commit_lines)  # the freshness gate reads validate.log
         p = subprocess.Popen(
             "bash microtorch/tools/colab_cuda_validate.sh",
             shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
