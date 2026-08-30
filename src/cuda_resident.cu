@@ -131,19 +131,30 @@ float* vcache_hit(const float* key, size_t n) {
     return nullptr;
 }
 
-// B2 operand under an open window. Cache hit iff the slot was stamped
-// by THIS window; otherwise upload and (when a slot is given) cache +
-// stamp it. Slotless operands (grads, non-Var intermediates) check the
-// B2.1b value cache first (a stale hit is mandatory — host is behind),
-// then temp-upload (owned=true). Falls back to the B1 table before
+// B2 operand under an open window. THE VALUE CACHE OUTRANKS EVERYTHING:
+// a stale hit means the device holds the authoritative value and host is
+// behind, so uploading host would inject staleness. This check is
+// UNIVERSAL — slotted or not.
+//
+// It used to sit inside the slotless branch only, and that was the
+// B2.3 flat-loss bug (30 Aug 2026): every Variable's data passes a slot
+// (ops call gemm with &var->dev), so under deferral a gemm on a deferred
+// activation took the slot path and uploaded the untouched host buffer —
+// zeros. Logits came out exactly 0, loss exactly ln(vocab), at every
+// width and depth, while gpu/ops/residency-without-defer were perfect.
+// The suite missed it because its shapes are tiny and its legs test ops
+// in isolation, not a deferred activation feeding a slotted gemm.
+//
+// Otherwise: slot hit iff stamped by THIS window; else upload and (when
+// a slot is given) cache + stamp it. Falls back to the B1 table before
 // uploading so explicitly-resident params are never duplicated.
 float* window_operand(const Matrix& m, DevState** slot, bool& owned) {
     const size_t bytes = m.rows() * m.cols() * sizeof(float);
+    if (float* v = vcache_hit(m.get_data(), m.rows() * m.cols())) {
+        owned = false;
+        return v;
+    }
     if (slot == nullptr) {
-        if (float* v = vcache_hit(m.get_data(), m.rows() * m.cols())) {
-            owned = false;
-            return v;
-        }
         auto it = g_table.find(m.get_data());
         if (it != g_table.end() && it->second.rows == m.rows() &&
             it->second.cols == m.cols()) {
