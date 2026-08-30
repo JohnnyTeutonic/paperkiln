@@ -1,0 +1,163 @@
+[colab] Creating session 'b22_shard0'...
+[colab] Session READY (b22_shard0). Executing /mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/tools/colab_b22_debug.py...
++ rm -rf microtorch transformer_cpp
++ git clone --depth 1 -b master https://github.com/JohnnyTeutonic/paperkiln.git microtorch
++ git clone --depth 1 https://github.com/JohnnyTeutonic/coalfire.cpp.git transformer_cpp
+VALIDATING_PAPERKILN_COMMIT: d588198e22dfaacc39e311e15e039a49a512fae2
+VALIDATING_COALFIRE_COMMIT: 9c0b0230f5a493be0de6c13c6251394712830507
++ mkdir -p microtorch/build_cuda && cd microtorch/build_cuda && cmake .. -DCMAKE_BUILD_TYPE=RelWithDebInfo -DMICROTORCH_CUDA=ON > cmake.log 2>&1 && make microtorch test_cuda_ops -j$(nproc) > build.log 2>&1
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+-- leg 1: kernel parity vs the CPU formulas --
+  [ok] add                                                  0.000e+00
+  [ok] sub                                                  0.000e+00
+  [ok] mul                                                  0.000e+00
+  [ok] scale                                                0.000e+00
+  [ok] axpy                                                 2.384e-07
+  [ok] fill                                                 0.000e+00
+  [ok] sigmoid_fwd                                          1.192e-07
+  [ok] sigmoid_bwd                                          0.000e+00
+  [ok] gelu_fwd (vs apply_gelu)                             1.192e-07
+  [ok] gelu_bwd                                             2.384e-07
+  [ok] softmax_fwd (vs apply_softmax)                       1.304e-08
+  [ok] softmax_bwd                                          3.725e-09
+  [ok] layernorm_fwd y                                      7.153e-07
+  [ok] layernorm_fwd xhat                                   5.960e-07
+  [ok] layernorm_bwd dgamma                                 3.815e-06
+  [ok] layernorm_bwd dbeta                                  0.000e+00
+  [ok] layernorm_bwd dx                                     4.768e-07
+  [ok] rmsnorm_fwd                                          7.153e-07
+  [ok] rmsnorm_bwd dw                                       3.189e-06
+  [ok] rmsnorm_bwd dx                                       2.384e-07
+-- leg 2: composed tape, device ops OFF vs ON --
+  [ok] loss                                                 0.000e+00
+  [ok] grad x                                               1.892e-10
+  [ok] grad gamma                                           1.746e-10
+  [ok] grad beta                                            2.328e-10
+  [ok] grad w                                               2.328e-10
+-- leg 3: deferred downloads (B2.1b) --
+  [ok] output stale inside window                           1.000e+00
+  [ok] materialized at step_end                             0.000e+00
+  [ok] deferred chain == write-through                      0.000e+00
+  [ok] loss (defer vs write-through)                        0.000e+00
+  [ok] grad x                                               0.000e+00
+  [ok] grad gamma                                           0.000e+00
+  [ok] grad beta                                            0.000e+00
+  [ok] grad w                                               0.000e+00
+-- leg 4: masked attention softmax (B2.2) --
+Using CUDA device: Tesla T4
+Compute capability: 7.5
+  [ok] fused-causal                                         0.000e+00
+  [ok] grad q                                               2.328e-10
+  [ok] grad k                                               4.657e-10
+  [ok] grad v                                               4.657e-10
+  [ok] defer loss                                           0.000e+00
+  [ok] defer grad q                                         2.328e-10
+  [ok] defer grad k                                         4.657e-10
+  [ok] defer grad v                                         4.657e-10
+  [ok] fused-block                                          0.000e+00
+  [ok] grad q                                               4.657e-10
+  [ok] grad k                                               3.492e-10
+  [ok] grad v                                               2.328e-10
+  [ok] defer loss                                           0.000e+00
+  [ok] defer grad q                                         4.657e-10
+  [ok] defer grad k                                         3.492e-10
+  [ok] defer grad v                                         2.328e-10
+  [ok] swa                                                  3.725e-09
+  [ok] grad q                                               2.037e-10
+  [ok] grad k                                               3.492e-10
+  [ok] grad v                                               9.313e-10
+  [ok] defer loss                                           3.725e-09
+  [ok] defer grad q                                         2.037e-10
+  [ok] defer grad k                                         3.492e-10
+  [ok] defer grad v                                         9.313e-10
+-- leg 5: embedding + cross-entropy (B2.2) --
+  [ok] ce loss                                              2.384e-07
+  [ok] table grad                                           1.397e-09
+  [ok] defer ce loss                                        2.384e-07
+  [ok] defer table grad                                     1.397e-09
+-- leg 6: optimizer steps (B2.3a) --
+  [ok] sgd+momentum 5-step trajectory                       1.192e-07
+  [ok] adamw 5-step trajectory                              1.192e-07
+test_cuda_ops PASSED (B2.1a kernels + tape parity + B2.1b deferred downloads + B2.2 attention/embed/CE)
+[mcheck.log] exit: 0
+[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)
+-- leg 1: kernel parity vs the CPU formulas --
+  [ok] add                                                  0.000e+00
+  [ok] sub                                                  0.000e+00
+  [ok] mul                                                  0.000e+00
+  [ok] scale                                                0.000e+00
+  [ok] axpy                                                 2.384e-07
+  [ok] fill                                                 0.000e+00
+  [ok] sigmoid_fwd                                          1.192e-07
+  [ok] sigmoid_bwd                                          0.000e+00
+  [ok] gelu_fwd (vs apply_gelu)                             1.192e-07
+  [ok] gelu_bwd                                             2.384e-07
+  [ok] softmax_fwd (vs apply_softmax)                       1.304e-08
+  [ok] softmax_bwd                                          3.725e-09
+  [ok] layernorm_fwd y                                      7.153e-07
+  [ok] layernorm_fwd xhat                                   5.960e-07
+  [ok] layernorm_bwd dgamma                                 3.815e-06
+  [ok] layernorm_bwd dbeta                                  0.000e+00
+  [ok] layernorm_bwd dx                                     4.768e-07
+  [ok] rmsnorm_fwd                                          7.153e-07
+  [ok] rmsnorm_bwd dw                                       3.189e-06
+  [ok] rmsnorm_bwd dx                                       2.384e-07
+-- leg 2: composed tape, device ops OFF vs ON --
+  [ok] loss                                                 0.000e+00
+  [ok] grad x                                               1.892e-10
+  [ok] grad gamma                                           1.746e-10
+  [ok] grad beta                                            2.328e-10
+  [ok] grad w                                               2.328e-10
+-- leg 3: deferred downloads (B2.1b) --
+  [ok] output stale inside window                           1.000e+00
+  [ok] materialized at step_end                             0.000e+00
+  [ok] deferred chain == write-through                      0.000e+00
+  [ok] loss (defer vs write-through)                        0.000e+00
+  [ok] grad x                                               0.000e+00
+  [ok] grad gamma                                           0.000e+00
+  [ok] grad beta                                            0.000e+00
+  [ok] grad w                                               0.000e+00
+-- leg 4: masked attention softmax (B2.2) --
+Using CUDA device: Tesla T4
+Compute capability: 7.5
+  [ok] fused-causal                                         0.000e+00
+  [ok] grad q                                               2.328e-10
+  [ok] grad k                                               4.657e-10
+  [ok] grad v                                               4.657e-10
+  [ok] defer loss                                           0.000e+00
+  [ok] defer grad q                                         2.328e-10
+  [ok] defer grad k                                         4.657e-10
+  [ok] defer grad v                                         4.657e-10
+  [ok] fused-block                                          0.000e+00
+  [ok] grad q                                               4.657e-10
+  [ok] grad k                                               3.492e-10
+  [ok] grad v                                               2.328e-10
+  [ok] defer loss                                           0.000e+00
+  [ok] defer grad q                                         4.657e-10
+  [ok] defer grad k                                         3.492e-10
+  [ok] defer grad v                                         2.328e-10
+  [ok] swa                                                  3.725e-09
+  [ok] grad q                                               2.037e-10
+  [ok] grad k                                               3.492e-10
+  [ok] grad v                                               9.313e-10
+  [ok] defer loss                                           3.725e-09
+  [ok] defer grad q                                         2.037e-10
+  [ok] defer grad k                                         3.492e-10
+  [ok] defer grad v                                         9.313e-10
+-- leg 5: embedding + cross-entropy (B2.2) --
+  [ok] ce loss                                              2.384e-07
+  [ok] table grad                                           1.397e-09
+  [ok] defer ce loss                                        2.384e-07
+  [ok] defer table grad                                     1.397e-09
+-- leg 6: optimizer steps (B2.3a) --
+  [ok] sgd+momentum 5-step trajectory                       1.192e-07
+  [ok] adamw 5-step trajectory                              1.192e-07
+test_cuda_ops PASSED (B2.1a kernels + tape parity + B2.1b deferred downloads + B2.2 attention/embed/CE)
+[mcheck_defer.log] exit: 0
++ mkdir -p microtorch/build_asan && cd microtorch/build_asan && cmake .. -DCMAKE_BUILD_TYPE=RelWithDebInfo -DMICROTORCH_CUDA=ON -DCMAKE_CXX_FLAGS='-fsanitize=address -fno-omit-frame-pointer -g' -DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address > cmake.log 2>&1 && make microtorch test_cuda_ops -j$(nproc) > build.log 2>&1
+==4615==ASan runtime does not come first in initial library list; you should either link runtime to your application or manually preload it with LD_PRELOAD.
+[asan.log] exit: 1
++ zip -q b22_debug.zip mcheck.log mcheck_defer.log asan.log valgrind.log 2>/dev/null; true
+B22_DEBUG_DONE: COMPLETE
+[colab] Stopping session 'b22_shard0'...
+[colab] Session terminated.

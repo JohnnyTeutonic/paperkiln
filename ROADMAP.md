@@ -68,7 +68,12 @@ these are the engineering items that unlock it.*
    suites, 281 checks; receipts docs/receipts_b22_t4_20260830.txt; on
    the way it surfaced and fixed the deferred-temporary-dies-stale
    heap-corruption class via the new device::discard() primitive); next
-   B2.3 (optimizer on device + device-side accumulate). Adoption gated on a d=512 wall-clock
+   **B2.3 T4-VALIDATED 30 Aug 2026** (persistent device optimizer
+   state + device-side accumulate: the step's downloads are now the
+   loss scalar and param grads at the boundary; 12/12 suites, 285
+   checks; receipts docs/receipts_b23_t4_20260830.txt; the gate also
+   caught+fixed dying-temporary corruption round two — see the phase
+   doc's standing lifetime rule). Adoption gated on a d=512 wall-clock
    win vs AVX. That is what actually GATES Rung C (d=512, T=512).
 
    1a. **Deep SWA — DONE 12 Aug 2026 (same night it was discovered).**

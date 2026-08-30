@@ -26,6 +26,17 @@ Notable changes to microtorch. Format loosely follows
   downloading into the freed pointer) is fixed by the new
   `device::discard()` primitive, confirmed both directions on T4. Next:
   B2.3 (optimizer + accumulate on-device).
+- **CUDA B2.3 complete + T4-VALIDATED (30 Aug)** — full step residency:
+  persistent device optimizer state (B2.3b), device-side gradient
+  accumulation with the materialize choke moved to the step boundary
+  (B2.3c, 27-site backward audit), 12/12 suites and 285 checks green with
+  legs 4/5/6 identical between plain and fully-deferred configs. The gate
+  caught a second dying-temporary heap corruption (gradient temps consumed
+  by stale-hit axpy, then step_end writing their freed buffers); fixed by
+  a self-discarding rvalue `accumulate(Matrix&&)` overload. The lifetime
+  rule is now enforced three ways: ~Variable discards, backward()
+  discards consumed non-leaf grads, rvalue accumulate discards temps.
+  Remaining: the d=512 wall-clock adoption gate.
 - **CUDA B2.3a: optimizer steps on device (write-through parity seam)** —
   `k_adamw_step`/`k_sgd_step` with host-computed bias corrections so the
   math matches nn.cpp verbatim; real SGD/AdamW try the devops path per

@@ -335,8 +335,34 @@ Not a constraint until far above this ladder.
      has moved from every accumulate to the step boundary, which is
      what B2.3c is. Local checks green (CPU syntax, both TUs); T4
      validation is item 4.
-  4. [ ] T4 validation + the d=512 wall-clock adoption gate (the
-     number that prices transfer_s1's M arm).
+  4. [x] **T4 VALIDATION PASSED 30 Aug 20:52** (receipts
+     docs/receipts_b23_t4_20260830.txt, commit d588198): 12/12 suites,
+     285 checks — legs 4/5/6 numerically IDENTICAL between DEVICE_OPS=1
+     and the fully-deferred config (leg 6 optimizer trajectories
+     1.192e-07 vs host), gradcheck 29/29 + nn 22/22 under all three
+     configs, training pin 6.89e-08.
+     THE ROAD THERE — the dying-temporary class, round two: the first
+     gate run on e38f710 crashed rc=134 (glibc heap corruption,
+     deterministic 2/2 fresh VMs). Root cause: pre-B2.3c, accumulate()
+     materialized every incoming g, so gradient TEMPORARIES (gemm
+     expression results, devops dX locals) died host-fresh; the axpy
+     path consumed them by stale-hit and left their entries stale, and
+     step_end() then wrote each dead temp's freed host buffer — the
+     B2.2 class through a new door. Fix (d588198): rvalue
+     accumulate(Matrix&&) overload — expression args bind
+     automatically, 29 named locals std::move'd, the temp SELF-DISCARDS
+     on consumption; lvalue pass-throughs (accumulate(self->grad)) keep
+     their entries for later stale-hit/materialize readers. Confirmed
+     both directions: pre-fix deterministic crash; post-fix clean under
+     MALLOC_CHECK_=3 in both configs (receipts
+     docs/receipts_b23_mcheck_t4_20260830.txt) and the full gate above.
+     STANDING RULE (now enforced three ways): a deferred entry must
+     never outlive its host buffer — ~Variable discards data+grad,
+     backward() discards consumed non-leaf grads, and rvalue accumulate
+     discards temporaries.
+  5. [ ] The d=512 wall-clock adoption gate (CPU AVX vs B2, T=512, per
+     the validation contract) — the number that prices transfer_s1's
+     M arm and decides Rung C's engine.
 
 ## Validation contract
 
