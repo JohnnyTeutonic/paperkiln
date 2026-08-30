@@ -85,6 +85,10 @@ target_link_libraries(test_resident_parity PRIVATE microtorch)
 add_executable(test_step_residency tests/test_step_residency.cpp)
 target_link_libraries(test_step_residency PRIVATE microtorch)
 
+# B2 adoption-gate benchmark (a measurement, not a test — no add_test).
+add_executable(bench_b2 tools/bench_b2.cpp)
+target_link_libraries(bench_b2 PRIVATE microtorch)
+
 add_executable(test_cuda_ops tests/test_cuda_ops.cpp)
 target_link_libraries(test_cuda_ops PRIVATE microtorch)
 add_test(NAME step_residency COMMAND test_step_residency)
