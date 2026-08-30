@@ -34,10 +34,18 @@ def main():
     ap.add_argument("--shard", nargs=2, type=int, default=[0, 1])
     ap.parse_args()
 
+    # Idempotent on a reused VM (and on any stale /content): a leftover
+    # checkout must never masquerade as the commit under test.
+    run("rm -rf microtorch transformer_cpp")
     rc = run(f"git clone --depth 1 -b {BRANCH} {PAPERKILN} microtorch")
     rc |= run(f"git clone --depth 1 {COALFIRE} transformer_cpp")
     if rc:
         sys.exit("clone failed — was the branch pushed?")
+    # Print the EXACT commits under test — the aggregation step must
+    # refuse a log that lacks these lines (the 2026-08-30 lesson: a
+    # stale results zip validated yesterday's binary and read as green).
+    run("echo VALIDATING_PAPERKILN_COMMIT: $(git -C microtorch rev-parse HEAD)")
+    run("echo VALIDATING_COALFIRE_COMMIT: $(git -C transformer_cpp rev-parse HEAD)")
 
     with open("validate.log", "w") as log:
         p = subprocess.Popen(

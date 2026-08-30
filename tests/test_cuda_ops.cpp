@@ -484,7 +484,8 @@ int main() {
     leg5_embed_ce();
 
     if (g_failures == 0) {
-        std::printf("test_cuda_ops PASSED (B2.1a kernels + tape parity + B2.1b deferred downloads)\n");
+        std::printf("test_cuda_ops PASSED (B2.1a kernels + tape parity + "
+                    "B2.1b deferred downloads + B2.2 attention/embed/CE)\n");
         return 0;
     }
     std::printf("test_cuda_ops: %d FAILURE(S)\n", g_failures);
