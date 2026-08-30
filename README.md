@@ -118,6 +118,34 @@ citations built in. Package source: [paperkiln_fetch/](paperkiln_fetch/)
 (vendors `papers/fetch.py` verbatim; drift is CI-checkable via
 `python tools/sync_fetch_pkg.py --check`).
 
+## The crossing theorem — and the zone where no experiment can answer
+
+The registry's own results explain themselves. Sliding-window attention
+is a *nested* subclass of exact attention — this repo pins that
+**bitwise** (`tests/test_swa.cpp`: window ≥ T with sinks=0 reproduces
+full causal attention exactly). Write the gap to each class's best
+achievable loss and the comparison decomposes to
+
+    Delta(b) = A - D(b),   A = L*_swa - L*_exact >= 0  (by nesting)
+
+with `D` the difference of unclosed optimization gaps. Under nesting,
+decay, and non-increasing `D`, **Delta is monotone, crosses at most
+once (always sparse→dense, never back), and no basin is admissible** —
+which is exactly the shape the 15-seed data shows. The corollary is the
+part with teeth:
+
+    zone width  ~=  2 t SD / ( sqrt(n) |dDelta/db| )
+
+There is, for every finite seed budget, an interval of training budgets
+in which the comparison **has no answer** — and it closes only as
+√n, so halving it costs four times the seeds. At d=256 that zone opens
+around 1600 steps and has not closed by 3600. The seed lottery below is
+this corollary in anecdote form; [the theorem](atlas/THEOREM_CROSSING.md)
+is it in closed form, with its own falsifier pre-registered
+(`experiments/sparse_s1_longbudget/`): a *second* crossing at long
+budget would prove the monotonicity assumption fails, and it should
+appear if and only if the larger class overfits first.
+
 ## The seed lottery
 
 Run five copies of an *identical* experiment — same code, same corpus, same
