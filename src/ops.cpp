@@ -29,6 +29,22 @@ Var record(Matrix result, std::vector<Var> parents, std::function<void(Variable*
     return out;
 }
 
+// Forward-cached matrix (attention weights A, CE softmax P) with a
+// self-discarding deleter: under NoGrad (or no-grad inputs) record()
+// drops the backward closure, so the cache's only owner dies MID-WINDOW
+// — without the discard its deferred entry outlives the buffer and
+// step_end()'s materialize_all segfaults into freed memory (T4 gdb
+// stack, 30 Aug: step_end -> cudaMemcpyDtoH). Fourth enforcement point
+// of the lifetime rule, closing the last ownership class.
+std::shared_ptr<Matrix> cached(Matrix&& m) {
+    return std::shared_ptr<Matrix>(
+        new Matrix(std::move(m)),
+        [](Matrix* p) {
+            device::discard(*p);
+            delete p;
+        });
+}
+
 }  // namespace
 
 Var matmul(const Var& a, const Var& b) {
@@ -396,7 +412,7 @@ Var cross_entropy(const Var& logits, const std::vector<int>& targets) {
     // (P - onehot)/N contract as softmax_cross_entropy_grad_kernel.
     // B2.2: softmax + nll on-device — the [R,vocab] logits never come
     // home and the host receives ONE float; host path as fallback.
-    auto P = std::make_shared<Matrix>(R, C);
+    auto P = cached(Matrix(R, C));
     Matrix out(1, 1);
     float lossv = 0.0f;
     if (device::devops::ce_fwd(logits->data, targets.data(), *P, lossv)) {
@@ -965,7 +981,7 @@ Var fused_attention(const Var& q, const Var& k, const Var& v, float scale, size_
     // scores and ends as the attention weights. Masked entries are never
     // exponentiated — they are written as hard zeros, which is exactly
     // what the -1e9 additive mask produces after float32 underflow.
-    auto A = std::make_shared<Matrix>(device::gemm(
+    auto A = cached(device::gemm(
         q->data, &q->dev, device::Trans::N, k->data, &k->dev, device::Trans::T));
     // B2.2: masked softmax on-device when available (under deferral the
     // [T,T] scores then never cross the bus inside a step); otherwise
@@ -1076,7 +1092,7 @@ Var swa_attention(const Var& q, const Var& k, const Var& v, float scale, size_t 
         sink_hi = std::min(b0 + std::min(sinks, ii + 1), win_lo);
     };
 
-    auto A = std::make_shared<Matrix>(device::gemm(
+    auto A = cached(device::gemm(
         q->data, &q->dev, device::Trans::N, k->data, &k->dev, device::Trans::T));
     // B2.2: sparse masked softmax on-device when available; host loop
     // as the fallback (and the reference semantics).

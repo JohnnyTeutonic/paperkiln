@@ -92,7 +92,10 @@ int main(int argc, char** argv) {
     // print row-0 stats of the materialized logits. Constant row =
     // forward broken; varied row + wrong device loss = CE path broken.
     if (cuda) {
-        NoGrad ng;
+        // TAPE mode deliberately (grad machinery live, no backward
+        // called): the flat-loss manifestation is tape-mode; the NoGrad
+        // variant segfaulted instead (the closure-drop lifetime hole,
+        // now closed by cached()'s deleter — this probe re-proves it).
         device::step_begin();
         Var logits = m.forward(ids);
         const bool stale = device::host_stale(logits->data);
