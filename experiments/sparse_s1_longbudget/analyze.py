@@ -140,8 +140,17 @@ def main():
     print(f"\nH-SECOND-CROSS  significant sign changes: {len(changes)}")
     for a, b in changes:
         print(f"  crossing between b={a} and b={b}")
-    second = any(signs[i - 1][1] > 0 and signs[i][1] < 0
-                 for i in range(1, len(signs)))
+    # PREREG WORDING: "a SECOND sign change (positive -> negative) at
+    # some b in (B*, 12000]" — B* is the FIRST crossing, so a preceding
+    # negative->positive transition is required. Detecting a bare +->-
+    # would label a first crossing as a second on any trajectory that
+    # happens to start positive (caught by the three-regime smoke test,
+    # 31 Aug 2026, before any data existed).
+    first_up = next((i for i in range(1, len(signs))
+                     if signs[i - 1][1] < 0 and signs[i][1] > 0), None)
+    second = first_up is not None and any(
+        signs[i - 1][1] > 0 and signs[i][1] < 0
+        for i in range(first_up + 1, len(signs)))
     if not regime_ok:
         print("  VERDICT: UNTESTED (Threat 3 failed — the runs never "
               "reached the overfit regime)")
