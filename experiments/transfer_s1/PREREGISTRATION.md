@@ -235,6 +235,17 @@ neither alters a hypothesis, threshold, or decision rule.*
    lane shifted by +0.15 must FAIL (observed 3/5, mean outside 2 SE,
    "STUDY HALTS"). A gate that cannot fail is not a gate.
 
+3. **H-SCALAR's `|rho|` treats anti-correlation as transfer.** The
+   licensed rule adopts "scalars don't transfer" iff `|rho| < 0.5`.
+   A strongly NEGATIVE rho therefore fails the condition — i.e. counts
+   as scalars transferring — even though a reversed ranking is the
+   worst possible outcome for anyone screening at small scale. The rule
+   is NOT amended (it is licensed, and the case is unlikely given four
+   replications of a consistent direction), but `analyze.py` now emits
+   an explicit warning whenever rho <= -0.5, so the threshold can never
+   speak for that case unchallenged. Found by the smoke test's
+   scrambled regime before any data existed.
+
 ## What this cannot show
 
 One architecture family, one corpus, layers=2, T=256, one house

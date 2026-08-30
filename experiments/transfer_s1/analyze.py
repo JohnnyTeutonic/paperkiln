@@ -469,6 +469,21 @@ def main():
     scal = rho is not None and abs(rho) < SCALAR_RHO_MAX
     print(f"  'scalars don't transfer' condition: "
           f"{'MET' if scal else 'not met'} (|rho| < {SCALAR_RHO_MAX})")
+    # The licensed rule uses |rho|, which treats a strongly NEGATIVE
+    # correlation as "scalars transfer". Mathematically defensible (the
+    # ranking is predictable) but practically inverted: a reversed
+    # ranking is the worst case for anyone screening at small scale,
+    # not a success. The rule is NOT changed here — it is licensed —
+    # but a negative rho must never be reported as if it vindicated
+    # tiny-scale screening. Surfaced by the smoke test's scrambled
+    # regime (rho = -0.70), 31 Aug 2026, before any data existed.
+    if rho is not None and rho <= -SCALAR_RHO_MAX:
+        print("  *** WARNING: rho is strongly NEGATIVE. The licensed "
+              "|rho| rule reads this as 'scalars transfer', but the "
+              "M-arm ranking is the REVERSE of the S-arm ranking — "
+              "screening at small scale would select the WORST "
+              "candidate. Report this case explicitly; do not let the "
+              "threshold speak for it.")
     print("\n  HEADLINE LICENCE requires F1 adopted AND this condition met;")
     print("  if F1 is adopted and scalars ALSO transfer, the claim is the")
     print("  weaker 'tiny-scale screening transfers, scalars included'.")
