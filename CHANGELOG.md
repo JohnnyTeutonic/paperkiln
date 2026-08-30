@@ -26,6 +26,15 @@ Notable changes to microtorch. Format loosely follows
   downloading into the freed pointer) is fixed by the new
   `device::discard()` primitive, confirmed both directions on T4. Next:
   B2.3 (optimizer + accumulate on-device).
+- **Fixed: deferred activations feeding a gemm uploaded stale host data.**
+  `window_operand` consulted the B2.1b value cache only for slotless
+  operands; every Variable's data carries a slot, so under deferral a gemm
+  reading a deferred activation uploaded the untouched (zero) host buffer.
+  Real models trained at exactly ln(vocab) loss while the 285-check suite
+  passed — the bug needs "deferred activation -> slotted gemm with no
+  intervening materialize", a shape no test had. The stale hit is now
+  universal; regression leg 7 covers the shape. Found by the adoption
+  benchmark, which was the first end-to-end run at realistic vocab/width.
 - **CUDA B2.3 complete + T4-VALIDATED (30 Aug)** — full step residency:
   persistent device optimizer state (B2.3b), device-side gradient
   accumulation with the materialize choke moved to the step boundary

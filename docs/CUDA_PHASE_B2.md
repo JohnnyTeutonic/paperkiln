@@ -363,6 +363,39 @@ Not a constraint until far above this ladder.
   5. [ ] The d=512 wall-clock adoption gate (CPU AVX vs B2, T=512, per
      the validation contract) — the number that prices transfer_s1's
      M arm and decides Rung C's engine.
+     **FIRST BENCH RUN EXPOSED A CORRECTNESS BUG THE WHOLE SUITE
+     MISSED (30 Aug 2026).** The gate is a measurement, but it was the
+     first end-to-end training run at REAL shapes (vocab 4096, d=256/512,
+     T=512, L=4). Its B2 arm clocked 19-25x faster than CPU while sitting
+     at loss EXACTLY ln(4096) = 8.3178 — uniform logits, no learning —
+     at every width, depth (even L=0), and step. No timing was banked.
+     Bisection by engine ladder (cpu / gpu / ops / res / b2, shared seeds
+     and data, per-step losses): cpu, gpu, ops and res agree step-for-step
+     to +-1e-4 and reach identical final loss; ONLY deferral breaks, and
+     it breaks the first forward. A probe printing device-CE vs host-CE on
+     materialized logits plus row stats gave the signature: logits
+     row0 min = max = mean = 0.0 with stale=1 — the device buffer itself
+     held zeros.
+     ROOT CAUSE (`window_operand`, cuda_resident.cu): the value-cache
+     stale-hit check sat INSIDE the slotless branch. Every Variable's
+     data passes a slot (ops call gemm with `&var->dev`), so under
+     deferral a gemm consuming a deferred activation took the slot path,
+     skipped the cache, and uploaded the untouched host buffer — zeros —
+     into its DevState. The function's own comment already stated the
+     rule ("a stale hit is mandatory — host is behind"); it was simply
+     implemented in one branch of two. Fix (42725a7): the stale hit is
+     UNIVERSAL and outranks both the slot and the B1 table.
+     WHY 285 CHECKS PASSED ANYWAY — the blind spot, now closed: legs 2-3
+     compose tapes with NO matmul after a device op, every unit leg
+     materializes between stages, and every test shape is tiny. The bug
+     needs exactly "deferred activation -> slotted gemm, no intervening
+     materialize". Leg 7 (e9da26d) is that shape, twice
+     (layernorm->matmul->mean and embedding->matmul->CE), pinning loss
+     and both grads defer vs write-through.
+     STANDING LESSON: a numerics suite that only runs at test shapes
+     certifies numerics at test shapes. The adoption benchmark doubles as
+     the first realistic-shape correctness probe and should be treated as
+     part of the gate, not as a postscript to it.
 
 ## Validation contract
 
