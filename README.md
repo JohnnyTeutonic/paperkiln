@@ -70,22 +70,24 @@ Minimal autograd engines are a well-populated genre. Six things here are not:
    (`tests/test_flex.cpp`).
 3. **The extraction is measured, not vibed.** A paper *mentions* many
    alternatives; it *uses* one. The contribution-vs-mention scorer separates
-   them with explainable cues and is benchmarked on **36 real papers** with
-   ground-truth architectures: grouped AUROC 0.900 [bootstrap 95% CI
-   0.775–1.000] vs 0.833 for naive first-match, pooled 0.815 [0.736–0.900]
-   vs 0.765, and **two documented wrong assertions in 83 verdicts** —
+   them with explainable cues and is benchmarked on **40 real papers** with
+   ground-truth architectures: grouped AUROC 0.905 [bootstrap 95% CI
+   0.789–1.000] vs 0.841 for naive first-match, pooled 0.817 [0.735–0.898]
+   vs 0.778, and **three documented wrong assertions in 92 verdicts** —
    explicit rejections ("we choose not to adopt SwiGLU") veto a candidate
    outright, and close calls abstain and ask the human. The zero-wrong
-   record held for 29 papers and broke twice on the next four, both times
-   the same way: **evidence for what a paper USES is often indirect, and
-   indirect evidence loses to any direct-looking mention.** Megatron-LM
-   states its activation only by attributing it to the models it copies;
-   Cerebras-GPT's true positional encoding is inherited from "a GPT-3-like
-   architecture" while RoPE appears in the paper purely as *future work*.
-   Both are registered, diagnosed and gated (`KNOWN_WRONG` — new failures
-   still fail the build), because a benchmark that never fails is not
-   measuring anything, and growing this one from 26 to 33 papers is what
-   found them. The benchmark, its CIs and its growth protocol ship in
+   record held for 29 papers and broke three times over the next eleven,
+   in **two distinct ways**. Twice it was evidential — *what a paper uses
+   is often stated indirectly, and indirect evidence loses to any
+   direct-looking mention*: Megatron-LM states its activation only by
+   attributing it to the models it copies, and Cerebras-GPT's true
+   positional encoding is inherited from "a GPT-3-like architecture"
+   while RoPE appears purely as *future work*. Once it was lexical:
+   LaMDA's "gated-GELU" is GeGLU, and the scorer matched the substring
+   "GELU". All three are registered with diagnoses and named fixes
+   (`KNOWN_WRONG` — new failures still fail the build), because a
+   benchmark that never fails is not measuring anything, and growing this
+   one from 26 to 40 papers is what found them. The benchmark, its CIs and its growth protocol ship in
    the repo.
 4. **Falsifiers ship inside the modules.** Novel mechanisms carry the experiment
    designed to kill them — `SurpriseRoutedAttention::shuffle_predictor` feeds the

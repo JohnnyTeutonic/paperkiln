@@ -85,6 +85,21 @@ KNOWN_WRONG: dict[tuple[str, str], str] = {
         "attention). Same root as the Megatron case: the evidence for "
         "what a paper USES is often indirect, and indirect evidence "
         "currently loses to any direct-looking mention.",
+    ("2201.08239", "activation"):
+        "COMPOUND FLAVOR NAME SHADOWED BY ITS OWN SUBSTRING (found "
+        "2026-08-31). LaMDA states 'gated-GELU activation as described "
+        "in Raffel et al.' — gated-GELU IS GeGLU. The scorer matched the "
+        "substring 'GELU' and applied gelu. This is a THIRD root cause, "
+        "unrelated to the other two: they are about which evidence wins, "
+        "this one is lexical. The gated-X family ('gated-GELU', "
+        "'gated-linear', 'gated-ReLU') names the GLU variant of X, so a "
+        "bare-X match inside a gated-X token is always wrong. Fix: "
+        "longest-match-wins over the flavor lattice plus a gated-X -> "
+        "XGLU normalisation, both in fetch.py's FLAVOR matching. Note "
+        "the bench already counts 'family-level assertions (GLU naming "
+        "soup)' — that counter was tracking the neighbourhood of this "
+        "bug without catching it, because no truth-set paper used the "
+        "gated-X spelling until this one.",
 }
 
 TRUTH: dict[str, dict[str, str | None]] = {
@@ -182,6 +197,42 @@ TRUTH: dict[str, dict[str, str | None]] = {
     # replaced flavor is named in the same clause, and an ablation table
     # lists "+ SwiGLU in FFN" as an adopted design principle.
     "2308.12950": {"positional": "rope"},                # Code Llama
+    "2408.00118": {"norm": "rmsnorm", "activation": "geglu",
+                   "positional": "rope"},                # Gemma 2
+    # ^ all three stated twice over — prose ("the use of Rotary Position
+    # Embeddings (RoPE), and the approximated GeGLU non-linearity";
+    # "we use RMSNorm to normalize the input and output of each
+    # transformer sub-layer") and an architecture table row
+    # ("Non-linearity & GeGLU"). The easy end of the corpus, included
+    # deliberately: a truth set of only hard cases measures the wrong
+    # thing.
+    "2405.04434": {"norm": "rmsnorm", "activation": "swiglu",
+                   "positional": "rope"},                # DeepSeek-V2
+    "2403.17297": {"positional": "rope"},                # InternLM2
+    # ^ positional is first-person and unambiguous ("we adjusted the
+    # Rotary Positional Embedding (RoPE) base from 50,000 to
+    # 1,000,000"). Norm and activation are DELIBERATELY OMITTED even
+    # though InternLM2 is RMSNorm/SwiGLU in fact: the paper's only
+    # statement of them is a related-work sentence about a DIFFERENT
+    # model ("LLaMA builds on Transformer architecture by replacing
+    # LayerNorm with RMSNorm and setting the activation function to
+    # SwiGLU"). Scoring that as InternLM2's own choice would reward the
+    # extractor for the exact confusion the Megatron case penalises.
+    "2201.08239": {"activation": "geglu",
+                   "positional": None},                  # LaMDA
+    # ^ "relative attention as described in T5, and gated-GELU
+    # activation as described in Raffel et al." — one clause gives an
+    # in-lattice activation (gated-GELU = GeGLU) and an out-of-lattice
+    # positional (relative), so the same sentence must produce an
+    # assertion and an abstention.
+    # ^ the explicit-inheritance case: "For other tiny details (e.g.,
+    # layer normalization and the activation function in FFNs), unless
+    # specifically stated, DeepSeek-V2 follows the settings of
+    # DeepSeek-V1" — and DeepSeek-V1 (2401.02954) is already in this
+    # truth set with rmsnorm/swiglu. Positional is rope in a DECOUPLED
+    # variant, stated alongside a discussion of RoPE's incompatibility
+    # with low-rank KV compression — adoption and objection in the same
+    # passage, which is the hardest shape for a mention scorer.
     # ^ states RoPE via its base-period modification ("increasing the
     # base period of rotary position embeddings"). Norm/activation
     # omitted: inherited from Llama 2 without restatement.
