@@ -184,6 +184,30 @@ pre-registration on both sides of the scale gap — is whether the
 things tiny-scale labs actually publish (signs, shapes, crossovers)
 are the kind of quantity that survives a width change at all.
 
+## Compute price (the CUDA gate's whole purpose — measured 31 Aug 2026)
+
+CUDA Phase B is complete and adopted: B2 beats CPU AVX **30.5x at
+d=512** (21x at d=256) on an identically-converging computation
+(docs/receipts_b2gate_t4_20260831.txt). That measurement is at
+T=512/L=4; this study's arms run T=256/L=2, so the per-step cost is
+roughly a quarter of it (attention is quadratic in T, depth halves the
+rest). ESTIMATE, not a measurement — the M arm's true ms/step gets
+measured in the bridge cells (Threat 1) before the panel launches:
+
+| arm | est. ms/step | 3600 steps | runs (P1, 12 seeds x 2 lanes) | est. T4-hours |
+|---|---|---|---|---|
+| M (d=512) | ~180 | ~11 min | 24 | ~4.3 |
+| L (d=1024) | ~600 | ~36 min | 6 (3 seeds x 2 lanes) | ~3.6 |
+
+Under the 4-concurrent-session cap that is roughly **2-3 hours of wall
+clock for the P1 spine at both new scales**, and the full three-edge
+panel at M is ~10 T4-hours. On CPU the M arm alone would have been
+~130 hours — which is why the ladder was gated on Phase B and not
+merely helped by it. Colab discipline: tools/colab_supervisor
+(checkpoint interval well under reclaim interval, events.jsonl +
+resume relayed every tick) plus tools/colab_reap_orphans.py against
+leaked sessions.
+
 ## Execution sketch (priced at licence time)
 
 S arm: banked. Bridge: 6 runs (3 seeds × 2 lanes) — CUDA, cheap.
