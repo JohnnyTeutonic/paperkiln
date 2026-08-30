@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 
 MODEL_REQUIRED = ("family", "d", "layers", "seed")
@@ -105,15 +106,49 @@ def validate(path: str, in_flight: bool) -> list:
     return errs
 
 
+def check_provenance(path: str) -> list:
+    """Receipts must name the code that made them (docs/EVENTS_SPEC.md).
+    Looks for provenance.json beside the events file — either in the run
+    directory or named <run>_provenance.json next to a flattened copy."""
+    d = os.path.dirname(os.path.abspath(path))
+    base = os.path.basename(path)
+    stem = base[:-len("_events.jsonl")] if base.endswith("_events.jsonl") \
+        else ""
+    cands = [os.path.join(d, "provenance.json")]
+    if stem:
+        cands.append(os.path.join(d, stem + "_provenance.json"))
+    for c in cands:
+        if os.path.exists(c):
+            try:
+                with open(c, encoding="utf-8") as f:
+                    p = json.load(f)
+            except (OSError, json.JSONDecodeError) as e:
+                return [f"provenance unreadable: {e}"]
+            errs = []
+            if not p.get("repo_commit"):
+                errs.append("provenance has no repo_commit")
+            if p.get("repo_dirty"):
+                errs.append("provenance says repo_dirty=true — this run is "
+                            "not reproducible from any commit")
+            return errs
+    return ["no provenance.json beside the receipt (run mtsweep, or see "
+            "docs/EVENTS_SPEC.md)"]
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("files", nargs="+")
     ap.add_argument("--in-flight", action="store_true",
                     help="accept files without a done event")
+    ap.add_argument("--require-provenance", action="store_true",
+                    help="also require a provenance.json naming a clean "
+                         "commit — the Atlas submission setting")
     args = ap.parse_args()
     bad = 0
     for path in args.files:
         errs = validate(path, args.in_flight)
+        if args.require_provenance:
+            errs = errs + check_provenance(path)
         if errs:
             bad += 1
             print(f"FAIL {path}")

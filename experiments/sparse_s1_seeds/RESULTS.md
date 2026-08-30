@@ -7,6 +7,22 @@ runs in `receipts/` (validated by `tools/validate_events.py`, 20/20
 pass); driver.log, atlas_rows.jsonl, cells.jsonl included. mtsweep
 exit 0, 2026-08-30 18:24 AEST.*
 
+## Provenance note (added 31 Aug 2026, after the fact)
+
+These 20 runs were produced by a locally built `~/mtrel/mtstudio`
+whose source commit was never recorded, so **these receipts cannot
+name the binary that made them**. The numbers stand — the events
+streams are complete and validate — but the runs are not reproducible
+from a commit, and this file says so rather than leaving a reader to
+assume otherwise. The gap was found on 31 Aug when a Colab sweep
+silently ran a CPU-only binary because its CUDA path existed only in
+an uncommitted working copy. `mtsweep` now writes `provenance.json`
+(commit, dirty flag, binary sha256) beside every `result.json`, and
+`validate_events.py --require-provenance` refuses receipts without a
+clean commit — the setting for every future pre-registered experiment.
+Re-running this experiment under the new discipline is cheap now that
+CUDA Phase B is adopted, and is the way to close the note.
+
 ## Verdict
 
 **B\*(256) is a DISTRIBUTION at this protocol's resolution.** The

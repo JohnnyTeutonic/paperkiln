@@ -41,9 +41,11 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 import itertools
 import json
 import os
+import platform
 import statistics
 import subprocess
 import sys
@@ -168,6 +170,52 @@ def materialise(sweep, runs, out_root):
     return spec_paths
 
 
+def _git(args, cwd):
+    try:
+        p = subprocess.run(["git"] + args, cwd=cwd, capture_output=True,
+                           text=True, timeout=30)
+        return p.stdout.strip() if p.returncode == 0 else ""
+    except Exception:
+        return ""
+
+
+def build_provenance(binary, sweep_path):
+    """WHICH CODE PRODUCED THIS RECEIPT.
+
+    Found the hard way (31 Aug 2026): a whole night of Colab sweeps ran a
+    CPU-only mtstudio because the CUDA wiring lived in an UNCOMMITTED
+    working copy, and nothing in the receipt could have told us. The
+    events stream records what the run did; it never recorded what built
+    it. A registry whose receipts cannot name their own binary is one
+    silent rebuild away from unreproducible.
+
+    Written beside result.json in every run directory.
+    """
+    repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    sha = ""
+    try:
+        h = hashlib.sha256()
+        with open(binary, "rb") as f:
+            for chunk in iter(lambda: f.read(1 << 20), b""):
+                h.update(chunk)
+        sha = h.hexdigest()
+    except OSError:
+        pass
+    dirty = _git(["status", "--porcelain"], repo)
+    return {
+        "repo_commit": _git(["rev-parse", "HEAD"], repo),
+        "repo_dirty": bool(dirty),
+        "repo_dirty_files": [ln[3:] for ln in dirty.splitlines()][:40],
+        "binary_path": binary,
+        "binary_sha256": sha,
+        "binary_bytes": (os.path.getsize(binary)
+                         if os.path.exists(binary) else 0),
+        "sweep": os.path.abspath(sweep_path),
+        "platform": platform.platform(),
+        "python": sys.version.split()[0],
+    }
+
+
 def find_mtstudio(cli):
     for cand in ([cli] if cli else []) + [
             "./mtstudio", "build/mtstudio",
@@ -177,7 +225,7 @@ def find_mtstudio(cli):
     raise SystemExit("mtstudio binary not found; pass --mtstudio PATH")
 
 
-def run_all(spec_paths, binary, jobs, omp=None):
+def run_all(spec_paths, binary, jobs, omp=None, provenance=None):
     # omp overrides the even split — the polite profile for a machine
     # someone is USING (e.g. streaming): --jobs 1 --omp 4 leaves half
     # the cores untouched instead of soaking all of them.
@@ -192,6 +240,15 @@ def run_all(spec_paths, binary, jobs, omp=None):
             return (spec_path, "resumed-skip")
         r = subprocess.run([binary, "run", spec_path], env=env,
                            stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        # Provenance rides WITH the receipt, not only in the sweep root:
+        # run dirs are what get copied into experiments/*/receipts/.
+        if provenance is not None and os.path.isdir(out_dir):
+            try:
+                with open(os.path.join(out_dir, "provenance.json"), "w",
+                          encoding="utf-8") as pf:
+                    json.dump(provenance, pf, indent=2)
+            except OSError:
+                pass
         return (spec_path, "ok" if r.returncode == 0 else f"EXIT {r.returncode}")
 
     results = []
@@ -331,6 +388,10 @@ def main():
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--mtstudio")
     ap.add_argument("--selftest", action="store_true")
+    ap.add_argument("--require-clean", action="store_true",
+                    help="refuse to run from a dirty working tree — the "
+                         "setting for any pre-registered experiment, whose "
+                         "receipts must be reproducible from a commit")
     args = ap.parse_args()
     if args.selftest:
         sys.exit(selftest())
@@ -349,7 +410,19 @@ def main():
             print(f"  {p}")
         return
     binary = find_mtstudio(args.mtstudio)
-    run_all(spec_paths, binary, args.jobs, args.omp)
+    prov = build_provenance(binary, args.sweep)
+    if prov["repo_dirty"]:
+        msg = (f"WORKING TREE IS DIRTY ({len(prov['repo_dirty_files'])} "
+               f"files) — these runs will not be reproducible from any "
+               f"commit. Receipts will record repo_dirty=true.")
+        if args.require_clean:
+            raise SystemExit("REFUSING TO RUN: " + msg +
+                             " (--require-clean)")
+        print("WARNING: " + msg, file=sys.stderr)
+    with open(os.path.join(out_root, "provenance.json"), "w",
+              encoding="utf-8") as f:
+        json.dump(prov, f, indent=2)
+    run_all(spec_paths, binary, args.jobs, args.omp, prov)
     aggregate(runs, spec_paths, names, out_root)
 
 

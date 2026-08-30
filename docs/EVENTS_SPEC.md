@@ -110,6 +110,36 @@ two-segment files). Rules:
 | `tools/seed_lottery.py` | model.seed + eval trajectory | seed-dependence exhibits |
 | pre-registered `analyze.py` | everything | RESULTS.md with receipts |
 
+## Provenance — which code produced this receipt
+
+The events stream records what a run DID. Until 31 Aug 2026 nothing
+recorded what BUILT it, and that hole cost a night: a full Colab sweep
+ran a CPU-only `mtstudio` because the CUDA wiring lived in an
+uncommitted working copy, and no receipt could have revealed it. A
+registry whose receipts cannot name their own binary is one silent
+rebuild away from unreproducible.
+
+`mtsweep` therefore writes **`provenance.json` beside `result.json` in
+every run directory** (and once at the sweep root):
+
+```json
+{
+  "repo_commit": "89760cddcb97...",
+  "repo_dirty": false,
+  "repo_dirty_files": [],
+  "binary_path": "/content/mtstudio",
+  "binary_sha256": "00c496e9...",
+  "binary_bytes": 1506008,
+  "sweep": "/abs/path/sweep.json",
+  "platform": "...", "python": "3.11.x"
+}
+```
+
+`mtsweep --require-clean` REFUSES to run from a dirty tree. That is the
+setting for any pre-registered experiment: a receipt whose
+`repo_dirty` is true is honest about its results and useless as a
+reproduction target.
+
 ## Submission standard (Atlas)
 
 A registry submission is: the `findings.jsonl` row (mandatory `scope`,
