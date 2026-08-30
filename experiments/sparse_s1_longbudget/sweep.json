@@ -1,0 +1,20 @@
+{
+  "_comment": "sparse_s1_longbudget: does the undetermined zone close, and is there a SECOND crossing? Identical to sparse_s1_boundary/seeds except steps 3600 -> 12000 (~30 epochs, past the overfit onset those runs never reached) and eval_every 100 -> 200. Ten NEW seeds {41..50}, never used in any S1 experiment. Venue CUDA (only affordable because of Phase B: ~90 CPU-hours becomes ~5 GPU-hours). Falsification test of atlas/THEOREM_CROSSING.md assumption (iii). Pre-registered BEFORE any run.",
+  "base": {
+    "arch": {"preset": "gpt2-nano",
+             "custom": {"d": 256, "heads": 8,
+                        "window": 64, "sinks": 1}},
+    "data": {"corpus": "/content/data/corpus.txt",
+             "vocab": "/content/data/chat7b.gguf",
+             "vocab_cap": 4096, "T": 256},
+    "train": {"batch": 4, "lr": 0.001, "steps": 12000, "eval_every": 200,
+              "checkpoint_every": 1000000, "gradmap_every": 0},
+    "export": {"formats": []}
+  },
+  "factors": {
+    "arch.custom.attention": ["exact", "swa"]
+  },
+  "design": "grid",
+  "seeds": [41, 42, 43, 44, 45, 46, 47, 48, 49, 50],
+  "out_root": "/content/transfer_out/longbudget"
+}
