@@ -475,6 +475,40 @@ __global__ void k_attn_softmax_bwd(float* ds, const float* A, float scale,
         dr[j] = Ar[j] != 0.0f ? scale * Ar[j] * (dr[j] - dot) : 0.0f;
 }
 
+// ---- optimizers (B2.3a: write-through parity seam) ------------------
+//
+// Elementwise, in place on p (and m/v/vel). The bias-correction factors
+// c1/c2 are computed HOST-side (std::pow once per step) and passed in,
+// so the per-element math is bit-for-bit the nn.cpp loop's formula.
+__global__ void k_adamw_step(float* p, const float* g, float* m, float* v,
+                             float lr, float b1, float b2, float c1,
+                             float c2, float eps, float wd, size_t n) {
+    for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n;
+         i += static_cast<size_t>(gridDim.x) * blockDim.x) {
+        const float gi = g[i];
+        const float mi = b1 * m[i] + (1.0f - b1) * gi;
+        const float vi = b2 * v[i] + (1.0f - b2) * gi * gi;
+        m[i] = mi;
+        v[i] = vi;
+        const float update = (mi / c1) / (sqrtf(vi / c2) + eps);
+        p[i] -= lr * (update + wd * p[i]);
+    }
+}
+
+__global__ void k_sgd_step(float* p, const float* g, float* vel, float lr,
+                           float mu, size_t n) {
+    for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n;
+         i += static_cast<size_t>(gridDim.x) * blockDim.x) {
+        float gi = g[i];
+        if (vel) {
+            const float vi = mu * vel[i] + gi;
+            vel[i] = vi;
+            gi = vi;
+        }
+        p[i] -= lr * gi;
+    }
+}
+
 // LayerNorm forward: per row mu, var, rstd; xhat cached for backward
 // exactly as the CPU op caches it (ops.cpp layernorm).
 __global__ void k_layernorm_fwd(const float* x, const float* gamma,
@@ -899,6 +933,47 @@ bool ce_bwd(const Matrix& P, const int* targets, float g, Matrix& dl) {
     k_ce_bwd<<<ew_grid(n), NTHREADS>>>(dP.d, dt.d, g, ddl.d, C, n);
     cuda_check(cudaGetLastError(), "ce_bwd");
     ddl.finish();
+    return true;
+}
+
+// B2.3a optimizer steps: write-through parity seam (p/m/v round-trip
+// the bus every step — SLOWER than host on purpose for now; persistent
+// device optimizer state and resident params are B2.3b, exactly the
+// B2.1a -> B2.1b staging this codebase already follows).
+bool adamw_step(Matrix& p, const Matrix& g, Matrix& m, Matrix& v, float lr,
+                float b1, float b2, float c1, float c2, float eps,
+                float wd) {
+    if (!active()) return false;
+    const size_t n = p.rows() * p.cols();
+    In dg(g.get_data(), n);
+    Out dp(p.get_data(), n, /*need_current=*/true);
+    Out dm(m.get_data(), n, /*need_current=*/true);
+    Out dv(v.get_data(), n, /*need_current=*/true);
+    k_adamw_step<<<ew_grid(n), NTHREADS>>>(dp.d, dg.d, dm.d, dv.d, lr, b1,
+                                           b2, c1, c2, eps, wd, n);
+    cuda_check(cudaGetLastError(), "adamw_step");
+    dp.finish();
+    dm.finish();
+    dv.finish();
+    return true;
+}
+
+bool sgd_step(Matrix& p, const Matrix& g, Matrix* vel, float lr, float mu) {
+    if (!active()) return false;
+    const size_t n = p.rows() * p.cols();
+    In dg(g.get_data(), n);
+    Out dp(p.get_data(), n, /*need_current=*/true);
+    if (vel) {
+        Out dvel(vel->get_data(), n, /*need_current=*/true);
+        k_sgd_step<<<ew_grid(n), NTHREADS>>>(dp.d, dg.d, dvel.d, lr, mu, n);
+        cuda_check(cudaGetLastError(), "sgd_step");
+        dp.finish();
+        dvel.finish();
+    } else {
+        k_sgd_step<<<ew_grid(n), NTHREADS>>>(dp.d, dg.d, nullptr, lr, mu, n);
+        cuda_check(cudaGetLastError(), "sgd_step");
+        dp.finish();
+    }
     return true;
 }
 

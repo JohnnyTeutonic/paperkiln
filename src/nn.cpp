@@ -273,6 +273,11 @@ void SGD::step() {
     for (size_t k = 0; k < params_.size(); ++k) {
         Var& p = params_[k];
         if (p->grad.rows() == 0) continue;
+        // B2.3a: device step when available; host loop is the reference.
+        if (device::devops::sgd_step(p->data, p->grad,
+                                     mu_ != 0.0f ? &vel_[k] : nullptr, lr,
+                                     mu_))
+            continue;
         for (size_t i = 0; i < p->data.rows(); ++i)
             for (size_t j = 0; j < p->data.cols(); ++j) {
                 float g = p->grad(i, j);
@@ -307,6 +312,10 @@ void AdamW::step() {
     for (size_t k = 0; k < params_.size(); ++k) {
         Var& p = params_[k];
         if (p->grad.rows() == 0) continue;
+        // B2.3a: device step when available; host loop is the reference.
+        if (device::devops::adamw_step(p->data, p->grad, m_[k], v_[k], lr,
+                                       b1_, b2_, c1, c2, eps_, wd_))
+            continue;
         for (size_t i = 0; i < p->data.rows(); ++i)
             for (size_t j = 0; j < p->data.cols(); ++j) {
                 const float g = p->grad(i, j);

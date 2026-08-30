@@ -187,6 +187,14 @@ bool embed_gather(const Matrix& table, const int* ids, size_t n_ids,
 bool ce_fwd(const Matrix& logits, const int* targets, Matrix& P,
             float& loss);
 bool ce_bwd(const Matrix& P, const int* targets, float g, Matrix& dl);
+// B2.3a: optimizer steps on device, write-through parity seam (state
+// round-trips per step for now; persistent device state is B2.3b).
+// c1/c2 are the host-computed bias corrections so the per-element math
+// matches nn.cpp exactly.
+bool adamw_step(Matrix& p, const Matrix& g, Matrix& m, Matrix& v, float lr,
+                float b1, float b2, float c1, float c2, float eps,
+                float wd);
+bool sgd_step(Matrix& p, const Matrix& g, Matrix* vel, float lr, float mu);
 bool layernorm_fwd(const Matrix& x, const Matrix& gamma, const Matrix& beta,
                    float eps, Matrix& y, Matrix& xhat,
                    std::vector<float>& rstd);

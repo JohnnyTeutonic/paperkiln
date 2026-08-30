@@ -26,6 +26,11 @@ Notable changes to microtorch. Format loosely follows
   downloading into the freed pointer) is fixed by the new
   `device::discard()` primitive, confirmed both directions on T4. Next:
   B2.3 (optimizer + accumulate on-device).
+- **CUDA B2.3a: optimizer steps on device (write-through parity seam)** —
+  `k_adamw_step`/`k_sgd_step` with host-computed bias corrections so the
+  math matches nn.cpp verbatim; real SGD/AdamW try the devops path per
+  param with host loops as reference; leg 6 drives 5-step trajectories.
+  Persistent device state (B2.3b) and device-side accumulate (B2.3c) next.
 - **Llama-family models** (`nn::Llama`): RMSNorm, RoPE, SwiGLU, GQA, tied
   embeddings; HF-native parameter names; module-level FD gradchecks.
 - **mtstudio**: spec-driven run driver (JSON spec -> train -> eval -> export),

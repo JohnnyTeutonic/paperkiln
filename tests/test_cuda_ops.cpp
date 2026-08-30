@@ -27,6 +27,7 @@
 
 #include "microtorch/device.hpp"
 #include "microtorch/device_cache.hpp"
+#include "microtorch/nn.hpp"
 #include "microtorch/ops.hpp"
 
 namespace mt = microtorch;
@@ -466,6 +467,43 @@ void leg5_embed_ce() {
           max_abs_diff(off.gt, def.gt));
 }
 
+// B2.3a: optimizer steps on device (write-through parity seam). Drive
+// the REAL optimizers over multi-step trajectories with fresh grads per
+// step — state (m/v/vel) must track bit-for-tolerance across steps, not
+// just one update.
+void leg6_optimizers() {
+    std::printf("-- leg 6: optimizer steps (B2.3a) --\n");
+    using mt::Var;
+    const size_t R6 = 13, C6 = 17, STEPS = 5;
+
+    auto drive = [&](bool adam) {
+        Var p = mt::make_var(filled(R6, C6, 90), true);
+        std::vector<mt::Var> ps{p};
+        mt::nn::AdamW aw(ps, 0.01f, 0.9f, 0.999f, 1e-8f, 0.01f);
+        mt::nn::SGD sgd(ps, 0.01f, 0.9f);
+        for (size_t s = 0; s < STEPS; ++s) {
+            p->grad = filled(R6, C6, static_cast<unsigned>(91 + s));
+            if (adam)
+                aw.step();
+            else
+                sgd.step();
+        }
+        return p->data;
+    };
+
+    for (int adam = 0; adam < 2; ++adam) {
+        device::set_device_ops(false);
+        Matrix off = drive(adam == 1);
+        device::set_device_ops(true);
+        Matrix on = drive(adam == 1);
+        device::set_device_ops(false);
+        const char* name = adam ? "adamw 5-step trajectory"
+                                : "sgd+momentum 5-step trajectory";
+        check(max_abs_diff(off, on) <= 1e-5, name, max_abs_diff(off, on));
+    }
+    device::set_device_ops(true);
+}
+
 }  // namespace
 
 int main() {
@@ -482,6 +520,7 @@ int main() {
     leg3_deferred();
     leg4_attention();
     leg5_embed_ce();
+    leg6_optimizers();
 
     if (g_failures == 0) {
         std::printf("test_cuda_ops PASSED (B2.1a kernels + tape parity + "

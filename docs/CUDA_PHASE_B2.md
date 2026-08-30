@@ -276,7 +276,36 @@ Not a constraint until far above this ladder.
   discarded or materialized — never left stale.
 - **B2.3** AdamW/SGD on device; optimizer state uploads once at
   construction; checkpoint = explicit materialize sweep. Full step
-  resident.
+  resident. Staged like B2.1a -> B2.1b:
+  1. [x] **B2.3a (30 Aug): write-through parity seam.** `k_adamw_step`
+     / `k_sgd_step` (bias corrections c1/c2 computed host-side so the
+     per-element math is the nn.cpp formula verbatim); SGD::step and
+     AdamW::step try the devops path per param, host loops stay as
+     fallback + reference. State round-trips the bus each step — slower
+     than host BY DESIGN at this stage; the point is a parity-testable
+     seam. Residency-transparent: host state after a device step is
+     identical to the host loop's, so the existing mutate->re-upload
+     contract is untouched. test_cuda_ops leg 6 drives both real
+     optimizers over 5-step trajectories with fresh grads per step
+     (state must track across steps, not one update). Both TUs nvcc
+     clean; CPU syntax clean; T4 pending next validate run.
+  2. [ ] **B2.3b: persistent device optimizer state.** m/v/vel live on
+     device (uploaded once at construction / resume), p updated in its
+     resident slot, host p refreshed only at the step boundary or an
+     explicit checkpoint materialize sweep. Grad arrives via the value
+     cache (device-side accumulate below) so the whole
+     backward->optimizer edge stays on-device. LIFETIME RULE from the
+     B2.2 bug: any deferred output that dies before step_end() must be
+     discarded or materialized — optimizer state is long-lived and
+     owner-managed, so it must NOT ride the value cache keyed by host
+     pointers; give it owned DBufs.
+  3. [ ] **B2.3c: device-side accumulate.** Variable::accumulate keeps
+     grad on-device (axpy into a grad slot) inside the step window;
+     the materialize choke moves from every accumulate to the
+     clip/checkpoint boundary. clip_grad_norm needs a device norm
+     reduction (or materializes once).
+  4. [ ] T4 validation + the d=512 wall-clock adoption gate (the
+     number that prices transfer_s1's M arm).
 
 ## Validation contract
 
