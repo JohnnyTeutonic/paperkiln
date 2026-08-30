@@ -223,6 +223,23 @@ Not a constraint until far above this ladder.
   tools/parity_model.hpp (uncommitted WIP present, 28 Aug).
 - **B2.2** embedding + CE: the forward touches host only at the loss
   scalar.
+  IN PROGRESS 30 Aug — the attention half is code-complete: fused
+  (causal/block) and swa (window+sinks) masked softmax moved on-device
+  (`k_attn_masked_softmax` / `k_swa_masked_softmax` + shared
+  `k_attn_softmax_bwd`; one block per row, visible ranges computed
+  exactly as the ops.cpp host loops compute them, masked entries hard
+  zeros). All four former forced-materialize sites in ops.cpp now try
+  the devops path first and keep the host loop as fallback + reference
+  semantics; the backward fallbacks materialize A defensively. In-place
+  via the vcache `Out(need_current)` seam, so under deferral the [T,T]
+  scores/weights never cross the bus inside a step — this was the
+  biggest remaining forced materialize. `test_cuda_ops` leg 4: three
+  flavors x {devops-off reference, devops-on, defer} at leg-2
+  tolerances. Local checks: both .cu TUs compile clean (nvcc 12.6,
+  `-DMICROTORCH_CUDA`), CPU side g++ -fsyntax-only clean. T4 validation
+  rides the next colab_cuda_validate.sh run (legs already rerun
+  test_cuda_ops under DEFER=1, so leg 4 is covered with no script
+  change). REMAINING: embedding + CE.
 - **B2.3** AdamW/SGD on device; optimizer state uploads once at
   construction; checkpoint = explicit materialize sweep. Full step
   resident.

@@ -50,6 +50,13 @@ bool gelu_fwd(const Matrix&, Matrix&) { return false; }
 bool gelu_bwd(const Matrix&, const Matrix&, Matrix&) { return false; }
 bool softmax_fwd(const Matrix&, Matrix&) { return false; }
 bool softmax_bwd(const Matrix&, const Matrix&, Matrix&) { return false; }
+bool attn_masked_softmax(Matrix&, float, size_t, bool) { return false; }
+bool swa_masked_softmax(Matrix&, float, size_t, size_t, size_t) {
+    return false;
+}
+bool attn_softmax_bwd_inplace(Matrix&, const Matrix&, float) {
+    return false;
+}
 bool layernorm_fwd(const Matrix&, const Matrix&, const Matrix&, float,
                    Matrix&, Matrix&, std::vector<float>&) { return false; }
 bool layernorm_bwd(const Matrix&, const Matrix&, const std::vector<float>&,

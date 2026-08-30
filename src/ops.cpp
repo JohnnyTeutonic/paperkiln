@@ -909,28 +909,30 @@ Var fused_attention(const Var& q, const Var& k, const Var& v, float scale, size_
     // what the -1e9 additive mask produces after float32 underflow.
     auto A = std::make_shared<Matrix>(device::gemm(
         q->data, &q->dev, device::Trans::N, k->data, &k->dev, device::Trans::T));
-    // B2.1b: the scale+mask+softmax below is a host loop — download the
-    // (possibly deferred) gemm scores before touching them. Moving this
-    // fused masked softmax on-device is B2.2 territory.
-    device::materialize(*A);
-    for (size_t i = 0; i < T; ++i) {
-        const size_t b0 = (i / sl) * sl;
-        const size_t lo = b0, hi = causal ? i + 1 : b0 + sl;  // visible: [lo, hi)
-        float mx = -1e30f;
-        for (size_t j = lo; j < hi; ++j) {
-            (*A)(i, j) *= scale;
-            mx = std::max(mx, (*A)(i, j));
-        }
-        float z = 0.0f;
-        for (size_t j = lo; j < hi; ++j) {
-            (*A)(i, j) = std::exp((*A)(i, j) - mx);
-            z += (*A)(i, j);
-        }
-        for (size_t j = 0; j < T; ++j) {
-            if (j < lo || j >= hi) {
-                (*A)(i, j) = 0.0f;
-            } else {
-                (*A)(i, j) /= z;
+    // B2.2: masked softmax on-device when available (under deferral the
+    // [T,T] scores then never cross the bus inside a step); otherwise
+    // download the (possibly deferred) gemm scores and run the host loop.
+    if (!device::devops::attn_masked_softmax(*A, scale, sl, causal)) {
+        device::materialize(*A);
+        for (size_t i = 0; i < T; ++i) {
+            const size_t b0 = (i / sl) * sl;
+            const size_t lo = b0, hi = causal ? i + 1 : b0 + sl;  // visible: [lo, hi)
+            float mx = -1e30f;
+            for (size_t j = lo; j < hi; ++j) {
+                (*A)(i, j) *= scale;
+                mx = std::max(mx, (*A)(i, j));
+            }
+            float z = 0.0f;
+            for (size_t j = lo; j < hi; ++j) {
+                (*A)(i, j) = std::exp((*A)(i, j) - mx);
+                z += (*A)(i, j);
+            }
+            for (size_t j = 0; j < T; ++j) {
+                if (j < lo || j >= hi) {
+                    (*A)(i, j) = 0.0f;
+                } else {
+                    (*A)(i, j) /= z;
+                }
             }
         }
     }
@@ -952,15 +954,20 @@ Var fused_attention(const Var& q, const Var& k, const Var& v, float scale, size_
         // no mask bookkeeping is needed).
         Matrix ds = device::gemm(self->grad, nullptr, device::Trans::N,
                                  v->data, &v->dev, device::Trans::T);
-        device::materialize(ds);  // B2.1b: host loop below
-        for (size_t i = 0; i < T; ++i) {
-            const size_t b0 = (i / sl) * sl;
-            const size_t hi = causal ? i + 1 : b0 + sl;
-            float dot = 0.0f;
-            for (size_t j = b0; j < hi; ++j) dot += ds(i, j) * (*A)(i, j);
-            for (size_t j = 0; j < T; ++j) {
-                const bool vis = j >= b0 && j < hi;
-                ds(i, j) = vis ? scale * (*A)(i, j) * (ds(i, j) - dot) : 0.0f;
+        // B2.2: shared masked-softmax backward on-device (masked entries
+        // carry A == 0, so the full-row dot equals the visible dot).
+        if (!device::devops::attn_softmax_bwd_inplace(ds, *A, scale)) {
+            device::materialize(ds);   // B2.1b: host loop below
+            device::materialize(*A);   // no-op unless A deferred on-device
+            for (size_t i = 0; i < T; ++i) {
+                const size_t b0 = (i / sl) * sl;
+                const size_t hi = causal ? i + 1 : b0 + sl;
+                float dot = 0.0f;
+                for (size_t j = b0; j < hi; ++j) dot += ds(i, j) * (*A)(i, j);
+                for (size_t j = 0; j < T; ++j) {
+                    const bool vis = j >= b0 && j < hi;
+                    ds(i, j) = vis ? scale * (*A)(i, j) * (ds(i, j) - dot) : 0.0f;
+                }
             }
         }
         if (q->requires_grad)
@@ -1005,31 +1012,35 @@ Var swa_attention(const Var& q, const Var& k, const Var& v, float scale, size_t 
 
     auto A = std::make_shared<Matrix>(device::gemm(
         q->data, &q->dev, device::Trans::N, k->data, &k->dev, device::Trans::T));
-    device::materialize(*A);  // B2.1b: host mask/softmax loop below
-    for (size_t i = 0; i < T; ++i) {
-        size_t b0, sink_hi, win_lo;
-        ranges(i, b0, sink_hi, win_lo);
-        float mx = -1e30f;
-        for (size_t j = b0; j < sink_hi; ++j) {
-            (*A)(i, j) *= scale;
-            mx = std::max(mx, (*A)(i, j));
-        }
-        for (size_t j = win_lo; j <= i; ++j) {
-            (*A)(i, j) *= scale;
-            mx = std::max(mx, (*A)(i, j));
-        }
-        float z = 0.0f;
-        for (size_t j = b0; j < sink_hi; ++j) {
-            (*A)(i, j) = std::exp((*A)(i, j) - mx);
-            z += (*A)(i, j);
-        }
-        for (size_t j = win_lo; j <= i; ++j) {
-            (*A)(i, j) = std::exp((*A)(i, j) - mx);
-            z += (*A)(i, j);
-        }
-        for (size_t j = 0; j < T; ++j) {
-            const bool vis = (j >= b0 && j < sink_hi) || (j >= win_lo && j <= i);
-            (*A)(i, j) = vis ? (*A)(i, j) / z : 0.0f;
+    // B2.2: sparse masked softmax on-device when available; host loop
+    // as the fallback (and the reference semantics).
+    if (!device::devops::swa_masked_softmax(*A, scale, sl, window, sinks)) {
+        device::materialize(*A);  // B2.1b: host mask/softmax loop below
+        for (size_t i = 0; i < T; ++i) {
+            size_t b0, sink_hi, win_lo;
+            ranges(i, b0, sink_hi, win_lo);
+            float mx = -1e30f;
+            for (size_t j = b0; j < sink_hi; ++j) {
+                (*A)(i, j) *= scale;
+                mx = std::max(mx, (*A)(i, j));
+            }
+            for (size_t j = win_lo; j <= i; ++j) {
+                (*A)(i, j) *= scale;
+                mx = std::max(mx, (*A)(i, j));
+            }
+            float z = 0.0f;
+            for (size_t j = b0; j < sink_hi; ++j) {
+                (*A)(i, j) = std::exp((*A)(i, j) - mx);
+                z += (*A)(i, j);
+            }
+            for (size_t j = win_lo; j <= i; ++j) {
+                (*A)(i, j) = std::exp((*A)(i, j) - mx);
+                z += (*A)(i, j);
+            }
+            for (size_t j = 0; j < T; ++j) {
+                const bool vis = (j >= b0 && j < sink_hi) || (j >= win_lo && j <= i);
+                (*A)(i, j) = vis ? (*A)(i, j) / z : 0.0f;
+            }
         }
     }
     Matrix y = device::gemm(*A, nullptr, device::Trans::N,
@@ -1049,13 +1060,17 @@ Var swa_attention(const Var& q, const Var& k, const Var& v, float scale, size_t 
         // A == 0, so ds vanishes there with no mask bookkeeping.
         Matrix ds = device::gemm(self->grad, nullptr, device::Trans::N,
                                  v->data, &v->dev, device::Trans::T);
-        device::materialize(ds);  // B2.1b: host loop below
-        for (size_t i = 0; i < T; ++i) {
-            const size_t b0 = (i / sl) * sl;
-            float dot = 0.0f;
-            for (size_t j = b0; j <= i; ++j) dot += ds(i, j) * (*A)(i, j);
-            for (size_t j = 0; j < T; ++j) {
-                ds(i, j) = (*A)(i, j) != 0.0f ? scale * (*A)(i, j) * (ds(i, j) - dot) : 0.0f;
+        // B2.2: the same shared backward kernel as fused_attention.
+        if (!device::devops::attn_softmax_bwd_inplace(ds, *A, scale)) {
+            device::materialize(ds);   // B2.1b: host loop below
+            device::materialize(*A);   // no-op unless A deferred on-device
+            for (size_t i = 0; i < T; ++i) {
+                const size_t b0 = (i / sl) * sl;
+                float dot = 0.0f;
+                for (size_t j = b0; j <= i; ++j) dot += ds(i, j) * (*A)(i, j);
+                for (size_t j = 0; j < T; ++j) {
+                    ds(i, j) = (*A)(i, j) != 0.0f ? scale * (*A)(i, j) * (ds(i, j) - dot) : 0.0f;
+                }
             }
         }
         if (q->requires_grad)

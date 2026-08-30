@@ -346,6 +346,77 @@ void leg3_deferred() {
           max_abs_diff(on.gw, def.gw));
 }
 
+// B2.2: masked attention softmax on-device — fused (causal and block)
+// and swa, forward + backward, through the REAL ops so the devops-OFF
+// run is the host-loop reference. Then the same contrast under deferral
+// (the [T,T] scores/weights never crossing the bus inside the step).
+struct AttnRun {
+    float loss;
+    Matrix gq, gk, gv;
+};
+
+AttnRun run_attn(unsigned seed, int flavor, bool windowed) {
+    using mt::Var;
+    const size_t T = 32, D = 16, SL = 16;
+    Var q = mt::make_var(filled(T, D, seed), true);
+    Var k = mt::make_var(filled(T, D, seed + 1), true);
+    Var v = mt::make_var(filled(T, D, seed + 2), true);
+    if (windowed) device::step_begin();
+    Var y;
+    switch (flavor) {
+        case 0:  // fused causal
+            y = mt::ops::fused_attention(q, k, v, 0.25f, SL, true);
+            break;
+        case 1:  // fused block (non-causal)
+            y = mt::ops::fused_attention(q, k, v, 0.25f, SL, false);
+            break;
+        default:  // swa, window < SL, sinks on
+            y = mt::ops::swa_attention(q, k, v, 0.25f, /*window=*/5,
+                                       /*sinks=*/2, SL);
+    }
+    Var loss = mt::ops::mean(y);
+    mt::backward(loss);
+    if (windowed) device::step_end();
+    return AttnRun{loss->data(0, 0), q->grad, k->grad, v->grad};
+}
+
+void leg4_attention() {
+    std::printf("-- leg 4: masked attention softmax (B2.2) --\n");
+    const char* names[] = {"fused-causal", "fused-block", "swa"};
+    for (int f = 0; f < 3; ++f) {
+        device::set_device_ops(false);
+        AttnRun off = run_attn(44 + f, f, false);
+        device::set_device_ops(true);
+        AttnRun on = run_attn(44 + f, f, false);
+        device::set_step_residency(true);
+        device::set_defer_downloads(true);
+        AttnRun def = run_attn(44 + f, f, /*windowed=*/true);
+        device::set_defer_downloads(false);
+        device::set_step_residency(false);
+        device::set_device_ops(false);
+
+        const double dl =
+            std::fabs(static_cast<double>(off.loss) - on.loss);
+        check(dl <= 1e-5, names[f], dl);
+        check(max_abs_diff(off.gq, on.gq) <= 1e-4, "grad q",
+              max_abs_diff(off.gq, on.gq));
+        check(max_abs_diff(off.gk, on.gk) <= 1e-4, "grad k",
+              max_abs_diff(off.gk, on.gk));
+        check(max_abs_diff(off.gv, on.gv) <= 1e-4, "grad v",
+              max_abs_diff(off.gv, on.gv));
+        const double dld =
+            std::fabs(static_cast<double>(off.loss) - def.loss);
+        check(dld <= 1e-5, "defer loss", dld);
+        check(max_abs_diff(off.gq, def.gq) <= 1e-4, "defer grad q",
+              max_abs_diff(off.gq, def.gq));
+        check(max_abs_diff(off.gk, def.gk) <= 1e-4, "defer grad k",
+              max_abs_diff(off.gk, def.gk));
+        check(max_abs_diff(off.gv, def.gv) <= 1e-4, "defer grad v",
+              max_abs_diff(off.gv, def.gv));
+    }
+    device::set_device_ops(true);
+}
+
 }  // namespace
 
 int main() {
@@ -360,6 +431,7 @@ int main() {
     leg1_kernels();
     leg2_tape();
     leg3_deferred();
+    leg4_attention();
 
     if (g_failures == 0) {
         std::printf("test_cuda_ops PASSED (B2.1a kernels + tape parity + B2.1b deferred downloads)\n");

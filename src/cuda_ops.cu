@@ -261,6 +261,135 @@ __global__ void k_softmax_bwd(const float* S, const float* dY, float* dX,
         dXr[j] = Sr[j] * (dYr[j] - dot);
 }
 
+// ---- masked attention softmax (B2.2) --------------------------------
+//
+// In place over the raw scores A [T,T]: one block per row i; the
+// visible range is computed exactly as ops.cpp's host loops compute it
+// (fused: [lo, hi); swa: [b0, sink_hi) U [win_lo, i]). Masked entries
+// are written as hard zeros, never exponentiated. The scale multiply is
+// folded into the reads (the host stores A*=scale first — same value,
+// one rounding difference, inside the rowwise fp32 tolerance).
+
+__global__ void k_attn_masked_softmax(float* A, float scale, int sl,
+                                      int causal, int T) {
+    extern __shared__ float sh[];
+    const int i = blockIdx.x;
+    float* Ar = A + static_cast<size_t>(i) * T;
+    const int b0 = (i / sl) * sl;
+    const int lo = b0, hi = causal ? i + 1 : b0 + sl;
+
+    float mx = -1e30f;
+    for (int j = lo + threadIdx.x; j < hi; j += blockDim.x)
+        mx = fmaxf(mx, Ar[j] * scale);
+    sh[threadIdx.x] = mx;
+    __syncthreads();
+    for (int s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (threadIdx.x < s)
+            sh[threadIdx.x] = fmaxf(sh[threadIdx.x], sh[threadIdx.x + s]);
+        __syncthreads();
+    }
+    mx = sh[0];
+    __syncthreads();
+
+    float z = 0.0f;
+    for (int j = lo + threadIdx.x; j < hi; j += blockDim.x) {
+        const float e = expf(Ar[j] * scale - mx);
+        Ar[j] = e;
+        z += e;
+    }
+    sh[threadIdx.x] = z;
+    __syncthreads();
+    for (int s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (threadIdx.x < s) sh[threadIdx.x] += sh[threadIdx.x + s];
+        __syncthreads();
+    }
+    z = sh[0];
+    __syncthreads();
+
+    for (int j = threadIdx.x; j < T; j += blockDim.x)
+        Ar[j] = (j >= lo && j < hi) ? Ar[j] / z : 0.0f;
+}
+
+__global__ void k_swa_masked_softmax(float* A, float scale, int sl,
+                                     int window, int sinks, int T) {
+    extern __shared__ float sh[];
+    const int i = blockIdx.x;
+    float* Ar = A + static_cast<size_t>(i) * T;
+    const int b0 = (i / sl) * sl;
+    const int ii = i - b0;
+    const int win_lo = b0 + (ii + 1 > window ? ii + 1 - window : 0);
+    int sink_hi = b0 + (sinks < ii + 1 ? sinks : ii + 1);
+    if (sink_hi > win_lo) sink_hi = win_lo;
+
+    float mx = -1e30f;
+    for (int j = b0 + threadIdx.x; j < sink_hi; j += blockDim.x)
+        mx = fmaxf(mx, Ar[j] * scale);
+    for (int j = win_lo + threadIdx.x; j <= i; j += blockDim.x)
+        mx = fmaxf(mx, Ar[j] * scale);
+    sh[threadIdx.x] = mx;
+    __syncthreads();
+    for (int s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (threadIdx.x < s)
+            sh[threadIdx.x] = fmaxf(sh[threadIdx.x], sh[threadIdx.x + s]);
+        __syncthreads();
+    }
+    mx = sh[0];
+    __syncthreads();
+
+    float z = 0.0f;
+    for (int j = b0 + threadIdx.x; j < sink_hi; j += blockDim.x) {
+        const float e = expf(Ar[j] * scale - mx);
+        Ar[j] = e;
+        z += e;
+    }
+    for (int j = win_lo + threadIdx.x; j <= i; j += blockDim.x) {
+        const float e = expf(Ar[j] * scale - mx);
+        Ar[j] = e;
+        z += e;
+    }
+    sh[threadIdx.x] = z;
+    __syncthreads();
+    for (int s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (threadIdx.x < s) sh[threadIdx.x] += sh[threadIdx.x + s];
+        __syncthreads();
+    }
+    z = sh[0];
+    __syncthreads();
+
+    for (int j = threadIdx.x; j < T; j += blockDim.x) {
+        const bool vis =
+            (j >= b0 && j < sink_hi) || (j >= win_lo && j <= i);
+        Ar[j] = vis ? Ar[j] / z : 0.0f;
+    }
+}
+
+// ds = A != 0 ? scale * A * (ds - rowdot(ds .* A)) : 0, in place on ds.
+// One kernel serves BOTH attention flavors: masked entries carry A == 0
+// from the forward, so the full-row dot equals the visible-range dot
+// and masked outputs vanish without mask bookkeeping (the same argument
+// ops.cpp's host loops rely on).
+__global__ void k_attn_softmax_bwd(float* ds, const float* A, float scale,
+                                   int T) {
+    extern __shared__ float sh[];
+    const int i = blockIdx.x;
+    float* dr = ds + static_cast<size_t>(i) * T;
+    const float* Ar = A + static_cast<size_t>(i) * T;
+
+    float dot = 0.0f;
+    for (int j = threadIdx.x; j < T; j += blockDim.x) dot += dr[j] * Ar[j];
+    sh[threadIdx.x] = dot;
+    __syncthreads();
+    for (int s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (threadIdx.x < s) sh[threadIdx.x] += sh[threadIdx.x + s];
+        __syncthreads();
+    }
+    dot = sh[0];
+    __syncthreads();
+
+    for (int j = threadIdx.x; j < T; j += blockDim.x)
+        dr[j] = Ar[j] != 0.0f ? scale * Ar[j] * (dr[j] - dot) : 0.0f;
+}
+
 // LayerNorm forward: per row mu, var, rstd; xhat cached for backward
 // exactly as the CPU op caches it (ops.cpp layernorm).
 __global__ void k_layernorm_fwd(const float* x, const float* gamma,
@@ -574,6 +703,56 @@ bool softmax_bwd(const Matrix& S, const Matrix& dY, Matrix& dX) {
         ds.d, dgy.d, dgx.d, C);
     cuda_check(cudaGetLastError(), "softmax_bwd");
     dgx.finish();
+    return true;
+}
+
+// B2.2 masked attention softmax family. A is IN-PLACE (raw scores in,
+// weights out): Out with need_current — under deferral the value cache
+// already holds the gemm's device-fresh scores, so no H2D happens; the
+// weights then stay resident for the A@V gemm and the backward, and the
+// [T,T] matrix never crosses the bus inside a step.
+bool attn_masked_softmax(Matrix& A, float scale, size_t seq_len,
+                         bool causal) {
+    if (!active()) return false;
+    const int T = static_cast<int>(A.rows());
+    if (A.cols() != A.rows()) return false;
+    const size_t n = static_cast<size_t>(T) * T;
+    Out dA(A.get_data(), n, /*need_current=*/true);
+    k_attn_masked_softmax<<<T, ROW_THREADS, ROW_THREADS * sizeof(float)>>>(
+        dA.d, scale, static_cast<int>(seq_len), causal ? 1 : 0, T);
+    cuda_check(cudaGetLastError(), "attn_masked_softmax");
+    dA.finish();
+    return true;
+}
+
+bool swa_masked_softmax(Matrix& A, float scale, size_t seq_len,
+                        size_t window, size_t sinks) {
+    if (!active()) return false;
+    const int T = static_cast<int>(A.rows());
+    if (A.cols() != A.rows()) return false;
+    const size_t n = static_cast<size_t>(T) * T;
+    Out dA(A.get_data(), n, /*need_current=*/true);
+    k_swa_masked_softmax<<<T, ROW_THREADS, ROW_THREADS * sizeof(float)>>>(
+        dA.d, scale, static_cast<int>(seq_len), static_cast<int>(window),
+        static_cast<int>(sinks), T);
+    cuda_check(cudaGetLastError(), "swa_masked_softmax");
+    dA.finish();
+    return true;
+}
+
+bool attn_softmax_bwd_inplace(Matrix& ds, const Matrix& A, float scale) {
+    if (!active()) return false;
+    const int T = static_cast<int>(ds.rows());
+    if (ds.cols() != ds.rows() || A.rows() != ds.rows() ||
+        A.cols() != ds.cols())
+        return false;
+    const size_t n = static_cast<size_t>(T) * T;
+    In dA(A.get_data(), n);
+    Out dds(ds.get_data(), n, /*need_current=*/true);
+    k_attn_softmax_bwd<<<T, ROW_THREADS, ROW_THREADS * sizeof(float)>>>(
+        dds.d, dA.d, scale, T);
+    cuda_check(cudaGetLastError(), "attn_softmax_bwd_inplace");
+    dds.finish();
     return true;
 }
 

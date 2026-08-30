@@ -159,6 +159,18 @@ bool gelu_bwd(const Matrix& x, const Matrix& dy, Matrix& dx);
 // fp32 tolerance, never bitwise claims — test_step_residency's rule)
 bool softmax_fwd(const Matrix& x, Matrix& y);
 bool softmax_bwd(const Matrix& S, const Matrix& dY, Matrix& dX);
+// B2.2: masked attention softmax on-device, in place over the raw
+// score matrix A [T,T] — the host loops in ops.cpp fused_attention /
+// swa_attention are the reference semantics (masked entries written as
+// hard zeros, never exponentiated). seq_len arrives RESOLVED (sl, not
+// 0). The shared backward serves both flavors: masked entries carry
+// A == 0 from the forward, so the full-row dot equals the
+// visible-range dot and masked outputs vanish with no bookkeeping.
+bool attn_masked_softmax(Matrix& A, float scale, size_t seq_len,
+                         bool causal);
+bool swa_masked_softmax(Matrix& A, float scale, size_t seq_len,
+                        size_t window, size_t sinks);
+bool attn_softmax_bwd_inplace(Matrix& ds, const Matrix& A, float scale);
 bool layernorm_fwd(const Matrix& x, const Matrix& gamma, const Matrix& beta,
                    float eps, Matrix& y, Matrix& xhat,
                    std::vector<float>& rstd);

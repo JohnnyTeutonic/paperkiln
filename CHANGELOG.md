@@ -6,6 +6,15 @@ Notable changes to microtorch. Format loosely follows
 ## [Unreleased]
 
 ### Added
+- **CUDA B2.2 (partial): masked attention softmax on-device** — fused
+  (causal/block) and swa (window+sinks) forward kernels plus one shared
+  backward (`ds = A .* (ds - rowdot(ds .* A)) * scale`; masked entries carry
+  A == 0, so no mask bookkeeping), in place over the [T,T] scores through the
+  B2.1b value-cache seam: under deferral the score/weight matrix never
+  crosses the bus inside a step. Host loops retained as fallback and
+  reference; `test_cuda_ops` leg 4 pins all three flavors x {off, on, defer}
+  at the composed-tape tolerances. Remaining for B2.2: embedding + CE
+  (forward touching host only at the loss scalar).
 - **Llama-family models** (`nn::Llama`): RMSNorm, RoPE, SwiGLU, GQA, tied
   embeddings; HF-native parameter names; module-level FD gradchecks.
 - **mtstudio**: spec-driven run driver (JSON spec -> train -> eval -> export),
