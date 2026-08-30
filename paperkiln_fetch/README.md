@@ -35,8 +35,9 @@ tractable. What nobody else ships is **provenance**:
 - explicit rejections ("we choose not to adopt X") **veto** a candidate
   outright.
 
-On a 29-paper ground-truth benchmark the scorer runs at grouped AUROC
-0.895 with **zero wrong assertions** (abstention-first). The benchmark,
+On a 31-paper ground-truth benchmark the scorer runs at grouped AUROC
+0.895, abstention-first, with **one documented wrong assertion in 74
+verdicts** (registered and diagnosed in the benchmark, not hidden). The benchmark,
 its confidence intervals, and its growth protocol ship in the
 [paperkiln repo](https://github.com/JohnnyTeutonic/paperkiln), where the
 extracted architectures also *train* — as real models, on a readable

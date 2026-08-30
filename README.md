@@ -72,10 +72,14 @@ Minimal autograd engines are a well-populated genre. Six things here are not:
    alternatives; it *uses* one. The contribution-vs-mention scorer separates
    them with explainable cues and is benchmarked on **29 real papers** with
    ground-truth architectures: grouped AUROC 0.895 [bootstrap 95% CI
-   0.761–1.000] vs 0.825 for naive first-match, pooled 0.809 [0.724–0.906]
-   vs 0.762, and **zero wrong assertions** — explicit rejections ("we choose
-   not to adopt SwiGLU") veto a candidate outright, and close calls abstain
-   and ask the human. The benchmark, its CIs and its growth protocol ship in
+   0.761–1.000] vs 0.825 for naive first-match, pooled 0.811 [0.734–0.903]
+   vs 0.775, and **one documented wrong assertion in 74 verdicts** —
+   explicit rejections ("we choose not to adopt SwiGLU") veto a candidate
+   outright, and close calls abstain and ask the human. The zero-wrong
+   record held for 29 papers and broke at 31, on Megatron-LM: a paper that
+   states its own activation only by attributing it to the models it
+   copies. That failure is registered, diagnosed and gated (`KNOWN_WRONG`),
+   because a benchmark that never fails is not measuring anything. The benchmark, its CIs and its growth protocol ship in
    the repo.
 4. **Falsifiers ship inside the modules.** Novel mechanisms carry the experiment
    designed to kill them — `SurpriseRoutedAttention::shuffle_predictor` feeds the
