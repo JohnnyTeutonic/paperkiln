@@ -1,3 +1,11 @@
+> **SUPERSEDED 31 Aug 2026 by PREREGISTRATION.md in this directory.**
+> Kept as the audit trail: it records which choices were OPEN and
+> when each was closed. Every `[OPEN]` flag below is resolved there,
+> with its reason — and two of them were settled by the seeds data
+> rather than by preference (the overfit-onset position rule was
+> dropped as unevaluable; the seed count came from measured SD).
+> Nothing here licenses a claim; that document does.
+
 # DRAFT pre-registration — transfer_s1: scalars don't transfer; does structure?
 
 **STATUS: DRAFT — NOT LICENSED.** Nothing here licenses a directional
