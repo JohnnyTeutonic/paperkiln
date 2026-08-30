@@ -306,7 +306,7 @@ Not a constraint until far above this ladder.
      covers the persistent path (fresh optimizer per drive, 5-step
      trajectories vs host). p updated in its RESIDENT slot moves to
      B2.3c with device-side accumulate.
-  3. [ ] **B2.3c: device-side accumulate.** Variable::accumulate keeps
+  3. [x] **B2.3c: device-side accumulate.** Variable::accumulate keeps
      grad on-device (devops axpy: vcache Out(need_current) on grad, In
      on the incoming g — a stale hit, no download) inside the step
      window; the materialize choke moves from every accumulate to the
@@ -317,14 +317,24 @@ Not a constraint until far above this ladder.
      entry can outlive its host buffer through a dead Variable, and no
      dangling cache key can greet a recycled address. (Also closes the
      pre-existing dangling-non-stale-key exposure for dead activations.)
-     REMAINING AUDIT before the accumulate switch can flip: every
-     backward that HOST-reads self->grad must materialize it at entry —
-     survey says 13 direct `self->grad(` element reads plus the
-     two-callback elementwise form (record's dydx_from_output path,
-     which receives self->grad as its host gy) across ~30 record()
-     sites; embedding's scatter-add is the loudest. Same discipline as
-     B2.1b's 22 forward sites. Do the audit as its own pass with the
-     tape tests live — not as a rider on another change.
+     AUDIT DONE + SWITCH FLIPPED 30 Aug (two passes, 27 sites):
+     pass 1 caught the 12 direct `self->grad(...)` element-read
+     closures (add_bias/mean/slice/concat/embedding — which also
+     materializes t->grad against the tied-weight case — CE, mul_row,
+     mul_col, rmsnorm fallback, norm_rows, relu, inplace_unary); pass 2
+     caught the forms the first grep missed — copies (`dx = self->grad`
+     in gelu/sigmoid fallbacks, silu, rope, dropout), hadamards (mul),
+     scalar multiplies (sub, scale), transpose, layernorm fallback,
+     kimi's rows_of slicing, ssm's dY alias. Every site now
+     materializes at entry (no-op unless stale). accumulate() itself:
+     when either side is device-fresh, devops::axpy through the value
+     cache — no download; else the host add with the B2.1b choke,
+     bit-identical. backward() discards each non-leaf's grad entry
+     right after its backward_fn runs (fully consumed by topo order),
+     so step_end downloads param grads ONLY — the materialize choke
+     has moved from every accumulate to the step boundary, which is
+     what B2.3c is. Local checks green (CPU syntax, both TUs); T4
+     validation is item 4.
   4. [ ] T4 validation + the d=512 wall-clock adoption gate (the
      number that prices transfer_s1's M arm).
 

@@ -15,18 +15,25 @@ size_t live_variables() {
 }
 
 void Variable::accumulate(const Matrix& g) {
-    // B2.1b: g may be a deferred device-fresh result (a gemm gradient);
-    // grad += g is host arithmetic, so download first. This makes grads
-    // host-authoritative for the whole step — full grad deferral is
-    // B2.3's device-side accumulate.
-    device::materialize(g);
     if (grad.rows() == 0) {
         grad = Matrix(data.rows(), data.cols());  // zero-filled by ctor
     }
     if (g.rows() != grad.rows() || g.cols() != grad.cols()) {
         throw std::runtime_error("accumulate: gradient shape mismatch");
     }
-    grad += g;
+    // B2.3c: when either side is device-fresh (a deferred gemm gradient,
+    // or a grad already accumulated on-device this window), stay on
+    // device — axpy through the value cache, no download. Every backward
+    // that host-reads a grad materializes at entry (the 12-site audit),
+    // and step_end() materializes what the optimizer/clip read between
+    // windows, so host reads remain safe. Otherwise the host add runs
+    // with the B2.1b materialize choke, bit-identical to before.
+    const bool device_side = device::host_stale(g) || device::host_stale(grad);
+    if (!device_side || !device::devops::axpy(grad, 1.0f, g)) {
+        device::materialize(grad);
+        device::materialize(g);
+        grad += g;
+    }
 }
 
 namespace {
@@ -67,6 +74,13 @@ void backward(const Var& root) {
     for (auto it = order.rbegin(); it != order.rend(); ++it) {  // root first
         if ((*it)->backward_fn && (*it)->grad.rows() != 0) {
             (*it)->backward_fn();
+            // B2.3c: a non-leaf's grad has now been fully consumed (topo
+            // order guarantees every consumer accumulated into it before
+            // its own backward ran). Drop any deferred copy so step_end
+            // neither downloads a dead intermediate nor can ever write a
+            // freed buffer through one. Leaves (params) keep theirs —
+            // the optimizer reads them after the window closes.
+            if (!(*it)->is_leaf()) device::discard((*it)->grad);
         }
     }
 }

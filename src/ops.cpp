@@ -72,6 +72,7 @@ Var sub(const Var& a, const Var& b) {
     return record(a->data - b->data, {a, b}, [](Variable* self) {
         if (self->parents[0]->requires_grad) self->parents[0]->accumulate(self->grad);
         if (self->parents[1]->requires_grad) {
+            device::materialize(self->grad);  // B2.3c: host-read below
             self->parents[1]->accumulate(self->grad * -1.0f);
         }
     });
@@ -83,6 +84,7 @@ Var mul(const Var& a, const Var& b) {
     return record(a->data.hadamard(b->data), {a, b}, [](Variable* self) {
         const Var& a = self->parents[0];
         const Var& b = self->parents[1];
+        device::materialize(self->grad);  // B2.3c: host-read below
         if (a->requires_grad) a->accumulate(self->grad.hadamard(b->data));
         if (b->requires_grad) b->accumulate(self->grad.hadamard(a->data));
     });
@@ -101,6 +103,7 @@ Var add_bias(const Var& x, const Var& b) {
         const Var& b = self->parents[1];
         if (x->requires_grad) x->accumulate(self->grad);
         if (b->requires_grad) {
+            device::materialize(self->grad);  // B2.3c: host-read below
             Matrix db(1, b->data.cols());                       // column-sum, the same
             for (size_t i = 0; i < self->grad.rows(); ++i)      // contract as
                 for (size_t j = 0; j < self->grad.cols(); ++j)  // compute_bias_
@@ -127,6 +130,7 @@ Var gelu(const Var& x) {
         //   d  = cdf(u) + x * 0.5 sech^2(u) * u'
         Matrix dx(self->grad.rows(), self->grad.cols());
         if (!device::devops::gelu_bwd(x->data, self->grad, dx)) {
+            device::materialize(self->grad);  // B2.3c: host-read below
             constexpr float k = 0.7978845608028654f;
             dx = self->grad;
             for (size_t i = 0; i < dx.rows(); ++i) {
@@ -161,6 +165,7 @@ Var softmax_row(const Var& x) {
         const Matrix& dY = self->grad;
         Matrix dX(S.rows(), S.cols());
         if (!device::devops::softmax_bwd(S, dY, dX)) {
+            device::materialize(self->grad);  // B2.3c: host-read below
             for (size_t i = 0; i < S.rows(); ++i) {
                 float dot = 0.0f;
                 for (size_t j = 0; j < S.cols(); ++j) dot += dY(i, j) * S(i, j);
@@ -184,6 +189,7 @@ Var mean(const Var& x) {
     return record(std::move(out), {x}, [n](Variable* self) {
         const Var& x = self->parents[0];
         if (!x->requires_grad) return;
+        device::materialize(self->grad);  // B2.3c: host-read below
         Matrix dx(x->data.rows(), x->data.cols(), self->grad(0, 0) / n);
         x->accumulate(dx);
     });
@@ -193,6 +199,7 @@ Var scale(const Var& x, float s) {
     device::materialize(x->data);
     return record(x->data * s, {x}, [s](Variable* self) {
         if (self->parents[0]->requires_grad) {
+            device::materialize(self->grad);  // B2.3c: host-read below
             self->parents[0]->accumulate(self->grad * s);
         }
     });
@@ -202,6 +209,7 @@ Var transpose(const Var& x) {
     device::materialize(x->data);
     return record(x->data.transpose(), {x}, [](Variable* self) {
         if (self->parents[0]->requires_grad) {
+            device::materialize(self->grad);  // B2.3c: host-read below
             self->parents[0]->accumulate(self->grad.transpose());
         }
     });
@@ -218,6 +226,7 @@ Var slice_cols(const Var& x, size_t j0, size_t j1) {
     return record(std::move(out), {x}, [j0](Variable* self) {
         const Var& x = self->parents[0];
         if (!x->requires_grad) return;
+        device::materialize(self->grad);  // B2.3c: host-read below
         Matrix dx(x->data.rows(), x->data.cols());
         for (size_t i = 0; i < self->grad.rows(); ++i)
             for (size_t j = 0; j < self->grad.cols(); ++j) dx(i, j0 + j) = self->grad(i, j);
@@ -243,6 +252,7 @@ Var concat_cols(const std::vector<Var>& xs) {
         off += x->data.cols();
     }
     return record(std::move(out), xs, [](Variable* self) {
+        device::materialize(self->grad);  // B2.3c: host-read below
         size_t off = 0;
         for (const auto& p : self->parents) {
             const size_t w = p->data.cols();
@@ -305,6 +315,8 @@ Var layernorm(const Var& x, const Var& gamma, const Var& beta, float eps) {
         const bool on_dev = device::devops::layernorm_bwd(
             dY, *xhat, *rstd, g->data, want_dgb, &dg, &db, x->requires_grad,
             &dx);
+        if (!on_dev) device::materialize(self->grad);  // B2.3c: host-read below
+
         if (want_dgb) {
             if (!on_dev) {
                 for (size_t i = 0; i < R; ++i)
@@ -361,6 +373,8 @@ Var embedding(const Var& table, const std::vector<int>& ids) {
         // Scatter-add straight into the table's grad. Going through
         // accumulate() would allocate a dense [vocab, d] temp per backward
         // -- 154 MB for GPT-2's wte -- for a handful of touched rows.
+        device::materialize(self->grad);  // B2.3c: host-read below
+        device::materialize(t->grad);  // tied weights: gemm may have deferred it
         if (t->grad.rows() == 0) t->grad = Matrix(t->data.rows(), t->data.cols());
         for (size_t i = 0; i < ids.size(); ++i)
             for (size_t j = 0; j < t->grad.cols(); ++j) t->grad(ids[i], j) += self->grad(i, j);
@@ -399,6 +413,7 @@ Var cross_entropy(const Var& logits, const std::vector<int>& targets) {
     return record(std::move(out), {logits}, [P, targets](Variable* self) {
         const Var& l = self->parents[0];
         if (!l->requires_grad) return;
+        device::materialize(self->grad);  // B2.3c: host-read below
         const float g = self->grad(0, 0) / static_cast<float>(P->rows());
         // B2.2: (P - onehot) * g on-device; the gradient first touches
         // host at accumulate() (host-authoritative until B2.3).
@@ -430,12 +445,14 @@ Var mul_row(const Var& x, const Var& r) {
         const Var& x = self->parents[0];
         const Var& r = self->parents[1];
         if (x->requires_grad) {
+            device::materialize(self->grad);  // B2.3c: host-read below
             Matrix dx = self->grad;
             for (size_t i = 0; i < dx.rows(); ++i)
                 for (size_t j = 0; j < dx.cols(); ++j) dx(i, j) *= r->data(0, j);
             x->accumulate(dx);
         }
         if (r->requires_grad) {
+            device::materialize(self->grad);  // B2.3c: host-read below
             Matrix dr(1, r->data.cols());
             for (size_t i = 0; i < self->grad.rows(); ++i)
                 for (size_t j = 0; j < self->grad.cols(); ++j)
@@ -456,6 +473,7 @@ Var silu(const Var& x) {
     return record(std::move(out), {x}, [](Variable* self) {
         const Var& x = self->parents[0];
         if (!x->requires_grad) return;
+        device::materialize(self->grad);  // B2.3c: host-read below
         // d/dx [x s(x)] = s(x) (1 + x (1 - s(x)))
         Matrix dx = self->grad;
         for (size_t i = 0; i < dx.rows(); ++i)
@@ -497,6 +515,7 @@ Var rmsnorm(const Var& x, const Var& w) {
         const bool on_dev = device::devops::rmsnorm_bwd(
             self->grad, x->data, *rms_inv, w->data, w->requires_grad, &dw,
             x->requires_grad, &dx);
+        if (!on_dev) device::materialize(self->grad);  // B2.3c: host-read below
         if (w->requires_grad) {
             if (!on_dev) {
                 for (size_t i = 0; i < R; ++i)
@@ -559,6 +578,7 @@ Var apply_rope(const Var& qk, const std::vector<int>& pos, float theta_base, siz
     return record(std::move(out), {qk}, [pos_cache, theta_base, head_dim, d3](Variable* self) {
         const Var& qk = self->parents[0];
         if (!qk->requires_grad) return;
+        device::materialize(self->grad);  // B2.3c: host-read below
         const size_t T = self->grad.rows(), d = d3 / 3;
         Matrix dqk = self->grad;
         // Backward: apply inverse rotation (negative theta)
@@ -642,6 +662,7 @@ Var kimi_attention(const Var& q, const Var& k, const Var& v, bool causal, size_t
         Matrix gq(q_var->data.rows(), q_var->data.cols());
         Matrix gk(k_var->data.rows(), k_var->data.cols());
         Matrix gv(v_var->data.rows(), v_var->data.cols());
+        device::materialize(self->grad);  // B2.3c: host-read below
         for (size_t b = 0; b < B; ++b) {
             auto [bq, bk, bv] = kimi.backward(rows_of(self->grad, b * sl, (b + 1) * sl),
                                               rows_of(q_var->data, b * sl, (b + 1) * sl),
@@ -696,6 +717,7 @@ Var ssm_scan(const Var& u, const Var& A, const Var& B, const Var& C, const Var& 
         const Var& C = self->parents[3];
         const Var& D = self->parents[4];
         const size_t T = u->data.rows(), n = u->data.cols();
+        device::materialize(self->grad);  // B2.3c: host-read below
         const Matrix& S = *states;
         const Matrix& dY = self->grad;
 
@@ -740,12 +762,14 @@ Var mul_col(const Var& x, const Var& c) {
         const Var& x = self->parents[0];
         const Var& c = self->parents[1];
         if (x->requires_grad) {
+            device::materialize(self->grad);  // B2.3c: host-read below
             Matrix dx = self->grad;
             for (size_t i = 0; i < dx.rows(); ++i)
                 for (size_t j = 0; j < dx.cols(); ++j) dx(i, j) *= c->data(i, 0);
             x->accumulate(dx);
         }
         if (c->requires_grad) {
+            device::materialize(self->grad);  // B2.3c: host-read below
             Matrix dc(c->data.rows(), 1);
             for (size_t i = 0; i < dc.rows(); ++i) {
                 float s = 0;
@@ -770,6 +794,7 @@ Var rms_row(const Var& x, float eps) {
         const Var& x = self->parents[0];
         if (!x->requires_grad) return;
         const size_t R = x->data.rows(), C = x->data.cols();
+        device::materialize(self->grad);  // B2.3c: host-read below
         // d rms/d x_ij = x_ij / (C * rms_i)
         Matrix dx(R, C);
         for (size_t i = 0; i < R; ++i) {
@@ -794,6 +819,7 @@ Var sigmoid(const Var& x) {
         if (!x->requires_grad) return;
         Matrix dx(self->grad.rows(), self->grad.cols());
         if (!device::devops::sigmoid_bwd(self->data, self->grad, dx)) {
+            device::materialize(self->grad);  // B2.3c: host-read below
             dx = self->grad;
             for (size_t i = 0; i < dx.rows(); ++i)
                 for (size_t j = 0; j < dx.cols(); ++j) {
@@ -835,6 +861,7 @@ Var dropout(const Var& x, float p, unsigned long long seed) {
         if (!x->requires_grad) return;
         const float keep = 1.0f - p, inv_keep = 1.0f / keep;
         std::mt19937_64 rng(seed);
+        device::materialize(self->grad);  // B2.3c: host-read below (dropout)
         std::uniform_real_distribution<float> u(0.0f, 1.0f);
         Matrix dx = self->grad;
         for (size_t i = 0; i < dx.rows(); ++i)
@@ -852,6 +879,7 @@ Var relu(const Var& x) {
     return record(std::move(out), {x}, [](Variable* self) {
         const Var& x = self->parents[0];
         if (!x->requires_grad) return;
+        device::materialize(self->grad);  // B2.3c: host-read below
         Matrix dx(x->data.rows(), x->data.cols());
         for (size_t i = 0; i < dx.rows(); ++i)
             for (size_t j = 0; j < dx.cols(); ++j)
@@ -875,6 +903,7 @@ Var inplace_unary(const Var& x, const std::function<void(Matrix&)>& fwd,
         auto orig = std::move(x->backward_fn);
         Variable* self = x.get();
         x->backward_fn = [self, orig, dydx_from_output]() {
+            device::materialize(self->grad);  // B2.3c: host-read below
             dydx_from_output(self->data, self->grad);  // grad *= f'(y), in place
             if (orig) orig();
         };
