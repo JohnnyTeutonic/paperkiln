@@ -18,6 +18,18 @@ these are the engineering items that unlock it.*
    currently run wrong (arguably the better paper). **No failure branch;
    either outcome publishes.** The seed-noise finding stops being a
    curiosity and becomes the setup for this result.
+   **LICENSED AND RUNNING 31 Aug 2026** — experiments/transfer_s1/
+   PREREGISTRATION.md, licence anchor 3fa55ae, committed together with
+   its analyze.py before any run existed. The realised design is
+   stronger than this sketch: the transferred object is the COMPLETE
+   PAIRWISE SIGN MATRIX over six lanes (15 edges) at three widths
+   (256/512/1024), not a rank correlation of effect estimates — because
+   S1e proved the scalars themselves are seed-distributions, so ranking
+   them across arms is the weak read and the sign structure is the
+   strong one. A numerics-bridge gate runs FIRST and halts the study if
+   the CUDA venue disagrees with the banked CPU cohort. S1e also
+   supplied the power numbers (12 seeds/arm) and killed one candidate
+   position rule outright (overfit-onset: unreachable in 14/15 seeds).
 2. **CUDA Phase B is the PREREQUISITE for the ladder, not
    infrastructure.** Resident device tensors, params uploaded once,
    activations on-device (B2.1b → B2.2 → B2.3 below). Without it the
