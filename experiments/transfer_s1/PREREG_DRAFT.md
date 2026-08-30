@@ -118,15 +118,34 @@ fixed at licence time **[OPEN — decide before any M-arm run]**:
 Whichever is chosen, the OTHER two are reported descriptively as
 robustness — divergence between them is itself reportable.
 
-## Power (to be filled from sparse_s1_seeds RESULTS — do not license before)
+## Power (inputs now REAL — from sparse_s1_seeds RESULTS.md, 30 Aug 2026)
 
-The S-arm per-seed SD of Δ at the reference slices → minimum M-arm
-seed count for the F1 bootstrap to separate "concordance ≥ threshold"
-from the 50% coin at **[OPEN: α, power]**. If 10 M-seeds cannot reach
-power on the fresh variance numbers, the M arm grows BEFORE launch or
-the panel shrinks — power is fixed pre-data, never patched post-hoc.
-This section is the reason the draft cannot be licensed until the
-seeds sweep reports.
+Measured S-arm variance at d=256, n=15 paired seeds (S1e-bstar-
+distribution): SD(Δ1200) = 0.0214, SD(Δ3600) = 0.0377 (SD roughly
+doubles over the budget range); sign split at 3600 = 9+/6−; per-seed
+persistent-crossing budgets span 1600→never (6/15 never cross by
+3600); shrink effect +0.0541 with per-seed SD ≈ 0.0414 (t=4.13 at
+n=10).
+
+Consequences already forced on the design:
+- **F3 must be distribution-to-distribution**: a point B\* comparison
+  is refuted at the base scale itself. F3 compares the b0_s
+  DISTRIBUTIONS (including the never-crossed mass) across arms.
+- **The shrink, not the sign, is the powered primary within-arm
+  object**: at S-scale the shrink resolves at t=4.13 with n=10 while
+  the sign fails at n=15. F1's edge signs at late budgets are
+  therefore expected to be seed-lottery-dominated at M too — the
+  concordance target must be defined over the objects that resolve
+  (early-budget signs, shrink directions, shape classes), and the
+  late-budget sign cells reported descriptively. **[OPEN: final cell
+  list, chosen on exactly this criterion at licence time.]**
+- Sizing: detecting a shrink of the S-scale magnitude (+0.054, SD
+  0.041) at one-tailed α=.05, power .80 needs n ≈ 9; power .90 needs
+  n ≈ 12. **Draft recommendation: M arm at 12 paired seeds, not 10.**
+  If M-scale SD comes in larger (the S-scale trend says dispersion
+  grows), the bridge cells (Threat 1) provide the first M-variance
+  estimate BEFORE the panel launches — a go/grow gate at licence
+  time, fixed pre-data, never patched post-hoc.
 
 ## Threat checks (fixed in draft, tightened at licence)
 

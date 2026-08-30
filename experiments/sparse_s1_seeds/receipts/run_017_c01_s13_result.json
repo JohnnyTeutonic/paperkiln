@@ -1,0 +1,21 @@
+{
+  "T": 256,
+  "accum": 1,
+  "attention": "swa",
+  "batch": 4,
+  "best_val": 3.30985164642334,
+  "checkpoint_activations": false,
+  "d": 256,
+  "early_stopped": false,
+  "family": "gpt2",
+  "final_step": 3600,
+  "heads": 8,
+  "layers": 2,
+  "lr": 0.0010000000474974513,
+  "name": "run_017_c01_s13",
+  "params": 3742720,
+  "seed": 13,
+  "steps_requested": 3600,
+  "tokens_per_second": 184.63586444561724,
+  "wall_seconds": 19965.785147261
+}

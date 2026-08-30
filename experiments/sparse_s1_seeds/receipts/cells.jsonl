@@ -1,0 +1,2 @@
+{"best_val_mean": 3.3718712091445924, "best_val_min": 3.30125093460083, "best_val_std": 0.03675431080037602, "cell": 0, "factors": {"arch.custom.attention": "exact"}, "n_seeds": 10}
+{"best_val_mean": 3.3907498121261597, "best_val_min": 3.2992584705352783, "best_val_std": 0.04884218446481279, "cell": 1, "factors": {"arch.custom.attention": "swa"}, "n_seeds": 10}
