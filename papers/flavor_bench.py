@@ -61,6 +61,23 @@ KNOWN_WRONG: dict[tuple[str, str], str] = {
         "run; the direct-mention score beat the inherited value. The fix "
         "is a precedence rule (inheritance outranks a third-party "
         "attribution), not another cue.",
+    ("2304.03208", "positional"):
+        "FUTURE-WORK MENTION READ AS ADOPTION (found 2026-08-31). "
+        "Cerebras-GPT uses learned positions (GPT-3-like). RoPE appears "
+        "in the paper TWICE and never as a choice: once as future work "
+        "('model features worth exploring in future work include "
+        "position embeddings, such as RoPE and ALiBi'), once attributed "
+        "to other models ('GPT-J, GPT-NeoX, and Pythia models use "
+        "rotary positional embeddings'). The scorer applied rope. Two "
+        "distinct gaps: (a) a future-work mention is the cleanest "
+        "non-adoption signal in the corpus and should VETO like an "
+        "explicit rejection does; (b) 'GPT-3-like architecture' did not "
+        "register as an inheritance cue — 2304.03208 is absent from the "
+        "resolved-ancestor list even though the paper names its ancestor "
+        "AND spells out the single delta (dense vs sparse-banded "
+        "attention). Same root as the Megatron case: the evidence for "
+        "what a paper USES is often indirect, and indirect evidence "
+        "currently loses to any direct-looking mention.",
 }
 
 TRUTH: dict[str, dict[str, str | None]] = {
@@ -142,6 +159,23 @@ TRUTH: dict[str, dict[str, str | None]] = {
     # positional omitted: BART states neither as an architecture choice
     # (its only positional sentence REJECTS relative embeddings).
     "1909.08053": {"norm": "layernorm", "activation": "gelu"},  # Megatron-LM
+    "2401.04088": {"activation": "swiglu"},              # Mixtral
+    # ^ "For Mixtral we use the same SwiGLU architecture as the expert
+    # function" — first-person adoption. Norm/positional omitted: the
+    # paper inherits them from Mistral without restating them.
+    "2304.03208": {"norm": "layernorm", "activation": "gelu",
+                   "positional": "learned"},             # Cerebras-GPT
+    # ^ INHERITANCE + adversarial negatives in one paper. It states
+    # "Cerebras-GPT models have a GPT-3-like architecture ... the main
+    # difference is that unlike GPT-3, which uses alternating dense and
+    # sparse-banded attention, we use dense attention" — the ancestor is
+    # named and the ONLY delta is spelled out, so the GPT-3 flavors carry
+    # over. Meanwhile RoPE, ALiBi and SwiGLU all appear in the text as
+    # explicit FUTURE WORK ("model features worth exploring in future
+    # work include position embeddings, such as RoPE and ALiBi, and
+    # activation functions, like SwiGLU"), so all three wrong answers are
+    # present and must be rejected. A future-work mention is the cleanest
+    # non-adoption signal in the corpus.
     # ^ "both GPT-2 and BERT use GeLU nonlinearities and layer
     # normalization to the input of the ... layers, whereas the original
     # transformer uses ReLU nonlinearities and applies layer
