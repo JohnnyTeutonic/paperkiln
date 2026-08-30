@@ -85,6 +85,45 @@ int main(int argc, char** argv) {
         return loss->data(0, 0);
     };
 
+    // PROBE (bisection aid, 2026-08-30): under defer the loss sits at
+    // exactly ln(vocab) from the first forward. Split forward-vs-CE in
+    // one shot: run one NoGrad forward, compute the loss via the device
+    // CE path AND by materializing the logits and doing host CE, and
+    // print row-0 stats of the materialized logits. Constant row =
+    // forward broken; varied row + wrong device loss = CE path broken.
+    if (cuda) {
+        NoGrad ng;
+        device::step_begin();
+        Var logits = m.forward(ids);
+        const bool stale = device::host_stale(logits->data);
+        Var ldev = ops::cross_entropy(logits, y);
+        device::materialize(logits->data);
+        const Matrix& Lg = logits->data;
+        double nll = 0.0;
+        for (size_t i = 0; i < Lg.rows(); ++i) {
+            float mx = -1e30f;
+            for (size_t j = 0; j < Lg.cols(); ++j)
+                mx = std::max(mx, Lg(i, j));
+            double z = 0.0;
+            for (size_t j = 0; j < Lg.cols(); ++j)
+                z += std::exp(Lg(i, j) - mx);
+            nll -= (Lg(i, y[i]) - mx - std::log(z));
+        }
+        float r0mn = 1e30f, r0mx = -1e30f;
+        double r0sum = 0.0;
+        for (size_t j = 0; j < Lg.cols(); ++j) {
+            r0mn = std::min(r0mn, Lg(0, j));
+            r0mx = std::max(r0mx, Lg(0, j));
+            r0sum += Lg(0, j);
+        }
+        std::printf("PROBE engine=%s logits_stale=%d loss_dev=%.4f "
+                    "loss_host=%.4f row0[min=%.4f max=%.4f mean=%.4f]\n",
+                    eng.c_str(), stale ? 1 : 0, ldev->data(0, 0),
+                    static_cast<float>(nll / Lg.rows()), r0mn, r0mx,
+                    static_cast<float>(r0sum / Lg.cols()));
+        device::step_end();
+    }
+
     const int warmup = 3;
     float last = 0.0f;
     for (int s = 0; s < warmup; ++s) {
