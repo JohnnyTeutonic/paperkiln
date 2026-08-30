@@ -210,6 +210,31 @@ at 3600, b0 spread 1600 -> never (6/15 never crossing).
    run exists. The S-arm fingerprint is computed by that script from
    runs made after this commit, not chosen after inspection.
 
+## Execution clarifications (added after the licence commit; NO rule changed)
+
+*Recorded here rather than edited silently. Both were found on
+31 Aug 2026 by testing the analysis before any run existed, and
+neither alters a hypothesis, threshold, or decision rule.*
+
+1. **Legacy lane identification, bridge reference arm only.** mtstudio
+   began emitting `window`/`sinks` in the model event only with the
+   deep-SWA work; the banked CPU cohort predates it and records bare
+   `attention="swa"`. Those experiments had exactly ONE swa
+   configuration by construction (w=64, sinks=1, fixed in their
+   committed sweep.json), so for that cohort the lane is read from the
+   manifest and the substitution is ANNOUNCED in the analysis output.
+   The panel arms (S/M/L) run on the new binary and are read strictly —
+   a legacy receipt reaching the strict path is dropped, never merged
+   into a real lane, because five swa lanes are otherwise
+   indistinguishable. This preserves Threat 5 (lanes from model events,
+   never directory names) for every arm that carries a claim.
+2. **The gate is tested in both directions before it is trusted.**
+   `gate_test.py` beside this file synthesises a bridge arm from the
+   banked receipts and runs the real gate twice: identical data must
+   PASS (observed 5/5 sign agreement, pooled means equal), and a swa
+   lane shifted by +0.15 must FAIL (observed 3/5, mean outside 2 SE,
+   "STUDY HALTS"). A gate that cannot fail is not a gate.
+
 ## What this cannot show
 
 One architecture family, one corpus, layers=2, T=256, one house

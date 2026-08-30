@@ -44,17 +44,35 @@ BOOTSTRAP_SEED = 12345    # fixed: the bootstrap must be reproducible
 LANES = ["exact", "swa16s1", "swa32s1", "swa64s1", "swa128s1", "swa64s0"]
 
 
-def lane_key(model):
-    """Lane identity from the MODEL EVENT ONLY (refuse-to-run guard)."""
+def lane_key(model, legacy_swa=False):
+    """Lane identity from the MODEL EVENT ONLY (refuse-to-run guard).
+
+    LEGACY SHIM, bridge reference arm only (added 31 Aug 2026 before any
+    run). mtstudio only began emitting `window`/`sinks` in the model
+    event with the deep-SWA work; the BANKED CPU cohort
+    (sparse_s1_boundary/seeds) predates it and records bare
+    attention="swa". Those experiments had exactly ONE swa
+    configuration by construction — w=64, sinks=1, fixed in their
+    committed sweep.json — so for that cohort the lane is determined by
+    the manifest, not guessed. `legacy_swa=True` is passed ONLY for the
+    bridge's banked side and the substitution is announced in the
+    output; every panel arm (S/M/L) runs on the new binary and is read
+    strictly, because five swa lanes cannot be told apart otherwise.
+    A legacy receipt reaching the strict path yields "swa?" and is
+    dropped rather than silently merged into a real lane.
+    """
     att = model.get("attention")
     if att == "exact":
         return "exact"
     if att == "swa":
-        return f"swa{int(model.get('window', -1))}s{int(model.get('sinks', -1))}"
+        w, s = model.get("window"), model.get("sinks")
+        if w is None or s is None:
+            return "swa64s1" if legacy_swa else "swa?"
+        return f"swa{int(w)}s{int(s)}"
     return f"UNKNOWN:{att}"
 
 
-def read_run(d):
+def read_run(d, legacy_swa=False):
     evals, model = [], None
     with open(os.path.join(d, "events.jsonl"), encoding="utf-8") as f:
         for line in f:
@@ -73,18 +91,26 @@ def read_run(d):
     for s, v in evals:
         dedup[s] = v                  # last occurrence wins (resume rule)
     evals = sorted(dedup.items())
-    return {"lane": lane_key(model), "seed": int(model["seed"]),
+    return {"lane": lane_key(model, legacy_swa), "seed": int(model["seed"]),
             "d": int(model["d"]), "layers": int(model["layers"]),
             "evals": evals}
 
 
-def read_arm(root):
+def read_arm(root, legacy_swa=False):
     arm = {}
+    n_legacy = 0
     for d in sorted(glob.glob(os.path.join(root, "runs", "*"))):
         if not os.path.exists(os.path.join(d, "events.jsonl")):
             continue
-        r = read_run(d)
+        r = read_run(d, legacy_swa)
+        if legacy_swa and r["lane"] == "swa64s1":
+            n_legacy += 1
         arm.setdefault(r["seed"], {})[r["lane"]] = r
+    if n_legacy:
+        print(f"  [legacy] {n_legacy} runs under {os.path.basename(root)} "
+              f"record bare attention=swa (pre-dating window/sinks in the "
+              f"model event); lane taken as swa64s1 from their committed "
+              f"sweep manifest — bridge reference arm only")
     return arm
 
 
@@ -257,7 +283,8 @@ def bridge_gate(bridge_root, banked_root):
     print("=" * 68)
     print("THREAT 1 — NUMERICS BRIDGE (gate; the panel is blocked on it)")
     print("=" * 68)
-    cuda, cpu = read_arm(bridge_root), read_arm(banked_root)
+    cuda = read_arm(bridge_root)
+    cpu = read_arm(banked_root, legacy_swa=True)
     seeds = sorted(set(cuda) & set(cpu))
     dc, dp = [], []
     for s in seeds:
