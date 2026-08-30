@@ -106,6 +106,26 @@ bool device_ops_enabled();
 // killed-by-scope rule as B2.0. Outside a window, or with the switch off,
 // every op writes through exactly as B2.1a.
 
+// TWO INVARIANTS THE WHOLE CACHE RESTS ON — break either and every
+// pointer key silently means something else:
+//
+// 1. THE CACHE IS KEYED BY Matrix::get_data(), AND THAT MUST BE THE HOST
+//    POINTER. The vendored Matrix compiles get_data() as
+//    `is_on_gpu_ ? gpu_data_ : data_.data()` under CUDA_AVAILABLE, and
+//    `is_on_gpu_` is set only by to_gpu() and by copying an already-GPU
+//    matrix. microtorch NEVER calls to_gpu() (audited 30 Aug 2026: zero
+//    call sites in src/, include/, tools/) — so keys are host pointers
+//    and materialize()'s D2H destination is host memory. If anything ever
+//    hands a to_gpu() matrix into the tape, keys become device pointers
+//    and materialize() memcpys device->device-as-host. Don't arm it.
+//    (Related vendored defect, harmless while the above holds: Matrix's
+//    move ctor moves data_ but not gpu_data_/is_on_gpu_.)
+// 2. ONE STALE ENTRY IS AUTHORITATIVE OVER EVERY OTHER SOURCE for that
+//    storage. A stale hit means host is behind; any path that instead
+//    uploads from host injects the stale value. window_operand checked
+//    the cache in only one of its two branches and that was the B2.3
+//    flat-loss bug (30 Aug 2026) — see docs/CUDA_PHASE_B2.md.
+
 void set_defer_downloads(bool on);  // master switch (default off)
 bool defer_downloads_enabled();
 
