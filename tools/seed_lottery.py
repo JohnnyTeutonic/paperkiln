@@ -18,6 +18,7 @@ Output: atlas/SEED_LOTTERY.md (regenerated; do not edit by hand).
 import glob
 import json
 import os
+import statistics
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -62,6 +63,78 @@ def best_by(evals, b):
     vals = [v for step, v in evals if step <= b]
     assert vals, b
     return min(vals)
+
+
+def shape_section():
+    """The lottery is not only about the SIGN — it is about the SHAPE.
+
+    Pools all 15 paired seeds (boundary + seeds receipts) and counts how
+    many single seeds display an apparent BASIN: sparse ahead, then
+    dense, then sparse again. atlas/THEOREM_CROSSING.md forbids that
+    shape in expectation, so every occurrence is noise wearing the
+    costume of a phenomenon. Same running-best convention as the
+    pre-registered analyses.
+    """
+    dirs = [RECEIPTS,
+            os.path.join(REPO, "experiments", "sparse_s1_seeds", "receipts")]
+    per = {}
+    for d in dirs:
+        for path in sorted(glob.glob(os.path.join(d, "run_*_events.jsonl"))):
+            evals, model = [], None
+            with open(path, encoding="utf-8") as f:
+                for line in f:
+                    try:
+                        ev = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if ev.get("event") == "eval":
+                        evals.append((ev["step"], ev["val_loss"]))
+                    elif ev.get("event") == "model":
+                        model = ev
+            if model is None:
+                continue
+            per.setdefault(model["seed"], {})[model["attention"]] = \
+                sorted(evals)
+    budgets = list(range(SLICE, CUTOFF + 1, SLICE))
+    trajs = {}
+    for s, lanes in per.items():
+        if not {"exact", "swa"} <= set(lanes):
+            continue
+        trajs[s] = [best_by(lanes["swa"], b) - best_by(lanes["exact"], b)
+                    for b in budgets]
+    if not trajs:
+        return ""
+
+    def changes(t, band=0.0):
+        sg = [0 if abs(v) <= band else (1 if v > 0 else -1) for v in t]
+        sg = [x for x in sg if x]
+        return sum(1 for i in range(1, len(sg)) if sg[i] != sg[i - 1])
+
+    n = len(trajs)
+    sd = sum(statistics.pstdev([trajs[s][i] for s in trajs])
+             for i in range(len(budgets))) / len(budgets)
+    raw = [s for s in trajs if changes(trajs[s]) >= 2]
+    banded = [s for s in trajs if changes(trajs[s], sd) >= 2]
+    return (
+        "## The lottery is not only about the sign — it is about the shape\n\n"
+        f"Pooling all {n} paired seeds and asking a different question: how\n"
+        "many single seeds show an apparent BASIN — sparse ahead, then\n"
+        "dense, then sparse again?\n\n"
+        "| | seeds with >= 2 sign changes |\n|---|---|\n"
+        f"| raw trajectory | **{len(raw)} / {n}** |\n"
+        f"| ignoring excursions <= {sd:.4f} (mean between-seed SD) | "
+        f"**{len(banded)} / {n}** |\n\n"
+        f"`atlas/THEOREM_CROSSING.md` proves that shape cannot exist in\n"
+        f"expectation: sliding-window attention nests inside exact\n"
+        "attention, so the comparison is monotone and crosses at most\n"
+        f"once. Yet {len(raw)} of {n} single seeds display it — and\n"
+        f"{'none' if not banded else str(len(banded))} survive once\n"
+        "excursions smaller than the between-seed SD are treated as zero.\n"
+        f"A one-seed experiment here has a ~{len(raw) / n:.0%} chance of\n"
+        "reporting a qualitative phenomenon that does not exist. The sign\n"
+        "table above says a single seed can get the direction wrong; this\n"
+        "says it can invent an entire shape. Regenerate with\n"
+        "`python tools/basin_check.py` for the per-seed trajectories.\n\n")
 
 
 def main():
@@ -112,6 +185,7 @@ def main():
               "why every claim in the findings registry carries seed counts,\n"
               "paired tests, and budget scopes rather than a single-run\n"
               "verdict.\n\n")
+        w(shape_section())
         w("**Where the claims live**: the registry rows S1c-budget-reversal\n"
           "(the sign flips with budget, t=+5.09, direction pre-committed) and\n"
           "the sparse_s1_boundary result (sign at 3600 UNDETERMINED at n=5;\n"

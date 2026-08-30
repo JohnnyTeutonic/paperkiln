@@ -36,6 +36,29 @@ why every claim in the findings registry carries seed counts,
 paired tests, and budget scopes rather than a single-run
 verdict.
 
+## The lottery is not only about the sign — it is about the shape
+
+Pooling all 15 paired seeds and asking a different question: how
+many single seeds show an apparent BASIN — sparse ahead, then
+dense, then sparse again?
+
+| | seeds with >= 2 sign changes |
+|---|---|
+| raw trajectory | **6 / 15** |
+| ignoring excursions <= 0.0298 (mean between-seed SD) | **0 / 15** |
+
+`atlas/THEOREM_CROSSING.md` proves that shape cannot exist in
+expectation: sliding-window attention nests inside exact
+attention, so the comparison is monotone and crosses at most
+once. Yet 6 of 15 single seeds display it — and
+none survive once
+excursions smaller than the between-seed SD are treated as zero.
+A one-seed experiment here has a ~40% chance of
+reporting a qualitative phenomenon that does not exist. The sign
+table above says a single seed can get the direction wrong; this
+says it can invent an entire shape. Regenerate with
+`python tools/basin_check.py` for the per-seed trajectories.
+
 **Where the claims live**: the registry rows S1c-budget-reversal
 (the sign flips with budget, t=+5.09, direction pre-committed) and
 the sparse_s1_boundary result (sign at 3600 UNDETERMINED at n=5;
