@@ -70,6 +70,15 @@ bool adamw_step(Matrix&, const Matrix&, Matrix&, Matrix&, float, float,
 bool sgd_step(Matrix&, const Matrix&, Matrix*, float, float) {
     return false;
 }
+float* opt_state_new(size_t) { return nullptr; }
+void opt_state_free(float*) {}
+bool adamw_step_dev(Matrix&, const Matrix&, float*, float*, float, float,
+                    float, float, float, float, float) {
+    return false;
+}
+bool sgd_step_dev(Matrix&, const Matrix&, float*, float, float) {
+    return false;
+}
 bool layernorm_fwd(const Matrix&, const Matrix&, const Matrix&, float,
                    Matrix&, Matrix&, std::vector<float>&) { return false; }
 bool layernorm_bwd(const Matrix&, const Matrix&, const std::vector<float>&,

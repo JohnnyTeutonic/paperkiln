@@ -289,16 +289,23 @@ Not a constraint until far above this ladder.
      optimizers over 5-step trajectories with fresh grads per step
      (state must track across steps, not one update). Both TUs nvcc
      clean; CPU syntax clean; T4 pending next validate run.
-  2. [ ] **B2.3b: persistent device optimizer state.** m/v/vel live on
-     device (uploaded once at construction / resume), p updated in its
-     resident slot, host p refreshed only at the step boundary or an
-     explicit checkpoint materialize sweep. Grad arrives via the value
-     cache (device-side accumulate below) so the whole
-     backward->optimizer edge stays on-device. LIFETIME RULE from the
-     B2.2 bug: any deferred output that dies before step_end() must be
-     discarded or materialized — optimizer state is long-lived and
-     owner-managed, so it must NOT ride the value cache keyed by host
-     pointers; give it owned DBufs.
+  2. [x] **B2.3b (30 Aug): persistent device optimizer state.** m+v
+     (AdamW, one owned buffer: m block then v block) and vel (SGD) live
+     on device — allocated ZEROED on the first step (= the host init,
+     so trajectories match), owned via shared_ptr with
+     opt_state_free as the deleter, NEVER the pointer-keyed value cache
+     (the B2.2 lifetime rule applied by design). Per step: only g
+     uploads and p round-trips (host-authoritative until B2.3c) — the
+     2x-state bus traffic of B2.3a is gone. nullptr from opt_state_new
+     (CPU build / devops off) pins the host path for the whole run;
+     a mid-run MICROTORCH_DEVICE_OPS toggle with device state present
+     throws rather than silently forking the trajectory (loud-failure
+     rule). mtstudio does not serialize optimizer moments (verified),
+     so no checkpoint sync is required yet; a materialize accessor is
+     B2.3c-adjacent work if resume-with-moments ever lands. leg 6
+     covers the persistent path (fresh optimizer per drive, 5-step
+     trajectories vs host). p updated in its RESIDENT slot moves to
+     B2.3c with device-side accumulate.
   3. [ ] **B2.3c: device-side accumulate.** Variable::accumulate keeps
      grad on-device (axpy into a grad slot) inside the step window;
      the materialize choke moves from every accumulate to the

@@ -270,13 +270,38 @@ SGD::SGD(std::vector<Var> params, float lr_, float momentum)
 }
 
 void SGD::step() {
+    // B2.3b: persistent device velocity, created once on the first step
+    // (zeroed = the host init). nullptr pins the host path for the run —
+    // NEVER mix paths mid-run: the two states would silently diverge.
+    if (!devtried_ && mu_ != 0.0f) {
+        devtried_ = true;
+        size_t total = 0;
+        devoff_.clear();
+        for (const auto& p : params_) {
+            devoff_.push_back(total);
+            total += p->data.rows() * p->data.cols();
+        }
+        if (float* s = device::devops::opt_state_new(total))
+            devstate_.reset(s, device::devops::opt_state_free);
+    }
     for (size_t k = 0; k < params_.size(); ++k) {
         Var& p = params_[k];
         if (p->grad.rows() == 0) continue;
-        // B2.3a: device step when available; host loop is the reference.
-        if (device::devops::sgd_step(p->data, p->grad,
-                                     mu_ != 0.0f ? &vel_[k] : nullptr, lr,
-                                     mu_))
+        if (devstate_) {
+            if (device::devops::sgd_step_dev(p->data, p->grad,
+                                             devstate_.get() + devoff_[k],
+                                             lr, mu_))
+                continue;
+            // Device ops were disabled mid-run: the velocity lives on
+            // device and the host copy is stale zeros. Refuse loudly
+            // rather than silently fork the trajectory.
+            throw std::runtime_error(
+                "SGD: persistent device state exists but device ops are "
+                "off — do not toggle MICROTORCH_DEVICE_OPS mid-run");
+        }
+        // B2.3a seam for the momentum-free case (no state to persist).
+        if (mu_ == 0.0f &&
+            device::devops::sgd_step(p->data, p->grad, nullptr, lr, mu_))
             continue;
         for (size_t i = 0; i < p->data.rows(); ++i)
             for (size_t j = 0; j < p->data.cols(); ++j) {
@@ -309,13 +334,35 @@ void AdamW::step() {
     ++t_;
     const float c1 = 1.0f - std::pow(b1_, static_cast<float>(t_));
     const float c2 = 1.0f - std::pow(b2_, static_cast<float>(t_));
+    // B2.3b: persistent device m+v, created once on the first step
+    // (zeroed = the host init, so the trajectory is the host one).
+    // nullptr pins the host path for the whole run — never mix mid-run.
+    if (!devtried_) {
+        devtried_ = true;
+        devtotal_ = 0;
+        devoff_.clear();
+        for (const auto& p : params_) {
+            devoff_.push_back(devtotal_);
+            devtotal_ += p->data.rows() * p->data.cols();
+        }
+        if (float* s = device::devops::opt_state_new(2 * devtotal_))
+            devstate_.reset(s, device::devops::opt_state_free);
+    }
     for (size_t k = 0; k < params_.size(); ++k) {
         Var& p = params_[k];
         if (p->grad.rows() == 0) continue;
-        // B2.3a: device step when available; host loop is the reference.
-        if (device::devops::adamw_step(p->data, p->grad, m_[k], v_[k], lr,
-                                       b1_, b2_, c1, c2, eps_, wd_))
-            continue;
+        if (devstate_) {
+            if (device::devops::adamw_step_dev(
+                    p->data, p->grad, devstate_.get() + devoff_[k],
+                    devstate_.get() + devtotal_ + devoff_[k], lr, b1_, b2_,
+                    c1, c2, eps_, wd_))
+                continue;
+            // Same loud-failure rule as SGD: m/v live on device; the
+            // host matrices are stale zeros. Never silently fork.
+            throw std::runtime_error(
+                "AdamW: persistent device state exists but device ops are "
+                "off — do not toggle MICROTORCH_DEVICE_OPS mid-run");
+        }
         for (size_t i = 0; i < p->data.rows(); ++i)
             for (size_t j = 0; j < p->data.cols(); ++j) {
                 const float g = p->grad(i, j);

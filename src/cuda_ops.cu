@@ -977,6 +977,45 @@ bool sgd_step(Matrix& p, const Matrix& g, Matrix* vel, float lr, float mu) {
     return true;
 }
 
+// B2.3b: persistent device optimizer state — owned, zeroed, freed by
+// the optimizer (shared_ptr deleter), NEVER the value cache.
+float* opt_state_new(size_t n_elems) {
+    if (!active()) return nullptr;
+    float* d = dalloc(n_elems);
+    cuda_check(cudaMemset(d, 0, n_elems * sizeof(float)), "opt_state memset");
+    return d;
+}
+
+void opt_state_free(float* s) {
+    if (s) cudaFree(s);
+}
+
+bool adamw_step_dev(Matrix& p, const Matrix& g, float* m_dev, float* v_dev,
+                    float lr, float b1, float b2, float c1, float c2,
+                    float eps, float wd) {
+    if (!active()) return false;
+    const size_t n = p.rows() * p.cols();
+    In dg(g.get_data(), n);
+    Out dp(p.get_data(), n, /*need_current=*/true);
+    k_adamw_step<<<ew_grid(n), NTHREADS>>>(dp.d, dg.d, m_dev, v_dev, lr, b1,
+                                           b2, c1, c2, eps, wd, n);
+    cuda_check(cudaGetLastError(), "adamw_step_dev");
+    dp.finish();
+    return true;
+}
+
+bool sgd_step_dev(Matrix& p, const Matrix& g, float* vel_dev, float lr,
+                  float mu) {
+    if (!active()) return false;
+    const size_t n = p.rows() * p.cols();
+    In dg(g.get_data(), n);
+    Out dp(p.get_data(), n, /*need_current=*/true);
+    k_sgd_step<<<ew_grid(n), NTHREADS>>>(dp.d, dg.d, vel_dev, lr, mu, n);
+    cuda_check(cudaGetLastError(), "sgd_step_dev");
+    dp.finish();
+    return true;
+}
+
 bool attn_softmax_bwd_inplace(Matrix& ds, const Matrix& A, float scale) {
     if (!active()) return false;
     const int T = static_cast<int>(ds.rows());

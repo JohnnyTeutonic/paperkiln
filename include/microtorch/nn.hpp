@@ -175,6 +175,11 @@ private:
     std::vector<Var> params_;
     std::vector<Matrix> vel_;
     float mu_;
+    // B2.3b: persistent device velocity (owned buffer, shared_ptr
+    // deleter frees it; nullptr = host path for the whole run).
+    std::shared_ptr<float> devstate_;
+    std::vector<size_t> devoff_;
+    bool devtried_ = false;
 };
 
 class AdamW {
@@ -190,6 +195,12 @@ private:
     std::vector<Matrix> m_, v_;
     float b1_, b2_, eps_, wd_;
     long t_ = 0;
+    // B2.3b: persistent device m+v (one owned buffer, m block then v
+    // block; zeroed at creation = the host init, so trajectories match).
+    std::shared_ptr<float> devstate_;
+    std::vector<size_t> devoff_;
+    size_t devtotal_ = 0;
+    bool devtried_ = false;
 };
 
 // Attention Residuals (AttnRes) — TECH_TRANSFER item 1; Kimi K3 arXiv

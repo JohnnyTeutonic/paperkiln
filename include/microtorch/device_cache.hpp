@@ -195,6 +195,19 @@ bool adamw_step(Matrix& p, const Matrix& g, Matrix& m, Matrix& v, float lr,
                 float b1, float b2, float c1, float c2, float eps,
                 float wd);
 bool sgd_step(Matrix& p, const Matrix& g, Matrix* vel, float lr, float mu);
+// B2.3b: persistent device optimizer state — an OWNED zeroed device
+// buffer (never the pointer-keyed value cache: the B2.2 lifetime rule).
+// opt_state_new returns nullptr on CPU builds / devops off, which pins
+// the optimizer to its host path for the whole run. The *_dev steps
+// take raw device pointers into that buffer; p still round-trips
+// (host-authoritative until B2.3c).
+float* opt_state_new(size_t n_elems);
+void opt_state_free(float* s);
+bool adamw_step_dev(Matrix& p, const Matrix& g, float* m_dev, float* v_dev,
+                    float lr, float b1, float b2, float c1, float c2,
+                    float eps, float wd);
+bool sgd_step_dev(Matrix& p, const Matrix& g, float* vel_dev, float lr,
+                  float mu);
 bool layernorm_fwd(const Matrix& x, const Matrix& gamma, const Matrix& beta,
                    float eps, Matrix& y, Matrix& xhat,
                    std::vector<float>& rstd);
