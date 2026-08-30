@@ -49,12 +49,15 @@ def main():
         print(f"{DONE}: BUILD_FAILED")
         sys.exit(1)
 
+    # BISECTION LADDER (this pass): d=256 only, per-step losses printed.
+    # The engine whose loss curve first diverges from cpu's is the broken
+    # stage. cpu/gpu/ops/res/b2 all share seeds and data.
     results = {}
-    for d in (256, 512):
-        for eng in ("cpu", "b2"):
-            steps = 10
-            env = ("MICROTORCH_DEVICE=cuda " if eng == "b2" else
-                   "MICROTORCH_DEVICE=cpu ")
+    for d, engines, steps in ((256, ("cpu", "gpu", "ops", "res", "b2"), 6),
+                              (512, ("cpu", "b2"), 6)):
+        for eng in engines:
+            env = ("MICROTORCH_DEVICE=cpu " if eng == "cpu" else
+                   "MICROTORCH_DEVICE=cuda ")
             out = sh_out(f"cd microtorch/build_cuda && {env}"
                          f"./bench_b2 {d} 512 4 {steps} {eng}")
             print(out, end="", flush=True)

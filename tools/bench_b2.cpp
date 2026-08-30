@@ -33,17 +33,27 @@ int main(int argc, char** argv) {
     const size_t T = std::strtoul(argv[2], nullptr, 10);
     const size_t L = std::strtoul(argv[3], nullptr, 10);
     const int steps = std::atoi(argv[4]);
-    const bool b2 = std::string(argv[5]) == "b2";
+    // Engine ladder for bisection (2026-08-30: the first bench run's b2
+    // arm sat at exactly ln(vocab) — uniform logits, not learning — at
+    // shapes the test suite never reaches):
+    //   cpu  = host reference
+    //   gpu  = CUDA gemm only (Phase A/B1 path, no B2 switches)
+    //   ops  = + MICROTORCH_DEVICE_OPS
+    //   res  = + step residency
+    //   b2   = + deferred downloads (the full stack)
+    const std::string eng = argv[5];
+    const bool cuda = eng != "cpu";
 
-    if (b2) {
+    if (cuda) {
         device::set(device::Device::CUDA);
         if (device::get() != device::Device::CUDA) {
             std::printf("bench_b2: CUDA unavailable in this build\n");
             return 2;
         }
-        device::set_device_ops(true);
-        device::set_step_residency(true);
-        device::set_defer_downloads(true);
+        if (eng == "ops" || eng == "res" || eng == "b2")
+            device::set_device_ops(true);
+        if (eng == "res" || eng == "b2") device::set_step_residency(true);
+        if (eng == "b2") device::set_defer_downloads(true);
     } else {
         device::set(device::Device::CPU);
     }
@@ -77,17 +87,23 @@ int main(int argc, char** argv) {
 
     const int warmup = 3;
     float last = 0.0f;
-    for (int s = 0; s < warmup; ++s) last = step();
+    for (int s = 0; s < warmup; ++s) {
+        last = step();
+        std::printf("  warm %d loss %.4f\n", s, last);
+    }
 
     const auto t0 = std::chrono::steady_clock::now();
-    for (int s = 0; s < steps; ++s) last = step();
+    for (int s = 0; s < steps; ++s) {
+        last = step();
+        std::printf("  step %d loss %.4f\n", s, last);
+    }
     const auto t1 = std::chrono::steady_clock::now();
 
     const double ms =
         std::chrono::duration<double, std::milli>(t1 - t0).count() / steps;
     std::printf("BENCH d=%zu T=%zu L=%zu engine=%s steps=%d  "
                 "ms_per_step=%.2f  tok_per_s=%.0f  (final loss %.4f)\n",
-                d, T, L, b2 ? "b2" : "cpu", steps, ms,
+                d, T, L, eng.c_str(), steps, ms,
                 1000.0 * static_cast<double>(T) / ms, last);
     return 0;
 }
