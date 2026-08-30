@@ -3,6 +3,7 @@
 
 #include <stdexcept>
 #include <unordered_set>
+#include <utility>
 
 namespace microtorch {
 
@@ -36,6 +37,12 @@ void Variable::accumulate(const Matrix& g) {
     }
 }
 
+void Variable::accumulate(Matrix&& g) {
+    accumulate(static_cast<const Matrix&>(g));
+    device::discard(g);  // the temp dies with this statement — its
+                         // deferred entry must not outlive it
+}
+
 namespace {
 
 // Post-order DFS over parents. Iterative, because a deep tape (15k-step
@@ -67,7 +74,7 @@ void backward(const Var& root) {
     }
     Matrix seed(1, 1);
     seed(0, 0) = 1.0f;
-    root->accumulate(seed);
+    root->accumulate(std::move(seed));
 
     std::vector<Variable*> order;  // post-order: leaves first
     topo(root, order);

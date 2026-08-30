@@ -63,6 +63,15 @@ public:
 
     bool is_leaf() const { return parents.empty(); }
     void accumulate(const Matrix& g);  // grad += g (sizing on first use)
+    // B2.3c: rvalue overload for gradient TEMPORARIES (gemm expression
+    // results, moved locals). Same accumulate, then discards g's
+    // value-cache entry — a temp consumed on-device would otherwise die
+    // stale and step_end() would write its freed host buffer (the B2.2
+    // corruption class; it resurfaced through this exact door when the
+    // device-side accumulate landed). Lvalue pass-throughs
+    // (accumulate(self->grad)) keep their entries: later readers
+    // materialize-at-entry or stale-hit them by design.
+    void accumulate(Matrix&& g);
 };
 
 // Diagnostic: Variables currently alive (tape nodes + leaves). The memory

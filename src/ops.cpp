@@ -5,6 +5,7 @@
 #include <cmath>
 #include <random>
 #include <stdexcept>
+#include <utility>
 
 namespace microtorch {
 namespace ops {
@@ -108,7 +109,7 @@ Var add_bias(const Var& x, const Var& b) {
             for (size_t i = 0; i < self->grad.rows(); ++i)      // contract as
                 for (size_t j = 0; j < self->grad.cols(); ++j)  // compute_bias_
                     db(0, j) += self->grad(i, j);               // gradients_kernel
-            b->accumulate(db);
+            b->accumulate(std::move(db));
         }
     });
 }
@@ -144,7 +145,7 @@ Var gelu(const Var& x) {
                 }
             }
         }
-        x->accumulate(dx);
+        x->accumulate(std::move(dx));
     });
 }
 
@@ -174,7 +175,7 @@ Var softmax_row(const Var& x) {
                 }
             }
         }
-        x->accumulate(dX);
+        x->accumulate(std::move(dX));
     });
 }
 
@@ -191,7 +192,7 @@ Var mean(const Var& x) {
         if (!x->requires_grad) return;
         device::materialize(self->grad);  // B2.3c: host-read below
         Matrix dx(x->data.rows(), x->data.cols(), self->grad(0, 0) / n);
-        x->accumulate(dx);
+        x->accumulate(std::move(dx));
     });
 }
 
@@ -230,7 +231,7 @@ Var slice_cols(const Var& x, size_t j0, size_t j1) {
         Matrix dx(x->data.rows(), x->data.cols());
         for (size_t i = 0; i < self->grad.rows(); ++i)
             for (size_t j = 0; j < self->grad.cols(); ++j) dx(i, j0 + j) = self->grad(i, j);
-        x->accumulate(dx);
+        x->accumulate(std::move(dx));
     });
 }
 
@@ -260,7 +261,7 @@ Var concat_cols(const std::vector<Var>& xs) {
                 Matrix dp(p->data.rows(), w);
                 for (size_t i = 0; i < dp.rows(); ++i)
                     for (size_t j = 0; j < w; ++j) dp(i, j) = self->grad(i, off + j);
-                p->accumulate(dp);
+                p->accumulate(std::move(dp));
             }
             off += w;
         }
@@ -325,8 +326,8 @@ Var layernorm(const Var& x, const Var& gamma, const Var& beta, float eps) {
                         db(0, j) += dY(i, j);
                     }
             }
-            if (g->requires_grad) g->accumulate(dg);
-            if (b->requires_grad) b->accumulate(db);
+            if (g->requires_grad) g->accumulate(std::move(dg));
+            if (b->requires_grad) b->accumulate(std::move(db));
         }
         if (!x->requires_grad) return;
         // dx = rstd * (dxhat - mean(dxhat) - xhat * mean(dxhat .* xhat))
@@ -346,7 +347,7 @@ Var layernorm(const Var& x, const Var& gamma, const Var& beta, float eps) {
                 }
             }
         }
-        x->accumulate(dx);
+        x->accumulate(std::move(dx));
     });
 }
 
@@ -426,8 +427,7 @@ Var cross_entropy(const Var& logits, const std::vector<int>& targets) {
             device::discard(*P);
             return;
         }
-        l->accumulate(dl);   // materializes dl, so it dies host-fresh
-        device::discard(dl);  // free its device buffer + drop the key
+        l->accumulate(std::move(dl));  // rvalue: self-discarding
         device::discard(*P);  // P is never host-read; skip its step_end D2H
     });
 }
@@ -449,7 +449,7 @@ Var mul_row(const Var& x, const Var& r) {
             Matrix dx = self->grad;
             for (size_t i = 0; i < dx.rows(); ++i)
                 for (size_t j = 0; j < dx.cols(); ++j) dx(i, j) *= r->data(0, j);
-            x->accumulate(dx);
+            x->accumulate(std::move(dx));
         }
         if (r->requires_grad) {
             device::materialize(self->grad);  // B2.3c: host-read below
@@ -457,7 +457,7 @@ Var mul_row(const Var& x, const Var& r) {
             for (size_t i = 0; i < self->grad.rows(); ++i)
                 for (size_t j = 0; j < self->grad.cols(); ++j)
                     dr(0, j) += self->grad(i, j) * x->data(i, j);
-            r->accumulate(dr);
+            r->accumulate(std::move(dr));
         }
     });
 }
@@ -482,7 +482,7 @@ Var silu(const Var& x) {
                 const float s = 1.0f / (1.0f + std::exp(-v));
                 dx(i, j) *= s * (1.0f + v * (1.0f - s));
             }
-        x->accumulate(dx);
+        x->accumulate(std::move(dx));
     });
 }
 
@@ -522,7 +522,7 @@ Var rmsnorm(const Var& x, const Var& w) {
                     for (size_t j = 0; j < C; ++j)
                         dw(0, j) += self->grad(i, j) * x->data(i, j) * (*rms_inv)[i];
             }
-            w->accumulate(dw);
+            w->accumulate(std::move(dw));
         }
         if (!x->requires_grad) return;
         // RMSNorm gradient: y_ij = x_ij * w_j * rms_inv_i
@@ -538,7 +538,7 @@ Var rmsnorm(const Var& x, const Var& w) {
                                (self->grad(i, j) * w->data(0, j) - x->data(i, j) * ri2 * term * n_inv);
             }
         }
-        x->accumulate(dx);
+        x->accumulate(std::move(dx));
     });
 }
 
@@ -598,7 +598,7 @@ Var apply_rope(const Var& qk, const std::vector<int>& pos, float theta_base, siz
                 }
             }
         }
-        qk->accumulate(dqk);
+        qk->accumulate(std::move(dqk));
     });
 }
 
@@ -673,9 +673,9 @@ Var kimi_attention(const Var& q, const Var& k, const Var& v, bool causal, size_t
             rows_into(gk, bk, b * sl);
             rows_into(gv, bv, b * sl);
         }
-        if (q_var->requires_grad) q_var->accumulate(gq);
-        if (k_var->requires_grad) k_var->accumulate(gk);
-        if (v_var->requires_grad) v_var->accumulate(gv);
+        if (q_var->requires_grad) q_var->accumulate(std::move(gq));
+        if (k_var->requires_grad) k_var->accumulate(std::move(gk));
+        if (v_var->requires_grad) v_var->accumulate(std::move(gv));
     });
 }
 
@@ -741,11 +741,11 @@ Var ssm_scan(const Var& u, const Var& A, const Var& B, const Var& C, const Var& 
             }
             ds_next = ds;
         }
-        if (u->requires_grad) u->accumulate(du);
-        if (A->requires_grad) A->accumulate(dA);
-        if (B->requires_grad) B->accumulate(dB);
-        if (C->requires_grad) C->accumulate(dC);
-        if (D->requires_grad) D->accumulate(dD);
+        if (u->requires_grad) u->accumulate(std::move(du));
+        if (A->requires_grad) A->accumulate(std::move(dA));
+        if (B->requires_grad) B->accumulate(std::move(dB));
+        if (C->requires_grad) C->accumulate(std::move(dC));
+        if (D->requires_grad) D->accumulate(std::move(dD));
     });
 }
 
@@ -766,7 +766,7 @@ Var mul_col(const Var& x, const Var& c) {
             Matrix dx = self->grad;
             for (size_t i = 0; i < dx.rows(); ++i)
                 for (size_t j = 0; j < dx.cols(); ++j) dx(i, j) *= c->data(i, 0);
-            x->accumulate(dx);
+            x->accumulate(std::move(dx));
         }
         if (c->requires_grad) {
             device::materialize(self->grad);  // B2.3c: host-read below
@@ -776,7 +776,7 @@ Var mul_col(const Var& x, const Var& c) {
                 for (size_t j = 0; j < x->data.cols(); ++j) s += self->grad(i, j) * x->data(i, j);
                 dc(i, 0) = s;
             }
-            c->accumulate(dc);
+            c->accumulate(std::move(dc));
         }
     });
 }
@@ -801,7 +801,7 @@ Var rms_row(const Var& x, float eps) {
             const float denom = static_cast<float>(C) * self->data(i, 0);
             for (size_t j = 0; j < C; ++j) dx(i, j) = self->grad(i, 0) * x->data(i, j) / denom;
         }
-        x->accumulate(dx);
+        x->accumulate(std::move(dx));
     });
 }
 
@@ -827,7 +827,7 @@ Var sigmoid(const Var& x) {
                     dx(i, j) *= s * (1.0f - s);
                 }
         }
-        x->accumulate(dx);
+        x->accumulate(std::move(dx));
     });
 }
 
@@ -867,7 +867,7 @@ Var dropout(const Var& x, float p, unsigned long long seed) {
         for (size_t i = 0; i < dx.rows(); ++i)
             for (size_t j = 0; j < dx.cols(); ++j)
                 dx(i, j) = (u(rng) < keep) ? dx(i, j) * inv_keep : 0.0f;
-        x->accumulate(dx);
+        x->accumulate(std::move(dx));
     });
 }
 
@@ -884,7 +884,7 @@ Var relu(const Var& x) {
         for (size_t i = 0; i < dx.rows(); ++i)
             for (size_t j = 0; j < dx.cols(); ++j)
                 dx(i, j) = x->data(i, j) > 0.0f ? self->grad(i, j) : 0.0f;
-        x->accumulate(dx);
+        x->accumulate(std::move(dx));
     });
 }
 
