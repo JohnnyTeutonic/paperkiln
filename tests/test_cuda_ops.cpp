@@ -417,6 +417,55 @@ void leg4_attention() {
     device::set_device_ops(true);
 }
 
+// B2.2: embedding gather + cross-entropy on-device. Composed exactly as
+// a model uses them (CE consuming the gathered rows as logits), so the
+// devops-OFF run is the host reference for forward loss AND the
+// scatter-add table gradient; then again under deferral, where the
+// logits/P never cross the bus and the host receives one float.
+struct EmbCeRun {
+    float loss;
+    Matrix gt;
+};
+
+EmbCeRun run_embed_ce(unsigned seed, bool windowed) {
+    using mt::Var;
+    const size_t V = 32, C = 20, N = 24;
+    Var table = mt::make_var(filled(V, C, seed), true);
+    std::vector<int> ids(N), targets(N);
+    for (size_t i = 0; i < N; ++i) {
+        ids[i] = static_cast<int>((seed + 3 * i) % V);
+        targets[i] = static_cast<int>((seed + 5 * i) % C);
+    }
+    if (windowed) device::step_begin();
+    Var logits = mt::ops::embedding(table, ids);
+    Var loss = mt::ops::cross_entropy(logits, targets);
+    mt::backward(loss);
+    if (windowed) device::step_end();
+    return EmbCeRun{loss->data(0, 0), table->grad};
+}
+
+void leg5_embed_ce() {
+    std::printf("-- leg 5: embedding + cross-entropy (B2.2) --\n");
+    device::set_device_ops(false);
+    EmbCeRun off = run_embed_ce(46, false);
+    device::set_device_ops(true);
+    EmbCeRun on = run_embed_ce(46, false);
+    device::set_step_residency(true);
+    device::set_defer_downloads(true);
+    EmbCeRun def = run_embed_ce(46, /*windowed=*/true);
+    device::set_defer_downloads(false);
+    device::set_step_residency(false);
+
+    const double dl = std::fabs(static_cast<double>(off.loss) - on.loss);
+    check(dl <= 1e-5, "ce loss", dl);
+    check(max_abs_diff(off.gt, on.gt) <= 1e-4, "table grad",
+          max_abs_diff(off.gt, on.gt));
+    const double dld = std::fabs(static_cast<double>(off.loss) - def.loss);
+    check(dld <= 1e-5, "defer ce loss", dld);
+    check(max_abs_diff(off.gt, def.gt) <= 1e-4, "defer table grad",
+          max_abs_diff(off.gt, def.gt));
+}
+
 }  // namespace
 
 int main() {
@@ -432,6 +481,7 @@ int main() {
     leg2_tape();
     leg3_deferred();
     leg4_attention();
+    leg5_embed_ce();
 
     if (g_failures == 0) {
         std::printf("test_cuda_ops PASSED (B2.1a kernels + tape parity + B2.1b deferred downloads)\n");

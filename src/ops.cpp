@@ -341,11 +341,19 @@ Var layernorm(const Var& x, const Var& gamma, const Var& beta, float eps) {
 Var embedding(const Var& table, const std::vector<int>& ids) {
     const size_t d = table->data.cols();
     Matrix out(ids.size(), d);
+    // Bounds are checked HOST-SIDE for both paths (a kernel cannot throw).
     for (size_t i = 0; i < ids.size(); ++i) {
         if (ids[i] < 0 || static_cast<size_t>(ids[i]) >= table->data.rows()) {
             throw std::runtime_error("embedding: id out of range");
         }
-        for (size_t j = 0; j < d; ++j) out(i, j) = table->data(ids[i], j);
+    }
+    // B2.2: gather on-device (the forward's first activation is born
+    // resident); host loop as fallback. Backward scatter-add stays host
+    // until B2.3 (table grad is host-authoritative).
+    if (!device::devops::embed_gather(table->data, ids.data(), ids.size(),
+                                      out)) {
+        for (size_t i = 0; i < ids.size(); ++i)
+            for (size_t j = 0; j < d; ++j) out(i, j) = table->data(ids[i], j);
     }
     return record(std::move(out), {table}, [ids](Variable* self) {
         const Var& t = self->parents[0];
@@ -360,31 +368,49 @@ Var embedding(const Var& table, const std::vector<int>& ids) {
 }
 
 Var cross_entropy(const Var& logits, const std::vector<int>& targets) {
-    device::materialize(logits->data);
     const size_t R = logits->data.rows(), C = logits->data.cols();
     if (targets.size() != R) {
         throw std::runtime_error("cross_entropy: one target per row");
     }
-    // Cache the softmax for the fused backward -- the same
-    // (P - onehot)/N contract as softmax_cross_entropy_grad_kernel.
-    auto P = std::make_shared<Matrix>(logits->data);
-    P->apply_softmax();
-    Matrix out(1, 1);
-    double nll = 0.0;
     for (size_t i = 0; i < R; ++i) {
         if (targets[i] < 0 || static_cast<size_t>(targets[i]) >= C) {
             throw std::runtime_error("cross_entropy: target out of range");
         }
-        nll -= std::log(std::max((*P)(i, targets[i]), 1e-12f));
     }
-    out(0, 0) = static_cast<float>(nll / R);
+    // Cache the softmax for the fused backward -- the same
+    // (P - onehot)/N contract as softmax_cross_entropy_grad_kernel.
+    // B2.2: softmax + nll on-device — the [R,vocab] logits never come
+    // home and the host receives ONE float; host path as fallback.
+    auto P = std::make_shared<Matrix>(R, C);
+    Matrix out(1, 1);
+    float lossv = 0.0f;
+    if (device::devops::ce_fwd(logits->data, targets.data(), *P, lossv)) {
+        out(0, 0) = lossv;
+    } else {
+        device::materialize(logits->data);
+        *P = logits->data;
+        P->apply_softmax();
+        double nll = 0.0;
+        for (size_t i = 0; i < R; ++i) {
+            nll -= std::log(std::max((*P)(i, targets[i]), 1e-12f));
+        }
+        out(0, 0) = static_cast<float>(nll / R);
+    }
     return record(std::move(out), {logits}, [P, targets](Variable* self) {
         const Var& l = self->parents[0];
         if (!l->requires_grad) return;
         const float g = self->grad(0, 0) / static_cast<float>(P->rows());
-        Matrix dl = *P;
-        for (size_t i = 0; i < dl.rows(); ++i) dl(i, targets[i]) -= 1.0f;
-        l->accumulate(dl * g);
+        // B2.2: (P - onehot) * g on-device; the gradient first touches
+        // host at accumulate() (host-authoritative until B2.3).
+        Matrix dl(P->rows(), P->cols());
+        if (!device::devops::ce_bwd(*P, targets.data(), g, dl)) {
+            device::materialize(*P);  // no-op unless P deferred on-device
+            dl = *P;
+            for (size_t i = 0; i < dl.rows(); ++i) dl(i, targets[i]) -= 1.0f;
+            l->accumulate(dl * g);
+            return;
+        }
+        l->accumulate(dl);
     });
 }
 

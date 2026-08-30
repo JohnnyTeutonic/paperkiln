@@ -239,7 +239,22 @@ Not a constraint until far above this ladder.
   `-DMICROTORCH_CUDA`), CPU side g++ -fsyntax-only clean. T4 validation
   rides the next colab_cuda_validate.sh run (legs already rerun
   test_cuda_ops under DEFER=1, so leg 4 is covered with no script
-  change). REMAINING: embedding + CE.
+  change).
+  CODE-COMPLETE 30 Aug (same day, second increment): embedding + CE
+  moved on-device. `k_embed_gather` (ids bounds-checked host-side, ids
+  as an IBuf int upload; the forward's first activation is born
+  resident; backward scatter-add stays host until B2.3),
+  `k_ce_fwd` + `k_vec_sum` (softmax + per-row nll + on-device sum — the
+  [R,vocab] logits never come home and the host receives ONE float,
+  which is the B2.2 contract sentence verbatim; P cached through the
+  vcache for the backward under the host op's (P - onehot)/N contract,
+  1e-12 clamp included), `k_ce_bwd` ((P - onehot) * g; the gradient
+  first touches host at accumulate(), B2.3's choke point). Host paths
+  retained as fallback + reference; `test_cuda_ops` leg 5 composes
+  embedding -> CE exactly as a model does and pins loss + scatter-add
+  table grad across {off, on, defer}. Both TUs nvcc 12.6 clean; CPU
+  g++ -fsyntax-only clean. T4 validation of legs 4+5 rides the next
+  colab_cuda_validate.sh run.
 - **B2.3** AdamW/SGD on device; optimizer state uploads once at
   construction; checkpoint = explicit materialize sweep. Full step
   resident.

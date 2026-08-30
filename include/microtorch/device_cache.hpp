@@ -171,6 +171,15 @@ bool attn_masked_softmax(Matrix& A, float scale, size_t seq_len,
 bool swa_masked_softmax(Matrix& A, float scale, size_t seq_len,
                         size_t window, size_t sinks);
 bool attn_softmax_bwd_inplace(Matrix& ds, const Matrix& A, float scale);
+// B2.2: embedding gather (ids bounds-checked by the HOST caller first;
+// backward scatter-add stays host until B2.3) and cross-entropy
+// (softmax + nll on-device, host receives ONE float; P cached for the
+// backward under the same (P - onehot)/N contract as the host op).
+bool embed_gather(const Matrix& table, const int* ids, size_t n_ids,
+                  Matrix& out);
+bool ce_fwd(const Matrix& logits, const int* targets, Matrix& P,
+            float& loss);
+bool ce_bwd(const Matrix& P, const int* targets, float g, Matrix& dl);
 bool layernorm_fwd(const Matrix& x, const Matrix& gamma, const Matrix& beta,
                    float eps, Matrix& y, Matrix& xhat,
                    std::vector<float>& rstd);

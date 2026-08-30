@@ -13,8 +13,15 @@ Notable changes to microtorch. Format loosely follows
   B2.1b value-cache seam: under deferral the score/weight matrix never
   crosses the bus inside a step. Host loops retained as fallback and
   reference; `test_cuda_ops` leg 4 pins all three flavors x {off, on, defer}
-  at the composed-tape tolerances. Remaining for B2.2: embedding + CE
-  (forward touching host only at the loss scalar).
+  at the composed-tape tolerances.
+- **CUDA B2.2 (complete): embedding + cross-entropy on-device** — embed
+  gather (first activation born resident), CE forward as softmax + nll +
+  on-device sum so the [R,vocab] logits never cross the bus and the host
+  receives one float, CE backward (P - onehot) * g with the gradient first
+  touching host at accumulate() (B2.3's choke). Leg 5 composes
+  embedding -> CE and pins loss + scatter-add table grad across
+  {off, on, defer}. B2.2 is code-complete pending T4 receipts; next: B2.3
+  (optimizer + accumulate on-device).
 - **Llama-family models** (`nn::Llama`): RMSNorm, RoPE, SwiGLU, GQA, tied
   embeddings; HF-native parameter names; module-level FD gradchecks.
 - **mtstudio**: spec-driven run driver (JSON spec -> train -> eval -> export),

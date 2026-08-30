@@ -363,6 +363,91 @@ __global__ void k_swa_masked_softmax(float* A, float scale, int sl,
     }
 }
 
+// ---- embedding + cross-entropy (B2.2) -------------------------------
+//
+// embed gather: out[i,:] = table[ids[i],:]. Bounds are checked by the
+// HOST caller before launch (a kernel cannot throw); ids arrive as a
+// device int buffer.
+__global__ void k_embed_gather(const float* tab, const int* ids, float* out,
+                               size_t n, int d) {
+    for (size_t idx = blockIdx.x * blockDim.x + threadIdx.x; idx < n;
+         idx += static_cast<size_t>(gridDim.x) * blockDim.x) {
+        const size_t i = idx / d;
+        const int j = static_cast<int>(idx % d);
+        out[idx] = tab[static_cast<size_t>(ids[i]) * d + j];
+    }
+}
+
+// CE forward: one block per row. P = softmax(logits) written for the
+// backward (the same (P - onehot)/N contract as the host op), per-row
+// nll[i] = -log(max(P[i, tgt[i]], 1e-12)) — the exact host formula,
+// clamp included.
+__global__ void k_ce_fwd(const float* x, const int* tgt, float* P,
+                         float* nll, int C) {
+    extern __shared__ float sh[];
+    const int i = blockIdx.x;
+    const float* xr = x + static_cast<size_t>(i) * C;
+    float* Pr = P + static_cast<size_t>(i) * C;
+
+    float mx = -3.402823466e+38f;
+    for (int j = threadIdx.x; j < C; j += blockDim.x)
+        mx = fmaxf(mx, xr[j]);
+    sh[threadIdx.x] = mx;
+    __syncthreads();
+    for (int s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (threadIdx.x < s)
+            sh[threadIdx.x] = fmaxf(sh[threadIdx.x], sh[threadIdx.x + s]);
+        __syncthreads();
+    }
+    mx = sh[0];
+    __syncthreads();
+
+    float z = 0.0f;
+    for (int j = threadIdx.x; j < C; j += blockDim.x) {
+        const float e = expf(xr[j] - mx);
+        Pr[j] = e;
+        z += e;
+    }
+    sh[threadIdx.x] = z;
+    __syncthreads();
+    for (int s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (threadIdx.x < s) sh[threadIdx.x] += sh[threadIdx.x + s];
+        __syncthreads();
+    }
+    z = sh[0];
+    __syncthreads();
+
+    for (int j = threadIdx.x; j < C; j += blockDim.x) Pr[j] /= z;
+    __syncthreads();
+    if (threadIdx.x == 0)
+        nll[i] = -logf(fmaxf(Pr[tgt[i]], 1e-12f));
+}
+
+// Single-block vector sum so the loss leaves the device as ONE float.
+__global__ void k_vec_sum(const float* v, float* out, int n) {
+    extern __shared__ float sh[];
+    float acc = 0.0f;
+    for (int j = threadIdx.x; j < n; j += blockDim.x) acc += v[j];
+    sh[threadIdx.x] = acc;
+    __syncthreads();
+    for (int s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (threadIdx.x < s) sh[threadIdx.x] += sh[threadIdx.x + s];
+        __syncthreads();
+    }
+    if (threadIdx.x == 0) out[0] = sh[0];
+}
+
+// CE backward: dl = (P - onehot(tgt)) * g, elementwise.
+__global__ void k_ce_bwd(const float* P, const int* tgt, float g, float* dl,
+                         int C, size_t n) {
+    for (size_t idx = blockIdx.x * blockDim.x + threadIdx.x; idx < n;
+         idx += static_cast<size_t>(gridDim.x) * blockDim.x) {
+        const size_t i = idx / C;
+        const int j = static_cast<int>(idx % C);
+        dl[idx] = (P[idx] - (j == tgt[i] ? 1.0f : 0.0f)) * g;
+    }
+}
+
 // ds = A != 0 ? scale * A * (ds - rowdot(ds .* A)) : 0, in place on ds.
 // One kernel serves BOTH attention flavors: masked entries carry A == 0
 // from the forward, so the full-row dot equals the visible-range dot
@@ -737,6 +822,83 @@ bool swa_masked_softmax(Matrix& A, float scale, size_t seq_len,
         static_cast<int>(sinks), T);
     cuda_check(cudaGetLastError(), "swa_masked_softmax");
     dA.finish();
+    return true;
+}
+
+// Int upload RAII (ids/targets), mirroring DBuf.
+struct IBuf {
+    int* d = nullptr;
+    IBuf(const int* h, size_t n) {
+        cuda_check(cudaMalloc(&d, n * sizeof(int)), "int malloc");
+        cuda_check(cudaMemcpy(d, h, n * sizeof(int), cudaMemcpyHostToDevice),
+                   "int H2D");
+    }
+    ~IBuf() {
+        if (d) cudaFree(d);
+    }
+    IBuf(const IBuf&) = delete;
+    IBuf& operator=(const IBuf&) = delete;
+};
+
+// B2.2 embedding gather: the first activation of every forward is born
+// on-device (table via the residency stack — B1-resident hit for a
+// parameter — output through the vcache). Backward (scatter-add into
+// the host-authoritative table grad) stays host until B2.3.
+bool embed_gather(const Matrix& table, const int* ids, size_t n_ids,
+                  Matrix& out) {
+    if (!active()) return false;
+    const int d = static_cast<int>(table.cols());
+    const size_t n = n_ids * static_cast<size_t>(d);
+    In dt(table.get_data(), table.rows() * table.cols());
+    IBuf dids(ids, n_ids);
+    Out dout(out.get_data(), n);
+    k_embed_gather<<<ew_grid(n), NTHREADS>>>(dt.d, dids.d, dout.d, n, d);
+    cuda_check(cudaGetLastError(), "embed_gather");
+    dout.finish();
+    return true;
+}
+
+// B2.2 CE forward: softmax + nll fully on-device; the host receives ONE
+// float. P is written through the vcache (deferred: stays resident for
+// the backward; write-through: host P is filled, matching the host op).
+bool ce_fwd(const Matrix& logits, const int* targets, Matrix& P,
+            float& loss) {
+    if (!active()) return false;
+    const int R = static_cast<int>(logits.rows());
+    const int C = static_cast<int>(logits.cols());
+    const size_t n = static_cast<size_t>(R) * C;
+    In dx(logits.get_data(), n);
+    IBuf dt(targets, static_cast<size_t>(R));
+    Out dP(P.get_data(), n);
+    DBuf dnll(static_cast<size_t>(R));
+    DBuf dsum(1);
+    k_ce_fwd<<<R, ROW_THREADS, ROW_THREADS * sizeof(float)>>>(dx.d, dt.d,
+                                                              dP.d, dnll.d,
+                                                              C);
+    cuda_check(cudaGetLastError(), "ce_fwd");
+    k_vec_sum<<<1, ROW_THREADS, ROW_THREADS * sizeof(float)>>>(dnll.d,
+                                                               dsum.d, R);
+    cuda_check(cudaGetLastError(), "ce_fwd sum");
+    float s = 0.0f;
+    d2h(&s, dsum.d, 1);
+    loss = s / static_cast<float>(R);
+    dP.finish();
+    return true;
+}
+
+// B2.2 CE backward: dl = (P - onehot) * g on-device; dl rides the
+// vcache, so the [R,vocab] gradient first touches host at accumulate()
+// (host-authoritative until B2.3 moves accumulation on-device).
+bool ce_bwd(const Matrix& P, const int* targets, float g, Matrix& dl) {
+    if (!active()) return false;
+    const int C = static_cast<int>(P.cols());
+    const size_t n = static_cast<size_t>(P.rows()) * C;
+    In dP(P.get_data(), n);
+    IBuf dt(targets, P.rows());
+    Out ddl(dl.get_data(), n);
+    k_ce_bwd<<<ew_grid(n), NTHREADS>>>(dP.d, dt.d, g, ddl.d, C, n);
+    cuda_check(cudaGetLastError(), "ce_bwd");
+    ddl.finish();
     return true;
 }
 

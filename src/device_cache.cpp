@@ -57,6 +57,11 @@ bool swa_masked_softmax(Matrix&, float, size_t, size_t, size_t) {
 bool attn_softmax_bwd_inplace(Matrix&, const Matrix&, float) {
     return false;
 }
+bool embed_gather(const Matrix&, const int*, size_t, Matrix&) {
+    return false;
+}
+bool ce_fwd(const Matrix&, const int*, Matrix&, float&) { return false; }
+bool ce_bwd(const Matrix&, const int*, float, Matrix&) { return false; }
 bool layernorm_fwd(const Matrix&, const Matrix&, const Matrix&, float,
                    Matrix&, Matrix&, std::vector<float>&) { return false; }
 bool layernorm_bwd(const Matrix&, const Matrix&, const std::vector<float>&,
