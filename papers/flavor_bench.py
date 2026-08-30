@@ -60,7 +60,14 @@ KNOWN_WRONG: dict[tuple[str, str], str] = {
         "Inheritance resolved 1909.08053<-gpt-2 correctly in the same "
         "run; the direct-mention score beat the inherited value. The fix "
         "is a precedence rule (inheritance outranks a third-party "
-        "attribution), not another cue.",
+        "attribution), not another cue. "
+        "SHARPENED by the positive control added the same day: Qwen2 "
+        "(2407.10671) says 'we follow Qwen with the usage of SwiGLU ... "
+        "RMSNorm', which is ALSO attribution — and it scores correctly. "
+        "So the failure is not attribution as such; it is attribution "
+        "with NO first-person adoption verb anywhere in the sentence "
+        "('X and Y use Z' vs 'we follow X with the usage of Z'). That "
+        "narrows the fix to a well-defined syntactic case.",
     ("2304.03208", "positional"):
         "FUTURE-WORK MENTION READ AS ADOPTION (found 2026-08-31). "
         "Cerebras-GPT uses learned positions (GPT-3-like). RoPE appears "
@@ -160,6 +167,24 @@ TRUTH: dict[str, dict[str, str | None]] = {
     # (its only positional sentence REJECTS relative embeddings).
     "1909.08053": {"norm": "layernorm", "activation": "gelu"},  # Megatron-LM
     "2401.04088": {"activation": "swiglu"},              # Mixtral
+    "2407.10671": {"norm": "rmsnorm", "activation": "swiglu",
+                   "positional": "rope"},                # Qwen2
+    # ^ all three in one sentence: "we follow Qwen with the usage of
+    # SwiGLU for activation, Rotary Positional Embeddings (RoPE) for
+    # positional embedding, QKV bias for attention, RMSNorm and
+    # pre-normalization". Note the shape — first-person adoption that is
+    # ALSO attributed to an ancestor. The positive control for the
+    # Megatron failure: attribution alongside "we ... usage of" must
+    # still read as adoption.
+    "2402.14905": {"activation": "swiglu"},              # MobileLLM
+    # ^ "transitioning from the traditional Feedforward Network
+    # (FC -> ReLU -> FC) to SwiGLU yields an accuracy improvement" — the
+    # replaced flavor is named in the same clause, and an ablation table
+    # lists "+ SwiGLU in FFN" as an adopted design principle.
+    "2308.12950": {"positional": "rope"},                # Code Llama
+    # ^ states RoPE via its base-period modification ("increasing the
+    # base period of rotary position embeddings"). Norm/activation
+    # omitted: inherited from Llama 2 without restatement.
     # ^ "For Mixtral we use the same SwiGLU architecture as the expert
     # function" — first-person adoption. Norm/positional omitted: the
     # paper inherits them from Mistral without restating them.

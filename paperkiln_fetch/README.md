@@ -35,8 +35,8 @@ tractable. What nobody else ships is **provenance**:
 - explicit rejections ("we choose not to adopt X") **veto** a candidate
   outright.
 
-On a 33-paper ground-truth benchmark the scorer runs at grouped AUROC
-0.895, abstention-first, with **two documented wrong assertions in 78
+On a 36-paper ground-truth benchmark the scorer runs at grouped AUROC
+0.900, abstention-first, with **two documented wrong assertions in 83
 verdicts** (registered and diagnosed in the benchmark, not hidden —
 both cases where a paper states its real choice only indirectly). The benchmark,
 its confidence intervals, and its growth protocol ship in the

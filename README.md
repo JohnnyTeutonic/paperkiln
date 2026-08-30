@@ -70,10 +70,10 @@ Minimal autograd engines are a well-populated genre. Six things here are not:
    (`tests/test_flex.cpp`).
 3. **The extraction is measured, not vibed.** A paper *mentions* many
    alternatives; it *uses* one. The contribution-vs-mention scorer separates
-   them with explainable cues and is benchmarked on **33 real papers** with
-   ground-truth architectures: grouped AUROC 0.895 [bootstrap 95% CI
-   0.769–1.000] vs 0.825 for naive first-match, pooled 0.821 [0.743–0.900]
-   vs 0.744, and **two documented wrong assertions in 78 verdicts** —
+   them with explainable cues and is benchmarked on **36 real papers** with
+   ground-truth architectures: grouped AUROC 0.900 [bootstrap 95% CI
+   0.775–1.000] vs 0.833 for naive first-match, pooled 0.815 [0.736–0.900]
+   vs 0.765, and **two documented wrong assertions in 83 verdicts** —
    explicit rejections ("we choose not to adopt SwiGLU") veto a candidate
    outright, and close calls abstain and ask the human. The zero-wrong
    record held for 29 papers and broke twice on the next four, both times
