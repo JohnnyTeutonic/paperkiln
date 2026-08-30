@@ -110,6 +110,49 @@ Three consequences worth stating plainly:
   15-seed one and no way to know it is inside the zone. This is the
   seed lottery (atlas/SEED_LOTTERY.md) in closed form.
 
+## Empirical check on banked data (31 Aug 2026)
+
+`python tools/basin_check.py` tests the theorem against receipts the
+repo already owns — 15 paired seeds at d=256, no new compute. It uses
+the pre-registered running-best convention
+(`analyze.py::bestval_by`), and reproduces the registered pooled
+trajectory exactly.
+
+**On the expectation, the theorem holds:**
+
+    -0.0633  -0.0524  -0.0328  -0.0213  -0.0006  +0.0042  +0.0135  +0.0173  +0.0195
+    monotone non-decreasing: True        sign changes: 1
+
+**On single seeds, it appears to fail 40% of the time — and does not:**
+
+| | seeds showing >= 2 sign changes |
+|---|---|
+| raw trajectory | **6 / 15** |
+| ignoring `\|Delta\| <= 0.0298` (mean between-seed SD) | **0 / 15** |
+
+Six of fifteen seeds display an apparent basin — sparse, then dense,
+then sparse again — a shape the theorem forbids in expectation. Every
+one of them disappears once excursions smaller than the between-seed
+SD are treated as zero. **Not one seed contains a basin larger than
+noise.**
+
+This is the seed lottery restated for SHAPE rather than for sign, and
+it is the sharpest single-seed warning in the registry: a one-seed
+experiment at this protocol has a ~40% chance of showing a
+qualitative phenomenon that is not there. The corollary above says a
+finite seed budget leaves an interval where the sign has no answer;
+this says the same budget can invent a whole shape.
+
+Methodological note worth keeping: an earlier version of this tool
+read the LAST eval at each slice instead of the running best and
+produced pooled Delta(3600) = +0.0359 with a 13+/2- split, against the
+registered +0.0195 and 9+/6-. Same receipts, byte-identical to source;
+only the convention differed. It looked like a contradiction in a
+registered finding and was a convention mismatch in a supplementary
+script. Any tool that reports on a pre-registered result must adopt
+that result's conventions explicitly, or it manufactures
+disagreements.
+
 ## What can break — and where to look
 
 **(iii) must fail once the larger class overfits.** Held-out loss is
