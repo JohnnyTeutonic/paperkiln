@@ -504,6 +504,69 @@ void leg6_optimizers() {
     device::set_device_ops(true);
 }
 
+// REGRESSION LEG (B2.3 flat-loss bug, 30 Aug 2026). A gemm that reads a
+// DEFERRED activation took window_operand's slot path, which consulted
+// the value cache only for SLOTLESS operands and so uploaded the
+// untouched (zero) host buffer. Real models produced exactly-zero logits
+// and loss exactly ln(vocab); the whole 285-check suite passed anyway,
+// because legs 2-3's tapes contain NO matmul after a device op and every
+// unit leg materializes between stages. THE SHAPE THAT CATCHES IT:
+// device op -> matmul -> loss with NO intervening materialize, plus the
+// embedding -> matmul -> CE chain a real forward actually runs.
+struct GemmRun {
+    float loss;
+    Matrix gw, gx;
+};
+
+GemmRun run_deferred_gemm(unsigned seed, bool defer, bool via_embedding) {
+    using mt::Var;
+    const size_t V = 40, D = 24, N = 18;
+    Var w = mt::make_var(filled(D, D, seed), true);
+    Var gam = mt::make_var(filled(1, D, seed + 1), true);
+    Var bet = mt::make_var(filled(1, D, seed + 2), true);
+    Var tbl = mt::make_var(filled(V, D, seed + 3), true);
+    Var x = mt::make_var(filled(N, D, seed + 4), true);
+    std::vector<int> ids(N), tgt(N);
+    for (size_t i = 0; i < N; ++i) {
+        ids[i] = static_cast<int>((seed + 3 * i) % V);
+        tgt[i] = static_cast<int>((seed + 7 * i) % D);
+    }
+
+    device::set_defer_downloads(defer);
+    device::step_begin();
+    // The deferred producer: its output's host copy stays untouched.
+    Var h = via_embedding ? mt::ops::embedding(tbl, ids)
+                          : mt::ops::layernorm(x, gam, bet, 1e-5f);
+    Var y = mt::ops::matmul(h, w);  // slotted gemm consumes it — the seam
+    Var loss = via_embedding ? mt::ops::cross_entropy(y, tgt)
+                             : mt::ops::mean(y);
+    mt::backward(loss);
+    device::step_end();
+    device::set_defer_downloads(false);
+    return GemmRun{loss->data(0, 0), w->grad,
+                   via_embedding ? tbl->grad : x->grad};
+}
+
+void leg7_deferred_gemm() {
+    std::printf("-- leg 7: gemm reading a deferred activation (B2.3 "
+                "regression) --\n");
+    device::set_device_ops(true);
+    device::set_step_residency(true);
+    for (int emb = 0; emb < 2; ++emb) {
+        GemmRun wt = run_deferred_gemm(70 + emb, /*defer=*/false, emb == 1);
+        GemmRun df = run_deferred_gemm(70 + emb, /*defer=*/true, emb == 1);
+        const char* what = emb ? "embedding->matmul->CE"
+                               : "layernorm->matmul->mean";
+        const double dl = std::fabs(static_cast<double>(wt.loss) - df.loss);
+        check(dl <= 1e-5, what, dl);
+        check(max_abs_diff(wt.gw, df.gw) <= 1e-4, "grad W",
+              max_abs_diff(wt.gw, df.gw));
+        check(max_abs_diff(wt.gx, df.gx) <= 1e-4, "grad input",
+              max_abs_diff(wt.gx, df.gx));
+    }
+    device::set_step_residency(false);
+}
+
 }  // namespace
 
 int main() {
@@ -521,6 +584,7 @@ int main() {
     leg4_attention();
     leg5_embed_ce();
     leg6_optimizers();
+    leg7_deferred_gemm();
 
     if (g_failures == 0) {
         std::printf("test_cuda_ops PASSED (B2.1a kernels + tape parity + "
