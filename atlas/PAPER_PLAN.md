@@ -218,8 +218,8 @@ ML tooling being distinguished from. State it in those terms.
 
 Paper-to-model extraction: arXiv → architecture with base+delta
 inheritance resolution, measured against a 26-paper truth set
-(grouped AUROC 0.882 [0.750–1.000] vs naive 0.863; post-veto pooled
-0.799; 47/65 verdicts with 0 wrong). Its own gaps: truth set is small
-(target 40+ with a CI-band gate) and inheritance accounting needs an
+(grouped AUROC 0.895 [0.761–1.000] vs naive 0.825; post-veto pooled
+0.819; 53/71 verdicts with 0 wrong). Its own gaps: truth set is small
+(29 papers as of 31 Aug 2026, target 40+ with a CI-band gate) and inheritance accounting needs an
 error taxonomy. Merging the two papers would give one paper doing both
 jobs at 70%.

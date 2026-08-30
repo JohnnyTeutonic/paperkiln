@@ -70,10 +70,10 @@ Minimal autograd engines are a well-populated genre. Six things here are not:
    (`tests/test_flex.cpp`).
 3. **The extraction is measured, not vibed.** A paper *mentions* many
    alternatives; it *uses* one. The contribution-vs-mention scorer separates
-   them with explainable cues and is benchmarked on **26 real papers** with
-   ground-truth architectures: grouped AUROC 0.882 [bootstrap 95% CI
-   0.750–1.000] vs 0.863 for naive first-match, pooled 0.788 [0.694–0.908]
-   vs 0.754, and **zero wrong assertions** — explicit rejections ("we choose
+   them with explainable cues and is benchmarked on **29 real papers** with
+   ground-truth architectures: grouped AUROC 0.895 [bootstrap 95% CI
+   0.761–1.000] vs 0.825 for naive first-match, pooled 0.809 [0.724–0.906]
+   vs 0.762, and **zero wrong assertions** — explicit rejections ("we choose
    not to adopt SwiGLU") veto a candidate outright, and close calls abstain
    and ask the human. The benchmark, its CIs and its growth protocol ship in
    the repo.
@@ -562,11 +562,11 @@ fields, because "based on the Transformer" is said by every decoder LM
 while the deltas go unstated — BERT is "based on the Transformer" and
 silently switches to GELU and learned positions.
 
-Measured on `papers/flavor_bench.py`, **26 real papers** with ground-truth
-architectures (Vaswani through Gemma, including designed negatives whose
-true flavor is outside the lattice): **grouped AUROC 0.882** [bootstrap 95%
-CI 0.750–1.000, resampling papers] vs 0.863 for naive first-match, pooled
-0.799 post-veto, **47/65 field verdicts correct with zero wrong
+Measured on `papers/flavor_bench.py`, **29 real papers** with ground-truth
+architectures (Vaswani through OLMo, including designed negatives whose
+true flavor is outside the lattice): **grouped AUROC 0.895** [bootstrap 95%
+CI 0.761–1.000, resampling papers] vs 0.825 for naive first-match, pooled
+0.819 post-veto, **53/71 field verdicts correct with zero wrong
 assertions** — where first-match extraction claimed RoPE for the ALiBi
 paper and SwiGLU for Primer *and* Falcon ("we choose not to adopt SwiGLU"
 now vetoes the candidate outright). The first 10-paper cut scored a

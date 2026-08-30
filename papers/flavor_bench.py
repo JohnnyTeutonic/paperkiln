@@ -95,6 +95,30 @@ TRUTH: dict[str, dict[str, str | None]] = {
                    "positional": "rope"},                # Falcon
     "2112.11446": {"norm": "rmsnorm",
                    "positional": None},                  # Gopher (relative)
+    # ---- growth batch (2026-08-31) ----
+    # Each entry below was read off the FETCHED SOURCE, not recalled; the
+    # quoted phrase is in .cache/<id>.tex. Fields the paper does not state
+    # are omitted rather than inferred from a sibling model — an omitted
+    # field costs the benchmark nothing, a guessed one poisons it.
+    "2402.00838": {"norm": "layernorm", "activation": "swiglu",
+                   "positional": "rope"},                # OLMo
+    # ^ the sharpest discrimination case in the set: OLMo states
+    # "non-parametric formulation of layer norm", naming RMSNorm as a
+    # CONSIDERED-AND-REJECTED alternative ("compared to the other
+    # variants we considered: parametric layer norm and RMSNorm"), and
+    # "SwiGLU ... instead of ReLU". Both rejected flavors appear in the
+    # text; a first-match scorer takes the bait, a contribution-vs-
+    # mention scorer must not.
+    "2403.04652": {"activation": "swiglu",
+                   "positional": "rope"},                # Yi
+    # ^ "Grouped-Query Attention (GQA), SwiGLU activation, and RoPE with
+    # an adjusted base frequency". Norm is NOT stated in the paper, so
+    # norm is omitted — Yi is widely RMSNorm, but the benchmark scores
+    # what the PAPER says.
+    "1901.02860": {"positional": None},                  # Transformer-XL
+    # ^ relative positional embeddings — outside the lattice, so like
+    # DeBERTa/XLNet/Gopher it contributes only negative labels: the
+    # scorer's job here is to assert nothing.
 }
 
 
