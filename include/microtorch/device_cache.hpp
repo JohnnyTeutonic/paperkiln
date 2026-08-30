@@ -115,6 +115,13 @@ bool host_stale(const Matrix& m);
 void materialize(const Matrix& m);
 // Download every stale buffer (step boundary, eval, checkpoint sweep).
 void materialize_all();
+// Drop m's value-cache entry WITHOUT downloading — for a deferred
+// output that will never be read on host and is about to be destroyed.
+// A stale entry keyed by a freed host pointer makes step_end()'s
+// materialize_all() write into freed memory (glibc heap corruption —
+// found by the B2.2 T4 valgrind run, 30 Aug 2026): every op whose
+// deferred temporary dies before the step boundary MUST discard it.
+void discard(const Matrix& m);
 // Throws if m is host-stale — the DEVCHECK assert. Call sites compile to
 // nothing unless MICROTORCH_DEVCHECK is defined at build time.
 void devcheck_host_read(const Matrix& m, const char* where);

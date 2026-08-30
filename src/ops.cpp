@@ -408,9 +408,12 @@ Var cross_entropy(const Var& logits, const std::vector<int>& targets) {
             dl = *P;
             for (size_t i = 0; i < dl.rows(); ++i) dl(i, targets[i]) -= 1.0f;
             l->accumulate(dl * g);
+            device::discard(*P);
             return;
         }
-        l->accumulate(dl);
+        l->accumulate(dl);   // materializes dl, so it dies host-fresh
+        device::discard(dl);  // free its device buffer + drop the key
+        device::discard(*P);  // P is never host-read; skip its step_end D2H
     });
 }
 
@@ -974,7 +977,10 @@ Var fused_attention(const Var& q, const Var& k, const Var& v, float scale, size_
             v->accumulate(device::gemm(*A, nullptr, device::Trans::T,
                                        self->grad, nullptr, device::Trans::N));
         }
-        if (!q->requires_grad && !k->requires_grad) return;
+        if (!q->requires_grad && !k->requires_grad) {
+            device::discard(*A);
+            return;
+        }
         // dA = dY V^T; ds = A .* (dA - rowsum(dA .* A)) * scale, computed
         // in place on dA (masked entries have A == 0, so ds is 0 there and
         // no mask bookkeeping is needed).
@@ -1002,6 +1008,11 @@ Var fused_attention(const Var& q, const Var& k, const Var& v, float scale, size_
         if (k->requires_grad)
             k->accumulate(device::gemm(ds, nullptr, device::Trans::T,
                                        q->data, &q->dev, device::Trans::N));
+        // ds dies HERE while its deferred entry would still be stale;
+        // A is never host-read again. Discard both or step_end() D2Hs
+        // into freed memory (the leg-4 heap-corruption bug, 30 Aug).
+        device::discard(ds);
+        device::discard(*A);
     });
 }
 
@@ -1081,7 +1092,10 @@ Var swa_attention(const Var& q, const Var& k, const Var& v, float scale, size_t 
             v->accumulate(device::gemm(*A, nullptr, device::Trans::T,
                                        self->grad, nullptr, device::Trans::N));
         }
-        if (!q->requires_grad && !k->requires_grad) return;
+        if (!q->requires_grad && !k->requires_grad) {
+            device::discard(*A);
+            return;
+        }
         // Same softmax backward as fused_attention: masked entries carry
         // A == 0, so ds vanishes there with no mask bookkeeping.
         Matrix ds = device::gemm(self->grad, nullptr, device::Trans::N,
@@ -1105,6 +1119,9 @@ Var swa_attention(const Var& q, const Var& k, const Var& v, float scale, size_t 
         if (k->requires_grad)
             k->accumulate(device::gemm(ds, nullptr, device::Trans::T,
                                        q->data, &q->dev, device::Trans::N));
+        // Same lifetime rule as fused_attention's backward: ds dies here.
+        device::discard(ds);
+        device::discard(*A);
     });
 }
 

@@ -297,6 +297,13 @@ void materialize_all() {
     }
 }
 
+void discard(const Matrix& m) {
+    auto it = g_vcache.find(m.get_data());
+    if (it == g_vcache.end()) return;
+    cudaFree(it->second.d);
+    g_vcache.erase(it);
+}
+
 void devcheck_host_read(const Matrix& m, const char* where) {
     if (host_stale(m))
         throw std::runtime_error(

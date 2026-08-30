@@ -33,6 +33,7 @@ bool defer_downloads_enabled() { return false; }
 bool host_stale(const Matrix&) { return false; }
 void materialize(const Matrix&) {}
 void materialize_all() {}
+void discard(const Matrix&) {}
 void devcheck_host_read(const Matrix&, const char*) {}
 
 // CPU-only builds: the op-set entries are no-ops returning false, so the
