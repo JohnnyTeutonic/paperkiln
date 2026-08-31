@@ -359,6 +359,19 @@ def main() -> int:
             launched = False
             provisioned = False
             strikes = 0
+        # ADOPT an already-healthy sweep before touching anything. The
+        # driver gets restarted (a patch, a crash) while a vm is happily
+        # running cells, and it starts with provisioned=False. Without
+        # this it would re-provision -- whose setup exec then times out
+        # against the busy vm, which the escalation reads as a sick vm
+        # and DISCARDS, throwing away a working wave. Observed 1 Sep
+        # 02:52. If the repo, binary and processes are all there, the vm
+        # is already doing the job: leave it alone.
+        if not provisioned and not launched:
+            if sweep_alive(args.session) is True:
+                log("adopting the sweep already running on this vm")
+                provisioned = launched = True
+                prov_fail = 0
         # Provisioning is tracked SEPARATELY from session liveness. A
         # setup can fail on a live session (a repo clone timed out at
         # 16 min on a fresh vm, 1 Sep 2026); the old code then fell
@@ -373,12 +386,15 @@ def main() -> int:
                 # Don't grind on a sick vm. Two failures and we throw it
                 # away and ask for another; retrying a vm whose git clone
                 # hangs just burns the session for as long as it lives.
+                # Three strikes, and only after a wait long enough that
+                # transient exec latency on a BUSY vm cannot masquerade
+                # as a sick one — that mistake discards working waves.
                 prov_fail += 1
-                if prov_fail >= 2:
-                    log("provisioning failed twice — discarding this vm")
+                if prov_fail >= 3:
+                    log("provisioning failed 3x — discarding this vm")
                     sh([COL, "stop", "-s", args.session], timeout=90)
                     prov_fail = 0
-                time.sleep(30)
+                time.sleep(120)
                 continue
             prov_fail = 0
         elif launched:
