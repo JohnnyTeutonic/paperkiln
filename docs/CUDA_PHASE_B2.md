@@ -1,5 +1,21 @@
 # CUDA Phase B2 — training-step residency (design)
 
+> **CORRECTION, 31 Aug 2026 — read before citing any speedup below.**
+> The adoption gate's 21x (d=256) and 30.5x (d=512) were measured over
+> **9 steps** (3 warmup + 6 timed) with deferral on. Those numbers are
+> real for that duration and that binary, but the configuration
+> **cannot complete a training run**: at the transfer study's shape,
+> full deferral corrupts the heap at step 1 inside mtstudio, and the
+> device op set OOMs at step ~95. Gemm-only reaches 400 steps clean and
+> is what the study runs on — correct, and slower.
+>
+> **Phase B's speedup is validated; its endurance is not.** Every check
+> in the 285 is too short to have seen this: bench_b2 runs 9 steps,
+> test_step_residency 50, and the leak kills at ~95. Details and the
+> fix plan: `open/BACKLOG.md` items 4b and 4c. Treat "Phase B complete"
+> below as "complete and validated for correctness at short duration",
+> and do not put the speedup in a paper until an endurance leg exists.
+
 *Status: B2.0 VALIDATED on Colab T4, 13 Aug 2026 — full
 gradcheck/nn/lora/resident-parity suites plus test_step_residency all
 green: the CUDA training pin matched the CPU reference to max weight

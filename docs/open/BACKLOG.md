@@ -101,6 +101,51 @@ never pass through any of them. Then add a leg that runs a real
 mtstudio-shaped model end to end under defer, because the absence of one
 is what let this through.
 
+## 4c. The device op set leaks device memory (open defect, 31 Aug 2026)
+
+**Symptom.** `MICROTORCH_DEVICE_OPS=1` OOMs a real training run at
+**step ~95**: `mtstudio: CUDA malloc: out of memory`. Measured at the
+transfer study's shape (d=256, T=256, L=2, vocab 4096, batch 4) on a
+16 GB T4, 400-step probe:
+
+| config | outcome |
+|---|---|
+| `gpu` — gemm only | **reached 400 steps clean** |
+| `ops` — + device op set | OOM at step **95** |
+| `res` — + residency | OOM at step **96** |
+| `b2` — + deferral | heap corruption at step 1 (see 4b) |
+
+Residency and deferral are not implicated in the leak; turning the op
+set on is what does it. Where they survive, all four configs converge
+to identical losses, so this is a resource bug and not a numerics one.
+
+**Why nothing caught it — the third coverage hole of the same family.**
+Every CUDA validation is too SHORT:
+
+- `bench_b2` — 3 warmup + 6 timed = **9 steps**
+- `test_step_residency` — **50 steps**
+- `test_cuda_ops` legs — single ops and short composed tapes
+
+The leak kills at ~95. **Not one of the 285 checks runs long enough to
+reach it.** First it was test shapes too small, then an application path
+(mtstudio) never exercised, now durations too short. The pattern is the
+lesson: a suite that only tests small, short, library-level cases
+certifies small, short, library-level correctness.
+
+**Consequence for a banked claim — state this plainly.** The B2 adoption
+gate's 21x/30.5x was measured over 9 steps with deferral on. Those
+numbers are real for 9 steps, but that configuration **cannot complete a
+training run**. The config the study actually runs on is gemm-only,
+which is correct but slower. Phase B's speedup is measured; its
+endurance is not. See the correction note in `../CUDA_PHASE_B2.md`.
+
+**To fix:** find the per-call device allocation in `src/cuda_ops.cu`
+that is not released — the `In`/`Out`/`DBuf`/`IBuf` wrappers are RAII, so
+suspect a path that returns `owned=false` for a buffer nobody owns, or
+a cache insert with no eviction. Then add an ENDURANCE leg: a few
+hundred steps with the op set live, asserting device memory is flat.
+That leg is the thing whose absence allowed this.
+
 ## 5. CUDA — what is left
 
 Phase B is complete and adopted (21× at d=256, 30.5× at d=512). Open:
