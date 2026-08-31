@@ -211,7 +211,7 @@ def ensure_repo_and_data(session):
     return "REPO_OK True" in out
 
 
-def launch_sweep(session, sweep_rel):
+def launch_sweep(session, sweep_rel, jobs=1, omp=4):
     code = (
         "import subprocess\n"
         "env = ('MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 ')\n"
@@ -234,10 +234,21 @@ def launch_sweep(session, sweep_rel):
         # Residency without deferral is a validated configuration and keeps
         # most of the speedup, so the study runs on it; the defer bug is
         # tracked separately in docs/open/BACKLOG.md.
+        # CONCURRENCY (1 Sep 2026). One cell uses ~1.2 cores and ~180 MiB
+        # of GPU, so a run is limited by how many cells share a vm, not by
+        # per-run speed. Measured on an L4 (12 vCPU), 200 steps per cell:
+        #     1 cell  OMP=4  0.68 s/step  1.47 steps/s   41 min/run
+        #     4 cells OMP=2  0.80 s/step  5.00 steps/s   48 min/run
+        #     8 cells OMP=1  1.19 s/step  6.73 steps/s   71 min/run
+        # 4 is the operating point: 3.4x the throughput while each run
+        # still lands INSIDE a vm lifetime. That second property is the
+        # binding one -- only completed runs are banked, so a 71-min run
+        # against a ~52-min reclaim interval banks nothing at all.
         "cmd = ('cd /content/microtorch && ' + env + 'nohup python3 "
         "tools/mtsweep.py ' +\n"
-        f"       {sweep_rel!r} + ' --mtstudio /content/mtstudio --jobs 1 "
-        "--omp 4 >> /content/sweep.log 2>&1 &')\n"
+        f"       {sweep_rel!r} + ' --mtstudio /content/mtstudio "
+        f"--jobs {int(jobs)} --omp {int(omp)}"
+        "' + ' >> /content/sweep.log 2>&1 &')\n"
         "subprocess.run(cmd, shell=True)\n"
         "print('SWEEP_LAUNCHED')\n")
     rc, out = exec_py(session, code, timeout=300)
@@ -285,6 +296,11 @@ def main() -> int:
     ap.add_argument("--local-out", required=True)
     ap.add_argument("--expect", type=int, required=True)
     ap.add_argument("--gpu", default="T4")
+    ap.add_argument("--jobs", type=int, default=1,
+                    help="cells run concurrently on the vm (see "
+                         "launch_sweep: 4 is the measured L4 optimum)")
+    ap.add_argument("--omp", type=int, default=4,
+                    help="OMP threads per cell; keep jobs*omp <= vCPUs")
     ap.add_argument("--max-hours", type=float, default=8.0)
     ap.add_argument("--tick", type=int, default=90)
     args = ap.parse_args()
@@ -292,8 +308,11 @@ def main() -> int:
     with open(os.path.join(REPO, "microtorch", args.sweep),
               encoding="utf-8") as f:
         out_root = json.load(f)["out_root"]
+    # Cache is keyed BY GPU: a binary built on a T4 (sm_75) is not
+    # necessarily loadable on an L4 (sm_89), and silently uploading the
+    # wrong one would fail on the vm where it is hard to see.
     cache = os.path.join(os.path.dirname(args.local_out.rstrip("/")),
-                         "mtstudio_cuda")
+                         f"mtstudio_cuda_{args.gpu.lower()}")
     os.makedirs(os.path.join(args.local_out, "runs"), exist_ok=True)
     deadline = time.time() + args.max_hours * 3600
     log(f"arm {args.sweep} -> {args.local_out} (expect {args.expect}); "
@@ -335,7 +354,8 @@ def main() -> int:
             elif state is True:
                 strikes = 0
         if not launched:
-            launched = launch_sweep(args.session, args.sweep)
+            launched = launch_sweep(args.session, args.sweep,
+                                    args.jobs, args.omp)
             log(f"sweep launched: {launched}")
         time.sleep(args.tick)
         got = relay(args.session, args.local_out, out_root)

@@ -317,6 +317,31 @@ neither alters a hypothesis, threshold, or decision rule.*
    config, and the gate compares it against the banked CPU cohort —
    which is exactly the comparison the gate was written to make.
 
+5. **GPU: L4, 4 cells concurrent (1 Sep 2026), again with ZERO runs
+   banked.** The T4 runtime has 2 vCPU and is CPU-saturated (load 2.1
+   while the GPU idles at 11%), giving ~52 min per run against an
+   observed ~52 min Colab reclaim interval. Only COMPLETED runs are
+   banked, so runs were dying just short of the line and the arm could
+   have made no progress indefinitely — one run was lost that way at
+   00:31. Measured on an L4 (12 vCPU), 200 steps per cell: 4 concurrent
+   cells give 3.4x the throughput at 48 min per run, which fits inside
+   a vm lifetime; 8 cells give barely more throughput at 71 min per
+   run, which does not.
+
+   **This is a numerics-relevant change and it is applied uniformly.**
+   A different GPU can reorder floating-point reductions, which by this
+   study's own thesis is enough to move a result — see
+   `../../atlas/THEOREM_CROSSING.md` on non-confluence. So **every arm
+   that carries a claim runs on L4**: bridge, S, M and L. No arm mixes
+   GPU types, and no partially-completed T4 work was kept — the one
+   T4 run in flight was discarded rather than banked, precisely to
+   avoid a mixed-backend cohort.
+
+   Concurrency itself is numerically inert: each cell is a separate
+   process with its own seed and its own output directory, and cells
+   never share state. It changes only how many runs a vm banks before
+   it is reclaimed.
+
 ## What this cannot show
 
 One architecture family, one corpus, layers=2, T=256, one house
