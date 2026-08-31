@@ -66,8 +66,25 @@ def exec_py(session, code, timeout=300):
 
 
 def alive(session):
-    rc, out = exec_py(session, 'print("TR_ALIVE")\n', timeout=120)
-    return rc == 0 and "TR_ALIVE" in out
+    """Is the session still registered?
+
+    This used to EXECUTE code on the vm and call a timeout death. That
+    was actively destructive: `colab exec` was measured taking 5-15 min
+    against a vm running 4 cells, so a merely BUSY vm failed the probe,
+    the driver concluded it had died, and new_session() stopped it --
+    killing four in-flight runs to 'recover' a healthy session. Observed
+    1 Sep 2026: a session created 02:36 was destroyed at 02:42 this way,
+    which read in the log as a 6-minute session lifetime.
+
+    The control-plane listing needs nothing from the vm's kernel, so
+    load cannot make it lie. Whether the WORK is alive is a separate
+    question, and sweep_alive() answers that one with its own tolerance.
+    """
+    rc, out = sh([COL, "sessions"], timeout=180)
+    if rc != 0:
+        return True          # control plane unreachable: assume alive,
+                             # never destroy a session on our own flakiness
+    return f"[{session}]" in out
 
 
 def new_session(session, gpu):
@@ -244,6 +261,12 @@ def launch_sweep(session, sweep_rel, jobs=1, omp=4):
         # still lands INSIDE a vm lifetime. That second property is the
         # binding one -- only completed runs are banked, so a 71-min run
         # against a ~52-min reclaim interval banks nothing at all.
+        # Kill any sweep already on this vm first. Relaunching happens
+        # on re-provision and on driver restart, and a second mtsweep
+        # would race the first over the same output directories.
+        "subprocess.run('pkill -f mtsweep.py; pkill -f mtstudio', "
+        "shell=True)\n"
+        "import time as _t; _t.sleep(2)\n"
         "cmd = ('cd /content/microtorch && ' + env + 'nohup python3 "
         "tools/mtsweep.py ' +\n"
         f"       {sweep_rel!r} + ' --mtstudio /content/mtstudio "
