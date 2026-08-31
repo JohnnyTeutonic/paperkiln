@@ -27,6 +27,8 @@
 #include <nlohmann/json.hpp>
 #include <regex>
 
+#include "microtorch/device.hpp"
+#include "microtorch/device_cache.hpp"
 #include "microtorch/gguf.hpp"
 #include "microtorch/llama.hpp"
 #include "microtorch/safetensors.hpp"
@@ -45,6 +47,8 @@ struct Spec {
     size_t d = 128, layers = 2, heads = 4, T = 128;
     // Paper-faithful flavor knobs (the flex family; empty = family default).
     std::string norm, activation, position;
+    std::string residual;             // "" = family default | residual | highway | plain
+    float gate_bias_init = -2.0f;     // highway only (registry #0001)
     size_t d_ff = 0;                // 0 = family default (4d gpt2/flex, 3d llama)
     size_t window = 64, sinks = 1;  // swa lane only (S1 baseline)
     // data
@@ -110,6 +114,8 @@ Spec parse_spec(const std::string& path) {
         s.norm = c.value("norm", s.norm);
         s.activation = c.value("activation", s.activation);
         s.position = c.value("position", s.position);
+        s.residual = c.value("residual", s.residual);
+        s.gate_bias_init = c.value("gate_bias_init", s.gate_bias_init);
         s.d_ff = c.value("d_ff", s.d_ff);
         s.window = c.value("window", s.window);
         s.sinks = c.value("sinks", s.sinks);
@@ -119,17 +125,20 @@ Spec parse_spec(const std::string& path) {
     // is the flex family — the paper-faithful decoder.
     if (s.position == "rope") {
         if ((!s.norm.empty() && s.norm != "rmsnorm") ||
-            (!s.activation.empty() && s.activation != "swiglu"))
+            (!s.activation.empty() && s.activation != "swiglu") ||
+            (!s.residual.empty() && s.residual != "residual"))
             throw std::runtime_error(
                 "position=rope currently implies the llama block "
-                "(rmsnorm + swiglu); drop the conflicting norm/activation "
-                "or pick position=learned|sinusoidal for the flex family");
+                "(rmsnorm + swiglu, plain residual stream); drop the "
+                "conflicting norm/activation/residual or pick "
+                "position=learned|sinusoidal for the flex family");
         s.family = "llama";
-    } else if (!s.norm.empty() || !s.activation.empty() || !s.position.empty()) {
-        if (s.attention != "exact")
+    } else if (!s.norm.empty() || !s.activation.empty() || !s.position.empty() ||
+               !s.residual.empty()) {
+        if (s.attention != "exact" && s.attention != "swa")
             throw std::runtime_error(
-                "flavor knobs (norm/activation/position) require exact "
-                "attention; kimi/srd/swa/attnres are their own presets");
+                "flavor knobs (norm/activation/position/residual) require "
+                "exact or swa attention; kimi/srd/attnres are their own presets");
         s.family = "flex";
     }
     // The 2-block ParityLM cannot honor depth; flex CAN, and with
@@ -137,11 +146,13 @@ Spec parse_spec(const std::string& path) {
     // tests/test_flex.cpp equivalence pin). Promote rather than
     // silently truncate. kimi/srd stay 2-block and must say so.
     if (s.family == "gpt2" && s.layers != 2) {
-        if (s.attention == "exact")
+        // exact AND swa promote to flex (deep SWA, ROADMAP 1a); kimi/srd
+        // remain 2-block parity models.
+        if (s.attention == "exact" || s.attention == "swa")
             s.family = "flex";
-        else if (s.attention == "kimi" || s.attention == "srd" || s.attention == "swa")
+        else if (s.attention == "kimi" || s.attention == "srd")
             throw std::runtime_error(
-                "kimi/srd/swa presets are 2-block parity models (layers must be 2)");
+                "kimi/srd presets are 2-block parity models (layers must be 2)");
     }
 
     const json data = j.value("data", json::object());
@@ -247,7 +258,8 @@ int run(const Spec& s, bool plan_only) {
     // Only the kimi/srd parity lanes are depth-fixed; flex and llama take
     // any depth, and attnres wires s.layers into its stack.
     if (s.family == "gpt2" && s.attention != "attnres" && s.layers != 2)
-        throw std::runtime_error("kimi/srd/swa parity lanes: layers must be 2");
+        throw std::runtime_error("kimi/srd parity lanes: layers must be 2 "
+                                 "(exact/swa at depth ride the flex family)");
 
     std::system(("mkdir -p " + s.out_dir).c_str());
     Events ev(s.out_dir + "/events.jsonl");
@@ -289,12 +301,23 @@ int run(const Spec& s, bool plan_only) {
         if (!s.norm.empty()) fc.norm = s.norm;
         if (!s.activation.empty()) fc.act = s.activation;
         if (!s.position.empty()) fc.pos = s.position;
+        if (!s.residual.empty()) fc.residual = s.residual;
+        fc.gate_bias_init = s.gate_bias_init;
+        fc.attention = s.attention;
+        fc.window = s.window;
+        fc.sinks = s.sinks;
         if (fc.norm != "layernorm" && fc.norm != "rmsnorm")
             throw std::runtime_error("unknown norm " + fc.norm);
         if (fc.act != "gelu" && fc.act != "relu" && fc.act != "swiglu")
             throw std::runtime_error("unknown activation " + fc.act);
         if (fc.pos != "learned" && fc.pos != "sinusoidal")
             throw std::runtime_error("unknown position " + fc.pos + " (rope = llama family)");
+        if (fc.residual != "residual" && fc.residual != "highway" && fc.residual != "plain")
+            throw std::runtime_error("unknown residual " + fc.residual +
+                                     " (residual | highway | plain)");
+        if (fc.attention != "exact" && fc.attention != "swa")
+            throw std::runtime_error("flex attention must be exact or swa, got " +
+                                     fc.attention);
         flex = std::make_shared<parity::FlexLM>(fc, s.seed);
         if (s.ckpt_act)
             throw std::runtime_error(
@@ -349,6 +372,10 @@ int run(const Spec& s, bool plan_only) {
              {"norm", r_norm},
              {"activation", r_act},
              {"position", r_pos},
+             {"residual", flex ? flex->cfg.residual : "residual"},
+             {"gate_bias_init", flex ? flex->cfg.gate_bias_init : -2.0f},
+             {"window", s.window},
+             {"sinks", s.sinks},
              {"d_ff", r_dff},
              {"vocab", tokens.size()},
              {"batch", s.batch},
@@ -453,6 +480,12 @@ int run(const Spec& s, bool plan_only) {
         // and the attention mask restart per sequence — receipts in
         // tests/test_batching.cpp), backward pre-scaled by 1/accum so the
         // summed gradient is the mean over all batch*accum sequences.
+        // Phase B2 step window (docs/CUDA_PHASE_B2.md): device operand
+        // caches are trusted only inside it. Closed BEFORE clip/opt
+        // mutate host data, so eval and the optimizer can never read a
+        // stale device copy. No-op unless MICROTORCH_STEP_RESIDENCY=1
+        // on a CUDA build.
+        device::step_begin();
         opt.zero_grad();
         float task_mean = 0, gate_mean = 0;
         for (int k = 0; k < s.accum; ++k) {
@@ -472,6 +505,7 @@ int run(const Spec& s, bool plan_only) {
             task_mean += task->data(0, 0) / static_cast<float>(s.accum);
             if (is_srd) gate_mean += gpt->mean_gate()->data(0, 0) / static_cast<float>(s.accum);
         }
+        device::step_end();
         // Per-module grad norms BEFORE clipping: this is the true signal
         // the glow UI wants (clipping would mask explosions).
         json gm;
@@ -752,6 +786,11 @@ int sample_cmd(const Spec& s, const std::string& prompt, int n_new, float temp, 
         if (!s.norm.empty()) fc.norm = s.norm;
         if (!s.activation.empty()) fc.act = s.activation;
         if (!s.position.empty()) fc.pos = s.position;
+        if (!s.residual.empty()) fc.residual = s.residual;
+        fc.gate_bias_init = s.gate_bias_init;
+        fc.attention = s.attention;
+        fc.window = s.window;
+        fc.sinks = s.sinks;
         flex = std::make_shared<parity::FlexLM>(fc, s.seed);
     } else if (s.attention == "attnres") {
         attnres =
@@ -1092,6 +1131,10 @@ int serve_ui(const std::string& out_dir, int port, const std::string& ui_path,
 int main(int argc, char** argv) {
     const std::string cmd = argc > 1 ? argv[1] : "";
     try {
+        // Honour MICROTORCH_DEVICE / MICROTORCH_STEP_RESIDENCY like the
+        // test suites do (no-ops on CPU builds). Rung C's CUDA runs go
+        // through here (docs/CUDA_PHASE_B2.md).
+        device::set_from_env();
         if ((cmd == "run" || cmd == "plan") && argc >= 3)
             return run(parse_spec(argv[2]), cmd == "plan");
         if (cmd == "sample" && argc >= 3) {

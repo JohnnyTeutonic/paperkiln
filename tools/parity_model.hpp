@@ -194,11 +194,36 @@ struct FlexConfig {
     std::string norm = "layernorm";  // layernorm | rmsnorm
     std::string act = "gelu";        // gelu | relu | swiglu
     std::string pos = "learned";     // learned | sinusoidal
+    // Registry #0001 (Highway Networks, arXiv 1505.00387): how each
+    // sublayer's output combines with its input stream.
+    //   residual: y = x + f(x)                      (default; the pin)
+    //   highway:  y = x + T(x) * (f(x) - x),  T = sigmoid(W_T x + b_T)
+    //   plain:    y = f(x)                          (no skip at all)
+    std::string residual = "residual";
+    float gate_bias_init = -2.0f;  // paper's negative bias: carry-dominant start
+    // Deep SWA (ROADMAP 1a): sliding-window attention at ANY depth.
+    // SlidingWindowAttention is interface- and seed-identical to
+    // CausalSelfAttention, so attention="swa" at n_layers=2 with default
+    // flavors reproduces ParityLM(SWA) bitwise (tests/test_deep_swa.cpp).
+    std::string attention = "exact";  // exact | swa
+    size_t window = 64, sinks = 1;    // read only when attention == "swa"
 };
 
 class FlexBlock : public nn::Module {
 public:
-    FlexBlock(const FlexConfig& c, unsigned s) : norm_(c.norm), act_(c.act) {
+    FlexBlock(const FlexConfig& c, unsigned s)
+        : norm_(c.norm), act_(c.act), residual_(c.residual) {
+        if (residual_ == "highway") {
+            // One gate per sublayer, T(x) on the raw stream. Seeds are far
+            // from the existing layout so the equivalence pin's seed map
+            // is untouched for default configs.
+            gate_a = mod<nn::Linear>("gate_attn", c.d, c.d, true, s + 200);
+            gate_m = mod<nn::Linear>("gate_mlp", c.d, c.d, true, s + 201);
+            for (size_t j = 0; j < c.d; ++j) {
+                gate_a->b->data(0, j) = c.gate_bias_init;
+                gate_m->b->data(0, j) = c.gate_bias_init;
+            }
+        }
         if (norm_ == "layernorm") {
             ln1 = mod<nn::LayerNorm>("ln_1", c.d);
             ln2 = mod<nn::LayerNorm>("ln_2", c.d);
@@ -206,7 +231,11 @@ public:
             n1_w = reg("norm1.weight", Matrix(1, c.d, 1.0f));
             n2_w = reg("norm2.weight", Matrix(1, c.d, 1.0f));
         }
-        attn = mod<nn::CausalSelfAttention>("attn", c.d, c.n_heads, s);
+        if (c.attention == "swa")
+            swa_attn = mod<nn::SlidingWindowAttention>("attn", c.d, c.n_heads,
+                                                       c.window, c.sinks, s);
+        else
+            attn = mod<nn::CausalSelfAttention>("attn", c.d, c.n_heads, s);
         if (act_ == "swiglu") {
             gate = mod<nn::Linear>("mlp.gate_proj", c.d, c.d_ff, false, s + 3 + 17);
             up = mod<nn::Linear>("mlp.up_proj", c.d, c.d_ff, false, s + 3 + 18);
@@ -219,10 +248,24 @@ public:
         }
     }
 
+    // Sublayer combine per FlexConfig::residual. Highway's identity uses
+    // the algebraic rewrite y = x + T*(f-x) (no ones tensor needed); at
+    // b_T = -2, T ~= 0.12, so blocks start carry-dominant as published.
+    Var combine(const Var& x, const Var& f,
+                const std::shared_ptr<nn::Linear>& g) const {
+        if (residual_ == "highway")
+            return ops::add(x, ops::mul(ops::sigmoid(g->forward(x)),
+                                        ops::sub(f, x)));
+        if (residual_ == "plain") return f;
+        return ops::add(x, f);
+    }
+
     Var forward(const Var& x, size_t seq_len = 0) const {
         auto norm1 = [&](const Var& v) { return ln1 ? ln1->forward(v) : ops::rmsnorm(v, n1_w); };
         auto norm2 = [&](const Var& v) { return ln2 ? ln2->forward(v) : ops::rmsnorm(v, n2_w); };
-        Var h = ops::add(x, attn->forward(norm1(x), seq_len));
+        Var a_out = attn ? attn->forward(norm1(x), seq_len)
+                         : swa_attn->forward(norm1(x), seq_len);
+        Var h = combine(x, a_out, gate_a);
         Var n = norm2(h);
         Var f;
         if (mlp) {
@@ -232,15 +275,17 @@ public:
         } else {
             f = proj->forward(ops::relu(fc->forward(n)));
         }
-        return ops::add(h, f);
+        return combine(h, f, gate_m);
     }
 
-    std::string norm_, act_;
+    std::string norm_, act_, residual_;
     std::shared_ptr<nn::LayerNorm> ln1, ln2;
     Var n1_w, n2_w;
     std::shared_ptr<nn::CausalSelfAttention> attn;
+    std::shared_ptr<nn::SlidingWindowAttention> swa_attn;  // attention="swa"
     std::shared_ptr<nn::MLP> mlp;
     std::shared_ptr<nn::Linear> gate, up, down, fc, proj;
+    std::shared_ptr<nn::Linear> gate_a, gate_m;  // highway only
 };
 
 class FlexLM : public nn::Module {
