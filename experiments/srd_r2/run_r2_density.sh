@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SRD rung 2, P5 control lane (SRD_PREREG_R2.md): matched-density
+# SRD rung 2, P5 control lane (srd_r2/PREREGISTRATION_R2.md): matched-density
 # evaluation on the checkpoints the 2x2 sweep trained. Run AFTER
 # run_r2.sh completes; training no-ops on finished checkpoints and only
 # the density evaluation executes.

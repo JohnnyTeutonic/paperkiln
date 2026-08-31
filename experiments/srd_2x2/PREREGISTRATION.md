@@ -4,7 +4,7 @@
 > such).** This is Jonathan's own draft of the rung-2 pre-registration,
 > written independently and left unfinished (it ends mid-sentence
 > below). The experiment was executed under the parallel document
-> [experiments/SRD_PREREG_R2.md](../../experiments/SRD_PREREG_R2.md), whose design converges
+> [experiments/srd_r2/PREREGISTRATION_R2.md](../../experiments/srd_r2/PREREGISTRATION_R2.md), whose design converges
 > with this draft on both hypotheses and on the construct-validity
 > diagnosis (needles are out-of-distribution BY CONSTRUCTION), and
 > whose "Arm B" instinct became P5, the matched-density lane. Kept in

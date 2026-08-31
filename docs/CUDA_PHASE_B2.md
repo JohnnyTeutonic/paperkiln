@@ -126,7 +126,7 @@ Not a constraint until far above this ladder.
   use) plus the in-kernel transposes. The full §2 flag contract with
   DEVCHECK asserts activates in B2.1 when downloads are deferred.
 - **B2.1a — T4-VALIDATED 21 Aug 2026** (receipts:
-  docs/receipts_b21a_t4_20260821.txt; Tesla T4, CC 7.5). Kernel parity:
+  docs/receipts/receipts_b21a_t4_20260821.txt; Tesla T4, CC 7.5). Kernel parity:
   elementwise bitwise 0.00e+00, activations <= 2.4e-07, rowwise worst
   3.8e-06 (layernorm dgamma, column-sum order); composed-tape OFF vs ON:
   loss bitwise 0.00e+00, all leaf grads <= 2.3e-10. gradcheck (27 ok)
@@ -149,7 +149,7 @@ Not a constraint until far above this ladder.
   elementwise / 1e-5 rowwise, plus a composed-tape OFF-vs-ON leg), and
   colab_cuda_validate.sh now reruns gradcheck/nn with the op set live.
 - **B2.1b — T4-VALIDATED 29 Aug 2026** (receipts:
-  docs/receipts_b21b_t4_20260829.txt; Tesla T4, CC 7.5, CUDA 12.8).
+  docs/receipts/receipts_b21b_t4_20260829.txt; Tesla T4, CC 7.5, CUDA 12.8).
   Deferred downloads behind MICROTORCH_DEFER_DOWNLOADS=1: value cache
   in cuda_resident.cu holds device-fresh outputs+grads (epoch-stamped,
   stale-flagged), gemm + all 15 devops entries defer their D2H and
@@ -254,7 +254,7 @@ Not a constraint until far above this ladder.
   embedding -> CE exactly as a model does and pins loss + scatter-add
   table grad across {off, on, defer}. Both TUs nvcc 12.6 clean; CPU
   g++ -fsyntax-only clean.
-  **T4-VALIDATED 30 Aug** (receipts docs/receipts_b22_t4_20260830.txt,
+  **T4-VALIDATED 30 Aug** (receipts docs/receipts/receipts_b22_t4_20260830.txt,
   commit 5bcf0d1 = code-identical child of the 0457af9 fix): 12/12
   suites, 281 checks, 0 fails on Tesla T4 / CUDA 12.8.93 — legs 4+5
   green in BOTH test_cuda_ops invocations (DEVICE_OPS=1, and
@@ -271,7 +271,7 @@ Not a constraint until far above this ladder.
   optimization: A and P skip their pointless step_end downloads.
   Confirmed both directions on one VM: pre-fix binary rc=134 at leg 4,
   post-fix all legs green under MALLOC_CHECK_=3 MALLOC_PERTURB_=85
-  (docs/receipts_b22_mcheck_t4_20260830.txt). RULE FOR EVERY FUTURE
+  (docs/receipts/receipts_b22_mcheck_t4_20260830.txt). RULE FOR EVERY FUTURE
   DEVOPS PATH: any deferred output that dies before step_end() MUST be
   discarded or materialized — never left stale.
 - **B2.3** AdamW/SGD on device; optimizer state uploads once at
@@ -336,7 +336,7 @@ Not a constraint until far above this ladder.
      what B2.3c is. Local checks green (CPU syntax, both TUs); T4
      validation is item 4.
   4. [x] **T4 VALIDATION PASSED 30 Aug 20:52** (receipts
-     docs/receipts_b23_t4_20260830.txt, commit d588198): 12/12 suites,
+     docs/receipts/receipts_b23_t4_20260830.txt, commit d588198): 12/12 suites,
      285 checks — legs 4/5/6 numerically IDENTICAL between DEVICE_OPS=1
      and the fully-deferred config (leg 6 optimizer trajectories
      1.192e-07 vs host), gradcheck 29/29 + nn 22/22 under all three
@@ -355,13 +355,13 @@ Not a constraint until far above this ladder.
      their entries for later stale-hit/materialize readers. Confirmed
      both directions: pre-fix deterministic crash; post-fix clean under
      MALLOC_CHECK_=3 in both configs (receipts
-     docs/receipts_b23_mcheck_t4_20260830.txt) and the full gate above.
+     docs/receipts/receipts_b23_mcheck_t4_20260830.txt) and the full gate above.
      STANDING RULE (now enforced three ways): a deferred entry must
      never outlive its host buffer — ~Variable discards data+grad,
      backward() discards consumed non-leaf grads, and rvalue accumulate
      discards temporaries.
   5. [x] **ADOPTION GATE PASSED 31 Aug 2026 — B2 IS ADOPTED FOR RUNG C**
-     (receipts docs/receipts_b2gate_t4_20260831.txt, commit e9da26d,
+     (receipts docs/receipts/receipts_b2gate_t4_20260831.txt, commit e9da26d,
      Tesla T4, ParityLM T=512 L=4, 3 warmup + 6 timed steps).
 
      | d | cpu ms/step | b2 ms/step | speedup | final loss cpu / b2 |

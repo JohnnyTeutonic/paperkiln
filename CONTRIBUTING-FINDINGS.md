@@ -68,7 +68,7 @@ House rules, enforced by `python tools/atlas_findings.py validate`:
   retrieval). If your replication of an existing finding FAILS, that
   is a contribution — append it, don't argue in an issue thread.
 
-Pre-registration (`experiments/SRD_PREREG_R2.md` is the worked example) is the
+Pre-registration (`experiments/srd_r2/PREREGISTRATION_R2.md` is the worked example) is the
 gold standard for anything surprising: design, predictions and decision
 rules committed before the runs, results appended after, whatever they
 say.

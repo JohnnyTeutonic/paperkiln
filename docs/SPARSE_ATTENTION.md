@@ -6,7 +6,7 @@ mechanism validated in microtorch — not another commodity reimplementation.
 Survey date: 2026-07-30 (live arXiv sweep; refresh before each design round).
 
 > **CORRECTION — 2026-08-04 (rung 2, pre-registered:
-> [experiments/SRD_PREREG_R2.md](experiments/SRD_PREREG_R2.md)).** Wherever this document
+> [experiments/srd_r2/PREREGISTRATION_R2.md](experiments/srd_r2/PREREGISTRATION_R2.md)).** Wherever this document
 > describes the SRD gate as concentrating on "retrieval-critical
 > positions", read: **distributionally novel positions**. The 2×2
 > de-confounding experiment (12 runs, 3 seeds) showed the 5×-replicated

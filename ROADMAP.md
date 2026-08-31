@@ -56,7 +56,7 @@ these are the engineering items that unlock it.*
    LoRA/QLoRA/int8: individually good, collectively they read as
    breadth, and breadth is what reviewers discount. **Nothing new goes
    in until the ladder is done.** SRD continues only via its
-   pre-registered test (experiments/SRD_PREREG_R2.md); otherwise it stands as the
+   pre-registered test (experiments/srd_r2/PREREGISTRATION_R2.md); otherwise it stands as the
    honest partial negative it is. New mechanisms are still wanted —
    later, not now.
 
@@ -73,17 +73,17 @@ these are the engineering items that unlock it.*
    then
    **B2.1b T4-VALIDATED 29 Aug 2026** (deferred downloads: value cache,
    materialize boundaries, defer-vs-writethrough EXACTLY 0.0 on the
-   composed tape; receipts docs/receipts_b21b_t4_20260829.txt); next
+   composed tape; receipts docs/receipts/receipts_b21b_t4_20260829.txt); next
    **B2.2 T4-VALIDATED 30 Aug 2026** (fused + swa masked attention
    softmax on-device — the biggest forced materialize gone — plus
    embedding gather and CE with the host receiving ONE float; 12/12
-   suites, 281 checks; receipts docs/receipts_b22_t4_20260830.txt; on
+   suites, 281 checks; receipts docs/receipts/receipts_b22_t4_20260830.txt; on
    the way it surfaced and fixed the deferred-temporary-dies-stale
    heap-corruption class via the new device::discard() primitive); next
    **B2.3 T4-VALIDATED 30 Aug 2026** (persistent device optimizer
    state + device-side accumulate: the step's downloads are now the
    loss scalar and param grads at the boundary; 12/12 suites, 285
-   checks; receipts docs/receipts_b23_t4_20260830.txt; the gate also
+   checks; receipts docs/receipts/receipts_b23_t4_20260830.txt; the gate also
    caught+fixed dying-temporary corruption round two — see the phase
    doc's standing lifetime rule).
    **ADOPTION GATE PASSED 31 Aug 2026 — CUDA PHASE B IS COMPLETE.**
@@ -91,7 +91,7 @@ these are the engineering items that unlock it.*
    L=4, T4) on an identically-converging computation (final losses
    match at print precision: 5.2485 and 4.9382). Rung C RUNS ON
    CUDA: a cell that cost ~6 CPU-hours costs ~12 minutes. Receipts
-   docs/receipts_b2gate_t4_20260831.txt. The gate run also caught
+   docs/receipts/receipts_b2gate_t4_20260831.txt. The gate run also caught
    the deferred-gemm staleness bug the 285-check suite missed —
    the benchmark is now part of the correctness gate, not a
    postscript (see docs/CUDA_PHASE_B2.md).

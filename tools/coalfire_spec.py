@@ -71,6 +71,11 @@ DIRECT = [
 # Knobs with no faithful coalfire equivalent. Presence of the paperkiln
 # value listed (or any non-default value) aborts translation.
 REFUSALS = {
+    "arch.custom.residual": (
+        lambda v: v not in (None, "", "residual"),
+        "coalfire's residual stream is fixed; highway/plain variants are "
+        "microtorch flex-family features (registry #0001) with no coalfire "
+        "equivalent"),
     "arch.custom.sinks": (
         lambda v: v not in (None, 0),
         "coalfire has NO attention-sink support (verified: no 'sink' symbol "

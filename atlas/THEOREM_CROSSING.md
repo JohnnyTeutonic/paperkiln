@@ -153,6 +153,50 @@ script. Any tool that reports on a pre-registered result must adopt
 that result's conventions explicitly, or it manufactures
 disagreements.
 
+## Companion note: confluence, and why "the same code" isn't
+
+The zone corollary says a finite SEED budget leaves an interval where
+the comparison has no answer. There is a second, stranger version of the
+same problem, and it comes in through the backend.
+
+Church-Rosser (confluence) says: if a term reduces two ways, the results
+rejoin — so evaluation order cannot change the normal form. Summation
+obeys it under EXACT arithmetic, because real addition is associative:
+`(a+b)+c` and `a+(b+c)` are the same term.
+
+**Floating-point addition is not associative.**
+`fl(fl(a+b)+c) != fl(a+fl(b+c))` in general. So the rewrite system a GPU
+reduction actually implements is NOT confluent: that critical pair never
+joins. A parallel tree reduction and a serial loop are two reduction
+strategies for a term with no unique normal form, and they differ by
+~1e-7. Training then does what chaotic systems do to unjoined critical
+pairs: it amplifies them until they are a published verdict.
+
+This forces a distinction the field routinely conflates:
+
+- **Reproducibility** — same backend, same seed, same answer. Bought by
+  fixing the reduction order. Deterministic kernels give exactly this.
+- **Portability** — any backend, same answer. This is what confluence
+  would give you, and floating point does not have it.
+
+Deterministic GPU kernels make the GPU agree WITH ITSELF. They cannot
+make it agree with the CPU, because the non-associativity is in the
+semantics, not the scheduling. So "we ran the same code" is a confluence
+claim about a system that is not confluent — lambda-calculus reasoning
+applied to a machine that does not obey it.
+
+It also states precisely what transfer_s1's numerics bridge can and
+cannot test. It is NOT asking whether two backends reached the same
+normal form; they cannot. It asks whether the divergence stays the size
+non-associativity predicts (~1e-7 at step 100) rather than the size a
+wrong kernel produces — the CPU-only regression of 30 Aug 2026 gave
+loss = ln(vocab) from the first step, which is not a rounding
+difference. That is why the gate's primary criterion is an EARLY-step
+tolerance rather than a late-step agreement (see the pre-registration's
+Amendment 1: a backend change behaves like a reseed, so demanding
+per-seed agreement at 3600 steps would have halted the study four times
+in five on a correct engine).
+
 ## What can break — and where to look
 
 **(iii) must fail once the larger class overfits.** Held-out loss is

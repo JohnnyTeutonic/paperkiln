@@ -52,6 +52,20 @@ habit of publishing its negatives next to its wins.
 test suites) stays readable end to end. No CUDA required (T4-validated when
 you want it). Builds in under two minutes.**
 
+## Finding your way around
+
+**[`docs/README.md`](docs/README.md) is the map** — every document in
+this repo has a place in it. If you are picking the project up (or
+resuming it), start there. The short version:
+
+| you want | go to |
+|---|---|
+| what's running / what's next | [`docs/open/`](docs/open/) |
+| why something was built this way | [`docs/decisions/`](docs/decisions/) |
+| how a subsystem works | [`docs/`](docs/) |
+| what the research has established | [`atlas/FINDINGS.md`](atlas/FINDINGS.md) |
+| a specific experiment | [`experiments/`](experiments/) |
+
 ## What makes this different
 
 Minimal autograd engines are a well-populated genre. Six things here are not:

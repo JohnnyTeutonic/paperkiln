@@ -79,6 +79,10 @@ TAXONOMY = {
     "norm": {"status": "implemented", "path": "arch.custom.norm",
              "alternatives": ["layernorm", "rmsnorm"],
              "aliases": {"rms": "rmsnorm", "ln": "layernorm"}},
+    "residual": {"status": "implemented", "path": "arch.custom.residual",
+                 "alternatives": ["residual", "highway", "plain"],
+                 "aliases": {"skip": "residual", "none": "plain",
+                              "gated": "highway"}},
     "position": {"status": "implemented", "path": "arch.custom.position",
                  "alternatives": ["learned", "sinusoidal", "rope"],
                  "aliases": {"rotary": "rope", "absolute": "learned"}},
@@ -87,16 +91,20 @@ TAXONOMY = {
                    "aliases": {"swish-glu": "swiglu", "gelu-mlp": "gelu",
                                "relu-mlp": "relu"}},
     # ---- planned lattices (ARCHITECTURE_ATLAS section 12) ----
-    "residual": {"status": "planned",
-                 "alternatives": ["pre-norm", "post-norm", "attnres"],
-                 "aliases": {"preln": "pre-norm", "postln": "post-norm"}},
+    # Renamed from "residual" (12 Aug 2026): that name now belongs to the
+    # IMPLEMENTED skip-combine slot above (residual|highway|plain, registry
+    # #0001). This planned slot is the norm-placement / stream-wiring axis,
+    # a different lattice.
+    "stream": {"status": "planned",
+               "alternatives": ["pre-norm", "post-norm", "attnres"],
+               "aliases": {"preln": "pre-norm", "postln": "post-norm"}},
 }
 
 # flex rides a gpt2-dims preset; the flavor knobs in the spec are what
 # select the family server-side (mtstudio parse_spec family resolution).
 PRESET_OF_FAMILY = {"gpt2": "gpt2-nano", "llama": "llama-tiny",
                     "flex": "gpt2-nano"}
-FLAVOR_SLOTS = ("norm", "activation", "position")
+FLAVOR_SLOTS = ("norm", "activation", "position", "residual")
 
 # Compatibility constraints, each a (predicate, message) over a flat
 # {slot: value} assignment. The grammar's whole job is that sample()
@@ -117,11 +125,15 @@ CONSTRAINTS = [
      "gpt2 family is the 2-block parity model with fixed flavors "
      "(vary them via the flex family)"),
     (lambda a: a["family"] != "flex" or
-     (a["attention"] == "exact" and a["position"] != "rope"),
-     "flex family: exact attention, position learned|sinusoidal "
-     "(rope means the llama block)"),
+     (a["attention"] in ("exact", "swa") and a["position"] != "rope"),
+     "flex family: exact or swa attention (deep SWA, ROADMAP 1a), "
+     "position learned|sinusoidal (rope means the llama block)"),
     (lambda a: a["position"] != "rope" or a["family"] == "llama",
      "rope lives inside the llama block"),
+    (lambda a: a.get("residual", "residual") == "residual" or
+     a["family"] == "flex",
+     "highway/plain residual variants live in the flex family "
+     "(registry #0001)"),
 ]
 
 
@@ -210,7 +222,7 @@ def spec_assignment(spec):
     a = {"family": family}
     defaults = {"d": 128, "layers": 2, "heads": 4, "T": 128,
                 "lr": 3e-3, "batch": 1, "attention": "exact",
-                "optimizer": "adamw"}
+                "optimizer": "adamw", "residual": "residual"}
     if family == "llama":
         defaults.update(norm="rmsnorm", activation="swiglu",
                         position="rope")
@@ -235,7 +247,7 @@ def validate_spec_file(path):
 
 ROUND_TRIP_SLOTS = ("family", "attention", "optimizer", "d", "layers",
                     "heads", "T", "lr", "batch", "norm", "activation",
-                    "position")
+                    "position", "residual")
 
 
 def selftest():
@@ -260,8 +272,11 @@ def selftest():
     ok = dict(bad3, position="sinusoidal")
     assert not violations(ok), violations(ok)
     # sampler: everything valid, decent diversity, all families reachable
-    s = sample(60, seed=3)
-    assert len(s) == 60
+    # 200 draws: the grammar grew a 3-valued residual slot (registry
+    # #0001), so valid gpt2/llama draws are ~3x rarer under rejection
+    # sampling and 60 no longer covers all families at this seed.
+    s = sample(200, seed=3)
+    assert len(s) == 200
     assert all(not violations(a) for a in s)
     assert len({json.dumps(a, sort_keys=True) for a in s}) > 35
     assert {a["family"] for a in s} == {"gpt2", "llama", "flex"}
@@ -274,8 +289,15 @@ def selftest():
         back = spec_assignment(spec)
         for slot in ROUND_TRIP_SLOTS:
             assert back[slot] == a[slot], (fam, slot, back[slot], a[slot])
-    # planned slots still carry their lattices
-    assert "post-norm" in alternatives("residual")
+    # planned slots still carry their lattices ("stream" is the renamed
+    # norm-placement lattice; "residual" is now the implemented
+    # skip-combine slot, registry #0001)
+    assert "post-norm" in alternatives("stream")
+    assert "highway" in alternatives("residual")
+    # residual round-trips through a spec like the other flavors
+    hw = dict(next(x for x in s if x["family"] == "flex"), residual="highway")
+    assert not violations(hw), violations(hw)
+    assert spec_assignment(assignment_to_spec(hw))["residual"] == "highway"
     print("SELFTEST OK: aliases, constraints (flex+rope), sampler "
           "validity+diversity+family coverage, 3-family spec round-trip, "
           "planned lattices")

@@ -21,7 +21,7 @@ Notable changes to microtorch. Format loosely follows
   touching host at accumulate() (B2.3's choke). Leg 5 composes
   embedding -> CE and pins loss + scatter-add table grad across
   {off, on, defer}. **T4-VALIDATED 30 Aug** — 12/12 suites, 281 checks, 0
-  fails (receipts docs/receipts_b22_t4_20260830.txt); the first run's leg-4
+  fails (receipts docs/receipts/receipts_b22_t4_20260830.txt); the first run's leg-4
   heap-corruption crash (a deferred temporary dying stale, then step_end
   downloading into the freed pointer) is fixed by the new
   `device::discard()` primitive, confirmed both directions on T4. Next:
@@ -30,7 +30,7 @@ Notable changes to microtorch. Format loosely follows
   AVX **21x at d=256 and 30.5x at d=512** (T=512, L=4, Tesla T4) with
   identically-converging trajectories (final losses match at print
   precision). Rung C of the scale ladder runs on CUDA; a ~6-CPU-hour cell
-  becomes ~12 minutes. Receipts docs/receipts_b2gate_t4_20260831.txt.
+  becomes ~12 minutes. Receipts docs/receipts/receipts_b2gate_t4_20260831.txt.
 - **Fixed: deferred activations feeding a gemm uploaded stale host data.**
   `window_operand` consulted the B2.1b value cache only for slotless
   operands; every Variable's data carries a slot, so under deferral a gemm
@@ -83,7 +83,7 @@ Notable changes to microtorch. Format loosely follows
 - CUDA Phase B2.1b T4-VALIDATED: deferred downloads behind
   MICROTORCH_DEFER_DOWNLOADS=1 (value cache, materialize boundaries,
   accumulate choke point); defer-vs-write-through composed-tape diffs
-  exactly 0.0. Receipts: docs/receipts_b21b_t4_20260829.txt.
+  exactly 0.0. Receipts: docs/receipts/receipts_b21b_t4_20260829.txt.
 - The seed lottery exhibit: atlas/SEED_LOTTERY.md + tools/seed_lottery.py
   render the banked boundary receipts as the case for multi-seed,
   pre-registered ablation (two one-seed labs contradict 48% of the time

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SRD rung 2 (SRD_PREREG_R2.md): the 2x2 x 3 seeds, polite profile.
+# SRD rung 2 (srd_r2/PREREGISTRATION_R2.md): the 2x2 x 3 seeds, polite profile.
 #   experiments/srd_r2/run_r2.sh [STEPS] [OUT_DIR]
 # Resumable at cell granularity: a cell whose probe CSV already has its
 # final step is skipped, so this can be interrupted and relaunched.

@@ -53,7 +53,7 @@ public:
     // quality holds under this, the gate was not using surprise.
     bool shuffle_predictor = false;
     // Inference-time gate override for the matched-density controls
-    // (experiments/SRD_PREREG_R2.md P5): when non-empty and sized [T], it replaces
+    // (experiments/srd_r2/PREREGISTRATION_R2.md P5): when non-empty and sized [T], it replaces
     // the router's gate verbatim (1 = exact path, 0 = linear path), so
     // the SAME trained weights can be evaluated under SRD-chosen,
     // random, or positional gating at equal density. Empty = normal.

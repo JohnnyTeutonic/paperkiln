@@ -196,7 +196,7 @@ are the kind of quantity that survives a width change at all.
 
 CUDA Phase B is complete and adopted: B2 beats CPU AVX **30.5x at
 d=512** (21x at d=256) on an identically-converging computation
-(docs/receipts_b2gate_t4_20260831.txt). That measurement is at
+(docs/receipts/receipts_b2gate_t4_20260831.txt). That measurement is at
 T=512/L=4; this study's arms run T=256/L=2, so the per-step cost is
 roughly a quarter of it (attention is quadratic in T, depth halves the
 rest). ESTIMATE, not a measurement — the M arm's true ms/step gets
