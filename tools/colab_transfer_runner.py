@@ -220,7 +220,11 @@ def ensure_repo_and_data(session):
         "print('HAVE_CORPUS', os.path.exists('/content/data/corpus.txt'))\n"
         "print('HAVE_VOCAB', os.path.exists('/content/data/chat7b.gguf'))\n"
         "print('REPO_OK', os.path.exists('/content/microtorch/tools/mtsweep.py'))\n")
-    rc, out = exec_py(session, code, timeout=900)
+    # 300s, not 900. A shallow clone takes ~80s on a healthy vm; the long
+    # timeout only meant a HUNG vm cost 16 min to notice (and 3 strikes
+    # = 48 min to discard). `colab exec` hangs indefinitely on some vms
+    # even when they are otherwise idle — observed 1 Sep 02:54 and 02:31.
+    rc, out = exec_py(session, code, timeout=300)
     if "HAVE_CORPUS True" not in out:
         upload(session, CORPUS, "/content/data/corpus.txt")
     if "HAVE_VOCAB True" not in out:
