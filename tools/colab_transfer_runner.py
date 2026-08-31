@@ -214,16 +214,16 @@ def ensure_repo_and_data(session):
 def launch_sweep(session, sweep_rel):
     code = (
         "import subprocess\n"
-        "env = ('MICROTORCH_DEVICE=cuda ')\n"
-        # GEMM-ONLY (31 Aug 2026). Measured on the VM at this study's real
-        # shape, 400 steps: gpu reaches 400 clean; ops OOMs at step 95; res
-        # OOMs at step 96; defer corrupts the heap at step 1. The device op
-        # set leaks device memory, and NOTHING in the suite runs long
-        # enough to see it — bench_b2 does 9 steps, test_step_residency 50,
-        # and the leak kills at ~95. All four configs converge to identical
-        # losses where they survive, so gemm-only is correct, just slower
-        # (~0.9 s/step here vs ~0.7 for res). Tracked in
-        # docs/open/BACKLOG.md 4c.
+        "env = ('MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 ')\n"
+        # DEVICE OP SET, re-enabled 31 Aug 2026 at commit 697e281. The leak
+        # that forced gemm-only is FIXED: In::owned was clobbered by member
+        # initialization order, so ~In never freed and every operand of
+        # every device op leaked (156 MiB/step, OOM at step 95). Re-measured
+        # on a T4 at this study's exact shape after the fix:
+        #     ops       400 steps, memory FLAT at 173 MiB, 0.84 s/step
+        #     gemm-only 200 steps, memory FLAT at 143 MiB, 1.10 s/step
+        # So the op set is now both stable and 1.31x faster. test_cuda_ops
+        # leg 8 (200 tapes, device memory flat) is the regression guard.
         # DEFER_DOWNLOADS is deliberately OFF (31 Aug 2026). mtstudio's own
         # training loop crashes under deferral with glibc heap corruption at
         # step 1 — the dying-temporary class again, in a path no test covers:

@@ -101,7 +101,40 @@ never pass through any of them. Then add a leg that runs a real
 mtstudio-shaped model end to end under defer, because the absence of one
 is what let this through.
 
-## 4c. The device op set leaks device memory (open defect, 31 Aug 2026)
+## 4c. ~~The device op set leaks device memory~~ — FIXED 31 Aug 2026 (`697e281`)
+
+**Root cause: C++ member initialization order.** `In` (the operand
+wrapper in `src/cuda_ops.cu`) declared `float* d` before `bool owned`,
+and initialized `d` in the mem-init list by calling
+`vc_operand(h, n, owned)` — which sets `owned` through an out-parameter.
+Members initialize in **declaration** order, so `d` was initialized
+first (setting `owned = true`), and then `owned` ran its own default
+member initializer and was reset to `false`. `~In` tests `owned` before
+freeing, so **it never freed anything**: every operand of every device
+op leaked. No `-Wreorder` warning fires, because only one member appears
+in the init list. The fix assigns in the constructor body instead.
+
+Re-measured on a T4 at the study's exact shape after the fix:
+
+| config | before | after |
+|---|---|---|
+| `ops` — device op set | OOM at step 95, 156 MiB/step | **400 steps, FLAT at 173 MiB, 0.84 s/step** |
+| `gpu` — gemm only | 200 steps flat, 1.10 s/step | unchanged |
+
+The op set is now both stable and **1.31x faster** than gemm-only, so
+`tools/colab_transfer_runner.py` runs the study on it again.
+
+**The missing check now exists.** `test_cuda_ops` leg 8 runs 200
+composed tapes and asserts device memory has not grown past a warmup
+baseline (observed: 0.0 MiB). `device::device_bytes_in_use()` was added
+for it. Note what the diagnosis cost: reading every allocation site
+found nothing, because every *free* path was correct — the bug was in
+the flag those frees test. The measurement (memory vs step, at two
+vocab sizes) is what localised it, and the vocab-independent bulk is
+what said "every operand" rather than "the logits buffers".
+
+<details>
+<summary>Original report (kept for the record)</summary>
 
 **Symptom.** `MICROTORCH_DEVICE_OPS=1` OOMs a real training run at
 **step ~95**: `mtstudio: CUDA malloc: out of memory`. Measured at the
@@ -145,6 +178,12 @@ suspect a path that returns `owned=false` for a buffer nobody owns, or
 a cache insert with no eviction. Then add an ENDURANCE leg: a few
 hundred steps with the op set live, asserting device memory is flat.
 That leg is the thing whose absence allowed this.
+
+*(The guess was half right — it was indeed a path returning
+`owned=false` for a buffer somebody owned. It just wasn't returning it;
+the constructor was overwriting it afterwards.)*
+
+</details>
 
 ## 5. CUDA — what is left
 

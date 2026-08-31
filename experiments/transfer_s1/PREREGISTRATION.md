@@ -300,6 +300,23 @@ neither alters a hypothesis, threshold, or decision rule.*
    speak for that case unchallenged. Found by the smoke test's
    scrambled regime before any data existed.
 
+4. **CUDA execution config: `MICROTORCH_DEVICE_OPS=1` (31 Aug 2026,
+   commit `697e281`), decided BEFORE any run completed.** The first
+   bridge attempt ran gemm-only because the device op set OOMed at
+   step ~95. That leak is now fixed (`In::owned` clobbered by member
+   initialization order), re-measured flat over 400 steps, and the op
+   set is 1.31x faster. **No bridge run had completed when this
+   changed** — zero receipts existed, so no data informed the choice
+   and nothing is being re-run after seeing a result.
+
+   This is a config change, not a rule change: no hypothesis,
+   threshold, or decision rule is touched. It is recorded here because
+   the whole point of the bridge gate is that **the backend can change
+   the conclusion**, so which backend the panel ran on is part of the
+   result. Every arm that carries a claim (S/M/L) runs on this same
+   config, and the gate compares it against the banked CPU cohort —
+   which is exactly the comparison the gate was written to make.
+
 ## What this cannot show
 
 One architecture family, one corpus, layers=2, T=256, one house

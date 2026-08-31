@@ -15,6 +15,24 @@
 > fix plan: `open/BACKLOG.md` items 4b and 4c. Treat "Phase B complete"
 > below as "complete and validated for correctness at short duration",
 > and do not put the speedup in a paper until an endurance leg exists.
+>
+> **UPDATE, later the same day (`697e281`) — the leak is fixed and the
+> endurance leg now exists.** The cause was `In::owned` being clobbered
+> by C++ member initialization order, so `~In` never freed any operand
+> (`open/BACKLOG.md` 4c). The device op set now runs **400 steps with
+> device memory flat** at the transfer study's real shape, at
+> **0.84 s/step vs gemm-only's 1.10** — stable and 1.31x faster, and it
+> is what the study runs on. `test_cuda_ops` leg 8 asserts flat memory
+> over 200 tapes.
+>
+> Two caveats stand. **(1)** Full deferral still corrupts the heap in
+> mtstudio at step 1 (4b, open) — the 21x/30.5x were measured WITH
+> deferral, so those specific numbers still describe a configuration
+> that cannot complete a run. A defensible speedup claim must be
+> re-measured on the op-set config over a real duration. **(2)** The
+> endurance leg covers the composed tape, not mtstudio's own loop,
+> which is where 4b hides. Endurance is now checked one level up from
+> where it was; it is not yet checked at the application level.
 
 *Status: B2.0 VALIDATED on Colab T4, 13 Aug 2026 — full
 gradcheck/nn/lora/resident-parity suites plus test_step_residency all
