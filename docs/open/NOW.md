@@ -4,17 +4,30 @@
 [`BACKLOG.md`](BACKLOG.md). Update this file when state changes — a
 stale NOW.md is worse than none.*
 
-**Last updated: 31 Aug 2026, ~19:00 AEST.**
+**Last updated: 31 Aug 2026, ~23:55 AEST.**
 
 ## Running
 
 **transfer_s1 bridge arm** — 10 runs (exact + swa64s1 x seeds 1-5) at
-d=256 on a Colab T4. **Running GEMM-ONLY (device ops OFF too)** — the
-first attempt died at step 1 in all ten cells with heap corruption;
-see BACKLOG 4b; then the device op set OOMed at step ~95, see 4c.
-Gemm-only reached 400 steps clean and converges identically, so the
-study runs on it, driven by `tools/colab_transfer_runner.py`
+d=256 on a Colab T4, driven by `tools/colab_transfer_runner.py`
 (session `tr-bridge`, local out `/mnt/c/ml_artifacts/transfer/bridge`).
+
+**Running on the device op set** (`MICROTORCH_DEVICE_OPS=1`) since
+`697e281` fixed the leak that had forced gemm-only (BACKLOG 4c: `In`'s
+`owned` flag clobbered by member initialization order, so nothing was
+ever freed). Re-measured flat over 400 steps and 1.31x faster than
+gemm-only. Observed pace on the live arm: **~1.2 s/step, GPU memory
+flat at ~361 MiB** — so roughly 70 min per run, ~12 h for the arm.
+
+Deferral (`MICROTORCH_DEFER_DOWNLOADS`) stays OFF — BACKLOG 4b is still
+open and still crashes mtstudio at step 1.
+
+**The first attempt (19:41–22:24) was abandoned, not lost to a bug.**
+On gemm-only it ran at 7.5 s/step and decelerating, i.e. ~7 h per run
+against a 1–2 h reclaim interval, so no run could ever finish and be
+banked. It was stopped deliberately. That deceleration was very likely
+self-inflicted — heavy memory probes were run on the same GPU as the
+live arm. Do not probe a live arm; bring up a second session instead.
 
 Check it with:
 ```
@@ -24,6 +37,12 @@ wsl -e bash -lc "tail -3 /mnt/c/ml_artifacts/transfer/bridge_driver.log; pgrep -
 **Do not launch a second driver for an arm that already has one.** The
 runner stops and recreates its session on launch, so a duplicate kills
 the live run.
+
+Note that `bridge_probe.py` in the session scratchpad reported "no
+processes" twice while the arm was in fact healthy (4 processes, repo,
+binary, sweep log all present on a direct query). Trust a direct
+`colab exec` query over that script, and trust the driver's own
+`sweep_alive()` — which was right both times.
 
 ## What happens when the bridge finishes
 
