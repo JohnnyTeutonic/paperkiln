@@ -319,6 +319,8 @@ def main() -> int:
         f"already done: {len(done_runs(args.local_out))}")
 
     launched = False
+    provisioned = False  # repo + binary + resume state are ON the vm
+    prov_fail = 0        # consecutive provisioning failures on this vm
     strikes = 0          # consecutive ticks the sweep was observed dead
     while time.time() < deadline:
         n = len(done_runs(args.local_out))
@@ -332,11 +334,30 @@ def main() -> int:
                 time.sleep(120)
                 continue
             launched = False
+            provisioned = False
             strikes = 0
-            if not full_setup(args.session, cache, args.sweep,
-                              args.local_out, out_root):
-                log("repo/binary setup failed; retrying")
+        # Provisioning is tracked SEPARATELY from session liveness. A
+        # setup can fail on a live session (a repo clone timed out at
+        # 16 min on a fresh vm, 1 Sep 2026); the old code then fell
+        # straight through to launch_sweep and started a sweep on a vm
+        # with no repo, and only the strike counter eventually undid it.
+        # Never launch onto an unprovisioned vm.
+        if not provisioned:
+            provisioned = full_setup(args.session, cache, args.sweep,
+                                     args.local_out, out_root)
+            log(f"provisioned: {provisioned}")
+            if not provisioned:
+                # Don't grind on a sick vm. Two failures and we throw it
+                # away and ask for another; retrying a vm whose git clone
+                # hangs just burns the session for as long as it lives.
+                prov_fail += 1
+                if prov_fail >= 2:
+                    log("provisioning failed twice — discarding this vm")
+                    sh([COL, "stop", "-s", args.session], timeout=90)
+                    prov_fail = 0
+                time.sleep(30)
                 continue
+            prov_fail = 0
         elif launched:
             # Session answers — but is the WORK alive? A reclaim can hand
             # back a fresh, empty vm that passes alive(). Two strikes, so
@@ -347,10 +368,10 @@ def main() -> int:
                 log(f"session up but sweep NOT running (strike {strikes}/2)")
                 if strikes >= 2:
                     log("re-provisioning the vm and relaunching the sweep")
-                    if full_setup(args.session, cache, args.sweep,
-                                  args.local_out, out_root):
-                        launched = False
+                    provisioned = False
+                    launched = False
                     strikes = 0
+                    continue
             elif state is True:
                 strikes = 0
         if not launched:
