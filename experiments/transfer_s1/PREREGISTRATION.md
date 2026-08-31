@@ -184,11 +184,14 @@ at 3600, b0 spread 1600 -> never (6/15 never crossing).
 
 1. **NUMERICS BRIDGE (gate — runs first, panel blocked on it).** 5
    seeds of L1 and L4 at d=256 on CUDA, compared against the banked CPU
-   cohort (sparse_s1_boundary/seeds, same seeds). Per-seed Delta(3600)
-   must agree in SIGN on >= 4/5 seeds and the pooled mean Delta must lie
-   within 2 SE of the banked pooled mean. Failure HALTS the study and
-   the discrepancy is written up as its own finding — an engine that
-   changes conclusions is a bigger result than this experiment.
+   cohort (sparse_s1_boundary/seeds, same seeds). **AMENDED 31 Aug 2026,
+   pre-data — see Amendment 1 below.** Criteria as amended: per-run
+   relative val-loss difference at step 100 <= 1e-3 for every seed and
+   lane (PRIMARY), and the pooled mean Delta(3600) within 2 SE of the
+   banked pooled mean (retained). Per-seed sign agreement is reported
+   but no longer gates. Failure HALTS the study and the discrepancy is
+   written up as its own finding — an engine that changes conclusions is
+   a bigger result than this experiment.
 2. **Regime check.** Per lane per arm, best_val must land within the
    last 3 evals in >= 9/12 seeds, scoping every statement to the
    still-training regime (the S-arm condition measured in
@@ -209,6 +212,57 @@ at 3600, b0 spread 1600 -> never (6/15 never crossing).
 6. **No peeking.** `analyze.py` is committed WITH this file, before any
    run exists. The S-arm fingerprint is computed by that script from
    runs made after this commit, not chosen after inspection.
+
+## AMENDMENTS (a licensed rule WAS changed — read this before trusting the gate)
+
+### Amendment 1 — the bridge gate's sign criterion was confounded
+**Made 31 Aug 2026, with the bridge arm at 0/10 runs. No bridge data
+existed when this was written; the driver log timestamps establish it.**
+
+The original criterion required per-seed SIGN agreement on Delta(3600),
+>= 4/5. That criterion is wrong, and the arithmetic is not marginal.
+
+A backend change perturbs a trajectory at roughly 1e-7 per operation —
+different reduction order, different kernels, FMA contraction. Training
+is a chaotic system, so by 3600 steps that perturbation has been
+amplified to macroscopic scale. **A backend change therefore behaves
+like a reseed**: "seed 3 on CUDA" is not a rerun of "seed 3 on CPU", it
+is an independent draw from the same distribution. This is the same
+phenomenon the seed lottery documents, entering through a different
+door.
+
+S1e measured that distribution: 9+/6- at b=3600, so p(+) = 0.60. Two
+independent draws therefore agree with probability
+p^2 + (1-p)^2 = **0.52**, and P(>= 4/5 agreements) = **0.21**.
+
+**The gate as licensed would have halted the study four times in five
+on a perfectly correct engine.**
+
+**Replacement.** Loosening a gate is the amendment most deserving of
+suspicion, so the replacement is deliberately STRICTER about what the
+bridge exists to test. The bridge asks "do the kernels compute the same
+thing", not "do chaotic trajectories reconverge" — and that is answered
+EARLY, before chaos amplifies:
+
+- **PRIMARY (new, strict):** per-run relative val-loss difference at
+  step 100 <= 1e-3, every seed, every lane. A broken kernel is gross
+  here — the CPU-only regression of 30 Aug produced loss = ln(vocab)
+  from the first step — while a correct kernel is invisible.
+- **RETAINED unchanged:** pooled mean Delta(3600) within 2 SE of the
+  banked pooled mean. This was always distribution-level and is not
+  affected by the confound.
+- **DEMOTED to descriptive:** per-seed sign agreement, printed with its
+  ~52% null expectation beside it so a low value cannot be misread as a
+  fault.
+
+Both directions are re-verified by `gate_test.py`: identical data gives
+0.00e+00 early divergence and PASSES; a swa lane shifted by +0.15 gives
+3.41e-02 (34x the tolerance) and FAILS on the early check.
+
+**What this amendment does NOT do:** it does not touch F1, F2, F3,
+H-SCALAR, the matched-position rule, the seed counts, or any threshold
+carrying a directional claim. It replaces one threat-check criterion
+that could not have done its job.
 
 ## Execution clarifications (added after the licence commit; NO rule changed)
 

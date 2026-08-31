@@ -277,37 +277,110 @@ def spearman(xs, ys):
     return num / den if den else None
 
 
+EARLY_SLICES = [100, 200, 300, 400, 500]
+EARLY_RTOL = 1e-3
+
+
 def bridge_gate(bridge_root, banked_root):
-    """Threat 1. Per-seed sign agreement >= 4/5 AND pooled mean within
-    2 SE of banked. Failure HALTS the study."""
+    """Threat 1 — AMENDED 31 Aug 2026, PRE-DATA (bridge had 0/10 runs).
+
+    The original criterion required per-seed SIGN agreement on
+    Delta(3600), >= 4/5. That is confounded, and badly. A backend change
+    perturbs the trajectory at ~1e-7 per op; training is chaotic, so by
+    3600 steps it behaves like a RESEED. Seed 3 on CUDA is not a rerun of
+    seed 3 on CPU — it is an independent draw from the same distribution.
+    S1e measured that distribution as 9+/6- at b=3600, so two independent
+    draws agree with probability p^2 + (1-p)^2 = 0.52, and
+    P(>= 4/5 agreements) = 0.21. The original gate would have HALTED THE
+    STUDY FOUR TIMES IN FIVE ON A PERFECT ENGINE.
+
+    Amending a gate so that it is easier to pass is exactly the move that
+    deserves the most suspicion, so the replacement is deliberately
+    STRICTER about the thing the bridge exists to test. The question is
+    "do the kernels compute the same thing", not "do chaotic trajectories
+    reconverge". That is answered EARLY, before chaos amplifies: at the
+    first evals the two backends must agree to fp32 tolerance. A broken
+    kernel is gross there — the CPU-only regression produced loss =
+    ln(vocab) from the first step — while a correct kernel is invisible.
+
+    PRIMARY (new):  per-run relative val-loss difference at step 100
+                    <= 1e-3, every seed, every lane.
+    RETAINED:       pooled mean Delta(3600) within 2 SE of banked.
+    DEMOTED:        per-seed sign agreement — reported, never gating,
+                    with its ~52% null expectation printed beside it so
+                    that a low number is not misread as a fault.
+    """
     print("=" * 68)
     print("THREAT 1 — NUMERICS BRIDGE (gate; the panel is blocked on it)")
     print("=" * 68)
     cuda = read_arm(bridge_root)
     cpu = read_arm(banked_root, legacy_swa=True)
     seeds = sorted(set(cuda) & set(cpu))
+    if not seeds:
+        print("  NO COMPARABLE RUNS — gate cannot be evaluated")
+        return False
+
+    # --- PRIMARY: early-step numerics, before chaos amplifies ---------
+    print("")
+    print("  early-step agreement (the kernels test; chaos-free window)")
+    worst_first, curve = 0.0, {}
+    for b in EARLY_SLICES:
+        rels = []
+        for s in seeds:
+            for lane in ("exact", "swa64s1"):
+                ra = cuda.get(s, {}).get(lane)
+                rb = cpu.get(s, {}).get(lane)
+                if not ra or not rb:
+                    continue
+                va, vb = val_at(ra["evals"], b), val_at(rb["evals"], b)
+                if va is None or vb is None or vb == 0:
+                    continue
+                rel = abs(va - vb) / abs(vb)
+                rels.append(rel)
+                if b == EARLY_SLICES[0]:
+                    worst_first = max(worst_first, rel)
+        if rels:
+            curve[b] = (st.mean(rels), max(rels))
+            print("    step %4d: mean rel diff %.2e   worst %.2e"
+                  % (b, curve[b][0], curve[b][1]))
+    early_ok = bool(curve) and worst_first <= EARLY_RTOL
+    print("  worst relative difference at step %d = %.2e (need <= %.0e) -> %s"
+          % (EARLY_SLICES[0], worst_first, EARLY_RTOL,
+             "PASS" if early_ok else "FAIL"))
+
+    # --- RETAINED: distributional check at the full budget ------------
     dc, dp = [], []
     for s in seeds:
         a = delta(cuda, s, "exact", "swa64s1", 3600)
-        b = delta(cpu, s, "exact", "swa64s1", 3600)
-        if a is None or b is None:
+        b2 = delta(cpu, s, "exact", "swa64s1", 3600)
+        if a is None or b2 is None:
             continue
         dc.append(a)
-        dp.append(b)
-        print(f"  seed {s:>2}: cuda {a:+.5f}   cpu {b:+.5f}   "
-              f"{'AGREE' if (a > 0) == (b > 0) else 'DISAGREE'}")
-    if not dc:
-        print("  NO COMPARABLE RUNS — gate cannot be evaluated")
-        return False
-    agree = sum(1 for a, b in zip(dc, dp) if (a > 0) == (b > 0))
-    mc, mp = st.mean(dc), st.mean(dp)
-    se = (st.stdev(dp) / math.sqrt(len(dp))) if len(dp) > 1 else float("inf")
-    within = abs(mc - mp) <= 2 * se
-    print(f"  sign agreement {agree}/{len(dc)} (need >= 4/5)")
-    print(f"  pooled mean cuda {mc:+.5f} vs cpu {mp:+.5f} "
-          f"(2 SE = {2 * se:.5f}) -> {'within' if within else 'OUTSIDE'}")
-    ok = agree >= 4 and within
-    print(f"  VERDICT: {'PASS — panel may run' if ok else 'FAIL — STUDY HALTS'}")
+        dp.append(b2)
+    within = False
+    if dc:
+        mc, mp = st.mean(dc), st.mean(dp)
+        se = ((st.stdev(dp) / math.sqrt(len(dp))) if len(dp) > 1
+              else float("inf"))
+        within = abs(mc - mp) <= 2 * se
+        print("")
+        print("  pooled mean Delta(3600): cuda %+.5f vs cpu %+.5f "
+              "(2 SE = %.5f) -> %s"
+              % (mc, mp, 2 * se, "within" if within else "OUTSIDE"))
+
+    # --- DEMOTED: sign agreement, descriptive only --------------------
+    if dc:
+        agree = sum(1 for a, b2 in zip(dc, dp) if (a > 0) == (b2 > 0))
+        print("  [descriptive, NOT a criterion] per-seed sign agreement "
+              "%d/%d — under a CORRECT engine the expected value is ~52%% "
+              "(%.1f/%d), because a backend change acts as a reseed. A low "
+              "number here is not a fault."
+              % (agree, len(dc), 0.52 * len(dc), len(dc)))
+
+    ok = early_ok and within
+    print("")
+    print("  VERDICT: %s"
+          % ("PASS — panel may run" if ok else "FAIL — STUDY HALTS"))
     return ok
 
 
