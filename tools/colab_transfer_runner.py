@@ -215,7 +215,17 @@ def launch_sweep(session, sweep_rel):
     code = (
         "import subprocess\n"
         "env = ('MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 '\n"
-        "       'MICROTORCH_STEP_RESIDENCY=1 MICROTORCH_DEFER_DOWNLOADS=1 ')\n"
+        "       'MICROTORCH_STEP_RESIDENCY=1 ')\n"
+        # DEFER_DOWNLOADS is deliberately OFF (31 Aug 2026). mtstudio's own
+        # training loop crashes under deferral with glibc heap corruption at
+        # step 1 — the dying-temporary class again, in a path no test covers:
+        # B2.3's validation exercised test_cuda_ops and bench_b2, never
+        # mtstudio. Measured on the VM at this study's real shape: res, ops
+        # and gpu all run clean and converge to an IDENTICAL loss
+        # (4.962438106536865 at step 30) while defer dies at step 1.
+        # Residency without deferral is a validated configuration and keeps
+        # most of the speedup, so the study runs on it; the defer bug is
+        # tracked separately in docs/open/BACKLOG.md.
         "cmd = ('cd /content/microtorch && ' + env + 'nohup python3 "
         "tools/mtsweep.py ' +\n"
         f"       {sweep_rel!r} + ' --mtstudio /content/mtstudio --jobs 1 "

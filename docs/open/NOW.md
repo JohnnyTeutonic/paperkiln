@@ -8,8 +8,11 @@ stale NOW.md is worse than none.*
 
 ## Running
 
-**transfer_s1 bridge arm** — 10 runs (exact + swa64s1 × seeds 1–5) at
-d=256 on a Colab T4, driven by `tools/colab_transfer_runner.py`
+**transfer_s1 bridge arm** — 10 runs (exact + swa64s1 x seeds 1-5) at
+d=256 on a Colab T4. **Running with DEFER_DOWNLOADS OFF** — the
+first attempt died at step 1 in all ten cells with heap corruption;
+see BACKLOG 4b. `res` (ops + residency) is validated and converges
+identically, so the study runs on it, driven by `tools/colab_transfer_runner.py`
 (session `tr-bridge`, local out `/mnt/c/ml_artifacts/transfer/bridge`).
 
 Check it with:

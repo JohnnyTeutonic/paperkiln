@@ -63,6 +63,44 @@ rather than inferred.** Next candidates that scanned clean but were not
 yet added: StarCoder, ELECTRA, UL2, BigBird, Chinchilla (several state
 no flavors at all — correctly skipped).
 
+## 4b. DEFER_DOWNLOADS crashes mtstudio (open defect, found 31 Aug 2026)
+
+**Symptom.** With `MICROTORCH_DEFER_DOWNLOADS=1`, `mtstudio run` dies at
+step 1 with `malloc(): unsorted double linked list corrupted` — SIGSEGV
+on the first cell, SIGABRT on the rest. All ten bridge cells died this
+way. It is the dying-temporary class for the third time: a deferred
+value-cache entry outliving its host buffer, so `step_end()`'s
+`materialize_all()` writes freed memory.
+
+**Measured on the VM at the study's real shape** (d=256, T=256, L=2,
+vocab 4096, batch 4), 30 steps:
+
+| config | time | result |
+|---|---|---|
+| `res` — ops + residency | 20.9s | clean, loss 4.962438106536865 |
+| `ops` — device ops only | 26.6s | clean, identical loss |
+| `gpu` — gemm only | 38.3s | clean, identical loss |
+| `b2` — full defer | 2.1s | **crash at step 1** |
+
+**Why the 285-check suite missed it.** B2.3's validation exercised
+`test_cuda_ops` and `bench_b2`. **mtstudio's own training loop has never
+run under deferral** — it has its own model construction, eval, gradmap
+and export paths, none of which any leg touches. Same shape of blind
+spot as the tiny-test-shapes one, one level up: we validated the library
+and not the application.
+
+**Mitigation in place:** `tools/colab_transfer_runner.py` runs the study
+with deferral OFF. `res` is a validated configuration converging
+identically, and keeps most of the speedup.
+
+**To fix:** find the deferred temporary in the mtstudio step path that
+dies inside the window. The four existing enforcement points
+(`~Variable`, consumed non-leaf grads in `backward()`, the rvalue
+`accumulate`, and `ops::cached`) do not cover raw `Matrix` locals that
+never pass through any of them. Then add a leg that runs a real
+mtstudio-shaped model end to end under defer, because the absence of one
+is what let this through.
+
 ## 5. CUDA — what is left
 
 Phase B is complete and adopted (21× at d=256, 30.5× at d=512). Open:
