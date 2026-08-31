@@ -264,6 +264,12 @@ void evict_all() {
 
 size_t resident_count() { return g_table.size(); }
 
+size_t device_bytes_in_use() {
+    size_t free_b = 0, total_b = 0;
+    if (cudaMemGetInfo(&free_b, &total_b) != cudaSuccess) return 0;
+    return total_b - free_b;
+}
+
 // ---- Phase B2.0 ----
 
 void set_step_residency(bool on) { g_step_residency = on; }

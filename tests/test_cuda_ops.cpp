@@ -569,6 +569,32 @@ void leg7_deferred_gemm() {
 
 }  // namespace
 
+// leg 8: ENDURANCE. Every other leg here is short — 9 to 50 steps — and
+// that is precisely why the `In::owned` leak (31 Aug 2026) shipped: it
+// cost ~156 MiB/step and OOMed a real run at step 95, below any leg's
+// horizon. This leg runs the composed tape long enough for a per-step
+// leak to show, and asserts device memory is FLAT.
+//
+// Threshold reasoning: allocator high-water marks and lazily-created
+// persistent state settle in the first few iterations, so the baseline
+// is taken AFTER a warmup and growth is measured from there. The leak
+// class this catches is linear and large (tens of MiB per step); 8 MiB
+// of total drift over 200 iterations is far below that and far above
+// any legitimate settling.
+void leg8_endurance() {
+    std::printf("-- leg 8: endurance, device memory flat over 200 tapes --\n");
+    device::set_device_ops(true);
+    for (int i = 0; i < 10; ++i) run_tape(1000 + i);  // warm up
+    const size_t base = device::device_bytes_in_use();
+    for (int i = 0; i < 200; ++i) run_tape(2000 + i);
+    const size_t after = device::device_bytes_in_use();
+    const double grew_mib =
+        (after > base ? static_cast<double>(after - base) : 0.0) / (1 << 20);
+    check(grew_mib <= 8.0, "device MiB grown over 200 tapes", grew_mib);
+    std::printf("   (%.1f MiB base, %.1f MiB after)\n",
+                base / 1048576.0, after / 1048576.0);
+}
+
 int main() {
     device::set_from_env();
     if (!device::cuda_compiled() || device::get() != device::Device::CUDA) {
@@ -585,10 +611,12 @@ int main() {
     leg5_embed_ce();
     leg6_optimizers();
     leg7_deferred_gemm();
+    leg8_endurance();
 
     if (g_failures == 0) {
         std::printf("test_cuda_ops PASSED (B2.1a kernels + tape parity + "
-                    "B2.1b deferred downloads + B2.2 attention/embed/CE)\n");
+                    "B2.1b deferred downloads + B2.2 attention/embed/CE + "
+                    "endurance)\n");
         return 0;
     }
     std::printf("test_cuda_ops: %d FAILURE(S)\n", g_failures);

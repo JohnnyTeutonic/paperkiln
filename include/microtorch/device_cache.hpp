@@ -48,6 +48,12 @@ bool step_residency_enabled();
 void step_begin();  // open a cache window: bump the epoch, enable caching
 void step_end();    // close it: caches are ignored until the next begin
 
+// Device bytes currently allocated (total - free, via cudaMemGetInfo);
+// 0 on CPU-only builds. Exists so a test can assert memory is FLAT over
+// many steps: every CUDA leak this project has shipped was invisible to
+// a suite that only ran 9-50 steps.
+size_t device_bytes_in_use();
+
 namespace detail {
 void release_devstate_impl(DevState*);  // frees the buffer + the struct
 }

@@ -83,11 +83,18 @@ struct DBuf {
 // exactly B2.1a's behaviour. Aux outputs (per-row stat vectors) remain
 // write-through: small, and consumed host-side by the CPU reference
 // formulas either way.
+// NOTE the assignment in the BODY, not a mem-init list. `owned` is an
+// out-parameter of vc_operand, and members initialize in DECLARATION
+// order regardless of mem-init order: with `: d(vc_operand(h, n, owned))`
+// the compiler initialized d (setting owned=true), then ran `owned`'s
+// default member initializer and reset it to false. ~In therefore never
+// freed, and every operand of every device op leaked — 156 MiB/step,
+// OOM at step 95 (31 Aug 2026). Assigning in the body is immune to
+// declaration order; do not "tidy" this back into an init list.
 struct In {
     float* d = nullptr;
     bool owned = false;
-    In(const float* h, size_t n)
-        : d(detail::vc_operand(h, n, owned)) {}
+    In(const float* h, size_t n) { d = detail::vc_operand(h, n, owned); }
     ~In() {
         if (owned) cudaFree(d);
     }

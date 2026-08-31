@@ -23,6 +23,7 @@ void set_step_residency(bool) {}
 bool step_residency_enabled() { return false; }
 void step_begin() {}
 void step_end() {}
+size_t device_bytes_in_use() { return 0; }
 namespace detail {
 void release_devstate_impl(DevState*) {}
 }  // namespace detail
