@@ -1,0 +1,17 @@
+====================================================================
+THREAT 1 — NUMERICS BRIDGE (gate; the panel is blocked on it)
+====================================================================
+  [legacy] 5 runs under boundary_out record bare attention=swa (pre-dating window/sinks in the model event); lane taken as swa64s1 from their committed sweep manifest — bridge reference arm only
+
+  early-step agreement (the kernels test; chaos-free window)
+    step  100: mean rel diff 4.00e-05   worst 3.24e-04
+    step  200: mean rel diff 8.75e-05   worst 5.19e-04
+    step  300: mean rel diff 1.19e-04   worst 5.94e-04
+    step  400: mean rel diff 4.87e-04   worst 1.38e-03
+    step  500: mean rel diff 1.26e-03   worst 3.92e-03
+  worst relative difference at step 100 = 3.24e-04 (need <= 1e-03) -> PASS
+
+  pooled mean Delta(3600): cuda +0.03621 vs cpu +0.01959 (2 SE = 0.04509) -> within
+  [descriptive, NOT a criterion] per-seed sign agreement 4/5 — under a CORRECT engine the expected value is ~52% (2.6/5), because a backend change acts as a reseed. A low number here is not a fault.
+
+  VERDICT: PASS — panel may run
