@@ -244,6 +244,40 @@ def launch_sweep(session, sweep_rel):
     return "SWEEP_LAUNCHED" in out
 
 
+def sweep_alive(session):
+    """Is the sweep ACTUALLY running on the VM right now?
+
+    `launched` is only a belief formed once, and a backgrounded nohup
+    reports success even when the command dies immediately. Worse, a
+    session can answer `alive()` from a FRESH vm after a reclaim, with
+    the repo, the binary and the sweep all gone — the driver then relays
+    an empty directory forever while holding a GPU. Observed on the
+    bridge arm, 31 Aug 2026: 'sweep launched: True' at 23:32, and at
+    23:40 the vm had no mtsweep process, no /content/sweep.log and 0 MiB
+    of GPU memory in use. Belief is not evidence; look at the process.
+    """
+    rc, out = exec_py(session, (
+        "import os, subprocess\n"
+        "r = subprocess.run(\"ps aux | grep -E 'mtsweep|mtstudio' | "
+        "grep -v grep\", shell=True, capture_output=True, text=True)\n"
+        "n = len([l for l in r.stdout.splitlines() if l.strip()])\n"
+        "print('PROCS', n)\n"
+        "print('REPO', os.path.exists('/content/microtorch/tools/mtsweep.py'))\n"
+        "print('BIN', os.path.exists('/content/mtstudio'))\n"), timeout=180)
+    if rc != 0 or "PROCS" not in out:
+        return None                      # inconclusive: do not act on it
+    return "PROCS 0" not in out and "REPO True" in out and "BIN True" in out
+
+
+def full_setup(session, cache, sweep_rel, local_out, out_root):
+    if not ensure_repo_and_data(session):
+        return False
+    if not ensure_binary(session, cache, sweep_rel):
+        return False
+    push_resume(session, local_out, out_root)
+    return True
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--sweep", required=True, help="repo-relative sweep json")
@@ -266,6 +300,7 @@ def main() -> int:
         f"already done: {len(done_runs(args.local_out))}")
 
     launched = False
+    strikes = 0          # consecutive ticks the sweep was observed dead
     while time.time() < deadline:
         n = len(done_runs(args.local_out))
         if n >= args.expect:
@@ -278,12 +313,27 @@ def main() -> int:
                 time.sleep(120)
                 continue
             launched = False
-            if not ensure_repo_and_data(args.session):
-                log("repo/data setup failed; retrying")
+            strikes = 0
+            if not full_setup(args.session, cache, args.sweep,
+                              args.local_out, out_root):
+                log("repo/binary setup failed; retrying")
                 continue
-            if not ensure_binary(args.session, cache, args.sweep):
-                continue
-            push_resume(args.session, args.local_out, out_root)
+        elif launched:
+            # Session answers — but is the WORK alive? A reclaim can hand
+            # back a fresh, empty vm that passes alive(). Two strikes, so
+            # one flaky exec never triggers a rebuild.
+            state = sweep_alive(args.session)
+            if state is False:
+                strikes += 1
+                log(f"session up but sweep NOT running (strike {strikes}/2)")
+                if strikes >= 2:
+                    log("re-provisioning the vm and relaunching the sweep")
+                    if full_setup(args.session, cache, args.sweep,
+                                  args.local_out, out_root):
+                        launched = False
+                    strikes = 0
+            elif state is True:
+                strikes = 0
         if not launched:
             launched = launch_sweep(args.session, args.sweep)
             log(f"sweep launched: {launched}")
