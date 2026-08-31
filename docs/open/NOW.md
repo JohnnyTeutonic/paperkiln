@@ -4,13 +4,26 @@
 [`BACKLOG.md`](BACKLOG.md). Update this file when state changes — a
 stale NOW.md is worse than none.*
 
-**Last updated: 31 Aug 2026, ~23:55 AEST.**
+**Last updated: 1 Sep 2026, ~01:20 AEST.**
 
 ## Running
 
 **transfer_s1 bridge arm** — 10 runs (exact + swa64s1 x seeds 1-5) at
-d=256 on a Colab T4, driven by `tools/colab_transfer_runner.py`
+d=256 on a Colab **L4, 4 cells concurrent**, driven by
+`tools/colab_transfer_runner.py --gpu L4 --jobs 4 --omp 2`
 (session `tr-bridge`, local out `/mnt/c/ml_artifacts/transfer/bridge`).
+
+**Why L4 and not T4.** The T4 runtime has 2 vCPU and was CPU-bound
+(load 2.1 while the GPU idled at 11%) — ~52 min per run against a
+~52 min reclaim interval. Since only COMPLETED runs are banked, runs
+kept dying just short of the line and the arm sat at 0/10 for two
+hours. The L4 has 12 vCPU; 4 concurrent cells give 3.4x throughput at
+~41 min per run, which fits inside a vm lifetime. Details and the
+scaling table: execution clarification 5 in the pre-registration.
+
+The GPU change is numerics-relevant (reduction order — see
+`../../atlas/THEOREM_CROSSING.md`), so **every arm runs on L4** and no
+partially-completed T4 work was kept.
 
 **Running on the device op set** (`MICROTORCH_DEVICE_OPS=1`) since
 `697e281` fixed the leak that had forced gemm-only (BACKLOG 4c: `In`'s
