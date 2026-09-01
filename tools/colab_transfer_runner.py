@@ -30,6 +30,7 @@ import glob
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -43,12 +44,45 @@ COALFIRE = "https://github.com/JohnnyTeutonic/coalfire.cpp.git"
 
 
 def sh(args, timeout=300):
-    try:
-        p = subprocess.run(args, capture_output=True, text=True,
-                           timeout=timeout)
-        return p.returncode, (p.stdout or "") + (p.stderr or "")
-    except subprocess.TimeoutExpired:
-        return 124, "TIMEOUT"
+    """Run a CLI call under a timeout that CANNOT be defeated.
+
+    `subprocess.run(capture_output=True, timeout=N)` hands the child a
+    PIPE. On timeout it kills the DIRECT child, then blocks in
+    communicate() draining pipes that any surviving GRANDCHILD still
+    holds open. The colab CLI spawns exactly such grandchildren, and on
+    1 Sep 2026 this hung the arm-S driver for 2h13m inside ONE tick --
+    against a 180s timeout. While it hung, the vm was reclaimed, nobody
+    noticed, and ~3 hours of L4 compute produced nothing bankable.
+
+    Writing output to a temp FILE shares no pipe with anyone, so the
+    wait really ends when we kill. We also start a new process group and
+    kill the whole group, so grandchildren die with the parent.
+    """
+    import tempfile
+    with tempfile.TemporaryFile(mode="w+", encoding="utf-8",
+                                errors="replace") as out:
+        try:
+            p = subprocess.Popen(args, stdout=out,
+                                 stderr=subprocess.STDOUT,
+                                 stdin=subprocess.DEVNULL,
+                                 start_new_session=True)
+        except Exception as exc:                     # noqa: BLE001
+            return 127, f"SPAWN_FAILED {exc}"
+        try:
+            rc = p.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            try:
+                os.killpg(os.getpgid(p.pid), signal.SIGKILL)
+            except Exception:                        # noqa: BLE001
+                p.kill()
+            try:
+                p.wait(timeout=30)
+            except Exception:                        # noqa: BLE001
+                pass
+            out.seek(0)
+            return 124, "TIMEOUT " + out.read()[-1500:]
+        out.seek(0)
+        return rc, out.read()
 
 
 def log(msg):
@@ -422,8 +456,17 @@ def main() -> int:
                                     args.jobs, args.omp)
             log(f"sweep launched: {launched}")
         time.sleep(args.tick)
+        t_tick = time.time()
         got = relay(args.session, args.local_out, out_root)
-        log(f"relayed; local runs {got}/{args.expect}")
+        # relay() returns 0 on FAILURE as well as on "nothing new", which
+        # used to print a bogus "local runs 0/N" and hide relay trouble.
+        # Report the truth: count what is actually on disk.
+        on_disk = len(done_runs(args.local_out))
+        slow = time.time() - t_tick
+        note = f"  [relay {'ok' if got else 'FAILED/empty'}]"
+        if slow > 300:
+            note += f"  [SLOW TICK {slow/60:.1f} min]"
+        log(f"local runs {on_disk}/{args.expect}{note}")
     log("deadline reached")
     sh([COL, "stop", "-s", args.session], timeout=90)
     return 1
