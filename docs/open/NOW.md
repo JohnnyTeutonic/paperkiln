@@ -4,26 +4,90 @@
 [`BACKLOG.md`](BACKLOG.md). Update this file when state changes — a
 stale NOW.md is worse than none.*
 
-**Last updated: 1 Sep 2026, ~01:20 AEST.**
+**Last updated: 2 Sep 2026, ~07:10 AEST.**
 
-## Running
+## NOTHING IS RUNNING
 
-**transfer_s1 bridge arm** — 10 runs (exact + swa64s1 x seeds 1-5) at
-d=256 on a Colab **L4, 4 cells concurrent**, driven by
-`tools/colab_transfer_runner.py --gpu L4 --jobs 4 --omp 2`
-(session `tr-bridge`, local out `/mnt/c/ml_artifacts/transfer/bridge`).
+No drivers, no Colab sessions. This is deliberate, not a stall.
 
-**Why L4 and not T4.** The T4 runtime has 2 vCPU and was CPU-bound
-(load 2.1 while the GPU idled at 11%) — ~52 min per run against a
-~52 min reclaim interval. Since only COMPLETED runs are banked, runs
-kept dying just short of the line and the arm sat at 0/10 for two
-hours. The L4 has 12 vCPU; 4 concurrent cells give 3.4x throughput at
-~41 min per run, which fits inside a vm lifetime. Details and the
-scaling table: execution clarification 5 in the pre-registration.
+## Done
 
-The GPU change is numerics-relevant (reduction order — see
-`../../atlas/THEOREM_CROSSING.md`), so **every arm runs on L4** and no
-partially-completed T4 work was kept.
+- **Bridge gate: PASS.** 10/10 banked and validated. Worst early-step
+  relative val-loss difference 3.24e-04 against the pre-registered
+  1e-03 threshold. Receipts and `GATE_OUTPUT.txt` in
+  `../../experiments/transfer_s1/receipts/bridge/`.
+- **Arm S: COMPLETE.** 72/72 banked and validated, 12 seeds x 6 lanes,
+  balanced 12 per lane. Receipts in `receipts/S/`. Commit `56b49b0`.
+
+## BLOCKED: arms M and L, on a hard 60-minute Colab session cap
+
+**The finding.** Every Colab session ends at 60-61 minutes, on every
+GPU tier, regardless of load. Measured from the CLI's own history
+(`~/.config/colab-cli/history/tr-*.jsonl`) across 23 arm-S sessions:
+62, 61, 60, 60, 62, 60, 62, 61, 61, 63, 70, 61, 62, 62 minutes. The
+bridge arm's T4 sessions show the same: 60, 60, 61, 60, 61.
+
+This is **not** ours to fix:
+
+- The CLI's keep-alive daemon IS spawned by `colab new` and IS running
+  (verified: process alive, `keep_alive_started` logged for all 23
+  sessions, and **zero** `keep_alive_error` events).
+- The termination reason is always `pruned`, which in
+  `colab_cli/common.py` means the endpoint has disappeared from the
+  server's active assignments. Colab drops the assignment; the CLI
+  merely notices.
+- It is account-wide, not GPU-specific. T4 and L4 prune identically.
+
+**Consequence.** Any run longer than ~55 min can never complete, because
+only finished runs are banked. Arm S succeeded because a 4-cell wave
+took ~52 min. Arm M at d=512 measured **1.23 s/step single-cell (74
+min/run)** and **1.66 s/step at 4 cells (100 min/run)**. No `--jobs`
+value and no GPU tier helps. Arm L at d=1024 is worse again.
+
+**Do not restart arm M as configured.** It will bank zero runs and burn
+units. It was stopped for exactly this reason on 2 Sep.
+
+## The only route to M and L: checkpoint/resume
+
+`mtstudio` ALREADY has the skeleton. `tools/mtstudio.cpp`:
+
+- line 548 saves every `ckpt_every` steps
+- lines 444-453 read `out_dir/state.txt` for `start_step`, load
+  `model.safetensors`, and emit a `resume` event
+- the sweeps disable it with `checkpoint_every: 1000000`
+
+**Two gaps make it unusable for THIS study as it stands.** The save
+lambda (line 464) writes model weights and a step number, nothing else:
+
+1. **Optimizer state is not saved.** AdamW's per-parameter `m` and `v`
+   moments and the bias-correction timestep `t` are lost, so a resumed
+   run restarts the optimizer cold and follows a different trajectory.
+2. **RNG state is not saved.** `std::mt19937 rng(123 + 1000003u *
+   s.seed)` is reconstructed at startup, so a resumed run replays the
+   batch sequence from step 0 while the weights sit at step N. That
+   silently breaks the pre-registered guarantee that seed varies both
+   init and batch composition.
+
+For a study whose subject is whether numerical details change
+conclusions, both are disqualifying.
+
+**The work:** extend `save`/resume to cover AdamW moments and RNG
+state, then prove it — run 200 steps uninterrupted, run 100 + resume +
+100, and assert the loss traces are bit-identical. The test is the
+deliverable, not the feature. Awaiting Jonathan's go-ahead as of
+2 Sep 07:10.
+
+## Historical note on the GPU choice
+
+Arms ran on **L4** (execution clarification 5). The original reason was
+that the T4 runtime has 2 vCPU and was CPU-bound; the L4's 12 vCPU let
+4 cells run concurrently at ~52 min per wave. The GPU choice is
+numerics-relevant (reduction order, see
+`../../atlas/THEOREM_CROSSING.md`), so every arm carrying a claim uses
+L4 and no partially-completed T4 work was kept. **Note the earlier
+belief that T4 sessions lived 2h43m was wrong** — that was three
+consecutive 60-minute sessions with the run restarting each time, which
+is why it never finished.
 
 **Running on the device op set** (`MICROTORCH_DEVICE_OPS=1`) since
 `697e281` fixed the leak that had forced gemm-only (BACKLOG 4c: `In`'s

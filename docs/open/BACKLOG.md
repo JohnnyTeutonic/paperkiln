@@ -9,11 +9,60 @@ and comes out of here.*
 
 Pre-registered at anchor `3fa55ae`. Order fixed: **bridge → S → M → L.**
 
-- [ ] bridge gate verdict (in flight — see [`NOW.md`](NOW.md))
-- [ ] arm S — d=256, 12 seeds, 6 lanes, 72 runs, ~6 T4-hours
-- [ ] arm M — d=512, 12 seeds, 6 lanes, 72 runs, ~13 T4-hours
-- [ ] arm L — d=1024, 3 seeds, 2 lanes, 6 runs, ~3.6 T4-hours
+- [x] **bridge gate: PASS** (1 Sep 2026). Worst early-step relative
+      difference 3.24e-04 vs the 1e-03 threshold. Receipts and
+      `GATE_OUTPUT.txt` under `experiments/transfer_s1/receipts/bridge/`.
+- [x] **arm S complete** (2 Sep 2026). 72/72 banked and validated,
+      12 seeds x 6 lanes, balanced. Commit `56b49b0`.
+- [ ] **arm M — BLOCKED, see item 1b.** Not startable as configured.
+- [ ] **arm L — BLOCKED by the same cause**, and worse at d=1024.
       (preliminary by design; carries no inference)
+
+## 1b. BLOCKER: a hard 60-minute Colab session cap
+
+**Every Colab session ends at 60-61 minutes**, on every GPU tier,
+independent of load. Measured from the CLI's own history across 23
+arm-S sessions and the bridge arm's T4 sessions. It is not fixable from
+our side: the keep-alive daemon is spawned and running with zero
+`keep_alive_error` events across all 23 sessions, and the termination
+reason is always `pruned`, meaning Colab dropped the assignment
+server-side and the CLI merely noticed.
+
+Because only COMPLETED runs are banked, **any run longer than ~55 min
+can never finish.** Arm S worked because a 4-cell wave took ~52 min.
+
+Measured at arm M's shape (d=512) on L4:
+
+| config | pace | per run |
+|---|---|---|
+| 1 cell, OMP=8 | 1.23 s/step | 74 min |
+| 4 cells, OMP=2 | 1.66 s/step | 100 min |
+
+No `--jobs` value and no GPU tier brings this under the cap. **Do not
+restart arm M as configured** — it banks zero runs and burns units.
+
+### The only route through: checkpoint/resume
+
+`mtstudio` already has the skeleton (`tools/mtstudio.cpp`): line 548
+saves every `ckpt_every` steps; lines 444-453 resume from
+`out_dir/state.txt` plus `model.safetensors` and emit a `resume` event.
+The sweeps disable it with `checkpoint_every: 1000000`.
+
+Two gaps make it unusable for a numerics study. The save lambda at
+line 464 writes weights and a step number only:
+
+1. **Optimizer state is not saved** — AdamW's per-parameter `m`/`v` and
+   the bias-correction timestep `t`. A resumed run restarts the
+   optimizer cold.
+2. **RNG state is not saved** — `std::mt19937 rng(123 + 1000003u *
+   s.seed)` is rebuilt at startup, so a resumed run replays the batch
+   sequence from step 0 against step-N weights, silently breaking the
+   pre-registered guarantee that seed varies both init and batch order.
+
+**To do:** extend save/resume to cover both, then prove it — 200 steps
+uninterrupted vs 100 + resume + 100, asserting bit-identical loss
+traces. The test is the deliverable. Useful in paperkiln regardless of
+this study.
 - [ ] run `analyze.py` exactly as committed, write `RESULTS.md`, bank
       receipts, add the registry row
 
