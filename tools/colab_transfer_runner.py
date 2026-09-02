@@ -375,6 +375,25 @@ def main() -> int:
     cache = os.path.join(os.path.dirname(args.local_out.rstrip("/")),
                          f"mtstudio_cuda_{args.gpu.lower()}")
     os.makedirs(os.path.join(args.local_out, "runs"), exist_ok=True)
+
+    # A HALTED file means this arm has been shown it CANNOT complete as
+    # configured, and launching it would create a session, upload a binary,
+    # bank zero runs, and burn units until something killed it. Arm M did
+    # exactly that on 2 Sep at 06:35 -- a scheduled shift saw "no driver
+    # alive, arm incomplete", relaunched per its instructions, and spent a
+    # session for nothing. Documentation in NOW.md did not prevent it,
+    # because the thing reading the instructions was not reading NOW.md.
+    # So the refusal lives here, next to the launch it has to stop.
+    halt = os.path.join(args.local_out, "HALTED")
+    if os.path.exists(halt):
+        with open(halt, encoding="utf-8", errors="replace") as f:
+            why = f.read().strip()
+        log(f"REFUSING TO LAUNCH: {args.local_out}/HALTED is present")
+        for line in why.split("\n"):
+            log(f"  {line}")
+        log("delete that file if the arm has been reconfigured.")
+        return 2
+
     deadline = time.time() + args.max_hours * 3600
     log(f"arm {args.sweep} -> {args.local_out} (expect {args.expect}); "
         f"already done: {len(done_runs(args.local_out))}")
