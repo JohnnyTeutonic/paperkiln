@@ -353,6 +353,23 @@ distributions and pre-registration on both sides of a scale gap — is
 whether the things tiny-scale labs actually publish (signs, shapes,
 crossovers) are the kind of quantity that survives a width change.
 
+5. **Checkpoint interval for arms M and L: `checkpoint_every` 200 (M) and
+   100 (L), was 1000000 (4 Sep 2026), decided BEFORE any M or L run
+   existed.** Colab prunes every session at 60 minutes and an M run takes
+   74 to 100 minutes, so M and L can only complete by checkpointing and
+   resuming across sessions. Checkpoints now carry the full optimizer
+   state (AdamW moments and timesteps, Muon momentum) and the batch
+   stream is replayed exactly on resume. Proof on the CUDA path: an
+   M-shaped probe cell (d=512, 16 heads, exact, seed 21, 900 steps) was
+   run uninterrupted and again with its session killed by hand after
+   step 100 and resumed on a fresh VM; every post-resume step loss and
+   eval matched the uninterrupted run to the float (`tools/test_resume.sh`
+   proves the same on CPU for AdamW and Muon, with a negative control).
+   A resumed run is therefore the same run, not an approximation of it,
+   and no hypothesis, threshold, decision rule, or lane changes. Arm S
+   ran with checkpointing disabled and is unaffected. Zero M or L
+   receipts existed when this changed.
+
 ## Execution
 
 `sweep_S.json`, `sweep_M.json`, `sweep_L.json`, `sweep_bridge.json`

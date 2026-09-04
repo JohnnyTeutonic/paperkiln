@@ -47,38 +47,50 @@ value and no GPU tier helps. Arm L at d=1024 is worse again.
 **Do not restart arm M as configured.** It will bank zero runs and burn
 units. It was stopped for exactly this reason on 2 Sep.
 
-## Checkpoint/resume: DONE in mtstudio (4 Sep 2026); one runner piece left
+## Checkpoint/resume: DONE end to end, proven on CUDA (4 Sep 2026)
 
-**Green-lit by Jonathan 4 Sep; implemented and verified the same day.**
-`tools/mtstudio.cpp` now writes three files per checkpoint: `model.safetensors`,
+**Green-lit by Jonathan 4 Sep; implemented, relayed and proven the same day.
+The `HALTED` sentinels on M and L are lifted; M launched 4 Sep 17:35.**
+
+`tools/mtstudio.cpp` writes three files per checkpoint: `model.safetensors`,
 `optim.safetensors` (every AdamW m/v matrix and every Muon momentum buffer),
 and `state.txt` (line 1 the step, as before; line 2 JSON with the AdamW
-timesteps and early-stopping state). Resume restores all of it, and the
-`resume` event reports `"optimizer": "restored"`, or `"cold"` for an old
-checkpoint without `optim.safetensors`, never silently.
+timesteps and early-stopping state). Resume restores all of it, trims
+`events.jsonl` back to the checkpoint step (a killed run has logged past
+it), and the `resume` event reports `"optimizer": "restored"`, or `"cold"`
+for an old checkpoint without `optim.safetensors`, never silently. The RNG
+needs no saving: the batch stream is replayed exactly (accum*batch draws
+per step, fast-forwarded on resume) and nothing in the tree uses dropout.
 
-**Verified by `tools/test_resume.sh` (CPU build in ~/mtrel): ALL PASS.**
-For both `adamw` and `muon`: a run stopped at step 20 and resumed matches
-the uninterrupted run at every one of steps 21 to 40 and produces a
-byte-identical final weights file. Negative control: delete
-`optim.safetensors` before resuming and the trajectories diverge, so the
-test has power. The RNG gap described below was overstated: the batch
-stream is replayed exactly (accum*batch draws per step, fast-forwarded on
-resume) and no model in the tree uses dropout, so optimizer state was the
-whole gap.
+`tools/colab_transfer_runner.py` relays every unfinished cell's latest
+complete checkpoint home every `--partial-every` seconds (write-completeness
+guard: state.txt still for 30 s and newer than both safetensors), pushes
+finished markers plus partials up on the next session, and mtstudio resumes
+mid-run. Uploads over 32 MB go up in retried 32 MB chunks with a byte-count
+check (a single 111 MB upload died with an SSL EOF on the first probe). The
+binary cache is keyed by GPU and a fingerprint of the build inputs at
+origin/master, so a source change costs one rebuild rather than shipping a
+stale binary forever.
 
-**Still needed before arm M can run:**
-1. **CUDA-path check of the device optimizer-state round-trip.** The
-   download/upload of the B2.3b device-resident m/v (`opt_state_download`,
-   `opt_state_upload`) is written but only the CPU path is exercised by
-   `test_resume.sh`. Run the same test on a Colab CUDA build before M.
-2. **Runner relay of partial checkpoints.** `colab_transfer_runner.py`
-   relays only FINISHED runs. To survive the 60-minute prune it must pull
-   each cell checkpoint back before the session dies and push it up on the
-   next session so mtstudio resumes mid-run. With `checkpoint_every` set to
-   roughly ten minutes of steps, a 74 to 100 minute run completes over two
-   or three sessions. The `HALTED` sentinels on M and L stay until both
-   items are done.
+**Proof, CPU:** `tools/test_resume.sh`, ALL PASS for `adamw` and `muon`;
+emulated kill (checkpoint at 20, logged to 30), bit-identical losses at
+steps 21 to 40, byte-identical final weights, no duplicate step lines;
+negative control (optimizer state deleted) diverges.
+
+**Proof, CUDA (the one that matters):** `experiments/transfer_s1/sweep_probe.json`,
+an M-shaped cell (d=512, 16 heads, exact, seed 21, 900 steps, checkpoint
+every 100) run twice on Colab T4: once uninterrupted, once with `colab stop`
+by hand after the step-100 checkpoint had been relayed home, the driver
+recreating the VM, pushing the partial and resuming. Result: `resume` event
+`optimizer=restored` at step 100; **800 of 800 post-resume step losses and
+all nine evals identical to the float** (max |dloss| = 0). A resumed run is
+the same run. Receipts: `/mnt/c/ml_artifacts/transfer/probe_ref/` and
+`probe/`, drivers' logs beside them.
+
+**Arm configuration:** `sweep_M.json` `checkpoint_every` 200 (about 4.5 min
+single-cell), `sweep_L.json` 100; PREREGISTRATION.md execution
+clarification 5 records it as a config change made before any M or L
+receipt existed.
 
 *(Historical description of the gap, kept for the record:)*
 

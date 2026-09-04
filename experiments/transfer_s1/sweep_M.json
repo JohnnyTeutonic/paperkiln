@@ -1,5 +1,5 @@
 {
-  "_comment": "transfer_s1 ARM M (d=512, 16 heads so head_dim stays 32, 12 seeds, all 6 lanes). IDENTICAL to sweep_S.json except d and heads — width is the only factor that moves (PREREGISTRATION.md budget decision). Same seed list as S deliberately: seeds are not paired across arms (different runs), but reusing the list keeps the two arms' generators comparable and makes any per-seed anomaly traceable.",
+  "_comment": "transfer_s1 ARM M (d=512, 16 heads so head_dim stays 32, 12 seeds, all 6 lanes). IDENTICAL to sweep_S.json except d and heads — width is the only factor that moves (PREREGISTRATION.md budget decision). Same seed list as S deliberately: seeds are not paired across arms (different runs), but reusing the list keeps the two arms' generators comparable and makes any per-seed anomaly traceable. 4 Sep 2026: checkpoint_every 200 (about 4.5 min single-cell, 5.5 min at 4 cells) so a run survives the 60-minute Colab prune via the runner's partial-checkpoint relay; see PREREGISTRATION.md execution clarification 5",
   "base": {
     "arch": {"preset": "gpt2-nano",
              "custom": {"d": 512, "heads": 16}},
@@ -7,7 +7,7 @@
              "vocab": "/content/data/chat7b.gguf",
              "vocab_cap": 4096, "T": 256},
     "train": {"batch": 4, "lr": 0.001, "steps": 3600, "eval_every": 100,
-              "checkpoint_every": 1000000, "gradmap_every": 0},
+              "checkpoint_every": 200, "gradmap_every": 0},
     "export": {"formats": []}
   },
   "factors": {

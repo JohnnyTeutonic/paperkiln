@@ -1,5 +1,5 @@
 {
-  "_comment": "transfer_s1 ARM L (d=1024, 32 heads, 3 seeds, L1+L4 only). PRELIMINARY BY DESIGN: 3 seeds carry no inference (PREREGISTRATION.md power section) — this arm contributes a trend point at 16x params and is labelled preliminary everywhere it appears.",
+  "_comment": "transfer_s1 ARM L (d=1024, 32 heads, 3 seeds, L1+L4 only). PRELIMINARY BY DESIGN: 3 seeds carry no inference (PREREGISTRATION.md power section) — this arm contributes a trend point at 16x params and is labelled preliminary everywhere it appears. 4 Sep 2026: checkpoint_every 100 (d=1024 steps are roughly 4x slower than M) so a run survives the 60-minute Colab prune via the runner's partial-checkpoint relay; see PREREGISTRATION.md execution clarification 5",
   "base": {
     "arch": {"preset": "gpt2-nano",
              "custom": {"d": 1024, "heads": 32}},
@@ -7,7 +7,7 @@
              "vocab": "/content/data/chat7b.gguf",
              "vocab_cap": 4096, "T": 256},
     "train": {"batch": 4, "lr": 0.001, "steps": 3600, "eval_every": 100,
-              "checkpoint_every": 1000000, "gradmap_every": 0},
+              "checkpoint_every": 100, "gradmap_every": 0},
     "export": {"formats": []}
   },
   "factors": {
