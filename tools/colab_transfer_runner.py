@@ -129,12 +129,74 @@ def new_session(session, gpu):
     return ok
 
 
+UPLOAD_CHUNK = 32 * 1024 * 1024
+
+
 def upload(session, local, remote, timeout=1800):
-    rc, out = sh([COL, "upload", "-s", session, local, remote],
-                 timeout=timeout)
-    if rc != 0:
-        log(f"upload FAILED {local} -> {remote}: {out[-200:]}")
-    return rc == 0
+    """Upload with retries; files above UPLOAD_CHUNK go up in pieces.
+
+    A single 111 MB `colab upload` died with an SSL EOF on 4 Sep 2026
+    (the partial-checkpoint push for the resume probe), while the 1.5 MB
+    binary and a 127 MB DOWNLOAD both worked. Large uploads are therefore
+    split into 32 MB parts, each retried, and reassembled on the vm with
+    a byte-count check, so a flaky transport costs a retry, not a resume.
+    """
+    size = os.path.getsize(local)
+    if size > UPLOAD_CHUNK:
+        return upload_chunked(session, local, remote, size)
+    for attempt in range(3):
+        rc, out = sh([COL, "upload", "-s", session, local, remote],
+                     timeout=timeout)
+        if rc == 0:
+            return True
+        log(f"upload FAILED (attempt {attempt + 1}/3) {local} -> {remote}: "
+            f"{out[-160:]}")
+        time.sleep(10)
+    return False
+
+
+def upload_chunked(session, local, remote, size):
+    n = (size + UPLOAD_CHUNK - 1) // UPLOAD_CHUNK
+    parts = "/tmp/tr_chunks"
+    shutil.rmtree(parts, ignore_errors=True)
+    os.makedirs(parts)
+    with open(local, "rb") as f:
+        for i in range(n):
+            with open(os.path.join(parts, f"part{i:04d}"), "wb") as p:
+                p.write(f.read(UPLOAD_CHUNK))
+    log(f"chunked upload: {size / 1e6:.0f} MB in {n} parts -> {remote}")
+    for i in range(n):
+        lp = os.path.join(parts, f"part{i:04d}")
+        rp = f"{remote}.part{i:04d}"
+        ok = False
+        for attempt in range(4):
+            rc, out = sh([COL, "upload", "-s", session, lp, rp], timeout=900)
+            if rc == 0:
+                ok = True
+                break
+            log(f"chunk {i + 1}/{n} FAILED (attempt {attempt + 1}/4): {out[-160:]}")
+            time.sleep(10)
+        if not ok:
+            shutil.rmtree(parts, ignore_errors=True)
+            return False
+    shutil.rmtree(parts, ignore_errors=True)
+    rc, out = exec_py(session, (
+        "import os\n"
+        f"remote = {remote!r}\n"
+        f"n = {n}\n"
+        "with open(remote, 'wb') as w:\n"
+        "    for i in range(n):\n"
+        "        p = f'{remote}.part{i:04d}'\n"
+        "        with open(p, 'rb') as r:\n"
+        "            w.write(r.read())\n"
+        "        os.remove(p)\n"
+        "got = os.path.getsize(remote)\n"
+        f"print('ASSEMBLED_OK' if got == {size} else f'ASSEMBLED_BAD {{got}}')\n"),
+        timeout=600)
+    if "ASSEMBLED_OK" not in out:
+        log(f"chunked upload reassembly failed: {out[-160:]}")
+        return False
+    return True
 
 
 def done_runs(local_out):
