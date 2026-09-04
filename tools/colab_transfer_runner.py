@@ -502,13 +502,26 @@ def launch_sweep(session, sweep_rel, jobs=1, omp=4):
         "subprocess.run('pkill -f mtsweep.py; pkill -f mtstudio', "
         "shell=True)\n"
         "import time as _t; _t.sleep(2)\n"
-        "cmd = ('cd /content/microtorch && ' + env + 'nohup python3 "
+        # DETACHED LAUNCH (4 Sep 2026). The old form, `subprocess.run(cmd +
+        # ' &', shell=True)`, let mtsweep inherit the exec's stdin and the
+        # kernel's pipe fds, so `colab exec` sometimes did not return until
+        # its timeout even though the sweep was running. The driver then
+        # logged 'sweep launched: False', and its NEXT attempt pkill-ed the
+        # sweep it had actually started. Arm M, second L4 session: pushed
+        # 19:47, launch 'failed' at 19:53 and 20:08, succeeded 20:10, pruned
+        # 20:36 -- 26 minutes of training in a 61-minute session. Popen with
+        # every fd on /dev/null and its own session cannot hold the pipe.
+        "cmd = ('cd /content/microtorch && ' + env + 'exec python3 "
         "tools/mtsweep.py ' +\n"
         f"       {sweep_rel!r} + ' --mtstudio /content/mtstudio "
         f"--jobs {int(jobs)} --omp {int(omp)}"
-        "' + ' >> /content/sweep.log 2>&1 &')\n"
-        "subprocess.run(cmd, shell=True)\n"
-        "print('SWEEP_LAUNCHED')\n")
+        "' + ' >> /content/sweep.log 2>&1')\n"
+        "subprocess.Popen(cmd, shell=True, stdin=subprocess.DEVNULL,\n"
+        "                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,\n"
+        "                 close_fds=True, start_new_session=True)\n"
+        "_t.sleep(5)\n"
+        "r = subprocess.run('pgrep -f mtsweep.py', shell=True, capture_output=True, text=True)\n"
+        "print('SWEEP_LAUNCHED' if r.stdout.strip() else 'SWEEP_NOT_RUNNING')\n")
     rc, out = exec_py(session, code, timeout=300)
     return "SWEEP_LAUNCHED" in out
 
