@@ -383,6 +383,21 @@ def relay(session, local_out, out_root):
     return len(done_runs(local_out))
 
 
+BUILD_INPUTS = ["src", "include", "tools/mtstudio.cpp", "tools/parity_model.hpp",
+                "CMakeLists.txt"]
+
+
+def source_fingerprint():
+    """12 hex chars identifying the build inputs at origin/master."""
+    import hashlib
+    ids = []
+    for path in BUILD_INPUTS:
+        rc, out = sh(["git", "-C", os.path.join(REPO, "microtorch"),
+                      "rev-parse", f"origin/master:{path}"], timeout=30)
+        ids.append(out.strip() if rc == 0 else f"missing:{path}")
+    return hashlib.sha1("\n".join(ids).encode()).hexdigest()[:12]
+
+
 def ensure_binary(session, cache, sweep_rel):
     """Upload the cached mtstudio if we have one; else build and cache."""
     if os.path.exists(cache):
@@ -556,11 +571,14 @@ def main() -> int:
     with open(os.path.join(REPO, "microtorch", args.sweep),
               encoding="utf-8") as f:
         out_root = json.load(f)["out_root"]
-    # Cache is keyed BY GPU: a binary built on a T4 (sm_75) is not
-    # necessarily loadable on an L4 (sm_89), and silently uploading the
-    # wrong one would fail on the vm where it is hard to see.
+    # Cache is keyed BY GPU AND SOURCE: a binary built on a T4 (sm_75) is
+    # not necessarily loadable on an L4 (sm_89), and a binary built from an
+    # older tree silently lacks whatever was fixed since (the 4 Sep 2026
+    # events-trim fix would never have reached Colab under a GPU-only key).
+    # The fingerprint is taken from origin/master, which is what the vm
+    # clones, so an unpushed local change cannot mislabel a cache entry.
     cache = os.path.join(os.path.dirname(args.local_out.rstrip("/")),
-                         f"mtstudio_cuda_{args.gpu.lower()}")
+                         f"mtstudio_cuda_{args.gpu.lower()}_{source_fingerprint()}")
     os.makedirs(os.path.join(args.local_out, "runs"), exist_ok=True)
 
     # A HALTED file means this arm has been shown it CANNOT complete as
