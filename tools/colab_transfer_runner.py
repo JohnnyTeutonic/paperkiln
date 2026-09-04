@@ -304,7 +304,10 @@ def relay_partial(session, local_out, out_root, seen):
         "            if os.path.exists(p):\n"
         "                zf.write(p, os.path.join(name, fn))\n"
         "print('PARTIAL_READY', len(picked), ' '.join(f'{n}@{s}' for n, s in picked))\n")
-    rc, out = exec_py(session, code, timeout=600)
+    # 900, not 600 (4 Sep 2026): colab exec on a vm running 4 cells was
+    # measured at 5-15 min (see alive()). A relay exec killed at 10 min
+    # costs the 10 min AND the relay; one that finishes at 12 keeps it.
+    rc, out = exec_py(session, code, timeout=900)
     if rc != 0 or "PARTIAL_READY" not in out:
         return {}
     tail = out.split("PARTIAL_READY")[1].split()
@@ -358,7 +361,10 @@ def relay(session, local_out, out_root):
         "            if os.path.exists(p):\n"
         "                zf.write(p, os.path.join(os.path.basename(d), fn))\n"
         "print('RELAY_READY', len(done))\n")
-    rc, out = exec_py(session, code, timeout=600)
+    # 900, not 600 (4 Sep 2026): colab exec on a vm running 4 cells was
+    # measured at 5-15 min (see alive()). A relay exec killed at 10 min
+    # costs the 10 min AND the relay; one that finishes at 12 keeps it.
+    rc, out = exec_py(session, code, timeout=900)
     if rc != 0 or "RELAY_READY" not in out:
         return 0
     n = int(out.split("RELAY_READY")[1].split()[0])
