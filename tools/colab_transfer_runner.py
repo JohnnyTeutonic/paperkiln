@@ -517,7 +517,11 @@ def launch_sweep(session, sweep_rel, jobs=1, omp=4):
         # 19:47, launch 'failed' at 19:53 and 20:08, succeeded 20:10, pruned
         # 20:36 -- 26 minutes of training in a 61-minute session. Popen with
         # every fd on /dev/null and its own session cannot hold the pipe.
-        "cmd = ('cd /content/microtorch && ' + env + 'exec python3 "
+        # nice 10 (4 Sep 2026): with four cells running, `colab exec` took
+        # 10-15 min per call and relays fell to one per 20-30 min, so each
+        # prune lost ~800 steps per cell. The cells yield to the exec
+        # kernel; mtstudio children inherit the niceness from mtsweep.
+        "cmd = ('cd /content/microtorch && ' + env + 'exec nice -n 10 python3 "
         "tools/mtsweep.py ' +\n"
         f"       {sweep_rel!r} + ' --mtstudio /content/mtstudio "
         f"--jobs {int(jobs)} --omp {int(omp)}"
