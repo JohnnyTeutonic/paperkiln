@@ -1,0 +1,21 @@
+{
+  "_comment": "RESUME PROBE, 4 Sep 2026. NOT an arm of transfer_s1 and NOT pre-registered: a mechanism test for the checkpoint relay that arms M and L need. One M-shaped cell (d=512, 16 heads, exact attention, seed 21), 900 steps with a checkpoint every 100. The driver is run once uninterrupted and once with the Colab session killed by hand mid-run; the resumed run must show a resume event with optimizer=restored and its per-step losses must match the uninterrupted run within the bridge tolerance. Passing this closes NOW.md items 1 (CUDA optimizer-state round-trip) and 2 (runner relay) together. Outputs are disposable.",
+  "base": {
+    "arch": {"preset": "gpt2-nano",
+             "custom": {"d": 512, "heads": 16}},
+    "data": {"corpus": "/content/data/corpus.txt",
+             "vocab": "/content/data/chat7b.gguf",
+             "vocab_cap": 4096, "T": 256},
+    "train": {"batch": 4, "lr": 0.001, "steps": 900, "eval_every": 100,
+              "checkpoint_every": 100, "gradmap_every": 0},
+    "export": {"formats": []}
+  },
+  "factors": {
+    "lane": [
+      {"arch.custom.attention": "exact"}
+    ]
+  },
+  "design": "grid",
+  "seeds": [21],
+  "out_root": "/content/transfer_out/probe"
+}

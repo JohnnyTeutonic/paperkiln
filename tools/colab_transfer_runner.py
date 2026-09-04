@@ -143,25 +143,142 @@ def done_runs(local_out):
             if os.path.exists(os.path.join(d, "result.json"))}
 
 
+PARTIAL_FILES = ("state.txt", "model.safetensors", "optim.safetensors",
+                 "events.jsonl")
+
+
+def partial_runs(local_out):
+    """name -> checkpoint step, for every partial checkpoint held locally.
+    A partial is a run that died mid-flight (the 60-minute prune) whose
+    last complete checkpoint we brought home; mtstudio resumes from it
+    once it is back under <out_root>/runs/<name>/ on the next vm."""
+    out = {}
+    for d in glob.glob(os.path.join(local_out, "partial", "*")):
+        st = os.path.join(d, "state.txt")
+        if not os.path.exists(st):
+            continue
+        try:
+            step = int(open(st, encoding="utf-8").readline().strip())
+        except (OSError, ValueError):
+            continue
+        if step > 0:
+            out[os.path.basename(d)] = step
+    return out
+
+
 def push_resume(session, local_out, out_root):
-    """Ship completed run dirs back so mtsweep skips them."""
+    """Ship completed run dirs back so mtsweep skips them, and partial
+    checkpoints back so mtstudio RESUMES them. Returns (done, partial)."""
     runs = done_runs(local_out)
-    if not runs:
-        return 0
+    partial = {n: s for n, s in partial_runs(local_out).items() if n not in runs}
+    if not runs and not partial:
+        return 0, 0
+    stage = "/tmp/tr_resume_stage"
+    shutil.rmtree(stage, ignore_errors=True)
+    os.makedirs(stage)
+    for n in runs:
+        shutil.copytree(os.path.join(local_out, "runs", n), os.path.join(stage, n))
+    for n in partial:
+        shutil.copytree(os.path.join(local_out, "partial", n), os.path.join(stage, n))
     z = "/tmp/tr_resume.zip"
     if os.path.exists(z):
         os.remove(z)
-    shutil.make_archive("/tmp/tr_resume", "zip",
-                        os.path.join(local_out, "runs"))
+    shutil.make_archive("/tmp/tr_resume", "zip", stage)
     if not upload(session, z, "/content/tr_resume.zip"):
-        return 0
+        return 0, 0
     exec_py(session, (
         "import os, zipfile\n"
         f"d = {out_root + '/runs'!r}\n"
         "os.makedirs(d, exist_ok=True)\n"
         "zipfile.ZipFile('/content/tr_resume.zip').extractall(d)\n"
-        "print('RESUME_RESTORED', len(os.listdir(d)))\n"), timeout=600)
-    return len(runs)
+        "print('RESUME_RESTORED', len(os.listdir(d)))\n"), timeout=900)
+    if partial:
+        log("partial checkpoints pushed for resume: " +
+            ", ".join(f"{n}@{s}" for n, s in sorted(partial.items())))
+    return len(runs), len(partial)
+
+
+def relay_partial(session, local_out, out_root, seen):
+    """Bring home the latest COMPLETE checkpoint of every unfinished run.
+
+    Only runs whose checkpoint is newer than what we already hold are
+    shipped (`seen` maps name -> step we last relayed). A checkpoint is
+    taken only if state.txt is at least 30 s old and both safetensors
+    files are older than it: mtstudio writes model, then optim, then
+    state.txt last, so a state.txt that has been still for 30 s means the
+    set is complete. Without this guard a zip could capture a truncated
+    model file and the resume would load garbage.
+    """
+    code = (
+        "import glob, os, time, zipfile\n"
+        f"root = {out_root + '/runs'!r}\n"
+        f"seen = {seen!r}\n"
+        "now = time.time()\n"
+        "picked = []\n"
+        "for d in sorted(glob.glob(os.path.join(root, '*'))):\n"
+        "    name = os.path.basename(d)\n"
+        "    if os.path.exists(os.path.join(d, 'result.json')):\n"
+        "        continue\n"
+        "    st = os.path.join(d, 'state.txt')\n"
+        "    mo = os.path.join(d, 'model.safetensors')\n"
+        "    op = os.path.join(d, 'optim.safetensors')\n"
+        "    if not (os.path.exists(st) and os.path.exists(mo) and os.path.exists(op)):\n"
+        "        continue\n"
+        "    ms = os.path.getmtime(st)\n"
+        "    if now - ms < 30 or os.path.getmtime(mo) > ms or os.path.getmtime(op) > ms:\n"
+        "        continue\n"
+        "    try:\n"
+        "        step = int(open(st).readline().strip())\n"
+        "    except Exception:\n"
+        "        continue\n"
+        "    if step <= 0 or step <= seen.get(name, 0):\n"
+        "        continue\n"
+        "    picked.append((name, step))\n"
+        "z = '/content/tr_partial.zip'\n"
+        "with zipfile.ZipFile(z, 'w', zipfile.ZIP_STORED) as zf:\n"
+        "    for name, step in picked:\n"
+        f"        for fn in {PARTIAL_FILES!r}:\n"
+        "            p = os.path.join(root, name, fn)\n"
+        "            if os.path.exists(p):\n"
+        "                zf.write(p, os.path.join(name, fn))\n"
+        "print('PARTIAL_READY', len(picked), ' '.join(f'{n}@{s}' for n, s in picked))\n")
+    rc, out = exec_py(session, code, timeout=600)
+    if rc != 0 or "PARTIAL_READY" not in out:
+        return {}
+    tail = out.split("PARTIAL_READY")[1].split()
+    n = int(tail[0])
+    if n == 0:
+        return {}
+    picked = {}
+    for tok in tail[1:1 + n]:
+        name, step = tok.rsplit("@", 1)
+        picked[name] = int(step)
+    tmp = "/tmp/tr_partial.zip"
+    if os.path.exists(tmp):
+        os.remove(tmp)
+    rc, _ = sh([COL, "download", "-s", session, "/content/tr_partial.zip", tmp],
+               timeout=1800)
+    if rc != 0 or not os.path.exists(tmp):
+        return {}
+    import zipfile
+    pdir = os.path.join(local_out, "partial")
+    os.makedirs(pdir, exist_ok=True)
+    try:
+        # Extract to a temp dir first so a broken download cannot
+        # half-overwrite a good partial.
+        tmpdir = pdir + ".incoming"
+        shutil.rmtree(tmpdir, ignore_errors=True)
+        zipfile.ZipFile(tmp).extractall(tmpdir)
+        for name in picked:
+            src = os.path.join(tmpdir, name)
+            if os.path.isdir(src):
+                dst = os.path.join(pdir, name)
+                shutil.rmtree(dst, ignore_errors=True)
+                shutil.move(src, dst)
+        shutil.rmtree(tmpdir, ignore_errors=True)
+    except zipfile.BadZipFile:
+        return {}
+    return picked
 
 
 def relay(session, local_out, out_root):
@@ -198,6 +315,9 @@ def relay(session, local_out, out_root):
         zipfile.ZipFile(tmp).extractall(os.path.join(local_out, "runs"))
     except zipfile.BadZipFile:
         return 0
+    # A run that has finished no longer needs its partial checkpoint.
+    for name in done_runs(local_out):
+        shutil.rmtree(os.path.join(local_out, "partial", name), ignore_errors=True)
     return len(done_runs(local_out))
 
 
@@ -346,7 +466,8 @@ def full_setup(session, cache, sweep_rel, local_out, out_root):
         return False
     if not ensure_binary(session, cache, sweep_rel):
         return False
-    push_resume(session, local_out, out_root)
+    nd, npart = push_resume(session, local_out, out_root)
+    log(f"resume state pushed: {nd} finished, {npart} partial")
     return True
 
 
@@ -364,6 +485,10 @@ def main() -> int:
                     help="OMP threads per cell; keep jobs*omp <= vCPUs")
     ap.add_argument("--max-hours", type=float, default=8.0)
     ap.add_argument("--tick", type=int, default=90)
+    ap.add_argument("--partial-every", type=int, default=600,
+                    help="seconds between partial-checkpoint relays "
+                         "(each one moves ~100 MB per running cell; "
+                         "match it to checkpoint_every in the sweep)")
     args = ap.parse_args()
 
     with open(os.path.join(REPO, "microtorch", args.sweep),
@@ -402,6 +527,13 @@ def main() -> int:
     provisioned = False  # repo + binary + resume state are ON the vm
     prov_fail = 0        # consecutive provisioning failures on this vm
     strikes = 0          # consecutive ticks the sweep was observed dead
+    # Partial checkpoints: what we hold, by step, so relays only move
+    # NEW checkpoints; and when the last relay happened.
+    seen_partial = partial_runs(args.local_out)
+    if seen_partial:
+        log("holding partial checkpoints: " +
+            ", ".join(f"{n}@{s}" for n, s in sorted(seen_partial.items())))
+    last_partial = 0.0
     while time.time() < deadline:
         n = len(done_runs(args.local_out))
         if n >= args.expect:
@@ -486,6 +618,18 @@ def main() -> int:
         if slow > 300:
             note += f"  [SLOW TICK {slow/60:.1f} min]"
         log(f"local runs {on_disk}/{args.expect}{note}")
+        # Partial-checkpoint relay: the insurance against the 60-minute
+        # prune. Every --partial-every seconds bring home each running
+        # cell's newest complete checkpoint; if the vm dies, push_resume
+        # on the next vm restores it and mtstudio picks up mid-run.
+        if launched and time.time() - last_partial >= args.partial_every:
+            last_partial = time.time()
+            picked = relay_partial(args.session, args.local_out, out_root,
+                                   seen_partial)
+            if picked:
+                seen_partial.update(picked)
+                log("partial checkpoints relayed: " +
+                    ", ".join(f"{n}@{s}" for n, s in sorted(picked.items())))
     log("deadline reached")
     sh([COL, "stop", "-s", args.session], timeout=90)
     return 1
