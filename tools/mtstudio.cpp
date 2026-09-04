@@ -202,6 +202,29 @@ struct Events {
     }
 };
 
+// On resume, drop event lines past the checkpoint step. events.jsonl is
+// append-only and a killed run has usually logged steps beyond its last
+// checkpoint; without this the resumed run appends a second copy of those
+// steps and every downstream reader sees duplicates (seen on the 4 Sep
+// 2026 resume probe: 209 step lines by step 140). Lines without a step
+// field (start, resume history) are kept.
+void truncate_events_after(const std::string& path, int step) {
+    std::ifstream in(path);
+    if (!in.good()) return;
+    std::vector<std::string> keep;
+    std::string line;
+    while (std::getline(in, line)) {
+        const json e = json::parse(line, nullptr, false);
+        if (!e.is_discarded() && e.contains("step") && e["step"].is_number() &&
+            e["step"].get<int>() > step)
+            continue;
+        keep.push_back(line);
+    }
+    in.close();
+    std::ofstream out(path, std::ios::trunc);
+    for (const auto& l : keep) out << l << "\n";
+}
+
 // GGUF vocab reader + word tokenizer (the srd_parity path).
 std::vector<std::string> read_gguf_vocab(const std::string& path);
 std::vector<int> tokenize(const std::string& text, const std::map<std::string, int>& vocab,
@@ -262,6 +285,12 @@ int run(const Spec& s, bool plan_only) {
                                  "(exact/swa at depth ride the flex family)");
 
     std::system(("mkdir -p " + s.out_dir).c_str());
+    {   // Resuming? Trim the event log to the checkpoint before appending.
+        std::ifstream st(s.out_dir + "/state.txt");
+        std::string line1;
+        if (std::getline(st, line1) && std::atoi(line1.c_str()) > 0)
+            truncate_events_after(s.out_dir + "/events.jsonl", std::atoi(line1.c_str()));
+    }
     Events ev(s.out_dir + "/events.jsonl");
     ev.emit({{"event", "start"}, {"name", s.name}, {"steps", s.steps}});
 

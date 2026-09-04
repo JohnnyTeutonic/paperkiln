@@ -3,7 +3,8 @@
 # ext4 under /tmp).
 #
 # The claim under test: a run that is stopped at step N and resumed from
-# its checkpoint follows the SAME trajectory as an uninterrupted run,
+# its checkpoint (which is NOT the last logged step: a killed run has
+# logged past it) follows the SAME trajectory as an uninterrupted run,
 # to the bit, on the CPU path. Same losses at every later step, and a
 # byte-identical final weights file (save_safetensors fixes tensor order,
 # so identical dicts give identical bytes).
@@ -46,6 +47,11 @@ for OPT in adamw muon; do
   "$MT" run "$W/A_$OPT.json"  > "$W/A_$OPT.log"  2>&1
   "$MT" run "$W/B1_$OPT.json" > "$W/B1_$OPT.log" 2>&1
   test -f "$B/optim.safetensors" || { echo "FAIL: no optim.safetensors written"; fail=1; }
+  # Emulate a kill after the checkpoint: a killed run has logged steps
+  # past its last checkpoint. Resume must trim them, not append after them.
+  for k in 21 22 23 24 25 26 27 28 29 30; do
+    echo "{\"event\":\"step\",\"step\":$k,\"loss\":-1.0,\"grad_norm\":0.0}" >> "$B/events.jsonl"
+  done
   "$MT" run "$W/B2_$OPT.json" > "$W/B2_$OPT.log" 2>&1
   grep -q '"event":"resume"' "$B/events.jsonl" || { echo "FAIL: no resume event"; fail=1; }
   grep '"event":"resume"' "$B/events.jsonl" | tail -1
@@ -61,10 +67,14 @@ def losses(p):
 a, b = losses(sys.argv[1]), losses(sys.argv[2])
 steps = [s for s in range(21, 41)]
 bad = [(s, a.get(s), b.get(s)) for s in steps if a.get(s) != b.get(s)]
+seen = [json.loads(l)["step"] for l in open(sys.argv[2]) if '"event":"step"' in l]
+if len(seen) != len(set(seen)):
+    print("FAIL: duplicate step lines in resumed events.jsonl (log not trimmed at resume)")
+    sys.exit(1)
 if bad:
     print("FAIL: trajectories diverge after resume; first mismatches:", bad[:3])
     sys.exit(1)
-print(f"OK: steps 21..40 losses identical ({len(steps)} steps)")
+print(f"OK: steps 21..40 losses identical ({len(steps)} steps); no duplicate step lines")
 PY
   if cmp -s "$A/resume_test.safetensors" "$B/resume_test.safetensors"; then
     echo "OK: final weights byte-identical"
