@@ -247,13 +247,30 @@ def push_resume(session, local_out, out_root):
         os.remove(z)
     shutil.make_archive("/tmp/tr_resume", "zip", stage)
     if not upload(session, z, "/content/tr_resume.zip"):
-        return 0, 0
-    exec_py(session, (
+        log("resume push FAILED at upload; NOT launching without resume state")
+        return None, None
+    # VERIFY the restore (5 Sep 2026). The extraction exec used to be fired
+    # and forgotten. On a slow uplink it failed silently at 05:11, the
+    # driver launched anyway, and mtsweep re-ran the eight banked cells
+    # from scratch for a whole session while the four live partials sat
+    # idle. Every finished run must show result.json and every partial
+    # its state.txt on the vm, or provisioning is reported as failed and
+    # retried; never launch onto a vm that does not hold the resume state.
+    rc, out = exec_py(session, (
         "import os, zipfile\n"
         f"d = {out_root + '/runs'!r}\n"
         "os.makedirs(d, exist_ok=True)\n"
         "zipfile.ZipFile('/content/tr_resume.zip').extractall(d)\n"
-        "print('RESUME_RESTORED', len(os.listdir(d)))\n"), timeout=900)
+        f"runs = {sorted(runs)!r}\n"
+        f"partial = {sorted(partial)!r}\n"
+        "missing = [n for n in runs if not os.path.exists(os.path.join(d, n, 'result.json'))]\n"
+        "missing += [n for n in partial if not (os.path.exists(os.path.join(d, n, 'state.txt'))"
+        " and os.path.exists(os.path.join(d, n, 'optim.safetensors')))]\n"
+        "print('RESUME_VERIFIED' if not missing else 'RESUME_MISSING ' + ' '.join(missing))\n"),
+        timeout=900)
+    if "RESUME_VERIFIED" not in out:
+        log(f"resume restore NOT verified on the vm (rc={rc}): {out[-300:]}")
+        return None, None
     if partial:
         log("partial checkpoints pushed for resume: " +
             ", ".join(f"{n}@{s}" for n, s in sorted(partial.items())))
@@ -567,6 +584,8 @@ def full_setup(session, cache, sweep_rel, local_out, out_root):
     if not ensure_binary(session, cache, sweep_rel):
         return False
     nd, npart = push_resume(session, local_out, out_root)
+    if nd is None:
+        return False
     log(f"resume state pushed: {nd} finished, {npart} partial")
     return True
 
