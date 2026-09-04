@@ -554,7 +554,10 @@ def main() -> int:
     ap.add_argument("--session", required=True)
     ap.add_argument("--local-out", required=True)
     ap.add_argument("--expect", type=int, required=True)
-    ap.add_argument("--gpu", default="T4")
+    ap.add_argument("--gpu", default="L4",
+                    help="L4 is the study GPU (PREREGISTRATION clarification 5: "
+                         "every claim-carrying arm on L4, no mixing). T4 is a "
+                         "2-vCPU probe machine; pass it only for probes.")
     ap.add_argument("--jobs", type=int, default=1,
                     help="cells run concurrently on the vm (see "
                          "launch_sweep: 4 is the measured L4 optimum)")

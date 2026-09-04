@@ -50,7 +50,10 @@ units. It was stopped for exactly this reason on 2 Sep.
 ## Checkpoint/resume: DONE end to end, proven on CUDA (4 Sep 2026)
 
 **Green-lit by Jonathan 4 Sep; implemented, relayed and proven the same day.
-The `HALTED` sentinels on M and L are lifted; M launched 4 Sep 17:35.**
+The `HALTED` sentinels on M and L are lifted. M was launched at 17:35 on a
+T4 by mistake (runner default `--gpu`; PREREGISTRATION clarification 5
+requires L4, no mixing), stopped at 18:30 with its T4 work discarded, and
+relaunched on L4 with 4 cells. The runner default is now L4.**
 
 `tools/mtstudio.cpp` writes three files per checkpoint: `model.safetensors`,
 `optim.safetensors` (every AdamW m/v matrix and every Muon momentum buffer),
@@ -87,10 +90,11 @@ all nine evals identical to the float** (max |dloss| = 0). A resumed run is
 the same run. Receipts: `/mnt/c/ml_artifacts/transfer/probe_ref/` and
 `probe/`, drivers' logs beside them.
 
-**Arm configuration:** `sweep_M.json` `checkpoint_every` 200 (about 4.5 min
-single-cell), `sweep_L.json` 100; PREREGISTRATION.md execution
-clarification 5 records it as a config change made before any M or L
-receipt existed.
+**Arm configuration:** `sweep_M.json` `checkpoint_every` 200, `sweep_L.json`
+100; PREREGISTRATION.md execution clarification 6 records it as a config
+change made before any M or L receipt existed. GPU: L4 for every arm
+(clarification 5); the T4 ceiling re-measured on 4 Sep is ~1.4 s/step
+aggregate at any concurrency, so T4 is a probe machine only.
 
 *(Historical description of the gap, kept for the record:)*
 

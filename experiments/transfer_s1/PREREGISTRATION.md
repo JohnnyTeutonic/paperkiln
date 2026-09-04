@@ -353,7 +353,7 @@ distributions and pre-registration on both sides of a scale gap — is
 whether the things tiny-scale labs actually publish (signs, shapes,
 crossovers) are the kind of quantity that survives a width change.
 
-5. **Checkpoint interval for arms M and L: `checkpoint_every` 200 (M) and
+6. **Checkpoint interval for arms M and L: `checkpoint_every` 200 (M) and
    100 (L), was 1000000 (4 Sep 2026), decided BEFORE any M or L run
    existed.** Colab prunes every session at 60 minutes and an M run takes
    74 to 100 minutes, so M and L can only complete by checkpointing and
@@ -369,6 +369,15 @@ crossovers) are the kind of quantity that survives a width change.
    and no hypothesis, threshold, decision rule, or lane changes. Arm S
    ran with checkpointing disabled and is unaffected. Zero M or L
    receipts existed when this changed.
+
+   Execution record, same day: the first M launch after this change went
+   to a **T4** by the runner's default `--gpu`, contrary to clarification
+   5. It was stopped after 4 cells had reached steps 200 to 419 and that
+   work was DISCARDED (kept aside as `M/discarded_t4_20260904/`, never
+   banked, never resumed), then M was relaunched on **L4**. The cohort
+   stays single-backend. The T4 detour also re-measured the T4 ceiling:
+   about 1.4 s/step aggregate whatever the concurrency (2 vCPU, GPU
+   12 to 20% busy), consistent with clarification 5.
 
 ## Execution
 
