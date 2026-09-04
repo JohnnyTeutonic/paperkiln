@@ -73,6 +73,8 @@ bool sgd_step(Matrix&, const Matrix&, Matrix*, float, float) {
 }
 float* opt_state_new(size_t) { return nullptr; }
 void opt_state_free(float*) {}
+void opt_state_download(float*, const float*, size_t) {}
+void opt_state_upload(float*, const float*, size_t) {}
 bool adamw_step_dev(Matrix&, const Matrix&, float*, float*, float, float,
                     float, float, float, float, float) {
     return false;

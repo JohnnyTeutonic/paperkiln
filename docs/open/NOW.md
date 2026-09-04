@@ -4,7 +4,7 @@
 [`BACKLOG.md`](BACKLOG.md). Update this file when state changes — a
 stale NOW.md is worse than none.*
 
-**Last updated: 2 Sep 2026, ~07:10 AEST.**
+**Last updated: 4 Sep 2026, ~16:00 AEST.**
 
 ## NOTHING IS RUNNING
 
@@ -46,6 +46,41 @@ value and no GPU tier helps. Arm L at d=1024 is worse again.
 
 **Do not restart arm M as configured.** It will bank zero runs and burn
 units. It was stopped for exactly this reason on 2 Sep.
+
+## Checkpoint/resume: DONE in mtstudio (4 Sep 2026); one runner piece left
+
+**Green-lit by Jonathan 4 Sep; implemented and verified the same day.**
+`tools/mtstudio.cpp` now writes three files per checkpoint: `model.safetensors`,
+`optim.safetensors` (every AdamW m/v matrix and every Muon momentum buffer),
+and `state.txt` (line 1 the step, as before; line 2 JSON with the AdamW
+timesteps and early-stopping state). Resume restores all of it, and the
+`resume` event reports `"optimizer": "restored"`, or `"cold"` for an old
+checkpoint without `optim.safetensors`, never silently.
+
+**Verified by `tools/test_resume.sh` (CPU build in ~/mtrel): ALL PASS.**
+For both `adamw` and `muon`: a run stopped at step 20 and resumed matches
+the uninterrupted run at every one of steps 21 to 40 and produces a
+byte-identical final weights file. Negative control: delete
+`optim.safetensors` before resuming and the trajectories diverge, so the
+test has power. The RNG gap described below was overstated: the batch
+stream is replayed exactly (accum*batch draws per step, fast-forwarded on
+resume) and no model in the tree uses dropout, so optimizer state was the
+whole gap.
+
+**Still needed before arm M can run:**
+1. **CUDA-path check of the device optimizer-state round-trip.** The
+   download/upload of the B2.3b device-resident m/v (`opt_state_download`,
+   `opt_state_upload`) is written but only the CPU path is exercised by
+   `test_resume.sh`. Run the same test on a Colab CUDA build before M.
+2. **Runner relay of partial checkpoints.** `colab_transfer_runner.py`
+   relays only FINISHED runs. To survive the 60-minute prune it must pull
+   each cell checkpoint back before the session dies and push it up on the
+   next session so mtstudio resumes mid-run. With `checkpoint_every` set to
+   roughly ten minutes of steps, a 74 to 100 minute run completes over two
+   or three sessions. The `HALTED` sentinels on M and L stay until both
+   items are done.
+
+*(Historical description of the gap, kept for the record:)*
 
 ## The only route to M and L: checkpoint/resume
 

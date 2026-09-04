@@ -190,11 +190,25 @@ public:
     void zero_grad();
     float lr;
 
+    // Checkpoint/resume. state_dict() returns every moment matrix keyed
+    // "<prefix>.m.<k>" / "<prefix>.v.<k>" (device-resident state is
+    // downloaded first, so the host copies are current); load_state_dict()
+    // restores them and, on a device build, uploads on the next step, when
+    // the device buffer is created. t() is the bias-correction timestep;
+    // it lives outside the tensors so the caller records it beside them.
+    // Without all three a resumed run restarts the optimizer cold and
+    // follows a different trajectory — the gap that blocked transfer_s1.
+    std::map<std::string, Matrix> state_dict(const std::string& prefix) const;
+    void load_state_dict(const std::map<std::string, Matrix>& sd, const std::string& prefix);
+    long t() const { return t_; }
+    void set_t(long t) { t_ = t; }
+
 private:
     std::vector<Var> params_;
     std::vector<Matrix> m_, v_;
     float b1_, b2_, eps_, wd_;
     long t_ = 0;
+    bool pending_upload_ = false;  // host m/v restored, device not yet told
     // B2.3b: persistent device m+v (one owned buffer, m block then v
     // block; zeroed at creation = the host init, so trajectories match).
     std::shared_ptr<float> devstate_;
@@ -275,6 +289,11 @@ public:
     void step();
     void zero_grad();
     float lr;
+
+    // Checkpoint/resume: the momentum buffers, keyed "<prefix>.buf.<k>".
+    // Muon keeps no timestep and no device state.
+    std::map<std::string, Matrix> state_dict(const std::string& prefix) const;
+    void load_state_dict(const std::map<std::string, Matrix>& sd, const std::string& prefix);
 
 private:
     std::vector<Var> params_;

@@ -997,6 +997,14 @@ void opt_state_free(float* s) {
     if (s) cudaFree(s);
 }
 
+void opt_state_download(float* host, const float* dev, size_t n_elems) {
+    if (dev && host && n_elems) d2h(host, dev, n_elems);
+}
+
+void opt_state_upload(float* dev, const float* host, size_t n_elems) {
+    if (dev && host && n_elems) h2d(dev, host, n_elems);
+}
+
 bool adamw_step_dev(Matrix& p, const Matrix& g, float* m_dev, float* v_dev,
                     float lr, float b1, float b2, float c1, float c2,
                     float eps, float wd) {

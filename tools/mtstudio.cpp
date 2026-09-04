@@ -441,14 +441,51 @@ int run(const Spec& s, bool plan_only) {
     } else {
         opt.adamw.emplace_back(model_ref.parameters(), s.lr);
     }
+    // Checkpoint = three files. model.safetensors (weights),
+    // optim.safetensors (AdamW m/v and Muon momentum, every optimizer
+    // instance), and state.txt: line 1 the step (the pre-existing
+    // contract; anything that only reads that line still works), line 2 a
+    // JSON record with the AdamW timesteps and the early-stopping state.
+    // A checkpoint missing optim.safetensors resumes with a COLD optimizer
+    // and says so in the resume event — that is the pre-3-Sep behaviour,
+    // kept for old checkpoints, never silent.
     const std::string ckpt = s.out_dir + "/model.safetensors";
+    const std::string optim_path = s.out_dir + "/optim.safetensors";
     const std::string state_path = s.out_dir + "/state.txt";
     int start_step = 0;
+    float best_val = 1e30f;
+    size_t evals_flat = 0;
     {
         std::ifstream st(state_path);
-        if (st >> start_step && start_step > 0) {
+        std::string line1, line2;
+        if (std::getline(st, line1) && (start_step = std::atoi(line1.c_str())) > 0) {
             model_ref.load_state_dict(load_safetensors(ckpt));
-            ev.emit({{"event", "resume"}, {"step", start_step}});
+            std::string optim_status = "cold";
+            std::ifstream of(optim_path);
+            if (of.good()) {
+                of.close();
+                const auto osd = load_safetensors(optim_path);
+                for (size_t i = 0; i < opt.adamw.size(); ++i)
+                    opt.adamw[i].load_state_dict(osd, "adamw." + std::to_string(i));
+                for (size_t i = 0; i < opt.muon.size(); ++i)
+                    opt.muon[i].load_state_dict(osd, "muon." + std::to_string(i));
+                optim_status = "restored";
+            }
+            if (std::getline(st, line2) && !line2.empty()) {
+                const json rec = json::parse(line2, nullptr, false);
+                if (!rec.is_discarded()) {
+                    best_val = rec.value("best_val", best_val);
+                    evals_flat = rec.value("evals_flat", evals_flat);
+                    if (rec.contains("adamw_t"))
+                        for (size_t i = 0; i < opt.adamw.size() && i < rec["adamw_t"].size(); ++i)
+                            opt.adamw[i].set_t(rec["adamw_t"][i].get<long>());
+                }
+            }
+            ev.emit({{"event", "resume"},
+                     {"step", start_step},
+                     {"optimizer", optim_status},
+                     {"best_val", best_val},
+                     {"evals_flat", evals_flat}});
         } else
             start_step = 0;
     }
@@ -463,13 +500,25 @@ int run(const Spec& s, bool plan_only) {
     for (int i = 0; i < start_step * s.accum * s.batch; ++i) rng();
     auto save = [&](int step) {
         save_safetensors(ckpt, model_ref.state_dict());
+        std::map<std::string, Matrix> osd;
+        std::vector<long> ts;
+        for (size_t i = 0; i < opt.adamw.size(); ++i) {
+            auto part = opt.adamw[i].state_dict("adamw." + std::to_string(i));
+            osd.insert(part.begin(), part.end());
+            ts.push_back(opt.adamw[i].t());
+        }
+        for (size_t i = 0; i < opt.muon.size(); ++i) {
+            auto part = opt.muon[i].state_dict("muon." + std::to_string(i));
+            osd.insert(part.begin(), part.end());
+        }
+        save_safetensors(optim_path, osd);
         std::ofstream st(state_path);
         st << step << "\n";
+        st << json({{"best_val", best_val}, {"evals_flat", evals_flat}, {"adamw_t", ts}}).dump()
+           << "\n";
     };
 
     // Train.
-    float best_val = 1e30f;
-    size_t evals_flat = 0;
     bool stopped_early = false;
     const bool is_srd = attn_kind(s.attention) == parity::AttnKind::SRD;
     for (int step = start_step + 1; step <= s.steps; ++step) {

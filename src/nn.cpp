@@ -348,6 +348,22 @@ void AdamW::step() {
         if (float* s = device::devops::opt_state_new(2 * devtotal_))
             devstate_.reset(s, device::devops::opt_state_free);
     }
+    // A resumed run: the host m/v were restored before the device buffer
+    // existed. Push them up once, so the device trajectory continues from
+    // the checkpoint rather than from zeros.
+    if (devstate_ && pending_upload_) {
+        std::vector<float> flat(2 * devtotal_, 0.0f);
+        for (size_t k = 0; k < params_.size(); ++k) {
+            const size_t R = m_[k].rows(), C = m_[k].cols();
+            for (size_t i = 0; i < R; ++i)
+                for (size_t j = 0; j < C; ++j) {
+                    flat[devoff_[k] + i * C + j] = m_[k](i, j);
+                    flat[devtotal_ + devoff_[k] + i * C + j] = v_[k](i, j);
+                }
+        }
+        device::devops::opt_state_upload(devstate_.get(), flat.data(), flat.size());
+    }
+    pending_upload_ = false;
     for (size_t k = 0; k < params_.size(); ++k) {
         Var& p = params_[k];
         if (p->grad.rows() == 0) continue;
@@ -378,6 +394,63 @@ void AdamW::step() {
 
 void AdamW::zero_grad() {
     microtorch::zero_grad(params_);
+}
+
+std::map<std::string, Matrix> AdamW::state_dict(const std::string& prefix) const {
+    // Device-resident state (B2.3b): the host matrices are stale zeros
+    // while the buffer lives, so download before reporting. Layout is the
+    // one adamw_step_dev uses: m block then v block, row-major per param.
+    std::vector<Matrix> m = m_, v = v_;
+    if (devstate_) {
+        std::vector<float> flat(2 * devtotal_, 0.0f);
+        device::devops::opt_state_download(flat.data(), devstate_.get(), flat.size());
+        for (size_t k = 0; k < params_.size(); ++k) {
+            const size_t R = m[k].rows(), C = m[k].cols();
+            for (size_t i = 0; i < R; ++i)
+                for (size_t j = 0; j < C; ++j) {
+                    m[k](i, j) = flat[devoff_[k] + i * C + j];
+                    v[k](i, j) = flat[devtotal_ + devoff_[k] + i * C + j];
+                }
+        }
+    }
+    std::map<std::string, Matrix> sd;
+    for (size_t k = 0; k < params_.size(); ++k) {
+        sd[prefix + ".m." + std::to_string(k)] = m[k];
+        sd[prefix + ".v." + std::to_string(k)] = v[k];
+    }
+    return sd;
+}
+
+void AdamW::load_state_dict(const std::map<std::string, Matrix>& sd, const std::string& prefix) {
+    for (size_t k = 0; k < params_.size(); ++k) {
+        const auto mi = sd.find(prefix + ".m." + std::to_string(k));
+        const auto vi = sd.find(prefix + ".v." + std::to_string(k));
+        if (mi == sd.end() || vi == sd.end())
+            throw std::runtime_error("AdamW::load_state_dict: missing " + prefix + " moment " +
+                                     std::to_string(k));
+        if (mi->second.rows() != m_[k].rows() || mi->second.cols() != m_[k].cols() ||
+            vi->second.rows() != v_[k].rows() || vi->second.cols() != v_[k].cols())
+            throw std::runtime_error("AdamW::load_state_dict: shape mismatch at " + prefix +
+                                     " param " + std::to_string(k));
+        m_[k] = mi->second;
+        v_[k] = vi->second;
+    }
+    // If the device buffer already exists (load after a step), push now;
+    // otherwise step() pushes when it creates the buffer.
+    pending_upload_ = true;
+    if (devstate_) {
+        std::vector<float> flat(2 * devtotal_, 0.0f);
+        for (size_t k = 0; k < params_.size(); ++k) {
+            const size_t R = m_[k].rows(), C = m_[k].cols();
+            for (size_t i = 0; i < R; ++i)
+                for (size_t j = 0; j < C; ++j) {
+                    flat[devoff_[k] + i * C + j] = m_[k](i, j);
+                    flat[devtotal_ + devoff_[k] + i * C + j] = v_[k](i, j);
+                }
+        }
+        device::devops::opt_state_upload(devstate_.get(), flat.data(), flat.size());
+        pending_upload_ = false;
+    }
 }
 
 // ---- AttnRes ---------------------------------------------------------------
@@ -530,6 +603,25 @@ void Muon::step() {
 
 void Muon::zero_grad() {
     microtorch::zero_grad(params_);
+}
+
+std::map<std::string, Matrix> Muon::state_dict(const std::string& prefix) const {
+    std::map<std::string, Matrix> sd;
+    for (size_t k = 0; k < buf_.size(); ++k) sd[prefix + ".buf." + std::to_string(k)] = buf_[k];
+    return sd;
+}
+
+void Muon::load_state_dict(const std::map<std::string, Matrix>& sd, const std::string& prefix) {
+    for (size_t k = 0; k < buf_.size(); ++k) {
+        const auto it = sd.find(prefix + ".buf." + std::to_string(k));
+        if (it == sd.end())
+            throw std::runtime_error("Muon::load_state_dict: missing " + prefix + " buf " +
+                                     std::to_string(k));
+        if (it->second.rows() != buf_[k].rows() || it->second.cols() != buf_[k].cols())
+            throw std::runtime_error("Muon::load_state_dict: shape mismatch at " + prefix +
+                                     " param " + std::to_string(k));
+        buf_[k] = it->second;
+    }
 }
 
 Var Dropout::forward(const Var& x) const {

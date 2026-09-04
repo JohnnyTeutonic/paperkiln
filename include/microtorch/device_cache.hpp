@@ -229,6 +229,11 @@ bool sgd_step(Matrix& p, const Matrix& g, Matrix* vel, float lr, float mu);
 // (host-authoritative until B2.3c).
 float* opt_state_new(size_t n_elems);
 void opt_state_free(float* s);
+// Checkpoint/resume for device-resident optimizer state: copy the whole
+// owned buffer to/from a host array. No-ops on CPU builds (there is no
+// device state to move; the host matrices are authoritative there).
+void opt_state_download(float* host, const float* dev, size_t n_elems);
+void opt_state_upload(float* dev, const float* host, size_t n_elems);
 bool adamw_step_dev(Matrix& p, const Matrix& g, float* m_dev, float* v_dev,
                     float lr, float b1, float b2, float c1, float c2,
                     float eps, float wd);
