@@ -379,6 +379,14 @@ crossovers) are the kind of quantity that survives a width change.
    about 1.4 s/step aggregate whatever the concurrency (2 vCPU, GPU
    12 to 20% busy), consistent with clarification 5.
 
+   Same day, 13:20: with 19 M runs banked, the remaining cells were split
+   across two L4 vms by global run index (`mtsweep --shard K/2`), each
+   vm running four cells. This is concurrency across machines rather
+   than within one, which clarification 5 already classes as numerically
+   inert: every cell is its own process with its own seed, on the same
+   GPU type and binary. Run names keep the global index and the two
+   output trees are merged by copy. No cell is run twice.
+
 ## Execution
 
 `sweep_S.json`, `sweep_M.json`, `sweep_L.json`, `sweep_bridge.json`

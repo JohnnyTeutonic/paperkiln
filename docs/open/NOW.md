@@ -90,6 +90,13 @@ all nine evals identical to the float** (max |dloss| = 0). A resumed run is
 the same run. Receipts: `/mnt/c/ml_artifacts/transfer/probe_ref/` and
 `probe/`, drivers' logs beside them.
 
+**Arm M is split across two L4 sessions since 5 Sep 13:20** (`--shard 0/2`
+on `tr-M`, local `M/`; `--shard 1/2` on `tr-Mb`, local `M_b/`; names keep
+the global index, so `M_b/runs` merges into `M/runs` by copy; the L waiter
+does the merge and launches L when both report ARM COMPLETE). Measured
+single-session pace was ~1 run/hour: 60-min prunes cost 12-25 min of
+provisioning each, and slow uplink pushes of the 448 MB resume zip.
+
 **Arm configuration:** `sweep_M.json` `checkpoint_every` 200, `sweep_L.json`
 100; PREREGISTRATION.md execution clarification 6 records it as a config
 change made before any M or L receipt existed. GPU: L4 for every arm
