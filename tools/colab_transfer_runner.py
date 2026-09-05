@@ -156,6 +156,141 @@ def upload(session, local, remote, timeout=1800):
 
 
 def upload_chunked(session, local, remote, size):
+    """Chunked upload that is IDEMPOTENT across retries (5 Sep 2026).
+
+    A 448 MB resume zip took 21 min to upload and then its reassembly exec
+    timed out (10:25); the retry re-uploaded every part from scratch.
+    Now the vm is asked first what it already holds: a complete remote
+    file of the right size ends the call at once, and only parts that are
+    missing or the wrong size are sent. Reassembly then runs only for a
+    missing final file.
+    """
+    n = (size + UPLOAD_CHUNK - 1) // UPLOAD_CHUNK
+    sizes = [min(UPLOAD_CHUNK, size - i * UPLOAD_CHUNK) for i in range(n)]
+    rc, out = exec_py(session, (
+        "import os\n"
+        f"remote = {remote!r}; n = {n}\n"
+        "have = os.path.getsize(remote) if os.path.exists(remote) else -1\n"
+        "parts = [os.path.getsize(f'{remote}.part{i:04d}') if os.path.exists(f'{remote}.part{i:04d}') else -1 for i in range(n)]\n"
+        "print('HAVE', have, ' '.join(map(str, parts)))\n"), timeout=300)
+    have, parts = -1, [-1] * n
+    if "HAVE" in out:
+        tail = out.split("HAVE")[1].split()
+        try:
+            have = int(tail[0])
+            parts = [int(x) for x in tail[1:1 + n]]
+        except (ValueError, IndexError):
+            pass
+    if have == size:
+        log(f"remote already holds {remote} ({size / 1e6:.0f} MB); skipping upload")
+        return True
+    todo = [i for i in range(n) if parts[i] != sizes[i]]
+    log(f"chunked upload: {size / 1e6:.0f} MB in {n} parts -> {remote}"
+        + (f" ({n - len(todo)} already there)" if len(todo) < n else ""))
+    if todo:
+        pdir = "/tmp/tr_chunks"
+        shutil.rmtree(pdir, ignore_errors=True)
+        os.makedirs(pdir)
+        with open(local, "rb") as f:
+            for i in range(n):
+                blk = f.read(UPLOAD_CHUNK)
+                if i in todo:
+                    with open(os.path.join(pdir, f"part{i:04d}"), "wb") as pf:
+                        pf.write(blk)
+        for i in todo:
+            lp = os.path.join(pdir, f"part{i:04d}")
+            rp = f"{remote}.part{i:04d}"
+            ok = False
+            for attempt in range(4):
+                rc, out = sh([COL, "upload", "-s", session, lp, rp], timeout=900)
+                if rc == 0:
+                    ok = True
+                    break
+                log(f"chunk {i + 1}/{n} FAILED (attempt {attempt + 1}/4): {out[-160:]}")
+                time.sleep(10)
+            if not ok:
+                shutil.rmtree(pdir, ignore_errors=True)
+                return False
+        shutil.rmtree(pdir, ignore_errors=True)
+    rc, out = exec_py(session, (
+        "import os\n"
+        f"remote = {remote!r}\n"
+        f"n = {n}\n"
+        "if not (os.path.exists(remote) and os.path.getsize(remote) == " + str(size) + "):\n"
+        "    with open(remote, 'wb') as w:\n"
+        "        for i in range(n):\n"
+        "            p = f'{remote}.part{i:04d}'\n"
+        "            with open(p, 'rb') as r:\n"
+        "                w.write(r.read())\n"
+        "    for i in range(n):\n"
+        "        p = f'{remote}.part{i:04d}'\n"
+        "        if os.path.exists(p): os.remove(p)\n"
+        "got = os.path.getsize(remote)\n"
+        f"print('ASSEMBLED_OK' if got == {size} else f'ASSEMBLED_BAD {{got}}')\n"),
+        timeout=900)
+    if "ASSEMBLED_OK" not in out:
+        log(f"chunked upload reassembly failed: {out[-160:]}")
+        return False
+    return True
+
+
+def alive(session):
+    """Is the session still registered?
+
+    This used to EXECUTE code on the vm and call a timeout death. That
+    was actively destructive: `colab exec` was measured taking 5-15 min
+    against a vm running 4 cells, so a merely BUSY vm failed the probe,
+    the driver concluded it had died, and new_session() stopped it --
+    killing four in-flight runs to 'recover' a healthy session. Observed
+    1 Sep 2026: a session created 02:36 was destroyed at 02:42 this way,
+    which read in the log as a 6-minute session lifetime.
+
+    The control-plane listing needs nothing from the vm's kernel, so
+    load cannot make it lie. Whether the WORK is alive is a separate
+    question, and sweep_alive() answers that one with its own tolerance.
+    """
+    rc, out = sh([COL, "sessions"], timeout=180)
+    if rc != 0:
+        return True          # control plane unreachable: assume alive,
+                             # never destroy a session on our own flakiness
+    return f"[{session}]" in out
+
+
+def new_session(session, gpu):
+    sh([COL, "stop", "-s", session], timeout=90)
+    rc, out = sh([COL, "new", "-s", session, "--gpu", gpu], timeout=600)
+    ok = rc == 0 and "READY" in out
+    log(f"session {session}: {'READY' if ok else 'FAILED ' + out[-200:]}")
+    return ok
+
+
+UPLOAD_CHUNK = 32 * 1024 * 1024
+
+
+def upload(session, local, remote, timeout=1800):
+    """Upload with retries; files above UPLOAD_CHUNK go up in pieces.
+
+    A single 111 MB `colab upload` died with an SSL EOF on 4 Sep 2026
+    (the partial-checkpoint push for the resume probe), while the 1.5 MB
+    binary and a 127 MB DOWNLOAD both worked. Large uploads are therefore
+    split into 32 MB parts, each retried, and reassembled on the vm with
+    a byte-count check, so a flaky transport costs a retry, not a resume.
+    """
+    size = os.path.getsize(local)
+    if size > UPLOAD_CHUNK:
+        return upload_chunked(session, local, remote, size)
+    for attempt in range(3):
+        rc, out = sh([COL, "upload", "-s", session, local, remote],
+                     timeout=timeout)
+        if rc == 0:
+            return True
+        log(f"upload FAILED (attempt {attempt + 1}/3) {local} -> {remote}: "
+            f"{out[-160:]}")
+        time.sleep(10)
+    return False
+
+
+def upload_chunked(session, local, remote, size):
     n = (size + UPLOAD_CHUNK - 1) // UPLOAD_CHUNK
     parts = "/tmp/tr_chunks"
     shutil.rmtree(parts, ignore_errors=True)
