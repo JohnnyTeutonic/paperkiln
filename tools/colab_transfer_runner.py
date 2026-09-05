@@ -621,7 +621,7 @@ def ensure_repo_and_data(session):
     return "REPO_OK True" in out
 
 
-def launch_sweep(session, sweep_rel, jobs=1, omp=4):
+def launch_sweep(session, sweep_rel, jobs=1, omp=4, shard=""):
     code = (
         "import subprocess\n"
         "env = ('MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 ')\n"
@@ -677,7 +677,8 @@ def launch_sweep(session, sweep_rel, jobs=1, omp=4):
         "tools/mtsweep.py ' +\n"
         f"       {sweep_rel!r} + ' --mtstudio /content/mtstudio "
         f"--jobs {int(jobs)} --omp {int(omp)}"
-        "' + ' >> /content/sweep.log 2>&1')\n"
+        + (f" --shard {shard}" if shard else "")
+        + "' + ' >> /content/sweep.log 2>&1')\n"
         "subprocess.Popen(cmd, shell=True, stdin=subprocess.DEVNULL,\n"
         "                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,\n"
         "                 close_fds=True, start_new_session=True)\n"
@@ -738,6 +739,9 @@ def main() -> int:
     ap.add_argument("--jobs", type=int, default=1,
                     help="cells run concurrently on the vm (see "
                          "launch_sweep: 4 is the measured L4 optimum)")
+    ap.add_argument("--shard", default="",
+                    help="K/N passed to mtsweep: this driver runs only cells "
+                         "with index %% N == K (split an arm across vms)")
     ap.add_argument("--omp", type=int, default=4,
                     help="OMP threads per cell; keep jobs*omp <= vCPUs")
     ap.add_argument("--max-hours", type=float, default=8.0)
@@ -864,7 +868,7 @@ def main() -> int:
                 strikes = 0
         if not launched:
             launched = launch_sweep(args.session, args.sweep,
-                                    args.jobs, args.omp)
+                                    args.jobs, args.omp, args.shard)
             log(f"sweep launched: {launched}")
         time.sleep(args.tick)
         t_tick = time.time()

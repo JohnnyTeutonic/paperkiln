@@ -388,6 +388,12 @@ def main():
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--mtstudio")
     ap.add_argument("--selftest", action="store_true")
+    ap.add_argument("--shard", default="",
+                    help="K/N: run only cells whose global index i has "
+                         "i %% N == K. Names keep the global index, so shards "
+                         "run on different machines merge by copying run dirs. "
+                         "Added 5 Sep 2026 to split transfer_s1 arm M across "
+                         "two Colab vms.")
     ap.add_argument("--require-clean", action="store_true",
                     help="refuse to run from a dirty working tree — the "
                          "setting for any pre-registered experiment, whose "
@@ -405,6 +411,12 @@ def main():
     spec_paths = materialise(sweep, runs, out_root)
     print(f"{len(combos)} cells x {len(sweep.get('seeds', [7]))} seeds = "
           f"{len(runs)} runs -> {out_root}")
+    if args.shard:
+        k, n = (int(x) for x in args.shard.split("/"))
+        keep = [i for i in range(len(runs)) if i % n == k]
+        spec_paths = [spec_paths[i] for i in keep]
+        runs = [runs[i] for i in keep]
+        print(f"shard {k}/{n}: {len(runs)} runs on this machine")
     if args.dry_run:
         for p, _ in spec_paths:
             print(f"  {p}")
