@@ -43,6 +43,12 @@ PAPERKILN = "https://github.com/JohnnyTeutonic/paperkiln.git"
 COALFIRE = "https://github.com/JohnnyTeutonic/coalfire.cpp.git"
 
 
+# Local scratch prefix, made unique per driver in main(): two drivers on
+# one machine (arm M split across vms, 5 Sep 2026) shared the chunk dir
+# and one uploaded the other's parts (ASSEMBLED_BAD 67108864).
+TMP = "/tmp/tr"
+
+
 def sh(args, timeout=300):
     """Run a CLI call under a timeout that CANNOT be defeated.
 
@@ -188,7 +194,7 @@ def upload_chunked(session, local, remote, size):
     log(f"chunked upload: {size / 1e6:.0f} MB in {n} parts -> {remote}"
         + (f" ({n - len(todo)} already there)" if len(todo) < n else ""))
     if todo:
-        pdir = "/tmp/tr_chunks"
+        pdir = TMP + "_chunks"
         shutil.rmtree(pdir, ignore_errors=True)
         os.makedirs(pdir)
         with open(local, "rb") as f:
@@ -234,106 +240,6 @@ def upload_chunked(session, local, remote, size):
     return True
 
 
-def alive(session):
-    """Is the session still registered?
-
-    This used to EXECUTE code on the vm and call a timeout death. That
-    was actively destructive: `colab exec` was measured taking 5-15 min
-    against a vm running 4 cells, so a merely BUSY vm failed the probe,
-    the driver concluded it had died, and new_session() stopped it --
-    killing four in-flight runs to 'recover' a healthy session. Observed
-    1 Sep 2026: a session created 02:36 was destroyed at 02:42 this way,
-    which read in the log as a 6-minute session lifetime.
-
-    The control-plane listing needs nothing from the vm's kernel, so
-    load cannot make it lie. Whether the WORK is alive is a separate
-    question, and sweep_alive() answers that one with its own tolerance.
-    """
-    rc, out = sh([COL, "sessions"], timeout=180)
-    if rc != 0:
-        return True          # control plane unreachable: assume alive,
-                             # never destroy a session on our own flakiness
-    return f"[{session}]" in out
-
-
-def new_session(session, gpu):
-    sh([COL, "stop", "-s", session], timeout=90)
-    rc, out = sh([COL, "new", "-s", session, "--gpu", gpu], timeout=600)
-    ok = rc == 0 and "READY" in out
-    log(f"session {session}: {'READY' if ok else 'FAILED ' + out[-200:]}")
-    return ok
-
-
-UPLOAD_CHUNK = 32 * 1024 * 1024
-
-
-def upload(session, local, remote, timeout=1800):
-    """Upload with retries; files above UPLOAD_CHUNK go up in pieces.
-
-    A single 111 MB `colab upload` died with an SSL EOF on 4 Sep 2026
-    (the partial-checkpoint push for the resume probe), while the 1.5 MB
-    binary and a 127 MB DOWNLOAD both worked. Large uploads are therefore
-    split into 32 MB parts, each retried, and reassembled on the vm with
-    a byte-count check, so a flaky transport costs a retry, not a resume.
-    """
-    size = os.path.getsize(local)
-    if size > UPLOAD_CHUNK:
-        return upload_chunked(session, local, remote, size)
-    for attempt in range(3):
-        rc, out = sh([COL, "upload", "-s", session, local, remote],
-                     timeout=timeout)
-        if rc == 0:
-            return True
-        log(f"upload FAILED (attempt {attempt + 1}/3) {local} -> {remote}: "
-            f"{out[-160:]}")
-        time.sleep(10)
-    return False
-
-
-def upload_chunked(session, local, remote, size):
-    n = (size + UPLOAD_CHUNK - 1) // UPLOAD_CHUNK
-    parts = "/tmp/tr_chunks"
-    shutil.rmtree(parts, ignore_errors=True)
-    os.makedirs(parts)
-    with open(local, "rb") as f:
-        for i in range(n):
-            with open(os.path.join(parts, f"part{i:04d}"), "wb") as p:
-                p.write(f.read(UPLOAD_CHUNK))
-    log(f"chunked upload: {size / 1e6:.0f} MB in {n} parts -> {remote}")
-    for i in range(n):
-        lp = os.path.join(parts, f"part{i:04d}")
-        rp = f"{remote}.part{i:04d}"
-        ok = False
-        for attempt in range(4):
-            rc, out = sh([COL, "upload", "-s", session, lp, rp], timeout=900)
-            if rc == 0:
-                ok = True
-                break
-            log(f"chunk {i + 1}/{n} FAILED (attempt {attempt + 1}/4): {out[-160:]}")
-            time.sleep(10)
-        if not ok:
-            shutil.rmtree(parts, ignore_errors=True)
-            return False
-    shutil.rmtree(parts, ignore_errors=True)
-    rc, out = exec_py(session, (
-        "import os\n"
-        f"remote = {remote!r}\n"
-        f"n = {n}\n"
-        "with open(remote, 'wb') as w:\n"
-        "    for i in range(n):\n"
-        "        p = f'{remote}.part{i:04d}'\n"
-        "        with open(p, 'rb') as r:\n"
-        "            w.write(r.read())\n"
-        "        os.remove(p)\n"
-        "got = os.path.getsize(remote)\n"
-        f"print('ASSEMBLED_OK' if got == {size} else f'ASSEMBLED_BAD {{got}}')\n"),
-        timeout=600)
-    if "ASSEMBLED_OK" not in out:
-        log(f"chunked upload reassembly failed: {out[-160:]}")
-        return False
-    return True
-
-
 def done_runs(local_out):
     return {os.path.basename(d) for d in
             glob.glob(os.path.join(local_out, "runs", "*"))
@@ -370,17 +276,17 @@ def push_resume(session, local_out, out_root):
     partial = {n: s for n, s in partial_runs(local_out).items() if n not in runs}
     if not runs and not partial:
         return 0, 0
-    stage = "/tmp/tr_resume_stage"
+    stage = TMP + "_resume_stage"
     shutil.rmtree(stage, ignore_errors=True)
     os.makedirs(stage)
     for n in runs:
         shutil.copytree(os.path.join(local_out, "runs", n), os.path.join(stage, n))
     for n in partial:
         shutil.copytree(os.path.join(local_out, "partial", n), os.path.join(stage, n))
-    z = "/tmp/tr_resume.zip"
+    z = TMP + "_resume.zip"
     if os.path.exists(z):
         os.remove(z)
-    shutil.make_archive("/tmp/tr_resume", "zip", stage)
+    shutil.make_archive(TMP + "_resume", "zip", stage)
     if not upload(session, z, "/content/tr_resume.zip"):
         log("resume push FAILED at upload; NOT launching without resume state")
         return None, None
@@ -470,7 +376,7 @@ def relay_partial(session, local_out, out_root, seen):
     for tok in tail[1:1 + n]:
         name, step = tok.rsplit("@", 1)
         picked[name] = int(step)
-    tmp = "/tmp/tr_partial.zip"
+    tmp = TMP + "_partial.zip"
     if os.path.exists(tmp):
         os.remove(tmp)
     rc, _ = sh([COL, "download", "-s", session, "/content/tr_partial.zip", tmp],
@@ -522,7 +428,7 @@ def relay(session, local_out, out_root):
     n = int(out.split("RELAY_READY")[1].split()[0])
     if n == 0:
         return 0
-    tmp = "/tmp/tr_relay.zip"
+    tmp = TMP + "_relay.zip"
     if os.path.exists(tmp):
         os.remove(tmp)
     rc, _ = sh([COL, "download", "-s", session, "/content/tr_relay.zip", tmp],
@@ -751,6 +657,8 @@ def main() -> int:
                          "(each one moves ~100 MB per running cell; "
                          "match it to checkpoint_every in the sweep)")
     args = ap.parse_args()
+    global TMP
+    TMP = f"/tmp/tr_{args.session}"
 
     with open(os.path.join(REPO, "microtorch", args.sweep),
               encoding="utf-8") as f:
