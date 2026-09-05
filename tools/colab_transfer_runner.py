@@ -520,11 +520,37 @@ def ensure_repo_and_data(session):
     # = 48 min to discard). `colab exec` hangs indefinitely on some vms
     # even when they are otherwise idle — observed 1 Sep 02:54 and 02:31.
     rc, out = exec_py(session, code, timeout=300)
+    if "REPO_OK True" not in out:
+        return False
+    # The upload results used to be ignored (5 Sep 2026, 16:09): the vocab
+    # reassembly exec timed out, chat7b.gguf never existed on the vm, the
+    # sweep launched anyway and every remaining cell of the shard failed
+    # at startup within minutes. Now every upload must succeed AND the
+    # files must match the local byte counts, or provisioning fails.
     if "HAVE_CORPUS True" not in out:
-        upload(session, CORPUS, "/content/data/corpus.txt")
+        if not upload(session, CORPUS, "/content/data/corpus.txt"):
+            return False
     if "HAVE_VOCAB True" not in out:
-        upload(session, VOCAB, "/content/data/chat7b.gguf")
-    return "REPO_OK True" in out
+        if not upload(session, VOCAB, "/content/data/chat7b.gguf"):
+            return False
+    want = (os.path.getsize(CORPUS), os.path.getsize(VOCAB))
+    rc, out = exec_py(session, (
+        "import os\n"
+        "def sz(p): return os.path.getsize(p) if os.path.exists(p) else -1\n"
+        "print('SIZES', sz('/content/data/corpus.txt'), sz('/content/data/chat7b.gguf'))\n"),
+        timeout=300)
+    try:
+        got = tuple(int(x) for x in out.split("SIZES")[1].split()[:2])
+    except (IndexError, ValueError):
+        got = (-1, -1)
+    if got != want:
+        log(f"data files on the vm do not match local sizes: vm {got} local {want}")
+        exec_py(session, ("import os\n"
+                          "for p in ('/content/data/corpus.txt', '/content/data/chat7b.gguf'):\n"
+                          "    if os.path.exists(p): os.remove(p)\n"
+                          "print('CLEARED')\n"), timeout=120)
+        return False
+    return True
 
 
 def launch_sweep(session, sweep_rel, jobs=1, omp=4, shard=""):
