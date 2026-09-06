@@ -47,6 +47,19 @@ value and no GPU tier helps. Arm L at d=1024 is worse again.
 **Do not restart arm M as configured.** It will bank zero runs and burn
 units. It was stopped for exactly this reason on 2 Sep.
 
+## transfer_s1 ARM M BANKED, pre-registered reading run (6 Sep 2026)
+
+**Headline licensed: "scalars don't transfer, structure does" for this
+protocol across d in {256, 512}.** F1 primary concordance 1.000 over 15
+cells, band [0.867, 1.000]; H-SCALAR rho = -0.082. Robustness F1 0.681
+(not adopted), F2 7/15, F3 crossing moves late at M (4 crossed, 8 never).
+Threat 3 passes 12/12. **Threat 2 (regime) fails at M in every lane**:
+best val plateaus at a median 0.89 of the run; the claim is scoped to the
+matched-milestone positions, which sit inside the still-training regime.
+Full reading: `experiments/transfer_s1/RESULTS_M.md`; receipts
+`receipts/M/`. Arm L is running (6 runs, L4, 2 cells); the lr = 5e-4
+sensitivity cell at M (Threat 4) is still to run after L.
+
 ## Checkpoint/resume: DONE end to end, proven on CUDA (4 Sep 2026)
 
 **Green-lit by Jonathan 4 Sep; implemented, relayed and proven the same day.
