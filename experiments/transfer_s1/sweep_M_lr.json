@@ -1,0 +1,48 @@
+{
+  "_comment": "transfer_s1 THREAT 4 sensitivity cell at M (PREREGISTRATION.md threat 4): lr 5e-4 instead of 1e-3, L1 (exact) and L4 (swa w64 s1) only, 3 seeds, d=512/16 heads otherwise identical to sweep_M.json. Reported DESCRIPTIVELY; it cannot change any primary reading. Created 7 Sep 2026 after arm M banked, before any run of this cell existed.",
+  "base": {
+    "arch": {
+      "preset": "gpt2-nano",
+      "custom": {
+        "d": 512,
+        "heads": 16
+      }
+    },
+    "data": {
+      "corpus": "/content/data/corpus.txt",
+      "vocab": "/content/data/chat7b.gguf",
+      "vocab_cap": 4096,
+      "T": 256
+    },
+    "train": {
+      "batch": 4,
+      "lr": 0.0005,
+      "steps": 3600,
+      "eval_every": 100,
+      "checkpoint_every": 200,
+      "gradmap_every": 0
+    },
+    "export": {
+      "formats": []
+    }
+  },
+  "factors": {
+    "lane": [
+      {
+        "arch.custom.attention": "exact"
+      },
+      {
+        "arch.custom.attention": "swa",
+        "arch.custom.window": 64,
+        "arch.custom.sinks": 1
+      }
+    ]
+  },
+  "design": "grid",
+  "seeds": [
+    21,
+    22,
+    23
+  ],
+  "out_root": "/content/transfer_out/M_lr"
+}
