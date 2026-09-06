@@ -387,6 +387,18 @@ crossovers) are the kind of quantity that survives a width change.
    GPU type and binary. Run names keep the global index and the two
    output trees are merged by copy. No cell is run twice.
 
+7. **F2 modal-class tie-break made deterministic (7 Sep 2026, after M
+   and L were banked).** `analyze.py` took the modal shape class per edge
+   with `max(set(classes), key=classes.count)`; when two classes tie,
+   Python's set order (per-process hash seed) chose, and the F2 agreement
+   read 7/15 on one run and 9/15 on the next over identical S and M data.
+   Ties now go to the alphabetically first class. F2 is descriptive with
+   no threshold, so no decision rule is touched; F1, F3, H-SCALAR and the
+   threat checks do not use this code path and are unchanged. Both
+   pre-fix outputs are kept in `receipts/M/ANALYSIS_M_20260906.txt` and
+   `receipts/L/ANALYSIS_L_20260907.txt`; the deterministic reading is
+   `receipts/L/ANALYSIS_SML_20260907.txt`.
+
 ## Execution
 
 `sweep_S.json`, `sweep_M.json`, `sweep_L.json`, `sweep_bridge.json`

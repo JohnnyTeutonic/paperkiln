@@ -1,0 +1,63 @@
+====================================================================
+transfer_s1 PRE-REGISTERED ANALYSIS — does structure transfer?
+====================================================================
+Threat 2 (regime) S: best_val within last 3 evals in 49/72 runs
+Threat 2 (regime) M: best_val within last 3 evals in 31/72 runs
+Threat 2 (regime) L: best_val within last 3 evals in 0/6 runs
+Threat 3 (protocol drift) M: Delta(1200) negative 12/12 (need >= 8/12; S arm precedent 15/15)
+
+Matched val-loss milestones (from S arm L1 median):
+  slice  800 -> val 3.8467
+  slice 1600 -> val 3.6562
+  slice 2400 -> val 3.5051
+  slice 3200 -> val 3.3693
+  slice 3600 -> val 3.3492
+
+--------------------------------------------------------------------
+F1 — SIGN-PATTERN CONCORDANCE :: PRIMARY (matched val-loss milestones)
+  concordance S vs M = 1.000 over 15 cells
+  seed bootstrap 95% band [0.867, 1.000] (noise band, NOT a p-value — cells correlate within edge)
+  F1 VERDICT: STRUCTURE TRANSFERS (need >= 0.75 and band low > 0.5)
+  [preliminary, 3 seeds] S vs L 0.000 (0 cells), M vs L 0.000 (0 cells)
+
+--------------------------------------------------------------------
+F1 — SIGN-PATTERN CONCORDANCE :: ROBUSTNESS (fixed 400-step slices)
+  concordance S vs M = 0.681 over 135 cells
+  seed bootstrap 95% band [0.615, 0.748] (noise band, NOT a p-value — cells correlate within edge)
+  F1 VERDICT: not adopted (need >= 0.75 and band low > 0.5)
+  [preliminary, 3 seeds] S vs L 0.444 (9 cells), M vs L 1.000 (9 cells)
+
+--------------------------------------------------------------------
+F2 — SHAPE-CLASS CONCORDANCE (nine 400-step slices)
+  modal-class agreement 9/15 edges
+        exact vs swa128s1  S=other           M=other          
+        exact vs swa16s1   S=other           M=other          
+        exact vs swa32s1   S=monotone+       M=other             <-- differs
+        exact vs swa64s0   S=monotone+       M=other             <-- differs
+        exact vs swa64s1   S=single-crossing M=other             <-- differs
+     swa128s1 vs swa64s0   S=single-crossing M=other             <-- differs
+      swa16s1 vs swa128s1  S=other           M=other          
+      swa16s1 vs swa32s1   S=other           M=other          
+      swa16s1 vs swa64s0   S=other           M=other          
+      swa16s1 vs swa64s1   S=other           M=other          
+      swa32s1 vs swa128s1  S=monotone-       M=other             <-- differs
+      swa32s1 vs swa64s0   S=other           M=other          
+      swa32s1 vs swa64s1   S=other           M=other          
+      swa64s1 vs swa128s1  S=single-crossing M=other             <-- differs
+      swa64s1 vs swa64s0   S=other           M=other          
+
+--------------------------------------------------------------------
+F3 — B* AS A DISTRIBUTION (exploratory; never-crossed is a category, not a missing value)
+  S exact vs swa64s1: crossed 11, never 1, median b0 2000
+  M exact vs swa64s1: crossed 4, never 8, median b0 3200.0
+
+--------------------------------------------------------------------
+H-SCALAR — the committed foil (DESCRIPTIVE; n=15 edges)
+  Spearman rho over 15 edges = -0.082
+  'scalars don't transfer' condition: MET (|rho| < 0.5)
+
+  HEADLINE LICENCE requires F1 adopted AND this condition met;
+  if F1 is adopted and scalars ALSO transfer, the claim is the
+  weaker 'tiny-scale screening transfers, scalars included'.
+
+Scope: gpt2-nano family, layers=2, T=256, batch 4, lr 1e-3 FIXED across widths (declared protocol property, not a muP answer), TinyStories slice + chat7b vocab, CUDA venue, d in {256, 512, 1024}. Fingerprints are properties of THIS protocol across THIS width range.

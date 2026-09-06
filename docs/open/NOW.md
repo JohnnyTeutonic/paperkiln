@@ -57,8 +57,12 @@ Threat 3 passes 12/12. **Threat 2 (regime) fails at M in every lane**:
 best val plateaus at a median 0.89 of the run; the claim is scoped to the
 matched-milestone positions, which sit inside the still-training regime.
 Full reading: `experiments/transfer_s1/RESULTS_M.md`; receipts
-`receipts/M/`. Arm L is running (6 runs, L4, 2 cells); the lr = 5e-4
-sensitivity cell at M (Threat 4) is still to run after L.
+`receipts/M/`. **Arm L banked 7 Sep 08:49 (6/6)**: at lr 1e-3 the 16x
+model never reaches the S milestones (best val 3.85 to 3.93, then rises;
+regime 0/6), so the matched comparison is undefined at L; fixed-step M vs
+L 1.000 over 9 cells, S vs L 0.444. `RESULTS_L.md`. The Threat 4 lr = 5e-4
+cell at M is running (`M_lr`, launched 7 Sep 09:10). F2 tie-break made
+deterministic (clarification 7): S vs M F2 = 9/15.
 
 ## Checkpoint/resume: DONE end to end, proven on CUDA (4 Sep 2026)
 

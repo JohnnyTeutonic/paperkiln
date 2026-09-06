@@ -493,7 +493,11 @@ def main():
                     continue
                 classes.append(shape_class(traj))
             if classes:
-                modal[name][(a, b)] = max(set(classes), key=classes.count)
+                # Deterministic tie-break (7 Sep 2026): max over a SET
+                # resolved ties by hash order, which varies per process
+                # (F2 read 7/15 then 9/15 on identical S and M data).
+                # Ties now go to the alphabetically first class.
+                modal[name][(a, b)] = max(sorted(set(classes)), key=classes.count)
     common = set(modal["S"]) & set(modal["M"])
     agree = sum(1 for e in common if modal["S"][e] == modal["M"][e])
     print(f"  modal-class agreement {agree}/{len(common)} edges")

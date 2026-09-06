@@ -31,7 +31,8 @@ pre-registration, the one that licenses tiny-scale fingerprinting.
   not carry the sign pattern, which is exactly the matched-position
   rule's prediction: the widths train at different speeds, so equal
   steps are different places on the curve.
-- **F2 shape-class: modal agreement 7/15 edges.** At M the modal class
+- **F2 shape-class: modal agreement 9/15 edges** (deterministic
+  tie-break, clarification 7; the first run read 7/15 by set order). At M the modal class
   is "other" on every edge; S's single-crossing and monotone edges do not
   reappear as classes. Shape is protocol-fragile even where sign is not.
 - **F3 crossing budget, exact vs swa64s1: S crossed 11/12 (median b0
