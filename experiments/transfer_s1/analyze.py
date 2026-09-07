@@ -456,8 +456,7 @@ def main():
     # reached band per arm so a reader sees how many positions the
     # primary concordance actually spans (7 Sep 2026: M reached only the
     # first milestone at lr 1e-3, which the cell count alone did not show).
-    print("
-Milestone band reached (seeds whose exact lane reaches each milestone):")
+    print("\nMilestone band reached (seeds whose exact lane reaches each milestone):")
     for name, arm in arms.items():
         seeds = sorted(arm)
         cells = []
