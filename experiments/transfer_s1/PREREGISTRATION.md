@@ -399,6 +399,17 @@ crossovers) are the kind of quantity that survives a width change.
    `receipts/L/ANALYSIS_L_20260907.txt`; the deterministic reading is
    `receipts/L/ANALYSIS_SML_20260907.txt`.
 
+8. **Milestone-band omission now printed (7 Sep 2026; reporting only).**
+   The matched-position rule requires that an arm which never reaches a
+   milestone contribute no cell there "and that omission is reported".
+   `analyze.py` dropped the cells correctly but printed only the cell
+   count, so "1.000 over 15 cells" did not reveal that M reached one
+   milestone of five (M at lr 1e-3 bottoms out at val ~3.72; the S
+   milestones run 3.847 down to 3.349). The script now prints, per arm,
+   how many seeds reach each milestone. No threshold, rule or cell
+   changes; the primary reading is the same 15 cells, now labelled as
+   fifteen edges at one position.
+
 ## Execution
 
 `sweep_S.json`, `sweep_M.json`, `sweep_L.json`, `sweep_bridge.json`

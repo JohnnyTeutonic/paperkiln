@@ -1,0 +1,22 @@
+THREAT 4: lr sensitivity at M (d=512), edge exact vs swa64s1, seeds 21-23. Delta = val(swa64s1) - val(exact); positive => exact better.
+Descriptive only (PREREGISTRATION threat 4); cannot change any primary reading.
+
+seed 21 lr 1e-3: Delta@slices -0.037 -0.046 -0.032 -0.012 -0.003 -0.009 +0.018 +0.018 +0.023 | exact best 3.722@2800 final 3.726 | swa best 3.723@3500 final 3.749
+seed 21 lr 5e-4: Delta@slices -0.060 -0.031 -0.011 +0.001 -0.008 -0.051 -0.063 -0.014 +0.029 | exact best 3.226@3600 final 3.226 | swa best 3.218@3000 final 3.254
+  sign agreement lr1e-3 vs lr5e-4 at fixed slices: 6/9
+
+seed 22 lr 1e-3: Delta@slices -0.090 -0.092 -0.060 -0.031 -0.076 -0.031 -0.075 -0.013 -0.016 | exact best 3.740@2400 final 3.764 | swa best 3.706@2800 final 3.749
+seed 22 lr 5e-4: Delta@slices -0.057 -0.032 -0.034 -0.054 -0.093 -0.075 -0.043 -0.018 +0.008 | exact best 3.225@3500 final 3.235 | swa best 3.195@2700 final 3.243
+  sign agreement lr1e-3 vs lr5e-4 at fixed slices: 8/9
+
+seed 23 lr 1e-3: Delta@slices -0.056 -0.089 -0.052 -0.040 -0.078 -0.030 -0.019 -0.038 -0.010 | exact best 3.737@3400 final 3.770 | swa best 3.723@3400 final 3.760
+seed 23 lr 5e-4: Delta@slices -0.039 -0.063 +0.006 +0.022 +0.035 +0.060 +0.055 +0.053 +0.064 | exact best 3.177@3400 final 3.183 | swa best 3.247@3600 final 3.247
+  sign agreement lr1e-3 vs lr5e-4 at fixed slices: 2/9
+
+TOTAL fixed-slice sign agreement across 3 seeds: 16/27
+lr 1e-3 seed 21 exact reaches S milestones at steps: [1400, None, None, None, None]
+lr 1e-3 seed 22 exact reaches S milestones at steps: [1400, None, None, None, None]
+lr 1e-3 seed 23 exact reaches S milestones at steps: [1400, None, None, None, None]
+lr 5e-4 seed 21 exact reaches S milestones at steps: [500, 1200, 1800, 2300, 2700]
+lr 5e-4 seed 22 exact reaches S milestones at steps: [600, 1100, 1600, 2100, 2200]
+lr 5e-4 seed 23 exact reaches S milestones at steps: [600, 1100, 1500, 1900, 1900]

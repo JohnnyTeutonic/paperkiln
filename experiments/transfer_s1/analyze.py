@@ -451,6 +451,21 @@ def main():
     positions_primary = [(sl, v) for sl, v in ms]
     positions_robust = [(sl, None) for sl in SLICES]
 
+    # The matched-position rule: an arm that never reaches a milestone
+    # contributes no cell there and THE OMISSION IS REPORTED. Print the
+    # reached band per arm so a reader sees how many positions the
+    # primary concordance actually spans (7 Sep 2026: M reached only the
+    # first milestone at lr 1e-3, which the cell count alone did not show).
+    print("
+Milestone band reached (seeds whose exact lane reaches each milestone):")
+    for name, arm in arms.items():
+        seeds = sorted(arm)
+        cells = []
+        for sl, v in ms:
+            n = sum(1 for sd in seeds if step_milestone(arm, sd, sl) is not None)
+            cells.append(f"{sl}:{n}/{len(seeds)}")
+        print(f"  {name}: " + "  ".join(cells))
+
     for label, positions, stepper in (
             ("PRIMARY (matched val-loss milestones)", positions_primary,
              step_milestone),

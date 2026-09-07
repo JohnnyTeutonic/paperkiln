@@ -10,9 +10,17 @@ is still to run. Nothing below is amended by either.*
 
 **F1, primary (matched val-loss milestones): concordance 1.000 over 15
 cells, seed-bootstrap band [0.867, 1.000]. Adopted (threshold 0.75, band
-low > 0.50).** Every one of the fifteen pairwise lane comparisons carries
-the same seed-majority sign at d = 512 as at d = 256, at every matched
-milestone.
+low > 0.50).** The fifteen cells are the fifteen edges at ONE milestone:
+the S slice-800 level (val 3.847), which M's exact lane reaches at about
+step 1400. **M never reaches the other four milestones** (3.656, 3.505,
+3.369, 3.349): at the protocol's fixed lr = 1e-3 the d = 512 model bottoms
+out at a median best val of 3.72 (S: 3.35). The matched-position rule
+says an arm that never reaches a milestone contributes no cell there and
+the omission is reported, never interpolated; this is that report. The
+licensed claim is therefore: at the one early position both arms share,
+all fifteen pairwise signs agree. (An earlier version of this file said
+"at every matched milestone"; that was wrong and is corrected here,
+7 Sep.)
 
 **H-SCALAR (committed foil): Spearman rho = -0.082 over 15 edges.
 "Scalars don't transfer" condition met (|rho| < 0.5).** The rank order of
@@ -58,13 +66,41 @@ pre-registration, the one that licenses tiny-scale fingerprinting.
   T 256, batch 4, lr 1e-3 fixed across widths (a protocol property, not
   a muP answer), TinyStories slice with the chat7b vocab, CUDA venue.
 
+## Threat 4, the lr sensitivity cell (7 Sep 2026; descriptive)
+
+`sweep_M_lr.json`: d = 512, lr = 5e-4, L1 and L4, seeds 21 to 23
+(`receipts/M_lr/THREAT4_lr_sensitivity_20260907.txt`). Two facts.
+
+1. **At lr = 5e-4 the 4x model reaches every S milestone** (exact lane,
+   all three seeds, final val 3.18 to 3.23, below S's 3.35); at lr = 1e-3
+   it reaches only the first. The fixed learning rate, declared a
+   protocol property, is the wrong learning rate for d = 512 and, from
+   RESULTS_L.md, for d = 1024. This is the muP objection materialising,
+   and it is why the milestone band collapses to one position.
+2. **The sign pattern on the exact-vs-swa64s1 edge at M depends on lr:**
+   fixed-slice sign agreement between the two learning rates is 16/27
+   (seed 21: 6/9, seed 22: 8/9, seed 23: 2/9). The fingerprint is
+   lr-sensitive at the same width.
+
+By the pre-registration this cell cannot change the primary reading, and
+it does not. What it changes is the scope line's weight: "lr fixed
+across widths" is not a neutral convention here but the reason the
+comparison is confined to one early milestone, and the larger arms are
+mis-tuned under it. Any write-up has to carry both facts next to the
+1.000.
+
 ## What this is worth
 
-The result is the one the programme needed: the standing objection to
-tiny-scale work (effects reverse with budget and vary by seed) is
-answered by a measured quantity, not an argument. Sign structure at
-matched position survives a 2x width change perfectly while scalar
-rankings do not, under a protocol whose own instability was documented
-first. The L arm (3 seeds, two lanes, preliminary by design) can only
+The result is narrower than the headline sentence suggests and should be
+stated at its true width: at the one matched position the two arms share,
+sign structure survives a 2x width change on all fifteen edges while the
+scalar rankings do not, under a protocol whose fixed learning rate
+mis-tunes the larger width. That is a licensed, receipts-backed finding
+and the pre-registered outcome one. It is not yet "fingerprints transfer
+across the training curve", because the curve was not shared past its
+first milestone. The obvious next study is pre-registered, not
+improvised: the same panel with the learning rate set per width by a
+rule fixed in advance, so that every arm reaches every milestone and the
+claim can be tested at five positions instead of one. The L arm (3 seeds, two lanes, preliminary by design) can only
 add a trend point; the lr sensitivity cell can only qualify the scope
 line. Neither can change the reading above.

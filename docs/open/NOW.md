@@ -49,9 +49,16 @@ units. It was stopped for exactly this reason on 2 Sep.
 
 ## transfer_s1 ARM M BANKED, pre-registered reading run (6 Sep 2026)
 
-**Headline licensed: "scalars don't transfer, structure does" for this
-protocol across d in {256, 512}.** F1 primary concordance 1.000 over 15
-cells, band [0.867, 1.000]; H-SCALAR rho = -0.082. Robustness F1 0.681
+**Headline licensed, at its true width: at the ONE matched milestone both
+arms reach, all 15 edge signs agree (F1 1.000, band [0.867, 1.000]) and
+scalars do not transfer (rho = -0.082).** M at the protocol's lr = 1e-3
+bottoms out at val 3.72 vs S 3.35, so four of five milestones are
+unreachable at M (omission reported per the matched-position rule). The
+Threat 4 cell (lr = 5e-4 at M, banked 7 Sep 13:12) reaches all five and
+shows the edge's sign pattern is lr-sensitive (16/27 fixed-slice
+agreement). Next study, if pursued: the same panel with lr set per width
+by a pre-registered rule. Corrected 7 Sep; an earlier line here and in
+RESULTS_M.md overstated the claim as "every milestone". Robustness F1 0.681
 (not adopted), F2 7/15, F3 crossing moves late at M (4 crossed, 8 never).
 Threat 3 passes 12/12. **Threat 2 (regime) fails at M in every lane**:
 best val plateaus at a median 0.89 of the run; the claim is scoped to the
