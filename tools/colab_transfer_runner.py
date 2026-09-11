@@ -218,7 +218,14 @@ def upload_chunked(session, local, remote, size):
                 shutil.rmtree(pdir, ignore_errors=True)
                 return False
         shutil.rmtree(pdir, ignore_errors=True)
-    rc, out = exec_py(session, (
+    # The reassembly exec is retried (12 Sep 2026): on the d=1024 sweep the
+    # colab exec transport timed out four times in one night while the
+    # parts sat complete on the vm; each failure counted as a provisioning
+    # strike and the third discarded the vm and its 1 GB of parts. The
+    # file operation is idempotent, so a retry costs seconds, not an upload.
+    out = ""
+    for attempt in range(3):
+        rc, out = exec_py(session, (
         "import os\n"
         f"remote = {remote!r}\n"
         f"n = {n}\n"
@@ -234,10 +241,11 @@ def upload_chunked(session, local, remote, size):
         "got = os.path.getsize(remote)\n"
         f"print('ASSEMBLED_OK' if got == {size} else f'ASSEMBLED_BAD {{got}}')\n"),
         timeout=900)
-    if "ASSEMBLED_OK" not in out:
-        log(f"chunked upload reassembly failed: {out[-160:]}")
-        return False
-    return True
+        if "ASSEMBLED_OK" in out:
+            return True
+        log(f"chunked upload reassembly attempt {attempt + 1}/3 failed: {out[-120:]}")
+        time.sleep(30)
+    return False
 
 
 def done_runs(local_out):
@@ -297,7 +305,9 @@ def push_resume(session, local_out, out_root):
     # idle. Every finished run must show result.json and every partial
     # its state.txt on the vm, or provisioning is reported as failed and
     # retried; never launch onto a vm that does not hold the resume state.
-    rc, out = exec_py(session, (
+    out = ""
+    for attempt in range(3):
+        rc, out = exec_py(session, (
         "import os, zipfile\n"
         f"d = {out_root + '/runs'!r}\n"
         "os.makedirs(d, exist_ok=True)\n"
@@ -309,8 +319,12 @@ def push_resume(session, local_out, out_root):
         " and os.path.exists(os.path.join(d, n, 'optim.safetensors')))]\n"
         "print('RESUME_VERIFIED' if not missing else 'RESUME_MISSING ' + ' '.join(missing))\n"),
         timeout=900)
+        if "RESUME_VERIFIED" in out:
+            break
+        log(f"resume restore attempt {attempt + 1}/3 not verified (rc={rc}): {out[-120:]}")
+        time.sleep(30)
     if "RESUME_VERIFIED" not in out:
-        log(f"resume restore NOT verified on the vm (rc={rc}): {out[-300:]}")
+        log("resume restore NOT verified on the vm after 3 attempts")
         return None, None
     if partial:
         log("partial checkpoints pushed for resume: " +
