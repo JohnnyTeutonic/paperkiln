@@ -1,0 +1,77 @@
+{
+  "_comment": "transfer_s2 STAGE 2, ARM S: identical to transfer_s1 sweep_S.json except the learning rate, which is lr*(256) = 0.00025, selected by the stage-1 rule fixed in PREREGISTRATION.md (RESULTS_STAGE1.md). Six lanes, twelve seeds, 3600 steps, checkpoint every 400 for the prune relay. Created 12 Sep 2026 after the licence anchor (commit 90791ed); no stage-2 run existed before it.",
+  "base": {
+    "arch": {
+      "preset": "gpt2-nano",
+      "custom": {
+        "d": 256,
+        "heads": 8
+      }
+    },
+    "data": {
+      "corpus": "/content/data/corpus.txt",
+      "vocab": "/content/data/chat7b.gguf",
+      "vocab_cap": 4096,
+      "T": 256
+    },
+    "train": {
+      "batch": 4,
+      "lr": 0.00025,
+      "steps": 3600,
+      "eval_every": 100,
+      "checkpoint_every": 400,
+      "gradmap_every": 0
+    },
+    "export": {
+      "formats": []
+    }
+  },
+  "factors": {
+    "lane": [
+      {
+        "arch.custom.attention": "exact"
+      },
+      {
+        "arch.custom.attention": "swa",
+        "arch.custom.window": 16,
+        "arch.custom.sinks": 1
+      },
+      {
+        "arch.custom.attention": "swa",
+        "arch.custom.window": 32,
+        "arch.custom.sinks": 1
+      },
+      {
+        "arch.custom.attention": "swa",
+        "arch.custom.window": 64,
+        "arch.custom.sinks": 1
+      },
+      {
+        "arch.custom.attention": "swa",
+        "arch.custom.window": 128,
+        "arch.custom.sinks": 1
+      },
+      {
+        "arch.custom.attention": "swa",
+        "arch.custom.window": 64,
+        "arch.custom.sinks": 0
+      }
+    ]
+  },
+  "design": "grid",
+  "seeds": [
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32
+  ],
+  "out_root": "/content/transfer_out/s2_S"
+}
