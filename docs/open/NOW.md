@@ -47,6 +47,21 @@ value and no GPU tier helps. Arm L at d=1024 is worse again.
 **Do not restart arm M as configured.** It will bank zero runs and burn
 units. It was stopped for exactly this reason on 2 Sep.
 
+## transfer_s2 (lr per width) LAUNCHED (12 Sep 2026)
+
+Licence anchor `90791ed` (PREREGISTRATION.md + frozen analyze.py). Stage 1
+selected lr*(256) = 2.5e-4 and lr*(512) = 5e-4 (`RESULTS_STAGE1.md`);
+the d=1024 grid (`lr_L`, session tr-lrL) is 4/9 banked. Stage 2 launched
+12 Sep 12:17 on L4: arm S (`sweep_S.json`, tr-s2S, 72 cells, jobs 4 omp 2)
+and arm M as two shards (`sweep_M.json`, tr-s2M shard 0/2 and tr-s2Mb
+shard 1/2, 36 each). **Colab allows three concurrent GPU sessions**, so
+tr-s2Mb is queued behind tr-lrL (its driver retries every 2 min; not
+dead). Arm L's stage-2 sweep is created by the hourly hygiene job once
+`select_lr.py --width 1024` has run. Local outs
+`/mnt/c/ml_artifacts/transfer/s2_{S,M,Mb}`; merge Mb into M before
+`experiments/transfer_s2/analyze.py --arms S= M= L=`. No paper draft
+before the stage-2 reading; the sketch is `transfer_s1/PAPER_SKETCH.md`.
+
 ## transfer_s1 ARM M BANKED, pre-registered reading run (6 Sep 2026)
 
 **Headline licensed, at its true width: at the ONE matched milestone both
