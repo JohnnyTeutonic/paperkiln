@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """transfer_s2 stage 1: apply the fixed learning-rate selection rule.
 
-Rule (PREREG_DRAFT.md, fixed before any stage-1 run): for each width,
+Rule (PREREGISTRATION.md, fixed before any stage-1 run): for each width,
 among grid points passing the regime check (best val within the last
 three evals in >= 2 of 3 seeds), lr* is the one with the lowest median
 best val over seeds; if none passes, the one whose median best-val step is

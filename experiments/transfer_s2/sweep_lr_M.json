@@ -1,5 +1,5 @@
 {
-  "_comment": "transfer_s2 STAGE 1, width d=512: learning-rate sweep on the exact lane (L1) only, 3 seeds, under the selection rule fixed in PREREG_DRAFT.md before any run. The 1e-3 level (transfer_s1 arm M, seeds 21-23, exact) and the 5e-4 level (transfer_s1 Threat 4 cell M_lr, seeds 21-23, exact) are NOT re-run; their receipts are reused as declared, the specs being identical apart from checkpoint interval, which is inert. Created 11 Sep 2026.",
+  "_comment": "transfer_s2 STAGE 1, width d=512: learning-rate sweep on the exact lane (L1) only, 3 seeds, under the selection rule fixed in PREREGISTRATION.md before any run. The 1e-3 level (transfer_s1 arm M, seeds 21-23, exact) and the 5e-4 level (transfer_s1 Threat 4 cell M_lr, seeds 21-23, exact) are NOT re-run; their receipts are reused as declared, the specs being identical apart from checkpoint interval, which is inert. Created 11 Sep 2026.",
   "base": {
     "arch": {"preset": "gpt2-nano",
              "custom": {"d": 512, "heads": 16, "attention": "exact"}},

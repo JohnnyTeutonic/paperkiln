@@ -2,7 +2,7 @@
 
 ## d = 256 (banked 11 Sep 2026 15:33)
 
-Sources: 1e-3 from transfer_s1 arm S (identical spec); 2e-3, 5e-4, 2.5e-4 from sweep_lr_S.json (receipts/lr_S). Rule: PREREG_DRAFT.md stage 1.
+Sources: 1e-3 from transfer_s1 arm S (identical spec); 2e-3, 5e-4, 2.5e-4 from sweep_lr_S.json (receipts/lr_S). Rule: PREREGISTRATION.md stage 1.
 
 ```
 width 256: stage-1 table (exact lane, seeds (21, 22, 23))
@@ -28,11 +28,11 @@ lr 0.00025: median best val 3.2280, median best step 3600, regime 3/3 PASS
 lr*(256) = 0.00025   [lowest median best val among regime-passing grid points]
 ```
 
-Reading: the s1 protocol rate 1e-3 is not the best rate even at the base width (median best val 3.369 against 3.228 at 2.5e-4). 5e-4 has the lowest median best val but fails the regime check in 2 of 3 seeds (best val before the last three evals), so the rule passes it over. Per PREREG_DRAFT.md, lr*(256) = 2.5e-4 means arm S is re-run at that rate in stage 2 so every arm is on the same footing.
+Reading: the s1 protocol rate 1e-3 is not the best rate even at the base width (median best val 3.369 against 3.228 at 2.5e-4). 5e-4 has the lowest median best val but fails the regime check in 2 of 3 seeds (best val before the last three evals), so the rule passes it over. Per PREREGISTRATION.md, lr*(256) = 2.5e-4 means arm S is re-run at that rate in stage 2 so every arm is on the same footing.
 
 ## d = 512 (banked 11 Sep 2026 18:03)
 
-Sources: 1e-3 from transfer_s1 arm M; 5e-4 from the transfer_s1 Threat 4 cell M_lr; 2e-3 and 2.5e-4 from sweep_lr_M.json (receipts/lr_M). Rule: PREREG_DRAFT.md stage 1.
+Sources: 1e-3 from transfer_s1 arm M; 5e-4 from the transfer_s1 Threat 4 cell M_lr; 2e-3 and 2.5e-4 from sweep_lr_M.json (receipts/lr_M). Rule: PREREGISTRATION.md stage 1.
 
 ```
 width 512: stage-1 table (exact lane, seeds (21, 22, 23))

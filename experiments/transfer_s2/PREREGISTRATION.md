@@ -1,4 +1,17 @@
-# transfer_s2 — pre-registration DRAFT: the same panel with the learning rate set per width
+# transfer_s2 — PRE-REGISTRATION: the same panel with the learning rate set per width
+
+*Drafted 11 September 2026 before any transfer_s2 run existed; the
+stage-1 selection rule below was applied to d = 256 and d = 512 on 11 and
+12 September (RESULTS_STAGE1.md) without touching any panel data.
+**LICENCE ANCHOR: the commit that renames this file from PREREG_DRAFT.md
+to PREREGISTRATION.md and adds `analyze.py` beside it (12 September 2026,
+nominated by Jonathan).** `analyze.py` is transfer_s1's script at commit
+d88584f, frozen here in its final form (milestone band printed,
+deterministic F2). Every directional claim of stage 2 is licensed by this
+commit; anything changed after it is an amendment, dated and reasoned in
+place, never a silent edit. Stage 1's remaining number, lr*(1024), is
+produced by the rule fixed below when its sweep completes; the rule is
+what is licensed, not the number.*
 
 *Drafted 11 September 2026, before any transfer_s2 run existed. This is a
 DRAFT, not the licence anchor. The anchor is the commit Jonathan nominates
@@ -106,6 +119,7 @@ S again if its rate changes.
 
 ## Analysis
 
-`analyze.py` from transfer_s1 at commit d88584f (milestone band printed,
-deterministic F2), invoked with the transfer_s2 artefact roots; any
-change to it before the anchor is listed here with a reason.
+`experiments/transfer_s2/analyze.py`, a frozen copy of transfer_s1's
+script at commit d88584f (milestone band printed, deterministic F2),
+invoked with the transfer_s2 artefact roots: `--arms S=<root> M=<root>
+L=<root>`. Any change after the anchor is an amendment recorded here.

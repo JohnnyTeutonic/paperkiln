@@ -1,5 +1,5 @@
 {
-  "_comment": "transfer_s2 STAGE 1, width d=1024: learning-rate sweep on the exact lane (L1) only, 3 seeds, under the selection rule fixed in PREREG_DRAFT.md before any run. The grid is shifted one step lower than at S and M because transfer_s1 arm L showed 1e-3 already overfitting at this width; that arm's exact runs (seeds 21-23) supply the 1e-3 level and are NOT re-run. Created 11 Sep 2026.",
+  "_comment": "transfer_s2 STAGE 1, width d=1024: learning-rate sweep on the exact lane (L1) only, 3 seeds, under the selection rule fixed in PREREGISTRATION.md before any run. The grid is shifted one step lower than at S and M because transfer_s1 arm L showed 1e-3 already overfitting at this width; that arm's exact runs (seeds 21-23) supply the 1e-3 level and are NOT re-run. Created 11 Sep 2026.",
   "base": {
     "arch": {"preset": "gpt2-nano",
              "custom": {"d": 1024, "heads": 32, "attention": "exact"}},
