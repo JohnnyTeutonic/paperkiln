@@ -57,7 +57,18 @@ and arm M as two shards (`sweep_M.json`, tr-s2M shard 0/2 and tr-s2Mb
 shard 1/2, 36 each). **Colab allows three concurrent GPU sessions**, so
 tr-s2Mb is queued behind tr-lrL (its driver retries every 2 min; not
 dead). Arm L's stage-2 sweep is created by the hourly hygiene job once
-`select_lr.py --width 1024` has run. Local outs
+`select_lr.py --width 1024` has run. **Overnight 12/13 Sep: the home router degraded** (DNS through it ~18 s,
+LAN TCP to it ~86 s, upload ~187 KB/s; Wi-Fi radio fine at 91 %), while
+Colab reclaimed each L4 session every ~80 min. Each reclaim re-uploads
+vocab + binary + resume state (S 173 MB, M shards ~488 MB of partial
+checkpoints), which that link cannot carry inside a session's life, so
+progress stalled at S 32/72, M 12/36, Mb 8/36, lr_L 6/9. The lr_L and
+Mb drivers were stopped by hand 08:20 (hung 3-5 h on one upload); S and
+M left running; Jonathan asked to power-cycle the router; the hourly
+job relaunches the two once router DNS < 2 s and upload > 1 MB/s.
+Lesson for the runner: the resume payload scales with width and job
+count; a Drive-side checkpoint store (`colab drivemount`) would take the
+laptop uplink out of the resume path entirely. Local outs
 `/mnt/c/ml_artifacts/transfer/s2_{S,M,Mb}`; merge Mb into M before
 `experiments/transfer_s2/analyze.py --arms S= M= L=`. No paper draft
 before the stage-2 reading; the sketch is `transfer_s1/PAPER_SKETCH.md`.
