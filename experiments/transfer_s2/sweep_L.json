@@ -1,0 +1,57 @@
+{
+  "_comment": "transfer_s2 STAGE 2, arm L (d=1024, 32 heads): the two-lane panel (L1 exact, L4 swa w=64 s=1) at lr*(1024) = 5e-4, selected by the stage-1 rule fixed in PREREGISTRATION.md (fallback clause: no grid point passed the regime check; see RESULTS_STAGE1.md d=1024 for the note on that clause). Twelve seeds, the same as S and M. checkpoint_every 100 for the partial-checkpoint relay. Created 14 Sep 2026.",
+  "base": {
+    "arch": {
+      "preset": "gpt2-nano",
+      "custom": {
+        "d": 1024,
+        "heads": 32
+      }
+    },
+    "data": {
+      "corpus": "/content/data/corpus.txt",
+      "vocab": "/content/data/chat7b.gguf",
+      "vocab_cap": 4096,
+      "T": 256
+    },
+    "train": {
+      "batch": 4,
+      "lr": 0.0005,
+      "steps": 3600,
+      "eval_every": 100,
+      "checkpoint_every": 100,
+      "gradmap_every": 0
+    },
+    "export": {
+      "formats": []
+    }
+  },
+  "factors": {
+    "lane": [
+      {
+        "arch.custom.attention": "exact"
+      },
+      {
+        "arch.custom.attention": "swa",
+        "arch.custom.window": 64,
+        "arch.custom.sinks": 1
+      }
+    ]
+  },
+  "design": "grid",
+  "seeds": [
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32
+  ],
+  "out_root": "/content/transfer_out/s2_L"
+}
