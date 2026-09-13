@@ -67,8 +67,13 @@ Mb drivers were stopped by hand 08:20 (hung 3-5 h on one upload); S and
 M left running; Jonathan asked to power-cycle the router; the hourly
 job relaunches the two once router DNS < 2 s and upload > 1 MB/s.
 Lesson for the runner: the resume payload scales with width and job
-count; a Drive-side checkpoint store (`colab drivemount`) would take the
-laptop uplink out of the resume path entirely. Local outs
+count; a VM-side checkpoint store would take the laptop uplink out of the
+resume path entirely. **Drive is ruled out** (13 Sep): `colab drivemount`
+needs a browser OAuth grant per VM (tested on two live sessions; the
+grant did not carry over), and the Drive is 88 % full. Candidates that
+work unattended: a private HF Hub repo with a write token, or a GCS
+bucket with a service account; either is a runner change for a quiet
+day, not mid-run. Local outs
 `/mnt/c/ml_artifacts/transfer/s2_{S,M,Mb}`; merge Mb into M before
 `experiments/transfer_s2/analyze.py --arms S= M= L=`. No paper draft
 before the stage-2 reading; the sketch is `transfer_s1/PAPER_SKETCH.md`.
