@@ -68,7 +68,17 @@ M left running; Jonathan asked to power-cycle the router; the hourly
 job relaunches the two once router DNS < 2 s and upload > 1 MB/s.
 Lesson for the runner: the resume payload scales with width and job
 count; a VM-side checkpoint store would take the laptop uplink out of the
-resume path entirely. **Drive is ruled out** (13 Sep): `colab drivemount`
+resume path entirely. **Orphaned vms, solved 13 Sep 21:10:** the colab CLI declares a session
+"lost (404/401)" on ONE failed request (flaky tunnel, expired hourly
+token) and deletes its key; the vm keeps running, shows as "[?]" in
+`colab sessions` and "Unknown notebook" in the web UI, and holds one of
+the THREE concurrent GPU slots. Colab's assignment listing returns a
+fresh key for every vm, so `tools/colab_adopt.py --adopt <endpoint>=<name>`
+re-registers an orphan with its work intact; the runner now does this
+itself (`adopt_orphan()` before `new_session()`), and both stage-2
+drivers recovered their running sweeps this way (S 64/72, M 25/36) with
+zero loss. This, not Colab reclaiming, is probably what the "~80-min
+reclaims" were all along. **Drive is ruled out** (13 Sep): `colab drivemount`
 needs a browser OAuth grant per VM (tested on two live sessions; the
 grant did not carry over), and the Drive is 88 % full. Candidates that
 work unattended: a private HF Hub repo with a write token, or a GCS

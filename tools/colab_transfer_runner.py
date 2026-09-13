@@ -132,6 +132,75 @@ def new_session(session, gpu):
     rc, out = sh([COL, "new", "-s", session, "--gpu", gpu], timeout=600)
     ok = rc == 0 and "READY" in out
     log(f"session {session}: {'READY' if ok else 'FAILED ' + out[-200:]}")
+    if ok:
+        backup_sessions()
+    return ok
+
+
+# --- orphan sessions -------------------------------------------------------
+# The colab CLI keeps each session's access token in sessions.json. On a
+# transient network failure it can decide a LIVE vm is "lost (404/401)"
+# and delete that record (seen 13 Sep 2026 during a router outage). The
+# vm keeps running, nobody holds its key, `colab sessions` lists it as
+# "[?] <endpoint>", and it occupies one of the three concurrent GPU
+# slots until Colab's idle timeout reclaims it -- blocking a real driver
+# for an hour or more. Tokens live about an hour, so a copy of the record
+# taken while it was healthy lets us put the key back under a temporary
+# name and stop the vm properly, as long as we act soon after the loss.
+SESS_FILE = os.path.expanduser("~/.config/colab-cli/sessions.json")
+SESS_BACKUP = os.path.expanduser("~/.config/colab-cli/backup")
+
+
+def backup_sessions():
+    """Copy every current session record to backup/<endpoint>.json."""
+    try:
+        with open(SESS_FILE, encoding="utf-8") as f:
+            recs = json.load(f)
+        os.makedirs(SESS_BACKUP, exist_ok=True)
+        for rec in recs.values():
+            ep = rec.get("endpoint")
+            if not ep:
+                continue
+            with open(os.path.join(SESS_BACKUP, ep + ".json"), "w",
+                      encoding="utf-8") as f:
+                json.dump(rec, f)
+    except Exception as exc:                          # noqa: BLE001
+        log(f"session backup skipped: {exc}")
+
+
+COLAB_PY = os.path.expanduser(
+    "~/.local/share/uv/tools/google-colab-cli/bin/python")
+ADOPT = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                     "colab_adopt.py")
+
+
+def adopt_orphan(session):
+    """Re-register a nameless '[?]' vm under OUR name instead of creating one.
+
+    Colab's assignment listing hands back a fresh key for every vm the
+    account holds, so an orphan is recoverable with its work intact (see
+    tools/colab_adopt.py). The orphan is most often this very driver's
+    previous vm, so it gets our name; if it was another driver's, that
+    driver's next tick finds its own record gone and re-provisions
+    elsewhere, which costs no more than the orphan did. Returns True when
+    a vm was adopted (the caller then treats it like a session that
+    answered alive() and lets sweep_alive() decide whether to relaunch).
+    """
+    if not os.path.exists(COLAB_PY):
+        return False
+    rc, out = sh([COLAB_PY, ADOPT, "--list"], timeout=180)
+    if rc != 0:
+        return False
+    orphans = [ln.split()[1] for ln in out.splitlines()
+               if ln.startswith("[?]") and len(ln.split()) > 1]
+    if not orphans:
+        return False
+    ep = orphans[0]
+    rc, out = sh([COLAB_PY, ADOPT, "--adopt", f"{ep}={session}"], timeout=180)
+    ok = rc == 0 and f"adopted {ep} as {session}" in out
+    log(f"orphan vm {ep}: {'ADOPTED as ' + session if ok else 'adoption failed: ' + out.strip()[-160:]}")
+    if ok:
+        backup_sessions()
     return ok
 
 
@@ -754,12 +823,21 @@ def main() -> int:
             return 0
         if not alive(args.session):
             log("session not alive — (re)creating")
-            if not new_session(args.session, args.gpu):
+            if adopt_orphan(args.session):
+                # An adopted vm may already be running our sweep (it was
+                # probably ours before the CLI lost its key). Fall through
+                # with the flags cleared so the adopt-a-healthy-sweep check
+                # below decides, instead of stopping it to make a new one.
+                launched = False
+                provisioned = False
+                strikes = 0
+            elif not new_session(args.session, args.gpu):
                 time.sleep(120)
                 continue
-            launched = False
-            provisioned = False
-            strikes = 0
+            else:
+                launched = False
+                provisioned = False
+                strikes = 0
         # ADOPT an already-healthy sweep before touching anything. The
         # driver gets restarted (a patch, a crash) while a vm is happily
         # running cells, and it starts with provisioned=False. Without
