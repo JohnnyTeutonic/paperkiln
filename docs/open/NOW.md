@@ -58,7 +58,10 @@ consequence (a narrower matched band at L again) is in
 `RESULTS_STAGE1.md`; **Jonathan decides whether to amend** (dated
 amendment before the L arm is read). Arm S stage 2 BANKED 13 Sep 23:05
 (72/72). M shards 0 and 1 running; arm L launched 00:30 at 5e-4 per the
-rule as written (tr-s2L, 24 cells). Runner fixes this night: orphaned vms
+rule as written; **M shard 0 banked 03:15 (36/36)** and L was re-split at
+03:25 into two shards (tr-s2L shard 0/2, tr-s2Lb shard 1/2, 12 cells
+each, local s2_L and s2_Lb; merge Lb into L before analysis) to use the
+freed slot. Runner fixes this night: orphaned vms
 re-adopted with work intact (`tools/colab_adopt.py`), session keys
 refreshed every 15 min (the hourly key expiry was the "reclaim" cause).
 
