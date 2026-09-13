@@ -848,13 +848,26 @@ def main() -> int:
         if not alive(args.session):
             log("session not alive — (re)creating")
             if adopt_orphan(args.session):
-                # An adopted vm may already be running our sweep (it was
-                # probably ours before the CLI lost its key). Fall through
-                # with the flags cleared so the adopt-a-healthy-sweep check
-                # below decides, instead of stopping it to make a new one.
+                # An adopted vm is usually running our sweep already (it
+                # was ours before the CLI lost its key). The first exec on
+                # a freshly adopted record starts a new kernel and can come
+                # back inconclusive; one inconclusive probe must NOT send
+                # us into full_setup, whose binary upload then fails with
+                # ETXTBSY against the running mtstudio (00:10, 14 Sep) and
+                # whose third strike would discard a healthy vm. Probe a
+                # few times before believing the sweep is gone.
                 launched = False
                 provisioned = False
                 strikes = 0
+                for _ in range(4):
+                    state = sweep_alive(args.session)
+                    if state is True:
+                        log("adopted vm is running our sweep; resuming relay")
+                        launched = provisioned = True
+                        break
+                    if state is False:
+                        break
+                    time.sleep(45)
             elif not new_session(args.session, args.gpu):
                 time.sleep(120)
                 continue
