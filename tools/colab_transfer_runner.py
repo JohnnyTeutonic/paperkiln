@@ -174,6 +174,30 @@ ADOPT = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                      "colab_adopt.py")
 
 
+_last_refresh = 0.0
+
+
+def refresh_key(session, every=900):
+    """Re-store a fresh access key for our session every `every` seconds.
+
+    The key `colab new` stores is static and expires after ~1 h; the next
+    exec then gets 401 and the CLI prunes the session, orphaning a live
+    vm. Observed as the "~80-minute reclaims" of 12-13 Sep 2026: arm S
+    created 20:02 was "lost" at 21:05, shard Mb created 23:06 at 00:06.
+    Colab's listing mints a fresh key on every call, so refreshing well
+    inside the hour keeps the session usable for the vm's whole life.
+    """
+    global _last_refresh
+    if time.time() - _last_refresh < every or not os.path.exists(COLAB_PY):
+        return
+    rc, out = sh([COLAB_PY, ADOPT, "--refresh"], timeout=180)
+    if rc == 0 and f"refreshed key for {session}" in out:
+        _last_refresh = time.time()
+    else:
+        log(f"key refresh for {session} did not happen (rc={rc}); "
+            f"will retry next tick")
+
+
 def adopt_orphan(session):
     """Re-register a nameless '[?]' vm under OUR name instead of creating one.
 
@@ -897,6 +921,7 @@ def main() -> int:
                                     args.jobs, args.omp, args.shard)
             log(f"sweep launched: {launched}")
         time.sleep(args.tick)
+        refresh_key(args.session)
         t_tick = time.time()
         got = relay(args.session, args.local_out, out_root)
         # relay() returns 0 on FAILURE as well as on "nothing new", which

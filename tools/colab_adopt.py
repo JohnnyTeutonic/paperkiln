@@ -28,18 +28,41 @@ def main():
                     metavar="ENDPOINT=NAME")
     ap.add_argument("--release", action="append", default=[],
                     metavar="ENDPOINT")
+    ap.add_argument("--refresh", action="store_true",
+                    help="replace every registered session's stored key "
+                         "with a fresh one from the listing")
     args = ap.parse_args()
 
     from colab_cli.common import state
     from colab_cli.state import SessionState
     from colab_cli.commands.session import spawn_keep_alive
 
-    known = {s.endpoint: n for n, s in state.store.list().items()}
+    sessions = state.store.list()
+    known = {s.endpoint: n for n, s in sessions.items()}
     assignments = state.client.list_assignments()
     for a in assignments:
         tag = known.get(a.endpoint, "?")
         ttl = getattr(a.runtime_proxy_info, "token_expires_in_seconds", -1)
         print(f"[{tag}] {a.endpoint} {a.accelerator.value} token_ttl={ttl}s")
+
+    if args.refresh:
+        # The key the CLI stores at `colab new` is static and expires after
+        # about an hour; the next request then gets 401, the CLI declares
+        # the session lost and deletes the record (the orphan mechanism).
+        # The listing mints a fresh key on every call, so re-storing it
+        # keeps a session usable for as long as the vm lives.
+        by_ep = {a.endpoint: a for a in assignments}
+        for name, s in sessions.items():
+            a = by_ep.get(s.endpoint)
+            if a is None:
+                continue
+            cur = state.store.get(name)
+            if cur is None:
+                continue
+            cur.token = a.runtime_proxy_info.token
+            cur.url = a.runtime_proxy_info.url
+            state.store.add(cur)
+            print(f"refreshed key for {name} ({s.endpoint})")
 
     wanted = dict(kv.split("=", 1) for kv in args.adopt)
     for a in assignments:
