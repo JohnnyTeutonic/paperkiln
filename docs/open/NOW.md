@@ -49,6 +49,19 @@ units. It was stopped for exactly this reason on 2 Sep.
 
 ## transfer_s2 (lr per width) LAUNCHED (12 Sep 2026)
 
+**14 Sep 00:30 update.** Stage 1 complete: lr*(256) = 2.5e-4, lr*(512) =
+5e-4, **lr*(1024) = 5e-4 by the rule's FALLBACK clause** (no rate passes
+the regime check at d=1024: every rate overfits inside 3600 steps; the
+fallback "latest median best-val step" prefers 5e-4, median best val 3.63,
+over 2.5e-4 and 1.25e-4 at 3.15-3.16). The note on that clause and its
+consequence (a narrower matched band at L again) is in
+`RESULTS_STAGE1.md`; **Jonathan decides whether to amend** (dated
+amendment before the L arm is read). Arm S stage 2 BANKED 13 Sep 23:05
+(72/72). M shards 0 and 1 running; arm L launched 00:30 at 5e-4 per the
+rule as written (tr-s2L, 24 cells). Runner fixes this night: orphaned vms
+re-adopted with work intact (`tools/colab_adopt.py`), session keys
+refreshed every 15 min (the hourly key expiry was the "reclaim" cause).
+
 Licence anchor `90791ed` (PREREGISTRATION.md + frozen analyze.py). Stage 1
 selected lr*(256) = 2.5e-4 and lr*(512) = 5e-4 (`RESULTS_STAGE1.md`);
 the d=1024 grid (`lr_L`, session tr-lrL) is 4/9 banked. Stage 2 launched
