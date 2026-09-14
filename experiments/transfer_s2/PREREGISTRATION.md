@@ -123,3 +123,22 @@ S again if its rate changes.
 script at commit d88584f (milestone band printed, deterministic F2),
 invoked with the transfer_s2 artefact roots: `--arms S=<root> M=<root>
 L=<root>`. Any change after the anchor is an amendment recorded here.
+
+## Amendments after the anchor
+
+**Amendment 1, 14 Sep 2026 13:00 (decision delegated by the author to the
+assistant on 14 Sep; recorded before the L arm is read).** The stage-1
+fallback clause ("no grid point passes the regime check: latest median
+best-val step, ties to the larger rate") selected lr*(1024) = 5e-4 over
+rates with markedly lower best validation loss (RESULTS_STAGE1.md, d =
+1024). The rule is NOT amended. Amending a selection rule after seeing
+the data it selected on would defeat the pre-registration; the licensed
+L arm therefore runs at 5e-4 as the rule chose, and the clause's
+behaviour is reported in the paper as a failure of the protocol's own
+design. In addition, an EXPLORATORY L arm is run at 1.25e-4, the rate the
+alternative clause "lowest median best val, regime check advisory" would
+have selected (`sweep_Lx.json`, twelve seeds, both lanes). It is labelled
+exploratory everywhere it appears, is analysed descriptively with the
+same frozen script, and licenses no claim. Neither arm can change the
+S-versus-M verdict, which is the study's primary reading.
+

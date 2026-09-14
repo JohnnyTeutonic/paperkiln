@@ -1,0 +1,57 @@
+{
+  "_comment": "transfer_s2 EXPLORATORY arm Lx (d=1024): the two-lane panel at lr 1.25e-4, the rate the alternative stage-1 clause (lowest median best val, regime advisory) would have selected. Labelled exploratory by Amendment 1 of PREREGISTRATION.md (14 Sep 2026); descriptive only; licenses nothing. Twelve seeds, checkpoint_every 100.",
+  "base": {
+    "arch": {
+      "preset": "gpt2-nano",
+      "custom": {
+        "d": 1024,
+        "heads": 32
+      }
+    },
+    "data": {
+      "corpus": "/content/data/corpus.txt",
+      "vocab": "/content/data/chat7b.gguf",
+      "vocab_cap": 4096,
+      "T": 256
+    },
+    "train": {
+      "batch": 4,
+      "lr": 0.000125,
+      "steps": 3600,
+      "eval_every": 100,
+      "checkpoint_every": 100,
+      "gradmap_every": 0
+    },
+    "export": {
+      "formats": []
+    }
+  },
+  "factors": {
+    "lane": [
+      {
+        "arch.custom.attention": "exact"
+      },
+      {
+        "arch.custom.attention": "swa",
+        "arch.custom.window": 64,
+        "arch.custom.sinks": 1
+      }
+    ]
+  },
+  "design": "grid",
+  "seeds": [
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32
+  ],
+  "out_root": "/content/transfer_out/s2_Lx"
+}

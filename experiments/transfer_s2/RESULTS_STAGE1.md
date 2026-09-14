@@ -88,5 +88,7 @@ lr*(1024) = 0.0005   [no grid point passes the regime check; latest median best-
 
 Reading, and a note the paper must carry. No grid point passes the regime check at d = 1024: at every rate the best validation loss falls before the last three evals, i.e. the 16x model overfits the slice inside 3600 steps at every rate tried (best step 2400-3400). The rule's fallback clause, "latest median best-val step, ties to the larger rate", therefore decides, and it selects **5e-4** (median best step 3100) over 1.25e-4 (2800) and 2.5e-4 (2700). The fallback was written to prefer the rate still improving when nothing has converged; here the rate it prefers peaks later because it learns more slowly, not because it is healthier: its median best val is 3.63 against 3.15-3.16 at the two lower rates, a gap larger than the whole S-M spread at stage 1. Consequence for stage 2: at 5e-4 the L arm reaches the S-arm milestones down to about 3.6 and not the lower ones, so the matched band at L will again be narrower than at M (whose selected rate reaches 3.22). The rule is applied because it was fixed before any run; whether to amend the fallback (a dated amendment, before the stage-2 L arm is read) is the author's decision and is recorded here so the choice is visible either way. If amended to "lowest median best val, regime advisory", the selection would be 1.25e-4 (3.146), which sits at the grid's lower edge and would itself argue for one more grid point below it.
 
-lr*(1024) = 5e-4 (rule as written).
+lr*(1024) = 5e-4 (rule as written). Decision 14 Sep 13:00: the rule is
+not amended (PREREGISTRATION.md, Amendment 1); an exploratory arm at
+1.25e-4 is run alongside, labelled as such.
 
