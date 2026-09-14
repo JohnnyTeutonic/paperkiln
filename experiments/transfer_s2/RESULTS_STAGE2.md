@@ -134,9 +134,8 @@ land on; the fixed rate landed study 1 on the agreeing one.
 
 ## What is not in this file
 
-No per-milestone breakdown of F1: the frozen script reports the
-aggregate over the reached band, as pre-registered. A per-milestone
-table would be a post-hoc, descriptive addition and is labelled as such
-if it is ever produced. No paper text. The transfer_s1 registry rows
+No change to the frozen script: the per-milestone breakdown and the
+seed subsampling above live in `posthoc/`, are labelled post-hoc, and
+do not alter the licensed aggregate. No paper text. The transfer_s1 registry rows
 (`T1-structure-transfers`, `T1-fixed-lr-mistunes`) are not edited here;
 their status is the author's call now that the sequel has reported.
