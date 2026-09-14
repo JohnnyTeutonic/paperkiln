@@ -133,7 +133,7 @@ The extractor now ships standalone — no C++ build, no repo checkout:
 pip install paperkiln-fetch          # (PyPI upload pending; until then:
                                      #  pip install ./paperkiln_fetch)
 paperfetch 1706.03762                # evidence-carrying summary
-paperfetch 2302.13971 --emit-hf cfg.json
+paperfetch 2302.13971 --  -hf cfg.json
 ```
 
 `--emit-hf` writes a config that `transformers.AutoConfig.from_pretrained`
@@ -217,14 +217,35 @@ That makes it three things at once:
 
 ## Quick start
 
+Build, fetch a public corpus, train a small model, chat with it from
+Python. Needs a C++17 compiler, CMake 3.16+, Python 3.9+ and about half
+an hour of CPU for the 3,000-step run (the 300-step one takes five
+minutes).
+
 ```bash
-git clone git@github.com:JohnnyTeutonic/paperkiln.git
+git clone https://github.com/JohnnyTeutonic/paperkiln.git
 cd paperkiln
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j$(nproc)
-ctest --output-on-failure     # gradchecks + unit + integration tests
+make -j$(nproc) mtstudio            # or plain make -j for everything
+ctest --output-on-failure           # optional: gradchecks + unit + integration tests
+cd ..
+
+pip install huggingface_hub gguf transformers torch tokenizers safetensors
+python tools/get_tinystories_data.py            # -> data/tinystories_valid.txt + releases/tinystories_vocab.gguf
+
+./build/mtstudio run specs/tinystories-llama-3k.json     # train, eval, export safetensors + GGUF
+python tools/hf_export.py runs/tinystories-llama-3k --hf-dir runs/tinystories-llama-3k/hf
+python tools/hf_chat.py runs/tinystories-llama-3k/hf      # type a prompt at you>
 ```
+
+The corpus is a slice of TinyStories (Eldan & Li, 2023) and the
+vocabulary is built from it, so nothing here depends on a file from the
+author's machine. `docs/CHAT_WITH_A_PAPERKILN_MODEL.md` covers what the
+exported folder contains, the ember.cpp route from the GGUF, and why the
+chat script runs its own sampling loop. `tools/hf_export_verify.py` is
+the receipt that the Python path reproduces `mtstudio sample` token for
+token under greedy decoding.
 
 ## The studio — spec in, chatting model out
 
@@ -321,7 +342,7 @@ yourself and pick the attention mechanism.
   },
   "data": {
     "corpus":    "data/train.txt",    // raw text
-    "vocab":     "releases/chat7b.gguf",  // vocabulary lifted from a GGUF
+    "vocab":     "releases/tinystories_vocab.gguf",  // any GGUF: its tokenizer.ggml.tokens is the vocabulary (tools/get_tinystories_data.py builds one)
     "vocab_cap": 4096,                // truncate to the top-N tokens
     "T":         256                  // context length
   },
