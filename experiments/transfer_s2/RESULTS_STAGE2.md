@@ -97,6 +97,34 @@ not used to discard anything.
    fallback clause (`RESULTS_STAGE1.md`). Its band will be narrower; it
    is a trend point, and it cannot rescue F1, which failed at S vs M.
 
+## The L arm, licensed (d = 1024 at lr 5e-4, the fallback-clause rate; banked 14 Sep 23:20)
+
+Receipt `receipts/ANALYSIS_stage2_SML_20260914.txt`; runs under
+`receipts/s2_L/` (24: twelve seeds, lanes exact and swa64s1). The frozen
+script still prints the L lines under the transfer_s1 label
+"[preliminary, 3 seeds]"; the arm has twelve seeds, and the label is a
+fossil of the frozen text, not a description of this arm.
+
+```
+  L: 800:12/12  1600:0/12  2400:0/12  3200:0/12  3600:0/12
+  F1 primary:    S vs L 1.000 (1 cell)   M vs L 1.000 (1 cell)
+  F1 fixed-step: S vs L 0.778 (9 cells)  M vs L 0.444 (9 cells)
+  Threat 2 (regime) L: 6/24
+```
+
+Reading. As RESULTS_STAGE1.md predicted the night the clause fired, L at
+5e-4 reaches the first S milestone in every seed and none of the later
+four: its median best loss (3.63) sits between the first two milestones.
+The matched comparison at L is therefore one position, and at that
+position, the early one, every orientation agrees with both S and M,
+exactly as the per-milestone decomposition of S vs M says it should
+(0.933 at 800). The L arm confirms the mechanism rather than adding a
+second test of it; the fallback clause has cost the study the later
+positions at d = 1024, which is the paper's Section on the protocol's
+own failure. The exploratory arm at 1.25e-4 (Amendment 1) is running
+and is the arm that can show the later positions at this width; it
+licenses nothing.
+
 ## Post-hoc, descriptive (added 14 Sep 2026 13:10; `posthoc/posthoc.py`, receipt `receipts/POSTHOC_20260914.txt`)
 
 Labelled post-hoc; the licensed figure remains the aggregate above.
