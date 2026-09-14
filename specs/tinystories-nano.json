@@ -1,15 +1,31 @@
 {
   "name": "tinystories-nano",
-  "arch": {"preset": "gpt2-nano"},
+  "arch": {
+    "preset": "gpt2-nano"
+  },
   "data": {
-    "corpus": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/transformer_cpp/data/tinystories-txt/train-0-small.txt",
-    "vocab": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/transformer_cpp/releases/chat7b.gguf",
+    "corpus": "data/tinystories_valid.txt",
+    "vocab": "releases/tinystories_vocab.gguf",
     "vocab_cap": 4096,
     "T": 128
   },
-  "train": {"steps": 200, "lr": 3e-3, "eval_every": 25, "checkpoint_every": 50,
-             "early_stopping": {"patience": 4, "min_delta": 0.01}},
-  "export": {"formats": ["safetensors"]},
-  "serve": {"on_finish": false},
-  "out_dir": "/tmp/mtstudio_nano"
+  "train": {
+    "steps": 200,
+    "lr": 0.003,
+    "eval_every": 25,
+    "checkpoint_every": 50,
+    "early_stopping": {
+      "patience": 4,
+      "min_delta": 0.01
+    }
+  },
+  "export": {
+    "formats": [
+      "safetensors"
+    ]
+  },
+  "serve": {
+    "on_finish": false
+  },
+  "out_dir": "runs/tinystories-nano"
 }

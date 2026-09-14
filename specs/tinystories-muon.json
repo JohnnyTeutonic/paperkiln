@@ -1,16 +1,35 @@
 {
   "name": "tinystories-muon",
-  "arch": {"preset": "llama-tiny"},
+  "arch": {
+    "preset": "llama-tiny"
+  },
   "data": {
-    "corpus": "/path/to/tinystories/train.txt",
-    "vocab": "/path/to/vocab.gguf",
+    "corpus": "data/tinystories_valid.txt",
+    "vocab": "releases/tinystories_vocab.gguf",
     "vocab_cap": 4096,
     "T": 128
   },
-  "train": {"steps": 600, "batch": 4, "optimizer": "muon", "muon_lr": 0.02,
-             "lr": 3e-3, "eval_every": 50, "checkpoint_every": 100,
-             "early_stopping": {"patience": 6, "min_delta": 0.003}},
-  "export": {"formats": ["safetensors", "gguf"]},
-  "serve": {"on_finish": true},
-  "out_dir": "/tmp/mtstudio_muon"
+  "train": {
+    "steps": 600,
+    "batch": 4,
+    "optimizer": "muon",
+    "muon_lr": 0.02,
+    "lr": 0.003,
+    "eval_every": 50,
+    "checkpoint_every": 100,
+    "early_stopping": {
+      "patience": 6,
+      "min_delta": 0.003
+    }
+  },
+  "export": {
+    "formats": [
+      "safetensors",
+      "gguf"
+    ]
+  },
+  "serve": {
+    "on_finish": true
+  },
+  "out_dir": "runs/tinystories-muon"
 }

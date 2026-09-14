@@ -1,16 +1,34 @@
 {
   "name": "tinystories-llama-3k",
-  "arch": {"preset": "llama-tiny"},
+  "arch": {
+    "preset": "llama-tiny"
+  },
   "data": {
-    "corpus": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/transformer_cpp/data/tinystories-txt/train-0-small.txt",
-    "vocab": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/transformer_cpp/releases/chat7b.gguf",
+    "corpus": "data/tinystories_valid.txt",
+    "vocab": "releases/tinystories_vocab.gguf",
     "vocab_cap": 4096,
     "T": 256
   },
-  "train": {"steps": 3000, "lr": 3e-3, "eval_every": 100, "checkpoint_every": 100,
-             "accum": 2, "gradmap_every": 10,
-             "early_stopping": {"patience": 8, "min_delta": 0.003}},
-  "export": {"formats": ["safetensors", "gguf"]},
-  "serve": {"on_finish": true},
-  "out_dir": "/tmp/mtstudio_llama3k"
+  "train": {
+    "steps": 3000,
+    "lr": 0.003,
+    "eval_every": 100,
+    "checkpoint_every": 100,
+    "accum": 2,
+    "gradmap_every": 10,
+    "early_stopping": {
+      "patience": 8,
+      "min_delta": 0.003
+    }
+  },
+  "export": {
+    "formats": [
+      "safetensors",
+      "gguf"
+    ]
+  },
+  "serve": {
+    "on_finish": true
+  },
+  "out_dir": "runs/tinystories-llama-3k"
 }

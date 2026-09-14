@@ -1,15 +1,33 @@
 {
   "name": "tinystories-llama",
-  "arch": {"preset": "llama-tiny"},
+  "arch": {
+    "preset": "llama-tiny"
+  },
   "data": {
-    "corpus": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/transformer_cpp/data/tinystories-txt/train-0-small.txt",
-    "vocab": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/transformer_cpp/releases/chat7b.gguf",
+    "corpus": "data/tinystories_valid.txt",
+    "vocab": "releases/tinystories_vocab.gguf",
     "vocab_cap": 4096,
     "T": 128
   },
-  "train": {"steps": 300, "lr": 3e-3, "eval_every": 50, "checkpoint_every": 100,
-             "accum": 2, "early_stopping": {"patience": 4, "min_delta": 0.005}},
-  "export": {"formats": ["safetensors", "gguf"]},
-  "serve": {"on_finish": true},
-  "out_dir": "/tmp/mtstudio_llama"
+  "train": {
+    "steps": 300,
+    "lr": 0.003,
+    "eval_every": 50,
+    "checkpoint_every": 100,
+    "accum": 2,
+    "early_stopping": {
+      "patience": 4,
+      "min_delta": 0.005
+    }
+  },
+  "export": {
+    "formats": [
+      "safetensors",
+      "gguf"
+    ]
+  },
+  "serve": {
+    "on_finish": true
+  },
+  "out_dir": "runs/tinystories-llama"
 }
