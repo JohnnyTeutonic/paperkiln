@@ -47,6 +47,24 @@ value and no GPU tier helps. Arm L at d=1024 is worse again.
 **Do not restart arm M as configured.** It will bank zero runs and burn
 units. It was stopped for exactly this reason on 2 Sep.
 
+## transfer_s2 STAGE 2 READ, S vs M: the falsifier fired (14 Sep 2026)
+
+**With each width at its own selected rate the curves align (M reaches
+all five S milestones 12/12) and the sign structure does NOT transfer:
+F1 = 0.627 over 75 cells, band [0.467, 0.667], not adopted; robustness
+0.630; F2 5/15; H-SCALAR rho = -0.600, the M ranking is close to the
+REVERSE of S.** The pre-registered prediction (F1 >= 0.75 everywhere,
+|rho| < 0.5) is falsified; the licensed outcome is the "protocol noise"
+negative named in PREREGISTRATION.md. The transfer_s1 concordance of 1.000
+at one milestone is thereby explained as the shared lr regime, not
+width-invariant structure. Reading: `experiments/transfer_s2/RESULTS_STAGE2.md`;
+receipt `receipts/ANALYSIS_stage2_SM_20260914.txt`; runs under
+`receipts/s2_{S,M}/`. L (two shards, fallback-clause rate) still running;
+it is a trend point and cannot rescue F1. **Author's calls pending:** the
+fallback-clause amendment question; the status of the two transfer_s1
+registry rows now that the sequel has reported; and what the paper is
+(the receipts-backed negative, with the reversal as its sharpest figure).
+
 ## transfer_s2 (lr per width) LAUNCHED (12 Sep 2026)
 
 **14 Sep 00:30 update.** Stage 1 complete: lr*(256) = 2.5e-4, lr*(512) =
