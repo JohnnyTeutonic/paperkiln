@@ -166,7 +166,7 @@ Note on the venue: TMLR's editorial policies (https://jmlr.org/tmlr/editorial-po
 - Herrmann, Lange, Eggensperger, Casalicchio, Wever, Feurer, Rügamer, Hüllermeier, Boulesteix and Bischl (2024). *Position: Why We Must Rethink Empirical Research in Machine Learning*. ICML 2024. https://arxiv.org/abs/2405.02200
   Argues that most empirical ML is exploratory dressed as confirmatory, and calls for explicit separation of the two. Our two-study structure (exploratory Study 1, confirmatory pre-registered Study 2) is a worked example of what they ask for.
 
-- Karl, Kemeter, Dax and Sierak (2024). *Position: Embracing Negative Results in Machine Learning*. arXiv. https://arxiv.org/abs/2406.03980
+- Karl, Kemeter, Dax and Sierak (2024). *Position: Embracing Negative Results in Machine Learning*. ICML 2024, PMLR 235. https://proceedings.mlr.press/v235/karl24a.html (arXiv: https://arxiv.org/abs/2406.03980)
   Argues that judging papers by predictive performance alone creates perverse incentives and proposes measures to normalise publication of negative results. Positions our negative (rank reversal) and our protocol failure (the fallback clause) as the kind of result they argue should be published.
 
 - Lipton and Steinhardt (2018). *Troubling Trends in Machine Learning Scholarship*. ICML 2018 Debates. https://arxiv.org/abs/1807.03341
@@ -277,7 +277,7 @@ Secondary, verified, not itemised: Zaheer et al. (2020), *Big Bird: Transformers
 - Nado, Gilmer, Shallue, Anil and Dahl (2021). *A Large Batch Optimizer Reality Check: Traditional, Generic Optimizers Suffice Across Batch Sizes*. arXiv. https://arxiv.org/abs/2102.06356
   Shows that with careful tuning standard optimisers match LARS and LAMB at large batch, so the reported advantage was a tuning artefact. Cite as a case where a claimed method effect was a tuning effect.
 
-- Wilson, Roelofs, Stern, Srebro and Recht (2017). *The Marginal Value of Adaptive Gradient Methods in Machine Learning*. NeurIPS 2017. https://arxiv.org/abs/1705.08292
+- Wilson, Roelofs, Stern, Srebro and Recht (2017). *The Marginal Value of Adaptive Gradient Methods in Machine Learning*. arXiv (conference venue not checked; see unverified list). https://arxiv.org/abs/1705.08292
   Argued that adaptive methods generalise worse than SGD; later work (Choi et al. 2019, above) showed the ranking depended on the search space. Cite the pair as the canonical example of a ranking that flipped under tuning.
 
 - Probst, Boulesteix and Bischl (2019). *Tunability: Importance of Hyperparameters of Machine Learning Algorithms*. JMLR 20. https://jmlr.org/papers/v20/18-444.html
@@ -310,3 +310,4 @@ None of the following may be cited without independent confirmation.
 - Kapoor et al., REFORMS: reported as later appearing in Science Advances (2024); only the arXiv record was verified, so the arXiv citation is used.
 - Melis et al. (2018), Darcet et al. (2024), Yu et al. (2020), Bordelon et al. (2024) and Probst et al. (2019): venues were confirmed by a second source (dblp, ICLR proceedings or JMLR page) but the arXiv page itself does not state the venue; the citations above use the confirmed venue.
 - Semenov et al. (2025) and Wen et al. (2025): arXiv only at time of check; no peer-reviewed venue confirmed.
+- Wilson et al. (2017), *The Marginal Value of Adaptive Gradient Methods*: commonly cited as NeurIPS 2017, but only the arXiv record was checked; cited as arXiv in refs.bib with an UNVERIFIED comment.
