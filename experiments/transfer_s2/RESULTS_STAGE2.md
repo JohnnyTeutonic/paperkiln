@@ -97,6 +97,41 @@ not used to discard anything.
    fallback clause (`RESULTS_STAGE1.md`). Its band will be narrower; it
    is a trend point, and it cannot rescue F1, which failed at S vs M.
 
+## Post-hoc, descriptive (added 14 Sep 2026 13:10; `posthoc/posthoc.py`, receipt `receipts/POSTHOC_20260914.txt`)
+
+Labelled post-hoc; the licensed figure remains the aggregate above.
+
+**Per-milestone F1, study 2 (S vs M):** 800: 0.933; 1600: 0.733; 2400:
+0.667; 3200: 0.467; 3600: 0.333 (15 cells each). The concordance decays
+monotonically along the curve, from near-complete agreement at the first
+milestone to below chance at the last. Study 1's single reached
+milestone was 800, where study 2 also agrees in 14 of 15 cells (the
+per-edge signs at 800 are identical between the studies except one tie).
+So the study-1 positive was real at its position; what the fixed rate
+did was freeze the comparison at the one position where the two widths
+agree, by stalling the larger width there.
+
+**Seeds matter:** F1 recomputed on random k-seed subsets of each arm
+(2000 draws, milestones recomputed from the S subset):
+
+```
+study 2  k=3:  median 0.653, 2.5-97.5 pct [0.493, 0.853], draws with F1 >= 0.75: 16.3 %
+         k=6:  median 0.600, [0.507, 0.733], 1.0 %
+         k=12: 0.627 (the study)
+study 1  k=3:  median 0.933, [0.733, 1.000], 96.9 %
+         k=6:  median 0.933, [0.800, 1.000], 98.9 %
+         k=12: 1.000 (the study)
+```
+
+A three-seed version of study 2 would have "passed" the pre-registered
+threshold about one draw in six; the study-1 positive is robust to seed
+count, which is the point: its problem was position, not noise.
+
+**Reading for the paper:** the sign structure of the panel agrees across
+width early in training and diverges as training proceeds, ending in
+reversal. Any single-position screen inherits the position it happens to
+land on; the fixed rate landed study 1 on the agreeing one.
+
 ## What is not in this file
 
 No per-milestone breakdown of F1: the frozen script reports the

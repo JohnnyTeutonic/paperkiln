@@ -1,0 +1,65 @@
+##### s2
+POST-HOC (s2); seeds S=12 M=12; milestones from S: 800:3.7539, 1600:3.5152, 2400:3.3491, 3200:3.2392, 3600:3.2282
+
+1. per-milestone F1 (POST-HOC; the pre-registered figure is the aggregate)
+   milestone  800: F1 = 0.933 over 15 cells
+   milestone 1600: F1 = 0.733 over 15 cells
+   milestone 2400: F1 = 0.667 over 15 cells
+   milestone 3200: F1 = 0.467 over 15 cells
+   milestone 3600: F1 = 0.333 over 15 cells
+   aggregate: 0.627 over 75 cells (should equal the frozen script's primary)
+
+2. seeds-matter (POST-HOC): F1 on random k-seed subsets, 2000 draws each
+   k= 3: median F1 0.653, 2.5-97.5 pct [0.493, 0.853], fraction of draws with F1 >= 0.75: 0.163  (n=2000)
+   k= 6: median F1 0.600, 2.5-97.5 pct [0.507, 0.733], fraction of draws with F1 >= 0.75: 0.010  (n=2000)
+   k=12: median F1 0.627, 2.5-97.5 pct [0.627, 0.627], fraction of draws with F1 >= 0.75: 0.000  (n=2000)
+
+3. per-edge majority sign at milestone 800 (POST-HOC): +1 = first lane better
+       exact vs swa16s1    S=-1  M=-1
+       exact vs swa32s1    S=-1  M=-1
+       exact vs swa64s1    S=-1  M=-1
+       exact vs swa128s1   S=-1  M=+0   <-- differs
+       exact vs swa64s0    S=-1  M=-1
+     swa16s1 vs swa32s1    S=+1  M=+1
+     swa16s1 vs swa64s1    S=+1  M=+1
+     swa16s1 vs swa128s1   S=+1  M=+1
+     swa16s1 vs swa64s0    S=+1  M=+1
+     swa32s1 vs swa64s1    S=+1  M=+1
+     swa32s1 vs swa128s1   S=+1  M=+1
+     swa32s1 vs swa64s0    S=+1  M=+1
+     swa64s1 vs swa128s1   S=+1  M=+1
+     swa64s1 vs swa64s0    S=-1  M=-1
+    swa128s1 vs swa64s0    S=-1  M=-1
+
+##### s1
+POST-HOC (s1); seeds S=12 M=12; milestones from S: 800:3.8467, 1600:3.6562, 2400:3.5051, 3200:3.3693, 3600:3.3492
+
+1. per-milestone F1 (POST-HOC; the pre-registered figure is the aggregate)
+   milestone  800: F1 = 1.0 over 15 cells
+   milestone 1600: F1 = None over 0 cells
+   milestone 2400: F1 = None over 0 cells
+   milestone 3200: F1 = None over 0 cells
+   milestone 3600: F1 = None over 0 cells
+   aggregate: 1.000 over 15 cells (should equal the frozen script's primary)
+
+2. seeds-matter (POST-HOC): F1 on random k-seed subsets, 2000 draws each
+   k= 3: median F1 0.933, 2.5-97.5 pct [0.733, 1.000], fraction of draws with F1 >= 0.75: 0.969  (n=2000)
+   k= 6: median F1 0.933, 2.5-97.5 pct [0.800, 1.000], fraction of draws with F1 >= 0.75: 0.989  (n=2000)
+   k=12: median F1 1.000, 2.5-97.5 pct [1.000, 1.000], fraction of draws with F1 >= 0.75: 1.000  (n=2000)
+
+3. per-edge majority sign at milestone 800 (POST-HOC): +1 = first lane better
+       exact vs swa16s1    S=-1  M=-1
+       exact vs swa32s1    S=-1  M=-1
+       exact vs swa64s1    S=-1  M=-1
+       exact vs swa128s1   S=-1  M=-1
+       exact vs swa64s0    S=-1  M=-1
+     swa16s1 vs swa32s1    S=+1  M=+1
+     swa16s1 vs swa64s1    S=+1  M=+1
+     swa16s1 vs swa128s1   S=+1  M=+1
+     swa16s1 vs swa64s0    S=+1  M=+1
+     swa32s1 vs swa64s1    S=+1  M=+1
+     swa32s1 vs swa128s1   S=+1  M=+1
+     swa32s1 vs swa64s0    S=+1  M=+1
+     swa64s1 vs swa128s1   S=+1  M=+1
+     swa64s1 vs swa64s0    S=+0  M=+0
+    swa128s1 vs swa64s0    S=-1  M=-1

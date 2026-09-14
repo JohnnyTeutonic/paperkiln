@@ -230,6 +230,17 @@ argument does not carry.
   widths). Table 3: all F1, H-SCALAR, F2, F3 and guard numbers, both
   studies. Table 4: amendment and clarification history, dated.
 
+## Post-hoc results in hand (14 Sep, receipt `receipts/POSTHOC_20260914.txt`)
+
+- Per-milestone F1, study 2: 0.933, 0.733, 0.667, 0.467, 0.333 at
+  800 ... 3600. Monotone decay to below chance. Study 1's one milestone
+  (800) is where study 2 agrees 14/15. **This is Fig 1's second panel
+  and the paper's central mechanism: agreement early, reversal late; a
+  fixed rate froze the comparison at the agreeing position.**
+- Seeds-matter: a 3-seed study 2 clears 0.75 in 16 % of draws; a 3-seed
+  study 1 clears it in 97 %. Study 1's flaw was position, not noise.
+- Per-edge signs at 800: identical across studies except one tie.
+
 ## Post-hoc analyses to add (all descriptive, all labelled post-hoc)
 
 1. Per-milestone F1 for study 2 (the frozen script reports the
