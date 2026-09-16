@@ -422,7 +422,7 @@ FIELD_TERMS = {
     },
     "ffn": {
         "dense": ["memory layers", "product key memory", "sparse FFN", "mixture of experts"],
-        "never edited": ["fast weights", "model editing", "test-time memory", "memory layer update"],
+        "never edited": ["fast weight", "fast weight layer", "model editing", "test-time memory"],
     },
     "normalisation": {
         "per token": ["sequence normalization", "cross-token normalization", "temporal normalization"],
