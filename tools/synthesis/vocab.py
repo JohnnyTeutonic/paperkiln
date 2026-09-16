@@ -359,3 +359,117 @@ OP_SYNONYMS = {
     "quantise": ["quantization", "quantized", "low-bit"],
     "structure": ["structured", "graph", "hierarchical"],
 }
+
+
+# The field's own words for each deficit. Second calibration failure (16 Sep
+# 2026, full run): the PID-balancing idea came back OPEN although DeepSeek's
+# "Auxiliary-Loss-Free Load Balancing" (2408.15664) is exactly a per-expert
+# bias driven by load error, because neither the query writer nor the
+# alias x op-synonym backstops ever said "load balancing". A deficit is
+# usually a named problem in the literature; these are those names. Keyed
+# by component, then by a substring of the deficit text.
+FIELD_TERMS = {
+    "kv-cache": {
+        "append-only": ["cache consolidation", "cache refinement", "cache rewrite", "revisit KV"],
+        "uniform precision": ["KV cache quantization", "mixed-precision KV", "KV cache compression"],
+        "no principled forgetting": ["KV cache eviction", "token eviction", "cache pruning"],
+        "private to one request": ["prefix caching", "KV cache reuse", "prompt caching"],
+    },
+    "attention-scores": {
+        "sums to one": ["attention sink", "null attention", "attention off by one", "selective attention"],
+        "heads are scored independently": ["head redundancy", "head pruning", "mixture of heads"],
+        "similarity is bilinear": ["optimal transport attention", "Sinkhorn attention"],
+    },
+    "moe-router": {
+        "scored independently": ["expert interaction", "expert redundancy", "expert diversity routing"],
+        "not calibrated": ["router confidence", "routing uncertainty", "calibrated routing"],
+        "open-loop": ["router feedback", "history-aware routing", "adaptive routing"],
+        "load balancing": ["load balancing", "auxiliary-loss-free", "expert capacity", "expert choice routing"],
+    },
+    "residual-stream": {
+        "additive only": ["gated residual", "highway network", "residual gating", "hyper-connections"],
+        "one width": ["adaptive width", "mixture of depths", "conditional computation"],
+    },
+    "positional-encoding": {
+        "fixed function of the integer index": ["content-dependent position", "data-adaptive positional encoding", "contextual position encoding"],
+        "extrapolation": ["length extrapolation", "length generalization", "context extension"],
+    },
+    "tokeniser": {
+        "static": ["dynamic tokenization", "adaptive tokenization", "byte-level patching", "hierarchical tokenization"],
+        "frequency-driven": ["vocabulary learning", "learned tokenizer", "end-to-end tokenization"],
+    },
+    "output-head": {
+        "calibrated": ["calibration", "overconfidence", "RLHF calibration"],
+        "abstention": ["abstention", "selective prediction", "reject option"],
+        "one-token horizon": ["multi-token prediction", "future token prediction"],
+    },
+    "sampler": {
+        "sequential": ["parallel decoding", "non-autoregressive", "speculative decoding", "diffusion language model"],
+        "no rollback": ["backtracking decoding", "rollback", "self-correction decoding", "revision"],
+        "global knobs": ["adaptive temperature", "adaptive sampling", "entropy-based decoding"],
+    },
+    "prefill": {
+        "before any token": ["time to first token", "prefill acceleration", "speculative prefill", "KV prediction"],
+        "quadratic": ["prefill sparse attention", "prompt compression", "chunked prefill"],
+    },
+    "speculative-drafting": {
+        "tokens only": ["speculative", "draft-verify", "lookahead decoding"],
+        "draft length": ["adaptive draft length", "dynamic speculation", "draft confidence"],
+    },
+    "layer-schedule": {
+        "same depth": ["early exit", "adaptive computation", "mixture of depths", "layer skipping"],
+        "no loop": ["looped transformer", "recurrent depth", "adaptive computation time"],
+    },
+    "ffn": {
+        "dense": ["memory layers", "product key memory", "sparse FFN", "mixture of experts"],
+        "never edited": ["fast weights", "model editing", "test-time memory", "memory layer update"],
+    },
+    "normalisation": {
+        "per token": ["sequence normalization", "cross-token normalization", "temporal normalization"],
+    },
+    "optimiser-state": {
+        "structureless": ["structured optimizer", "Shampoo", "Muon", "Kronecker-factored"],
+        "discarded": ["optimizer state reuse", "curvature reuse", "checkpoint curvature"],
+    },
+    "lr-schedule": {
+        "open-loop": ["adaptive learning rate schedule", "loss-aware learning rate", "learning rate control"],
+    },
+    "training-objective": {
+        "single horizon": ["multi-token prediction", "future prediction objective", "lookahead loss"],
+        "no calibration": ["calibration loss", "proper scoring rule training", "calibrated language model"],
+    },
+    "data-order": {
+        "no replay": ["experience replay", "data replay", "revisiting examples", "loss-based sampling"],
+        "mixture is fixed": ["data mixture optimization", "online data selection", "curriculum learning"],
+    },
+    "weights-at-inference": {
+        "static": ["test-time training", "test-time adaptation", "online adaptation", "fast weights"],
+    },
+    "attention-topology": {
+        "fixed before the content": ["content-based sparse attention", "dynamic sparse attention", "learned attention pattern"],
+        "causal masking forbids": ["bidirectional refinement", "non-causal", "prefix LM", "encoder-decoder"],
+    },
+    "gradient": {
+        "noisy": ["gradient noise", "gradient variance reduction", "gradient filtering"],
+    },
+    "checkpoints": {
+        "trajectory": ["checkpoint averaging", "weight averaging", "model soup", "LAWA"],
+    },
+    "context-window": {
+        "uniform cost": ["long context compression", "context pruning", "token importance"],
+    },
+    "multi-head": {
+        "always all on": ["head routing", "mixture of heads", "head sparsity", "dynamic heads"],
+    },
+    "serving-batch": {
+        "independent": ["cross-request cache sharing", "batched inference sharing", "prefix sharing"],
+    },
+}
+
+
+def field_terms(component, deficit):
+    """Field vocabulary for a (component, deficit) pair, by substring match."""
+    for key, terms in FIELD_TERMS.get(component, {}).items():
+        if key in deficit:
+            return terms
+    return []

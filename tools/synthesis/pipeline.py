@@ -134,6 +134,20 @@ CONTROLS = [
         "ops": ["rewrite", "denoise"],
     },
     {
+        "id": "ctl-pid", "control": True, "expect": "TAKEN", "expect_ref": "2408.15664 (Auxiliary-Loss-Free Load Balancing: per-expert bias driven by load error)",
+        "component": "moe-router",
+        "deficit": "load balancing is imposed by an auxiliary loss that fights the quality objective",
+        "mechanism": "feedback-control",
+        "ops": ["feedback", "schedule"],
+    },
+    {
+        "id": "ctl-hebbffn", "control": True, "expect": "TAKEN", "expect_ref": "2212.02475 (Meta-Learning Fast Weight Language Models) and 2601.00671 (Fast-weight Product Key Memory)",
+        "component": "ffn",
+        "deficit": "its memory is fixed at training time and never edited by the stream",
+        "mechanism": "hebbian-fast-weights",
+        "ops": ["adapt", "rewrite"],
+    },
+    {
         "id": "ctl-choquet", "control": True, "expect": "ADJACENT", "expect_ref": "2607.26164 (Choquet MoE aggregation in IR spectroscopy; different purpose)",
         "component": "moe-router",
         "deficit": "experts are scored independently, so top-k cannot express that two experts are redundant or complementary",
@@ -254,7 +268,13 @@ def backstop_queries(idea):
         for op in ops:
             syn = vocab.OP_SYNONYMS.get(op, [op])[:4]
             out.append(f'all:"{a}" AND (' + " OR ".join(f'all:"{x}"' if " " in x else f"all:{x}" for x in syn) + ")")
-    return out[:4]
+    # the field's own names for the deficit, with no component alias at all:
+    # this is what finds "auxiliary-loss-free load balancing" for a PID router
+    terms = vocab.field_terms(idea["component"], idea.get("deficit", ""))
+    if terms:
+        out.append("(" + " OR ".join(f'all:"{t}"' for t in terms[:4]) + ")")
+        out.append(f'all:"{aliases[0]}" AND (' + " OR ".join(f'all:"{t}"' for t in terms[:4]) + ")")
+    return out[:6]
 
 
 def arxiv_search(q, n=8):
