@@ -187,7 +187,18 @@ def gen_batch(batch):
                      f"MECHANISM {r['mechanism']} ({mech}); negating ops {r['ops']}")
     user = ("TESTBED: " + vocab.TESTBED + "\n\nINVARIANTS available: " + "; ".join(vocab.INVARIANTS)
             + "\n\nTRIPLES:\n" + "\n".join(lines))
-    out = parse_json(ask(GEN_MODEL, GEN_SYSTEM, user, max_tokens=12000))
+    out = None
+    for attempt in range(2):
+        try:
+            out = parse_json(ask(GEN_MODEL, GEN_SYSTEM, user, max_tokens=12000))
+            break
+        except ValueError as e:
+            print(f"  [gen] unparseable batch ({str(e)[:60]}); retry {attempt + 1}", flush=True)
+            user = user + "\n\nReturn ONLY a valid JSON array. Escape quotes inside strings. No prose."
+    if out is None:
+        return []  # leave the batch uncached so a later run retries it
+    if isinstance(out, dict):
+        out = [out]
     by = {o.get("id"): o for o in out if isinstance(o, dict)}
     res = []
     for r in batch:
@@ -202,7 +213,7 @@ def gen_batch(batch):
     return res
 
 
-def stage_generate(limit, control, batch_size=8, ids=None):
+def stage_generate(limit, control, batch_size=6, ids=None):
     cands = enumerate_candidates(control)
     if ids:
         cands = [c for c in cands if c["id"] in ids]
@@ -213,7 +224,13 @@ def stage_generate(limit, control, batch_size=8, ids=None):
     print(f"generate: {len(todo)} to do ({len(done)} cached)", flush=True)
     for i in range(0, len(todo), batch_size):
         batch = todo[i:i + batch_size]
-        rows = gen_batch(batch)
+        try:
+            rows = gen_batch(batch)
+        except Exception as e:  # one bad batch must not end the run
+            print(f"  [gen] batch failed: {type(e).__name__}: {str(e)[:100]}", flush=True)
+            rows = []
+        if not rows:
+            continue
         append_jsonl(os.path.join(OUT, "ideas.jsonl"), rows)
         kept = sum(1 for r in rows if not r.get("reject"))
         print(f"  batch {i // batch_size + 1}: {kept}/{len(rows)} kept", flush=True)
