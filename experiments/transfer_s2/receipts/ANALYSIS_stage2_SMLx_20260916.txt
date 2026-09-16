@@ -3,7 +3,7 @@ transfer_s1 PRE-REGISTERED ANALYSIS — does structure transfer?
 ====================================================================
 Threat 2 (regime) S: best_val within last 3 evals in 47/72 runs
 Threat 2 (regime) M: best_val within last 3 evals in 19/72 runs
-Threat 2 (regime) L: best_val within last 3 evals in 0/21 runs
+Threat 2 (regime) L: best_val within last 3 evals in 0/24 runs
 Threat 3 (protocol drift) M: Delta(1200) negative 5/12 (need >= 8/12; S arm precedent 15/15)
 
 Matched val-loss milestones (from S arm L1 median):

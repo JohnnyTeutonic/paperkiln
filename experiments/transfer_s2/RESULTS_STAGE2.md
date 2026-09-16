@@ -125,6 +125,61 @@ own failure. The exploratory arm at 1.25e-4 (Amendment 1) is running
 and is the arm that can show the later positions at this width; it
 licenses nothing.
 
+## The Lx arm, exploratory (d = 1024 at lr 1.25e-4, Amendment 1; banked 16 Sep 13:33)
+
+Receipt `receipts/ANALYSIS_stage2_SMLx_20260916.txt` (the frozen script
+with `L=s2_Lx`); runs under `receipts/s2_Lx/` (24: twelve seeds, lanes
+exact and swa64s1). Labelled exploratory by Amendment 1; descriptive
+only; licenses nothing. The "[preliminary, 3 seeds]" label is the same
+fossil as above: twelve seeds were used.
+
+```
+  L: 800:12/12  1600:12/12  2400:12/12  3200:12/12  3600:12/12
+  F1 primary:    S vs L 0.800 (5 cells)   M vs L 0.600 (5 cells)
+  F1 fixed-step: S vs L 1.000 (9 cells)   M vs L 0.556 (9 cells)
+  Threat 2 (regime) L: 0/24
+```
+
+Lane summaries (from the run receipts; `best` is the minimum eval
+loss, `final` the loss at step 3600):
+
+```
+  exact:   best median 3.147 [3.131, 3.175] at median step 2800; final median 3.231
+  swa64s1: best median 3.221 [3.153, 3.255] at median step 2700; final median 3.369
+  licensed L at 5e-4, for contrast: exact best median 3.634; swa64s1 3.656
+```
+
+Reading. At the rate the alternative clause would have chosen, d = 1024
+reaches every S milestone in every seed on the exact lane, and its
+median best loss (3.147) is the lowest of the three stage-2 arms (S
+3.228 at its selected rate, M 3.225). The fallback rate cost the study a
+working L arm, not a marginal one. The regime check now fails the other
+way: the best loss sits within the last three evals in none of the 24
+runs, because every run passes its minimum near step 2800 and rises
+afterwards. The clause that read 1.25e-4 as under-trained from the
+stage-1 short runs would read this arm as over-trained; the check is
+sensitive to position in both directions, which is the same lesson as
+the post-hoc decomposition, seen from the protocol's side.
+
+The one edge present at all three widths (exact vs swa64s1) has milestone
+signs S (-,+,+,+,+), M (-,+,0,+,+), Lx (-,-,+,+,+): the window lane leads
+early and trails late at every width, and the crossing moves later along
+the loss curve as width grows (between 800 and 1600 at S, between 1600
+and 2400 here). Seed-mean Delta(swa64s1 - exact) at the milestones:
+S -0.038, +0.013, +0.033, +0.031, +0.050; M -0.013, +0.005, +0.005,
++0.018, +0.030; Lx -0.068, -0.017, +0.012, +0.031, +0.033. At fixed
+steps the Lx signs match S at all nine slices and M at five. One edge,
+twelve seeds, one rate: it shows that the early-agreement,
+late-divergence pattern is visible on a single edge at d = 1024 once
+the width is trained to the same positions, and nothing more.
+
+Provenance note. The arm was run as one unsharded session, then as two
+shards after a session loss; the shard-0 driver stopped at a count of
+twelve that included odd-numbered runs from the first launch, so three
+runs (018, 020, 022; the swa64s1 lane, seeds 27, 29, 31) were computed
+last, from their partial checkpoints, in a third session (`tr-s2Lxc`).
+All 24 receipts are in the repo; the analysis above is at 24.
+
 ## Post-hoc, descriptive (added 14 Sep 2026 13:10; `posthoc/posthoc.py`, receipt `receipts/POSTHOC_20260914.txt`)
 
 Labelled post-hoc; the licensed figure remains the aggregate above.

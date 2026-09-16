@@ -6,26 +6,25 @@ stale NOW.md is worse than none.*
 
 **Last updated: 16 Sep 2026, ~08:00 AEST.**
 
-## RUNNING: the last three runs of the exploratory Lx arm (tr-s2Lxc)
+## NOTHING IS RUNNING (16 Sep 2026, 14:00)
 
-Exploratory arm Lx (d=1024, lr 1.25e-4, Amendment 1; licenses nothing)
-banked 21/24 runs by 07:31 on 16 Sep. Shard 0's driver stopped at a
-count of 12 because the unsharded first launch had already produced
-odd-numbered runs; run_018 (c01 s27), run_020 (c01 s29) and run_022
-(c01 s31) were never computed. A clean local-out
-`/mnt/c/ml_artifacts/transfer/s2_Lxc` (nine finished even runs, partials
-018@600 and 020@100) is being driven as `--shard 0/2 --expect 12`,
-session `tr-s2Lxc`, log `s2_Lxc_driver.log`. When it reports ARM
-COMPLETE: copy its three new runs into `s2_Lx/runs`, re-copy receipts
-into `experiments/transfer_s2/receipts/s2_Lx/`, and re-run
-`analyze.py --arms S=s2_S M=s2_M L=s2_Lx` over the receipt
-`ANALYSIS_stage2_SMLx_20260916.txt` (the current one is at 21 runs).
+The exploratory Lx arm (d=1024, lr 1.25e-4, Amendment 1) is BANKED at
+24/24 and analysed: `experiments/transfer_s2/receipts/ANALYSIS_stage2_SMLx_20260916.txt`,
+run receipts under `receipts/s2_Lx/`, reading in `RESULTS_STAGE2.md`
+("The Lx arm, exploratory"), paragraph written into the TMLR draft
+(Section 8, "The exploratory arm"). No Colab sessions, no drivers. The
+three runs the shard-0 driver skipped (018/020/022) were finished from
+their partials in session `tr-s2Lxc`; provenance is in RESULTS_STAGE2.md.
 
-Preliminary reading at 21 runs (exact lane complete, 12/12): at
-lr 1.25e-4 the d=1024 panel reaches ALL FIVE matched milestones 12/12,
-where the licensed L arm at 5e-4 reached only the 800 milestone. The
-S-vs-M numbers are unchanged (F1 0.627 not adopted; rho -0.600). No
-paper text and no ATLAS rows from this arm until the 24-run receipt.
+Headline of the arm, descriptive: at the alternative clause's rate the
+d=1024 exact lane reaches all five milestones 12/12 with the lowest
+median best loss of the three arms (3.147); the regime check fails the
+other way (0/24, every run past its minimum by 3600); the one shared
+edge shows the early-lead, late-trail crossing at every width, moving
+later with width. Licenses nothing.
+
+What is left on the study: the s1 registry rows (author's call); the
+paper's final pass; nothing to run.
 
 ## Done
 
