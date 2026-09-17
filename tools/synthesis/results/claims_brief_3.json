@@ -1,0 +1,74 @@
+[
+ {
+  "id": "deeper-beats-wider",
+  "claim": "At fixed parameters, deeper models beat wider ones for language modelling",
+  "component": "layer-schedule",
+  "origin": "Kaplan et al. 2020 (shape matters little); Levine et al. 2020 (depth-width optimum); practice favours depth",
+  "evidence_scale": "Kaplan: shape is a weak effect across a range; Levine: an optimal depth per width",
+  "test": "fixed params, layers x d grid, matched tokens, 12 seeds; is there an optimum at 10M to 60M"
+ },
+ {
+  "id": "parallel-blocks-free",
+  "claim": "Parallel attention and MLP blocks (GPT-J, PaLM) cost nothing in quality",
+  "component": "residual-stream",
+  "origin": "GPT-J (Wang & Komatsuzaki 2021); PaLM reports a small loss at 8B, none at 62B",
+  "evidence_scale": "PaLM: degradation at small scale, vanishing at large; rarely tested with seeds",
+  "test": "sequential vs parallel blocks at matched params, 12 seeds, nano scale"
+ },
+ {
+  "id": "residual-necessary",
+  "claim": "Residual connections are necessary; plain deep stacks do not train",
+  "component": "residual-stream",
+  "origin": "He et al. 2016; transformer practice",
+  "evidence_scale": "true at depth; at 2 to 4 layers untested and possibly false",
+  "test": "residual vs highway vs plain at 2, 4, 8 layers, matched params, 12 seeds"
+ },
+ {
+  "id": "tied-embeddings-free",
+  "claim": "Tying input and output embeddings costs nothing at small scale and saves parameters",
+  "component": "output-head",
+  "origin": "Press & Wolf 2017; GPT-2 practice; untied in large models since LLaMA",
+  "evidence_scale": "Press & Wolf: LSTM LMs; transformer evidence anecdotal; large models untie for a reason nobody states with numbers",
+  "test": "tied vs untied at matched params (d adjusted), 12 seeds, both families"
+ },
+ {
+  "id": "vocab-bigger-better",
+  "claim": "Larger vocabularies help at every scale",
+  "component": "tokeniser",
+  "origin": "Tao et al. 2024 (Scaling laws with vocabulary); LLaMA 3 128k vocab",
+  "evidence_scale": "Tao et al.: optimal vocab grows with compute, i.e. small models want SMALL vocabularies",
+  "test": "vocab 1k to 32k at matched params (embedding counted), matched bytes, 12 seeds, bits per byte"
+ },
+ {
+  "id": "repetition-harms",
+  "claim": "Repeating data beyond about four epochs harms language models",
+  "component": "data-order",
+  "origin": "Muennighoff et al. 2023 (Scaling Data-Constrained Language Models)",
+  "evidence_scale": "shown at 100M to 9B; the four-epoch figure is quoted as universal",
+  "test": "1 to 32 epochs on a fixed slice at matched steps, 12 seeds, nano scale"
+ },
+ {
+  "id": "curriculum-useless",
+  "claim": "Data ordering and curricula do not help language-model pretraining",
+  "component": "data-order",
+  "origin": "folklore; Campos 2021; mixed results since",
+  "evidence_scale": "mixed at scale; at nano scale untested with seeds",
+  "test": "random vs easy-to-hard (by unigram loss) vs hard-to-easy, matched tokens, 12 seeds"
+ },
+ {
+  "id": "dropout-unnecessary",
+  "claim": "Dropout is unnecessary for LLM pretraining and only hurts",
+  "component": "training-objective",
+  "origin": "practice since GPT-3 (dropout 0); Liu et al. 2023 (Dropout Reduces Underfitting) argues early dropout helps",
+  "evidence_scale": "mixed; at nano scale with a small corpus dropout may matter",
+  "test": "dropout 0 vs 0.1 vs early-only, matched tokens, 12 seeds, single-epoch and multi-epoch regimes"
+ },
+ {
+  "id": "aux-loss-needed",
+  "claim": "MoE routers collapse without a load-balancing auxiliary loss",
+  "component": "moe-router",
+  "origin": "Shazeer et al. 2017; Switch Transformer 2021",
+  "evidence_scale": "collapse observed at scale; loss-free balancing (DeepSeek 2024) shows a bias suffices; small-scale seeds rare",
+  "test": "no balancing vs aux loss vs bias at matched budget, 12 seeds; dead-expert counts"
+ }
+]

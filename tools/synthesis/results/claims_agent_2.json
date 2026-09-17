@@ -1,0 +1,321 @@
+[
+ {
+  "id": "qknorm-stabilises",
+  "verdict": "TESTED-WEAK",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2309.14322",
+    "title": "Small-scale proxies for large-scale Transformer training instabilities (Wortsman et al.)",
+    "year": 2023,
+    "quote": "By measuring the relationship between learning rate and loss across scales, we show that these instabilities also appear in small models when training at high learning rates, and that mitigations previously employed at large scales are equally effective in this regime. ... Without qk-layernorm, the learning rate at which models diverge becomes smaller with increasing model size. By contrast, models with qk-layernorm exhibit considerably lower LR sensitivity and train to low loss at high learning rates.",
+    "what_it_shows": "The alternative (no qk-layernorm) is actually run, at 10M to 4.8B parameters, across LR sweeps, matched steps. Single seed throughout; no seed count reported. The stability half of the claim is tested; the 'free in quality' half is only visual (curves overlap at low LR in Fig. 1) and never quantified at the per-arm optimal LR."
+   },
+   {
+    "id_or_url": "arXiv:2410.16682",
+    "title": "Methods of improving LLM training stability (Rybakov et al.)",
+    "year": 2024,
+    "quote": "Reproducing training instabilities can be costly, so we use a small language model with 830M parameters and experiment with higher learning rates to force models to diverge. ... we observe significant perplexity improvements for all three methods in comparison to the baseline model.",
+    "what_it_shows": "830M model, QK-layernorm and variants vs baseline; perplexity gains reported but single seed and the gain is delivered through a higher LR ceiling rather than at a fixed LR."
+   },
+   {
+    "id_or_url": "arXiv:2501.00656",
+    "title": "2 OLMo 2 Furious (OLMo Team)",
+    "year": 2025,
+    "quote": "Applying layer norm after the attention and feedforward layers along with a QK-norm improves stability compared to a more standard pre-attention layer norm, reducing the spike score of the gradients from 0.108 to 0.069 when applied together. In isolation, neither of these changes yield good results, but together they improve both the growth and the spikiness of the L2 norm of the gradient.",
+    "what_it_shows": "Large-scale stability ablation, one run per arm; QK-norm is confounded with the post-norm reordering (they report it does not help in isolation)."
+   },
+   {
+    "id_or_url": "arXiv:2511.21377",
+    "title": "Controlling changes to attention logits (Anson et al.)",
+    "year": 2025,
+    "quote": "Applying normalization to queries and keys, known as 'QK norm', fixes stability issues in practice, but is not always applicable. For example, QK norm is not compatible with Multi Latent Attention (MLA).",
+    "what_it_shows": "~1B Qwen3-style model, 5k steps, single seed; QK norm is the strong baseline and the proposed alternative is slightly worse in MHA, indirect evidence that QK norm costs nothing at that scale but no seeds and no matched-budget quality measurement."
+   }
+  ],
+  "gap": "No study runs with/without QK-norm at the per-arm optimal LR with seeds; a 12-seed matched-budget nano test would establish whether 'free in quality' holds at the tuned LR (not just that it raises the LR ceiling) and whether attention-logit growth is even present at 10M to 60M parameters.",
+  "confidence": 0.7,
+  "notes": "Prior is right that Wortsman is the small-scale proxy, but it is single-seed and the quality claim is visual. Every positive result conflates two effects: LR-ceiling extension and per-LR quality. The nano test must sweep LR per arm or it will simply re-measure the LR ceiling. Two caveats for the design: QK-norm is incompatible with MLA, and a widely circulated (non-peer-reviewed) argument says it harms long-context retrieval by stripping query magnitude; neither is tested at nano scale."
+ },
+ {
+  "id": "softmax-temperature-scale",
+  "verdict": "TESTED-WEAK",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2404.05728",
+    "title": "An Empirical Study of muP Learning Rate Transfer (Lingle)",
+    "year": 2024,
+    "quote": "Studying over a dozen ablations with up to 1.2B parameters and 33B tokens and a large-scale experiment with up to 10B parameters and 190B tokens, we observe a positive answer for most settings. ... the usual 1/sqrt(D) attention scale appears quite suboptimal, yielding worse performance ... The same seed is used for all experiments. ... For STP Attention Scale with fixed D in {32,128}, float32 precision resolves the lack of transfer.",
+    "what_it_shows": "The only head-to-head 1/sqrt(D) vs 1/D transformer comparison found: widths 128/512/2048, head dim fixed at 128, single seed in bf16; 1/D gives lower loss and transfers, 1/sqrt(D) is worse and its transfer failure was partly a bf16 artefact (resolved in fp32 with 3 seeds). Because head dim is fixed, this is a constant-factor temperature test, not a width-scaling test."
+   },
+   {
+    "id_or_url": "arXiv:2203.03466",
+    "title": "Tensor Programs V: Tuning Large Neural Networks via Zero-Shot Hyperparameter Transfer (Yang et al.)",
+    "year": 2022,
+    "quote": "by transferring from 40M parameters, we outperform published numbers of the 6.7B GPT-3 model, with tuning cost only 7% of total pretraining cost.",
+    "what_it_shows": "Introduces the 1/d_head attention scale with a base-d compatibility multiplier alpha_attn; 1/sqrt(d) vs 1/d is never run head-to-head at matched budget with seeds; it is a component of the parameterization, adopted not tested."
+   },
+   {
+    "id_or_url": "arXiv:2407.05872",
+    "title": "Scaling Exponents Across Parameterizations and Optimizers (Everett et al.)",
+    "year": 2024,
+    "quote": "Our extensive empirical investigation includes tens of thousands of models trained with all combinations of three optimizers, four parameterizations, several alignment assumptions, more than a dozen learning rates, and fourteen model sizes up to 26.8B parameters.",
+    "what_it_shows": "Attention scale is set per parameterization (sqrt(h) for SP/NTK, h for muP/mean-field) as an assumption, not ablated; no seeds reported."
+   },
+   {
+    "id_or_url": "arXiv:2511.06818",
+    "title": "Learning to Focus: Focal Attention for Selective and Scalable Transformers",
+    "year": 2025,
+    "quote": "Learnable temperature rescales attention logits before softmax normalization and allows each layer to adapt the sharpness of its attention distribution.",
+    "what_it_shows": "A proposal paper: learned temperature is presented as a method, not as a controlled, seeded, matched-budget alternative to 1/sqrt(d); no learned-temperature pretraining test with seeds was found in any vocabulary."
+   }
+  ],
+  "gap": "A 12-seed nano sweep of 1/sqrt(d) vs 1/d vs learned temperature at per-arm optimal LR would be the first seeded test of the Vaswani constant; nothing in the literature separates 'the temperature constant is wrong' from 'the width exponent is wrong'.",
+  "confidence": 0.6,
+  "notes": "The claim as written conflates width with head dimension: both Vaswani's 1/sqrt(d_k) and muP's 1/d are functions of d_head, and in practice d_head is held fixed (64 or 128) while width grows, so both rules are constants and 'at every width' is vacuous unless the test scales d_head with width. Redesign: either vary d_head, or treat this as a temperature-constant test (1/sqrt(d) vs 1/d differs by ~8x to 11x at d_head 64 to 128). Prior is roughly right: an init-variance argument plus one single-seed empirical test (Lingle) showing 1/d better; muP's 1/d rule is adopted, not tested, in Everett and Yang."
+ },
+ {
+  "id": "adamw-default",
+  "verdict": "CONTESTED",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2509.02046",
+    "title": "Fantastic Pretraining Optimizers and Where to Find Them (Wen et al.)",
+    "year": 2025,
+    "quote": "Matrix-based optimizers all deliver approximately a 1.3x speedup over AdamW [for models under 520M] ... speedup decays ... to only 1.1x for 1.2B parameter models ... in each iteration, we hold all but one hyperparameter fixed at the current best values, then search the whole grid for that parameter, and accept the new value if the validation loss improves by more than Delta_1 = 3e-3.",
+    "what_it_shows": "130M to 1.2B Llama-style models, per-optimizer coordinate-descent tuning, matched tokens across 1x to 8x Chinchilla; Muon beats a well-tuned AdamW by ~1.3x at nano-to-small scale, shrinking with size. No seeds or variance reported; ranking decisions rest on 3e-3 loss deltas."
+   },
+   {
+    "id_or_url": "arXiv:2509.01440",
+    "title": "Benchmarking Optimizers for Large Language Model Pretraining (Semenov et al.)",
+    "year": 2025,
+    "quote": "We run each method 5 times with different seeds, compute the standard deviation, and report the mean wall-clock time per 100 iterations. ... we also try different gradient clipping levels, warmup steps, weight decay values, weights initialization, and learning rate schedulers. ... across model sizes used in our benchmarking of dense LLMs, we observe a major improvement of D-Muon over Muon.",
+    "what_it_shows": "Independent benchmark, 124M to 720M, 11 optimizers, wall-clock measured with 5 seeds but loss rankings single-seed; plain Muon degrades with scale and needs decoupled weight decay (D-Muon); AdEMAMix ranked best; alternatives beat tuned AdamW by ~1.1x to 1.4x."
+   },
+   {
+    "id_or_url": "arXiv:2307.06440",
+    "title": "No Train No Gain: Revisiting Efficient Training Algorithms For Transformer-Based Language Models (Kaddour et al.)",
+    "year": 2023,
+    "quote": "When pre-training BERT and T5 with a fixed computation budget using such methods, we find that their training, validation, and downstream gains vanish compared to a baseline with a fully-decayed learning rate.",
+    "what_it_shows": "The sceptical side, at matched wall-clock (reference system time): Lion and Sophia do not beat AdamW. Muon was not tested; encoder/enc-dec models."
+   },
+   {
+    "id_or_url": "arXiv:2505.02222",
+    "title": "Practical Efficiency of Muon for Pretraining (Essential AI)",
+    "year": 2025,
+    "quote": "We demonstrate that Muon, the simplest instantiation of a second-order optimizer, explicitly expands the Pareto frontier over AdamW on the compute-time tradeoff. ... We validate our findings through extensive experiments with model sizes up to four billion parameters.",
+    "what_it_shows": "100M to 4B, muP-tuned both sides; Muon needs 10 to 15 percent fewer tokens and retains efficiency past the critical batch size; single seed."
+   }
+  ],
+  "gap": "No optimizer benchmark reports seeds at the ~3e-3 loss deltas that decide rankings; a 12-seed nano test at matched tokens AND matched wall-clock with per-optimizer LR sweeps would show whether the ~1.3x Muon advantage at 100M exceeds seed noise and survives wall-clock accounting at 10M to 60M.",
+  "confidence": 0.7,
+  "notes": "The prior is backwards: it is the AdamW baseline that was under-tuned in most optimizer papers (a 2x speedup is available by tuning AdamW's LR alone), and once tuned, Muon still wins at <=500M by ~1.3x in two independent benchmarks, but the ~2x Moonshot claim does not survive and the advantage shrinks toward 1.0x to 1.1x by 1.2B. Expect Muon to beat AdamW at nano scale at matched tokens; the open questions are seed significance, wall-clock, and whether plain Muon (vs D-Muon) is stable in the muP-free regime. Kaddour's fixed-budget null did not include Muon."
+ },
+ {
+  "id": "warmup-necessary",
+  "verdict": "CONTESTED",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2002.04745",
+    "title": "On Layer Normalization in the Transformer Architecture (Xiong et al.)",
+    "year": 2020,
+    "quote": "We show in our experiments that Pre-LN Transformers without the warm-up stage can reach comparable results with baselines while requiring significantly less training time and hyper-parameter tuning on a wide range of applications.",
+    "what_it_shows": "Pre-LN trains without warmup on NMT and BERT; the alternative is actually run, but single runs, no seeds, LR not swept per arm."
+   },
+   {
+    "id_or_url": "arXiv:2410.23922",
+    "title": "Analyzing & Reducing the Need for Learning Rate Warmup in GPT Training (Kosson et al.)",
+    "year": 2024,
+    "quote": "Focusing on small-scale GPT training with AdamW/Lion ... we find that warmup helps counteract large angular updates as well as a limited critical batch size early in training. ... Not using warmup results in faster initial progress for a given learning rate, but eventually falls behind leaving a permanent gap.",
+    "what_it_shows": "124M GPT-2, OpenWebText, pre-norm, batch 480: no divergence without warmup but a lasting loss gap at fixed LR; seeds not reported; the gap can be removed by normalising update size in the optimizer."
+   },
+   {
+    "id_or_url": "arXiv:2406.09405",
+    "title": "Why Warmup the Learning Rate? Underlying Mechanisms and Improvements (Kalra & Barkeshli, NeurIPS 2024)",
+    "year": 2024,
+    "quote": "The overwhelming benefit of warmup arises from allowing the network to tolerate larger target learning rates by forcing the network to more well-conditioned areas of the loss landscape. ... test accuracy primarily depends on the target learning rate and nominally on the warmup duration.",
+    "what_it_shows": "~2M-parameter pre-LN transformers on WikiText-2 plus ResNets/MLPs; warmup's effect is through the LR ceiling; seeds not stated; scale is below the nano range."
+   },
+   {
+    "id_or_url": "arXiv:2406.19146",
+    "title": "Resolving Discrepancies in Compute-Optimal Scaling of Language Models (Porian et al.)",
+    "year": 2024,
+    "quote": "The steps taken to settle the discrepancy (namely shortening warmup and scaling learning rate and batch size) significantly decrease loss at smaller scales, but only marginally improve it at larger scales.",
+    "what_it_shows": "Long (Kaplan-style) warmup hurts small models; supports shorter-not-zero warmup; single seed."
+   }
+  ],
+  "gap": "No seeded study separates 'stability' (divergence count) from 'final loss at per-arm optimal LR'; a 12-seed nano test with LR swept per warmup arm would say whether warmup-0 loses anything once the LR is retuned, and how often it diverges at 10M to 60M.",
+  "confidence": 0.65,
+  "notes": "Prior is right. The strict claim ('necessary for stability') is false for pre-norm per Xiong and Kosson (no divergence); the softer claim ('warmup lowers final loss at a fixed LR') holds single-seed at 124M. The brief's test as written (same LR across arms) will reproduce Kosson's permanent gap and be confounded by LR tolerance; add a per-arm LR sweep or it measures the LR ceiling, not warmup. Warmup's effect also depends on batch size (Kosson ties it to early critical batch size), so fix batch across arms."
+ },
+ {
+  "id": "cosine-best",
+  "verdict": "TESTED-WEAK",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2405.18392",
+    "title": "Scaling Laws and Compute-Optimal Training Beyond Fixed Training Durations (Hägele et al.)",
+    "year": 2024,
+    "quote": "we observe an almost perfect match between the performance of the best cosine and cooldown schedule even for different training durations, all while exhibiting slightly less sensitivity to variations in the LR.",
+    "what_it_shows": "33M to 360M (plus 1B and 8B checks), cosine vs constant-plus-cooldown (~20 percent, 1-sqrt shape), LR swept for both; WSD matches cosine. Seeds not reported."
+   },
+   {
+    "id_or_url": "arXiv:2502.15938",
+    "title": "Straight to Zero: Why Linearly Decaying the Learning Rate to Zero Works Best for LLMs (Bergsma et al., ICLR 2025)",
+    "year": 2025,
+    "quote": "Training runs use the same random seed, so all decay functions (Linear, Cosine, etc.) and decay ratios (Constant, 10x, D2Z) have identical warmups, but note results are very consistent across seeds at this scale (appendix Figure 24). ... For 610M-parameter muP models trained to compute-optimal 20 TPP, the optimal Linear-D2Z setting achieves 0.77% lower loss than the optimal Linear-10x setting. ... Linear-D2Z slightly outperforms Cosine-D2Z in all cases.",
+    "what_it_shows": "111M to 1.7B, LR swept per schedule, matched tokens: decay-to-zero beats decay-to-10 percent consistently; linear beats cosine slightly; D2Z beats the best WSD by ~0.84 percent at 80 TPP. Single seed with an appendix seed-consistency check."
+   },
+   {
+    "id_or_url": "arXiv:2410.05192",
+    "title": "Understanding Warmup-Stable-Decay Learning Rates: A River Valley Loss Landscape Perspective (Wen et al.)",
+    "year": 2024,
+    "quote": "Understanding Warmup-Stable-Decay Learning Rates: A River Valley Loss Landscape Perspective",
+    "what_it_shows": "Mechanistic account of why a late decay recovers the cosine loss; used here only as corroboration that WSD-vs-cosine equivalence is theory-backed, not as a seeded test (quote is the title; the abstract page was not fetched)."
+   }
+  ],
+  "gap": "None of these report seed counts; a 12-seed test at 10M to 60M would show whether the 0.5 to 1 percent schedule effects (D2Z vs 10 percent floor; WSD vs cosine) exceed seed noise at nano scale, where noise is larger than at 600M.",
+  "confidence": 0.7,
+  "notes": "Prior is wrong in one part: 'cosine to ~10 percent' is not the best schedule. With per-arm LR sweeps, decay to zero (linear or cosine) is consistently better by ~0.5 to 1 percent loss (Bergsma), and WSD matching cosine (Hägele) is supported but with unreported seeds. Add a decay-to-zero arm and sweep LR per schedule (the optimal peak LR differs by schedule; Bergsma shows D2Z tolerates a higher peak). The third evidence entry is weak by construction and should be replaced if a seeded WSD-vs-cosine study surfaces."
+ },
+ {
+  "id": "weight-decay-needed",
+  "verdict": "CONTESTED",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2310.04415",
+    "title": "Why Do We Need Weight Decay in Modern Deep Learning? (Andriushchenko et al., NeurIPS 2024)",
+    "year": 2023,
+    "quote": "For underparameterized large language models trained with nearly online SGD, weight decay balances the bias-variance tradeoff in stochastic optimization leading to lower training loss. ... a 124M parameter model (known as GPT-2-Small) ... on OpenWebText ... 50 000 iterations with a batch size of 256 ... 3 different random seeds ... the final training loss is smaller for lambda equal to 0.1 and 0.3 compared to 0.",
+    "what_it_shows": "Matched iterations, 3 seeds, wd 0 vs 0.1 vs 0.3 at 124M: training loss is lower with wd, but the benefit appears only after the 10x cosine decay and is reproduced by matching the effective-LR trajectory, i.e. it is an LR-schedule effect."
+   },
+   {
+    "id_or_url": "arXiv:2510.03280",
+    "title": "Training Optimal Large Diffusion Language Models (Quokka; Ni et al.)",
+    "year": 2025,
+    "quote": "neither AR nor DLM benefits from weight decay in this regime; in fact, removing weight decay leads to faster convergence. ... removing weight decay severely degrades AR models' validation loss and benchmark performance [96 epochs on 1B unique tokens].",
+    "what_it_shows": "1B autoregressive model, 96B tokens single-epoch: wd 0 converged faster; the benefit of wd only appears under heavy data repetition. Single seed, LR presumably not re-tuned per arm; the one controlled contradiction at scale."
+   },
+   {
+    "id_or_url": "arXiv:2505.13738",
+    "title": "Power Lines: Scaling Laws for Weight Decay and Batch Size in LLM Pre-training (Bergsma et al., NeurIPS 2025)",
+    "year": 2025,
+    "quote": "Recent work suggests the AdamW timescale, tau = B/(eta lambda D), should remain constant across training settings, and we verify the implication that optimal lambda scales linearly with B, for a fixed N and D. However, as N and D scale, we show optimal tau obeys a precise power law in the tokens-per-parameter ratio, D/N.",
+    "what_it_shows": "Optimal wd is strictly positive but depends on B, eta, D and N; 0.1 is not a universal constant, and a short nano run at small batch can have an optimal lambda far from 0.1. Single seed, muP models."
+   }
+  ],
+  "gap": "A 12-seed nano test with wd swept (0, 0.01, 0.1, 0.3) and LR swept per arm, recording train and validation loss separately, would tell whether the training-loss benefit at 10M to 60M is a fixed-LR artefact of the effective-LR schedule or a genuine optimisation gain.",
+  "confidence": 0.6,
+  "notes": "Prior is mostly right (3 seeds at 124M support lower training loss with wd), but two corrections: (1) the mechanism means a wd-0 arm at the same LR is not a fair alternative, since wd acts as an LR-schedule modifier, so LR must be swept per arm; (2) '0.1' is not a magic constant (Bergsma; Semenov also found 0.5 better on short runs and 0.1 on long ones). Quokka's 1B single-epoch result is the one controlled contradiction, but single seed and no LR re-tune. The claim's 'not just generalisation' framing is well supported: nobody finds wd acting as a classical regulariser in single-epoch LM pretraining."
+ },
+ {
+  "id": "lr-scales-mup",
+  "verdict": "CONTESTED",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2203.03466",
+    "title": "Tensor Programs V: Tuning Large Neural Networks via Zero-Shot Hyperparameter Transfer (Yang et al.)",
+    "year": 2022,
+    "quote": "We show that, in the recently discovered Maximal Update Parametrization (muP), many optimal HPs remain stable even as model size changes. ... by transferring pretraining HPs from a model of 13M parameters, we outperform published numbers of BERT-large (350M parameters) ... by transferring from 40M parameters, we outperform published numbers of the 6.7B GPT-3 model.",
+    "what_it_shows": "muP LR transfer demonstrated on transformers at two scales; the SP-optimum-falls-with-width claim is shown in sweep figures, not with seeds; no seed counts reported."
+   },
+   {
+    "id_or_url": "arXiv:2404.05728",
+    "title": "An Empirical Study of muP Learning Rate Transfer (Lingle)",
+    "year": 2024,
+    "quote": "Studying over a dozen ablations with up to 1.2B parameters and 33B tokens and a large-scale experiment with up to 10B parameters and 190B tokens, we observe a positive answer for most settings, and discuss improvements otherwise. ... for all model sizes, the optimal loss in the sweep is higher [for standard parameterization] than the optimal loss for the baseline muP models. ... The same seed is used for all experiments.",
+    "what_it_shows": "Independent replication: muP LR transfer holds for most settings up to 10B; failures tied to trainable gains, bf16 attention scale and unembedding init; single seed."
+   },
+   {
+    "id_or_url": "arXiv:2407.05872",
+    "title": "Scaling Exponents Across Parameterizations and Optimizers (Everett et al.)",
+    "year": 2024,
+    "quote": "Our results show that all parameterizations, not just maximal update parameterization (muP), can achieve hyperparameter transfer; moreover, our novel per-layer learning rate prescription for standard parameterization outperforms muP.",
+    "what_it_shows": "14 sizes up to 26.8B, tens of thousands of runs: SP with per-layer LR transfers too and beats muP; the global-LR SP optimum drifts with width but not as the naive 1/width; no seeds reported."
+   },
+   {
+    "id_or_url": "arXiv:2505.22491",
+    "title": "On the Surprising Effectiveness of Large Learning Rates under Standard Width Scaling (Haas et al., NeurIPS 2025)",
+    "year": 2025,
+    "quote": "In practice, however, optimal learning rates decay slower than theoretically predicted and networks exhibit both stable training and non-trivial feature learning, even at very large widths. ... width-scaling considerations are surprisingly useful for predicting empirically maximal stable learning rate exponents which provide useful guidance on optimal learning rate exponents.",
+    "what_it_shows": "Pythia-GPT up to width 4096 / 1.4B under SP: the optimal LR falls with width but slower than 1/width (controlled-divergence regime under CE loss); seeds not stated."
+   }
+  ],
+  "gap": "Nothing measures seed noise of lr*(width) at nano scale; a 12-seed matched-token sweep would show whether the brief's non-monotone lr* (2.5e-4, 5e-4, 1.25e-4) is noise on a broad optimum (Step Law reports a broad convex optimum) or a real small-width effect, and whether the SP exponent at 10M to 60M is nearer -1 or -0.5.",
+  "confidence": 0.65,
+  "notes": "Prior needs correction in two directions. (1) '1/width under SP' is the Adam-SP theoretical prediction, but Everett and Haas both find empirically slower decay, and Everett finds SP transfers fine with per-layer LR, so the SP half of the claim is contested by the two largest sweeps in the literature. (2) The 'muP makes it constant' half is supported by three independent single-seed studies (Yang, Lingle, Everett) and would be TESTED-WEAK on its own. The nano non-monotone observation is most likely within seed noise on a broad optimum; also note that widths 256 to 1024 with fixed d_head may sit below the regime where width exponents are measurable, and the sweep grid (factor-2 steps) is coarser than the effect."
+ },
+ {
+  "id": "grad-clip-needed",
+  "verdict": "TESTED-WEAK",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2510.01578",
+    "title": "Gradient Shaping Beyond Clipping: A Functional Perspective on Update Magnitude Control",
+    "year": 2025,
+    "quote": "language modeling with a 12-layer GPT-style decoder on WikiText-103 (truncated subset) ... All models are trained with batch size 128, initial learning rate 0.001 (for Adam), and a cosine decay schedule ... repeat experiments with 3 different seeds to report average and variance. [Table 1 WikiText-103 perplexity: Baseline 41.2 +/- 1.3; Fixed Clipping 35.5 +/- 1.0]",
+    "what_it_shows": "The only seeded no-clip vs fixed-clip comparison found in a transformer LM: 3 seeds, ~100M-class GPT, matched steps. But a single LR shared across arms, so the no-clip arm is not LR-retuned, and a 14 percent perplexity gap from clipping alone is implausibly large, pointing to an LR confound."
+   },
+   {
+    "id_or_url": "arXiv:2504.02507",
+    "title": "ZClip: Adaptive Spike Mitigation for LLM Pre-Training",
+    "year": 2025,
+    "quote": "a 1B (16 layers) LLaMA model [trained on] 50 billion tokens ... 1) training without clipping, 2) clipping with fixed threshold 1.0, and 3) ZClip ... [at LR 3.0e-3] ZClip [final loss] 2.14 compared to fixed-threshold's 5.14.",
+    "what_it_shows": "The alternative (no clipping) and clip 1.0 are both run at 1B across LRs: clip 1.0 does not by itself prevent divergence at high LR, and no-clip diverges earlier; the effect is conditional on LR; seeds not specified."
+   },
+   {
+    "id_or_url": "arXiv:1905.11881",
+    "title": "Why Gradient Clipping Accelerates Training: A Theoretical Justification for Adaptivity (Zhang et al., ICLR 2020)",
+    "year": 2020,
+    "quote": "experiments in computer vision and language modeling demonstrate that clipping accelerates training error convergence and allows the training trajectory to cross non-smooth regions of the loss landscape.",
+    "what_it_shows": "Relaxed-smoothness theory plus LSTM/PTB experiments; not a transformer, not matched-budget with seeds; this is the paper usually cited for the claim."
+   },
+   {
+    "id_or_url": "https://www.gilesthomas.com/2026/02/llm-from-scratch-32b-interventions-gradient-clipping",
+    "title": "Writing an LLM from scratch, part 32b: Interventions: gradient clipping (Giles Thomas blog)",
+    "year": 2026,
+    "quote": "three places where the loss suddenly spiked up, at around global steps 4,200, 13,000, and 23,000 [unclipped] ... only two small loss spikes [clipped at 3.5] ... test set loss of 3.678 compared to the baseline's 3.692, a reduction of 0.014, or about 0.3%.",
+    "what_it_shows": "163M GPT-2 on 3.26B FineWeb tokens, single run each: spikes exist without clipping at this scale and the final-loss difference (0.3 percent) is inside typical seed noise. Hobby-scale, single seed, threshold 3.5 not 1.0."
+   }
+  ],
+  "gap": "No study at any scale runs clip 1.0 vs none vs a loose threshold with LR swept per arm and seeds, recording spike counts; the 12-seed nano test would be the first, and would also establish whether spikes occur at all at 10M to 60M with pre-norm AdamW.",
+  "confidence": 0.6,
+  "notes": "Prior ('no controlled small-scale study in wide circulation') is nearly right: the one seeded comparison is buried in Table 1 of a methods paper and is LR-confounded; Semenov tuned the clip threshold but never ablated it; AdaGC compares adaptive vs global clipping at 7B/13B, never vs none. As with QK-norm and warmup, clipping's value at nano scale may be entirely an LR-ceiling effect, so sweep LR per arm. A further confound: late-training gradient-norm growth is argued to be a weight-decay/normalisation artefact (Defazio et al. 2025, 'Why gradients rapidly increase near the end of training'), so clipping frequency late in the run is not the same phenomenon as early spikes; log both."
+ },
+ {
+  "id": "batch-critical",
+  "verdict": "CONTESTED",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2410.21676",
+    "title": "How Does Critical Batch Size Scale in Pre-training? (Zhang et al., ICLR 2025)",
+    "year": 2024,
+    "quote": "we propose a measure of CBS and pre-train a series of auto-regressive language models, ranging from 85 million to 1.2 billion parameters, on the C4 dataset. Through extensive hyper-parameter sweeps and careful control of factors such as batch size, momentum, and learning rate along with its scheduling, we systematically investigate the impact of scale on CBS. ... our results demonstrate that CBS scales primarily with data size rather than model size.",
+    "what_it_shows": "CBS measured directly (20 percent step inflation vs linear scaling) with batch 64 to 16k sequences, matched tokens; 85M model CBS ~ 2^9.5 sequences; a constant LR across batch sizes was optimal. Seeds not reported."
+   },
+   {
+    "id_or_url": "arXiv:2505.23971",
+    "title": "Critical Batch Size Revisited: A Simple Empirical Approach to Large-Batch Language Model Training (Merrill et al., NeurIPS 2025)",
+    "year": 2025,
+    "quote": "strong assumptions are required to justify gradient noise as a proxy for the CBS, which makes it unclear whether their approach should be trusted in practice. ... For both OLMo 1B and 7B models, the gradient noise scale underestimates the CBS by several orders of magnitude.",
+    "what_it_shows": "McCandlish's gradient-noise-scale proxy fails at 1B and 7B; CBS must be measured directly by branching runs; single runs per branch."
+   },
+   {
+    "id_or_url": "arXiv:2505.13738",
+    "title": "Power Lines: Scaling Laws for Weight Decay and Batch Size in LLM Pre-training (Bergsma et al., NeurIPS 2025)",
+    "year": 2025,
+    "quote": "We also study scaling laws for optimal batch size B_opt (the B enabling lowest loss at a given N,D) and critical batch size B_crit (the B beyond which further data parallelism becomes ineffective). In contrast to prior work, we find both B_opt and B_crit scale as power laws in D, independent of model size, N.",
+    "what_it_shows": "Independent confirmation that CBS grows with data (hence loss), not model size; separates B_opt from B_crit; single seed, muP."
+   },
+   {
+    "id_or_url": "arXiv:2507.07101",
+    "title": "Small Batch Size Training for Language Models: When Vanilla SGD Works, and Why Gradient Accumulation Is Wasteful (Marek et al.)",
+    "year": 2025,
+    "quote": "we revisit small batch sizes all the way down to batch size one, and we propose a rule for scaling Adam hyperparameters to small batch sizes. ... We find that small batch sizes (1) train stably, (2) are consistently more robust to hyperparameter choices, (3) achieve equal or better per-FLOP performance than larger batch sizes.",
+    "what_it_shows": "19M, 30M, 124M, 1.3B models, batch 1 to 4096, beta_2 half-life held fixed in tokens: small batches are not wasteful per FLOP, only per step; no error bars."
+   }
+  ],
+  "gap": "A 12-seed matched-token batch sweep at 10M would give the first seeded CBS estimate at nano scale and test whether the 20 percent step-inflation definition is resolvable above seed noise there; nothing in the literature goes below ~19M or reports seeds.",
+  "confidence": 0.7,
+  "notes": "Prior needs three fixes. (1) McCandlish's claim is that small batches are MORE sample-efficient and large batches waste compute above the CBS; 'small-batch training is wasteful' is a misreading (true only in steps/wall-clock), and Marek confirms per-FLOP parity down to batch 1. (2) The gradient-noise-scale proxy half of McCandlish is refuted at 1B/7B (Merrill). (3) CBS depends on data/loss, not model size (Zhang, Bergsma), so at 10M with few tokens the CBS will be small (hundreds of sequences). Design warnings: the brief's 'lr scaled' rule is itself contested (Zhang found a constant LR optimal across batch sizes for Adam), and beta_2 must be retuned at small batch (Porian; Marek) or small-batch arms will look artificially bad."
+ }
+]

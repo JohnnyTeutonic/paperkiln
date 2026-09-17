@@ -1,0 +1,328 @@
+[
+ {
+  "id": "deeper-beats-wider",
+  "verdict": "TESTED-SOLID",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2310.19956",
+    "title": "The Impact of Depth and Width on Transformer Language Model Generalization (Petty, van Steenkiste, Dasgupta, Sha, Garrette, Linzen)",
+    "year": 2023,
+    "quote": "we construct three classes of models which trade off depth for width such that the total number of parameters is kept constant (41M, 134M and 374M parameters) ... within each family, deeper models show better language modeling performance, but returns are similarly diminishing. [Body: 'Mean over 5 runs shown with error bars'; C4, 1M steps ~131B tokens; 41M family spans 1-7 layers; performance 'begins to degrade when models become too narrow', once d_ff < d_model.]",
+    "what_it_shows": "The only parameter-matched depth-width sweep with seeds at nano scale (41M, 5 runs): depth helps with rapidly diminishing returns and an interior optimum once the FFN gets narrower than d_model. Directly covers the proposed design except that the 41M family only reaches 7 layers."
+   },
+   {
+    "id_or_url": "arXiv:2601.20994",
+    "title": "The Depth Delusion: Why Transformers Should Be Wider, Not Deeper (Fahim, Karim)",
+    "year": 2026,
+    "quote": "validated across 30 transformer architectures spanning 17M to 7B parameters ... Beyond a critical depth threshold D_crit ~ W^0.44 ... adding layers increases loss despite adding parameters. [Body: 'we fix the random seed (S=42) for weight initialization and data shuffling across all experiments'; at W=512, 16L (102M) loss 3.435 beats 24L (127M) 3.468 and 32L (153M) 3.441.]",
+    "what_it_shows": "Single-seed but wide grid (2-80 layers, 256-6144 width): confirms an interior optimum and locates it at roughly 12-16 layers for d_model=512, i.e. the monotone form of the claim is false and the optimum sits inside the nano range."
+   },
+   {
+    "id_or_url": "arXiv:2402.14905",
+    "title": "MobileLLM: Optimizing Sub-billion Parameter Language Models for On-Device Use Cases (Liu et al.)",
+    "year": 2024,
+    "quote": "we trained 19 models, including 9 models with ~125M parameters and 10 models with ~350M parameters ... layers from 4 to 62 ... Deeper and thinner models outperform their shallower and wider counterparts; models with 30 or even 42 layers perform significantly better than those with 12 layers. [No seeds or variance reported.]",
+    "what_it_shows": "Single-run, downstream-accuracy evidence that at 125M depth 30-42 beats 12; the most-cited practitioner source for 'deep and thin'. Its optimum (30-42 layers at d~512) is inconsistent with Depth Delusion's ~15, which is exactly the kind of disagreement seeds would resolve."
+   },
+   {
+    "id_or_url": "https://proceedings.neurips.cc/paper/2020/hash/ff4dfdf5904e920ce52b48c1cef97829-Abstract.html",
+    "title": "Limits to Depth Efficiencies of Self-Attention (Levine, Wies, Sharir, Bata, Shashua)",
+    "year": 2020,
+    "quote": "we pinpoint a depth threshold that is logarithmic in the network width: for networks of depth below the threshold, we establish a double-exponential depth-efficiency ... for depths over the threshold, depth-inefficiency kicks in ... we further demonstrate the two depth-(in)efficiency regimes experimentally for common network depths of 6, 12, and 24.",
+    "what_it_shows": "Theory plus ablations predicting an optimal depth ~ log(width); the origin of the 'optimum per width' framing. Kaplan et al. 2020's 'shape matters little' is the weak-effect version over the same interior region."
+   }
+  ],
+  "gap": "No seeded, matched-token grid at 10-60M crosses the depth optimum: Petty's 41M family stops at 7 layers (5 runs) and the only sweep that crosses D_crit at that width is single-seed, so a 12-seed layers x d grid would give the first variance-backed location and width of the nano-scale optimum (and adjudicate MobileLLM's 30-42 vs Depth Delusion's ~15).",
+  "confidence": 0.7,
+  "notes": "Our prior is right but the claim is mis-stated: every controlled source (Petty with 5 seeds, Depth Delusion, MobileLLM, Levine, Kaplan) finds an interior optimum, not 'deeper wins'. Petty already answers the proposed test at 41M for 1-7 layers, so the study's value is the deep side of the optimum and the seed variance, not the sign. Depth Delusion is a 2026 preprint with one seed and error bars from the last 10% of training tokens; treat its exponents as provisional."
+ },
+ {
+  "id": "parallel-blocks-free",
+  "verdict": "TESTED-WEAK",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2204.02311",
+    "title": "PaLM: Scaling Language Modeling with Pathways (Chowdhery et al.)",
+    "year": 2022,
+    "quote": "Ablation experiments showed a small quality degradation at 8B scale but no quality degradation at 62B scale, so we extrapolated that the effect of parallel layers should be quality neutral at the 540B scale.",
+    "what_it_shows": "The canonical test: a single-run ablation at 8B and 62B, sequential actually run. It records a small cost at the smaller scale, which is the opposite of 'costs nothing' below 8B."
+   },
+   {
+    "id_or_url": "arXiv:2311.16867",
+    "title": "The Falcon Series of Open Language Models (Almazrouei et al.)",
+    "year": 2023,
+    "quote": "We found no measurable degradation in zero-shot performance or perplexity, in line with Chowdhery et al. (2022), and adopt this practice. [Ablation at 1B parameters, 30B tokens; seeds not stated.]",
+    "what_it_shows": "The only published sub-8B ablation: 1B / 30B tokens, single run, null result on zero-shot and Pile perplexity. No variance estimate, so 'no measurable' is bounded by one run's noise."
+   },
+   {
+    "id_or_url": "arXiv:2304.01373",
+    "title": "Pythia: A Suite for Analyzing Large Language Models Across Training and Scaling (Biderman et al.)",
+    "year": 2023,
+    "quote": "we use parallel attention and feedforward ... even though it is generally not recommended for models with less than 6B parameters ... we found that despite making choices we expected to hurt performance at smaller scales, our models perform the same as equi-parameter OPT models.",
+    "what_it_shows": "Adoption, not a test: parallel used at 70M-12B and compared to a different family (OPT) trained on different data. Widely cited as evidence that parallel is free at small scale; it is not a controlled comparison."
+   },
+   {
+    "id_or_url": "arXiv:2204.06745",
+    "title": "GPT-NeoX-20B: An Open-Source Autoregressive Language Model (Black et al.)",
+    "year": 2022,
+    "quote": "this led to a 15% throughput increase while having comparable loss curves with running them in series during early training. [Describes the mesh-transformer-jax / GPT-J origin.]",
+    "what_it_shows": "The origin claim rests on eyeballed early-training loss curves in one run; no numbers, no seeds, no end-of-training comparison."
+   }
+  ],
+  "gap": "There is no seeded sequential-vs-parallel comparison anywhere below 1B, and PaLM's own 8B run shows a cost, so a 12-seed matched-token nano test would give the first estimate of the sign and size of the parallel penalty in the regime where it is expected to be largest.",
+  "confidence": 0.8,
+  "notes": "Prior is right and can be sharpened: the literature's small-scale support is one 1B single run (Falcon) plus an uncontrolled Pythia comparison. Parameter count is identical between the two block layouts, so matching is automatic; the confound to watch is that parallel blocks change the effective depth (first MLP sees raw embeddings), so report depth alongside. Investigating-FFN paper (arXiv:2305.13297) converts pretrained BERT/RoBERTa to parallel and is not a from-scratch test."
+ },
+ {
+  "id": "residual-necessary",
+  "verdict": "TESTED-SOLID",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2608.14689",
+    "title": "A Reproducibility Study of Partial Residual Ablations in Pre-LN Transformers (Babariya)",
+    "year": 2026,
+    "quote": "training GPT-style models at 10M (TinyShakespeare) and 124M (OpenWebText) parameters ... removing the attention skip (FFNOnly configuration) causes deterministic collapse to the No-Residual floor across every seed and environment tested (mean 3.350 +/- 0.002, 3 seeds at 10M) ... a controlled 8-seed sweep ... gives mean 1.580 +/- 0.003 [AttnOnly] ... [Full residual 1.499-1.502; No Residual 3.356 at 10M/6 layers; 7.689 vs 3.263 at 124M/12 layers.]",
+    "what_it_shows": "Seeded nano-scale evidence (6-layer, 10M, 3-8 seeds) that a plain stack with no residual sits at the collapse floor while the residual model trains; also that the attention skip is the load-bearing one. Short budget (3k steps) and char-level data, single-author preprint."
+   },
+   {
+    "id_or_url": "arXiv:2302.10322",
+    "title": "Deep Transformers without Shortcuts: Modifying Self-attention for Faithful Signal Propagation (He, Martens, Zhang, Botev, Brock, Smith, Teh)",
+    "year": 2023,
+    "quote": "we show that it is possible to match the training loss of standard transformers with skipless ones by training for around 5 times longer [using E-SPA]; deep skipless transformers with standard attention suffer rank collapse and do not train.",
+    "what_it_shows": "At depth, plain skipless transformers fail; they become trainable only with a modified attention/initialisation and then need ~5x the compute. Supports 'plain stacks do not train' while refuting 'residuals are strictly necessary'."
+   },
+   {
+    "id_or_url": "arXiv:2510.00345",
+    "title": "Cutting the Skip: Training Residual-Free Transformers (ICLR 2026)",
+    "year": 2025,
+    "quote": "Plain skipless models with standard initialization: 61.4% ImageNet accuracy with AdamW versus 80.3% for the residual baseline; with the proposed Jacobian-based initialisation skipless ViTs reach parity. [12-layer ViT-B; depth ablations 9-12 layers; no seeds reported.]",
+    "what_it_shows": "Vision, single-seed, 9-12 layers: same pattern, plain skipless collapses, principled init recovers it. No shallow (2-4 layer) runs."
+   },
+   {
+    "id_or_url": "arXiv:2103.03404",
+    "title": "Attention is Not All You Need: Pure Attention Loses Rank Doubly Exponentially with Depth (Dong, Cordonnier, Loukas)",
+    "year": 2021,
+    "quote": "we find that pure attention decays in rank doubly exponentially with depth ... skip connections and MLPs are the two mechanisms that counteract this collapse.",
+    "what_it_shows": "The mechanism: rank collapse grows with depth, so the failure is predicted to be depth-dependent and mild at 2-4 layers, which is the untested region."
+   }
+  ],
+  "gap": "Nobody has run plain vs highway vs residual at 2 and 4 layers with seeds and a matched token budget: the seeded collapse result starts at 6 layers on a 3k-step char-level budget, so a 12-seed nano test would establish where the collapse depth threshold sits and whether highway gating (never run against transformers in this literature) recovers plain stacks.",
+  "confidence": 0.7,
+  "notes": "Prior is right on both halves: at >=6 layers plain stacks collapse (now with 8 seeds at 10M), at 2-4 layers it is untested and rank-collapse theory predicts the effect is small. 'Necessary' is false in the strict sense: E-SPA (He 2023) and Jacobian init (Cutting the Skip) train skipless stacks, so the claim to test is 'plain stacks with standard init and Pre-LN do not train'. Babariya's numbers also show the FFN skip can be dropped at 10M with a small cost (1.58 vs 1.50), which is a cheap extra arm."
+ },
+ {
+  "id": "tied-embeddings-free",
+  "verdict": "TESTED-WEAK",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2402.14905",
+    "title": "MobileLLM: Optimizing Sub-billion Parameter Language Models for On-Device Use Cases (Liu et al.)",
+    "year": 2024,
+    "quote": "In a 30-layer 125M model, sharing the input and output embeddings reduces the number of parameters by 16M (~11.8%) with a 0.2 points drop in average accuracy ... reallocating the saved parameters to add more layers (32 layers) gives a 0.4 points accuracy gain while still maintaining 10M fewer parameters. [No seeds or variance reported.]",
+    "what_it_shows": "The closest thing to the proposed test: tied vs untied at ~125M, and tied-plus-reinvested at near-matched parameters, decoder LM. Single run; the 0.2-0.4 point deltas are inside typical seed noise on downstream averages."
+   },
+   {
+    "id_or_url": "arXiv:2010.12821",
+    "title": "Rethinking Embedding Coupling in Pre-trained Language Models (Chung, Fevry, Tsai, Johnson, Ruder; ICLR 2021)",
+    "year": 2020,
+    "quote": "decoupled embeddings provide increased modeling flexibility ... by reallocating the input embedding parameters in the Transformer layers, we achieve dramatically better performance on standard natural language understanding tasks with the same number of parameters during fine-tuning.",
+    "what_it_shows": "Matched-parameter evidence that untying (and shrinking the input embedding) wins, but for masked-LM encoders at BERT scale, multilingual, and measured after fine-tuning; not a decoder-LM loss comparison and no seeds reported."
+   },
+   {
+    "id_or_url": "arXiv:2603.26663",
+    "title": "Weight Tying Biases Token Embeddings Towards the Output Space",
+    "year": 2026,
+    "quote": "we test only a single training run, as training runs at the billion-parameter scale are very costly, therefore we were not able to conduct statistical tests across multiple training runs, random seeds, etc. ... no consistent performance difference is observed [across eight benchmarks] ... At 70M parameters, embeddings account for 73.4% of the model, making weight tying highly impactful for parameter efficiency.",
+    "what_it_shows": "Mechanism (output gradients dominate the shared matrix early, starving early layers) with unmatched, single-run billion-scale comparisons; says explicitly that tying's cost is representational and its benefit is the parameter saving that dominates at nano scale."
+   },
+   {
+    "id_or_url": "arXiv:1608.05859",
+    "title": "Using the Output Embedding to Improve Language Models (Press, Wolf)",
+    "year": 2017,
+    "quote": "we show that tying the input and output embeddings ... improves perplexity on PTB and WikiText-2 while reducing the number of parameters. [LSTM language models; tied vs untied at the same d.]",
+    "what_it_shows": "Origin: LSTM, small corpora, unmatched parameters (tying simply removes a matrix). No transformer, no seeds."
+   }
+  ],
+  "gap": "No seeded, parameter-matched tied-vs-untied decoder comparison exists at any scale, and at 10-60M the embedding is 50-75% of the model so the reinvestment side (d or layers bought with the saved parameters) dominates the answer; a 12-seed matched test would give the first sign estimate with a variance bound in the regime where practitioners tie by default.",
+  "confidence": 0.75,
+  "notes": "Prior is right: transformer evidence is single-run (MobileLLM) or encoder-only (Chung). Large models untie for a stated reason now (2603.26663: gradient asymmetry, negligible savings above ~1B), so the 'nobody states with numbers' part of the prior is out of date. MobileLLM's reinvestment result (tied+2 layers beats untied at fewer params) is the version of the claim most worth testing; the raw tied-vs-untied-at-same-d comparison is not parameter-matched."
+ },
+ {
+  "id": "vocab-bigger-better",
+  "verdict": "CONTESTED",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2407.13623",
+    "title": "Scaling Laws with Vocabulary: Larger Models Deserve Larger Vocabularies (Tao et al.; NeurIPS 2024)",
+    "year": 2024,
+    "quote": "training models ranging from 33M to 3B parameters on up to 500B characters with various vocabulary configurations ... the optimal vocabulary size depends on the compute budget, with larger models requiring larger vocabularies. [Body: vocabularies 4K-96K at fixed non-vocabulary parameters; unigram-normalised loss; 'an overly large vocabulary cannot be utilized efficiently, leading to sub-optimal model performance'; N_v^opt ∝ N_nv^0.83; Table 1 starts at 3B (37-43K); no seeds mentioned.]",
+    "what_it_shows": "Controlled IsoFLOP grid showing an interior vocabulary optimum that grows with compute; extrapolating the fitted law puts the 33M optimum near the bottom of the 4K grid (~4-5K). Refutes 'at every scale' but matches non-vocabulary parameters, not total parameters, and reports no seeds."
+   },
+   {
+    "id_or_url": "arXiv:2501.16975",
+    "title": "Over-Tokenized Transformer: Vocabulary is Generally Worth Scaling (Huang et al.)",
+    "year": 2025,
+    "quote": "we decouple input and output vocabularies ... scaling input vocabulary consistently improves performance across model sizes with a log-linear relationship, at negligible cost, while scaling the output vocabulary does not.",
+    "what_it_shows": "The controlled evidence on the other side: for the input embedding only, larger is monotonically better at all scales tested. The claim is therefore true for the input table and false for the output head, which is the Tao result."
+   },
+   {
+    "id_or_url": "arXiv:2309.11197",
+    "title": "The Languini Kitchen: Enabling Language Modelling Research at Different Scales of Compute (Stanic et al.)",
+    "year": 2023,
+    "quote": "[GPT tiny, 53.9M parameters, 138k steps, seven vocabularies from 2,048 to 131,072, normalised perplexity:] Increasing the size of the vocabulary improves performance but has diminishing gains and significantly slow down the model ... a 16k and 32k vocabulary strikes a good balance.",
+    "what_it_shows": "A nano-scale sweep at fixed steps (not matched bytes or parameters) with a byte-normalised metric: gains flatten by 16-32K. Single run, and the embedding parameters are not counted against the budget."
+   }
+  ],
+  "gap": "Neither Tao (matches non-vocabulary parameters) nor Languini (matches steps) counts the embedding against the budget or reports seeds, so a 12-seed test at matched total parameters and matched bytes, scored in bits per byte, would show whether the nano-scale optimum is really ~4K or whether the unpaid embedding parameters are what made small vocabularies look best.",
+  "confidence": 0.7,
+  "notes": "Prior is right (Tao: small models want small output vocabularies) but incomplete: Over-Tokenized shows input-vocabulary scaling is free at every scale, so the test must separate the input table from the output head or it will average two opposite effects. Tao compares with unigram-normalised loss; bits per byte is cleaner and is what the brief proposes."
+ },
+ {
+  "id": "repetition-harms",
+  "verdict": "TESTED-WEAK",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2305.16264",
+    "title": "Scaling Data-Constrained Language Models (Muennighoff et al.; NeurIPS 2023, JMLR 2025)",
+    "year": 2023,
+    "quote": "we run a large set of experiments varying the extent of data repetition and compute budget, ranging up to 900 billion training tokens and 9 billion parameter models. We find that with constrained data for a fixed compute budget, training with up to 4 epochs of repeated data yields negligible changes to loss compared to having unique data. [Body: 'the N=8.7 billion parameter model trained for four epochs finishes training with only 0.5% higher validation loss than the single-epoch model'; seeds (5) reported only for the code/filter augmentation figures.]",
+    "what_it_shows": "The source of the four-epoch figure: 400 single-seed runs, the headline number measured at 8.7B, the fitted law's repeated-token decay parameter assumed size-independent. Not replicated below ~100M with seeds."
+   },
+   {
+    "id_or_url": "arXiv:2305.13230",
+    "title": "To Repeat or Not To Repeat: Insights from Scaling LLM under Token-Crisis (Xue et al.; NeurIPS 2023)",
+    "year": 2023,
+    "quote": "we empirically investigate repeating pre-training data for additional epochs ... the model is susceptible to overfitting, leading to multi-epoch degradation ... significant factors include dataset size, model parameters, and training objectives. [T5-Base 247M to T5-XL 2.8B; C4 subsets repeated up to 256 epochs; 5-run std for downstream evals.]",
+    "what_it_shows": "Independent confirmation at 247M-2.8B that heavy repetition degrades, that larger models degrade more, and that dropout is the one regulariser that rescues it. Encoder-decoder, extreme epoch counts, no nano scale."
+   },
+   {
+    "id_or_url": "arXiv:2205.10487",
+    "title": "Scaling Laws and Interpretability of Learning from Repeated Data (Hernandez et al.)",
+    "year": 2022,
+    "quote": "performance of an 800M parameter model can be degraded to that of a 2x smaller model (400M params) by repeating 0.1% of the data 100 times, despite the other 90% of the training tokens remaining unique.",
+    "what_it_shows": "Repetition of a subset harms non-monotonically (double descent); establishes that 'epochs' is not the only knob and that the harm peaks at moderate repeat counts."
+   },
+   {
+    "id_or_url": "arXiv:2607.04969",
+    "title": "Train Smarter, Not Longer: Memorization-Guided Data Reuse for Efficient LLM Training",
+    "year": 2026,
+    "quote": "Our preliminary experiments reveal a consistent memorization-driven regime: performance continues to improve with repetition far beyond current practice (e.g., the commonly cited four-epoch limit).",
+    "what_it_shows": "A workshop preprint contesting the four-epoch knee for downstream metrics; preliminary, sizes and seeds not stated. Enough to say the number is quoted more confidently than it is measured."
+   }
+  ],
+  "gap": "The four-epoch knee is a single-seed measurement at 8.7B plus a fitted law whose repeat-decay term is assumed independent of model size, so a 12-seed 1-32 epoch sweep at matched steps on 10-60M models would be the first direct test of whether the knee is scale-invariant and how wide it is relative to seed variance.",
+  "confidence": 0.7,
+  "notes": "Prior is right: 'four' is a rounding of 'negligible to ~4, decaying, near-worthless by ~40' and comes from >1B runs. Muennighoff's 5-seed panels exist but only for the code/filter experiments, not the epoch sweep. Design note: hold the unique-token slice fixed and vary steps (their protocol) or hold steps fixed and vary the slice (ours); the two answer different questions and the four-epoch figure belongs to the first."
+ },
+ {
+  "id": "curriculum-useless",
+  "verdict": "CONTESTED",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2108.02170",
+    "title": "Curriculum Learning for Language Modeling (Campos)",
+    "year": 2021,
+    "quote": "we explore the effect of curriculum learning on language model pretraining using various linguistically motivated curricula and evaluate transfer performance on the GLUE Benchmark. Despite a broad variety of training methodologies and experiments we do not find compelling evidence that curriculum learning methods improve language model training.",
+    "what_it_shows": "The negative origin: several competence-based curricula, no gain on GLUE; single runs, no variance."
+   },
+   {
+    "id_or_url": "arXiv:2412.05149",
+    "title": "Findings of the Second BabyLM Challenge (Hu et al.)",
+    "year": 2024,
+    "quote": "Curriculum learning was the most popular approach in the second BabyLM Challenge yet did not pay off, showing a negative coefficient on average text score (beta = -3.6, p = 0.055) in a mixed-effects regression over submitted models.",
+    "what_it_shows": "Cross-submission regression at 10M-100M words: curricula on average slightly hurt. Uncontrolled (heterogeneous teams and models) but the largest small-scale sample of attempts."
+   },
+   {
+    "id_or_url": "arXiv:2506.11300",
+    "title": "Beyond Random Sampling: Efficient Language Model Pretraining via Curriculum Learning (Zhang et al.; EACL 2026)",
+    "year": 2025,
+    "quote": "over 200 models trained on up to 100B tokens ... curriculum learning consistently accelerates convergence in early and mid-training phases, reducing training steps by 18-45% to reach baseline performance ... When applied as a warmup strategy before standard random sampling, curriculum learning yields sustained improvements up to 3.5%. [0.5B/1B models; main runs single-seed, robustness appendix repeats two settings three times; only easy-to-hard tested; final performance 'converging or remaining slightly higher than the baseline'.]",
+    "what_it_shows": "Controlled positive evidence at 0.5-1B: a speed-up that mostly washes out by the end of training, a small residual gain from curriculum-as-warmup. No hard-to-easy arm."
+   },
+   {
+    "id_or_url": "arXiv:2601.21698",
+    "title": "Curriculum Learning for LLM Pretraining: An Analysis of Learning Dynamics (Elgaar, Amiri)",
+    "year": 2026,
+    "quote": "training Pythia models (14M-410M parameters) for 300B tokens under three linguistically motivated curricula (Age-of-Acquisition, word frequency, and Verb Variation) ... one training replicate (seed 1234) per model size and data ordering ... three seeds for the 14M and 31M models. [At 14M the frequency curriculum averages 37.7 vs 35.7 random; at 410M random wins 51.0 vs ~47.5-47.9.]",
+    "what_it_shows": "The only nano-scale study with any seeds: curricula help at 14M-31M and hurt at 410M, on a 300B-token budget that is >1000x Chinchilla for the small models. Sign flips with scale; no reverse ordering."
+   }
+  ],
+  "gap": "No LM pretraining study runs the hard-to-easy control with seeds at matched tokens (Wu et al. 2021 did, in vision, and found anti-curricula never help), and the only nano-scale seeds (3 at 14M/31M) are on an extreme 300B-token budget, so a 12-seed random vs easy-to-hard vs hard-to-easy test at a Chinchilla-scale budget would give the first sign estimate in the limited-budget regime where Wu et al. predict an effect.",
+  "confidence": 0.7,
+  "notes": "Prior needs one correction: nano scale is not untested with seeds, Elgaar & Amiri have 3 seeds at 14M/31M and find a ~2-point gain, but at an unusual budget. The consistent pattern across Wu 2021, Zhang 2025 and Elgaar 2026 is that curricula buy early convergence and the end-of-training gain shrinks with compute; a matched-token nano test sits in the regime where a residual effect is most plausible, so 'useless' is the wrong null. Use a unigram-loss difficulty metric with care: Zhang found compression ratio, lexical diversity and readability the effective cues."
+ },
+ {
+  "id": "dropout-unnecessary",
+  "verdict": "CONTESTED",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2505.24788",
+    "title": "Drop Dropout on Single-Epoch Language Model Pretraining (Liu, Bauer, Manning; Findings of ACL 2025)",
+    "year": 2025,
+    "quote": "Through experiments in single-epoch pretraining of both masked (BERT) and autoregressive (Pythia 160M and 1.4B) LMs with varying levels of dropout, we find that downstream performance in language modeling, morpho-syntax (BLiMP), question answering (SQuAD), and natural-language inference (MNLI) improves when dropout is not applied during pretraining. We additionally find that the recently-introduced 'early dropout' also degrades performance over applying no dropout at all. [p = 0, 0.1, 0.3; 5 seeds; ~1.1B tokens for Pythia.]",
+    "what_it_shows": "Seeded (5), the alternatives actually run (0.1, 0.3, early dropout), 160M is one step above nano: in the single-epoch regime the claim is supported and early dropout is rejected."
+   },
+   {
+    "id_or_url": "arXiv:2409.05423",
+    "title": "STLM Engineering Report: Dropout (Hillier, Guertler, Cheng, Tan)",
+    "year": 2024,
+    "quote": "we explore the relevance of dropout for modern language models, particularly in the context of models on the scale of <100M parameters ... dropout remains effective in the overfitting scenario ... and may have relevance for improving model fit even when there is excess data. [Simple English Wikipedia multi-epoch: perplexity 2.26 without vs 1.88 with dropout 0.1; OpenWebText: minimal gains; seeds not stated.]",
+    "what_it_shows": "Nano-scale, single-run: in the multi-epoch small-corpus regime dropout helps a lot; in the single-pass regime it does roughly nothing. Contradicts 'only hurts' exactly where our prior said it might."
+   },
+   {
+    "id_or_url": "arXiv:2305.13230",
+    "title": "To Repeat or Not To Repeat: Insights from Scaling LLM under Token-Crisis (Xue et al.)",
+    "year": 2023,
+    "quote": "Most regularization techniques do not yield significant improvements, except for dropout, which demonstrates remarkable effectiveness but requires careful tuning when scaling up the model size.",
+    "what_it_shows": "At 247M-2.8B under repeated data, dropout is the regulariser that removes multi-epoch degradation; supports the regime split rather than the blanket claim."
+   },
+   {
+    "id_or_url": "arXiv:2303.01500",
+    "title": "Dropout Reduces Underfitting (Liu et al.; ICML 2023)",
+    "year": 2023,
+    "quote": "we propose early dropout: dropout is only used during the early phases of training and turned off afterwards ... models equipped with early dropout achieve lower final training loss compared to their counterparts without dropout. [ViT-T/16, Mixer-S/32, ConvNeXt-Femto, Swin-F, 5-20M parameters, ImageNet-1K.]",
+    "what_it_shows": "The early-dropout claim in the brief is vision-only at 5-20M; the two LM tests of it (Drop Dropout, STLM) disagree, Drop Dropout with seeds rejecting it."
+   }
+  ],
+  "gap": "The single-epoch half already has 5 seeds at 160M, so the study's contribution is the crossover: the same nano model on the same corpus in single-pass and 4-16 epoch regimes with 12 seeds, which no paper has run (STLM's multi-epoch result is single-run and its OpenWebText and Wikipedia arms differ in corpus as well as epochs).",
+  "confidence": 0.75,
+  "notes": "Prior is right; the split is by regime, not by conflicting results. Restate the claim as 'unnecessary in single-epoch pretraining' (TESTED-SOLID at 160M with seeds) and 'beneficial once data is repeated' (single-run evidence at <100M and 247M+). Early-only dropout for LMs is contested (STLM says early linear schedule helps; Drop Dropout with 5 seeds says it hurts), so that arm is the one with real information."
+ },
+ {
+  "id": "aux-loss-needed",
+  "verdict": "TESTED-WEAK",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2409.02060",
+    "title": "OLMoE: Open Mixture-of-Experts Language Models (Muennighoff et al.)",
+    "year": 2024,
+    "quote": "[Load-balancing ablation, OLMoE-1B-7B, 130B tokens:] without the load balancing loss, initially all tokens in the first layer are assigned to the 6th expert ... all other experts remain largely flat and are thus 'dead weights' ... Across training loss and validation losses, using the load balancing loss leads to better performance even after only a few billion tokens. [Single run; partial recovery of other experts later in training.]",
+    "what_it_shows": "The alternative (no balancing) was actually run at 1B-active scale: early collapse to one expert, worse loss, slow partial self-healing. One seed, so whether collapse is deterministic is unknown."
+   },
+   {
+    "id_or_url": "arXiv:2408.15664",
+    "title": "Auxiliary-Loss-Free Load Balancing Strategy for Mixture-of-Experts (Wang et al., DeepSeek)",
+    "year": 2024,
+    "quote": "We validate the performance of Loss-Free Balancing on MoE models with up to 3B parameters trained on up to 200B tokens. Experimental results show that Loss-Free Balancing achieves both better performance and better load balance compared with traditional auxiliary-loss-controlled load balancing strategies. [Body: 'a small alpha causes routing collapse'; 1B ppl 9.50 vs 9.56, 3B 7.92 vs 7.97; MaxVio 0.04 vs 0.72/0.52; no seeds.]",
+    "what_it_shows": "A per-expert bias with no gradient suffices and beats the aux loss; weak balancing (small alpha) still collapses. Refutes 'needs an auxiliary loss', supports 'needs some balancing'. Single runs."
+   },
+   {
+    "id_or_url": "arXiv:2202.08906",
+    "title": "ST-MoE: Designing Stable and Transferable Sparse Expert Models (Zoph et al.)",
+    "year": 2022,
+    "quote": "The ST-MoE authors experimented with turning off the auxiliary loss, and the quality was not significantly impacted, even when up to 11% of the tokens were dropped. [Fine-tuning stage only, with a capacity factor so overflow is dropped rather than routed.]",
+    "what_it_shows": "The often-cited counter-evidence is about fine-tuning under capacity limits, where imbalance shows up as dropped tokens instead of collapse; it does not bear on pretraining from scratch."
+   },
+   {
+    "id_or_url": "arXiv:2605.06415",
+    "title": "E = T*H/(O+B): A Dimensionless Control Parameter for Mixture-of-Experts Ecology",
+    "year": 2026,
+    "quote": "Through 12 controlled experiments (8 vision, 4 language) totaling over 11,000 training epochs, we establish that E >= 0.5 alone is sufficient to guarantee zero dead experts, removing the necessity for handcrafted load-balancing auxiliary losses. [CIFAR/TinyImageNet, WikiText-2/103; six-condition ablation with balance loss the sole essential revival mechanism in one framing; seeds not stated.]",
+    "what_it_shows": "The one small-scale controlled study on dead experts; it reports dead-expert counts (the metric the brief proposes) but small datasets, unclear model sizes and no seed counts."
+   }
+  ],
+  "gap": "Every collapse observation is a single run at >=1B or an unsized toy, so a 12-seed nano test with dead-expert counts across no-balancing, aux-loss and bias arms would be the first to say whether collapse is deterministic or a seed-level event, how often it self-heals (OLMoE saw partial recovery), and what the aux loss costs in perplexity relative to the bias at matched budget.",
+  "confidence": 0.75,
+  "notes": "Prior is right and the claim should be split: 'routers collapse without any balancing mechanism' is repeatedly observed but never seeded; 'an auxiliary loss is required' is refuted (DeepSeek bias, expert-choice routing, capacity-factor dropping all substitute). Capacity factor matters for the design: with a hard capacity limit (Switch), imbalance appears as dropped tokens rather than dead experts, so use dropless routing if dead-expert count is the outcome. Demons in the Detail (arXiv:2501.11873) shows micro-batch vs global-batch aux loss changes specialisation, another single-seed knob to fix."
+ }
+]

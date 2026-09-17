@@ -1,0 +1,74 @@
+[
+ {
+  "id": "rmsnorm-better",
+  "claim": "RMSNorm matches or beats LayerNorm in quality and is faster, so LayerNorm is obsolete for LLMs",
+  "component": "normalisation",
+  "origin": "Zhang & Sennrich 2019 (RMSNorm); adopted by T5, LLaMA; repeated as settled",
+  "evidence_scale": "RMSNorm paper: MT and RC tasks, few seeds; LLM adoption by choice, no controlled quality comparison published at scale",
+  "test": "matched-FLOPs nano panel, layernorm vs rmsnorm, 12 seeds, gpt2 and llama families, report the sign per seed and the loss delta with bootstrap band"
+ },
+ {
+  "id": "prenorm-better",
+  "claim": "Pre-norm trains more stably and reaches equal or better loss than post-norm, so post-norm is dead",
+  "component": "normalisation",
+  "origin": "Xiong et al. 2020 (On Layer Normalization in the Transformer Architecture); GPT-2 practice",
+  "evidence_scale": "theory on gradient scale at init plus BERT/MT experiments; post-norm with warmup is often better at convergence (Liu et al. 2020 Admin), a fact rarely repeated",
+  "test": "pre vs post placement at matched budget with and without warmup, 12 seeds, loss and gradient-norm receipts"
+ },
+ {
+  "id": "swiglu-better",
+  "claim": "SwiGLU beats GELU and ReLU MLPs at matched parameters",
+  "component": "activation",
+  "origin": "Shazeer 2020 (GLU Variants Improve Transformer); PaLM, LLaMA adoption",
+  "evidence_scale": "Shazeer: T5-base scale, one seed per variant, small deltas; the note admits no explanation",
+  "test": "gelu vs relu vs swiglu at matched params (d_ff adjusted), 12 seeds, both families"
+ },
+ {
+  "id": "relu-dead-llm",
+  "claim": "ReLU MLPs are strictly worse than smooth activations for language models",
+  "component": "activation",
+  "origin": "folklore since GPT-2 (GELU) and BERT",
+  "evidence_scale": "no controlled multi-seed comparison at matched budget in wide circulation; ReLU revival papers (sparsity) report parity",
+  "test": "relu vs gelu at matched params, 12 seeds, plus activation sparsity as a free measurement"
+ },
+ {
+  "id": "rope-better-learned",
+  "claim": "RoPE beats learned and sinusoidal absolute positions in-distribution, not just for extrapolation",
+  "component": "positional-encoding",
+  "origin": "Su et al. 2021 (RoFormer); LLaMA adoption",
+  "evidence_scale": "RoFormer: MT and GLUE with few seeds; most later evidence is about extrapolation",
+  "test": "learned vs sinusoidal vs rope at fixed T, matched params, 12 seeds, in-distribution loss only"
+ },
+ {
+  "id": "nope-causal",
+  "claim": "Causal decoders need no positional encoding: NoPE matches RoPE",
+  "component": "positional-encoding",
+  "origin": "Haviv et al. 2022; Kazemnejad et al. 2023 (The Impact of Positional Encoding on Length Generalization)",
+  "evidence_scale": "small models, specific tasks; contested at scale (NoPE degrades on long context in later reports)",
+  "test": "none vs rope at matched budget, 12 seeds, in-distribution loss and a length-generalisation probe"
+ },
+ {
+  "id": "sinks-necessary",
+  "claim": "Attention sinks emerge in every trained decoder and are necessary for stable long-context attention",
+  "component": "attention-scores",
+  "origin": "Xiao et al. 2023 (StreamingLLM); Gu et al. 2025 (When Attention Sink Emerges)",
+  "evidence_scale": "observations on pretrained LLMs; Gu et al. train small models and report window-size dependence",
+  "test": "sink emergence across norm/activation/position choices at nano scale, 12 seeds; does any configuration train without a sink, and does its window-attention lane then fail"
+ },
+ {
+  "id": "window-loses-longrange",
+  "claim": "Sliding-window attention loses long-range dependencies that full attention captures, at every scale",
+  "component": "attention-topology",
+  "origin": "Longformer, Mistral practice; assumed in every sparse-attention paper",
+  "evidence_scale": "measured on long-context benchmarks at scale; at nano scale the transfer study found the window lane LEADS early and trails late, with the crossing moving with width",
+  "test": "window vs exact at matched budget across T and width, milestone-matched, 12 seeds; where is the crossing and does it exist at T=256"
+ },
+ {
+  "id": "gqa-free",
+  "claim": "Grouped-query attention loses nothing measurable versus full multi-head attention",
+  "component": "multi-head",
+  "origin": "Ainslie et al. 2023 (GQA); adoption by LLaMA 2 and after",
+  "evidence_scale": "uptrained from MHA checkpoints at scale, few seeds; from-scratch small-scale comparison rarely reported",
+  "test": "MHA vs GQA vs MQA from scratch at matched params (heads/d adjusted), 12 seeds"
+ }
+]

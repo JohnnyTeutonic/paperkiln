@@ -1,0 +1,335 @@
+[
+ {
+  "id": "grokking-needs-wd",
+  "verdict": "CONTESTED",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2501.04697",
+    "title": "Grokking at the Edge of Numerical Stability (Prieto, Barsbey, Mediano, Birdal)",
+    "year": 2025,
+    "quote": "Without regularization, grokking tasks push models to the edge of numerical stability, introducing floating point errors in the Softmax function ... StableMax ... and ⊥Grad ... enabling grokking without weight decay.",
+    "what_it_shows": "Weight decay is not necessary in principle: the wd=0 failure on modular arithmetic is largely Softmax Collapse (fp error); fixing the numerics gives grokking with no regulariser. Seeds not reported in abstract."
+   },
+   {
+    "id_or_url": "arXiv:2603.25009",
+    "title": "A Systematic Empirical Study of Grokking: Depth, Architecture, Activation, and Regularization (Manir & Rupa)",
+    "year": 2026,
+    "quote": "Controlled study on modular addition, 3-5 seeds per configuration; weight decay is the critical control parameter with a narrow optimal range (Goldilocks regime); insufficient or excessive weight decay prevents generalization.",
+    "what_it_shows": "In the standard softmax transformer/MLP setup, with a few seeds, wd=0 does not grok within the horizon and wd has an inverted-U; this is the strongest multi-seed support for the practical form of the claim."
+   },
+   {
+    "id_or_url": "arXiv:2506.05718",
+    "title": "Grokking Beyond the Euclidean Norm of Model Parameters (Tikeng Notsawo, Dumas, Rabusseau; ICML 2025)",
+    "year": 2025,
+    "quote": "Over-parameterization by adding depth makes it possible to grok or ungrok without explicitly using regularization, which is impossible in shallow cases ... the l2 norm grows in many cases where no weight decay is used, but the model generalizes anyway.",
+    "what_it_shows": "Grokking without weight decay is obtained via implicit regularisation in deeper nets; also shows l2 norm is not the mechanism, so 'requires wd' is mechanistically wrong."
+   },
+   {
+    "id_or_url": "arXiv:2607.05104",
+    "title": "Grokking Is Conditional and Fragile: A Fully-Tractable, Multi-Seed Study at 12K Parameters (Ootani)",
+    "year": 2026,
+    "quote": "Multi-seed study of an ~11,856-parameter transformer: grokking is a conditional, fragile phase transition, sensitive to random initialization, training-set coverage thresholds and the numerical environment (CPU thread count, hardware execution differences); weight decay reproduces the Omnigrok inverted-U.",
+    "what_it_shows": "The only explicitly multi-seed nano study: outcomes vary by seed and even by numerical environment, which bears directly on a C++ stack replication."
+   }
+  ],
+  "gap": "A 12-seed wd in {0, 0.1, 1.0} sweep with time-to-generalise distributions would replace the 3-5-seed evidence, but it is only informative if it includes a numerically-stable arm (StableMax or fp64 softmax) at wd=0, otherwise it re-measures Prieto's Softmax Collapse rather than testing whether weight decay is needed.",
+  "confidence": 0.8,
+  "notes": "Prior is right that it is contested. Sharpen the claim: 'grokking requires weight decay' is refuted in principle (Prieto 2025; Tikeng Notsawo 2025; Thilak 2022 slingshot with Adam and no wd) but is true in practice for a standard fp32 softmax transformer within usual horizons (Manir & Rupa 2026, 3-5 seeds; Nanda 2023). Ootani 2026 warns that thread count and hardware change grokking outcomes at 12K params, so the paperkiln C++ path needs a determinism check before any seed-count claim."
+ },
+ {
+  "id": "double-descent-lm",
+  "verdict": "TESTED-WEAK",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2509.24974",
+    "title": "Double Descent as a Lens for Sample Efficiency in Autoregressive vs. Discrete Diffusion Models (Fraij & Dauncey)",
+    "year": 2025,
+    "quote": "12-layer decoder, embedding dimension swept (optimum 432), Tiny Shakespeare (~302K train tokens), up to 50 epochs; 'neither autoregressive nor diffusion models exhibit a pronounced second descent, with test loss remaining high even as the models are scaled past the interpolation threshold' ... 'we report no second descent in our training setup.' Seeds not specified.",
+    "what_it_shows": "The only direct small-scale epoch-wise test on an autoregressive transformer LM: a first rise (overfitting, ~epoch 21) but no second descent. Single corpus, no label-noise arm, seed count unreported."
+   },
+   {
+    "id_or_url": "arXiv:2205.10487",
+    "title": "Scaling Laws and Interpretability of Learning from Repeated Data (Hernandez et al.)",
+    "year": 2022,
+    "quote": "We find a strong double descent phenomenon, in which repeated data can lead test loss to increase midway through training ... repeating 0.1% of the data 100 times degrades an 800M parameter model's performance to that of a 400M parameter model.",
+    "what_it_shows": "Non-monotone test loss does occur in LM pretraining when a subset is repeated many times (large scale, single runs); this is a repeated-subset design, not whole-corpus epoch-wise double descent."
+   },
+   {
+    "id_or_url": "arXiv:2305.13230",
+    "title": "To Repeat or Not To Repeat: Insights from Scaling LLM under Token-Crisis (Xue et al.; NeurIPS 2023)",
+    "year": 2023,
+    "quote": "The model is susceptible to overfitting, leading to multi-epoch degradation when repeating pre-training data ... most regularization techniques do not yield significant improvements, except for dropout.",
+    "what_it_shows": "Many-epoch whole-corpus training at moderate scale shows monotone degradation after the peak, no second descent reported; supports the claim, single runs."
+   },
+   {
+    "id_or_url": "arXiv:2305.16264",
+    "title": "Scaling Data-Constrained Language Models (Muennighoff et al.)",
+    "year": 2023,
+    "quote": "Training with up to 4 epochs of repeated data yields negligible changes to loss compared to having unique data; 400 training runs, models up to 9B parameters.",
+    "what_it_shows": "Largest epoch-repetition study; fits a smooth decay of the value of repeated tokens with no non-monotone loss reported, but epochs are few (up to ~40) and seeds are not reported."
+   }
+  ],
+  "gap": "No seeded, label-noise-swept, many-epoch test of epoch-wise double descent in a decoder LM exists at any scale; a 12-seed nano run on a fixed small corpus would be the first to show whether the second descent is genuinely absent or merely hidden under seed noise and the absence of label noise (Nakkiran's effect was strongest with noise).",
+  "confidence": 0.65,
+  "notes": "Prior 'untested with seeds on decoders at nano scale' is correct, but the claim needs to be stated as whole-corpus epoch-wise double descent, because Hernandez 2022 shows a mid-training loss increase under repeated subsets in LMs at 800M. Fraij & Dauncey 2025 is the closest existing test and supports the claim, but with 302K tokens the 'no second descent' could be a corpus-size artefact rather than an LM property; the label-noise arm in our design is the lever that would separate these."
+ },
+ {
+  "id": "scaling-law-bottom",
+  "verdict": "CONTESTED",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2001.08361",
+    "title": "Scaling Laws for Neural Language Models (Kaplan et al.)",
+    "year": 2020,
+    "quote": "Section 3.2: models 'ranging from small models with shape (n_layer, d_model) = (2, 128) through billion-parameter models' ... 'Only models with fewer than 2 layers or with extreme depth-to-width ratios deviate significantly from the trend.'",
+    "what_it_shows": "With non-embedding parameter counting the power law holds down to ~0.4M non-embedding parameters (single run per config, no seed bands); with embeddings included small models fan out by depth (their Fig. 6 left)."
+   },
+   {
+    "id_or_url": "arXiv:2406.12907",
+    "title": "Reconciling Kaplan and Chinchilla Scaling Laws (Pearce & Song; TMLR 2024)",
+    "year": 2024,
+    "quote": "The discrepancy stems from Kaplan counting non-embedding rather than total parameters, and their analysis being conducted at small scale; replicating the Chinchilla methodology under these conditions reproduces Kaplan's coefficients.",
+    "what_it_shows": "At small scale the fitted exponent depends on the counting convention and on hyperparameter tuning of the small models; the 'clean power law' is convention-dependent at the bottom."
+   },
+   {
+    "id_or_url": "arXiv:2305.17266",
+    "title": "Honey, I Shrunk the Language: Language Model Behavior at Reduced Scale (Deshpande et al.; ACL Findings 2023)",
+    "year": 2023,
+    "quote": "The MLM loss does not scale smoothly with compute-cost (FLOPs) below 2.2 × 10^15 FLOPs; 32 models from 1.25M to 16.24M parameters.",
+    "what_it_shows": "A direct 1M-16M study finds the compute-loss law breaks below a FLOP threshold (encoder/MLM, single pretraining seed per model)."
+   },
+   {
+    "id_or_url": "arXiv:2410.11840",
+    "title": "A Hitchhiker's Guide to Scaling Law Estimation (Choshen, Zhang, Andreas)",
+    "year": 2024,
+    "quote": "485 pretrained models, over 1000 scaling laws estimated; 'a significant degree of variability across model seeds', and training several small models can yield better predictions than a single large one.",
+    "what_it_shows": "Seed variance is large enough to move fitted exponents; the literature almost never reports seed bands at the small end."
+   }
+  ],
+  "gap": "No decoder study reports a matched tokens-per-parameter ladder from 100k to 60M with per-size seed bands, so nobody has shown where the residual from the power law exceeds seed noise; that residual-vs-seed decomposition is exactly what 12 seeds per rung would add.",
+  "confidence": 0.7,
+  "notes": "Correction to prior: Kaplan's smallest models are ~0.4M non-embedding parameters (shape (2,128)), and Kaplan states that only <2-layer or extreme-aspect-ratio models deviate, so 'already deviate at 100k' is not what Kaplan reports; the deviation appears when embedding parameters are counted (Kaplan Fig. 6; Pearce & Song 2024). Design consequence: report both non-embedding and total-parameter fits, and keep aspect ratios fixed across rungs, or the 'break' will be a counting artefact. Ivgi et al. 2022 (10K-param models, fine-tuning) also state that revealing small-scale laws 'requires careful hyperparameter tuning and multiple runs'."
+ },
+ {
+  "id": "val-loss-proxy",
+  "verdict": "CONTESTED",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2305.17266",
+    "title": "Honey, I Shrunk the Language: Language Model Behavior at Reduced Scale (Deshpande et al.)",
+    "year": 2023,
+    "quote": "32 models, 1.25M-16.24M parameters, three fine-tuning seeds: on unfiltered GLUE the correlation with perplexity was inconclusive (Spearman -0.17, p = 0.28); on vocabulary-filtered GLUE it was strong (Spearman -0.67, p <= 0.01).",
+    "what_it_shows": "The only nano-scale (1M-16M) test: the proxy holds only when the downstream tasks share the pretraining vocabulary; otherwise rank correlation is near zero."
+   },
+   {
+    "id_or_url": "arXiv:2109.10686",
+    "title": "Scale Efficiently: Insights from Pre-training and Fine-tuning Transformers (Tay et al.)",
+    "year": 2021,
+    "quote": "A model with improved upstream quality (as measured by validation perplexity) can do significantly worse on transfer if the shape setting is not right ... pre-training perplexity can be misleading.",
+    "what_it_shows": "Across architecture-shape changes at T5 scale, perplexity ranking and downstream ranking disagree (single runs)."
+   },
+   {
+    "id_or_url": "arXiv:2403.08540",
+    "title": "Language models scale reliably with over-training and on downstream tasks (Gadre et al.)",
+    "year": 2024,
+    "quote": "Testbed of 104 models from 0.011B to 6.9B parameters; 'we relate the perplexity of a language model to its downstream task performance by proposing a power law', predicting 1.4B and 6.9B models from 300x and 20x less compute.",
+    "what_it_shows": "Within a fixed architecture and data family, loss predicts average downstream error smoothly from 11M upward; supports the claim for scale/data knobs, not architecture knobs."
+   },
+   {
+    "id_or_url": "arXiv:2605.20798",
+    "title": "Most Transformer Modifications Still Do Not Transfer at 1-3B: A 2020-2026 Update to Narang et al. (2021) with Downstream Evaluation and a Noise Floor (Zhao et al.)",
+    "year": 2026,
+    "quote": "20 post-2021 Transformer modifications at 1.2B and 3B under strict iso-data, iso-compute, iso-recipe control, with a multi-seed baseline noise floor ... some attention-output modifications converged within 2-3% of baseline validation loss yet dropped 6-16 CLIMB-points.",
+    "what_it_shows": "Controlled, multi-seed evidence that for architecture modifications validation loss and downstream quality can rank in opposite directions."
+   }
+  ],
+  "gap": "No study ranks a panel of architecture configurations by validation loss and by a fixed task battery with seed confidence intervals at 10-60M; Deshpande 2023 varies size/vocabulary not architecture, and Zhao 2026 is at 1-3B; a 12-seed rank-correlation with CIs at nano scale would be new.",
+  "confidence": 0.75,
+  "notes": "Prior 'at nano scale untested' is wrong: Deshpande et al. tested at 1-16M and found the proxy weak unless the task vocabulary is filtered. The pattern across the literature is that loss->downstream is reliable within a family (Gadre 2024; Krajewski et al. 2025 up to 17B; Bhagia et al. 2024 ladders within 2 points) and unreliable across architecture or model-family changes (Tay 2021; Liu et al. 2023 same-loss-different-downstream; Patel et al. 2026 Spearman 0.36 for cross-entropy across families; Lourie et al. 2025 meta-analysis: predictable downstream scaling in only 39% of cases). Our test is in the across-architecture regime, so a low rank correlation is the expected outcome and should be pre-registered as such."
+ },
+ {
+  "id": "seeds-dont-matter",
+  "verdict": "CONTESTED",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2106.16163",
+    "title": "The MultiBERTs: BERT Reproductions for Robustness Analysis (Sellam et al.; ICLR 2022)",
+    "year": 2022,
+    "quote": "25 BERT-Base checkpoints trained with varying random weight initialization and training data shuffling ... the Multi-Bootstrap lets us measure effects that may not be detected with a single checkpoint.",
+    "what_it_shows": "Pretraining-seed variance is large enough that single-checkpoint conclusions do not generalise to the training procedure (encoder, 110M)."
+   },
+   {
+    "id_or_url": "arXiv:2503.09543",
+    "title": "PolyPythias: Stability and Outliers across Fifty Language Model Pre-Training Runs (van der Wal et al.; ICLR 2025)",
+    "year": 2025,
+    "quote": "45 new training runs for the Pythia suite, 9 seeds each at 14M, 31M, 70M, 160M and 410M parameters; 'highly consistent training dynamics across both model sizes and initial conditions', with identifiable outlier runs.",
+    "what_it_shows": "The pro-claim side: loss trajectories of a fixed architecture are consistent across seeds at nano-to-small scale, though outlier runs exist and downstream metrics vary more."
+   },
+   {
+    "id_or_url": "arXiv:2605.20798",
+    "title": "Most Transformer Modifications Still Do Not Transfer at 1-3B ... with a Noise Floor (Zhao et al.)",
+    "year": 2026,
+    "quote": "Multi-seed baseline noise floor at 1.2B and 3B; only two of 20 modifications cleared Bonferroni correction at 1.2B.",
+    "what_it_shows": "Once a seed noise floor is measured, most architecture deltas fall inside it even at 1-3B; seed variance is not negligible relative to the effect sizes being compared."
+   },
+   {
+    "id_or_url": "arXiv:2509.14786",
+    "title": "Pre-training under infinite compute (Kim et al.)",
+    "year": 2025,
+    "quote": "For optimal hyperparameters on a 300M model with 200M tokens, the run-to-run standard deviation of loss is 0.0082 varying both seeds, 0.0076 for the train seed only, and 0.0072 for the data seed only.",
+    "what_it_shows": "A rare quantified pretraining seed sd (about 0.008 nats at 300M), which is the same order as typical architecture deltas such as RMSNorm or bias removal."
+   }
+  ],
+  "gap": "No published nano-LM study reports the fraction of single-seed sign calls that flip under >= 10 seeds across an architecture panel; existing multi-seed work is either at 1B+ (Zhao 2026), on a fixed architecture (PolyPythias, MultiBERTs), or three seeds (Padraig O'Brien's 124M paired-seed ablation, noise floor 0.0043 nats).",
+  "confidence": 0.8,
+  "notes": "Prior is right and the literature now supports it more strongly than 'vision only': seed sd is ~0.004 nats at 124M/0.5B tokens (O'Brien 2026, 3 paired seeds) and ~0.008 nats at 300M (Kim et al. 2025), while small architecture knobs (RMSNorm +0.0007, no-bias +0.0038) sit at that floor and LR/schedule knobs are 20-100x larger. So 'seeds don't matter' is true for large knobs and false for exactly the knobs a nano panel tests. Sumit et al. 2026 (1.5B distillation, 3-6 seeds) show a +3.8-point single-seed gain reversing to -2.7 under multi-seed retest, and a bimodal seed collapse, which is the failure mode to check for in our F1 pass-rate data."
+ },
+ {
+  "id": "init-small-better",
+  "verdict": "TESTED-WEAK",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2606.17945",
+    "title": "Small Initialization Matters for Large Language Models (Hang et al.)",
+    "year": 2026,
+    "quote": "Dense models at 0.1B, 0.3B, 0.7B and 1.5B trained on 36B tokens: moving from gamma = 0.5 (standard) to gamma = 1 (small init) reduces the loss by about 0.05 for the 0.1B model but only 0.003 for the 1.5B model; seed counts not stated.",
+    "what_it_shows": "Init scale has a real, monotone effect at 100M and the effect shrinks with scale, which is the opposite direction to 'needed for deep/large models'; single runs."
+   },
+   {
+    "id_or_url": "arXiv:1908.11365",
+    "title": "Improving Deep Transformer with Depth-Scaled Initialization and Merged Attention (Zhang, Titov, Sennrich; EMNLP 2019)",
+    "year": 2019,
+    "quote": "Depth-scaled initialization (DS-Init) decreases parameter variance at the initialization stage and reduces output variance of residual connections ... 12-layer deep models gain +1.1 BLEU on average over the base Transformer across WMT and IWSLT.",
+    "what_it_shows": "The depth rationale is tested at 12+ layers against a 6-layer base; the effect of depth-scaling at 2-8 layers is not the object of study; single runs."
+   },
+   {
+    "id_or_url": "arXiv:2510.09423",
+    "title": "Weight Initialization and Variance Dynamics in Deep Neural Networks and Large Language Models (Han)",
+    "year": 2025,
+    "quote": "Identifies 'a broad stability band with standard deviations between 1e-2 and 1e-1' and, in a 12-layer GPT-2-style model, depth-dependent equilibration where shallow layers expand rapidly and deeper layers adjust gradually.",
+    "what_it_shows": "At 12 layers the trainable init-std window is an order of magnitude wide, so 0.02 vs 0.02/sqrt(2L) may be indistinguishable at shallow depth."
+   },
+   {
+    "id_or_url": "https://github.com/KellerJordan/modded-nanogpt",
+    "title": "modded-nanoGPT speedrun record #5: Pad embeddings, ReLU^2, zero-init projections, QK-norm",
+    "year": 2024,
+    "quote": "Record #5 (10/14/24, 15.2 minutes) introduced zero-init projections as part of a bundle; records must supply enough runs to show at p < 0.01 that mean val loss is <= 3.28.",
+    "what_it_shows": "Zero-init of output projections is adopted at 124M/12 layers, validated only as a bundle with other changes against a fixed loss target, not isolated with seeds."
+   }
+  ],
+  "gap": "No seeded sweep isolates init std and the 1/sqrt(2L) output-projection factor at 2-8 layers with matched tokens; because Hang et al. find the init-scale effect largest at the smallest models, a 4- vs 8-layer x init-scale x 12-seed grid would directly test whether the effect is a depth-stability effect (the claimed rationale) or a small-model condensation effect.",
+  "confidence": 0.7,
+  "notes": "Prior 'justified by depth; unmeasured at 2-8 layers' stands. Two adjustments: (1) the working hypothesis should not be 'required for deep' but 'init scale matters and matters more when small' (Hang et al. 2026); (2) at L=4 the depth factor is 0.35, well inside Han's stability band, so a null on the depth-scaled projection arm is plausible while the overall init-std arm is not. Hang et al. also report that small init interacts with RMSNorm epsilon and attention sinks, so the norm choice in the panel is a confound to fix."
+ },
+ {
+  "id": "bias-unnecessary",
+  "verdict": "TESTED-WEAK",
+  "evidence": [
+   {
+    "id_or_url": "https://github.com/Padraigobrien08/nanogpt-from-scratch",
+    "title": "nanogpt-from-scratch: GPT-2 124M reproduction with a paired-seed ablation study (O'Brien)",
+    "year": 2026,
+    "quote": "124M parameters, 8 layers x 512 wide, 524M tokens per run, 3 paired seeds per arm, 39 runs; no-bias arm: +0.0038 val loss (all seeds agree on sign), +4.2% throughput; noise floor 0.0043; RMSNorm +0.0007 'within noise'.",
+    "what_it_shows": "The only seeded controlled test found: removing biases is slightly worse in loss at matched tokens (delta at the noise floor) and faster; matched-params not matched-compute."
+   },
+   {
+    "id_or_url": "arXiv:2302.05442",
+    "title": "Scaling Vision Transformers to 22 Billion Parameters (Dehghani et al.)",
+    "year": 2023,
+    "quote": "The bias terms were removed from the QKV projections and all LayerNorms were applied without bias and centering ... improved accelerator utilization (by 3%), without quality degradation ... we use bias terms for the (in- and out-) MLP dense layers as we have observed improved quality and no speed reduction.",
+    "what_it_shows": "Split result at scale, single run: QKV biases removable at no cost, MLP biases retained because they helped."
+   },
+   {
+    "id_or_url": "arXiv:2204.02311",
+    "title": "PaLM: Scaling Language Modeling with Pathways (Chowdhery et al.)",
+    "year": 2022,
+    "quote": "No biases were used in any of the dense kernels or layer norms. We found this to result in increased training stability for large models.",
+    "what_it_shows": "The origin of the practice: asserted from experience, no ablation, no numbers."
+   },
+   {
+    "id_or_url": "https://github.com/karpathy/nanoGPT/blob/master/model.py",
+    "title": "nanoGPT model.py (Karpathy), bias config flag",
+    "year": 2023,
+    "quote": "bias: True: bias in Linears and LayerNorms, like GPT-2. False: a bit better and faster.",
+    "what_it_shows": "The small-scale folklore source; no quantified comparison published."
+   }
+  ],
+  "gap": "A 12-seed matched-parameter nano test would be the first to put a confidence interval on the bias effect; the only seeded evidence is 3 seeds at one scale with a delta (+0.004 nats) sitting at the noise floor and pointing slightly against removal, so 12 seeds are needed to call the sign at all.",
+  "confidence": 0.7,
+  "notes": "Prior 'removed at scale by choice; small-scale seeded test rare' is right. I could not locate a Dettmers et al. bias ablation; the closest quantified evidence is ViT-22B (split by layer type) and O'Brien 2026 (slightly worse loss, faster). The claim should be split: 'unnecessary at matched compute/throughput' has support; 'no loss at matched parameters and tokens' is not supported and is weakly contradicted. Also test QKV biases and MLP biases as separate arms, since ViT-22B found them to behave differently."
+ },
+ {
+  "id": "muon-2x",
+  "verdict": "CONTESTED",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2502.16982",
+    "title": "Muon is Scalable for LLM Training (Liu et al., Moonshot)",
+    "year": 2025,
+    "quote": "Muon achieves ~2x computational efficiency compared to AdamW with compute optimal training; Moonlight, a 3B/16B-parameter MoE trained on 5.7T tokens.",
+    "what_it_shows": "Source of the 2x figure: scaling-law comparison at scale, single runs, per-optimizer tuning parity not documented."
+   },
+   {
+    "id_or_url": "arXiv:2509.02046",
+    "title": "Fantastic Pretraining Optimizers and Where to Find Them (Wen, Hall, Ma, Liang)",
+    "year": 2025,
+    "quote": "Ten optimizers, models 130M-1.2B, 1x-8x Chinchilla data, hyperparameters tuned per optimizer by coordinate descent then scaling laws; matrix-based optimizers such as Muon and Soap give about 1.4x speedup over AdamW at 0.1B but only 1.1x at 1.2B; rankings can flip during learning-rate decay.",
+    "what_it_shows": "Controlled matched-budget, per-optimizer-tuned benchmark finds 1.3-1.4x, not 2x, at small scale, and decreasing with scale; seed counts not stated."
+   },
+   {
+    "id_or_url": "arXiv:2509.01440",
+    "title": "Benchmarking Optimizers for Large Language Model Pretraining (Semenov, Pagliardini, Jaggi)",
+    "year": 2025,
+    "quote": "Basic Muon performs poorly at relatively small batch sizes (32, 256) across different model sizes and training lengths ... applying weight decay to 2-dimensional parameters, as in D-Muon, resolves this and yields a robust optimizer; 124M-720M models; 5 seeds used only in the wall-clock ablation.",
+    "what_it_shows": "Second independent tuned benchmark: plain Muon can lose to AdamW at small batch; the variant with matrix weight decay is competitive but no 2x is reported."
+   },
+   {
+    "id_or_url": "https://github.com/KellerJordan/modded-nanogpt",
+    "title": "modded-nanoGPT README (Jordan)",
+    "year": 2024,
+    "quote": "Muon: ~1.5x better sample-efficiency than Adam at the 124M speedrun; records must provide enough run logs for p < 0.01 that mean val loss <= 3.28.",
+    "what_it_shows": "The speedrun's own claim is 1.5x sample efficiency, not 2x, and is measured against the speedrun's AdamW baseline with a fixed loss target."
+   }
+  ],
+  "gap": "None of the benchmarks report a seed-honest efficiency ratio with a confidence interval (per-configuration seeds are unstated), and none go below 100M; a 12-seed, per-optimizer LR-swept, tokens-to-target-loss run at 10-60M would give the first CI on the ratio and test whether the 1.4x-at-0.1B trend keeps rising at smaller scale.",
+  "confidence": 0.8,
+  "notes": "Prior is right about single-run speedruns; the stronger update is that two independent tuned benchmarks bound the advantage at 1.1-1.5x with the advantage shrinking in scale and depending on weight decay on matrices and batch size. Design consequence: use the Moonlight/D-Muon form (weight decay on 2-D params, RMS-matched update scale) and AdamW on embeddings/heads, sweep LR for both, and evaluate at end of decay only (Wen et al.: rankings flip mid-schedule). A '2x' outcome would contradict the tuned literature and should be treated as a tuning-asymmetry warning, not a finding."
+ },
+ {
+  "id": "sparse-transfer",
+  "verdict": "CONTESTED",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2207.10551",
+    "title": "Scaling Laws vs Model Architectures: How does Inductive Bias Influence Scaling? (Tay et al.; EMNLP Findings 2023)",
+    "year": 2022,
+    "quote": "Systematic study of scaling behaviour of ten diverse model architectures (Transformers, Switch Transformers, Universal Transformers, Dynamic convolutions, Performers, MLP-Mixers) ... the best performing model can fluctuate at different scales.",
+    "what_it_shows": "Direct controlled evidence that architecture rankings do not hold across scale (single runs per point)."
+   },
+   {
+    "id_or_url": "arXiv:2409.15156",
+    "title": "Rethinking Conventional Wisdom in Machine Learning: From Generalization to Scaling (Xiao)",
+    "year": 2024,
+    "quote": "We identify a new phenomenon termed 'scaling law crossover', where two scaling curves intersect at a certain scale, implying that methods effective at smaller scales may not generalize to larger ones ... explicit L2 regularization and implicit regularization through small batch sizes and large learning rates may no longer hold.",
+    "what_it_shows": "Regularisation-type knobs (which include sparsity) are the class most prone to small-to-large sign reversal; raises the 'single experiment at scale' comparison problem."
+   },
+   {
+    "id_or_url": "arXiv:2309.14322",
+    "title": "Small-scale proxies for large-scale Transformer training instabilities (Wortsman et al.; ICLR 2024)",
+    "year": 2023,
+    "quote": "Instabilities also appear in small models when training at high learning rates, and mitigations previously employed at large scales are equally effective in this regime ... a 4.8B model trained at the predicted learning rate diverged as predicted.",
+    "what_it_shows": "The pro-transfer side: stability mechanisms and their mitigations (qk-layernorm, z-loss, warmup, weight decay, muP) transfer from small proxies, with a confirmed extrapolation."
+   },
+   {
+    "id_or_url": "arXiv:2505.16260",
+    "title": "Small-to-Large Generalization: Data Influences Models Consistently Across Scale (Khaddaj, Engstrom, Madry)",
+    "year": 2025,
+    "quote": "Changes in data do not influence smaller and larger models identically ... we find that small- and large-scale language model predictions (generally) do highly correlate across choice of training data.",
+    "what_it_shows": "Data-side choices transfer well from proxies; supports the claim for the data axis, not the architecture axis."
+   }
+  ],
+  "gap": "The literature has per-knob anecdotes (data and instability mechanisms transfer; architecture family, regularisation and sparsity show crossovers) but no seeded study measuring sign agreement across width for a panel of nano-scale knobs under matched per-width tuning; transfer_s2 did this for sparse attention only, and extending to norm, activation and position with 12 seeds would give the first knob-by-knob transfer map with confidence intervals and test whether the s2 failure is specific to capacity-reducing knobs.",
+  "confidence": 0.8,
+  "notes": "As a general statement the claim is false, and the useful output is a taxonomy: (a) data choices (Khaddaj 2025; DataComp-LM ladders) and instability mechanisms (Wortsman 2023) transfer; (b) hyperparameters transfer across width under muP only when the architecture follows muP prescriptions, and bias inclusion, trainable norm gains and optimizer choice break it (Lingle 2024; Everett et al. 2024); (c) architecture family, regularisation and sparsity show crossovers (Tay 2022; Xiao 2024; Nawrot et al. 2025 Sparse Frontier: sparsity tolerance is task- and capacity-dependent, larger models tolerate more on easy tasks and less on hard ones). Narang et al. 2021 and Zhao et al. 2026 add that most published modifications do not survive iso-compute multi-seed retest at 1-3B. Li 2026 (post-training, 5 seeds, 0.5B-7B) documents a complete ranking inversion between 1.5B and 7B. The s2 observation that agreement decays with position on the loss curve matches Wen et al. 2025's 'rankings flip during learning-rate decay', so compare at end-of-schedule only."
+ }
+]

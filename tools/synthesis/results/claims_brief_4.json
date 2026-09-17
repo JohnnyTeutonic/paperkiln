@@ -1,0 +1,74 @@
+[
+ {
+  "id": "grokking-needs-wd",
+  "claim": "Grokking requires weight decay",
+  "component": "training-objective",
+  "origin": "Power et al. 2022; Nanda et al. 2023",
+  "evidence_scale": "algorithmic tasks; contested (grokking without wd reported with other regularisers)",
+  "test": "modular arithmetic on the paperkiln stack, wd 0 vs 0.1 vs 1.0, 12 seeds, time-to-generalise"
+ },
+ {
+  "id": "double-descent-lm",
+  "claim": "Epoch-wise double descent does not occur in language-model pretraining",
+  "component": "training-objective",
+  "origin": "Nakkiran et al. 2019 showed it in vision and small transformers on MT; LM folklore says no",
+  "evidence_scale": "untested with seeds on decoders at nano scale",
+  "test": "fixed small corpus, many epochs, label noise sweep, 12 seeds, validation loss vs epoch"
+ },
+ {
+  "id": "scaling-law-bottom",
+  "claim": "Loss follows a clean power law in parameters down to the smallest models",
+  "component": "training-objective",
+  "origin": "Kaplan et al. 2020; Hoffmann et al. 2022",
+  "evidence_scale": "Kaplan's smallest models are ~100k params and already deviate; nano-scale seed variance rarely shown",
+  "test": "params 100k to 60M at matched tokens per param, 12 seeds, fit with seed bands; where does the power law break"
+ },
+ {
+  "id": "val-loss-proxy",
+  "claim": "Validation loss is a sufficient proxy for downstream quality at small scale",
+  "component": "training-objective",
+  "origin": "universal practice in small-model research",
+  "evidence_scale": "known to break for emergent abilities at scale; at nano scale untested",
+  "test": "rank 12 configurations by val loss and by a fixed synthetic task battery, 12 seeds; rank correlation"
+ },
+ {
+  "id": "seeds-dont-matter",
+  "claim": "Seed variance is negligible for architecture comparisons",
+  "component": "training-objective",
+  "origin": "the one-seed habit of the architecture literature",
+  "evidence_scale": "Bouthillier et al. 2021 and Picard 2021 show large seed effects in vision; for nano LMs the transfer study measured F1 pass rate 16 percent at three seeds",
+  "test": "already partly measured; extend to every panel comparison: what fraction of single-seed sign calls flip under 12 seeds"
+ },
+ {
+  "id": "init-small-better",
+  "claim": "Smaller initialisation (0.02 and depth-scaled output projections) is required for deep transformers",
+  "component": "weights-at-inference",
+  "origin": "GPT-2 init; Megatron scaling by 1/sqrt(2L)",
+  "evidence_scale": "justified by depth; at 2 to 8 layers the effect is unmeasured",
+  "test": "init scale sweep at 4 and 8 layers, 12 seeds, matched tokens"
+ },
+ {
+  "id": "bias-unnecessary",
+  "claim": "Bias terms in linear layers are unnecessary in transformers",
+  "component": "ffn",
+  "origin": "PaLM, LLaMA remove them; Dettmers et al. note no loss",
+  "evidence_scale": "removed at scale by choice; small-scale seeded test rare",
+  "test": "bias on vs off at matched params, 12 seeds, nano scale"
+ },
+ {
+  "id": "muon-2x",
+  "claim": "Muon is about twice as token-efficient as AdamW",
+  "component": "optimiser-state",
+  "origin": "Jordan 2024 (modded-nanoGPT speedruns); Liu et al. 2025 (Muon is Scalable)",
+  "evidence_scale": "speedrun single runs; Moonshot at scale; seed-honest matched-lr comparison at nano scale rare",
+  "test": "adamw vs muon, lr swept per optimiser, 12 seeds, tokens-to-target-loss"
+ },
+ {
+  "id": "sparse-transfer",
+  "claim": "Architectural conclusions drawn at small scale transfer to large scale",
+  "component": "attention-topology",
+  "origin": "the premise of every nano-scale ablation, including ours",
+  "evidence_scale": "transfer_s2 (Sep 2026): sign structure of a sparse-attention panel did NOT transfer from d=256 to d=512 under per-width tuning; agreement decays with position on the loss curve",
+  "test": "the finding exists; the claim-level test is whether other knobs (norm, activation, position) transfer across width under the same protocol"
+ }
+]

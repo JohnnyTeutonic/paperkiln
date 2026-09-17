@@ -1,0 +1,335 @@
+[
+ {
+  "id": "rmsnorm-better",
+  "verdict": "TESTED-SOLID",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2502.02732",
+    "title": "Peri-LN: Revisiting Normalization Layer in the Transformer Architecture (Kim et al., ICML 2025)",
+    "year": 2025,
+    "quote": "\"we pre-trained each model with five different training seeds\" (400M/1.5B/3.2B, 30B tokens each); Appendix G.4 on swapping RMSNorm for LayerNorm at 400M: \"We observe no notable difference between using RMSNorm and LayerNorm\", citing OLMo 2's identical finding.",
+    "what_it_shows": "Five-seed, drop-in LN vs RMSNorm swap at 400M in a decoder LM: a null. Parity, not a win."
+   },
+   {
+    "id_or_url": "arXiv:2102.11972",
+    "title": "Do Transformer Modifications Transfer Across Implementations and Applications? (Narang et al., EMNLP 2021)",
+    "year": 2021,
+    "quote": "\"To capture the inter-run variance on these models, we run each model 5 times for 65,536 steps (1/8th of the total pre-training steps). We report the mean and standard deviation of the loss\" - RMS Norm 2.167+/-0.008 vs Vanilla (LayerNorm) 2.182+/-0.005 at 223M, all hyperparameters held constant; final single-run loss 1.821 vs 1.838.",
+    "what_it_shows": "The only multi-run evidence for a quality WIN: ~2 sigma at 1/8 budget, T5-style encoder-decoder, no LR retune per variant."
+   },
+   {
+    "id_or_url": "arXiv:2501.00656",
+    "title": "2 OLMo 2 Furious (OLMo team, 2024/2025)",
+    "year": 2025,
+    "quote": "\"Our ablations show no difference between the two, so we switch back to RMSNorm\" (non-parametric LayerNorm vs RMSNorm, 7B-class runs; seeds not stated).",
+    "what_it_shows": "Large-scale practitioner null; the switch was made for library/hardware reasons, not quality."
+   },
+   {
+    "id_or_url": "https://github.com/Padraigobrien08/nanogpt-from-scratch",
+    "title": "nanogpt-from-scratch paired-seed ablation study (unrefereed GitHub report)",
+    "year": 2026,
+    "quote": "51.2M params, 8 layers x 512, 524M tokens per arm, 3 seeds per arm, baseline seed spread 0.0043; norm-rmsnorm arm: +0.0007 +/- 0.0021 val loss, classed \"Noise\" (per-seed deltas straddle zero).",
+    "what_it_shows": "A nano-scale (51M) three-seed matched-budget null for LN vs RMSNorm; essentially the proposed test at 1/4 the seeds."
+   }
+  ],
+  "gap": "Only a tighter null: a 12-seed nano run would add sign-per-seed at 10-60M, but the 3-seed 51M null, the 5-seed 400M null and the 7B null already bracket the scale range; low expected information unless paired with the gpt2 (post-norm-era) vs llama family split.",
+  "confidence": 0.75,
+  "notes": "Our prior was wrong in one respect: there IS a controlled multi-seed comparison (Peri-LN, 5 seeds, 400M-3.2B, appendix G.4) and it is a null, not a win. The verdict is SOLID for the 'matches' half of the claim; the 'beats' half rests on Narang's ~2-sigma 1/8-budget result and on no LR retune, so 'beats' should be dropped from the claim. The speed half is real but small (~6% throughput at 124M in nanoGPT-Valkyrie; T5's original 7-9% figure came from a naive two-pass TF LayerNorm). Pre-LN and pre-RMSNorm are provably near-equivalent (Jiang et al. 2023, arXiv:2305.14858), which is why nulls are expected; if the team runs this at all, the only interesting arm is post-norm placement where the mean-centring might matter."
+ },
+ {
+  "id": "prenorm-better",
+  "verdict": "CONTESTED",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2002.04745",
+    "title": "On Layer Normalization in the Transformer Architecture (Xiong et al., ICML 2020)",
+    "year": 2020,
+    "quote": "IWSLT14/WMT14/BERT-base; Pre-LN without warmup reaches \"comparable final performances but use much less training time\" than Post-LN with warmup; the ten-seed repetition is used only for the gradient-norm-at-init verification, not for final-loss comparison.",
+    "what_it_shows": "The origin paper claims speed and equal final quality, not better final quality; the multi-seed part is the theory check."
+   },
+   {
+    "id_or_url": "arXiv:2004.08249",
+    "title": "Understanding the Difficulty of Training Transformers (Liu et al., EMNLP 2020; Admin)",
+    "year": 2020,
+    "quote": "\"when Post-LN converges, it outperforms Pre-LN in 7 out of 8 settings\" (15-configuration grid); WMT14 En-De 6L-6L BLEU Post-LN 27.80 vs Pre-LN 27.27; Post-LN fails at 12L and 18L. IWSLT numbers carry +/- (e.g. 35.64+/-0.23) but seed count is not stated. No language-modelling experiment.",
+    "what_it_shows": "Controlled MT evidence that post-norm is better at convergence when it converges: the 'post-norm is dead' half is contradicted at shallow depth, but only for MT."
+   },
+   {
+    "id_or_url": "arXiv:2412.13795",
+    "title": "Mix-LN: Unleashing the Power of Deeper Layers by Combining Pre-LN and Post-LN (Li et al., 2024/2025)",
+    "year": 2025,
+    "quote": "LLaMA-style LMs on C4: Post-LN vs Pre-LN perplexity 35.18 vs 34.77 (71M), 26.95 vs 26.78 (130M), 1409 vs 21.92 (250M), 1411 vs 18.65 (1B); \"identical configurations except for the normalization\"; no seeds, no per-variant LR tuning (1e-3 for <=250M).",
+    "what_it_shows": "Single-seed LM evidence: post-norm slightly worse at 71-130M and diverges at 250M+ under a shared LR; confounded by no per-arm LR/warmup tuning."
+   },
+   {
+    "id_or_url": "arXiv:2502.02732",
+    "title": "Peri-LN: Revisiting Normalization Layer in the Transformer Architecture (Kim et al., ICML 2025)",
+    "year": 2025,
+    "quote": "\"we pre-trained each model with five different training seeds\", LR swept 1e-4 to 5e-3; 400M: Post-LN loss 7.46 vs Pre-LN 3.43 vs Peri-LN 3.34; 1.5B: 5.38 vs 3.29 vs 3.18; 3.2B: 4.43 vs 3.20 vs 3.11; Pre-LN diverged more often than Peri-LN in early training.",
+    "what_it_shows": "Five-seed, LR-swept LM evidence at 400M-3.2B that post-norm is far worse (effectively fails) and that pre-norm is itself the less stable of the two modern placements."
+   }
+  ],
+  "gap": "Nobody has run pre vs post placement for a decoder LM at 10-60M with per-arm warmup/LR tuning and seeds: the MT-derived 'post-norm wins when it converges' (Admin, Nguyen & Salazar 2019 on WMT En-De 27.58 vs 26.83) has never been checked for language modelling at any scale with a variance estimate, and the LM evidence at 71-130M (Mix-LN) is single-seed with a shared LR.",
+  "confidence": 0.8,
+  "notes": "Our prior is right that the post-norm-with-warmup advantage is real and rarely repeated, but it is MT-only (Admin, Nguyen & Salazar 2019 arXiv:1910.05895). For LMs the controlled evidence (Peri-LN, 5 seeds) says post-norm collapses from 400M up even with an LR sweep, so the claim is scale- and task-dependent rather than settled. Also note the frame has moved: the live 2025 question is Pre-LN vs Peri-LN (both beat Post-LN), and OLMo 2 uses a reordered ('post-norm on the sublayer output') layout with QK-norm. A nano test should include warmup as a factor, as proposed, because that is exactly the confound the LM papers do not vary."
+ },
+ {
+  "id": "swiglu-better",
+  "verdict": "TESTED-SOLID",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2002.05202",
+    "title": "GLU Variants Improve Transformer (Shazeer 2020)",
+    "year": 2020,
+    "quote": "\"For each model architecture, we also trained four models for a shorter period (65,536 steps) to measure inter-run variability\"; GLU variants \"reduce the hidden layer to d_ff=2048\" (from 3072) to match parameters and ops; log-perplexity at 65k steps: ReLU 1.997 (0.005), GELU 1.983 (0.005), SwiGLU 1.944 (0.010), GEGLU 1.942 (0.004); at 524k steps ReLU 1.677, GELU 1.679, SwiGLU 1.636.",
+    "what_it_shows": "Parameter-matched, four-run variance estimate, 12-layer d768 T5 encoder-decoder: the SwiGLU gain (~0.04 nats) is ~8x the run-to-run std."
+   },
+   {
+    "id_or_url": "arXiv:2102.11972",
+    "title": "Do Transformer Modifications Transfer Across Implementations and Applications? (Narang et al., EMNLP 2021)",
+    "year": 2021,
+    "quote": "223M params, 5 runs at 1/8 budget: SwiGLU 2.127+/-0.003 vs GeLU 2.179+/-0.003 vs Vanilla ReLU 2.182+/-0.005; final loss 1.789 vs 1.838; SwiGLU/GeGLU among the few modifications that \"consistently improved performance\".",
+    "what_it_shows": "Independent replication in the same family with a 5-run variance estimate: a ~15-sigma effect at matched parameters."
+   },
+   {
+    "id_or_url": "arXiv:2210.15424",
+    "title": "What Language Model to Train if You Have One Million GPU Hours? (Le Scao et al., 2022)",
+    "year": 2022,
+    "quote": "1.3B decoder-only ablations on 112B tokens, d_ff=8/3 d_model to match compute: SwiGLU 42.95 vs GELU 42.79 average EAI-harness score; single run per ablation, no variance reported.",
+    "what_it_shows": "Decoder-only, 1.3B: direction preserved but the downstream delta is tiny and single-seed."
+   },
+   {
+    "id_or_url": "https://github.com/Padraigobrien08/nanogpt-from-scratch",
+    "title": "nanogpt-from-scratch paired-seed ablation study (unrefereed GitHub report)",
+    "year": 2026,
+    "quote": "51.2M params, 3 seeds, 524M tokens: mlp-swiglu -0.0341 +/- 0.0035 val loss vs GELU, every seed agreed in direction; but \"at 512 width, the 2/3 scaling for SwiGLU produces 1536 hidden units\" vs 2048, i.e. ~12% more MLP parameters in the SwiGLU arm.",
+    "what_it_shows": "Nano-scale 3-seed sign agreement for SwiGLU over GELU; the parameter match is slightly off in SwiGLU's favour."
+   }
+  ],
+  "gap": "A 12-seed exact-parameter-match run at 10-60M would only add the sign-per-seed at nano scale (already 3/3 at 51M with a small param mismatch) and the loss-delta band; the open questions are elsewhere: whether the gap shrinks with scale (Scao's 1.3B downstream delta is ~0) and whether the GLU gain is gating rather than Swish (ReLU^2 and xIELU beat SwiGLU at 1.1-1.3B).",
+  "confidence": 0.85,
+  "notes": "Our prior 'one seed per variant' is wrong: Shazeer trained four repeats per variant at 1/8 budget and reported std, and Narang repeated it with five. The 'no explanation' line is real but the effect is well replicated at 220M encoder-decoder, 1.3B decoder and 51M decoder (3 seeds). What is NOT established is that SwiGLU is the best activation: xIELU (arXiv:2411.13010; 1.1B, 126B tokens: SwiGLU 2.353+/-0.004 vs ReLU^2 2.337+/-0.004 vs xIELU 2.323+/-0.004), Primer's squared ReLU (arXiv:2109.08668, multi-run at 35M) and ReLU^2 Wins (arXiv:2402.03804; 1.3B: SwiGLU 50.53 vs ReLU^2 50.48 vs ReGLU 50.36) all show non-gated squared ReLU at parity or better. If the team runs an activation panel, add ReLU^2 as an arm; that is where the literature is thin at nano scale with seeds."
+ },
+ {
+  "id": "relu-dead-llm",
+  "verdict": "CONTESTED",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2002.05202",
+    "title": "GLU Variants Improve Transformer (Shazeer 2020)",
+    "year": 2020,
+    "quote": "Four-run variance at 65k steps: FFN-ReLU 1.997 (0.005) vs FFN-GELU 1.983 (0.005) vs FFN-Swish 1.994 (0.003); at 524k steps ReLU 1.677 vs GELU 1.679 vs Swish 1.683 (matched d_ff=3072).",
+    "what_it_shows": "ReLU vs GELU at full budget is a dead heat (ReLU marginally lower); at 1/8 budget GELU leads by ~2-3 std."
+   },
+   {
+    "id_or_url": "arXiv:2102.11972",
+    "title": "Do Transformer Modifications Transfer Across Implementations and Applications? (Narang et al., EMNLP 2021)",
+    "year": 2021,
+    "quote": "5 runs at 1/8 budget: Vanilla (ReLU) 2.182+/-0.005 vs GeLU 2.179+/-0.003; final loss 1.838 vs 1.838; SGLUE 71.66 vs 75.79 (single fine-tune runs).",
+    "what_it_shows": "Pretraining loss identical within noise at 223M; the only GELU advantage is on single-run downstream fine-tuning."
+   },
+   {
+    "id_or_url": "arXiv:2310.04564",
+    "title": "ReLU Strikes Back: Exploiting Activation Sparsity in Large Language Models (Mirzadeh et al., ICLR 2024)",
+    "year": 2024,
+    "quote": "OPT-1.3B trained from scratch \"on a hundred billion tokens of the RefinedWeb datasets with different activation functions, including ReLU, SiLU, and GELU\"; \"the performance of the models is very similar when using different activation functions\"; no seeds or variance reported.",
+    "what_it_shows": "Single-run 1.3B decoder parity of ReLU with GELU/SiLU on zero-shot benchmarks, plus ~90% activation sparsity for ReLU."
+   },
+   {
+    "id_or_url": "arXiv:2402.03804",
+    "title": "ReLU^2 Wins: Discovering Efficient Activation Functions for Sparse LLMs (Zhang et al., 2024)",
+    "year": 2024,
+    "quote": "Four 1.3B LMs pretrained on 100B tokens: SwiGLU 50.53, ReGLU 50.36, ReLU^2 50.48, ReLU 48.85 average accuracy; \"ReLU consistently underperforms\" the GLU and squared variants; single run each.",
+    "what_it_shows": "Plain ReLU trails gated/squared units by ~1.5 points at 1.3B, while squared ReLU (non-smooth) matches SwiGLU: the loss is about gating/squaring, not smoothness."
+   }
+  ],
+  "gap": "A 12-seed matched-parameter ReLU-vs-GELU run at 10-60M would give the first sign-per-seed estimate at nano scale plus free activation-sparsity curves, but it would be replicating a parity already shown with 4-5 runs at 223M and single runs at 1.3B; the informative arm is ReLU^2 vs SwiGLU vs GELU, not ReLU vs GELU.",
+  "confidence": 0.7,
+  "notes": "Read this CONTESTED as 'controlled evidence is against the claim as worded'. Nothing controlled supports 'strictly worse than smooth activations': ReLU = GELU within run-to-run noise at 223M (two independent 4-5 run studies) and at 1.3B (single run). The 'for' side is (a) Hendrycks & Gimpel 2016's non-LM experiments that GPT-2/BERT inherited and (b) ReLU^2 Wins showing plain ReLU ~1.5 points below SwiGLU/ReLU^2 at 1.3B, which is a gating/squaring effect since non-smooth ReLU^2 matches SwiGLU. Our prior ('ReLU revival papers report parity') is confirmed but the parity evidence is stronger than we recorded: it has variance estimates at 223M. Recommend folding this claim into swiglu-better and adding a ReLU^2 arm rather than running it alone."
+ },
+ {
+  "id": "rope-better-learned",
+  "verdict": "TESTED-WEAK",
+  "evidence": [
+   {
+    "id_or_url": "https://blog.eleuther.ai/rotary-embeddings/",
+    "title": "Rotary Embeddings: A Relative Revolution (EleutherAI blog, Biderman et al. 2021)",
+    "year": 2021,
+    "quote": "125M GPT-NeoX on OpenWebText2, 55k steps: Learned Absolute loss 2.809, T5 RPE 2.801, Rotary 2.759; 1.4B on the Pile, 8k steps: Learned 2.240, T5 2.223, Rotary 2.173; seeds not stated, hyperparameters copied from GPT-3 sizes without per-arm tuning.",
+    "what_it_shows": "The most-cited in-distribution evidence: a ~0.05-0.07 nat RoPE win over learned at 125M and 1.4B, single run each, no sinusoidal arm."
+   },
+   {
+    "id_or_url": "arXiv:2108.12409",
+    "title": "Train Short, Test Long: Attention with Linear Biases (Press et al., ICLR 2022)",
+    "year": 2022,
+    "quote": "247M WikiText-103 model evaluated at its training length L=1024: Sinusoidal 19.34, Rotary 19.33, T5 bias 18.80, ALiBi 18.66 perplexity; the sinusoidal baseline has std 0.24 across seeds (count not stated).",
+    "what_it_shows": "In-distribution, RoPE is indistinguishable from sinusoidal at 247M; relative-bias methods beat both."
+   },
+   {
+    "id_or_url": "arXiv:2210.15424",
+    "title": "What Language Model to Train if You Have One Million GPU Hours? (Le Scao et al., 2022)",
+    "year": 2022,
+    "quote": "1.3B, 112B tokens, single run per arm, EAI-harness average: ALiBi 43.70, Learned 41.71, Rotary 41.46, None 41.23; ALiBi's lead held \"even without taking into account their ability to extrapolate\".",
+    "what_it_shows": "The one contrary datapoint: learned >= rotary on downstream tasks at 1.3B, single run, noisy metric."
+   },
+   {
+    "id_or_url": "https://github.com/Padraigobrien08/nanogpt-from-scratch",
+    "title": "nanogpt-from-scratch paired-seed ablation study (unrefereed GitHub report)",
+    "year": 2026,
+    "quote": "51.2M params, 3 seeds, 524M tokens, T=1024: pos-rope -0.0886 +/- 0.0021 val loss vs learned absolute (seed noise floor 0.0043), all seeds agreed; pos-none +0.0928 +/- 0.0110.",
+    "what_it_shows": "Nano-scale, matched-budget, 3-seed evidence that RoPE beats learned in-distribution by ~20x the noise floor; no sinusoidal arm."
+   }
+  ],
+  "gap": "The sinusoidal arm is the missing one: every multi-run or nano-scale comparison pits RoPE against learned only, and the one study with sinusoidal (Press, 247M) finds a null, so a 12-seed learned vs sinusoidal vs RoPE panel at 10-60M would decide whether the claim is 'RoPE beats learned' or merely 'any fixed encoding beats a learned table at small data'.",
+  "confidence": 0.7,
+  "notes": "Our prior ('few seeds; most later evidence is extrapolation') is right. Vs LEARNED the sign is consistent across 51M (3 seeds), 125M, 1.4B in-distribution loss and only Scao's single-run downstream numbers disagree; expect the nano test to confirm this arm easily (delta ~0.09 nats at 51M/524M tokens). Vs SINUSOIDAL the claim is unsupported: Press finds 19.33 vs 19.34 at 247M, and Haviv 2022 finds sinusoidal beats learned (12.93 vs 13.05 at 1.3B), which together suggest the RoPE-over-learned gap may be mostly a learned-table penalty. Kazemnejad 2023 (3 seeds, 107M) reports all PEs at parity in-distribution on its synthetic tasks, and its 1.3B StarCoder run shows similar iid perplexity across variants. RoFormer's own MT/GLUE numbers (+0.2 BLEU, mixed GLUE) are not evidence for the LM claim."
+ },
+ {
+  "id": "nope-causal",
+  "verdict": "CONTESTED",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2203.16634",
+    "title": "Transformer Language Models without Positional Encodings Still Learn Positional Information (Haviv et al., EMNLP Findings 2022)",
+    "year": 2022,
+    "quote": "125M-1.3B on WikiText-103 and the Pile: WikiText NoPos 20.97 vs Learned 20.42 vs Sinusoidal 20.16 vs ALiBi 19.71; Pile 1.3B NoPos 13.10 vs Learned 13.05 vs Sinusoidal 12.93 vs ALiBi 12.51; \"performance gaps narrow in larger models\"; seed count not stated, and the paper itself notes concurrent work found up-to-0.9-perplexity seed gaps in this setting.",
+    "what_it_shows": "NoPE is consistently but only slightly worse in-distribution, with the gap shrinking with scale; single-seed with an acknowledged seed noise comparable to the gap."
+   },
+   {
+    "id_or_url": "arXiv:2404.12224",
+    "title": "Length Generalization of Causal Transformers without Position Encoding (Wang et al., ACL Findings 2024)",
+    "year": 2024,
+    "quote": "1.1B NoPE and RoPE models trained on ~100B tokens at T=2048: within training length both average ~46.2 on commonsense benchmarks; NoPE \"begins degrading significantly beyond 2.4K tokens\", with the perplexity inflection tracking the attention-entropy inflection; a softmax temperature of 1.2/sqrt(d) extends it to 4.4K.",
+    "what_it_shows": "Single-run 1.1B downstream parity in-distribution, and a concrete failure of the 'NoPE length-generalises' half beyond ~20% extra length."
+   },
+   {
+    "id_or_url": "arXiv:2501.18795",
+    "title": "Rope to Nope and Back Again: A New Hybrid Attention Strategy (Yang et al., Cohere 2025)",
+    "year": 2025,
+    "quote": "8B models from scratch (750B-token observation phase); \"the NoPE variant lags behind\" RoPE on standard benchmarks, confirming that NoPE models show \"inferior performance in terms of perplexity and downstream task evaluations within the trained sequence length\"; 16 seeds are used only for NIAH evaluation, not training.",
+    "what_it_shows": "At 8B, pure NoPE loses in-distribution; the production answer became interleaved RoPE/NoPE (also Llama 4, SmolLM3), not NoPE."
+   },
+   {
+    "id_or_url": "https://github.com/Padraigobrien08/nanogpt-from-scratch",
+    "title": "nanogpt-from-scratch paired-seed ablation study (unrefereed GitHub report)",
+    "year": 2026,
+    "quote": "51.2M, 3 seeds, 524M tokens, T=1024: pos-none +0.0928 +/- 0.0110 vs learned and pos-rope -0.0886 +/- 0.0021, i.e. NoPE ~0.18 nats behind RoPE with every seed agreeing (noise floor 0.0043).",
+    "what_it_shows": "At nano scale and short budget, NoPE is far from matching RoPE; the largest gap in the literature, consistent with Haviv's 'gap narrows with scale'."
+   }
+  ],
+  "gap": "A 12-seed matched-budget none-vs-RoPE run at 10-60M would pin the in-distribution gap and its scaling with T where the 3-seed 51M result says it is largest (~0.18 nats); the length-generalisation probe is the more valuable half because Wang's 20% cliff and Kazemnejad's NoPE advantage have never been reconciled at one scale with seeds.",
+  "confidence": 0.75,
+  "notes": "The claim as worded ('NoPE matches RoPE') is scale-dependent and at nano scale almost certainly false: expect NoPE to lose in-distribution by an amount well outside a 12-seed band. Our prior is right that the small-model support (Kazemnejad 2023: 107M, 3 seeds, synthetic reasoning tasks, all PEs perfect in-distribution) is task-specific, and that later at-scale reports contest it. Note also Gu et al. 2025 found attention sinks emerge with NoPE just as with RoPE, so 'NoPE changes the sink story' is not a free extra result. The interesting nano question is not parity but the crossing: at what token budget/T does the NoPE penalty fall below the seed band."
+ },
+ {
+  "id": "sinks-necessary",
+  "verdict": "CONTESTED",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2410.10781",
+    "title": "When Attention Sink Emerges in Language Models: An Empirical View (Gu et al., ICLR 2025 spotlight)",
+    "year": 2025,
+    "quote": "LLaMA-style models 60M-1B trained from scratch on 5B Pile tokens (default 60M: d768, 10 blocks, 8 heads, 20k steps); sinks appear \"less obvious in LMs trained with small learning rates\" and vanish below ~500M tokens; PE choice (NoPE/absolute/ALiBi/RoPE), pre/post-norm, FFN and head design have \"negligible effects\"; shifted-window attention with w=4-8 shows ~2-8% sink heads vs 18.18% at full context; sigmoid attention without normalisation: \"LMs still have comparable validation loss but no attention sink\" (60M 3.74 vs 3.73; 1B 3.10 vs 3.07); no seeds reported.",
+    "what_it_shows": "The controlled from-scratch sweep: sinks are a softmax-normalisation artefact conditional on LR and data, not universal; removing them costs ~0.01-0.03 nats; small windows prevent emergence."
+   },
+   {
+    "id_or_url": "arXiv:2309.17453",
+    "title": "Efficient Streaming Language Models with Attention Sinks (Xiao et al., ICLR 2024)",
+    "year": 2024,
+    "quote": "Window attention that evicts the initial tokens collapses (Llama-2-13B perplexity 5.4 -> 5158 when the first four tokens are dropped); 160M models pretrained with a learnable sink token stream stably with that single token while vanilla models need several initial tokens; single runs.",
+    "what_it_shows": "For softmax models with KV eviction, keeping the sink is necessary; a trained sink token suffices - the 'necessary for stable long context' half, in the eviction setting only."
+   },
+   {
+    "id_or_url": "arXiv:2505.06708",
+    "title": "Gated Attention for Large Language Models: Non-linearity, Sparsity, and Attention-Sink-Free (Qiu et al., Qwen 2025)",
+    "year": 2025,
+    "quote": "1.7B dense and 15B-A2.5B MoE models on up to 3.5T tokens: an SDPA output gate cuts first-token attention share from 46.7% to 4.8%, \"substantially enhanced training stability, mitigating loss spikes\", tolerates LR 8e-3 where baselines diverge, lowers PPL by >0.2, and gains >10 RULER points at 128k; seeds not stated.",
+    "what_it_shows": "Sink-free models are MORE stable and extrapolate better at scale: direct counter-evidence to 'necessary for stability', single-run."
+   },
+   {
+    "id_or_url": "arXiv:2504.02732",
+    "title": "Why do LLMs attend to the first token? (Barbero et al., 2025)",
+    "year": 2025,
+    "quote": "Gemma 7B / Llama 3.1 8B-405B analysed, plus ~120M models trained from scratch on 5B tokens with context 128-4096: sink strength grows with model size and training context; removing <bos> at inference drops RULER to 0%; sinks argued to prevent over-mixing/rank collapse.",
+    "what_it_shows": "The functional-role case for sinks, with a nano-scale from-scratch context-length sweep (single-seed) and an inference-time (not training-time) necessity test."
+   }
+  ],
+  "gap": "Gu et al. already swept norm/PE/activation at 60M and found them irrelevant, so the proposed sweep is likely a null; what a 12-seed nano study would add is the emergence RATE per configuration (Gu is single-run) and the genuinely untested question of whether sink-free softmax runs (small LR, few tokens, or Softpick/sigmoid heads) fail on the window-attention lane, which no paper has measured.",
+  "confidence": 0.8,
+  "notes": "Both halves of the claim are wrong as absolutes. 'Emerge in every trained decoder': false, emergence needs softmax normalisation plus adequate LR and >~500M tokens, and sigmoid (Gu; Ramapuram et al. 2024 arXiv:2409.04431 matches softmax at 85M-7B), Softpick (arXiv:2504.20966: parity at 340M, but a 0.12-nat loss at 1.8B) and gated attention all train without sinks. 'Necessary for stable long-context attention': true only for softmax models with KV eviction (StreamingLLM), while sink-free gated models are more stable and extrapolate better. Theory (arXiv:2603.11487) proves sinks are forced in softmax attention for trigger-conditional 'no-op' tasks and removable with non-normalised attention, which reconciles the two sides. Correction to our prior: Gu's window-size dependence runs the opposite way to what we recorded (smaller windows PREVENT sinks), and Gu's models are 60M-1B with the default 60M, so the nano-scale emergence observation already exists in single-seed form. A 2026 survey (arXiv:2604.10098, 180+ papers) frames sinks as something to mitigate, not preserve."
+ },
+ {
+  "id": "window-loses-longrange",
+  "verdict": "TESTED-WEAK",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2502.18845",
+    "title": "SWAT: Sliding Window Attention Training for Efficient Large Language Models (Fu et al., 2025)",
+    "year": 2025,
+    "quote": "340M/15B-token and 760M/30B-token models from scratch; within training length (T=1024) sliding-window 3.02 vs full-attention 2.97 perplexity on OpenWebText, while at 16,384 tokens the window model holds 3.005 against full attention's 4.84; single run per arm.",
+    "what_it_shows": "The only from-scratch matched-budget window-vs-full comparison at sub-1B scale: a ~1.7% in-distribution penalty for the window, single-seed, no training-curve or width analysis."
+   },
+   {
+    "id_or_url": "arXiv:2503.19786",
+    "title": "Gemma 3 Technical Report (Gemma Team, 2025)",
+    "year": 2025,
+    "quote": "2B text-only ablations: local:global ratios 1:1 to 7:1 - \"The impact is minimal, even with 7-to-1 local to global\"; window sizes 512-4096 at 1:1 and 1:3 - \"the sliding window can be reduced significantly without impacting perplexity\"; no long-context (RULER/NIAH) isolation of window size; single runs.",
+    "what_it_shows": "At 2B with some global layers, perplexity is insensitive to window size; the loss the claim predicts does not show up in perplexity, only (untested here) on long-range evals."
+   },
+   {
+    "id_or_url": "arXiv:2112.07210",
+    "title": "Simple Local Attentions Remain Competitive for Long-Context Tasks (Xiong et al., NAACL 2022)",
+    "year": 2022,
+    "quote": "RoBERTa-large variants pretrained \"using the same long-doc corpus\" (100k updates, 2^20 tokens per batch) then fine-tuned; \"none of the tested efficient attentions can beat a simple local window attention\"; MLM perplexity local window 3.47 vs blockwise 3.39 vs long-short 3.36; Hyperpartisan averaged over 4 seeds, other tasks single run.",
+    "what_it_shows": "Controlled pretraining shows local attention is not worse than fancier sparse patterns on long-doc tasks; it does not include a same-length full-attention arm, so it is silent on the claim's comparison."
+   },
+   {
+    "id_or_url": "arXiv:2504.17768",
+    "title": "The Sparse Frontier: Sparse Attention Trade-offs in Transformer LLMs (Nawrot et al., 2025)",
+    "year": 2025,
+    "quote": "\"the largest-scale empirical analysis to date of training-free sparse attention, evaluating six methods across multiple model families and sizes, sequences up to 128K tokens, and sparsity levels up to 0.95\" on nine tasks; local/window patterns degrade on long-range retrieval and reasoning tasks; \"longer sequences tolerate higher sparsity\".",
+    "what_it_shows": "The long-range loss is measured post hoc on 7B-72B models, not trained in; it establishes the at-scale half of the claim only."
+   }
+  ],
+  "gap": "No paper trains window vs full attention from scratch at matched budget with seeds and reports the training-time crossing or its dependence on width and T; the 'at every scale' clause and the early-lead/late-trail phenomenon seen in the transfer study are unreported, and even the in-distribution penalty (1.7% ppl at 340M, ~0 at 2B with global layers) has no variance estimate anywhere.",
+  "confidence": 0.75,
+  "notes": "Our prior stands: the literature measures long-range loss at scale on long-context benchmarks and never at nano scale as a function of training time. Two cautions for the design. First, in-distribution loss at T<=1k barely separates the arms (SWAT 1.7%, Gemma ~0), so the test needs a long-range probe (induction/copy at distance > window) or the crossing will sit inside the seed band; second, the recent post-training literature (Jolicoeur-Martineau 2026 arXiv:2608.28444: SWA with a 64-token window recovers ~99% of short-context performance on 1.3-70B models; SWAA arXiv:2512.10411) shows the window penalty is concentrated on retrieval-type tasks, so 'loses long-range dependencies' is really 'loses distant retrieval', and Gu et al. 2025 report that windows w<=8 also suppress sink formation, which couples this claim to sinks-necessary."
+ },
+ {
+  "id": "gqa-free",
+  "verdict": "TESTED-WEAK",
+  "evidence": [
+   {
+    "id_or_url": "arXiv:2305.13245",
+    "title": "GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints (Ainslie et al., EMNLP 2023)",
+    "year": 2023,
+    "quote": "T5-XXL uptrained with 5% of pretraining compute: MHA-XXL 47.2, GQA-8-XXL 47.1, MQA-XXL 46.6 average; \"we also do not compare our XXL GQA model to a comparative model trained from scratch, so we do not know the relative performance of uptraining vs training from scratch\"; no seeds.",
+    "what_it_shows": "The origin result is uptraining at one scale with no variance and, by its own admission, no from-scratch baseline; the 0.1-point gap is inside any plausible seed band."
+   },
+   {
+    "id_or_url": "arXiv:2405.12981",
+    "title": "Reducing Transformer Key-Value Cache Size with Cross-Layer Attention (Brandon et al., 2024)",
+    "year": 2024,
+    "quote": "1B models trained from scratch on 30B SlimPajama tokens with identical data order and \"approximately the same number of FLOPs\": validation perplexity MHA 13.15, GQA-4 13.36, MQA 13.54; single run per configuration, KV projections not compensated by extra width.",
+    "what_it_shows": "From scratch at 1B, GQA-4 costs ~1.6% perplexity and MQA ~3% against MHA: measurable, single-seed, unmatched parameters."
+   },
+   {
+    "id_or_url": "arXiv:1911.02150",
+    "title": "Fast Transformer Decoding: One Write-Head is All You Need (Shazeer 2019)",
+    "year": 2019,
+    "quote": "WMT14 En-De, all variants held at 211M parameters by widening d_ff from 4096 to 5440 for multi-query; dev perplexity multi-head 1.424 vs multi-query 1.439, dev BLEU 26.7 vs 26.5, \"minor quality degradation\"; single run.",
+    "what_it_shows": "The only parameter-matched MQA-vs-MHA design in the lineage: still a small measurable loss, MT not LM, single seed."
+   },
+   {
+    "id_or_url": "https://github.com/Padraigobrien08/nanogpt-from-scratch",
+    "title": "nanogpt-from-scratch paired-seed ablation study (unrefereed GitHub report)",
+    "year": 2026,
+    "quote": "51.2M, 3 seeds, 524M tokens: gqa-2 (8 -> 2 KV heads) +0.0311 +/- 0.0012 val loss, every seed agreed, classed \"Worse\"; width was not adjusted to compensate for the KV-head reduction.",
+    "what_it_shows": "At nano scale with seeds, a 4x KV reduction costs ~7x the noise floor in loss when parameters are not re-spent."
+   }
+  ],
+  "gap": "A 12-seed matched-parameter (heads/d_ff adjusted) MHA vs GQA vs MQA run at 10-60M would be the first parameter-matched multi-seed comparison for a language model at any scale: Shazeer's matched design is MT and single-run, Brandon's and the 51M study are unmatched, and Ainslie's is uptraining.",
+  "confidence": 0.75,
+  "notes": "Read TESTED-WEAK as 'tested weakly, and the weak evidence runs AGAINST the claim as worded'. Every from-scratch comparison found shows a small, consistent loss for fewer KV heads (Shazeer 2019; Brandon 2024; DeepSeek-V2 arXiv:2405.04434 Appendix D at ~7B: GQA/MQA \"performance does not match MHA\"; the 51M 3-seed study), and Chen et al. 2025 (arXiv:2503.09579, 3M-1.2B from scratch, no seeds) treat the KV-head count as a real term in loss that must be bought back with model size. 'Loses nothing measurable' is therefore false at unmatched parameters and untested at matched parameters for LMs; the defensible claim is 'costs less than 2% perplexity, recoverable by re-spending the parameters', which is what practitioners actually rely on. Our prior ('uptrained, few seeds; from-scratch small-scale rarely reported') is right except that there is now a 3-seed nano datapoint and it shows a clear loss."
+ }
+]
