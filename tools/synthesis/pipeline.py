@@ -282,7 +282,10 @@ def arxiv_search(q, n=8):
            + f"&max_results={n}&sortBy=relevance")
     for attempt in range(3):
         try:
-            xml = urllib.request.urlopen(url, timeout=40).read().decode("utf-8", "replace")
+            req = urllib.request.Request(url, headers={
+                "User-Agent": "paperkiln-synthesis-scoper/0.1 (mailto:jonathanreich100@gmail.com)",
+                "Accept": "application/atom+xml"})
+            xml = urllib.request.urlopen(req, timeout=40).read().decode("utf-8", "replace")
             break
         except urllib.error.HTTPError as e:
             if e.code == 400:
@@ -340,8 +343,10 @@ def scope_one(idea):
         time.sleep(ARXIV_SLEEP)
     papers = list(seen.values())[:60]
     if not papers:
-        return {"id": idea["id"], "queries": queries, "papers": [], "verdict": "OPEN",
-                "closest": [], "survives": None, "confidence": 0.2, "note": "no search hits"}
+        # empty retrieval is NOT evidence of openness (17 Sep 2026: arXiv
+        # returned 406 for hours and 71 ideas were marked OPEN on nothing)
+        return {"id": idea["id"], "queries": queries, "papers": [], "n_papers": 0,
+                "verdict": "ERROR", "error": "no retrieval", "closest": [], "survives": None, "confidence": 0.0}
     plist = "\n\n".join(f"[{p['id']}] ({p['published']}) {p['title']}\n{p['abstract']}" for p in papers)
     j = parse_json(ask(JUDGE_MODEL, JUDGE_SYSTEM, "PROPOSAL:\n" + desc + "\n\nPAPERS:\n" + plist, max_tokens=1200))
     return {"id": idea["id"], "queries": queries,
