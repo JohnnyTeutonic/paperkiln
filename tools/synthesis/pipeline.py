@@ -42,7 +42,7 @@ OUT = os.path.join(HERE, "results")
 GEN_MODEL = "claude-sonnet-5"
 JUDGE_MODEL = "claude-sonnet-5"
 QUERY_MODEL = "claude-haiku-4-5-20251001"
-ARXIV_SLEEP = 3.0
+ARXIV_SLEEP = 4.0
 
 
 # ----------------------------------------------------------------- utils
@@ -288,6 +288,28 @@ def arxiv_search(q, n=8):
             xml = urllib.request.urlopen(req, timeout=40).read().decode("utf-8", "replace")
             break
         except urllib.error.HTTPError as e:
+            if e.code in (406, 429, 503):
+                # arXiv's abuse block (406) or rate limit: park and retry every
+                # 15 minutes for up to 12 hours rather than marking ideas
+                # unscoped on nothing (17 Sep 2026 crash-day lesson)
+                for wait_n in range(48):
+                    print(f"  [arxiv] {e.code}; parked {wait_n + 1}/48, retry in 15 min", flush=True)
+                    time.sleep(900)
+                    try:
+                        req = urllib.request.Request(url, headers={
+                            "User-Agent": "paperkiln-synthesis-scoper/0.1 (mailto:jonathanreich100@gmail.com)",
+                            "Accept": "application/atom+xml"})
+                        xml = urllib.request.urlopen(req, timeout=40).read().decode("utf-8", "replace")
+                        break
+                    except urllib.error.HTTPError as e2:
+                        if e2.code not in (406, 429, 503):
+                            return []
+                        continue
+                    except Exception:
+                        continue
+                else:
+                    return []
+                break
             if e.code == 400:
                 # malformed fielded syntax from the query writer: fall back
                 # to the bare words once, then give up on this query
@@ -334,7 +356,7 @@ def scope_one(idea):
     # backstops FIRST: the mechanism-free queries are the ones that find a
     # paper written in the field's own words, and the paper cap must not
     # truncate them behind the query writer's mechanism-named hits
-    queries = backstop_queries(idea) + [str(q) for q in queries[:5]]
+    queries = backstop_queries(idea)[:4] + [str(q) for q in queries[:3]]
     seen = {}
     for q in queries:
         for p in arxiv_search(q, n=10):
