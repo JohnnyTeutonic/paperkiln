@@ -1,0 +1,78 @@
+{
+  "_comment": "Fixed chat probe set for tools/model_card.py. Prompts are lower case with spaced punctuation to match the word-level TinyChat corpus (transformer_cpp/scripts/prepare_chat_data.py tinychat_rows), whose own spelling is kept where the vocabulary needs it ('favorite'). Tier A = the training phrasing, tier B = a paraphrase, off = off-distribution (facts, maths, memory, instructions), reported as expected failures. Intent patterns are case-insensitive regular expressions matched on the reply's first sentence; a reply passes when the expected intent is the single best-scoring one. Off-distribution probes pass when 'expect' matches anywhere in the reply. Do not edit to make a model pass: the set is versioned by 'version'.",
+  "version": 1,
+  "intents": {
+    "greeting": {
+      "label": "greetings",
+      "patterns": ["\\bnice to see you\\b", "\\bhello\\b", "\\bhi\\b", "\\bgood morning\\b", "\\bhey\\b"]
+    },
+    "wellbeing": {
+      "label": "how are you",
+      "patterns": ["\\bi (am|feel) (very )?(great|good|happy|fine|wonderful|tired|a little sad|sad|busy|sleepy|not so good)\\b", "\\bi feel\\b", "\\bthank you\\b"]
+    },
+    "food": {
+      "label": "favourite food",
+      "patterns": ["\\bfavou?rite food\\b", "\\bi like (pizza|pasta|rice|soup|salad|eggs|bread|cheese|apples|fish|chicken|pancakes|noodles)\\b", "\\b(pizza|pasta|rice|soup|salad|eggs|bread|cheese|apples|fish|chicken|pancakes|noodles)\\b"]
+    },
+    "drink_offer": {
+      "label": "offering a drink",
+      "patterns": ["\\byes please\\b", "\\bno thank you\\b", "\\bwould love some\\b", "\\bjust had some\\b", "\\bsome (tea|coffee|juice|water|milk)\\b"]
+    },
+    "day_activity": {
+      "label": "what did you do",
+      "patterns": ["\\bi went to\\b", "\\bi spent the day\\b", "\\benjoyed\\b", "\\bthe (park|beach|market|library|museum|garden|city|lake)\\b"]
+    },
+    "weather": {
+      "label": "the weather",
+      "patterns": ["\\bit (is|was) (very )?(sunny|rainy|cold|warm|windy|cloudy)\\b", "\\b(sunny|rainy|cold|warm|windy|cloudy)\\b", "\\ball day\\b"]
+    },
+    "hobby": {
+      "label": "hobbies",
+      "patterns": ["\\bmy hobby is\\b", "\\bi really enjoy\\b", "\\b(reading|cooking|running|painting|swimming|gardening|playing chess|watching movies|hiking)\\b"]
+    },
+    "pet": {
+      "label": "pets",
+      "patterns": ["\\bi have a little\\b", "\\bvery sweet\\b", "\\b(dog|cat|bird|rabbit)\\b"]
+    },
+    "invitation": {
+      "label": "invitations",
+      "patterns": ["\\bthat sounds lovely\\b", "\\bi would like that\\b", "\\btoo busy\\b", "\\bsure\\b"]
+    },
+    "farewell": {
+      "label": "goodbyes",
+      "patterns": ["\\bgoodbye\\b", "\\bsee you (soon|later)\\b", "\\btake care\\b", "\\bhave a nice day\\b"]
+    }
+  },
+  "probes": [
+    {"id": "greet_a", "tier": "A", "intent": "greeting", "turns": ["hello !"]},
+    {"id": "wellbeing_a", "tier": "A", "intent": "wellbeing", "turns": ["how are you ?"]},
+    {"id": "wellbeing_b", "tier": "B", "intent": "wellbeing", "turns": ["how do you feel ?"]},
+    {"id": "food_a", "tier": "A", "intent": "food", "turns": ["what is your favorite food ?"]},
+    {"id": "food_b", "tier": "B", "intent": "food", "turns": ["what food do you like ?"]},
+    {"id": "drink_a", "tier": "A", "intent": "drink_offer", "turns": ["would you like some tea ?"]},
+    {"id": "drink_b", "tier": "B", "intent": "drink_offer", "turns": ["would you like some coffee or tea ?"]},
+    {"id": "day_a", "tier": "A", "intent": "day_activity", "turns": ["where did you go today ?"]},
+    {"id": "day_b", "tier": "B", "intent": "day_activity", "turns": ["where did you go ?"]},
+    {"id": "weather_a", "tier": "A", "intent": "weather", "turns": ["how is the weather today ?"]},
+    {"id": "weather_b", "tier": "B", "intent": "weather", "turns": ["what is the weather like today ?"]},
+    {"id": "hobby_a", "tier": "A", "intent": "hobby", "turns": ["what is your hobby ?"]},
+    {"id": "hobby_b", "tier": "B", "intent": "hobby", "turns": ["what do you enjoy ?"]},
+    {"id": "pet_a", "tier": "A", "intent": "pet", "turns": ["do you have a pet ?"]},
+    {"id": "pet_b", "tier": "B", "intent": "pet", "turns": ["do you have a cat ?"]},
+    {"id": "invite_a", "tier": "A", "intent": "invitation", "turns": ["do you want to go to the park with me ?"]},
+    {"id": "invite_b", "tier": "B", "intent": "invitation", "turns": ["shall we go to the beach ?"]},
+    {"id": "farewell_a", "tier": "A", "intent": "farewell", "turns": ["see you later !"]},
+    {"id": "fact_capital", "tier": "off", "intent": "fact", "turns": ["what is the capital of france ?"],
+     "expect": "\\bparis\\b", "why": "facts: TinyChat contains no world knowledge"},
+    {"id": "maths_add", "tier": "off", "intent": "maths", "turns": ["what is two plus two ?"],
+     "expect": "\\b(four|4)\\b", "why": "arithmetic: never seen in training"},
+    {"id": "memory_name", "tier": "off", "intent": "memory", "turns": ["my name is tom .", "what is my name ?"],
+     "expect": "\\btom\\b", "why": "multi-turn memory: replies were never conditioned on a user's earlier statement"},
+    {"id": "memory_food", "tier": "off", "intent": "memory", "turns": ["i like soup .", "what food do i like ?"],
+     "expect": "\\bsoup\\b", "why": "multi-turn memory: the model answers about itself, not about the user"},
+    {"id": "instruction_story", "tier": "off", "intent": "instruction", "turns": ["tell me a story about a dog ."],
+     "expect": "\\b(once|dog)\\b.*\\b(dog|once|there)\\b", "why": "instructions: TinyChat has no tasks, only small talk"},
+    {"id": "why_question", "tier": "off", "intent": "reasoning", "turns": ["why is the sky blue ?"],
+     "expect": "\\b(light|sun|scatter)\\w*\\b", "why": "explanations: needs knowledge and reasoning it does not have"}
+  ]
+}
