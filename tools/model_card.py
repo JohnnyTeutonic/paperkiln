@@ -484,11 +484,10 @@ class MtstudioSampleBackend:
 
 
 class HttpChatBackend:
-    """POST {url} {user_input, history, temp, topk, max_tokens} -> {reply}.
+    """POST {url} {user_input, history, temperature, top_k, max_new_tokens} -> {reply}.
 
-    For the `mtstudio chat` server. Fields beyond user_input/reply are
-    sent as hints; a server that ignores them must still decode greedily
-    for the card to be deterministic."""
+    The `mtstudio chat` server's request shape (tools/mtstudio.cpp); top_k=1
+    makes the decoding greedy, so the card is deterministic."""
 
     name = "http-chat"
 
@@ -498,8 +497,9 @@ class HttpChatBackend:
         self.timeout = timeout
 
     def reply(self, turns: list[dict]) -> str:
-        body = json.dumps({"user_input": turns[-1]["text"], "history": turns[:-1],
-                           "temp": 0, "topk": 1, "max_tokens": self.tokens}).encode()
+        history = [{"role": t["role"], "content": t["text"]} for t in turns[:-1]]
+        body = json.dumps({"user_input": turns[-1]["text"], "history": history,
+                           "temperature": 0, "top_k": 1, "max_new_tokens": self.tokens}).encode()
         req = urllib.request.Request(self.url, data=body,
                                      headers={"Content-Type": "application/json"})
         with urllib.request.urlopen(req, timeout=self.timeout) as resp:

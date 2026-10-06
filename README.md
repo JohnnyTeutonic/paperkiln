@@ -247,6 +247,66 @@ chat script runs its own sampling loop. `tools/hf_export_verify.py` is
 the receipt that the Python path reproduces `mtstudio sample` token for
 token under greedy decoding.
 
+## Quickstart: chat with your own model
+
+No CMake knowledge needed. One script asks a few questions and does the
+rest: checks your tools (and tells you the exact command for anything
+missing), builds paperkiln, makes a practice corpus, trains a model on
+your CPU, writes a plain-language card about what you trained, and
+opens a chat page in your browser.
+
+```bash
+git clone https://github.com/JohnnyTeutonic/paperkiln.git
+cd paperkiln
+bash quickstart_chat.sh
+```
+
+Linux, macOS, and Windows through WSL2 (in PowerShell as Administrator:
+`wsl --install`, restart, then run the lines above in the Ubuntu app).
+Native Windows is not supported yet.
+
+**What it asks.**
+1. Your system, detected for you to confirm.
+2. Chat with the ready-made model, or train your own. Training needs a
+   C++ compiler and CMake; if you have no administrator rights, the
+   script installs CMake for just you and points to a compiler you can
+   install without one.
+3. Quick (a 1-million-parameter model, about 10–20 minutes on a laptop
+   CPU) or Better (a larger model, an hour or more).
+4. Whether to make a public link. If you say yes, it starts a free,
+   anonymous Cloudflare quick tunnel and prints a `trycloudflare.com`
+   address anyone can open to chat with your model. The link lasts as
+   long as the script runs. Anyone with the link can use it, so share it
+   with people, not posts.
+
+**What you get.** A chat page at `http://127.0.0.1:8080/`, the trained
+model in `runs/tinychat-<preset>/` (safetensors and GGUF), and a
+`card.md` beside it that says in plain language what the architecture
+does, how big it is, what it was trained on, and how it did on a fixed
+set of test questions.
+
+**What to expect from it.** The practice corpus is TinyChat: synthetic
+small talk in eight kinds of exchange (how are you, food, drinks, where
+you went, weather, hobbies, pets, invitations) with a vocabulary of
+about 150 words. A model this small learns those exchanges well: ask it
+how it is, what it likes to eat or whether it has a pet, and it answers
+in kind. It knows no facts, cannot do sums and loses the thread over
+several turns; the card's test results show where. TinyChat is used
+because a model of this size learns the *register* of real dialogue
+(DailyDialog) but not which answer goes with which question, while on
+a world small enough to master it gives the right kind of reply.
+
+Flags for scripted use: `--mode default|train`, `--preset quick|better`,
+`--share` / `--no-share`, `--port N`, `--yes`. The pieces also run on
+their own:
+
+```bash
+python3 tools/get_tinychat_data.py --dialogues 1500   # corpus + vocabulary GGUF, standard library only
+./build/mtstudio run specs/tinychat-quick.json          # train
+python3 tools/model_card.py runs/tinychat-quick --probe # the card
+./build/mtstudio chat runs/tinychat-quick --port 8080   # chat page + POST /chat
+```
+
 ## The studio — spec in, chatting model out
 
 ![the terminal loop: paper → provenance-carrying extraction → train → Atlas row → chat](docs/media/demo.gif)

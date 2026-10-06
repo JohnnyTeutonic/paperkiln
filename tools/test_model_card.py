@@ -269,6 +269,7 @@ def test_http_chat_backend_round_trip():
                  {"role": "user", "text": "how are you ?"}]
         assert be.reply(turns) == "i am fine ."
         assert seen["user_input"] == "how are you ?" and len(seen["history"]) == 2
-        assert seen["temp"] == 0 and seen["topk"] == 1
+        assert seen["temperature"] == 0 and seen["top_k"] == 1 and seen["max_new_tokens"] == 8
+        assert seen["history"][0] == {"role": "user", "content": "hi !"}
     finally:
         srv.shutdown()
