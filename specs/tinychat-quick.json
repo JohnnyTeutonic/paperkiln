@@ -1,0 +1,27 @@
+{
+  "name": "tinychat-quick",
+  "arch": {
+    "preset": "llama-tiny"
+  },
+  "data": {
+    "corpus": "data/tinychat.txt",
+    "vocab": "releases/tinychat_vocab.gguf",
+    "vocab_cap": 4096,
+    "T": 128
+  },
+  "train": {
+    "steps": 1500,
+    "lr": 0.003,
+    "eval_every": 100,
+    "checkpoint_every": 100,
+    "accum": 2,
+    "gradmap_every": 50
+  },
+  "export": {
+    "formats": [
+      "safetensors",
+      "gguf"
+    ]
+  },
+  "out_dir": "runs/tinychat-quick"
+}

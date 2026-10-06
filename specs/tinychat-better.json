@@ -1,0 +1,32 @@
+{
+  "name": "tinychat-better",
+  "arch": {
+    "preset": "gpt2-small"
+  },
+  "data": {
+    "corpus": "data/tinychat.txt",
+    "vocab": "releases/tinychat_vocab.gguf",
+    "vocab_cap": 4096,
+    "T": 256,
+    "max_tokens": 2000000
+  },
+  "train": {
+    "steps": 6000,
+    "lr": 0.002,
+    "eval_every": 200,
+    "checkpoint_every": 200,
+    "accum": 2,
+    "gradmap_every": 100,
+    "early_stopping": {
+      "patience": 8,
+      "min_delta": 0.002
+    }
+  },
+  "export": {
+    "formats": [
+      "safetensors",
+      "gguf"
+    ]
+  },
+  "out_dir": "runs/tinychat-better"
+}
