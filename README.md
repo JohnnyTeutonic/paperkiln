@@ -308,6 +308,18 @@ python3 tools/model_card.py runs/tinychat-quick --probe # the card
 ./build/mtstudio chat runs/tinychat-quick --port 8080   # chat page + POST /chat
 ```
 
+**Share a model you trained** on the Hugging Face Hub (optional; you need
+a free account and a write token from huggingface.co/settings/tokens):
+
+```bash
+python3 -m pip install --user huggingface_hub
+export HF_TOKEN=hf_...      # never committed or printed by the tool
+python3 tools/publish_hf.py runs/tinychat-quick --repo your-name/tinychat-quick --dry-run
+python3 tools/publish_hf.py runs/tinychat-quick --repo your-name/tinychat-quick
+```
+
+The Hub page is the model card, with a "chat with it" section.
+
 ## The studio — spec in, chatting model out
 
 ![the terminal loop: paper → provenance-carrying extraction → train → Atlas row → chat](docs/media/demo.gif)
