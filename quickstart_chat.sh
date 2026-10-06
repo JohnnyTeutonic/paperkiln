@@ -175,7 +175,9 @@ if [ "$MODE" = train ]; then
   [ -x "$MTSTUDIO" ] || build_mtstudio
 
   step "Making the TinyChat practice corpus"
-  if [ "$PRESET" = better ]; then N=20000; else N=5000; fi
+  # Several passes over a small inventory beat one pass over a large one at this size
+  # (transformer_cpp CHAT_EXPERIMENTS.md): about five epochs for each preset.
+  if [ "$PRESET" = better ]; then N=4000; else N=1500; fi
   python3 tools/get_tinychat_data.py --version 2 --dialogues "$N"
 
   step "Training ($PRESET). Progress is shown below; you can leave it running."
