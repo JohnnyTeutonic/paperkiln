@@ -1,7 +1,7 @@
 {
   "name": "tinychat-quick",
   "arch": {
-    "preset": "gpt2-nano"
+    "preset": "llama-tiny"
   },
   "data": {
     "corpus": "data/tinychat.txt",

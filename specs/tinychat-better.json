@@ -1,7 +1,7 @@
 {
   "name": "tinychat-better",
   "arch": {
-    "preset": "gpt2-nano",
+    "preset": "llama-tiny",
     "custom": {
       "d": 192,
       "layers": 3,
@@ -16,7 +16,7 @@
     "max_tokens": 2000000
   },
   "train": {
-    "steps": 5000,
+    "steps": 4000,
     "lr": 0.003,
     "eval_every": 200,
     "checkpoint_every": 200,
