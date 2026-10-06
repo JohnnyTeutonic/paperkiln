@@ -1,0 +1,579 @@
+{
+  "schema": "paperkiln.model_card/1",
+  "name": "tinychat-quick",
+  "generated_by": "tools/model_card.py",
+  "sources": [
+    "events.jsonl",
+    "result.json",
+    "spec.json"
+  ],
+  "architecture": {
+    "family": "llama",
+    "attention": "exact",
+    "d": 128,
+    "layers": 2,
+    "heads": 4,
+    "T": 128,
+    "d_ff": 384,
+    "norm": "rmsnorm",
+    "activation": "swiglu",
+    "position": "rope",
+    "residual": "residual",
+    "optimizer": "adamw",
+    "window": 64,
+    "sinks": 1
+  },
+  "what_it_is": {
+    "summary": "This is a small Llama-style decoder, the layout used by many current open models, which comes with rotary positions, RMS normalisation and a gated feed-forward layer built in: 2 layers stacked one on another, each word held as a list of 128 numbers, 4 attention heads looking at the text in parallel. It reads at most 128 words at a time; anything earlier is invisible to it. It departs from the standard GPT-2 layout in 3 places, explained below.",
+    "components": [
+      {
+        "slot": "family",
+        "name": "Family",
+        "value": "llama",
+        "label": "llama",
+        "default": true,
+        "part_of_family": false,
+        "recognised": true,
+        "plain": "a small Llama-style decoder, the layout used by many current open models, which comes with rotary positions, RMS normalisation and a gated feed-forward layer built in",
+        "technical": "",
+        "from_paper": false
+      },
+      {
+        "slot": "attention",
+        "name": "Attention",
+        "value": "exact",
+        "label": "full",
+        "default": true,
+        "part_of_family": false,
+        "recognised": true,
+        "plain": "every word can look back at every earlier word it can see (full attention)",
+        "technical": "the softmax-normalised query-key similarities that mix values",
+        "from_paper": false
+      },
+      {
+        "slot": "position",
+        "name": "Word positions",
+        "value": "rope",
+        "label": "rotary",
+        "default": false,
+        "part_of_family": true,
+        "recognised": true,
+        "plain": "word positions are encoded by rotating internal vectors (rotary positions), so the model sees how far apart two words are rather than where each one sits",
+        "technical": "the function of index that tells attention where tokens are",
+        "from_paper": false
+      },
+      {
+        "slot": "norm",
+        "name": "Normalisation",
+        "value": "rmsnorm",
+        "label": "RMSNorm",
+        "default": false,
+        "part_of_family": true,
+        "recognised": true,
+        "plain": "each word's internal numbers are rescaled by their overall size only (RMS normalisation), a slightly cheaper way of keeping them in a stable range",
+        "technical": "per-token normalisation of activations",
+        "from_paper": false
+      },
+      {
+        "slot": "activation",
+        "name": "Feed-forward switch",
+        "value": "swiglu",
+        "label": "SwiGLU",
+        "default": false,
+        "part_of_family": true,
+        "recognised": true,
+        "plain": "the feed-forward layers use a gate (SwiGLU) that lets one set of features switch another on or off, as most modern models do",
+        "technical": "the per-token feed-forward block, read as a key-value memory",
+        "from_paper": false
+      },
+      {
+        "slot": "residual",
+        "name": "Layer shortcuts",
+        "value": "residual",
+        "label": "residual",
+        "default": true,
+        "part_of_family": false,
+        "recognised": true,
+        "plain": "each layer adds its result on top of what came in, so information can pass straight through (a residual shortcut)",
+        "technical": "the additive skip pathway every block writes into",
+        "from_paper": false
+      },
+      {
+        "slot": "optimizer",
+        "name": "Optimiser",
+        "value": "adamw",
+        "label": "AdamW",
+        "default": true,
+        "part_of_family": false,
+        "recognised": true,
+        "plain": "trained with AdamW, the standard optimiser, which adjusts each weight with its own step size",
+        "technical": "the per-parameter moment estimates kept during training",
+        "from_paper": false
+      }
+    ],
+    "paper": null
+  },
+  "size_and_training": {
+    "params": 445568,
+    "params_plain": "0.45 million parameters",
+    "corpus": {
+      "kind": "tinychat",
+      "name": "TinyChat (synthetic small talk)",
+      "path": "data/tinychat.txt",
+      "file": "tinychat.txt",
+      "bytes": 369202,
+      "tokens": 86994
+    },
+    "vocab": 148,
+    "steps": 1500,
+    "steps_requested": 1500,
+    "early_stopped": false,
+    "best_val_loss": 0.37378427386283875,
+    "perplexity": 1.453223618321918,
+    "wall_seconds": 444.256450865,
+    "context": 128
+  },
+  "what_to_expect": {
+    "source": "probe",
+    "summary": "Short small-talk replies for a handful of everyday topics: greetings, how are you, food, drinks, weather, hobbies, pets, outings, invitations and goodbyes. On 18 small-talk questions it answered almost all on topic (17 of 18): 10 of 10 when phrased as in training, 7 of 8 when reworded. Reliable here: greetings, how are you, favourite food, offering a drink, what did you do, hobbies, pets, invitations, goodbyes. It failed all 6 questions outside its training (facts, maths, remembering what you said, instructions), as expected.",
+    "can": [
+      "reply on topic to greetings, how are you, favourite food, offering a drink, what did you do, hobbies, pets, invitations, goodbyes",
+      "sometimes reply on topic to the weather"
+    ],
+    "cannot": [
+      "answer factual questions",
+      "do arithmetic",
+      "remember what you told it",
+      "follow instructions"
+    ]
+  },
+  "probe": {
+    "backend": "mtstudio-sample",
+    "decoding": "greedy (temperature 0, top-k 1)",
+    "probe_set_version": 1,
+    "per_intent": {
+      "greeting": {
+        "label": "greetings",
+        "passed": 1,
+        "total": 1,
+        "rate": 1.0
+      },
+      "wellbeing": {
+        "label": "how are you",
+        "passed": 2,
+        "total": 2,
+        "rate": 1.0
+      },
+      "food": {
+        "label": "favourite food",
+        "passed": 2,
+        "total": 2,
+        "rate": 1.0
+      },
+      "drink_offer": {
+        "label": "offering a drink",
+        "passed": 2,
+        "total": 2,
+        "rate": 1.0
+      },
+      "day_activity": {
+        "label": "what did you do",
+        "passed": 2,
+        "total": 2,
+        "rate": 1.0
+      },
+      "weather": {
+        "label": "the weather",
+        "passed": 1,
+        "total": 2,
+        "rate": 0.5
+      },
+      "hobby": {
+        "label": "hobbies",
+        "passed": 2,
+        "total": 2,
+        "rate": 1.0
+      },
+      "pet": {
+        "label": "pets",
+        "passed": 2,
+        "total": 2,
+        "rate": 1.0
+      },
+      "invitation": {
+        "label": "invitations",
+        "passed": 2,
+        "total": 2,
+        "rate": 1.0
+      },
+      "farewell": {
+        "label": "goodbyes",
+        "passed": 1,
+        "total": 1,
+        "rate": 1.0
+      }
+    },
+    "tier_a": {
+      "passed": 10,
+      "total": 10
+    },
+    "tier_b": {
+      "passed": 7,
+      "total": 8
+    },
+    "in_distribution": {
+      "passed": 17,
+      "total": 18
+    },
+    "off_distribution": {
+      "passed": 0,
+      "total": 6
+    },
+    "rambled": 0,
+    "examples": [
+      {
+        "id": "greet_a",
+        "prompt": [
+          "hello !"
+        ],
+        "reply": "hi ! nice to see you . user : what do you like to do ? assistant : i really enjoy gardening . user",
+        "passed": true,
+        "tier": "A"
+      },
+      {
+        "id": "weather_b",
+        "prompt": [
+          "what is the weather like today ?"
+        ],
+        "reply": "i really enjoy gardening . user : see you later ! assistant : goodbye ! have a nice day .",
+        "passed": false,
+        "tier": "B"
+      },
+      {
+        "id": "fact_capital",
+        "prompt": [
+          "what is the capital of france ?"
+        ],
+        "reply": "i really enjoy gardening . user : see you later ! assistant : goodbye ! have a nice day .",
+        "passed": false,
+        "tier": "off"
+      }
+    ],
+    "results": [
+      {
+        "id": "greet_a",
+        "tier": "A",
+        "intent": "greeting",
+        "prompt": [
+          "hello !"
+        ],
+        "reply": "hi ! nice to see you . user : what do you like to do ? assistant : i really enjoy gardening . user",
+        "raw": "hi ! nice to see you . user : what do you like to do ? assistant : i really enjoy gardening . user",
+        "classified": "greeting",
+        "passed": true,
+        "rambled": false
+      },
+      {
+        "id": "wellbeing_a",
+        "tier": "A",
+        "intent": "wellbeing",
+        "prompt": [
+          "how are you ?"
+        ],
+        "reply": "i feel great today . user : see you later ! assistant : see you soon ! take care .",
+        "raw": "i feel great today . user : see you later ! assistant : see you soon ! take care .",
+        "classified": "wellbeing",
+        "passed": true,
+        "rambled": false
+      },
+      {
+        "id": "wellbeing_b",
+        "tier": "B",
+        "intent": "wellbeing",
+        "prompt": [
+          "how do you feel ?"
+        ],
+        "reply": "i am great , thank you . user : i have to go now . goodbye ! assistant : goodbye ! have a nice",
+        "raw": "i am great , thank you . user : i have to go now . goodbye ! assistant : goodbye ! have a nice",
+        "classified": "wellbeing",
+        "passed": true,
+        "rambled": false
+      },
+      {
+        "id": "food_a",
+        "tier": "A",
+        "intent": "food",
+        "prompt": [
+          "what is your favorite food ?"
+        ],
+        "reply": "my favorite food is chicken . user : see you later ! assistant : goodbye ! have a nice day .",
+        "raw": "my favorite food is chicken . user : see you later ! assistant : goodbye ! have a nice day .",
+        "classified": "food",
+        "passed": true,
+        "rambled": false
+      },
+      {
+        "id": "food_b",
+        "tier": "B",
+        "intent": "food",
+        "prompt": [
+          "what food do you like ?"
+        ],
+        "reply": "i like chicken very much . user : see you later ! assistant : goodbye ! have a nice day .",
+        "raw": "i like chicken very much . user : see you later ! assistant : goodbye ! have a nice day .",
+        "classified": "food",
+        "passed": true,
+        "rambled": false
+      },
+      {
+        "id": "drink_a",
+        "tier": "A",
+        "intent": "drink_offer",
+        "prompt": [
+          "would you like some tea ?"
+        ],
+        "reply": "no thank you , i just had some tea . user : see you later ! assistant : goodbye ! have a nice day",
+        "raw": "no thank you , i just had some tea . user : see you later ! assistant : goodbye ! have a nice day",
+        "classified": "drink_offer",
+        "passed": true,
+        "rambled": false
+      },
+      {
+        "id": "drink_b",
+        "tier": "B",
+        "intent": "drink_offer",
+        "prompt": [
+          "would you like some coffee or tea ?"
+        ],
+        "reply": "no thank you , i just had some tea . user : see you later ! assistant : goodbye ! have a nice day",
+        "raw": "no thank you , i just had some tea . user : see you later ! assistant : goodbye ! have a nice day",
+        "classified": "drink_offer",
+        "passed": true,
+        "rambled": false
+      },
+      {
+        "id": "day_a",
+        "tier": "A",
+        "intent": "day_activity",
+        "prompt": [
+          "where did you go today ?"
+        ],
+        "reply": "i went to the beach . user : see you later ! assistant : goodbye ! have a nice day .",
+        "raw": "i went to the beach . user : see you later ! assistant : goodbye ! have a nice day .",
+        "classified": "day_activity",
+        "passed": true,
+        "rambled": false
+      },
+      {
+        "id": "day_b",
+        "tier": "B",
+        "intent": "day_activity",
+        "prompt": [
+          "where did you go ?"
+        ],
+        "reply": "i went to the beach . user : see you later ! assistant : goodbye ! have a nice day .",
+        "raw": "i went to the beach . user : see you later ! assistant : goodbye ! have a nice day .",
+        "classified": "day_activity",
+        "passed": true,
+        "rambled": false
+      },
+      {
+        "id": "weather_a",
+        "tier": "A",
+        "intent": "weather",
+        "prompt": [
+          "how is the weather today ?"
+        ],
+        "reply": "it was cold all day . user : see you later ! assistant : see you soon ! take care .",
+        "raw": "it was cold all day . user : see you later ! assistant : see you soon ! take care .",
+        "classified": "weather",
+        "passed": true,
+        "rambled": false
+      },
+      {
+        "id": "weather_b",
+        "tier": "B",
+        "intent": "weather",
+        "prompt": [
+          "what is the weather like today ?"
+        ],
+        "reply": "i really enjoy gardening . user : see you later ! assistant : goodbye ! have a nice day .",
+        "raw": "i really enjoy gardening . user : see you later ! assistant : goodbye ! have a nice day .",
+        "classified": "hobby",
+        "passed": false,
+        "rambled": false
+      },
+      {
+        "id": "hobby_a",
+        "tier": "A",
+        "intent": "hobby",
+        "prompt": [
+          "what is your hobby ?"
+        ],
+        "reply": "i really enjoy gardening . user : see you later ! assistant : see you soon ! take care .",
+        "raw": "i really enjoy gardening . user : see you later ! assistant : see you soon ! take care .",
+        "classified": "hobby",
+        "passed": true,
+        "rambled": false
+      },
+      {
+        "id": "hobby_b",
+        "tier": "B",
+        "intent": "hobby",
+        "prompt": [
+          "what do you enjoy ?"
+        ],
+        "reply": "i really enjoy my hobby is very sweet . user : see you later ! assistant : goodbye ! have a nice day .",
+        "raw": "i really enjoy my hobby is very sweet . user : see you later ! assistant : goodbye ! have a nice day .",
+        "classified": "hobby",
+        "passed": true,
+        "rambled": false
+      },
+      {
+        "id": "pet_a",
+        "tier": "A",
+        "intent": "pet",
+        "prompt": [
+          "do you have a pet ?"
+        ],
+        "reply": "yes , i have a little cat . user : see you later ! assistant : see you soon ! take care .",
+        "raw": "yes , i have a little cat . user : see you later ! assistant : see you soon ! take care .",
+        "classified": "pet",
+        "passed": true,
+        "rambled": false
+      },
+      {
+        "id": "pet_b",
+        "tier": "B",
+        "intent": "pet",
+        "prompt": [
+          "do you have a cat ?"
+        ],
+        "reply": "yes , i have a little cat . user : see you later ! assistant : see you soon ! take care .",
+        "raw": "yes , i have a little cat . user : see you later ! assistant : see you soon ! take care .",
+        "classified": "pet",
+        "passed": true,
+        "rambled": false
+      },
+      {
+        "id": "invite_a",
+        "tier": "A",
+        "intent": "invitation",
+        "prompt": [
+          "do you want to go to the park with me ?"
+        ],
+        "reply": "yes , that sounds lovely . user : see you later ! assistant : see you soon ! take care .",
+        "raw": "yes , that sounds lovely . user : see you later ! assistant : see you soon ! take care .",
+        "classified": "invitation",
+        "passed": true,
+        "rambled": false
+      },
+      {
+        "id": "invite_b",
+        "tier": "B",
+        "intent": "invitation",
+        "prompt": [
+          "shall we go to the beach ?"
+        ],
+        "reply": "sure , i would like that . user : see you later ! assistant : goodbye ! have a nice day .",
+        "raw": "sure , i would like that . user : see you later ! assistant : goodbye ! have a nice day .",
+        "classified": "invitation",
+        "passed": true,
+        "rambled": false
+      },
+      {
+        "id": "farewell_a",
+        "tier": "A",
+        "intent": "farewell",
+        "prompt": [
+          "see you later !"
+        ],
+        "reply": "goodbye ! have a nice day .",
+        "raw": "goodbye ! have a nice day .",
+        "classified": "farewell",
+        "passed": true,
+        "rambled": false
+      },
+      {
+        "id": "fact_capital",
+        "tier": "off",
+        "intent": "fact",
+        "prompt": [
+          "what is the capital of france ?"
+        ],
+        "reply": "i really enjoy gardening . user : see you later ! assistant : goodbye ! have a nice day .",
+        "raw": "i really enjoy gardening . user : see you later ! assistant : goodbye ! have a nice day .",
+        "classified": "miss",
+        "passed": false,
+        "rambled": false
+      },
+      {
+        "id": "maths_add",
+        "tier": "off",
+        "intent": "maths",
+        "prompt": [
+          "what is two plus two ?"
+        ],
+        "reply": "i really enjoy gardening . user : see you later ! assistant : goodbye ! have a nice day .",
+        "raw": "i really enjoy gardening . user : see you later ! assistant : goodbye ! have a nice day .",
+        "classified": "miss",
+        "passed": false,
+        "rambled": false
+      },
+      {
+        "id": "memory_name",
+        "tier": "off",
+        "intent": "memory",
+        "prompt": [
+          "my name is tom .",
+          "what is my name ?"
+        ],
+        "reply": "i really enjoy gardening . user : see you later ! assistant : goodbye ! have a nice day .",
+        "raw": "i really enjoy gardening . user : see you later ! assistant : goodbye ! have a nice day .",
+        "classified": "miss",
+        "passed": false,
+        "rambled": false
+      },
+      {
+        "id": "memory_food",
+        "tier": "off",
+        "intent": "memory",
+        "prompt": [
+          "i like soup .",
+          "what food do i like ?"
+        ],
+        "reply": "i like chicken very much . user : see you later ! assistant : goodbye ! have a nice day .",
+        "raw": "i like chicken very much . user : see you later ! assistant : goodbye ! have a nice day .",
+        "classified": "miss",
+        "passed": false,
+        "rambled": false
+      },
+      {
+        "id": "instruction_story",
+        "tier": "off",
+        "intent": "instruction",
+        "prompt": [
+          "tell me a story about a dog ."
+        ],
+        "reply": "i spent the day gardening . user : see you later ! assistant : goodbye ! have a nice day .",
+        "raw": "i spent the day gardening . user : see you later ! assistant : goodbye ! have a nice day .",
+        "classified": "miss",
+        "passed": false,
+        "rambled": false
+      },
+      {
+        "id": "why_question",
+        "tier": "off",
+        "intent": "reasoning",
+        "prompt": [
+          "why is the sky blue ?"
+        ],
+        "reply": "yes , i have a little dog . user : see you later ! assistant : see you soon ! take care .",
+        "raw": "yes , i have a little dog . user : see you later ! assistant : see you soon ! take care .",
+        "classified": "miss",
+        "passed": false,
+        "rambled": false
+      }
+    ]
+  }
+}

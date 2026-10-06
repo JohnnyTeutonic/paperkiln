@@ -1,0 +1,36 @@
+{
+  "schema": "paperkiln.web_chat/1",
+  "name": "tinychat-quick",
+  "family": "llama",
+  "attention": "exact",
+  "d": 128,
+  "layers": 2,
+  "heads": 4,
+  "d_ff": 384,
+  "T": 128,
+  "norm": "rmsnorm",
+  "activation": "swiglu",
+  "position": "rope",
+  "residual": "residual",
+  "rope_theta": 10000.0,
+  "norm_eps": 1e-05,
+  "tied_embeddings": true,
+  "vocab_size": 148,
+  "eos_id": 1,
+  "weights": {
+    "file": "tinychat-quick.safetensors",
+    "bytes": 1784240,
+    "sha256": "2eb3a5132ed7b339f17fab6d60e2784a8f044aa7108ee4efdf8f2959932a6838",
+    "dtypes": [
+      "F32"
+    ]
+  },
+  "vocab": {
+    "file": "vocab.json",
+    "bytes": 1262,
+    "sha256": "565dcdf38fc35a9477aa97123acc695f04f38739a14f9b9b9cf71b5adfb745c4",
+    "source": "tinychat_vocab.gguf"
+  },
+  "card": "card.json",
+  "prompt_template": "user: <text> assistant:"
+}
