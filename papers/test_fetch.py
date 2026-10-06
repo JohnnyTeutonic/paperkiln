@@ -207,6 +207,65 @@ def test_emit_html() -> None:
           f"({len(arch.fields)} fields, {len(arch.unresolved)} unresolved)")
 
 
+FIXTURE_SWA = r"""
+\section{Model}
+We use sliding window attention with a window size of 4096 tokens to
+bound the per-token cost. We keep 4 attention sink tokens at the start
+of the sequence.
+"""
+
+FIXTURE_HIGHWAY = r"""
+\section{Model}
+We replace residual connections with highway layers, using transform
+gates to modulate information flow across depth.
+"""
+
+FIXTURE_MISTRAL = r"""
+\section{Model}
+We use the same architecture as Mistral-7B and train on our corpus.
+"""
+
+
+def test_swa_highway() -> None:
+    # SWA prose: mechanism + its numeric companions extract together.
+    a = extract("0000.00013", FIXTURE_SWA)
+    f = a.fields.get("attention")
+    assert f is not None and f.value == "swa" and f.verdict == "used", f
+    assert a.fields["window_size"].value == 4096, a.fields.get("window_size")
+    assert a.fields["n_sinks"].value == 4, a.fields.get("n_sinks")
+    spec = emit_spec(a)
+    c = spec["base"]["arch"]["custom"]
+    assert c.get("attention") == "swa" and c.get("sinks") == 4, c
+    # window >= T is degenerate (swa == exact): scaled, loudly.
+    assert 0 < c["window"] < spec["base"]["data"]["T"], c
+    assert "4096" in spec["_comment"], spec["_comment"]
+
+    # Highway replacement: target used, mapped to the residual knob.
+    b = extract("0000.00014", FIXTURE_HIGHWAY)
+    fb = b.fields.get("residual")
+    assert fb is not None and fb.value == "highway" and fb.verdict == "used", fb
+    cb = emit_spec(b)["base"]["arch"]["custom"]
+    assert cb.get("residual") == "highway", cb
+
+    # Named-swa ancestor: Mistral inheritance carries the mechanism AND
+    # its window; emit still applies + scales it.
+    m = extract("0000.00015", FIXTURE_MISTRAL)
+    assert m.inherits and m.inherits["ancestor"] == "mistral", m.inherits
+    fm = m.fields.get("attention")
+    assert fm is not None and fm.value == "swa" and fm.verdict == "inherited", fm
+    cm = emit_spec(m)["base"]["arch"]["custom"]
+    assert cm.get("attention") == "swa" and cm.get("window", 0) > 0, cm
+
+    # swa WITHOUT a window is refused, not guessed.
+    n = extract("0000.00016",
+                r"\section{Model} We use sliding window attention.")
+    sn = emit_spec(n)
+    assert "attention" not in sn["base"]["arch"]["custom"], sn
+    assert "window unresolved" in sn["_comment"], sn["_comment"]
+    print("swa/highway extraction ok: swa+window+sinks, highway replace, "
+          "mistral inheritance, windowless swa refused")
+
+
 def test_emit_spec() -> None:
     arch = extract("0000.00000", FIXTURE_PROSE)
     # Paper-faithful dims: extracted numbers land in arch.custom.
@@ -246,5 +305,6 @@ if __name__ == "__main__":
     test_unresolved_reported()
     test_emit_html()
     test_emit_spec()
+    test_swa_highway()
     print("\n[PASS] all fetcher tests")
     sys.exit(0)

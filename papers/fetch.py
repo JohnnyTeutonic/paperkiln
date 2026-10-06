@@ -173,6 +173,34 @@ FLAVOR = {
                    ("alibi", r"ALiBi"),
                    ("sinusoidal", r"sinusoid"),
                    ("learned", r"learned\s+position")],
+    # Mechanisms the engine grew 2026-08 (highway lands with registry
+    # #0001, deep SWA with ROADMAP 1a): registry entries auto-seed from
+    # papers once these extract.
+    "residual": [("highway", r"[Hh]ighway\s+(?:network|layer|connection|block)s?"
+                             r"|transform\s+gates?|carry\s+gates?"),
+                 ("residual", r"residual\s+connections?|skip\s+connections?")],
+    # One-sided by design: only the NON-default mechanism has a positive
+    # signature ("full attention" appears contrastively in every efficient-
+    # attention paper; asserting "exact" from it would be noise). Absence
+    # -> unresolved -> the engine default, stated in the spec comment.
+    "attention": [("swa", r"sliding[-\s]?window\s+attention"
+                          r"|local\s+(?:windowed\s+)?attention")],
+}
+
+# Numeric companions to flavor mechanisms. Deliberately NOT in PATTERNS:
+# they are meaningful only when their mechanism extracts (a window size
+# without swa is nothing), so their absence must not swell `unresolved`
+# on every paper. Extracted with the same sanity-window discipline.
+AUX_PATTERNS: dict[str, tuple[list[str], tuple[int, int]]] = {
+    "window_size": ([
+        rf"window\s+(?:size|length)\s*(?:of|=|:|is|&)?\s*\$?W?\s*=?\s*{NUM}",
+        rf"sliding\s+window\s+of\s+{NUM}",
+        rf"window\s+of\s+{NUM}\s+tokens",
+    ], (8, 1 << 20)),
+    "n_sinks": ([
+        rf"{NUM}\s+(?:attention\s+)?sink\s+tokens?",
+        rf"(?:attention\s+)?sinks?\s*(?:=|:|&)\s*{NUM}",
+    ], (1, 64)),
 }
 
 # ---- inheritance resolution (base + delta) ------------------------------
@@ -203,6 +231,11 @@ ANCESTORS: dict[str, dict[str, str]] = {
                  "positional": "rope"},
     "opt": {"norm": "layernorm", "activation": "relu",
             "positional": "learned"},
+    # Mistral-7B: the canonical named-swa ancestor ("based on the Mistral
+    # architecture" implies the window mechanism, not just the flavors).
+    "mistral": {"norm": "rmsnorm", "activation": "swiglu",
+                "positional": "rope", "attention": "swa",
+                "window_size": 4096},
 }
 # How each ancestor is named in the wild. Ordered longest-first at match
 # time so "gpt-neox" wins over "gpt".
@@ -217,6 +250,7 @@ ANCESTOR_ALIASES: dict[str, str] = {
     "palm": "palm",
     "gpt-neox": "gpt-neox", "neox": "gpt-neox", "gpt-j": "gpt-neox",
     "opt": "opt",
+    "mistral": "mistral", "mistral-7b": "mistral", "mistral 7b": "mistral",
 }
 # "we use the same architecture as X" / "follows the X architecture" /
 # "based on the X model". The architecture noun must be present — a bare
@@ -600,6 +634,23 @@ def extract(arxiv_id: str, tex: str) -> Arch:
         if fieldname not in arch.fields:
             arch.unresolved.append(fieldname)
 
+    # Aux numerics (window size, sink count): same extraction, but their
+    # absence is NOT reported — they mean nothing without their mechanism
+    # (emit_spec pairs them with attention=swa and complains there).
+    for fieldname, (pats, (lo, hi)) in AUX_PATTERNS.items():
+        for pat in pats:
+            m = re.search(pat, text, flags=re.IGNORECASE)
+            if m:
+                try:
+                    v = _num(m.group(1))
+                except ValueError:
+                    continue
+                if not (lo <= v <= hi):
+                    continue
+                snippet = text[max(0, m.start() - 40):m.end() + 20]
+                arch.fields[fieldname] = Finding(v, " ".join(snippet.split()))
+                break
+
     # Flavor fields go through contribution-vs-mention scoring: a value
     # is only ASSERTED ("used") when a clear winner exists; close calls
     # are "contested" (both reported); mention-only matches stay
@@ -861,6 +912,8 @@ _SPEC_FLAVORS = {
     "norm": ("norm", {"layernorm", "rmsnorm"}),
     "activation": ("activation", {"gelu", "relu", "swiglu"}),
     "positional": ("position", {"learned", "sinusoidal", "rope"}),
+    "residual": ("residual", {"residual", "highway", "plain"}),
+    "attention": ("attention", {"exact", "swa"}),
 }
 
 
@@ -903,6 +956,26 @@ def emit_spec(arch: Arch, house_dims: bool = False, corpus: str = "",
         else:
             custom[dst] = v
             applied.append(f"{dst}={v}")
+
+    # swa needs its window. Refuse the mechanism rather than invent one,
+    # and scale a degenerate window LOUDLY (window >= T makes swa exact,
+    # which would silently un-test the paper's mechanism).
+    if custom.get("attention") == "swa":
+        wf = arch.fields.get("window_size")
+        if wf is None:
+            del custom["attention"]
+            applied = [a for a in applied if a != "attention=swa"]
+            skipped.append("attention=swa (window unresolved; not applied)")
+        else:
+            w = int(wf.value)
+            if w >= T:
+                scaled = max(4, T // 4)
+                notes.append(f"swa window scaled {w} -> {scaled} to stay "
+                             f"non-degenerate at T={T} (window >= T is exact)")
+                w = scaled
+            custom["window"] = w
+            sf = arch.fields.get("n_sinks")
+            custom["sinks"] = int(sf.value) if sf is not None else 0
 
     if arch.unresolved:
         notes.append("unresolved: " + ", ".join(arch.unresolved))
