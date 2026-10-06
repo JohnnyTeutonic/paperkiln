@@ -18,7 +18,8 @@ cd "$ROOT"
 BUILD="${PAPERKILN_BUILD_DIR:-$ROOT/build}"
 PORT=8080
 MODE="" PRESET="" SHARE="" ASSUME_YES=0
-DEFAULT_MODEL_URL="${PAPERKILN_DEFAULT_MODEL_URL:-https://github.com/JohnnyTeutonic/paperkiln/releases/download/chat-v1/tinychat-better.tar.gz}"
+# The ready-made model as a browser bundle (tools/export_web_chat.py): it runs in the browser, so no build is needed.
+DEFAULT_MODEL_URL="${PAPERKILN_DEFAULT_MODEL_URL:-https://github.com/JohnnyTeutonic/paperkiln/releases/download/chat-v1/tinychat-better-web.tar.gz}"
 TOOLS_DIR="$HOME/.paperkiln/bin"
 
 usage() {
@@ -81,7 +82,7 @@ yes_no "Is that right?" y || die "tell us what you are running: https://github.c
 if [ -z "$MODE" ]; then
   bold ""
   bold "What would you like to do?"
-  say "1) Chat with the ready-made model (downloads it; ready in about a minute; no compiler needed)"
+  say "1) Chat with the ready-made model (downloads it; ready in about a minute; no compiler needed; it runs in your browser)"
   say "2) Train your own model on this computer (needs a C++ compiler; about 10 minutes for the quick model)"
   case "$(ask "Choose 1 or 2" 2)" in 1) MODE=default ;; *) MODE=train ;; esac
 fi
@@ -181,10 +182,8 @@ if [ "$MODE" = train ]; then
   say "Trained models are saved in $OUT"
   "$MTSTUDIO" run "$SPEC" | python3 tools/train_progress.py "$SPEC"
 else
-  [ -x "$MTSTUDIO" ] || { have cmake && { have c++ || have g++ || have clang++; } && build_mtstudio; } \
-    || die "the chat server needs one build of paperkiln: install a C++ compiler and CMake (see above), or use --mode train."
-  OUT="runs/tinychat-default"
-  if [ ! -d "$OUT" ]; then
+  OUT="runs/tinychat-default-web"
+  if [ ! -f "$OUT/index.html" ]; then
     step "Downloading the ready-made chat model"
     curl -fsIL "$DEFAULT_MODEL_URL" >/dev/null 2>&1 \
       || die "the ready-made model is not published yet. Run again and choose 2 to train your own."
@@ -194,7 +193,7 @@ else
 fi
 
 # ---------------------------------------------------------------- 5. the card
-if [ ! -f "$OUT/card.md" ] && [ -f tools/model_card.py ]; then
+if [ "$MODE" = train ] && [ ! -f "$OUT/card.md" ] && [ -f tools/model_card.py ]; then
   step "Writing a plain-language card about your model"
   python3 tools/model_card.py "$OUT" --probe --mtstudio "$MTSTUDIO" || say "(the card could not be written; chatting still works)"
 fi
@@ -218,10 +217,17 @@ cleanup() { for p in "${PIDS[@]:-}"; do [ -n "$p" ] && kill "$p" 2>/dev/null || 
 trap cleanup EXIT INT TERM
 
 step "Starting the chat server"
-"$MTSTUDIO" chat "$OUT" --port "$PORT" --host 127.0.0.1 >"$OUT/chat.log" 2>&1 &
+if [ "$MODE" = train ]; then
+  "$MTSTUDIO" chat "$OUT" --port "$PORT" --host 127.0.0.1 >"$OUT/chat.log" 2>&1 &
+  HEALTH="health"
+else
+  # The ready-made model runs in the browser; Python's built-in web server just hands out the files.
+  python3 -m http.server "$PORT" --bind 127.0.0.1 --directory "$OUT" >"$OUT/chat.log" 2>&1 &
+  HEALTH="model/manifest.json"
+fi
 PIDS+=($!)
 for _ in $(seq 1 60); do
-  curl -fs "http://127.0.0.1:$PORT/health" >/dev/null 2>&1 && break
+  curl -fs "http://127.0.0.1:$PORT/$HEALTH" >/dev/null 2>&1 && break
   kill -0 "${PIDS[0]}" 2>/dev/null || { tail -20 "$OUT/chat.log"; die "the chat server stopped (log: $OUT/chat.log)."; }
   sleep 1
 done
