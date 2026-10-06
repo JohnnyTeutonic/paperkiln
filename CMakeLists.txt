@@ -202,6 +202,36 @@ target_link_libraries(srd_needle PRIVATE microtorch)
 # lifecycle; the driver executes it and emits the JSONL event stream.
 add_executable(mtstudio tools/mtstudio.cpp)
 target_link_libraries(mtstudio PRIVATE microtorch nlohmann_json::nlohmann_json)
+# HTTP for `serve` and `chat`: cpp-httplib, vendored single header
+# (third_party/httplib, MIT, tag v0.59.0 from
+# raw.githubusercontent.com/yhirose/cpp-httplib/v0.59.0/httplib.h). No
+# Boost, no OpenSSL (plain http on localhost); threads, plus winsock on
+# Windows.
+find_package(Threads REQUIRED)
+target_include_directories(mtstudio PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third_party/httplib)
+target_link_libraries(mtstudio PRIVATE Threads::Threads)
+if(WIN32)
+    target_link_libraries(mtstudio PRIVATE ws2_32)
+endif()
+# The chat page is compiled into the binary (a byte array generated from
+# studio/chat.html at configure time), so `mtstudio chat` serves it from
+# any working directory. Editing the page re-runs configure on the next
+# build.
+set(MTSTUDIO_CHAT_HTML ${CMAKE_CURRENT_SOURCE_DIR}/studio/chat.html)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${MTSTUDIO_CHAT_HTML})
+file(READ ${MTSTUDIO_CHAT_HTML} MTSTUDIO_CHAT_HEX HEX)
+string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," MTSTUDIO_CHAT_BYTES "${MTSTUDIO_CHAT_HEX}")
+file(WRITE ${CMAKE_BINARY_DIR}/generated/mtstudio_chat_html.hpp
+     "#pragma once\n// Generated from studio/chat.html by CMakeLists.txt; do not edit.\n"
+     "#include <cstddef>\n"
+     "static const unsigned char kChatHtml[] = {${MTSTUDIO_CHAT_BYTES}};\n"
+     "static const size_t kChatHtmlSize = sizeof(kChatHtml);\n")
+target_include_directories(mtstudio PRIVATE ${CMAKE_BINARY_DIR}/generated)
+
+# Word tokenizer pins: end-of-text as one token, legacy vocabs unchanged.
+add_executable(test_word_tokenizer tests/test_word_tokenizer.cpp)
+target_link_libraries(test_word_tokenizer PRIVATE microtorch)
+add_test(NAME word_tokenizer COMMAND test_word_tokenizer)
 
 # Python bindings (optional; requires Python dev headers). pybind11 is
 # fetched at configure time so no vendored copy lives in-tree.

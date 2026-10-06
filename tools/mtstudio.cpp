@@ -18,12 +18,18 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <map>
+#include <mutex>
 #include <random>
 #include <string>
 #include <vector>
 
+// cpp-httplib (third_party/httplib, MIT): the portable HTTP layer behind
+// `serve` and `chat`. Included before anything that might pull in
+// <windows.h> so its NOMINMAX/winsock ordering wins.
+#include "httplib.h"
 #include <nlohmann/json.hpp>
 #include <regex>
 
@@ -32,6 +38,7 @@
 #include "microtorch/gguf.hpp"
 #include "microtorch/llama.hpp"
 #include "microtorch/safetensors.hpp"
+#include "microtorch/word_tokenizer.hpp"
 #include "parity_model.hpp"
 
 using namespace microtorch;
@@ -54,6 +61,7 @@ struct Spec {
     // data
     std::string corpus, vocab_gguf;
     size_t vocab_cap = 4096;
+    size_t max_tokens = 400000;       // corpus read cap (0 = whole file)
     // train
     int steps = 500;
     float lr = 3e-3f, clip = 1.0f, lambda_gate = 0.05f;
@@ -159,6 +167,7 @@ Spec parse_spec(const std::string& path) {
     s.corpus = data.value("corpus", "");
     s.vocab_gguf = data.value("vocab", "");
     s.vocab_cap = data.value("vocab_cap", s.vocab_cap);
+    s.max_tokens = data.value("max_tokens", s.max_tokens);
     s.T = data.value("T", s.T);
 
     const json tr = j.value("train", json::object());
@@ -264,7 +273,7 @@ json grad_map(const nn::Module& m) {
     return out;
 }
 
-int run(const Spec& s, bool plan_only) {
+int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     std::printf("== mtstudio: %s ==\n", s.name.c_str());
     std::printf("arch: %s d=%zu layers=%zu heads=%zu | T=%zu vocab_cap=%zu\n", s.attention.c_str(),
                 s.d, s.layers, s.heads, s.T, s.vocab_cap);
@@ -284,7 +293,18 @@ int run(const Spec& s, bool plan_only) {
         throw std::runtime_error("kimi/srd parity lanes: layers must be 2 "
                                  "(exact/swa at depth ride the flex family)");
 
-    std::system(("mkdir -p " + s.out_dir).c_str());
+    std::filesystem::create_directories(s.out_dir);
+    if (!spec_path.empty()) {
+        // Keep the spec beside its outputs: `mtstudio chat <out_dir>`
+        // (and anything else handed only a run directory) rebuilds the
+        // model from it. Read fully before writing, so a spec that already
+        // lives at out_dir/spec.json is rewritten unchanged.
+        std::ifstream sf(spec_path, std::ios::binary);
+        const std::string text((std::istreambuf_iterator<char>(sf)),
+                               std::istreambuf_iterator<char>());
+        sf.close();
+        if (!text.empty()) std::ofstream(s.out_dir + "/spec.json", std::ios::binary) << text;
+    }
     {   // Resuming? Trim the event log to the checkpoint before appending.
         std::ifstream st(s.out_dir + "/state.txt");
         std::string line1;
@@ -302,7 +322,7 @@ int run(const Spec& s, bool plan_only) {
     std::ifstream cf(s.corpus);
     if (!cf) throw std::runtime_error("cannot open corpus " + s.corpus);
     std::string text((std::istreambuf_iterator<char>(cf)), std::istreambuf_iterator<char>());
-    auto ids = tokenize(text, vocab, 400000);
+    auto ids = tokenize(text, vocab, s.max_tokens ? s.max_tokens : text.size() + 1);
     // Hold out the tail 5% for validation (early stopping's signal).
     const size_t val_start = ids.size() - ids.size() / 20;
     ev.emit({{"event", "data"},
@@ -659,6 +679,10 @@ int run(const Spec& s, bool plan_only) {
             gc.rms_eps = 1e-6f;
             gc.weights_in_out = true;  // microtorch Linear is [in, out]
             gc.tokens = tokens;
+            // End-of-text in the vocabulary -> the GGUF's eos id, so an
+            // external engine stops where this one does (else keep the
+            // exporter's default).
+            if (const int e = wordtok::eos_id(vocab); e >= 0) gc.eos_token_id = (uint32_t)e;
             const std::string gpath = s.out_dir + "/" + s.name + ".gguf";
             gguf::export_gguf_llama(gpath, sd2, gc);
             ev.emit({{"event", "export"}, {"format", "gguf"}, {"path", gpath}});
@@ -787,47 +811,32 @@ std::vector<std::string> read_gguf_vocab(const std::string& path) {
     }
     return tokens;
 }
+// The tokenizer itself lives in microtorch/word_tokenizer.hpp (shared
+// with its tests); this keeps the srd_parity-era call shape.
 std::vector<int> tokenize(const std::string& text, const std::map<std::string, int>& vocab,
                           size_t max_tokens) {
-    std::vector<int> ids;
-    std::string cur;
-    auto flush = [&]() {
-        if (cur.empty()) return;
-        auto it = vocab.find(cur);
-        ids.push_back(it == vocab.end() ? 0 : it->second);
-        cur.clear();
-    };
-    for (char ch : text) {
-        if (ids.size() >= max_tokens) break;
-        const unsigned char c = static_cast<unsigned char>(ch);
-        if (std::isalpha(c) || c == '\'' || std::isdigit(c)) {
-            cur.push_back(static_cast<char>(std::tolower(c)));
-        } else {
-            flush();
-            if (!std::isspace(c)) {
-                std::string pch(1, static_cast<char>(c));
-                auto it = vocab.find(pch);
-                ids.push_back(it == vocab.end() ? 0 : it->second);
-            }
-        }
-    }
-    flush();
-    return ids;
+    return wordtok::tokenize(text, vocab, max_tokens);
 }
 }  // namespace
 
-// ---- M2 live mode: minimal HTTP server (POSIX; runs under WSL/Linux).
-// GET /              -> the studio UI (index.html)
-// GET /events.jsonl  -> the run dir's current event stream
-// The UI polls /events.jsonl every 2s when served over http, turning the
-// dashboard into a live training monitor.
+
+// ---- M2 live mode + chat: HTTP over cpp-httplib (POSIX and Windows).
+// serve:
+//   GET /              -> the studio UI (index.html)
+//   GET /events.jsonl  -> the run dir's current event stream
+//   The UI polls /events.jsonl every 2s when served over http, turning
+//   the dashboard into a live training monitor.
+// chat: a trained model behind a chat page (chat_cmd below).
 #ifndef _WIN32
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
+#include <fcntl.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #endif
+
+// Generated by CMake from studio/chat.html (kChatHtml, kChatHtmlSize):
+// the chat page travels inside the binary, so `mtstudio chat` works from
+// any directory, the build dir included.
+#include "mtstudio_chat_html.hpp"
 
 namespace {
 std::string slurp(const std::string& path) {
@@ -836,78 +845,86 @@ std::string slurp(const std::string& path) {
     return std::string((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
 }
 
-// The quick-look sampler (ECOSYSTEM.md feature 2): rebuild the spec's
-// model, load its exported safetensors, and generate word-level text
-// with temperature + top-k. ember.cpp remains the real server; this
-// closes the train→poke loop without leaving the studio.
-int sample_cmd(const Spec& s, const std::string& prompt, int n_new, float temp, int topk,
-               unsigned sseed, const std::string& out_file) {
-    auto tokens = read_gguf_vocab(s.vocab_gguf);
-    if (s.vocab_cap > 0 && s.vocab_cap < tokens.size()) tokens.resize(s.vocab_cap);
+// A spec's model with its exported safetensors loaded, ready to generate.
+// One construction switch for `sample` and `chat` (mirrors run(); the
+// spec is the single source of architecture truth for every path).
+struct LoadedLM {
+    Spec s;
+    std::vector<std::string> tokens;
     std::map<std::string, int> vocab;
-    for (size_t i = 0; i < tokens.size(); ++i) vocab.emplace(tokens[i], static_cast<int>(i));
-
-    // Same construction switch as run() — the spec is the single source
-    // of architecture truth for both paths.
+    int eos = -1;  // end-of-text id, -1 when the vocabulary has none
     std::shared_ptr<parity::ParityLM> gpt;
     std::shared_ptr<nn::Llama> llama;
     std::shared_ptr<parity::AttnResLM> attnres;
     std::shared_ptr<parity::FlexLM> flex;
-    if (s.family == "flex") {
-        parity::FlexConfig fc;
-        fc.vocab = tokens.size();
-        fc.d = s.d;
-        fc.n_layers = s.layers;
-        fc.n_heads = s.heads;
-        fc.d_ff = s.d_ff ? s.d_ff : 4 * s.d;
-        fc.n_ctx = s.T;
-        if (!s.norm.empty()) fc.norm = s.norm;
-        if (!s.activation.empty()) fc.act = s.activation;
-        if (!s.position.empty()) fc.pos = s.position;
-        if (!s.residual.empty()) fc.residual = s.residual;
-        fc.gate_bias_init = s.gate_bias_init;
-        fc.attention = s.attention;
-        fc.window = s.window;
-        fc.sinks = s.sinks;
-        flex = std::make_shared<parity::FlexLM>(fc, s.seed);
-    } else if (s.attention == "attnres") {
-        attnres =
-            std::make_shared<parity::AttnResLM>(tokens.size(), s.d, s.heads, s.T, s.seed, s.layers);
-    } else if (s.family == "llama") {
-        nn::LlamaConfig lc;
-        lc.vocab = tokens.size();
-        lc.d = s.d;
-        lc.n_layers = s.layers;
-        lc.n_heads = s.heads;
-        lc.d_ff = s.d_ff ? s.d_ff : 3 * s.d;
-        lc.n_ctx = s.T;
-        llama = std::make_shared<nn::Llama>(lc, s.seed);
-    } else {
-        gpt = std::make_shared<parity::ParityLM>(attn_kind(s.attention), tokens.size(), s.d,
-                                                 s.heads, s.T, s.seed, s.window, s.sinks);
+
+    explicit LoadedLM(const Spec& spec) : s(spec) {
+        // A run directory moved away from its vocab file still carries the
+        // vocabulary inside its exported GGUF (the same capped list).
+        std::string vpath = s.vocab_gguf;
+        const std::string exported = s.out_dir + "/" + s.name + ".gguf";
+        if (!std::ifstream(vpath).good() && std::ifstream(exported).good()) vpath = exported;
+        tokens = read_gguf_vocab(vpath);
+        if (s.vocab_cap > 0 && s.vocab_cap < tokens.size()) tokens.resize(s.vocab_cap);
+        for (size_t i = 0; i < tokens.size(); ++i) vocab.emplace(tokens[i], static_cast<int>(i));
+        eos = wordtok::eos_id(vocab);
+
+        if (s.family == "flex") {
+            parity::FlexConfig fc;
+            fc.vocab = tokens.size();
+            fc.d = s.d;
+            fc.n_layers = s.layers;
+            fc.n_heads = s.heads;
+            fc.d_ff = s.d_ff ? s.d_ff : 4 * s.d;
+            fc.n_ctx = s.T;
+            if (!s.norm.empty()) fc.norm = s.norm;
+            if (!s.activation.empty()) fc.act = s.activation;
+            if (!s.position.empty()) fc.pos = s.position;
+            if (!s.residual.empty()) fc.residual = s.residual;
+            fc.gate_bias_init = s.gate_bias_init;
+            fc.attention = s.attention;
+            fc.window = s.window;
+            fc.sinks = s.sinks;
+            flex = std::make_shared<parity::FlexLM>(fc, s.seed);
+        } else if (s.attention == "attnres") {
+            attnres = std::make_shared<parity::AttnResLM>(tokens.size(), s.d, s.heads, s.T, s.seed,
+                                                          s.layers);
+        } else if (s.family == "llama") {
+            nn::LlamaConfig lc;
+            lc.vocab = tokens.size();
+            lc.d = s.d;
+            lc.n_layers = s.layers;
+            lc.n_heads = s.heads;
+            lc.d_ff = s.d_ff ? s.d_ff : 3 * s.d;
+            lc.n_ctx = s.T;
+            llama = std::make_shared<nn::Llama>(lc, s.seed);
+        } else {
+            gpt = std::make_shared<parity::ParityLM>(attn_kind(s.attention), tokens.size(), s.d,
+                                                     s.heads, s.T, s.seed, s.window, s.sinks);
+        }
+        const std::string ckpt = s.out_dir + "/" + s.name + ".safetensors";
+        model().load_state_dict(load_safetensors(ckpt), /*strict=*/true);
+        model().eval();
     }
-    nn::Module& model_ref =
-        flex      ? static_cast<nn::Module&>(*flex)
-        : attnres ? static_cast<nn::Module&>(*attnres)
-                  : (llama ? static_cast<nn::Module&>(*llama) : static_cast<nn::Module&>(*gpt));
-    const std::string ckpt = s.out_dir + "/" + s.name + ".safetensors";
-    model_ref.load_state_dict(load_safetensors(ckpt), /*strict=*/true);
-    model_ref.eval();
-    auto fwd = [&](const std::vector<int>& ids) {
+    nn::Module& model() {
+        return flex      ? static_cast<nn::Module&>(*flex)
+               : attnres ? static_cast<nn::Module&>(*attnres)
+                         : (llama ? static_cast<nn::Module&>(*llama)
+                                  : static_cast<nn::Module&>(*gpt));
+    }
+    Var forward(const std::vector<int>& ids) {
         if (flex) return flex->forward(ids);
         if (attnres) return attnres->forward(ids);
         return llama ? llama->forward(ids) : gpt->forward(ids);
-    };
-
-    auto ids = tokenize(prompt, vocab, 100000);
-    if (ids.empty()) throw std::runtime_error("no prompt word is in the model's vocabulary");
-    std::mt19937 gen(sseed);
-    std::string text = prompt;
-    NoGrad ng;
-    for (int t = 0; t < n_new; ++t) {
+    }
+    // One sampled next token over the last T ids: temperature, top-k, then
+    // nucleus (top_p < 1 keeps the smallest head of the top-k holding that
+    // share of its mass). top_p >= 1 is the original quick-look sampler,
+    // draw for draw. Call under NoGrad.
+    int next(const std::vector<int>& ids, float temp, int topk, float top_p, std::mt19937& gen) {
         std::vector<int> ctx = ids;
         if (ctx.size() > s.T) ctx.assign(ids.end() - s.T, ids.end());
-        Var logits = fwd(ctx);
+        Var logits = forward(ctx);
         const size_t last = logits->data.rows() - 1, V = logits->data.cols();
         std::vector<std::pair<float, int>> scored(V);
         for (size_t j = 0; j < V; ++j)
@@ -918,12 +935,21 @@ int sample_cmd(const Spec& s, const std::string& prompt, int n_new, float temp, 
             auto it = vocab.find(sp);
             if (it != vocab.end()) scored[it->second].first = -1e30f;
         }
-        const size_t k = std::min<size_t>(std::max(topk, 1), V);
+        size_t k = std::min<size_t>(std::max(topk, 1), V);
         std::partial_sort(scored.begin(), scored.begin() + k, scored.end(),
                           [](auto& a, auto& b) { return a.first > b.first; });
         double mx = scored[0].first, z = 0;
         std::vector<double> p(k);
         for (size_t j = 0; j < k; ++j) z += (p[j] = std::exp(scored[j].first - mx));
+        if (top_p > 0.0f && top_p < 1.0f) {
+            double acc = 0;
+            for (size_t j = 0; j < k; ++j)
+                if ((acc += p[j]) >= top_p * z) {
+                    k = j + 1;
+                    break;
+                }
+            z = acc;
+        }
         std::uniform_real_distribution<double> u(0.0, z);
         double r = u(gen);
         int pick = scored[k - 1].second;
@@ -932,8 +958,28 @@ int sample_cmd(const Spec& s, const std::string& prompt, int n_new, float temp, 
                 pick = scored[j].second;
                 break;
             }
+        return pick;
+    }
+};
+
+// The quick-look sampler (ECOSYSTEM.md feature 2): rebuild the spec's
+// model, load its exported safetensors, and generate word-level text
+// with temperature + top-k, stopping early at end-of-text. ember.cpp
+// remains the real server; this closes the train→poke loop without
+// leaving the studio.
+int sample_cmd(const Spec& s, const std::string& prompt, int n_new, float temp, int topk,
+               unsigned sseed, const std::string& out_file) {
+    LoadedLM lm(s);
+    auto ids = tokenize(prompt, lm.vocab, 100000);
+    if (ids.empty()) throw std::runtime_error("no prompt word is in the model's vocabulary");
+    std::mt19937 gen(sseed);
+    std::string text = prompt;
+    NoGrad ng;
+    for (int t = 0; t < n_new; ++t) {
+        const int pick = lm.next(ids, temp, topk, 1.0f, gen);
+        if (pick == lm.eos) break;
         ids.push_back(pick);
-        text += " " + tokens[pick];
+        text += " " + lm.tokens[pick];
     }
     std::printf("%s\n", text.c_str());
     if (!out_file.empty()) {
@@ -960,249 +1006,505 @@ std::string sanitize_arxiv(std::string s) {
     return s.size() <= 32 && std::regex_match(s, id_re) ? s : "";
 }
 
-int serve_ui(const std::string& out_dir, int port, const std::string& ui_path,
-             const std::string& spec_path = "") {
+// ---- child processes (the in-page Train and fetch buttons) ----
+// A started program with stdout+stderr appended to a log, reaped without
+// blocking. fork/exec on POSIX, CreateProcess on Windows; the server is
+// multi-threaded, so the POSIX child only calls async-signal-safe
+// functions between fork and exec.
+struct Child {
 #ifdef _WIN32
-    std::fprintf(stderr,
-                 "mtstudio serve: POSIX-only for now (run under "
-                 "WSL); Windows needs a winsock port.\n");
-    (void)out_dir;
-    (void)port;
-    (void)ui_path;
-    return 1;
+    HANDLE h = nullptr;
+    bool running() const { return h != nullptr; }
 #else
+    pid_t pid = -1;
+    bool running() const { return pid > 0; }
+#endif
+};
+
+#ifdef _WIN32
+// One argument quoted for CommandLineToArgvW (backslashes before a quote
+// doubled, the quote escaped).
+std::string win_quote(const std::string& a) {
+    if (!a.empty() && a.find_first_of(" \t\"") == std::string::npos) return a;
+    std::string out = "\"";
+    size_t bs = 0;
+    for (char c : a) {
+        if (c == '\\') {
+            ++bs;
+            continue;
+        }
+        if (c == '"') {
+            out.append(bs * 2 + 1, '\\');
+        } else {
+            out.append(bs, '\\');
+        }
+        out += c;
+        bs = 0;
+    }
+    out.append(bs * 2, '\\');
+    return out + "\"";
+}
+#endif
+
+bool spawn(Child& c, const std::vector<std::string>& argv, const std::string& log) {
+#ifdef _WIN32
+    std::string cmd;
+    for (const auto& a : argv) cmd += (cmd.empty() ? "" : " ") + win_quote(a);
+    SECURITY_ATTRIBUTES sa{sizeof(sa), nullptr, TRUE};
+    HANDLE lf = CreateFileA(log.c_str(), FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE, &sa,
+                            OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (lf == INVALID_HANDLE_VALUE) return false;
+    STARTUPINFOA si{};
+    si.cb = sizeof(si);
+    si.dwFlags = STARTF_USESTDHANDLES;
+    si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+    si.hStdOutput = lf;
+    si.hStdError = lf;
+    PROCESS_INFORMATION pi{};
+    std::vector<char> line(cmd.begin(), cmd.end());
+    line.push_back('\0');
+    const BOOL ok = CreateProcessA(nullptr, line.data(), nullptr, nullptr, TRUE, CREATE_NO_WINDOW,
+                                   nullptr, nullptr, &si, &pi);
+    CloseHandle(lf);
+    if (!ok) return false;
+    CloseHandle(pi.hThread);
+    c.h = pi.hProcess;
+    return true;
+#else
+    std::vector<char*> av;
+    for (const auto& a : argv) av.push_back(const_cast<char*>(a.c_str()));
+    av.push_back(nullptr);
+    const int lf = ::open(log.c_str(), O_WRONLY | O_CREAT | O_APPEND | O_CLOEXEC, 0644);
+    if (lf < 0) return false;
+    const pid_t pid = ::fork();
+    if (pid == 0) {
+        ::dup2(lf, 1);  // dup2 clears O_CLOEXEC on the copies
+        ::dup2(lf, 2);
+        ::execvp(av[0], av.data());
+        _exit(127);
+    }
+    ::close(lf);
+    if (pid < 0) return false;
+    c.pid = pid;
+    return true;
+#endif
+}
+
+// True once a running child has exited (it is then cleared);
+// *exited_ok says whether it exited with status 0.
+bool reap(Child& c, bool* exited_ok) {
+#ifdef _WIN32
+    if (!c.h || WaitForSingleObject(c.h, 0) != WAIT_OBJECT_0) return false;
+    DWORD code = 1;
+    GetExitCodeProcess(c.h, &code);
+    CloseHandle(c.h);
+    c.h = nullptr;
+    if (exited_ok) *exited_ok = code == 0;
+#else
+    int st = 0;
+    if (c.pid <= 0 || ::waitpid(c.pid, &st, WNOHANG) != c.pid) return false;
+    c.pid = -1;
+    if (exited_ok) *exited_ok = WIFEXITED(st) && WEXITSTATUS(st) == 0;
+#endif
+    return true;
+}
+
+// This binary's own path, for re-launching it as "mtstudio run <spec>".
+std::string self_exe(const char* argv0) {
+#ifdef _WIN32
+    char buf[MAX_PATH];
+    const DWORD n = GetModuleFileNameA(nullptr, buf, MAX_PATH);
+    if (n > 0 && n < MAX_PATH) return std::string(buf, n);
+#else
+    std::error_code ec;
+    const auto p = std::filesystem::read_symlink("/proc/self/exe", ec);
+    if (!ec) return p.string();
+#endif
+    return argv0;
+}
+
+void text_reply(httplib::Response& res, int status, const std::string& body,
+                const char* ctype = "text/plain") {
+    res.status = status;
+    res.set_content(body, ctype);
+}
+
+// Bare status bodies ("404") for anything a handler left empty, as the
+// hand-rolled server answered.
+void plain_errors(httplib::Server& svr) {
+    svr.set_error_handler([](const httplib::Request&, httplib::Response& res) {
+        if (!res.body.empty()) return httplib::Server::HandlerResponse::Unhandled;
+        res.set_content(std::to_string(res.status), "text/plain");
+        return httplib::Server::HandlerResponse::Handled;
+    });
+}
+
+int serve_ui(const std::string& out_dir, int port, const std::string& ui_path,
+             const std::string& spec_path, const std::string& self) {
     const std::string ui = slurp(ui_path);
     if (ui.empty()) throw std::runtime_error("cannot read UI at " + ui_path + " (set MTSTUDIO_UI)");
-    int fd = ::socket(AF_INET, SOCK_STREAM, 0);
-    if (fd < 0) throw std::runtime_error("socket failed");
-    int one = 1;
-    ::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
-    sockaddr_in addr{};
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-    addr.sin_port = htons(static_cast<uint16_t>(port));
-    if (::bind(fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0)
+    httplib::Server svr;
+    svr.set_default_headers({{"Cache-Control", "no-store"}});
+    svr.set_payload_max_length(1 << 20);
+    plain_errors(svr);
+
+    // The in-page Train button: POST /train launches this binary as
+    // "mtstudio run <spec>" with output logged into out_dir. One run at
+    // a time; state is reaped non-blockingly per request. POST /fetch
+    // launches papers/fetch.py the same way (the drag-an-arXiv-id flow).
+    // Handlers run on httplib's worker threads: `mu` guards this state.
+    std::mutex mu, sample_mu;
+    Child run_child, fetch_child;
+    bool run_finished = false, fetch_failed = false;
+    svr.set_pre_routing_handler([&](const httplib::Request&, httplib::Response&) {
+        std::lock_guard<std::mutex> lk(mu);
+        if (reap(run_child, nullptr)) run_finished = true;
+        bool ok = true;
+        if (reap(fetch_child, &ok)) fetch_failed = !ok;
+        return httplib::Server::HandlerResponse::Unhandled;
+    });
+
+    svr.Post("/train", [&](const httplib::Request&, httplib::Response& res) {
+        std::lock_guard<std::mutex> lk(mu);
+        if (spec_path.empty()) {
+            text_reply(res, 409, "no spec armed (serve <dir> <port> <spec>)");
+        } else if (run_child.running()) {
+            text_reply(res, 200, "training…");
+        } else if (run_finished) {
+            text_reply(res, 200, "run complete");
+        } else {
+            const bool ok = spawn(run_child, {self, "run", spec_path}, out_dir + "/run.log");
+            text_reply(res, 200, ok ? "training…" : "fork failed");
+        }
+    });
+    svr.Post("/fetch", [&](const httplib::Request& req, httplib::Response& res) {
+        // Body = an arXiv id or URL. Launches the paper fetcher, which
+        // writes arch.json + paper.html into out_dir; the page polls
+        // /fetchstatus, then reads both over this same server.
+        const std::string id = sanitize_arxiv(req.body);
+        std::lock_guard<std::mutex> lk(mu);
+        if (id.empty()) {
+            text_reply(res, 400, "not an arXiv id (want 1706.03762-style, or an arxiv.org URL)");
+        } else if (fetch_child.running()) {
+            text_reply(res, 200, "fetching…");
+        } else {
+            std::remove((out_dir + "/arch.json").c_str());
+            std::remove((out_dir + "/paper.html").c_str());
+            fetch_failed = false;
+            const char* fp = std::getenv("MTSTUDIO_FETCH");
+            const char* py = std::getenv("MTSTUDIO_PYTHON");
+#ifdef _WIN32
+            const std::string python = py ? py : "python";
+#else
+            const std::string python = py ? py : "python3";
+#endif
+            const bool ok = spawn(fetch_child,
+                                  {python, fp ? fp : "papers/fetch.py", id, "--json",
+                                   out_dir + "/arch.json", "--emit-html", out_dir + "/paper.html"},
+                                  out_dir + "/fetch.log");
+            text_reply(res, 200, ok ? "fetching " + id + "…" : "fork failed");
+        }
+    });
+    svr.Post("/sample", [&](const httplib::Request& req, httplib::Response& res) {
+        // In-page quick-look generation: body = the prompt. Runs the
+        // `mtstudio sample` path in-process (a tiny model on CPU answers
+        // in seconds), one request at a time; ember.cpp and `mtstudio
+        // chat` are the real servers.
+        if (spec_path.empty()) {
+            text_reply(res, 409, "no spec armed (serve <dir> <port> <spec>)");
+            return;
+        }
+        std::lock_guard<std::mutex> lk(sample_mu);
+        const std::string sf = out_dir + "/sample.txt";
+        std::remove(sf.c_str());
+        std::string log;
+        try {
+            sample_cmd(parse_spec(spec_path), req.body.empty() ? "once upon a time" : req.body, 40,
+                       0.8f, 40, 1234, sf);
+            log = "ok\n";
+        } catch (const std::exception& e) {
+            log = std::string("mtstudio: ") + e.what() + "\n";
+        }
+        std::ofstream(out_dir + "/sample.log", std::ios::trunc) << log;
+        const std::string body = slurp(sf);
+        if (!body.empty()) {
+            text_reply(res, 200, body, "text/plain; charset=utf-8");
+        } else {
+            text_reply(res, 500,
+                       "sampling failed — train (and export safetensors) first; "
+                       "details in sample.log");
+        }
+    });
+    svr.Get("/fetchstatus", [&](const httplib::Request&, httplib::Response& res) {
+        std::lock_guard<std::mutex> lk(mu);
+        const char* s = fetch_child.running()                    ? "fetching"
+                        : fetch_failed                           ? "failed (see fetch.log)"
+                        : !slurp(out_dir + "/arch.json").empty() ? "done"
+                                                                 : "idle";
+        text_reply(res, 200, s);
+    });
+    svr.Get("/spec", [&](const httplib::Request&, httplib::Response& res) {
+        const std::string body = spec_path.empty() ? "" : slurp(spec_path);
+        if (body.empty()) {
+            text_reply(res, 404, "404");
+        } else {
+            text_reply(res, 200, body, "application/json");
+        }
+    });
+    svr.Get("/events.jsonl", [&](const httplib::Request&, httplib::Response& res) {
+        text_reply(res, 200, slurp(out_dir + "/events.jsonl"), "application/jsonl");
+    });
+    svr.Get(R"(/|/index\.html)", [&](const httplib::Request&, httplib::Response& res) {
+        text_reply(res, 200, ui, "text/html; charset=utf-8");
+    });
+    const auto cut = ui_path.find_last_of("/\\");
+    const std::string ui_dir = cut == std::string::npos ? "." : ui_path.substr(0, cut);
+    svr.Get("/findings", [&](const httplib::Request&, httplib::Response& res) {
+        // The findings registry, served from the repo beside the UI
+        // (studio/../atlas/findings.jsonl) — the viewer renders it as
+        // cards with status badges.
+        const std::string body = slurp(ui_dir + "/../atlas/findings.jsonl");
+        if (!body.empty()) {
+            text_reply(res, 200, body, "application/jsonl");
+        } else {
+            text_reply(res, 404, "404");
+        }
+    });
+    svr.Get(R"(/atlas(\.html)?)", [&](const httplib::Request&, httplib::Response& res) {
+        // The designed-experiment viewer, served from beside the UI; in
+        // served mode it auto-loads the out_dir's atlas_rows.jsonl.
+        const std::string body = slurp(ui_dir + "/atlas.html");
+        if (!body.empty()) {
+            text_reply(res, 200, body, "text/html; charset=utf-8");
+        } else {
+            text_reply(res, 404, "404");
+        }
+    });
+    svr.Get(R"(/([^/]+))", [&](const httplib::Request& req, httplib::Response& res) {
+        // Serve sibling files from out_dir (the diff-to-paper page, the
+        // fetched arch.json and atlas_rows.jsonl ride the same localhost
+        // as the dashboard, so no file:// URL gymnastics from
+        // Windows/WSL). Name only — no slashes or dots-paths — and a fixed
+        // extension whitelist.
+        const std::string name = req.matches[1];
+        const char* ctype = nullptr;
+        auto ends = [&](const char* suf) {
+            const size_t n = std::strlen(suf);
+            return name.size() > n && name.compare(name.size() - n, n, suf) == 0;
+        };
+        if (ends(".html")) ctype = "text/html; charset=utf-8";
+        if (ends(".json")) ctype = "application/json";
+        if (ends(".jsonl")) ctype = "application/jsonl";
+        if (ends(".log")) ctype = "text/plain; charset=utf-8";
+        // Trained-artifact downloads (the page's export links).
+        if (ends(".safetensors") || ends(".gguf")) ctype = "application/octet-stream";
+        const bool safe = ctype && name.find('\\') == std::string::npos &&
+                          name.find("..") == std::string::npos;
+        const std::string body = safe ? slurp(out_dir + "/" + name) : "";
+        if (!body.empty()) {
+            text_reply(res, 200, body, ctype);
+        } else {
+            text_reply(res, 404, "404");
+        }
+    });
+
+    if (!svr.bind_to_port("127.0.0.1", port))
         throw std::runtime_error("bind failed (port in use?)");
-    if (::listen(fd, 8) < 0) throw std::runtime_error("listen failed");
     std::printf(
         "mtstudio serve: http://localhost:%d/  (events from %s, "
         "Ctrl-C to stop)\n",
         port, out_dir.c_str());
+    std::fflush(stdout);
+    svr.listen_after_bind();
+    return 0;
+}
 
-    auto respond = [](int c, const char* status, const char* ctype, const std::string& body) {
-        char head[256];
-        const int n = std::snprintf(head, sizeof(head),
-                                    "HTTP/1.1 %s\r\nContent-Type: %s\r\nContent-Length: %zu\r\n"
-                                    "Cache-Control: no-store\r\nConnection: close\r\n\r\n",
-                                    status, ctype, body.size());
-        (void)!::write(c, head, n);
-        (void)!::write(c, body.data(), body.size());
+// ---- mtstudio chat: a trained model behind a chat page ----
+//   GET  /        the chat page (studio/chat.html, embedded at build time;
+//                 MTSTUDIO_CHAT_UI=<path> serves that file instead, re-read
+//                 per request, for editing the page without rebuilding)
+//   GET  /card    <out_dir>/card.json (tools/model_card.py), else 404
+//   GET  /health  liveness and what is loaded
+//   POST /chat    {user_input, max_new_tokens?, temperature?, top_k?,
+//                 top_p?, history?, seed?} -> {reply, stop_reason, tokens}
+//                 stop_reason: "eos" | "turn" | "length"
+// The request shape is tinyllama.cpp server.cpp's, so either engine can
+// answer the studio's chat panel. The prompt is the dialogue template of
+// the word-level chat corpora, "user: <text> assistant:", in the model's
+// own tokenisation (history turns, oldest first, prefix it in the same
+// form); generation stops at end-of-text, when the model opens another
+// turn ("user :", or a second "assistant :"; the marker is dropped), or
+// at max_new_tokens. The model loads once; a mutex
+// serialises generation across httplib's worker threads.
+
+// `<out_dir>` (its spec.json, recorded by `mtstudio run`) or a spec file.
+Spec resolve_chat_spec(const std::string& arg) {
+    namespace fs = std::filesystem;
+    if (fs::is_directory(arg)) {
+        const std::string sp = (fs::path(arg) / "spec.json").string();
+        if (!fs::exists(sp))
+            throw std::runtime_error(arg +
+                                     " has no spec.json (runs from before it was recorded: "
+                                     "pass the spec file instead)");
+        Spec s = parse_spec(sp);
+        s.out_dir = arg;  // the directory named wins: run dirs get moved
+        return s;
+    }
+    return parse_spec(arg);
+}
+
+std::string chat_prompt(const json& req) {
+    std::string p;
+    if (req.contains("history") && req["history"].is_array()) {
+        // [{role: user|assistant, content}] or [{user, assistant}] turns.
+        for (const auto& turn : req["history"]) {
+            if (!turn.is_object()) continue;
+            if (turn.contains("role")) {
+                const std::string role = turn.value("role", "");
+                if (role == "user" || role == "assistant")
+                    p += role + ": " + turn.value("content", "") + " ";
+                continue;
+            }
+            if (turn.contains("user")) p += "user: " + turn.value("user", "") + " ";
+            if (turn.contains("assistant")) p += "assistant: " + turn.value("assistant", "") + " ";
+        }
+    }
+    return p + "user: " + req["user_input"].get<std::string>() + " assistant:";
+}
+
+int chat_cmd(const std::string& target, const std::string& host, int port) {
+    const Spec s = resolve_chat_spec(target);
+    LoadedLM lm(s);
+    // The model's own token sequences for a new turn ("user :",
+    // "assistant :"), unusable if a piece is out of vocabulary (it would
+    // be <unk>, which the sampler never emits anyway).
+    std::vector<std::vector<int>> turn_markers;
+    for (const char* m : {"user:", "assistant:"}) {
+        auto seq = tokenize(m, lm.vocab, 16);
+        if (std::find(seq.begin(), seq.end(), 0) == seq.end()) turn_markers.push_back(seq);
+    }
+    std::mutex gen_mu;
+    std::mt19937 seeder{std::random_device{}()};
+
+    httplib::Server svr;
+    svr.set_default_headers({{"Cache-Control", "no-store"}});
+    svr.set_payload_max_length(1 << 20);
+    plain_errors(svr);
+    auto cors = [](httplib::Response& res) {
+        // Open, like tinyllama_server: the studio page (another port)
+        // posts here.
+        res.set_header("Access-Control-Allow-Origin", "*");
+        res.set_header("Access-Control-Allow-Methods", "POST, OPTIONS");
+        res.set_header("Access-Control-Allow-Headers", "Content-Type");
     };
 
-    // The in-page Train button: POST /train forks this binary as
-    // "mtstudio run <spec>" with output logged into out_dir. One run at
-    // a time; state is reaped non-blockingly per request. POST /fetch
-    // forks papers/fetch.py the same way (the drag-an-arXiv-id flow).
-    pid_t run_pid = -1, fetch_pid = -1;
-    bool run_finished = false, fetch_failed = false;
-    for (;;) {
-        const int c = ::accept(fd, nullptr, nullptr);
-        if (c < 0) continue;
-        if (run_pid > 0) {
-            int st = 0;
-            if (::waitpid(run_pid, &st, WNOHANG) == run_pid) {
-                run_pid = -1;
-                run_finished = true;
-            }
+    svr.Get("/", [&](const httplib::Request&, httplib::Response& res) {
+        const char* override_path = std::getenv("MTSTUDIO_CHAT_UI");
+        const std::string page =
+            override_path ? slurp(override_path)
+                          : std::string(reinterpret_cast<const char*>(kChatHtml), kChatHtmlSize);
+        if (page.empty())
+            text_reply(res, 404, "chat page not found at MTSTUDIO_CHAT_UI");
+        else
+            text_reply(res, 200, page, "text/html; charset=utf-8");
+    });
+    svr.Get("/card", [&](const httplib::Request&, httplib::Response& res) {
+        const std::string body = slurp(s.out_dir + "/card.json");
+        if (body.empty())
+            text_reply(res, 404, "no card.json in " + s.out_dir);
+        else
+            text_reply(res, 200, body, "application/json");
+    });
+    svr.Get("/health", [&](const httplib::Request&, httplib::Response& res) {
+        res.set_content(json({{"status", "ok"},
+                              {"model", s.name},
+                              {"family", s.family},
+                              {"attention", s.attention},
+                              {"params", lm.model().parameter_count()},
+                              {"vocab", lm.tokens.size()},
+                              {"context", s.T},
+                              {"eos", lm.eos >= 0}})
+                            .dump(),
+                        "application/json");
+    });
+    svr.Options("/chat", [&](const httplib::Request&, httplib::Response& res) {
+        cors(res);
+        res.status = 204;
+    });
+    svr.Post("/chat", [&](const httplib::Request& req, httplib::Response& res) {
+        cors(res);
+        auto fail = [&](int status, const std::string& msg) {
+            res.status = status;
+            res.set_content(json({{"error", msg}}).dump(), "application/json");
+        };
+        const json r = json::parse(req.body, nullptr, false);
+        if (r.is_discarded() || !r.is_object() || !r.contains("user_input") ||
+            !r["user_input"].is_string()) {
+            fail(400, "body must be JSON with a string 'user_input'");
+            return;
         }
-        if (fetch_pid > 0) {
-            int st = 0;
-            if (::waitpid(fetch_pid, &st, WNOHANG) == fetch_pid) {
-                fetch_pid = -1;
-                fetch_failed = !WIFEXITED(st) || WEXITSTATUS(st) != 0;
-            }
-        }
-        // Read the whole request: loop until the header terminator and
-        // any Content-Length worth of body have arrived (browser POST
-        // headers alone can exceed a single small read).
-        std::string line;
-        {
-            char buf[4096];
-            size_t hdr_end = std::string::npos, want = 0;
-            ssize_t r;
-            while ((r = ::read(c, buf, sizeof(buf))) > 0) {
-                line.append(buf, static_cast<size_t>(r));
-                if (hdr_end == std::string::npos) {
-                    hdr_end = line.find("\r\n\r\n");
-                    if (hdr_end != std::string::npos) {
-                        auto cl = line.find("Content-Length:");
-                        if (cl == std::string::npos) cl = line.find("content-length:");
-                        if (cl != std::string::npos)
-                            want = std::strtoul(line.c_str() + cl + 15, nullptr, 10);
+        try {
+            // Defaults are tinyllama_server's.
+            const int max_new = std::min(std::max(r.value("max_new_tokens", 60), 1), 1024);
+            const float temp = r.value("temperature", 0.1f);
+            const int top_k = r.value("top_k", 40);
+            const float top_p = r.value("top_p", 0.9f);
+            const std::string prompt = chat_prompt(r);
+            std::lock_guard<std::mutex> lk(gen_mu);
+            std::mt19937 gen(r.contains("seed") ? r["seed"].get<unsigned>() : seeder());
+            NoGrad ng;
+            std::vector<int> ids = tokenize(prompt, lm.vocab, prompt.size() + 1), out;
+            std::string stop = "length";
+            for (int t = 0; t < max_new; ++t) {
+                const int pick = lm.next(ids, temp, top_k, top_p, gen);
+                if (pick == lm.eos) {
+                    stop = "eos";
+                    break;
+                }
+                ids.push_back(pick);
+                out.push_back(pick);
+                for (const auto& m : turn_markers)
+                    if (wordtok::ends_with(out, m)) {
+                        out.resize(out.size() - m.size());
+                        stop = "turn";
+                        break;
                     }
-                }
-                if (hdr_end != std::string::npos && line.size() >= hdr_end + 4 + want) break;
-                if (line.size() > 65536) break;
+                if (stop == "turn") break;
             }
+            std::string reply = wordtok::detokenize(out, lm.tokens);
+            const auto b = reply.find_first_not_of(" \t\r\n");
+            const auto e = reply.find_last_not_of(" \t\r\n");
+            reply = b == std::string::npos ? "" : reply.substr(b, e - b + 1);
+            res.set_content(
+                json({{"reply", reply}, {"stop_reason", stop}, {"tokens", out.size()}}).dump(),
+                "application/json");
+        } catch (const json::exception& e) {
+            fail(400, std::string("bad request field: ") + e.what());
+        } catch (const std::exception& e) {
+            fail(500, std::string("generation failed: ") + e.what());
         }
-        if (line.rfind("POST /train", 0) == 0) {
-            if (spec_path.empty()) {
-                respond(c, "409 Conflict", "text/plain",
-                        "no spec armed (serve <dir> <port> <spec>)");
-            } else if (run_pid > 0) {
-                respond(c, "200 OK", "text/plain", "training…");
-            } else if (run_finished) {
-                respond(c, "200 OK", "text/plain", "run complete");
-            } else {
-                const pid_t pid = ::fork();
-                if (pid == 0) {
-                    const std::string log = out_dir + "/run.log";
-                    (void)!::freopen(log.c_str(), "a", stdout);
-                    (void)!::freopen(log.c_str(), "a", stderr);
-                    ::execl("/proc/self/exe", "mtstudio", "run", spec_path.c_str(),
-                            static_cast<char*>(nullptr));
-                    _exit(127);
-                }
-                run_pid = pid;
-                respond(c, "200 OK", "text/plain", pid > 0 ? "training…" : "fork failed");
-            }
-        } else if (line.rfind("POST /fetch", 0) == 0) {
-            // Body = an arXiv id or URL. Forks the paper fetcher, which
-            // writes arch.json + paper.html into out_dir; the page polls
-            // /fetchstatus, then reads both over this same server.
-            const auto he = line.find("\r\n\r\n");
-            const std::string id =
-                sanitize_arxiv(he == std::string::npos ? "" : line.substr(he + 4));
-            if (id.empty()) {
-                respond(c, "400 Bad Request", "text/plain",
-                        "not an arXiv id (want 1706.03762-style, or an arxiv.org URL)");
-            } else if (fetch_pid > 0) {
-                respond(c, "200 OK", "text/plain", "fetching…");
-            } else {
-                ::unlink((out_dir + "/arch.json").c_str());
-                ::unlink((out_dir + "/paper.html").c_str());
-                fetch_failed = false;
-                const char* fp = std::getenv("MTSTUDIO_FETCH");
-                const std::string fetcher = fp ? fp : "papers/fetch.py";
-                const std::string aj = out_dir + "/arch.json", ph = out_dir + "/paper.html";
-                const pid_t pid = ::fork();
-                if (pid == 0) {
-                    const std::string log = out_dir + "/fetch.log";
-                    (void)!::freopen(log.c_str(), "a", stdout);
-                    (void)!::freopen(log.c_str(), "a", stderr);
-                    ::execlp("python3", "python3", fetcher.c_str(), id.c_str(), "--json",
-                             aj.c_str(), "--emit-html", ph.c_str(), static_cast<char*>(nullptr));
-                    _exit(127);
-                }
-                fetch_pid = pid;
-                respond(c, "200 OK", "text/plain",
-                        pid > 0 ? "fetching " + id + "…" : "fork failed");
-            }
-        } else if (line.rfind("POST /sample", 0) == 0) {
-            // In-page quick-look generation: body = the prompt. Forks
-            // "mtstudio sample <spec>" and waits (a tiny model on CPU
-            // answers in seconds); ember.cpp stays the real server.
-            const auto he = line.find("\r\n\r\n");
-            const std::string prompt = he == std::string::npos ? "" : line.substr(he + 4);
-            if (spec_path.empty()) {
-                respond(c, "409 Conflict", "text/plain",
-                        "no spec armed (serve <dir> <port> <spec>)");
-            } else {
-                const std::string sf = out_dir + "/sample.txt";
-                ::unlink(sf.c_str());
-                const pid_t pid = ::fork();
-                if (pid == 0) {
-                    const std::string log = out_dir + "/sample.log";
-                    (void)!::freopen(log.c_str(), "w", stdout);
-                    (void)!::freopen(log.c_str(), "w", stderr);
-                    ::execl("/proc/self/exe", "mtstudio", "sample", spec_path.c_str(), "--prompt",
-                            prompt.empty() ? "once upon a time" : prompt.c_str(), "--out",
-                            sf.c_str(), static_cast<char*>(nullptr));
-                    _exit(127);
-                }
-                int st = 0;
-                ::waitpid(pid, &st, 0);
-                const std::string body = slurp(sf);
-                if (!body.empty()) {
-                    respond(c, "200 OK", "text/plain; charset=utf-8", body);
-                } else {
-                    respond(c, "500 Internal Server Error", "text/plain",
-                            "sampling failed — train (and export safetensors) first; "
-                            "details in sample.log");
-                }
-            }
-        } else if (line.rfind("GET /fetchstatus", 0) == 0) {
-            const char* s = fetch_pid > 0                            ? "fetching"
-                            : fetch_failed                           ? "failed (see fetch.log)"
-                            : !slurp(out_dir + "/arch.json").empty() ? "done"
-                                                                     : "idle";
-            respond(c, "200 OK", "text/plain", s);
-        } else if (line.rfind("GET /spec", 0) == 0) {
-            const std::string body = spec_path.empty() ? "" : slurp(spec_path);
-            if (body.empty()) {
-                respond(c, "404 Not Found", "text/plain", "404");
-            } else {
-                respond(c, "200 OK", "application/json", body);
-            }
-        } else if (line.rfind("GET /events.jsonl", 0) == 0) {
-            respond(c, "200 OK", "application/jsonl", slurp(out_dir + "/events.jsonl"));
-        } else if (line.rfind("GET / ", 0) == 0 || line.rfind("GET /index.html", 0) == 0) {
-            respond(c, "200 OK", "text/html; charset=utf-8", ui);
-        } else if (line.rfind("GET /findings", 0) == 0) {
-            // The findings registry, served from the repo beside the UI
-            // (studio/../atlas/findings.jsonl) — the viewer renders it
-            // as cards with status badges.
-            const auto cut = ui_path.find_last_of("/\\");
-            const std::string dir = cut == std::string::npos ? "." : ui_path.substr(0, cut);
-            const std::string body = slurp(dir + "/../atlas/findings.jsonl");
-            if (!body.empty()) {
-                respond(c, "200 OK", "application/jsonl", body);
-            } else {
-                respond(c, "404 Not Found", "text/plain", "404");
-            }
-        } else if (line.rfind("GET /atlas", 0) == 0) {
-            // The designed-experiment viewer, served from beside the UI;
-            // in served mode it auto-loads the out_dir's atlas_rows.jsonl.
-            const auto cut = ui_path.find_last_of("/\\");
-            const std::string dir = cut == std::string::npos ? "." : ui_path.substr(0, cut);
-            const std::string body = slurp(dir + "/atlas.html");
-            if (!body.empty()) {
-                respond(c, "200 OK", "text/html; charset=utf-8", body);
-            } else {
-                respond(c, "404 Not Found", "text/plain", "404");
-            }
-        } else if (line.rfind("GET /", 0) == 0) {
-            // Serve sibling files from out_dir (the diff-to-paper page
-            // and the fetched arch.json ride the same localhost as the
-            // dashboard, so no file:// URL gymnastics from Windows/WSL).
-            // Name only — no slashes or dots-paths — and a fixed
-            // extension whitelist.
-            const size_t sp = line.find(' ', 4);
-            std::string name = sp == std::string::npos ? "" : line.substr(5, sp - 5);
-            const char* ctype = nullptr;
-            auto ends = [&](const char* suf) {
-                const size_t n = std::strlen(suf);
-                return name.size() > n && name.compare(name.size() - n, n, suf) == 0;
-            };
-            if (ends(".html")) ctype = "text/html; charset=utf-8";
-            if (ends(".json")) ctype = "application/json";
-            if (ends(".log")) ctype = "text/plain; charset=utf-8";
-            // Trained-artifact downloads (the page's export links).
-            if (ends(".safetensors") || ends(".gguf")) ctype = "application/octet-stream";
-            const bool safe = ctype && name.find('/') == std::string::npos &&
-                              name.find("..") == std::string::npos;
-            const std::string body = safe ? slurp(out_dir + "/" + name) : "";
-            if (!body.empty()) {
-                respond(c, "200 OK", ctype, body);
-            } else {
-                respond(c, "404 Not Found", "text/plain", "404");
-            }
-        } else {
-            respond(c, "404 Not Found", "text/plain", "404");
-        }
-        ::close(c);
-    }
-#endif
+    });
+
+    if (!svr.bind_to_port(host, port))
+        throw std::runtime_error("cannot bind " + host + ":" + std::to_string(port) +
+                                 " (port in use?)");
+    const bool dialogue = lm.vocab.count("user") && lm.vocab.count("assistant");
+    std::printf("mtstudio chat: http://%s:%d/  (%s, %zu params, vocab %zu, end-of-text %s)\n",
+                host.c_str(), port, s.name.c_str(), lm.model().parameter_count(),
+                lm.tokens.size(), lm.eos >= 0 ? "on" : "absent: replies run to max_new_tokens");
+    if (!dialogue)
+        std::printf(
+            "mtstudio chat: this vocabulary has no 'user'/'assistant' words, so the "
+            "model was not trained on dialogue; replies will read as continuations\n");
+    if (host != "127.0.0.1" && host != "localhost" && host != "::1")
+        std::printf(
+            "mtstudio chat: listening beyond this machine (%s); anyone who can reach it "
+            "can use the model\n",
+            host.c_str());
+    std::printf("Ctrl-C to stop\n");
+    std::fflush(stdout);
+    svr.listen_after_bind();
+    return 0;
 }
 }  // namespace
 
@@ -1214,7 +1516,7 @@ int main(int argc, char** argv) {
         // through here (docs/CUDA_PHASE_B2.md).
         device::set_from_env();
         if ((cmd == "run" || cmd == "plan") && argc >= 3)
-            return run(parse_spec(argv[2]), cmd == "plan");
+            return run(parse_spec(argv[2]), cmd == "plan", argv[2]);
         if (cmd == "sample" && argc >= 3) {
             std::string prompt = "once upon a time", out_file;
             int n_new = 40, topk = 40;
@@ -1237,7 +1539,17 @@ int main(int argc, char** argv) {
             // Optional 4th arg: a spec the browser can launch via the
             // in-page Train button (POST /train).
             const std::string spec = argc > 4 ? argv[4] : "";
-            return serve_ui(argv[2], port, ui ? ui : "studio/index.html", spec);
+            return serve_ui(argv[2], port, ui ? ui : "studio/index.html", spec, self_exe(argv[0]));
+        }
+        if (cmd == "chat" && argc >= 3) {
+            std::string host = "127.0.0.1";
+            int port = 8080;
+            for (int i = 3; i + 1 < argc; i += 2) {
+                const std::string k = argv[i], v = argv[i + 1];
+                if (k == "--port") port = std::atoi(v.c_str());
+                if (k == "--host") host = v;
+            }
+            return chat_cmd(argv[2], host, port);
         }
     } catch (const std::exception& e) {
         std::fprintf(stderr, "mtstudio: %s\n", e.what());
@@ -1245,7 +1557,10 @@ int main(int argc, char** argv) {
     }
     std::fprintf(stderr,
                  "usage: mtstudio run|plan spec.json\n"
-                 "       mtstudio serve <out_dir> [port]   (MTSTUDIO_UI "
-                 "overrides the index.html path)\n");
+                 "       mtstudio sample spec.json [--prompt P] [--tokens N] [--temp T] "
+                 "[--topk K] [--seed S] [--out FILE]\n"
+                 "       mtstudio serve <out_dir> [port] [spec]   (MTSTUDIO_UI "
+                 "overrides the index.html path)\n"
+                 "       mtstudio chat <out_dir|spec.json> [--port 8080] [--host 127.0.0.1]\n");
     return 2;
 }

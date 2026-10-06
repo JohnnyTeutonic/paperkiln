@@ -344,6 +344,8 @@ yourself and pick the attention mechanism.
     "corpus":    "data/train.txt",    // raw text
     "vocab":     "releases/tinystories_vocab.gguf",  // any GGUF: its tokenizer.ggml.tokens is the vocabulary (tools/get_tinystories_data.py builds one)
     "vocab_cap": 4096,                // truncate to the top-N tokens
+    "max_tokens": 400000,             // corpus read cap in tokens (0 = whole
+                                      // file); raise it for bigger corpora
     "T":         256                  // context length
   },
   "train": {
@@ -365,6 +367,13 @@ yourself and pick the attention mechanism.
   "out_dir": "/tmp/mtstudio_llama3k"
 }
 ```
+
+When the vocabulary contains `<|endoftext|>` (TinyStories' story separator;
+`tools/get_tinystories_data.py` puts it at id 1), the tokenizer reads that
+literal as one token, the GGUF export records it as `eos_token_id`, and
+sampling stops there. Vocabularies without it tokenize exactly as before.
+`mtstudio run` also copies the spec to `out_dir/spec.json`, so
+`mtstudio chat <out_dir>` can rebuild the model from the directory alone.
 
 The event stream (`out_dir/events.jsonl`) is the contract between trainer and
 UI — `start`, `step` (loss, grad_norm, optional per-module `grads` and SRD

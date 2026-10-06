@@ -16,9 +16,12 @@ and chat without any file from the author's machine:
      2 GB training file) with huggingface_hub, no account needed;
   2. keeps the first `--max-mb` megabytes as the corpus;
   3. tokenises it exactly as mtstudio does (lower-case; a token is a run of
-     letters, digits and apostrophes, or a single punctuation character);
-  4. writes the most frequent `--vocab` tokens, with `<unk>` at id 0, into a
-     minimal GGUF that mtstudio's reader accepts.
+     letters, digits and apostrophes, or a single punctuation character;
+     the story separator `<|endoftext|>` is one token);
+  4. writes the most frequent `--vocab` tokens, with `<unk>` at id 0 and,
+     when the corpus has story separators, `<|endoftext|>` at id 1 (also
+     recorded as the GGUF's eos_token_id, so generation stops at the end
+     of a story), into a minimal GGUF that mtstudio's reader accepts.
 
 Requires: huggingface_hub, gguf  (`pip install huggingface_hub gguf`).
 """
@@ -30,11 +33,26 @@ import os
 import sys
 
 
+EOS = "<|endoftext|>"
+
+
 def tokenize_like_mtstudio(text):
-    """Mirror of tokenize() in tools/mtstudio.cpp: yields tokens."""
+    """Mirror of wordtok::tokenize (include/microtorch/word_tokenizer.hpp,
+    used by tools/mtstudio.cpp): yields tokens. EOS is always one token
+    here; the C++ side makes it one token whenever the vocabulary has it,
+    which a vocabulary built from these counts does."""
     cur = []
-    for ch in text:
-        if ch.isalpha() or ch.isdigit() or ch == "'":
+    i, n = 0, len(text)
+    while i < n:
+        ch = text[i]
+        i += 1
+        if ch == "<" and text.startswith(EOS, i - 1):
+            if cur:
+                yield "".join(cur)
+                cur = []
+            yield EOS
+            i += len(EOS) - 1
+        elif ch.isalpha() or ch.isdigit() or ch == "'":
             cur.append(ch.lower())
         else:
             if cur:
@@ -78,8 +96,10 @@ def main():
             counts.update(tokenize_like_mtstudio(line))
     # mtstudio only ever looks at ASCII-classified characters; keep the
     # vocabulary ASCII so the C++ tokenizer and this one agree.
-    words = [w for w, _ in counts.most_common() if w.isascii()]
-    tokens = ["<unk>"] + words[: args.vocab - 1]
+    words = [w for w, _ in counts.most_common() if w.isascii() and w != EOS]
+    # End-of-text first after <unk>, so no vocab cap can drop it.
+    special = ["<unk>"] + ([EOS] if counts[EOS] else [])
+    tokens = special + words[: args.vocab - len(special)]
     print(f"vocabulary: {len(tokens)} tokens from {sum(counts.values())} in corpus "
           f"(coverage {sum(counts[w] for w in tokens[1:]) / max(1, sum(counts.values())):.3f})")
 
@@ -87,6 +107,8 @@ def main():
     w = gguf.GGUFWriter(vocab_path, "llama")
     w.add_tokenizer_model("word")
     w.add_token_list(tokens)
+    if EOS in tokens:
+        w.add_eos_token_id(tokens.index(EOS))
     w.write_header_to_file()
     w.write_kv_data_to_file()
     w.write_tensors_to_file()
