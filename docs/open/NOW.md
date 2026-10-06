@@ -6,6 +6,10 @@ stale NOW.md is worse than none.*
 
 **Last updated: 6 Oct 2026.**
 
+## Open defect (found 6 Oct 2026): RoPE rotates only the first head in the llama family
+
+`src/llama.cpp` calls `ops::apply_rope(qkv, pos, theta, dk)` with `dk` = one head's width, and `apply_rope` (`src/ops.cpp` ~561) rotates columns `0..head_dim` of q and of k only. With H > 1, heads 1..H-1 receive no position signal. Found by the browser-chat parity work (rotating every head changed greedy output from token 1). Affects every llama-family run (llama-tiny, flex routed to RoPE), hence every Atlas Stage 2/3 finding (S2-muon, S2-lr-null, S2-ctx, S2-heads-null, S2-spike-metric, S3-lrxopt, S3-muon, S3-ctx-null, S3-d-unpaid); S2-heads-null and S3-ctx-null are directly suspect. The gpt2-family transfer studies (learned positions) are unaffected. Exported llama GGUFs declare `rope.dimension_count = d/H`, so engines that rotate every head (ember.cpp, HF Llama) will not reproduce mtstudio's outputs. Author's decision pending: fix (per-head rotation, with a flag so existing checkpoints still load as trained), re-run Stages 2-3, and mark the findings under review meanwhile. `web/chat/paperkiln.js` copies the current behaviour deliberately; its parity test will flag the fix.
+
 ## Due by 20 Oct 2026: resurrect sparse_s1_longbudget
 
 Parked on 6 Oct while the chat quickstart ships; the author wants it running within a fortnight. It cannot finish as specified: 12000-step runs with `checkpoint_every: 1000000` against Colab's ~60-minute session cap. The sweep is pre-registered, so the fix is a written amendment by the author enabling checkpoints (no other change), then launch per AGENTS.md (about 5 GPU-hours, 20 runs, seeds 41-50, exact vs swa).
