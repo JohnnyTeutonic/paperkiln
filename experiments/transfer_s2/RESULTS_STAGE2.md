@@ -93,8 +93,8 @@ not used to discard anything.
    selected on the exact lane by the stage-1 rule (an accepted and
    disclosed favouring of that lane).
 
-4. **Not yet read**: the L arm (d = 1024), whose rate came from the
-   fallback clause (`RESULTS_STAGE1.md`). Its band will be narrower; it
+4. **The L arm** (d = 1024), whose rate came from the
+   fallback clause (`RESULTS_STAGE1.md`), read in the next section. Its band will be narrower; it
    is a trend point, and it cannot rescue F1, which failed at S vs M.
 
 ## The L arm, licensed (d = 1024 at lr 5e-4, the fallback-clause rate; banked 14 Sep 23:20)

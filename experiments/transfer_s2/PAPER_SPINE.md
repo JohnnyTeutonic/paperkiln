@@ -192,7 +192,7 @@ amend with a dated amendment before the L arm is read, or keep), and
 the L-arm consequence either way. This section is the paper's claim to
 candour and should be short.
 
-### 7. The L arm (pending)
+### 7. The L arm (banked 14 Sep; read in RESULTS_STAGE2.md)
 
 Twelve seeds, two lanes, at lr*(1024) as decided in section 6. Trend
 point: it cannot rescue F1, which failed at S vs M. Report its band, its

@@ -4,7 +4,15 @@
 [`BACKLOG.md`](BACKLOG.md). Update this file when state changes — a
 stale NOW.md is worse than none.*
 
-**Last updated: 16 Sep 2026, ~08:00 AEST.**
+**Last updated: 6 Oct 2026.**
+
+## Due by 20 Oct 2026: resurrect sparse_s1_longbudget
+
+Parked on 6 Oct while the chat quickstart ships; the author wants it running within a fortnight. It cannot finish as specified: 12000-step runs with `checkpoint_every: 1000000` against Colab's ~60-minute session cap. The sweep is pre-registered, so the fix is a written amendment by the author enabling checkpoints (no other change), then launch per AGENTS.md (about 5 GPU-hours, 20 runs, seeds 41-50, exact vs swa).
+
+## In progress (6 Oct 2026): chat quickstart
+
+`mtstudio chat` (cpp-httplib, portable server), end-of-text token, `data.max_tokens`, model cards with a chat probe set, TinyChat corpus in-repo, `quickstart_chat.sh`. Then: a Colab-trained default chat model as a GitHub Release, a browser (WASM) chat page, and `paperkiln publish` to Hugging Face. Windows testing is parked.
 
 ## NOTHING IS RUNNING (16 Sep 2026, 14:00)
 

@@ -10,7 +10,7 @@ experiment is chosen because the accumulated evidence cannot yet answer it.
 Architecture research today restarts from zero with each paper; the Atlas
 exists so that it never has to again.
 
-**Status: living design note, begun 2026-07-31; stages 0–1 implemented.** The
+**Status: living design note, begun 2026-07-31; stages 0–3 implemented (Stage 2 PB12 screen, Stage 3 factorial); Stage 4 partly covered by the transfer studies; Stages 5–6 not started.** The
 proposal is Jonathan's, consolidated from two drafts. Sections marked
 *Engineering note* are additions from working feasibility against the existing
 codebase; several of them change the plan rather than merely costing it.

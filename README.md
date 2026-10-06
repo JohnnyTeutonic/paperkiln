@@ -394,7 +394,7 @@ can consume a run.
 | **Run studio** | ✅ | Declarative spec → train/eval/export/serve; `plan` dry-run; resume |
 | **Live dashboard** | ✅ | Loss + val + gate chart, per-module gradient glow, spec builder, SVG architecture diagram, in-page chat |
 | **Flex family (paper-faithful)** | ✅ | Any depth; d_ff, LayerNorm/RMSNorm, GELU/ReLU/SwiGLU, learned/sinusoidal all spec-real; bitwise equivalence pin at defaults (`test_flex`, 6 receipts) |
-| **From-paper flow** | ✅ | Drag an arXiv link → scored extraction (grouped AUROC 1.000, 0 wrong assertions on the 10-paper bench) → editable spec → ▶ train → artifact downloads → chat |
+| **From-paper flow** | ✅ | Drag an arXiv link → scored extraction (grouped AUROC 0.905, 3 documented wrong assertions in 92 verdicts on the 40-paper bench) → editable spec → ▶ train → artifact downloads → chat |
 | **Atlas experiment engine** | ✅ | `mtsweep` (grid/PB12/fold-over PB12f, linked factors, aliasing advisories, resumable, OMP-aware) + `atlas_analyze` (main effects + two-way interactions, seed-based SEs); Stages 2–3 findings published |
 | **Atlas viewer** | ✅ | `studio/atlas.html` (+ `/atlas` in serve mode): in-page effects, clickable interaction heatmap, seed spreads — client math pinned to the Python analyzer on real Stage 3 rows |
 | LoRA | ✅ | `LoRALinear`: frozen base + rank-r adapters, `merged_weight()` |
@@ -609,22 +609,23 @@ fields, because "based on the Transformer" is said by every decoder LM
 while the deltas go unstated — BERT is "based on the Transformer" and
 silently switches to GELU and learned positions.
 
-Measured on `papers/flavor_bench.py`, **29 real papers** with ground-truth
+Measured on `papers/flavor_bench.py`, **40 real papers** with ground-truth
 architectures (Vaswani through OLMo, including designed negatives whose
-true flavor is outside the lattice): **grouped AUROC 0.895** [bootstrap 95%
-CI 0.761–1.000, resampling papers] vs 0.825 for naive first-match, pooled
-0.819 post-veto, **53/71 field verdicts correct with zero wrong
-assertions** — where first-match extraction claimed RoPE for the ALiBi
+true flavor is outside the lattice): **grouped AUROC 0.905** [bootstrap 95%
+CI 0.789–1.000, resampling papers] vs 0.841 for naive first-match, pooled
+0.817 [0.735–0.898] vs 0.778 (0.825 post-veto), **66/92 field verdicts
+correct with three documented wrong assertions** (Megatron-LM, LaMDA,
+Cerebras-GPT; each has a named root cause and fix in the bench) — where first-match extraction claimed RoPE for the ALiBi
 paper and SwiGLU for Primer *and* Falcon ("we choose not to adopt SwiGLU"
 now vetoes the candidate outright). The first 10-paper cut scored a
-grouped 1.000 — the larger sample deflated that honestly, which is exactly
+grouped 1.000, and the 29-paper cut 0.895 with zero wrong — the larger samples deflated that honestly, which is exactly
 what the benchmark is for; the growth protocol continues
 (STUDIO_PLAN §13.1).
 
 Validated live against: *Attention Is All You Need* (d_model=512, N=6, h=8,
 d_ff=2048, sinusoidal), *LLaMA* (4096/32/32 from its model-size table +
 RMSNorm/SwiGLU/RoPE), *TinyLlama* (22 layers, 32 heads, vocab 32000), plus
-the ten-paper flavor benchmark above. Offline fixture tests:
+the 40-paper flavor benchmark above. Offline fixture tests:
 `python papers/test_fetch.py` — no network needed in CI.
 
 This is the constrained config-delta approach: most transformer papers are

@@ -1,6 +1,6 @@
 # Registry entry 0001 (pilot #0): Highway Networks
 
-Status: DOSSIER ONLY — no engine code exists for this entry yet. No runs.
+Status: engine code implemented (`residual: highway`, `src/ops.cpp`, pinned by `tests/test_highway.cpp`); the pre-registered pilot (three lanes, five seeds each, 15 runs) is in `experiments/registry_0001_highway/` with receipts under `receipts/`.
 Provenance: sections 1-2 verified against the fetched abs page and ar5iv full
 text of 1505.00387 (2026-08-12). Statements about 1507.06228 are from prior
 knowledge and are marked [not re-verified].
