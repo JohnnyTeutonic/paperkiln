@@ -25,7 +25,7 @@ usage() {
   cat <<EOF
 Usage: bash quickstart_chat.sh [options]
   --mode default|train   chat with the ready-made model, or train your own
-  --preset quick|better  quick: about 10-20 minutes on a laptop CPU; better: an hour or more
+  --preset quick|better  quick: about 10 minutes on a laptop CPU; better: several hours
   --share | --no-share   give the chat a public link (Cloudflare quick tunnel) or keep it on this machine
   --port N               local port for the chat page (default 8080)
   --yes                  accept the defaults instead of asking
@@ -82,7 +82,7 @@ if [ -z "$MODE" ]; then
   bold ""
   bold "What would you like to do?"
   say "1) Chat with the ready-made model (downloads it; ready in about a minute; no compiler needed)"
-  say "2) Train your own model on this computer (needs a C++ compiler; 10 minutes to an hour)"
+  say "2) Train your own model on this computer (needs a C++ compiler; about 10 minutes for the quick model)"
   case "$(ask "Choose 1 or 2" 2)" in 1) MODE=default ;; *) MODE=train ;; esac
 fi
 
@@ -166,7 +166,7 @@ if [ "$MODE" = train ]; then
     bold ""
     bold "How long can you wait?"
     say "1) Quick: a model of about 450,000 parameters, about 10 minutes on a laptop CPU"
-    say "2) Better: a bigger model, an hour or more on a CPU"
+    say "2) Better: a bigger model (about 3 million parameters), several hours on a CPU; best left overnight"
     case "$(ask "Choose 1 or 2" 1)" in 2) PRESET=better ;; *) PRESET=quick ;; esac
   fi
   SPEC="specs/tinychat-$PRESET.json"
