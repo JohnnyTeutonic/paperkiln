@@ -506,6 +506,11 @@ class HttpChatBackend:
             return str(json.loads(resp.read().decode("utf-8")).get("reply", "")).strip()
 
 
+def _choices(perplexity: float) -> str:
+    """Perplexity as 'about how many equally likely words': one decimal below 10."""
+    return f"{perplexity:.1f}" if perplexity < 10 else f"{perplexity:.0f}"
+
+
 def load_probes(path: Path = DEFAULT_PROBES) -> dict:
     with open(path, encoding="utf-8") as fh:
         return json.load(fh)
@@ -744,7 +749,7 @@ def render_md(card: dict) -> str:
         s = f"- **Best validation loss:** {st['best_val_loss']:.3f}"
         if st["perplexity"]:
             s += (f". On text it has not seen, its next-word guess is about as uncertain "
-                  f"as picking among {st['perplexity']:.0f} equally likely words")
+                  f"as picking among {_choices(st['perplexity'])} equally likely words")
         L.append(s + ".")
     L += ["", "## What to expect", "", ex["summary"], ""]
     if ex["can"]:

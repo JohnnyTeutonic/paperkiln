@@ -271,7 +271,7 @@ Native Windows is not supported yet.
    C++ compiler and CMake; if you have no administrator rights, the
    script installs CMake for just you and points to a compiler you can
    install without one.
-3. Quick (a 1-million-parameter model, about 10–20 minutes on a laptop
+3. Quick (a model of about 450,000 parameters, about 10 minutes on a laptop
    CPU) or Better (a larger model, an hour or more).
 4. Whether to make a public link. If you say yes, it starts a free,
    anonymous Cloudflare quick tunnel and prints a `trycloudflare.com`

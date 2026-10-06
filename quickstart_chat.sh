@@ -165,7 +165,7 @@ if [ "$MODE" = train ]; then
   if [ -z "$PRESET" ]; then
     bold ""
     bold "How long can you wait?"
-    say "1) Quick: a 1-million-parameter model, about 10-20 minutes on a laptop CPU"
+    say "1) Quick: a model of about 450,000 parameters, about 10 minutes on a laptop CPU"
     say "2) Better: a bigger model, an hour or more on a CPU"
     case "$(ask "Choose 1 or 2" 1)" in 2) PRESET=better ;; *) PRESET=quick ;; esac
   fi
@@ -179,7 +179,7 @@ if [ "$MODE" = train ]; then
 
   step "Training ($PRESET). Progress is shown below; you can leave it running."
   say "Trained models are saved in $OUT"
-  "$MTSTUDIO" run "$SPEC"
+  "$MTSTUDIO" run "$SPEC" | python3 tools/train_progress.py "$SPEC"
 else
   [ -x "$MTSTUDIO" ] || { have cmake && { have c++ || have g++ || have clang++; } && build_mtstudio; } \
     || die "the chat server needs one build of paperkiln: install a C++ compiler and CMake (see above), or use --mode train."
