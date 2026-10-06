@@ -19,14 +19,14 @@ BUILD="${PAPERKILN_BUILD_DIR:-$ROOT/build}"
 PORT=8080
 MODE="" PRESET="" SHARE="" ASSUME_YES=0
 # The ready-made model as a browser bundle (tools/export_web_chat.py): it runs in the browser, so no build is needed.
-DEFAULT_MODEL_URL="${PAPERKILN_DEFAULT_MODEL_URL:-https://github.com/JohnnyTeutonic/paperkiln/releases/download/chat-v1/tinychat-better-web.tar.gz}"
+DEFAULT_MODEL_URL="${PAPERKILN_DEFAULT_MODEL_URL:-https://github.com/JohnnyTeutonic/paperkiln/releases/download/chat-v1/tinychat-v2-web.tar.gz}"
 TOOLS_DIR="$HOME/.paperkiln/bin"
 
 usage() {
   cat <<EOF
 Usage: bash quickstart_chat.sh [options]
   --mode default|train   chat with the ready-made model, or train your own
-  --preset quick|better  quick: about 10 minutes on a laptop CPU; better: several hours
+  --preset quick|better  quick: about 10 minutes on a laptop CPU; better: about an hour
   --share | --no-share   give the chat a public link (Cloudflare quick tunnel) or keep it on this machine
   --port N               local port for the chat page (default 8080)
   --yes                  accept the defaults instead of asking
@@ -167,7 +167,7 @@ if [ "$MODE" = train ]; then
     bold ""
     bold "How long can you wait?"
     say "1) Quick: a model of about 450,000 parameters, about 10 minutes on a laptop CPU"
-    say "2) Better: a bigger model (about 3 million parameters), several hours on a CPU; best left overnight"
+    say "2) Better: a bigger model, about an hour on a CPU"
     case "$(ask "Choose 1 or 2" 1)" in 2) PRESET=better ;; *) PRESET=quick ;; esac
   fi
   SPEC="specs/tinychat-$PRESET.json"

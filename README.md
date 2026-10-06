@@ -272,8 +272,8 @@ Native Windows is not supported yet.
    script installs CMake for just you and points to a compiler you can
    install without one.
 3. Quick (a model of about 450,000 parameters, about 10 minutes on a laptop
-   CPU) or Better (about 3 million parameters, several hours on a CPU;
-   the ready-made model is this one, already trained).
+   CPU) or Better (a larger model, about an hour on a CPU). The ready-made
+   model is the Quick model on TinyChat v2, already trained.
 4. Whether to make a public link. If you say yes, it starts a free,
    anonymous Cloudflare quick tunnel and prints a `trycloudflare.com`
    address anyone can open to chat with your model. The link lasts as
