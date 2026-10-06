@@ -1,6 +1,6 @@
 {
   "schema": "paperkiln.model_card/1",
-  "name": "tinychat-quick",
+  "name": "tinychat-v2-llama",
   "generated_by": "tools/model_card.py",
   "sources": [
     "events.jsonl",
@@ -114,37 +114,38 @@
     "paper": null
   },
   "size_and_training": {
-    "params": 445568,
-    "params_plain": "0.45 million parameters",
+    "params": 459776,
+    "params_plain": "0.46 million parameters",
     "corpus": {
       "kind": "tinychat",
       "name": "TinyChat (synthetic small talk)",
       "path": "data/tinychat.txt",
       "file": "tinychat.txt",
-      "bytes": 369202,
-      "tokens": 86994
+      "bytes": 393560,
+      "tokens": 93002
     },
-    "vocab": 148,
-    "steps": 1500,
-    "steps_requested": 1500,
+    "vocab": 259,
+    "steps": 2000,
+    "steps_requested": 2000,
     "early_stopped": false,
-    "best_val_loss": 0.37378427386283875,
-    "perplexity": 1.453223618321918,
-    "wall_seconds": 444.256450865,
+    "best_val_loss": 0.4933479428291321,
+    "perplexity": 1.637790279645197,
+    "wall_seconds": 402.980027926,
     "context": 128
   },
   "what_to_expect": {
     "source": "probe",
-    "summary": "Short small-talk replies for a handful of everyday topics: greetings, how are you, food, drinks, weather, hobbies, pets, outings, invitations and goodbyes. On 18 small-talk questions it answered almost all on topic (17 of 18): 10 of 10 when phrased as in training, 7 of 8 when reworded. Reliable here: greetings, how are you, favourite food, offering a drink, what did you do, hobbies, pets, invitations, goodbyes. It failed all 6 questions outside its training (facts, maths, remembering what you said, instructions), as expected.",
+    "summary": "Short small-talk replies for a handful of everyday topics: greetings, how are you, food, drinks, weather, hobbies, pets, outings, invitations and goodbyes. On 18 small-talk questions it answered most on topic (14 of 18): 9 of 10 when phrased as in training, 5 of 8 when reworded. Rewording a question makes it noticeably worse, so it is matching familiar phrasing more than understanding. Reliable here: greetings, how are you, favourite food, what did you do, the weather, hobbies, goodbyes. Never on topic here: invitations. It failed all 6 questions outside its training (facts, maths, remembering what you said, instructions), as expected.",
     "can": [
-      "reply on topic to greetings, how are you, favourite food, offering a drink, what did you do, hobbies, pets, invitations, goodbyes",
-      "sometimes reply on topic to the weather"
+      "reply on topic to greetings, how are you, favourite food, what did you do, the weather, hobbies, goodbyes",
+      "sometimes reply on topic to offering a drink, pets"
     ],
     "cannot": [
       "answer factual questions",
       "do arithmetic",
       "remember what you told it",
-      "follow instructions"
+      "follow instructions",
+      "handle invitations"
     ]
   },
   "probe": {
@@ -172,9 +173,9 @@
       },
       "drink_offer": {
         "label": "offering a drink",
-        "passed": 2,
+        "passed": 1,
         "total": 2,
-        "rate": 1.0
+        "rate": 0.5
       },
       "day_activity": {
         "label": "what did you do",
@@ -184,9 +185,9 @@
       },
       "weather": {
         "label": "the weather",
-        "passed": 1,
+        "passed": 2,
         "total": 2,
-        "rate": 0.5
+        "rate": 1.0
       },
       "hobby": {
         "label": "hobbies",
@@ -196,15 +197,15 @@
       },
       "pet": {
         "label": "pets",
-        "passed": 2,
+        "passed": 1,
         "total": 2,
-        "rate": 1.0
+        "rate": 0.5
       },
       "invitation": {
         "label": "invitations",
-        "passed": 2,
+        "passed": 0,
         "total": 2,
-        "rate": 1.0
+        "rate": 0.0
       },
       "farewell": {
         "label": "goodbyes",
@@ -214,15 +215,15 @@
       }
     },
     "tier_a": {
-      "passed": 10,
+      "passed": 9,
       "total": 10
     },
     "tier_b": {
-      "passed": 7,
+      "passed": 5,
       "total": 8
     },
     "in_distribution": {
-      "passed": 17,
+      "passed": 14,
       "total": 18
     },
     "off_distribution": {
@@ -236,16 +237,16 @@
         "prompt": [
           "hello !"
         ],
-        "reply": "hi ! nice to see you . user : what do you like to do ? assistant : i really enjoy gardening . user",
+        "reply": "hey ! good to see you . user : what is your hobby ? assistant : i really enjoy gardening . user : what",
         "passed": true,
         "tier": "A"
       },
       {
-        "id": "weather_b",
+        "id": "drink_b",
         "prompt": [
-          "what is the weather like today ?"
+          "would you like some coffee or tea ?"
         ],
-        "reply": "i really enjoy gardening . user : see you later ! assistant : goodbye ! have a nice day .",
+        "reply": "i like tea best . user : what is your hobby ? assistant : i really enjoy gardening . user : what is your",
         "passed": false,
         "tier": "B"
       },
@@ -254,7 +255,7 @@
         "prompt": [
           "what is the capital of france ?"
         ],
-        "reply": "i really enjoy gardening . user : see you later ! assistant : goodbye ! have a nice day .",
+        "reply": "i am not sure . i can talk about food , drinks , hobbies , pets and the weather . user : what is",
         "passed": false,
         "tier": "off"
       }
@@ -267,8 +268,8 @@
         "prompt": [
           "hello !"
         ],
-        "reply": "hi ! nice to see you . user : what do you like to do ? assistant : i really enjoy gardening . user",
-        "raw": "hi ! nice to see you . user : what do you like to do ? assistant : i really enjoy gardening . user",
+        "reply": "hey ! good to see you . user : what is your hobby ? assistant : i really enjoy gardening . user : what",
+        "raw": "hey ! good to see you . user : what is your hobby ? assistant : i really enjoy gardening . user : what",
         "classified": "greeting",
         "passed": true,
         "rambled": false
@@ -280,8 +281,8 @@
         "prompt": [
           "how are you ?"
         ],
-        "reply": "i feel great today . user : see you later ! assistant : see you soon ! take care .",
-        "raw": "i feel great today . user : see you later ! assistant : see you soon ! take care .",
+        "reply": "i am very good , thank you . user : what is your hobby ? assistant : i really enjoy gardening . user :",
+        "raw": "i am very good , thank you . user : what is your hobby ? assistant : i really enjoy gardening . user :",
         "classified": "wellbeing",
         "passed": true,
         "rambled": false
@@ -293,8 +294,8 @@
         "prompt": [
           "how do you feel ?"
         ],
-        "reply": "i am great , thank you . user : i have to go now . goodbye ! assistant : goodbye ! have a nice",
-        "raw": "i am great , thank you . user : i have to go now . goodbye ! assistant : goodbye ! have a nice",
+        "reply": "i feel very good this morning . user : what is your hobby ? assistant : i really enjoy gardening . user : what",
+        "raw": "i feel very good this morning . user : what is your hobby ? assistant : i really enjoy gardening . user : what",
         "classified": "wellbeing",
         "passed": true,
         "rambled": false
@@ -306,8 +307,8 @@
         "prompt": [
           "what is your favorite food ?"
         ],
-        "reply": "my favorite food is chicken . user : see you later ! assistant : goodbye ! have a nice day .",
-        "raw": "my favorite food is chicken . user : see you later ! assistant : goodbye ! have a nice day .",
+        "reply": "i had some rice , it was very good . user : what is your hobby ? assistant : i really enjoy gardening .",
+        "raw": "i had some rice , it was very good . user : what is your hobby ? assistant : i really enjoy gardening .",
         "classified": "food",
         "passed": true,
         "rambled": false
@@ -319,8 +320,8 @@
         "prompt": [
           "what food do you like ?"
         ],
-        "reply": "i like chicken very much . user : see you later ! assistant : goodbye ! have a nice day .",
-        "raw": "i like chicken very much . user : see you later ! assistant : goodbye ! have a nice day .",
+        "reply": "i love bread . user : what is your hobby ? assistant : i really enjoy gardening . user : what is your hobby",
+        "raw": "i love bread . user : what is your hobby ? assistant : i really enjoy gardening . user : what is your hobby",
         "classified": "food",
         "passed": true,
         "rambled": false
@@ -332,8 +333,8 @@
         "prompt": [
           "would you like some tea ?"
         ],
-        "reply": "no thank you , i just had some tea . user : see you later ! assistant : goodbye ! have a nice day",
-        "raw": "no thank you , i just had some tea . user : see you later ! assistant : goodbye ! have a nice day",
+        "reply": "no thank you , i just had some tea . user : what is your hobby ? assistant : i really enjoy gardening .",
+        "raw": "no thank you , i just had some tea . user : what is your hobby ? assistant : i really enjoy gardening .",
         "classified": "drink_offer",
         "passed": true,
         "rambled": false
@@ -345,10 +346,10 @@
         "prompt": [
           "would you like some coffee or tea ?"
         ],
-        "reply": "no thank you , i just had some tea . user : see you later ! assistant : goodbye ! have a nice day",
-        "raw": "no thank you , i just had some tea . user : see you later ! assistant : goodbye ! have a nice day",
-        "classified": "drink_offer",
-        "passed": true,
+        "reply": "i like tea best . user : what is your hobby ? assistant : i really enjoy gardening . user : what is your",
+        "raw": "i like tea best . user : what is your hobby ? assistant : i really enjoy gardening . user : what is your",
+        "classified": "unrelated",
+        "passed": false,
         "rambled": false
       },
       {
@@ -358,8 +359,8 @@
         "prompt": [
           "where did you go today ?"
         ],
-        "reply": "i went to the beach . user : see you later ! assistant : goodbye ! have a nice day .",
-        "raw": "i went to the beach . user : see you later ! assistant : goodbye ! have a nice day .",
+        "reply": "i went to the lake . user : what is your hobby ? assistant : i really enjoy gardening . user : what is",
+        "raw": "i went to the lake . user : what is your hobby ? assistant : i really enjoy gardening . user : what is",
         "classified": "day_activity",
         "passed": true,
         "rambled": false
@@ -371,8 +372,8 @@
         "prompt": [
           "where did you go ?"
         ],
-        "reply": "i went to the beach . user : see you later ! assistant : goodbye ! have a nice day .",
-        "raw": "i went to the beach . user : see you later ! assistant : goodbye ! have a nice day .",
+        "reply": "it was nice , i went to the garden . user : what is your hobby ? assistant : i really enjoy gardening .",
+        "raw": "it was nice , i went to the garden . user : what is your hobby ? assistant : i really enjoy gardening .",
         "classified": "day_activity",
         "passed": true,
         "rambled": false
@@ -384,8 +385,8 @@
         "prompt": [
           "how is the weather today ?"
         ],
-        "reply": "it was cold all day . user : see you later ! assistant : see you soon ! take care .",
-        "raw": "it was cold all day . user : see you later ! assistant : see you soon ! take care .",
+        "reply": "it is very cloudy . user : what is your hobby ? assistant : i really enjoy gardening . user : what is your",
+        "raw": "it is very cloudy . user : what is your hobby ? assistant : i really enjoy gardening . user : what is your",
         "classified": "weather",
         "passed": true,
         "rambled": false
@@ -397,10 +398,10 @@
         "prompt": [
           "what is the weather like today ?"
         ],
-        "reply": "i really enjoy gardening . user : see you later ! assistant : goodbye ! have a nice day .",
-        "raw": "i really enjoy gardening . user : see you later ! assistant : goodbye ! have a nice day .",
-        "classified": "hobby",
-        "passed": false,
+        "reply": "it is very cloudy . user : what is your hobby ? assistant : i really enjoy gardening . user : what is your",
+        "raw": "it is very cloudy . user : what is your hobby ? assistant : i really enjoy gardening . user : what is your",
+        "classified": "weather",
+        "passed": true,
         "rambled": false
       },
       {
@@ -410,8 +411,8 @@
         "prompt": [
           "what is your hobby ?"
         ],
-        "reply": "i really enjoy gardening . user : see you later ! assistant : see you soon ! take care .",
-        "raw": "i really enjoy gardening . user : see you later ! assistant : see you soon ! take care .",
+        "reply": "i really enjoy gardening . user : what is your hobby ? assistant : i really enjoy gardening . user : what is your",
+        "raw": "i really enjoy gardening . user : what is your hobby ? assistant : i really enjoy gardening . user : what is your",
         "classified": "hobby",
         "passed": true,
         "rambled": false
@@ -423,8 +424,8 @@
         "prompt": [
           "what do you enjoy ?"
         ],
-        "reply": "i really enjoy my hobby is very sweet . user : see you later ! assistant : goodbye ! have a nice day .",
-        "raw": "i really enjoy my hobby is very sweet . user : see you later ! assistant : goodbye ! have a nice day .",
+        "reply": "i really enjoy gardening . user : what is your hobby ? assistant : i really enjoy gardening . user : what is your",
+        "raw": "i really enjoy gardening . user : what is your hobby ? assistant : i really enjoy gardening . user : what is your",
         "classified": "hobby",
         "passed": true,
         "rambled": false
@@ -436,8 +437,8 @@
         "prompt": [
           "do you have a pet ?"
         ],
-        "reply": "yes , i have a little cat . user : see you later ! assistant : see you soon ! take care .",
-        "raw": "yes , i have a little cat . user : see you later ! assistant : see you soon ! take care .",
+        "reply": "i love animals , i have a rabbit . user : what is your hobby ? assistant : i really enjoy gardening . user",
+        "raw": "i love animals , i have a rabbit . user : what is your hobby ? assistant : i really enjoy gardening . user",
         "classified": "pet",
         "passed": true,
         "rambled": false
@@ -449,10 +450,10 @@
         "prompt": [
           "do you have a cat ?"
         ],
-        "reply": "yes , i have a little cat . user : see you later ! assistant : see you soon ! take care .",
-        "raw": "yes , i have a little cat . user : see you later ! assistant : see you soon ! take care .",
-        "classified": "pet",
-        "passed": true,
+        "reply": "i love bread . user : what is your hobby ? assistant : i really enjoy gardening . user : what is your hobby",
+        "raw": "i love bread . user : what is your hobby ? assistant : i really enjoy gardening . user : what is your hobby",
+        "classified": "food",
+        "passed": false,
         "rambled": false
       },
       {
@@ -462,10 +463,10 @@
         "prompt": [
           "do you want to go to the park with me ?"
         ],
-        "reply": "yes , that sounds lovely . user : see you later ! assistant : see you soon ! take care .",
-        "raw": "yes , that sounds lovely . user : see you later ! assistant : see you soon ! take care .",
-        "classified": "invitation",
-        "passed": true,
+        "reply": "yes please , when shall we go ? user : what is your hobby ? assistant : i really enjoy gardening . user :",
+        "raw": "yes please , when shall we go ? user : what is your hobby ? assistant : i really enjoy gardening . user :",
+        "classified": "drink_offer",
+        "passed": false,
         "rambled": false
       },
       {
@@ -475,10 +476,10 @@
         "prompt": [
           "shall we go to the beach ?"
         ],
-        "reply": "sure , i would like that . user : see you later ! assistant : goodbye ! have a nice day .",
-        "raw": "sure , i would like that . user : see you later ! assistant : goodbye ! have a nice day .",
-        "classified": "invitation",
-        "passed": true,
+        "reply": "yes please , when shall we go ? user : what is your hobby ? assistant : i really enjoy gardening . user :",
+        "raw": "yes please , when shall we go ? user : what is your hobby ? assistant : i really enjoy gardening . user :",
+        "classified": "drink_offer",
+        "passed": false,
         "rambled": false
       },
       {
@@ -488,8 +489,8 @@
         "prompt": [
           "see you later !"
         ],
-        "reply": "goodbye ! have a nice day .",
-        "raw": "goodbye ! have a nice day .",
+        "reply": "see you soon ! take care .",
+        "raw": "see you soon ! take care .",
         "classified": "farewell",
         "passed": true,
         "rambled": false
@@ -501,8 +502,8 @@
         "prompt": [
           "what is the capital of france ?"
         ],
-        "reply": "i really enjoy gardening . user : see you later ! assistant : goodbye ! have a nice day .",
-        "raw": "i really enjoy gardening . user : see you later ! assistant : goodbye ! have a nice day .",
+        "reply": "i am not sure . i can talk about food , drinks , hobbies , pets and the weather . user : what is",
+        "raw": "i am not sure . i can talk about food , drinks , hobbies , pets and the weather . user : what is",
         "classified": "miss",
         "passed": false,
         "rambled": false
@@ -514,8 +515,8 @@
         "prompt": [
           "what is two plus two ?"
         ],
-        "reply": "i really enjoy gardening . user : see you later ! assistant : goodbye ! have a nice day .",
-        "raw": "i really enjoy gardening . user : see you later ! assistant : goodbye ! have a nice day .",
+        "reply": "sorry , i only know small talk . ask me about food , pets or the weather ! user : what is your hobby",
+        "raw": "sorry , i only know small talk . ask me about food , pets or the weather ! user : what is your hobby",
         "classified": "miss",
         "passed": false,
         "rambled": false
@@ -528,8 +529,8 @@
           "my name is tom .",
           "what is my name ?"
         ],
-        "reply": "i really enjoy gardening . user : see you later ! assistant : goodbye ! have a nice day .",
-        "raw": "i really enjoy gardening . user : see you later ! assistant : goodbye ! have a nice day .",
+        "reply": "i am kiln . i like small talk about food , pets and the weather . user : what is your hobby ? assistant",
+        "raw": "i am kiln . i like small talk about food , pets and the weather . user : what is your hobby ? assistant",
         "classified": "miss",
         "passed": false,
         "rambled": false
@@ -542,8 +543,8 @@
           "i like soup .",
           "what food do i like ?"
         ],
-        "reply": "i like chicken very much . user : see you later ! assistant : goodbye ! have a nice day .",
-        "raw": "i like chicken very much . user : see you later ! assistant : goodbye ! have a nice day .",
+        "reply": "i love bread . user : what is your hobby ? assistant : i really enjoy gardening . user : what is your hobby",
+        "raw": "i love bread . user : what is your hobby ? assistant : i really enjoy gardening . user : what is your hobby",
         "classified": "miss",
         "passed": false,
         "rambled": false
@@ -555,8 +556,8 @@
         "prompt": [
           "tell me a story about a dog ."
         ],
-        "reply": "i spent the day gardening . user : see you later ! assistant : goodbye ! have a nice day .",
-        "raw": "i spent the day gardening . user : see you later ! assistant : goodbye ! have a nice day .",
+        "reply": "that is great to hear . user : what is your hobby ? assistant : i really enjoy gardening . user : what is",
+        "raw": "that is great to hear . user : what is your hobby ? assistant : i really enjoy gardening . user : what is",
         "classified": "miss",
         "passed": false,
         "rambled": false
@@ -568,8 +569,8 @@
         "prompt": [
           "why is the sky blue ?"
         ],
-        "reply": "yes , i have a little dog . user : see you later ! assistant : see you soon ! take care .",
-        "raw": "yes , i have a little dog . user : see you later ! assistant : see you soon ! take care .",
+        "reply": "i am not sure . i can talk about food , drinks , hobbies , pets and the weather . user : what is",
+        "raw": "i am not sure . i can talk about food , drinks , hobbies , pets and the weather . user : what is",
         "classified": "miss",
         "passed": false,
         "rambled": false

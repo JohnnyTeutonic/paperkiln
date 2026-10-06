@@ -1,6 +1,6 @@
 {
   "schema": "paperkiln.web_chat/1",
-  "name": "tinychat-quick",
+  "name": "tinychat-v2-llama",
   "family": "llama",
   "attention": "exact",
   "d": 128,
@@ -13,22 +13,23 @@
   "position": "rope",
   "residual": "residual",
   "rope_theta": 10000.0,
+  "rope_heads": "all",
   "norm_eps": 1e-05,
   "tied_embeddings": true,
-  "vocab_size": 148,
+  "vocab_size": 259,
   "eos_id": 1,
   "weights": {
-    "file": "tinychat-quick.safetensors",
-    "bytes": 1784240,
-    "sha256": "2eb3a5132ed7b339f17fab6d60e2784a8f044aa7108ee4efdf8f2959932a6838",
+    "file": "tinychat-v2-llama.safetensors",
+    "bytes": 1841080,
+    "sha256": "d3526039a1b372471f1a81dc9f60a40b1fdccae84972fb21c39db90a60703c44",
     "dtypes": [
       "F32"
     ]
   },
   "vocab": {
     "file": "vocab.json",
-    "bytes": 1262,
-    "sha256": "565dcdf38fc35a9477aa97123acc695f04f38739a14f9b9b9cf71b5adfb745c4",
+    "bytes": 2216,
+    "sha256": "dc4729fe74880b3e698feee21f89e3af7576e260dd17b28bf5c91c8022aa84f5",
     "source": "tinychat_vocab.gguf"
   },
   "card": "card.json",
