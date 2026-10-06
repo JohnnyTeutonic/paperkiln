@@ -175,8 +175,8 @@ if [ "$MODE" = train ]; then
   [ -x "$MTSTUDIO" ] || build_mtstudio
 
   step "Making the TinyChat practice corpus"
-  if [ "$PRESET" = better ]; then N=20000; else N=1500; fi
-  python3 tools/get_tinychat_data.py --dialogues "$N"
+  if [ "$PRESET" = better ]; then N=20000; else N=5000; fi
+  python3 tools/get_tinychat_data.py --version 2 --dialogues "$N"
 
   step "Training ($PRESET). Progress is shown below; you can leave it running."
   say "Trained models are saved in $OUT"

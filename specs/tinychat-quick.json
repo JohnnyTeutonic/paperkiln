@@ -1,7 +1,7 @@
 {
   "name": "tinychat-quick",
   "arch": {
-    "preset": "llama-tiny"
+    "preset": "gpt2-nano"
   },
   "data": {
     "corpus": "data/tinychat.txt",
@@ -10,7 +10,7 @@
     "T": 128
   },
   "train": {
-    "steps": 1500,
+    "steps": 2000,
     "lr": 0.003,
     "eval_every": 100,
     "checkpoint_every": 100,

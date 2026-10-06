@@ -3,7 +3,7 @@
 
     python tools/get_tinychat_data.py                  # -> data/tinychat.txt
                                                        #    releases/tinychat_vocab.gguf
-    options: --dialogues 1500  --seed 7  --out-dir .
+    options: --version 1|2  --dialogues 1500  --seed (7 for v1, 11 for v2)  --out-dir .
 
 TinyChat is synthetic small talk with consistent question-to-answer
 semantics and a deliberately tiny vocabulary (a few hundred words): eight
@@ -16,6 +16,13 @@ the right kind of reply to every test question under greedy decoding,
 while the same model on real dialogue (DailyDialog) learned the register
 but not the answers. The generator below is that one, unchanged, so the
 same seed gives the same corpus.
+
+`--version 2` (tools/tinychat_v2.py) keeps that world and its answers but
+says everything in many more ways: several phrasings per question, a
+greeting and a question in one message, the assistant asking back, its
+name, and one polite fallback for questions outside its world. Version 1
+stays the default here so earlier results reproduce; the chat specs and
+the quickstart use version 2.
 
 Each dialogue is one line, `user: ... assistant: ... <|endoftext|>`. The
 end-of-text marker is a vocabulary entry of its own (id 1), so a chat
@@ -35,6 +42,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from get_tinystories_data import tokenize_like_mtstudio  # noqa: E402
+from tinychat_v2 import tinychat_v2_rows  # noqa: E402
 
 EOT = "<|endoftext|>"
 
@@ -143,7 +151,8 @@ def write_vocab_gguf(path, tokens):
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--dialogues", type=int, default=1500)
-    ap.add_argument("--seed", type=int, default=7)
+    ap.add_argument("--version", type=int, choices=[1, 2], default=1)
+    ap.add_argument("--seed", type=int, default=None, help="default 7 for v1, 11 for v2")
     ap.add_argument("--out-dir", default=".")
     args = ap.parse_args()
 
@@ -152,7 +161,11 @@ def main():
     os.makedirs(data_dir, exist_ok=True)
     os.makedirs(rel_dir, exist_ok=True)
 
-    lines = [row + " " + EOT for row in tinychat_rows(args.dialogues, args.seed)]
+    if args.version == 2:
+        rows = tinychat_v2_rows(args.dialogues, 11 if args.seed is None else args.seed)
+    else:
+        rows = tinychat_rows(args.dialogues, 7 if args.seed is None else args.seed)
+    lines = [row + " " + EOT for row in rows]
     corpus = os.path.join(data_dir, "tinychat.txt")
     with open(corpus, "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(lines) + "\n")
@@ -165,7 +178,7 @@ def main():
     write_vocab_gguf(vocab_path, tokens)
 
     n_tokens = sum(counts.values()) + len(lines)
-    print(f"corpus: {corpus} ({len(lines)} dialogues, {n_tokens} tokens)")
+    print(f"corpus: {corpus} (TinyChat v{args.version}, {len(lines)} dialogues, {n_tokens} tokens)")
     print(f"vocab gguf: {vocab_path} ({len(tokens)} tokens, end-of-text id 1)")
     return 0
 

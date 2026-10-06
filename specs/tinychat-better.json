@@ -1,18 +1,23 @@
 {
   "name": "tinychat-better",
   "arch": {
-    "preset": "gpt2-small"
+    "preset": "gpt2-nano",
+    "custom": {
+      "d": 192,
+      "layers": 3,
+      "heads": 6
+    }
   },
   "data": {
     "corpus": "data/tinychat.txt",
     "vocab": "releases/tinychat_vocab.gguf",
     "vocab_cap": 4096,
-    "T": 256,
+    "T": 128,
     "max_tokens": 2000000
   },
   "train": {
-    "steps": 6000,
-    "lr": 0.002,
+    "steps": 5000,
+    "lr": 0.003,
     "eval_every": 200,
     "checkpoint_every": 200,
     "accum": 2,
