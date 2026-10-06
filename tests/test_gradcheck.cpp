@@ -183,14 +183,33 @@ int main() {
               fd_vs_analytic(f, w, w->grad));
     }
     {
-        Var qk = make_var(randn(2, 12, 62), true);  // [T=2, d*3=12]
+        Var qk = make_var(randn(2, 12, 62), true);  // [T=2, d*3=12], one head
         std::vector<int> pos = {0, 1};
         auto f = [&]() -> float {
-            return ops::mean(ops::apply_rope(qk, pos, 10000.0f, 4))->data(0, 0);
+            return ops::mean(ops::apply_rope(qk, pos, 10000.0f, 4, true))->data(0, 0);
         };
-        microtorch::backward(ops::mean(ops::apply_rope(qk, pos, 10000.0f, 4)));
+        microtorch::backward(ops::mean(ops::apply_rope(qk, pos, 10000.0f, 4, true)));
         check(fd_vs_analytic(f, qk, qk->grad) < TOL, "apply_rope: dqk vs FD",
               fd_vs_analytic(f, qk, qk->grad));
+    }
+    // Per-head RoPE at H > 1 (d=12, head_dim 4: three heads), both the
+    // every-head rotation and the legacy head-0-only one. A fixed random
+    // weighting makes the loss sensitive to every rotated column (a plain
+    // mean lets errors in the two halves of a pair partly cancel).
+    for (const bool all_heads : {true, false}) {
+        Var qk = make_var(randn(3, 36, all_heads ? 63 : 64), true);  // [T=3, 3d]
+        Var wgt = make_var(randn(3, 36, 65), false);
+        const std::vector<int> pos = {0, 3, 7};
+        auto f = [&]() -> float {
+            return ops::mean(ops::mul(ops::apply_rope(qk, pos, 10000.0f, 4, all_heads), wgt))
+                ->data(0, 0);
+        };
+        microtorch::backward(
+            ops::mean(ops::mul(ops::apply_rope(qk, pos, 10000.0f, 4, all_heads), wgt)));
+        const double e = fd_vs_analytic(f, qk, qk->grad);
+        check(e < TOL, all_heads ? "apply_rope H=3 all heads: dqk vs FD"
+                                 : "apply_rope H=3 first head: dqk vs FD",
+              e);
     }
 
     // ---- fused_attention: FD on q,k,v + parity vs the composed path ----

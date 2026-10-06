@@ -40,8 +40,10 @@ baked in here so it cannot recur.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import copy
 import hashlib
+import io
 import itertools
 import json
 import os
@@ -130,6 +132,82 @@ def expand(sweep):
                          "factors": dict(zip(names, combo)),
                          "seed": seed})
     return names, combos, runs
+
+
+def rope_heads_stated(sweep):
+    """True when the sweep itself sets arch.rope_heads (base or factor)."""
+    base = sweep.get("base")
+    if base is None and sweep.get("base_path"):
+        with open(sweep["base_path"], "r", encoding="utf-8") as f:
+            base = json.load(f)
+    if "rope_heads" in (base or {}).get("arch", {}):
+        return True
+    for name, levels in sweep.get("factors", {}).items():
+        if name == "arch.rope_heads":
+            return True
+        if any(isinstance(lv, dict) and "arch.rope_heads" in lv for lv in levels):
+            return True
+    return False
+
+
+def any_llama(sweep):
+    """True when some run of the design resolves to the llama family (the
+    only family arch.rope_heads affects)."""
+    base = sweep.get("base")
+    if base is None:
+        with open(sweep["base_path"], "r", encoding="utf-8") as f:
+            base = json.load(f)
+    with contextlib.redirect_stderr(io.StringIO()):  # expand's advisories
+        _, _, runs = expand(dict(sweep, seeds=[0]))
+    for r in runs:
+        spec = copy.deepcopy(base)
+        for path, value in r["factors"].items():
+            for p2, v2 in (value.items() if isinstance(value, dict)
+                           else [(path, value)]):
+                set_dotted(spec, p2, v2)
+        if spec_assignment(spec)["family"] == "llama":
+            return True
+    return False
+
+
+def pin_rope_heads(sweep, value):
+    """Set arch.rope_heads in the sweep's base (inlining base_path)."""
+    base = sweep.get("base")
+    if base is None:
+        with open(sweep["base_path"], "r", encoding="utf-8") as f:
+            base = json.load(f)
+    base = copy.deepcopy(base)
+    base.setdefault("arch", {})["rope_heads"] = value
+    sweep = dict(sweep, base=base)
+    sweep.pop("base_path", None)
+    return sweep
+
+
+def legacy_rope_runs(out_root):
+    """Run directories under out_root/runs whose llama model event has no
+    rope_heads: trained before the field existed, i.e. with RoPE on the
+    first head only."""
+    found = []
+    runs_dir = os.path.join(out_root, "runs")
+    if not os.path.isdir(runs_dir):
+        return found
+    for name in sorted(os.listdir(runs_dir)):
+        ev = os.path.join(runs_dir, name, "events.jsonl")
+        if not os.path.isfile(ev):
+            continue
+        with open(ev, encoding="utf-8", errors="replace") as f:
+            for line in f:
+                if '"model"' not in line:
+                    continue
+                try:
+                    e = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if (e.get("event") == "model" and e.get("family") == "llama"
+                        and "rope_heads" not in e):
+                    found.append(name)
+                    break
+    return found
 
 
 def materialise(sweep, runs, out_root):
@@ -407,6 +485,18 @@ def main():
     with open(args.sweep, "r", encoding="utf-8") as f:
         sweep = json.load(f)
     out_root = sweep["out_root"]
+    # Resuming a sweep begun before arch.rope_heads existed: its finished
+    # llama runs rotate the first head only, so the runs still to come must
+    # too, or one sweep would mix two architectures. The sweep file itself
+    # is not edited (pre-registered manifests stay frozen); the pin is
+    # applied to the specs written under out_root/specs.
+    if not rope_heads_stated(sweep):
+        legacy = legacy_rope_runs(out_root)
+        if legacy:
+            sweep = pin_rope_heads(sweep, "first")
+            print(f"rope_heads: {len(legacy)} existing run(s) under {out_root} "
+                  f"predate arch.rope_heads (e.g. {legacy[0]}); every run of "
+                  f"this sweep uses rope_heads=first", file=sys.stderr)
     names, combos, runs = expand(sweep)
     spec_paths = materialise(sweep, runs, out_root)
     print(f"{len(combos)} cells x {len(sweep.get('seeds', [7]))} seeds = "

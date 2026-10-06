@@ -558,59 +558,74 @@ Var rmsnorm(const Var& x, const Var& w) {
     });
 }
 
-Var apply_rope(const Var& qk, const std::vector<int>& pos, float theta_base, size_t head_dim) {
+Var apply_rope(const Var& qk, const std::vector<int>& pos, float theta_base, size_t head_dim,
+               bool all_heads) {
     const size_t T = qk->data.rows(), d3 = qk->data.cols();
     if (d3 % 3 != 0) {
         throw std::runtime_error("apply_rope: cols must be divisible by 3");
     }
     const size_t d = d3 / 3;
-    if (head_dim % 2 != 0 || head_dim > d) {
+    if (head_dim == 0 || head_dim % 2 != 0 || head_dim > d) {
         throw std::runtime_error("apply_rope: head_dim must be even and <= d");
     }
+    if (all_heads && d % head_dim != 0) {
+        throw std::runtime_error("apply_rope: d must be a multiple of head_dim");
+    }
+    if (pos.size() != T) throw std::runtime_error("apply_rope: one position per row");
     device::materialize(qk->data);
-    // Cache angles for backward (position and frequency basis)
+    // all_heads: every head h rotates its own columns [h*head_dim,
+    // (h+1)*head_dim) of q and of k with the same per-head frequency basis.
+    // Legacy (all_heads=false): only head 0's columns, the behaviour every
+    // llama-family run before arch.rope_heads was trained with.
+    const size_t n_rot = all_heads ? d / head_dim : 1;
     auto pos_cache = std::make_shared<std::vector<int>>(pos);
     Matrix out = qk->data;
-    // Apply RoPE to q and k via complex rotations on adjacent dimension pairs
-    // RoPE operates on pairs (x[2j], x[2j+1]) as complex number rotations
+    // Adjacent pairs (x[2j], x[2j+1]) within a head, rotated as complex
+    // numbers by pos * theta^(-2j/head_dim) (the GGUF/GPT-J interleaved
+    // convention).
     for (size_t i = 0; i < T; ++i) {
         const float m = static_cast<float>(pos[i]);
-        // Apply to q (cols 0..d) and k (cols d..2d); skip v (cols 2d..3d)
-        for (size_t start = 0; start < 2 * d; start += d) {
-            for (size_t dim = 0; dim < head_dim; dim += 2) {
-                const float inv_freq =
-                    1.0f / std::pow(theta_base, static_cast<float>(dim) / head_dim);
-                const float theta = m * inv_freq;
-                const float cos_t = std::cos(theta);
-                const float sin_t = std::sin(theta);
-                // Rotate (x[dim], x[dim+1]) pair
-                const float x0 = out(i, start + dim);
-                const float x1 = out(i, start + dim + 1);
-                out(i, start + dim) = x0 * cos_t - x1 * sin_t;
-                out(i, start + dim + 1) = x0 * sin_t + x1 * cos_t;
+        for (size_t dim = 0; dim < head_dim; dim += 2) {
+            const float inv_freq =
+                1.0f / std::pow(theta_base, static_cast<float>(dim) / head_dim);
+            const float theta = m * inv_freq;
+            const float cos_t = std::cos(theta);
+            const float sin_t = std::sin(theta);
+            // q heads (cols 0..d) and k heads (cols d..2d); v untouched.
+            for (size_t start = 0; start < 2 * d; start += d) {
+                for (size_t h = 0; h < n_rot; ++h) {
+                    const size_t c = start + h * head_dim + dim;
+                    const float x0 = out(i, c);
+                    const float x1 = out(i, c + 1);
+                    out(i, c) = x0 * cos_t - x1 * sin_t;
+                    out(i, c + 1) = x0 * sin_t + x1 * cos_t;
+                }
             }
         }
     }
-    return record(std::move(out), {qk}, [pos_cache, theta_base, head_dim, d3](Variable* self) {
+    return record(std::move(out), {qk}, [pos_cache, theta_base, head_dim, d3, n_rot](Variable* self) {
         const Var& qk = self->parents[0];
         if (!qk->requires_grad) return;
         device::materialize(self->grad);  // B2.3c: host-read below
         const size_t T = self->grad.rows(), d = d3 / 3;
         Matrix dqk = self->grad;
-        // Backward: apply inverse rotation (negative theta)
+        // Backward: the transpose of a rotation is the inverse rotation.
         for (size_t i = 0; i < T; ++i) {
             const float m = static_cast<float>((*pos_cache)[i]);
-            for (size_t start = 0; start < 2 * d; start += d) {
-                for (size_t dim = 0; dim < head_dim; dim += 2) {
-                    const float inv_freq =
-                        1.0f / std::pow(theta_base, static_cast<float>(dim) / head_dim);
-                    const float theta = -m * inv_freq;  // Negative for inverse
-                    const float cos_t = std::cos(theta);
-                    const float sin_t = std::sin(theta);
-                    const float dy0 = dqk(i, start + dim);
-                    const float dy1 = dqk(i, start + dim + 1);
-                    dqk(i, start + dim) = dy0 * cos_t - dy1 * sin_t;
-                    dqk(i, start + dim + 1) = dy0 * sin_t + dy1 * cos_t;
+            for (size_t dim = 0; dim < head_dim; dim += 2) {
+                const float inv_freq =
+                    1.0f / std::pow(theta_base, static_cast<float>(dim) / head_dim);
+                const float theta = -m * inv_freq;
+                const float cos_t = std::cos(theta);
+                const float sin_t = std::sin(theta);
+                for (size_t start = 0; start < 2 * d; start += d) {
+                    for (size_t h = 0; h < n_rot; ++h) {
+                        const size_t c = start + h * head_dim + dim;
+                        const float dy0 = dqk(i, c);
+                        const float dy1 = dqk(i, c + 1);
+                        dqk(i, c) = dy0 * cos_t - dy1 * sin_t;
+                        dqk(i, c + 1) = dy0 * sin_t + dy1 * cos_t;
+                    }
                 }
             }
         }

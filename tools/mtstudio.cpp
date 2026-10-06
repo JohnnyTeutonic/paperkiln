@@ -58,6 +58,11 @@ struct Spec {
     float gate_bias_init = -2.0f;     // highway only (registry #0001)
     size_t d_ff = 0;                // 0 = family default (4d gpt2/flex, 3d llama)
     size_t window = 64, sinks = 1;  // swa lane only (S1 baseline)
+    // llama family: RoPE on "all" heads or, legacy, the "first" head only.
+    // Empty = not stated: a new run gets "all"; resuming or loading a run
+    // takes what the run recorded, and a run that recorded nothing is
+    // "first" (see resolve_rope_heads).
+    std::string rope_heads;
     // data
     std::string corpus, vocab_gguf;
     size_t vocab_cap = 4096;
@@ -112,6 +117,12 @@ Spec parse_spec(const std::string& path) {
         if (p.rfind("swa", 0) == 0) s.attention = "swa";
         if (p.rfind("attnres", 0) == 0) s.attention = "attnres";
         if (p.rfind("llama", 0) == 0) s.family = "llama";
+    }
+    if (arch.contains("rope_heads")) {
+        s.rope_heads = arch["rope_heads"].get<std::string>();
+        if (s.rope_heads != "all" && s.rope_heads != "first")
+            throw std::runtime_error("arch.rope_heads must be \"all\" or \"first\", got \"" +
+                                     s.rope_heads + "\"");
     }
     if (arch.contains("custom")) {
         const json c = arch["custom"];
@@ -234,6 +245,52 @@ void truncate_events_after(const std::string& path, int step) {
     for (const auto& l : keep) out << l << "\n";
 }
 
+// What a run directory records about RoPE head coverage: the last
+// "model" event's rope_heads, where a model event without the field is a
+// run from before the field existed ("first"); failing any model event,
+// out_dir/spec.json's arch.rope_heads; "" when nothing is recorded.
+std::string recorded_rope_heads(const std::string& out_dir) {
+    std::string rec;
+    bool saw_model = false;
+    std::ifstream in(out_dir + "/events.jsonl");
+    std::string line;
+    while (std::getline(in, line)) {
+        const json e = json::parse(line, nullptr, false);
+        if (e.is_discarded() || !e.is_object() || e.value("event", "") != "model") continue;
+        saw_model = true;
+        rec = e.contains("rope_heads") && e["rope_heads"].is_string()
+                  ? e["rope_heads"].get<std::string>()
+                  : "first";
+    }
+    if (saw_model) return rec;
+    std::ifstream sf(out_dir + "/spec.json");
+    if (!sf) return "";
+    const json j = json::parse(sf, nullptr, false, /*ignore_comments=*/true);
+    if (j.is_discarded() || !j.is_object() || !j.contains("arch") || !j["arch"].is_object())
+        return "";
+    const json& a = j["arch"];
+    return a.contains("rope_heads") && a["rope_heads"].is_string()
+               ? a["rope_heads"].get<std::string>()
+               : "";
+}
+
+// The RoPE head coverage a run is built with. `existing` = the out_dir
+// holds a trained or resumable model (resume, sample, chat, serve):
+// then the run's own record decides, and a run that recorded nothing is
+// legacy ("first"). A fresh run takes the spec's value, else "all". A
+// spec that states a value contradicting the record is refused rather
+// than silently loading weights into the other architecture.
+std::string resolve_rope_heads(const Spec& s, bool existing) {
+    if (!existing) return s.rope_heads.empty() ? "all" : s.rope_heads;
+    std::string rec = recorded_rope_heads(s.out_dir);
+    if (rec.empty()) rec = s.rope_heads.empty() ? "first" : s.rope_heads;
+    if (!s.rope_heads.empty() && s.rope_heads != rec)
+        throw std::runtime_error("spec says arch.rope_heads=\"" + s.rope_heads + "\" but " +
+                                 s.out_dir + " was trained with \"" + rec +
+                                 "\" (runs that recorded no rope_heads are \"first\")");
+    return rec;
+}
+
 // GGUF vocab reader + word tokenizer (the srd_parity path).
 std::vector<std::string> read_gguf_vocab(const std::string& path);
 std::vector<int> tokenize(const std::string& text, const std::map<std::string, int>& vocab,
@@ -284,6 +341,11 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         s.es_min_delta);
     std::printf("export: %s%s | serve: %s | out: %s\n", s.exp_safetensors ? "safetensors " : "",
                 s.exp_gguf ? "gguf" : "", s.serve ? "yes" : "no", s.out_dir.c_str());
+    if (s.family == "llama")
+        std::printf("rope_heads: %s\n",
+                    s.rope_heads.empty() ? "unstated (all for a new run; a resumed run keeps "
+                                           "its recorded value, first if none)"
+                                         : s.rope_heads.c_str());
     if (plan_only) return 0;
     if (s.corpus.empty() || s.vocab_gguf.empty())
         throw std::runtime_error("spec needs data.corpus and data.vocab");
@@ -294,23 +356,38 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                                  "(exact/swa at depth ride the flex family)");
 
     std::filesystem::create_directories(s.out_dir);
+    // Resuming = a checkpoint step > 0 in state.txt. A resumed run keeps the
+    // RoPE coverage it was trained with (resolve_rope_heads).
+    int ckpt_step = 0;
+    {
+        std::ifstream st(s.out_dir + "/state.txt");
+        std::string line1;
+        if (std::getline(st, line1)) ckpt_step = std::atoi(line1.c_str());
+    }
+    const std::string rope_heads = resolve_rope_heads(s, ckpt_step > 0);
     if (!spec_path.empty()) {
         // Keep the spec beside its outputs: `mtstudio chat <out_dir>`
         // (and anything else handed only a run directory) rebuilds the
         // model from it. Read fully before writing, so a spec that already
-        // lives at out_dir/spec.json is rewritten unchanged.
+        // lives at out_dir/spec.json is rewritten unchanged. A llama spec
+        // gets its resolved arch.rope_heads written in.
         std::ifstream sf(spec_path, std::ios::binary);
-        const std::string text((std::istreambuf_iterator<char>(sf)),
-                               std::istreambuf_iterator<char>());
+        std::string text((std::istreambuf_iterator<char>(sf)), std::istreambuf_iterator<char>());
         sf.close();
+        if (s.family == "llama" && !text.empty()) {
+            json j = json::parse(text, nullptr, false, /*ignore_comments=*/true);
+            if (!j.is_discarded() && j.is_object()) {
+                if (!j.contains("arch") || !j["arch"].is_object()) j["arch"] = json::object();
+                if (j["arch"].value("rope_heads", "") != rope_heads) {
+                    j["arch"]["rope_heads"] = rope_heads;
+                    text = j.dump(2) + "\n";
+                }
+            }
+        }
         if (!text.empty()) std::ofstream(s.out_dir + "/spec.json", std::ios::binary) << text;
     }
-    {   // Resuming? Trim the event log to the checkpoint before appending.
-        std::ifstream st(s.out_dir + "/state.txt");
-        std::string line1;
-        if (std::getline(st, line1) && std::atoi(line1.c_str()) > 0)
-            truncate_events_after(s.out_dir + "/events.jsonl", std::atoi(line1.c_str()));
-    }
+    // Resuming? Trim the event log to the checkpoint before appending.
+    if (ckpt_step > 0) truncate_events_after(s.out_dir + "/events.jsonl", ckpt_step);
     Events ev(s.out_dir + "/events.jsonl");
     ev.emit({{"event", "start"}, {"name", s.name}, {"steps", s.steps}});
 
@@ -388,6 +465,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         lc.n_heads = s.heads;
         lc.d_ff = s.d_ff ? s.d_ff : 3 * s.d;
         lc.n_ctx = s.T;
+        lc.rope_all_heads = rope_heads == "all";
         llama = std::make_shared<nn::Llama>(lc, s.seed);
         llama->checkpoint_blocks = s.ckpt_act;
     } else {
@@ -411,7 +489,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     const std::string r_act = flex ? flex->cfg.act : (llama ? "swiglu" : "gelu");
     const std::string r_pos = flex ? flex->cfg.pos : (llama ? "rope" : "learned");
     const size_t r_dff = flex ? flex->cfg.d_ff : (llama ? llama->cfg.d_ff : 4 * s.d);
-    ev.emit({{"event", "model"},
+    json model_ev = {{"event", "model"},
              {"family", s.family},
              {"attention", s.attention},
              {"d", s.d},
@@ -432,7 +510,9 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
              {"lr", s.lr},
              {"seed", s.seed},
              {"checkpoint_activations", s.ckpt_act},
-             {"params", n_params}});
+             {"params", n_params}};
+    if (llama) model_ev["rope_heads"] = rope_heads;
+    ev.emit(model_ev);
     nn::Module& model_ref = model_pick;
     auto fwd = [&](const std::vector<int>& ids, size_t seq_len = 0) {
         if (flex) return flex->forward(ids, seq_len);
@@ -685,7 +765,15 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             if (const int e = wordtok::eos_id(vocab); e >= 0) gc.eos_token_id = (uint32_t)e;
             const std::string gpath = s.out_dir + "/" + s.name + ".gguf";
             gguf::export_gguf_llama(gpath, sd2, gc);
-            ev.emit({{"event", "export"}, {"format", "gguf"}, {"path", gpath}});
+            json xe = {{"event", "export"}, {"format", "gguf"}, {"path", gpath},
+                       {"rope_heads", rope_heads}};
+            // GGUF llama (rope.dimension_count = d/H) means RoPE on every
+            // head; engines reading it reproduce this model only under "all".
+            if (rope_heads == "first" && s.heads > 1)
+                xe["warning"] =
+                    "rope_heads=first: GGUF engines rotate every head, so they will not "
+                    "reproduce this model's outputs";
+            ev.emit(xe);
         } else {
             ev.emit({{"event", "export_skipped"},
                      {"format", "gguf"},
@@ -857,6 +945,7 @@ struct LoadedLM {
     std::shared_ptr<nn::Llama> llama;
     std::shared_ptr<parity::AttnResLM> attnres;
     std::shared_ptr<parity::FlexLM> flex;
+    std::string rope_heads;  // llama family: what the run was trained with
 
     explicit LoadedLM(const Spec& spec) : s(spec) {
         // A run directory moved away from its vocab file still carries the
@@ -897,6 +986,8 @@ struct LoadedLM {
             lc.n_heads = s.heads;
             lc.d_ff = s.d_ff ? s.d_ff : 3 * s.d;
             lc.n_ctx = s.T;
+            rope_heads = resolve_rope_heads(s, /*existing=*/true);
+            lc.rope_all_heads = rope_heads == "all";
             llama = std::make_shared<nn::Llama>(lc, s.seed);
         } else {
             gpt = std::make_shared<parity::ParityLM>(attn_kind(s.attention), tokens.size(), s.d,
@@ -1420,6 +1511,7 @@ int chat_cmd(const std::string& target, const std::string& host, int port) {
                               {"model", s.name},
                               {"family", s.family},
                               {"attention", s.attention},
+                              {"rope_heads", lm.rope_heads.empty() ? json() : json(lm.rope_heads)},
                               {"params", lm.model().parameter_count()},
                               {"vocab", lm.tokens.size()},
                               {"context", s.T},

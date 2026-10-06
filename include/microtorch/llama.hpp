@@ -18,6 +18,10 @@ struct LlamaConfig {
     float rms_eps = 1e-6f;
     float rope_theta = 10000.0f;
     bool tie_embeddings = true;  // lm_head shares embed_tokens
+    // RoPE on every head (spec arch.rope_heads = "all"). false reproduces
+    // the legacy rotation of head 0 only ("first"), which every llama run
+    // recorded without a rope_heads field was trained with.
+    bool rope_all_heads = true;
 };
 
 class LlamaBlock : public Module {
@@ -32,6 +36,7 @@ public:
     std::shared_ptr<Linear> gate_proj, up_proj, down_proj;
     size_t H, dk;
     float rope_theta_, rms_eps_;
+    bool rope_all_heads_;
 };
 
 class Llama : public Module {

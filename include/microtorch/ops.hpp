@@ -52,10 +52,15 @@ Var rmsnorm(const Var& x, const Var& w);  // RMS normalization: x / RMS(x) * w
                                           // (no bias, no mean centering);
                                           // w: [1, d], learned scale per feature
 Var apply_rope(const Var& qk, const std::vector<int>& pos, float theta_base,
-               size_t head_dim);  // Rotary embeddings to query/key rows
-                                  // qk: [T, 3*d] (fused qkv);
-                                  // returns [T, 3*d] with RoPE applied
-                                  // to q and k head_dim subspaces
+               size_t head_dim, bool all_heads);
+                                  // Rotary embeddings to query/key rows.
+                                  // qk: [T, 3*d] (fused qkv); returns
+                                  // [T, 3*d]. Adjacent pairs (2j, 2j+1)
+                                  // of each head rotate by
+                                  // pos * theta^(-2j/head_dim).
+                                  // all_heads: every head of q and k
+                                  // (d/head_dim of them); false: head 0
+                                  // only (legacy, arch.rope_heads=first)
 
 // ---- state-space scan (Mamba/S4, phase 3c completion) ----
 Var ssm_scan(const Var& u, const Var& A, const Var& B, const Var& C, const Var& D);

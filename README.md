@@ -408,6 +408,7 @@ yourself and pick the attention mechanism.
   "name": "tinystories-llama-3k",
   "arch": {
     "preset": "llama-tiny",           // or omit and use "custom" below
+    "rope_heads": "all",              // llama: RoPE on every head (default for new runs); "first" = head 0 only, how runs that recorded no rope_heads were trained and still load
     "custom": {                       // overrides the preset field-by-field
       "d": 256, "layers": 4, "heads": 8,
       "attention": "srd"              // exact | kimi | srd

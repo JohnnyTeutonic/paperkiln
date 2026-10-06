@@ -21,7 +21,11 @@ Architecture comes from the run's own events.jsonl "model" event (what the
 engine built), else from the spec resolved as mtstudio resolves it. The
 vocabulary is read as LoadedLM reads it: the spec's vocab GGUF when it can
 be found, else the run's exported GGUF, capped at data.vocab_cap; its size
-must equal the embedding rows in the weights. Standard library only.
+must equal the embedding rows in the weights. For the llama family the
+manifest carries rope_heads ("all" or "first"), resolved as mtstudio
+resolves it for a trained run: the model event's value, "first" when the
+model event predates the field, else the spec's arch.rope_heads, else
+"first". Standard library only.
 """
 from __future__ import annotations
 
@@ -120,6 +124,17 @@ def arch_from_events(run: Path) -> dict | None:
         if isinstance(e, dict) and e.get("event") == "model":
             model = e
     return model
+
+
+def rope_heads_of(ev: dict | None, spec: dict) -> str:
+    """RoPE head coverage of a trained run (mtstudio recorded_rope_heads):
+    a model event without the field is a run from before it existed."""
+    if ev is not None:
+        return ev.get("rope_heads") or "first"
+    v = spec.get("arch", {}).get("rope_heads")
+    if v not in (None, "all", "first"):
+        raise ValueError(f"arch.rope_heads must be all or first, got {v!r}")
+    return v or "first"
 
 
 def arch_from_spec(spec: dict) -> dict:
@@ -243,6 +258,7 @@ def export(run: Path, out: Path, vocab_path: str | None = None, force: bool = Fa
         "norm": a["norm"], "activation": a["activation"], "position": a["position"],
         "residual": a["residual"],
         "rope_theta": 10000.0 if a["family"] == "llama" else None,
+        "rope_heads": rope_heads_of(ev, spec) if a["family"] == "llama" else None,
         "norm_eps": 1e-5,
         "tied_embeddings": "embed_tokens.weight" in header and "lm_head.weight" not in header,
         "vocab_size": len(tokens), "eos_id": eos,

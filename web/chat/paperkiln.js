@@ -8,7 +8,9 @@
  *   - tokenizer      include/microtorch/word_tokenizer.hpp (byte-wise, ASCII
  *                    lower-casing, "<|endoftext|>" as one token, unknown -> 0)
  *   - llama family   src/llama.cpp: RMSNorm (eps 1e-5, as ops::rmsnorm uses),
- *                    RoPE on adjacent pairs, SwiGLU, tied head
+ *                    RoPE on adjacent pairs (every head, or head 0 only
+ *                    for runs recorded as rope_heads "first"), SwiGLU, tied
+ *                    head
  *   - flex family    tools/parity_model.hpp FlexLM (gpt2-small and the
  *                    paper-faithful decoder): LayerNorm (eps 1e-5) or RMSNorm,
  *                    GELU (tanh form) / ReLU / SwiGLU, learned or sinusoidal
@@ -206,6 +208,11 @@
       this.d = m.d; this.L = m.layers; this.H = m.heads; this.T = m.T;
       this.dk = this.d / this.H;
       this.ropeTheta = m.rope_theta || 10000;
+      // Which heads RoPE rotates (spec arch.rope_heads). A manifest without
+      // the field predates it and came from a "first" run.
+      this.ropeHeads = m.rope_heads || "first";
+      if (this.ropeHeads !== "all" && this.ropeHeads !== "first")
+        throw new Error("rope_heads '" + this.ropeHeads + "' is not supported (all, first are)");
       const need = (name, n) => {
         const t = tensors[name];
         if (!t) throw new Error("weights are missing " + name);
@@ -312,16 +319,20 @@
       return this.normKind === "layernorm" || b ? layernorm(x, w, b, this.d, y) : rmsnorm(x, w, this.d, y);
     }
 
-    // ops::apply_rope: adjacent pairs (x[2j], x[2j+1]) rotated by pos * inv_freq.
-    // The engine's loop covers columns [0, head_dim) of q and of k, i.e. the
-    // first head only; reproduced as is so the browser matches the engine.
+    // ops::apply_rope: within each head, adjacent pairs (x[2j], x[2j+1])
+    // rotated by pos * inv_freq; every head under rope_heads "all", head 0
+    // only under "first" (the engine's legacy coverage).
     rope(vec, pos) {
+      const nRot = this.ropeHeads === "all" ? this.H : 1;
       for (let dim = 0; dim < this.dk; dim += 2) {
         const th = f32(pos * this.invFreq[dim / 2]);
         const c = f32(Math.cos(th)), s = f32(Math.sin(th));
-        const x0 = vec[dim], x1 = vec[dim + 1];
-        vec[dim] = f32(x0 * c) - f32(x1 * s);
-        vec[dim + 1] = f32(x0 * s) + f32(x1 * c);
+        for (let h = 0; h < nRot; h++) {
+          const i = h * this.dk + dim;
+          const x0 = vec[i], x1 = vec[i + 1];
+          vec[i] = f32(x0 * c) - f32(x1 * s);
+          vec[i + 1] = f32(x0 * s) + f32(x1 * c);
+        }
       }
     }
 

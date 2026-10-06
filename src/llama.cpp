@@ -7,7 +7,8 @@ namespace microtorch {
 namespace nn {
 
 LlamaBlock::LlamaBlock(const LlamaConfig& cfg, unsigned seed)
-    : H(cfg.n_heads), dk(cfg.d / cfg.n_heads), rope_theta_(cfg.rope_theta), rms_eps_(cfg.rms_eps) {
+    : H(cfg.n_heads), dk(cfg.d / cfg.n_heads), rope_theta_(cfg.rope_theta), rms_eps_(cfg.rms_eps),
+      rope_all_heads_(cfg.rope_all_heads) {
     if (cfg.d % cfg.n_heads != 0) throw std::runtime_error("llama: d must divide by n_heads");
     // HF names throughout; Linear registers its matrix as "weight", so the
     // collected dotted paths match LlamaForCausalLM exactly.
@@ -31,9 +32,9 @@ Var LlamaBlock::forward(const Var& x, const std::vector<int>& pos, size_t seq_le
     Var k = k_proj->forward(h);
     Var v = v_proj->forward(h);
     // ops::apply_rope expects the fused [T, 3d] qkv layout; build it, rotate
-    // q/k head-dim subspaces, slice back. concat/slice are tape ops, so
-    // gradients flow.
-    Var qkv = ops::apply_rope(ops::concat_cols({q, k, v}), pos, rope_theta_, dk);
+    // each head's q/k columns (head 0 only under the legacy rope_heads =
+    // "first"), slice back. concat/slice are tape ops, so gradients flow.
+    Var qkv = ops::apply_rope(ops::concat_cols({q, k, v}), pos, rope_theta_, dk, rope_all_heads_);
     q = ops::slice_cols(qkv, 0, d);
     k = ops::slice_cols(qkv, d, 2 * d);
     v = ops::slice_cols(qkv, 2 * d, 3 * d);

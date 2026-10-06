@@ -20,6 +20,11 @@ folder and greedy-generates ARGMAX-IDENTICAL continuations to
 `mtstudio sample --topk 1` on the same prompt — the same parity standard
 ember.cpp serving is held to.
 
+RoPE: HF Llama rotates every head. A run recorded with rope_heads "first"
+(or with no rope_heads, i.e. trained before the field existed) rotates
+head 0 only, so with more than one head HF cannot reproduce it; such runs
+are refused unless --allow-legacy-rope is given.
+
 Requires: safetensors, tokenizers; gguf (pip) for the vocab;
 transformers+torch only for the verify step.
 """
@@ -142,11 +147,20 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("out_dir")
     ap.add_argument("--hf-dir")
+    ap.add_argument("--allow-legacy-rope", action="store_true",
+                    help="export a rope_heads=first run anyway (HF will rotate "
+                         "every head, so its outputs will differ)")
     args = ap.parse_args()
     m = model_event(args.out_dir)
     if m.get("family") != "llama":
         raise SystemExit("HF export is llama-family only (LlamaForCausalLM "
                          f"mapping); this run is family={m.get('family')}")
+    rope = m.get("rope_heads", "first")
+    if rope != "all" and m.get("heads", 1) > 1 and not args.allow_legacy_rope:
+        raise SystemExit(
+            f"this run has rope_heads={rope} (RoPE on head 0 of {m['heads']}); "
+            "HF Llama rotates every head and cannot reproduce it. Retrain with "
+            "arch.rope_heads=all, or pass --allow-legacy-rope to export anyway")
     name = start_name(args.out_dir)
     hf_dir = args.hf_dir or os.path.join(args.out_dir, "hf")
     os.makedirs(hf_dir, exist_ok=True)

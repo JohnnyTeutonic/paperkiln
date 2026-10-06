@@ -23,6 +23,14 @@ expected direction or null, t threshold). This tool:
 
 Replication failures are results: append them to the registry, don't
 delete the row.
+
+RoPE head coverage. Llama-family findings registered before
+arch.rope_heads existed (ROPE_HEADS_SINCE) were produced by runs that
+rotate the FIRST head only. `--run` reproduces them as registered: when
+the manifest does not state arch.rope_heads, the replay's base spec gets
+arch.rope_heads = "first" (the manifest file itself is never edited).
+`--rope-heads all` re-runs the same design with RoPE on every head
+instead: a new experiment, not a replication of the registered row.
 """
 from __future__ import annotations
 
@@ -37,6 +45,21 @@ from atlas_analyze import interactions, main_effects  # noqa: E402
 from atlas_findings import load as load_findings  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Date arch.rope_heads entered the spec format (tools/mtstudio.cpp). Every
+# finding registered before it ran llama models with rope_heads=first.
+ROPE_HEADS_SINCE = "2026-10-06"
+
+
+def replay_rope_heads(finding, sweep, override):
+    """The arch.rope_heads a replay pins, or None to leave the sweep as is."""
+    from mtsweep import any_llama, rope_heads_stated
+    if not any_llama(sweep):
+        return None
+    if override in ("first", "all"):
+        return override
+    if rope_heads_stated(sweep):
+        return None
+    return "first" if finding.get("date", "") < ROPE_HEADS_SINCE else None
 
 
 def load_rows(path):
@@ -102,6 +125,12 @@ def main():
     ap.add_argument("--rows", help="existing atlas_rows.jsonl for --check-only")
     ap.add_argument("--jobs", type=int, default=1)
     ap.add_argument("--out", help="fresh out_root (default /tmp/reproduce_<id>)")
+    ap.add_argument("--rope-heads", choices=("registered", "first", "all"),
+                    default="registered",
+                    help="RoPE head coverage for --run: 'registered' (default) "
+                         "replays what the finding was produced with (first "
+                         "for rows registered before arch.rope_heads); 'all' "
+                         "re-runs the design with every head rotated")
     args = ap.parse_args()
 
     finding = next((f for f in load_findings() if f["id"] == args.finding_id),
@@ -136,6 +165,13 @@ def main():
     est = estimate_hours(finding)
     print(f"  manifest: {manifest}  design={sweep.get('design')}  "
           f"seeds={sweep.get('seeds')}")
+    rope = replay_rope_heads(finding, sweep, args.rope_heads)
+    if rope:
+        from mtsweep import pin_rope_heads
+        sweep = pin_rope_heads(sweep, rope)
+        print(f"  rope_heads: {rope}"
+              + (" (as registered: the finding predates arch.rope_heads)"
+                 if args.rope_heads == "registered" else " (override)"))
     if est:
         print(f"  COST: ~{est:.1f} h serial CPU (from the original run's own "
               f"wall_seconds); --jobs {args.jobs} => ~{est / args.jobs:.1f} h")
