@@ -1,0 +1,13 @@
+corpus sha256 672622b80c9052da17adaefe93a9f34bb51bdfaffdd70f4fc485fd593c16036b (matches the recorded input)
+vocab sha256 9c4b2719a7b9443a27f198ebe5845a9c00f4dd7b7ab69343d30f72421ee8453c (matches the recorded input)
+tokens 400001; validation tokens 20000; vocabulary 4096
+id 0 is the vocabulary entry b'<unk>'
+all: id-0 share 0.1909 (76374 of 400001); out-of-vocabulary share 0.1909 (76374)
+train: id-0 share 0.1898 (72114 of 380001); out-of-vocabulary share 0.1898 (72114)
+validation: id-0 share 0.2130 (4260 of 20000); out-of-vocabulary share 0.2130 (4260)
+distinct surface strings 5999; distinct ids used 2495; distinct out-of-vocabulary strings 3505
+out-of-vocabulary word: 11801 (0.0295 of all tokens)
+out-of-vocabulary ASCII punctuation: 58536 (0.1463 of all tokens)
+out-of-vocabulary non-ASCII byte: 6037 (0.0151 of all tokens)
+word tokens 335118; share of word tokens out of vocabulary 0.0352
+most frequent out-of-vocabulary strings: .:31242, ,:15482, ":7502, !:3188, �:1175, �:1147, ?:946, �:920, �:920, �:910, �:323, �:323, �:237, ::147, s:134

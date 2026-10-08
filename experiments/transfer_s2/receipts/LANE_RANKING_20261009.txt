@@ -1,0 +1,33 @@
+POST-HOC, descriptive (lane_ranking.py, 9 Oct 2026). Lane loss = seed-mean validation loss at each seed's exact-lane milestone step (or at step 3600); regret = larger-width loss of the small-width pick minus the larger-width best; bootstrap 2000 draws, seed 20261009.
+
+##### Study 1 (shared rate 1e-3): seeds S=12 M=12; milestones from S: 800:3.8467, 1600:3.6562, 2400:3.5051, 3200:3.3693, 3600:3.3492
+position | seeds S/M | S ranking (best first) | M ranking | Kendall tau | S pick: rank at M, regret at M (loss), M best-to-worst spread | bootstrap P(S pick = M best)
+milestone 800 (loss 3.8467) | 12/12 | swa16s1 > swa32s1 > swa64s0 > swa64s1 > swa128s1 > exact | swa16s1 > swa32s1 > swa64s1 > swa64s0 > swa128s1 > exact | +0.867 | swa16s1: rank 1 of 6, regret 0.0000, spread 0.1472 | 1.000
+milestone 1600 (loss 3.6562) | not reached by every lane in both arms
+milestone 2400 (loss 3.5051) | not reached by every lane in both arms
+milestone 3200 (loss 3.3693) | not reached by every lane in both arms
+milestone 3600 (loss 3.3492) | not reached by every lane in both arms
+fixed step 3600 | 12/12 | exact > swa16s1 > swa128s1 > swa32s1 > swa64s1 > swa64s0 | swa16s1 > swa32s1 > swa64s1 > swa64s0 > swa128s1 > exact | -0.067 | exact: rank 6 of 6, regret 0.1588, spread 0.1588 | 0.420
+
+sign disagreements by milestone: cells | agree (of which tie-tie) | reversals | tie-involved
+  milestone 800: 15 | 15 (1) | 0 | 0
+  milestone 1600: 0 | 0 (0) | 0 | 0
+  milestone 2400: 0 | 0 (0) | 0 | 0
+  milestone 3200: 0 | 0 (0) | 0 | 0
+  milestone 3600: 0 | 0 (0) | 0 | 0
+
+##### Study 2 (rate per width): seeds S=12 M=12; milestones from S: 800:3.7539, 1600:3.5152, 2400:3.3491, 3200:3.2392, 3600:3.2282
+position | seeds S/M | S ranking (best first) | M ranking | Kendall tau | S pick: rank at M, regret at M (loss), M best-to-worst spread | bootstrap P(S pick = M best)
+milestone 800 (loss 3.7539) | 12/12 | swa16s1 > swa32s1 > swa64s0 > swa64s1 > swa128s1 > exact | swa16s1 > swa32s1 > swa64s0 > swa64s1 > exact > swa128s1 | +0.867 | swa16s1: rank 1 of 6, regret 0.0000, spread 0.2354 | 1.000
+milestone 1600 (loss 3.5152) | 12/12 | swa16s1 > swa32s1 > exact > swa128s1 > swa64s1 > swa64s0 | swa16s1 > swa32s1 > swa64s0 > exact > swa128s1 > swa64s1 | +0.600 | swa16s1: rank 1 of 6, regret 0.0000, spread 0.2453 | 1.000
+milestone 2400 (loss 3.3491) | 12/12 | swa16s1 > swa32s1 > exact > swa128s1 > swa64s1 > swa64s0 | swa16s1 > swa32s1 > swa64s0 > swa128s1 > exact > swa64s1 | +0.467 | swa16s1: rank 1 of 6, regret 0.0000, spread 0.0916 | 0.626
+milestone 3200 (loss 3.2392) | 12/12 | swa16s1 > swa32s1 > exact > swa128s1 > swa64s1 > swa64s0 | exact > swa128s1 > swa32s1 > swa64s1 > swa64s0 > swa16s1 | +0.067 | swa16s1: rank 6 of 6, regret 0.0590, spread 0.0590 | 0.001
+milestone 3600 (loss 3.2282) | 8/12 | swa16s1 > swa32s1 > exact > swa128s1 > swa64s1 > swa64s0 | exact > swa128s1 > swa64s1 > swa64s0 > swa32s1 > swa16s1 | -0.200 | swa16s1: rank 6 of 6, regret 0.1223, spread 0.1223 | 0.013  [partially reached; outside the registered band]
+fixed step 3600 | 12/12 | swa32s1 > swa16s1 > exact > swa128s1 > swa64s1 > swa64s0 | swa128s1 > exact > swa64s1 > swa64s0 > swa32s1 > swa16s1 | -0.200 | swa32s1: rank 5 of 6, regret 0.1209, spread 0.2615 | 0.000
+
+sign disagreements by milestone: cells | agree (of which tie-tie) | reversals | tie-involved
+  milestone 800: 15 | 14 (0) | 0 | 1
+  milestone 1600: 15 | 11 (0) | 3 | 1
+  milestone 2400: 15 | 10 (0) | 2 | 3
+  milestone 3200: 15 | 7 (0) | 6 | 2
+  milestone 3600: 15 | 5 (0) | 8 | 2
