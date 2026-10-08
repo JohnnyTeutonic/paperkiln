@@ -7,23 +7,14 @@ where one of those documents carries a plan, this file wins.*
 
 ## 1. Now
 
-1. **The transfer paper needs a journal.** The manuscript and supplement
-   live in the root repository at `AI_ML/transfer_prereg/`. TMLR rejected
-   it without review on 8 Oct 2026, and TMLR is now closed as a venue. No
-   new experiments are needed. Remaining:
-   - Pick the journal from its recent issues, not from memory.
-   - Strip TMLR style, its anonymity conventions, and the "TMLR's own
-     stated criterion" sentence (`main.tex` line 71).
-   - Cut the abstract (295 words) to the venue's limit.
-   - Run the Codex `hostile-referee` and `claims-vs-evidence` reviews, save
-     them in a `reviews/` folder, and answer every major point.
-   - Re-run the gate suite, and rebuild and verify the supplement.
-   - Commit the untracked inputs the supplement cites:
-     - `experiments/transfer_s2/posthoc/bootstrap_partial.py` in this repo;
-     - the `transfer_prereg` scripts and records in the root repo
-       (`reachability_report.py`, `reproduce.py`, `verify_supplement.py`,
-       `SUBMISSION_CHECKLIST`, `PACKAGE_CHECK`, `DATA_AND_BUILD.md`,
-       `REGISTRATION_TIMELINE.json`).
+1. **The transfer paper goes to *Machine Learning* (Springer, MLJ).** The
+   venue was chosen on 9 Oct 2026 from about 35 journals, checked against
+   their recent issues. The MLJ package is in the root repository at
+   `AI_ML/transfer_prereg/mlj/`: the manuscript, the contribution information
+   sheet, the cover letter and the Codex reviews. The supplement was rebuilt
+   and verifies. Remaining: the claim revision that the Codex hostile review
+   asks for (seven points, listed in `PORTFOLIO.md`), then a second hostile
+   pass, then submission.
 2. **Re-run Atlas Stages 2–3 with `rope_heads=all`.** Nine findings carry
    an UNDER REVIEW note (record: [`docs/ROPE_HEADS.md`](docs/ROPE_HEADS.md)).
    S2-heads-null and S3-ctx-null are directly suspect.
