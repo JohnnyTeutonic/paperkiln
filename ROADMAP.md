@@ -1,190 +1,238 @@
-# paperkiln engineering roadmap
+# paperkiln roadmap
 
-*Ordered backlog. Research (atlas/sparse attention) is the flagship;
-these are the engineering items that unlock it.*
+*The one list of what is left to do, as at 9 October 2026. Finished work
+moves to [`CHANGELOG.md`](CHANGELOG.md) and comes out of here. Everything
+else under `docs/` and `atlas/` is reference (design, records, results);
+where one of those documents carries a plan, this file wins.*
 
----
+## 1. Now
 
-# UPLIFT PLAN — adopted 28 Aug 2026 (supersedes ordering below where they conflict)
+1. **The transfer paper needs a journal.** The manuscript and supplement
+   live in the root repository at `AI_ML/transfer_prereg/`. TMLR rejected
+   it without review on 8 Oct 2026, and TMLR is now closed as a venue. No
+   new experiments are needed. Remaining:
+   - Pick the journal from its recent issues, not from memory.
+   - Strip TMLR style, its anonymity conventions, and the "TMLR's own
+     stated criterion" sentence (`main.tex` line 71).
+   - Cut the abstract (295 words) to the venue's limit.
+   - Run the Codex `hostile-referee` and `claims-vs-evidence` reviews, save
+     them in a `reviews/` folder, and answer every major point.
+   - Re-run the gate suite, and rebuild and verify the supplement.
+   - Commit the untracked inputs the supplement cites:
+     - `experiments/transfer_s2/posthoc/bootstrap_partial.py` in this repo;
+     - the `transfer_prereg` scripts and records in the root repo
+       (`reachability_report.py`, `reproduce.py`, `verify_supplement.py`,
+       `SUBMISSION_CHECKLIST`, `PACKAGE_CHECK`, `DATA_AND_BUILD.md`,
+       `REGISTRATION_TIMELINE.json`).
+2. **Re-run Atlas Stages 2–3 with `rope_heads=all`.** Nine findings carry
+   an UNDER REVIEW note (record: [`docs/ROPE_HEADS.md`](docs/ROPE_HEADS.md)).
+   S2-heads-null and S3-ctx-null are directly suspect.
+   - Run the corrected design with `tools/reproduce.py --rope-heads all`.
+   - Then supersede or confirm each row.
+   - Add the under-review status to `atlas/FINDINGS.md` and to the
+     Stage 2 and Stage 3 write-ups, which do not show it yet.
+3. **sparse_s1_longbudget, due 20 Oct 2026.** It is pre-registered and
+   parked, at 0 of 20 runs. As configured, 12000-step runs with
+   `checkpoint_every: 1000000` cannot survive Colab's session cap.
+   - The author writes an amendment that enables checkpoints and changes
+     nothing else.
+   - Then launch per `AGENTS.md`.
+   - Budget from the CUDA measurements, not from the pre-registration's
+     estimate (~16 min per run, ~5 GPU-hours in all). The measured pace at
+     this shape is about 0.8 s/step, both for one cell on a T4 and for
+     four concurrent cells on an L4. That makes each 12000-step run about
+     2.7 hours, and the whole study five waves of four runs, roughly 14
+     hours of sessions relayed through checkpoints.
 
-1. **THE SCALE LADDER IS THE KEYSTONE.** The one reviewer objection that
-   matters against Atlas is "does any of this hold past d=128/T=256/CPU?"
-   The strong claim available: *do cheap designed screens predict
-   expensive outcomes?* Same factor set at 3–4 rungs (d=128/256/512/768,
-   token-matched), report rank correlation (Kendall's τ) of effect
-   estimates across rungs. Factors that survive → screen architecture
-   decisions at ~1/1000 compute and trust the ranking (industrial value).
-   Factors that invert → the field's ablations are scale-sensitive and
-   currently run wrong (arguably the better paper). **No failure branch;
-   either outcome publishes.** The seed-noise finding stops being a
-   curiosity and becomes the setup for this result.
-   **LICENSED AND RUNNING 31 Aug 2026** — experiments/transfer_s1/
-   PREREGISTRATION.md, licence anchor 3fa55ae, committed together with
-   its analyze.py before any run existed. The realised design is
-   stronger than this sketch: the transferred object is the COMPLETE
-   PAIRWISE SIGN MATRIX over six lanes (15 edges) at three widths
-   (256/512/1024), not a rank correlation of effect estimates — because
-   S1e proved the scalars themselves are seed-distributions, so ranking
-   them across arms is the weak read and the sign structure is the
-   strong one. A numerics-bridge gate runs FIRST and halts the study if
-   the CUDA venue disagrees with the banked CPU cohort. S1e also
-   supplied the power numbers (12 seeds/arm) and killed one candidate
-   position rule outright (overfit-onset: unreachable in 14/15 seeds).
-2. **CUDA Phase B is the PREREQUISITE for the ladder, not
-   infrastructure.** Resident device tensors, params uploaded once,
-   activations on-device (B2.1b → B2.2 → B2.3 below). Without it the
-   ladder cannot be climbed; prioritise it as the enabling step for the
-   flagship research, ahead of everything else clamouring in the repo.
-3. **DECOUPLE THE EXTRACTOR — highest-leverage day of work in the
-   list.** papers/fetch.py has the widest possible audience and is
-   trapped behind a C++ build most of that audience will never run.
-   Ship it as a standalone pip package: `pip install paperkiln-fetch`;
-   `paperfetch 2302.13971 --emit hf` → a HuggingFace config handed
-   straight to `transformers`. hf_export.py already holds the layout
-   knowledge; the change is mostly plumbing. This is the artifact that
-   gets stars, citations, and drags readers back to the rest of the
-   repo — the only piece not adoption-gated behind a build step.
-4. **Extractor benchmark → proper D&B submission.** 26 papers is small.
-   Grow to 60–100 with ground truth, publish the annotation protocol,
-   and add a second task: architecture reconstruction fidelity
-   (systematise the Primer 110M→114M check: reconstruct N papers,
-   report parameter-count error, taxonomise failures). Target shape:
-   "we reconstruct 47 of 60 papers to within 5% of reported parameters,
-   and here is why the other 13 fail." Zero wrong assertions is the
-   headline.
-5. **MECHANISM FREEZE.** Kimi Linear, cerebellum gating, Mamba/S4, SRD,
-   LoRA/QLoRA/int8: individually good, collectively they read as
-   breadth, and breadth is what reviewers discount. **Nothing new goes
-   in until the ladder is done.** SRD continues only via its
-   pre-registered test (experiments/srd_r2/PREREGISTRATION_R2.md); otherwise it stands as the
-   honest partial negative it is. New mechanisms are still wanted —
-   later, not now.
+## 2. Decisions waiting on Jonathan
 
----
+- **PyPI names.** `paperkiln` and `paperkiln-fetch` are unclaimed (404 on
+  9 Oct 2026). Claiming them needs his credentials and takes two minutes.
+- **The longbudget checkpoint amendment** (Now, item 3).
+- **The transfer_s1 registry rows after study 2.**
+  T1-structure-transfers and T1-fixed-lr-mistunes still read "supported",
+  although study 2's pre-registered falsifier fired. There are no study 2
+  rows yet.
+- **The highway pilot verdict.** It is recorded in
+  `registry/0001_highway_networks/ENTRY.md` §7 and has no
+  `findings.jsonl` row. Should it get one?
+- **The two synthesis study sketches, go or no-go.**
+  - `experiments/consensus_prefill/SKETCH.md` §7 lists four decisions
+    (whether to run Phase A, the 4096-context model, the gate default, and
+    the twelve-seed arm).
+  - `experiments/commit_ttt/SKETCH.md` §6 lists what that sketch leaves
+    open.
+- **The designer pilot, go or no-go.**
+  `experiments/atlas_designer_pilot/PILOT_PLAN.md` is a draft Colab pilot.
+- **Commit the uncommitted research work, or not.** Nothing below is in
+  git yet:
+  - the experiment designer: `tools/atlas_designer*.py`,
+    `tests/test_atlas_designer.py`, `atlas/EXPERIMENT_DESIGNER.md`,
+    `atlas/designer_demo_v1/`;
+  - `experiments/atlas_designer_pilot/`;
+  - the post-hoc decision audit `experiments/atlas_selection/`;
+  - the Jev judge evaluation and the maths ranking under
+    `tools/synthesis/`.
+- **The mechanism freeze of 28 Aug 2026.** It was tied to the scale
+  ladder, which the transfer studies have now climbed. Lift it or keep it?
+- **Whether the methodology paper stays a separate paper**
+  (`atlas/PAPER_PLAN.md`, aimed at JMLR, not drafted). The transfer paper
+  absorbed much of its argument, including gap G1.
 
-1. **CUDA past the dispatch seam.** Phase A, Phase B1, and now Phase
-   **B2.0 (T4-validated 13 Aug 2026)**: step-residency plumbing —
-   Variable-owned device state, transpose-flag GEMM, epoch-scoped
-   caches; CUDA training pin matched CPU to 2.33e-07, staleness probe
-   green (docs/CUDA_PHASE_B2.md). Remaining: **B2.1a
-   T4-VALIDATED 21 Aug 2026** — full device op set (src/cuda_ops.cu) +
-   attention transpose-kill, kernel parity <= 3.8e-06 worst / bitwise
-   elementwise, gradcheck+nn green with ops live (receipts in docs/);
-   then
-   **B2.1b T4-VALIDATED 29 Aug 2026** (deferred downloads: value cache,
-   materialize boundaries, defer-vs-writethrough EXACTLY 0.0 on the
-   composed tape; receipts docs/receipts/receipts_b21b_t4_20260829.txt); next
-   **B2.2 T4-VALIDATED 30 Aug 2026** (fused + swa masked attention
-   softmax on-device — the biggest forced materialize gone — plus
-   embedding gather and CE with the host receiving ONE float; 12/12
-   suites, 281 checks; receipts docs/receipts/receipts_b22_t4_20260830.txt; on
-   the way it surfaced and fixed the deferred-temporary-dies-stale
-   heap-corruption class via the new device::discard() primitive); next
-   **B2.3 T4-VALIDATED 30 Aug 2026** (persistent device optimizer
-   state + device-side accumulate: the step's downloads are now the
-   loss scalar and param grads at the boundary; 12/12 suites, 285
-   checks; receipts docs/receipts/receipts_b23_t4_20260830.txt; the gate also
-   caught+fixed dying-temporary corruption round two — see the phase
-   doc's standing lifetime rule).
-   **ADOPTION GATE PASSED 31 Aug 2026 — CUDA PHASE B IS COMPLETE.**
-   B2 beats CPU AVX by **21x at d=256 and 30.5x at d=512** (T=512,
-   L=4, T4) on an identically-converging computation (final losses
-   match at print precision: 5.2485 and 4.9382). Rung C RUNS ON
-   CUDA: a cell that cost ~6 CPU-hours costs ~12 minutes. Receipts
-   docs/receipts/receipts_b2gate_t4_20260831.txt. The gate run also caught
-   the deferred-gemm staleness bug the 285-check suite missed —
-   the benchmark is now part of the correctness gate, not a
-   postscript (see docs/CUDA_PHASE_B2.md).
+## 3. Broken now (fix before anything new)
 
-   1a. **Deep SWA — DONE 12 Aug 2026 (same night it was discovered).**
-   FlexLM takes attention=exact|swa with window/sinks at any depth;
-   mtstudio promotes swa+depth to flex; taxonomy allows it. Gated by
-   tests/test_deep_swa.cpp: the SWA PIN (FlexLM(swa, L=2) ==
-   ParityLM(SWA) bitwise), depth-4 grads + FD, depth-4 batch/masking
-   pin, swa+highway composition. The DEPTH AXIS of the scale ladder is
-   now open: a depth rung (d=256, layers=4, exact vs swa) is runnable
-   as its own pre-registration once width Rung B lands.
-2. **Serve open-weights HF models through our own inference engine**
-   (ember.cpp lineage). Flagged by Jonathan 11 Aug 2026 during the
-   referee-project design (the 7-vendor panel currently uses
-   `transformers` for local models). IMPORTANT: this is the item that
-   makes paperkiln a self-contained lab — download weights via
-   `referee/src/fetch_models.py`-style tooling, run them on our
-   engine, benchmark against `transformers` for parity + speed.
-   Depends partly on (1) for anything beyond ~7B on GPU.
-3. LoRA + quantisation (existing backlog order).
-4. arXiv LaTeX fetcher: **emit-spec landed 12 Aug 2026** —
-   `papers/fetch.py <id> --emit-spec` turns a paper into a runnable
-   mtsweep spec (paper-faithful or --house-dims; unresolved fields
-   omitted loudly per the module contract). Proven live: 1706.03762
-   fetched, extracted with evidence, and trained (flex family,
-   layernorm/relu/sinusoidal). **Highway/SWA patterns landed 13 Aug
-   2026**: residual + attention flavor fields (attention one-sided by
-   design — only swa has a positive signature), window/sinks as aux
-   numerics that never swell `unresolved`, Mistral as a named-swa
-   ancestor, and emit_spec refuses windowless swa + scales degenerate
-   windows loudly. Emitted specs pass mtsweep --dry-run — registry
-   entries for both new mechanisms can auto-seed from papers.
+- **The chat quickstart's default route returns 404.** `quickstart_chat.sh`
+  downloads `releases/download/chat-v1/tinychat-v2-web.tar.gz`, but the
+  only GitHub release is `v0.1.1`, with no assets. Publish the `chat-v1`
+  release with the bundle that `tools/package_chat_model.sh` builds. The
+  train-it-yourself route works.
+- **CI.**
+  - Code Quality fails on every run. The clang-format check fails, and
+    `.github/workflows/code-quality.yml:80` requires `PHASE_3_SUMMARY.md`
+    at the root, but the file lives in `docs/history/`. `release.yml`
+    cites the same path and still builds `microtorch-*` tarballs.
+  - Python Wheels fails. The distribution is still named `microtorch`, and
+    the versions disagree (`pyproject.toml` 0.2.0; `setup.py` and
+    `__init__` 0.3.0).
+  - No Python test runs in CI. That includes `papers/test_fetch.py`,
+    `tests/*.py`, `tools/test_*.py` and
+    `experiments/atlas_selection/test_selection.py`.
+  - `test_highway` and `test_deep_swa` are built but never registered with
+    ctest (`CMakeLists.txt` lines 96–100).
+  - cppcheck (`|| true`) and Valgrind (`continue-on-error`) cannot fail
+    the build.
+- **`paperkiln_fetch` has drifted from `papers/fetch.py`.** It lacks the
+  6 Oct residual and attention patterns and `AUX_PATTERNS`. Re-sync with
+  `tools/sync_fetch_pkg.py` and put `--check` in CI.
+- **The studio's ▶ Train button ignores the browser's spec.**
+  `tools/mtstudio.cpp` lines 1258–1270 train the spec armed at launch,
+  not the one edited or extracted in the page.
+- **README.** It disagrees with the code in about seventeen places,
+  chiefly:
+  - It calls CUDA Phase B "next" and says Stage 3 "is running".
+  - It counts 16 test suites; there are 20.
+  - It counts 19 registry claims; there are 22, nine of them under review.
+  - It promises a ready-made model that is not published.
+  - It says the extractor has "zero wrong assertions"; there are three
+    documented ones.
+  - It calls the SSM "Mamba", although it is not selective and has no
+    parallel scan.
+  - It says `paperkiln_fetch` vendors the fetcher verbatim.
+  - It omits `web/`, `atlas/`, `registry/`, `experiments/`,
+    `paperkiln_fetch/` and `tools/synthesis/` from the layout.
+- **Smaller documentation fixes.**
+  - `include/microtorch/mamba.hpp` (lines 3 and 12) claims a parallel scan
+    that does not exist.
+  - `docs/CHAT_WITH_A_PAPERKILN_MODEL.md` describes a pre-fix llama run
+    and omits `--allow-legacy-rope`.
+  - `specs/README.md` omits `tinychat-quick` and `tinychat-better`.
+  - `web/chat/README.md` still calls tinychat-better gpt2-family.
+  - `tools/coalfire_spec.py` calls itself C2; it is C4.
+- **Line endings.** About 180 files show as modified on Windows checkouts
+  with no real change. A `.gitattributes` pass would settle it; at present
+  it covers only `*.sh`.
 
-Reference docs: atlas/ARCHITECTURE_ATLAS.md (the lab charter),
-atlas/PAPER_PLAN.md (G1-G3 gaps), docs/SPARSE_ATTENTION.md (research
-state). Scale ladder Rung B: experiments/sparse_s1_scale/.
+## 4. Research
 
----
+- **Scale ladder, depth rung.** d=256, 4 layers, exact against SWA, as its
+  own pre-registration. Deep SWA is built and gated.
+- **Atlas Stages 5–6.** Architectural fingerprints, neighbours, and the
+  Atlas surface in the studio (`atlas/ARCHITECTURE_ATLAS.md` §19).
+- **Methodology paper gaps** (if it stays separate): G2, an outside
+  contributor; G4, the prior-art sweep on pre-registration in ML.
+- **Sparse attention** (`docs/SPARSE_ATTENTION.md`):
+  - V2 sketch-state attention (no code yet);
+  - the V3 bake-off;
+  - the R2-efficiency row, still pending;
+  - the optimiser-interaction follow-up.
+- **Parked lines, resumable.**
+  - SRD rung 2b;
+  - the sparse S1 depth rung;
+  - V2 CoD;
+  - a sparse_s1_seeds re-run under the provenance rules.
+- **atlas_selection follow-up.** A prospective, position-diverse
+  shortlist. So far it is a proposal only.
+- **Synthesis tool.**
+  - 37 ideas were never scoped, because the API credit ran out.
+  - The maths-column OPEN verdicts need a hand check.
+- **Archaeology registry** (`registry/`). After highway, the next entries
+  are Grid LSTM, gMLP, an RWKV-v4 block and retention. Each one grows the
+  spec grammar. Verdicts are scoped to protocol and scale.
+- **Chimera** (designed-experiment search) and the backprop-free lane
+  (`docs/STUDIO_PLAN.md` §11) are parked.
+  - Chimera's output is findings rows under pre-registration, never
+    autonomously written papers.
+  - Falsifier discovery is the result that would lift it.
 
-# Long-arc programmes (adopted 12 Aug 2026)
+## 5. Extractor
 
-*Origin: three proposals surfaced via Gemini, assessed and re-scoped.
-Two are convergent re-derivations of plans already in this repo
-(studio vision; Chimera) — adopted with the re-scopes below. These are
-the between-times arc: the active fronts (G1 ladder, CUDA, deep-SWA,
-the agentic month) always take precedence.*
+- **Fix the three registered wrong assertions** (`papers/flavor_bench.py`
+  `KNOWN_WRONG`):
+  - Megatron-LM, attributed adoption: inheritance should outrank
+    third-party attribution.
+  - Cerebras-GPT: future-work mentions should veto, and "X-like" should
+    count as an inheritance cue.
+  - LaMDA, compound-name shadowing: longest match should win, with a
+    `gated-X → XGLU` normalisation.
+- **Grow the benchmark from 40 to 60–100 papers**, with ground truth read
+  off the fetched source and never recalled. Add a reconstruction-fidelity
+  task (parameter-count error per reconstructed paper) for a datasets and
+  benchmarks paper. Candidates next in line: StarCoder, ELECTRA, UL2,
+  BigBird, Chinchilla.
+- **Fetcher v2 remainder:** MoE fields and the HF-config cross-check. The
+  per-variant fields and `n_kv_heads` are done.
 
-## P1. ML Archeology Registry ("de-extinction")
+## 6. Engine
 
-A curated, reproducible registry of historical/forgotten
-architectures: each entry = the paper's mechanism translated into the
-spec grammar, a token-matched standardized run on the fixed corpus,
-and an Atlas row (gradient behaviour, param efficiency, loss curve,
-scope-labelled per the scale-ladder doctrine).
-- RE-SCOPE: curated translation now; automated paper->spec compilation
-  is the north star, not the entry ticket. Every entry grows the
-  engine grammar, which also feeds P3.
-- Depends on: spec grammar (atlas plan step 2), arXiv fetcher (item 4
-  above); engine features per family as needed.
-- **PILOT (#0): Highway Networks (arXiv 1505.00387)** — small,
-  pre-residual gated depth; crisp mechanism (transform/carry gates);
-  bounded engine addition; the verdict-at-tiny-scale is genuinely
-  interesting (does gating beat residuals when both are tiny?).
-  Candidate shortlist after the pilot: Grid LSTM, early relative-
-  position attention variants, gMLP, RWKV-v4 block, retention.
-- Claim discipline: every registry verdict is scoped to protocol +
-  scale; trends up the ladder, never absolutes about the paper.
+- **CUDA** (records: `docs/CUDA_PHASE_B2.md`):
+  - Fix the `MICROTORCH_DEFER_DOWNLOADS` crash in mtstudio (defect
+    record D1), and add an end-to-end mtstudio leg under deferral.
+  - Wire `MT_DEVCHECK_HOST_READ` at real call sites; today it is defined
+    and never called.
+  - Coalesce loads in the transposed GEMM paths.
+  - Re-measure the speedup on the op-set configuration over a full run
+    before any paper quotes it. The 21x and 30.5x figures were measured
+    over nine steps with deferral on.
+- **Mixed precision** (fp16/bf16 on the tape).
+- **Mamba:** a selective SSM (input-dependent A and B) and a parallel scan.
+- **int4/NF4 quantisation.**
+- **Kimi linear attention:** the non-causal backward (`src/ops.cpp:658`
+  throws).
+- **GGUF and HF export for the flex and gpt2 families** (llama only today).
+- **Kimi and SRD in mtstudio beyond two-block parity models.**
+- **The taxonomy's "stream" lattice slot.**
 
-## P2. Browser + accelerator targets (split from "paper-to-silicon")
+## 7. Studio, chat and distribution
 
-- P2a **WASM runtime — SPIKE PROVEN 12 Aug 2026** (ember.cpp/WASM.md):
-  the inference core compiled to wasm UNMODIFIED in one em++ command
-  and ran coherent GGUF chat inference under node. Remaining for the
-  browser page: MEMFS model loading + a small JS API (a day, when demo
-  value calls — e.g. a certain Melbourne inference lab).
-- P2b **WebGPU backend**: bounded kernel-backend project, AFTER CUDA
-  (item 1) — same dispatch seam, second target.
-- P2c Silicon/Verilog: DECLINED as a goal (HLS is its own field).
-  One-line note kept for the record; revisit only if a collaborator
-  with hardware chops appears.
+- **Publish the default chat model** (see Broken now) and put it on the
+  Hugging Face Hub with `tools/publish_hf.py`.
+- **`pip install paperkiln`:** publish the pybind11 wheel once the names
+  are claimed and the wheel CI passes.
+- **Studio features:**
+  - Research Mode: clone a run with one change, compare two runs;
+  - a sweep heatmap;
+  - a fit-to-VRAM budgeter;
+  - an evaluation-probe stage in the spec (needle and behavioural
+    probes).
+- **Browser chat** for SWA, Kimi, SRD and attnres models. It supports
+  exact attention only.
+- **Serve open-weight HF models on our own engine**, and benchmark them
+  against `transformers` for parity and speed.
+- **WebGPU backend,** after CUDA, through the same dispatch seam.
+- **Windows testing of the quickstart** (parked).
 
-## P3. Chimera: autonomous designed-experiment search (existing plan)
+## 8. Ecosystem (coalfire.cpp, ember.cpp)
 
-Gemini's "evolutionary search + self-writing papers" = the Chimera
-design doc, independently re-derived. Mutation proposals over the
-typed grammar, designed experiments via mtsweep, early-kill on
-anomaly, rediscovery gauntlet as the validation gate.
-- RE-SCOPE (firm): outputs are findings-registry rows and
-  auto-generated results artifacts under pre-registration discipline.
-  NO autonomously written papers — verification precedes prose,
-  always (this repo's own MBS history is the cautionary tale).
-- Substrate = atlas plan steps 2-5 + P1's grammar growth; the
-  LangGraph agentic month builds the orchestration skill.
-- Tier levers (existing memory): falsifier discovery is the preferred
-  result that lifts this to JMLR/JAIR class.
+*Reference: [`docs/ECOSYSTEM.md`](docs/ECOSYSTEM.md).*
+
+- **C2, the cross-engine logit-parity pin:** no receipt exists.
+- **C3, a single GGUF writer** (coalfire side).
+- **C5, a shared BPE tokenizer.** Training is still word-level.
+- **Technique transfer still open** (`docs/TECH_TRANSFER.md`):
+  - SiTU-GLU and quantile balancing;
+  - gated MLA/NoPE;
+  - MXFP4;
+  - mHC;
+  - multi-token prediction.
+  - The KDA reference that `python/attn_res_reference.py` mentions
+    (`kda_reference.py`) is not in this repo.

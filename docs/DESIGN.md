@@ -128,25 +128,21 @@ derivative is wrong, see docs/history/PHASE0_KERNEL_AUDIT.md section 2.)*
 
 ## 6. Novel Architecture Planning (Phase 2c+)
 
-See **[NOVEL_LLM_ARCHITECTURES.md](../NOVEL_LLM_ARCHITECTURES.md)** for comprehensive research on emerging techniques:
-- **Kimi Linear**: Linear-time attention (O(n) vs O(n²)), ready for implementation
-- **Cerebellum-inspired selective computation**: Neuroscience-based gating for 20-40% inference savings
-- **Mamba & state-space models**: Alternative to pure transformers, O(1) memory per step
-- **Hardware-software co-design**: Flash storage + specialized silicon patterns
-- **QAT & mixed-precision**: Underrated win for training-time quantization awareness
-
-This document is the foundation for Q3/Q4 architectural decisions on Phase 2c (Llama-family) and Phase 3 (efficiency upgrades).
+The three candidates chosen here (Kimi Linear, cerebellum gating,
+Mamba/S4) were built in Phase 3; see
+[history/PHASE_3_SUMMARY.md](history/PHASE_3_SUMMARY.md). Future
+architecture work is tracked in [../ROADMAP.md](../ROADMAP.md).
 
 ---
 
-## 7. Open decisions to settle before coding
+## 7. Decisions settled before coding (kept as the original record)
 1. Autograd granularity: op-level (recommended) vs layer-level.
 2. Does microtorch wrap `Tensor` directly, or introduce a `Variable` that owns a
    `Tensor`? (Affects how invasively transformer_cpp is touched.)
 3. CPU-first or CUDA-first for the tape? (CPU-first is faster to gradient-check;
    CUDA reuses the fast kernels. Recommend CPU-first correctness, then CUDA.)
 4. Repo name (`microtorch` is a placeholder).
-5. **Which novel architecture to implement first for Phase 2c/3?** See NOVEL_LLM_ARCHITECTURES.md section "Architectural Decision Points" for recommendation (Kimi Linear, confidence: high).
+5. **Which novel architecture to implement first for Phase 2c/3?** Kimi Linear (built; see history/PHASE_3_SUMMARY.md).
 
 ---
 

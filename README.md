@@ -806,22 +806,7 @@ docs/                 Doxygen config (make docs)
 
 ## Roadmap
 
-- arXiv fetcher v2: per-variant instantiation, GQA/MoE fields, HF-config
-  cross-check
-- CUDA phase B: resident device tensors (params uploaded once, activations
-  on-device)
-- int4/NF4 quantization (QLoRA paper's datatype; int8 is the current base)
-- Parallel scan for Mamba (training-speed parity with attention)
-- Technique transfer from open-weight frontier reports — attention residuals,
-  KDA, Muon optimizer ([docs/TECH_TRANSFER.md](docs/TECH_TRANSFER.md))
-- **The Architecture Atlas** ([atlas/ARCHITECTURE_ATLAS.md](atlas/ARCHITECTURE_ATLAS.md)):
-  Stages 0–2 are **done** (structural echo in every run, taxonomy + constrained
-  grammar, the PB12 screen with published findings) and Stage 3 (token-matched
-  2⁴ factorial, interactions) is running; ahead lie the scale ladder,
-  fingerprints/neighbours, and the Atlas surface — architectural fingerprints
-  in the Studio
-- **Sparse attention research phase**: survey the current literature and attempt
-  original variants — the long-horizon flagship goal
+What is left to do, in one place: [ROADMAP.md](ROADMAP.md).
 
 ## License
 

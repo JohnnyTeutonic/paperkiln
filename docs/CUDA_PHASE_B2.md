@@ -12,26 +12,26 @@
 > **Phase B's speedup is validated; its endurance is not.** Every check
 > in the 285 is too short to have seen this: bench_b2 runs 9 steps,
 > test_step_residency 50, and the leak kills at ~95. Details and the
-> fix plan: `open/BACKLOG.md` items 4b and 4c. Treat "Phase B complete"
+> fix plan: "Defect records" (D1, D2) at the end of this document. Treat "Phase B complete"
 > below as "complete and validated for correctness at short duration",
 > and do not put the speedup in a paper until an endurance leg exists.
 >
 > **UPDATE, later the same day (`697e281`) — the leak is fixed and the
 > endurance leg now exists.** The cause was `In::owned` being clobbered
 > by C++ member initialization order, so `~In` never freed any operand
-> (`open/BACKLOG.md` 4c). The device op set now runs **400 steps with
+> (defect record D2 below). The device op set now runs **400 steps with
 > device memory flat** at the transfer study's real shape, at
 > **0.84 s/step vs gemm-only's 1.10** — stable and 1.31x faster, and it
 > is what the study runs on. `test_cuda_ops` leg 8 asserts flat memory
 > over 200 tapes.
 >
 > Two caveats stand. **(1)** Full deferral still corrupts the heap in
-> mtstudio at step 1 (4b, open) — the 21x/30.5x were measured WITH
+> mtstudio at step 1 (defect record D1, open) — the 21x/30.5x were measured WITH
 > deferral, so those specific numbers still describe a configuration
 > that cannot complete a run. A defensible speedup claim must be
 > re-measured on the op-set config over a real duration. **(2)** The
 > endurance leg covers the composed tape, not mtstudio's own loop,
-> which is where 4b hides. Endurance is now checked one level up from
+> which is where D1 hides. Endurance is now checked one level up from
 > where it was; it is not yet checked at the application level.
 
 *Status: B2.0 VALIDATED on Colab T4, 13 Aug 2026 — full
@@ -250,9 +250,9 @@ Not a constraint until far above this ladder.
      through at 1e-6) plus the composed tape under deferral vs plain
      ops-ON at leg-2 tolerances. Local checks: both .cu TUs compile
      clean under nvcc 12.6 + MSVC; CPU side g++ -fsyntax-only clean.
-  7. [ ] T4 validation via colab_cuda_validate.sh per the contract
-     below; receipts into docs/, phase doc + ROADMAP updated. THIS IS
-     THE ONLY OPEN ITEM — B2.1b is code-complete pending hardware.
+  7. [x] T4 validation via colab_cuda_validate.sh per the contract
+     below: T4-VALIDATED 29 Aug 2026
+     (docs/receipts/receipts_b21b_t4_20260829.txt).
   Constraint for this pass: do not touch tools/mtstudio.cpp or
   tools/parity_model.hpp (uncommitted WIP present, 28 Aug).
 - **B2.2** embedding + CE: the forward touches host only at the loss
@@ -477,3 +477,131 @@ without shame.
 Streams/overlap, multi-GPU, fp16/mixed precision, fused attention
 kernels, inference-path changes. Each is a separate decision after B2
 measures.
+
+---
+
+## Defect records
+
+*Moved here from the retired backlog; open work is tracked in [`../ROADMAP.md`](../ROADMAP.md).*
+
+### D1. DEFER_DOWNLOADS crashes mtstudio (open; found 31 Aug 2026)
+
+**Symptom.** With `MICROTORCH_DEFER_DOWNLOADS=1`, `mtstudio run` dies at
+step 1 with `malloc(): unsorted double linked list corrupted` — SIGSEGV
+on the first cell, SIGABRT on the rest. All ten bridge cells died this
+way. It is the dying-temporary class for the third time: a deferred
+value-cache entry outliving its host buffer, so `step_end()`'s
+`materialize_all()` writes freed memory.
+
+**Measured on the VM at the study's real shape** (d=256, T=256, L=2,
+vocab 4096, batch 4), 30 steps:
+
+| config | time | result |
+|---|---|---|
+| `res` — ops + residency | 20.9s | clean, loss 4.962438106536865 |
+| `ops` — device ops only | 26.6s | clean, identical loss |
+| `gpu` — gemm only | 38.3s | clean, identical loss |
+| `b2` — full defer | 2.1s | **crash at step 1** |
+
+**Why the 285-check suite missed it.** B2.3's validation exercised
+`test_cuda_ops` and `bench_b2`. **mtstudio's own training loop has never
+run under deferral** — it has its own model construction, eval, gradmap
+and export paths, none of which any leg touches. Same shape of blind
+spot as the tiny-test-shapes one, one level up: we validated the library
+and not the application.
+
+**Mitigation in place:** `tools/colab_transfer_runner.py` runs the study
+with deferral OFF. `res` is a validated configuration converging
+identically, and keeps most of the speedup.
+
+**To fix:** find the deferred temporary in the mtstudio step path that
+dies inside the window. The four existing enforcement points
+(`~Variable`, consumed non-leaf grads in `backward()`, the rvalue
+`accumulate`, and `ops::cached`) do not cover raw `Matrix` locals that
+never pass through any of them. Then add a leg that runs a real
+mtstudio-shaped model end to end under defer, because the absence of one
+is what let this through.
+
+### D2. ~~The device op set leaks device memory~~ — FIXED 31 Aug 2026 (`697e281`)
+
+**Root cause: C++ member initialization order.** `In` (the operand
+wrapper in `src/cuda_ops.cu`) declared `float* d` before `bool owned`,
+and initialized `d` in the mem-init list by calling
+`vc_operand(h, n, owned)` — which sets `owned` through an out-parameter.
+Members initialize in **declaration** order, so `d` was initialized
+first (setting `owned = true`), and then `owned` ran its own default
+member initializer and was reset to `false`. `~In` tests `owned` before
+freeing, so **it never freed anything**: every operand of every device
+op leaked. No `-Wreorder` warning fires, because only one member appears
+in the init list. The fix assigns in the constructor body instead.
+
+Re-measured on a T4 at the study's exact shape after the fix:
+
+| config | before | after |
+|---|---|---|
+| `ops` — device op set | OOM at step 95, 156 MiB/step | **400 steps, FLAT at 173 MiB, 0.84 s/step** |
+| `gpu` — gemm only | 200 steps flat, 1.10 s/step | unchanged |
+
+The op set is now both stable and **1.31x faster** than gemm-only, so
+`tools/colab_transfer_runner.py` runs the study on it again.
+
+**The missing check now exists.** `test_cuda_ops` leg 8 runs 200
+composed tapes and asserts device memory has not grown past a warmup
+baseline (observed: 0.0 MiB). `device::device_bytes_in_use()` was added
+for it. Note what the diagnosis cost: reading every allocation site
+found nothing, because every *free* path was correct — the bug was in
+the flag those frees test. The measurement (memory vs step, at two
+vocab sizes) is what localised it, and the vocab-independent bulk is
+what said "every operand" rather than "the logits buffers".
+
+<details>
+<summary>Original report (kept for the record)</summary>
+
+**Symptom.** `MICROTORCH_DEVICE_OPS=1` OOMs a real training run at
+**step ~95**: `mtstudio: CUDA malloc: out of memory`. Measured at the
+transfer study's shape (d=256, T=256, L=2, vocab 4096, batch 4) on a
+16 GB T4, 400-step probe:
+
+| config | outcome |
+|---|---|
+| `gpu` — gemm only | **reached 400 steps clean** |
+| `ops` — + device op set | OOM at step **95** |
+| `res` — + residency | OOM at step **96** |
+| `b2` — + deferral | heap corruption at step 1 (see D1) |
+
+Residency and deferral are not implicated in the leak; turning the op
+set on is what does it. Where they survive, all four configs converge
+to identical losses, so this is a resource bug and not a numerics one.
+
+**Why nothing caught it — the third coverage hole of the same family.**
+Every CUDA validation is too SHORT:
+
+- `bench_b2` — 3 warmup + 6 timed = **9 steps**
+- `test_step_residency` — **50 steps**
+- `test_cuda_ops` legs — single ops and short composed tapes
+
+The leak kills at ~95. **Not one of the 285 checks runs long enough to
+reach it.** First it was test shapes too small, then an application path
+(mtstudio) never exercised, now durations too short. The pattern is the
+lesson: a suite that only tests small, short, library-level cases
+certifies small, short, library-level correctness.
+
+**Consequence for a banked claim — state this plainly.** The B2 adoption
+gate's 21x/30.5x was measured over 9 steps with deferral on. Those
+numbers are real for 9 steps, but that configuration **cannot complete a
+training run**. The config the study actually runs on is gemm-only,
+which is correct but slower. Phase B's speedup is measured; its
+endurance is not. See the correction note at the top of this document.
+
+**To fix:** find the per-call device allocation in `src/cuda_ops.cu`
+that is not released — the `In`/`Out`/`DBuf`/`IBuf` wrappers are RAII, so
+suspect a path that returns `owned=false` for a buffer nobody owns, or
+a cache insert with no eviction. Then add an ENDURANCE leg: a few
+hundred steps with the op set live, asserting device memory is flat.
+That leg is the thing whose absence allowed this.
+
+*(The guess was half right — it was indeed a path returning
+`owned=false` for a buffer somebody owned. It just wasn't returning it;
+the constructor was overwriting it afterwards.)*
+
+</details>

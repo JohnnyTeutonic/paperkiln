@@ -1,5 +1,7 @@
 # Sparse Attention Research Program
 
+> Reference document. Open work from it is tracked only in [`ROADMAP.md`](../ROADMAP.md); a plan or status line here may be out of date.
+
 The flagship research phase. Goal: an original, *natively trainable* efficient-attention
 mechanism validated in microtorch — not another commodity reimplementation.
 

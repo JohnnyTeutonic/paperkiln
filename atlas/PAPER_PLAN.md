@@ -1,5 +1,7 @@
 # PAPER PLAN — the methodology paper
 
+> Reference document. Open work from it is tracked only in [`ROADMAP.md`](../ROADMAP.md); a plan or status line here may be out of date.
+
 *Started 2026-08-06. Argument spine only: what the paper claims, what
 receipt backs each claim, and what is MISSING. No drafting until the
 gaps close (strength over shipping). Companion paper — the

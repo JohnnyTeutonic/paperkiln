@@ -125,8 +125,8 @@ reference it does more work: it converts "did the engine change
 anything?" from an assumption into a measurement against pre-registered
 prior data.
 
-**Would change if:** Jonathan would rather have the six hours. Listed in
-[`../open/FOR_JONATHAN.md`](../open/FOR_JONATHAN.md).
+**Outcome:** arm S ran on CUDA, 72/72 banked and validated (2 Sep 2026,
+`56b49b0`); the bridge gate passed against the CPU cohort.
 
 ---
 
@@ -145,3 +145,17 @@ in one night. Caching turns a reclaim from ~10 minutes into ~1.
 one zombie class supervisor.py's registry structurally cannot reach —
 `stop` authenticates on the control plane, so a scratch config carrying
 only the endpoint is enough.
+
+---
+
+## D9. H-SCALAR's `|rho|` rule stays as licensed
+
+**Chosen:** the transfer_s1 rule adopts "scalars don't transfer" iff
+`|rho| < 0.5`, so a strongly negative correlation counts as scalars
+transferring. It was not amended to signed rho; a warning fires whenever
+`rho <= -0.5`, so the threshold never speaks for that case unchallenged.
+
+**Why:** amending was clean only pre-data. Arm M landed (6 Sep 2026)
+without an amendment, so the licensed rule stands as written. In study 2
+the warning fired (rho -0.60) and the paper reports the reversal
+directly.

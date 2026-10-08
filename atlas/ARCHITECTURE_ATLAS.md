@@ -1,5 +1,7 @@
 # The Architecture Atlas
 
+> Reference document. Open work from it is tracked only in [`ROADMAP.md`](../ROADMAP.md); a plan or status line here may be out of date.
+
 **The Architecture Atlas is a cumulative science of neural architectures.**
 
 Not a corpus, not a database, not a leaderboard — those are its instruments.

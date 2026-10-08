@@ -1,5 +1,7 @@
 # microtorch Studio — Master Plan
 
+> Reference document. Open work from it is tracked only in [`ROADMAP.md`](../ROADMAP.md); a plan or status line here may be out of date.
+
 *2026-07-30. The competitive thesis, the build order, and tonight's first moves.*
 
 ## 1. Thesis

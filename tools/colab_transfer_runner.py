@@ -682,7 +682,7 @@ def launch_sweep(session, sweep_rel, jobs=1, omp=4, shard=""):
         # (4.962438106536865 at step 30) while defer dies at step 1.
         # Residency without deferral is a validated configuration and keeps
         # most of the speedup, so the study runs on it; the defer bug is
-        # tracked separately in docs/open/BACKLOG.md.
+        # tracked in docs/CUDA_PHASE_B2.md, defect record D1.
         # CONCURRENCY (1 Sep 2026). One cell uses ~1.2 cores and ~180 MiB
         # of GPU, so a run is limited by how many cells share a vm, not by
         # per-run speed. Measured on an L4 (12 vCPU), 200 steps per cell:

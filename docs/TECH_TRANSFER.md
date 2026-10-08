@@ -1,4 +1,7 @@
 # Tech-transfer backlog — techniques from open-weight frontier models
+
+> Reference document. Open work from it is tracked only in [`ROADMAP.md`](../ROADMAP.md); a plan or status line here may be out of date.
+
 Source reading: **Kimi K3** tech report (arXiv 2607.24653; weights on HF), with
 cross-references to **DeepSeek-V4** (2606.19348), **DeepSeek-V3** (2412.19437),
 GLM-5.2, Qwen3.5, FlashMemory-DeepSeek-V4 (2606.09079).

@@ -1,5 +1,7 @@
 # The paperkiln ecosystem — coherence plan
 
+> Reference document. Open work from it is tracked only in [`ROADMAP.md`](../ROADMAP.md); a plan or status line here may be out of date.
+
 *2026-08-01. The three-repo family after the rename: **paperkiln** (this
 repo — tape autograd, studio, Atlas), **coalfire.cpp** (the original
 hard-coded C++/CUDA trainer), **ember.cpp** (inference). This document

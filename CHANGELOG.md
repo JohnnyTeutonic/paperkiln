@@ -5,6 +5,44 @@ Notable changes to microtorch. Format loosely follows
 
 ## [Unreleased]
 
+### September–October 2026
+
+- **Fixed: llama-family RoPE rotated only the first head** (6 Oct,
+  `cb135a1`). `arch.rope_heads` selects `all` (the default for new runs) or
+  `first` (every earlier llama run, which replays as recorded); exports and
+  the browser engine follow the run's record. Nine Atlas Stage 2/3 findings
+  are under review; see `docs/ROPE_HEADS.md`.
+- **Chat quickstart** (6 Oct): `quickstart_chat.sh`; TinyChat corpus
+  generator (v1 and v2) with an end-of-text token; `tinychat-quick` and
+  `tinychat-better` specs; `mtstudio chat` and `serve` on cpp-httplib;
+  `data.max_tokens`; `tools/model_card.py` (card with a fixed chat probe
+  set); `tools/train_progress.py`; `tools/package_chat_model.sh`;
+  `tools/publish_hf.py` (Hugging Face Hub); `web/chat/`, a zero-server
+  browser chat engine in plain JavaScript with a parity test.
+- **Extractor** (6 Oct): highway and sliding-window patterns, window and
+  sink extraction (`AUX_PATTERNS`), Mistral as a named SWA ancestor.
+- **`tools/synthesis/`** (16–17 Sep): architectural-synthesis generator,
+  arXiv scoper with field-term backstops, hand check of the top OPEN ideas,
+  a mathematics column, and the folk-claims scoping.
+- **Fresh-clone path** (14 Sep): `tools/get_tinystories_data.py` builds a
+  public corpus and vocabulary; `tools/hf_chat.py` chats with an exported
+  model from Python.
+- **transfer_s2** (11–16 Sep): pre-registered learning rate per width;
+  stage 1 lr selection, stage 2 S, M and L arms and the exploratory Lx
+  arm banked. The pre-registered falsifier fired (14 Sep): F1 0.627, not
+  adopted; rho -0.60.
+- **transfer_s1** (31 Aug–7 Sep): bridge gate passed, arms S (72), M (72)
+  and L banked, licensed reading in `RESULTS_M.md` and `RESULTS_L.md`.
+- **Checkpoint/resume with full optimiser state** (4 Sep, `884aa0f`),
+  bit-identical on CUDA; events.jsonl trimmed to the checkpoint on resume.
+- **`mtsweep --shard K/N`** (5 Sep) to split an arm across VMs.
+- **Colab runner** (Sep): relays partial checkpoints across the
+  60-minute session prune, verifies the resume restore before launch,
+  chunked idempotent uploads, re-adopts orphaned VMs
+  (`tools/colab_adopt.py`) and refreshes the session key.
+- **Docs:** `ROADMAP.md` is the single list of open work; the in-flight,
+  backlog and handoff pages are retired (9 Oct).
+
 ### Added
 - **CUDA B2.2 (partial): masked attention softmax on-device** — fused
   (causal/block) and swa (window+sinks) forward kernels plus one shared
