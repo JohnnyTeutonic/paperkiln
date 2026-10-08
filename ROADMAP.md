@@ -7,14 +7,11 @@ where one of those documents carries a plan, this file wins.*
 
 ## 1. Now
 
-1. **The transfer paper goes to *Machine Learning* (Springer, MLJ).** The
-   venue was chosen on 9 Oct 2026 from about 35 journals, checked against
-   their recent issues. The MLJ package is in the root repository at
-   `AI_ML/transfer_prereg/mlj/`: the manuscript, the contribution information
-   sheet, the cover letter and the Codex reviews. The supplement was rebuilt
-   and verifies. Remaining: the claim revision that the Codex hostile review
-   asks for (seven points, listed in `PORTFOLIO.md`), then a second hostile
-   pass, then submission.
+1. **The transfer paper is under submission at *Machine Learning*
+   (Springer), submitted 9 Oct 2026.** Nothing to do until the editor
+   replies. The named follow-up is Study 3, a crossed width x learning-rate
+   design (about 45 L4-hours), which is also the natural material for a
+   revision.
 2. **Re-run Atlas Stages 2–3 with `rope_heads=all`.** Nine findings carry
    an UNDER REVIEW note (record: [`docs/ROPE_HEADS.md`](docs/ROPE_HEADS.md)).
    S2-heads-null and S3-ctx-null are directly suspect.
