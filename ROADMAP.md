@@ -24,14 +24,12 @@ where one of those documents carries a plan, this file wins.*
      <new atlas_rows.jsonl>`, then supersede or confirm each row;
    - add the under-review status to `atlas/FINDINGS.md` and to the Stage 2
      and Stage 3 write-ups.
-3. **sparse_s1_longbudget: running (launched 10 Oct 2026, due 20 Oct).**
-   Amendment 1 (pre-data, author-approved) set `checkpoint_every` to 400;
-   nothing else changed. 20 runs on three L4 sessions (`lb0`–`lb2`, the
-   sweep sharded by run index), drivers' logs in
-   `/mnt/c/ml_artifacts/transfer/longbudget*_driver.log`; about 1 s/step,
-   so about 3.3 hours per run and two waves. When all 20 are banked: copy
-   receipts into `experiments/sparse_s1_longbudget/receipts/`, run the
-   frozen `analyze.py`, write `RESULTS.md`, add the registry row.
+3. **sparse_s1_longbudget: done (10 Oct 2026).** All 20 runs banked; the
+   frozen analysis returned "not supported / not supported": no second
+   crossing through 12000 steps, the overfit-order condition fails (2/10),
+   and the undetermined zone closes at b=4000. Results in
+   `experiments/sparse_s1_longbudget/RESULTS.md`; registry row
+   S1f-longbudget-monotone.
 
 ## 2. Decisions waiting on Jonathan
 
