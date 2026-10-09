@@ -1,0 +1,62 @@
+{
+  "base": {
+    "arch": {
+      "preset": "llama-tiny",
+      "custom": {},
+      "rope_heads": "all"
+    },
+    "data": {
+      "corpus": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/transformer_cpp/data/tinystories-txt/train-0-small.txt",
+      "vocab": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/transformer_cpp/releases/chat7b.gguf",
+      "vocab_cap": 4096,
+      "T": 128
+    },
+    "train": {
+      "steps": 400,
+      "eval_every": 100,
+      "checkpoint_every": 100000,
+      "gradmap_every": 0
+    },
+    "export": {
+      "formats": []
+    }
+  },
+  "factors": {
+    "arch.custom.d": [
+      128,
+      192
+    ],
+    "arch.custom.layers": [
+      2,
+      4
+    ],
+    "arch.custom.heads": [
+      4,
+      8
+    ],
+    "data.T": [
+      128,
+      256
+    ],
+    "train.lr": [
+      0.001,
+      0.003
+    ],
+    "train.batch": [
+      2,
+      4
+    ],
+    "train.optimizer": [
+      "adamw",
+      "muon"
+    ]
+  },
+  "design": "pb12",
+  "seeds": [
+    1,
+    2,
+    3
+  ],
+  "out_root": "/home/jonat/atlas_rope_all/stage2",
+  "_comment": "Atlas Stage 2 re-run with RoPE on every head (arch.rope_heads = \"all\"). Identical to experiments/atlas_stage2/sweep.json in every other field; the original rows were produced with RoPE on the first head only (docs/ROPE_HEADS.md). Verdicts per finding: tools/reproduce.py <id> --check-only --rows <out_root>/atlas_rows.jsonl."
+}
