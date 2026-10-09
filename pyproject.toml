@@ -1,14 +1,14 @@
 # pip install . builds the C++ extension via scikit-build-core + CMake.
-# NOTE (REPO_CHANGE_NAMES_FOR_GITHUB.txt): the distribution name will
-# change when the repos are renamed; verify PyPI availability then.
+# The distribution is paperkiln; the import names stay microtorch/_microtorch.
+# The PyPI name is not yet claimed.
 # Nothing here publishes — the wheels workflow builds artifacts only.
 [build-system]
 requires = ["scikit-build-core>=0.9", "pybind11>=2.12"]
 build-backend = "scikit_build_core.build"
 
 [project]
-name = "microtorch"
-version = "0.2.0"
+name = "paperkiln"
+version = "0.3.0"
 description = "Paste an arXiv ID, get a model you can chat with — a readable C++ LLM training stack with provenance-carrying paper extraction"
 readme = "README.md"
 license = { text = "MIT" }
@@ -29,6 +29,7 @@ wheel.packages = ["python/microtorch"]
 build.targets = ["_microtorch"]
 
 [tool.cibuildwheel]
+test-requires = ["numpy"]
 build = "cp310-* cp311-* cp312-*"
 skip = "*-musllinux* *-win32 *-manylinux_i686"
 test-command = "python -c \"import _microtorch as mt; import numpy as np; x = mt.tensor(np.ones((2,3), dtype=np.float32), requires_grad=True); mt.backward(mt.ops.mean(x)); assert x.grad.shape == (2,3); print('wheel smoke OK')\""

@@ -64,13 +64,13 @@ jobs:
       - name: Create source archive
         run: |
           VERSION=${GITHUB_REF#refs/tags/}
-          tar -czf microtorch-${VERSION}.tar.gz \
+          tar -czf paperkiln-${VERSION}.tar.gz \
             --exclude=build \
             --exclude=.git \
             --exclude=.env \
             --exclude=models \
             .
-          sha256sum microtorch-${VERSION}.tar.gz > microtorch-${VERSION}.tar.gz.sha256
+          sha256sum paperkiln-${VERSION}.tar.gz > paperkiln-${VERSION}.tar.gz.sha256
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
 
       - name: Generate release notes
@@ -78,61 +78,22 @@ jobs:
         run: |
           VERSION=${GITHUB_REF#refs/tags/}
           cat > release_notes.md << 'EOF'
-          # microtorch $VERSION
+          # paperkiln $VERSION
 
-          ## What's New
-          - See [CHANGELOG.md](CHANGELOG.md) for detailed changes
+          Changes: see CHANGELOG.md. Building, the chat quickstart and the studio: see README.md.
+          Open work: see ROADMAP.md.
 
-          ## Build & Test Status
-          - ✅ All tests passing
-          - ✅ Gradient checks verified
-          - ✅ Benchmarks validated
-
-          ## Installation
-
-          ### From Source
+          ## From source
           ```bash
-          tar xzf microtorch-$VERSION.tar.gz
-          cd microtorch
-          mkdir build && cd build
-          cmake .. && make -j4
-          ctest
+          mkdir paperkiln-$VERSION && tar xzf paperkiln-$VERSION.tar.gz -C paperkiln-$VERSION
+          cd paperkiln-$VERSION && mkdir build && cd build
+          cmake .. && make -j4 && ctest
           ```
 
-          ### Verify Integrity
+          ## Verify the archive
           ```bash
-          sha256sum -c microtorch-$VERSION.tar.gz.sha256
+          sha256sum -c paperkiln-$VERSION.tar.gz.sha256
           ```
-
-          ## Key Features
-
-          ### Phase 1: Autograd Foundation
-          - Reverse-mode differentiation on DAG tape
-          - Every op finite-difference gradient-checked in CI
-          - SafeTensors model loading and saving (HF round-trip)
-          - GPT-2 parity verification
-
-          ### Phase 2: Llama-Family Models
-          - RMSNorm + RoPE support
-          - Qwen 1.5-1.8B verification
-          - End-to-end model compatibility
-
-          ### Phase 3: Novel Mechanisms
-          - **Kimi Linear Attention**: O(n·d²) complexity, 8.88x speedup
-          - **Cerebellum Gating**: Dynamic token routing, 20-40% speedup
-          - **Mamba State-Space**: O(1) inference memory
-
-          ## Documentation
-          - [README.md](README.md) - Quick start and overview
-          - [CONTRIBUTING.md](CONTRIBUTING.md) - Development guidelines
-          - [PHASE_3_SUMMARY.md](PHASE_3_SUMMARY.md) - Detailed mechanism descriptions
-
-          ## Testing
-          All test suites passing:
-          - ✅ Gradient checks (9/9)
-          - ✅ Unit tests (cerebellum 4/4, mamba 4/4)
-          - ✅ Integration tests (phase 3 unified)
-          - ✅ Benchmarks (attention, mamba comparisons)
 
           ## Contributors
           - Jonathan Reich (@JohnnyTeutonic)
@@ -144,8 +105,8 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            microtorch-${{ env.VERSION }}.tar.gz
-            microtorch-${{ env.VERSION }}.tar.gz.sha256
+            paperkiln-${{ env.VERSION }}.tar.gz
+            paperkiln-${{ env.VERSION }}.tar.gz.sha256
           body_path: release_notes.md
           draft: false
           prerelease: false

@@ -242,6 +242,9 @@ add_test(NAME word_tokenizer COMMAND test_word_tokenizer)
 # fetched at configure time so no vendored copy lives in-tree.
 option(MICROTORCH_BUILD_PYTHON "Build the pybind11 Python module" OFF)
 if(MICROTORCH_BUILD_PYTHON)
+    # The extension is a shared object, so the static libraries it links
+    # must be position-independent.
+    set_target_properties(microtorch transformer_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
     include(FetchContent)
     FetchContent_Declare(pybind11
         GIT_REPOSITORY https://github.com/pybind/pybind11.git
@@ -249,4 +252,7 @@ if(MICROTORCH_BUILD_PYTHON)
     FetchContent_MakeAvailable(pybind11)
     pybind11_add_module(_microtorch python/bindings.cpp)
     target_link_libraries(_microtorch PRIVATE microtorch)
+    # scikit-build-core packs whatever is installed; the extension sits at
+    # the wheel root beside the pure-python microtorch package.
+    install(TARGETS _microtorch LIBRARY DESTINATION .)
 endif()

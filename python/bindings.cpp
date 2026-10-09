@@ -87,7 +87,8 @@ PYBIND11_MODULE(_microtorch, mod) {
     ops_mod.def("dropout", &ops::dropout, py::arg("x"), py::arg("p"), py::arg("seed"));
     ops_mod.def("clip_grad_norm", &ops::clip_grad_norm, py::arg("params"), py::arg("max_norm"));
     ops_mod.def("kimi_attention", &ops::kimi_attention,
-                py::arg("q"), py::arg("k"), py::arg("v"), py::arg("causal") = true);
+                py::arg("q"), py::arg("k"), py::arg("v"), py::arg("causal") = true,
+                py::arg("seq_len") = 0);
 
     // ---- layers ----
     auto nn_mod = mod.def_submodule("nn", "layer zoo over the op set");

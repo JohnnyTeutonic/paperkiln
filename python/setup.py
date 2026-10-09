@@ -47,7 +47,7 @@ class CMakeBuild(build_ext):
 
 
 setup(
-    name="microtorch",
+    name="paperkiln",
     version="0.3.0",
     description="Research-grade autograd + novel attention mechanisms",
     author="Jonathan Reich",
