@@ -51,6 +51,20 @@ jobs:
       - name: Run benchmark tests
         run: cd build && ./phase3_integration
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Python tests (extractor, chat server, RoPE heads, model card)
+        run: |
+          python3 -m pip install --quiet pytest
+          MTSTUDIO_BIN=build/mtstudio python3 -m pytest -q \
+            papers/test_fetch.py tests/test_mtstudio_chat.py \
+            tests/test_rope_heads.py tools/test_model_card.py
+
+      - name: paperkiln-fetch matches papers/fetch.py
+        run: python3 tools/sync_fetch_pkg.py --check
+
   coverage:
     name: Code Coverage
     runs-on: ubuntu-latest
