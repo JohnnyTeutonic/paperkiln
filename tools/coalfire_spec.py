@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""paperkiln spec.json -> coalfire.cpp transformer_config.json (workstream C2).
+"""paperkiln spec.json -> coalfire.cpp transformer_config.json (workstream C4).
 
 The point of this tool is NOT convenience. It is that a cross-engine
 comparison is only evidence if the two configurations mean the same

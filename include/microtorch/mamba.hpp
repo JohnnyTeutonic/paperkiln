@@ -1,6 +1,6 @@
 #pragma once
 // Phase 3c: Mamba State-Space Model
-// Alternative to transformers: RNN-like recurrence with parallel training
+// Alternative to transformers: an RNN-like recurrence trained through time
 //
 // Reference: Mamba paper (2024), S4 family foundation
 // Core equation: dx/dt = A·x + B·u
@@ -9,7 +9,7 @@
 // Key advantages:
 // - O(n) inference complexity (vs O(n²) for standard attention)
 // - O(1) memory per step (no attention matrix)
-// - Parallel training via parallel scan algorithm
+// - Training through time by a sequential scan (no parallel scan yet)
 // - Better efficiency on long sequences
 //
 // Structure:

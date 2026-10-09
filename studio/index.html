@@ -810,7 +810,7 @@ function chatSend() {
   }).then(r => r.json())
     .then(j => chatLine("model", j.reply || JSON.stringify(j)))
     .catch(() => chatLine("model",
-      "(no server at " + $("c-ep").value + " — start tinyllama_server " +
+      "(no server at " + $("c-ep").value + " — start mtstudio chat <run> or tinyllama_server " +
       "on your exported gguf first)"))
     .finally(() => { $("c-send").disabled = false; $("c-msg").focus(); });
 }

@@ -48,8 +48,8 @@ remaining compatible with Hugging Face checkpoints, and with a measured
 habit of publishing its negatives next to its wins.
 
 **The core engine — tape, ops, layers, Llama family, quant, GGUF — is under
-4,000 lines. The entire stack (studio, run driver, arXiv fetcher, 16 CI-gated
-test suites) stays readable end to end. No CUDA required (T4-validated when
+4,000 lines. The entire stack (studio, run driver, arXiv fetcher, 22 CTest
+suites and four Python test suites, all run in CI) stays readable end to end. No CUDA required (T4-validated when
 you want it). Builds in under two minutes.**
 
 ## Finding your way around
@@ -119,9 +119,10 @@ Minimal autograd engines are a well-populated genre. Six things here are not:
    cells, findings published with effect sizes and standard errors — including
    the finding that its own best-cell ranking was inside seed noise while the
    designed contrasts ran 6–10σ. The registry
-   ([atlas/FINDINGS.md](atlas/FINDINGS.md)) currently holds **19 claims —
-   including 3 published retractions and 3 supersessions** — every row with
-   its receipts, reproducible via `python tools/reproduce.py <id>`. Labs
+   ([atlas/FINDINGS.md](atlas/FINDINGS.md)) currently holds **22 claims —
+   including 3 published retractions and 3 supersessions**, with nine Stage 2–3
+   rows marked under review after the RoPE head-coverage fix
+   ([docs/ROPE_HEADS.md](docs/ROPE_HEADS.md)) — every row with its receipts, reproducible via `python tools/reproduce.py <id>`. Labs
    that never retract anything aren't more careful; they're less honest
    about resolution.
 
@@ -133,7 +134,7 @@ The extractor now ships standalone — no C++ build, no repo checkout:
 pip install paperkiln-fetch          # (PyPI upload pending; until then:
                                      #  pip install ./paperkiln_fetch)
 paperfetch 1706.03762                # evidence-carrying summary
-paperfetch 2302.13971 --  -hf cfg.json
+paperfetch 2302.13971 --emit-hf cfg.json
 ```
 
 `--emit-hf` writes a config that `transformers.AutoConfig.from_pretrained`
@@ -141,7 +142,7 @@ opens directly — llama- or gpt2-family, chosen from the extracted flavors
 — with every value's evidence snippet and every declared default riding
 inside it under the `_paperkiln` key. A Hugging Face config with
 citations built in. Package source: [paperkiln_fetch/](paperkiln_fetch/)
-(vendors `papers/fetch.py` verbatim; drift is CI-checkable via
+(vendors `papers/fetch.py` verbatim; CI fails on drift via
 `python tools/sync_fetch_pkg.py --check`).
 
 ## The crossing theorem — and the zone where no experiment can answer
@@ -289,7 +290,7 @@ set of test questions.
 **What to expect from it.** The practice corpus is TinyChat: synthetic
 small talk in eight kinds of exchange (how are you, food, drinks, where
 you went, weather, hobbies, pets, invitations) with a vocabulary of
-about 150 words. A model this small learns those exchanges well: ask it
+259 words and symbols. A model this small learns those exchanges well: ask it
 how it is, what it likes to eat or whether it has a pet, and it answers
 in kind. It knows no facts, cannot do sums and loses the thread over
 several turns; the card's test results show where. TinyChat is used
@@ -302,7 +303,7 @@ Flags for scripted use: `--mode default|train`, `--preset quick|better`,
 their own:
 
 ```bash
-python3 tools/get_tinychat_data.py --dialogues 1500   # corpus + vocabulary GGUF, standard library only
+python3 tools/get_tinychat_data.py --version 2 --dialogues 1500   # corpus + vocabulary GGUF, standard library only
 ./build/mtstudio run specs/tinychat-quick.json          # train
 python3 tools/model_card.py runs/tinychat-quick --probe # the card
 ./build/mtstudio chat runs/tinychat-quick --port 8080   # chat page + POST /chat
@@ -392,9 +393,10 @@ polls every two seconds while training proceeds.
   The diagram redraws, the evidence view is one click away, ▶ train runs in
   the same tab, and the exported `.safetensors`/`.gguf` end as download
   links.
-- **Chat** — talks to `tinyllama_server`'s `/chat` API: the GGUF this page
-  just exported, served by a separately written engine, answering in the
-  same tab. The whole paper → config → train → export → **chat** loop is one
+- **Chat** — talks to any server with the `/chat` API, either the built-in
+  `mtstudio chat <run>` or ember.cpp's `tinyllama_server` serving the GGUF this
+  page just exported, answering in the same tab (set the endpoint field to
+  its address). The whole paper → config → train → export → **chat** loop is one
   page.
 
 ### Custom configuration — the spec format
@@ -411,7 +413,7 @@ yourself and pick the attention mechanism.
     "rope_heads": "all",              // llama: RoPE on every head (default for new runs); "first" = head 0 only, how runs that recorded no rope_heads were trained and still load
     "custom": {                       // overrides the preset field-by-field
       "d": 256, "layers": 4, "heads": 8,
-      "attention": "srd"              // exact | kimi | srd
+      "attention": "srd"              // exact | swa | kimi | srd (attnres: the attnres-tiny preset)
     }
   },
   "data": {
@@ -486,9 +488,9 @@ can consume a run.
 | CUDA dispatch seam | ✅ | `device::matmul` → `cuda::matmul`; suites **pass on a T4** |
 | **Kimi linear attention** | ✅ | O(n·d²) vs O(n²·d); drop-in `KimiLinearAttention` |
 | **Cerebellum selective gating** | ✅ | Prediction-residual gating; skips compute on routine tokens |
-| **Mamba / S4 state-space** | ✅ | Trainable through time: `ssm_scan` tape op, BPTT FD-gradchecked |
+| **Mamba / S4 state-space** | ✅ | Trainable through time: `ssm_scan` tape op, BPTT FD-gradchecked; a linear time-invariant SSM with a sequential scan (no input-dependent selection yet) |
 | **Surprise-routed density (SRD)** | 🧪 | Falsifier passed 5-6σ twice; gate concentrates on retrieval sites (5x replicated). Recall claim **failed replication and the negative is published** — [docs/SPARSE_ATTENTION.md](docs/SPARSE_ATTENTION.md) |
-| GPU kernels | 🧪 | matmul dispatches to transformer_core CUDA; phase B = resident tensors |
+| GPU kernels | 🧪 | CUDA Phase B complete: resident tensors, the device op set and on-device optimizer state, T4/L4-validated on Colab (not in CI); full deferred downloads still crash inside mtstudio ([docs/CUDA_PHASE_B2.md](docs/CUDA_PHASE_B2.md), D1) |
 
 ## Train something (C++)
 
@@ -568,8 +570,9 @@ layer via `std::function` — no changes to the wrapped code.
 Discrete state-space recurrence `x[t+1] = A·x[t] + B·u[t]` as a drop-in sequence
 backbone: O(1) memory per generated token instead of a growing KV cache.
 Trainable through time — `ssm_scan` is a tape op with BPTT verified against
-finite differences on all five inputs. The hardware-parallel scan is the next
-milestone (see [docs/DESIGN.md](docs/DESIGN.md)).
+finite differences on all five inputs. The SSM is linear time-invariant (no
+Mamba-style input-dependent selection) and the scan is sequential; a selective,
+parallel scan is on the [roadmap](ROADMAP.md).
 
 ### Surprise-routed density — [srd.hpp](include/microtorch/srd.hpp)
 
@@ -631,7 +634,8 @@ corrected records alongside live ones. **`reproduce` makes replication a
 one-command verb**: cost quoted up front from the original run's own
 wall-clock receipts, fresh out_root, machine-checked verdict against the
 registered effect. All six checkable findings verify against their own
-committed rows.
+committed rows; the nine Stage 2–3 rows produced before the RoPE head-coverage
+fix are under review ([docs/ROPE_HEADS.md](docs/ROPE_HEADS.md)).
 
 **Stage 3 is complete**: a full 2⁴ factorial on the survivors
 ({optimizer, context, lr, d} × 3 seeds, 48 runs) with **token-matched
@@ -652,7 +656,9 @@ Nothing merges without:
 4. **Falsifiers for research claims** — every novel mechanism ships with the
    experiment that would kill it, and the result is published either way.
 
-CI runs the full suite (plus cppcheck, clang-format, Valgrind) on every push —
+CI builds and runs the CTest and Python suites and checks formatting with
+clang-format on every push; cppcheck and Valgrind run as advisory steps that do
+not fail the build —
 see [.github/workflows](.github/workflows). API documentation is generated by
 Doxygen (`doxygen docs/Doxyfile` → docs/html/) and published to GitHub Pages by
 the docs workflow.
@@ -717,8 +723,9 @@ contribution is the part nobody else ships: **provenance**. Every extracted
 field carries the evidence that produced it (the table cell, the sentence,
 the equation it was read from), every unresolved field is surfaced loudly
 instead of silently defaulted, and a wrong assertion is treated as a bug,
-not a rounding error — the flavor benchmark's standing record is zero wrong
-assertions, enforced by an abstention-first scorer. Free-form code
+not a rounding error — the scorer abstains rather than guesses, and every
+wrong assertion it has made is registered with its diagnosis and a named fix
+(three on the 40-paper bench). Free-form code
 generation produces plausible architectures; evidence-linked extraction
 produces *auditable* ones. That difference is the tool.
 
@@ -777,7 +784,9 @@ bit-identical to before. `-DMICROTORCH_CUDA=ON` compiles transformer_core's
 kernel tree and `device::set(Device::CUDA)` (or `MICROTORCH_DEVICE=cuda`)
 dispatches to `cuda::matmul`. Validation runs the same gradcheck suite on GPU —
 [tools/colab_cuda_validate.sh](tools/colab_cuda_validate.sh). Phase B (resident
-device memory instead of per-call round trips) is the next CUDA milestone.
+device memory, the device op set and on-device optimizer state) is complete and
+T4-validated; full deferred downloads still crash inside mtstudio
+([docs/CUDA_PHASE_B2.md](docs/CUDA_PHASE_B2.md), defect D1).
 
 ## Repository layout
 
@@ -796,12 +805,18 @@ include/microtorch/   public headers (one concern per header)
   safetensors.hpp     HF checkpoint load/save
 src/                  implementations
 tools/                mtstudio (the run driver), parity checkers, benchmarks
-studio/               the dashboard — one self-contained HTML file
+studio/               the dashboard (index.html), Atlas viewer (atlas.html), chat page (chat.html)
+web/chat/             zero-server browser chat engine (plain JavaScript)
 specs/                example run specs
 papers/               arXiv → architecture fetcher + offline fixture tests
+paperkiln_fetch/      the fetcher as a standalone pip package
+atlas/                findings registry, charter, Stage 2–3 write-ups
+registry/             architecture archaeology entries (highway networks)
+experiments/          one directory per pre-registered study, with receipts
 tests/                gradchecks + unit tests (all in CI)
-python/               pybind11 bindings
-docs/                 Doxygen config (make docs)
+python/               pybind11 bindings (the paperkiln wheel)
+third_party/          vendored transformer_core and cpp-httplib
+docs/                 design docs, records, decisions, Doxygen config
 ```
 
 ## Roadmap

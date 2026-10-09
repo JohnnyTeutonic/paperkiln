@@ -77,6 +77,12 @@ python tools/hf_export.py <out_dir> --hf-dir <out_dir>/hf
 python tools/hf_chat.py <out_dir>/hf
 ```
 
+Llama-family runs trained before 6 October 2026 record no `arch.rope_heads` and rotate
+only the first attention head. `hf_export.py` refuses such runs with more than one head
+unless `--allow-legacy-rope` is given, because `transformers` applies RoPE to every head
+and will not reproduce them exactly; retrain them (new runs default to `"all"`). See
+[ROPE_HEADS.md](ROPE_HEADS.md).
+
 The run prints the ember.cpp command at the end, writes an `events.jsonl`
 you can drop onto `studio/index.html` to watch the loss curve and the
 per-layer gradient norms, and exports the same two artefacts you have

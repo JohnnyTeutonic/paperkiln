@@ -11,6 +11,8 @@ A run is one file; these are known-good starting points. Copy one, point
 
 | Spec | What it demonstrates |
 |---|---|
+| [tinychat-quick.json](tinychat-quick.json) | The chat quickstart's Quick model: llama-tiny on TinyChat v2 (about 450,000 parameters, about 10 minutes on a laptop CPU) |
+| [tinychat-better.json](tinychat-better.json) | The quickstart's Better model: llama family at d=192, 3 layers, 6 heads (several hours on a CPU) |
 | [tinystories-nano.json](tinystories-nano.json) | The 5-minute smoke: gpt2-nano, 200 steps, safetensors out |
 | [tinystories-llama.json](tinystories-llama.json) | The full loop: llama-tiny + early stopping + GGUF with embedded vocab, ready for tinyllama.cpp |
 | [tinystories-llama-3k.json](tinystories-llama-3k.json) | The syntax run: 3,000 steps, batch+accum, val 4.64→3.68 (transcript in the README) |
