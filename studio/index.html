@@ -625,8 +625,16 @@ function buildSpec() {
   drawArchDiagram();
   return txt;
 }
+// Once the form is edited (or filled from a paper), the Train button
+// trains this page's spec instead of the one armed at launch.
+let specEdited = false;
+function markEdited() {
+  specEdited = true;
+  const b = document.getElementById("train");
+  if (b && !b.disabled) b.textContent = "\u25B6 train this spec";
+}
 document.querySelectorAll(".form input, .form select")
-  .forEach(el => el.addEventListener("input", buildSpec));
+  .forEach(el => el.addEventListener("input", () => { buildSpec(); markEdited(); }));
 document.getElementById("b-dl").addEventListener("click", () => {
   const blob = new Blob([buildSpec()], { type: "application/json" });
   const a = document.createElement("a");
@@ -717,6 +725,7 @@ function applyArch(cfg) {
       ? "llama-tiny" : "gpt2-nano";
   applyArch.approx = approx;
   buildSpec();
+  markEdited();
   // Architecture preview through the node graph: one uniform node per
   // module the extracted config implies. Real glow arrives with grads.
   const grads = { wte: 1, wpe: 1 };
@@ -813,17 +822,23 @@ if (location.protocol.startsWith("http")) {
   setInterval(poll, 2000);
   $("paper").style.display = "";   // server-side fetch needs serve mode
   $("atlas-link").style.display = "";
-  // Served with an armed spec? Show the in-page Train button — the whole
-  // demo drives from the browser, no terminal commands.
+  // The in-page Train button: trains the spec armed at launch, or, once
+  // the form has been edited or filled from a paper, this page's spec.
+  const b = $("train");
+  b.style.display = "";
+  b.onclick = () => fetch("train", { method: "POST", body: specEdited ? buildSpec() : "" })
+    .then(r => r.text()).then(t => {
+      b.textContent = t;
+      if (t.startsWith("training") || t === "run complete") b.disabled = true;
+      if (t.startsWith("training")) $("gen-panel").style.display = "";
+    });
   fetch("spec").then(r => {
-    if (!r.ok) return;
-    const b = $("train");
-    b.style.display = "";
-    b.onclick = () => fetch("train", { method: "POST" })
-      .then(r => r.text()).then(t => {
-        b.textContent = t;
-        if (t !== "no spec armed") b.disabled = true;
-      });
+    if (!r.ok) {
+      if (!specEdited) b.textContent = "\u25B6 train this spec";
+      specEdited = true;   // nothing armed: the page's spec is the only one
+      return;
+    }
+    if (!specEdited) b.textContent = "\u25B6 train armed spec";
     // Armed spec also means the server can sample the trained model.
     $("gen-panel").style.display = "";
     $("g-go").onclick = () => {

@@ -1241,13 +1241,18 @@ int serve_ui(const std::string& out_dir, int port, const std::string& ui_path,
     plain_errors(svr);
 
     // The in-page Train button: POST /train launches this binary as
-    // "mtstudio run <spec>" with output logged into out_dir. One run at
-    // a time; state is reaped non-blockingly per request. POST /fetch
+    // "mtstudio run <spec>" with output logged into out_dir. The body, when
+    // present, is the spec the page built (form edits or an extracted
+    // paper): it is checked with parse_spec, its out_dir is set to the
+    // served out_dir so the live view follows the run, and it is written to
+    // out_dir/train_spec.json. An empty body trains the armed spec. One run
+    // at a time; state is reaped non-blockingly per request. POST /fetch
     // launches papers/fetch.py the same way (the drag-an-arXiv-id flow).
     // Handlers run on httplib's worker threads: `mu` guards this state.
     std::mutex mu, sample_mu;
     Child run_child, fetch_child;
     bool run_finished = false, fetch_failed = false;
+    std::string trained_spec = spec_path;  // what /sample reads: the last spec trained
     svr.set_pre_routing_handler([&](const httplib::Request&, httplib::Response&) {
         std::lock_guard<std::mutex> lk(mu);
         if (reap(run_child, nullptr)) run_finished = true;
@@ -1256,16 +1261,36 @@ int serve_ui(const std::string& out_dir, int port, const std::string& ui_path,
         return httplib::Server::HandlerResponse::Unhandled;
     });
 
-    svr.Post("/train", [&](const httplib::Request&, httplib::Response& res) {
+    svr.Post("/train", [&](const httplib::Request& req, httplib::Response& res) {
         std::lock_guard<std::mutex> lk(mu);
-        if (spec_path.empty()) {
-            text_reply(res, 409, "no spec armed (serve <dir> <port> <spec>)");
-        } else if (run_child.running()) {
+        if (run_child.running()) {
             text_reply(res, 200, "training…");
+            return;
+        }
+        std::string to_run = spec_path;
+        if (!req.body.empty()) {
+            // The page's spec: validate, pin its out_dir, write it beside the run.
+            const std::string path = out_dir + "/train_spec.json";
+            try {
+                json j = json::parse(req.body, nullptr, true, /*ignore_comments=*/true);
+                if (!j.is_object()) throw std::runtime_error("spec must be a JSON object");
+                j["out_dir"] = out_dir;
+                std::ofstream(path, std::ios::trunc) << j.dump(2) << "\n";
+                parse_spec(path);
+            } catch (const std::exception& e) {
+                text_reply(res, 400, std::string("spec rejected: ") + e.what());
+                return;
+            }
+            to_run = path;
+            run_finished = false;
+        }
+        if (to_run.empty()) {
+            text_reply(res, 409, "no spec armed (serve <dir> <port> <spec>)");
         } else if (run_finished) {
             text_reply(res, 200, "run complete");
         } else {
-            const bool ok = spawn(run_child, {self, "run", spec_path}, out_dir + "/run.log");
+            const bool ok = spawn(run_child, {self, "run", to_run}, out_dir + "/run.log");
+            if (ok) trained_spec = to_run;
             text_reply(res, 200, ok ? "training…" : "fork failed");
         }
     });
@@ -1302,7 +1327,12 @@ int serve_ui(const std::string& out_dir, int port, const std::string& ui_path,
         // `mtstudio sample` path in-process (a tiny model on CPU answers
         // in seconds), one request at a time; ember.cpp and `mtstudio
         // chat` are the real servers.
-        if (spec_path.empty()) {
+        std::string spec_now;
+        {
+            std::lock_guard<std::mutex> lk(mu);
+            spec_now = trained_spec;
+        }
+        if (spec_now.empty()) {
             text_reply(res, 409, "no spec armed (serve <dir> <port> <spec>)");
             return;
         }
@@ -1311,7 +1341,7 @@ int serve_ui(const std::string& out_dir, int port, const std::string& ui_path,
         std::remove(sf.c_str());
         std::string log;
         try {
-            sample_cmd(parse_spec(spec_path), req.body.empty() ? "once upon a time" : req.body, 40,
+            sample_cmd(parse_spec(spec_now), req.body.empty() ? "once upon a time" : req.body, 40,
                        0.8f, 40, 1234, sf);
             log = "ok\n";
         } catch (const std::exception& e) {
