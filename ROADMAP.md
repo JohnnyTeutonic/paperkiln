@@ -12,25 +12,26 @@ where one of those documents carries a plan, this file wins.*
    replies. The named follow-up is Study 3, a crossed width x learning-rate
    design (about 45 L4-hours), which is also the natural material for a
    revision.
-2. **Re-run Atlas Stages 2–3 with `rope_heads=all`.** Nine findings carry
-   an UNDER REVIEW note (record: [`docs/ROPE_HEADS.md`](docs/ROPE_HEADS.md)).
-   S2-heads-null and S3-ctx-null are directly suspect.
-   - Run the corrected design with `tools/reproduce.py --rope-heads all`.
-   - Then supersede or confirm each row.
-   - Add the under-review status to `atlas/FINDINGS.md` and to the
-     Stage 2 and Stage 3 write-ups, which do not show it yet.
-3. **sparse_s1_longbudget, due 20 Oct 2026.** It is pre-registered and
-   parked, at 0 of 20 runs. As configured, 12000-step runs with
-   `checkpoint_every: 1000000` cannot survive Colab's session cap.
-   - The author writes an amendment that enables checkpoints and changes
-     nothing else.
-   - Then launch per `AGENTS.md`.
-   - Budget from the CUDA measurements, not from the pre-registration's
-     estimate (~16 min per run, ~5 GPU-hours in all). The measured pace at
-     this shape is about 0.8 s/step, both for one cell on a T4 and for
-     four concurrent cells on an L4. That makes each 12000-step run about
-     2.7 hours, and the whole study five waves of four runs, roughly 14
-     hours of sessions relayed through checkpoints.
+2. **Atlas Stages 2–3 with `rope_heads=all`: running (started 10 Oct
+   2026).** The two designs re-run unchanged except for RoPE on every head
+   (`experiments/atlas_stage{2,3}_rope_all/sweep.json`; 84 runs, local WSL
+   CPU, 3 jobs x 1 thread, about 18–19 hours; outputs in
+   `~/atlas_rope_all/`, resumable with `~/atlas_rope_all.sh`). Nine findings
+   carry an UNDER REVIEW note ([`docs/ROPE_HEADS.md`](docs/ROPE_HEADS.md));
+   S2-heads-null and S3-ctx-null are directly suspect. When it finishes:
+   - copy the rows and receipts into those experiment folders;
+   - verdict each finding with `tools/reproduce.py <id> --check-only --rows
+     <new atlas_rows.jsonl>`, then supersede or confirm each row;
+   - add the under-review status to `atlas/FINDINGS.md` and to the Stage 2
+     and Stage 3 write-ups.
+3. **sparse_s1_longbudget: running (launched 10 Oct 2026, due 20 Oct).**
+   Amendment 1 (pre-data, author-approved) set `checkpoint_every` to 400;
+   nothing else changed. 20 runs on three L4 sessions (`lb0`–`lb2`, the
+   sweep sharded by run index), drivers' logs in
+   `/mnt/c/ml_artifacts/transfer/longbudget*_driver.log`; about 1 s/step,
+   so about 3.3 hours per run and two waves. When all 20 are banked: copy
+   receipts into `experiments/sparse_s1_longbudget/receipts/`, run the
+   frozen `analyze.py`, write `RESULTS.md`, add the registry row.
 
 ## 2. Decisions waiting on Jonathan
 
