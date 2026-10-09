@@ -69,22 +69,11 @@ where one of those documents carries a plan, this file wins.*
 
 ## 3. Broken now
 
-- **The chat quickstart's default route returns 404 until the `chat-v1`
-  release exists.** The bundle is built and verified
-  (`~/release/tinychat-v2-web.tar.gz` in WSL: llama family, RoPE on every
-  head; the quickstart's default route runs end to end against it). It
-  needs publishing as release `chat-v1` on GitHub, which is the author's
-  call.
-- **Pending a push.** The fixes below are committed locally and verified
-  locally; CI confirms them only once pushed: clang-format clean; the wheel
-  builds and passes its smoke test (binding argument fix, position-independent
-  libraries, install rule, distribution `paperkiln` 0.3.0); the
-  documentation check points at `ROADMAP.md`; the Python suites and the
-  `paperkiln-fetch` drift check run in the test workflow; `test_highway` and
-  `test_deep_swa` run under ctest (22 suites).
-- **Advisory only.** cppcheck (`|| true`) and Valgrind
-  (`continue-on-error`) cannot fail the build. Whether to make them gate is
-  the author's call.
+Nothing known. CI is green on all three workflows (Code Quality, the test
+suite with its Python suites and the fetcher drift check, and the wheel
+build with its smoke test), and the chat-v1 release serves the quickstart's
+ready-made model. One open choice: cppcheck and Valgrind still run as
+advisory steps that cannot fail the build.
 
 ## 4. Research
 
