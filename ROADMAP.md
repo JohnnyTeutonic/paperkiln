@@ -67,58 +67,24 @@ where one of those documents carries a plan, this file wins.*
   (`atlas/PAPER_PLAN.md`, aimed at JMLR, not drafted). The transfer paper
   absorbed much of its argument, including gap G1.
 
-## 3. Broken now (fix before anything new)
+## 3. Broken now
 
-- **The chat quickstart's default route returns 404.** `quickstart_chat.sh`
-  downloads `releases/download/chat-v1/tinychat-v2-web.tar.gz`, but the
-  only GitHub release is `v0.1.1`, with no assets. Publish the `chat-v1`
-  release with the bundle that `tools/package_chat_model.sh` builds. The
-  train-it-yourself route works.
-- **CI.**
-  - Code Quality fails on every run. The clang-format check fails, and
-    `.github/workflows/code-quality.yml:80` requires `PHASE_3_SUMMARY.md`
-    at the root, but the file lives in `docs/history/`. `release.yml`
-    cites the same path and still builds `microtorch-*` tarballs.
-  - Python Wheels fails. The distribution is still named `microtorch`, and
-    the versions disagree (`pyproject.toml` 0.2.0; `setup.py` and
-    `__init__` 0.3.0).
-  - No Python test runs in CI. That includes `papers/test_fetch.py`,
-    `tests/*.py`, `tools/test_*.py` and
-    `experiments/atlas_selection/test_selection.py`.
-  - `test_highway` and `test_deep_swa` are built but never registered with
-    ctest (`CMakeLists.txt` lines 96–100).
-  - cppcheck (`|| true`) and Valgrind (`continue-on-error`) cannot fail
-    the build.
-- **`paperkiln_fetch` has drifted from `papers/fetch.py`.** It lacks the
-  6 Oct residual and attention patterns and `AUX_PATTERNS`. Re-sync with
-  `tools/sync_fetch_pkg.py` and put `--check` in CI.
-- **The studio's ▶ Train button ignores the browser's spec.**
-  `tools/mtstudio.cpp` lines 1258–1270 train the spec armed at launch,
-  not the one edited or extracted in the page.
-- **README.** It disagrees with the code in about seventeen places,
-  chiefly:
-  - It calls CUDA Phase B "next" and says Stage 3 "is running".
-  - It counts 16 test suites; there are 20.
-  - It counts 19 registry claims; there are 22, nine of them under review.
-  - It promises a ready-made model that is not published.
-  - It says the extractor has "zero wrong assertions"; there are three
-    documented ones.
-  - It calls the SSM "Mamba", although it is not selective and has no
-    parallel scan.
-  - It says `paperkiln_fetch` vendors the fetcher verbatim.
-  - It omits `web/`, `atlas/`, `registry/`, `experiments/`,
-    `paperkiln_fetch/` and `tools/synthesis/` from the layout.
-- **Smaller documentation fixes.**
-  - `include/microtorch/mamba.hpp` (lines 3 and 12) claims a parallel scan
-    that does not exist.
-  - `docs/CHAT_WITH_A_PAPERKILN_MODEL.md` describes a pre-fix llama run
-    and omits `--allow-legacy-rope`.
-  - `specs/README.md` omits `tinychat-quick` and `tinychat-better`.
-  - `web/chat/README.md` still calls tinychat-better gpt2-family.
-  - `tools/coalfire_spec.py` calls itself C2; it is C4.
-- **Line endings.** About 180 files show as modified on Windows checkouts
-  with no real change. A `.gitattributes` pass would settle it; at present
-  it covers only `*.sh`.
+- **The chat quickstart's default route returns 404 until the `chat-v1`
+  release exists.** The bundle is built and verified
+  (`~/release/tinychat-v2-web.tar.gz` in WSL: llama family, RoPE on every
+  head; the quickstart's default route runs end to end against it). It
+  needs publishing as release `chat-v1` on GitHub, which is the author's
+  call.
+- **Pending a push.** The fixes below are committed locally and verified
+  locally; CI confirms them only once pushed: clang-format clean; the wheel
+  builds and passes its smoke test (binding argument fix, position-independent
+  libraries, install rule, distribution `paperkiln` 0.3.0); the
+  documentation check points at `ROADMAP.md`; the Python suites and the
+  `paperkiln-fetch` drift check run in the test workflow; `test_highway` and
+  `test_deep_swa` run under ctest (22 suites).
+- **Advisory only.** cppcheck (`|| true`) and Valgrind
+  (`continue-on-error`) cannot fail the build. Whether to make them gate is
+  the author's call.
 
 ## 4. Research
 
