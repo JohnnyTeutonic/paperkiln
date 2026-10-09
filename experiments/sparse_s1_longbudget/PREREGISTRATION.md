@@ -118,3 +118,25 @@ and a basin IS admissible.
 one run relayed at a time). Receipts copy into `receipts/` here on
 completion. Analysis `analyze.py`, committed with this file, run only
 after all 20 result.json exist.
+
+## Amendment 1 (10 October 2026, pre-data: 0 of 20 runs exist)
+
+Execution only; no hypothesis, threshold, decision rule, seed, budget or
+lane changes.
+
+The budget rationale's estimate that a 12000-step run takes about 16
+minutes was wrong. Measured on the adopted CUDA configuration at this
+exact shape (d=256, T=256, two layers, batch 4), the pace is about
+0.8 s/step, so a run takes about 2.7 hours. That exceeds Colab's roughly
+60-minute session limit, so as written no run can finish.
+`checkpoint_every` is therefore set to 400 (it was 1000000), matching
+transfer_s2's d=256 arm, so each run survives a session reclaim through
+the runner's checkpoint relay. Resume restores the full optimiser state
+and was shown bit-identical on the CUDA path (commit 884aa0f), so the
+change cannot alter any number. The 12000-step budget is unchanged, and
+the rationale's rule stands: if neither lane has reached its overfit
+onset by 12000, that is reported as such, not extended.
+
+The runs execute on L4 GPUs across three sessions (the sweep sharded by
+run index), with the CUDA binary built from the repository's master at
+launch; each run's provenance records the build.
