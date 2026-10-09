@@ -41,3 +41,6 @@ docs/xml/
 debugging.log
 *.log
 papers/.cache/
+
+# The chat quickstart downloads the ready-made model here.
+runs/tinychat-default-web/
