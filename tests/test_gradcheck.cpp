@@ -207,8 +207,9 @@ int main() {
         microtorch::backward(
             ops::mean(ops::mul(ops::apply_rope(qk, pos, 10000.0f, 4, all_heads), wgt)));
         const double e = fd_vs_analytic(f, qk, qk->grad);
-        check(e < TOL, all_heads ? "apply_rope H=3 all heads: dqk vs FD"
-                                 : "apply_rope H=3 first head: dqk vs FD",
+        check(e < TOL,
+              all_heads ? "apply_rope H=3 all heads: dqk vs FD"
+                        : "apply_rope H=3 first head: dqk vs FD",
               e);
     }
 

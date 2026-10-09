@@ -22,7 +22,7 @@ std::map<std::string, int> make_vocab(const std::vector<std::string>& toks) {
 
 int main() {
     // Legacy vocabulary: no end-of-text entry -> five pieces, as always.
-    const std::vector<std::string> legacy = {"<unk>", "the", "end", ".", "<",
+    const std::vector<std::string> legacy = {"<unk>", "the", "end",       ".",    "<",
                                              "|",     ">",   "endoftext", "user", ":"};
     const auto lv = make_vocab(legacy);
     CHECK(wordtok::eos_id(lv) == -1);
@@ -43,17 +43,17 @@ int main() {
         const std::vector<int> want = {1, 2, 3, 10, 1};
         CHECK(ids == want);
     }
-    {   // word run right before the marker is flushed first
+    {  // word run right before the marker is flushed first
         const auto ids = wordtok::tokenize("end<|endoftext|><|endoftext|>", ev, 1000);
         const std::vector<int> want = {2, 10, 10};
         CHECK(ids == want);
     }
-    {   // truncated marker at end of text: plain punctuation
+    {  // truncated marker at end of text: plain punctuation
         const auto ids = wordtok::tokenize("end <|endof", ev, 1000);
         const std::vector<int> want = {2, 4, 5, 0};
         CHECK(ids == want);
     }
-    {   // the cap still bounds the output
+    {  // the cap still bounds the output
         const auto ids = wordtok::tokenize("<|endoftext|> the end", ev, 2);
         CHECK(ids.size() == 2 && ids[0] == 10 && ids[1] == 1);
     }

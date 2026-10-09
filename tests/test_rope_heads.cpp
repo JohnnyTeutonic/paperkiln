@@ -147,7 +147,8 @@ int main() {
             double worst = 0;
             for (size_t m = 0; m + 5 < N; ++m)
                 for (size_t n = 0; n + 5 < N; ++n)
-                    worst = std::max(worst, std::abs(score(r, h, m, n) - score(r, h, m + 5, n + 5)));
+                    worst =
+                        std::max(worst, std::abs(score(r, h, m, n) - score(r, h, m + 5, n + 5)));
             return worst;
         };
         auto range = [&](const Matrix& r, size_t h) {  // does the score vary with m - n at all?

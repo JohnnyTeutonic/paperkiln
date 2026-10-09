@@ -29,9 +29,9 @@
 // cpp-httplib (third_party/httplib, MIT): the portable HTTP layer behind
 // `serve` and `chat`. Included before anything that might pull in
 // <windows.h> so its NOMINMAX/winsock ordering wins.
-#include "httplib.h"
 #include <nlohmann/json.hpp>
 #include <regex>
+#include "httplib.h"
 
 #include "microtorch/device.hpp"
 #include "microtorch/device_cache.hpp"
@@ -54,8 +54,8 @@ struct Spec {
     size_t d = 128, layers = 2, heads = 4, T = 128;
     // Paper-faithful flavor knobs (the flex family; empty = family default).
     std::string norm, activation, position;
-    std::string residual;             // "" = family default | residual | highway | plain
-    float gate_bias_init = -2.0f;     // highway only (registry #0001)
+    std::string residual;           // "" = family default | residual | highway | plain
+    float gate_bias_init = -2.0f;   // highway only (registry #0001)
     size_t d_ff = 0;                // 0 = family default (4d gpt2/flex, 3d llama)
     size_t window = 64, sinks = 1;  // swa lane only (S1 baseline)
     // llama family: RoPE on "all" heads or, legacy, the "first" head only.
@@ -66,7 +66,7 @@ struct Spec {
     // data
     std::string corpus, vocab_gguf;
     size_t vocab_cap = 4096;
-    size_t max_tokens = 400000;       // corpus read cap (0 = whole file)
+    size_t max_tokens = 400000;  // corpus read cap (0 = whole file)
     // train
     int steps = 500;
     float lr = 3e-3f, clip = 1.0f, lambda_gate = 0.05f;
@@ -342,18 +342,19 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     std::printf("export: %s%s | serve: %s | out: %s\n", s.exp_safetensors ? "safetensors " : "",
                 s.exp_gguf ? "gguf" : "", s.serve ? "yes" : "no", s.out_dir.c_str());
     if (s.family == "llama")
-        std::printf("rope_heads: %s\n",
-                    s.rope_heads.empty() ? "unstated (all for a new run; a resumed run keeps "
-                                           "its recorded value, first if none)"
-                                         : s.rope_heads.c_str());
+        std::printf("rope_heads: %s\n", s.rope_heads.empty()
+                                            ? "unstated (all for a new run; a resumed run keeps "
+                                              "its recorded value, first if none)"
+                                            : s.rope_heads.c_str());
     if (plan_only) return 0;
     if (s.corpus.empty() || s.vocab_gguf.empty())
         throw std::runtime_error("spec needs data.corpus and data.vocab");
     // Only the kimi/srd parity lanes are depth-fixed; flex and llama take
     // any depth, and attnres wires s.layers into its stack.
     if (s.family == "gpt2" && s.attention != "attnres" && s.layers != 2)
-        throw std::runtime_error("kimi/srd parity lanes: layers must be 2 "
-                                 "(exact/swa at depth ride the flex family)");
+        throw std::runtime_error(
+            "kimi/srd parity lanes: layers must be 2 "
+            "(exact/swa at depth ride the flex family)");
 
     std::filesystem::create_directories(s.out_dir);
     // Resuming = a checkpoint step > 0 in state.txt. A resumed run keeps the
@@ -442,8 +443,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             throw std::runtime_error("unknown residual " + fc.residual +
                                      " (residual | highway | plain)");
         if (fc.attention != "exact" && fc.attention != "swa")
-            throw std::runtime_error("flex attention must be exact or swa, got " +
-                                     fc.attention);
+            throw std::runtime_error("flex attention must be exact or swa, got " + fc.attention);
         flex = std::make_shared<parity::FlexLM>(fc, s.seed);
         if (s.ckpt_act)
             throw std::runtime_error(
@@ -490,27 +490,27 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     const std::string r_pos = flex ? flex->cfg.pos : (llama ? "rope" : "learned");
     const size_t r_dff = flex ? flex->cfg.d_ff : (llama ? llama->cfg.d_ff : 4 * s.d);
     json model_ev = {{"event", "model"},
-             {"family", s.family},
-             {"attention", s.attention},
-             {"d", s.d},
-             {"layers", s.layers},
-             {"heads", s.heads},
-             {"T", s.T},
-             {"norm", r_norm},
-             {"activation", r_act},
-             {"position", r_pos},
-             {"residual", flex ? flex->cfg.residual : "residual"},
-             {"gate_bias_init", flex ? flex->cfg.gate_bias_init : -2.0f},
-             {"window", s.window},
-             {"sinks", s.sinks},
-             {"d_ff", r_dff},
-             {"vocab", tokens.size()},
-             {"batch", s.batch},
-             {"accum", s.accum},
-             {"lr", s.lr},
-             {"seed", s.seed},
-             {"checkpoint_activations", s.ckpt_act},
-             {"params", n_params}};
+                     {"family", s.family},
+                     {"attention", s.attention},
+                     {"d", s.d},
+                     {"layers", s.layers},
+                     {"heads", s.heads},
+                     {"T", s.T},
+                     {"norm", r_norm},
+                     {"activation", r_act},
+                     {"position", r_pos},
+                     {"residual", flex ? flex->cfg.residual : "residual"},
+                     {"gate_bias_init", flex ? flex->cfg.gate_bias_init : -2.0f},
+                     {"window", s.window},
+                     {"sinks", s.sinks},
+                     {"d_ff", r_dff},
+                     {"vocab", tokens.size()},
+                     {"batch", s.batch},
+                     {"accum", s.accum},
+                     {"lr", s.lr},
+                     {"seed", s.seed},
+                     {"checkpoint_activations", s.ckpt_act},
+                     {"params", n_params}};
     if (llama) model_ev["rope_heads"] = rope_heads;
     ev.emit(model_ev);
     nn::Module& model_ref = model_pick;
@@ -765,7 +765,9 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             if (const int e = wordtok::eos_id(vocab); e >= 0) gc.eos_token_id = (uint32_t)e;
             const std::string gpath = s.out_dir + "/" + s.name + ".gguf";
             gguf::export_gguf_llama(gpath, sd2, gc);
-            json xe = {{"event", "export"}, {"format", "gguf"}, {"path", gpath},
+            json xe = {{"event", "export"},
+                       {"format", "gguf"},
+                       {"path", gpath},
                        {"rope_heads", rope_heads}};
             // GGUF llama (rope.dimension_count = d/H) means RoPE on every
             // head; engines reading it reproduce this model only under "all".
@@ -907,7 +909,6 @@ std::vector<int> tokenize(const std::string& text, const std::map<std::string, i
 }
 }  // namespace
 
-
 // ---- M2 live mode + chat: HTTP over cpp-httplib (POSIX and Windows).
 // serve:
 //   GET /              -> the studio UI (index.html)
@@ -998,10 +999,10 @@ struct LoadedLM {
         model().eval();
     }
     nn::Module& model() {
-        return flex      ? static_cast<nn::Module&>(*flex)
-               : attnres ? static_cast<nn::Module&>(*attnres)
-                         : (llama ? static_cast<nn::Module&>(*llama)
-                                  : static_cast<nn::Module&>(*gpt));
+        return flex ? static_cast<nn::Module&>(*flex)
+               : attnres
+                   ? static_cast<nn::Module&>(*attnres)
+                   : (llama ? static_cast<nn::Module&>(*llama) : static_cast<nn::Module&>(*gpt));
     }
     Var forward(const std::vector<int>& ids) {
         if (flex) return flex->forward(ids);
@@ -1389,8 +1390,8 @@ int serve_ui(const std::string& out_dir, int port, const std::string& ui_path,
         if (ends(".log")) ctype = "text/plain; charset=utf-8";
         // Trained-artifact downloads (the page's export links).
         if (ends(".safetensors") || ends(".gguf")) ctype = "application/octet-stream";
-        const bool safe = ctype && name.find('\\') == std::string::npos &&
-                          name.find("..") == std::string::npos;
+        const bool safe =
+            ctype && name.find('\\') == std::string::npos && name.find("..") == std::string::npos;
         const std::string body = safe ? slurp(out_dir + "/" + name) : "";
         if (!body.empty()) {
             text_reply(res, 200, body, ctype);
@@ -1582,8 +1583,8 @@ int chat_cmd(const std::string& target, const std::string& host, int port) {
                                  " (port in use?)");
     const bool dialogue = lm.vocab.count("user") && lm.vocab.count("assistant");
     std::printf("mtstudio chat: http://%s:%d/  (%s, %zu params, vocab %zu, end-of-text %s)\n",
-                host.c_str(), port, s.name.c_str(), lm.model().parameter_count(),
-                lm.tokens.size(), lm.eos >= 0 ? "on" : "absent: replies run to max_new_tokens");
+                host.c_str(), port, s.name.c_str(), lm.model().parameter_count(), lm.tokens.size(),
+                lm.eos >= 0 ? "on" : "absent: replies run to max_new_tokens");
     if (!dialogue)
         std::printf(
             "mtstudio chat: this vocabulary has no 'user'/'assistant' words, so the "

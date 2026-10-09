@@ -50,8 +50,7 @@ int main(int argc, char** argv) {
             std::printf("bench_b2: CUDA unavailable in this build\n");
             return 2;
         }
-        if (eng == "ops" || eng == "res" || eng == "b2")
-            device::set_device_ops(true);
+        if (eng == "ops" || eng == "res" || eng == "b2") device::set_device_ops(true);
         if (eng == "res" || eng == "b2") device::set_step_residency(true);
         if (eng == "b2") device::set_defer_downloads(true);
     } else {
@@ -102,8 +101,7 @@ int main(int argc, char** argv) {
                     mn = std::min(mn, v->data(i, j));
                     mx = std::max(mx, v->data(i, j));
                 }
-            std::printf("HUNT %-8s stale=%d min=%.5f max=%.5f\n", name,
-                        st ? 1 : 0, mn, mx);
+            std::printf("HUNT %-8s stale=%d min=%.5f max=%.5f\n", name, st ? 1 : 0, mn, mx);
         };
         std::mt19937 hg(11);
         auto fill = [&](size_t r, size_t c) {
@@ -158,11 +156,9 @@ int main(int argc, char** argv) {
         double nll = 0.0;
         for (size_t i = 0; i < Lg.rows(); ++i) {
             float mx = -1e30f;
-            for (size_t j = 0; j < Lg.cols(); ++j)
-                mx = std::max(mx, Lg(i, j));
+            for (size_t j = 0; j < Lg.cols(); ++j) mx = std::max(mx, Lg(i, j));
             double z = 0.0;
-            for (size_t j = 0; j < Lg.cols(); ++j)
-                z += std::exp(Lg(i, j) - mx);
+            for (size_t j = 0; j < Lg.cols(); ++j) z += std::exp(Lg(i, j) - mx);
             nll -= (Lg(i, y[i]) - mx - std::log(z));
         }
         float r0mn = 1e30f, r0mx = -1e30f;
@@ -172,11 +168,11 @@ int main(int argc, char** argv) {
             r0mx = std::max(r0mx, Lg(0, j));
             r0sum += Lg(0, j);
         }
-        std::printf("PROBE engine=%s logits_stale=%d loss_dev=%.4f "
-                    "loss_host=%.4f row0[min=%.4f max=%.4f mean=%.4f]\n",
-                    eng.c_str(), stale ? 1 : 0, ldev->data(0, 0),
-                    static_cast<float>(nll / Lg.rows()), r0mn, r0mx,
-                    static_cast<float>(r0sum / Lg.cols()));
+        std::printf(
+            "PROBE engine=%s logits_stale=%d loss_dev=%.4f "
+            "loss_host=%.4f row0[min=%.4f max=%.4f mean=%.4f]\n",
+            eng.c_str(), stale ? 1 : 0, ldev->data(0, 0), static_cast<float>(nll / Lg.rows()), r0mn,
+            r0mx, static_cast<float>(r0sum / Lg.cols()));
         device::step_end();
     }
 
@@ -194,11 +190,10 @@ int main(int argc, char** argv) {
     }
     const auto t1 = std::chrono::steady_clock::now();
 
-    const double ms =
-        std::chrono::duration<double, std::milli>(t1 - t0).count() / steps;
-    std::printf("BENCH d=%zu T=%zu L=%zu engine=%s steps=%d  "
-                "ms_per_step=%.2f  tok_per_s=%.0f  (final loss %.4f)\n",
-                d, T, L, eng.c_str(), steps, ms,
-                1000.0 * static_cast<double>(T) / ms, last);
+    const double ms = std::chrono::duration<double, std::milli>(t1 - t0).count() / steps;
+    std::printf(
+        "BENCH d=%zu T=%zu L=%zu engine=%s steps=%d  "
+        "ms_per_step=%.2f  tok_per_s=%.0f  (final loss %.4f)\n",
+        d, T, L, eng.c_str(), steps, ms, 1000.0 * static_cast<double>(T) / ms, last);
     return 0;
 }

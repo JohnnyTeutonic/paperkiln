@@ -37,12 +37,10 @@ Var record(Matrix result, std::vector<Var> parents, std::function<void(Variable*
 // stack, 30 Aug: step_end -> cudaMemcpyDtoH). Fourth enforcement point
 // of the lifetime rule, closing the last ownership class.
 std::shared_ptr<Matrix> cached(Matrix&& m) {
-    return std::shared_ptr<Matrix>(
-        new Matrix(std::move(m)),
-        [](Matrix* p) {
-            device::discard(*p);
-            delete p;
-        });
+    return std::shared_ptr<Matrix>(new Matrix(std::move(m)), [](Matrix* p) {
+        device::discard(*p);
+        delete p;
+    });
 }
 
 }  // namespace
@@ -64,12 +62,10 @@ Var matmul(const Var& a, const Var& b) {
         const Var& a = self->parents[0];
         const Var& b = self->parents[1];
         if (a->requires_grad) {
-            a->accumulate(device::gemm(self->grad, nullptr, Trans::N,
-                                       b->data, &b->dev, Trans::T));
+            a->accumulate(device::gemm(self->grad, nullptr, Trans::N, b->data, &b->dev, Trans::T));
         }
         if (b->requires_grad) {
-            b->accumulate(device::gemm(a->data, &a->dev, Trans::T,
-                                       self->grad, nullptr, Trans::N));
+            b->accumulate(device::gemm(a->data, &a->dev, Trans::T, self->grad, nullptr, Trans::N));
         }
     });
 }
@@ -120,7 +116,7 @@ Var add_bias(const Var& x, const Var& b) {
         const Var& b = self->parents[1];
         if (x->requires_grad) x->accumulate(self->grad);
         if (b->requires_grad) {
-            device::materialize(self->grad);  // B2.3c: host-read below
+            device::materialize(self->grad);                    // B2.3c: host-read below
             Matrix db(1, b->data.cols());                       // column-sum, the same
             for (size_t i = 0; i < self->grad.rows(); ++i)      // contract as
                 for (size_t j = 0; j < self->grad.cols(); ++j)  // compute_bias_
@@ -298,8 +294,7 @@ Var layernorm(const Var& x, const Var& gamma, const Var& beta, float eps) {
     // B2.1a seam: one kernel computes out/xhat/rstd; the caches land on
     // host exactly as the CPU loop leaves them (write-through), so the
     // backward below is device/CPU agnostic.
-    if (!device::devops::layernorm_fwd(x->data, gamma->data, beta->data, eps,
-                                       out, *xhat, *rstd)) {
+    if (!device::devops::layernorm_fwd(x->data, gamma->data, beta->data, eps, out, *xhat, *rstd)) {
         for (size_t i = 0; i < R; ++i) {
             float mu = 0.0f;
             for (size_t j = 0; j < C; ++j) mu += x->data(i, j);
@@ -329,9 +324,8 @@ Var layernorm(const Var& x, const Var& gamma, const Var& beta, float eps) {
         // B2.1a seam: dgamma/dbeta column sums + the dx row formula in
         // kernels; the fall-through runs the loops below unchanged.
         Matrix dg(1, C), db(1, C), dx(R, C);
-        const bool on_dev = device::devops::layernorm_bwd(
-            dY, *xhat, *rstd, g->data, want_dgb, &dg, &db, x->requires_grad,
-            &dx);
+        const bool on_dev = device::devops::layernorm_bwd(dY, *xhat, *rstd, g->data, want_dgb, &dg,
+                                                          &db, x->requires_grad, &dx);
         if (!on_dev) device::materialize(self->grad);  // B2.3c: host-read below
 
         if (want_dgb) {
@@ -379,8 +373,7 @@ Var embedding(const Var& table, const std::vector<int>& ids) {
     // B2.2: gather on-device (the forward's first activation is born
     // resident); host loop as fallback. Backward scatter-add stays host
     // until B2.3 (table grad is host-authoritative).
-    if (!device::devops::embed_gather(table->data, ids.data(), ids.size(),
-                                      out)) {
+    if (!device::devops::embed_gather(table->data, ids.data(), ids.size(), out)) {
         for (size_t i = 0; i < ids.size(); ++i)
             for (size_t j = 0; j < d; ++j) out(i, j) = table->data(ids[i], j);
     }
@@ -391,7 +384,7 @@ Var embedding(const Var& table, const std::vector<int>& ids) {
         // accumulate() would allocate a dense [vocab, d] temp per backward
         // -- 154 MB for GPT-2's wte -- for a handful of touched rows.
         device::materialize(self->grad);  // B2.3c: host-read below
-        device::materialize(t->grad);  // tied weights: gemm may have deferred it
+        device::materialize(t->grad);     // tied weights: gemm may have deferred it
         if (t->grad.rows() == 0) t->grad = Matrix(t->data.rows(), t->data.cols());
         for (size_t i = 0; i < ids.size(); ++i)
             for (size_t j = 0; j < t->grad.cols(); ++j) t->grad(ids[i], j) += self->grad(i, j);
@@ -444,7 +437,7 @@ Var cross_entropy(const Var& logits, const std::vector<int>& targets) {
             return;
         }
         l->accumulate(std::move(dl));  // rvalue: self-discarding
-        device::discard(*P);  // P is never host-read; skip its step_end D2H
+        device::discard(*P);           // P is never host-read; skip its step_end D2H
     });
 }
 
@@ -519,7 +512,8 @@ Var rmsnorm(const Var& x, const Var& w) {
             for (size_t j = 0; j < C; ++j) rms_sq += x->data(i, j) * x->data(i, j);
             rms_sq /= static_cast<float>(C);
             (*rms_inv)[i] = 1.0f / std::sqrt(rms_sq + eps);
-            for (size_t j = 0; j < C; ++j) out(i, j) = x->data(i, j) * (*rms_inv)[i] * w->data(0, j);
+            for (size_t j = 0; j < C; ++j)
+                out(i, j) = x->data(i, j) * (*rms_inv)[i] * w->data(0, j);
         }
     }
     return record(std::move(out), {x, w}, [rms_inv](Variable* self) {
@@ -529,8 +523,7 @@ Var rmsnorm(const Var& x, const Var& w) {
         // B2.1a seam: dw column sum + dx row formula in kernels.
         Matrix dw(1, C), dx(R, C);
         const bool on_dev = device::devops::rmsnorm_bwd(
-            self->grad, x->data, *rms_inv, w->data, w->requires_grad, &dw,
-            x->requires_grad, &dx);
+            self->grad, x->data, *rms_inv, w->data, w->requires_grad, &dw, x->requires_grad, &dx);
         if (!on_dev) device::materialize(self->grad);  // B2.3c: host-read below
         if (w->requires_grad) {
             if (!on_dev) {
@@ -546,12 +539,13 @@ Var rmsnorm(const Var& x, const Var& w) {
         if (!on_dev) {
             for (size_t i = 0; i < R; ++i) {
                 float term = 0.0f;
-                for (size_t j = 0; j < C; ++j) term += self->grad(i, j) * w->data(0, j) * x->data(i, j);
+                for (size_t j = 0; j < C; ++j)
+                    term += self->grad(i, j) * w->data(0, j) * x->data(i, j);
                 const float ri2 = (*rms_inv)[i] * (*rms_inv)[i];
                 const float n_inv = 1.0f / static_cast<float>(C);
                 for (size_t j = 0; j < C; ++j)
-                    dx(i, j) = (*rms_inv)[i] *
-                               (self->grad(i, j) * w->data(0, j) - x->data(i, j) * ri2 * term * n_inv);
+                    dx(i, j) = (*rms_inv)[i] * (self->grad(i, j) * w->data(0, j) -
+                                                x->data(i, j) * ri2 * term * n_inv);
             }
         }
         x->accumulate(std::move(dx));
@@ -586,8 +580,7 @@ Var apply_rope(const Var& qk, const std::vector<int>& pos, float theta_base, siz
     for (size_t i = 0; i < T; ++i) {
         const float m = static_cast<float>(pos[i]);
         for (size_t dim = 0; dim < head_dim; dim += 2) {
-            const float inv_freq =
-                1.0f / std::pow(theta_base, static_cast<float>(dim) / head_dim);
+            const float inv_freq = 1.0f / std::pow(theta_base, static_cast<float>(dim) / head_dim);
             const float theta = m * inv_freq;
             const float cos_t = std::cos(theta);
             const float sin_t = std::sin(theta);
@@ -603,34 +596,35 @@ Var apply_rope(const Var& qk, const std::vector<int>& pos, float theta_base, siz
             }
         }
     }
-    return record(std::move(out), {qk}, [pos_cache, theta_base, head_dim, d3, n_rot](Variable* self) {
-        const Var& qk = self->parents[0];
-        if (!qk->requires_grad) return;
-        device::materialize(self->grad);  // B2.3c: host-read below
-        const size_t T = self->grad.rows(), d = d3 / 3;
-        Matrix dqk = self->grad;
-        // Backward: the transpose of a rotation is the inverse rotation.
-        for (size_t i = 0; i < T; ++i) {
-            const float m = static_cast<float>((*pos_cache)[i]);
-            for (size_t dim = 0; dim < head_dim; dim += 2) {
-                const float inv_freq =
-                    1.0f / std::pow(theta_base, static_cast<float>(dim) / head_dim);
-                const float theta = -m * inv_freq;
-                const float cos_t = std::cos(theta);
-                const float sin_t = std::sin(theta);
-                for (size_t start = 0; start < 2 * d; start += d) {
-                    for (size_t h = 0; h < n_rot; ++h) {
-                        const size_t c = start + h * head_dim + dim;
-                        const float dy0 = dqk(i, c);
-                        const float dy1 = dqk(i, c + 1);
-                        dqk(i, c) = dy0 * cos_t - dy1 * sin_t;
-                        dqk(i, c + 1) = dy0 * sin_t + dy1 * cos_t;
-                    }
-                }
-            }
-        }
-        qk->accumulate(std::move(dqk));
-    });
+    return record(std::move(out), {qk},
+                  [pos_cache, theta_base, head_dim, d3, n_rot](Variable* self) {
+                      const Var& qk = self->parents[0];
+                      if (!qk->requires_grad) return;
+                      device::materialize(self->grad);  // B2.3c: host-read below
+                      const size_t T = self->grad.rows(), d = d3 / 3;
+                      Matrix dqk = self->grad;
+                      // Backward: the transpose of a rotation is the inverse rotation.
+                      for (size_t i = 0; i < T; ++i) {
+                          const float m = static_cast<float>((*pos_cache)[i]);
+                          for (size_t dim = 0; dim < head_dim; dim += 2) {
+                              const float inv_freq =
+                                  1.0f / std::pow(theta_base, static_cast<float>(dim) / head_dim);
+                              const float theta = -m * inv_freq;
+                              const float cos_t = std::cos(theta);
+                              const float sin_t = std::sin(theta);
+                              for (size_t start = 0; start < 2 * d; start += d) {
+                                  for (size_t h = 0; h < n_rot; ++h) {
+                                      const size_t c = start + h * head_dim + dim;
+                                      const float dy0 = dqk(i, c);
+                                      const float dy1 = dqk(i, c + 1);
+                                      dqk(i, c) = dy0 * cos_t - dy1 * sin_t;
+                                      dqk(i, c + 1) = dy0 * sin_t + dy1 * cos_t;
+                                  }
+                              }
+                          }
+                      }
+                      qk->accumulate(std::move(dqk));
+                  });
 }
 
 // Phase 3a: Kimi Linear attention (O(n*d²) vs O(n²*d) standard attention)
@@ -934,7 +928,7 @@ Var inplace_unary(const Var& x, const std::function<void(Matrix&)>& fwd,
         auto orig = std::move(x->backward_fn);
         Variable* self = x.get();
         x->backward_fn = [self, orig, dydx_from_output]() {
-            device::materialize(self->grad);  // B2.3c: host-read below
+            device::materialize(self->grad);           // B2.3c: host-read below
             dydx_from_output(self->data, self->grad);  // grad *= f'(y), in place
             if (orig) orig();
         };
@@ -996,8 +990,8 @@ Var fused_attention(const Var& q, const Var& k, const Var& v, float scale, size_
     // scores and ends as the attention weights. Masked entries are never
     // exponentiated — they are written as hard zeros, which is exactly
     // what the -1e9 additive mask produces after float32 underflow.
-    auto A = cached(device::gemm(
-        q->data, &q->dev, device::Trans::N, k->data, &k->dev, device::Trans::T));
+    auto A = cached(
+        device::gemm(q->data, &q->dev, device::Trans::N, k->data, &k->dev, device::Trans::T));
     // B2.2: masked softmax on-device when available (under deferral the
     // [T,T] scores then never cross the bus inside a step); otherwise
     // download the (possibly deferred) gemm scores and run the host loop.
@@ -1025,8 +1019,7 @@ Var fused_attention(const Var& q, const Var& k, const Var& v, float scale, size_
             }
         }
     }
-    Matrix y = device::gemm(*A, nullptr, device::Trans::N,
-                            v->data, &v->dev, device::Trans::N);
+    Matrix y = device::gemm(*A, nullptr, device::Trans::N, v->data, &v->dev, device::Trans::N);
 
     return record(std::move(y), {q, k, v}, [A, scale, sl, causal](Variable* self) {
         const Var& q = self->parents[0];
@@ -1034,8 +1027,8 @@ Var fused_attention(const Var& q, const Var& k, const Var& v, float scale, size_
         const Var& v = self->parents[2];
         const size_t T = q->data.rows();
         if (v->requires_grad) {
-            v->accumulate(device::gemm(*A, nullptr, device::Trans::T,
-                                       self->grad, nullptr, device::Trans::N));
+            v->accumulate(
+                device::gemm(*A, nullptr, device::Trans::T, self->grad, nullptr, device::Trans::N));
         }
         if (!q->requires_grad && !k->requires_grad) {
             device::discard(*A);
@@ -1044,13 +1037,13 @@ Var fused_attention(const Var& q, const Var& k, const Var& v, float scale, size_
         // dA = dY V^T; ds = A .* (dA - rowsum(dA .* A)) * scale, computed
         // in place on dA (masked entries have A == 0, so ds is 0 there and
         // no mask bookkeeping is needed).
-        Matrix ds = device::gemm(self->grad, nullptr, device::Trans::N,
-                                 v->data, &v->dev, device::Trans::T);
+        Matrix ds =
+            device::gemm(self->grad, nullptr, device::Trans::N, v->data, &v->dev, device::Trans::T);
         // B2.2: shared masked-softmax backward on-device (masked entries
         // carry A == 0, so the full-row dot equals the visible dot).
         if (!device::devops::attn_softmax_bwd_inplace(ds, *A, scale)) {
-            device::materialize(ds);   // B2.1b: host loop below
-            device::materialize(*A);   // no-op unless A deferred on-device
+            device::materialize(ds);  // B2.1b: host loop below
+            device::materialize(*A);  // no-op unless A deferred on-device
             for (size_t i = 0; i < T; ++i) {
                 const size_t b0 = (i / sl) * sl;
                 const size_t hi = causal ? i + 1 : b0 + sl;
@@ -1063,11 +1056,11 @@ Var fused_attention(const Var& q, const Var& k, const Var& v, float scale, size_
             }
         }
         if (q->requires_grad)
-            q->accumulate(device::gemm(ds, nullptr, device::Trans::N,
-                                       k->data, &k->dev, device::Trans::N));
+            q->accumulate(
+                device::gemm(ds, nullptr, device::Trans::N, k->data, &k->dev, device::Trans::N));
         if (k->requires_grad)
-            k->accumulate(device::gemm(ds, nullptr, device::Trans::T,
-                                       q->data, &q->dev, device::Trans::N));
+            k->accumulate(
+                device::gemm(ds, nullptr, device::Trans::T, q->data, &q->dev, device::Trans::N));
         // ds dies HERE while its deferred entry would still be stale;
         // A is never host-read again. Discard both or step_end() D2Hs
         // into freed memory (the leg-4 heap-corruption bug, 30 Aug).
@@ -1107,8 +1100,8 @@ Var swa_attention(const Var& q, const Var& k, const Var& v, float scale, size_t 
         sink_hi = std::min(b0 + std::min(sinks, ii + 1), win_lo);
     };
 
-    auto A = cached(device::gemm(
-        q->data, &q->dev, device::Trans::N, k->data, &k->dev, device::Trans::T));
+    auto A = cached(
+        device::gemm(q->data, &q->dev, device::Trans::N, k->data, &k->dev, device::Trans::T));
     // B2.2: sparse masked softmax on-device when available; host loop
     // as the fallback (and the reference semantics).
     if (!device::devops::swa_masked_softmax(*A, scale, sl, window, sinks)) {
@@ -1140,8 +1133,7 @@ Var swa_attention(const Var& q, const Var& k, const Var& v, float scale, size_t 
             }
         }
     }
-    Matrix y = device::gemm(*A, nullptr, device::Trans::N,
-                            v->data, &v->dev, device::Trans::N);
+    Matrix y = device::gemm(*A, nullptr, device::Trans::N, v->data, &v->dev, device::Trans::N);
 
     return record(std::move(y), {q, k, v}, [A, scale, sl, window, sinks](Variable* self) {
         const Var& q = self->parents[0];
@@ -1149,8 +1141,8 @@ Var swa_attention(const Var& q, const Var& k, const Var& v, float scale, size_t 
         const Var& v = self->parents[2];
         const size_t T = q->data.rows();
         if (v->requires_grad) {
-            v->accumulate(device::gemm(*A, nullptr, device::Trans::T,
-                                       self->grad, nullptr, device::Trans::N));
+            v->accumulate(
+                device::gemm(*A, nullptr, device::Trans::T, self->grad, nullptr, device::Trans::N));
         }
         if (!q->requires_grad && !k->requires_grad) {
             device::discard(*A);
@@ -1158,12 +1150,12 @@ Var swa_attention(const Var& q, const Var& k, const Var& v, float scale, size_t 
         }
         // Same softmax backward as fused_attention: masked entries carry
         // A == 0, so ds vanishes there with no mask bookkeeping.
-        Matrix ds = device::gemm(self->grad, nullptr, device::Trans::N,
-                                 v->data, &v->dev, device::Trans::T);
+        Matrix ds =
+            device::gemm(self->grad, nullptr, device::Trans::N, v->data, &v->dev, device::Trans::T);
         // B2.2: the same shared backward kernel as fused_attention.
         if (!device::devops::attn_softmax_bwd_inplace(ds, *A, scale)) {
-            device::materialize(ds);   // B2.1b: host loop below
-            device::materialize(*A);   // no-op unless A deferred on-device
+            device::materialize(ds);  // B2.1b: host loop below
+            device::materialize(*A);  // no-op unless A deferred on-device
             for (size_t i = 0; i < T; ++i) {
                 const size_t b0 = (i / sl) * sl;
                 float dot = 0.0f;
@@ -1174,11 +1166,11 @@ Var swa_attention(const Var& q, const Var& k, const Var& v, float scale, size_t 
             }
         }
         if (q->requires_grad)
-            q->accumulate(device::gemm(ds, nullptr, device::Trans::N,
-                                       k->data, &k->dev, device::Trans::N));
+            q->accumulate(
+                device::gemm(ds, nullptr, device::Trans::N, k->data, &k->dev, device::Trans::N));
         if (k->requires_grad)
-            k->accumulate(device::gemm(ds, nullptr, device::Trans::T,
-                                       q->data, &q->dev, device::Trans::N));
+            k->accumulate(
+                device::gemm(ds, nullptr, device::Trans::T, q->data, &q->dev, device::Trans::N));
         // Same lifetime rule as fused_attention's backward: ds dies here.
         device::discard(ds);
         device::discard(*A);

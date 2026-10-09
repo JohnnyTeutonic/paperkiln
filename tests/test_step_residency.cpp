@@ -57,8 +57,7 @@ parity::FlexConfig tiny_cfg() {
 // target the FD suites use).
 Var probe_param(parity::FlexLM& m) {
     for (const auto& [name, p] : m.named_parameters())
-        if (name.find("layers.0.attn") != std::string::npos && p->data.rows() > 1)
-            return p;
+        if (name.find("layers.0.attn") != std::string::npos && p->data.rows() > 1) return p;
     throw std::runtime_error("probe param not found");
 }
 
@@ -90,8 +89,7 @@ RunResult train(bool residency, bool windows, int steps) {
     device::set_step_residency(false);
     Var w = probe_param(m);
     for (size_t i = 0; i < w->data.rows(); ++i)
-        for (size_t j = 0; j < w->data.cols(); ++j)
-            r.final_w.push_back(w->data(i, j));
+        for (size_t j = 0; j < w->data.cols(); ++j) r.final_w.push_back(w->data(i, j));
     return r;
 }
 
@@ -127,8 +125,7 @@ int main() {
         auto off = train(false, false, STEPS);
         auto on = train(true, true, STEPS);
         CHECK(off.losses.size() == on.losses.size());
-        for (size_t i = 0; i < off.losses.size(); ++i)
-            CHECK(off.losses[i] == on.losses[i]);
+        for (size_t i = 0; i < off.losses.size(); ++i) CHECK(off.losses[i] == on.losses[i]);
         CHECK(!off.final_w.empty() && off.final_w == on.final_w);
         std::printf("1. no-op leg: residency+windows on CPU device is bitwise inert\n");
     }
@@ -163,10 +160,8 @@ int main() {
         device::set(device::Device::CUDA);
         auto gpu = poke_probe(true, true);
         device::set(device::Device::CPU);
-        CHECK(std::fabs(ref.first - gpu.first) <=
-              1e-4f + 1e-4f * std::fabs(ref.first));
-        CHECK(std::fabs(ref.second - gpu.second) <=
-              1e-4f + 1e-4f * std::fabs(ref.second));
+        CHECK(std::fabs(ref.first - gpu.first) <= 1e-4f + 1e-4f * std::fabs(ref.first));
+        CHECK(std::fabs(ref.second - gpu.second) <= 1e-4f + 1e-4f * std::fabs(ref.second));
         CHECK(ref.first != ref.second);  // the poke must matter at all
         std::printf("3. staleness probe: between-window host poke visible on device\n");
     }

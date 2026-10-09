@@ -21,10 +21,14 @@ namespace device {
 namespace {
 Device g_device = Device::CPU;
 bool g_device_ops = false;  // B2.1a master switch (docs/CUDA_PHASE_B2.md)
-}
+}  // namespace
 
-void set_device_ops(bool on) { g_device_ops = on; }
-bool device_ops_enabled() { return g_device_ops; }
+void set_device_ops(bool on) {
+    g_device_ops = on;
+}
+bool device_ops_enabled() {
+    return g_device_ops;
+}
 
 Device get() {
     return g_device;
@@ -93,8 +97,8 @@ Matrix matmul(const Matrix& a, const Matrix& b) {
 // with materialized transposes -> CPU with materialized transposes. The
 // fallbacks run the exact ops today's code runs, so numerics off the B2
 // path are bit-identical to the pre-B2 tape.
-Matrix gemm(const Matrix& A, DevState** devA, Trans tA,
-            const Matrix& B, DevState** devB, Trans tB) {
+Matrix gemm(const Matrix& A, DevState** devA, Trans tA, const Matrix& B, DevState** devB,
+            Trans tB) {
     const size_t M = (tA == Trans::T) ? A.cols() : A.rows();
     const size_t Ka = (tA == Trans::T) ? A.rows() : A.cols();
     const size_t Kb = (tB == Trans::T) ? B.cols() : B.rows();

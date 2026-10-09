@@ -95,9 +95,11 @@ add_test(NAME step_residency COMMAND test_step_residency)
 
 add_executable(test_highway tests/test_highway.cpp)
 target_link_libraries(test_highway PRIVATE microtorch)
+add_test(NAME highway COMMAND test_highway)
 
 add_executable(test_deep_swa tests/test_deep_swa.cpp)
 target_link_libraries(test_deep_swa PRIVATE microtorch)
+add_test(NAME deep_swa COMMAND test_deep_swa)
 add_test(NAME nn COMMAND test_nn)
 
 add_executable(test_kimi_linear tests/test_kimi_linear.cpp)

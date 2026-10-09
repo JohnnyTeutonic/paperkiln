@@ -50,12 +50,11 @@ constexpr int FILL0 = 130, NFILL = 120;  // fill  [130, 250)
 // Vocab layout is unchanged; smaller nkeys/npairs just restrict draws.
 int g_npairs = 8, g_nkeys = 64;
 
-// ---- rung 2 (experiments/srd_r2/PREREGISTRATION_R2.md): separating H_retrieval from H_novelty ----
-// The status-quo task partitions the vocabulary BY ROLE (keys [2,66),
-// values [66,130), filler [130,250)), so needle tokens are
-// distributionally distinct by construction and a prediction-residual
-// gate must fire on them whether or not they are retrieval-critical.
-// Two knobs remove that confound:
+// ---- rung 2 (experiments/srd_r2/PREREGISTRATION_R2.md): separating H_retrieval from H_novelty
+// ---- The status-quo task partitions the vocabulary BY ROLE (keys [2,66), values [66,130), filler
+// [130,250)), so needle tokens are distributionally distinct by construction and a
+// prediction-residual gate must fire on them whether or not they are retrieval-critical. Two knobs
+// remove that confound:
 //   g_indist  keys/values drawn from the FILLER range — retrieval
 //             structure identical, distributional signature gone
 //   g_decoys  pairs of DISTINCT-range tokens in pair layout that are

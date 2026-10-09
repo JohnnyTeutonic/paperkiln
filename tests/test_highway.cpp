@@ -60,19 +60,16 @@ int main() {
         parity::FlexLM m(fc, 7);
         size_t gates_seen = 0;
         for (const auto& [name, p] : m.named_parameters())
-            if (name.find("gate_") != std::string::npos &&
-                name.find(".b") != std::string::npos) {
+            if (name.find("gate_") != std::string::npos && name.find(".b") != std::string::npos) {
                 ++gates_seen;
-                for (size_t j = 0; j < p->data.cols(); ++j)
-                    CHECK(p->data(0, j) == -2.0f);
+                for (size_t j = 0; j < p->data.cols(); ++j) CHECK(p->data(0, j) == -2.0f);
             }
         CHECK(gates_seen == 4);  // 2 layers x 2 sublayer gates
 
         fc.gate_bias_init = -1.0f;
         parity::FlexLM m2(fc, 7);
         for (const auto& [name, p] : m2.named_parameters())
-            if (name.find("gate_") != std::string::npos &&
-                name.find(".b") != std::string::npos)
+            if (name.find("gate_") != std::string::npos && name.find(".b") != std::string::npos)
                 CHECK(p->data(0, 0) == -1.0f);
         std::printf("1. gate biases init to gate_bias_init (default -2, custom honoured)\n");
     }
@@ -92,12 +89,11 @@ int main() {
         parity::FlexLM plain(fc_pl, 7);
 
         const size_t expect_extra = fc.n_layers * 2 * (d * d + d);
-        CHECK(highway.parameter_count() ==
-              residual.parameter_count() + expect_extra);
+        CHECK(highway.parameter_count() == residual.parameter_count() + expect_extra);
         CHECK(plain.parameter_count() == residual.parameter_count());
 
-        Var lr = residual.forward(ids), lr2 = residual2.forward(ids),
-            lh = highway.forward(ids), lp = plain.forward(ids);
+        Var lr = residual.forward(ids), lr2 = residual2.forward(ids), lh = highway.forward(ids),
+            lp = plain.forward(ids);
         CHECK(max_abs_logit_diff(lr, lr2) == 0.0f);  // default untouched
         CHECK(max_abs_logit_diff(lr, lh) > 1e-4f);   // highway is live
         CHECK(max_abs_logit_diff(lr, lp) > 1e-4f);   // plain is live
@@ -112,9 +108,7 @@ int main() {
         fc.residual = "highway";
         parity::FlexLM m(fc, 13);
 
-        auto loss_now = [&]() {
-            return ops::cross_entropy(m.forward(ids), y)->data(0, 0);
-        };
+        auto loss_now = [&]() { return ops::cross_entropy(m.forward(ids), y)->data(0, 0); };
         Var loss = ops::cross_entropy(m.forward(ids), y);
         backward(loss);
 
@@ -144,8 +138,7 @@ int main() {
         }
         CHECK(gate_grad_mass > 0);
         CHECK(fd_checked == 4);  // 2 entries x {W, b}
-        std::printf("5. FD gradcheck through gate W and b (4 spots), |g|=%.3g\n",
-                    gate_grad_mass);
+        std::printf("5. FD gradcheck through gate W and b (4 spots), |g|=%.3g\n", gate_grad_mass);
     }
 
     std::printf("all highway checks passed\n");

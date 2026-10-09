@@ -31,8 +31,7 @@ std::vector<int> ids_mod(size_t n, size_t vocab, unsigned seed) {
     return v;
 }
 
-parity::FlexConfig swa_cfg(size_t V, size_t d, size_t H, size_t T,
-                           size_t layers) {
+parity::FlexConfig swa_cfg(size_t V, size_t d, size_t H, size_t T, size_t layers) {
     parity::FlexConfig fc;
     fc.vocab = V;
     fc.d = d;
@@ -41,7 +40,7 @@ parity::FlexConfig swa_cfg(size_t V, size_t d, size_t H, size_t T,
     fc.n_layers = layers;
     fc.d_ff = 4 * d;
     fc.attention = "swa";
-    fc.window = 8;   // small window so masking does real work at T=16
+    fc.window = 8;  // small window so masking does real work at T=16
     fc.sinks = 1;
     return fc;
 }
@@ -82,20 +81,16 @@ int main() {
         for (const auto& [name, p] : m.named_parameters())
             if (name.find("layers.3.attn") != std::string::npos && p->grad.rows())
                 for (size_t i = 0; i < p->grad.rows(); ++i)
-                    for (size_t j = 0; j < p->grad.cols(); ++j)
-                        g += std::fabs(p->grad(i, j));
+                    for (size_t j = 0; j < p->grad.cols(); ++j) g += std::fabs(p->grad(i, j));
         CHECK(g > 0);
-        std::printf("2. depth-4 swa: layers.3 real (%zu params), |grad|=%.3g\n",
-                    deep_params, g);
+        std::printf("2. depth-4 swa: layers.3 real (%zu params), |grad|=%.3g\n", deep_params, g);
     }
 
     // 3. FD spot-check at depth 4 ------------------------------------------
     {
         auto fc = swa_cfg(V, d, H, T, 4);
         parity::FlexLM m(fc, 17);
-        auto loss_now = [&]() {
-            return ops::cross_entropy(m.forward(ids), y)->data(0, 0);
-        };
+        auto loss_now = [&]() { return ops::cross_entropy(m.forward(ids), y)->data(0, 0); };
         Var loss = ops::cross_entropy(m.forward(ids), y);
         backward(loss);
         const float eps = 5e-3f;
@@ -103,8 +98,7 @@ int main() {
         for (const auto& [name, p] : m.named_parameters()) {
             // the weight matrix under the first block's qkv projection
             // (suffix-agnostic: pick the 2-D tensor, skip the bias row)
-            if (name.find("layers.0.attn.c_attn") == std::string::npos ||
-                p->data.rows() <= 1)
+            if (name.find("layers.0.attn.c_attn") == std::string::npos || p->data.rows() <= 1)
                 continue;
             for (int k = 0; k < 3; ++k) {
                 const size_t i = (k * 11 + 2) % p->data.rows();

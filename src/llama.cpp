@@ -7,7 +7,10 @@ namespace microtorch {
 namespace nn {
 
 LlamaBlock::LlamaBlock(const LlamaConfig& cfg, unsigned seed)
-    : H(cfg.n_heads), dk(cfg.d / cfg.n_heads), rope_theta_(cfg.rope_theta), rms_eps_(cfg.rms_eps),
+    : H(cfg.n_heads),
+      dk(cfg.d / cfg.n_heads),
+      rope_theta_(cfg.rope_theta),
+      rms_eps_(cfg.rms_eps),
       rope_all_heads_(cfg.rope_all_heads) {
     if (cfg.d % cfg.n_heads != 0) throw std::runtime_error("llama: d must divide by n_heads");
     // HF names throughout; Linear registers its matrix as "weight", so the

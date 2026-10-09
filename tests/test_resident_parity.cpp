@@ -33,9 +33,7 @@ Matrix filled(size_t r, size_t c, unsigned seed) {
 double max_abs_diff(const Matrix& x, const Matrix& y) {
     double worst = 0.0;
     for (size_t i = 0; i < x.rows() * x.cols(); ++i)
-        worst = std::max(worst,
-                         static_cast<double>(std::fabs(x.get_data()[i] -
-                                                       y.get_data()[i])));
+        worst = std::max(worst, static_cast<double>(std::fabs(x.get_data()[i] - y.get_data()[i])));
     return worst;
 }
 
@@ -58,8 +56,7 @@ int main() {
 
     device::set(device::Device::CUDA);
     Matrix c_phase_a = device::matmul(A, B);
-    check(max_abs_diff(c_ref, c_phase_a) <= 1e-4,
-          "phase A (round-trip) vs CPU reference",
+    check(max_abs_diff(c_ref, c_phase_a) <= 1e-4, "phase A (round-trip) vs CPU reference",
           max_abs_diff(c_ref, c_phase_a));
 
     device::set_residency(true);
@@ -69,15 +66,13 @@ int main() {
           static_cast<double>(device::resident_count()));
 
     Matrix c_b1 = device::matmul(A, B);
-    check(max_abs_diff(c_ref, c_b1) <= 1e-4,
-          "B1 (both operands resident) vs CPU reference",
+    check(max_abs_diff(c_ref, c_b1) <= 1e-4, "B1 (both operands resident) vs CPU reference",
           max_abs_diff(c_ref, c_b1));
 
     // Mixed: one resident, one temp-uploaded.
     device::invalidate(B);
     Matrix c_mixed = device::matmul(A, B);
-    check(max_abs_diff(c_ref, c_mixed) <= 1e-4,
-          "B1 (A resident, B temp) vs CPU reference",
+    check(max_abs_diff(c_ref, c_mixed) <= 1e-4, "B1 (A resident, B temp) vs CPU reference",
           max_abs_diff(c_ref, c_mixed));
 
     // The contract leg: mutate host data, invalidate, re-resident, and the
@@ -92,8 +87,7 @@ int main() {
     device::set(device::Device::CUDA);
     Matrix c_after = device::matmul(A, B);
     check(max_abs_diff(c_ref2, c_after) <= 1e-4,
-          "mutate -> invalidate -> re-resident matches new ref",
-          max_abs_diff(c_ref2, c_after));
+          "mutate -> invalidate -> re-resident matches new ref", max_abs_diff(c_ref2, c_after));
 
     device::evict_all();
     check(device::resident_count() == 0, "evict_all empties the table",

@@ -288,9 +288,8 @@ void SGD::step() {
         Var& p = params_[k];
         if (p->grad.rows() == 0) continue;
         if (devstate_) {
-            if (device::devops::sgd_step_dev(p->data, p->grad,
-                                             devstate_.get() + devoff_[k],
-                                             lr, mu_))
+            if (device::devops::sgd_step_dev(p->data, p->grad, devstate_.get() + devoff_[k], lr,
+                                             mu_))
                 continue;
             // Device ops were disabled mid-run: the velocity lives on
             // device and the host copy is stale zeros. Refuse loudly
@@ -300,9 +299,7 @@ void SGD::step() {
                 "off — do not toggle MICROTORCH_DEVICE_OPS mid-run");
         }
         // B2.3a seam for the momentum-free case (no state to persist).
-        if (mu_ == 0.0f &&
-            device::devops::sgd_step(p->data, p->grad, nullptr, lr, mu_))
-            continue;
+        if (mu_ == 0.0f && device::devops::sgd_step(p->data, p->grad, nullptr, lr, mu_)) continue;
         for (size_t i = 0; i < p->data.rows(); ++i)
             for (size_t j = 0; j < p->data.cols(); ++j) {
                 float g = p->grad(i, j);
@@ -368,10 +365,9 @@ void AdamW::step() {
         Var& p = params_[k];
         if (p->grad.rows() == 0) continue;
         if (devstate_) {
-            if (device::devops::adamw_step_dev(
-                    p->data, p->grad, devstate_.get() + devoff_[k],
-                    devstate_.get() + devtotal_ + devoff_[k], lr, b1_, b2_,
-                    c1, c2, eps_, wd_))
+            if (device::devops::adamw_step_dev(p->data, p->grad, devstate_.get() + devoff_[k],
+                                               devstate_.get() + devtotal_ + devoff_[k], lr, b1_,
+                                               b2_, c1, c2, eps_, wd_))
                 continue;
             // Same loud-failure rule as SGD: m/v live on device; the
             // host matrices are stale zeros. Never silently fork.

@@ -16,13 +16,13 @@
 namespace microtorch {
 namespace device {
 
-void set_residency(bool on);      // master switch (default off)
+void set_residency(bool on);  // master switch (default off)
 bool residency_enabled();
 
-void make_resident(const Matrix& m);   // upload now (or refresh in place)
-void invalidate(const Matrix& m);      // free the device copy, if any
-void evict_all();                      // free everything
-size_t resident_count();               // table size (diagnostics)
+void make_resident(const Matrix& m);  // upload now (or refresh in place)
+void invalidate(const Matrix& m);     // free the device copy, if any
+void evict_all();                     // free everything
+size_t resident_count();              // table size (diagnostics)
 
 #ifdef MICROTORCH_CUDA
 // B1 matmul path: uses device copies for resident operands, temp-uploads
@@ -73,15 +73,13 @@ enum class Trans { N, T };
 // step-resident path the transpose is kernel index math — no
 // materialized host transpose; the CPU / Phase-A fallbacks materialize
 // and match today's numerics exactly.
-Matrix gemm(const Matrix& A, DevState** devA, Trans tA,
-            const Matrix& B, DevState** devB, Trans tB);
+Matrix gemm(const Matrix& A, DevState** devA, Trans tA, const Matrix& B, DevState** devB, Trans tB);
 
 #ifdef MICROTORCH_CUDA
 // B2 gemm path; returns false (doing nothing) unless step residency is
 // on AND a window is open, so the caller falls through to B1/Phase A.
-bool step_resident_gemm(const Matrix& A, DevState** devA, Trans tA,
-                        const Matrix& B, DevState** devB, Trans tB,
-                        Matrix& C);
+bool step_resident_gemm(const Matrix& A, DevState** devA, Trans tA, const Matrix& B,
+                        DevState** devB, Trans tB, Matrix& C);
 #endif
 
 // ---- Phase B2.1a: the device-side op set (docs/CUDA_PHASE_B2.md sec 4)
@@ -97,7 +95,7 @@ bool step_resident_gemm(const Matrix& A, DevState** devA, Trans tA,
 // falls through to today's CPU loop, so CPU numerics are untouched.
 // CPU-only builds: stubs returning false (callers never need #ifdefs).
 
-void set_device_ops(bool on);   // master switch (default off)
+void set_device_ops(bool on);  // master switch (default off)
 bool device_ops_enabled();
 
 // ---- Phase B2.1b: deferred downloads (docs/CUDA_PHASE_B2.md checklist)
@@ -152,8 +150,7 @@ void discard(const Matrix& m);
 // nothing unless MICROTORCH_DEVCHECK is defined at build time.
 void devcheck_host_read(const Matrix& m, const char* where);
 #ifdef MICROTORCH_DEVCHECK
-#define MT_DEVCHECK_HOST_READ(m, where) \
-    ::microtorch::device::devcheck_host_read((m), (where))
+#define MT_DEVCHECK_HOST_READ(m, where) ::microtorch::device::devcheck_host_read((m), (where))
 #else
 #define MT_DEVCHECK_HOST_READ(m, where) ((void)0)
 #endif
@@ -169,19 +166,19 @@ namespace detail {
 // cache already holds a fresh stale copy. Returns nullptr with
 // deferred=false when defer is inactive (caller does its own temp+D2H).
 float* vc_operand(const float* key, size_t n, bool& owned);
-float* vc_output(const float* key, size_t n, bool& deferred,
-                 bool need_current, const float* host_src);
+float* vc_output(const float* key, size_t n, bool& deferred, bool need_current,
+                 const float* host_src);
 }  // namespace detail
 #endif
 
 namespace devops {
 // elementwise
-bool add(const Matrix& a, const Matrix& b, Matrix& y);    // y = a + b
-bool sub(const Matrix& a, const Matrix& b, Matrix& y);    // y = a - b
-bool mul(const Matrix& a, const Matrix& b, Matrix& y);    // y = a .* b
-bool scale(const Matrix& a, float s, Matrix& y);          // y = a * s
-bool axpy(Matrix& y, float a, const Matrix& x);           // y += a * x
-bool fill(Matrix& y, float v);                            // y = v
+bool add(const Matrix& a, const Matrix& b, Matrix& y);  // y = a + b
+bool sub(const Matrix& a, const Matrix& b, Matrix& y);  // y = a - b
+bool mul(const Matrix& a, const Matrix& b, Matrix& y);  // y = a .* b
+bool scale(const Matrix& a, float s, Matrix& y);        // y = a * s
+bool axpy(Matrix& y, float a, const Matrix& x);         // y += a * x
+bool fill(Matrix& y, float v);                          // y = v
 // activations (bwd formulas are ops.cpp's, incl. the CORRECT tanh-GELU
 // derivative — never the vendored apply_gelu_derivative)
 bool sigmoid_fwd(const Matrix& x, Matrix& y);
@@ -199,27 +196,22 @@ bool softmax_bwd(const Matrix& S, const Matrix& dY, Matrix& dX);
 // 0). The shared backward serves both flavors: masked entries carry
 // A == 0 from the forward, so the full-row dot equals the
 // visible-range dot and masked outputs vanish with no bookkeeping.
-bool attn_masked_softmax(Matrix& A, float scale, size_t seq_len,
-                         bool causal);
-bool swa_masked_softmax(Matrix& A, float scale, size_t seq_len,
-                        size_t window, size_t sinks);
+bool attn_masked_softmax(Matrix& A, float scale, size_t seq_len, bool causal);
+bool swa_masked_softmax(Matrix& A, float scale, size_t seq_len, size_t window, size_t sinks);
 bool attn_softmax_bwd_inplace(Matrix& ds, const Matrix& A, float scale);
 // B2.2: embedding gather (ids bounds-checked by the HOST caller first;
 // backward scatter-add stays host until B2.3) and cross-entropy
 // (softmax + nll on-device, host receives ONE float; P cached for the
 // backward under the same (P - onehot)/N contract as the host op).
-bool embed_gather(const Matrix& table, const int* ids, size_t n_ids,
-                  Matrix& out);
-bool ce_fwd(const Matrix& logits, const int* targets, Matrix& P,
-            float& loss);
+bool embed_gather(const Matrix& table, const int* ids, size_t n_ids, Matrix& out);
+bool ce_fwd(const Matrix& logits, const int* targets, Matrix& P, float& loss);
 bool ce_bwd(const Matrix& P, const int* targets, float g, Matrix& dl);
 // B2.3a: optimizer steps on device, write-through parity seam (state
 // round-trips per step for now; persistent device state is B2.3b).
 // c1/c2 are the host-computed bias corrections so the per-element math
 // matches nn.cpp exactly.
-bool adamw_step(Matrix& p, const Matrix& g, Matrix& m, Matrix& v, float lr,
-                float b1, float b2, float c1, float c2, float eps,
-                float wd);
+bool adamw_step(Matrix& p, const Matrix& g, Matrix& m, Matrix& v, float lr, float b1, float b2,
+                float c1, float c2, float eps, float wd);
 bool sgd_step(Matrix& p, const Matrix& g, Matrix* vel, float lr, float mu);
 // B2.3b: persistent device optimizer state — an OWNED zeroed device
 // buffer (never the pointer-keyed value cache: the B2.2 lifetime rule).
@@ -234,23 +226,18 @@ void opt_state_free(float* s);
 // device state to move; the host matrices are authoritative there).
 void opt_state_download(float* host, const float* dev, size_t n_elems);
 void opt_state_upload(float* dev, const float* host, size_t n_elems);
-bool adamw_step_dev(Matrix& p, const Matrix& g, float* m_dev, float* v_dev,
-                    float lr, float b1, float b2, float c1, float c2,
-                    float eps, float wd);
-bool sgd_step_dev(Matrix& p, const Matrix& g, float* vel_dev, float lr,
-                  float mu);
-bool layernorm_fwd(const Matrix& x, const Matrix& gamma, const Matrix& beta,
-                   float eps, Matrix& y, Matrix& xhat,
-                   std::vector<float>& rstd);
-bool layernorm_bwd(const Matrix& dY, const Matrix& xhat,
-                   const std::vector<float>& rstd, const Matrix& gamma,
-                   bool want_dgb, Matrix* dg, Matrix* db, bool want_dx,
+bool adamw_step_dev(Matrix& p, const Matrix& g, float* m_dev, float* v_dev, float lr, float b1,
+                    float b2, float c1, float c2, float eps, float wd);
+bool sgd_step_dev(Matrix& p, const Matrix& g, float* vel_dev, float lr, float mu);
+bool layernorm_fwd(const Matrix& x, const Matrix& gamma, const Matrix& beta, float eps, Matrix& y,
+                   Matrix& xhat, std::vector<float>& rstd);
+bool layernorm_bwd(const Matrix& dY, const Matrix& xhat, const std::vector<float>& rstd,
+                   const Matrix& gamma, bool want_dgb, Matrix* dg, Matrix* db, bool want_dx,
                    Matrix* dx);
 bool rmsnorm_fwd(const Matrix& x, const Matrix& w, float eps, Matrix& y,
                  std::vector<float>& rms_inv);
-bool rmsnorm_bwd(const Matrix& dY, const Matrix& x,
-                 const std::vector<float>& rms_inv, const Matrix& w,
-                 bool want_dw, Matrix* dw, bool want_dx, Matrix* dx);
+bool rmsnorm_bwd(const Matrix& dY, const Matrix& x, const std::vector<float>& rms_inv,
+                 const Matrix& w, bool want_dw, Matrix* dw, bool want_dx, Matrix* dx);
 }  // namespace devops
 
 }  // namespace device
