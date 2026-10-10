@@ -1,0 +1,14 @@
+POST-HOC comparison for the three Stage 2 findings without a machine check; atlas_analyze.main_effects, 2-level contrasts, |t|>=2 = signal
+== Stage 2 original (rope_heads=first): 36 rows
+  best_val          train.lr           effect +0.0941 se 0.0786 t +1.20  better 0.001
+  best_val          data.T             effect -0.2008 se 0.0725 t -2.77  better 256
+  grad_spike_count  train.batch        effect +2.5556 se 0.8174 t +3.13  better 2
+  best_val          arch.custom.heads  effect -0.0249 se 0.0801 t -0.31  better 8
+== Stage 2 re-run (rope_heads=all): 36 rows
+  best_val          train.lr           effect +0.1327 se 0.0835 t +1.59  better 0.001
+  best_val          data.T             effect -0.2155 se 0.0782 t -2.76  better 256
+  grad_spike_count  train.batch        effect -0.1111 se 0.2198 t -0.51  better 4
+  best_val          arch.custom.heads  effect -0.0185 se 0.0865 t -0.21  better 8
+== Stage 2 re-run (rope_heads=all), the retraction note's quantities (warmup-excluded spike count is the engine's current grad_spike_count)
+  grad_spike_count     train.batch effect -0.1111 se 0.2198 t -0.51
+  grad_init_transient  train.batch effect +1.7822 se 0.8531 t +2.09

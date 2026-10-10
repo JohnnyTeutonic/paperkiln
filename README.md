@@ -120,9 +120,7 @@ Minimal autograd engines are a well-populated genre. Six things here are not:
    the finding that its own best-cell ranking was inside seed noise while the
    designed contrasts ran 6–10σ. The registry
    ([atlas/FINDINGS.md](atlas/FINDINGS.md)) currently holds **23 claims —
-   including 3 published retractions and 3 supersessions**, with nine Stage 2–3
-   rows marked under review after the RoPE head-coverage fix
-   ([docs/ROPE_HEADS.md](docs/ROPE_HEADS.md)) — every row with its receipts, reproducible via `python tools/reproduce.py <id>`. Labs
+   including 3 published retractions and 3 supersessions** — every row with its receipts, reproducible via `python tools/reproduce.py <id>`. Labs
    that never retract anything aren't more careful; they're less honest
    about resolution.
 
@@ -634,8 +632,9 @@ corrected records alongside live ones. **`reproduce` makes replication a
 one-command verb**: cost quoted up front from the original run's own
 wall-clock receipts, fresh out_root, machine-checked verdict against the
 registered effect. All six checkable findings verify against their own
-committed rows; the nine Stage 2–3 rows produced before the RoPE head-coverage
-fix are under review ([docs/ROPE_HEADS.md](docs/ROPE_HEADS.md)).
+committed rows, and the nine Stage 2–3 findings, produced before the RoPE
+head-coverage fix, hold when re-run with every head rotated
+([docs/ROPE_HEADS.md](docs/ROPE_HEADS.md)).
 
 **Stage 3 is complete**: a full 2⁴ factorial on the survivors
 ({optimizer, context, lr, d} × 3 seeds, 48 runs) with **token-matched

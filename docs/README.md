@@ -40,7 +40,7 @@ results the methodology rests on.
 | [`EVENTS_SPEC.md`](EVENTS_SPEC.md) | the `events.jsonl` contract. **The most portable thing here** — any trainer that emits it joins the toolchain |
 | [`CUDA_PHASE_B.md`](CUDA_PHASE_B.md) | Phase B1: device residency (complete) |
 | [`CUDA_PHASE_B2.md`](CUDA_PHASE_B2.md) | Phase B2: training-step residency (complete, T4-validated, adoption gate passed), with the CUDA defect records |
-| [`ROPE_HEADS.md`](ROPE_HEADS.md) | the llama RoPE head-coverage defect (fixed 6 Oct 2026) behind the nine UNDER REVIEW findings |
+| [`ROPE_HEADS.md`](ROPE_HEADS.md) | the llama RoPE head-coverage defect (fixed 6 Oct 2026) and the re-run showing the nine affected Stage 2–3 findings hold |
 | [`SPARSE_ATTENTION.md`](SPARSE_ATTENTION.md) | the sparse-attention research ledger, including its negatives |
 | [`STUDIO_PLAN.md`](STUDIO_PLAN.md) | the studio / spec-driven driver |
 | [`ECOSYSTEM.md`](ECOSYSTEM.md) | how paperkiln, coalfire.cpp and ember.cpp fit together |

@@ -1,6 +1,6 @@
 # Atlas Stage 2 — the Plackett–Burman screening experiment
 
-**Status: COMPLETE, 2026-08-01.** The first science through the Atlas
+**Status: COMPLETE, 2026-08-01.** These runs used the llama family with RoPE on the first head only; the design re-run with every head rotated (`experiments/atlas_stage2_rope_all/`, 10 Oct 2026) leaves every finding below standing ([docs/ROPE_HEADS.md](../docs/ROPE_HEADS.md)). The first science through the Atlas
 infrastructure: 36/36 runs, 7 factors screened, main effects with
 seed-based standard errors. Raw receipts in
 [`experiments/atlas_stage2/`](experiments/atlas_stage2/) (design

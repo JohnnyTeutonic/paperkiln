@@ -1,0 +1,11 @@
+{
+  "repo_commit": "2bb0ec255557d63ec378c70483336d961dad2c3b",
+  "repo_dirty": false,
+  "repo_dirty_files": [],
+  "binary_path": "/home/jonat/pkci/paperkiln/build/mtstudio",
+  "binary_sha256": "65af17feb24d1d655dc8b96d77b58f0add72b07b91a608d91524377453d19773",
+  "binary_bytes": 1681512,
+  "sweep": "/home/jonat/pkci/paperkiln/experiments/atlas_stage2_rope_all/sweep.json",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.12.3"
+}

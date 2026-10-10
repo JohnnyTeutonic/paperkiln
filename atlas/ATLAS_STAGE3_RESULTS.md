@@ -1,6 +1,6 @@
 # Atlas Stage 3 — the full factorial, and the interaction that unmasks Stage 2
 
-**Status: COMPLETE, 2026-08-03.** 48/48 runs: a full 2⁴ factorial on the
+**Status: COMPLETE, 2026-08-03.** These runs used the llama family with RoPE on the first head only; the design re-run with every head rotated (`experiments/atlas_stage3_rope_all/`, 10 Oct 2026) leaves every finding below standing ([docs/ROPE_HEADS.md](../docs/ROPE_HEADS.md)). 48/48 runs: a full 2⁴ factorial on the
 Stage-2 survivors {optimizer, lr, d, context} × 3 seeds at 3× the
 Stage-2 token budget, with **token-matched context** (T=128×1200 steps
 vs T=256×600 steps, both 614,400 tokens at batch 4) — the de-aliasing

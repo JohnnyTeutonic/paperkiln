@@ -12,18 +12,12 @@ where one of those documents carries a plan, this file wins.*
    replies. The named follow-up is Study 3, a crossed width x learning-rate
    design (about 45 L4-hours), which is also the natural material for a
    revision.
-2. **Atlas Stages 2–3 with `rope_heads=all`: running (started 10 Oct
-   2026).** The two designs re-run unchanged except for RoPE on every head
-   (`experiments/atlas_stage{2,3}_rope_all/sweep.json`; 84 runs, local WSL
-   CPU, 3 jobs x 1 thread, about 18–19 hours; outputs in
-   `~/atlas_rope_all/`, resumable with `~/atlas_rope_all.sh`). Nine findings
-   carry an UNDER REVIEW note ([`docs/ROPE_HEADS.md`](docs/ROPE_HEADS.md));
-   S2-heads-null and S3-ctx-null are directly suspect. When it finishes:
-   - copy the rows and receipts into those experiment folders;
-   - verdict each finding with `tools/reproduce.py <id> --check-only --rows
-     <new atlas_rows.jsonl>`, then supersede or confirm each row;
-   - add the under-review status to `atlas/FINDINGS.md` and to the Stage 2
-     and Stage 3 write-ups.
+2. **Atlas Stages 2–3 with `rope_heads=all`: done (10 Oct 2026).** The
+   two designs re-run with every head rotated (84 runs,
+   `experiments/atlas_stage{2,3}_rope_all/`). None of the nine affected
+   findings is overturned: the six machine checks replicate and the other
+   three match on main effects. Registry notes record the numbers; statuses
+   unchanged ([`docs/ROPE_HEADS.md`](docs/ROPE_HEADS.md)).
 3. **sparse_s1_longbudget: done (10 Oct 2026).** All 20 runs banked; the
    frozen analysis returned "not supported / not supported": no second
    crossing through 12000 steps, the overfit-order condition fails (2/10),

@@ -1,0 +1,21 @@
+{
+  "T": 128,
+  "accum": 1,
+  "attention": "exact",
+  "batch": 4,
+  "best_val": 4.099268913269043,
+  "checkpoint_activations": false,
+  "d": 192,
+  "early_stopped": false,
+  "family": "llama",
+  "final_step": 1200,
+  "heads": 4,
+  "layers": 2,
+  "lr": 0.003000000026077032,
+  "name": "run_036_c12_s1",
+  "params": 1745856,
+  "seed": 1,
+  "steps_requested": 1200,
+  "tokens_per_second": 262.3100023640694,
+  "wall_seconds": 2342.266762467
+}

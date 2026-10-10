@@ -1,0 +1,35 @@
+{
+  "arch": {
+    "preset": "llama-tiny",
+    "custom": {
+      "d": 128,
+      "layers": 4,
+      "heads": 4
+    },
+    "rope_heads": "all"
+  },
+  "data": {
+    "corpus": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/transformer_cpp/data/tinystories-txt/train-0-small.txt",
+    "vocab": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/transformer_cpp/releases/chat7b.gguf",
+    "vocab_cap": 4096,
+    "T": 256
+  },
+  "train": {
+    "steps": 400,
+    "eval_every": 100,
+    "checkpoint_every": 100000,
+    "gradmap_every": 0,
+    "lr": 0.003,
+    "batch": 2,
+    "optimizer": "muon",
+    "seed": 1
+  },
+  "export": {
+    "formats": []
+  },
+  "name": "run_009_c03_s1",
+  "out_dir": "/home/jonat/atlas_rope_all/stage2/runs/run_009_c03_s1",
+  "serve": {
+    "on_finish": false
+  }
+}
