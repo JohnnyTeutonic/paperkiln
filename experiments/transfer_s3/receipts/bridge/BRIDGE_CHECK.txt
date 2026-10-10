@@ -1,0 +1,9 @@
+  step  100: bridge 4.5864951  banked 4.5864951  rel 0.00e+00
+  step  200: bridge 4.2150750  banked 4.2150750  rel 0.00e+00
+  step  300: bridge 4.0332713  banked 4.0332713  rel 0.00e+00
+  step  400: bridge 3.9729160  banked 3.9729160  rel 0.00e+00
+  step  500: bridge 3.8623528  banked 3.8623528  rel 0.00e+00
+  step  600: bridge 3.8580531  banked 3.8580531  rel 0.00e+00
+  step  700: bridge 3.7894309  banked 3.7894309  rel 0.00e+00
+  step  800: bridge 3.7520461  banked 3.7520461  rel 0.00e+00
+worst relative difference 0.00e+00 (tolerance 1e-05): PASS
