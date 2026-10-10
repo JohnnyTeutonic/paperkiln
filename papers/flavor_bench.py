@@ -49,57 +49,13 @@ CACHE = pathlib.Path(__file__).parent / ".cache"
 # absent. Removing an entry here without fixing the scorer is cheating;
 # fixing the scorer lives in papers/fetch.py.
 KNOWN_WRONG: dict[tuple[str, str], str] = {
-    ("1909.08053", "activation"):
-        "ATTRIBUTED ADOPTION (found 2026-08-31 by growing the truth set). "
-        "Megatron-LM never says 'we use GeLU' in the first person — it "
-        "says 'both GPT-2 and BERT use GeLU nonlinearities ... whereas "
-        "the original transformer uses ReLU'. Its own flavor arrives "
-        "ATTRIBUTED to the models it copies, while the contrasted "
-        "alternative sits in a bare declarative clause, so the "
-        "mention-vs-contribution cues invert and ReLU outscores GeLU. "
-        "Inheritance resolved 1909.08053<-gpt-2 correctly in the same "
-        "run; the direct-mention score beat the inherited value. The fix "
-        "is a precedence rule (inheritance outranks a third-party "
-        "attribution), not another cue. "
-        "SHARPENED by the positive control added the same day: Qwen2 "
-        "(2407.10671) says 'we follow Qwen with the usage of SwiGLU ... "
-        "RMSNorm', which is ALSO attribution — and it scores correctly. "
-        "So the failure is not attribution as such; it is attribution "
-        "with NO first-person adoption verb anywhere in the sentence "
-        "('X and Y use Z' vs 'we follow X with the usage of Z'). That "
-        "narrows the fix to a well-defined syntactic case.",
-    ("2304.03208", "positional"):
-        "FUTURE-WORK MENTION READ AS ADOPTION (found 2026-08-31). "
-        "Cerebras-GPT uses learned positions (GPT-3-like). RoPE appears "
-        "in the paper TWICE and never as a choice: once as future work "
-        "('model features worth exploring in future work include "
-        "position embeddings, such as RoPE and ALiBi'), once attributed "
-        "to other models ('GPT-J, GPT-NeoX, and Pythia models use "
-        "rotary positional embeddings'). The scorer applied rope. Two "
-        "distinct gaps: (a) a future-work mention is the cleanest "
-        "non-adoption signal in the corpus and should VETO like an "
-        "explicit rejection does; (b) 'GPT-3-like architecture' did not "
-        "register as an inheritance cue — 2304.03208 is absent from the "
-        "resolved-ancestor list even though the paper names its ancestor "
-        "AND spells out the single delta (dense vs sparse-banded "
-        "attention). Same root as the Megatron case: the evidence for "
-        "what a paper USES is often indirect, and indirect evidence "
-        "currently loses to any direct-looking mention.",
-    ("2201.08239", "activation"):
-        "COMPOUND FLAVOR NAME SHADOWED BY ITS OWN SUBSTRING (found "
-        "2026-08-31). LaMDA states 'gated-GELU activation as described "
-        "in Raffel et al.' — gated-GELU IS GeGLU. The scorer matched the "
-        "substring 'GELU' and applied gelu. This is a THIRD root cause, "
-        "unrelated to the other two: they are about which evidence wins, "
-        "this one is lexical. The gated-X family ('gated-GELU', "
-        "'gated-linear', 'gated-ReLU') names the GLU variant of X, so a "
-        "bare-X match inside a gated-X token is always wrong. Fix: "
-        "longest-match-wins over the flavor lattice plus a gated-X -> "
-        "XGLU normalisation, both in fetch.py's FLAVOR matching. Note "
-        "the bench already counts 'family-level assertions (GLU naming "
-        "soup)' — that counter was tracking the neighbourhood of this "
-        "bug without catching it, because no truth-set paper used the "
-        "gated-X spelling until this one.",
+    # Empty since 2026-10-11. The three entries registered 2026-08-31 were
+    # fixed in fetch.py, each by its named fix, and deleted here when the
+    # bench reported them FIXED: Megatron-LM activation (inheritance now
+    # outranks a third-party attribution), Cerebras-GPT positional
+    # (future-work mentions veto; "X-like architecture" is an inheritance
+    # cue), LaMDA activation (longest-match-wins plus gated-X -> XGLU).
+    # Unit tests for each pattern: papers/test_fetch.py.
 }
 
 TRUTH: dict[str, dict[str, str | None]] = {

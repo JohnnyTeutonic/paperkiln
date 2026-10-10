@@ -86,8 +86,8 @@ Minimal autograd engines are a well-populated genre. Six things here are not:
    alternatives; it *uses* one. The contribution-vs-mention scorer separates
    them with explainable cues and is benchmarked on **40 real papers** with
    ground-truth architectures: grouped AUROC 0.905 [bootstrap 95% CI
-   0.789–1.000] vs 0.841 for naive first-match, pooled 0.817 [0.735–0.898]
-   vs 0.778, and **three documented wrong assertions in 92 verdicts** —
+   0.789–1.000] vs 0.841 for naive first-match, pooled 0.810 [0.730–0.893]
+   vs 0.773, and **no wrong assertion in 92 verdicts** —
    explicit rejections ("we choose not to adopt SwiGLU") veto a candidate
    outright, and close calls abstain and ask the human. The zero-wrong
    record held for 29 papers and broke three times over the next eleven,
@@ -98,10 +98,13 @@ Minimal autograd engines are a well-populated genre. Six things here are not:
    positional encoding is inherited from "a GPT-3-like architecture"
    while RoPE appears purely as *future work*. Once it was lexical:
    LaMDA's "gated-GELU" is GeGLU, and the scorer matched the substring
-   "GELU". All three are registered with diagnoses and named fixes
-   (`KNOWN_WRONG` — new failures still fail the build), because a
-   benchmark that never fails is not measuring anything, and growing this
-   one from 26 to 40 papers is what found them. The benchmark, its CIs and its growth protocol ship in
+   "GELU". Each was registered with its diagnosis and a named fix
+   (`KNOWN_WRONG` — new failures still fail the build), and each fix is
+   now in: inheritance outranks third-party attribution, future-work
+   mentions veto, "X-like" counts as inheritance, and the longest name
+   wins (`gated-GELU` is GeGLU). A benchmark that never fails is not
+   measuring anything; growing this one from 26 to 40 papers is what
+   found them, and growing it further is how the next ones are found. The benchmark, its CIs and its growth protocol ship in
    the repo.
 4. **Falsifiers ship inside the modules.** Novel mechanisms carry the experiment
    designed to kill them — `SurpriseRoutedAttention::shuffle_predictor` feeds the
@@ -476,7 +479,7 @@ can consume a run.
 | **Run studio** | ✅ | Declarative spec → train/eval/export/serve; `plan` dry-run; resume |
 | **Live dashboard** | ✅ | Loss + val + gate chart, per-module gradient glow, spec builder, SVG architecture diagram, in-page chat |
 | **Flex family (paper-faithful)** | ✅ | Any depth; d_ff, LayerNorm/RMSNorm, GELU/ReLU/SwiGLU, learned/sinusoidal all spec-real; bitwise equivalence pin at defaults (`test_flex`, 6 receipts) |
-| **From-paper flow** | ✅ | Drag an arXiv link → scored extraction (grouped AUROC 0.905, 3 documented wrong assertions in 92 verdicts on the 40-paper bench) → editable spec → ▶ train → artifact downloads → chat |
+| **From-paper flow** | ✅ | Drag an arXiv link → scored extraction (grouped AUROC 0.905, no wrong assertion in 92 verdicts on the 40-paper bench) → editable spec → ▶ train → artifact downloads → chat |
 | **Atlas experiment engine** | ✅ | `mtsweep` (grid/PB12/fold-over PB12f, linked factors, aliasing advisories, resumable, OMP-aware) + `atlas_analyze` (main effects + two-way interactions, seed-based SEs); Stages 2–3 findings published |
 | **Atlas viewer** | ✅ | `studio/atlas.html` (+ `/atlas` in serve mode): in-page effects, clickable interaction heatmap, seed spreads — client math pinned to the Python analyzer on real Stage 3 rows |
 | LoRA | ✅ | `LoRALinear`: frozen base + rank-r adapters, `merged_weight()` |
@@ -700,9 +703,10 @@ Measured on `papers/flavor_bench.py`, **40 real papers** with ground-truth
 architectures (Vaswani through OLMo, including designed negatives whose
 true flavor is outside the lattice): **grouped AUROC 0.905** [bootstrap 95%
 CI 0.789–1.000, resampling papers] vs 0.841 for naive first-match, pooled
-0.817 [0.735–0.898] vs 0.778 (0.825 post-veto), **66/92 field verdicts
-correct with three documented wrong assertions** (Megatron-LM, LaMDA,
-Cerebras-GPT; each has a named root cause and fix in the bench) — where first-match extraction claimed RoPE for the ALiBi
+0.810 [0.730–0.893] vs 0.773 (0.813 post-veto), **72/92 field verdicts
+correct, none wrong, the rest abstentions** (the three wrong assertions
+the bench found, Megatron-LM, LaMDA and Cerebras-GPT, are fixed by their
+named root causes) — where first-match extraction claimed RoPE for the ALiBi
 paper and SwiGLU for Primer *and* Falcon ("we choose not to adopt SwiGLU"
 now vetoes the candidate outright). The first 10-paper cut scored a
 grouped 1.000, and the 29-paper cut 0.895 with zero wrong — the larger samples deflated that honestly, which is exactly
@@ -723,7 +727,7 @@ the equation it was read from), every unresolved field is surfaced loudly
 instead of silently defaulted, and a wrong assertion is treated as a bug,
 not a rounding error — the scorer abstains rather than guesses, and every
 wrong assertion it has made is registered with its diagnosis and a named fix
-(three on the 40-paper bench). Free-form code
+(the three found on the 40-paper bench are fixed). Free-form code
 generation produces plausible architectures; evidence-linked extraction
 produces *auditable* ones. That difference is the tool.
 

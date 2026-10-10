@@ -166,7 +166,12 @@ PATTERNS: dict[str, list[str]] = {
 FLAVOR = {
     "norm": [("rmsnorm", r"RMS[-\s]?[Nn]orm"),
              ("layernorm", r"[Ll]ayer[-\s]?[Nn]orm")],
-    "activation": [("swiglu", r"SwiGLU"), ("geglu", r"GeGLU"),
+    # gated-X names the GLU variant of X (LaMDA: "gated-GELU activation as
+    # described in Raffel et al." IS GeGLU), so the compound spelling is
+    # normalised onto XGLU here; longest-match-wins in score_flavors then
+    # stops the bare X inside it from also matching.
+    "activation": [("swiglu", r"SwiGLU|[Gg]ated[-\s]?(?:SiLU|[Ss]wish)"),
+                   ("geglu", r"GeGLU|[Gg]ated[-\s]?G[Ee][Ll][Uu]"),
                    ("gelu", r"GELU"), ("silu", r"SiLU|swish"),
                    ("relu", r"ReLU")],
     "positional": [("rope", r"RoPE|[Rr]otary\s+(?:position|embedding)"),
@@ -185,6 +190,14 @@ FLAVOR = {
     # -> unresolved -> the engine default, stated in the spec comment.
     "attention": [("swa", r"sliding[-\s]?window\s+attention"
                           r"|local\s+(?:windowed\s+)?attention")],
+}
+
+# Out-of-lattice compounds that CONTAIN a lattice name: they claim their
+# span under longest-match-wins (so the inner bare name never matches) but
+# yield no candidate themselves. gated-ReLU is ReGLU and gated-linear is
+# plain GLU: neither is relu, and neither is in the lattice.
+FLAVOR_BLOCKERS: dict[str, list[str]] = {
+    "activation": [r"[Gg]ated[-\s]?(?:ReLU|[Ll]inear)"],
 }
 
 # Numeric companions to flavor mechanisms. Deliberately NOT in PATTERNS:
@@ -267,13 +280,31 @@ INHERIT_PATTERNS = [
     rf"(?:based\s+on|built\s+on|adapted\s+from|derived\s+from)\s+(?:the\s+)?([A-Za-z0-9\-\.]+)\s+{ARCH_NOUN}",
     rf"{ARCH_NOUN}\s+(?:is\s+)?(?:largely\s+|mostly\s+|essentially\s+)?(?:identical|similar)\s+to\s+(?:the\s+)?([A-Za-z0-9\-\.]+)",
     rf"(?:use|uses|used|adopt|adopts|adopted)\s+(?:the\s+)?([A-Za-z0-9\-\.]+)\s+{ARCH_NOUN}",
+    # "Cerebras-GPT models have a GPT-3-like architecture": the ancestor
+    # is named and the architecture noun is present, just hyphenated.
+    rf"([A-Za-z0-9\-\.]+?)-like\s+{ARCH_NOUN}",
 ]
 
 
 SELF_REF = re.compile(r"\b(?:our|we|ours)\b", re.IGNORECASE)
 
 
-def find_inheritance(sections: list[tuple[str, str]]) -> dict | None:
+def self_names_from_title(title: str | None) -> list[str]:
+    """The paper's own model name when the title leads with one
+    ("Cerebras-GPT: Open Compute-Optimal ...", "LaMDA: Language Models
+    ..."). A sentence whose subject is that name refers to the authors'
+    own model as surely as "our" does."""
+    if not title:
+        return []
+    m = re.match(r"\s*([^:]{2,40}?)\s*:", title)
+    if not m or len(m.group(1).split()) > 3:
+        return []
+    return [m.group(1)]
+
+
+def find_inheritance(sections: list[tuple[str, str]],
+                     self_names: list[str] | tuple[str, ...] = ()
+                     ) -> dict | None:
     """Detect an architecture-inheritance claim. Returns
     {ancestor, evidence, section} or None. Method/abstract sections only —
     a related-work sentence about someone else's lineage is not this
@@ -281,7 +312,15 @@ def find_inheritance(sections: list[tuple[str, str]]) -> dict | None:
     authors' own model ("our"/"we"), which is what separates "our network
     is based on the transformer architecture" (LLaMA, a real inheritance)
     from "language models based on the Transformer architecture were
-    shown to..." (BLOOM, a statement about the field)."""
+    shown to..." (BLOOM, a statement about the field). `self_names`
+    (the paper's own model name, see self_names_from_title) also count
+    as self-reference."""
+    self_re = SELF_REF
+    if self_names:
+        self_re = re.compile(
+            SELF_REF.pattern + "|" + "|".join(
+                r"(?<![\w-])" + re.escape(n) + r"(?![\w-])" for n in self_names),
+            re.IGNORECASE)
     best = None
     for sec_class, seg in sections:
         # Method/abstract only. An inheritance claim about the authors'
@@ -298,7 +337,7 @@ def find_inheritance(sections: list[tuple[str, str]]) -> dict | None:
                 # clause and does not make the claim the paper's own.
                 lo = seg.rfind(". ", 0, m.start())
                 head = seg[(lo + 2 if lo != -1 else max(0, m.start() - 120)):m.start()]
-                if not SELF_REF.search(head):
+                if not self_re.search(head):
                     continue
                 raw = m.group(1).lower().strip(".,;:")
                 # longest alias first so gpt-neox beats gpt
@@ -360,7 +399,48 @@ NEG_RESULT_RE = (r"\b(?:no|little|few)\s+(?:additional|significant|clear|meaning
 DECLINED_RE = (r"\b(?:choose|chose|opt(?:ed)?|decided?)\s+not\s+to\b|"
                r"\bagainst\s+(?:using|adopting)\b")
 MENTION_CUES += [(NEG_RESULT_RE, -3.0), (DECLINED_RE, -4.0)]
-REJECTION_CUES = {"explicit-negation", "negative-result", "declined"}
+# Future work is the cleanest non-adoption signal there is: "features
+# worth exploring in future work include ... RoPE and ALiBi" (Cerebras-
+# GPT) names exactly the flavors the paper did NOT use. It VETOES like an
+# explicit rejection. Scoped to the SAME sentence, BEFORE the match ("in
+# future work we will try X"), or AFTER it only in the deferral shapes
+# "leave X for future work" / "X is left to future work", so "we use RoPE
+# and leave ALiBi for future work" vetoes ALiBi but cannot veto RoPE. Its
+# score weight stays the generic -1.0 future-work mention cue above.
+FUTURE_WORK_RE = r"\bfuture\s+(?:work|research|stud(?:y|ies))\b"
+_FW_TAIL = r"(?:for|to)\s+future\s+(?:work|research|stud(?:y|ies))\b"
+FUTURE_WORK_LEAVE_RE = r"\b(?:leave|leaves|leaving|left)\s+(?:[\w-]+[\s,]+){0,3}$"
+FUTURE_WORK_AFTER_RE = rf"^\s*(?:[\w-]+\s+){{0,3}}{_FW_TAIL}"
+FUTURE_WORK_LEFT_RE = rf"^\s*(?:is|are)\s+(?:left|deferred)\s+{_FW_TAIL}"
+REJECTION_CUES = {"explicit-negation", "negative-result", "declined",
+                  "future-work"}
+# Third-party attribution: "the original transformer \cite{} uses ReLU",
+# "GPT-J, GPT-NeoX, and Pythia models use rotary embeddings": a usage verb
+# whose SUBJECT is another named model (a known ancestor name), in a
+# sentence with no first-person reference at all. Such a
+# sentence says what SOMEONE ELSE uses; when the paper declares a specific
+# ancestor, the inheritance outranks it (the Megatron-LM failure). The
+# Qwen2 shape "we follow Qwen with the usage of SwiGLU" carries "we" and
+# is NOT third-party.
+THIRD_PARTY_VERB_RE = re.compile(
+    r"\b(?:uses|use|used|adopts|adopt|employs|employ|applies|apply)\s+"
+    r"(?:the\s+|a\s+|an\s+)?$", re.IGNORECASE)
+_NAMED_ALIASES: re.Pattern | None = None  # built lazily from ANCESTOR_ALIASES
+
+
+def _third_party_subject(subject: str) -> bool:
+    global _NAMED_ALIASES
+    if _NAMED_ALIASES is None:
+        # bare "transformer" is excluded: "each transformer block uses
+        # pre-norm" describes the paper's own model.
+        names = [a for a in ANCESTOR_ALIASES if a != "transformer"]
+        _NAMED_ALIASES = re.compile(
+            r"(?<![\w-])(?:" + "|".join(
+                re.escape(a) for a in sorted(names, key=len, reverse=True))
+            + r")(?!\w)", re.IGNORECASE)
+    # A citation alone is NOT a named subject: "pre-normalization using
+    # RMSNorm \cite{}" attributes a technique, not a model's choice.
+    return bool(_NAMED_ALIASES.search(subject))
 # Attribution cues that read as related-work ONLY when no usage verb is
 # nearby: "we use rotary embeddings introduced by [cite]" is a usage
 # statement with attribution, not a mention.
@@ -454,6 +534,33 @@ def score_match(seg_text: str, m: re.Match, sec_class: str) -> tuple[float, list
         cues.append("negative-result")
     if re.search(DECLINED_RE, window, flags=re.IGNORECASE):
         cues.append("declined")
+    if (re.search(FUTURE_WORK_RE, before, flags=re.IGNORECASE) or
+            (re.search(FUTURE_WORK_LEAVE_RE, before, flags=re.IGNORECASE) and
+             re.search(FUTURE_WORK_AFTER_RE, after, flags=re.IGNORECASE)) or
+            re.search(FUTURE_WORK_LEFT_RE, after, flags=re.IGNORECASE)):
+        cues.append("future-work")
+    # Third-party attribution (named marker; extract() applies the
+    # precedence rule against a declared ancestor). The subject is the
+    # text before the verb, back to the nearest clause break.
+    # The no-first-person test spans the WHOLE sentence, not the 120-char
+    # window: Llama 2's "We use the standard transformer architecture
+    # \cite{}, apply ... RMSNorm \cite{}, use the SwiGLU ..." keeps its
+    # "We" outside the window and must not read as third-party.
+    s_lo = seg_text.rfind(". ", 0, m.start())
+    s_hi = seg_text.find(". ", m.end())
+    sentence = seg_text[s_lo + 2 if s_lo != -1 else 0:
+                        s_hi if s_hi != -1 else len(seg_text)]
+    v = THIRD_PARTY_VERB_RE.search(before)
+    if v and not SELF_REF.search(sentence):
+        subj = before[:v.start()]
+        breaks = [subj.rfind(";")] + [
+            mm.end() for mm in re.finditer(
+                r"\b(?:whereas|while|but|although)\b", subj, flags=re.IGNORECASE)]
+        cut = max(breaks)
+        if cut != -1:
+            subj = subj[cut + 1:]
+        if _third_party_subject(subj):
+            cues.append("third-party-attribution")
     # Plus-compound baseline naming: "Transformer+GELU" is a named
     # comparison config, not this paper's choice.
     if re.search(r"\+\s*$", before):
@@ -503,20 +610,36 @@ def score_flavors(sections: list[tuple[str, str]]) -> dict[str, list[dict]]:
     {value, score, evidence, cues, n}."""
     out: dict[str, list[dict]] = {}
     for fieldname, flavors in FLAVOR.items():
+        # Longest-match-wins over the field's lattice (plus out-of-lattice
+        # blockers): a match lying strictly inside a longer match of the
+        # same field is the substring of a compound name, never a mention
+        # in its own right ("GELU" inside "gated-GELU").
+        pats = [p for _, p in flavors] + FLAVOR_BLOCKERS.get(fieldname, [])
+        claimed = [[(mm.start(), mm.end()) for p in pats
+                    for mm in re.finditer(p, seg)]
+                   for _sec_class, seg in sections]
         cands = []
         for value, pat in flavors:
             best, best_ev, best_cues, n = None, "", [], 0
             rejected = False
             others = [p for v, p in flavors if v != value]
-            for sec_class, seg in sections:
+            for i, (sec_class, seg) in enumerate(sections):
                 for m in re.finditer(pat, seg):
+                    a, b = m.start(), m.end()
+                    if any(s <= a and b <= e and e - s > b - a
+                           for s, e in claimed[i]):
+                        continue  # shadowed by a longer compound name
                     n += 1
                     sc, cues = score_match(seg, m, sec_class)
                     rejected = rejected or bool(REJECTION_CUES & set(cues))
                     # Enumeration: another alternative of the SAME field
                     # within a tight radius means a comparison list
                     # ("the sinusoidal, rotary and T5 bias models").
-                    near = seg[max(0, m.start() - 45):m.end() + 45]
+                    # Own span blanked: a compound like gated-GELU must
+                    # not count as enumerating the bare name inside it.
+                    near = (seg[max(0, m.start() - 45):m.start()]
+                            + " " * (m.end() - m.start())
+                            + seg[m.end():m.end() + 45])
                     if any(re.search(p, near) for p in others):
                         sc -= 1.5
                         cues = cues + ["enumeration"]
@@ -657,7 +780,11 @@ def extract(arxiv_id: str, tex: str) -> Arch:
     # unresolved with the mentions listed — reported, never guessed.
     sections = split_sections(tex)
     flavor_scores = score_flavors(sections)
-    inherit = find_inheritance(sections)
+    inherit = find_inheritance(sections, self_names_from_title(arch.title))
+    # The specific ancestor's values (empty for the generic transformer,
+    # see the NON-INHERITABLE note below).
+    inherit_base = ({} if not inherit or inherit["ancestor"] == "transformer"
+                    else ANCESTORS.get(inherit["ancestor"], {}))
     for fieldname in FLAVOR:
         cands = flavor_scores.get(fieldname, [])
         if not cands:
@@ -678,7 +805,14 @@ def extract(arxiv_id: str, tex: str) -> Arch:
             arch.mentions[fieldname] = [
                 {"value": c["value"], "score": c["score"]} for c in cands]
             continue
-        if "rejection-elsewhere" in top["cues"]:
+        if ("third-party-attribution" in top["cues"] and
+                fieldname in inherit_base):
+            # PRECEDENCE: the best evidence is what ANOTHER model uses
+            # ("the original transformer uses ReLU") while the paper
+            # declares a specific ancestor. The declared inheritance
+            # outranks a third-party attribution; the base fills below.
+            arch.unresolved.append(fieldname)
+        elif "rejection-elsewhere" in top["cues"]:
             # The paper explicitly rejected this candidate somewhere
             # ("we choose not to adopt X", "(no X)"): it may never be
             # ASSERTED, whatever its best local sentence scored.

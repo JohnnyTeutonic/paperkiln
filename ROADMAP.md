@@ -81,14 +81,11 @@ advisory steps that cannot fail the build.
 
 ## 5. Extractor
 
-- **Fix the three registered wrong assertions** (`papers/flavor_bench.py`
-  `KNOWN_WRONG`):
-  - Megatron-LM, attributed adoption: inheritance should outrank
-    third-party attribution.
-  - Cerebras-GPT: future-work mentions should veto, and "X-like" should
-    count as an inheritance cue.
-  - LaMDA, compound-name shadowing: longest match should win, with a
-    `gated-X → XGLU` normalisation.
+- **Two lexical gaps found while fixing the wrong assertions:** the GELU
+  pattern does not match the spelling "GeLU" (Megatron, BART), and a
+  vetoed runner-up still marks a field as contested.
+- **Publish `paperkiln-fetch` 0.1.1** with the extractor fixes (0.1.0 on
+  PyPI predates them).
 - **Grow the benchmark from 40 to 60–100 papers**, with ground truth read
   off the fetched source and never recalled. Add a reconstruction-fidelity
   task (parameter-count error per reconstructed paper) for a datasets and

@@ -4,7 +4,8 @@
 """
 import sys
 
-from fetch import Arch, detex, emit_cpp, emit_spec, extract, parse_tables
+from fetch import (Arch, detex, emit_cpp, emit_spec, extract, parse_tables,
+                   score_flavors, split_sections)
 
 FIXTURE_PROSE = r"""
 \title{A Tiny Transformer}
@@ -182,6 +183,125 @@ gating. We use SwiGLU and we use GeGLU throughout our model.
     print(f"GLU family ok: contested swiglu/geglu -> {f.value}")
 
 
+def test_inheritance_outranks_third_party_attribution() -> None:
+    # Megatron-LM shape (KNOWN_WRONG fixed 2026-10-11): the paper declares
+    # a specific ancestor, never states its own activation in the first
+    # person, and the contrasted alternative sits in a bare declarative
+    # clause about ANOTHER model. The inheritance must win.
+    tex = r"""
+\section{Model}
+We train a transformer language model similar to GPT-2 at scale. It is
+worthwhile to mention that both GPT-2 and BERT apply layer normalization
+to the input of each layer, whereas the original transformer
+\citep{vaswani} uses ReLU nonlinearities and normalizes outputs.
+"""
+    a = extract("0000.00020", tex)
+    assert a.inherits and a.inherits["ancestor"] == "gpt-2", a.inherits
+    f = a.fields["activation"]
+    assert (f.value, f.verdict) == ("gelu", "inherited"), (f.value, f.verdict)
+    assert any(c["value"] == "relu" for c in a.mentions["activation"])
+    # Control: the same ancestor, but a FIRST-PERSON delta. The paper's
+    # own statement still overrides the base.
+    ctrl = extract("0000.00021", r"""
+\section{Model}
+We train a transformer language model similar to GPT-2 at scale. Unlike
+GPT-2, we use ReLU nonlinearities throughout.
+""")
+    f = ctrl.fields["activation"]
+    assert (f.value, f.verdict) == ("relu", "used"), (f.value, f.verdict)
+    # Control: Llama 2 shape. "We" opens the sentence far outside the
+    # cue window and a citation precedes the verb; still first person,
+    # so no third-party mark.
+    llama2 = score_flavors(split_sections(r"""
+\section{Model}
+We use the standard transformer architecture \citep{vaswani}, apply
+pre-normalization using RMSNorm \citep{zhang}, use the SwiGLU activation
+function \citep{shazeer}, and rotary positional embeddings.
+"""))
+    sw = [c for c in llama2["activation"] if c["value"] == "swiglu"][0]
+    assert "third-party-attribution" not in sw["cues"], sw
+    print("precedence ok: inheritance beats third-party attribution; "
+          "first-person delta and Llama-2 shape unchanged")
+
+
+def test_future_work_vetoes_and_like_inheritance() -> None:
+    # Cerebras-GPT shape (KNOWN_WRONG fixed 2026-10-11): the ancestor is
+    # named as "X-like architecture" with the paper's own model name as
+    # subject, and the wrong flavors appear only as future work.
+    tex = r"""
+\title{Foo-LM: Open Compute-Optimal Models}
+\section{Model Architecture}
+Foo-LM models have a GPT-3-like architecture, an autoregressive
+transformer decoder model. The main difference is that we use dense
+attention in all decoder blocks.
+\section{Limitations}
+Model features worth exploring in future work include position
+embeddings, such as RoPE and ALiBi, and activation functions, like
+SwiGLU.
+\section{Appendix}
+GPT-J and Pythia models use rotary positional embeddings, which show
+modest improvements.
+"""
+    a = extract("0000.00022", tex)
+    assert a.inherits and a.inherits["ancestor"] == "gpt-3", a.inherits
+    for fieldname, want in (("positional", "learned"), ("activation", "gelu")):
+        f = a.fields[fieldname]
+        assert (f.value, f.verdict) == (want, "inherited"), (fieldname, f)
+    # Control: a deferral VETOES only the deferred flavor; the adopted
+    # one in the same sentence still reads as used.
+    ctrl = extract("0000.00023", r"""
+\section{Model}
+We use RoPE in every layer. We leave ALiBi for future work.
+""")
+    f = ctrl.fields.get("positional")
+    assert f is not None and (f.value, f.verdict) == ("rope", "used"), f
+    # Same sentence: the veto still lands on the deferred flavor only.
+    cands = score_flavors(split_sections(r"""
+\section{Model}
+We use RoPE in every layer and leave ALiBi for future work.
+"""))["positional"]
+    cues = {c["value"]: c["cues"] for c in cands}
+    assert "rejection-elsewhere" in cues["alibi"], cues
+    assert "rejection-elsewhere" not in cues["rope"], cues
+    # Control: a "-like" sentence with no self-reference is not this
+    # paper's inheritance.
+    other = extract("0000.00024", r"""
+\section{Model}
+Several open models have a GPT-3-like architecture.
+""")
+    assert other.inherits is None, other.inherits
+    print("future-work veto + X-like inheritance ok; adopted flavor in a "
+          "deferral sentence still used")
+
+
+def test_gated_compound_names() -> None:
+    # LaMDA shape (KNOWN_WRONG fixed 2026-10-11): "gated-GELU" IS GeGLU,
+    # and the bare GELU inside it must not match on its own.
+    tex = r"""
+\section{Model}
+The Transformer has 64 layers, relative attention as described in T5,
+and gated-GELU activation as described in Raffel et al.
+"""
+    cands = score_flavors(split_sections(tex))["activation"]
+    assert [c["value"] for c in cands] == ["geglu"], cands
+    a = extract("0000.00025", tex)
+    assert a.fields["activation"].value == "geglu", a.fields["activation"]
+    # Spelling variants normalise the same way; gated-ReLU (ReGLU, out of
+    # the lattice) blocks its inner ReLU and yields NO candidate.
+    for spelling, want in (("Gated GELU", ["geglu"]), ("gated-SiLU", ["swiglu"]),
+                           ("gated-ReLU", [])):
+        c = score_flavors(split_sections(
+            "\\section{Model}\nWe use the " + spelling + " activation."))
+        got = [x["value"] for x in c.get("activation", [])]
+        assert got == want, (spelling, got)
+    # Control: a bare GELU / ReLU / GeGLU is untouched.
+    for spelling, want in (("GELU", "gelu"), ("ReLU", "relu"), ("GeGLU", "geglu")):
+        a = extract("0000.00026", "\\section{Model}\nWe use the " + spelling
+                    + " activation.")
+        assert a.fields["activation"].value == want, (spelling, a.fields)
+    print("compound names ok: gated-X -> XGLU, longest match wins")
+
+
 def test_unresolved_reported() -> None:
     arch = extract("0000.00002", r"A paper with no architecture at all.")
     assert "d_model" in arch.unresolved and "norm" in arch.unresolved
@@ -300,6 +420,9 @@ if __name__ == "__main__":
     test_contribution_vs_mention()
     test_inheritance()
     test_glu_family()
+    test_inheritance_outranks_third_party_attribution()
+    test_future_work_vetoes_and_like_inheritance()
+    test_gated_compound_names()
     test_prose()
     test_table()
     test_unresolved_reported()
