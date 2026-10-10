@@ -1,0 +1,77 @@
+{
+  "_comment": "transfer_s3 cell S5: d=256 at lr 5e-4. Identical to transfer_s2/sweep_S.json (Study 2) in every field except the learning rate (0.00025 there) and out_root; six lanes, seeds 21-32, 3600 steps. See transfer_s3/PREREGISTRATION.md.",
+  "base": {
+    "arch": {
+      "preset": "gpt2-nano",
+      "custom": {
+        "d": 256,
+        "heads": 8
+      }
+    },
+    "data": {
+      "corpus": "/content/data/corpus.txt",
+      "vocab": "/content/data/chat7b.gguf",
+      "vocab_cap": 4096,
+      "T": 256
+    },
+    "train": {
+      "batch": 4,
+      "lr": 0.0005,
+      "steps": 3600,
+      "eval_every": 100,
+      "checkpoint_every": 400,
+      "gradmap_every": 0
+    },
+    "export": {
+      "formats": []
+    }
+  },
+  "factors": {
+    "lane": [
+      {
+        "arch.custom.attention": "exact"
+      },
+      {
+        "arch.custom.attention": "swa",
+        "arch.custom.window": 16,
+        "arch.custom.sinks": 1
+      },
+      {
+        "arch.custom.attention": "swa",
+        "arch.custom.window": 32,
+        "arch.custom.sinks": 1
+      },
+      {
+        "arch.custom.attention": "swa",
+        "arch.custom.window": 64,
+        "arch.custom.sinks": 1
+      },
+      {
+        "arch.custom.attention": "swa",
+        "arch.custom.window": 128,
+        "arch.custom.sinks": 1
+      },
+      {
+        "arch.custom.attention": "swa",
+        "arch.custom.window": 64,
+        "arch.custom.sinks": 0
+      }
+    ]
+  },
+  "design": "grid",
+  "seeds": [
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32
+  ],
+  "out_root": "/content/transfer_out/s3_S5"
+}

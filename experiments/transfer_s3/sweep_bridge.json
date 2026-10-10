@@ -1,0 +1,41 @@
+{
+  "_comment": "transfer_s3 binary bridge (threat 2): Study 2 arm S, seed 21, exact lane, re-run for 800 steps on the binary the new cells use. Identical to transfer_s2/sweep_S.json except steps (3600 there; the learning rate is constant, so the first 800 steps are the same computation), one lane, one seed and out_root. bridge_check.py compares its evaluations with the banked receipt.",
+  "base": {
+    "arch": {
+      "preset": "gpt2-nano",
+      "custom": {
+        "d": 256,
+        "heads": 8
+      }
+    },
+    "data": {
+      "corpus": "/content/data/corpus.txt",
+      "vocab": "/content/data/chat7b.gguf",
+      "vocab_cap": 4096,
+      "T": 256
+    },
+    "train": {
+      "batch": 4,
+      "lr": 0.00025,
+      "steps": 800,
+      "eval_every": 100,
+      "checkpoint_every": 400,
+      "gradmap_every": 0
+    },
+    "export": {
+      "formats": []
+    }
+  },
+  "factors": {
+    "lane": [
+      {
+        "arch.custom.attention": "exact"
+      }
+    ]
+  },
+  "design": "grid",
+  "seeds": [
+    21
+  ],
+  "out_root": "/content/transfer_out/s3_bridge"
+}
