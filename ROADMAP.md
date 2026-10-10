@@ -9,9 +9,14 @@ where one of those documents carries a plan, this file wins.*
 
 1. **The transfer paper is under submission at *Machine Learning*
    (Springer), submitted 9 Oct 2026.** Nothing to do until the editor
-   replies. The named follow-up is Study 3, a crossed width x learning-rate
-   design (about 45 L4-hours), which is also the natural material for a
-   revision.
+   replies.
+   - **Study 3, width x rate crossed: running (launched 11 Oct 2026).**
+     Licence anchor f61e253 (`experiments/transfer_s3/`); binary bridge
+     passed bit-identically; 144 new runs (S5 = d256 at 5e-4 on `s3s5`,
+     M25 = d512 at 2.5e-4 on `s3m0`/`s3m1`), about 18 hours. When all are
+     banked: copy receipts into `experiments/transfer_s3/receipts/`, run
+     the licensed `analyze.py` with all six cells, write `RESULTS.md`, add
+     the registry row; the reading is material for an MLJ revision.
 2. **Atlas Stages 2–3 with `rope_heads=all`: done (10 Oct 2026).** The
    two designs re-run with every head rotated (84 runs,
    `experiments/atlas_stage{2,3}_rope_all/`). None of the nine affected
