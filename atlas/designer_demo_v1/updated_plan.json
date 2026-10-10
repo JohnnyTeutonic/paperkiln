@@ -1,0 +1,280 @@
+{
+  "status": "PLAN ONLY; model-conditional information gain, no efficacy claim",
+  "scope_fingerprint": "bad4d27ab3835b7f2935df69715cab8c9662d2b011f44c4be319cc5ea4300a20",
+  "selected": [
+    {
+      "norm": "rmsnorm",
+      "activation": "gelu",
+      "residual": "residual"
+    },
+    {
+      "norm": "rmsnorm",
+      "activation": "relu",
+      "residual": "residual"
+    },
+    {
+      "norm": "layernorm",
+      "activation": "relu",
+      "residual": "residual"
+    }
+  ],
+  "baseline": {
+    "norm": "layernorm",
+    "activation": "gelu",
+    "residual": "residual"
+  },
+  "seeds": [
+    201,
+    202
+  ],
+  "budget": 8.0,
+  "spent": 8.0,
+  "cost_unit": "synthetic run units",
+  "planned_runs": 8,
+  "acquisition": [
+    {
+      "settings": {
+        "norm": "rmsnorm",
+        "activation": "gelu",
+        "residual": "residual"
+      },
+      "incremental_cost": 4.0,
+      "cumulative_cost": 4.0,
+      "gain_per_cost": 0.0004012746511849884,
+      "target_variance_before": [
+        0.013109561980637681
+      ],
+      "target_variance_after": [
+        0.011504463375897727
+      ],
+      "feasible_alternatives": 7
+    },
+    {
+      "settings": {
+        "norm": "rmsnorm",
+        "activation": "relu",
+        "residual": "residual"
+      },
+      "incremental_cost": 2.0,
+      "cumulative_cost": 6.0,
+      "gain_per_cost": 0.0011447691092147851,
+      "target_variance_before": [
+        0.011504463375897727
+      ],
+      "target_variance_after": [
+        0.009214925157468157
+      ],
+      "feasible_alternatives": 6
+    },
+    {
+      "settings": {
+        "norm": "layernorm",
+        "activation": "relu",
+        "residual": "residual"
+      },
+      "incremental_cost": 2.0,
+      "cumulative_cost": 8.0,
+      "gain_per_cost": 0.0007594732422996817,
+      "target_variance_before": [
+        0.009214925157468157
+      ],
+      "target_variance_after": [
+        0.007695978672868794
+      ],
+      "feasible_alternatives": 5
+    }
+  ],
+  "targets": [
+    {
+      "name": "normalisation x activation difference-in-differences",
+      "terms": [
+        {
+          "settings": {
+            "norm": "rmsnorm",
+            "activation": "relu",
+            "residual": "residual"
+          },
+          "weight": 1
+        },
+        {
+          "settings": {
+            "norm": "rmsnorm",
+            "activation": "gelu",
+            "residual": "residual"
+          },
+          "weight": -1
+        },
+        {
+          "settings": {
+            "norm": "layernorm",
+            "activation": "relu",
+            "residual": "residual"
+          },
+          "weight": -1
+        },
+        {
+          "settings": {
+            "norm": "layernorm",
+            "activation": "gelu",
+            "residual": "residual"
+          },
+          "weight": 1
+        }
+      ],
+      "mean": -0.7890225784858989,
+      "conditional_sd": 0.1144969955092171,
+      "variance": 0.013109561980637681,
+      "prior_variance": 1.0,
+      "posterior_to_prior_variance": 0.013109561980637681,
+      "has_unidentified_component": false,
+      "planned_variance": 0.007695978672868794
+    }
+  ],
+  "initial_weighted_variance": 0.013109561980637681,
+  "planned_weighted_variance": 0.007695978672868794,
+  "conditional_fingerprint": [
+    {
+      "slot": "norm",
+      "baseline": {
+        "norm": "layernorm",
+        "activation": "gelu",
+        "residual": "residual"
+      },
+      "substitute": {
+        "norm": "rmsnorm",
+        "activation": "gelu",
+        "residual": "residual"
+      },
+      "target_observed": true,
+      "mean": 0.19533798191901083,
+      "conditional_sd": 0.07031828255176921,
+      "variance": 0.00494466086103045,
+      "prior_variance": 1.0,
+      "posterior_to_prior_variance": 0.00494466086103045,
+      "has_unidentified_component": false
+    },
+    {
+      "slot": "activation",
+      "baseline": {
+        "norm": "layernorm",
+        "activation": "gelu",
+        "residual": "residual"
+      },
+      "substitute": {
+        "norm": "layernorm",
+        "activation": "relu",
+        "residual": "residual"
+      },
+      "target_observed": true,
+      "mean": -0.10391388840521269,
+      "conditional_sd": 0.07031828255176921,
+      "variance": 0.00494466086103045,
+      "prior_variance": 1.0,
+      "posterior_to_prior_variance": 0.00494466086103045,
+      "has_unidentified_component": false
+    },
+    {
+      "slot": "residual",
+      "baseline": {
+        "norm": "layernorm",
+        "activation": "gelu",
+        "residual": "residual"
+      },
+      "substitute": {
+        "norm": "layernorm",
+        "activation": "gelu",
+        "residual": "highway"
+      },
+      "target_observed": false,
+      "mean": 0.0,
+      "conditional_sd": 1.0,
+      "variance": 1.0,
+      "prior_variance": 1.0,
+      "posterior_to_prior_variance": 1.0,
+      "has_unidentified_component": true
+    }
+  ],
+  "sweep": {
+    "base": {
+      "arch": {
+        "preset": "gpt2-nano",
+        "custom": {
+          "d": 64,
+          "heads": 4,
+          "layers": 2,
+          "attention": "exact",
+          "position": "learned",
+          "norm": "layernorm",
+          "activation": "gelu",
+          "residual": "residual"
+        }
+      },
+      "data": {
+        "T": 64,
+        "path": "REPLACE_WITH_PROSPECTIVE_CORPUS"
+      },
+      "train": {
+        "optimizer": "adamw",
+        "lr": 0.001,
+        "batch": 1,
+        "steps": 200
+      },
+      "serve": {
+        "on_finish": false
+      }
+    },
+    "design": "grid",
+    "factors": {
+      "candidate": [
+        {
+          "arch.custom.norm": "layernorm",
+          "arch.custom.activation": "gelu",
+          "arch.custom.residual": "residual"
+        },
+        {
+          "arch.custom.norm": "rmsnorm",
+          "arch.custom.activation": "gelu",
+          "arch.custom.residual": "residual"
+        },
+        {
+          "arch.custom.norm": "rmsnorm",
+          "arch.custom.activation": "relu",
+          "arch.custom.residual": "residual"
+        },
+        {
+          "arch.custom.norm": "layernorm",
+          "arch.custom.activation": "relu",
+          "arch.custom.residual": "residual"
+        }
+      ]
+    },
+    "seeds": [
+      201,
+      202
+    ],
+    "out_root": "prospective_atlas_runs"
+  },
+  "features": [
+    "norm=rmsnorm",
+    "activation=relu",
+    "residual=highway",
+    "norm=rmsnorm * activation=relu",
+    "norm=rmsnorm * residual=highway",
+    "activation=relu * residual=highway"
+  ],
+  "excluded_illegal_candidates": [],
+  "assumptions": {
+    "prior": "zero-mean independent Gaussian coefficients",
+    "prior_variance": 1.0,
+    "per_run_noise_variance": 0.01,
+    "seed": "arbitrary additive seed offset cancelled by within-seed contrasts",
+    "residuals": "independent homoskedastic Gaussian per-run residuals; shared-anchor covariance retained",
+    "scope": "caller-declared scope identity, not independent receipt authentication",
+    "acquisition": "fixed-basis/fixed-noise variance reduction is outcome-independent",
+    "search": "greedy information per incremental cost; not globally optimal",
+    "uncertainty": "conditional on basis/prior/noise; not empirically calibrated"
+  },
+  "input_sha256": "1dfb3b583492ee7bfe2a02e312c16c9c0c5526a324be2b96a91200e0aafb9ce1",
+  "source_sha256": "6fcbb36bbcf2380bbb42cdfb4829b435e17d1015c8b0f02135c49593721dc082",
+  "taxonomy_sha256": "6a4bf0f000ac7ac1afa74171eaa0f1031c25d411958dea31550db8df5739eb80"
+}

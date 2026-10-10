@@ -159,3 +159,20 @@ transferring. It was not amended to signed rho; a warning fires whenever
 without an amendment, so the licensed rule stands as written. In study 2
 the warning fired (rho -0.60) and the paper reports the reversal
 directly.
+
+---
+
+## D10. The mechanism freeze is lifted; every new mechanism ships with a falsifier
+
+**Chosen:** the freeze of 28 Aug 2026 ("nothing new goes in until the
+scale ladder is done") is lifted. New mechanisms may enter, on one
+condition: each arrives with a pre-registered experiment that could
+kill it, and the result is published either way.
+
+**Why:** the freeze existed to keep the ladder from being crowded out by
+breadth. The transfer studies climbed it (two pre-registered studies
+across widths 256, 512 and 1024), so its purpose is served. The
+falsifier rule keeps the reason the freeze was right: mechanisms that
+arrive without a test read as breadth, and breadth is what reviewers
+discount.
+

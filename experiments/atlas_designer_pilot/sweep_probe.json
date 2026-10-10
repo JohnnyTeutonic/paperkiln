@@ -1,0 +1,15 @@
+{
+  "_comment": "DRAFT operational probe only; not launched, not preregistered. See PILOT_PLAN.md prerequisites.",
+  "base": {
+    "arch": {"preset": "gpt2-nano", "custom": {"d": 128, "layers": 2, "heads": 4, "attention": "exact", "position": "learned", "norm": "layernorm", "activation": "gelu", "residual": "residual"}},
+    "data": {"corpus": "/content/data/corpus.txt", "vocab": "/content/data/chat7b.gguf", "vocab_cap": 4096, "T": 128},
+    "train": {"optimizer": "adamw", "batch": 4, "lr": 0.001, "steps": 200, "eval_every": 50, "checkpoint_every": 50, "gradmap_every": 0},
+    "export": {"formats": []}, "serve": {"on_finish": false}
+  },
+  "factors": {"configuration": [
+    {"arch.custom.norm": "layernorm", "arch.custom.activation": "gelu", "arch.custom.residual": "residual"},
+    {"arch.custom.norm": "rmsnorm", "arch.custom.activation": "relu", "arch.custom.residual": "highway"}
+  ]},
+  "design": "grid", "seeds": [301],
+  "out_root": "/content/transfer_out/atlas_designer_probe"
+}

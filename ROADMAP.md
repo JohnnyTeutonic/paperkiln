@@ -27,38 +27,19 @@ where one of those documents carries a plan, this file wins.*
 
 ## 2. Decisions waiting on Jonathan
 
-- **PyPI names.** `paperkiln` and `paperkiln-fetch` are unclaimed (404 on
-  9 Oct 2026). Claiming them needs his credentials and takes two minutes.
-- **The longbudget checkpoint amendment** (Now, item 3).
-- **The transfer_s1 registry rows after study 2.**
-  T1-structure-transfers and T1-fixed-lr-mistunes still read "supported",
-  although study 2's pre-registered falsifier fired. There are no study 2
-  rows yet.
-- **The highway pilot verdict.** It is recorded in
-  `registry/0001_highway_networks/ENTRY.md` §7 and has no
-  `findings.jsonl` row. Should it get one?
-- **The two synthesis study sketches, go or no-go.**
-  - `experiments/consensus_prefill/SKETCH.md` §7 lists four decisions
-    (whether to run Phase A, the 4096-context model, the gate default, and
-    the twelve-seed arm).
-  - `experiments/commit_ttt/SKETCH.md` §6 lists what that sketch leaves
-    open.
-- **The designer pilot, go or no-go.**
-  `experiments/atlas_designer_pilot/PILOT_PLAN.md` is a draft Colab pilot.
-- **Commit the uncommitted research work, or not.** Nothing below is in
-  git yet:
-  - the experiment designer: `tools/atlas_designer*.py`,
-    `tests/test_atlas_designer.py`, `atlas/EXPERIMENT_DESIGNER.md`,
-    `atlas/designer_demo_v1/`;
-  - `experiments/atlas_designer_pilot/`;
-  - the post-hoc decision audit `experiments/atlas_selection/`;
-  - the Jev judge evaluation and the maths ranking under
-    `tools/synthesis/`.
-- **The mechanism freeze of 28 Aug 2026.** It was tied to the scale
-  ladder, which the transfer studies have now climbed. Lift it or keep it?
-- **Whether the methodology paper stays a separate paper**
-  (`atlas/PAPER_PLAN.md`, aimed at JMLR, not drafted). The transfer paper
-  absorbed much of its argument, including gap G1.
+None open. Settled on 10 Oct 2026:
+- PyPI: `paperkiln-fetch` 0.1.0 is published; `paperkiln` follows with
+  portable wheels.
+- Registry: Study 2 has its row (T2-structure-position-fragile), which
+  supersedes T1-structure-transfers; T1-fixed-lr-mistunes stands. The
+  highway pilot has its row (R0001-highway-depth2-null).
+- Parked until the journal verdicts are in: the two synthesis sketches
+  (consensus prefill, commit-gated TTT) and the designer pilot. Their
+  code and plans are committed.
+- The mechanism freeze is lifted; every new mechanism ships with a
+  pre-registered falsifier (decision D10).
+- No separate methodology paper: its argument is in the transfer paper
+  at Machine Learning. `atlas/PAPER_PLAN.md` stays as reference.
 
 ## 3. Broken now
 
@@ -74,8 +55,6 @@ advisory steps that cannot fail the build.
   own pre-registration. Deep SWA is built and gated.
 - **Atlas Stages 5–6.** Architectural fingerprints, neighbours, and the
   Atlas surface in the studio (`atlas/ARCHITECTURE_ATLAS.md` §19).
-- **Methodology paper gaps** (if it stays separate): G2, an outside
-  contributor; G4, the prior-art sweep on pre-registration in ML.
 - **Sparse attention** (`docs/SPARSE_ATTENTION.md`):
   - V2 sketch-state attention (no code yet);
   - the V3 bake-off;

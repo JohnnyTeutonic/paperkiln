@@ -1,0 +1,60 @@
+{
+  "base": {
+    "arch": {
+      "preset": "gpt2-nano",
+      "custom": {
+        "d": 64,
+        "heads": 4,
+        "layers": 2,
+        "attention": "exact",
+        "position": "learned",
+        "norm": "layernorm",
+        "activation": "gelu",
+        "residual": "residual"
+      }
+    },
+    "data": {
+      "T": 64,
+      "path": "REPLACE_WITH_PROSPECTIVE_CORPUS"
+    },
+    "train": {
+      "optimizer": "adamw",
+      "lr": 0.001,
+      "batch": 1,
+      "steps": 200
+    },
+    "serve": {
+      "on_finish": false
+    }
+  },
+  "design": "grid",
+  "factors": {
+    "candidate": [
+      {
+        "arch.custom.norm": "layernorm",
+        "arch.custom.activation": "gelu",
+        "arch.custom.residual": "residual"
+      },
+      {
+        "arch.custom.norm": "rmsnorm",
+        "arch.custom.activation": "relu",
+        "arch.custom.residual": "residual"
+      },
+      {
+        "arch.custom.norm": "rmsnorm",
+        "arch.custom.activation": "gelu",
+        "arch.custom.residual": "residual"
+      },
+      {
+        "arch.custom.norm": "layernorm",
+        "arch.custom.activation": "relu",
+        "arch.custom.residual": "residual"
+      }
+    ]
+  },
+  "seeds": [
+    101,
+    102
+  ],
+  "out_root": "prospective_atlas_runs"
+}

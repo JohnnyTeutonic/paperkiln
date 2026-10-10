@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "status": "post-hoc archival analysis; not a preregistration",
+  "question": "Does a small-width shortlist improve held-out target-width decisions over a random shortlist of the same size?",
+  "source": "../transfer_s2/receipts/s2_S",
+  "target": "../transfer_s2/receipts/s2_M",
+  "source_width": 256,
+  "target_width": 512,
+  "seeds": [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
+  "lanes": ["exact", "swa16s1", "swa32s1", "swa64s1", "swa128s1", "swa64s0"],
+  "calibration_seeds": 6,
+  "source_steps": [400, 800, 1200, 1600, 2000, 2400, 2800, 3200, 3600],
+  "target_steps": [1200, 2400, 3600],
+  "shortlist_sizes": [1, 2, 3, 6],
+  "reference_cell": {"source_step": 3600, "target_step": 3600, "k": 2},
+  "tie_break": "declared lane order",
+  "expected_model": {"family": "gpt2", "layers": 2, "T": 256, "batch": 4, "vocab": 4096, "activation": "gelu", "norm": "layernorm", "position": "learned"},
+  "expected_lr": {"source": 0.00025, "target": 0.0005},
+  "completed_step": 3600
+}

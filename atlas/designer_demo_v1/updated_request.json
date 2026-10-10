@@ -1,0 +1,329 @@
+{
+  "space": {
+    "scope": {
+      "protocol_id": "synthetic-flex-v1",
+      "corpus_id": "SYNTHETIC-NO-CORPUS",
+      "metric": "synthetic_loss",
+      "metric_step": 200,
+      "backend": "synthetic",
+      "precision": "float64"
+    },
+    "base_spec": {
+      "arch": {
+        "preset": "gpt2-nano",
+        "custom": {
+          "d": 64,
+          "heads": 4,
+          "layers": 2,
+          "attention": "exact",
+          "position": "learned",
+          "norm": "layernorm",
+          "activation": "gelu",
+          "residual": "residual"
+        }
+      },
+      "data": {
+        "T": 64,
+        "path": "REPLACE_WITH_PROSPECTIVE_CORPUS"
+      },
+      "train": {
+        "optimizer": "adamw",
+        "lr": 0.001,
+        "batch": 1,
+        "steps": 200
+      },
+      "serve": {
+        "on_finish": false
+      }
+    },
+    "factors": {
+      "norm": [
+        "layernorm",
+        "rmsnorm"
+      ],
+      "activation": [
+        "gelu",
+        "relu"
+      ],
+      "residual": [
+        "residual",
+        "highway"
+      ]
+    },
+    "interactions": [
+      [
+        "norm",
+        "activation"
+      ],
+      [
+        "norm",
+        "residual"
+      ],
+      [
+        "activation",
+        "residual"
+      ]
+    ]
+  },
+  "observations": {
+    "scope_fingerprint": "bad4d27ab3835b7f2935df69715cab8c9662d2b011f44c4be319cc5ea4300a20",
+    "blocks": [
+      {
+        "seed": 1,
+        "runs": [
+          {
+            "settings": {
+              "norm": "layernorm",
+              "activation": "gelu",
+              "residual": "residual"
+            },
+            "value": 10.0
+          },
+          {
+            "settings": {
+              "norm": "rmsnorm",
+              "activation": "gelu",
+              "residual": "residual"
+            },
+            "value": 10.2
+          },
+          {
+            "settings": {
+              "norm": "layernorm",
+              "activation": "relu",
+              "residual": "residual"
+            },
+            "value": 9.9
+          }
+        ]
+      },
+      {
+        "seed": 2,
+        "runs": [
+          {
+            "settings": {
+              "norm": "layernorm",
+              "activation": "gelu",
+              "residual": "residual"
+            },
+            "value": 17.0
+          },
+          {
+            "settings": {
+              "norm": "rmsnorm",
+              "activation": "gelu",
+              "residual": "residual"
+            },
+            "value": 17.2
+          },
+          {
+            "settings": {
+              "norm": "layernorm",
+              "activation": "relu",
+              "residual": "residual"
+            },
+            "value": 16.9
+          }
+        ]
+      },
+      {
+        "seed": 101,
+        "runs": [
+          {
+            "settings": {
+              "norm": "layernorm",
+              "activation": "gelu",
+              "residual": "residual"
+            },
+            "value": 710.0
+          },
+          {
+            "settings": {
+              "norm": "rmsnorm",
+              "activation": "relu",
+              "residual": "residual"
+            },
+            "value": 709.3000000000001
+          },
+          {
+            "settings": {
+              "norm": "rmsnorm",
+              "activation": "gelu",
+              "residual": "residual"
+            },
+            "value": 710.2
+          },
+          {
+            "settings": {
+              "norm": "layernorm",
+              "activation": "relu",
+              "residual": "residual"
+            },
+            "value": 709.9
+          }
+        ]
+      },
+      {
+        "seed": 102,
+        "runs": [
+          {
+            "settings": {
+              "norm": "layernorm",
+              "activation": "gelu",
+              "residual": "residual"
+            },
+            "value": 717.0
+          },
+          {
+            "settings": {
+              "norm": "rmsnorm",
+              "activation": "relu",
+              "residual": "residual"
+            },
+            "value": 716.3000000000001
+          },
+          {
+            "settings": {
+              "norm": "rmsnorm",
+              "activation": "gelu",
+              "residual": "residual"
+            },
+            "value": 717.2
+          },
+          {
+            "settings": {
+              "norm": "layernorm",
+              "activation": "relu",
+              "residual": "residual"
+            },
+            "value": 716.9
+          }
+        ]
+      }
+    ]
+  },
+  "model": {
+    "prior_variance": 1.0,
+    "noise_variance": 0.01
+  },
+  "design": {
+    "baseline": {
+      "norm": "layernorm",
+      "activation": "gelu",
+      "residual": "residual"
+    },
+    "seeds": [
+      201,
+      202
+    ],
+    "budget": 8.0,
+    "max_candidates": 3,
+    "cost_unit": "synthetic run units",
+    "costs": [
+      {
+        "settings": {
+          "norm": "layernorm",
+          "activation": "gelu",
+          "residual": "residual"
+        },
+        "per_seed": 1.0
+      },
+      {
+        "settings": {
+          "norm": "layernorm",
+          "activation": "gelu",
+          "residual": "highway"
+        },
+        "per_seed": 1.0
+      },
+      {
+        "settings": {
+          "norm": "layernorm",
+          "activation": "relu",
+          "residual": "residual"
+        },
+        "per_seed": 1.0
+      },
+      {
+        "settings": {
+          "norm": "layernorm",
+          "activation": "relu",
+          "residual": "highway"
+        },
+        "per_seed": 1.0
+      },
+      {
+        "settings": {
+          "norm": "rmsnorm",
+          "activation": "gelu",
+          "residual": "residual"
+        },
+        "per_seed": 1.0
+      },
+      {
+        "settings": {
+          "norm": "rmsnorm",
+          "activation": "gelu",
+          "residual": "highway"
+        },
+        "per_seed": 1.0
+      },
+      {
+        "settings": {
+          "norm": "rmsnorm",
+          "activation": "relu",
+          "residual": "residual"
+        },
+        "per_seed": 1.0
+      },
+      {
+        "settings": {
+          "norm": "rmsnorm",
+          "activation": "relu",
+          "residual": "highway"
+        },
+        "per_seed": 1.0
+      }
+    ],
+    "targets": [
+      {
+        "name": "normalisation x activation difference-in-differences",
+        "terms": [
+          {
+            "settings": {
+              "norm": "rmsnorm",
+              "activation": "relu",
+              "residual": "residual"
+            },
+            "weight": 1
+          },
+          {
+            "settings": {
+              "norm": "rmsnorm",
+              "activation": "gelu",
+              "residual": "residual"
+            },
+            "weight": -1
+          },
+          {
+            "settings": {
+              "norm": "layernorm",
+              "activation": "relu",
+              "residual": "residual"
+            },
+            "weight": -1
+          },
+          {
+            "settings": {
+              "norm": "layernorm",
+              "activation": "gelu",
+              "residual": "residual"
+            },
+            "weight": 1
+          }
+        ]
+      }
+    ],
+    "out_root": "prospective_atlas_runs"
+  }
+}
