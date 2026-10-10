@@ -8,7 +8,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "paperkiln"
-version = "0.3.0"
+version = "0.3.1"
 description = "Paste an arXiv ID, get a model you can chat with — a readable C++ LLM training stack with provenance-carrying paper extraction"
 readme = "README.md"
 license = { text = "MIT" }

@@ -245,6 +245,15 @@ if(MICROTORCH_BUILD_PYTHON)
     # The extension is a shared object, so the static libraries it links
     # must be position-independent.
     set_target_properties(microtorch transformer_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    # A wheel must run on CPUs other than the build machine's: replace the
+    # core's -march=native with the x86-64-v3 baseline (AVX2 + FMA, which
+    # its matmul kernels already require).
+    if(NOT MSVC AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
+        get_target_property(_tc_opts transformer_core COMPILE_OPTIONS)
+        list(REMOVE_ITEM _tc_opts -march=native)
+        list(APPEND _tc_opts -march=x86-64-v3)
+        set_target_properties(transformer_core PROPERTIES COMPILE_OPTIONS "${_tc_opts}")
+    endif()
     include(FetchContent)
     FetchContent_Declare(pybind11
         GIT_REPOSITORY https://github.com/pybind/pybind11.git
