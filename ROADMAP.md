@@ -28,8 +28,8 @@ where one of those documents carries a plan, this file wins.*
 ## 2. Decisions waiting on Jonathan
 
 None open. Settled on 10 Oct 2026:
-- PyPI: `paperkiln-fetch` 0.1.0 is published; `paperkiln` follows with
-  portable wheels.
+- PyPI: `paperkiln-fetch` 0.1.0 and `paperkiln` 0.3.1 are published
+  (`paperkiln`: portable x86-64-v3 Linux wheels for Python 3.10–3.12).
 - Registry: Study 2 has its row (T2-structure-position-fragile), which
   supersedes T1-structure-transfers; T1-fixed-lr-mistunes stands. The
   highway pilot has its row (R0001-highway-depth2-null).
@@ -121,8 +121,8 @@ advisory steps that cannot fail the build.
 
 - **Publish the default chat model** (see Broken now) and put it on the
   Hugging Face Hub with `tools/publish_hf.py`.
-- **`pip install paperkiln`:** publish the pybind11 wheel once the names
-  are claimed and the wheel CI passes.
+- **More `paperkiln` wheels:** macOS and Windows builds (Linux x86-64
+  only today).
 - **Studio features:**
   - Research Mode: clone a run with one change, compare two runs;
   - a sweep heatmap;

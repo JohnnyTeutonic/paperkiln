@@ -129,8 +129,7 @@ Minimal autograd engines are a well-populated genre. Six things here are not:
 The extractor now ships standalone — no C++ build, no repo checkout:
 
 ```bash
-pip install paperkiln-fetch          # (PyPI upload pending; until then:
-                                     #  pip install ./paperkiln_fetch)
+pip install paperkiln-fetch
 paperfetch 1706.03762                # evidence-carrying summary
 paperfetch 2302.13971 --emit-hf cfg.json
 ```
@@ -473,7 +472,7 @@ can consume a run.
 | **HF export** | ✅ | `tools/hf_export.py`: llama-family runs open in `transformers.from_pretrained` — weights re-laid out (incl. the interleaved→rotate-half RoPE permutation), config + WordLevel tokenizer emitted; **argmax parity verified** vs the tape (`hf_export_verify.py`) |
 | GGUF export | ✅ | `export_gguf_llama`: state_dict → .gguf for ember.cpp |
 | Cross-entropy loss | ✅ | Fused softmax backward |
-| Python bindings | ✅ | pybind11, numpy interop (`-DMICROTORCH_BUILD_PYTHON=ON`) |
+| Python bindings | ✅ | pybind11, numpy interop: `pip install paperkiln` (Linux x86-64 wheels for Python 3.10–3.12; `import microtorch`), or build with `-DMICROTORCH_BUILD_PYTHON=ON` |
 | **Run studio** | ✅ | Declarative spec → train/eval/export/serve; `plan` dry-run; resume |
 | **Live dashboard** | ✅ | Loss + val + gate chart, per-module gradient glow, spec builder, SVG architecture diagram, in-page chat |
 | **Flex family (paper-faithful)** | ✅ | Any depth; d_ff, LayerNorm/RMSNorm, GELU/ReLU/SwiGLU, learned/sinusoidal all spec-real; bitwise equivalence pin at defaults (`test_flex`, 6 receipts) |
