@@ -10,13 +10,14 @@ where one of those documents carries a plan, this file wins.*
 1. **The transfer paper is under submission at *Machine Learning*
    (Springer), submitted 9 Oct 2026.** Nothing to do until the editor
    replies.
-   - **Study 3, width x rate crossed: running (launched 11 Oct 2026).**
-     Licence anchor f61e253 (`experiments/transfer_s3/`); binary bridge
-     passed bit-identically; 144 new runs (S5 = d256 at 5e-4 on `s3s5`,
-     M25 = d512 at 2.5e-4 on `s3m0`/`s3m1`), about 18 hours. When all are
-     banked: copy receipts into `experiments/transfer_s3/receipts/`, run
-     the licensed `analyze.py` with all six cells, write `RESULTS.md`, add
-     the registry row; the reading is material for an MLJ revision.
+   - **Study 3, width x rate crossed: done (11 Oct 2026). Reading MIXED.**
+     H-POS supported at 5e-4 (S5 vs M5) but not at 2.5e-4 (S25 vs M25,
+     0.967 through t4); H-RATE supported at width 256, not at 512.
+     Descriptively, every declining pair includes M5 (d512 at 5e-4): the
+     paper's "decay along the loss curve" account does not hold at a
+     shared 2.5e-4. Results in `experiments/transfer_s3/RESULTS.md`;
+     registry row T3-rate-specific-disagreement. Goes into any MLJ
+     revision.
 2. **Atlas Stages 2–3 with `rope_heads=all`: done (10 Oct 2026).** The
    two designs re-run with every head rotated (84 runs,
    `experiments/atlas_stage{2,3}_rope_all/`). None of the nine affected
@@ -29,6 +30,12 @@ where one of those documents carries a plan, this file wins.*
    and the undetermined zone closes at b=4000. Results in
    `experiments/sparse_s1_longbudget/RESULTS.md`; registry row
    S1f-longbudget-monotone.
+
+4. **Colab runner: a re-provisioned driver pushes stale checkpoints over
+   finished runs** (`tools/colab_transfer_runner.py`). In Study 3 it
+   overwrote four M25 event logs at step ~2900; the runs were re-run
+   (execution clarification 1). Fix: never relay a checkpoint into a run
+   directory that already has `result.json`.
 
 ## 2. Decisions waiting on Jonathan
 

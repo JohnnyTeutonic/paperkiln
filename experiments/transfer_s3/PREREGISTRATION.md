@@ -128,4 +128,15 @@ S25=<root> M5=<root> S10=<root> M10=<root> S5=<root> M25=<root>`.
 
 ## Amendments after the anchor
 
-None.
+No rule has changed.
+
+**Execution clarification 1 (11 October 2026, before analysis).** Four
+M25 runs (lane w=64 without sink, seeds 26, 28, 30, 32) came home with
+complete `result.json` files but event logs that stop near step 2900.
+Near the end of the arm the driver re-provisioned its VM and pushed back
+step-2800 checkpoints over runs that had already finished there, which
+overwrote their event logs. The four runs were re-run from scratch on
+the same binary. Each re-run's `result.json` is identical to the
+original's in every field except timing, and its event log validates;
+the truncated copies are kept beside the arm's local output. No
+analysis had been run.

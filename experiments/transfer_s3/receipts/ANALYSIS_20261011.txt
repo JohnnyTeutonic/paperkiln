@@ -1,0 +1,67 @@
+========================================================================
+transfer_s3 PRE-REGISTERED ANALYSIS (width x rate, fixed loss targets)
+targets: t1=3.7539, t2=3.5152, t3=3.3491, t4=3.2392
+seeds per cell: M10=12, M25=12, M5=12, S10=12, S25=12, S5=12
+========================================================================
+
+H-POS, shared rate (width varies)
+
+  S25 vs M25
+    target  loss    reach  S25  M25   F1     cells  reversals  ties
+    t1      3.7539    12   12   0.933    15      1        0
+    t2      3.5152    12   12   1.000    15      0        0
+    t3      3.3491    12   12   1.000    15      0        0
+    t4      3.2392    12   12   0.933    15      1        0
+    over admitted targets [1, 2, 3, 4]: F1 0.967 over 60 cells, band [0.850, 0.983]
+
+  S5 vs M5
+    target  loss    reach   S5   M5   F1     cells  reversals  ties
+    t1      3.7539    12   12   0.933    15      0        1
+    t2      3.5152    12   12   0.733    15      3        1
+    t3      3.3491    12   12   0.733    15      2        2
+    t4      3.2392    11   12   0.733    15      2        2
+    over admitted targets [1, 2, 3, 4]: F1 0.783 over 60 cells, band [0.600, 0.850]
+
+H-RATE, shared width (rate varies)
+
+  S25 vs S5
+    target  loss    reach  S25   S5   F1     cells  reversals  ties
+    t1      3.7539    12   12   0.933    15      1        0
+    t2      3.5152    12   12   1.000    15      0        0
+    t3      3.3491    12   12   0.933    15      0        1
+    t4      3.2392    12   11   0.733    15      4        0
+    over admitted targets [1, 2, 3, 4]: F1 0.900 over 60 cells, band [0.767, 0.950]
+
+  M25 vs M5
+    target  loss    reach  M25   M5   F1     cells  reversals  ties
+    t1      3.7539    12   12   0.933    15      0        1
+    t2      3.5152    12   12   0.733    15      3        1
+    t3      3.3491    12   12   0.667    15      2        3
+    t4      3.2392    12   12   0.533    15      5        2
+    over admitted targets [1, 2, 3, 4]: F1 0.717 over 60 cells, band [0.600, 0.850]
+
+Descriptive: Study 1's and Study 2's pairs at these targets
+
+  S10 vs M10
+    target  loss    reach  S10  M10   F1     cells  reversals  ties
+    t1      3.7539    12   12   0.867    15      0        2
+    t2      3.5152    12    0     -       0      0        0   (not admitted)
+    t3      3.3491     6    0     -       0      0        0   (not admitted)
+    t4      3.2392     0    0     -       0      0        0   (not admitted)
+    over admitted targets [1]: F1 0.867 over 15 cells, band [0.667, 1.000]
+
+  S25 vs M5
+    target  loss    reach  S25   M5   F1     cells  reversals  ties
+    t1      3.7539    12   12   0.933    15      0        1
+    t2      3.5152    12   12   0.733    15      3        1
+    t3      3.3491    12   12   0.667    15      2        3
+    t4      3.2392    12   12   0.467    15      6        2
+    over admitted targets [1, 2, 3, 4]: F1 0.700 over 60 cells, band [0.583, 0.833]
+
+VERDICTS
+  H-POS  S25-M25: not supported
+  H-POS  S5-M5: supported
+  H-RATE S25-S5: supported
+  H-RATE M25-M5: not supported
+
+READING: MIXED: the two pairs of a hypothesis disagree; report pair by pair
