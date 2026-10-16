@@ -1,0 +1,25 @@
+{
+ "records": 536,
+ "prompts": 67,
+ "abstained": 0,
+ "mean_reward": 0.3880597014925373,
+ "accepted": 67,
+ "prompts_with_an_accepted_record": 67,
+ "accepted_mean_reward": 0.9253731343283582,
+ "stop_eos": 536,
+ "keep": "top:1",
+ "evidence_kinds": [
+  "judge"
+ ],
+ "verifiers": [
+  "judge:synthetic-v1"
+ ],
+ "spec": "/mnt/c/Users/jonat/AppData/Local/Temp/claude/c--Users-jonat-OneDrive-Documents-research-portfolio-complete/ff539744-c077-4107-914b-96a0afc19e79/scratchpad/smoke_r20.json",
+ "spec_sha256": "9f4b91a0c4d35b0e288e564898d25494f67f9faf795ff88a4768eae461423169",
+ "checkpoint_sha256": "1c49b45ea0dd1aeb297bca3952ff6a2ae60d67e6324458f29b06ed072af518e4",
+ "prompts_file": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/corpus/eval/tinyarith_r20_dev_v1.jsonl",
+ "prompts_sha256": "cb5d72bcc34102a71cdf800d8843fded0abf14b5a652a4e9728ff1c2615f2597",
+ "n": 8,
+ "temperature": 1.0,
+ "seed": 17
+}

@@ -78,9 +78,14 @@ advisory steps that cannot fail the build.
   (`corpus/eval/`, pins enforced by tests). Probe: Common Crawl (FineWeb-Edu) and
   Simple Wikipedia lose 17-20% of tokens even to their own 4096-word vocabulary,
   so they are retired until there is a subword tokenizer. Next:
-  - the rejection sampler (Phase 2): an mtstudio subcommand using the chat sampler,
-    records scored by `posttrain_verify`, the audit sheet;
-  - the tinyarith calibration pilot (charter §3.2) to choose R;
+  Phases 2-3 done (17 Oct 2026): `mtstudio sample-set` (pure temperature,
+  replayable), `rejection_sample.py`, `audit_sample.py`, masked SFT
+  (`train.objective` sft / rejection_sft, `train.init_from`); the lm path is
+  bit-identical to a banked Atlas receipt (`experiments/posttrain_bridge/`);
+  pipeline smoke in `experiments/posttrain_smoke/`. Next:
+  - the tinyarith calibration pilot (charter §3.2) to choose R, pre-registered;
+  - PT2 (filter provenance), licensed once R is fixed;
+  - HF-export round trip of an SFT'd model (the brief's Phase 3 export check);
   - a subword (BPE) tokenizer: the one change that would let paperkiln learn from
     open-web text (ledger 0002);
   - an instruction corpus: TinyStories-Instruct declares no licence; otherwise the

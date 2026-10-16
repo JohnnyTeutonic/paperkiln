@@ -1,0 +1,10 @@
+{
+  "name": "tinyarith_r20_smoke",
+  "arch": {"preset": "llama-tiny"},
+  "data": {"corpus": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/corpus/data/tinyarith_r20_v1/train.txt",
+           "vocab": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/corpus/data/tinyarith_r20_v1/vocab.gguf",
+           "vocab_cap": 4096, "T": 64},
+  "train": {"steps": 1500, "lr": 0.003, "eval_every": 100, "checkpoint_every": 500, "batch": 8, "seed": 1, "gradmap_every": 0},
+  "export": {"formats": ["safetensors"]},
+  "out_dir": "/home/jonat/pt_smoke/r20"
+}
