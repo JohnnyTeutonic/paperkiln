@@ -1,10 +1,9 @@
 # PT2 — filter provenance: does judge error act like noise? (pre-registration)
 
-*Charter 0001 §5, Study PT2; registry row `PT2-filter-provenance`. **DRAFT,
-not licensed.** It is licensed by the commit that fills in R from
-`posttrain_calib` (the one blank below) together with `run_pt2.py`,
-`analyze.py` and `smoke_analyze.py`. Rules change only by a dated
-amendment, before data.*
+*Charter 0001 §5, Study PT2; registry row `PT2-filter-provenance`. Licensed
+by the commit that fills in R from `posttrain_calib` (R = 20, commit
+`db462f0`), together with `run_pt2.py`, `analyze.py` and
+`smoke_analyze.py`. Rules change only by a dated amendment, before data.*
 
 ## Question
 
@@ -20,7 +19,8 @@ at the same rates?
 
 ## Fixed beforehand
 
-- **Task:** `tinyarith`, level **R = ___** (set by `posttrain_calib`).
+- **Task:** `tinyarith`, level **R = 20** (set by `posttrain_calib`: dev truth_acc 0.397, 0.384,
+  0.375).
   Sampling prompts are the level's training-split prompts, one per
   training fact. Evaluation uses the frozen test set and hack probe of the
   same level.

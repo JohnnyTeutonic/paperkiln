@@ -604,3 +604,15 @@ They are settled as follows.
    - `tools/corpus_quality.py` has 13 tests.
    - `C0-legacy-vocab-coverage` is supported.
    - The research corpus is rebuilt byte-exact from the public revision.
+
+## 13. Calibration result (17 Oct 2026)
+
+`experiments/posttrain_calib/` (licence `ce5d2f7`; execution clarification
+1 recorded there) chose **tinyarith R = 20**. Its mean dev `truth_acc` over
+three seeds is 0.386 (0.397, 0.384, 0.375; SD 0.011), inside [0.25, 0.60].
+- R = 10 falls below the band and is erratic across seeds (0.174, 0.021,
+  0.354).
+- R = 50 falls below the band (0.177).
+
+Every confirmatory post-training study uses R = 20 unless its
+pre-registration says otherwise.
