@@ -69,8 +69,10 @@ advisory steps that cannot fail the build.
 
 - **Post-training and corpus provenance** (charter 0001, order of work §11).
   Step 1 done (16 Oct 2026): `corpus/` registry, ledgers, pinned fetchers
-  (`make corpus` rebuilds the research slice byte-exact), cards, and C0. Next:
-  - the verifier interface (`posttrain/verifier.hpp`) and its tests;
+  (`make corpus` rebuilds the research slice byte-exact), cards, and C0.
+  Phase 1 done: `posttrain/verifier.hpp` (receipts mandatory; exact match,
+  format, synthetic judge, cached LLM judge, human audit, Linux code sandbox)
+  and `tools/posttrain/judge_sidecar.py`. Next:
   - `tinyarith` and the frozen evaluation sets (`corpus/eval/`);
   - the quickstart vocabulary is not pinned yet (it depends on the `gguf`
     package's writer); pin its token list as for chat7b.
