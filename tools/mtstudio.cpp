@@ -67,6 +67,14 @@ struct Spec {
     std::string corpus, vocab_gguf;
     size_t vocab_cap = 4096;
     size_t max_tokens = 400000;  // corpus read cap (0 = whole file)
+    // post-training (docs/decisions/0001-posttrain-charter.md, Phase 3):
+    // objective "lm" streams data.corpus; "sft" trains on data.sft_examples
+    // ({prompt, completion} JSONL) with the prompt masked out of the loss;
+    // "rejection_sft" reads rejection-sampler records and keeps accepted ones.
+    std::string objective = "lm";
+    std::string sft_examples;
+    bool allow_human_labels = false;
+    std::string init_from;  // safetensors to start from (fresh runs only)
     // train
     int steps = 500;
     float lr = 3e-3f, clip = 1.0f, lambda_gate = 0.05f;
@@ -180,6 +188,7 @@ Spec parse_spec(const std::string& path) {
     s.vocab_cap = data.value("vocab_cap", s.vocab_cap);
     s.max_tokens = data.value("max_tokens", s.max_tokens);
     s.T = data.value("T", s.T);
+    s.sft_examples = data.value("sft_examples", "");
 
     const json tr = j.value("train", json::object());
     s.steps = tr.value("steps", s.steps);
@@ -191,6 +200,13 @@ Spec parse_spec(const std::string& path) {
     s.accum = tr.value("accum", s.accum);
     s.ckpt_act = tr.value("checkpoint_activations", s.ckpt_act);
     s.seed = tr.value("seed", s.seed);
+    s.objective = tr.value("objective", s.objective);
+    s.allow_human_labels = tr.value("allow_human_labels", s.allow_human_labels);
+    s.init_from = tr.value("init_from", "");
+    if (s.objective != "lm" && s.objective != "sft" && s.objective != "rejection_sft")
+        throw std::runtime_error("train.objective must be lm, sft or rejection_sft (got " + s.objective + ")");
+    if (s.objective != "lm" && s.sft_examples.empty())
+        throw std::runtime_error("train.objective " + s.objective + " needs data.sft_examples");
     s.optimizer = tr.value("optimizer", s.optimizer);
     s.muon_lr = tr.value("muon_lr", s.muon_lr);
     s.gradmap_every = tr.value("gradmap_every", s.gradmap_every);
@@ -330,6 +346,87 @@ json grad_map(const nn::Module& m) {
     return out;
 }
 
+// Supervised fine-tuning data (Phase 3). Each example becomes one row block
+// of length T: x = seq[0..T-1], y = seq[1..T], where seq = prompt tokens +
+// completion tokens + end-of-text, padded. mask[i] = 1 exactly when target
+// y[i] is a completion token (or the closing end-of-text), so prompt and
+// padding contribute nothing to the loss or its gradient. The tail 5% of
+// examples (at least one) is held out for validation.
+struct SftSet {
+    std::vector<std::vector<int>> x, y;
+    std::vector<std::vector<uint8_t>> m;
+    size_t val_start = 0;
+    size_t target_tokens = 0;   // kept targets in the training split
+    size_t completion_unk = 0;  // <unk> among kept targets, all splits
+    json provenance = json::object();
+};
+
+SftSet load_sft(const Spec& s, const std::map<std::string, int>& vocab) {
+    std::ifstream f(s.sft_examples);
+    if (!f) throw std::runtime_error("cannot open data.sft_examples " + s.sft_examples);
+    const int eos = wordtok::eos_id(vocab);
+    const int pad = eos >= 0 ? eos : 0;
+    const bool rej = s.objective == "rejection_sft";
+    SftSet d;
+    std::map<std::string, size_t> kinds;
+    size_t n = 0, skipped = 0;
+    std::string line;
+    while (std::getline(f, line)) {
+        ++n;
+        if (line.find_first_not_of(" \t\r") == std::string::npos) continue;
+        const json r = json::parse(line, nullptr, false);
+        if (r.is_discarded() || !r.contains("prompt") || !r.contains("completion"))
+            throw std::runtime_error(s.sft_examples + ":" + std::to_string(n) + ": need prompt and completion");
+        if (rej) {
+            // A rejection-sampler record must carry its receipt (charter §6).
+            for (const char* k : {"reward", "rationale", "evidence_kind", "evidence_uri", "accepted"})
+                if (!r.contains(k))
+                    throw std::runtime_error(s.sft_examples + ":" + std::to_string(n) + ": record has no " + k +
+                                             " (rejection_sft trains only on receipted records)");
+            if (!r["accepted"].get<bool>()) {
+                ++skipped;
+                continue;
+            }
+            const std::string kind = r["evidence_kind"].get<std::string>();
+            if (kind == "human" && !s.allow_human_labels)
+                throw std::runtime_error("human-labelled record at line " + std::to_string(n) +
+                                         ": set train.allow_human_labels to train on audit evidence");
+            if (r["rationale"].get<std::string>().empty() || r["evidence_uri"].get<std::string>().empty())
+                throw std::runtime_error(s.sft_examples + ":" + std::to_string(n) + ": empty receipt");
+            ++kinds[kind];
+        }
+        const auto p = tokenize(r["prompt"].get<std::string>(), vocab, 100000);
+        auto c = tokenize(r["completion"].get<std::string>(), vocab, 100000);
+        if (eos >= 0) c.push_back(eos);
+        std::vector<int> seq = p;
+        seq.insert(seq.end(), c.begin(), c.end());
+        if (p.empty() || c.empty()) throw std::runtime_error("example " + std::to_string(n) + " is empty");
+        if (seq.size() > s.T + 1)
+            throw std::runtime_error("example at line " + std::to_string(n) + " has " + std::to_string(seq.size()) +
+                                     " tokens; data.T + 1 = " + std::to_string(s.T + 1));
+        std::vector<int> x(s.T, pad), y(s.T, pad);
+        std::vector<uint8_t> m(s.T, 0);
+        for (size_t i = 0; i + 1 < seq.size(); ++i) {
+            x[i] = seq[i];
+            y[i] = seq[i + 1];
+            m[i] = i + 1 >= p.size() ? 1 : 0;
+            if (m[i] && y[i] == 0) ++d.completion_unk;
+        }
+        d.x.push_back(std::move(x));
+        d.y.push_back(std::move(y));
+        d.m.push_back(std::move(m));
+    }
+    if (d.x.size() < 2) throw std::runtime_error("data.sft_examples needs at least two usable examples");
+    d.val_start = d.x.size() - std::max<size_t>(1, d.x.size() / 20);
+    for (size_t e = 0; e < d.val_start; ++e)
+        for (uint8_t v : d.m[e]) d.target_tokens += v;
+    if (rej) {
+        d.provenance["evidence_kinds"] = kinds;
+        d.provenance["not_accepted_skipped"] = skipped;
+    }
+    return d;
+}
+
 int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     std::printf("== mtstudio: %s ==\n", s.name.c_str());
     std::printf("arch: %s d=%zu layers=%zu heads=%zu | T=%zu vocab_cap=%zu\n", s.attention.c_str(),
@@ -347,8 +444,8 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                                               "its recorded value, first if none)"
                                             : s.rope_heads.c_str());
     if (plan_only) return 0;
-    if (s.corpus.empty() || s.vocab_gguf.empty())
-        throw std::runtime_error("spec needs data.corpus and data.vocab");
+    if (s.vocab_gguf.empty() || (s.objective == "lm" && s.corpus.empty()))
+        throw std::runtime_error("spec needs data.vocab, and data.corpus for objective lm");
     // Only the kimi/srd parity lanes are depth-fixed; flex and llama take
     // any depth, and attnres wires s.layers into its stack.
     if (s.family == "gpt2" && s.attention != "attnres" && s.layers != 2)
@@ -397,16 +494,32 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     if (s.vocab_cap > 0 && s.vocab_cap < tokens.size()) tokens.resize(s.vocab_cap);
     std::map<std::string, int> vocab;
     for (size_t i = 0; i < tokens.size(); ++i) vocab.emplace(tokens[i], static_cast<int>(i));
-    std::ifstream cf(s.corpus);
-    if (!cf) throw std::runtime_error("cannot open corpus " + s.corpus);
-    std::string text((std::istreambuf_iterator<char>(cf)), std::istreambuf_iterator<char>());
-    auto ids = tokenize(text, vocab, s.max_tokens ? s.max_tokens : text.size() + 1);
-    // Hold out the tail 5% for validation (early stopping's signal).
-    const size_t val_start = ids.size() - ids.size() / 20;
-    ev.emit({{"event", "data"},
-             {"tokens", ids.size()},
-             {"vocab", tokens.size()},
-             {"val_tokens", ids.size() - val_start}});
+    const bool sft = s.objective != "lm";
+    std::vector<int> ids;
+    size_t val_start = 0;
+    SftSet sd;
+    if (!sft) {
+        std::ifstream cf(s.corpus);
+        if (!cf) throw std::runtime_error("cannot open corpus " + s.corpus);
+        std::string text((std::istreambuf_iterator<char>(cf)), std::istreambuf_iterator<char>());
+        ids = tokenize(text, vocab, s.max_tokens ? s.max_tokens : text.size() + 1);
+        // Hold out the tail 5% for validation (early stopping's signal).
+        val_start = ids.size() - ids.size() / 20;
+        ev.emit({{"event", "data"},
+                 {"tokens", ids.size()},
+                 {"vocab", tokens.size()},
+                 {"val_tokens", ids.size() - val_start}});
+    } else {
+        sd = load_sft(s, vocab);
+        ev.emit({{"event", "data"},
+                 {"objective", s.objective},
+                 {"examples", sd.x.size()},
+                 {"val_examples", sd.x.size() - sd.val_start},
+                 {"tokens", sd.target_tokens},
+                 {"vocab", tokens.size()},
+                 {"completion_unk", sd.completion_unk},
+                 {"provenance", sd.provenance}});
+    }
 
     // Model + optimizer (+ resume). Two families behind one seam: the
     // gpt2 parity model (exact/kimi/srd attention) or nn::Llama (RMSNorm/
@@ -512,6 +625,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                      {"checkpoint_activations", s.ckpt_act},
                      {"params", n_params}};
     if (llama) model_ev["rope_heads"] = rope_heads;
+    if (sft) model_ev["objective"] = s.objective;  // absent for "lm": events unchanged
     ev.emit(model_ev);
     nn::Module& model_ref = model_pick;
     auto fwd = [&](const std::vector<int>& ids, size_t seq_len = 0) {
@@ -618,6 +732,12 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         } else
             start_step = 0;
     }
+    if (start_step == 0 && !s.init_from.empty()) {
+        // Post-training starts from a trained base; a resumed run already
+        // carries those weights in its checkpoint.
+        model_ref.load_state_dict(load_safetensors(s.init_from), /*strict=*/true);
+        ev.emit({{"event", "init"}, {"from", s.init_from}});
+    }
 
     // Data order follows the spec seed so multi-seed sweeps vary both init
     // and batch composition (offset keeps seed=7 runs distinct from the
@@ -652,7 +772,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     const bool is_srd = attn_kind(s.attention) == parity::AttnKind::SRD;
     for (int step = start_step + 1; step <= s.steps; ++step) {
         last_step = step;
-        const size_t lim = val_start - s.T - 1;
+        const size_t lim = sft ? 0 : val_start - s.T - 1;
         // Mini-batching + accumulation: each of s.accum micro-steps stacks
         // s.batch sequences into ONE forward ([batch*T, d] rows; positions
         // and the attention mask restart per sequence — receipts in
@@ -668,15 +788,23 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         float task_mean = 0, gate_mean = 0;
         for (int k = 0; k < s.accum; ++k) {
             std::vector<int> x, y;
+            std::vector<uint8_t> mask;
             x.reserve(s.batch * s.T);
             y.reserve(s.batch * s.T);
             for (int b = 0; b < s.batch; ++b) {
+                if (sft) {
+                    const size_t e = rng() % sd.val_start;
+                    x.insert(x.end(), sd.x[e].begin(), sd.x[e].end());
+                    y.insert(y.end(), sd.y[e].begin(), sd.y[e].end());
+                    mask.insert(mask.end(), sd.m[e].begin(), sd.m[e].end());
+                    continue;
+                }
                 const size_t at = rng() % lim;
                 x.insert(x.end(), ids.begin() + at, ids.begin() + at + s.T);
                 y.insert(y.end(), ids.begin() + at + 1, ids.begin() + at + s.T + 1);
             }
             Var logits = fwd(x, s.batch > 1 ? s.T : 0);
-            Var task = ops::cross_entropy(logits, y);
+            Var task = sft ? ops::cross_entropy_masked(logits, y, mask) : ops::cross_entropy(logits, y);
             Var loss = task;
             if (is_srd) loss = ops::add(task, ops::scale(gpt->mean_gate(), s.lambda_gate));
             backward(ops::scale(loss, 1.0f / static_cast<float>(s.accum)));
@@ -701,15 +829,29 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             NoGrad ng;
             model_ref.eval();
             double vl = 0;
-            const int NV = 8;
-            std::mt19937 vrng(999);
-            for (int k = 0; k < NV; ++k) {
-                const size_t va = val_start + vrng() % (ids.size() - val_start - s.T - 1);
-                std::vector<int> vx(ids.begin() + va, ids.begin() + va + s.T);
-                std::vector<int> vy(ids.begin() + va + 1, ids.begin() + va + s.T + 1);
-                vl += ops::cross_entropy(fwd(vx), vy)->data(0, 0);
+            if (sft) {
+                // Every held-out example, the masked mean over all their
+                // completion targets (each example weighted by its targets).
+                double sum = 0.0;
+                size_t kept = 0;
+                for (size_t e = sd.val_start; e < sd.x.size(); ++e) {
+                    size_t k = 0;
+                    for (uint8_t v : sd.m[e]) k += v;
+                    sum += static_cast<double>(ops::cross_entropy_masked(fwd(sd.x[e]), sd.y[e], sd.m[e])->data(0, 0)) * k;
+                    kept += k;
+                }
+                vl = sum / static_cast<double>(kept);
+            } else {
+                const int NV = 8;
+                std::mt19937 vrng(999);
+                for (int k = 0; k < NV; ++k) {
+                    const size_t va = val_start + vrng() % (ids.size() - val_start - s.T - 1);
+                    std::vector<int> vx(ids.begin() + va, ids.begin() + va + s.T);
+                    std::vector<int> vy(ids.begin() + va + 1, ids.begin() + va + s.T + 1);
+                    vl += ops::cross_entropy(fwd(vx), vy)->data(0, 0);
+                }
+                vl /= NV;
             }
-            vl /= NV;
             model_ref.train();
             ev.emit({{"event", "eval"}, {"step", step}, {"val_loss", vl}});
             if (s.es_patience > 0) {
@@ -1078,6 +1220,109 @@ int sample_cmd(const Spec& s, const std::string& prompt, int n_new, float temp, 
         std::ofstream f(out_file, std::ios::trunc);
         f << text << "\n";
     }
+    return 0;
+}
+
+// The post-training sampler (docs/decisions/0001-posttrain-charter.md §4,
+// Phase 2). Unlike LoadedLM::next it is PURE temperature sampling over the
+// whole vocabulary: no top-k, no nucleus, no banned tokens. Truncation or
+// bans would make the sampled distribution differ from the policy, so the
+// samples would be off-policy for GRPO without anything saying so. Every
+// record carries the sampled ids and their log-probability under the policy
+// at temperature 1 (logp) and at the sampling temperature (logp_sample).
+// Each (prompt, sample) gets its own generator seeded by
+// seed_seq{seed, prompt index, sample index}, so one record replays alone.
+//
+// Input: JSONL lines with "prompt" (and optionally "uri"). Output: one JSONL
+// record per completion. tools/posttrain/rejection_sample.py scores and
+// filters these records.
+int sample_set_cmd(const Spec& s, const std::string& prompts_path, const std::string& out_path, int n,
+                   float temp, unsigned seed, int max_new) {
+    if (!(temp > 0.0f)) throw std::runtime_error("sample-set: --temp must be > 0 (pure sampling)");
+    LoadedLM lm(s);
+    std::ifstream in(prompts_path);
+    if (!in) throw std::runtime_error("cannot open " + prompts_path);
+    std::ofstream out(out_path, std::ios::trunc);
+    if (!out) throw std::runtime_error("cannot write " + out_path);
+    const size_t V = lm.tokens.size();
+    NoGrad ng;
+    std::string line;
+    size_t pi = 0, written = 0;
+    while (std::getline(in, line)) {
+        if (line.find_first_not_of(" \t\r") == std::string::npos) continue;
+        const json pr = json::parse(line);
+        const std::string prompt = pr.at("prompt").get<std::string>();
+        const std::vector<int> pids = tokenize(prompt, lm.vocab, 100000);
+        if (pids.empty()) throw std::runtime_error("prompt " + std::to_string(pi) + " has no in-vocabulary token");
+        size_t unk = 0;
+        for (int id : pids) unk += id == 0;
+        for (int k = 0; k < n; ++k) {
+            std::seed_seq ss{seed, static_cast<unsigned>(pi), static_cast<unsigned>(k)};
+            std::mt19937 gen(ss);
+            std::vector<int> ids = pids, comp;
+            double logp = 0.0, logp_s = 0.0;
+            std::string stop = "length";
+            for (int t = 0; t < max_new; ++t) {
+                std::vector<int> ctx = ids;
+                if (ctx.size() > s.T) ctx.assign(ids.end() - s.T, ids.end());
+                Var logits = lm.forward(ctx);
+                const size_t last = logits->data.rows() - 1;
+                double m1 = -1e300, mt = -1e300;
+                for (size_t j = 0; j < V; ++j) {
+                    const double x = logits->data(last, j);
+                    m1 = std::max(m1, x);
+                    mt = std::max(mt, x / temp);
+                }
+                double z1 = 0.0, zt = 0.0;
+                std::vector<double> p(V);
+                for (size_t j = 0; j < V; ++j) {
+                    const double x = logits->data(last, j);
+                    z1 += std::exp(x - m1);
+                    zt += (p[j] = std::exp(x / temp - mt));
+                }
+                std::uniform_real_distribution<double> u(0.0, zt);
+                double r = u(gen);
+                size_t pick = V - 1;
+                for (size_t j = 0; j < V; ++j)
+                    if ((r -= p[j]) <= 0) {
+                        pick = j;
+                        break;
+                    }
+                const double x = logits->data(last, pick);
+                logp += x - m1 - std::log(z1);
+                logp_s += x / temp - mt - std::log(zt);
+                if (static_cast<int>(pick) == lm.eos) {
+                    stop = "eos";
+                    break;
+                }
+                ids.push_back(static_cast<int>(pick));
+                comp.push_back(static_cast<int>(pick));
+            }
+            std::string text;
+            for (int id : comp) text += (text.empty() ? "" : " ") + lm.tokens[id];
+            json rec = {{"prompt", prompt},
+                        {"completion", text},
+                        {"completion_ids", comp},
+                        {"prompt_ids", pids},
+                        {"prompt_unk", unk},
+                        {"sample_index", k},
+                        {"prompt_index", pi},
+                        {"seed", seed},
+                        {"temperature", temp},
+                        {"logp", logp},
+                        {"logp_sample", logp_s},
+                        {"stop", stop},
+                        {"sampler", "pure-temperature-v1"},
+                        {"model", s.name},
+                        {"checkpoint", s.out_dir + "/" + s.name + ".safetensors"}};
+            if (pr.contains("uri")) rec["prompt_uri"] = pr["uri"];
+            out << rec.dump() << "\n";
+            ++written;
+        }
+        ++pi;
+    }
+    std::fprintf(stderr, "sample-set: %zu prompts x %d = %zu completions -> %s\n", pi, n, written,
+                 out_path.c_str());
     return 0;
 }
 
@@ -1656,6 +1901,24 @@ int main(int argc, char** argv) {
             }
             return sample_cmd(parse_spec(argv[2]), prompt, n_new, temp, topk, sseed, out_file);
         }
+        if (cmd == "sample-set" && argc >= 3) {
+            std::string prompts, out;
+            int n = 8, max_new = 16;
+            float temp = 1.0f;
+            unsigned sseed = 17;
+            for (int i = 3; i + 1 < argc; i += 2) {
+                const std::string k = argv[i], v = argv[i + 1];
+                if (k == "--prompts") prompts = v;
+                else if (k == "--out") out = v;
+                else if (k == "--n") n = std::atoi(v.c_str());
+                else if (k == "--max-new") max_new = std::atoi(v.c_str());
+                else if (k == "--temp") temp = static_cast<float>(std::atof(v.c_str()));
+                else if (k == "--seed") sseed = static_cast<unsigned>(std::atoll(v.c_str()));
+                else throw std::runtime_error("sample-set: unknown option " + k);
+            }
+            if (prompts.empty() || out.empty()) throw std::runtime_error("sample-set needs --prompts and --out");
+            return sample_set_cmd(parse_spec(argv[2]), prompts, out, n, temp, sseed, max_new);
+        }
         if (cmd == "serve" && argc >= 3) {
             const int port = argc > 3 ? std::atoi(argv[3]) : 8123;
             const char* ui = std::getenv("MTSTUDIO_UI");
@@ -1682,6 +1945,8 @@ int main(int argc, char** argv) {
                  "usage: mtstudio run|plan spec.json\n"
                  "       mtstudio sample spec.json [--prompt P] [--tokens N] [--temp T] "
                  "[--topk K] [--seed S] [--out FILE]\n"
+                 "       mtstudio sample-set spec.json --prompts P.jsonl --out R.jsonl [--n 8] "
+                 "[--temp 1.0] [--seed 17] [--max-new 16]\n"
                  "       mtstudio serve <out_dir> [port] [spec]   (MTSTUDIO_UI "
                  "overrides the index.html path)\n"
                  "       mtstudio chat <out_dir|spec.json> [--port 8080] [--host 127.0.0.1]\n");

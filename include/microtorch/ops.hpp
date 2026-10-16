@@ -39,6 +39,11 @@ Var cross_entropy(const Var& logits, const std::vector<int>& targets);
 // mean NLL over rows -> [1,1];
 // dlogits = (softmax-onehot)/N,
 // the loss_kernels.cu contract
+Var cross_entropy_masked(const Var& logits, const std::vector<int>& targets, const std::vector<uint8_t>& mask);
+// SFT loss (charter 0001, Phase 3): mean NLL over rows with mask 1 only;
+// masked rows get zero gradient. All ones IS cross_entropy (bit-identical
+// on every backend); otherwise a host path equal, bit for bit, to
+// cross_entropy on the kept rows. Throws if every row is masked.
 
 // ---- phase 2a additions (DiT's dependencies) ----
 Var mul_row(const Var& x, const Var& r);  // x .* broadcast row r [1, cols];

@@ -441,6 +441,54 @@ Var cross_entropy(const Var& logits, const std::vector<int>& targets) {
     });
 }
 
+Var cross_entropy_masked(const Var& logits, const std::vector<int>& targets, const std::vector<uint8_t>& mask) {
+    const size_t R = logits->data.rows(), C = logits->data.cols();
+    if (targets.size() != R || mask.size() != R) {
+        throw std::runtime_error("cross_entropy_masked: one target and one mask entry per row");
+    }
+    size_t kept = 0;
+    for (uint8_t m : mask) {
+        if (m > 1) throw std::runtime_error("cross_entropy_masked: mask entries are 0 or 1");
+        kept += m;
+    }
+    if (kept == 0) throw std::runtime_error("cross_entropy_masked: every row is masked out");
+    // All ones: the plain op itself, so the result is bit-identical on every
+    // backend (its device path included), not merely close.
+    if (kept == R) return cross_entropy(logits, targets);
+    for (size_t i = 0; i < R; ++i) {
+        if (mask[i] && (targets[i] < 0 || static_cast<size_t>(targets[i]) >= C)) {
+            throw std::runtime_error("cross_entropy_masked: target out of range");
+        }
+    }
+    // Host path, in cross_entropy's own operation order restricted to kept
+    // rows, so it equals cross_entropy on the kept rows bit for bit.
+    device::materialize(logits->data);
+    auto P = cached(Matrix(R, C));
+    *P = logits->data;
+    P->apply_softmax();
+    double nll = 0.0;
+    for (size_t i = 0; i < R; ++i) {
+        if (mask[i]) nll -= std::log(std::max((*P)(i, targets[i]), 1e-12f));
+    }
+    Matrix out(1, 1);
+    out(0, 0) = static_cast<float>(nll / kept);
+    return record(std::move(out), {logits}, [P, targets, mask, kept](Variable* self) {
+        const Var& l = self->parents[0];
+        if (!l->requires_grad) return;
+        device::materialize(self->grad);
+        const float g = self->grad(0, 0) / static_cast<float>(kept);
+        Matrix dl = *P;
+        for (size_t i = 0; i < dl.rows(); ++i) {
+            if (!mask[i]) {
+                for (size_t j = 0; j < dl.cols(); ++j) dl(i, j) = 0.0f;
+            } else {
+                dl(i, targets[i]) -= 1.0f;
+            }
+        }
+        l->accumulate(dl * g);
+    });
+}
+
 Var mul_row(const Var& x, const Var& r) {
     if (r->data.rows() != 1 || r->data.cols() != x->data.cols()) {
         throw std::runtime_error("mul_row: r must be [1, cols(x)]");
