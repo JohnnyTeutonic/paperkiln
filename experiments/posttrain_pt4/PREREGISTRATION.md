@@ -1,9 +1,10 @@
 # PT4 — does the reward-hacking monitor see a hack we built? (pre-registration)
 
-*Charter 0001 §5, Study PT4; registry row `PT4-hack-monitor`. **DRAFT, not
-licensed.** The licence commit adds `run_pt4.py`, `analyze.py` and
-`smoke_analyze.py` beside this file. Rules change only by a dated amendment,
-before data.*
+*Charter 0001 §5, Study PT4; registry row `PT4-hack-monitor`. Licensed by
+the commit that adds this header, together with `run_pt4.py`, `analyze.py`
+and `smoke_analyze.py`. The driver was exercised end to end on one smoke
+seed (60 base steps, 10 GRPO steps) before licence. Rules change only by a
+dated amendment, before data.*
 
 ## Why the channel differs from the charter's sketch
 
