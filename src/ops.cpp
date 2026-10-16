@@ -495,6 +495,71 @@ Var policy_gradient_kl(const Var& logits, const std::vector<int>& targets, const
     });
 }
 
+Var dpo_weighted(const Var& logits, const std::vector<int>& targets, const std::vector<int>& row_pair,
+                 const std::vector<int8_t>& row_sign, const std::vector<double>& ref_margin,
+                 const std::vector<float>& pair_w, float beta) {
+    const size_t R = logits->data.rows(), C = logits->data.cols(), P = pair_w.size();
+    if (targets.size() != R || row_pair.size() != R || row_sign.size() != R || ref_margin.size() != P)
+        throw std::runtime_error("dpo_weighted: one target, pair and sign per row; one ref_margin per pair");
+    double W = 0.0;
+    for (float w : pair_w) {
+        if (w < 0.0f) throw std::runtime_error("dpo_weighted: negative weight");
+        W += w;
+    }
+    if (W <= 0.0) throw std::runtime_error("dpo_weighted: every pair has weight 0");
+    device::materialize(logits->data);
+    // Row log-softmax (double), cached for the backward; margins per pair.
+    auto LP = cached(Matrix(R, C));
+    auto margin = std::make_shared<std::vector<double>>(P, 0.0);
+    for (size_t p = 0; p < P; ++p) (*margin)[p] = -ref_margin[p];
+    for (size_t i = 0; i < R; ++i) {
+        const int p = row_pair[i];
+        if (p < 0) continue;
+        if (static_cast<size_t>(p) >= P || (row_sign[i] != 1 && row_sign[i] != -1))
+            throw std::runtime_error("dpo_weighted: bad pair index or sign");
+        if (targets[i] < 0 || static_cast<size_t>(targets[i]) >= C)
+            throw std::runtime_error("dpo_weighted: target out of range");
+        double mx = -1e300, z = 0.0;
+        for (size_t j = 0; j < C; ++j) mx = std::max(mx, static_cast<double>(logits->data(i, j)));
+        for (size_t j = 0; j < C; ++j) z += std::exp(logits->data(i, j) - mx);
+        const double lz = mx + std::log(z);
+        for (size_t j = 0; j < C; ++j) (*LP)(i, j) = static_cast<float>(logits->data(i, j) - lz);
+        (*margin)[p] += row_sign[i] * static_cast<double>((*LP)(i, targets[i]));
+    }
+    double loss = 0.0;
+    for (size_t p = 0; p < P; ++p) {
+        if (pair_w[p] == 0.0f) continue;
+        const double x = -beta * (*margin)[p];
+        loss += pair_w[p] * (x > 0 ? x + std::log1p(std::exp(-x)) : std::log1p(std::exp(x)));  // softplus
+    }
+    Matrix out(1, 1);
+    out(0, 0) = static_cast<float>(loss / W);
+    return record(std::move(out), {logits},
+                  [LP, margin, targets, row_pair, row_sign, pair_w, beta, W](Variable* self) {
+                      const Var& l = self->parents[0];
+                      if (!l->requires_grad) return;
+                      device::materialize(self->grad);
+                      const double g = self->grad(0, 0);
+                      Matrix dl(LP->rows(), LP->cols());
+                      for (size_t i = 0; i < dl.rows(); ++i) {
+                          const int p = row_pair[i];
+                          if (p < 0 || pair_w[p] == 0.0f) {
+                              for (size_t j = 0; j < dl.cols(); ++j) dl(i, j) = 0.0f;
+                              continue;
+                          }
+                          // dL/dmargin_p = -(beta w_p / W) sigmoid(-beta margin_p)
+                          const double sig = 1.0 / (1.0 + std::exp(beta * (*margin)[p]));
+                          const double dm = -beta * pair_w[p] / W * sig;
+                          for (size_t j = 0; j < dl.cols(); ++j) {
+                              const double pr = std::exp(static_cast<double>((*LP)(i, j)));
+                              const double dlogp = (static_cast<int>(j) == targets[i] ? 1.0 : 0.0) - pr;
+                              dl(i, j) = static_cast<float>(g * dm * row_sign[i] * dlogp);
+                          }
+                      }
+                      l->accumulate(dl);
+                  });
+}
+
 Var cross_entropy_masked(const Var& logits, const std::vector<int>& targets, const std::vector<uint8_t>& mask) {
     const size_t R = logits->data.rows(), C = logits->data.cols();
     if (targets.size() != R || mask.size() != R) {

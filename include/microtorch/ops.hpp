@@ -4,6 +4,8 @@
 // are the audited manual formulas. This is the op subset that the tape's
 // first gate (tests/test_gradcheck.cpp) verifies; the rest of the audited
 // set (layernorm, CE loss, embedding) lands in phase 1b with Modules.
+#include <cstdint>
+
 #include "microtorch/autograd.hpp"
 
 namespace microtorch {
@@ -48,6 +50,17 @@ Var policy_gradient_kl(const Var& logits, const std::vector<int>& targets, const
 // length normalisation and the KL coefficient into w and k (zero on prompt
 // and padding rows). Hand-derived backward, per row:
 //   w_i (p - onehot) + k_i p (log p - ref - KL_i).
+Var dpo_weighted(const Var& logits, const std::vector<int>& targets, const std::vector<int>& row_pair,
+                 const std::vector<int8_t>& row_sign, const std::vector<double>& ref_margin,
+                 const std::vector<float>& pair_w, float beta);
+// Provenance-weighted DPO (charter 0001, Phase 5). Row r belongs to pair
+// row_pair[r] (-1 = ignored, e.g. prompt or padding) with sign +1 (a chosen
+// completion token) or -1 (a rejected one). Per pair,
+//   margin_p = sum_r sign_r log p_r(target_r) - ref_margin_p
+// where ref_margin_p is the same quantity under the frozen reference. Loss:
+//   sum_p w_p softplus(-beta margin_p) / sum_p w_p   ->  [1,1].
+// Pairs with w = 0 contribute nothing, so weights in {0,1} equal plain DPO
+// on the kept pairs. Throws if every weight is 0.
 Var cross_entropy_masked(const Var& logits, const std::vector<int>& targets, const std::vector<uint8_t>& mask);
 // SFT loss (charter 0001, Phase 3): mean NLL over rows with mask 1 only;
 // masked rows get zero gradient. All ones IS cross_entropy (bit-identical

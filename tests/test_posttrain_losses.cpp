@@ -232,6 +232,100 @@ void test_group_advantages() {
     std::printf("  group advantages: flat groups, known values, shuffle preserves each group's values\n");
 }
 
+// ---- Phase 5: provenance-weighted DPO ---------------------------------------
+
+// Three pairs over 10 rows: pair 0 = rows 0-1 chosen, 2-3 rejected; pair 1 =
+// rows 4 chosen, 5 rejected; pair 2 = rows 6-7 chosen, 8 rejected; row 9 is
+// a prompt row (ignored).
+struct DpoCase {
+    std::vector<int> targets = {1, 2, 3, 0, 4, 4, 2, 1, 0, 3};
+    std::vector<int> pair = {0, 0, 0, 0, 1, 1, 2, 2, 2, -1};
+    std::vector<int8_t> sign = {1, 1, -1, -1, 1, -1, 1, 1, -1, 1};
+    std::vector<double> ref = {0.3, -0.7, 0.1};
+};
+
+void test_dpo_gradcheck() {
+    DpoCase c;
+    Var x = make_var(randn(10, 5, 21), true);
+    const std::vector<float> w = {1.0f, 0.3f, 0.5f};
+    auto f = [&]() { return ops::dpo_weighted(x, c.targets, c.pair, c.sign, c.ref, w, 0.8f)->data(0, 0); };
+    microtorch::backward(ops::dpo_weighted(x, c.targets, c.pair, c.sign, c.ref, w, 0.8f));
+    const double worst = fd_worst(f, x, x->grad);
+    std::printf("  FD gradcheck, dpo_weighted: worst relative error %.3e\n", worst);
+    CHECK(worst < 5e-3);
+    for (size_t j = 0; j < 5; ++j) CHECK(x->grad(9, j) == 0.0f);  // ignored row
+}
+
+void test_dpo_binary_weights_equal_dpo_on_kept_pairs() {
+    DpoCase c;
+    const Matrix L = randn(10, 5, 22);
+    Var full = make_var(L, true);
+    Var lf = ops::dpo_weighted(full, c.targets, c.pair, c.sign, c.ref, {1.0f, 0.0f, 1.0f}, 0.5f);
+    // The same pairs 0 and 2 alone, renumbered 0 and 1, unweighted.
+    const std::vector<size_t> rows = {0, 1, 2, 3, 6, 7, 8};
+    Matrix K(rows.size(), 5);
+    std::vector<int> t, pr;
+    std::vector<int8_t> sg;
+    for (size_t r = 0; r < rows.size(); ++r) {
+        for (size_t j = 0; j < 5; ++j) K(r, j) = L(rows[r], j);
+        t.push_back(c.targets[rows[r]]);
+        pr.push_back(c.pair[rows[r]] == 0 ? 0 : 1);
+        sg.push_back(c.sign[rows[r]]);
+    }
+    Var sub = make_var(K, true);
+    Var ls = ops::dpo_weighted(sub, t, pr, sg, {c.ref[0], c.ref[2]}, {1.0f, 1.0f}, 0.5f);
+    CHECK(bit_equal(lf->data(0, 0), ls->data(0, 0)));
+    microtorch::backward(lf);
+    microtorch::backward(ls);
+    for (size_t r = 0; r < rows.size(); ++r)
+        for (size_t j = 0; j < 5; ++j) CHECK(bit_equal(full->grad(rows[r], j), sub->grad(r, j)));
+    for (size_t j = 0; j < 5; ++j) CHECK(full->grad(4, j) == 0.0f && full->grad(5, j) == 0.0f);
+    std::printf("  dpo: weights {1,0,1} equal plain DPO on the kept pairs bit for bit; weight-0 rows get no gradient\n");
+}
+
+void test_dpo_at_the_reference() {
+    // When the policy margin equals the reference margin, margin_p = 0:
+    // the loss is log 2 and dL/dlogits_r = -(beta / (2 W)) w_p sign_r (onehot - p).
+    DpoCase c;
+    const Matrix L = randn(10, 5, 23);
+    Var x = make_var(L, true);
+    const Matrix lp = log_softmax_rows(L);
+    std::vector<double> ref(3, 0.0);
+    for (size_t r = 0; r < 10; ++r)
+        if (c.pair[r] >= 0) ref[c.pair[r]] += c.sign[r] * static_cast<double>(lp(r, c.targets[r]));
+    const float beta = 0.7f;
+    const std::vector<float> w = {2.0f, 1.0f, 1.0f};
+    Var l = ops::dpo_weighted(x, c.targets, c.pair, c.sign, ref, w, beta);
+    CHECK(std::fabs(l->data(0, 0) - std::log(2.0)) < 1e-5);
+    microtorch::backward(l);
+    double worst = 0.0;
+    for (size_t r = 0; r < 9; ++r)
+        for (size_t j = 0; j < 5; ++j) {
+            const double pr = std::exp(static_cast<double>(lp(r, j)));
+            const double want = -(beta / (2.0 * 4.0)) * w[c.pair[r]] * c.sign[r] *
+                                ((static_cast<int>(j) == c.targets[r] ? 1.0 : 0.0) - pr);
+            worst = std::max(worst, std::fabs(want - x->grad(r, j)));
+        }
+    std::printf("  dpo at the reference: loss log 2, gradient matches the closed form (max err %.2e)\n", worst);
+    CHECK(worst < 1e-6);
+}
+
+void test_dpo_rejects_bad_weights() {
+    DpoCase c;
+    Var x = make_var(randn(10, 5, 24), true);
+    auto throws = [&](const std::vector<float>& w) {
+        try {
+            ops::dpo_weighted(x, c.targets, c.pair, c.sign, c.ref, w, 0.5f);
+        } catch (const std::runtime_error&) {
+            return true;
+        }
+        return false;
+    };
+    CHECK(throws({0.0f, 0.0f, 0.0f}));
+    CHECK(throws({1.0f, -0.1f, 1.0f}));
+    CHECK(!throws({0.0f, 0.3f, 0.0f}));
+}
+
 }  // namespace
 
 int main() {
@@ -244,6 +338,10 @@ int main() {
     test_pgkl_anchors();
     test_bandit_reaches_the_analytic_optimum();
     test_group_advantages();
+    test_dpo_gradcheck();
+    test_dpo_binary_weights_equal_dpo_on_kept_pairs();
+    test_dpo_at_the_reference();
+    test_dpo_rejects_bad_weights();
     std::printf("test_posttrain_losses: all checks passed\n");
     return 0;
 }
