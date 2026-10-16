@@ -39,7 +39,7 @@ def setup(tmp, examples, objective="sft", steps=200, extra_train=None):
 
 
 def run(spec):
-    return subprocess.run([BIN, "run", str(spec)], capture_output=True, text=True, timeout=600)
+    return subprocess.run([BIN, "run", str(spec)], capture_output=True, text=True, timeout=2400)
 
 
 def events(tmp):

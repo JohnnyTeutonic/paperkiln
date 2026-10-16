@@ -91,6 +91,11 @@ struct Spec {
     // A deliberately buggy reward key (PT4's falsifier channel): exact match
     // against references shifted by this amount. 0 = the true references.
     int grpo_reward_shift = 0;
+    // objective "provenance_po" (Phase 5): data.pref_pairs, train.po.*
+    std::string pref_pairs;
+    float po_beta = 0.1f;
+    std::string po_weight_mode = "provenance";  // provenance | uniform | shuffled (the falsifier)
+    json po_weights = json::object();            // evidence_kind -> weight overrides
     // train
     int steps = 500;
     float lr = 3e-3f, clip = 1.0f, lambda_gate = 0.05f;
@@ -207,6 +212,7 @@ Spec parse_spec(const std::string& path) {
     s.sft_examples = data.value("sft_examples", "");
     s.grpo_prompts = data.value("grpo_prompts", "");
     s.grpo_eval = data.value("grpo_eval", "");
+    s.pref_pairs = data.value("pref_pairs", "");
 
     const json tr = j.value("train", json::object());
     s.steps = tr.value("steps", s.steps);
@@ -221,8 +227,20 @@ Spec parse_spec(const std::string& path) {
     s.objective = tr.value("objective", s.objective);
     s.allow_human_labels = tr.value("allow_human_labels", s.allow_human_labels);
     s.init_from = tr.value("init_from", "");
-    if (s.objective != "lm" && s.objective != "sft" && s.objective != "rejection_sft" && s.objective != "grpo")
-        throw std::runtime_error("train.objective must be lm, sft, rejection_sft or grpo (got " + s.objective + ")");
+    if (s.objective != "lm" && s.objective != "sft" && s.objective != "rejection_sft" && s.objective != "grpo" &&
+        s.objective != "provenance_po")
+        throw std::runtime_error("train.objective must be lm, sft, rejection_sft, grpo or provenance_po (got " +
+                                 s.objective + ")");
+    if (s.objective == "provenance_po") {
+        const json po = tr.value("po", json::object());
+        s.po_beta = po.value("beta", s.po_beta);
+        s.po_weight_mode = po.value("weight_mode", s.po_weight_mode);
+        s.po_weights = po.value("weights", json::object());
+        if (s.init_from.empty() || s.pref_pairs.empty())
+            throw std::runtime_error("objective provenance_po needs train.init_from (the reference) and data.pref_pairs");
+        if (s.po_weight_mode != "provenance" && s.po_weight_mode != "uniform" && s.po_weight_mode != "shuffled")
+            throw std::runtime_error("train.po.weight_mode must be provenance, uniform or shuffled");
+    }
     if ((s.objective == "sft" || s.objective == "rejection_sft") && s.sft_examples.empty())
         throw std::runtime_error("train.objective " + s.objective + " needs data.sft_examples");
     if (s.objective == "grpo") {
@@ -595,6 +613,126 @@ GrpoData load_grpo(const Spec& s, const std::map<std::string, int>& vocab) {
     return g;
 }
 
+// Preference pairs (Phase 5). Lines: {"prompt", "chosen", "rejected",
+// "chosen_evidence": {evidence_kind, evidence_uri, audited, ...},
+// "rejected_evidence": {...}}. A pair's weight is the smaller of its two
+// receipts' weights under the charter §4 table (frozen defaults below,
+// overridable by train.po.weights): exact_match, unit_test, human 1.0;
+// format 0.5; judge 0.3; a receipt missing its kind or URI 0. An audit that
+// overturned a judge verdict ("audit_reward" present and different from the
+// receipt's reward) makes that receipt 0.
+struct PrefData {
+    std::vector<std::vector<int>> prompt, chosen, rejected;
+    std::vector<float> w;
+    std::vector<std::string> kind;  // the weaker receipt's kind, for the histogram
+    size_t val_start = 0;
+};
+
+float receipt_weight(const json& e, const json& table) {
+    if (!e.is_object() || !e.contains("evidence_kind") || !e.contains("evidence_uri")) return 0.0f;
+    const std::string kind = e["evidence_kind"].get<std::string>();
+    if (kind.empty() || e["evidence_uri"].get<std::string>().empty()) return 0.0f;
+    if (kind == "judge" && e.contains("audit_reward") && e.contains("reward") &&
+        e["audit_reward"].get<double>() != e["reward"].get<double>())
+        return 0.0f;
+    static const std::map<std::string, float> defaults = {
+        {"exact_match", 1.0f}, {"unit_test", 1.0f}, {"human", 1.0f}, {"format", 0.5f}, {"judge", 0.3f}};
+    if (table.contains(kind)) return table[kind].get<float>();
+    const auto it = defaults.find(kind);
+    return it == defaults.end() ? 0.0f : it->second;
+}
+
+PrefData load_pref(const Spec& s, const std::map<std::string, int>& vocab) {
+    std::ifstream f(s.pref_pairs);
+    if (!f) throw std::runtime_error("cannot open data.pref_pairs " + s.pref_pairs);
+    const int eos = wordtok::eos_id(vocab);
+    PrefData d;
+    std::string line;
+    size_t n = 0;
+    while (std::getline(f, line)) {
+        ++n;
+        if (line.find_first_not_of(" \t\r") == std::string::npos) continue;
+        const json r = json::parse(line, nullptr, false);
+        if (r.is_discarded() || !r.contains("prompt") || !r.contains("chosen") || !r.contains("rejected"))
+            throw std::runtime_error(s.pref_pairs + ":" + std::to_string(n) + ": need prompt, chosen, rejected");
+        const json ce = r.value("chosen_evidence", json()), re = r.value("rejected_evidence", json());
+        float w = 1.0f;
+        std::string kind = "uniform";
+        if (s.po_weight_mode != "uniform") {
+            const float wc = receipt_weight(ce, s.po_weights), wr = receipt_weight(re, s.po_weights);
+            w = std::min(wc, wr);
+            const json& weaker = wc <= wr ? ce : re;
+            kind = weaker.is_object() ? weaker.value("evidence_kind", std::string("unattributed")) : "unattributed";
+        }
+        auto p = tokenize(r["prompt"].get<std::string>(), vocab, 100000);
+        auto c = tokenize(r["chosen"].get<std::string>(), vocab, 100000);
+        auto j = tokenize(r["rejected"].get<std::string>(), vocab, 100000);
+        if (eos >= 0) {
+            c.push_back(eos);
+            j.push_back(eos);
+        }
+        if (p.empty() || c.empty() || j.empty()) throw std::runtime_error("pair " + std::to_string(n) + " is empty");
+        if (p.size() + std::max(c.size(), j.size()) > s.T + 1)
+            throw std::runtime_error("pair at line " + std::to_string(n) + " exceeds data.T + 1 tokens");
+        d.prompt.push_back(std::move(p));
+        d.chosen.push_back(std::move(c));
+        d.rejected.push_back(std::move(j));
+        d.w.push_back(w);
+        d.kind.push_back(kind);
+    }
+    if (d.w.size() < 2) throw std::runtime_error("data.pref_pairs needs at least two pairs");
+    d.val_start = d.w.size() - std::max<size_t>(1, d.w.size() / 20);
+    if (s.po_weight_mode == "shuffled") {
+        // The falsifier: the same weights (so the same sum and ESS) attached
+        // to the wrong pairs, within the training split.
+        std::mt19937 g(static_cast<unsigned>(s.seed) * 7919u + 17u);
+        std::shuffle(d.w.begin(), d.w.begin() + d.val_start, g);
+    }
+    return d;
+}
+
+// Rows for a set of pairs: each pair contributes its chosen then its
+// rejected sequence (prompt + completion), each padded to L. Completion
+// target rows carry the pair index and sign; prompt and padding rows -1.
+struct PrefBatch {
+    std::vector<int> x, y, row_pair;
+    std::vector<int8_t> sign;
+    size_t L = 0, seqs = 0;
+};
+
+PrefBatch pref_rows(const PrefData& d, const std::vector<size_t>& pairs, int pad) {
+    PrefBatch b;
+    for (size_t i : pairs)
+        b.L = std::max({b.L, d.prompt[i].size() + d.chosen[i].size() - 1, d.prompt[i].size() + d.rejected[i].size() - 1});
+    for (size_t k = 0; k < pairs.size(); ++k) {
+        const size_t i = pairs[k];
+        for (int side = 0; side < 2; ++side) {
+            std::vector<int> q = d.prompt[i];
+            const auto& comp = side == 0 ? d.chosen[i] : d.rejected[i];
+            q.insert(q.end(), comp.begin(), comp.end());
+            for (size_t t = 0; t < b.L; ++t) {
+                const bool real = t + 1 < q.size();
+                const bool tgt = real && t + 1 >= d.prompt[i].size();
+                b.x.push_back(real ? q[t] : pad);
+                b.y.push_back(real ? q[t + 1] : pad);
+                b.row_pair.push_back(tgt ? static_cast<int>(k) : -1);
+                b.sign.push_back(side == 0 ? 1 : -1);
+            }
+            ++b.seqs;
+        }
+    }
+    return b;
+}
+
+// sum_rows sign * log p(target) per pair, from a logits matrix.
+std::vector<double> pair_margins(const Matrix& logits, const PrefBatch& b, size_t P) {
+    const Matrix lp = log_softmax_rows(logits);
+    std::vector<double> m(P, 0.0);
+    for (size_t r = 0; r < b.y.size(); ++r)
+        if (b.row_pair[r] >= 0) m[b.row_pair[r]] += b.sign[r] * static_cast<double>(lp(r, b.y[r]));
+    return m;
+}
+
 int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     std::printf("== mtstudio: %s ==\n", s.name.c_str());
     std::printf("arch: %s d=%zu layers=%zu heads=%zu | T=%zu vocab_cap=%zu\n", s.attention.c_str(),
@@ -664,11 +802,39 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     for (size_t i = 0; i < tokens.size(); ++i) vocab.emplace(tokens[i], static_cast<int>(i));
     const bool sft = s.objective == "sft" || s.objective == "rejection_sft";
     const bool grpo = s.objective == "grpo";
+    const bool po = s.objective == "provenance_po";
     std::vector<int> ids;
     size_t val_start = 0;
     SftSet sd;
     GrpoData gd;
-    if (grpo) {
+    PrefData pd;
+    std::vector<size_t> po_train;  // training pairs with weight > 0
+    if (po) {
+        pd = load_pref(s, vocab);
+        std::map<std::string, double> wsum;
+        std::map<std::string, size_t> wcount;
+        double sw = 0.0, sw2 = 0.0;
+        for (size_t i = 0; i < pd.val_start; ++i) {
+            if (pd.w[i] > 0.0f) po_train.push_back(i);
+            sw += pd.w[i];
+            sw2 += static_cast<double>(pd.w[i]) * pd.w[i];
+            wsum[pd.kind[i]] += pd.w[i];
+            ++wcount[pd.kind[i]];
+        }
+        if (po_train.empty()) throw std::runtime_error("provenance_po: every training pair has weight 0");
+        ev.emit({{"event", "data"},
+                 {"objective", s.objective},
+                 {"pairs", pd.w.size()},
+                 {"val_pairs", pd.w.size() - pd.val_start},
+                 {"pairs_with_weight", po_train.size()},
+                 {"weight_sum", sw},
+                 {"ess_kish", sw2 > 0 ? sw * sw / sw2 : 0.0},
+                 {"weight_mode", s.po_weight_mode},
+                 {"weight_sum_by_kind", wsum},
+                 {"pairs_by_kind", wcount},
+                 {"beta", s.po_beta},
+                 {"vocab", tokens.size()}});
+    } else if (grpo) {
         gd = load_grpo(s, vocab);
         ev.emit({{"event", "data"},
                  {"objective", s.objective},
@@ -810,7 +976,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                      {"checkpoint_activations", s.ckpt_act},
                      {"params", n_params}};
     if (llama) model_ev["rope_heads"] = rope_heads;
-    if (sft || grpo) model_ev["objective"] = s.objective;  // absent for "lm": events unchanged
+    if (sft || grpo || po) model_ev["objective"] = s.objective;  // absent for "lm": events unchanged
     ev.emit(model_ev);
     nn::Module& model_ref = model_pick;
     auto fwd = [&](const std::vector<int>& ids, size_t seq_len = 0) {
@@ -954,15 +1120,24 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
 
     // grpo: the frozen reference (train.init_from) for the KL term.
     std::function<Var(const std::vector<int>&, size_t)> ref_fwd;
-    if (grpo) ref_fwd = make_reference(s);
+    if (grpo || po) ref_fwd = make_reference(s);
     const int eos_tok = wordtok::eos_id(vocab);
+    // provenance_po: the reference margin of every pair, once (it is constant).
+    std::vector<double> po_ref(pd.w.size(), 0.0);
+    if (po) {
+        NoGrad ng;
+        for (size_t i = 0; i < pd.w.size(); ++i) {
+            const PrefBatch b = pref_rows(pd, {i}, eos_tok >= 0 ? eos_tok : 0);
+            po_ref[i] = pair_margins(ref_fwd(b.x, b.L)->data, b, 1)[0];
+        }
+    }
 
     // Train.
     bool stopped_early = false;
     const bool is_srd = attn_kind(s.attention) == parity::AttnKind::SRD;
     for (int step = start_step + 1; step <= s.steps; ++step) {
         last_step = step;
-        const size_t lim = (sft || grpo) ? 0 : val_start - s.T - 1;
+        const size_t lim = (sft || grpo || po) ? 0 : val_start - s.T - 1;
         // Mini-batching + accumulation: each of s.accum micro-steps stacks
         // s.batch sequences into ONE forward ([batch*T, d] rows; positions
         // and the attention mask restart per sequence — receipts in
@@ -1083,7 +1258,35 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                     {"kl", nt ? kl / nt : 0.0}, {"entropy", nt ? ent / nt : 0.0},
                     {"flat_groups", gst.flat_groups}, {"groups", gst.groups}, {"abstained", abst}};
         }
-        for (int k = 0; !grpo && k < s.accum; ++k) {
+        if (po) {
+            // Phase 5 step: s.batch pairs drawn from the weighted training
+            // pairs, one dpo_weighted step against the frozen reference.
+            std::vector<size_t> pick;
+            for (int b = 0; b < s.batch; ++b) pick.push_back(po_train[rng() % po_train.size()]);
+            const PrefBatch b = pref_rows(pd, pick, eos_tok >= 0 ? eos_tok : 0);
+            std::vector<double> refm;
+            std::vector<float> w;
+            double sw = 0.0, sw2 = 0.0;
+            for (size_t i : pick) {
+                refm.push_back(po_ref[i]);
+                w.push_back(pd.w[i]);
+                sw += pd.w[i];
+                sw2 += static_cast<double>(pd.w[i]) * pd.w[i];
+            }
+            Var logits = fwd(b.x, b.L);
+            Var loss = ops::dpo_weighted(logits, b.y, b.row_pair, b.sign, refm, w, s.po_beta);
+            backward(loss);
+            task_mean = loss->data(0, 0);
+            const auto pm = pair_margins(logits->data, b, pick.size());
+            double mm = 0.0, acc = 0.0;
+            for (size_t k = 0; k < pick.size(); ++k) {
+                mm += pm[k] - refm[k];
+                acc += pm[k] - refm[k] > 0 ? 1.0 : 0.0;
+            }
+            gmet = {{"weight_sum", sw}, {"ess_kish", sw2 > 0 ? sw * sw / sw2 : 0.0},
+                    {"margin", mm / pick.size()}, {"pref_acc", acc / pick.size()}};
+        }
+        for (int k = 0; !grpo && !po && k < s.accum; ++k) {
             std::vector<int> x, y;
             std::vector<uint8_t> mask;
             x.reserve(s.batch * s.T);
@@ -1150,7 +1353,23 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             model_ref.train();
             ev.emit({{"event", "grpo_eval"}, {"step", step}, {"truth_acc", tr / n}, {"reward_mean", rw / n},
                      {"hack_frac", hk / n}, {"reward_hack_frac", rh / n}, {"samples", n}});
-        } else if (!grpo && step % s.eval_every == 0) {
+        } else if (po && step % s.eval_every == 0) {
+            // Held-out pairs, unweighted: loss and preference accuracy.
+            NoGrad ng;
+            model_ref.eval();
+            double loss = 0.0, acc = 0.0;
+            const size_t nv = pd.w.size() - pd.val_start;
+            for (size_t i = pd.val_start; i < pd.w.size(); ++i) {
+                const PrefBatch b = pref_rows(pd, {i}, eos_tok >= 0 ? eos_tok : 0);
+                const double m = pair_margins(fwd(b.x, b.L)->data, b, 1)[0] - po_ref[i];
+                const double x = -s.po_beta * m;
+                loss += x > 0 ? x + std::log1p(std::exp(-x)) : std::log1p(std::exp(x));
+                acc += m > 0 ? 1.0 : 0.0;
+            }
+            model_ref.train();
+            ev.emit({{"event", "po_eval"}, {"step", step}, {"val_loss", loss / nv}, {"pref_acc", acc / nv},
+                     {"pairs", nv}});
+        } else if (!grpo && !po && step % s.eval_every == 0) {
             NoGrad ng;
             model_ref.eval();
             double vl = 0;
