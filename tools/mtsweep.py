@@ -295,7 +295,16 @@ def build_provenance(binary, sweep_path):
 
 
 def find_mtstudio(cli):
-    for cand in ([cli] if cli else []) + [
+    # A binary named on the command line is the one the run must use: if it
+    # is missing, stop. Searching on would run a different build under the
+    # caller's name for it (found 17 Oct 2026: posttrain_calib's named binary
+    # failed to build and the sweep ran ~/mtrel/mtstudio instead; provenance
+    # recorded it, but nothing stopped it).
+    if cli:
+        if os.path.isfile(cli) and os.access(cli, os.X_OK):
+            return os.path.abspath(cli)
+        raise SystemExit(f"--mtstudio {cli}: not an executable file")
+    for cand in [
             "./mtstudio", "build/mtstudio",
             os.path.expanduser("~/mtrel/mtstudio")]:
         if cand and os.path.isfile(cand) and os.access(cand, os.X_OK):

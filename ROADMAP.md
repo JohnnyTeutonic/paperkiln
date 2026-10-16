@@ -65,6 +65,15 @@ build with its smoke test), and the chat-v1 release serves the quickstart's
 ready-made model. One open choice: cppcheck and Valgrind still run as
 advisory steps that cannot fail the build.
 
+## 3b. Environment traps found 17 Oct 2026
+
+- A clone placed directly in `~` builds against the stale `~/transformer_cpp`
+  (CMake prefers a sibling to the vendored copy) and fails on missing headers.
+  Put clean clones in their own parent directory, or add a CMake switch that
+  forces `third_party/transformer_cpp`.
+- WSL git reports ~238 files modified in the OneDrive checkout (CRLF), so
+  `--require-clean` runs must come from an ext4 clone.
+
 ## 4. Research
 
 - **Post-training and corpus provenance** (charter 0001, order of work §11).

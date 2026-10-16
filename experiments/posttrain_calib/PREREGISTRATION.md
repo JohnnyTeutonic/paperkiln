@@ -70,3 +70,23 @@ truth-fail fraction.
 - Dev sets are small at R=10 (18 facts), and the R=10 corpus is small (604
   examples), so 3000 steps is many epochs there. That is part of what is
   being calibrated, not a defect.
+
+## Execution clarifications
+
+**1 (17 Oct 2026, after the runs, before measurement).** The binary named for
+the sweep (`~/ptcal/build/mtstudio`, a fresh clone of the licence commit)
+did not build. CMake prefers a sibling `../transformer_cpp`, and a stale,
+unrelated `~/transformer_cpp` lacks headers the vendored copy has. The
+build failure did not stop the launch script, and `tools/mtsweep.py` then
+searched on and ran `~/mtrel/mtstudio`. Every run's `provenance.json`
+records that path and its sha256 (`3b345a60…`). That binary corresponds to
+the licence commit:
+- `git diff ce5d2f7 HEAD` is empty for every C++ and CMake file;
+- `make -n` in `~/mtrel` compiles nothing, so the binary was built from that
+  source;
+- its sha256 matches the provenance record.
+
+No rule changes. The sweep ran from the clean clone at `ce5d2f7`
+(`repo_dirty: false`). Measurement used the same `~/mtrel` binaries.
+`mtsweep` now refuses a named binary that does not exist, rather than
+searching on.
