@@ -1,0 +1,18 @@
+{"prompt": "tim had 0 flowers . then he is given 0 more . how many flowers does he have ?", "answer": 0, "uri": "tinyarith_r10_v1/dev/add-0-0"}
+{"prompt": "ben has 1 apples . he is given 9 apples . how many apples does he have now ?", "answer": 10, "uri": "tinyarith_r10_v1/dev/add-1-9"}
+{"prompt": "ben has 2 flowers . he picks up 8 flowers . how many flowers does he have now ?", "answer": 10, "uri": "tinyarith_r10_v1/dev/add-2-8"}
+{"prompt": "anna had 4 cookies . then she gets 0 more . how many cookies does she have ?", "answer": 4, "uri": "tinyarith_r10_v1/dev/add-4-0"}
+{"prompt": "lucy has 5 stickers . she is given 8 stickers . how many stickers does she have now ?", "answer": 13, "uri": "tinyarith_r10_v1/dev/add-5-8"}
+{"prompt": "tom had 6 balls . then he picks up 1 more . how many balls does he have ?", "answer": 7, "uri": "tinyarith_r10_v1/dev/add-6-1"}
+{"prompt": "tim had 6 stickers . then he finds 8 more . how many stickers does he have ?", "answer": 14, "uri": "tinyarith_r10_v1/dev/add-6-8"}
+{"prompt": "lily had 7 shells . then she gets 2 more . how many shells does she have ?", "answer": 9, "uri": "tinyarith_r10_v1/dev/add-7-2"}
+{"prompt": "lily has 7 books . she is given 6 books . how many books does she have now ?", "answer": 13, "uri": "tinyarith_r10_v1/dev/add-7-6"}
+{"prompt": "lily has 7 flowers . she is given 7 flowers . how many flowers does she have now ?", "answer": 14, "uri": "tinyarith_r10_v1/dev/add-7-7"}
+{"prompt": "mia has 8 flowers . she picks up 2 flowers . how many flowers does she have now ?", "answer": 10, "uri": "tinyarith_r10_v1/dev/add-8-2"}
+{"prompt": "one day lily has 5 apples . she drops 0 of them . how many apples are left ?", "answer": 5, "uri": "tinyarith_r10_v1/dev/sub-5-0"}
+{"prompt": "one day tom has 5 balls . he eats 5 of them . how many balls are left ?", "answer": 0, "uri": "tinyarith_r10_v1/dev/sub-5-5"}
+{"prompt": "one day lucy has 6 flowers . she eats 3 of them . how many flowers are left ?", "answer": 3, "uri": "tinyarith_r10_v1/dev/sub-6-3"}
+{"prompt": "one day tom has 7 books . he drops 2 of them . how many books are left ?", "answer": 5, "uri": "tinyarith_r10_v1/dev/sub-7-2"}
+{"prompt": "one day ben has 7 rocks . he loses 6 of them . how many rocks are left ?", "answer": 1, "uri": "tinyarith_r10_v1/dev/sub-7-6"}
+{"prompt": "one day tim has 9 cookies . he gives away 9 of them . how many cookies are left ?", "answer": 0, "uri": "tinyarith_r10_v1/dev/sub-9-9"}
+{"prompt": "one day anna has 10 toys . she gives away 0 of them . how many toys are left ?", "answer": 10, "uri": "tinyarith_r10_v1/dev/sub-10-0"}

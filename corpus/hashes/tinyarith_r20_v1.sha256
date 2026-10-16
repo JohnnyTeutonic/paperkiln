@@ -1,0 +1,4 @@
+# corpus/fetchers/tinyarith.py R=20 seed=20261016
+7dc3a28e1612701357b3d9bc19f82ae2c9dd8609d583b88548ff0310d611b269  train.jsonl
+f5d0600c96d41277732ebb3921d3b75a794b45fca7805c4bde8729a4be5945c2  train.txt
+cb87aa71f6264fb62f1af2ba0935ae22ff69ba8cc35d9a9ca2fc4144ac5a29a8  vocab.gguf

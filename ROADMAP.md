@@ -72,10 +72,20 @@ advisory steps that cannot fail the build.
   (`make corpus` rebuilds the research slice byte-exact), cards, and C0.
   Phase 1 done: `posttrain/verifier.hpp` (receipts mandatory; exact match,
   format, synthetic judge, cached LLM judge, human audit, Linux code sandbox)
-  and `tools/posttrain/judge_sidecar.py`. Next:
-  - `tinyarith` and the frozen evaluation sets (`corpus/eval/`);
-  - the quickstart vocabulary is not pinned yet (it depends on the `gguf`
-    package's writer); pin its token list as for chat7b.
+  and `tools/posttrain/judge_sidecar.py` (round trip to C++ tested).
+  Phase E done: `tinyarith` (levels R=10/20/50, splits disjoint by fact) with
+  frozen dev/test/hack-probe sets, and frozen held-out narrative and dialogue text
+  (`corpus/eval/`, pins enforced by tests). Probe: Common Crawl (FineWeb-Edu) and
+  Simple Wikipedia lose 17-20% of tokens even to their own 4096-word vocabulary,
+  so they are retired until there is a subword tokenizer. Next:
+  - the rejection sampler (Phase 2): an mtstudio subcommand using the chat sampler,
+    records scored by `posttrain_verify`, the audit sheet;
+  - the tinyarith calibration pilot (charter §3.2) to choose R;
+  - a subword (BPE) tokenizer: the one change that would let paperkiln learn from
+    open-web text (ledger 0002);
+  - an instruction corpus: TinyStories-Instruct declares no licence; otherwise the
+    synthetic fallback.
+
 - **Scale ladder, depth rung.** d=256, 4 layers, exact against SWA, as its
   own pre-registration. Deep SWA is built and gated.
 - **Atlas Stages 5–6.** Architectural fingerprints, neighbours, and the

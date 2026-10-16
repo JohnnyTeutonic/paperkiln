@@ -1,0 +1,38 @@
+{
+ "tinystories_heldout_v1": {
+  "tinystories_slice_v1": {
+   "exact_line_overlap": 0.0,
+   "8gram_overlap": 0.010583946742480753
+  },
+  "tinystories_valid_v1": {
+   "exact_line_overlap": 0.0,
+   "8gram_overlap": 0.020070090498374406
+  },
+  "tinychat_v2_1500": {
+   "exact_line_overlap": 0.0,
+   "8gram_overlap": 0.0
+  },
+  "tinychat_v2_4000": {
+   "exact_line_overlap": 0.0,
+   "8gram_overlap": 0.0
+  }
+ },
+ "tinychat_heldout_v1": {
+  "tinystories_slice_v1": {
+   "exact_line_overlap": 0.0,
+   "8gram_overlap": 0.0
+  },
+  "tinystories_valid_v1": {
+   "exact_line_overlap": 0.0,
+   "8gram_overlap": 0.0
+  },
+  "tinychat_v2_1500": {
+   "exact_line_overlap": 0.0,
+   "8gram_overlap": 0.6767161410018553
+  },
+  "tinychat_v2_4000": {
+   "exact_line_overlap": 0.004,
+   "8gram_overlap": 0.8224489795918367
+  }
+ }
+}

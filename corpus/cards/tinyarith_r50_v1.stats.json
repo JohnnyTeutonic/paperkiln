@@ -1,0 +1,39 @@
+{
+ "corpus_id": "tinyarith_r50_v1",
+ "sha256": "c2946f4410832332371c36c75785766e28976b58df0ae0a303e6ffb8f89cee6c",
+ "composition": {
+  "bytes": 1381737,
+  "documents": 12572,
+  "doc_bytes": {
+   "p50": 95,
+   "p90": 100,
+   "p99": 105
+  },
+  "doc_tokens": {
+   "p50": 24,
+   "p90": 24,
+   "p99": 25
+  },
+  "tokens_total": 296463,
+  "exact_duplicate_rate": 0.0023862551702195354,
+  "nonascii_bytes": 0,
+  "crlf_lines": 0,
+  "has_eos_marker": true
+ },
+ "coverage_under_training_vocab": {
+  "tokens": 309035,
+  "bytes_consumed": 1381737,
+  "tokens_per_byte": 0.22365688984227824,
+  "vocab_size": 210,
+  "unk_tokens": 0,
+  "unk_rate": 0.0,
+  "unk_nonascii_byte_tokens": 0,
+  "unk_distinct_types": 0,
+  "val_tokens": 15451,
+  "val_unk_rate": 0.0,
+  "top_unk": [],
+  "vocab_file_sha256": "5af4188778c77934f0ac69be076639ea718d9af84eb868b7a4b7f5984008e4a5",
+  "cap": 4096,
+  "max_tokens": 0
+ }
+}

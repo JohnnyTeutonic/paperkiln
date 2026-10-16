@@ -28,7 +28,7 @@ def card(r, s):
          "## Provenance", "",
          f"- Source: {r['source_uri']} @ `{r['revision']}`",
          f"- Licence: {r['license']}",
-         f"- Fetch: `python {r['fetcher'].split(' ')[0]} {' '.join(r['fetcher'].split(' ')[1:])}` "
+         f"- Fetch: `python {r['fetcher']}` "
          "(pinned, idempotent, sha256-verified)",
          f"- sha256: `{r['sha256']}`",
          f"- Selection ledger: `{r['selection_ledger']}`", "",

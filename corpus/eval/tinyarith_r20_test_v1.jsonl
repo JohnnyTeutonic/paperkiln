@@ -1,0 +1,67 @@
+{"prompt": "tim has 0 balls . he picks up 4 balls . how many balls does he have now ?", "answer": 4, "uri": "tinyarith_r20_v1/test/add-0-4"}
+{"prompt": "mia had 0 shells . then she picks up 10 more . how many shells does she have ?", "answer": 10, "uri": "tinyarith_r20_v1/test/add-0-10"}
+{"prompt": "anna had 0 flowers . then she finds 15 more . how many flowers does she have ?", "answer": 15, "uri": "tinyarith_r20_v1/test/add-0-15"}
+{"prompt": "sam had 0 stickers . then he finds 20 more . how many stickers does he have ?", "answer": 20, "uri": "tinyarith_r20_v1/test/add-0-20"}
+{"prompt": "lucy has 1 balls . she picks up 10 balls . how many balls does she have now ?", "answer": 11, "uri": "tinyarith_r20_v1/test/add-1-10"}
+{"prompt": "anna has 2 cars . she finds 0 cars . how many cars does she have now ?", "answer": 2, "uri": "tinyarith_r20_v1/test/add-2-0"}
+{"prompt": "sue has 2 shells . she picks up 4 shells . how many shells does she have now ?", "answer": 6, "uri": "tinyarith_r20_v1/test/add-2-4"}
+{"prompt": "sam had 2 stickers . then he finds 8 more . how many stickers does he have ?", "answer": 10, "uri": "tinyarith_r20_v1/test/add-2-8"}
+{"prompt": "tim had 3 balls . then he finds 14 more . how many balls does he have ?", "answer": 17, "uri": "tinyarith_r20_v1/test/add-3-14"}
+{"prompt": "ben has 4 shells . he picks up 8 shells . how many shells does he have now ?", "answer": 12, "uri": "tinyarith_r20_v1/test/add-4-8"}
+{"prompt": "lily had 5 rocks . then she is given 1 more . how many rocks does she have ?", "answer": 6, "uri": "tinyarith_r20_v1/test/add-5-1"}
+{"prompt": "ben had 5 stickers . then he picks up 13 more . how many stickers does he have ?", "answer": 18, "uri": "tinyarith_r20_v1/test/add-5-13"}
+{"prompt": "anna has 5 stickers . she is given 20 stickers . how many stickers does she have now ?", "answer": 25, "uri": "tinyarith_r20_v1/test/add-5-20"}
+{"prompt": "anna had 6 cars . then she finds 2 more . how many cars does she have ?", "answer": 8, "uri": "tinyarith_r20_v1/test/add-6-2"}
+{"prompt": "tom has 6 rocks . he is given 5 rocks . how many rocks does he have now ?", "answer": 11, "uri": "tinyarith_r20_v1/test/add-6-5"}
+{"prompt": "anna has 8 shells . she gets 2 shells . how many shells does she have now ?", "answer": 10, "uri": "tinyarith_r20_v1/test/add-8-2"}
+{"prompt": "ben had 8 balls . then he is given 10 more . how many balls does he have ?", "answer": 18, "uri": "tinyarith_r20_v1/test/add-8-10"}
+{"prompt": "tim has 8 toys . he finds 18 toys . how many toys does he have now ?", "answer": 26, "uri": "tinyarith_r20_v1/test/add-8-18"}
+{"prompt": "ben has 9 toys . he picks up 4 toys . how many toys does he have now ?", "answer": 13, "uri": "tinyarith_r20_v1/test/add-9-4"}
+{"prompt": "lucy had 10 rocks . then she is given 12 more . how many rocks does she have ?", "answer": 22, "uri": "tinyarith_r20_v1/test/add-10-12"}
+{"prompt": "max has 10 cars . he is given 17 cars . how many cars does he have now ?", "answer": 27, "uri": "tinyarith_r20_v1/test/add-10-17"}
+{"prompt": "lucy has 11 books . she finds 5 books . how many books does she have now ?", "answer": 16, "uri": "tinyarith_r20_v1/test/add-11-5"}
+{"prompt": "anna has 11 cookies . she finds 17 cookies . how many cookies does she have now ?", "answer": 28, "uri": "tinyarith_r20_v1/test/add-11-17"}
+{"prompt": "lucy had 12 stickers . then she is given 8 more . how many stickers does she have ?", "answer": 20, "uri": "tinyarith_r20_v1/test/add-12-8"}
+{"prompt": "mia had 12 flowers . then she gets 12 more . how many flowers does she have ?", "answer": 24, "uri": "tinyarith_r20_v1/test/add-12-12"}
+{"prompt": "sam has 13 shells . he finds 4 shells . how many shells does he have now ?", "answer": 17, "uri": "tinyarith_r20_v1/test/add-13-4"}
+{"prompt": "ben had 13 balls . then he finds 19 more . how many balls does he have ?", "answer": 32, "uri": "tinyarith_r20_v1/test/add-13-19"}
+{"prompt": "sue has 14 apples . she picks up 10 apples . how many apples does she have now ?", "answer": 24, "uri": "tinyarith_r20_v1/test/add-14-10"}
+{"prompt": "mia has 15 apples . she finds 4 apples . how many apples does she have now ?", "answer": 19, "uri": "tinyarith_r20_v1/test/add-15-4"}
+{"prompt": "anna has 15 toys . she gets 6 toys . how many toys does she have now ?", "answer": 21, "uri": "tinyarith_r20_v1/test/add-15-6"}
+{"prompt": "tom had 15 cars . then he gets 10 more . how many cars does he have ?", "answer": 25, "uri": "tinyarith_r20_v1/test/add-15-10"}
+{"prompt": "tom had 15 rocks . then he picks up 17 more . how many rocks does he have ?", "answer": 32, "uri": "tinyarith_r20_v1/test/add-15-17"}
+{"prompt": "tim has 15 rocks . he gets 19 rocks . how many rocks does he have now ?", "answer": 34, "uri": "tinyarith_r20_v1/test/add-15-19"}
+{"prompt": "lily has 16 shells . she is given 10 shells . how many shells does she have now ?", "answer": 26, "uri": "tinyarith_r20_v1/test/add-16-10"}
+{"prompt": "tom had 16 stickers . then he finds 12 more . how many stickers does he have ?", "answer": 28, "uri": "tinyarith_r20_v1/test/add-16-12"}
+{"prompt": "max has 17 toys . he picks up 8 toys . how many toys does he have now ?", "answer": 25, "uri": "tinyarith_r20_v1/test/add-17-8"}
+{"prompt": "mia has 18 apples . she is given 5 apples . how many apples does she have now ?", "answer": 23, "uri": "tinyarith_r20_v1/test/add-18-5"}
+{"prompt": "max had 18 cars . then he is given 13 more . how many cars does he have ?", "answer": 31, "uri": "tinyarith_r20_v1/test/add-18-13"}
+{"prompt": "lily has 18 cars . she picks up 20 cars . how many cars does she have now ?", "answer": 38, "uri": "tinyarith_r20_v1/test/add-18-20"}
+{"prompt": "sam has 19 cookies . he gets 13 cookies . how many cookies does he have now ?", "answer": 32, "uri": "tinyarith_r20_v1/test/add-19-13"}
+{"prompt": "tom had 19 toys . then he is given 15 more . how many toys does he have ?", "answer": 34, "uri": "tinyarith_r20_v1/test/add-19-15"}
+{"prompt": "anna had 20 cars . then she is given 14 more . how many cars does she have ?", "answer": 34, "uri": "tinyarith_r20_v1/test/add-20-14"}
+{"prompt": "one day tim has 1 apples . he eats 0 of them . how many apples are left ?", "answer": 1, "uri": "tinyarith_r20_v1/test/sub-1-0"}
+{"prompt": "one day lucy has 7 rocks . she loses 2 of them . how many rocks are left ?", "answer": 5, "uri": "tinyarith_r20_v1/test/sub-7-2"}
+{"prompt": "one day max has 7 shells . he gives away 4 of them . how many shells are left ?", "answer": 3, "uri": "tinyarith_r20_v1/test/sub-7-4"}
+{"prompt": "one day sam has 7 stickers . he gives away 7 of them . how many stickers are left ?", "answer": 0, "uri": "tinyarith_r20_v1/test/sub-7-7"}
+{"prompt": "lily has 9 toys . she drops 3 toys . how many toys does she have now ?", "answer": 6, "uri": "tinyarith_r20_v1/test/sub-9-3"}
+{"prompt": "one day sue has 10 rocks . she loses 10 of them . how many rocks are left ?", "answer": 0, "uri": "tinyarith_r20_v1/test/sub-10-10"}
+{"prompt": "sam has 11 books . he drops 5 books . how many books does he have now ?", "answer": 6, "uri": "tinyarith_r20_v1/test/sub-11-5"}
+{"prompt": "lily has 11 cars . she drops 11 cars . how many cars does she have now ?", "answer": 0, "uri": "tinyarith_r20_v1/test/sub-11-11"}
+{"prompt": "one day anna has 12 balls . she loses 8 of them . how many balls are left ?", "answer": 4, "uri": "tinyarith_r20_v1/test/sub-12-8"}
+{"prompt": "lucy has 13 shells . she eats 1 shells . how many shells does she have now ?", "answer": 12, "uri": "tinyarith_r20_v1/test/sub-13-1"}
+{"prompt": "one day tom has 13 cookies . he gives away 2 of them . how many cookies are left ?", "answer": 11, "uri": "tinyarith_r20_v1/test/sub-13-2"}
+{"prompt": "tom has 14 balls . he drops 1 balls . how many balls does he have now ?", "answer": 13, "uri": "tinyarith_r20_v1/test/sub-14-1"}
+{"prompt": "one day anna has 14 cars . she eats 2 of them . how many cars are left ?", "answer": 12, "uri": "tinyarith_r20_v1/test/sub-14-2"}
+{"prompt": "sam has 15 toys . he gives away 2 toys . how many toys does he have now ?", "answer": 13, "uri": "tinyarith_r20_v1/test/sub-15-2"}
+{"prompt": "one day ben has 16 flowers . he gives away 1 of them . how many flowers are left ?", "answer": 15, "uri": "tinyarith_r20_v1/test/sub-16-1"}
+{"prompt": "one day lucy has 16 flowers . she loses 2 of them . how many flowers are left ?", "answer": 14, "uri": "tinyarith_r20_v1/test/sub-16-2"}
+{"prompt": "sam has 16 cars . he drops 12 cars . how many cars does he have now ?", "answer": 4, "uri": "tinyarith_r20_v1/test/sub-16-12"}
+{"prompt": "mia has 16 rocks . she eats 15 rocks . how many rocks does she have now ?", "answer": 1, "uri": "tinyarith_r20_v1/test/sub-16-15"}
+{"prompt": "sam has 17 cars . he gives away 0 cars . how many cars does he have now ?", "answer": 17, "uri": "tinyarith_r20_v1/test/sub-17-0"}
+{"prompt": "ben has 17 flowers . he gives away 8 flowers . how many flowers does he have now ?", "answer": 9, "uri": "tinyarith_r20_v1/test/sub-17-8"}
+{"prompt": "one day sam has 18 toys . he eats 3 of them . how many toys are left ?", "answer": 15, "uri": "tinyarith_r20_v1/test/sub-18-3"}
+{"prompt": "lucy has 18 toys . she loses 5 toys . how many toys does she have now ?", "answer": 13, "uri": "tinyarith_r20_v1/test/sub-18-5"}
+{"prompt": "tom has 19 shells . he eats 0 shells . how many shells does he have now ?", "answer": 19, "uri": "tinyarith_r20_v1/test/sub-19-0"}
+{"prompt": "one day ben has 19 toys . he drops 6 of them . how many toys are left ?", "answer": 13, "uri": "tinyarith_r20_v1/test/sub-19-6"}
+{"prompt": "ben has 19 cars . he eats 7 cars . how many cars does he have now ?", "answer": 12, "uri": "tinyarith_r20_v1/test/sub-19-7"}

@@ -1,0 +1,18 @@
+{"prompt": "max has 3 apples . he gets 4 apples . how many apples does he have now ?", "answer": 7, "uri": "tinyarith_r10_v1/test/add-3-4"}
+{"prompt": "max has 3 apples . he gets 9 apples . how many apples does he have now ?", "answer": 12, "uri": "tinyarith_r10_v1/test/add-3-9"}
+{"prompt": "ben had 3 books . then he gets 10 more . how many books does he have ?", "answer": 13, "uri": "tinyarith_r10_v1/test/add-3-10"}
+{"prompt": "sue has 4 books . she picks up 2 books . how many books does she have now ?", "answer": 6, "uri": "tinyarith_r10_v1/test/add-4-2"}
+{"prompt": "sue had 4 flowers . then she finds 7 more . how many flowers does she have ?", "answer": 11, "uri": "tinyarith_r10_v1/test/add-4-7"}
+{"prompt": "max has 5 stickers . he picks up 2 stickers . how many stickers does he have now ?", "answer": 7, "uri": "tinyarith_r10_v1/test/add-5-2"}
+{"prompt": "sue had 5 cars . then she gets 7 more . how many cars does she have ?", "answer": 12, "uri": "tinyarith_r10_v1/test/add-5-7"}
+{"prompt": "tom had 8 flowers . then he gets 5 more . how many flowers does he have ?", "answer": 13, "uri": "tinyarith_r10_v1/test/add-8-5"}
+{"prompt": "ben had 10 apples . then he finds 2 more . how many apples does he have ?", "answer": 12, "uri": "tinyarith_r10_v1/test/add-10-2"}
+{"prompt": "max has 10 apples . he is given 8 apples . how many apples does he have now ?", "answer": 18, "uri": "tinyarith_r10_v1/test/add-10-8"}
+{"prompt": "max has 2 rocks . he loses 2 rocks . how many rocks does he have now ?", "answer": 0, "uri": "tinyarith_r10_v1/test/sub-2-2"}
+{"prompt": "one day ben has 3 toys . he eats 0 of them . how many toys are left ?", "answer": 3, "uri": "tinyarith_r10_v1/test/sub-3-0"}
+{"prompt": "one day anna has 5 flowers . she drops 4 of them . how many flowers are left ?", "answer": 1, "uri": "tinyarith_r10_v1/test/sub-5-4"}
+{"prompt": "lucy has 6 shells . she loses 1 shells . how many shells does she have now ?", "answer": 5, "uri": "tinyarith_r10_v1/test/sub-6-1"}
+{"prompt": "mia has 7 stickers . she drops 5 stickers . how many stickers does she have now ?", "answer": 2, "uri": "tinyarith_r10_v1/test/sub-7-5"}
+{"prompt": "tim has 9 shells . he gives away 6 shells . how many shells does he have now ?", "answer": 3, "uri": "tinyarith_r10_v1/test/sub-9-6"}
+{"prompt": "one day max has 10 shells . he eats 1 of them . how many shells are left ?", "answer": 9, "uri": "tinyarith_r10_v1/test/sub-10-1"}
+{"prompt": "mia has 10 toys . she drops 4 toys . how many toys does she have now ?", "answer": 6, "uri": "tinyarith_r10_v1/test/sub-10-4"}
