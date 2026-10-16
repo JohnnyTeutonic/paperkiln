@@ -193,6 +193,10 @@ target_link_libraries(phase3_integration PRIVATE microtorch)
 add_executable(gguf_roundtrip tools/gguf_roundtrip.cpp)
 target_link_libraries(gguf_roundtrip PRIVATE microtorch)
 
+# ember.cpp TTFT timing subject: seeded random weights at a chosen shape.
+add_executable(make_timing_gguf tools/make_timing_gguf.cpp)
+target_link_libraries(make_timing_gguf PRIVATE microtorch)
+
 # SRD graduation gate: TinyStories training parity, 4 lanes
 # (exact / kimi / srd / srd-falsifier) on identical batches.
 add_executable(srd_parity tools/srd_parity.cpp)
