@@ -1,0 +1,8 @@
+Cross-check of C0 with the trainer's own tokenizer header (include/microtorch/word_tokenizer.hpp),
+compiled in WSL (g++ -O2 -std=c++17), 16 Oct 2026. Inputs: corpus/fetchers outputs
+for tinystories_slice_v1 (sha256 672622b8...) and the first 4096 tokens of chat7b.gguf (sha256 9c4b2719...).
+Source: experiments/corpus_c0/c0_check.cpp
+
+tokens 400001 vocab 4096 unk 76374 val_unk 4260
+
+Python byte-exact mirror (tools/corpus_quality.py coverage): tokens 400001, unk 76374, val_unk_rate 0.213 (4260/20000). Identical.

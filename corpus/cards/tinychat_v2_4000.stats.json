@@ -1,0 +1,39 @@
+{
+ "corpus_id": "tinychat_v2_4000",
+ "sha256": "d195c7ee0e44e995ad04751c4e06f9691b0a517d818533f0d490d74bbc88310c",
+ "composition": {
+  "bytes": 1049149,
+  "documents": 4000,
+  "doc_bytes": {
+   "p50": 245,
+   "p90": 377,
+   "p99": 464
+  },
+  "doc_tokens": {
+   "p50": 61,
+   "p90": 93,
+   "p99": 114
+  },
+  "tokens_total": 243871,
+  "exact_duplicate_rate": 0.00225,
+  "nonascii_bytes": 0,
+  "crlf_lines": 0,
+  "has_eos_marker": true
+ },
+ "coverage_under_training_vocab": {
+  "tokens": 247871,
+  "bytes_consumed": 1049149,
+  "tokens_per_byte": 0.23625910142410658,
+  "vocab_size": 259,
+  "unk_tokens": 0,
+  "unk_rate": 0.0,
+  "unk_nonascii_byte_tokens": 0,
+  "unk_distinct_types": 0,
+  "val_tokens": 12393,
+  "val_unk_rate": 0.0,
+  "top_unk": [],
+  "vocab_file_sha256": "17e1ca75fa1a9b6a07bf8467b4311a1f956a14284f74a164b6100b5787f1170c",
+  "cap": 4096,
+  "max_tokens": 2000000
+ }
+}

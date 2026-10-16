@@ -1,0 +1,3 @@
+# tools/get_tinychat_data.py --version 2 --dialogues 1500 --seed 11
+1d68d1ee554279b9274fd0c4da6255a3e6ce648712d0bf5259dbd585582cc8b4  tinychat.txt
+793fe4f0d404e7ba788fc8804d4f57412f24bc3651e9bab2568772434f07716b  tinychat_vocab.gguf

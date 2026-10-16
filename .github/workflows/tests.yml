@@ -55,12 +55,13 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Python tests (extractor, chat server, RoPE heads, model card)
+      - name: Python tests (extractor, chat server, RoPE heads, model card, corpus measurements)
         run: |
           python3 -m pip install --quiet pytest
           MTSTUDIO_BIN=build/mtstudio python3 -m pytest -q \
             papers/test_fetch.py tests/test_mtstudio_chat.py \
-            tests/test_rope_heads.py tools/test_model_card.py
+            tests/test_rope_heads.py tools/test_model_card.py \
+            tests/test_corpus_quality.py
 
       - name: paperkiln-fetch matches papers/fetch.py
         run: python3 tools/sync_fetch_pkg.py --check

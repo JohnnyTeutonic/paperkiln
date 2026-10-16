@@ -1,12 +1,11 @@
 # 0001 — Post-training charter, and the corpus selection ledger
 
-*Status: **DRAFT, awaiting the owner's approval** (16 Oct 2026). No
-post-training or corpus code exists yet. This file comes before any of it.
-Once approved, its decision rules are frozen in the D4 sense. Each study
-then gets its own `PREREGISTRATION.md` (the licence anchor) that fixes the
-numbers this charter leaves to a calibration pilot. Results are appended
-here as dated sections. The text above them is never edited after
-approval.*
+*Status: **APPROVED by the owner, 16 Oct 2026.** The owner delegated
+the open judgement calls; they are recorded in §12. The decision rules
+here are frozen in the D4 sense. Each study gets its own
+`PREREGISTRATION.md` (the licence anchor) that fixes the numbers this
+charter leaves to a calibration pilot. Decisions and results are appended
+as dated sections.*
 
 ---
 
@@ -390,29 +389,37 @@ and the reason for each rejection recorded in the same place.
 choice, and neither is currently measured against a shared standard —
 so this repo will measure both.
 
-### 8.1 What the repo records today
+### 8.1 What the repo records
 
-This was reconstructed from git history on 16 Oct 2026, and the ledger
-(§9) records it as such:
+The full account is in `corpus/ledger/0000-legacy-unknown.md`:
 
-- **TinyStories** enters on 30 Jul 2026 (`4a4dd1e`, the SRD work). No
-  commit, document or decision records why it was chosen or what else
-  was considered. It goes in ledger `0000-legacy-unknown.md`.
-- **The vocabulary behind every S1 and T-series finding is not built
-  from TinyStories.** It is the first 4,096 entries of `chat7b.gguf`,
-  a 20,000-word vocabulary built for an earlier model in
-  `transformer_cpp`. The one recorded coverage figure is 14.9% `<unk>`
-  at the full 20,000 (`docs/SPARSE_ATTENTION.md` §2b). Coverage at the
-  4,096 cap, which those findings used, has never been measured.
-  Measuring it is the first row this workstream registers (C0 below).
-  It is a measurement, not a retraction: the findings compare lanes on
-  identical batches, so a shared vocabulary cannot by itself reverse a
-  sign. It does bound what the absolute losses mean.
-- **The corpus bytes behind those findings are not hashed in any
-  receipt.** The sweeps read `/content/data/corpus.txt` on the Colab
-  VM, and no pre-registration records its sha256. If the local copy
-  survives under `/mnt/c/ml_artifacts/`, it will be hashed and the
-  hash recorded as reconstructed, not original.
+- **One corpus is behind every research finding.** Atlas Stages 2–3, the
+  sparse-attention and transfer studies, and the highway pilot all use
+  `tinystories_slice_v1`: the first 5,000 TinyStories train stories,
+  written on 12 Jul 2026 as a `transformer_cpp` smoke-test file. It has no
+  end-of-story token and has CRLF line endings. The trainer's default
+  `data.max_tokens` means the studies read only its first 400,001 tokens,
+  41% of it. Its choice as a narrative corpus is on record:
+  `transformer_cpp` chose TinyStories for its fit to a word-level
+  vocabulary. Why the smoke-test slice became the research corpus is not
+  on record.
+- **The vocabulary is the first 4,096 entries of `chat7b.gguf`.** It was
+  built from TinyStories-Instruct by a whitespace tokenizer that keeps
+  punctuation attached. Under mtstudio's tokenizer, 19.1% of trained
+  tokens map to `<unk>` (21.3% in the held-out tail), and 1,503 of the
+  4,095 non-`<unk>` entries can never occur. Measured on 9 Oct 2026 for
+  the transfer paper (`experiments/transfer_s2/posthoc/token_coverage.py`)
+  and replicated in registry row `C0-legacy-vocab-coverage`. Why this
+  vocabulary was paired with this corpus is not on record. Lanes are
+  compared on identical batches, so the shared vocabulary does not by
+  itself reverse a paired comparison. It does bound what the absolute
+  losses mean.
+- **The bytes are reproducible.** `corpus/fetchers/tinystories.py`
+  rebuilds the slice from `roneneldan/TinyStories@f54c09fd`, with a
+  sha256 equal to the retained historical file's (also given in the
+  transfer paper's data note). `corpus/fetchers/vocab_chat7b.py` rebuilds
+  the vocabulary from a committed token list. Every registry row trained
+  on them carries a `corpus` field naming both.
 - **TinyChat v1/v2** do have a recorded rationale: the
   `tools/get_tinychat_data.py` docstring says DailyDialog taught
   register but not answers, while the synthetic world taught both.
@@ -560,3 +567,40 @@ its own study directory exists.
 
 Every step: tests first; the event stream extended with new keys only
 (D1); a registry row whatever the result.
+
+## 12. Approval and decisions (16 Oct 2026)
+
+The owner approved this charter and delegated the open judgement calls.
+They are settled as follows.
+
+1. **Weight table.** The §4 defaults are frozen as written (exact match,
+   unit test and human 1.0; format 0.5; judge 0.3; unattributed 0.0).
+   Sensitivity to the table is a separate, pre-registered sweep, and only
+   if F-PT5b passes.
+2. **Audit status.** `audited` changes the weight of `judge` evidence only,
+   as §4 states. Mechanical evidence is reproducible, so re-running the
+   verifier is its audit.
+3. **The real-judge calibration arm is kept.** It runs once, on the frozen
+   audit set, through `judge_sidecar.py`:
+   - under a hard cap of 600 calls;
+   - with credentials only from an explicitly designated environment
+     file, never by searching the machine for keys;
+   - with the model id recorded in every verdict's `evidence_uri`.
+
+   If no designated key is available when PT2 is licensed, the §3.2
+   fallback grid {0.10, 0.25} applies, and the scope says so.
+4. **Compute.** All GPU work runs on Colab, where the owner has given free
+   rein, through the paths in `AGENTS.md` §3. The owner's own GPU is not
+   used. Local CPU runs only short tests and runs of the smallest models
+   (d=128). The C1 pilot still measures GPU hours before C1's
+   pre-registration, so the receipt states the cost. That measurement is
+   for the record, not for approval.
+5. **Corpus registry statuses** add `candidate` and `retired-at-scale` to
+   active, deprecated and retired.
+6. **Step 1 of §11 is done.**
+   - `corpus/` holds the registry (5 corpora, 1 vocabulary, 6
+     candidates), ledgers 0000–0002, pinned fetchers behind `make
+     corpus`, hashes, and rendered placeholder cards.
+   - `tools/corpus_quality.py` has 13 tests.
+   - `C0-legacy-vocab-coverage` is supported.
+   - The research corpus is rebuilt byte-exact from the public revision.

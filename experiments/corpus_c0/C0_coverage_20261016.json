@@ -1,0 +1,120 @@
+{
+ "corpus_id": "tinystories_slice_v1",
+ "sha256": "672622b80c9052da17adaefe93a9f34bb51bdfaffdd70f4fc485fd593c16036b",
+ "composition": {
+  "bytes": 4172294,
+  "documents": 5000,
+  "doc_bytes": {
+   "p50": 774,
+   "p90": 1103,
+   "p99": 2107
+  },
+  "doc_tokens": {
+   "p50": 177,
+   "p90": 264,
+   "p99": 520
+  },
+  "tokens_total": 972728,
+  "exact_duplicate_rate": 0.0,
+  "nonascii_bytes": 17743,
+  "crlf_lines": 5000,
+  "has_eos_marker": false
+ },
+ "coverage_under_training_vocab": {
+  "tokens": 400001,
+  "bytes_consumed": 1717152,
+  "tokens_per_byte": 0.23294443357373137,
+  "vocab_size": 4096,
+  "unk_tokens": 76374,
+  "unk_rate": 0.19093452266369335,
+  "unk_nonascii_byte_tokens": 6037,
+  "unk_distinct_types": 3505,
+  "val_tokens": 20000,
+  "val_unk_rate": 0.213,
+  "top_unk": [
+   [
+    ".",
+    31242
+   ],
+   [
+    ",",
+    15482
+   ],
+   [
+    "\"",
+    7502
+   ],
+   [
+    "!",
+    3188
+   ],
+   [
+    "\\xe2",
+    1175
+   ],
+   [
+    "\\xa2",
+    1147
+   ],
+   [
+    "?",
+    946
+   ],
+   [
+    "\\x82",
+    920
+   ],
+   [
+    "\\xc3",
+    920
+   ],
+   [
+    "\\xac",
+    910
+   ],
+   [
+    "\\x93",
+    323
+   ],
+   [
+    "\\xc5",
+    323
+   ],
+   [
+    "\\x84",
+    237
+   ],
+   [
+    ":",
+    147
+   ],
+   [
+    "s",
+    134
+   ],
+   [
+    "wow",
+    78
+   ],
+   [
+    "t",
+    67
+   ],
+   [
+    "oh",
+    66
+   ],
+   [
+    "hi",
+    57
+   ],
+   [
+    "forever",
+    41
+   ]
+  ],
+  "vocab_file_sha256": "dba8b5f207cce60879265304dd8bf06876c37dc02131caf8d7542d889bbfa461",
+  "cap": 4096,
+  "max_tokens": 400000
+ }
+}

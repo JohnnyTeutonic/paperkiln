@@ -1,0 +1,23 @@
+{
+ "corpus_id": "tinystories_valid_v1",
+ "sha256": "94e431816c4cce81ff71e4408ff8d3bda9a42e8d2663986697c3954288cb38b4",
+ "composition": {
+  "bytes": 19447282,
+  "documents": 21990,
+  "doc_bytes": {
+   "p50": 774,
+   "p90": 1258,
+   "p99": 2372
+  },
+  "doc_tokens": {
+   "p50": 177,
+   "p90": 307,
+   "p99": 590
+  },
+  "tokens_total": 4455561,
+  "exact_duplicate_rate": 0.0,
+  "nonascii_bytes": 21460,
+  "crlf_lines": 0,
+  "has_eos_marker": true
+ }
+}

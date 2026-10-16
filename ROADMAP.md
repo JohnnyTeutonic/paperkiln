@@ -39,10 +39,9 @@ where one of those documents carries a plan, this file wins.*
 
 ## 2. Decisions waiting on Jonathan
 
-- **Approve (or amend) the post-training and corpus charter**,
-  [`docs/decisions/0001-posttrain-charter.md`](docs/decisions/0001-posttrain-charter.md)
-  (16 Oct 2026). No post-training or corpus code is written until it is
-  approved. Seven pending registry rows (PT2, PT4, PT5 x2, C0, C1 x2) are in.
+None open. Settled on 16 Oct 2026: the post-training and corpus charter
+([`docs/decisions/0001-posttrain-charter.md`](docs/decisions/0001-posttrain-charter.md))
+is approved, with the open calls delegated and recorded in its §12.
 
 Settled on 10 Oct 2026:
 - PyPI: `paperkiln-fetch` 0.1.0 and `paperkiln` 0.3.1 are published
@@ -68,6 +67,13 @@ advisory steps that cannot fail the build.
 
 ## 4. Research
 
+- **Post-training and corpus provenance** (charter 0001, order of work §11).
+  Step 1 done (16 Oct 2026): `corpus/` registry, ledgers, pinned fetchers
+  (`make corpus` rebuilds the research slice byte-exact), cards, and C0. Next:
+  - the verifier interface (`posttrain/verifier.hpp`) and its tests;
+  - `tinyarith` and the frozen evaluation sets (`corpus/eval/`);
+  - the quickstart vocabulary is not pinned yet (it depends on the `gguf`
+    package's writer); pin its token list as for chat7b.
 - **Scale ladder, depth rung.** d=256, 4 layers, exact against SWA, as its
   own pre-registration. Deep SWA is built and gated.
 - **Atlas Stages 5–6.** Architectural fingerprints, neighbours, and the
