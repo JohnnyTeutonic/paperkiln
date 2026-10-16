@@ -1,0 +1,4 @@
+# Frozen bytes: hashes are pinned, so line endings must never be converted.
+eval/** -text
+hashes/** -text
+vocab/** -text
