@@ -1,0 +1,9 @@
+{
+ "dataset": "wikimedia/wikipedia",
+ "config": "20231101.simple",
+ "split": "train",
+ "head_revision_at_fetch": "b04c8d1ceb2f5cd4588862100d08de323dccfbaa",
+ "rows": 1000,
+ "fetched": "2026-10-16",
+ "sha256": "b34b7018472bce3e7f2b112e800ba1b980901ad4d9ed483cb4e1831fab22431c"
+}

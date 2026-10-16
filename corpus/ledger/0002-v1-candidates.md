@@ -63,8 +63,37 @@ which a run of digits is one token
    - BookCorpus: unclear licensing.
    - C4: noisy web text, where quality filtering would become a confound.
 5. **Contamination:** measured against the evaluation panel.
-6. **Licence:** read from the pinned dump.
-7. **Baseline:** bits per byte on its panel member from the C1 pilot.
+6. **Licence:** cc-by-sa-3.0 and gfdl (dataset card, revision `b04c8d1c`).
+7. **Status:** retired at this scale by the coverage probe below (17.3%
+   `<unk>` under its own vocabulary).
+
+## Measured: what a 4,096-word vocabulary can carry
+
+`experiments/corpus_probe/` fetched 1,000-document samples (16 Oct 2026; head
+revisions and sample hashes beside each sample). It measured `<unk>` on the
+held-out half of each sample under three vocabularies: research, quickstart,
+and the sample's own 4,096 most frequent words built on the other half.
+
+| Candidate | research | quickstart | own 4,096 |
+|---|---:|---:|---:|
+| FineWeb-Edu (filtered Common Crawl) | 0.495 | 0.349 | **0.196** |
+| Simple English Wikipedia | 0.505 | 0.349 | **0.173** |
+| TinyStories slice (reference) | 0.197 | 0.035 | 0.038 |
+
+**Decision: Common Crawl, FineWeb-Edu and Simple English Wikipedia are
+`retired-at-scale`.** Even with a vocabulary fitted to them, about a fifth of
+their tokens are lost, which is the size of the research setup's own
+`<unk>` damage. A C1 arm on any of them would measure the tokenizer, not the
+corpus. Raw Common Crawl would be worse, and it would add a filtering choice
+that is itself an unmeasured factor. All three reopen together with a
+subword tokenizer. That makes a subword tokenizer, not more data, the thing
+that would widen what paperkiln can learn from.
+
+**TinyStories-Instruct** is a separate dataset,
+`roneneldan/TinyStoriesInstruct` (revision `ee050ed1`), not a config of the
+TinyStories dataset. Its card declares no licence, so it stays a candidate,
+blocked until a licence is found in writing. The fallback named above (a
+synthetic instruction set written here) then becomes the instruction corpus.
 
 ## Negative controls
 

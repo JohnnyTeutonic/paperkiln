@@ -1,0 +1,9 @@
+{
+ "dataset": "HuggingFaceFW/fineweb-edu",
+ "config": "sample-10BT",
+ "split": "train",
+ "head_revision_at_fetch": "87f09149ef4734204d70ed1d046ddc9ca3f2b8f9",
+ "rows": 1000,
+ "fetched": "2026-10-16",
+ "sha256": "b12bb8d9478efbebc3b90fccd166a7b2376629a3598250696fe05867a69a175f"
+}
