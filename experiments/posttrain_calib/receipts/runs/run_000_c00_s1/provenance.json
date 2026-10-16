@@ -1,0 +1,11 @@
+{
+  "repo_commit": "ce5d2f74109136f5782e8b342574ca6cd9474932",
+  "repo_dirty": false,
+  "repo_dirty_files": [],
+  "binary_path": "/home/jonat/mtrel/mtstudio",
+  "binary_sha256": "3b345a6001cf769e1173fc2fb3b5c95f7ed59622caa6e6a0081c06fa87ff3061",
+  "binary_bytes": 1744800,
+  "sweep": "/home/jonat/ptcal/experiments/posttrain_calib/sweep.json",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.12.3"
+}

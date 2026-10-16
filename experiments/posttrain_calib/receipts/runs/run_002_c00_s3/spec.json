@@ -1,0 +1,33 @@
+{
+  "arch": {
+    "preset": "llama-tiny",
+    "rope_heads": "all"
+  },
+  "data": {
+    "T": 64,
+    "corpus": "corpus/data/tinyarith_r10_v1/train.txt",
+    "vocab": "corpus/data/tinyarith_r10_v1/vocab.gguf",
+    "vocab_cap": 4096
+  },
+  "export": {
+    "formats": [
+      "safetensors"
+    ]
+  },
+  "name": "run_002_c00_s3",
+  "out_dir": "/home/jonat/pt_calib/runs/run_002_c00_s3",
+  "serve": {
+    "on_finish": false
+  },
+  "train": {
+    "batch": 8,
+    "checkpoint_every": 500,
+    "eval_every": 100,
+    "gradmap_every": 0,
+    "lr": 0.003,
+    "objective": "lm",
+    "optimizer": "adamw",
+    "seed": 3,
+    "steps": 3000
+  }
+}
