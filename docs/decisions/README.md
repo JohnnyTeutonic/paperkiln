@@ -176,3 +176,25 @@ falsifier rule keeps the reason the freeze was right: mechanisms that
 arrive without a test read as breadth, and breadth is what reviewers
 discount.
 
+
+---
+
+## D11. Post-training and corpus provenance start from a charter
+
+**Chosen:** post-training (SFT, rejection sampling, GRPO,
+provenance-weighted DPO) and corpus selection enter through one charter,
+[`0001-posttrain-charter.md`](0001-posttrain-charter.md). Its decision
+rules, falsifiers and pending registry rows came before any code.
+Decisions large enough to need their own document are numbered files in
+this folder from here on. Short ones stay as D-entries here.
+
+**Why:** both workstreams make claims (the provenance thesis; corpus
+choice against architecture choice) that a careless design would settle
+by construction. Examples: a reward-vs-truth gap that is zero for the
+exact-match arm by definition, and validation losses compared across
+different corpora. The charter records how each is avoided.
+
+**Would change if:** the owner declines the charter, or a calibration
+pilot shows the synthetic task cannot put base accuracy in [0.25, 0.60]
+at any operand range. Then the study is redesigned in writing, before
+data.

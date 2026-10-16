@@ -39,7 +39,12 @@ where one of those documents carries a plan, this file wins.*
 
 ## 2. Decisions waiting on Jonathan
 
-None open. Settled on 10 Oct 2026:
+- **Approve (or amend) the post-training and corpus charter**,
+  [`docs/decisions/0001-posttrain-charter.md`](docs/decisions/0001-posttrain-charter.md)
+  (16 Oct 2026). No post-training or corpus code is written until it is
+  approved. Seven pending registry rows (PT2, PT4, PT5 x2, C0, C1 x2) are in.
+
+Settled on 10 Oct 2026:
 - PyPI: `paperkiln-fetch` 0.1.0 and `paperkiln` 0.3.1 are published
   (`paperkiln`: portable x86-64-v3 Linux wheels for Python 3.10–3.12).
 - Registry: Study 2 has its row (T2-structure-position-fragile), which
