@@ -32,6 +32,17 @@ why a corpus was chosen is itself a finding.*
   data note on 30 Sep 2026). The slice has no end-of-story token and has CRLF
   line endings.
 
+- **The released chat-v1 model (`story3k`) was trained on the research
+  slice with the chat7b vocabulary.** The `spec.json` inside its release
+  shows this. It was not trained on the quickstart corpus that
+  `specs/tinystories-llama-3k.json` names, so no released model uses
+  `tinystories_valid_v1` or its vocabulary.
+- **The quickstart vocabulary is close to complete.** The frequency
+  vocabulary `get_tinystories_data.py` builds from `tinystories_valid_v1`
+  maps 1.27% of the first 400,000 tokens to `<unk>` (0.65% in the held-out
+  tail). The research vocabulary maps 19.1%. Same source family and the
+  same 4,096 slots: the difference is entirely how the vocabulary was built.
+
 ## What is unknown
 
 - **Why the smoke-test slice became the research corpus.** It enters

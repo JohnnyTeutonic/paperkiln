@@ -27,7 +27,18 @@
 
 ## Coverage under the training vocabulary
 
-PENDING: the tokenizer (`own frequency vocabulary built by tools/get_tinystories_data.py (not yet pinned: depends on the gguf package's writer)`) is not pinned yet.
+Tokenizer: `vocab_tinystories_valid_v1` (cap 4096), trainer read cap `data.max_tokens = 400000`.
+
+| measure | value |
+|---|---|
+| tokens the trainer reads | 400000 |
+| bytes the trainer reads | 1767558 of 19447282 |
+| tokens per byte | 0.2263 |
+| `<unk>` rate (all / held-out tail) | 0.0127 / 0.0065 |
+| `<unk>` from non-ASCII bytes | 1515 tokens |
+| distinct unknown types | 2049 |
+
+Most frequent unknown types: `\x80` (503), `\xe2` (503), `\x9c` (169), `\x9d` (168), `\x99` (134), `dee` (21), `\x93` (16), `pippy` (12), `chipmunk` (11), `finny` (10).
 
 ## Quality signals
 

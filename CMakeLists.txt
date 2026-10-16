@@ -214,6 +214,9 @@ target_link_libraries(srd_needle PRIVATE microtorch)
 
 # M1 (docs/STUDIO_PLAN.md): the run-spec driver. One JSON describes the
 # lifecycle; the driver executes it and emits the JSONL event stream.
+add_executable(posttrain_verify tools/posttrain_verify.cpp)
+target_link_libraries(posttrain_verify PRIVATE microtorch nlohmann_json::nlohmann_json)
+
 add_executable(mtstudio tools/mtstudio.cpp)
 target_link_libraries(mtstudio PRIVATE microtorch nlohmann_json::nlohmann_json)
 # HTTP for `serve` and `chat`: cpp-httplib, vendored single header

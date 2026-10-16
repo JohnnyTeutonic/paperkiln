@@ -19,5 +19,102 @@
   "nonascii_bytes": 21460,
   "crlf_lines": 0,
   "has_eos_marker": true
+ },
+ "coverage_under_training_vocab": {
+  "tokens": 400000,
+  "bytes_consumed": 1767558,
+  "tokens_per_byte": 0.226300919121183,
+  "vocab_size": 4096,
+  "unk_tokens": 5086,
+  "unk_rate": 0.012715,
+  "unk_nonascii_byte_tokens": 1515,
+  "unk_distinct_types": 2049,
+  "val_tokens": 20000,
+  "val_unk_rate": 0.00645,
+  "top_unk": [
+   [
+    "\\x80",
+    503
+   ],
+   [
+    "\\xe2",
+    503
+   ],
+   [
+    "\\x9c",
+    169
+   ],
+   [
+    "\\x9d",
+    168
+   ],
+   [
+    "\\x99",
+    134
+   ],
+   [
+    "dee",
+    21
+   ],
+   [
+    "\\x93",
+    16
+   ],
+   [
+    "pippy",
+    12
+   ],
+   [
+    "chipmunk",
+    11
+   ],
+   [
+    "finny",
+    10
+   ],
+   [
+    "humans",
+    10
+   ],
+   [
+    "matilda",
+    10
+   ],
+   [
+    "monica",
+    10
+   ],
+   [
+    "bambi",
+    9
+   ],
+   [
+    "bucky",
+    9
+   ],
+   [
+    "gizmo",
+    9
+   ],
+   [
+    "jean",
+    9
+   ],
+   [
+    "officers",
+    9
+   ],
+   [
+    "piggie",
+    9
+   ],
+   [
+    "pippin",
+    9
+   ]
+  ],
+  "vocab_file_sha256": "8c3cfa7d31c96e7b2b5f69123736f84e7def8fee3dc7b3793d1731f1a86605c9",
+  "cap": 4096,
+  "max_tokens": 400000
  }
 }
