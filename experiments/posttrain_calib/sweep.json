@@ -1,0 +1,52 @@
+{
+ "_comment": "posttrain_calib: tinyarith level x seed, the charter 0001 \u00a73.2 calibration (see PREREGISTRATION.md). Run from the repository root.",
+ "base": {
+  "arch": {
+   "preset": "llama-tiny"
+  },
+  "data": {
+   "corpus": "",
+   "vocab": "",
+   "vocab_cap": 4096,
+   "T": 64
+  },
+  "train": {
+   "steps": 3000,
+   "lr": 0.003,
+   "batch": 8,
+   "eval_every": 100,
+   "checkpoint_every": 500,
+   "gradmap_every": 0,
+   "optimizer": "adamw",
+   "objective": "lm"
+  },
+  "export": {
+   "formats": [
+    "safetensors"
+   ]
+  }
+ },
+ "factors": {
+  "lane": [
+   {
+    "data.corpus": "corpus/data/tinyarith_r10_v1/train.txt",
+    "data.vocab": "corpus/data/tinyarith_r10_v1/vocab.gguf"
+   },
+   {
+    "data.corpus": "corpus/data/tinyarith_r20_v1/train.txt",
+    "data.vocab": "corpus/data/tinyarith_r20_v1/vocab.gguf"
+   },
+   {
+    "data.corpus": "corpus/data/tinyarith_r50_v1/train.txt",
+    "data.vocab": "corpus/data/tinyarith_r50_v1/vocab.gguf"
+   }
+  ]
+ },
+ "design": "grid",
+ "seeds": [
+  1,
+  2,
+  3
+ ],
+ "out_root": "/home/jonat/pt_calib"
+}
