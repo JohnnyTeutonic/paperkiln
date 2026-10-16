@@ -54,6 +54,7 @@ add_library(microtorch STATIC
     src/srd.cpp
     src/cerebellum.cpp
     src/mamba.cpp
+    src/posttrain/verifier.cpp
 )
 target_include_directories(microtorch PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(microtorch PUBLIC transformer_core
@@ -121,6 +122,10 @@ add_test(NAME train_utils COMMAND test_train_utils)
 add_executable(test_gguf_export tests/test_gguf_export.cpp)
 target_link_libraries(test_gguf_export PRIVATE microtorch)
 add_test(NAME gguf_export COMMAND test_gguf_export)
+
+add_executable(test_verifier tests/test_verifier.cpp)
+target_link_libraries(test_verifier PRIVATE microtorch)
+add_test(NAME verifier COMMAND test_verifier)
 
 add_executable(test_lora_quant tests/test_lora_quant.cpp)
 target_link_libraries(test_lora_quant PRIVATE microtorch)
