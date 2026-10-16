@@ -1,0 +1,10 @@
+Regression bridge for the post-training changes to tools/mtstudio.cpp (commit b83dca4), 17 Oct 2026.
+Replays the first 100 steps of experiments/atlas_stage3_rope_all/receipts/runs/run_000_c00_s1
+(WSL CPU, banked 10 Oct 2026 from commit 2bb0ec2) with the Release build of b83dca4, script bridge.sh.
+
+step losses bit-identical: 100 of 100
+eval@100 4.779040426015854 4.779040426015854 True
+model event identical: True
+data event identical: True
+
+The lm objective path is numerically unchanged by the sft/rejection_sft/sample-set/init_from additions.
