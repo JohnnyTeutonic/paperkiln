@@ -441,6 +441,60 @@ Var cross_entropy(const Var& logits, const std::vector<int>& targets) {
     });
 }
 
+Var policy_gradient_kl(const Var& logits, const std::vector<int>& targets, const std::vector<float>& w,
+                       const std::vector<float>& k, const Matrix& ref_logp) {
+    const size_t R = logits->data.rows(), C = logits->data.cols();
+    if (targets.size() != R || w.size() != R || k.size() != R)
+        throw std::runtime_error("policy_gradient_kl: one target, w and k per row");
+    if (ref_logp.rows() != R || ref_logp.cols() != C)
+        throw std::runtime_error("policy_gradient_kl: ref_logp must match logits");
+    device::materialize(logits->data);
+    // log-softmax in double per row, cached for the backward.
+    auto LP = cached(Matrix(R, C));
+    auto kl = std::make_shared<std::vector<double>>(R, 0.0);
+    double total = 0.0;
+    for (size_t i = 0; i < R; ++i) {
+        if (w[i] == 0.0f && k[i] == 0.0f) continue;
+        if (targets[i] < 0 || static_cast<size_t>(targets[i]) >= C)
+            throw std::runtime_error("policy_gradient_kl: target out of range");
+        double mx = -1e300;
+        for (size_t j = 0; j < C; ++j) mx = std::max(mx, static_cast<double>(logits->data(i, j)));
+        double z = 0.0;
+        for (size_t j = 0; j < C; ++j) z += std::exp(logits->data(i, j) - mx);
+        const double lz = mx + std::log(z);
+        double kli = 0.0;
+        for (size_t j = 0; j < C; ++j) {
+            const double lp = logits->data(i, j) - lz;
+            (*LP)(i, j) = static_cast<float>(lp);
+            kli += std::exp(lp) * (lp - ref_logp(i, j));
+        }
+        (*kl)[i] = kli;
+        total += -static_cast<double>(w[i]) * ((*LP)(i, targets[i])) + static_cast<double>(k[i]) * kli;
+    }
+    Matrix out(1, 1);
+    out(0, 0) = static_cast<float>(total);
+    return record(std::move(out), {logits}, [LP, kl, targets, w, k, ref_logp](Variable* self) {
+        const Var& l = self->parents[0];
+        if (!l->requires_grad) return;
+        device::materialize(self->grad);
+        const double g = self->grad(0, 0);
+        Matrix dl(LP->rows(), LP->cols());
+        for (size_t i = 0; i < dl.rows(); ++i) {
+            if (w[i] == 0.0f && k[i] == 0.0f) {
+                for (size_t j = 0; j < dl.cols(); ++j) dl(i, j) = 0.0f;
+                continue;
+            }
+            for (size_t j = 0; j < dl.cols(); ++j) {
+                const double lp = (*LP)(i, j), p = std::exp(lp);
+                double d = static_cast<double>(w[i]) * (p - (static_cast<int>(j) == targets[i] ? 1.0 : 0.0));
+                d += static_cast<double>(k[i]) * p * (lp - ref_logp(i, j) - (*kl)[i]);
+                dl(i, j) = static_cast<float>(g * d);
+            }
+        }
+        l->accumulate(dl);
+    });
+}
+
 Var cross_entropy_masked(const Var& logits, const std::vector<int>& targets, const std::vector<uint8_t>& mask) {
     const size_t R = logits->data.rows(), C = logits->data.cols();
     if (targets.size() != R || mask.size() != R) {

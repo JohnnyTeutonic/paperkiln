@@ -20,6 +20,7 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <map>
 #include <mutex>
 #include <random>
@@ -38,6 +39,8 @@
 #include "microtorch/gguf.hpp"
 #include "microtorch/llama.hpp"
 #include "microtorch/safetensors.hpp"
+#include "microtorch/posttrain/grpo.hpp"
+#include "microtorch/posttrain/verifier.hpp"
 #include "microtorch/word_tokenizer.hpp"
 #include "parity_model.hpp"
 
@@ -75,6 +78,19 @@ struct Spec {
     std::string sft_examples;
     bool allow_human_labels = false;
     std::string init_from;  // safetensors to start from (fresh runs only)
+    // objective "grpo" (Phase 4): train.grpo.* and data.grpo_prompts /
+    // data.grpo_eval ({prompt, answer, uri} JSONL). The reference model for
+    // the KL term is train.init_from, frozen.
+    std::string grpo_prompts, grpo_eval;
+    int grpo_group = 8, grpo_prompts_per_step = 4, grpo_max_new = 8, grpo_eval_samples = 4;
+    float grpo_beta = 0.05f, grpo_temp = 1.0f;
+    bool grpo_std_norm = true;
+    std::string grpo_reward = "exact_match";   // exact_match | format | synthetic_judge
+    std::string grpo_advantage = "normal";     // normal | shuffled (the falsifier)
+    json grpo_judge = json::object();           // SyntheticJudgeParams overrides
+    // A deliberately buggy reward key (PT4's falsifier channel): exact match
+    // against references shifted by this amount. 0 = the true references.
+    int grpo_reward_shift = 0;
     // train
     int steps = 500;
     float lr = 3e-3f, clip = 1.0f, lambda_gate = 0.05f;
@@ -189,6 +205,8 @@ Spec parse_spec(const std::string& path) {
     s.max_tokens = data.value("max_tokens", s.max_tokens);
     s.T = data.value("T", s.T);
     s.sft_examples = data.value("sft_examples", "");
+    s.grpo_prompts = data.value("grpo_prompts", "");
+    s.grpo_eval = data.value("grpo_eval", "");
 
     const json tr = j.value("train", json::object());
     s.steps = tr.value("steps", s.steps);
@@ -203,10 +221,30 @@ Spec parse_spec(const std::string& path) {
     s.objective = tr.value("objective", s.objective);
     s.allow_human_labels = tr.value("allow_human_labels", s.allow_human_labels);
     s.init_from = tr.value("init_from", "");
-    if (s.objective != "lm" && s.objective != "sft" && s.objective != "rejection_sft")
-        throw std::runtime_error("train.objective must be lm, sft or rejection_sft (got " + s.objective + ")");
-    if (s.objective != "lm" && s.sft_examples.empty())
+    if (s.objective != "lm" && s.objective != "sft" && s.objective != "rejection_sft" && s.objective != "grpo")
+        throw std::runtime_error("train.objective must be lm, sft, rejection_sft or grpo (got " + s.objective + ")");
+    if ((s.objective == "sft" || s.objective == "rejection_sft") && s.sft_examples.empty())
         throw std::runtime_error("train.objective " + s.objective + " needs data.sft_examples");
+    if (s.objective == "grpo") {
+        const json g = tr.value("grpo", json::object());
+        s.grpo_group = g.value("group_size", s.grpo_group);
+        s.grpo_prompts_per_step = g.value("prompts_per_step", s.grpo_prompts_per_step);
+        s.grpo_max_new = g.value("max_new", s.grpo_max_new);
+        s.grpo_eval_samples = g.value("eval_samples", s.grpo_eval_samples);
+        s.grpo_beta = g.value("beta", s.grpo_beta);
+        s.grpo_temp = g.value("temperature", s.grpo_temp);
+        s.grpo_std_norm = g.value("std_norm", s.grpo_std_norm);
+        s.grpo_reward = g.value("reward", s.grpo_reward);
+        s.grpo_advantage = g.value("advantage", s.grpo_advantage);
+        s.grpo_judge = g.value("judge", json::object());
+        s.grpo_reward_shift = g.value("reward_shift", 0);
+        if (s.grpo_reward_shift != 0 && s.grpo_reward != "exact_match")
+            throw std::runtime_error("train.grpo.reward_shift applies to the exact_match reward only");
+        if (s.init_from.empty() || s.grpo_prompts.empty())
+            throw std::runtime_error("objective grpo needs train.init_from (the reference) and data.grpo_prompts");
+        if (s.grpo_group < 2) throw std::runtime_error("train.grpo.group_size must be >= 2");
+        if (!(s.grpo_temp > 0.0f)) throw std::runtime_error("train.grpo.temperature must be > 0");
+    }
     s.optimizer = tr.value("optimizer", s.optimizer);
     s.muon_lr = tr.value("muon_lr", s.muon_lr);
     s.gradmap_every = tr.value("gradmap_every", s.gradmap_every);
@@ -346,6 +384,65 @@ json grad_map(const nn::Module& m) {
     return out;
 }
 
+// The frozen reference model for grpo's KL term: the spec's architecture
+// with the weights of train.init_from. Defined after LoadedLM.
+std::function<Var(const std::vector<int>&, size_t)> make_reference(const Spec& s);
+
+// One pure-temperature completion (charter 0001 §4): the whole vocabulary,
+// no top-k, no nucleus, no banned tokens, so the draw is from the policy
+// itself. `forward` maps a context (at most T ids) to logits. Shared by
+// `sample-set` and the grpo objective, so the samples a run is trained on
+// and the samples it is evaluated on come from the same code.
+struct Sampled {
+    std::vector<int> ids;
+    double logp = 0.0, logp_sample = 0.0;  // at temperature 1 and at the sampling temperature
+    std::string stop = "length";
+};
+
+template <class F>
+Sampled sample_pure(F&& forward, const std::vector<int>& prompt, size_t T, size_t V, float temp, int max_new, int eos,
+                    std::mt19937& gen) {
+    Sampled out;
+    std::vector<int> ids = prompt;
+    for (int t = 0; t < max_new; ++t) {
+        std::vector<int> ctx = ids;
+        if (ctx.size() > T) ctx.assign(ids.end() - T, ids.end());
+        Var logits = forward(ctx);
+        const size_t last = logits->data.rows() - 1;
+        double m1 = -1e300, mt = -1e300;
+        for (size_t j = 0; j < V; ++j) {
+            const double x = logits->data(last, j);
+            m1 = std::max(m1, x);
+            mt = std::max(mt, x / temp);
+        }
+        double z1 = 0.0, zt = 0.0;
+        std::vector<double> p(V);
+        for (size_t j = 0; j < V; ++j) {
+            const double x = logits->data(last, j);
+            z1 += std::exp(x - m1);
+            zt += (p[j] = std::exp(x / temp - mt));
+        }
+        std::uniform_real_distribution<double> u(0.0, zt);
+        double r = u(gen);
+        size_t pick = V - 1;
+        for (size_t j = 0; j < V; ++j)
+            if ((r -= p[j]) <= 0) {
+                pick = j;
+                break;
+            }
+        const double x = logits->data(last, pick);
+        out.logp += x - m1 - std::log(z1);
+        out.logp_sample += x / temp - mt - std::log(zt);
+        if (static_cast<int>(pick) == eos) {
+            out.stop = "eos";
+            break;
+        }
+        ids.push_back(static_cast<int>(pick));
+        out.ids.push_back(static_cast<int>(pick));
+    }
+    return out;
+}
+
 // Supervised fine-tuning data (Phase 3). Each example becomes one row block
 // of length T: x = seq[0..T-1], y = seq[1..T], where seq = prompt tokens +
 // completion tokens + end-of-text, padded. mask[i] = 1 exactly when target
@@ -427,6 +524,77 @@ SftSet load_sft(const Spec& s, const std::map<std::string, int>& vocab) {
     return d;
 }
 
+// Row-wise log-softmax in double, returned as float (grpo's reference
+// log-probabilities and its KL/entropy monitors).
+Matrix log_softmax_rows(const Matrix& L) {
+    Matrix out(L.rows(), L.cols());
+    for (size_t i = 0; i < L.rows(); ++i) {
+        double mx = -1e300, z = 0.0;
+        for (size_t j = 0; j < L.cols(); ++j) mx = std::max(mx, static_cast<double>(L(i, j)));
+        for (size_t j = 0; j < L.cols(); ++j) z += std::exp(L(i, j) - mx);
+        const double lz = mx + std::log(z);
+        for (size_t j = 0; j < L.cols(); ++j) out(i, j) = static_cast<float>(L(i, j) - lz);
+    }
+    return out;
+}
+
+// GRPO prompts (Phase 4): {prompt, answer, uri} JSONL for training
+// (data.grpo_prompts) and, optionally, held-out evaluation (data.grpo_eval).
+// The reward verifier is train.grpo.reward; exact match and the format
+// verifier always run beside it as monitors, so every step can report
+// hack_frac (format passes, exact match fails) whatever the reward is.
+struct GrpoData {
+    std::vector<std::string> prompts, eval_prompts;
+    std::vector<std::vector<int>> prompt_ids, eval_ids;
+    std::shared_ptr<posttrain::Verifier> reward, exact, format;
+};
+
+GrpoData load_grpo(const Spec& s, const std::map<std::string, int>& vocab) {
+    GrpoData g;
+    posttrain::ReferenceSet refs;
+    auto read = [&](const std::string& path, std::vector<std::string>& texts, std::vector<std::vector<int>>& ids) {
+        for (auto& [prompt, ref] : posttrain::load_references(path)) {
+            if (!refs.emplace(prompt, ref).second)
+                throw std::runtime_error("grpo: prompt appears in both training and evaluation sets");
+            auto t = tokenize(prompt, vocab, 100000);
+            if (t.empty()) throw std::runtime_error("grpo: a prompt has no in-vocabulary token");
+            if (t.size() + static_cast<size_t>(s.grpo_max_new) + 1 > s.T + 1)
+                throw std::runtime_error("grpo: prompt + max_new exceeds data.T");
+            texts.push_back(prompt);
+            ids.push_back(std::move(t));
+        }
+    };
+    read(s.grpo_prompts, g.prompts, g.prompt_ids);
+    if (!s.grpo_eval.empty()) read(s.grpo_eval, g.eval_prompts, g.eval_ids);
+    g.exact = std::make_shared<posttrain::ExactMatchVerifier>(refs);
+    g.format = std::make_shared<posttrain::FormatVerifier>();
+    if (s.grpo_reward == "exact_match" && s.grpo_reward_shift != 0) {
+        // Every receipt says the key is shifted: the evidence URI carries it.
+        posttrain::ReferenceSet shifted;
+        for (const auto& [prompt, ref] : refs)
+            shifted.emplace(prompt, posttrain::Reference{ref.answer + s.grpo_reward_shift,
+                                                         ref.uri + "#SHIFTED" + std::to_string(s.grpo_reward_shift)});
+        g.reward = std::make_shared<posttrain::ExactMatchVerifier>(shifted);
+    } else if (s.grpo_reward == "exact_match") {
+        g.reward = g.exact;
+    } else if (s.grpo_reward == "format") {
+        g.reward = g.format;
+    } else if (s.grpo_reward == "synthetic_judge") {
+        posttrain::SyntheticJudgeParams p;
+        const json& j = s.grpo_judge;
+        p.accept_wrong_with_cue = j.value("cue", p.accept_wrong_with_cue);
+        p.accept_wrong_near = j.value("near", p.accept_wrong_near);
+        p.near_k = j.value("near_k", p.near_k);
+        p.accept_wrong_other = j.value("other", p.accept_wrong_other);
+        p.reject_correct = j.value("reject_correct", p.reject_correct);
+        p.seed = j.value("seed", p.seed);
+        g.reward = std::make_shared<posttrain::SyntheticJudgeVerifier>(refs, p);
+    } else {
+        throw std::runtime_error("train.grpo.reward must be exact_match, format or synthetic_judge");
+    }
+    return g;
+}
+
 int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     std::printf("== mtstudio: %s ==\n", s.name.c_str());
     std::printf("arch: %s d=%zu layers=%zu heads=%zu | T=%zu vocab_cap=%zu\n", s.attention.c_str(),
@@ -494,11 +662,28 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     if (s.vocab_cap > 0 && s.vocab_cap < tokens.size()) tokens.resize(s.vocab_cap);
     std::map<std::string, int> vocab;
     for (size_t i = 0; i < tokens.size(); ++i) vocab.emplace(tokens[i], static_cast<int>(i));
-    const bool sft = s.objective != "lm";
+    const bool sft = s.objective == "sft" || s.objective == "rejection_sft";
+    const bool grpo = s.objective == "grpo";
     std::vector<int> ids;
     size_t val_start = 0;
     SftSet sd;
-    if (!sft) {
+    GrpoData gd;
+    if (grpo) {
+        gd = load_grpo(s, vocab);
+        ev.emit({{"event", "data"},
+                 {"objective", s.objective},
+                 {"prompts", gd.prompts.size()},
+                 {"eval_prompts", gd.eval_prompts.size()},
+                 {"vocab", tokens.size()},
+                 {"reward", gd.reward->name()},
+                 {"group_size", s.grpo_group},
+                 {"prompts_per_step", s.grpo_prompts_per_step},
+                 {"beta", s.grpo_beta},
+                 {"temperature", s.grpo_temp},
+                 {"std_norm", s.grpo_std_norm},
+                 {"advantage", s.grpo_advantage},
+                 {"reward_shift", s.grpo_reward_shift}});
+    } else if (!sft) {
         std::ifstream cf(s.corpus);
         if (!cf) throw std::runtime_error("cannot open corpus " + s.corpus);
         std::string text((std::istreambuf_iterator<char>(cf)), std::istreambuf_iterator<char>());
@@ -625,7 +810,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                      {"checkpoint_activations", s.ckpt_act},
                      {"params", n_params}};
     if (llama) model_ev["rope_heads"] = rope_heads;
-    if (sft) model_ev["objective"] = s.objective;  // absent for "lm": events unchanged
+    if (sft || grpo) model_ev["objective"] = s.objective;  // absent for "lm": events unchanged
     ev.emit(model_ev);
     nn::Module& model_ref = model_pick;
     auto fwd = [&](const std::vector<int>& ids, size_t seq_len = 0) {
@@ -767,12 +952,17 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
            << "\n";
     };
 
+    // grpo: the frozen reference (train.init_from) for the KL term.
+    std::function<Var(const std::vector<int>&, size_t)> ref_fwd;
+    if (grpo) ref_fwd = make_reference(s);
+    const int eos_tok = wordtok::eos_id(vocab);
+
     // Train.
     bool stopped_early = false;
     const bool is_srd = attn_kind(s.attention) == parity::AttnKind::SRD;
     for (int step = start_step + 1; step <= s.steps; ++step) {
         last_step = step;
-        const size_t lim = sft ? 0 : val_start - s.T - 1;
+        const size_t lim = (sft || grpo) ? 0 : val_start - s.T - 1;
         // Mini-batching + accumulation: each of s.accum micro-steps stacks
         // s.batch sequences into ONE forward ([batch*T, d] rows; positions
         // and the attention mask restart per sequence — receipts in
@@ -786,7 +976,114 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         device::step_begin();
         opt.zero_grad();
         float task_mean = 0, gate_mean = 0;
-        for (int k = 0; k < s.accum; ++k) {
+        json gmet;
+        if (grpo) {
+            // Phase 4 step: P prompts x G pure-temperature samples from the
+            // current policy, scored in process, group-relative advantages,
+            // one gradient step on ops::policy_gradient_kl. Per-token weights
+            // carry the constant length normaliser N = P*G*max_new.
+            const size_t V = tokens.size();
+            const int P = s.grpo_prompts_per_step, G = s.grpo_group;
+            struct GS {
+                size_t prompt;
+                std::vector<int> comp;
+                bool eos;
+                float reward, exact, fmt;
+                bool abstained;
+            };
+            std::vector<GS> batch;
+            {
+                NoGrad ng;
+                for (int p = 0; p < P; ++p) {
+                    const size_t pi = rng() % gd.prompts.size();
+                    for (int g = 0; g < G; ++g) {
+                        std::seed_seq ss{static_cast<unsigned>(s.seed), static_cast<unsigned>(step),
+                                         static_cast<unsigned>(p), static_cast<unsigned>(g)};
+                        std::mt19937 gen(ss);
+                        const Sampled sm = sample_pure([&](const std::vector<int>& c) { return fwd(c, 0); },
+                                                       gd.prompt_ids[pi], s.T, V, s.grpo_temp, s.grpo_max_new, eos_tok,
+                                                       gen);
+                        std::string text;
+                        for (int id : sm.ids) text += (text.empty() ? "" : " ") + tokens[id];
+                        const auto rr = gd.reward->verify(gd.prompts[pi], text);
+                        batch.push_back({pi, sm.ids, sm.stop == "eos", rr.abstained() ? 0.0f : rr.reward,
+                                         gd.exact->verify(gd.prompts[pi], text).reward,
+                                         gd.format->verify(gd.prompts[pi], text).reward, rr.abstained()});
+                    }
+                }
+            }
+            std::vector<float> rewards;
+            for (const auto& b : batch) rewards.push_back(b.reward);
+            posttrain::GroupStats gst;
+            const auto A = posttrain::group_advantages(
+                rewards, static_cast<size_t>(G), s.grpo_std_norm, &gst, 1e-6f,
+                s.grpo_advantage == "shuffled" ? posttrain::AdvantageMode::Shuffled : posttrain::AdvantageMode::Normal,
+                static_cast<unsigned>(s.seed) * 1000003u + static_cast<unsigned>(step));
+            std::vector<std::vector<int>> seqs;
+            size_t Lmax = 0;
+            for (const auto& b : batch) {
+                std::vector<int> q = gd.prompt_ids[b.prompt];
+                q.insert(q.end(), b.comp.begin(), b.comp.end());
+                if (b.eos && eos_tok >= 0) q.push_back(eos_tok);
+                Lmax = std::max(Lmax, q.size() - 1);
+                seqs.push_back(std::move(q));
+            }
+            const float N = static_cast<float>(P * G * s.grpo_max_new);
+            const int pad = eos_tok >= 0 ? eos_tok : 0;
+            std::vector<int> x, y;
+            std::vector<float> w, kk;
+            for (size_t i = 0; i < batch.size(); ++i) {
+                const auto& q = seqs[i];
+                const size_t pl = gd.prompt_ids[batch[i].prompt].size();
+                for (size_t t = 0; t < Lmax; ++t) {
+                    const bool real = t + 1 < q.size();
+                    const bool comp = real && t + 1 >= pl;
+                    x.push_back(real ? q[t] : pad);
+                    y.push_back(real ? q[t + 1] : pad);
+                    w.push_back(comp ? A[i] / N : 0.0f);
+                    kk.push_back(comp ? s.grpo_beta / N : 0.0f);
+                }
+            }
+            const size_t seq_len = batch.size() > 1 ? Lmax : 0;
+            Var logits = fwd(x, seq_len);
+            Matrix ref_lp;
+            {
+                NoGrad ng;
+                ref_lp = log_softmax_rows(ref_fwd(x, seq_len)->data);
+            }
+            Var loss = ops::policy_gradient_kl(logits, y, w, kk, ref_lp);
+            backward(loss);
+            task_mean = loss->data(0, 0);
+            // Monitors over completion tokens: exact KL to the reference
+            // and policy entropy (in nats), from this step's own logits.
+            const Matrix lp = log_softmax_rows(logits->data);
+            double kl = 0.0, ent = 0.0;
+            size_t nt = 0;
+            for (size_t r = 0; r < kk.size(); ++r) {
+                if (kk[r] == 0.0f && w[r] == 0.0f) continue;
+                for (size_t j = 0; j < lp.cols(); ++j) {
+                    const double l = lp(r, j), pr = std::exp(l);
+                    kl += pr * (l - ref_lp(r, j));
+                    ent -= pr * l;
+                }
+                ++nt;
+            }
+            double rw = 0, ex = 0, hk = 0, rh = 0;
+            size_t abst = 0;
+            for (const auto& b : batch) {
+                rw += b.reward;
+                ex += b.exact > 0.5f ? 1.0 : 0.0;
+                hk += (b.fmt > 0.5f && b.exact < 0.5f) ? 1.0 : 0.0;
+                rh += (b.reward > 0.5f && b.exact < 0.5f) ? 1.0 : 0.0;
+                abst += b.abstained;
+            }
+            const double nb = static_cast<double>(batch.size());
+            gmet = {{"reward_mean", rw / nb}, {"truth", ex / nb}, {"hack_frac", hk / nb},
+                    {"reward_hack_frac", rh / nb},
+                    {"kl", nt ? kl / nt : 0.0}, {"entropy", nt ? ent / nt : 0.0},
+                    {"flat_groups", gst.flat_groups}, {"groups", gst.groups}, {"abstained", abst}};
+        }
+        for (int k = 0; !grpo && k < s.accum; ++k) {
             std::vector<int> x, y;
             std::vector<uint8_t> mask;
             x.reserve(s.batch * s.T);
@@ -823,9 +1120,37 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             {"event", "step"}, {"step", step}, {"loss", task_mean}, {"grad_norm", total_norm}};
         if (is_srd) e["gate"] = gate_mean;
         if (!gm.is_null()) e["grads"] = gm;
+        for (auto it = gmet.begin(); it != gmet.end(); ++it) e[it.key()] = it.value();
         ev.emit(e);
 
-        if (step % s.eval_every == 0) {
+        if (grpo && step % s.eval_every == 0 && !gd.eval_prompts.empty()) {
+            // Held-out monitor with fixed sampling seeds, so successive
+            // evaluations differ only by the policy.
+            NoGrad ng;
+            model_ref.eval();
+            double tr = 0, rw = 0, hk = 0, rh = 0;
+            size_t n = 0;
+            for (size_t ei = 0; ei < gd.eval_prompts.size(); ++ei)
+                for (int j = 0; j < s.grpo_eval_samples; ++j) {
+                    std::seed_seq ss{999u, static_cast<unsigned>(ei), static_cast<unsigned>(j)};
+                    std::mt19937 gen(ss);
+                    const Sampled sm = sample_pure([&](const std::vector<int>& c) { return fwd(c, 0); }, gd.eval_ids[ei],
+                                                   s.T, tokens.size(), s.grpo_temp, s.grpo_max_new, eos_tok, gen);
+                    std::string text;
+                    for (int id : sm.ids) text += (text.empty() ? "" : " ") + tokens[id];
+                    const float ex = gd.exact->verify(gd.eval_prompts[ei], text).reward;
+                    const float fm = gd.format->verify(gd.eval_prompts[ei], text).reward;
+                    const auto rr = gd.reward->verify(gd.eval_prompts[ei], text);
+                    tr += ex > 0.5f;
+                    rw += rr.abstained() ? 0.0f : rr.reward;
+                    hk += fm > 0.5f && ex < 0.5f;
+                    rh += !rr.abstained() && rr.reward > 0.5f && ex < 0.5f;
+                    ++n;
+                }
+            model_ref.train();
+            ev.emit({{"event", "grpo_eval"}, {"step", step}, {"truth_acc", tr / n}, {"reward_mean", rw / n},
+                     {"hack_frac", hk / n}, {"reward_hack_frac", rh / n}, {"samples", n}});
+        } else if (!grpo && step % s.eval_every == 0) {
             NoGrad ng;
             model_ref.eval();
             double vl = 0;
@@ -1146,10 +1471,10 @@ struct LoadedLM {
                    ? static_cast<nn::Module&>(*attnres)
                    : (llama ? static_cast<nn::Module&>(*llama) : static_cast<nn::Module&>(*gpt));
     }
-    Var forward(const std::vector<int>& ids) {
-        if (flex) return flex->forward(ids);
-        if (attnres) return attnres->forward(ids);
-        return llama ? llama->forward(ids) : gpt->forward(ids);
+    Var forward(const std::vector<int>& ids, size_t seq_len = 0) {
+        if (flex) return flex->forward(ids, seq_len);
+        if (attnres) return attnres->forward(ids, seq_len);
+        return llama ? llama->forward(ids, seq_len) : gpt->forward(ids, seq_len);
     }
     // One sampled next token over the last T ids: temperature, top-k, then
     // nucleus (top_p < 1 keeps the smallest head of the top-k holding that
@@ -1195,6 +1520,19 @@ struct LoadedLM {
         return pick;
     }
 };
+
+std::function<Var(const std::vector<int>&, size_t)> make_reference(const Spec& s) {
+    const std::string suffix = ".safetensors";
+    if (s.init_from.size() <= suffix.size() || s.init_from.compare(s.init_from.size() - suffix.size(), suffix.size(), suffix) != 0)
+        throw std::runtime_error("train.init_from must name a .safetensors file");
+    Spec r = s;
+    const auto slash = s.init_from.find_last_of('/');
+    r.out_dir = slash == std::string::npos ? "." : s.init_from.substr(0, slash);
+    r.name = s.init_from.substr(slash == std::string::npos ? 0 : slash + 1);
+    r.name.resize(r.name.size() - suffix.size());
+    auto lm = std::make_shared<LoadedLM>(r);
+    return [lm](const std::vector<int>& ids, size_t seq_len) { return lm->forward(ids, seq_len); };
+}
 
 // The quick-look sampler (ECOSYSTEM.md feature 2): rebuild the spec's
 // model, load its exported safetensors, and generate word-level text
@@ -1259,45 +1597,11 @@ int sample_set_cmd(const Spec& s, const std::string& prompts_path, const std::st
         for (int k = 0; k < n; ++k) {
             std::seed_seq ss{seed, static_cast<unsigned>(pi), static_cast<unsigned>(k)};
             std::mt19937 gen(ss);
-            std::vector<int> ids = pids, comp;
-            double logp = 0.0, logp_s = 0.0;
-            std::string stop = "length";
-            for (int t = 0; t < max_new; ++t) {
-                std::vector<int> ctx = ids;
-                if (ctx.size() > s.T) ctx.assign(ids.end() - s.T, ids.end());
-                Var logits = lm.forward(ctx);
-                const size_t last = logits->data.rows() - 1;
-                double m1 = -1e300, mt = -1e300;
-                for (size_t j = 0; j < V; ++j) {
-                    const double x = logits->data(last, j);
-                    m1 = std::max(m1, x);
-                    mt = std::max(mt, x / temp);
-                }
-                double z1 = 0.0, zt = 0.0;
-                std::vector<double> p(V);
-                for (size_t j = 0; j < V; ++j) {
-                    const double x = logits->data(last, j);
-                    z1 += std::exp(x - m1);
-                    zt += (p[j] = std::exp(x / temp - mt));
-                }
-                std::uniform_real_distribution<double> u(0.0, zt);
-                double r = u(gen);
-                size_t pick = V - 1;
-                for (size_t j = 0; j < V; ++j)
-                    if ((r -= p[j]) <= 0) {
-                        pick = j;
-                        break;
-                    }
-                const double x = logits->data(last, pick);
-                logp += x - m1 - std::log(z1);
-                logp_s += x / temp - mt - std::log(zt);
-                if (static_cast<int>(pick) == lm.eos) {
-                    stop = "eos";
-                    break;
-                }
-                ids.push_back(static_cast<int>(pick));
-                comp.push_back(static_cast<int>(pick));
-            }
+            const Sampled sm = sample_pure([&](const std::vector<int>& c) { return lm.forward(c); }, pids, s.T, V,
+                                           temp, max_new, lm.eos, gen);
+            const std::vector<int>& comp = sm.ids;
+            const double logp = sm.logp, logp_s = sm.logp_sample;
+            const std::string& stop = sm.stop;
             std::string text;
             for (int id : comp) text += (text.empty() ? "" : " ") + lm.tokens[id];
             json rec = {{"prompt", prompt},

@@ -39,6 +39,15 @@ Var cross_entropy(const Var& logits, const std::vector<int>& targets);
 // mean NLL over rows -> [1,1];
 // dlogits = (softmax-onehot)/N,
 // the loss_kernels.cu contract
+Var policy_gradient_kl(const Var& logits, const std::vector<int>& targets, const std::vector<float>& w,
+                       const std::vector<float>& k, const Matrix& ref_logp);
+// GRPO's loss on the tape (charter 0001, Phase 4), summed over rows:
+//   sum_i [ -w_i * log p_i(target_i) + k_i * KL(p_i || ref_i) ]
+// with p_i = softmax(logits_i) and ref_logp the reference model's
+// log-probabilities ([rows, vocab], constant). The caller folds advantage,
+// length normalisation and the KL coefficient into w and k (zero on prompt
+// and padding rows). Hand-derived backward, per row:
+//   w_i (p - onehot) + k_i p (log p - ref - KL_i).
 Var cross_entropy_masked(const Var& logits, const std::vector<int>& targets, const std::vector<uint8_t>& mask);
 // SFT loss (charter 0001, Phase 3): mean NLL over rows with mask 1 only;
 // masked rows get zero gradient. All ones IS cross_entropy (bit-identical

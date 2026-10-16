@@ -8,3 +8,8 @@ model event identical: True
 data event identical: True
 
 The lm objective path is numerically unchanged by the sft/rejection_sft/sample-set/init_from additions.
+
+Re-run 17 Oct 2026 after the Phase 4 (grpo) changes to tools/mtstudio.cpp, Release build of the working tree:
+step losses bit-identical: 100 of 100; eval@100 identical; model and data events identical.
+Sampler refactor (sample_pure shared by sample-set and grpo): 536/536 records identical to the banked
+experiments/posttrain_smoke receipt (completion, ids, logp, logp_sample, stop).

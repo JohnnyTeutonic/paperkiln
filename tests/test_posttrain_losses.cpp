@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <algorithm>
 #include <functional>
 #include <random>
 #include <stdexcept>
@@ -10,6 +11,7 @@
 
 #include "check.hpp"
 #include "microtorch/ops.hpp"
+#include "microtorch/posttrain/grpo.hpp"
 
 using microtorch::make_var;
 using microtorch::Var;
@@ -119,6 +121,117 @@ void test_rejects_bad_masks() {
     CHECK(!throws({1, 0, 0}, {1, 99, 99}));  // a masked row's target is never read
 }
 
+// ---- Phase 4: GRPO ---------------------------------------------------------
+
+Matrix log_softmax_rows(const Matrix& L) {
+    Matrix out(L.rows(), L.cols());
+    for (size_t i = 0; i < L.rows(); ++i) {
+        double mx = -1e300, z = 0.0;
+        for (size_t j = 0; j < L.cols(); ++j) mx = std::max(mx, static_cast<double>(L(i, j)));
+        for (size_t j = 0; j < L.cols(); ++j) z += std::exp(L(i, j) - mx);
+        for (size_t j = 0; j < L.cols(); ++j) out(i, j) = static_cast<float>(L(i, j) - mx - std::log(z));
+    }
+    return out;
+}
+
+void test_pgkl_gradcheck() {
+    Var x = make_var(randn(5, 6, 7), true);
+    const std::vector<int> t = {1, 4, 0, 5, 2};
+    const std::vector<float> w = {0.7f, -1.3f, 0.0f, 0.4f, 0.0f};  // signed advantages; a prompt row
+    const std::vector<float> k = {0.2f, 0.2f, 0.0f, 0.5f, 0.3f};   // a KL-only row
+    const Matrix ref = log_softmax_rows(randn(5, 6, 8));
+    auto f = [&]() { return ops::policy_gradient_kl(x, t, w, k, ref)->data(0, 0); };
+    microtorch::backward(ops::policy_gradient_kl(x, t, w, k, ref));
+    const double worst = fd_worst(f, x, x->grad);
+    std::printf("  FD gradcheck, policy_gradient_kl: worst relative error %.3e\n", worst);
+    CHECK(worst < 5e-3);
+    for (size_t j = 0; j < 6; ++j) CHECK(x->grad(2, j) == 0.0f);  // w = k = 0: no gradient
+}
+
+void test_pgkl_anchors() {
+    // k = 0, w = 1, one row: the loss is the cross-entropy of that row.
+    const Matrix L = randn(1, 9, 9);
+    Var a = make_var(L, true);
+    const float pg = ops::policy_gradient_kl(a, {3}, {1.0f}, {0.0f}, Matrix(1, 9))->data(0, 0);
+    Var b = make_var(L, true);
+    const float ce = ops::cross_entropy(b, {3})->data(0, 0);
+    CHECK(std::fabs(pg - ce) < 1e-5f);
+    // ref = the policy itself: KL is 0 and so is its gradient.
+    Var c = make_var(L, true);
+    Var l = ops::policy_gradient_kl(c, {3}, {0.0f}, {1.0f}, log_softmax_rows(L));
+    CHECK(std::fabs(l->data(0, 0)) < 1e-6f);
+    microtorch::backward(l);
+    for (size_t j = 0; j < 9; ++j) CHECK(std::fabs(c->grad(0, j)) < 1e-6f);
+    std::printf("  anchors: k=0 equals cross_entropy; KL to itself is 0 with zero gradient\n");
+}
+
+void test_bandit_reaches_the_analytic_optimum() {
+    // Two actions, rewards r = (1, 0), reference pi_ref = (0.7, 0.3), beta.
+    // The KL-regularised objective E_pi[r] - beta KL(pi || pi_ref) has the
+    // closed-form optimum pi* proportional to pi_ref exp(r / beta). The
+    // exact-expectation surrogate (every action weighted by its probability,
+    // advantage = r - E_pi[r], std-normalisation off) has gradient -grad J,
+    // so gradient descent on it must land on pi*.
+    const double beta = 0.5, r0 = 1.0, r1 = 0.0;
+    Matrix ref(1, 2);
+    ref(0, 0) = static_cast<float>(std::log(0.7));
+    ref(0, 1) = static_cast<float>(std::log(0.3));
+    const double s0 = 0.7 * std::exp(r0 / beta), s1 = 0.3 * std::exp(r1 / beta);
+    const double star = s0 / (s0 + s1);
+    Var th = make_var(Matrix(1, 2), true);  // logits start at 0: pi = (0.5, 0.5)
+    double p0 = 0.5;
+    for (int step = 0; step < 4000; ++step) {
+        const double e0 = std::exp(static_cast<double>(th->data(0, 0)));
+        const double e1 = std::exp(static_cast<double>(th->data(0, 1)));
+        p0 = e0 / (e0 + e1);
+        const double mean = p0 * r0 + (1 - p0) * r1;
+        Var loss = ops::add(ops::add(ops::policy_gradient_kl(th, {0}, {static_cast<float>(p0 * (r0 - mean))}, {0.0f}, ref),
+                                     ops::policy_gradient_kl(th, {1}, {static_cast<float>((1 - p0) * (r1 - mean))}, {0.0f}, ref)),
+                            ops::policy_gradient_kl(th, {0}, {0.0f}, {static_cast<float>(beta)}, ref));
+        th->grad = Matrix(1, 2);
+        microtorch::backward(loss);
+        for (size_t j = 0; j < 2; ++j) th->data(0, j) -= 0.5f * th->grad(0, j);
+    }
+    std::printf("  bandit: pi(0) = %.6f, analytic optimum %.6f, |diff| %.2e\n", p0, star, std::fabs(p0 - star));
+    CHECK(std::fabs(p0 - star) < 1e-3);
+}
+
+void test_group_advantages() {
+    using namespace microtorch::posttrain;
+    GroupStats st;
+    // G = 1: every group is flat, every advantage 0.
+    auto A = group_advantages({1.0f, 0.0f, 1.0f}, 1, true, &st);
+    CHECK(st.flat_groups == 3 && A == std::vector<float>(3, 0.0f));
+    // A known group: rewards (1, 0, 0, 1), mean 0.5, population SD 0.5.
+    A = group_advantages({1, 0, 0, 1, 1, 1, 1, 1}, 4, true, &st, 0.0f);
+    CHECK(st.groups == 2 && st.flat_groups == 1);
+    CHECK(A[0] == 1.0f && A[1] == -1.0f && A[2] == -1.0f && A[3] == 1.0f && A[4] == 0.0f);
+    A = group_advantages({1, 0, 0, 1}, 4, false, &st);
+    CHECK(A[0] == 0.5f && A[1] == -0.5f);
+    // Shuffled: the same values within each group, attached to other members.
+    std::vector<float> r;
+    for (int i = 0; i < 64; ++i) r.push_back(static_cast<float>(i % 3) / 2.0f);
+    const auto N = group_advantages(r, 8, true, &st);
+    const auto S = group_advantages(r, 8, true, &st, 1e-6f, AdvantageMode::Shuffled, 3);
+    bool moved = false;
+    for (size_t g = 0; g < r.size(); g += 8) {
+        std::vector<float> a(N.begin() + g, N.begin() + g + 8), b(S.begin() + g, S.begin() + g + 8);
+        moved = moved || a != b;
+        std::sort(a.begin(), a.end());
+        std::sort(b.begin(), b.end());
+        CHECK(a == b);
+    }
+    CHECK(moved);
+    bool threw = false;
+    try {
+        group_advantages({1.0f, -1.0f}, 2, true);
+    } catch (const std::invalid_argument&) {
+        threw = true;
+    }
+    CHECK(threw);
+    std::printf("  group advantages: flat groups, known values, shuffle preserves each group's values\n");
+}
+
 }  // namespace
 
 int main() {
@@ -127,6 +240,10 @@ int main() {
     test_equals_cross_entropy_on_kept_rows();
     test_gradcheck();
     test_rejects_bad_masks();
+    test_pgkl_gradcheck();
+    test_pgkl_anchors();
+    test_bandit_reaches_the_analytic_optimum();
+    test_group_advantages();
     std::printf("test_posttrain_losses: all checks passed\n");
     return 0;
 }
