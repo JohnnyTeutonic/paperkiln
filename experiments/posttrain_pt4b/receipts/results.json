@@ -1,0 +1,147 @@
+{
+ "seeds": [
+  211,
+  212,
+  213,
+  214,
+  215
+ ],
+ "smoke": false,
+ "shift": 2,
+ "repo_commit": "00327d42247173f23179b5ad9fd42fe75a1d1c08",
+ "repo_dirty": false,
+ "mtstudio_sha256": "efc993ccbf392000c1b80047d60cb1ca0ab0b41de24f52bcf24a14fe59307ec1",
+ "verify_sha256": "da8d7c4b0c0a9adf2bc8e0f54fdbab719fd677fabe9fffe502512eef4039d9b7",
+ "results": [
+  {
+   "seed": 211,
+   "points": {
+    "base": {
+     "M": 0.018656716417910446,
+     "truth_acc": 0.4552238805970149,
+     "format_hack_frac": 0.5410447761194029,
+     "samples": 268,
+     "checkpoint_sha256": "f751e8dd5aa4ea1948db38a0870f179debb1328bfe334fff5a438c2ae3d5bd01"
+    },
+    "open": {
+     "M": 0.34701492537313433,
+     "truth_acc": 0.16791044776119404,
+     "format_hack_frac": 0.832089552238806,
+     "samples": 268,
+     "checkpoint_sha256": "d82ec13204f7a980f652d3d910125b75fdb4c74406dbd4a0577c9f4cdb16660e"
+    },
+    "closed": {
+     "M": 0.12313432835820895,
+     "truth_acc": 0.2574626865671642,
+     "format_hack_frac": 0.7425373134328358,
+     "samples": 268,
+     "checkpoint_sha256": "94474807d331acee2af06ef522dd56237764b3e0ae5ab8bb59221ea6e3887864"
+    }
+   }
+  },
+  {
+   "seed": 212,
+   "points": {
+    "base": {
+     "M": 0.04477611940298507,
+     "truth_acc": 0.4291044776119403,
+     "format_hack_frac": 0.5634328358208955,
+     "samples": 268,
+     "checkpoint_sha256": "062806b2c31f2d087ec9896a48749068150ed6c7b907f6bdddbfdb40a34e3fd5"
+    },
+    "open": {
+     "M": 0.26119402985074625,
+     "truth_acc": 0.12313432835820895,
+     "format_hack_frac": 0.8694029850746269,
+     "samples": 268,
+     "checkpoint_sha256": "f0a287a60e4dda54d13e3373ab3c1eb6f7748f43b3d33d8420a1471e5b4dd632"
+    },
+    "closed": {
+     "M": 0.11194029850746269,
+     "truth_acc": 0.3208955223880597,
+     "format_hack_frac": 0.6716417910447762,
+     "samples": 268,
+     "checkpoint_sha256": "a6dead24199a689aff05ca58f629d5064c744be7c8701b0d2568fed7fa3bce5a"
+    }
+   }
+  },
+  {
+   "seed": 213,
+   "points": {
+    "base": {
+     "M": 0.07835820895522388,
+     "truth_acc": 0.2835820895522388,
+     "format_hack_frac": 0.7164179104477612,
+     "samples": 268,
+     "checkpoint_sha256": "59ce94f93bf8197fcd746c1fe8c3b471599bafb8b33d3783c3b3498fa7f80f0e"
+    },
+    "open": {
+     "M": 0.16417910447761194,
+     "truth_acc": 0.08955223880597014,
+     "format_hack_frac": 0.9104477611940298,
+     "samples": 268,
+     "checkpoint_sha256": "9799092ff5116b061e65f51f88e5690923f466da1c7c005bd7a6eb52ff8abde8"
+    },
+    "closed": {
+     "M": 0.1455223880597015,
+     "truth_acc": 0.15298507462686567,
+     "format_hack_frac": 0.8432835820895522,
+     "samples": 268,
+     "checkpoint_sha256": "8998e4eec89bd778bd07e5029b0df2241c073c94d199f392b704bfdf4deece4b"
+    }
+   }
+  },
+  {
+   "seed": 214,
+   "points": {
+    "base": {
+     "M": 0.026119402985074626,
+     "truth_acc": 0.458955223880597,
+     "format_hack_frac": 0.5335820895522388,
+     "samples": 268,
+     "checkpoint_sha256": "619b61639795f1e029410cb4571a83d0a069a4b72f848ef406324b6149f52afc"
+    },
+    "open": {
+     "M": 0.23507462686567165,
+     "truth_acc": 0.08582089552238806,
+     "format_hack_frac": 0.9067164179104478,
+     "samples": 268,
+     "checkpoint_sha256": "6ff7eab036a7a14529d7452b630847535787c4e63b5c0224affdd74413adcc30"
+    },
+    "closed": {
+     "M": 0.07462686567164178,
+     "truth_acc": 0.26492537313432835,
+     "format_hack_frac": 0.7350746268656716,
+     "samples": 268,
+     "checkpoint_sha256": "7f4d4ba09538388a43a7688428694cd813f7894368c841687942927318b303bd"
+    }
+   }
+  },
+  {
+   "seed": 215,
+   "points": {
+    "base": {
+     "M": 0.0037313432835820895,
+     "truth_acc": 0.5485074626865671,
+     "format_hack_frac": 0.45149253731343286,
+     "samples": 268,
+     "checkpoint_sha256": "b63062d7868af0314d5cb31842a6cc18fa9d5fae7e8e9f20ed7057bde2460b84"
+    },
+    "open": {
+     "M": 0.1791044776119403,
+     "truth_acc": 0.1828358208955224,
+     "format_hack_frac": 0.8171641791044776,
+     "samples": 268,
+     "checkpoint_sha256": "b497d8a4e6ad1615982d18ea953f2befdddcd2d18db5889aea33b9cf2a8234ac"
+    },
+    "closed": {
+     "M": 0.07835820895522388,
+     "truth_acc": 0.3358208955223881,
+     "format_hack_frac": 0.664179104477612,
+     "samples": 268,
+     "checkpoint_sha256": "6c6c0926e4e04fdd46f81369b4bd984ffe9ec877cb28319386b4c79999f25ad7"
+    }
+   }
+  }
+ ]
+}

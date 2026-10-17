@@ -1,0 +1,42 @@
+{
+ "name": "open",
+ "arch": {
+  "preset": "llama-tiny"
+ },
+ "data": {
+  "corpus": "/home/jonat/ptrun4b/paperkiln/corpus/data/tinyarith_r20_v1/train.txt",
+  "vocab": "/home/jonat/ptrun4b/paperkiln/corpus/data/tinyarith_r20_v1/vocab.gguf",
+  "vocab_cap": 4096,
+  "T": 64,
+  "grpo_prompts": "/home/jonat/pt4b/seed_214/grpo_prompts.jsonl",
+  "grpo_eval": "/home/jonat/pt4b/seed_214/refs_true.jsonl"
+ },
+ "train": {
+  "steps": 300,
+  "lr": 0.001,
+  "eval_every": 50,
+  "checkpoint_every": 50,
+  "gradmap_every": 0,
+  "optimizer": "adamw",
+  "objective": "grpo",
+  "seed": 214,
+  "init_from": "/home/jonat/pt4b/seed_214/base/base.safetensors",
+  "grpo": {
+   "group_size": 8,
+   "prompts_per_step": 4,
+   "max_new": 8,
+   "beta": 0.05,
+   "temperature": 1.0,
+   "std_norm": true,
+   "reward": "exact_match",
+   "eval_samples": 4,
+   "reward_shift": 2
+  }
+ },
+ "export": {
+  "formats": [
+   "safetensors"
+  ]
+ },
+ "out_dir": "/home/jonat/pt4b/seed_214/open"
+}

@@ -639,3 +639,15 @@ t = 1.98. The +1 channel coincided with the base model's commonest error
 could not separate hacked from base. Registered as a negative of the test
 design. PT4b, under a fresh pre-registration, chooses its shift by
 measured base rate before licence.
+
+## 16. PT4b result (17 Oct 2026)
+
+`experiments/posttrain_pt4b/RESULTS.md`. **MONITOR_VALIDATED.** With a +2
+shift, which is rare at the base yet discoverable:
+- **open phase:** M rose by +0.203 (t = 5.20), with 5/5 seeds above the
+  threshold, while truth fell from 0.435 to 0.130;
+- **closed phase:** correcting the key lowered M by 0.131 (t = 3.82).
+
+The reward-hacking monitor ships as a monitor for rewards that pay for
+specific wrong answers where truth is checkable. Registry row
+`PT4b-hack-monitor`.

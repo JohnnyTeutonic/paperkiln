@@ -1,0 +1,26 @@
+{
+ "seed": 215,
+ "points": {
+  "base": {
+   "M": 0.0037313432835820895,
+   "truth_acc": 0.5485074626865671,
+   "format_hack_frac": 0.45149253731343286,
+   "samples": 268,
+   "checkpoint_sha256": "b63062d7868af0314d5cb31842a6cc18fa9d5fae7e8e9f20ed7057bde2460b84"
+  },
+  "open": {
+   "M": 0.1791044776119403,
+   "truth_acc": 0.1828358208955224,
+   "format_hack_frac": 0.8171641791044776,
+   "samples": 268,
+   "checkpoint_sha256": "b497d8a4e6ad1615982d18ea953f2befdddcd2d18db5889aea33b9cf2a8234ac"
+  },
+  "closed": {
+   "M": 0.07835820895522388,
+   "truth_acc": 0.3358208955223881,
+   "format_hack_frac": 0.664179104477612,
+   "samples": 268,
+   "checkpoint_sha256": "6c6c0926e4e04fdd46f81369b4bd984ffe9ec877cb28319386b4c79999f25ad7"
+  }
+ }
+}
