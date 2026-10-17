@@ -2293,7 +2293,32 @@ Spec resolve_chat_spec(const std::string& arg) {
     return parse_spec(arg);
 }
 
+// The chat template of BPE chat models (tools/chat_data.py writes SFT data in
+// exactly this form): every past turn is <|user|>U<|assistant|>A<|endoftext|>
+// and a new reply is prompted by <|user|>U<|assistant|>.
+std::string chat_prompt_bpe(const json& req) {
+    std::string p;
+    if (req.contains("history") && req["history"].is_array()) {
+        std::string pending_user;
+        for (const auto& turn : req["history"]) {
+            if (!turn.is_object()) continue;
+            if (turn.contains("role")) {
+                const std::string role = turn.value("role", "");
+                if (role == "user") pending_user = turn.value("content", "");
+                if (role == "assistant") {
+                    p += "<|user|>" + pending_user + "<|assistant|>" + turn.value("content", "") + "<|endoftext|>";
+                    pending_user.clear();
+                }
+                continue;
+            }
+            p += "<|user|>" + turn.value("user", "") + "<|assistant|>" + turn.value("assistant", "") + "<|endoftext|>";
+        }
+    }
+    return p + "<|user|>" + req["user_input"].get<std::string>() + "<|assistant|>";
+}
+
 std::string chat_prompt(const json& req) {
+    if (g_bpe) return chat_prompt_bpe(req);
     std::string p;
     if (req.contains("history") && req["history"].is_array()) {
         // [{role: user|assistant, content}] or [{user, assistant}] turns.
@@ -2320,9 +2345,13 @@ int chat_cmd(const std::string& target, const std::string& host, int port) {
     // be <unk>, which the sampler never emits anyway).
     std::vector<std::vector<int>> turn_markers;
     for (const char* m : {"user:", "assistant:"}) {
+        if (g_bpe) break;
         auto seq = tokenize(m, lm.vocab, 16);
         if (std::find(seq.begin(), seq.end(), 0) == seq.end()) turn_markers.push_back(seq);
     }
+    // BPE chat models: a reply ends where the model would open a new turn.
+    if (g_bpe)
+        for (const char* m : {"<|user|>", "<|assistant|>"}) turn_markers.push_back(tokenize(m, lm.vocab, 4));
     std::mutex gen_mu;
     std::mt19937 seeder{std::random_device{}()};
 
