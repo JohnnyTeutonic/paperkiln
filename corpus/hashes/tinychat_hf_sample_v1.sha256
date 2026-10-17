@@ -1,0 +1,5 @@
+# starhopp3r/TinyChat@1a19729d536023d40072d491d4691e4c71461e92 tinychat.txt first 20 MiB, split 98/1/1 by sha256
+818f84860b7e38c95d316aaec66af56aae0c2e7ee02dcafd099e087331b42fcb  dialogues_test.jsonl
+d9e5b3e0099a41457ce2539a2e15f89793f566f885068b08e90763161e9c15b3  dialogues_train.jsonl
+b04cf20d3e71d76b521616d28d1e66b8db119be029d75bc0cb9651d15c0b1763  dialogues_val.jsonl
+f6a7ccbaed0e5018f9ade0a1f0ce6a3027e046f176d2b8f7ff7f5efedfaedb76  pretrain_train.txt

@@ -1,0 +1,2 @@
+# tools/bpe.py train on tinychat_hf_sample_v1/pretrain_train.txt, vocab 8192
+290dcff8c696ef51bef75bdfe73d03a2a5c1c898227dbe54295ccf0ba38c4449  tinychat_bpe8k.gguf
