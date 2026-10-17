@@ -140,6 +140,15 @@ def pair_rows(arm, pairs, recs, exact, judge):
     return rows
 
 
+def answer_rate(a, samples):
+    """Fraction of test samples that pass the format verifier: still writing
+    an answer at all. DPO can displace probability onto tokens no pair
+    showed (likelihood displacement); a model that stops answering would
+    otherwise read as one that stopped fooling the judge."""
+    fm = P2.verify(a.verify, "format", samples, [])
+    return sum(r["reward"] for r in fm) / len(fm)
+
+
 def do_seed(a, s, omp):
     env = dict(os.environ, OMP_NUM_THREADS=str(omp), OMP_WAIT_POLICY="PASSIVE")
     w = os.path.join(a.work, f"seed_{s}")
@@ -170,6 +179,7 @@ def do_seed(a, s, omp):
     arms, N, comp = build_arms(pools(prompt_of, text, exact, judge, fmt, s), exact, s)
     result = {"seed": s, "N": N, "composition": comp, "models": {}}
     result["models"]["base"] = P2.evaluate(a, base_spec, w, R, "base")
+    result["models"]["base"]["answer_rate"] = answer_rate(a, os.path.join(w, "eval_base_test.jsonl"))
     for arm in ARMS:
         pf = os.path.join(w, f"pairs_{arm}.jsonl")
         if not os.path.exists(pf):
@@ -184,6 +194,7 @@ def do_seed(a, s, omp):
         if not os.path.exists(ck):
             P2.run([a.mtstudio, "run", spec], os.path.join(w, f"po_{arm}.log"), env)
         result["models"][arm] = P2.evaluate(a, spec, w, R, arm)
+        result["models"][arm]["answer_rate"] = answer_rate(a, os.path.join(w, f"eval_{arm}_test.jsonl"))
         result["models"][arm]["checkpoint_sha256"] = P2.sha256_file(ck)
         ev = [json.loads(x) for x in open(os.path.join(w, f"po_{arm}", "events.jsonl"), encoding="utf-8")]
         d = next(e for e in ev if e["event"] == "data")
@@ -203,7 +214,14 @@ def main(argv=None):
     ap.add_argument("--jobs", type=int, default=4)
     ap.add_argument("--seeds", type=int, nargs="*", default=SEEDS)
     ap.add_argument("--smoke", action="store_true", help="plumbing check: 60 base and 20 PO steps")
+    ap.add_argument("--beta", type=float, default=None, help="pilot only: override the licensed beta")
+    ap.add_argument("--arms", nargs="*", default=None, help="pilot only: a subset of arms")
     a = ap.parse_args(argv)
+    global BETA, ARMS
+    if a.beta is not None:
+        BETA = a.beta
+    if a.arms:
+        ARMS = [x for x in ARMS if x in a.arms]
     if a.smoke:
         P2.BASE_TRAIN.update(steps=60, eval_every=20)
         PO_TRAIN.update(steps=20, eval_every=10)
@@ -216,7 +234,7 @@ def main(argv=None):
         results = list(ex.map(lambda s: do_seed(a, s, omp), a.seeds))
     commit = subprocess.run(["git", "-C", ROOT, "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
     dirty = subprocess.run(["git", "-C", ROOT, "status", "--short", "-uno"], capture_output=True, text=True).stdout.strip()
-    out = {"seeds": a.seeds, "smoke": a.smoke, "repo_commit": commit, "repo_dirty": bool(dirty),
+    out = {"seeds": a.seeds, "smoke": a.smoke, "beta": BETA, "arms": ARMS, "repo_commit": commit, "repo_dirty": bool(dirty),
            "mtstudio_sha256": P2.sha256_file(a.mtstudio), "verify_sha256": P2.sha256_file(a.verify),
            "results": results}
     with open(os.path.join(a.work, "results.json"), "w", encoding="utf-8", newline="\n") as f:
