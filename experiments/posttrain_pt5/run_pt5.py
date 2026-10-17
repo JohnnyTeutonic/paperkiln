@@ -32,9 +32,13 @@ BETA = 0.1
 
 # ---- pure parts (tested by smoke_analyze.py) -------------------------------
 
-def pools(prompt_of, text, exact, judge, seed):
+def pools(prompt_of, text, exact, judge, fmt, seed):
     """Candidate pairs per pool, as (chosen index, rejected index). At most
-    PER_PROMPT per prompt per pool; identical completions never pair."""
+    PER_PROMPT per prompt per pool; identical completions never pair; both
+    completions must pass the format verifier, so the arms differ in WHICH
+    well-formed answer is preferred, never in whether the output is
+    well-formed (the smoke run showed format-mixed tie pairs teaching the R
+    arm to stop writing answers at all)."""
     by = {}
     for i, p in enumerate(prompt_of):
         by.setdefault(p, []).append(i)
@@ -44,7 +48,7 @@ def pools(prompt_of, text, exact, judge, seed):
         cand = {"E": [], "J": [], "tie": []}
         for a in idx:
             for b in idx:
-                if a == b or text[a] == text[b]:
+                if a == b or text[a] == text[b] or not (fmt[a] and fmt[b]):
                     continue
                 if exact[a] == 1 and exact[b] == 0:
                     cand["E"].append((a, b))
@@ -93,6 +97,26 @@ def build_arms(pl, exact, seed):
 
 # ---- stages -----------------------------------------------------------------
 
+def drop_if_partial(path, expected_lines):
+    """A killed sampler leaves a short or empty file, and resuming must not
+    take it for a finished one (found 17 Oct 2026: a smoke run killed by its
+    wrapper's timeout left an empty evaluation file that the resume
+    skipped). Delete anything short so the stage reruns."""
+    if not os.path.exists(path):
+        return
+    with open(path, encoding="utf-8") as f:
+        n = sum(1 for line in f if line.strip())
+    if n != expected_lines:
+        os.remove(path)
+
+
+def clean_partials(w, tags, n_sample):
+    for split in ("test", "hackprobe"):
+        n_prompts = len(P2.read_jsonl(os.path.join(ROOT, f"corpus/eval/tinyarith_r{R}_{split}_v1.jsonl")))
+        for tag in tags:
+            drop_if_partial(os.path.join(w, f"eval_{tag}_{split}.jsonl"), n_prompts * n_sample)
+
+
 def receipt(rec, kind_reward, kind, note=None):
     r = {"evidence_kind": kind, "evidence_uri": rec.get("evidence_uri", "pt5"), "reward": kind_reward,
          "audited": False, "rationale": note or rec.get("rationale", "")}
@@ -131,6 +155,8 @@ def do_seed(a, s, omp):
         P2.run([a.mtstudio, "run", base_spec], os.path.join(w, "base.log"), env)
     prompts = P2.sampling_prompts(R, os.path.join(w, "sampling_prompts.jsonl"))
     smp = os.path.join(w, "samples.jsonl")
+    drop_if_partial(smp, len(P2.read_jsonl(prompts)) * P2.N_SAMPLE)
+    clean_partials(w, ["base"] + ARMS, P2.N_SAMPLE)
     if not os.path.exists(smp):
         P2.run([a.mtstudio, "sample-set", base_spec, "--prompts", prompts, "--out", smp, "--n",
                 str(P2.N_SAMPLE), "--temp", repr(P2.TEMP), "--seed", str(s), "--max-new", str(P2.MAX_NEW)], env=env)
@@ -138,9 +164,10 @@ def do_seed(a, s, omp):
     recs = sc["records"]
     exact = [int(x) for x in sc["exact"]]
     judge = [int(x) for x in sc["J25"]]
+    fmt = [int(x) for x in sc["format"]]
     prompt_of = [r["prompt"] for r in recs]
     text = [r["completion"] for r in recs]
-    arms, N, comp = build_arms(pools(prompt_of, text, exact, judge, s), exact, s)
+    arms, N, comp = build_arms(pools(prompt_of, text, exact, judge, fmt, s), exact, s)
     result = {"seed": s, "N": N, "composition": comp, "models": {}}
     result["models"]["base"] = P2.evaluate(a, base_spec, w, R, "base")
     for arm in ARMS:

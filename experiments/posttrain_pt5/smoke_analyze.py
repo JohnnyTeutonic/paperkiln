@@ -45,7 +45,7 @@ def main():
 
     # Pair construction on fabricated samples: 40 prompts x 8 samples.
     rng = random.Random(4)
-    prompt_of, text, exact, judge = [], [], [], []
+    prompt_of, text, exact, judge, fmt = [], [], [], [], []
     for p in range(40):
         for k in range(8):
             e = int(rng.random() < 0.4)
@@ -54,7 +54,9 @@ def main():
             text.append(f"the answer is {k} .")
             exact.append(e)
             judge.append(j)
-    pl = P.pools(prompt_of, text, exact, judge, 301)
+            fmt.append(int(k != 7))  # one malformed sample per prompt
+    pl = P.pools(prompt_of, text, exact, judge, fmt, 301)
+    assert all(fmt[a] and fmt[b] for k in pl for a, b in pl[k])            # format-matched pools
     arms, N, comp = P.build_arms(pl, exact, 301)
     assert all(len(v) == N for v in arms.values()) and N % 2 == 0
     assert arms == P.build_arms(pl, exact, 301)[0]                       # deterministic

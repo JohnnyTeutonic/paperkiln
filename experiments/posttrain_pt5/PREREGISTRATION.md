@@ -32,7 +32,15 @@ before licence. Rules change only by a dated amendment, before data.*
 From one prompt's samples, a pair is (chosen, rejected) with the chosen
 sample strictly preferred by the ordering verifier. Within a prompt,
 pairs are formed by a seeded shuffle of the preferred × dispreferred
-samples, at most 4 per prompt.
+samples, at most 4 per prompt. **Both completions of every pair, in every
+pool, must pass the format verifier** (the answer template), and the two
+completions must differ. Every arm therefore teaches which well-formed
+answer to prefer, never whether to write one. This was added before
+licence: the driver smoke run showed that truth-tied pairs mixing a
+well-formed and a malformed completion, oriented at random, taught the R
+arm to stop writing answers. That would have made F-PT5a come out
+"supported" because R could not answer, not because the judge's errors
+have structure.
 
 - **E (exact-ordered):** chosen exact = 1, rejected exact = 0. Receipts
   `exact_match`.
@@ -99,13 +107,16 @@ Paired over 10 seeds, df = 9, two-tailed critical value 2.262.
 
 ## A property of this judge, found by the smoke test
 
-With `reject_correct = 0` the judge never rejects a correct answer. So a
-judge-ordered pair's rejected sample is always truly wrong, and **no J pair
-is ever inverted** (f_inv = 0). Every ordering error J makes is a tie: a
-wrong but judge-accepted answer preferred over another wrong answer. R
-therefore reproduces J's tie rate (0.294 against 0.294 in the smoke test),
-and F-PT5a asks whether *which* wrong answers the judge prefers teaches
-more judge-fooling than ties chosen at random.
+With `reject_correct = 0` the judge almost never rejects a correct
+answer. The exception: it reads the last number in a completion, so a
+completion such as "the answer is 7 . 3" is exact-correct but judged
+wrong. Inverted J pairs are therefore rare (f_inv = 0.001 in the driver
+smoke run), and almost every ordering error J makes is a tie: a wrong but
+judge-accepted answer preferred over another wrong answer. R reproduces
+J's tie rate and its inversion rate (in the pair-construction test, a tie
+rate of 0.294 against 0.294). F-PT5a therefore asks whether *which* wrong
+answers the judge prefers teaches more judge-fooling than ties chosen at
+random.
 
 ## Threats, stated before data
 
