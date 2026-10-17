@@ -58,11 +58,11 @@ jobs:
       - name: Python tests (extractor, chat server, RoPE heads, model card, corpus measurements)
         run: |
           python3 -m pip install --quiet pytest
-          MTSTUDIO_BIN=build/mtstudio POSTTRAIN_VERIFY_BIN=build/posttrain_verify python3 -m pytest -q \
+          MTSTUDIO_BIN=build/mtstudio POSTTRAIN_VERIFY_BIN=build/posttrain_verify BPE_ENCODE_BIN=build/bpe_encode python3 -m pytest -q \
             papers/test_fetch.py tests/test_mtstudio_chat.py \
             tests/test_rope_heads.py tools/test_model_card.py \
             tests/test_corpus_quality.py tools/posttrain/test_judge_sidecar.py tools/posttrain/test_cache_roundtrip.py tests/test_tinyarith.py tests/test_eval_frozen.py \
-            tools/posttrain/test_rejection_audit.py tests/test_mtstudio_sft.py tests/test_mtstudio_grpo.py tests/test_mtstudio_po.py
+            tools/posttrain/test_rejection_audit.py tests/test_mtstudio_sft.py tests/test_mtstudio_grpo.py tests/test_mtstudio_po.py tests/test_bpe.py
 
       - name: paperkiln-fetch matches papers/fetch.py
         run: python3 tools/sync_fetch_pkg.py --check
