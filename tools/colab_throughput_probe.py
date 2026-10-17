@@ -25,9 +25,14 @@ CF = "https://github.com/JohnnyTeutonic/coalfire.cpp.git"
 STEPS = 20
 GRID = [  # (d, layers, heads, batch)
     (256, 4, 4, 4), (256, 4, 4, 16), (256, 4, 4, 64),
+    (384, 6, 6, 16), (384, 6, 6, 64),
     (512, 8, 8, 4), (512, 8, 8, 16), (512, 8, 8, 64),
-    (768, 8, 12, 16), (768, 8, 12, 64),
 ]
+# BLOCKED=1 (argv) runs every point with MICROTORCH_ATTN_BLOCKED=1 and writes
+# results_blocked.json: the second probe, after the stacked path was found to
+# cost O((B*T)^2).
+import sys
+BLOCKED = len(sys.argv) > 1 and sys.argv[1] == "blocked"
 
 
 def sh(cmd, log=None, timeout=None, env=None):
@@ -36,6 +41,8 @@ def sh(cmd, log=None, timeout=None, env=None):
 
 
 def main():
+    global RES
+    RES = "results_blocked.json" if BLOCKED else "results.json"
     os.makedirs(ROOT, exist_ok=True)
     log = f"{ROOT}/probe.log"
     out = {"started": time.strftime("%Y-%m-%d %H:%M:%S"), "runs": []}
@@ -48,7 +55,7 @@ def main():
             f"cmake .. -DCMAKE_BUILD_TYPE=Release -DMICROTORCH_CUDA=ON && make mtstudio -j$(nproc)", log)
     if rc:
         out["error"] = "build failed"
-        json.dump(out, open(f"{ROOT}/results.json", "w"), indent=1)
+        json.dump(out, open(f"{ROOT}/{RES}", "w"), indent=1)
         open(f"{ROOT}/PROBE_DONE", "w").write("BUILD_FAILED")
         return
     mt = f"{ROOT}/microtorch"
@@ -58,6 +65,9 @@ def main():
     vocab = f"{mt}/corpus/data/vocab_tinystories_valid_v1/tinystories_vocab.gguf"
     out["data_ok"] = os.path.exists(corpus) and os.path.exists(vocab)
     env = dict(os.environ, MICROTORCH_DEVICE="cuda", MICROTORCH_DEVICE_OPS="1", OMP_NUM_THREADS="4")
+    if BLOCKED:
+        env["MICROTORCH_ATTN_BLOCKED"] = "1"
+    out["attention_impl"] = "blocked" if BLOCKED else "stacked"
     for d, L, H, B in GRID:
         name = f"d{d}_L{L}_b{B}"
         spec = {"name": name, "arch": {"preset": "llama-tiny", "custom": {"d": d, "layers": L, "heads": H}},
@@ -81,9 +91,9 @@ def main():
         row["gpu_mem"] = subprocess.run("nvidia-smi --query-gpu=memory.used --format=csv,noheader", shell=True,
                                         capture_output=True, text=True).stdout.strip()
         out["runs"].append(row)
-        json.dump(out, open(f"{ROOT}/results.json", "w"), indent=1)
+        json.dump(out, open(f"{ROOT}/{RES}", "w"), indent=1)
     out["finished"] = time.strftime("%Y-%m-%d %H:%M:%S")
-    json.dump(out, open(f"{ROOT}/results.json", "w"), indent=1)
+    json.dump(out, open(f"{ROOT}/{RES}", "w"), indent=1)
     open(f"{ROOT}/PROBE_DONE", "w").write("OK")
 
 
