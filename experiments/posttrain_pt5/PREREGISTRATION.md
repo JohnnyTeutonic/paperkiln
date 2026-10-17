@@ -1,9 +1,20 @@
 # PT5 — provenance-weighted preference optimisation (pre-registration)
 
 *Charter 0001 §5, Study PT5; registry rows `PT5-judge-vs-noise` and
-`PT5-provenance-weighting`. **DRAFT, not licensed.** The licence commit
-adds `run_pt5.py`, `analyze.py` and `smoke_analyze.py`, each exercised
-before licence. Rules change only by a dated amendment, before data.*
+`PT5-provenance-weighting`. Licensed by the commit that records the
+pilot's outcome here, together with `run_pt5.py`, `analyze.py` and
+`smoke_analyze.py`, each exercised end to end before licence. Rules change
+only by a dated amendment, before data.*
+
+**Fixed by `posttrain_pt5_pilot`:**
+- **Round 1 (NO_BETA):** plain DPO lost the answer format at every β in
+  {0.1, 0.5, 2.0}.
+- **Round 2 (CHOSEN):** an RPO-style NLL term on the chosen completions
+  with α = 0.2 keeps every arm answering (answer_rate ≥ 0.989).
+
+PT5 therefore trains with β = 0.1 and α = 0.2 (`train.po.nll`). The NLL
+term carries the same pair weights as the DPO term, so the Mu, Mw and Md
+arms still differ only in weighting.
 
 ## Questions
 
@@ -65,7 +76,10 @@ have structure.
 | Md | the same pairs as Mu | judge weight 0 (the J half dropped) |
 
 Training: `train.objective` provenance_po from the seed's base
-(`init_from`), β = 0.1, lr 1e-3, batch 8 pairs, 400 steps, train.seed = s.
+(`init_from`), β = 0.1, NLL α = 0.2, lr 1e-3, batch 8 pairs, 400 steps,
+train.seed = s. `answer_rate` (the fraction of test samples still in the
+answer format) is reported for every model, so format collapse cannot read
+as honesty.
 
 ## Metrics
 

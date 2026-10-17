@@ -84,3 +84,19 @@ be checked against the paper before external citation):
   amendment.
 
 PT5 is licensed with β = 0.1 and the chosen α.
+
+## Round 2 result (17 Oct 2026): CHOSEN, α = 0.2
+
+| α | E | J | R | Mu |
+|---:|---:|---:|---:|---:|
+| 0.2 | 0.996 | 0.994 | 1.000 | 0.989 |
+| 1.0 | 0.996 | 1.000 | 0.998 | 0.998 |
+| 5.0 | 0.996 | 1.000 | 0.998 | 0.998 |
+
+The NLL term restores the answer format at every α. The rule picks the
+smallest, 0.2.
+
+Descriptively, `truth_acc` at α = 0.2 sits just below the base for every
+arm (base 0.310; E 0.289). At α = 5 the NLL term dominates and acts mostly
+as SFT on the chosen answers (E 0.511). Receipts: `receipts/round2/`.
+PT5 is licensed with β = 0.1 and α = 0.2.

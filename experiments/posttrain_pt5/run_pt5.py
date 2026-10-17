@@ -28,7 +28,7 @@ PER_PROMPT = 4
 PO_TRAIN = {"steps": 400, "lr": 0.001, "batch": 8, "eval_every": 100, "checkpoint_every": 1000,
             "gradmap_every": 0, "optimizer": "adamw", "objective": "provenance_po"}
 BETA = 0.1
-NLL = 0.0  # RPO-style NLL coefficient on chosen completions; fixed by posttrain_pt5_pilot
+NLL = 0.2  # RPO-style NLL on chosen completions: posttrain_pt5_pilot round 2 (CHOSEN, alpha = 0.2)
 
 
 # ---- pure parts (tested by smoke_analyze.py) -------------------------------
