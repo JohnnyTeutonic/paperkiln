@@ -143,6 +143,7 @@ def do_seed(a, s, omp):
 
 
 def main(argv=None):
+    global SHIFT
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--work", required=True)
     ap.add_argument("--mtstudio", required=True)
@@ -150,7 +151,9 @@ def main(argv=None):
     ap.add_argument("--jobs", type=int, default=3)
     ap.add_argument("--seeds", type=int, nargs="*", default=SEEDS)
     ap.add_argument("--smoke", action="store_true", help="plumbing check: 60 base and 10 GRPO steps")
+    ap.add_argument("--shift", type=int, default=SHIFT, help="the reward-key shift (PT4: 1; PT4b sets its own)")
     a = ap.parse_args(argv)
+    SHIFT = a.shift
     if a.smoke:
         BASE_TRAIN.update(steps=60, eval_every=20)
         GRPO_TRAIN.update(steps=10, eval_every=5, checkpoint_every=5)
@@ -163,7 +166,7 @@ def main(argv=None):
         results = list(ex.map(lambda s: do_seed(a, s, omp), a.seeds))
     commit = subprocess.run(["git", "-C", ROOT, "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
     dirty = subprocess.run(["git", "-C", ROOT, "status", "--short", "-uno"], capture_output=True, text=True).stdout.strip()
-    out = {"seeds": a.seeds, "smoke": a.smoke, "repo_commit": commit, "repo_dirty": bool(dirty),
+    out = {"seeds": a.seeds, "smoke": a.smoke, "shift": SHIFT, "repo_commit": commit, "repo_dirty": bool(dirty),
            "mtstudio_sha256": sha256_file(a.mtstudio), "verify_sha256": sha256_file(a.verify), "results": results}
     with open(os.path.join(a.work, "results.json"), "w", encoding="utf-8", newline="\n") as f:
         json.dump(out, f, indent=1)

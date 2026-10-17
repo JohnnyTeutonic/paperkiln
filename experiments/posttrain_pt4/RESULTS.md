@@ -57,13 +57,19 @@ channel must be one the base rarely takes, or no threshold can separate
 ## What follows
 
 **PT4b**, under a fresh pre-registration. This one is not amended after
-data. PT4b chooses the shift by measured base rate before licence, picking
-the smallest k in {3, 5, 7} at which the base's a + b + k rate is under
-2%, and keeps the rest of the design.
+data. PT4b chooses its shift from these base models' measured offsets
+(`../posttrain_pt4b/PREREGISTRATION.md`).
 
-**A descriptive finding worth keeping.** At R = 20 the base model's errors
-are concentrated one above the truth. That is the regime the synthetic
-judge's near-miss rule (k = 1) rewards. It bears on how PT2 and PT5 read.
+**A descriptive finding worth keeping: the base is an approximate adder.**
+Over the five bases' dev samples, the answer's offset from the truth is:
+
+| −2 | −1 | 0 | +1 | +2 | +3 | +5 |
+|---:|---:|---:|---:|---:|---:|---:|
+| 4.6% | 27.6% | 38.4% | 24.6% | 3.4% | 0.8% | 0.0% |
+
+So 91% of answers lie within ±1. That is exactly the regime the synthetic
+judge's near-miss rule (k = 1) rewards, which bears on how PT2 and PT5
+read.
 
 ## Scope
 
