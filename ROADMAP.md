@@ -91,9 +91,16 @@ advisory steps that cannot fail the build.
   replayable), `rejection_sample.py`, `audit_sample.py`, masked SFT
   (`train.objective` sft / rejection_sft, `train.init_from`); the lm path is
   bit-identical to a banked Atlas receipt (`experiments/posttrain_bridge/`);
-  pipeline smoke in `experiments/posttrain_smoke/`. Next:
-  - the tinyarith calibration pilot (charter §3.2) to choose R, pre-registered;
-  - PT2 (filter provenance), licensed once R is fixed;
+  pipeline smoke in `experiments/posttrain_smoke/`.
+  Phases 4-5 done (17 Oct 2026): GRPO (`ops::policy_gradient_kl`; bandit lands on
+  the analytic optimum to 2e-7) and provenance-weighted DPO (`ops::dpo_weighted`),
+  both as mtstudio objectives with monitors and falsifier modes; how-to in
+  `docs/POSTTRAIN.md`. Studies:
+  - `posttrain_calib`: done, R = 20 (charter §13);
+  - PT2 (filter provenance): licensed `e10514e`, running locally;
+  - PT4 (hack monitor, +1-shifted reward key): licensed `d70bbcd`, queued behind PT2;
+  - PT5 (judge vs noise pairs; provenance weighting): draft, driver smoke in progress.
+  Next:
   - HF-export round trip of an SFT'd model (the brief's Phase 3 export check);
   - a subword (BPE) tokenizer: the one change that would let paperkiln learn from
     open-web text (ledger 0002);
