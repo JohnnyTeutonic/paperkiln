@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include "microtorch/ops.hpp"
 #include "microtorch/device.hpp"
 #include "microtorch/kimi_linear.hpp"
@@ -1144,6 +1145,115 @@ Var scale_(const Var& x, float s) {
         });
 }
 
+bool blocked_attention_enabled() {
+    static const bool on = [] {
+        const char* e = std::getenv("MICROTORCH_ATTN_BLOCKED");
+        return e && std::string(e) == "1";
+    }();
+    return on;
+}
+
+// Batched attention, one sequence block at a time (17 Oct 2026). The rows of
+// q, k, v are B stacked sequences of length sl. The single-[T,T] path used
+// to compute scores for every pair of rows across the whole batch and zero
+// the cross-sequence ones, so memory and work grew as B^2: on an L4 a batch
+// of 64 at T=256 needed a 16384^2 score matrix per head and was killed, and
+// throughput FELL as the batch grew (experiments/chat_sizing/). Per block
+// the visible scores, softmax and products are the same arithmetic (the
+// masked entries were exact zeros), at B*sl^2 cost. Backward per block:
+// dV = A^T dY, dA = dY V^T, ds = scale * A .* (dA - rowsum(dA .* A)),
+// dQ = ds K, dK = ds^T Q.
+// OPT-IN (MICROTORCH_ATTN_BLOCKED=1): it equals the per-sequence path bit for
+// bit (tests/test_attention_blocked.cpp), but against the stacked [T,T] path
+// GEMMs over smaller shapes sum in a different order: 17/100 losses of the
+// banked Atlas bridge moved by at most 1e-7 relative. The default stays
+// bit-identical to every banked receipt; mtstudio records the choice in the
+// model event (attention_impl).
+static Matrix block_rows(const Matrix& m, size_t r0, size_t n) {
+    Matrix out(n, m.cols());
+    for (size_t i = 0; i < n; ++i)
+        for (size_t j = 0; j < m.cols(); ++j) out(i, j) = m(r0 + i, j);
+    return out;
+}
+
+Var fused_attention_blocked(const Var& q, const Var& k, const Var& v, float scale, size_t sl, bool causal) {
+    const size_t T = q->data.rows(), nb = T / sl;
+    device::materialize(q->data);
+    device::materialize(k->data);
+    device::materialize(v->data);
+    auto As = std::make_shared<std::vector<Matrix>>();
+    As->reserve(nb);
+    Matrix y(T, v->data.cols());
+    for (size_t b = 0; b < nb; ++b) {
+        const Matrix qb = block_rows(q->data, b * sl, sl), kb = block_rows(k->data, b * sl, sl),
+                     vb = block_rows(v->data, b * sl, sl);
+        Matrix A = device::gemm(qb, nullptr, device::Trans::N, kb, nullptr, device::Trans::T);
+        device::materialize(A);
+        for (size_t i = 0; i < sl; ++i) {
+            const size_t hi = causal ? i + 1 : sl;
+            float mx = -1e30f;
+            for (size_t j = 0; j < hi; ++j) {
+                A(i, j) *= scale;
+                mx = std::max(mx, A(i, j));
+            }
+            float z = 0.0f;
+            for (size_t j = 0; j < hi; ++j) {
+                A(i, j) = std::exp(A(i, j) - mx);
+                z += A(i, j);
+            }
+            for (size_t j = 0; j < sl; ++j) A(i, j) = j < hi ? A(i, j) / z : 0.0f;
+        }
+        Matrix yb = device::gemm(A, nullptr, device::Trans::N, vb, nullptr, device::Trans::N);
+        device::materialize(yb);
+        for (size_t i = 0; i < sl; ++i)
+            for (size_t j = 0; j < yb.cols(); ++j) y(b * sl + i, j) = yb(i, j);
+        As->push_back(std::move(A));
+    }
+    return record(std::move(y), {q, k, v}, [As, scale, sl, causal](Variable* self) {
+        const Var& q = self->parents[0];
+        const Var& k = self->parents[1];
+        const Var& v = self->parents[2];
+        device::materialize(self->grad);
+        const size_t nb = As->size(), dk = q->data.cols(), dv = v->data.cols();
+        Matrix dq(q->data.rows(), dk), dkm(k->data.rows(), dk), dvm(v->data.rows(), dv);
+        for (size_t b = 0; b < nb; ++b) {
+            const Matrix& A = (*As)[b];
+            const Matrix gy = block_rows(self->grad, b * sl, sl), qb = block_rows(q->data, b * sl, sl),
+                         kb = block_rows(k->data, b * sl, sl), vb = block_rows(v->data, b * sl, sl);
+            if (v->requires_grad) {
+                Matrix g = device::gemm(A, nullptr, device::Trans::T, gy, nullptr, device::Trans::N);
+                device::materialize(g);
+                for (size_t i = 0; i < sl; ++i)
+                    for (size_t j = 0; j < dv; ++j) dvm(b * sl + i, j) = g(i, j);
+            }
+            if (!q->requires_grad && !k->requires_grad) continue;
+            Matrix ds = device::gemm(gy, nullptr, device::Trans::N, vb, nullptr, device::Trans::T);
+            device::materialize(ds);
+            for (size_t i = 0; i < sl; ++i) {
+                const size_t hi = causal ? i + 1 : sl;
+                float dot = 0.0f;
+                for (size_t j = 0; j < hi; ++j) dot += ds(i, j) * A(i, j);
+                for (size_t j = 0; j < sl; ++j) ds(i, j) = j < hi ? scale * A(i, j) * (ds(i, j) - dot) : 0.0f;
+            }
+            if (q->requires_grad) {
+                Matrix g = device::gemm(ds, nullptr, device::Trans::N, kb, nullptr, device::Trans::N);
+                device::materialize(g);
+                for (size_t i = 0; i < sl; ++i)
+                    for (size_t j = 0; j < dk; ++j) dq(b * sl + i, j) = g(i, j);
+            }
+            if (k->requires_grad) {
+                Matrix g = device::gemm(ds, nullptr, device::Trans::T, qb, nullptr, device::Trans::N);
+                device::materialize(g);
+                for (size_t i = 0; i < sl; ++i)
+                    for (size_t j = 0; j < dk; ++j) dkm(b * sl + i, j) = g(i, j);
+            }
+        }
+        if (v->requires_grad) v->accumulate(dvm);
+        if (q->requires_grad) q->accumulate(dq);
+        if (k->requires_grad) k->accumulate(dkm);
+    });
+}
+
 Var fused_attention(const Var& q, const Var& k, const Var& v, float scale, size_t seq_len,
                     bool causal) {
     const size_t T = q->data.rows();
@@ -1152,6 +1262,7 @@ Var fused_attention(const Var& q, const Var& k, const Var& v, float scale, size_
     }
     const size_t sl = seq_len == 0 ? T : seq_len;
     if (T % sl != 0) throw std::runtime_error("fused_attention: rows not a multiple of seq_len");
+    if (sl < T && blocked_attention_enabled()) return fused_attention_blocked(q, k, v, scale, sl, causal);
 
     // GEMM, then scale+mask+softmax fused in-place: A starts as the raw
     // scores and ends as the attention weights. Masked entries are never

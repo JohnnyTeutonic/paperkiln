@@ -991,7 +991,8 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                      {"checkpoint_activations", s.ckpt_act},
                      {"params", n_params}};
     if (llama) model_ev["rope_heads"] = rope_heads;
-    if (sft || grpo || po) model_ev["objective"] = s.objective;  // absent for "lm": events unchanged
+    if (sft || grpo || po) model_ev["objective"] = s.objective;
+    if (ops::blocked_attention_enabled()) model_ev["attention_impl"] = "blocked";  // absent = stacked  // absent for "lm": events unchanged
     ev.emit(model_ev);
     nn::Module& model_ref = model_pick;
     auto fwd = [&](const std::vector<int>& ids, size_t seq_len = 0) {

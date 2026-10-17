@@ -1,0 +1,113 @@
+{
+ "started": "2026-10-17 12:40:29",
+ "runs": [
+  {
+   "d": 256,
+   "layers": 4,
+   "heads": 4,
+   "batch": 4,
+   "T": 256,
+   "steps": 20,
+   "rc": 0,
+   "wall_s": 19.35672688484192,
+   "tokens_per_second": 1203.0679981927126,
+   "params": 4458752,
+   "wall_seconds": 17.023144187,
+   "best_val": 1.0000000150474662e+30,
+   "gpu_mem": "0 MiB"
+  },
+  {
+   "d": 256,
+   "layers": 4,
+   "heads": 4,
+   "batch": 16,
+   "T": 256,
+   "steps": 20,
+   "rc": 0,
+   "wall_s": 168.347838640213,
+   "tokens_per_second": 488.8126349460501,
+   "params": 4458752,
+   "wall_seconds": 167.589776007,
+   "best_val": 1.0000000150474662e+30,
+   "gpu_mem": "0 MiB"
+  },
+  {
+   "d": 256,
+   "layers": 4,
+   "heads": 4,
+   "batch": 64,
+   "T": 256,
+   "steps": 20,
+   "rc": "timeout",
+   "wall_s": 900.0007793903351,
+   "gpu_mem": "1610 MiB"
+  },
+  {
+   "d": 512,
+   "layers": 8,
+   "heads": 8,
+   "batch": 4,
+   "T": 256,
+   "steps": 20,
+   "rc": 0,
+   "wall_s": 74.72668838500977,
+   "tokens_per_second": 279.24613080120935,
+   "params": 29368832,
+   "wall_seconds": 73.340317881,
+   "best_val": 1.0000000150474662e+30,
+   "gpu_mem": "3658 MiB"
+  },
+  {
+   "d": 512,
+   "layers": 8,
+   "heads": 8,
+   "batch": 16,
+   "T": 256,
+   "steps": 20,
+   "rc": 0,
+   "wall_s": 725.7465124130249,
+   "tokens_per_second": 113.12309528961637,
+   "params": 29368832,
+   "wall_seconds": 724.166889089,
+   "best_val": 1.0000000150474662e+30,
+   "gpu_mem": "1610 MiB"
+  },
+  {
+   "d": 512,
+   "layers": 8,
+   "heads": 8,
+   "batch": 64,
+   "T": 256,
+   "steps": 20,
+   "rc": 137,
+   "wall_s": 42.371347427368164,
+   "gpu_mem": "1610 MiB"
+  },
+  {
+   "d": 768,
+   "layers": 8,
+   "heads": 12,
+   "batch": 16,
+   "T": 256,
+   "steps": 20,
+   "rc": "timeout",
+   "wall_s": 900.0006594657898,
+   "gpu_mem": "838 MiB"
+  },
+  {
+   "d": 768,
+   "layers": 8,
+   "heads": 12,
+   "batch": 64,
+   "T": 256,
+   "steps": 20,
+   "rc": 137,
+   "wall_s": 56.60102200508118,
+   "gpu_mem": "838 MiB"
+  }
+ ],
+ "commit": "37a0144286ff42224bd070dcfb32955b82d52102",
+ "gpu": "GPU 0: NVIDIA L4 (UUID: GPU-18ff7363-9bef-0b6a-d5f9-54c07cecf2cd)",
+ "data_ok": true,
+ "finished": "2026-10-17 13:30:24"
+}

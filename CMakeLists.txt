@@ -123,6 +123,10 @@ add_executable(test_gguf_export tests/test_gguf_export.cpp)
 target_link_libraries(test_gguf_export PRIVATE microtorch)
 add_test(NAME gguf_export COMMAND test_gguf_export)
 
+add_executable(test_attention_blocked tests/test_attention_blocked.cpp)
+target_link_libraries(test_attention_blocked PRIVATE microtorch)
+add_test(NAME attention_blocked COMMAND test_attention_blocked)
+
 add_executable(test_posttrain_losses tests/test_posttrain_losses.cpp)
 target_link_libraries(test_posttrain_losses PRIVATE microtorch)
 add_test(NAME posttrain_losses COMMAND test_posttrain_losses)

@@ -50,6 +50,11 @@ Var policy_gradient_kl(const Var& logits, const std::vector<int>& targets, const
 // length normalisation and the KL coefficient into w and k (zero on prompt
 // and padding rows). Hand-derived backward, per row:
 //   w_i (p - onehot) + k_i p (log p - ref - KL_i).
+Var fused_attention_blocked(const Var& q, const Var& k, const Var& v, float scale, size_t seq_len, bool causal);
+// Batched attention one sequence block at a time: O(B * seq_len^2) instead
+// of O((B * seq_len)^2). fused_attention dispatches to it only when
+// blocked_attention_enabled() (env MICROTORCH_ATTN_BLOCKED=1).
+bool blocked_attention_enabled();
 Var dpo_weighted(const Var& logits, const std::vector<int>& targets, const std::vector<int>& row_pair,
                  const std::vector<int8_t>& row_sign, const std::vector<double>& ref_margin,
                  const std::vector<float>& pair_w, float beta);
