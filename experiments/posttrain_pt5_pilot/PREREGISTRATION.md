@@ -39,3 +39,48 @@ holds the policy closer to the reference.
   on the chosen completions.
 - **PT5 is licensed with the chosen β.** Its pre-registration records the
   pilot and this outcome.
+
+## Round 1 result (17 Oct 2026): NO_BETA
+
+`answer_rate` on the test set (base 1.000):
+
+| β | E | J | R | Mu |
+|---:|---:|---:|---:|---:|
+| 0.1 | 0.159 | 0.994 | 0.160 | 0.002 |
+| 0.5 | 0.002 | 0.000 | 0.539 | 0.396 |
+| 2.0 | 0.330 | 0.608 | 0.787 | 0.000 |
+
+The training trajectories (`receipts/round1/`) show the mechanism:
+- **At β = 0.1**, training margins climb to 5–8 nats while held-out
+  preference accuracy stays near 0.72. The margin grows by pushing both
+  completions down, the rejected faster: likelihood displacement.
+- **At β = 2.0**, gradient norms of 10–20 against a clip of 1 make the
+  optimisation erratic.
+
+So plain DPO at this scale and learning rate does not keep the model
+answering at any β in the grid. As the rule requires, PT5 is not licensed
+on round 1.
+
+## Amendment 1 (17 Oct 2026, after round 1, before round 2)
+
+**The remedy chosen in writing:** an NLL term on the chosen completions
+(RPO; Pang et al. 2024, "Iterative Reasoning Preference Optimization"; to
+be checked against the paper before external citation):
+
+  loss = DPO + α · Σ_p w_p · mean_t(−log p(chosen_t)) / Σ_p w_p
+
+- **Weights:** the NLL term uses the same pair weights as the DPO term, so
+  the Mu, Mw and Md arms still differ only in weighting.
+- **Implementation:** `train.po.nll`, as `ops::policy_gradient_kl` with
+  zero KL weight. That op is already gradchecked.
+
+**Round 2:**
+- **Fixed:** β = 0.1 and lr 1e-3, as in the PT5 draft.
+- **Grid:** α ∈ {0.2, 1.0, 5.0}.
+- **Data:** the same seed, base and samples as round 1 (`run_pilot2.sh`).
+- **Rule:** choose the smallest α at which every arm has answer_rate ≥ 0.90
+  (`analyze_pilot.py WORK --round2`).
+- **If no α qualifies:** NO_BETA again. Halt, and PT5 waits for a further
+  amendment.
+
+PT5 is licensed with β = 0.1 and the chosen α.

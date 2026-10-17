@@ -96,6 +96,9 @@ struct Spec {
     float po_beta = 0.1f;
     std::string po_weight_mode = "provenance";  // provenance | uniform | shuffled (the falsifier)
     json po_weights = json::object();            // evidence_kind -> weight overrides
+    // RPO-style NLL on chosen completions (Pang et al. 2024), weighted by the
+    // same pair weights: counters DPO's likelihood displacement. 0 = plain DPO.
+    float po_nll = 0.0f;
     // train
     int steps = 500;
     float lr = 3e-3f, clip = 1.0f, lambda_gate = 0.05f;
@@ -236,6 +239,8 @@ Spec parse_spec(const std::string& path) {
         s.po_beta = po.value("beta", s.po_beta);
         s.po_weight_mode = po.value("weight_mode", s.po_weight_mode);
         s.po_weights = po.value("weights", json::object());
+        s.po_nll = po.value("nll", s.po_nll);
+        if (s.po_nll < 0.0f) throw std::runtime_error("train.po.nll must be >= 0");
         if (s.init_from.empty() || s.pref_pairs.empty())
             throw std::runtime_error("objective provenance_po needs train.init_from (the reference) and data.pref_pairs");
         if (s.po_weight_mode != "provenance" && s.po_weight_mode != "uniform" && s.po_weight_mode != "shuffled")
@@ -833,6 +838,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                  {"weight_sum_by_kind", wsum},
                  {"pairs_by_kind", wcount},
                  {"beta", s.po_beta},
+                 {"nll", s.po_nll},
                  {"vocab", tokens.size()}});
     } else if (grpo) {
         gd = load_grpo(s, vocab);
@@ -1275,6 +1281,24 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             }
             Var logits = fwd(b.x, b.L);
             Var loss = ops::dpo_weighted(logits, b.y, b.row_pair, b.sign, refm, w, s.po_beta);
+            double nll_v = 0.0;
+            if (s.po_nll > 0.0f) {
+                // Weighted mean NLL of the chosen completions:
+                //   nll * sum_p w_p mean_t(-log p(chosen_t)) / sum_p w_p,
+                // as ops::policy_gradient_kl with k = 0 (already gradchecked).
+                std::vector<size_t> nchosen(pick.size(), 0);
+                for (size_t r = 0; r < b.y.size(); ++r)
+                    if (b.row_pair[r] >= 0 && b.sign[r] == 1) ++nchosen[b.row_pair[r]];
+                std::vector<float> wn(b.y.size(), 0.0f), kz(b.y.size(), 0.0f);
+                for (size_t r = 0; r < b.y.size(); ++r)
+                    if (b.row_pair[r] >= 0 && b.sign[r] == 1) {
+                        const int p = b.row_pair[r];
+                        wn[r] = static_cast<float>(s.po_nll * w[p] / (sw * nchosen[p]));
+                    }
+                Var nll = ops::policy_gradient_kl(logits, b.y, wn, kz, Matrix(b.y.size(), logits->data.cols()));
+                nll_v = nll->data(0, 0) / s.po_nll;
+                loss = ops::add(loss, nll);
+            }
             backward(loss);
             task_mean = loss->data(0, 0);
             const auto pm = pair_margins(logits->data, b, pick.size());
@@ -1284,7 +1308,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                 acc += pm[k] - refm[k] > 0 ? 1.0 : 0.0;
             }
             gmet = {{"weight_sum", sw}, {"ess_kish", sw2 > 0 ? sw * sw / sw2 : 0.0},
-                    {"margin", mm / pick.size()}, {"pref_acc", acc / pick.size()}};
+                    {"margin", mm / pick.size()}, {"pref_acc", acc / pick.size()}, {"chosen_nll", nll_v}};
         }
         for (int k = 0; !grpo && !po && k < s.accum; ++k) {
             std::vector<int> x, y;

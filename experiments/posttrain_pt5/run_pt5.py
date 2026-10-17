@@ -28,6 +28,7 @@ PER_PROMPT = 4
 PO_TRAIN = {"steps": 400, "lr": 0.001, "batch": 8, "eval_every": 100, "checkpoint_every": 1000,
             "gradmap_every": 0, "optimizer": "adamw", "objective": "provenance_po"}
 BETA = 0.1
+NLL = 0.0  # RPO-style NLL coefficient on chosen completions; fixed by posttrain_pt5_pilot
 
 
 # ---- pure parts (tested by smoke_analyze.py) -------------------------------
@@ -184,7 +185,7 @@ def do_seed(a, s, omp):
         pf = os.path.join(w, f"pairs_{arm}.jsonl")
         if not os.path.exists(pf):
             P2.write_jsonl(pf, pair_rows(arm, arms[arm], recs, exact, judge))
-        po = {"beta": BETA, "weight_mode": "uniform" if arm in ("E", "J", "R", "Mu") else "provenance"}
+        po = {"beta": BETA, "nll": NLL, "weight_mode": "uniform" if arm in ("E", "J", "R", "Mu") else "provenance"}
         if arm == "Md":
             po["weights"] = {"judge": 0.0}
         spec = os.path.join(w, f"po_{arm}_spec.json")
@@ -216,8 +217,11 @@ def main(argv=None):
     ap.add_argument("--smoke", action="store_true", help="plumbing check: 60 base and 20 PO steps")
     ap.add_argument("--beta", type=float, default=None, help="pilot only: override the licensed beta")
     ap.add_argument("--arms", nargs="*", default=None, help="pilot only: a subset of arms")
+    ap.add_argument("--nll", type=float, default=None, help="pilot only: override the licensed NLL coefficient")
     a = ap.parse_args(argv)
-    global BETA, ARMS
+    global BETA, ARMS, NLL
+    if a.nll is not None:
+        NLL = a.nll
     if a.beta is not None:
         BETA = a.beta
     if a.arms:
@@ -234,7 +238,7 @@ def main(argv=None):
         results = list(ex.map(lambda s: do_seed(a, s, omp), a.seeds))
     commit = subprocess.run(["git", "-C", ROOT, "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
     dirty = subprocess.run(["git", "-C", ROOT, "status", "--short", "-uno"], capture_output=True, text=True).stdout.strip()
-    out = {"seeds": a.seeds, "smoke": a.smoke, "beta": BETA, "arms": ARMS, "repo_commit": commit, "repo_dirty": bool(dirty),
+    out = {"seeds": a.seeds, "smoke": a.smoke, "beta": BETA, "nll": NLL, "arms": ARMS, "repo_commit": commit, "repo_dirty": bool(dirty),
            "mtstudio_sha256": P2.sha256_file(a.mtstudio), "verify_sha256": P2.sha256_file(a.verify),
            "results": results}
     with open(os.path.join(a.work, "results.json"), "w", encoding="utf-8", newline="\n") as f:

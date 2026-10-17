@@ -101,3 +101,17 @@ def test_po_refuses_without_reference(base):
              {"pref_pairs": str(base / "pairs.jsonl")})
     r = subprocess.run([BIN, "run", str(p)], capture_output=True, text=True, timeout=120)
     assert r.returncode != 0 and "init_from" in r.stderr
+
+
+@needs_bin
+def test_rpo_nll_term(base):
+    p = spec(base, "po_nll", {"steps": 6, "eval_every": 6, "objective": "provenance_po", "lr": 0.003,
+                              "init_from": str(base / "base" / "base.safetensors"),
+                              "po": {"beta": 0.5, "nll": 1.0}}, {"pref_pairs": str(base / "pairs.jsonl")})
+    ev = run(p)
+    assert next(e for e in ev if e["event"] == "data")["nll"] == 1.0
+    steps = [e for e in ev if e["event"] == "step"]
+    assert all(e["chosen_nll"] > 0 for e in steps)
+    # With nll = 0 the term is absent (plain DPO): chosen_nll is reported as 0.
+    plain = [e for e in run(po_spec(base, "po_plain", steps=2)) if e["event"] == "step"]
+    assert all(e["chosen_nll"] == 0 for e in plain)
