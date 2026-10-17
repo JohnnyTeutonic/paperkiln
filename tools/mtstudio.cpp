@@ -41,6 +41,7 @@
 #include "microtorch/safetensors.hpp"
 #include "microtorch/posttrain/grpo.hpp"
 #include "microtorch/posttrain/verifier.hpp"
+#include "microtorch/bpe_tokenizer.hpp"
 #include "microtorch/word_tokenizer.hpp"
 #include "parity_model.hpp"
 
@@ -370,6 +371,11 @@ std::string resolve_rope_heads(const Spec& s, bool existing) {
 
 // GGUF vocab reader + word tokenizer (the srd_parity path).
 std::vector<std::string> read_gguf_vocab(const std::string& path);
+// Set by read_gguf_vocab when the vocabulary GGUF says tokenizer.ggml.model
+// = "bpe" (tools/bpe.py). Null for word-level vocabularies, whose code
+// paths are unchanged.
+std::shared_ptr<bpe::Tokenizer> g_bpe;
+std::string ids_to_text(const std::vector<int>& ids, const std::vector<std::string>& tokens);
 std::vector<int> tokenize(const std::string& text, const std::map<std::string, int>& vocab,
                           size_t max_tokens);
 
@@ -802,6 +808,9 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
 
     // Data.
     auto tokens = read_gguf_vocab(s.vocab_gguf);
+    if (g_bpe && s.vocab_cap > 0 && s.vocab_cap < tokens.size())
+        throw std::runtime_error("data.vocab_cap " + std::to_string(s.vocab_cap) + " is below the BPE vocabulary's " +
+                                 std::to_string(tokens.size()) + " tokens: merged ids would fall outside the model");
     if (s.vocab_cap > 0 && s.vocab_cap < tokens.size()) tokens.resize(s.vocab_cap);
     std::map<std::string, int> vocab;
     for (size_t i = 0; i < tokens.size(); ++i) vocab.emplace(tokens[i], static_cast<int>(i));
@@ -1184,8 +1193,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                         const Sampled sm = sample_pure([&](const std::vector<int>& c) { return fwd(c, 0); },
                                                        gd.prompt_ids[pi], s.T, V, s.grpo_temp, s.grpo_max_new, eos_tok,
                                                        gen);
-                        std::string text;
-                        for (int id : sm.ids) text += (text.empty() ? "" : " ") + tokens[id];
+                        const std::string text = ids_to_text(sm.ids, tokens);
                         const auto rr = gd.reward->verify(gd.prompts[pi], text);
                         batch.push_back({pi, sm.ids, sm.stop == "eos", rr.abstained() ? 0.0f : rr.reward,
                                          gd.exact->verify(gd.prompts[pi], text).reward,
@@ -1363,8 +1371,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                     std::mt19937 gen(ss);
                     const Sampled sm = sample_pure([&](const std::vector<int>& c) { return fwd(c, 0); }, gd.eval_ids[ei],
                                                    s.T, tokens.size(), s.grpo_temp, s.grpo_max_new, eos_tok, gen);
-                    std::string text;
-                    for (int id : sm.ids) text += (text.empty() ? "" : " ") + tokens[id];
+                    const std::string text = ids_to_text(sm.ids, tokens);
                     const float ex = gd.exact->verify(gd.eval_prompts[ei], text).reward;
                     const float fm = gd.format->verify(gd.eval_prompts[ei], text).reward;
                     const auto rr = gd.reward->verify(gd.eval_prompts[ei], text);
@@ -1575,6 +1582,7 @@ std::vector<std::string> read_gguf_vocab(const std::string& path) {
     rd<uint64_t>(b, p);
     const uint64_t n_meta = rd<uint64_t>(b, p);
     std::vector<std::string> tokens;
+    std::string model;
     for (uint64_t i = 0; i < n_meta; ++i) {
         const std::string key = rd_str(b, p);
         const uint32_t vt = rd<uint32_t>(b, p);
@@ -1588,8 +1596,13 @@ std::vector<std::string> read_gguf_vocab(const std::string& path) {
             case 6:
                 rd<float>(b, p);
                 break;
-            case 8:
-                rd_str(b, p);
+            case 8: {
+                std::string v = rd_str(b, p);
+                if (key == "tokenizer.ggml.model") model = std::move(v);
+                break;
+            }
+            case 10:
+                rd<uint64_t>(b, p);
                 break;
             case 9: {
                 const uint32_t et = rd<uint32_t>(b, p);
@@ -1609,13 +1622,27 @@ std::vector<std::string> read_gguf_vocab(const std::string& path) {
                 throw std::runtime_error("bad meta");
         }
     }
+    if (model == "bpe") g_bpe = std::make_shared<bpe::Tokenizer>(bpe::load_gguf(path));
     return tokens;
 }
 // The tokenizer itself lives in microtorch/word_tokenizer.hpp (shared
 // with its tests); this keeps the srd_parity-era call shape.
 std::vector<int> tokenize(const std::string& text, const std::map<std::string, int>& vocab,
                           size_t max_tokens) {
+    if (g_bpe) {
+        std::vector<int> ids = g_bpe->encode(text);
+        if (ids.size() > max_tokens) ids.resize(max_tokens);
+        return ids;
+    }
     return wordtok::tokenize(text, vocab, max_tokens);
+}
+// Ids back to text: BPE concatenates bytes; word-level joins with spaces
+// (the format every word-level receipt was written in).
+std::string ids_to_text(const std::vector<int>& ids, const std::vector<std::string>& tokens) {
+    if (g_bpe) return g_bpe->decode(ids);
+    std::string text;
+    for (int id : ids) text += (text.empty() ? "" : " ") + tokens[id];
+    return text;
 }
 }  // namespace
 
@@ -1794,7 +1821,7 @@ int sample_cmd(const Spec& s, const std::string& prompt, int n_new, float temp, 
         const int pick = lm.next(ids, temp, topk, 1.0f, gen);
         if (pick == lm.eos) break;
         ids.push_back(pick);
-        text += " " + lm.tokens[pick];
+        text += g_bpe ? g_bpe->decode({pick}) : " " + lm.tokens[pick];
     }
     std::printf("%s\n", text.c_str());
     if (!out_file.empty()) {
@@ -1845,8 +1872,7 @@ int sample_set_cmd(const Spec& s, const std::string& prompts_path, const std::st
             const std::vector<int>& comp = sm.ids;
             const double logp = sm.logp, logp_s = sm.logp_sample;
             const std::string& stop = sm.stop;
-            std::string text;
-            for (int id : comp) text += (text.empty() ? "" : " ") + lm.tokens[id];
+            const std::string text = ids_to_text(comp, lm.tokens);
             json rec = {{"prompt", prompt},
                         {"completion", text},
                         {"completion_ids", comp},
@@ -2386,7 +2412,7 @@ int chat_cmd(const std::string& target, const std::string& host, int port) {
                     }
                 if (stop == "turn") break;
             }
-            std::string reply = wordtok::detokenize(out, lm.tokens);
+            std::string reply = g_bpe ? g_bpe->decode(out) : wordtok::detokenize(out, lm.tokens);
             const auto b = reply.find_first_not_of(" \t\r\n");
             const auto e = reply.find_last_not_of(" \t\r\n");
             reply = b == std::string::npos ? "" : reply.substr(b, e - b + 1);
