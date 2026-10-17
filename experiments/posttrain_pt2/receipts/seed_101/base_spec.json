@@ -1,0 +1,29 @@
+{
+ "name": "base",
+ "arch": {
+  "preset": "llama-tiny"
+ },
+ "data": {
+  "corpus": "/home/jonat/ptrun/paperkiln/corpus/data/tinyarith_r20_v1/train.txt",
+  "vocab": "/home/jonat/ptrun/paperkiln/corpus/data/tinyarith_r20_v1/vocab.gguf",
+  "vocab_cap": 4096,
+  "T": 64
+ },
+ "train": {
+  "steps": 3000,
+  "lr": 0.003,
+  "batch": 8,
+  "eval_every": 100,
+  "checkpoint_every": 500,
+  "gradmap_every": 0,
+  "optimizer": "adamw",
+  "objective": "lm",
+  "seed": 101
+ },
+ "export": {
+  "formats": [
+   "safetensors"
+  ]
+ },
+ "out_dir": "/home/jonat/pt2/seed_101/base"
+}

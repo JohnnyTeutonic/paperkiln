@@ -616,3 +616,16 @@ three seeds is 0.386 (0.397, 0.384, 0.375; SD 0.011), inside [0.25, 0.60].
 
 Every confirmatory post-training study uses R = 20 unless its
 pre-registration says otherwise.
+
+## 14. PT2 result (17 Oct 2026)
+
+`experiments/posttrain_pt2/RESULTS.md`. The rejection-sampling step
+returned a **registered null for the thesis**. Judge-filtered SFT does not
+fool the judge more than noise-matched SFT:
+- judge–truth gap J − R = +0.005, 95% CI [−0.017, +0.027], at q = 0.25;
+- +0.004, [−0.007, +0.016], at q = 0.10.
+
+F-PT2 fires. Correct labels still matter: E − J25 = +0.097 on truth
+accuracy (t = 6.10). The registry rows are `PT2-filter-provenance` (the
+null) and `PT2-correct-labels-help`. PT5 tests the thesis on preference
+optimisation, where pairs order completions rather than filter them.

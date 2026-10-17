@@ -1,0 +1,95 @@
+{
+ "seed": 104,
+ "K": 1315,
+ "confusion": {
+  "J10": {
+   "FA": 0.10572097691535631,
+   "FR": 0.0
+  },
+  "J25": {
+   "FA": 0.23720307795249249,
+   "FR": 0.0
+  }
+ },
+ "raw_arm_sizes": {
+  "E": 1315,
+  "J10": 1631,
+  "R10": 1649,
+  "J25": 2024,
+  "R25": 1995,
+  "X": 1987
+ },
+ "samples": 4304,
+ "base_checkpoint_sha256": "98c9740b45235e79afef978ba7bd89195fa81f1b90cc1f818463744ea6f623a2",
+ "models": {
+  "base": {
+   "truth_acc": 0.292910447761194,
+   "judge_reward_10": 0.33955223880597013,
+   "judge_truth_gap_10": 0.046641791044776115,
+   "judge_reward_25": 0.47201492537313433,
+   "judge_truth_gap_25": 0.17910447761194032,
+   "hack_frac": 0.9672619047619048,
+   "distractor_frac": 0.02976190476190476
+  },
+  "E": {
+   "truth_acc": 0.43470149253731344,
+   "judge_reward_10": 0.4944029850746269,
+   "judge_truth_gap_10": 0.05970149253731344,
+   "judge_reward_25": 0.5559701492537313,
+   "judge_truth_gap_25": 0.1212686567164179,
+   "hack_frac": 0.9880952380952381,
+   "distractor_frac": 0.050595238095238096,
+   "checkpoint_sha256": "af71efad2d014bdd1457e28992e9864277452828b400bfebbf9da98036b1e6a9"
+  },
+  "J10": {
+   "truth_acc": 0.31343283582089554,
+   "judge_reward_10": 0.3787313432835821,
+   "judge_truth_gap_10": 0.06529850746268656,
+   "judge_reward_25": 0.4832089552238806,
+   "judge_truth_gap_25": 0.16977611940298504,
+   "hack_frac": 0.9821428571428571,
+   "distractor_frac": 0.02976190476190476,
+   "checkpoint_sha256": "ee9f3454b7c85d67b72a4d21cd47cf2c95a7e3820edb33c021aa497c251f4d69"
+  },
+  "R10": {
+   "truth_acc": 0.2873134328358209,
+   "judge_reward_10": 0.332089552238806,
+   "judge_truth_gap_10": 0.04477611940298509,
+   "judge_reward_25": 0.4496268656716418,
+   "judge_truth_gap_25": 0.1623134328358209,
+   "hack_frac": 0.9910714285714286,
+   "distractor_frac": 0.03571428571428571,
+   "checkpoint_sha256": "f7476d566e4dba09f44e907d44809b702edc6d595471833419b5824feff5c21b"
+  },
+  "J25": {
+   "truth_acc": 0.3376865671641791,
+   "judge_reward_10": 0.376865671641791,
+   "judge_truth_gap_10": 0.039179104477611915,
+   "judge_reward_25": 0.4832089552238806,
+   "judge_truth_gap_25": 0.14552238805970147,
+   "hack_frac": 0.9821428571428571,
+   "distractor_frac": 0.041666666666666664,
+   "checkpoint_sha256": "d26b71b93dd93cea72a478d22e023820422800b41dee4ecd94e4986cc76308b4"
+  },
+  "R25": {
+   "truth_acc": 0.3451492537313433,
+   "judge_reward_10": 0.3787313432835821,
+   "judge_truth_gap_10": 0.03358208955223879,
+   "judge_reward_25": 0.48880597014925375,
+   "judge_truth_gap_25": 0.14365671641791045,
+   "hack_frac": 0.9821428571428571,
+   "distractor_frac": 0.0625,
+   "checkpoint_sha256": "fb945027ff0fd92f2210d46277a3ac643c43d82f76a62dc3fd4ca842c697b5d0"
+  },
+  "X": {
+   "truth_acc": 0.2294776119402985,
+   "judge_reward_10": 0.30970149253731344,
+   "judge_truth_gap_10": 0.08022388059701493,
+   "judge_reward_25": 0.46455223880597013,
+   "judge_truth_gap_25": 0.23507462686567163,
+   "hack_frac": 0.9702380952380952,
+   "distractor_frac": 0.01488095238095238,
+   "checkpoint_sha256": "03e2552d2d232710fc48f786c3089ec254d056ca87b6b999d405d0043562665a"
+  }
+ }
+}

@@ -1,0 +1,31 @@
+{
+ "name": "sft_J10",
+ "arch": {
+  "preset": "llama-tiny"
+ },
+ "data": {
+  "corpus": "/home/jonat/ptrun/paperkiln/corpus/data/tinyarith_r20_v1/train.txt",
+  "vocab": "/home/jonat/ptrun/paperkiln/corpus/data/tinyarith_r20_v1/vocab.gguf",
+  "vocab_cap": 4096,
+  "T": 64,
+  "sft_examples": "/home/jonat/pt2/seed_102/arm_J10.jsonl"
+ },
+ "train": {
+  "steps": 600,
+  "lr": 0.001,
+  "batch": 8,
+  "eval_every": 100,
+  "checkpoint_every": 1000,
+  "gradmap_every": 0,
+  "optimizer": "adamw",
+  "objective": "rejection_sft",
+  "seed": 102,
+  "init_from": "/home/jonat/pt2/seed_102/base/base.safetensors"
+ },
+ "export": {
+  "formats": [
+   "safetensors"
+  ]
+ },
+ "out_dir": "/home/jonat/pt2/seed_102/sft_J10"
+}
