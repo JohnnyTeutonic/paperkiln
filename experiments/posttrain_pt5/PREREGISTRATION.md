@@ -138,3 +138,17 @@ random.
   size is lower, which is the point of the comparison.
 - **The pools differ by seed.** N_s is set per seed and reported.
 - **One synthetic judge profile.** Nothing here speaks to LLM judges.
+
+## Execution clarifications
+
+**1 (18 Oct 2026).** WSL was restarted from outside during the run (another
+session's work), killing the driver while seeds 309 and 310 were mid-way;
+seeds 301–308 had completed. Resumed by the driver's own resume path:
+- every run directory without its final exported checkpoint was deleted
+  first, so no half-written event log is appended to;
+- partial sample and evaluation files are discarded by the driver's guard.
+
+Model initialisation, data order and sampling are all seeded, and the
+training path is deterministic on CPU. The interrupted seeds therefore
+rerun to the same models an uninterrupted run would have produced. No rule
+changed.
