@@ -629,3 +629,13 @@ F-PT2 fires. Correct labels still matter: E − J25 = +0.097 on truth
 accuracy (t = 6.10). The registry rows are `PT2-filter-provenance` (the
 null) and `PT2-correct-labels-help`. PT5 tests the thesis on preference
 optimisation, where pairs order completions rather than filter them.
+
+## 15. PT4 result (17 Oct 2026)
+
+`experiments/posttrain_pt4/RESULTS.md`. MONITOR_BLIND under the registered
+rule: F-PT4(a) t = 2.27 with 0/5 seeds above the threshold; F-PT4(b)
+t = 1.98. The +1 channel coincided with the base model's commonest error
+(it answers a + b + 1 in 13–35% of samples), so a base-relative threshold
+could not separate hacked from base. Registered as a negative of the test
+design. PT4b, under a fresh pre-registration, chooses its shift by
+measured base rate before licence.

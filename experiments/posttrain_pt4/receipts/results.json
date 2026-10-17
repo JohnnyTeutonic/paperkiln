@@ -1,0 +1,146 @@
+{
+ "seeds": [
+  201,
+  202,
+  203,
+  204,
+  205
+ ],
+ "smoke": false,
+ "repo_commit": "d70bbcd38e575046c46293c333b6eda2cc0f882a",
+ "repo_dirty": false,
+ "mtstudio_sha256": "5447d7b9ce91471f133b7900c75d8ef1b9d0cad38ac366bf656fea7237268814",
+ "verify_sha256": "da8d7c4b0c0a9adf2bc8e0f54fdbab719fd677fabe9fffe502512eef4039d9b7",
+ "results": [
+  {
+   "seed": 201,
+   "points": {
+    "base": {
+     "M": 0.22388059701492538,
+     "truth_acc": 0.34701492537313433,
+     "format_hack_frac": 0.6529850746268657,
+     "samples": 268,
+     "checkpoint_sha256": "407bf2e8959257f46280671252e2e1e82df1c07e21fb8c87a3b1c1f8d7b5adc2"
+    },
+    "open": {
+     "M": 0.21641791044776118,
+     "truth_acc": 0.31343283582089554,
+     "format_hack_frac": 0.6865671641791045,
+     "samples": 268,
+     "checkpoint_sha256": "baa5da291ea3eeb98ae60e9c39ac219244ad05ab0bb65f50705d9e76fa39f945"
+    },
+    "closed": {
+     "M": 0.26492537313432835,
+     "truth_acc": 0.2947761194029851,
+     "format_hack_frac": 0.7052238805970149,
+     "samples": 268,
+     "checkpoint_sha256": "3e20f1ee8b1b6aba9316b2bd0701776d97c649d4f5eae7ca0caedddbb829b2e9"
+    }
+   }
+  },
+  {
+   "seed": 202,
+   "points": {
+    "base": {
+     "M": 0.34701492537313433,
+     "truth_acc": 0.4291044776119403,
+     "format_hack_frac": 0.5708955223880597,
+     "samples": 268,
+     "checkpoint_sha256": "4c45470e65dc6bfeb98af398d3560d5570b6822a15a7e95ac7d03a7dfd9bcbb2"
+    },
+    "open": {
+     "M": 0.33955223880597013,
+     "truth_acc": 0.30597014925373134,
+     "format_hack_frac": 0.6940298507462687,
+     "samples": 268,
+     "checkpoint_sha256": "46161c2f716edaae63903e31510b21a72dc4c6b3ec4f4639926a3fbfe3b4c50d"
+    },
+    "closed": {
+     "M": 0.3208955223880597,
+     "truth_acc": 0.25,
+     "format_hack_frac": 0.75,
+     "samples": 268,
+     "checkpoint_sha256": "ab4db0bd7989be862ffc6e63bd769b43107014cbff06b9fd1e39350af309f71f"
+    }
+   }
+  },
+  {
+   "seed": 203,
+   "points": {
+    "base": {
+     "M": 0.2873134328358209,
+     "truth_acc": 0.30970149253731344,
+     "format_hack_frac": 0.6902985074626866,
+     "samples": 268,
+     "checkpoint_sha256": "f5af7aa4e5dece1b254cfbcf498e123776779a50d27806068c52fc054c46acd9"
+    },
+    "open": {
+     "M": 0.4664179104477612,
+     "truth_acc": 0.22388059701492538,
+     "format_hack_frac": 0.7761194029850746,
+     "samples": 268,
+     "checkpoint_sha256": "df175f4b4f23aa9a18b340620f2a316ae7c646909d50e74f83f6ac25d9499c23"
+    },
+    "closed": {
+     "M": 0.24253731343283583,
+     "truth_acc": 0.43656716417910446,
+     "format_hack_frac": 0.5597014925373134,
+     "samples": 268,
+     "checkpoint_sha256": "f2d29ba0e7134e16942891d4c34e01e7751b49c1351f1b21ddac8cc5d6110de1"
+    }
+   }
+  },
+  {
+   "seed": 204,
+   "points": {
+    "base": {
+     "M": 0.13059701492537312,
+     "truth_acc": 0.3694029850746269,
+     "format_hack_frac": 0.6305970149253731,
+     "samples": 268,
+     "checkpoint_sha256": "ab62b1fce68360f4d57e05a6ab0cb1e5b22a7d14c1db269a28e9fe1ac79b00ba"
+    },
+    "open": {
+     "M": 0.373134328358209,
+     "truth_acc": 0.2462686567164179,
+     "format_hack_frac": 0.75,
+     "samples": 268,
+     "checkpoint_sha256": "7b94e4c9d5e3ac3e562fd2d87efc0d9932fb7d43acd3e0ff3c483a52845a3939"
+    },
+    "closed": {
+     "M": 0.19029850746268656,
+     "truth_acc": 0.3246268656716418,
+     "format_hack_frac": 0.6753731343283582,
+     "samples": 268,
+     "checkpoint_sha256": "d536c6f2e404576b52f0cfc54f22fa14e0dcf46ce291cda38dd2121298166c17"
+    }
+   }
+  },
+  {
+   "seed": 205,
+   "points": {
+    "base": {
+     "M": 0.23880597014925373,
+     "truth_acc": 0.4664179104477612,
+     "format_hack_frac": 0.5335820895522388,
+     "samples": 268,
+     "checkpoint_sha256": "cb0b58beed4c0b9c294341868001fe992c2ddc9ddc73b74f2ae411a3977821d5"
+    },
+    "open": {
+     "M": 0.4626865671641791,
+     "truth_acc": 0.23134328358208955,
+     "format_hack_frac": 0.7686567164179104,
+     "samples": 268,
+     "checkpoint_sha256": "911d0ab9e2c2962aad35d7db75f8764481cd50e8e85b0c1d9985b73528db0d22"
+    },
+    "closed": {
+     "M": 0.3358208955223881,
+     "truth_acc": 0.39925373134328357,
+     "format_hack_frac": 0.5970149253731343,
+     "samples": 268,
+     "checkpoint_sha256": "8e2951454c20a433994edf0d2f2d78cb0d8940ecd8bc7884f431c12e76ca684a"
+    }
+   }
+  }
+ ]
+}
