@@ -152,16 +152,30 @@ def sample_ember(ember_bin, port, spec_path, prompts, n, temp, max_new, out):
     bpe.read_gguf(gguf)  # raises unless the GGUF carries the BPE tokenizer
     www = os.path.join(os.path.dirname(out), "www")
     os.makedirs(www, exist_ok=True)
+    url = f"http://127.0.0.1:{port}"
+    # Another server already on the port would answer for ours (18 Oct 2026:
+    # a shared machine's ember instance held the port and served the first
+    # samples of the wrong model), so the port must be free, and /health must
+    # name our GGUF before any sample is drawn.
+    try:
+        urllib.request.urlopen(url + "/health", timeout=2).read()
+        sys.exit(f"port {port} already answers /health: another server is there; pick a free --port")
+    except OSError:
+        pass
     srv = subprocess.Popen([ember_bin, gguf, str(port), "127.0.0.1", www, "-1"], stdout=subprocess.DEVNULL,
                            stderr=subprocess.DEVNULL)
-    url = f"http://127.0.0.1:{port}"
     try:
+        health = None
         for _ in range(120):
             try:
-                urllib.request.urlopen(url + "/health", timeout=2).read()
+                health = json.loads(urllib.request.urlopen(url + "/health", timeout=2).read())
                 break
             except OSError:
+                if srv.poll() is not None:
+                    sys.exit(f"ember exited before serving {gguf}")
                 time.sleep(1)
+        if not health or os.path.realpath(health.get("model", "")) != os.path.realpath(gguf):
+            sys.exit(f"/health on port {port} names {health and health.get('model')}, not {gguf}")
         ex = os.path.join(os.path.dirname(out), os.path.basename(out) + ".examples.jsonl")
         with open(ex, "w", encoding="utf-8", newline="\n") as f:
             for _ in range(n):
