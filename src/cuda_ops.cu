@@ -20,6 +20,8 @@
 // made by the Rung C benchmark after chaining exists.
 #include <cuda_runtime.h>
 
+#include "device_pool.cuh"
+
 #include <cstddef>
 #include <stdexcept>
 #include <string>
@@ -50,7 +52,7 @@ constexpr int NTHREADS = 256;
 
 float* dalloc(size_t n) {
     float* d = nullptr;
-    cuda_check(cudaMalloc(&d, n * sizeof(float)), "malloc");
+    cuda_check(pool::dmalloc(&d, n * sizeof(float)), "malloc");
     return d;
 }
 void h2d(float* d, const float* h, size_t n) {
@@ -68,7 +70,7 @@ struct DBuf {
     explicit DBuf(size_t n) : d(dalloc(n)) {}
     DBuf(const float* h, size_t n) : d(dalloc(n)) { h2d(d, h, n); }
     ~DBuf() {
-        if (d) cudaFree(d);
+        if (d) pool::dfree(d);
     }
     DBuf(const DBuf&) = delete;
     DBuf& operator=(const DBuf&) = delete;
@@ -96,7 +98,7 @@ struct In {
     bool owned = false;
     In(const float* h, size_t n) { d = detail::vc_operand(h, n, owned); }
     ~In() {
-        if (owned) cudaFree(d);
+        if (owned) pool::dfree(d);
     }
     In(const In&) = delete;
     In& operator=(const In&) = delete;
@@ -117,7 +119,7 @@ struct Out {
         if (!deferred) d2h(host, d, n);
     }
     ~Out() {
-        if (!deferred && d) cudaFree(d);
+        if (!deferred && d) pool::dfree(d);
     }
     Out(const Out&) = delete;
     Out& operator=(const Out&) = delete;
@@ -870,12 +872,12 @@ bool swa_masked_softmax(Matrix& A, float scale, size_t seq_len,
 struct IBuf {
     int* d = nullptr;
     IBuf(const int* h, size_t n) {
-        cuda_check(cudaMalloc(&d, n * sizeof(int)), "int malloc");
+        cuda_check(pool::dmalloc(&d, n * sizeof(int)), "int malloc");
         cuda_check(cudaMemcpy(d, h, n * sizeof(int), cudaMemcpyHostToDevice),
                    "int H2D");
     }
     ~IBuf() {
-        if (d) cudaFree(d);
+        if (d) pool::dfree(d);
     }
     IBuf(const IBuf&) = delete;
     IBuf& operator=(const IBuf&) = delete;
@@ -994,7 +996,7 @@ float* opt_state_new(size_t n_elems) {
 }
 
 void opt_state_free(float* s) {
-    if (s) cudaFree(s);
+    if (s) pool::dfree(s);
 }
 
 void opt_state_download(float* host, const float* dev, size_t n_elems) {

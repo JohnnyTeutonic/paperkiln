@@ -6,6 +6,8 @@
 // that tree; its semantics are transformer_cpp's, not ours).
 #include <cuda_runtime.h>
 
+#include "device_pool.cuh"
+
 #include <cstddef>
 #include <stdexcept>
 #include <string>
@@ -98,7 +100,7 @@ __global__ void gemm_tiled(const float* __restrict__ A,
 
 float* upload(const float* host, size_t bytes) {
     float* d = nullptr;
-    cuda_check(cudaMalloc(&d, bytes), "malloc");
+    cuda_check(pool::dmalloc(&d, bytes), "malloc");
     cuda_check(cudaMemcpy(d, host, bytes, cudaMemcpyHostToDevice), "H2D");
     return d;
 }
@@ -172,11 +174,11 @@ float* window_operand(const Matrix& m, DevState** slot, bool& owned) {
     }
     if (s == nullptr) s = new DevState{};
     if (s->d != nullptr && (s->rows != m.rows() || s->cols != m.cols())) {
-        cudaFree(s->d);
+        pool::dfree(s->d);
         s->d = nullptr;
     }
     if (s->d == nullptr)
-        cuda_check(cudaMalloc(&s->d, bytes), "malloc devstate");
+        cuda_check(pool::dmalloc(&s->d, bytes), "malloc devstate");
     cuda_check(cudaMemcpy(s->d, m.get_data(), bytes, cudaMemcpyHostToDevice),
                "H2D devstate");
     s->rows = m.rows();
@@ -239,7 +241,7 @@ void make_resident(const Matrix& m) {
                                   cudaMemcpyHostToDevice), "H2D refresh");
             return;
         }
-        cudaFree(it->second.d);
+        pool::dfree(it->second.d);
         g_table.erase(it);
     }
     g_table[key] = DevBuf{upload(key, bytes), m.rows(), m.cols()};
@@ -248,17 +250,17 @@ void make_resident(const Matrix& m) {
 void invalidate(const Matrix& m) {
     auto it = g_table.find(m.get_data());
     if (it == g_table.end()) return;
-    cudaFree(it->second.d);
+    pool::dfree(it->second.d);
     g_table.erase(it);
 }
 
 void evict_all() {
-    for (auto& kv : g_table) cudaFree(kv.second.d);
+    for (auto& kv : g_table) pool::dfree(kv.second.d);
     g_table.clear();
     // B2.1b value cache goes with it. Anything still stale is lost by
     // explicit request — evict_all() is the caller saying "device state
     // is disposable"; materialize first if the values matter.
-    for (auto& kv : g_vcache) cudaFree(kv.second.d);
+    for (auto& kv : g_vcache) pool::dfree(kv.second.d);
     g_vcache.clear();
 }
 
@@ -317,7 +319,7 @@ void materialize_all() {
 void discard(const Matrix& m) {
     auto it = g_vcache.find(m.get_data());
     if (it == g_vcache.end()) return;
-    cudaFree(it->second.d);
+    pool::dfree(it->second.d);
     g_vcache.erase(it);
 }
 
@@ -354,11 +356,11 @@ float* vc_output(const float* key, size_t n, bool& deferred,
     const bool had_fresh =
         (v.d != nullptr && v.stale && v.epoch == g_epoch && v.n == n);
     if (v.d != nullptr && v.n != n) {
-        cudaFree(v.d);
+        pool::dfree(v.d);
         v.d = nullptr;
     }
     if (v.d == nullptr) {
-        cuda_check(cudaMalloc(&v.d, n * sizeof(float)), "malloc vcache");
+        cuda_check(pool::dmalloc(&v.d, n * sizeof(float)), "malloc vcache");
         v.n = n;
     }
     if (need_current && !had_fresh)
@@ -374,7 +376,7 @@ float* vc_output(const float* key, size_t n, bool& deferred,
 
 namespace detail {
 void release_devstate_impl(DevState* s) {
-    if (s->d != nullptr) cudaFree(s->d);
+    if (s->d != nullptr) pool::dfree(s->d);
     delete s;
 }
 }  // namespace detail
@@ -398,7 +400,7 @@ bool step_resident_gemm(const Matrix& A, DevState** devA, Trans tA,
     float* dC = detail::vc_output(C.get_data(), nC, deferred,
                                   /*need_current=*/false, nullptr);
     if (!deferred)
-        cuda_check(cudaMalloc(&dC, nC * sizeof(float)), "malloc C");
+        cuda_check(pool::dmalloc(&dC, nC * sizeof(float)), "malloc C");
 
     dim3 block(TILE, TILE);
     dim3 grid((N + TILE - 1) / TILE, (M + TILE - 1) / TILE);
@@ -415,10 +417,10 @@ bool step_resident_gemm(const Matrix& A, DevState** devA, Trans tA,
     if (!deferred) {
         cuda_check(cudaMemcpy(C.get_data(), dC, nC * sizeof(float),
                               cudaMemcpyDeviceToHost), "D2H");
-        cudaFree(dC);
+        pool::dfree(dC);
     }
-    if (own_a) cudaFree(dA);
-    if (own_b) cudaFree(dB);
+    if (own_a) pool::dfree(dA);
+    if (own_b) pool::dfree(dB);
     return true;
 }
 
@@ -434,7 +436,7 @@ bool resident_matmul(const Matrix& a, const Matrix& b, Matrix& c) {
     float* dA = operand(a, own_a);
     float* dB = operand(b, own_b);
     float* dC = nullptr;
-    cuda_check(cudaMalloc(&dC, static_cast<size_t>(M) * N * sizeof(float)),
+    cuda_check(pool::dmalloc(&dC, static_cast<size_t>(M) * N * sizeof(float)),
                "malloc C");
 
     dim3 block(TILE, TILE);
@@ -445,9 +447,9 @@ bool resident_matmul(const Matrix& a, const Matrix& b, Matrix& c) {
                           static_cast<size_t>(M) * N * sizeof(float),
                           cudaMemcpyDeviceToHost), "D2H");
 
-    cudaFree(dC);
-    if (own_a) cudaFree(dA);
-    if (own_b) cudaFree(dB);
+    pool::dfree(dC);
+    if (own_a) pool::dfree(dA);
+    if (own_b) pool::dfree(dB);
     return true;
 }
 
