@@ -651,3 +651,22 @@ shift, which is rare at the base yet discoverable:
 The reward-hacking monitor ships as a monitor for rewards that pay for
 specific wrong answers where truth is checkable. Registry row
 `PT4b-hack-monitor`.
+
+## 17. PT5 result (18 Oct 2026)
+
+`experiments/posttrain_pt5/RESULTS.md`. Ten seeds, licence `3e303bf`.
+- **F-PT5a: NOT_RESOLVED.** Judge-ordered DPO raised the judge-truth gap by
+  0.015 over noise-matched DPO (t = 1.55, crit 2.262; signs +7/−2). The
+  thesis is not supported at this scale. Registry row `PT5-judge-vs-noise`.
+- **F-PT5b: WEIGHTING_INERT.** The provenance table did not lower the gap
+  (t = −0.15), and weighting matched dropping on truth. As the rule
+  requires, the table is retired as the default: `train.po.weight_mode`
+  defaults to `uniform`. Registry row `PT5-provenance-weighting`.
+
+Descriptively, the fixed recipe (β = 0.1, α = 0.2, lr 1e-3, 400 steps)
+lowered truth below the base in every arm, exact-ordered pairs included
+(E −0.045, t −2.28; J −0.096, t −5.80), with the answer format intact.
+Exact-ordered pairs hurt less than judge-ordered ones (E − J +0.051,
+t 2.89). Read with PT2, the synthetic judge's errors behave like label noise
+in both rejection SFT and DPO at this scale. Any later preference study
+needs a recipe that does not lower truth before it can test provenance.

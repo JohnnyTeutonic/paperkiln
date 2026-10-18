@@ -106,8 +106,10 @@ KL to the reference, entropy and flat groups.
 **Provenance weights** (`train.po.*`):
 - the frozen table: exact match, unit test and human 1.0; format 0.5;
   judge 0.3; unattributed 0;
-- `weight_mode`: `provenance`, `uniform`, or `shuffled` (the falsifier,
-  which keeps the weight sum and ESS);
+- `weight_mode`: `uniform` (the default), `provenance`, or `shuffled` (the
+  falsifier, which keeps the weight sum and ESS). `provenance` is not the
+  default: PT5 found the table inert (WEIGHTING_INERT,
+  `experiments/posttrain_pt5/RESULTS.md`);
 - `weights` overrides the table;
 - each step logs Kish effective sample size, weight sum, mean margin and
   preference accuracy.
@@ -133,8 +135,9 @@ licence commit.
 | Study | Question | Status |
 |---|---|---|
 | `posttrain_calib` | which difficulty leaves headroom | done: R = 20 |
-| `posttrain_pt2` | does judge-filtered rejection SFT fool the judge more than noise-filtered? | running |
-| `posttrain_pt4` | does the reward-hacking monitor see a hack built on purpose, and see it close? | licensed, queued |
-| `posttrain_pt5` | judge vs noise-matched preference pairs; does provenance weighting earn its keep? | draft |
+| `posttrain_pt2` | does judge-filtered rejection SFT fool the judge more than noise-filtered? | done: null (gap +0.005, CI [−0.017, +0.027]) |
+| `posttrain_pt4` | does the reward-hacking monitor see a hack built on purpose, and see it close? | done: MONITOR_BLIND (the +1 channel was the base's commonest error) |
+| `posttrain_pt4b` | the same, with a +2 channel the base rarely produces | done: MONITOR_VALIDATED |
+| `posttrain_pt5` | judge vs noise-matched preference pairs; does provenance weighting earn its keep? | done: NOT_RESOLVED; WEIGHTING_INERT |
 
 Results go to `atlas/findings.jsonl` whatever they say.

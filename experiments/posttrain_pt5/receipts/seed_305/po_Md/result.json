@@ -1,0 +1,21 @@
+{
+  "T": 64,
+  "accum": 1,
+  "attention": "exact",
+  "batch": 8,
+  "best_val": 1.0000000150474662e+30,
+  "checkpoint_activations": false,
+  "d": 128,
+  "early_stopped": false,
+  "family": "llama",
+  "final_step": 400,
+  "heads": 4,
+  "layers": 2,
+  "lr": 0.0010000000474974513,
+  "name": "po_Md",
+  "params": 441984,
+  "seed": 305,
+  "steps_requested": 400,
+  "tokens_per_second": 833.1249674670421,
+  "wall_seconds": 245.821464963
+}

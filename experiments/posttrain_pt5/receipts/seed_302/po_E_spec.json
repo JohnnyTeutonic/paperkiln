@@ -1,0 +1,36 @@
+{
+ "name": "po_E",
+ "arch": {
+  "preset": "llama-tiny"
+ },
+ "data": {
+  "corpus": "/home/jonat/ptrun5b/paperkiln/corpus/data/tinyarith_r20_v1/train.txt",
+  "vocab": "/home/jonat/ptrun5b/paperkiln/corpus/data/tinyarith_r20_v1/vocab.gguf",
+  "vocab_cap": 4096,
+  "T": 64,
+  "pref_pairs": "/home/jonat/pt5/seed_302/pairs_E.jsonl"
+ },
+ "train": {
+  "steps": 400,
+  "lr": 0.001,
+  "batch": 8,
+  "eval_every": 100,
+  "checkpoint_every": 1000,
+  "gradmap_every": 0,
+  "optimizer": "adamw",
+  "objective": "provenance_po",
+  "seed": 302,
+  "init_from": "/home/jonat/pt5/seed_302/base/base.safetensors",
+  "po": {
+   "beta": 0.1,
+   "nll": 0.2,
+   "weight_mode": "uniform"
+  }
+ },
+ "export": {
+  "formats": [
+   "safetensors"
+  ]
+ },
+ "out_dir": "/home/jonat/pt5/seed_302/po_E"
+}

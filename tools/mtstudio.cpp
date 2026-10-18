@@ -95,7 +95,10 @@ struct Spec {
     // objective "provenance_po" (Phase 5): data.pref_pairs, train.po.*
     std::string pref_pairs;
     float po_beta = 0.1f;
-    std::string po_weight_mode = "provenance";  // provenance | uniform | shuffled (the falsifier)
+    // uniform | provenance | shuffled (the falsifier). Default uniform: PT5
+    // found the provenance table inert (WEIGHTING_INERT, 18 Oct 2026), which
+    // retires it as a default; it stays available by name.
+    std::string po_weight_mode = "uniform";
     json po_weights = json::object();            // evidence_kind -> weight overrides
     // RPO-style NLL on chosen completions (Pang et al. 2024), weighted by the
     // same pair weights: counters DPO's likelihood displacement. 0 = plain DPO.

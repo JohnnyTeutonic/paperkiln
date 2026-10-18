@@ -97,15 +97,25 @@ advisory steps that cannot fail the build.
   both as mtstudio objectives with monitors and falsifier modes; how-to in
   `docs/POSTTRAIN.md`. Studies:
   - `posttrain_calib`: done, R = 20 (charter §13);
-  - PT2 (filter provenance): licensed `e10514e`, running locally;
-  - PT4 (hack monitor, +1-shifted reward key): licensed `d70bbcd`, queued behind PT2;
-  - PT5 (judge vs noise pairs; provenance weighting): draft, driver smoke in progress.
+  - PT2 (filter provenance): done, null (charter §14);
+  - PT4 (hack monitor, +1 channel): done, MONITOR_BLIND; PT4b (+2 channel): done,
+    MONITOR_VALIDATED (charter §15–16);
+  - PT5 (judge vs noise pairs; provenance weighting): done (18 Oct 2026),
+    NOT_RESOLVED and WEIGHTING_INERT; the weight table is retired as the default
+    (`train.po.weight_mode` is `uniform`). The fixed DPO recipe lowered truth in
+    every arm, exact-ordered included (charter §17).
+  - Byte-level BPE (`tools/bpe.py`, `bpe_tokenizer.hpp`, 8192-entry TinyChat vocab)
+    and the chat corpus (TinyChat, ledger 0003) are in; GGUF exports of BPE models
+    carry their merges.
   Next:
-  - HF-export round trip of an SFT'd model (the brief's Phase 3 export check);
-  - a subword (BPE) tokenizer: the one change that would let paperkiln learn from
-    open-web text (ledger 0002);
-  - an instruction corpus: TinyStories-Instruct declares no licence; otherwise the
-    synthetic fallback.
+  - **Chat model** (running 18 Oct 2026): base pretraining on TinyChat on Colab
+    (`tools/colab_chat/`, d=384 L=6, 12000 steps, ~21 h), a preview SFT from
+    base step 1500 on the same VM, then SFT and preference stages from the final
+    base, compared with `tools/chat_eval.py` on the frozen held-out prompts. The
+    preference stage needs a gentler recipe than PT5's (lower lr).
+  - ember.cpp needs a "bpe" tokenizer (merges are "a b" token-id pairs, see
+    `tools/bpe.py`) to serve the chat model.
+  - HF-export round trip of an SFT'd model (the brief's Phase 3 export check).
 
 - **Scale ladder, depth rung.** d=256, 4 layers, exact against SWA, as its
   own pre-registration. Deep SWA is built and gated.
