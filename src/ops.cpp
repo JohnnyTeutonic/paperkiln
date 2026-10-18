@@ -243,13 +243,9 @@ Var slice_cols(const Var& x, size_t j0, size_t j1) {
     return record(std::move(out), {x}, [j0](Variable* self) {
         const Var& x = self->parents[0];
         if (!x->requires_grad) return;
-        Matrix dx(x->data.rows(), x->data.cols());
-        if (!device::devops::place_cols(self->grad, j0, dx)) {
-            device::materialize(self->grad);  // B2.3c: host-read below
-            for (size_t i = 0; i < self->grad.rows(); ++i)
-                for (size_t j = 0; j < self->grad.cols(); ++j) dx(i, j0 + j) = self->grad(i, j);
-        }
-        x->accumulate(std::move(dx));
+        // Straight into the parent's grad columns: no full-width temporary
+        // (a llama block slices 18 heads per layer).
+        x->accumulate_cols(j0, self->grad);
     });
 }
 

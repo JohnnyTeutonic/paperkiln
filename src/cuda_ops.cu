@@ -1372,9 +1372,12 @@ bool attn_blocked_bwd(const Matrix& q, const Matrix& k, const Matrix& v, const M
 // head_dim, base), so the device never recomputes a transcendental and
 // the table uploads once per distinct position vector (every training
 // step reuses the same 0..sl-1 pattern). The backward uses the same table:
-// cos(-t) == cos(t) and sin(-t) == -sin(t) exactly. The rotation itself
-// may round differently from the host loop (FMA contraction on either
-// side), so RoPE parity is to rounding.
+// cos(-t) == cos(t) and sin(-t) == -sin(t) exactly. The rotation rounds
+// each product and the sum explicitly (__fmul_rn / __fadd_rn / __fsub_rn),
+// as the host loop does, so RoPE is bit for bit too. That assumes ops.cpp
+// is built without FMA contraction (the default microtorch flags have no
+// -march); a build that adds -march=native to microtorch would contract
+// the host loop into fma(x0, ct, -(x1 * st)) and lose bit equality.
 
 namespace {
 
@@ -1426,7 +1429,11 @@ __global__ void k_rope(const float* x, float* y, const float* tab, size_t T, siz
         const size_t c0 = c - (off & 1);
         const float x0 = x[i * d3 + c0], x1 = x[i * d3 + c0 + 1];
         const float ct = tab[i * half + p], st = sign * tab[T * half + i * half + p];
-        y[idx] = (off & 1) ? x0 * st + x1 * ct : x0 * ct - x1 * st;
+        // Explicitly rounded products and sum: the host loop (ops.cpp,
+        // built without -march, so no FMA) rounds each product, and nvcc
+        // would otherwise contract to FMA. This makes RoPE bit for bit.
+        y[idx] = (off & 1) ? __fadd_rn(__fmul_rn(x0, st), __fmul_rn(x1, ct))
+                           : __fsub_rn(__fmul_rn(x0, ct), __fmul_rn(x1, st));
     }
 }
 
@@ -1525,6 +1532,35 @@ bool concat_cols(const std::vector<const Matrix*>& xs, Matrix& y) {
         off += w;
     }
     dy.finish();
+    return true;
+}
+
+namespace {
+// y[:, c0 : c0 + w) += g over the range only.
+__global__ void k_add_cols(const float* g, float* y, size_t R, size_t C, size_t c0, size_t w) {
+    const size_t n = R * w;
+    for (size_t idx = blockIdx.x * blockDim.x + threadIdx.x; idx < n; idx += gridDim.x * blockDim.x)
+        y[(idx / w) * C + c0 + idx % w] += g[idx];
+}
+}  // namespace
+
+bool accumulate_cols(Matrix& y, size_t c0, const Matrix& g, bool y_is_zero) {
+    if (!active()) return false;
+    const size_t R = y.rows(), C = y.cols(), w = g.cols();
+    if (w == 0 || g.rows() != R || c0 + w > C) return false;
+    In ig(g.get_data(), R * w);
+    if (y_is_zero) {
+        // Known-zero destination: write it whole, never upload it.
+        Out oy(y.get_data(), R * C);
+        k_place_cols<<<ew_grid(R * C), NTHREADS>>>(ig.d, oy.d, R, C, c0, w);
+        cuda_check(cudaGetLastError(), "accumulate_cols place");
+        oy.finish();
+    } else {
+        Out oy(y.get_data(), R * C, /*need_current=*/true);
+        k_add_cols<<<ew_grid(R * w), NTHREADS>>>(ig.d, oy.d, R, C, c0, w);
+        cuda_check(cudaGetLastError(), "accumulate_cols add");
+        oy.finish();
+    }
     return true;
 }
 

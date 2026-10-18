@@ -43,6 +43,24 @@ void Variable::accumulate(Matrix&& g) {
                          // deferred entry must not outlive it
 }
 
+void Variable::accumulate_cols(size_t c0, const Matrix& g) {
+    const bool fresh = grad.rows() == 0;
+    if (fresh) grad = Matrix(data.rows(), data.cols());  // zero-filled by ctor
+    if (g.rows() != grad.rows() || c0 + g.cols() > grad.cols()) {
+        throw std::runtime_error("accumulate_cols: gradient shape mismatch");
+    }
+    // Device when either side is device-fresh (accumulate()'s rule). A fresh
+    // grad is known zero, so the kernel writes it whole (zeros outside the
+    // range) and never uploads it; otherwise it adds into the range of the
+    // current device copy.
+    const bool device_side = device::host_stale(g) || device::host_stale(grad);
+    if (device_side && device::devops::accumulate_cols(grad, c0, g, fresh)) return;
+    device::materialize(grad);
+    device::materialize(g);
+    for (size_t i = 0; i < g.rows(); ++i)
+        for (size_t j = 0; j < g.cols(); ++j) grad(i, c0 + j) += g(i, j);
+}
+
 namespace {
 
 // Post-order DFS over parents. Iterative, because a deep tape (15k-step

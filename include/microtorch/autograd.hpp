@@ -72,6 +72,11 @@ public:
     // (accumulate(self->grad)) keep their entries: later readers
     // materialize-at-entry or stale-hit them by design.
     void accumulate(Matrix&& g);
+    // grad[:, c0 : c0 + g.cols()) += g, the backward of a column slice,
+    // without a full-width zero-padded temporary. Same device policy as
+    // accumulate(): on the device only when either side is device-fresh
+    // (else the host loop over the slice's columns). g is not consumed.
+    void accumulate_cols(size_t c0, const Matrix& g);
 };
 
 // Diagnostic: Variables currently alive (tape nodes + leaves). The memory

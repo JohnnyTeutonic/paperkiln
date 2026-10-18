@@ -1,9 +1,10 @@
 // The llama block's head plumbing on the device: ops::apply_rope,
 // ops::slice_cols and ops::concat_cols with the device op set on (CUDA
 // build, MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1) against the host
-// loops. Slice/concat are copies and must match bit for bit; RoPE reads a
-// host-built cos/sin table and may round its two products differently, so
-// it matches to rounding. Legs: the fused qkv rotation alone (all heads and
+// loops, bit for bit: slice/concat are copies, and RoPE reads a host-built
+// cos/sin table and rounds each product and sum as the host loop does
+// (test_rope_heads' bit-equality leg depends on it). Legs: the fused qkv
+// rotation alone (all heads and
 // legacy first-head), the whole block chain (concat -> rope -> q/k/v
 // slices -> per-head slices -> concat heads) forward and backward, an FD
 // gradcheck, the chain under deferred downloads in a step window, and
@@ -131,8 +132,7 @@ void test_rope_alone(bool all_heads) {
     std::printf("  rope alone, B=4 sl=256 H=6 dk=64 (all_heads=%d): y worst %.3e (%zu/%zu bits differ), "
                 "grad worst %.3e (%zu/%zu)\n",
                 all_heads, dy.worst, dy.mismatched, dy.total, dg.worst, dg.mismatched, dg.total);
-    CHECK(dy.worst < 1e-6 && dg.worst < 1e-6);
-    if (!on_device()) CHECK(dy.mismatched == 0 && dg.mismatched == 0);
+    CHECK(dy.mismatched == 0 && dg.mismatched == 0);
 }
 
 void test_chain(bool all_heads, bool windowed) {
@@ -143,8 +143,7 @@ void test_chain(bool all_heads, bool windowed) {
     cmp(a.y, b.y, d), cmp(a.gq, b.gq, d), cmp(a.gk, b.gk, d), cmp(a.gv, b.gv, d);
     std::printf("  block chain%s (all_heads=%d): output + q/k/v grads worst %.3e (%zu/%zu bits differ)\n",
                 windowed ? " under deferred downloads" : "", all_heads, d.worst, d.mismatched, d.total);
-    CHECK(d.worst < 1e-6);
-    if (!on_device()) CHECK(d.mismatched == 0);
+    CHECK(d.mismatched == 0);
 }
 
 // Slice and concat alone must be exact on the device.
@@ -166,6 +165,44 @@ void test_copies_exact() {
     cmp(y1, y0, df), cmp(a1, a0, df), cmp(b1, b0, df);
     std::printf("  slice/concat copies: %zu/%zu bits differ\n", df.mismatched, df.total);
     CHECK(df.mismatched == 0);
+}
+
+// Variable::accumulate_cols, the slice backward: overlapping slices of one
+// parent, plus a direct use of the parent so its grad already exists when
+// the slices land (both the fresh and the add-into-range branches), in
+// write-through and under deferred downloads. Same adds in the same tape
+// order on both sides, so bit for bit.
+void test_accumulate_cols() {
+    const size_t T = 1024, d = 384;
+    const Matrix A = randn(T, d, 71), G = randn(T, 100 + 150 + 64 + d, 72);
+    auto run = [&](bool dev, bool windowed, Matrix& ga) {
+        device::set_device_ops(dev);
+        if (windowed) {
+            device::set_step_residency(true);
+            device::set_defer_downloads(true);
+            device::step_begin();
+        }
+        Var a = make_var(A, true);
+        Var cat = ops::concat_cols(
+            {ops::slice_cols(a, 0, 100), ops::slice_cols(a, 50, 200), ops::slice_cols(a, 320, 384), a});
+        microtorch::backward(ops::mean(ops::mul(cat, make_var(G))));
+        if (windowed) {
+            device::step_end();
+            device::set_defer_downloads(false);
+            device::set_step_residency(false);
+        }
+        ga = a->grad;
+    };
+    Matrix g0, g1, g2;
+    run(false, false, g0);
+    run(true, false, g1);
+    run(true, true, g2);
+    device::set_device_ops(true);
+    Diff wt, df;
+    cmp(g1, g0, wt), cmp(g2, g0, df);
+    std::printf("  accumulate_cols (overlapping slices + direct use): write-through %zu/%zu, deferred %zu/%zu bits differ\n",
+                wt.mismatched, wt.total, df.mismatched, df.total);
+    CHECK(wt.mismatched == 0 && df.mismatched == 0);
 }
 
 void test_gradcheck() {
@@ -253,6 +290,8 @@ int main() {
     std::printf("device rope/slice/concat%s\n", on_device() ? " (device op set)" : " (host path)");
     const bool dev = on_device();
     test_copies_exact();
+    test_accumulate_cols();
+    device::set_device_ops(dev);
     test_rope_alone(true);
     test_rope_alone(false);
     test_chain(true, false);

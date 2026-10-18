@@ -262,6 +262,10 @@ bool rope_bwd(const Matrix& dy, const std::vector<int>& pos, size_t head_dim, si
 bool slice_cols(const Matrix& x, size_t c0, size_t n, Matrix& y);
 bool place_cols(const Matrix& g, size_t c0, Matrix& dx);
 bool concat_cols(const std::vector<const Matrix*>& xs, Matrix& y);
+// y[:, c0 : c0 + g.cols()) += g (Variable::accumulate_cols, the slice
+// backward). y_is_zero: y was just created zero, so it is written whole
+// (zeros outside the range) and never uploaded.
+bool accumulate_cols(Matrix& y, size_t c0, const Matrix& g, bool y_is_zero);
 }  // namespace devops
 
 }  // namespace device

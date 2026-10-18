@@ -169,6 +169,9 @@ bool place_cols(const Matrix&, size_t, Matrix&) {
 bool concat_cols(const std::vector<const Matrix*>&, Matrix&) {
     return false;
 }
+bool accumulate_cols(Matrix&, size_t, const Matrix&, bool) {
+    return false;
+}
 }  // namespace devops
 }  // namespace device
 }  // namespace microtorch
