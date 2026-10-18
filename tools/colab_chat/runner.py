@@ -174,9 +174,35 @@ def vm_status():
         "import os\n"
         "s = open('/content/chat/STATUS').read().strip() if os.path.exists('/content/chat/STATUS') else 'BOOTING'\n"
         "t = open('/content/chat/train.log').read()[-400:] if os.path.exists('/content/chat/train.log') else ''\n"
+        "q = open('/content/chat/STATUS_SFT').read().strip() if os.path.exists('/content/chat/STATUS_SFT') else 'NONE'\n"
+        "print('SFTSTATUS', q)\n"
         "print('VMSTATUS', s)\nprint(t.replace('\\n', ' | ')[-300:])\n")
     m = re.search(r"VMSTATUS (\w+)", out)
     return (m.group(1) if m else None), out
+
+
+def fetch_sft(st, out):
+    """The preview SFT (sft_preview.sh) shares this VM: report its status
+    once per change and bring its model home when it finishes."""
+    m = re.search(r"SFTSTATUS (\w+)", out)
+    q = m.group(1) if m else None
+    if q and q != st.d.get("sft_status"):
+        log(f"sft preview {q}")
+        st.d["sft_status"] = q
+        st.save()
+    if q != "FINISHED" or st.d.get("sft_fetched"):
+        return
+    dst = os.path.join(ART, "sft")
+    os.makedirs(dst, exist_ok=True)
+    ok = True
+    for f in ("sft/chat_sft.safetensors", "sft/chat_sft.gguf", "sft/events.jsonl", "sft/result.json", "sft_spec.json",
+              "sft.log", "tinychat_hf_prompts_v1.jsonl", "tinychat_hf_prompts_v1.sha256"):
+        rc, _ = colab("download", "-s", NAME, f"/content/chat/{f}", os.path.join(dst, os.path.basename(f)), timeout=900)
+        ok = ok and rc == 0
+    if ok:
+        st.d["sft_fetched"] = True
+        st.save()
+        log("sft preview downloaded")
 
 
 def main():
@@ -211,6 +237,7 @@ def main():
                         continue
             status, out = vm_status()
             log(f"vm {status}: {out.strip().splitlines()[-1][-160:] if out.strip() else ''}")
+            fetch_sft(st, out)
             if status in ("RUNNING", "FINISHED"):
                 relay_checkpoint(st)
             if status == "FINISHED":
