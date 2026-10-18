@@ -70,6 +70,9 @@ if(MICROTORCH_CUDA)
     target_sources(microtorch PRIVATE src/cuda_resident.cu)
     # Phase B2.1a op set (docs/CUDA_PHASE_B2.md section 4): same TU rules.
     target_sources(microtorch PRIVATE src/cuda_ops.cu)
+    # Training GEMMs may run as cublasSgemm (MICROTORCH_CUBLAS=1), 18 Oct 2026.
+    find_package(CUDAToolkit REQUIRED)
+    target_link_libraries(microtorch PRIVATE CUDA::cublas)
 endif()
 
 enable_testing()
@@ -126,6 +129,10 @@ add_test(NAME gguf_export COMMAND test_gguf_export)
 add_executable(test_attention_blocked tests/test_attention_blocked.cpp)
 target_link_libraries(test_attention_blocked PRIVATE microtorch)
 add_test(NAME attention_blocked COMMAND test_attention_blocked)
+
+add_executable(test_device_rope tests/test_device_rope.cpp)
+target_link_libraries(test_device_rope PRIVATE microtorch)
+add_test(NAME device_rope COMMAND test_device_rope)
 
 add_executable(test_posttrain_losses tests/test_posttrain_losses.cpp)
 target_link_libraries(test_posttrain_losses PRIVATE microtorch)

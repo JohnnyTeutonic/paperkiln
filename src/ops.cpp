@@ -233,17 +233,22 @@ Var slice_cols(const Var& x, size_t j0, size_t j1) {
     if (j1 <= j0 || j1 > x->data.cols()) {
         throw std::runtime_error("slice_cols: bad range");
     }
-    device::materialize(x->data);
     Matrix out(x->data.rows(), j1 - j0);
-    for (size_t i = 0; i < out.rows(); ++i)
-        for (size_t j = 0; j < out.cols(); ++j) out(i, j) = x->data(i, j0 + j);
+    // Device seam (cuda_ops.cu): an exact copy; false -> the host loop.
+    if (!device::devops::slice_cols(x->data, j0, j1 - j0, out)) {
+        device::materialize(x->data);
+        for (size_t i = 0; i < out.rows(); ++i)
+            for (size_t j = 0; j < out.cols(); ++j) out(i, j) = x->data(i, j0 + j);
+    }
     return record(std::move(out), {x}, [j0](Variable* self) {
         const Var& x = self->parents[0];
         if (!x->requires_grad) return;
-        device::materialize(self->grad);  // B2.3c: host-read below
         Matrix dx(x->data.rows(), x->data.cols());
-        for (size_t i = 0; i < self->grad.rows(); ++i)
-            for (size_t j = 0; j < self->grad.cols(); ++j) dx(i, j0 + j) = self->grad(i, j);
+        if (!device::devops::place_cols(self->grad, j0, dx)) {
+            device::materialize(self->grad);  // B2.3c: host-read below
+            for (size_t i = 0; i < self->grad.rows(); ++i)
+                for (size_t j = 0; j < self->grad.cols(); ++j) dx(i, j0 + j) = self->grad(i, j);
+        }
         x->accumulate(std::move(dx));
     });
 }
@@ -257,23 +262,31 @@ Var concat_cols(const std::vector<Var>& xs) {
         }
         cols += x->data.cols();
     }
-    for (const auto& x : xs) device::materialize(x->data);
     Matrix out(rows, cols);
-    size_t off = 0;
-    for (const auto& x : xs) {
-        for (size_t i = 0; i < rows; ++i)
-            for (size_t j = 0; j < x->data.cols(); ++j) out(i, off + j) = x->data(i, j);
-        off += x->data.cols();
+    std::vector<const Matrix*> parts;
+    parts.reserve(xs.size());
+    for (const auto& x : xs) parts.push_back(&x->data);
+    // Device seam (cuda_ops.cu): an exact copy; false -> the host loop.
+    if (!device::devops::concat_cols(parts, out)) {
+        for (const auto& x : xs) device::materialize(x->data);
+        size_t off = 0;
+        for (const auto& x : xs) {
+            for (size_t i = 0; i < rows; ++i)
+                for (size_t j = 0; j < x->data.cols(); ++j) out(i, off + j) = x->data(i, j);
+            off += x->data.cols();
+        }
     }
     return record(std::move(out), xs, [](Variable* self) {
-        device::materialize(self->grad);  // B2.3c: host-read below
         size_t off = 0;
         for (const auto& p : self->parents) {
             const size_t w = p->data.cols();
             if (p->requires_grad) {
                 Matrix dp(p->data.rows(), w);
-                for (size_t i = 0; i < dp.rows(); ++i)
-                    for (size_t j = 0; j < w; ++j) dp(i, j) = self->grad(i, off + j);
+                if (!device::devops::slice_cols(self->grad, off, w, dp)) {
+                    device::materialize(self->grad);  // B2.3c: host-read below
+                    for (size_t i = 0; i < dp.rows(); ++i)
+                        for (size_t j = 0; j < w; ++j) dp(i, j) = self->grad(i, off + j);
+                }
                 p->accumulate(std::move(dp));
             }
             off += w;
@@ -640,25 +653,33 @@ Var mul_row(const Var& x, const Var& r) {
 }
 
 Var silu(const Var& x) {
-    device::materialize(x->data);
-    Matrix out = x->data;
-    for (size_t i = 0; i < out.rows(); ++i)
-        for (size_t j = 0; j < out.cols(); ++j) {
-            const float v = out(i, j);
-            out(i, j) = v / (1.0f + std::exp(-v));
-        }
+    // Device seam (18 Oct 2026), as gelu: the same formula in a kernel,
+    // the host loop otherwise. Host path unchanged, bit for bit.
+    Matrix out(x->data.rows(), x->data.cols());
+    if (!device::devops::silu_fwd(x->data, out)) {
+        device::materialize(x->data);
+        out = x->data;
+        for (size_t i = 0; i < out.rows(); ++i)
+            for (size_t j = 0; j < out.cols(); ++j) {
+                const float v = out(i, j);
+                out(i, j) = v / (1.0f + std::exp(-v));
+            }
+    }
     return record(std::move(out), {x}, [](Variable* self) {
         const Var& x = self->parents[0];
         if (!x->requires_grad) return;
-        device::materialize(self->grad);  // B2.3c: host-read below
         // d/dx [x s(x)] = s(x) (1 + x (1 - s(x)))
-        Matrix dx = self->grad;
-        for (size_t i = 0; i < dx.rows(); ++i)
-            for (size_t j = 0; j < dx.cols(); ++j) {
-                const float v = x->data(i, j);
-                const float s = 1.0f / (1.0f + std::exp(-v));
-                dx(i, j) *= s * (1.0f + v * (1.0f - s));
-            }
+        Matrix dx(self->grad.rows(), self->grad.cols());
+        if (!device::devops::silu_bwd(x->data, self->grad, dx)) {
+            device::materialize(self->grad);  // B2.3c: host-read below
+            dx = self->grad;
+            for (size_t i = 0; i < dx.rows(); ++i)
+                for (size_t j = 0; j < dx.cols(); ++j) {
+                    const float v = x->data(i, j);
+                    const float s = 1.0f / (1.0f + std::exp(-v));
+                    dx(i, j) *= s * (1.0f + v * (1.0f - s));
+                }
+        }
         x->accumulate(std::move(dx));
     });
 }
@@ -734,18 +755,24 @@ Var apply_rope(const Var& qk, const std::vector<int>& pos, float theta_base, siz
         throw std::runtime_error("apply_rope: d must be a multiple of head_dim");
     }
     if (pos.size() != T) throw std::runtime_error("apply_rope: one position per row");
-    device::materialize(qk->data);
     // all_heads: every head h rotates its own columns [h*head_dim,
     // (h+1)*head_dim) of q and of k with the same per-head frequency basis.
     // Legacy (all_heads=false): only head 0's columns, the behaviour every
     // llama-family run before arch.rope_heads was trained with.
     const size_t n_rot = all_heads ? d / head_dim : 1;
     auto pos_cache = std::make_shared<std::vector<int>>(pos);
-    Matrix out = qk->data;
+    Matrix out(T, d3);
+    // Device seam (cuda_ops.cu): the same rotation from a host-built
+    // cos/sin table; false -> the host loop below.
+    const bool on_dev = device::devops::rope_fwd(qk->data, pos, head_dim, n_rot, theta_base, out);
+    if (!on_dev) {
+        device::materialize(qk->data);
+        out = qk->data;
+    }
     // Adjacent pairs (x[2j], x[2j+1]) within a head, rotated as complex
     // numbers by pos * theta^(-2j/head_dim) (the GGUF/GPT-J interleaved
     // convention).
-    for (size_t i = 0; i < T; ++i) {
+    for (size_t i = 0; i < (on_dev ? 0 : T); ++i) {
         const float m = static_cast<float>(pos[i]);
         for (size_t dim = 0; dim < head_dim; dim += 2) {
             const float inv_freq = 1.0f / std::pow(theta_base, static_cast<float>(dim) / head_dim);
@@ -768,9 +795,14 @@ Var apply_rope(const Var& qk, const std::vector<int>& pos, float theta_base, siz
                   [pos_cache, theta_base, head_dim, d3, n_rot](Variable* self) {
                       const Var& qk = self->parents[0];
                       if (!qk->requires_grad) return;
-                      device::materialize(self->grad);  // B2.3c: host-read below
                       const size_t T = self->grad.rows(), d = d3 / 3;
-                      Matrix dqk = self->grad;
+                      Matrix dqk(T, d3);
+                      if (device::devops::rope_bwd(self->grad, *pos_cache, head_dim, n_rot, theta_base, dqk)) {
+                          qk->accumulate(std::move(dqk));
+                          return;
+                      }
+                      device::materialize(self->grad);  // B2.3c: host-read below
+                      dqk = self->grad;
                       // Backward: the transpose of a rotation is the inverse rotation.
                       for (size_t i = 0; i < T; ++i) {
                           const float m = static_cast<float>((*pos_cache)[i]);

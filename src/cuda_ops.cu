@@ -22,6 +22,7 @@
 
 #include "device_pool.cuh"
 
+#include <cmath>
 #include <cstddef>
 #include <stdexcept>
 #include <string>
@@ -176,6 +177,21 @@ __global__ void k_sigmoid_bwd(const float* s, const float* dy, float* dx,
 
 // tanh-GELU forward, the same approximation Matrix::apply_gelu computes:
 //   y = 0.5 x (1 + tanh(k (x + 0.044715 x^3))), k = sqrt(2/pi)
+// SiLU (the llama MLP gate), ops.cpp silu: y = x s(x), dy/dx = s (1 + x (1 - s)).
+__global__ void k_silu_fwd(const float* x, float* y, size_t n) {
+    for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += gridDim.x * blockDim.x) {
+        const float v = x[i];
+        y[i] = v / (1.0f + expf(-v));
+    }
+}
+__global__ void k_silu_bwd(const float* x, const float* dy, float* dx, size_t n) {
+    for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += gridDim.x * blockDim.x) {
+        const float v = x[i];
+        const float s = 1.0f / (1.0f + expf(-v));
+        dx[i] = dy[i] * (s * (1.0f + v * (1.0f - s)));
+    }
+}
+
 __global__ void k_gelu_fwd(const float* x, float* y, size_t n) {
     constexpr float k = 0.7978845608028654f;
     for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n;
@@ -784,6 +800,28 @@ bool sigmoid_bwd(const Matrix& s, const Matrix& dy, Matrix& dx) {
     return true;
 }
 
+bool silu_fwd(const Matrix& x, Matrix& y) {
+    if (!active()) return false;
+    const size_t n = x.rows() * x.cols();
+    In dx(x.get_data(), n);
+    Out dy(y.get_data(), n);
+    k_silu_fwd<<<ew_grid(n), NTHREADS>>>(dx.d, dy.d, n);
+    cuda_check(cudaGetLastError(), "silu_fwd");
+    dy.finish();
+    return true;
+}
+
+bool silu_bwd(const Matrix& x, const Matrix& dy, Matrix& dx) {
+    if (!active()) return false;
+    const size_t n = x.rows() * x.cols();
+    In dxi(x.get_data(), n), dgy(dy.get_data(), n);
+    Out dgx(dx.get_data(), n);
+    k_silu_bwd<<<ew_grid(n), NTHREADS>>>(dxi.d, dgy.d, dgx.d, n);
+    cuda_check(cudaGetLastError(), "silu_bwd");
+    dgx.finish();
+    return true;
+}
+
 bool gelu_fwd(const Matrix& x, Matrix& y) {
     if (!active()) return false;
     const size_t n = x.rows() * x.cols();
@@ -1321,6 +1359,172 @@ bool attn_blocked_bwd(const Matrix& q, const Matrix& k, const Matrix& v, const M
     odq.finish();
     odk.finish();
     odv.finish();
+    return true;
+}
+
+// ---- RoPE and column slice/concat (the llama block's head plumbing) ----
+//
+// ops::apply_rope, ops::slice_cols and ops::concat_cols are the reference.
+// Slice/concat/place are pure copies: bit for bit. RoPE: the cos/sin table
+// is built on the HOST with the CPU op's exact float expressions
+// (inv_freq = 1 / pow(base, dim / head_dim), theta = pos * inv_freq,
+// std::cos/std::sin) and cached on the device keyed by (positions,
+// head_dim, base), so the device never recomputes a transcendental and
+// the table uploads once per distinct position vector (every training
+// step reuses the same 0..sl-1 pattern). The backward uses the same table:
+// cos(-t) == cos(t) and sin(-t) == -sin(t) exactly. The rotation itself
+// may round differently from the host loop (FMA contraction on either
+// side), so RoPE parity is to rounding.
+
+namespace {
+
+struct RopeTable {
+    std::vector<int> pos;
+    size_t head_dim = 0;
+    float base = 0.0f;
+    float* d = nullptr;  // [T * half] cos, then [T * half] sin
+};
+
+// One live table; rebuilt when the key changes. Held for the process
+// (never freed at exit: a static dtor may run after context teardown).
+const float* rope_table(const std::vector<int>& pos, size_t head_dim, float base) {
+    static RopeTable t;
+    if (t.d && t.pos == pos && t.head_dim == head_dim && t.base == base) return t.d;
+    const size_t T = pos.size(), half = head_dim / 2;
+    std::vector<float> h(2 * T * half);
+    for (size_t i = 0; i < T; ++i) {
+        const float m = static_cast<float>(pos[i]);
+        for (size_t dim = 0; dim < head_dim; dim += 2) {
+            const float inv_freq = 1.0f / std::pow(base, static_cast<float>(dim) / head_dim);
+            const float theta = m * inv_freq;
+            h[i * half + dim / 2] = std::cos(theta);
+            h[T * half + i * half + dim / 2] = std::sin(theta);
+        }
+    }
+    if (t.d) pool::dfree(t.d);
+    t.d = nullptr;
+    t.d = dalloc(h.size());
+    h2d(t.d, h.data(), h.size());
+    t.pos = pos, t.head_dim = head_dim, t.base = base;
+    return t.d;
+}
+
+// y = rotate(x) over the [T, 3d] fused qkv layout: q cols [0, d), k cols
+// [d, 2d), v untouched; heads h < n_rot rotate adjacent pairs
+// (x[2j], x[2j+1]) by the table angle (sign = -1: the inverse rotation).
+__global__ void k_rope(const float* x, float* y, const float* tab, size_t T, size_t d3, size_t d,
+                       size_t head_dim, size_t n_rot, float sign) {
+    const size_t n = T * d3, half = head_dim / 2;
+    for (size_t idx = blockIdx.x * blockDim.x + threadIdx.x; idx < n; idx += gridDim.x * blockDim.x) {
+        const size_t i = idx / d3, c = idx % d3;
+        const size_t cc = c % d;
+        if (c >= 2 * d || cc / head_dim >= n_rot) {
+            y[idx] = x[idx];
+            continue;
+        }
+        const size_t off = cc % head_dim, p = off / 2;
+        const size_t c0 = c - (off & 1);
+        const float x0 = x[i * d3 + c0], x1 = x[i * d3 + c0 + 1];
+        const float ct = tab[i * half + p], st = sign * tab[T * half + i * half + p];
+        y[idx] = (off & 1) ? x0 * st + x1 * ct : x0 * ct - x1 * st;
+    }
+}
+
+__global__ void k_slice_cols(const float* x, float* y, size_t R, size_t C, size_t c0, size_t w) {
+    const size_t n = R * w;
+    for (size_t idx = blockIdx.x * blockDim.x + threadIdx.x; idx < n; idx += gridDim.x * blockDim.x)
+        y[idx] = x[(idx / w) * C + c0 + idx % w];
+}
+
+// dx = 0 everywhere except columns [c0, c0 + w), which take g.
+__global__ void k_place_cols(const float* g, float* dx, size_t R, size_t C, size_t c0, size_t w) {
+    const size_t n = R * C;
+    for (size_t idx = blockIdx.x * blockDim.x + threadIdx.x; idx < n; idx += gridDim.x * blockDim.x) {
+        const size_t j = idx % C;
+        dx[idx] = (j >= c0 && j < c0 + w) ? g[(idx / C) * w + (j - c0)] : 0.0f;
+    }
+}
+
+__global__ void k_put_cols(const float* src, float* dst, size_t R, size_t w, size_t C, size_t off) {
+    const size_t n = R * w;
+    for (size_t idx = blockIdx.x * blockDim.x + threadIdx.x; idx < n; idx += gridDim.x * blockDim.x)
+        dst[(idx / w) * C + off + idx % w] = src[idx];
+}
+
+bool rope_launch(const Matrix& x, const std::vector<int>& pos, size_t head_dim, size_t n_rot, float base,
+                 float sign, Matrix& y, const char* what) {
+    const size_t T = x.rows(), d3 = x.cols();
+    if (d3 == 0 || d3 % 3 != 0 || pos.size() != T || head_dim == 0 || head_dim % 2 != 0) return false;
+    const size_t d = d3 / 3;
+    if (n_rot == 0 || n_rot * head_dim > d || y.rows() != T || y.cols() != d3) return false;
+    const float* tab = rope_table(pos, head_dim, base);
+    const size_t n = T * d3;
+    In dx(x.get_data(), n);
+    Out dy(y.get_data(), n);
+    k_rope<<<ew_grid(n), NTHREADS>>>(dx.d, dy.d, tab, T, d3, d, head_dim, n_rot, sign);
+    cuda_check(cudaGetLastError(), what);
+    dy.finish();
+    return true;
+}
+
+}  // namespace
+
+bool rope_fwd(const Matrix& x, const std::vector<int>& pos, size_t head_dim, size_t n_rot_heads, float base,
+              Matrix& y) {
+    if (!active()) return false;
+    return rope_launch(x, pos, head_dim, n_rot_heads, base, 1.0f, y, "rope_fwd");
+}
+
+bool rope_bwd(const Matrix& dy, const std::vector<int>& pos, size_t head_dim, size_t n_rot_heads, float base,
+              Matrix& dx) {
+    if (!active()) return false;
+    return rope_launch(dy, pos, head_dim, n_rot_heads, base, -1.0f, dx, "rope_bwd");
+}
+
+bool slice_cols(const Matrix& x, size_t c0, size_t n, Matrix& y) {
+    if (!active()) return false;
+    const size_t R = x.rows(), C = x.cols();
+    if (n == 0 || c0 + n > C || y.rows() != R || y.cols() != n) return false;
+    In dx(x.get_data(), R * C);
+    Out dy(y.get_data(), R * n);
+    k_slice_cols<<<ew_grid(R * n), NTHREADS>>>(dx.d, dy.d, R, C, c0, n);
+    cuda_check(cudaGetLastError(), "slice_cols");
+    dy.finish();
+    return true;
+}
+
+bool place_cols(const Matrix& g, size_t c0, Matrix& dx) {
+    if (!active()) return false;
+    const size_t R = dx.rows(), C = dx.cols(), w = g.cols();
+    if (w == 0 || g.rows() != R || c0 + w > C) return false;
+    In ig(g.get_data(), R * w);
+    Out od(dx.get_data(), R * C);
+    k_place_cols<<<ew_grid(R * C), NTHREADS>>>(ig.d, od.d, R, C, c0, w);
+    cuda_check(cudaGetLastError(), "place_cols");
+    od.finish();
+    return true;
+}
+
+bool concat_cols(const std::vector<const Matrix*>& xs, Matrix& y) {
+    if (!active()) return false;
+    if (xs.empty()) return false;
+    const size_t R = y.rows(), C = y.cols();
+    size_t total = 0;
+    for (const Matrix* x : xs) {
+        if (!x || x->rows() != R || x->cols() == 0) return false;
+        total += x->cols();
+    }
+    if (total != C) return false;
+    Out dy(y.get_data(), R * C);
+    size_t off = 0;
+    for (const Matrix* x : xs) {
+        const size_t w = x->cols();
+        In dx(x->get_data(), R * w);
+        k_put_cols<<<ew_grid(R * w), NTHREADS>>>(dx.d, dy.d, R, w, C, off);
+        cuda_check(cudaGetLastError(), "concat_cols");
+        off += w;
+    }
+    dy.finish();
     return true;
 }
 

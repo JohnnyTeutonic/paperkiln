@@ -183,6 +183,8 @@ bool fill(Matrix& y, float v);                          // y = v
 // derivative — never the vendored apply_gelu_derivative)
 bool sigmoid_fwd(const Matrix& x, Matrix& y);
 bool sigmoid_bwd(const Matrix& s, const Matrix& dy, Matrix& dx);
+bool silu_fwd(const Matrix& x, Matrix& y);
+bool silu_bwd(const Matrix& x, const Matrix& dy, Matrix& dx);
 bool gelu_fwd(const Matrix& x, Matrix& y);
 bool gelu_bwd(const Matrix& x, const Matrix& dy, Matrix& dx);
 // rowwise (parallel reduction order != serial CPU order: results carry
@@ -247,6 +249,19 @@ bool rmsnorm_fwd(const Matrix& x, const Matrix& w, float eps, Matrix& y,
                  std::vector<float>& rms_inv);
 bool rmsnorm_bwd(const Matrix& dY, const Matrix& x, const std::vector<float>& rms_inv,
                  const Matrix& w, bool want_dw, Matrix* dw, bool want_dx, Matrix* dx);
+// The llama block's head plumbing (ops::apply_rope / slice_cols /
+// concat_cols are the reference). RoPE runs over the fused [T, 3d] qkv
+// layout: heads h < n_rot_heads of q and k rotate, v is copied; the
+// backward is the inverse rotation. Slice/concat/place are exact copies.
+// place_cols writes g into columns [c0, c0 + g.cols()) of dx and zeros
+// everywhere else (slice_cols' backward).
+bool rope_fwd(const Matrix& x, const std::vector<int>& pos, size_t head_dim, size_t n_rot_heads, float base,
+              Matrix& y);
+bool rope_bwd(const Matrix& dy, const std::vector<int>& pos, size_t head_dim, size_t n_rot_heads, float base,
+              Matrix& dx);
+bool slice_cols(const Matrix& x, size_t c0, size_t n, Matrix& y);
+bool place_cols(const Matrix& g, size_t c0, Matrix& dx);
+bool concat_cols(const std::vector<const Matrix*>& xs, Matrix& y);
 }  // namespace devops
 
 }  // namespace device

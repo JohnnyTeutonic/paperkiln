@@ -76,6 +76,12 @@ bool sigmoid_fwd(const Matrix&, Matrix&) {
 bool sigmoid_bwd(const Matrix&, const Matrix&, Matrix&) {
     return false;
 }
+bool silu_fwd(const Matrix&, Matrix&) {
+    return false;
+}
+bool silu_bwd(const Matrix&, const Matrix&, Matrix&) {
+    return false;
+}
 bool gelu_fwd(const Matrix&, Matrix&) {
     return false;
 }
@@ -146,6 +152,21 @@ bool rmsnorm_fwd(const Matrix&, const Matrix&, float, Matrix&, std::vector<float
 }
 bool rmsnorm_bwd(const Matrix&, const Matrix&, const std::vector<float>&, const Matrix&, bool,
                  Matrix*, bool, Matrix*) {
+    return false;
+}
+bool rope_fwd(const Matrix&, const std::vector<int>&, size_t, size_t, float, Matrix&) {
+    return false;
+}
+bool rope_bwd(const Matrix&, const std::vector<int>&, size_t, size_t, float, Matrix&) {
+    return false;
+}
+bool slice_cols(const Matrix&, size_t, size_t, Matrix&) {
+    return false;
+}
+bool place_cols(const Matrix&, size_t, Matrix&) {
+    return false;
+}
+bool concat_cols(const std::vector<const Matrix*>&, Matrix&) {
     return false;
 }
 }  // namespace devops

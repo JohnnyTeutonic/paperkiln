@@ -1,14 +1,21 @@
 // Phase B1: resident-tensor GEMM (docs/CUDA_PHASE_B.md).
 //
-// Self-contained: raw CUDA runtime API + one tiled kernel. Deliberately
-// no cuBLAS (the zero-dependency rule extends to the GPU path) and no
-// use of the vendored Matrix's gpu_data_ fields (sync_vendor.sh owns
-// that tree; its semantics are transformer_cpp's, not ours).
+// Self-contained: raw CUDA runtime API + one tiled kernel, and no use of
+// the vendored Matrix's gpu_data_ fields (sync_vendor.sh owns that tree;
+// its semantics are transformer_cpp's, not ours). The zero-dependency
+// rule was relaxed for training GEMMs on 18 Oct 2026 (Jonathan's decision,
+// relayed by the ember.cpp session): step-window GEMMs may run as plain
+// cublasSgemm, FP32 in and out, opt-in by MICROTORCH_CUBLAS=1, with TF32
+// tensor-core math scoped to the call by MICROTORCH_TF32=1 (ember's
+// pattern, tinyllama.cpp model.cpp). No mixed-precision GemmEx.
+#include <cublas_v2.h>
 #include <cuda_runtime.h>
 
 #include "device_pool.cuh"
 
 #include <cstddef>
+#include <cstdlib>
+#include <cstring>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -381,6 +388,45 @@ void release_devstate_impl(DevState* s) {
 }
 }  // namespace detail
 
+namespace {
+
+bool env_on(const char* k) {
+    const char* v = std::getenv(k);
+    return v && std::strcmp(v, "1") == 0;
+}
+
+bool cublas_on() {
+    static const bool on = env_on("MICROTORCH_CUBLAS");
+    return on;
+}
+
+cublasHandle_t cublas_handle() {
+    static cublasHandle_t h = [] {
+        cublasHandle_t x = nullptr;
+        if (cublasCreate(&x) != CUBLAS_STATUS_SUCCESS) throw std::runtime_error("cublasCreate failed");
+        return x;
+    }();
+    return h;
+}
+
+// Row-major C[M,N] = op(A) op(B), every operand device-resident. cuBLAS is
+// column-major, and a row-major X[r,c] read column-major is X^T with
+// leading dimension c, so compute C^T = op(B)^T op(A)^T:
+//   B: stored [K,N] (tb false) -> N with ldb N; stored [N,K] (tb) -> T with ldb K
+//   A: stored [M,K] (ta false) -> N with lda K; stored [K,M] (ta) -> T with lda M
+void cublas_gemm_rowmajor(const float* dA, bool ta, const float* dB, bool tb, float* dC, int M, int N, int K) {
+    cublasHandle_t h = cublas_handle();
+    static const bool tf32 = env_on("MICROTORCH_TF32");
+    if (tf32) cublasSetMathMode(h, CUBLAS_TF32_TENSOR_OP_MATH);
+    const float one = 1.0f, zero = 0.0f;
+    const cublasStatus_t s = cublasSgemm(h, tb ? CUBLAS_OP_T : CUBLAS_OP_N, ta ? CUBLAS_OP_T : CUBLAS_OP_N, N, M, K,
+                                         &one, dB, tb ? K : N, dA, ta ? M : K, &zero, dC, N);
+    if (tf32) cublasSetMathMode(h, CUBLAS_DEFAULT_MATH);
+    if (s != CUBLAS_STATUS_SUCCESS) throw std::runtime_error("cublasSgemm failed: " + std::to_string(s));
+}
+
+}  // namespace
+
 bool step_resident_gemm(const Matrix& A, DevState** devA, Trans tA,
                         const Matrix& B, DevState** devB, Trans tB,
                         Matrix& C) {
@@ -405,7 +451,9 @@ bool step_resident_gemm(const Matrix& A, DevState** devA, Trans tA,
     dim3 block(TILE, TILE);
     dim3 grid((N + TILE - 1) / TILE, (M + TILE - 1) / TILE);
     const bool ta = (tA == Trans::T), tb = (tB == Trans::T);
-    if (!ta && !tb)
+    if (cublas_on())
+        cublas_gemm_rowmajor(dA, ta, dB, tb, dC, M, N, K);
+    else if (!ta && !tb)
         gemm_tiled_ops<false, false><<<grid, block>>>(dA, dB, dC, M, N, K);
     else if (ta && !tb)
         gemm_tiled_ops<true, false><<<grid, block>>>(dA, dB, dC, M, N, K);
