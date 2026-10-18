@@ -54,15 +54,20 @@ def distinct2(text):
 
 
 def repeats(text):
-    """True if the reply repeats itself: a word trigram twice, or the same word
-    twice running ("today today"). The gate for preference stages: an arm that
+    """True if the reply repeats itself: a word trigram twice, the same word
+    twice running ("today today"), or a bigram of two content words twice
+    ("dark clouds and dark clouds"; function-word bigrams such as "I think"
+    recur in normal replies). The gate for preference stages: an arm that
     repeats more than its SFT start has failed, whatever its pair accuracy."""
     w = [t.strip(".,!?;:'\"()").lower() for t in text.split()]
     w = [t for t in w if t]
     if any(a == b for a, b in zip(w, w[1:])):
         return True
     tri = list(zip(w, w[1:], w[2:]))
-    return len(set(tri)) < len(tri)
+    if len(set(tri)) < len(tri):
+        return True
+    bi = [(a, b) for a, b in zip(w, w[1:]) if a not in STOP and b not in STOP]
+    return len(set(bi)) < len(bi)
 
 
 # Function words of BASIC English chat: dropped before the overlap measures
