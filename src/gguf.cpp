@@ -57,6 +57,7 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
     if (!cfg.tokens.empty()) {
         writer.write_metadata_string("tokenizer.ggml.model", cfg.tokenizer_model);
         writer.write_metadata_string_array("tokenizer.ggml.tokens", cfg.tokens);
+        if (!cfg.merges.empty()) writer.write_metadata_string_array("tokenizer.ggml.merges", cfg.merges);
         writer.write_metadata_float_array("tokenizer.ggml.scores",
                                           std::vector<float>(cfg.tokens.size(), 0.0f));
         writer.write_metadata_uint32("tokenizer.ggml.bos_token_id", cfg.bos_token_id);

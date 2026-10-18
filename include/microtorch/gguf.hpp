@@ -45,6 +45,10 @@ struct LlamaExportConfig {
     // (tinyllama.cpp can still load tensors; generation needs a vocab).
     std::vector<std::string> tokens;
     std::string tokenizer_model = "word";
+    // BPE merges ("a b" token-id pairs in rank order, tools/bpe.py); written
+    // as tokenizer.ggml.merges when non-empty, so a BPE export carries its
+    // own tokenizer.
+    std::vector<std::string> merges;
     uint32_t bos_token_id = 1, eos_token_id = 1;
     uint32_t unk_token_id = 0, pad_token_id = 0;
 };

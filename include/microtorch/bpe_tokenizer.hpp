@@ -146,9 +146,14 @@ private:
     std::unordered_map<uint64_t, Merge> rank_;
 };
 
-// Reads a tokenizer GGUF written by tools/bpe.py: tokenizer.ggml.model must
-// be "bpe"; tokens and merges are taken from their arrays.
-inline Tokenizer load_gguf(const std::string& path) {
+struct GgufTokenizer {
+    std::string model;
+    std::vector<std::string> tokens, merges;
+};
+
+// The tokenizer block of any GGUF (tokenizer.ggml.model, tokens, merges),
+// unvalidated: a vocabulary file from tools/bpe.py or a model export.
+inline GgufTokenizer read_gguf_tokenizer(const std::string& path) {
     std::ifstream f(path, std::ios::binary);
     if (!f) throw std::runtime_error("cannot open " + path);
     std::string buf((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
@@ -195,8 +200,16 @@ inline Tokenizer load_gguf(const std::string& path) {
             skip(t);
         }
     }
-    if (model != "bpe") throw std::runtime_error(path + ": tokenizer.ggml.model is '" + model + "', not 'bpe'");
-    return Tokenizer(std::move(tokens), merges);
+    return {std::move(model), std::move(tokens), std::move(merges)};
+}
+
+// Reads a tokenizer GGUF written by tools/bpe.py (or a BPE model export):
+// tokenizer.ggml.model must be "bpe"; tokens and merges are taken from
+// their arrays.
+inline Tokenizer load_gguf(const std::string& path) {
+    GgufTokenizer g = read_gguf_tokenizer(path);
+    if (g.model != "bpe") throw std::runtime_error(path + ": tokenizer.ggml.model is '" + g.model + "', not 'bpe'");
+    return Tokenizer(std::move(g.tokens), g.merges);
 }
 
 }  // namespace bpe

@@ -73,3 +73,31 @@ def test_bpe_vocab_is_never_capped(setup):
     r = subprocess.run([BIN, "run", str(spec(tmp, "capped", cap=300, steps=2))], capture_output=True, text=True,
                        timeout=300)
     assert r.returncode != 0 and "vocab_cap" in r.stderr
+
+
+@needs_bin
+def test_gguf_export_carries_the_bpe_tokenizer(setup):
+    """A BPE model's GGUF is self-contained: model "bpe", the same tokens and
+    merges as the vocabulary, so an engine reading only the export encodes
+    text with the ids the model was trained on."""
+    tmp, tok = setup
+    p = spec(tmp, "g", cap=4096, steps=2)
+    s = json.loads(p.read_text(encoding="utf-8"))
+    s["export"]["formats"] = ["safetensors", "gguf"]
+    p.write_text(json.dumps(s), encoding="utf-8")
+    r = subprocess.run([BIN, "run", str(p)], capture_output=True, text=True, timeout=300)
+    assert r.returncode == 0, r.stderr
+    out = bpe.read_gguf(str(tmp / "g" / "g.gguf"))
+    assert out.tokens == tok.tokens and out.merges == tok.merges
+    assert out.encode(CORPUS[:200]) == tok.encode(CORPUS[:200])
+    # mtstudio itself accepts the export as a vocabulary (C++ reader).
+    s2 = json.loads(p.read_text(encoding="utf-8"))
+    s2["name"], s2["out_dir"] = "g2", str(tmp / "g2")
+    s2["data"]["vocab"] = str(tmp / "g" / "g.gguf")
+    s2["export"]["formats"] = ["safetensors"]
+    p2 = tmp / "g2.json"
+    p2.write_text(json.dumps(s2), encoding="utf-8")
+    r = subprocess.run([BIN, "run", str(p2)], capture_output=True, text=True, timeout=300)
+    assert r.returncode == 0, r.stderr
+    ev = [json.loads(x) for x in (tmp / "g2" / "events.jsonl").read_text().splitlines() if x.strip()]
+    assert next(e for e in ev if e["event"] == "data")["tokens"] == len(tok.encode(CORPUS))

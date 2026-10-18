@@ -1477,6 +1477,12 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             gc.rms_eps = 1e-6f;
             gc.weights_in_out = true;  // microtorch Linear is [in, out]
             gc.tokens = tokens;
+            // A BPE vocabulary travels with the model: without its merges an
+            // engine reading the export would split text into bytes only.
+            if (g_bpe) {
+                gc.tokenizer_model = "bpe";
+                gc.merges = bpe::read_gguf_tokenizer(s.vocab_gguf).merges;
+            }
             // End-of-text in the vocabulary -> the GGUF's eos id, so an
             // external engine stops where this one does (else keep the
             // exporter's default).
