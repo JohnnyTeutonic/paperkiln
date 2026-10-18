@@ -1178,6 +1178,31 @@ static Matrix block_rows(const Matrix& m, size_t r0, size_t n) {
 
 Var fused_attention_blocked(const Var& q, const Var& k, const Var& v, float scale, size_t sl, bool causal) {
     const size_t T = q->data.rows(), nb = T / sl;
+    // Device path (18 Oct 2026): the same formulas in kernels, with A kept
+    // block-local [T, sl] and resident between forward and backward. The
+    // host loops below are the reference and the fallback.
+    if (device::device_ops_enabled() && device::get() == device::Device::CUDA) {
+        auto Ab = cached(Matrix(T, sl));
+        Matrix yd(T, v->data.cols());
+        if (device::devops::attn_blocked_fwd(q->data, k->data, v->data, scale, sl, causal, *Ab, yd)) {
+            return record(std::move(yd), {q, k, v}, [Ab, scale, sl, causal](Variable* self) {
+                const Var& q = self->parents[0];
+                const Var& k = self->parents[1];
+                const Var& v = self->parents[2];
+                Matrix dq(q->data.rows(), q->data.cols()), dkm(k->data.rows(), k->data.cols()),
+                    dvm(v->data.rows(), v->data.cols());
+                if (!device::devops::attn_blocked_bwd(q->data, k->data, v->data, *Ab, self->grad, scale, sl, causal,
+                                                      dq, dkm, dvm))
+                    throw std::runtime_error("fused_attention_blocked: device backward unavailable");
+                if (v->requires_grad) v->accumulate(std::move(dvm));
+                else device::discard(dvm);
+                if (q->requires_grad) q->accumulate(std::move(dq));
+                else device::discard(dq);
+                if (k->requires_grad) k->accumulate(std::move(dkm));
+                else device::discard(dkm);
+            });
+        }
+    }
     device::materialize(q->data);
     device::materialize(k->data);
     device::materialize(v->data);

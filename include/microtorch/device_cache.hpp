@@ -199,6 +199,15 @@ bool softmax_bwd(const Matrix& S, const Matrix& dY, Matrix& dX);
 bool attn_masked_softmax(Matrix& A, float scale, size_t seq_len, bool causal);
 bool swa_masked_softmax(Matrix& A, float scale, size_t seq_len, size_t window, size_t sinks);
 bool attn_softmax_bwd_inplace(Matrix& ds, const Matrix& A, float scale);
+// Blocked attention (ops::fused_attention_blocked) on-device: rows are B
+// stacked sequences of length seq_len, each attending only within its own
+// block. A is block-local [T, seq_len] (A(i, j) weights key row
+// i - i % seq_len + j), kept from forward for backward. Backward writes
+// all three gradients.
+bool attn_blocked_fwd(const Matrix& q, const Matrix& k, const Matrix& v, float scale, size_t seq_len,
+                      bool causal, Matrix& A, Matrix& y);
+bool attn_blocked_bwd(const Matrix& q, const Matrix& k, const Matrix& v, const Matrix& A, const Matrix& dY,
+                      float scale, size_t seq_len, bool causal, Matrix& dq, Matrix& dk, Matrix& dv);
 // B2.2: embedding gather (ids bounds-checked by the HOST caller first;
 // backward scatter-add stays host until B2.3) and cross-entropy
 // (softmax + nll on-device, host receives ONE float; P cached for the

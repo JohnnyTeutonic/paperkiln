@@ -97,6 +97,13 @@ bool swa_masked_softmax(Matrix&, float, size_t, size_t, size_t) {
 bool attn_softmax_bwd_inplace(Matrix&, const Matrix&, float) {
     return false;
 }
+bool attn_blocked_fwd(const Matrix&, const Matrix&, const Matrix&, float, size_t, bool, Matrix&, Matrix&) {
+    return false;
+}
+bool attn_blocked_bwd(const Matrix&, const Matrix&, const Matrix&, const Matrix&, const Matrix&, float, size_t,
+                      bool, Matrix&, Matrix&, Matrix&) {
+    return false;
+}
 bool embed_gather(const Matrix&, const int*, size_t, Matrix&) {
     return false;
 }

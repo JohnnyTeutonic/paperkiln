@@ -1140,6 +1140,188 @@ bool rmsnorm_bwd(const Matrix& dY, const Matrix& x,
     return true;
 }
 
+// ---- blocked attention (18 Oct 2026) ---------------------------------
+// The device side of ops::fused_attention_blocked. The rows of q, k, v
+// are B stacked sequences of length sl; row i attends only within its own
+// block (b0 = i - i % sl), causally if asked. A is kept BLOCK-LOCAL,
+// [T, sl]: A(i, j) is the weight of key row b0 + j. Same formulas as the
+// host loops in ops.cpp (scores * scale, max-shifted exp, masked entries
+// hard zeros; backward dV = A^T dY, dA = dY V^T, ds = scale * A .* (dA -
+// rowsum(dA .* A)), dQ = ds K, dK = ds^T Q), summed in a different order,
+// so equal to rounding, not bit for bit. Measured reason (gdb samples of
+// the chat run on an L4): the host path was ~44% of a training step.
+
+namespace {
+
+__device__ inline int blk_hi(int li, int sl, int causal) { return causal ? li + 1 : sl; }
+
+// Block reduction over blockDim.x (a power of two) in red[]; returns the
+// result to every thread.
+__device__ inline float blk_reduce(float v, float* red, bool is_max) {
+    red[threadIdx.x] = v;
+    __syncthreads();
+    for (int s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (threadIdx.x < s)
+            red[threadIdx.x] = is_max ? fmaxf(red[threadIdx.x], red[threadIdx.x + s])
+                                      : red[threadIdx.x] + red[threadIdx.x + s];
+        __syncthreads();
+    }
+    const float r = red[0];
+    __syncthreads();
+    return r;
+}
+
+__global__ void k_blk_fwd_softmax(const float* q, const float* k, float* A, float scale, int sl, int causal,
+                                  int dk) {
+    extern __shared__ float sh[];
+    float* qs = sh;
+    float* red = sh + dk;
+    const int i = blockIdx.x, li = i % sl, b0 = i - li, hi = blk_hi(li, sl, causal);
+    for (int d = threadIdx.x; d < dk; d += blockDim.x) qs[d] = q[static_cast<size_t>(i) * dk + d];
+    __syncthreads();
+    float* Ar = A + static_cast<size_t>(i) * sl;
+    float mx = -1e30f;
+    for (int j = threadIdx.x; j < hi; j += blockDim.x) {
+        const float* kr = k + static_cast<size_t>(b0 + j) * dk;
+        float s = 0.0f;
+        for (int d = 0; d < dk; ++d) s += qs[d] * kr[d];
+        s *= scale;
+        Ar[j] = s;
+        mx = fmaxf(mx, s);
+    }
+    mx = blk_reduce(mx, red, true);
+    float z = 0.0f;
+    for (int j = threadIdx.x; j < hi; j += blockDim.x) {
+        const float e = expf(Ar[j] - mx);
+        Ar[j] = e;
+        z += e;
+    }
+    z = blk_reduce(z, red, false);
+    for (int j = threadIdx.x; j < sl; j += blockDim.x) Ar[j] = j < hi ? Ar[j] / z : 0.0f;
+}
+
+// y(i, :) = sum_j A(i, j) v(b0 + j, :)
+__global__ void k_blk_fwd_av(const float* A, const float* v, float* y, int sl, int causal, int dv) {
+    const int i = blockIdx.x, li = i % sl, b0 = i - li, hi = blk_hi(li, sl, causal);
+    const float* Ar = A + static_cast<size_t>(i) * sl;
+    for (int d = threadIdx.x; d < dv; d += blockDim.x) {
+        float acc = 0.0f;
+        for (int j = 0; j < hi; ++j) acc += Ar[j] * v[static_cast<size_t>(b0 + j) * dv + d];
+        y[static_cast<size_t>(i) * dv + d] = acc;
+    }
+}
+
+// ds(i, j) = scale * A(i, j) * (dA(i, j) - sum_j' A(i, j') dA(i, j')), dA = dY V^T
+__global__ void k_blk_bwd_ds(const float* gy, const float* v, const float* A, float* ds, float scale, int sl,
+                             int causal, int dv) {
+    extern __shared__ float sh[];
+    float* gs = sh;
+    float* red = sh + dv;
+    const int i = blockIdx.x, li = i % sl, b0 = i - li, hi = blk_hi(li, sl, causal);
+    for (int d = threadIdx.x; d < dv; d += blockDim.x) gs[d] = gy[static_cast<size_t>(i) * dv + d];
+    __syncthreads();
+    const float* Ar = A + static_cast<size_t>(i) * sl;
+    float* dr = ds + static_cast<size_t>(i) * sl;
+    float part = 0.0f;
+    for (int j = threadIdx.x; j < hi; j += blockDim.x) {
+        const float* vr = v + static_cast<size_t>(b0 + j) * dv;
+        float da = 0.0f;
+        for (int d = 0; d < dv; ++d) da += gs[d] * vr[d];
+        dr[j] = da;
+        part += da * Ar[j];
+    }
+    const float dot = blk_reduce(part, red, false);
+    for (int j = threadIdx.x; j < sl; j += blockDim.x) dr[j] = j < hi ? scale * Ar[j] * (dr[j] - dot) : 0.0f;
+}
+
+// dq(i, :) = sum_j ds(i, j) k(b0 + j, :)
+__global__ void k_blk_bwd_dq(const float* ds, const float* k, float* dq, int sl, int causal, int dk) {
+    const int i = blockIdx.x, li = i % sl, b0 = i - li, hi = blk_hi(li, sl, causal);
+    const float* dr = ds + static_cast<size_t>(i) * sl;
+    for (int d = threadIdx.x; d < dk; d += blockDim.x) {
+        float acc = 0.0f;
+        for (int j = 0; j < hi; ++j) acc += dr[j] * k[static_cast<size_t>(b0 + j) * dk + d];
+        dq[static_cast<size_t>(i) * dk + d] = acc;
+    }
+}
+
+// Key row r (local lj): dk(r, :) = sum_i ds(i, lj) q(i, :), dv(r, :) = sum_i A(i, lj) dY(i, :), over the
+// queries i of its block that see it (local index >= lj when causal).
+__global__ void k_blk_bwd_dkv(const float* ds, const float* A, const float* q, const float* gy, float* dk_out,
+                              float* dv_out, int sl, int causal, int dk, int dv) {
+    const int r = blockIdx.x, lj = r % sl, b0 = r - lj, i0 = causal ? lj : 0;
+    for (int d = threadIdx.x; d < dk; d += blockDim.x) {
+        float acc = 0.0f;
+        for (int li = i0; li < sl; ++li)
+            acc += ds[static_cast<size_t>(b0 + li) * sl + lj] * q[static_cast<size_t>(b0 + li) * dk + d];
+        dk_out[static_cast<size_t>(r) * dk + d] = acc;
+    }
+    for (int d = threadIdx.x; d < dv; d += blockDim.x) {
+        float acc = 0.0f;
+        for (int li = i0; li < sl; ++li)
+            acc += A[static_cast<size_t>(b0 + li) * sl + lj] * gy[static_cast<size_t>(b0 + li) * dv + d];
+        dv_out[static_cast<size_t>(r) * dv + d] = acc;
+    }
+}
+
+int col_threads(int n) {
+    int t = 32;
+    while (t < n && t < 256) t <<= 1;
+    return t;
+}
+
+}  // namespace
+
+bool attn_blocked_fwd(const Matrix& q, const Matrix& k, const Matrix& v, float scale, size_t seq_len,
+                      bool causal, Matrix& A, Matrix& y) {
+    if (!active()) return false;
+    const int T = static_cast<int>(q.rows()), dk = static_cast<int>(q.cols()), dv = static_cast<int>(v.cols());
+    const int sl = static_cast<int>(seq_len);
+    if (sl <= 0 || T % sl != 0 || k.rows() != q.rows() || k.cols() != q.cols() || v.rows() != q.rows() ||
+        A.rows() != q.rows() || A.cols() != seq_len || y.rows() != q.rows() || y.cols() != v.cols())
+        return false;
+    In dq(q.get_data(), static_cast<size_t>(T) * dk), dkk(k.get_data(), static_cast<size_t>(T) * dk),
+        dvv(v.get_data(), static_cast<size_t>(T) * dv);
+    Out dA(A.get_data(), static_cast<size_t>(T) * sl), dy(y.get_data(), static_cast<size_t>(T) * dv);
+    k_blk_fwd_softmax<<<T, ROW_THREADS, (dk + ROW_THREADS) * sizeof(float)>>>(dq.d, dkk.d, dA.d, scale, sl,
+                                                                               causal ? 1 : 0, dk);
+    cuda_check(cudaGetLastError(), "attn_blocked_fwd softmax");
+    k_blk_fwd_av<<<T, col_threads(dv)>>>(dA.d, dvv.d, dy.d, sl, causal ? 1 : 0, dv);
+    cuda_check(cudaGetLastError(), "attn_blocked_fwd av");
+    dA.finish();
+    dy.finish();
+    return true;
+}
+
+bool attn_blocked_bwd(const Matrix& q, const Matrix& k, const Matrix& v, const Matrix& A, const Matrix& dY,
+                      float scale, size_t seq_len, bool causal, Matrix& dq, Matrix& dk, Matrix& dv) {
+    if (!active()) return false;
+    const int T = static_cast<int>(q.rows()), dkd = static_cast<int>(q.cols()), dvd = static_cast<int>(v.cols());
+    const int sl = static_cast<int>(seq_len);
+    if (sl <= 0 || T % sl != 0 || A.rows() != q.rows() || A.cols() != seq_len || dY.rows() != q.rows() ||
+        dY.cols() != v.cols() || dq.rows() != q.rows() || dq.cols() != q.cols() || dk.rows() != k.rows() ||
+        dk.cols() != k.cols() || dv.rows() != v.rows() || dv.cols() != v.cols())
+        return false;
+    const size_t nq = static_cast<size_t>(T) * dkd, nv = static_cast<size_t>(T) * dvd;
+    In iq(q.get_data(), nq), ik(k.get_data(), nq), iv(v.get_data(), nv), iA(A.get_data(), static_cast<size_t>(T) * sl),
+        igy(dY.get_data(), nv);
+    DBuf ds(static_cast<size_t>(T) * sl);
+    Out odq(dq.get_data(), nq), odk(dk.get_data(), nq), odv(dv.get_data(), nv);
+    const int c = causal ? 1 : 0;
+    k_blk_bwd_ds<<<T, ROW_THREADS, (dvd + ROW_THREADS) * sizeof(float)>>>(igy.d, iv.d, iA.d, ds.d, scale, sl, c,
+                                                                           dvd);
+    cuda_check(cudaGetLastError(), "attn_blocked_bwd ds");
+    k_blk_bwd_dq<<<T, col_threads(dkd)>>>(ds.d, ik.d, odq.d, sl, c, dkd);
+    cuda_check(cudaGetLastError(), "attn_blocked_bwd dq");
+    k_blk_bwd_dkv<<<T, col_threads(dkd > dvd ? dkd : dvd)>>>(ds.d, iA.d, iq.d, igy.d, odk.d, odv.d, sl, c, dkd,
+                                                              dvd);
+    cuda_check(cudaGetLastError(), "attn_blocked_bwd dkv");
+    odq.finish();
+    odk.finish();
+    odv.finish();
+    return true;
+}
+
 }  // namespace devops
 }  // namespace device
 }  // namespace microtorch
