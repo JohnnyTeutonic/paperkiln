@@ -42,3 +42,10 @@ generalisation beyond it. Read it that way.
 
 **No instruction-following set exists yet.** It waits on the instruction corpus, which is blocked: TinyStories-Instruct
 declares no licence (ledger 0002).
+
+## Chat
+
+| set | what |
+|---|---|
+| `tinychat_hf_prompts_v1` | first user turn and reference reply of the first 200 TinyChat (starhopp3r) test dialogues, built by `tinychat_hf.py eval_v1 --pin` from the pinned source; the chat model's frozen prompts (`tools/chat_eval.py`) |
+| `simple_qa_v1` | 60 hand-written questions with accepted answers (25 everyday facts, 15 basic science, 10 small arithmetic, 10 conversational turns), written before any model saw them; scored by whether a reply contains an accepted answer. It asks what TinyChat cannot teach: whether general-text pretraining bought simple Q&A (`experiments/chat_general/PLAN.md`) |

@@ -143,7 +143,7 @@ def check_rope_heads(spec_path):
                  "the weights as rope_heads=\"first\"; state arch.rope_heads or copy the run's events.jsonl")
 
 
-def sample_ember(ember_bin, port, spec_path, prompts, n, temp, max_new, out):
+def sample_ember(ember_bin, port, spec_path, prompts, n, temp, max_new, out, greedy=False):
     """Serve the model's GGUF with ember and sample n replies per prompt."""
     import time
     import urllib.request
@@ -184,7 +184,8 @@ def sample_ember(ember_bin, port, spec_path, prompts, n, temp, max_new, out):
                                        ensure_ascii=False) + "\n")
         subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "chat_sample_ember.py"),
                         ex, "--url", url, "--vocab", spec["data"]["vocab"], "--out", out, "--temp", repr(temp),
-                        "--max-new", str(max_new), "--seed", "7"], check=True, capture_output=True)
+                        "--max-new", str(max_new), "--seed", "7"] + (["--greedy"] if greedy else []),
+                       check=True, capture_output=True)
     finally:
         srv.terminate()
         srv.wait(timeout=30)

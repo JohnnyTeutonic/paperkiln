@@ -62,6 +62,7 @@ def main(argv=None):
     ap.add_argument("--temp", type=float, default=0.7)
     ap.add_argument("--max-new", type=int, default=64)
     ap.add_argument("--seed", type=int, default=17)
+    ap.add_argument("--greedy", action="store_true", help="top_k 1 (argmax) instead of pure temperature")
     ap.add_argument("--ember-commit", default="")
     ap.add_argument("--ctx", type=int, default=256, help="model context; longer prompt + max-new is skipped")
     a = ap.parse_args(argv)
@@ -76,7 +77,8 @@ def main(argv=None):
                 skipped += 1
                 continue
             hist, user = split_prompt(e["prompt"])
-            body = {"user_input": user, "history": hist, "temperature": a.temp, "top_k": 0, "top_p": 1.0,
+            top_k = 1 if a.greedy else 0
+            body = {"user_input": user, "history": hist, "temperature": a.temp, "top_k": top_k, "top_p": 1.0,
                     "seed": a.seed + i, "max_new_tokens": a.max_new, "return_ids": True}
             r = post(a.url, body)
             if r["prompt_ids"] != tok.encode(e["prompt"]):
@@ -86,7 +88,7 @@ def main(argv=None):
             g.write(json.dumps({"prompt_index": i, "completion": tok.decode(r["ids"]), "completion_ids": r["ids"],
                                 "stop": stop, "stop_id": r.get("stop_id"),
                                 "sampler": {"engine": "ember.cpp", "commit": a.ember_commit, "url": a.url,
-                                            "temperature": a.temp, "top_k": 0, "top_p": 1.0, "seed": a.seed + i,
+                                            "temperature": a.temp, "top_k": top_k, "top_p": 1.0, "seed": a.seed + i,
                                             "max_new_tokens": a.max_new}}, ensure_ascii=False) + "\n")
     print(json.dumps({"samples": sum(stops.values()), "stops": stops, "skipped_over_ctx": skipped, "out": a.out}))
     return 0

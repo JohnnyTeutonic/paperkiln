@@ -1,0 +1,60 @@
+{"prompt": "What is the capital of France?", "answers": ["paris"], "kind": "fact"}
+{"prompt": "What is the capital of Japan?", "answers": ["tokyo"], "kind": "fact"}
+{"prompt": "What is the capital of Italy?", "answers": ["rome"], "kind": "fact"}
+{"prompt": "What is the capital of England?", "answers": ["london"], "kind": "fact"}
+{"prompt": "What is the capital of Australia?", "answers": ["canberra"], "kind": "fact"}
+{"prompt": "Which ocean is the largest?", "answers": ["pacific"], "kind": "fact"}
+{"prompt": "What is the largest planet in our solar system?", "answers": ["jupiter"], "kind": "fact"}
+{"prompt": "Which planet is known as the red planet?", "answers": ["mars"], "kind": "fact"}
+{"prompt": "What star is at the centre of our solar system?", "answers": ["sun"], "kind": "fact"}
+{"prompt": "What do bees make?", "answers": ["honey"], "kind": "fact"}
+{"prompt": "What colour is the sky on a clear day?", "answers": ["blue"], "kind": "fact"}
+{"prompt": "What colour are most leaves in summer?", "answers": ["green"], "kind": "fact"}
+{"prompt": "How many legs does a spider have?", "answers": ["eight", "8"], "kind": "fact"}
+{"prompt": "How many legs does an insect have?", "answers": ["six", "6"], "kind": "fact"}
+{"prompt": "How many days are in a week?", "answers": ["seven", "7"], "kind": "fact"}
+{"prompt": "How many months are in a year?", "answers": ["twelve", "12"], "kind": "fact"}
+{"prompt": "How many hours are in a day?", "answers": ["twenty-four", "twenty four", "24"], "kind": "fact"}
+{"prompt": "What is the largest animal on Earth?", "answers": ["blue whale", "whale"], "kind": "fact"}
+{"prompt": "What animal is known as the king of the jungle?", "answers": ["lion"], "kind": "fact"}
+{"prompt": "Which animal has a very long neck and eats leaves from tall trees?", "answers": ["giraffe"], "kind": "fact"}
+{"prompt": "Who wrote the play Romeo and Juliet?", "answers": ["shakespeare"], "kind": "fact"}
+{"prompt": "What language is mostly spoken in Spain?", "answers": ["spanish"], "kind": "fact"}
+{"prompt": "What is the opposite of hot?", "answers": ["cold"], "kind": "fact"}
+{"prompt": "What is the opposite of day?", "answers": ["night"], "kind": "fact"}
+{"prompt": "In which season does snow usually fall?", "answers": ["winter"], "kind": "fact"}
+{"prompt": "What gas do plants take in from the air?", "answers": ["carbon dioxide", "co2"], "kind": "science"}
+{"prompt": "What gas do humans need to breathe to live?", "answers": ["oxygen"], "kind": "science"}
+{"prompt": "At what temperature in Celsius does water freeze?", "answers": ["zero", "0"], "kind": "science"}
+{"prompt": "At what temperature in Celsius does water boil?", "answers": ["100", "hundred"], "kind": "science"}
+{"prompt": "What is H2O more commonly called?", "answers": ["water"], "kind": "science"}
+{"prompt": "What force pulls objects towards the ground?", "answers": ["gravity"], "kind": "science"}
+{"prompt": "What organ pumps blood around the body?", "answers": ["heart"], "kind": "science"}
+{"prompt": "What do we call frozen water?", "answers": ["ice"], "kind": "science"}
+{"prompt": "Which body part do we use to see?", "answers": ["eye", "eyes"], "kind": "science"}
+{"prompt": "What does a caterpillar turn into?", "answers": ["butterfly", "moth"], "kind": "science"}
+{"prompt": "What is the closest star to the Earth?", "answers": ["sun"], "kind": "science"}
+{"prompt": "What natural satellite orbits the Earth?", "answers": ["moon"], "kind": "science"}
+{"prompt": "What do plants need from the sun to make food?", "answers": ["light", "sunlight"], "kind": "science"}
+{"prompt": "What is the hardest natural substance?", "answers": ["diamond"], "kind": "science"}
+{"prompt": "How many continents are there?", "answers": ["seven", "7"], "kind": "science"}
+{"prompt": "What is two plus two?", "answers": ["four", "4"], "kind": "arith"}
+{"prompt": "What is 3 plus 5?", "answers": ["eight", "8"], "kind": "arith"}
+{"prompt": "What is ten minus three?", "answers": ["seven", "7"], "kind": "arith"}
+{"prompt": "What is 6 plus 4?", "answers": ["ten", "10"], "kind": "arith"}
+{"prompt": "What is two times three?", "answers": ["six", "6"], "kind": "arith"}
+{"prompt": "What is 9 minus 4?", "answers": ["five", "5"], "kind": "arith"}
+{"prompt": "What is half of ten?", "answers": ["five", "5"], "kind": "arith"}
+{"prompt": "What is 5 plus 5?", "answers": ["ten", "10"], "kind": "arith"}
+{"prompt": "What number comes after nine?", "answers": ["ten", "10"], "kind": "arith"}
+{"prompt": "What is one plus one?", "answers": ["two", "2"], "kind": "arith"}
+{"prompt": "Hi! Can you say hello to me?", "answers": ["hello", "hi"], "kind": "turn"}
+{"prompt": "Good morning! How are you today?", "answers": ["good", "well", "fine", "great"], "kind": "turn"}
+{"prompt": "Thank you for your help.", "answers": ["welcome", "pleasure", "glad"], "kind": "turn"}
+{"prompt": "What is your favourite colour?", "answers": ["blue", "red", "green", "yellow", "purple", "pink", "orange", "black", "white"], "kind": "turn"}
+{"prompt": "Can you name a fruit?", "answers": ["apple", "banana", "orange", "pear", "grape", "mango", "strawberr", "peach", "cherr", "lemon"], "kind": "turn"}
+{"prompt": "Can you name an animal that lives in the sea?", "answers": ["fish", "whale", "dolphin", "shark", "octopus", "crab", "seal", "turtle", "jellyfish"], "kind": "turn"}
+{"prompt": "Name a colour of the rainbow.", "answers": ["red", "orange", "yellow", "green", "blue", "indigo", "violet", "purple"], "kind": "turn"}
+{"prompt": "Can you tell me a day of the week?", "answers": ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"], "kind": "turn"}
+{"prompt": "What do you like to drink when it is hot outside?", "answers": ["water", "juice", "lemonade", "tea", "milk", "drink"], "kind": "turn"}
+{"prompt": "Goodbye, see you tomorrow!", "answers": ["bye", "goodbye", "see you", "tomorrow"], "kind": "turn"}
