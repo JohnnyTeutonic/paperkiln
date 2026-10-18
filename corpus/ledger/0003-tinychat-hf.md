@@ -42,6 +42,14 @@ The gain from each stage is what the chat server should make visible.
   MinHash).
 - No public benchmark is evaluated.
 
+**Known defect: bare [/INST] turns.** About 0.3% of source conversations
+(90 of 27,587 in sample_v1) separate turns with `[/INST]` alone, so the
+parser reads several turns as one assistant reply that still contains the
+markers. full_v1 is pinned as fetched: those markers appear in its
+pretraining text (561 in sample_v1's 19 MB), and a base model can echo
+them. `tools/chat_data.py` drops such dialogues whole from SFT data and
+reports the count (`dropped_dialogues_with_markers`).
+
 **6. Licence.** CC-BY-NC-4.0, per the dataset card. Use is non-commercial,
 and any model trained on it inherits that: a public release must carry the
 NC terms. The data is synthetic (generated with GPT-4o-mini, per the card).

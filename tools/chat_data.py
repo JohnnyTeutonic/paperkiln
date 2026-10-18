@@ -10,17 +10,25 @@ The template (tools/mtstudio.cpp chat_prompt_bpe): every past turn is
   completion = A_k   (mtstudio appends <|endoftext|> and masks the prompt)
 An example whose BPE length (prompt + completion + end-of-text) exceeds
 T + 1 is dropped and counted, never truncated: a cut reply would teach the
-model to stop mid-sentence.
+model to stop mid-sentence. A dialogue whose text still carries a source
+role marker ([INST], [/INST] or a variant) is dropped whole and counted:
+about 0.3% of TinyChat conversations separate turns with bare [/INST], so
+one "assistant turn" holds several (ledger 0003), and training on them
+would teach the model to print markers.
 """
 from __future__ import annotations
 
 import argparse
 import json
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import bpe  # noqa: E402
+
+
+MARKER = re.compile(r"\[\s*/?\W?\s*INST|INST\s*\]")
 
 
 def turn(u, a):
@@ -46,10 +54,13 @@ def main(argv=None):
     s.add_argument("--max", type=int, default=0, help="stop after this many examples (0 = all)")
     a = ap.parse_args(argv)
     tok = bpe.read_gguf(a.vocab)
-    kept = dropped = 0
+    kept = dropped = marked = 0
     with open(a.dialogues, encoding="utf-8") as f, open(a.out, "w", encoding="utf-8", newline="\n") as g:
         for line in f:
             d = json.loads(line)
+            if any(MARKER.search(m["content"]) for m in d["messages"]):
+                marked += 1
+                continue
             for ex in examples(d["messages"]):
                 n = len(tok.encode(ex["prompt"])) + len(tok.encode(ex["completion"])) + 1
                 if n > a.T + 1:
@@ -62,7 +73,7 @@ def main(argv=None):
                     break
             if a.max and kept >= a.max:
                 break
-    print(json.dumps({"kept": kept, "dropped_over_T": dropped, "out": a.out}))
+    print(json.dumps({"kept": kept, "dropped_over_T": dropped, "dropped_dialogues_with_markers": marked, "out": a.out}))
     return 0
 
 
