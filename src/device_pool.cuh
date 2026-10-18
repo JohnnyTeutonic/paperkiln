@@ -31,6 +31,7 @@ struct Pool {
     std::unordered_map<size_t, std::vector<void*>> freel;   // rounded bytes -> cached blocks
     size_t cached = 0;
     size_t cap = 0;
+    size_t live_bytes = 0;  // sum of `live` (handed out, not yet returned)
 };
 
 inline Pool& get() {
@@ -67,6 +68,14 @@ inline size_t cached_bytes() {
     return p.cached;
 }
 
+// Bytes handed out and not yet returned: what the process holds through
+// the pool, excluding the cache and every other process on the device.
+inline size_t live_bytes() {
+    Pool& p = get();
+    std::lock_guard<std::mutex> lk(p.mu);
+    return p.live_bytes;
+}
+
 template <class T>
 inline cudaError_t dmalloc(T** ptr, size_t bytes) {
     Pool& p = get();
@@ -78,6 +87,7 @@ inline cudaError_t dmalloc(T** ptr, size_t bytes) {
         it->second.pop_back();
         p.cached -= b;
         p.live[q] = b;
+        p.live_bytes += b;
         *ptr = static_cast<T*>(q);
         return cudaSuccess;
     }
@@ -90,6 +100,7 @@ inline cudaError_t dmalloc(T** ptr, size_t bytes) {
     }
     if (e != cudaSuccess) return e;
     p.live[q] = b;
+    p.live_bytes += b;
     *ptr = static_cast<T*>(q);
     return cudaSuccess;
 }
@@ -102,6 +113,7 @@ inline cudaError_t dfree(void* q) {
     if (it == p.live.end()) return cudaFree(q);
     const size_t b = it->second;
     p.live.erase(it);
+    p.live_bytes -= b;
     if (p.cached + b > p.cap) return cudaFree(q);
     p.freel[b].push_back(q);
     p.cached += b;

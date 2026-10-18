@@ -32,6 +32,12 @@ void step_end() {}
 size_t device_bytes_in_use() {
     return 0;
 }
+size_t pool_live_bytes() {
+    return 0;
+}
+size_t pool_cached_bytes() {
+    return 0;
+}
 namespace detail {
 void release_devstate_impl(DevState*) {}
 }  // namespace detail

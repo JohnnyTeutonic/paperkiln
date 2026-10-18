@@ -52,7 +52,15 @@ void step_end();    // close it: caches are ignored until the next begin
 // 0 on CPU-only builds. Exists so a test can assert memory is FLAT over
 // many steps: every CUDA leak this project has shipped was invisible to
 // a suite that only ran 9-50 steps.
+// It counts the caching pool's free list and every other process on the
+// device too, so flat-memory assertions use pool_live_bytes() instead.
 size_t device_bytes_in_use();
+// Bytes this process holds through the caching device pool (handed out and
+// not yet returned), excluding the pool's cache and other processes: the
+// leak-sensitive number. pool_cached_bytes() is the cache itself (bounded
+// by MICROTORCH_POOL_MB). Both 0 on CPU-only builds.
+size_t pool_live_bytes();
+size_t pool_cached_bytes();
 
 namespace detail {
 void release_devstate_impl(DevState*);  // frees the buffer + the struct

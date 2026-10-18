@@ -231,16 +231,18 @@ void test_gradcheck() {
     CHECK(worst < 5e-3);
 }
 
-// Device memory must not grow over steps (the table is cached once; every
-// temporary goes back to the pool).
+// Pool-held device memory must not grow over steps (the table is cached
+// once; every temporary goes back to the pool). pool_live_bytes, not
+// cudaMemGetInfo: the latter counts the pool's cache and other processes.
 void test_memory_flat() {
     if (!on_device()) return;
     const size_t B = 4, sl = 256, H = 6, dk = 64;
     run_chain(true, B, sl, H, dk, true, true);
-    const size_t before = device::device_bytes_in_use();
+    const size_t before = device::pool_live_bytes();
     for (int s = 0; s < 30; ++s) run_chain(true, B, sl, H, dk, true, true);
-    const size_t after = device::device_bytes_in_use();
-    std::printf("  device bytes in use over 30 steps: %zu -> %zu\n", before, after);
+    const size_t after = device::pool_live_bytes();
+    std::printf("  pool live bytes over 30 steps: %zu -> %zu (cache %zu)\n", before, after,
+                device::pool_cached_bytes());
     CHECK(after <= before);
 }
 

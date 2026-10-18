@@ -279,6 +279,9 @@ size_t device_bytes_in_use() {
     return total_b - free_b;
 }
 
+size_t pool_live_bytes() { return pool::live_bytes(); }
+size_t pool_cached_bytes() { return pool::cached_bytes(); }
+
 // ---- Phase B2.0 ----
 
 void set_step_residency(bool on) { g_step_residency = on; }

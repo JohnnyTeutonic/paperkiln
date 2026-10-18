@@ -545,16 +545,37 @@ void leg7_deferred_gemm() {
 // class this catches is linear and large (tens of MiB per step); 8 MiB
 // of total drift over 200 iterations is far below that and far above
 // any legitimate settling.
+//
+// The measure is pool_live_bytes(): what this process holds through the
+// caching pool. cudaMemGetInfo also counts the pool's bounded free list
+// (+110 to +868 MiB on an L4 with the pool on, 0 with MICROTORCH_POOL_MB=0,
+// 18 Oct 2026) and any other process on the device, which is not a leak.
+// A sensitivity probe first shows the counter moves: a 1 MiB residency
+// upload must raise it by at least 1 MiB and its invalidate must return it.
 void leg8_endurance() {
     std::printf("-- leg 8: endurance, device memory flat over 200 tapes --\n");
     device::set_device_ops(true);
+    {
+        device::set_residency(true);
+        Matrix probe(512, 512);
+        const size_t b0 = device::pool_live_bytes();
+        device::make_resident(probe);
+        const size_t b1 = device::pool_live_bytes();
+        device::invalidate(probe);
+        const size_t b2 = device::pool_live_bytes();
+        device::set_residency(false);
+        const bool tracks = b1 >= b0 + (1u << 20) && b2 == b0;
+        check(tracks, "pool_live_bytes tracks a 1 MiB upload", (b1 - b0) / 1048576.0);
+    }
     for (int i = 0; i < 10; ++i) run_tape(1000 + i);  // warm up
-    const size_t base = device::device_bytes_in_use();
+    const size_t base = device::pool_live_bytes(), dev_base = device::device_bytes_in_use();
     for (int i = 0; i < 200; ++i) run_tape(2000 + i);
-    const size_t after = device::device_bytes_in_use();
+    const size_t after = device::pool_live_bytes(), dev_after = device::device_bytes_in_use();
     const double grew_mib = (after > base ? static_cast<double>(after - base) : 0.0) / (1 << 20);
-    check(grew_mib <= 8.0, "device MiB grown over 200 tapes", grew_mib);
-    std::printf("   (%.1f MiB base, %.1f MiB after)\n", base / 1048576.0, after / 1048576.0);
+    check(grew_mib <= 8.0, "pool live MiB grown over 200 tapes", grew_mib);
+    std::printf("   (pool live %.1f -> %.1f MiB; cached %.1f MiB; device-wide %.1f -> %.1f MiB, informational)\n",
+                base / 1048576.0, after / 1048576.0, device::pool_cached_bytes() / 1048576.0,
+                dev_base / 1048576.0, dev_after / 1048576.0);
 }
 
 int main() {
