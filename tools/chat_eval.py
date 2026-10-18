@@ -73,6 +73,19 @@ def ref_bpb(mtstudio, spec_path, prompts, work, tag):
     return nats * toks / byts / math.log(2), len(held)
 
 
+def check_rope_heads(spec_path):
+    """A spec over bare weights (no events.jsonl in out_dir) with no
+    arch.rope_heads loads as legacy "first" (mtstudio resolve_rope_heads),
+    which samples a model trained with "all" under the wrong architecture
+    and corrupts every metric but ref_bpb. Refuse it."""
+    spec = json.load(open(spec_path, encoding="utf-8"))
+    if spec.get("arch", {}).get("rope_heads"):
+        return
+    if not os.path.exists(os.path.join(spec["out_dir"], "events.jsonl")):
+        sys.exit(f"{spec_path}: out_dir has no events.jsonl and arch.rope_heads is unset, so mtstudio would load "
+                 "the weights as rope_heads=\"first\"; state arch.rope_heads or copy the run's events.jsonl")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--mtstudio", required=True)
@@ -84,6 +97,8 @@ def main(argv=None):
     ap.add_argument("--max-new", type=int, default=64)
     ap.add_argument("--limit", type=int, default=200)
     a = ap.parse_args(argv)
+    for m in a.model:
+        check_rope_heads(m.split("=", 1)[1])
     os.makedirs(a.out, exist_ok=True)
     prompts = read_jsonl(a.prompts)[:a.limit]
     pf = os.path.join(a.out, "prompts_templated.jsonl")
