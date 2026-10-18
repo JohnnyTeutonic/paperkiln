@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
-"""Dialogues -> SFT examples in the chat template that `mtstudio chat` serves.
+"""Dialogues -> SFT examples and preference pairs in the chat template that
+`mtstudio chat` serves.
 
-    python tools/chat_data.py sft DIALOGUES.jsonl --vocab V.gguf --T 256 --out SFT.jsonl [--max N]
+    python tools/chat_data.py sft DIALOGUES.jsonl --vocab V.gguf --T 256 --out SFT.jsonl [--max N] [--skip N]
+    python tools/chat_data.py prompts SFT.jsonl --out PROMPTS.jsonl
+    python tools/chat_data.py pairs SFT.jsonl SAMPLES.jsonl --vocab V.gguf --T 256 --out PAIRS.jsonl
 
 The template (tools/mtstudio.cpp chat_prompt_bpe): every past turn is
 <|user|>U<|assistant|>A<|endoftext|>, and a reply is prompted by
@@ -14,7 +17,14 @@ model to stop mid-sentence. A dialogue whose text still carries a source
 role marker ([INST], [/INST] or a variant) is dropped whole and counted:
 about 0.3% of TinyChat conversations separate turns with bare [/INST], so
 one "assistant turn" holds several (ledger 0003), and training on them
-would teach the model to print markers.
+would teach the model to print markers. --skip N starts after the first N
+kept examples, so a later stage can draw examples the SFT run never saw.
+
+`prompts` writes the examples' prompts for `mtstudio sample-set`; `pairs`
+joins its samples back to the examples as SPIN-style preference pairs: the
+dataset's reply is chosen, the model's own sample is rejected. A sample
+identical to the reference is not a pair and is counted. Each side carries
+a receipt naming where it came from.
 """
 from __future__ import annotations
 
@@ -26,7 +36,6 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import bpe  # noqa: E402
-
 
 MARKER = re.compile(r"\[\s*/?\W?\s*INST|INST\s*\]")
 
@@ -43,18 +52,20 @@ def examples(messages):
         hist += turn(u, a)
 
 
-def main(argv=None):
-    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    sub = ap.add_subparsers(dest="cmd", required=True)
-    s = sub.add_parser("sft")
-    s.add_argument("dialogues")
-    s.add_argument("--vocab", required=True)
-    s.add_argument("--T", type=int, default=256)
-    s.add_argument("--out", required=True)
-    s.add_argument("--max", type=int, default=0, help="stop after this many examples (0 = all)")
-    a = ap.parse_args(argv)
+def read_jsonl(p):
+    with open(p, encoding="utf-8") as f:
+        return [json.loads(x) for x in f if x.strip()]
+
+
+def write_jsonl(p, rows):
+    with open(p, "w", encoding="utf-8", newline="\n") as g:
+        for r in rows:
+            g.write(json.dumps(r, ensure_ascii=False) + "\n")
+
+
+def cmd_sft(a):
     tok = bpe.read_gguf(a.vocab)
-    kept = dropped = marked = 0
+    kept = dropped = marked = skipped = 0
     with open(a.dialogues, encoding="utf-8") as f, open(a.out, "w", encoding="utf-8", newline="\n") as g:
         for line in f:
             d = json.loads(line)
@@ -66,6 +77,9 @@ def main(argv=None):
                 if n > a.T + 1:
                     dropped += 1
                     continue
+                if skipped < a.skip:
+                    skipped += 1
+                    continue
                 ex["uri"] = d.get("uri", "")
                 g.write(json.dumps(ex, ensure_ascii=False) + "\n")
                 kept += 1
@@ -73,7 +87,60 @@ def main(argv=None):
                     break
             if a.max and kept >= a.max:
                 break
-    print(json.dumps({"kept": kept, "dropped_over_T": dropped, "dropped_dialogues_with_markers": marked, "out": a.out}))
+    return {"kept": kept, "skipped": skipped, "dropped_over_T": dropped, "dropped_dialogues_with_markers": marked,
+            "out": a.out}
+
+
+def cmd_prompts(a):
+    ex = read_jsonl(a.examples)
+    write_jsonl(a.out, ({"prompt": e["prompt"], "uri": e.get("uri", "")} for e in ex))
+    return {"prompts": len(ex), "out": a.out}
+
+
+def cmd_pairs(a):
+    tok = bpe.read_gguf(a.vocab)
+    ex = read_jsonl(a.examples)
+    pairs, same, over = [], 0, 0
+    for s in read_jsonl(a.samples):
+        e = ex[s["prompt_index"]]
+        ref, mine = e["completion"], s["completion"]
+        if mine.strip() == ref.strip():
+            same += 1
+            continue
+        p = len(tok.encode(e["prompt"]))
+        if p + max(len(tok.encode(ref)), len(tok.encode(mine))) + 1 > a.T + 1:
+            over += 1
+            continue
+        pairs.append({"prompt": e["prompt"], "chosen": ref, "rejected": mine,
+                      "chosen_evidence": {"evidence_kind": "reference", "evidence_uri": e.get("uri", ""),
+                                          "rationale": "the dataset's own reply"},
+                      "rejected_evidence": {"evidence_kind": "policy_sample", "evidence_uri": a.samples,
+                                            "rationale": f"model sample, stop={s.get('stop', '')}"}})
+    write_jsonl(a.out, pairs)
+    return {"pairs": len(pairs), "identical_to_reference": same, "over_T": over, "out": a.out}
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    s = sub.add_parser("sft")
+    s.add_argument("dialogues")
+    s.add_argument("--vocab", required=True)
+    s.add_argument("--T", type=int, default=256)
+    s.add_argument("--out", required=True)
+    s.add_argument("--max", type=int, default=0, help="stop after this many examples (0 = all)")
+    s.add_argument("--skip", type=int, default=0, help="skip the first N examples that would be kept")
+    p = sub.add_parser("prompts")
+    p.add_argument("examples")
+    p.add_argument("--out", required=True)
+    q = sub.add_parser("pairs")
+    q.add_argument("examples")
+    q.add_argument("samples")
+    q.add_argument("--vocab", required=True)
+    q.add_argument("--T", type=int, default=256)
+    q.add_argument("--out", required=True)
+    a = ap.parse_args(argv)
+    print(json.dumps({"sft": cmd_sft, "prompts": cmd_prompts, "pairs": cmd_pairs}[a.cmd](a)))
     return 0
 
 
