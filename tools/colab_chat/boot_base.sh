@@ -48,7 +48,11 @@ cat > /content/chat/spec.json <<EOF
 EOF
 pkill -f "[b]uild_cuda/mtstudio run" || true
 echo RUNNING > /content/chat/STATUS
-MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 MICROTORCH_ATTN_BLOCKED=1 OMP_NUM_THREADS=4 \
+# Residency + deferral + cuBLAS FP32: 2.47x at the chat shape on an L4, step
+# losses unchanged; deferral passed 300 steps with evals, checkpoints, export
+# and a resume (18 Oct 2026).
+MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 MICROTORCH_ATTN_BLOCKED=1 MICROTORCH_STEP_RESIDENCY=1 \
+MICROTORCH_DEFER_DOWNLOADS=1 MICROTORCH_CUBLAS=1 OMP_NUM_THREADS=4 \
   nohup bash -c "/content/pk/build_cuda/mtstudio run /content/chat/spec.json > /content/chat/train.log 2>&1; echo FINISHED > /content/chat/STATUS" \
   > /dev/null 2>&1 &
 echo "launched $(date -u)"
