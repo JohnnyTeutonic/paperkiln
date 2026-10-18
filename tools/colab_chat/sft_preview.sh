@@ -63,7 +63,8 @@ cat > $C/${TAG}_spec.json <<EOF
  "export": {"formats": ["safetensors", "gguf"]}, "out_dir": "$C/$TAG"}
 EOF
 echo RUNNING > $ST
-MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 MICROTORCH_ATTN_BLOCKED=1 OMP_NUM_THREADS=4 \
+MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 MICROTORCH_ATTN_BLOCKED=1 MICROTORCH_STEP_RESIDENCY=1 \
+MICROTORCH_DEFER_DOWNLOADS=1 MICROTORCH_CUBLAS=1 OMP_NUM_THREADS=4 \
   $BIN run $C/${TAG}_spec.json > $C/${TAG}_train.log 2>&1 \
   && echo FINISHED > $ST || echo FAILED > $ST
 echo "done $(date -u)"

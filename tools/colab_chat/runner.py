@@ -205,10 +205,36 @@ def fetch_sft(st, out):
         log("sft preview downloaded")
 
 
+def hold_done(st, tag):
+    """A follow-on job on this VM (sft_preview.sh with TAG, e.g. the SFT of the
+    final base) keeps the session alive after the base finishes: True once it
+    has finished (or failed) and its outputs are home."""
+    rc, out = exec_py("import os\n"
+                      f"p = '/content/chat/STATUS_{tag}'\n"
+                      "print('HOLD', open(p).read().strip() if os.path.exists(p) else 'NONE')\n")
+    m = re.search(r"HOLD (\w+)", out)
+    q = m.group(1) if m else None
+    if q != st.d.get(f"hold_{tag}"):
+        log(f"hold {tag}: {q}")
+        st.d[f"hold_{tag}"] = q
+        st.save()
+    if q not in ("FINISHED", "FAILED"):
+        return False
+    dst = os.path.join(ART, tag)
+    os.makedirs(dst, exist_ok=True)
+    for f in (f"{tag}/chat_{tag}.safetensors", f"{tag}/chat_{tag}.gguf", f"{tag}/events.jsonl", f"{tag}/result.json",
+              f"{tag}_spec.json", f"{tag}.log", f"{tag}_train.log"):
+        colab("download", "-s", NAME, f"/content/chat/{f}", os.path.join(dst, os.path.basename(f)), timeout=900)
+    log(f"hold {tag} {q}: outputs downloaded")
+    return True
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--commit", required=True)
     ap.add_argument("--max-hours", type=float, default=20.0)
+    ap.add_argument("--hold", default="", help="after the base finishes, keep the session until this "
+                    "sft_preview.sh TAG finishes and its outputs are home")
     a = ap.parse_args()
     os.makedirs(HOME, exist_ok=True)
     pid = os.path.join(HOME, "runner.pid")
@@ -241,12 +267,16 @@ def main():
             if status in ("RUNNING", "FINISHED"):
                 relay_checkpoint(st)
             if status == "FINISHED":
-                for f in ("chat_base.safetensors", "chat_base.gguf", "events.jsonl", "result.json"):
-                    colab("download", "-s", NAME, f"/content/chat/base/{f}", os.path.join(ART, f), timeout=900)
-                colab("download", "-s", NAME, "/content/chat/tinychat_hf_full_v1.sha256",
-                      os.path.join(ART, "tinychat_hf_full_v1.sha256"), timeout=120)
-                log("FINISHED: final artifacts downloaded")
-                break
+                if not st.d.get("base_fetched"):
+                    for f in ("chat_base.safetensors", "chat_base.gguf", "events.jsonl", "result.json"):
+                        colab("download", "-s", NAME, f"/content/chat/base/{f}", os.path.join(ART, f), timeout=900)
+                    colab("download", "-s", NAME, "/content/chat/tinychat_hf_full_v1.sha256",
+                          os.path.join(ART, "tinychat_hf_full_v1.sha256"), timeout=120)
+                    st.d["base_fetched"] = True
+                    st.save()
+                    log("FINISHED: final artifacts downloaded")
+                if not a.hold or hold_done(st, a.hold):
+                    break
             if status == "BOOT_FAILED":
                 log("boot failed on the VM; see /content/chat/boot.log (downloading it)")
                 colab("download", "-s", NAME, "/content/chat/boot.log", os.path.join(ART, "boot.log"), timeout=120)
