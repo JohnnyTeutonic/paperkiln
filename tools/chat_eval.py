@@ -11,11 +11,21 @@ Every model gets the same prompts in the served chat template
                marker inside (the turn protocol: what SFT exists to teach)
   distinct2    distinct bigrams / bigrams in the reply (1 = no repetition)
   words        mean reply length in words
+  prompt_overlap  share of the prompt's content words the reply takes up
+  ref_f1       content-word F1 between the reply and the dataset's reply
+               (both crude lexical proxies for topic and relevance)
   ref_bpb      bits per byte of the REFERENCE reply under the model, via a
                masked-SFT evaluation pass (how well it predicts a good answer)
 and writes side_by_side.md: each prompt, the reference, and every model's
 reply, for reading. Metrics are descriptive; a pre-registered comparison
 reads them from summary.json.
+
+With --ember-bin, replies are sampled by an ember.cpp server started per
+model on its GGUF (out_dir/name.gguf, which must carry the BPE tokenizer)
+through tools/chat_sample_ember.py: pure temperature, the same seeds per
+prompt for every model, minutes instead of mtstudio's uncached sampler.
+ember also stops at a generated <|user|>/<|assistant|> (stop "turn"),
+which counts as not clean. ref_bpb is always mtstudio's scoring pass.
 """
 from __future__ import annotations
 
@@ -39,6 +49,34 @@ def distinct2(text):
     w = text.split()
     bg = list(zip(w, w[1:]))
     return len(set(bg)) / len(bg) if bg else 1.0
+
+
+# Function words of BASIC English chat: dropped before the overlap measures
+# so they count shared content, not "I", "the", "you".
+STOP = set("""a an the and or but if so of to in on at by for with from as is am are was were be been being
+do does did have has had i you he she it we they me him her us them my your his its our their this that these
+those there here what which who whom how why when where can could will would shall should may might must not no
+yes very just too also really about up out some any all more most much many such than then now well okay oh
+feel feels think know like get got go going make sure maybe sometimes always often""".split())
+
+
+def content(text):
+    return {w for w in (t.strip(".,!?;:'\"()").lower() for t in text.split()) if w and w not in STOP}
+
+
+def prompt_overlap(reply, prompt):
+    """Share of the prompt's content words the reply takes up: a crude topic signal."""
+    p = content(prompt)
+    return len(p & content(reply)) / len(p) if p else 0.0
+
+
+def ref_f1(reply, ref):
+    """Content-word F1 between the reply and the dataset's reply: a crude relevance signal."""
+    a, b = content(reply), content(ref)
+    if not a or not b:
+        return 0.0
+    k = len(a & b)
+    return 0.0 if k == 0 else 2 * k / (len(a) + len(b))
 
 
 def ref_bpb(mtstudio, spec_path, prompts, work, tag):
@@ -86,6 +124,43 @@ def check_rope_heads(spec_path):
                  "the weights as rope_heads=\"first\"; state arch.rope_heads or copy the run's events.jsonl")
 
 
+def sample_ember(ember_bin, port, spec_path, prompts, n, temp, max_new, out):
+    """Serve the model's GGUF with ember and sample n replies per prompt."""
+    import time
+    import urllib.request
+    spec = json.load(open(spec_path, encoding="utf-8"))
+    gguf = os.path.join(spec["out_dir"], spec["name"] + ".gguf")
+    bpe.read_gguf(gguf)  # raises unless the GGUF carries the BPE tokenizer
+    www = os.path.join(os.path.dirname(out), "www")
+    os.makedirs(www, exist_ok=True)
+    srv = subprocess.Popen([ember_bin, gguf, str(port), "127.0.0.1", www, "-1"], stdout=subprocess.DEVNULL,
+                           stderr=subprocess.DEVNULL)
+    url = f"http://127.0.0.1:{port}"
+    try:
+        for _ in range(120):
+            try:
+                urllib.request.urlopen(url + "/health", timeout=2).read()
+                break
+            except OSError:
+                time.sleep(1)
+        ex = os.path.join(os.path.dirname(out), os.path.basename(out) + ".examples.jsonl")
+        with open(ex, "w", encoding="utf-8", newline="\n") as f:
+            for _ in range(n):
+                for p in prompts:
+                    f.write(json.dumps({"prompt": f"<|user|>{p['prompt']}<|assistant|>", "completion": p["reference"]},
+                                       ensure_ascii=False) + "\n")
+        subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "chat_sample_ember.py"),
+                        ex, "--url", url, "--vocab", spec["data"]["vocab"], "--out", out, "--temp", repr(temp),
+                        "--max-new", str(max_new), "--seed", "7"], check=True, capture_output=True)
+    finally:
+        srv.terminate()
+        srv.wait(timeout=30)
+    recs = read_jsonl(out)
+    for r in recs:  # back to an index into prompts (the examples repeat them n times)
+        r["prompt_index"] %= len(prompts)
+    return recs
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--mtstudio", required=True)
@@ -96,6 +171,8 @@ def main(argv=None):
     ap.add_argument("--temp", type=float, default=0.7)
     ap.add_argument("--max-new", type=int, default=64)
     ap.add_argument("--limit", type=int, default=200)
+    ap.add_argument("--ember-bin", default="", help="sample with this ember.cpp tinyllama_server instead")
+    ap.add_argument("--port", type=int, default=8092)
     a = ap.parse_args(argv)
     for m in a.model:
         check_rope_heads(m.split("=", 1)[1])
@@ -109,15 +186,22 @@ def main(argv=None):
     for m in a.model:
         tag, spec = m.split("=", 1)
         out = os.path.join(a.out, f"{tag}_samples.jsonl")
-        subprocess.run([a.mtstudio, "sample-set", spec, "--prompts", pf, "--out", out, "--n", str(a.n),
-                        "--temp", repr(a.temp), "--seed", "7", "--max-new", str(a.max_new)], check=True,
-                       capture_output=True)
-        recs = read_jsonl(out)
+        if a.ember_bin:
+            recs = sample_ember(a.ember_bin, a.port, spec, prompts, a.n, a.temp, a.max_new, out)
+        else:
+            subprocess.run([a.mtstudio, "sample-set", spec, "--prompts", pf, "--out", out, "--n", str(a.n),
+                            "--temp", repr(a.temp), "--seed", "7", "--max-new", str(a.max_new)], check=True,
+                           capture_output=True)
+            recs = read_jsonl(out)
         clean = [r["stop"] == "eos" and not any(t in r["completion"] for t in ("<|user|>", "<|assistant|>"))
                  for r in recs]
         bpb, nref = ref_bpb(a.mtstudio, spec, prompts, a.out, tag)
         summary[tag] = {"clean_stop": sum(clean) / len(recs),
                         "distinct2": sum(distinct2(r["completion"]) for r in recs) / len(recs),
+                        "prompt_overlap": sum(prompt_overlap(r["completion"], prompts[r["prompt_index"]]["prompt"])
+                                              for r in recs) / len(recs),
+                        "ref_f1": sum(ref_f1(r["completion"], prompts[r["prompt_index"]]["reference"])
+                                      for r in recs) / len(recs),
                         "words": sum(len(r["completion"].split()) for r in recs) / len(recs),
                         "ref_bpb": bpb, "ref_examples": nref, "samples": len(recs)}
         replies[tag] = {}
@@ -125,9 +209,13 @@ def main(argv=None):
             replies[tag].setdefault(r["prompt_index"], r["completion"])
     with open(os.path.join(a.out, "summary.json"), "w", encoding="utf-8", newline="\n") as f:
         json.dump(summary, f, indent=1)
-    L = ["# Chat side by side", "", "| model | clean stop | distinct-2 | words | ref bits/byte |", "|---|---:|---:|---:|---:|"]
+    L = ["# Chat side by side", "",
+         "| model | clean stop | distinct-2 | words | prompt overlap | ref F1 | ref bits/byte |",
+         "|---|---:|---:|---:|---:|---:|---:|"]
     for t, s in summary.items():
-        L.append(f"| {t} | {s['clean_stop']:.2f} | {s['distinct2']:.2f} | {s['words']:.1f} | {s['ref_bpb']:.3f} |")
+        L.append(f"| {t} | {s['clean_stop']:.2f} | {s['distinct2']:.2f} | {s['words']:.1f} | "
+                 f"{s['prompt_overlap']:.3f} | {s['ref_f1']:.3f} | {s['ref_bpb']:.3f} |")
+    L += ["", "Prompt overlap and ref F1 are content-word measures, crude proxies for topic and relevance, not judges."]
     L.append("")
     for i, p in enumerate(prompts):
         L += [f"### {i + 1}. {p['prompt']}", f"- reference: {p['reference']}"]
