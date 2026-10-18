@@ -10,6 +10,8 @@ Every model gets the same prompts in the served chat template
   clean_stop   reply ended at <|endoftext|> within the budget, with no role
                marker inside (the turn protocol: what SFT exists to teach)
   distinct2    distinct bigrams / bigrams in the reply (1 = no repetition)
+  repeat_frac  share of replies repeating a word trigram or a word twice
+               running (the gate for preference stages)
   words        mean reply length in words
   prompt_overlap  share of the prompt's content words the reply takes up
   ref_f1       content-word F1 between the reply and the dataset's reply
@@ -49,6 +51,18 @@ def distinct2(text):
     w = text.split()
     bg = list(zip(w, w[1:]))
     return len(set(bg)) / len(bg) if bg else 1.0
+
+
+def repeats(text):
+    """True if the reply repeats itself: a word trigram twice, or the same word
+    twice running ("today today"). The gate for preference stages: an arm that
+    repeats more than its SFT start has failed, whatever its pair accuracy."""
+    w = [t.strip(".,!?;:'\"()").lower() for t in text.split()]
+    w = [t for t in w if t]
+    if any(a == b for a, b in zip(w, w[1:])):
+        return True
+    tri = list(zip(w, w[1:], w[2:]))
+    return len(set(tri)) < len(tri)
 
 
 # Function words of BASIC English chat: dropped before the overlap measures
@@ -198,6 +212,7 @@ def main(argv=None):
         bpb, nref = ref_bpb(a.mtstudio, spec, prompts, a.out, tag)
         summary[tag] = {"clean_stop": sum(clean) / len(recs),
                         "distinct2": sum(distinct2(r["completion"]) for r in recs) / len(recs),
+                        "repeat_frac": sum(repeats(r["completion"]) for r in recs) / len(recs),
                         "prompt_overlap": sum(prompt_overlap(r["completion"], prompts[r["prompt_index"]]["prompt"])
                                               for r in recs) / len(recs),
                         "ref_f1": sum(ref_f1(r["completion"], prompts[r["prompt_index"]]["reference"])
@@ -210,10 +225,10 @@ def main(argv=None):
     with open(os.path.join(a.out, "summary.json"), "w", encoding="utf-8", newline="\n") as f:
         json.dump(summary, f, indent=1)
     L = ["# Chat side by side", "",
-         "| model | clean stop | distinct-2 | words | prompt overlap | ref F1 | ref bits/byte |",
-         "|---|---:|---:|---:|---:|---:|---:|"]
+         "| model | clean stop | distinct-2 | repeats | words | prompt overlap | ref F1 | ref bits/byte |",
+         "|---|---:|---:|---:|---:|---:|---:|---:|"]
     for t, s in summary.items():
-        L.append(f"| {t} | {s['clean_stop']:.2f} | {s['distinct2']:.2f} | {s['words']:.1f} | "
+        L.append(f"| {t} | {s['clean_stop']:.2f} | {s['distinct2']:.2f} | {s['repeat_frac']:.2f} | {s['words']:.1f} | "
                  f"{s['prompt_overlap']:.3f} | {s['ref_f1']:.3f} | {s['ref_bpb']:.3f} |")
     L += ["", "Prompt overlap and ref F1 are content-word measures, crude proxies for topic and relevance, not judges."]
     L.append("")
