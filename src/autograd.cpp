@@ -38,6 +38,17 @@ void Variable::accumulate(const Matrix& g) {
 }
 
 void Variable::accumulate(Matrix&& g) {
+    // First gradient for this variable: it IS the sum, so take it. The
+    // general path would zero-fill a fresh matrix on the host, upload it and
+    // add on the device: 45% of a chat-shape training step on an L4 was that
+    // zero-fill and much of the H2D traffic (gdb samples, 19 Oct 2026). A
+    // vector move keeps the buffer, so a deferred value-cache entry (keyed
+    // by the host pointer) moves with it and must not be discarded. The only
+    // numerical difference from 0 + g is a -0.0 element staying -0.0.
+    if (grad.rows() == 0 && g.rows() == data.rows() && g.cols() == data.cols()) {
+        grad = std::move(g);
+        return;
+    }
     accumulate(static_cast<const Matrix&>(g));
     device::discard(g);  // the temp dies with this statement — its
                          // deferred entry must not outlive it
