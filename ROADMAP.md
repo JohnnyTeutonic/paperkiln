@@ -108,13 +108,20 @@ advisory steps that cannot fail the build.
     and the chat corpus (TinyChat, ledger 0003) are in; GGUF exports of BPE models
     carry their merges.
   Next:
-  - **Chat model** (running 18 Oct 2026): base pretraining on TinyChat on Colab
-    (`tools/colab_chat/`, d=384 L=6, 12000 steps, ~21 h), a preview SFT from
-    base step 1500 on the same VM, then SFT and preference stages from the final
-    base, compared with `tools/chat_eval.py` on the frozen held-out prompts. The
-    preference stage needs a gentler recipe than PT5's (lower lr).
-  - ember.cpp needs a "bpe" tokenizer (merges are "a b" token-id pairs, see
-    `tools/bpe.py`) to serve the chat model.
+  - **TinyChat chat model: done (19 Oct 2026).** Base 12000 steps (val 1.989) +
+    SFT, served by ember.cpp with BPE and 40/40 greedy parity
+    (`experiments/chat_tinychat/RESULTS.md`). Chat improves with base steps; the
+    simple-QA probe stays 0/50 on facts, science and arithmetic. SPIN preference
+    pairs retired (repetition, collapse). SFT overfits after ~500 steps.
+  - **General-text chat model** (running from 19 Oct 2026,
+    `experiments/chat_general/PLAN.md`): FineWeb-Edu base d384 L6, ~195M tokens,
+    47,500 steps, ~24 L4-hours (`tools/colab_chat/boot_fineweb.sh`, runner
+    session pk-fw); then TinyChat SFT (~500 steps), then a Claude-judged
+    preference stage (`tools/posttrain/chat_judge.py`, ~$25 per 1,000 prompts,
+    needs Jonathan's OK), scored by `tools/chat_eval.py` and `tools/qa_eval.py`.
+  - Engine, next: the remaining per-token host work (zero-filled Matrix
+    construction on every op is the largest item in the profile); a VM-side
+    snapshot before each checkpoint relay, so relays stop racing the saves.
   - HF-export round trip of an SFT'd model (the brief's Phase 3 export check).
 
 - **Scale ladder, depth rung.** d=256, 4 layers, exact against SWA, as its
