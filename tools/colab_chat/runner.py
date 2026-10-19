@@ -215,6 +215,8 @@ def hold_done(st, tag):
     """A follow-on job on this VM (sft_preview.sh with TAG, e.g. the SFT of the
     final base) keeps the session alive after the base finishes: True once it
     has finished (or failed) and its outputs are home."""
+    if st.d.get(f"hold_{tag}_home"):
+        return True
     rc, out = exec_py("import os\n"
                       f"p = '/content/chat/STATUS_{tag}'\n"
                       "print('HOLD', open(p).read().strip() if os.path.exists(p) else 'NONE')\n")
@@ -232,6 +234,8 @@ def hold_done(st, tag):
               f"{tag}_spec.json", f"{tag}.log", f"{tag}_train.log"):
         colab("download", "-s", NAME, f"/content/chat/{f}", os.path.join(dst, os.path.basename(f)), timeout=900)
     log(f"hold {tag} {q}: outputs downloaded")
+    st.d[f"hold_{tag}_home"] = True
+    st.save()
     return True
 
 
@@ -245,8 +249,8 @@ def main():
     ap.add_argument("--state-dir", default=HOME, help="runner state, pid file and log")
     ap.add_argument("--boot", default=BOOT, help="VM boot script under tools/colab_chat/")
     ap.add_argument("--model-name", default=MODEL, help="the spec's name (final export files)")
-    ap.add_argument("--hold", default="", help="after the base finishes, keep the session until this "
-                    "sft_preview.sh TAG finishes and its outputs are home")
+    ap.add_argument("--hold", default="", help="after the base finishes, keep the session until these "
+                    "sft_preview.sh TAGs (comma-separated) finish and their outputs are home")
     a = ap.parse_args()
     NAME, ART, HOME, BOOT, MODEL = a.name, a.art, os.path.expanduser(a.state_dir), a.boot, a.model_name
     os.makedirs(HOME, exist_ok=True)
@@ -288,7 +292,9 @@ def main():
                     st.d["base_fetched"] = True
                     st.save()
                     log("FINISHED: final artifacts downloaded")
-                if not a.hold or hold_done(st, a.hold):
+                # Every held job is polled each tick (a list, not a short-circuit),
+                # so each one's outputs come home as soon as it finishes.
+                if all([hold_done(st, t) for t in a.hold.split(",") if t]):
                     break
             if status == "BOOT_FAILED":
                 log("boot failed on the VM; see /content/chat/boot.log (downloading it)")
