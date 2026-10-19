@@ -1,0 +1,3 @@
+# HuggingFaceFW/fineweb-edu@87f09149ef4734204d70ed1d046ddc9ca3f2b8f9 sample/10BT/000_00000.parquet, split 99.5/0.5 by sha256(id)
+4f3dbe8aa9bf20bf6ad68b4cdcb3eb08a0f1631da26845ec4cebb2d8ab215e66  pretrain_train.txt
+f8447e7508770f552402a3661018f40c8f3e31524ddc5eece64ce4b8fcf672b1  val.txt
