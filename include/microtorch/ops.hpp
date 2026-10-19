@@ -119,6 +119,34 @@ Var rms_row(const Var& x, float eps = 1e-8f);  // per-row sqrt(mean(x^2)) -> [T,
 Var sigmoid(const Var& x);                     // elementwise logistic
 Var add_scalar(const Var& x, float s);         // x + s (for affine gate logits)
 
+// ---- mixture-of-experts dispatch (nn::MoEFFN, 19 Oct 2026) ----
+// A top-k MoE FFN is COMPOSED on the tape from these index ops plus the
+// existing Linear/silu/mul/mul_col/softmax_row, rather than fused into one
+// moe_ffn op: gather and scatter are each other's adjoints, so the only new
+// gradient math is index bookkeeping, and every expert reuses the audited
+// SwiGLU path (and its device seams) unchanged. Gradients reach the expert
+// weights through the experts, x through gather_rows, and the router
+// through the gate values picked by gather_elems (the top-k INDICES are
+// constants; selection is not differentiable). All FD-checked in
+// tests/test_moe.cpp. Host loops after device::materialize, like
+// embedding/mul_col; device kernels are a later increment.
+Var gather_rows(const Var& x, const std::vector<int>& idx);
+// out[i, :] = x[idx[i], :]   ([n, cols]);   dx[idx[i], :] += dY[i, :]
+// (repeated indices accumulate). idx must be non-empty and in range.
+Var scatter_add_rows(const Var& x, const std::vector<int>& idx, size_t n_rows);
+// out [n_rows, cols], out[idx[i], :] += x[i, :] (rows never named stay
+// zero; a row named once is a COPY, so a one-to-one scatter is
+// bit-exact);   dx[i, :] = dY[idx[i], :]. Adjoint of gather_rows.
+Var gather_elems(const Var& x, const std::vector<int>& rows, const std::vector<int>& cols,
+                 size_t out_cols);
+// Pick entries x(rows[i], cols[i]) into an [n/out_cols, out_cols] matrix,
+// row-major (n = rows.size()); dx(rows[i], cols[i]) += dY_i. Picks a
+// router's top-k logits or probabilities ([T, k] with out_cols = k) and an
+// expert's gate column ([n_e, 1]).
+Var logsumexp_row(const Var& x);
+// [T, C] -> [T, 1], max-shifted log(sum_j exp x_ij);  dX = dY .* softmax(X).
+// The router z-loss is mean(logsumexp_row(logits)^2).
+
 // ---- training utilities ----
 Var dropout(const Var& x, float p, unsigned long long seed);
 // inverted dropout: keep with prob

@@ -31,6 +31,15 @@ struct LlamaExportConfig {
     uint32_t vocab_size = 0;           // required
     float rms_eps = 1e-6f;
     float rope_freq_base = 10000.0f;
+    // Mixture of experts (llama.cpp's Mixtral layout; nn::MoEFFN). 0 = dense.
+    // When set, each layer's FFN is read from
+    //   layers.N.mlp.router.weight                    -> blk.N.ffn_gate_inp.weight  ne={d, E}
+    //   layers.N.mlp.experts.{e}.{gate,up}_proj.weight -> blk.N.ffn_{gate,up}_exps.weight ne={d, ff, E}
+    //   layers.N.mlp.experts.{e}.down_proj.weight      -> blk.N.ffn_down_exps.weight ne={ff, d, E}
+    // with metadata <arch>.expert_count / expert_used_count. llama.cpp's
+    // llama-architecture MoE renormalises the top-k softmax gates, so only
+    // a renormalised-gate model is served faithfully.
+    uint32_t expert_count = 0, expert_used_count = 0;
 
     // Weight layout of the 2-D projection tensors in the state_dict:
     //  false (default): HF torch.nn.Linear rows=[out], cols=[in] -- what

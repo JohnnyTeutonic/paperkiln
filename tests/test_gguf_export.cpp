@@ -251,6 +251,68 @@ int main() {
         printf("  weights_in_out=true transposes correctly\n");
     }
 
+    // Mixture of experts (nn::MoEFFN names, microtorch [in, out] layout):
+    // router -> ffn_gate_inp {d, E}; experts stacked into 3-D *_exps
+    // tensors {in, out, E}, expert e's [out][in] block at e * in * out.
+    {
+        const uint32_t E = 3, K = 2;
+        std::map<std::string, Matrix> sd3;
+        for (const auto& [k, m] : sd) {
+            if (k.find("mlp.") != std::string::npos || k.find("q_proj.bias") != std::string::npos) continue;
+            sd3.emplace(k, m);
+        }
+        for (uint32_t l = 0; l < L; ++l) {
+            const std::string p = "model.layers." + std::to_string(l) + ".mlp.";
+            sd3.emplace(p + "router.weight", filled(D, E, 20.0f + l));  // [in=d, out=E]
+            for (uint32_t e = 0; e < E; ++e) {
+                const std::string q = p + "experts." + std::to_string(e) + ".";
+                sd3.emplace(q + "gate_proj.weight", filled(D, FF, 30.0f + 10 * l + e));
+                sd3.emplace(q + "up_proj.weight", filled(D, FF, 60.0f + 10 * l + e));
+                sd3.emplace(q + "down_proj.weight", filled(FF, D, 90.0f + 10 * l + e));
+            }
+        }
+        // lm_head in [in, out] layout for this export.
+        sd3["lm_head.weight"] = filled(D, V, 12.0f);
+        gguf::LlamaExportConfig cfg3 = cfg;
+        cfg3.weights_in_out = true;
+        cfg3.expert_count = E;
+        cfg3.expert_used_count = K;
+        const std::string path3 = base + "/gguf_export_test_moe.gguf";
+        std::vector<std::string> un3;
+        gguf::export_gguf_llama(path3, sd3, cfg3, &un3);
+        ParsedGGUF g3 = parse_gguf(path3);
+        CHECK(un3.empty());
+        CHECK(g3.u32s.at("llama.expert_count") == E && g3.u32s.at("llama.expert_used_count") == K);
+        // per layer: 4 attn + 2 norms + router + 3 exps = 10; + embed, norm, head.
+        CHECK(g3.tensors.size() == 10 * L + 3);
+        auto transpose = [](const Matrix& w) {
+            Matrix t(w.cols(), w.rows());
+            for (size_t i = 0; i < w.rows(); ++i)
+                for (size_t j = 0; j < w.cols(); ++j) t(j, i) = w(i, j);
+            return t;
+        };
+        expect_bytes(g3, "blk.1.ffn_gate_inp.weight", transpose(sd3.at("model.layers.1.mlp.router.weight")));
+        for (const auto& t : g3.tensors) {
+            if (t.name.find("_exps") != std::string::npos || t.name.find("gate_inp") != std::string::npos) {
+                printf("  %-26s ne = {", t.name.c_str());
+                for (auto d : t.dims) printf(" %llu", static_cast<unsigned long long>(d));
+                printf(" }\n");
+            }
+            if (t.name == "blk.1.ffn_gate_inp.weight") CHECK(t.dims == std::vector<uint64_t>({D, E}));
+            if (t.name == "blk.0.ffn_up_exps.weight") CHECK(t.dims == std::vector<uint64_t>({D, FF, E}));
+            if (t.name == "blk.0.ffn_down_exps.weight") CHECK(t.dims == std::vector<uint64_t>({FF, D, E}));
+            if (t.name != "blk.1.ffn_down_exps.weight") continue;
+            CHECK(t.dims == std::vector<uint64_t>({FF, D, E}));
+            for (uint32_t e = 0; e < E; ++e) {
+                const Matrix want = transpose(sd3.at("model.layers.1.mlp.experts." + std::to_string(e) + ".down_proj.weight"));
+                const uint8_t* at = g3.bytes.data() + g3.data_start + t.offset + size_t(e) * D * FF * sizeof(float);
+                CHECK(std::memcmp(at, &want(0, 0), D * FF * sizeof(float)) == 0);
+            }
+        }
+        std::remove(path3.c_str());
+        printf("  MoE export: expert_count/used metadata, router {d,E}, 3-D *_exps tensors byte-exact per expert\n");
+    }
+
     std::remove(path.c_str());
     printf("\n[PASS] GGUF export round trip\n");
     return 0;

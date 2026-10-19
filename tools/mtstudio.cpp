@@ -67,6 +67,11 @@ struct Spec {
     // takes what the run recorded, and a run that recorded nothing is
     // "first" (see resolve_rope_heads).
     std::string rope_heads;
+    // llama family: mixture-of-experts FFN (arch.moe; include/microtorch/moe.hpp).
+    // moe_experts == 0 = no arch.moe key = the dense model, untouched.
+    size_t moe_experts = 0, moe_top_k = 1;
+    std::string moe_gate;  // "renorm" (Mixtral) | "raw" (Switch); resolved in parse_spec
+    float moe_aux = 0.01f, moe_z = 0.001f;  // load-balance and router z-loss coefficients
     // data
     std::string corpus, vocab_gguf;
     size_t vocab_cap = 4096;
@@ -79,6 +84,9 @@ struct Spec {
     std::string sft_examples;
     bool allow_human_labels = false;
     std::string init_from;  // safetensors to start from (fresh runs only)
+    // Sparse upcycling (fresh MoE runs only): a DENSE llama safetensors whose
+    // FFN is copied into every expert; every other tensor is copied as is.
+    std::string upcycle_from;
     // objective "grpo" (Phase 4): train.grpo.* and data.grpo_prompts /
     // data.grpo_eval ({prompt, answer, uri} JSONL). The reference model for
     // the KL term is train.init_from, frozen.
@@ -210,6 +218,29 @@ Spec parse_spec(const std::string& path) {
                 "kimi/srd presets are 2-block parity models (layers must be 2)");
     }
 
+    if (arch.contains("moe")) {
+        // {"experts": E, "top_k": k, "gate": "renorm"|"raw", "aux_loss": a, "z_loss": z}
+        const json m = arch["moe"];
+        if (!m.is_object()) throw std::runtime_error("arch.moe must be an object");
+        if (s.family != "llama") throw std::runtime_error("arch.moe needs the llama family");
+        s.moe_experts = m.value("experts", size_t(0));
+        s.moe_top_k = m.value("top_k", size_t(1));
+        // Default gate: renormalised over the top k when k >= 2 (Mixtral; the
+        // upcycling convention), the raw probability when k = 1 (Switch) --
+        // with k = 1 a renormalised gate is the constant 1 and the router
+        // would learn from the auxiliary losses only.
+        s.moe_gate = m.value("gate", std::string(s.moe_top_k >= 2 ? "renorm" : "raw"));
+        s.moe_aux = m.value("aux_loss", s.moe_aux);
+        s.moe_z = m.value("z_loss", s.moe_z);
+        if (s.moe_experts < 1) throw std::runtime_error("arch.moe.experts must be >= 1");
+        if (s.moe_top_k < 1 || s.moe_top_k > s.moe_experts)
+            throw std::runtime_error("arch.moe.top_k must be in [1, experts]");
+        if (s.moe_gate != "renorm" && s.moe_gate != "raw")
+            throw std::runtime_error("arch.moe.gate must be \"renorm\" or \"raw\"");
+        if (s.moe_aux < 0.0f || s.moe_z < 0.0f)
+            throw std::runtime_error("arch.moe.aux_loss and z_loss must be >= 0");
+    }
+
     const json data = j.value("data", json::object());
     s.corpus = data.value("corpus", "");
     s.vocab_gguf = data.value("vocab", "");
@@ -234,6 +265,11 @@ Spec parse_spec(const std::string& path) {
     s.objective = tr.value("objective", s.objective);
     s.allow_human_labels = tr.value("allow_human_labels", s.allow_human_labels);
     s.init_from = tr.value("init_from", "");
+    s.upcycle_from = tr.value("upcycle_from", "");
+    if (!s.upcycle_from.empty()) {
+        if (s.moe_experts == 0) throw std::runtime_error("train.upcycle_from needs arch.moe (the MoE to upcycle into)");
+        if (!s.init_from.empty()) throw std::runtime_error("train.upcycle_from and train.init_from are exclusive");
+    }
     if (s.objective != "lm" && s.objective != "sft" && s.objective != "rejection_sft" && s.objective != "grpo" &&
         s.objective != "provenance_po")
         throw std::runtime_error("train.objective must be lm, sft, rejection_sft, grpo or provenance_po (got " +
@@ -287,7 +323,22 @@ Spec parse_spec(const std::string& path) {
     }
     s.serve = j.value("serve", json::object()).value("on_finish", false);
     s.out_dir = j.value("out_dir", s.out_dir);
+    if (s.moe_experts > 0) {
+        // The auxiliary losses ride the lm/sft loss; the RL objectives and
+        // activation checkpointing do not carry them yet (refuse, never drop).
+        if (s.objective == "grpo" || s.objective == "provenance_po")
+            throw std::runtime_error("arch.moe: objective " + s.objective + " is not wired for MoE yet (lm, sft, rejection_sft)");
+        if (s.ckpt_act)
+            throw std::runtime_error("arch.moe: train.checkpoint_activations is not supported with MoE yet");
+    }
     return s;
+}
+
+// The spec's MoE settings onto a llama config (no-op for a dense spec).
+void apply_moe(nn::LlamaConfig& lc, const Spec& s) {
+    lc.moe.experts = s.moe_experts;
+    lc.moe.top_k = s.moe_top_k;
+    lc.moe.renormalize = s.moe_gate != "raw";
 }
 
 // ---- events: JSONL to stdout + file (the M2 UI's feed) ----
@@ -763,6 +814,10 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                                             ? "unstated (all for a new run; a resumed run keeps "
                                               "its recorded value, first if none)"
                                             : s.rope_heads.c_str());
+    if (s.moe_experts > 0)
+        std::printf("moe: %zu experts, top_k=%zu, gate=%s, aux_loss=%g, z_loss=%g%s%s\n", s.moe_experts,
+                    s.moe_top_k, s.moe_gate.c_str(), s.moe_aux, s.moe_z,
+                    s.upcycle_from.empty() ? "" : ", upcycle_from=", s.upcycle_from.c_str());
     if (plan_only) return 0;
     if (s.vocab_gguf.empty() || (s.objective == "lm" && s.corpus.empty()))
         throw std::runtime_error("spec needs data.vocab, and data.corpus for objective lm");
@@ -798,6 +853,13 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                 if (!j.contains("arch") || !j["arch"].is_object()) j["arch"] = json::object();
                 if (j["arch"].value("rope_heads", "") != rope_heads) {
                     j["arch"]["rope_heads"] = rope_heads;
+                    text = j.dump(2) + "\n";
+                }
+                // An MoE spec records its resolved gate convention, so a
+                // later default change can never reinterpret a trained run.
+                if (s.moe_experts > 0 && j["arch"].contains("moe") && j["arch"]["moe"].is_object() &&
+                    j["arch"]["moe"].value("gate", "") != s.moe_gate) {
+                    j["arch"]["moe"]["gate"] = s.moe_gate;
                     text = j.dump(2) + "\n";
                 }
             }
@@ -948,6 +1010,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         lc.d_ff = s.d_ff ? s.d_ff : 3 * s.d;
         lc.n_ctx = s.T;
         lc.rope_all_heads = rope_heads == "all";
+        apply_moe(lc, s);
         llama = std::make_shared<nn::Llama>(lc, s.seed);
         llama->checkpoint_blocks = s.ckpt_act;
     } else {
@@ -994,6 +1057,13 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                      {"checkpoint_activations", s.ckpt_act},
                      {"params", n_params}};
     if (llama) model_ev["rope_heads"] = rope_heads;
+    // Absent for dense models: their model event is unchanged.
+    if (s.moe_experts > 0)
+        model_ev["moe"] = {{"experts", s.moe_experts},
+                           {"top_k", s.moe_top_k},
+                           {"gate", s.moe_gate},
+                           {"aux_loss", s.moe_aux},
+                           {"z_loss", s.moe_z}};
     if (sft || grpo || po) model_ev["objective"] = s.objective;
     if (ops::blocked_attention_enabled()) model_ev["attention_impl"] = "blocked";  // absent = stacked  // absent for "lm": events unchanged
     ev.emit(model_ev);
@@ -1108,6 +1178,18 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         model_ref.load_state_dict(load_safetensors(s.init_from), /*strict=*/true);
         ev.emit({{"event", "init"}, {"from", s.init_from}});
     }
+    if (start_step == 0 && !s.upcycle_from.empty()) {
+        // Sparse upcycling: the dense FFN into every expert, everything else
+        // copied; the routers keep their fresh (small random) init. Strict
+        // otherwise: every dense tensor must land and only routers may be missing.
+        std::vector<std::string> routers;
+        const auto up = nn::upcycle_state_dict(load_safetensors(s.upcycle_from), s.moe_experts, &routers);
+        model_ref.load_state_dict(up, /*strict=*/true, routers);
+        ev.emit({{"event", "upcycle"},
+                 {"from", s.upcycle_from},
+                 {"experts", s.moe_experts},
+                 {"routers_fresh", routers.size()}});
+    }
 
     // Data order follows the spec seed so multi-seed sweeps vary both init
     // and batch composition (offset keeps seed=7 runs distinct from the
@@ -1170,6 +1252,10 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         device::step_begin();
         opt.zero_grad();
         float task_mean = 0, gate_mean = 0;
+        // MoE monitors, averaged over the accum micro-steps (unscaled
+        // per-layer means; the loss adds coefficient * these).
+        double moe_lb = 0, moe_z = 0;
+        std::vector<std::vector<double>> moe_frac;
         json gmet;
         if (grpo) {
             // Phase 4 step: P prompts x G pure-temperature samples from the
@@ -1339,10 +1425,22 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                 x.insert(x.end(), ids.begin() + at, ids.begin() + at + s.T);
                 y.insert(y.end(), ids.begin() + at + 1, ids.begin() + at + s.T + 1);
             }
-            Var logits = fwd(x, s.batch > 1 ? s.T : 0);
+            nn::MoEAux maux;
+            Var logits = s.moe_experts > 0 ? llama->forward(x, s.batch > 1 ? s.T : 0, &maux)
+                                           : fwd(x, s.batch > 1 ? s.T : 0);
             Var task = sft ? ops::cross_entropy_masked(logits, y, mask) : ops::cross_entropy(logits, y);
             Var loss = task;
             if (is_srd) loss = ops::add(task, ops::scale(gpt->mean_gate(), s.lambda_gate));
+            if (s.moe_experts > 0) {
+                // Mean over MoE layers, so the coefficients do not scale with depth.
+                const float L = static_cast<float>(maux.layers);
+                loss = ops::add(loss, ops::add(ops::scale(maux.lb, s.moe_aux / L), ops::scale(maux.z, s.moe_z / L)));
+                moe_lb += maux.lb->data(0, 0) / L / s.accum;
+                moe_z += maux.z->data(0, 0) / L / s.accum;
+                if (moe_frac.empty()) moe_frac.assign(maux.frac.size(), std::vector<double>(s.moe_experts, 0.0));
+                for (size_t l = 0; l < maux.frac.size(); ++l)
+                    for (size_t e = 0; e < s.moe_experts; ++e) moe_frac[l][e] += maux.frac[l][e] / s.accum;
+            }
             backward(ops::scale(loss, 1.0f / static_cast<float>(s.accum)));
             task_mean += task->data(0, 0) / static_cast<float>(s.accum);
             if (is_srd) gate_mean += gpt->mean_gate()->data(0, 0) / static_cast<float>(s.accum);
@@ -1358,6 +1456,26 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         json e = {
             {"event", "step"}, {"step", step}, {"loss", task_mean}, {"grad_norm", total_norm}};
         if (is_srd) e["gate"] = gate_mean;
+        if (!moe_frac.empty()) {
+            // Expert collapse is visible here: per-layer token fractions,
+            // their normalised entropy (1 = balanced) and the smallest share.
+            double ent = 0, fmin = 1;
+            json fr = json::array();
+            for (const auto& f : moe_frac) {
+                ent += nn::routing_entropy(f) / moe_frac.size();
+                json row = json::array();
+                for (double v : f) {
+                    row.push_back(std::round(v * 1e4) / 1e4);
+                    fmin = std::min(fmin, v);
+                }
+                fr.push_back(row);
+            }
+            e["aux_lb"] = moe_lb;
+            e["aux_z"] = moe_z;
+            e["moe_entropy"] = ent;
+            e["moe_min_frac"] = fmin;
+            e["moe_frac"] = fr;
+        }
         if (!gm.is_null()) e["grads"] = gm;
         for (auto it = gmet.begin(); it != gmet.end(); ++it) e[it.key()] = it.value();
         ev.emit(e);
@@ -1457,7 +1575,13 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         ev.emit({{"event", "export"}, {"format", "safetensors"}, {"path", spath}});
     }
     if (s.exp_gguf) {
-        if (llama) {
+        if (llama && s.moe_experts > 0 && s.moe_gate == "raw") {
+            // llama.cpp's llama-architecture MoE renormalises its top-k gates;
+            // a raw-gate (Switch) model would be served with different outputs.
+            ev.emit({{"event", "export_skipped"},
+                     {"format", "gguf"},
+                     {"reason", "moe gate=raw: llama.cpp renormalises top-k gates, so it would not reproduce this model"}});
+        } else if (llama) {
             auto sd2 = model_ref.state_dict();
             // Tied head: inject lm_head = E^T in microtorch [in, out]
             // layout; the exporter transposes it back into llama
@@ -1475,6 +1599,13 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             gc.block_count = (uint32_t)s.layers;
             gc.head_count = (uint32_t)s.heads;
             gc.feed_forward_length = (uint32_t)(3 * s.d);
+            if (s.moe_experts > 0) {
+                gc.expert_count = (uint32_t)s.moe_experts;
+                gc.expert_used_count = (uint32_t)s.moe_top_k;
+                // An MoE run is new: give the exporter the model's real d_ff
+                // (the dense line above keeps its historical 3d for old runs).
+                gc.feed_forward_length = (uint32_t)llama->cfg.d_ff;
+            }
             gc.vocab_size = (uint32_t)tokens.size();
             gc.context_length = (uint32_t)s.T;
             // The epsilon ops::rmsnorm trains with (src/ops.cpp). Exports
@@ -1739,6 +1870,7 @@ struct LoadedLM {
             lc.n_ctx = s.T;
             rope_heads = resolve_rope_heads(s, /*existing=*/true);
             lc.rope_all_heads = rope_heads == "all";
+            apply_moe(lc, s);
             llama = std::make_shared<nn::Llama>(lc, s.seed);
         } else {
             gpt = std::make_shared<parity::ParityLM>(attn_kind(s.attention), tokens.size(), s.d,

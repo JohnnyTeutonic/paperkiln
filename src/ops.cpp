@@ -3,6 +3,7 @@
 #include "microtorch/device.hpp"
 #include "microtorch/kimi_linear.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <random>
 #include <stdexcept>
@@ -1505,6 +1506,105 @@ Var swa_attention(const Var& q, const Var& k, const Var& v, float scale, size_t 
         // Same lifetime rule as fused_attention's backward: ds dies here.
         device::discard(ds);
         device::discard(*A);
+    });
+}
+
+// ---- mixture-of-experts dispatch (see ops.hpp) ----
+
+Var gather_rows(const Var& x, const std::vector<int>& idx) {
+    const size_t R = x->data.rows(), C = x->data.cols();
+    if (idx.empty()) throw std::runtime_error("gather_rows: empty index list");
+    for (int i : idx)
+        if (i < 0 || static_cast<size_t>(i) >= R) throw std::runtime_error("gather_rows: index out of range");
+    device::materialize(x->data);
+    Matrix out(idx.size(), C);
+    for (size_t i = 0; i < idx.size(); ++i)
+        for (size_t j = 0; j < C; ++j) out(i, j) = x->data(idx[i], j);
+    return record(std::move(out), {x}, [idx](Variable* self) {
+        const Var& x = self->parents[0];
+        if (!x->requires_grad) return;
+        device::materialize(self->grad);  // host-read below
+        Matrix dx(x->data.rows(), x->data.cols());
+        for (size_t i = 0; i < idx.size(); ++i)
+            for (size_t j = 0; j < dx.cols(); ++j) dx(idx[i], j) += self->grad(i, j);
+        x->accumulate(std::move(dx));
+    });
+}
+
+Var scatter_add_rows(const Var& x, const std::vector<int>& idx, size_t n_rows) {
+    const size_t C = x->data.cols();
+    if (idx.size() != x->data.rows()) throw std::runtime_error("scatter_add_rows: one index per row of x");
+    for (int i : idx)
+        if (i < 0 || static_cast<size_t>(i) >= n_rows)
+            throw std::runtime_error("scatter_add_rows: index out of range");
+    device::materialize(x->data);
+    Matrix out(n_rows, C);
+    // First write to a row copies, later ones add: a one-to-one scatter is
+    // then an exact copy (0.0f + v would turn a -0.0 into +0.0).
+    std::vector<char> touched(n_rows, 0);
+    for (size_t i = 0; i < idx.size(); ++i) {
+        const size_t r = static_cast<size_t>(idx[i]);
+        if (touched[r]) {
+            for (size_t j = 0; j < C; ++j) out(r, j) += x->data(i, j);
+        } else {
+            for (size_t j = 0; j < C; ++j) out(r, j) = x->data(i, j);
+            touched[r] = 1;
+        }
+    }
+    return record(std::move(out), {x}, [idx](Variable* self) {
+        const Var& x = self->parents[0];
+        if (!x->requires_grad) return;
+        device::materialize(self->grad);  // host-read below
+        Matrix dx(idx.size(), self->grad.cols());
+        for (size_t i = 0; i < idx.size(); ++i)
+            for (size_t j = 0; j < dx.cols(); ++j) dx(i, j) = self->grad(idx[i], j);
+        x->accumulate(std::move(dx));
+    });
+}
+
+Var gather_elems(const Var& x, const std::vector<int>& rows, const std::vector<int>& cols, size_t out_cols) {
+    const size_t n = rows.size();
+    if (n == 0 || cols.size() != n || out_cols == 0 || n % out_cols != 0)
+        throw std::runtime_error("gather_elems: rows/cols must be equal, non-empty, a multiple of out_cols");
+    for (size_t i = 0; i < n; ++i)
+        if (rows[i] < 0 || static_cast<size_t>(rows[i]) >= x->data.rows() || cols[i] < 0 ||
+            static_cast<size_t>(cols[i]) >= x->data.cols())
+            throw std::runtime_error("gather_elems: index out of range");
+    device::materialize(x->data);
+    Matrix out(n / out_cols, out_cols);
+    for (size_t i = 0; i < n; ++i) out(i / out_cols, i % out_cols) = x->data(rows[i], cols[i]);
+    return record(std::move(out), {x}, [rows, cols, out_cols](Variable* self) {
+        const Var& x = self->parents[0];
+        if (!x->requires_grad) return;
+        device::materialize(self->grad);  // host-read below
+        Matrix dx(x->data.rows(), x->data.cols());
+        for (size_t i = 0; i < rows.size(); ++i) dx(rows[i], cols[i]) += self->grad(i / out_cols, i % out_cols);
+        x->accumulate(std::move(dx));
+    });
+}
+
+Var logsumexp_row(const Var& x) {
+    device::materialize(x->data);
+    const size_t R = x->data.rows(), C = x->data.cols();
+    Matrix out(R, 1);
+    for (size_t i = 0; i < R; ++i) {
+        float mx = x->data(i, 0);
+        for (size_t j = 1; j < C; ++j) mx = std::max(mx, x->data(i, j));
+        double s = 0.0;
+        for (size_t j = 0; j < C; ++j) s += std::exp(static_cast<double>(x->data(i, j)) - mx);
+        out(i, 0) = mx + static_cast<float>(std::log(s));
+    }
+    return record(std::move(out), {x}, [](Variable* self) {
+        const Var& x = self->parents[0];
+        if (!x->requires_grad) return;
+        device::materialize(self->grad);  // host-read below
+        const size_t R = x->data.rows(), C = x->data.cols();
+        Matrix dx(R, C);
+        for (size_t i = 0; i < R; ++i) {
+            const float lse = self->data(i, 0), g = self->grad(i, 0);
+            for (size_t j = 0; j < C; ++j) dx(i, j) = g * std::exp(x->data(i, j) - lse);
+        }
+        x->accumulate(std::move(dx));
     });
 }
 

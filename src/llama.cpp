@@ -21,12 +21,19 @@ LlamaBlock::LlamaBlock(const LlamaConfig& cfg, unsigned seed)
     k_proj = mod<Linear>("self_attn.k_proj", cfg.d, cfg.d, false, seed + 2);
     v_proj = mod<Linear>("self_attn.v_proj", cfg.d, cfg.d, false, seed + 3);
     o_proj = mod<Linear>("self_attn.o_proj", cfg.d, cfg.d, false, seed + 4);
-    gate_proj = mod<Linear>("mlp.gate_proj", cfg.d, cfg.d_ff, false, seed + 5);
-    up_proj = mod<Linear>("mlp.up_proj", cfg.d, cfg.d_ff, false, seed + 6);
-    down_proj = mod<Linear>("mlp.down_proj", cfg.d_ff, cfg.d, false, seed + 7);
+    if (cfg.moe.experts > 0) {
+        // Registered as "mlp": layers.N.mlp.router.weight,
+        // layers.N.mlp.experts.{e}.{gate,up,down}_proj.weight. Expert 0 takes
+        // the dense FFN's seeds (seed + 5, 6, 7).
+        moe = mod<MoEFFN>("mlp", cfg.d, cfg.d_ff, cfg.moe, seed + 5);
+    } else {
+        gate_proj = mod<Linear>("mlp.gate_proj", cfg.d, cfg.d_ff, false, seed + 5);
+        up_proj = mod<Linear>("mlp.up_proj", cfg.d, cfg.d_ff, false, seed + 6);
+        down_proj = mod<Linear>("mlp.down_proj", cfg.d_ff, cfg.d, false, seed + 7);
+    }
 }
 
-Var LlamaBlock::forward(const Var& x, const std::vector<int>& pos, size_t seq_len) const {
+Var LlamaBlock::forward(const Var& x, const std::vector<int>& pos, size_t seq_len, MoEAux* aux) const {
     const size_t d = H * dk;
 
     // ---- attention sublayer (pre-RMSNorm) ----
@@ -57,9 +64,10 @@ Var LlamaBlock::forward(const Var& x, const std::vector<int>& pos, size_t seq_le
     Var attn = o_proj->forward(ops::concat_cols(heads));
     Var x1 = ops::add(x, attn);
 
-    // ---- SwiGLU FFN sublayer ----
+    // ---- SwiGLU FFN sublayer (dense, or a top-k mixture of SwiGLU experts) ----
     Var h2 = ops::rmsnorm(x1, ln2_w);
-    Var ffn = down_proj->forward(ops::mul(ops::silu(gate_proj->forward(h2)), up_proj->forward(h2)));
+    Var ffn = moe ? moe->forward(h2, aux)
+                  : down_proj->forward(ops::mul(ops::silu(gate_proj->forward(h2)), up_proj->forward(h2)));
     return ops::add(x1, ffn);
 }
 
@@ -72,18 +80,22 @@ Llama::Llama(const LlamaConfig& cfg_, unsigned seed) : cfg(cfg_) {
     if (!cfg.tie_embeddings) lm_head = mod<Linear>("lm_head", cfg.d, cfg.vocab, false, seed + 12);
 }
 
-Var Llama::forward(const std::vector<int>& ids, size_t seq_len) const {
+Var Llama::forward(const std::vector<int>& ids, size_t seq_len, MoEAux* aux) const {
     // RoPE positions restart every seq_len (0 = one sequence).
     const size_t sl = seq_len == 0 ? ids.size() : seq_len;
     if (ids.size() % sl != 0) throw std::runtime_error("ids not a multiple of seq_len");
     std::vector<int> pos(ids.size());
     for (size_t i = 0; i < pos.size(); ++i) pos[i] = static_cast<int>(i % sl);
+    // A checkpointed segment's forward records no tape, so auxiliary losses
+    // built inside it could not be differentiated: refuse rather than drop them.
+    if (aux && checkpoint_blocks && grad_enabled())
+        throw std::runtime_error("llama: MoE auxiliary losses are not supported with checkpoint_blocks");
     Var h = embed_tokens->forward(ids);
     for (const auto& b : blocks) {
         h = checkpoint_blocks && grad_enabled()
                 ? checkpoint(
                       [b, pos, seq_len](const Var& in) { return b->forward(in, pos, seq_len); }, h)
-                : b->forward(h, pos, seq_len);
+                : b->forward(h, pos, seq_len, aux);
     }
     h = ops::rmsnorm(h, norm_w);
     // Tied head: logits = h @ E^T (gradients flow into the embedding both
