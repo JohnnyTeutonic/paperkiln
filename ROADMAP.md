@@ -184,9 +184,11 @@ advisory steps that cannot fail the build.
 - **Kimi linear attention:** the non-causal backward (`src/ops.cpp:658`
   throws).
 - **HF export for the flex and gpt2 families; quantised gpt2 GGUFs; GGUF
-  for the other flex flavours.** The gpt2 family (exact attention) and
-  flex with the GPT-2 flavour export F32 GGUF in llama.cpp's `gpt2` layout
-  with their IR; quantised variants are refused by name.
+  for the other flex flavours.** The gpt2 family (exact or sliding-window
+  attention) and flex with the GPT-2 flavour export F32 GGUF in llama.cpp's
+  `gpt2` layout with their IR; quantised variants are refused by name. The
+  window and sinks live in the IR only (family_hint `gpt2_swa`), so
+  llama.cpp loads a sliding-window file but computes dense attention.
 - **Kimi and SRD in mtstudio beyond two-block parity models.**
 - **The taxonomy's "stream" lattice slot.**
 

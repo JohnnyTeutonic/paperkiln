@@ -125,6 +125,10 @@ public:
     SlidingWindowAttention(size_t d, size_t n_heads, size_t window, size_t sinks = 1,
                            unsigned seed = 0);
     Var forward(const Var& x, size_t seq_len = 0) const;
+    // IR nodes as CausalSelfAttention::export_ir, the attention node carrying
+    // this module's window and sinks (microtorch/ir.hpp, attention).
+    ir::json export_ir(const std::string& in, const std::string& out, const std::string& qkv_weight,
+                       const std::string& o_weight, const std::string& state) const;
     std::shared_ptr<Linear> c_attn, c_proj;
     size_t H, dk, window, sinks;
 };
@@ -159,7 +163,13 @@ public:
 // {"state": [kv, max_len n_ctx], "nodes": [...]}.
 ir::json gpt2_block_ir(const LayerNorm& ln1, const CausalSelfAttention& attn, const LayerNorm& ln2, const MLP& mlp,
                        size_t n_ctx);
-// A whole GPT-2-shaped model's IR (family_hint "gpt2"): wte -> token_embd
+// The same block with sliding-window attention: the attention node and the
+// kv state carry the window and sinks.
+ir::json gpt2_block_ir(const LayerNorm& ln1, const SlidingWindowAttention& attn, const LayerNorm& ln2,
+                       const MLP& mlp, size_t n_ctx);
+// A whole GPT-2-shaped model's IR (family_hint "gpt2", or "gpt2_swa" when
+// the blocks' kv state has a window, so no engine takes it for dense
+// attention): wte -> token_embd
 // plus learned positions wpe -> position_embd (ctx = its rows), `blocks`
 // (one gpt2_block_ir per layer; all must be equal), ln_f -> output_norm,
 // then `head` -> output.weight, or the tied embedding when head is null.

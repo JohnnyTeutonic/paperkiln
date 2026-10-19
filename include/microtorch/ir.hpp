@@ -4,8 +4,9 @@
 // interpret any paperkiln model rather than recognise a fixed architecture.
 //
 // Exported per module, never traced from the tape: each module emits its
-// own node spec (Embedding/Linear/LayerNorm/MLP/CausalSelfAttention/MoEFFN/
-// LlamaBlock/Llama::export_ir, nn::gpt2_block_ir); the free functions below
+// own node spec (Embedding/Linear/LayerNorm/MLP/CausalSelfAttention/
+// SlidingWindowAttention/MoEFFN/LlamaBlock/Llama::export_ir,
+// nn::gpt2_block_ir); the free functions below
 // cover the ops that have no module of their own (rmsnorm, rope, attention,
 // split, pos_embedding and the elementwise ops a block wires inline).
 //
@@ -47,6 +48,26 @@
 //               pos * theta^(-2j/head_dim). EXACT.
 //   attention   softmax(q k^T * scale) v per head over the kv state slot it
 //               names; causal, window (0 = unbounded) and sinks. ROUNDING.
+//               Sliding window with sinks (ops::swa_attention; window >= 1):
+//               with p the query's position and j a key's (both counted from
+//               the first token of the slot, 0-based), j is visible iff
+//                 j <= p  and  (j < sinks  or  j >= p - window + 1),
+//               i.e. the first `sinks` positions plus the last `window`
+//               positions up to and including p. Sinks are positions, not
+//               parameters (no tensor). The softmax runs over that union,
+//               each key once (the sink range is cut at the window's start
+//               when they meet); masked keys contribute exactly 0, and the
+//               row max is taken over visible keys only. paperkiln sums
+//               sinks first, then the window, each in ascending j. window
+//               >= p + 1 with sinks 0 is plain causal attention.
+//               Decode: the slot must keep the k/v rows of positions
+//               0..sinks-1 and of the last `window` positions (p - window +
+//               1 .. p, the new token included); anything older is never
+//               read again, so sinks + window rows per kv head suffice.
+//               Positions stay absolute: an engine that re-prefills past
+//               model.ctx (as mtstudio does: the last ctx tokens from
+//               position 0) also restarts the slot, and the sinks become the
+//               first tokens of the re-prefilled text, not the original ones.
 //   add, mul    elementwise. EXACT.  silu  x * sigmoid(x). ROUNDING.
 //   moe_ffn     a mixture of SwiGLU experts in llama.cpp's layout:
 //                 router  [E, d] tensor (ffn_gate_inp), logits = x R^T
@@ -62,6 +83,8 @@
 //                 accumulated in ascending expert index. ROUNDING.
 // Every op has the same prefill (T tokens) and decode (T = 1) semantics;
 // attention additionally reads and appends to its kv state in decode.
+// A kv state declares the same window and sinks as the attention node that
+// reads it (0 and 0 = keep every row up to max_len).
 //
 // GGUF: the compact dump is the string key kGGUFKey and the version the
 // uint32 key kGGUFVersionKey, written after every other metadata key.

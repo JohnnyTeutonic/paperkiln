@@ -881,9 +881,11 @@ std::string write_ir_doc(const Spec& s, const ir::json& model_ir, const std::vec
 // Q8_0 and 4-bit variants). Every variant embeds the model's IR (paperkiln.ir),
 // also written once beside them as <name>.ir.json. Shared by `run` and
 // `export`. The llama family exports through `llama`; the gpt2 family
-// (`gpt`, exact attention) and the GPT-2 flavour of flex (`flex`) export
-// F32 in llama.cpp's gpt2 architecture; everything else is reported as
-// skipped and gets no IR.
+// (`gpt`, exact or sliding-window attention) and the GPT-2 flavour of flex
+// (`flex`) export F32 in llama.cpp's gpt2 architecture; everything else is
+// reported as skipped and gets no IR. Sliding-window models keep the gpt2
+// tensors (so the file loads anywhere) and put the window and sinks in the
+// IR only: an engine reading the GGUF alone computes dense attention.
 void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama, const parity::ParityLM* gpt,
                   const parity::FlexLM* flex, const std::vector<std::string>& tokens,
                   const std::map<std::string, int>& vocab, const std::string& rope_heads,
@@ -987,7 +989,18 @@ void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama, 
         if (sd.size() != model_ref.named_parameters().size())
             throw std::runtime_error("export: the gpt2 state dict has " + std::to_string(sd.size()) +
                                      " tensors, the model " + std::to_string(model_ref.named_parameters().size()));
-        emit({{"event", "export"}, {"format", "gguf"}, {"path", gpath}, {"arch", "gpt2"}, {"ir", ir_path}});
+        json xe = {{"event", "export"}, {"format", "gguf"}, {"path", gpath}, {"arch", "gpt2"}, {"ir", ir_path}};
+        if (gpt ? gpt->windowed() : flex->windowed()) {
+            // Absent for dense gpt2 exports: their event is unchanged.
+            xe["attention"] = "swa";
+            xe["window"] = s.window;
+            xe["sinks"] = s.sinks;
+            xe["warning"] =
+                "sliding-window attention lives in the embedded IR only: an engine reading the gpt2 "
+                "tensors without it (llama.cpp) computes dense attention and diverges once a "
+                "sequence is longer than window + sinks";
+        }
+        emit(xe);
     } else {
         const std::string why = gpt     ? gpt->gpt2_export_blocker()
                                 : flex  ? flex->gpt2_export_blocker()
