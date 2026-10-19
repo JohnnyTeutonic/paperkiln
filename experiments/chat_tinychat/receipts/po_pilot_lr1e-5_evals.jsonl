@@ -1,0 +1,6 @@
+{"beta":0.10000000149011612,"ess_kish":1900.0,"event":"data","nll":0.20000000298023224,"objective":"provenance_po","pairs":1999,"pairs_by_kind":{"uniform":1900},"pairs_with_weight":1900,"val_pairs":99,"vocab":8192,"weight_mode":"uniform","weight_sum":1900.0,"weight_sum_by_kind":{"uniform":1900.0}}
+{"event":"po_eval","pairs":99,"pref_acc":0.7777777777777778,"step":50,"val_loss":0.6744167977881064}
+{"event":"po_eval","pairs":99,"pref_acc":0.8282828282828283,"step":100,"val_loss":0.6506397049159789}
+{"event":"po_eval","pairs":99,"pref_acc":0.8585858585858586,"step":150,"val_loss":0.6295645508694114}
+{"event":"po_eval","pairs":99,"pref_acc":0.8585858585858586,"step":200,"val_loss":0.6112973100932143}
+{"event":"po_eval","pairs":99,"pref_acc":0.8484848484848485,"step":250,"val_loss":0.5950724903149598}

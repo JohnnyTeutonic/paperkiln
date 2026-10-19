@@ -1,0 +1,9 @@
+{"completion_unk":0,"event":"data","examples":24000,"objective":"sft","provenance":{},"tokens":393606,"val_examples":1200,"vocab":8192}
+{"T":256,"accum":1,"activation":"swiglu","attention":"exact","attention_impl":"blocked","batch":16,"checkpoint_activations":false,"d":384,"d_ff":1152,"event":"model","family":"llama","gate_bias_init":-2.0,"heads":6,"layers":6,"lr":0.0003000000142492354,"norm":"rmsnorm","objective":"sft","params":14652288,"position":"rope","residual":"residual","rope_heads":"all","seed":1,"sinks":1,"vocab":8192,"window":64}
+{"event":"init","from":"/content/chat/sft_init/base_step1500.safetensors"}
+{"event":"eval","step":250,"val_loss":2.565298336209974}
+{"event":"eval","step":500,"val_loss":2.549829990401135}
+{"event":"eval","step":750,"val_loss":2.557916378049526}
+{"event":"eval","step":1000,"val_loss":2.5498450644438755}
+{"event":"eval","step":1250,"val_loss":2.5571836584856227}
+{"event":"eval","step":1500,"val_loss":2.546916160936574}

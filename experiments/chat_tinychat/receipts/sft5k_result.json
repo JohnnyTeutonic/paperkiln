@@ -1,0 +1,21 @@
+{
+  "T": 256,
+  "accum": 1,
+  "attention": "exact",
+  "batch": 16,
+  "best_val": 2.107619524002075,
+  "checkpoint_activations": false,
+  "d": 384,
+  "early_stopped": false,
+  "family": "llama",
+  "final_step": 1500,
+  "heads": 6,
+  "layers": 6,
+  "lr": 0.0003000000142492354,
+  "name": "chat_sft5k",
+  "params": 14652288,
+  "seed": 1,
+  "steps_requested": 1500,
+  "tokens_per_second": 693.374815331171,
+  "wall_seconds": 8861.008309143
+}

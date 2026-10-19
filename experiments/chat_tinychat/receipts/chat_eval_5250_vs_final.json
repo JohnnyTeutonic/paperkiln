@@ -1,0 +1,24 @@
+{
+ "sft5250": {
+  "clean_stop": 1.0,
+  "distinct2": 0.9991666666666668,
+  "repeat_frac": 0.0,
+  "prompt_overlap": 0.11220238095238094,
+  "ref_f1": 0.14846777610336934,
+  "words": 14.04,
+  "ref_bpb": 0.6202737725462624,
+  "ref_examples": 100,
+  "samples": 100
+ },
+ "sft12000": {
+  "clean_stop": 1.0,
+  "distinct2": 0.9992307692307691,
+  "repeat_frac": 0.0,
+  "prompt_overlap": 0.15459126984126983,
+  "ref_f1": 0.16439052872977822,
+  "words": 14.12,
+  "ref_bpb": 0.5645141478396074,
+  "ref_examples": 100,
+  "samples": 100
+ }
+}

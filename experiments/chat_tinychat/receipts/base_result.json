@@ -1,0 +1,21 @@
+{
+  "T": 256,
+  "accum": 1,
+  "attention": "exact",
+  "batch": 16,
+  "best_val": 1.9892010688781738,
+  "checkpoint_activations": false,
+  "d": 384,
+  "early_stopped": false,
+  "family": "llama",
+  "final_step": 12000,
+  "heads": 6,
+  "layers": 6,
+  "lr": 0.0010000000474974513,
+  "name": "chat_base",
+  "params": 14652288,
+  "seed": 1,
+  "steps_requested": 12000,
+  "tokens_per_second": 2526.1832445174496,
+  "wall_seconds": 8917.801212122
+}
