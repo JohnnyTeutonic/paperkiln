@@ -24,9 +24,10 @@
 //   embedding   rows of weight [vocab, d] gathered by token id. EXACT.
 //   pos_embedding  learned absolute positions: in [x, pos], out = x +
 //               weight[pos] row by row, weight [ctx, d] (position_embd).
-//               pos must be < ctx: an engine stops or re-prefills a sliding
-//               window before then (mtstudio re-runs the last ctx tokens
-//               from position 0). One float add per element. EXACT.
+//               pos must be < ctx: under the context contract
+//               (LOCAL_LLM_STACK.md section 3 point 5) generation stops at
+//               the limit, so no position reaches ctx. One float add per
+//               element. EXACT.
 //   linear      x W^T (+ bias), weight [out, in], bias [out] (the bias is
 //               added once to the finished dot product); "tied_to" names
 //               the tensor to read instead when "weight" is absent. ROUNDING.
@@ -64,10 +65,9 @@
 //               0..sinks-1 and of the last `window` positions (p - window +
 //               1 .. p, the new token included); anything older is never
 //               read again, so sinks + window rows per kv head suffice.
-//               Positions stay absolute: an engine that re-prefills past
-//               model.ctx (as mtstudio does: the last ctx tokens from
-//               position 0) also restarts the slot, and the sinks become the
-//               first tokens of the re-prefilled text, not the original ones.
+//               Positions stay absolute (decode pos = tokens seen, not rows
+//               kept); the sinks are the first tokens of the prompt. Under
+//               the context contract no position reaches model.ctx.
 //   add, mul    elementwise. EXACT.  silu  x * sigmoid(x). ROUNDING.
 //   moe_ffn     a mixture of SwiGLU experts in llama.cpp's layout:
 //                 router  [E, d] tensor (ffn_gate_inp), logits = x R^T
