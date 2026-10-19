@@ -46,19 +46,25 @@ while true; do
 done
 INIT=$(ls $INITD/base_step*.safetensors | head -1)
 
-D=corpus/data/tinychat_hf_full_v1
-V=corpus/data/vocab_tinychat_bpe8k_v1/tinychat_bpe8k.gguf
-[ -s $C/sft_examples.jsonl ] ||
-  python3 tools/chat_data.py sft $D/dialogues_train.jsonl --vocab $V --T 256 --max 24000 --out $C/sft_examples.jsonl
+# Overridable for another base (e.g. the FineWeb-Edu run: its own vocabulary,
+# the TinyChat sample's dialogues, 500 steps since SFT overfits past that).
+D=${SFT_DIALOGUES:-corpus/data/tinychat_hf_full_v1}
+V=${SFT_VOCAB:-corpus/data/vocab_tinychat_bpe8k_v1/tinychat_bpe8k.gguf}
+STEPS=${SFT_STEPS:-1500}
+EX=${SFT_EXAMPLES:-$C/sft_examples.jsonl}
+[ -s $EX ] ||
+  python3 tools/chat_data.py sft $D/dialogues_train.jsonl --vocab $V --T 256 --max 24000 --out $EX
 if [ ! -s $C/tinychat_hf_prompts_v1.jsonl ]; then
-  python3 corpus/fetchers/tinychat_hf.py eval_v1 --pin
+  # Frozen and committed since 18 Oct 2026; building them needs full_v1,
+  # which a VM without the full TinyChat fetch does not have.
+  [ -s corpus/eval/tinychat_hf_prompts_v1.jsonl ] || python3 corpus/fetchers/tinychat_hf.py eval_v1 --pin
   cp corpus/eval/tinychat_hf_prompts_v1.jsonl corpus/hashes/tinychat_hf_prompts_v1.sha256 $C/ 2>/dev/null || true
 fi
 
 cat > $C/${TAG}_spec.json <<EOF
 {"name": "chat_$TAG", "arch": {"preset": "llama-tiny", "custom": {"d": 384, "layers": 6, "heads": 6}},
- "data": {"vocab": "/content/pk/$V", "vocab_cap": 8192, "T": 256, "sft_examples": "$C/sft_examples.jsonl"},
- "train": {"steps": 1500, "lr": 0.0003, "batch": 16, "eval_every": 250, "checkpoint_every": 250,
+ "data": {"vocab": "/content/pk/$V", "vocab_cap": 8192, "T": 256, "sft_examples": "$EX"},
+ "train": {"steps": $STEPS, "lr": 0.0003, "batch": 16, "eval_every": 250, "checkpoint_every": 250,
            "gradmap_every": 0, "seed": 1, "optimizer": "adamw", "objective": "sft", "init_from": "$INIT"},
  "export": {"formats": ["safetensors", "gguf"]}, "out_dir": "$C/$TAG"}
 EOF
