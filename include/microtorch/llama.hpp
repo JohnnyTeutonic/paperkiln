@@ -6,6 +6,7 @@
 //   - gguf::export_gguf_llama(state_dict, cfg, weights_in_out=true) exports
 //     a tinyllama.cpp-servable GGUF with zero name mapping.
 // That closes the studio loop: train/fine-tune here -> chat there.
+#include "microtorch/moe.hpp"
 #include "microtorch/nn.hpp"
 
 namespace microtorch {
@@ -22,6 +23,9 @@ struct LlamaConfig {
     // the legacy rotation of head 0 only ("first"), which every llama run
     // recorded without a rope_heads field was trained with.
     bool rope_all_heads = true;
+    // Mixture-of-experts FFN (moe.hpp). experts == 0 (the default) is the
+    // dense SwiGLU block, constructed exactly as before.
+    MoEConfig moe;
 };
 
 class LlamaBlock : public Module {
@@ -29,11 +33,14 @@ public:
     LlamaBlock(const LlamaConfig& cfg, unsigned seed);
     // seq_len 0 = single sequence; otherwise x rows are B stacked
     // sequences of seq_len, attention-isolated by a block-diagonal mask.
-    Var forward(const Var& x, const std::vector<int>& positions, size_t seq_len = 0) const;
+    // aux: MoE blocks append their routing record (ignored when dense).
+    Var forward(const Var& x, const std::vector<int>& positions, size_t seq_len = 0,
+                MoEAux* aux = nullptr) const;
 
     Var ln1_w, ln2_w;  // input/post_attention layernorm gammas
     std::shared_ptr<Linear> q_proj, k_proj, v_proj, o_proj;
-    std::shared_ptr<Linear> gate_proj, up_proj, down_proj;
+    std::shared_ptr<Linear> gate_proj, up_proj, down_proj;  // dense FFN (null under MoE)
+    std::shared_ptr<MoEFFN> moe;                             // MoE FFN (null when dense)
     size_t H, dk;
     float rope_theta_, rms_eps_;
     bool rope_all_heads_;
@@ -44,7 +51,9 @@ public:
     explicit Llama(const LlamaConfig& cfg, unsigned seed = 0);
     // ids: one sequence, or B sequences of seq_len concatenated (RoPE
     // positions restart per sequence; attention is block-isolated).
-    Var forward(const std::vector<int>& ids, size_t seq_len = 0) const;
+    // aux (MoE models): collects every block's routing record and auxiliary
+    // losses for this forward. Not supported under checkpoint_blocks.
+    Var forward(const std::vector<int>& ids, size_t seq_len = 0, MoEAux* aux = nullptr) const;
 
     LlamaConfig cfg;
     // Activation checkpointing per block (see autograd.hpp).

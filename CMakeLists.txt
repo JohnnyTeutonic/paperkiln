@@ -50,6 +50,7 @@ add_library(microtorch STATIC
     src/gguf.cpp
     src/quant.cpp
     src/llama.cpp
+    src/moe.cpp
     src/kimi_linear.cpp
     src/srd.cpp
     src/cerebellum.cpp
@@ -149,6 +150,9 @@ add_test(NAME lora_quant COMMAND test_lora_quant)
 add_executable(test_llama tests/test_llama.cpp)
 target_link_libraries(test_llama PRIVATE microtorch)
 add_test(NAME llama COMMAND test_llama)
+add_executable(test_moe tests/test_moe.cpp)
+target_link_libraries(test_moe PRIVATE microtorch)
+add_test(NAME moe COMMAND test_moe)
 add_executable(test_rope_heads tests/test_rope_heads.cpp)
 target_link_libraries(test_rope_heads PRIVATE microtorch)
 add_test(NAME rope_heads COMMAND test_rope_heads)
