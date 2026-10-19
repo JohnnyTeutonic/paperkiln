@@ -236,18 +236,37 @@ ir::json LayerNorm::export_ir(const std::string& in, const std::string& out, con
     return ir::layernorm(in, prefix + ".weight", prefix + ".bias", eps, out);
 }
 
-ir::json CausalSelfAttention::export_ir(const std::string& in, const std::string& out, const std::string& qkv_weight,
-                                        const std::string& o_weight, const std::string& state) const {
-    if (!causal) throw std::runtime_error("attention export_ir: only causal attention has an IR");
-    // forward() above, node for node; the scale is the float it computes.
+namespace {
+// The fused-qkv attention of CausalSelfAttention and SlidingWindowAttention,
+// node for node as their forward(): qkv projection (+ bias), split, the
+// attention op (window 0 = causal), output projection (+ bias). The scale
+// is the float forward() computes.
+ir::json fused_qkv_attention_ir(const Linear& c_attn, const Linear& c_proj, size_t H, size_t dk, size_t window,
+                                size_t sinks, const std::string& in, const std::string& out,
+                                const std::string& qkv_weight, const std::string& o_weight, const std::string& state) {
     const size_t d = H * dk;
     const float sc = 1.0f / std::sqrt(static_cast<float>(dk));
     ir::json n = ir::json::array();
-    n.push_back(c_attn->export_ir(in, "qkv", qkv_weight));
+    n.push_back(c_attn.export_ir(in, "qkv", qkv_weight));
     n.push_back(ir::split("qkv", {d, d, d}, {"q", "k", "v"}));
-    n.push_back(ir::attention("q", "k", "v", state, H, H, dk, sc, /*causal=*/true, 0, 0, "a"));
-    n.push_back(c_proj->export_ir("a", out, o_weight));
+    n.push_back(ir::attention("q", "k", "v", state, H, H, dk, sc, /*causal=*/true, window, sinks, "a"));
+    n.push_back(c_proj.export_ir("a", out, o_weight));
     return n;
+}
+}  // namespace
+
+ir::json CausalSelfAttention::export_ir(const std::string& in, const std::string& out, const std::string& qkv_weight,
+                                        const std::string& o_weight, const std::string& state) const {
+    if (!causal) throw std::runtime_error("attention export_ir: only causal attention has an IR");
+    return fused_qkv_attention_ir(*c_attn, *c_proj, H, dk, 0, 0, in, out, qkv_weight, o_weight, state);
+}
+
+ir::json SlidingWindowAttention::export_ir(const std::string& in, const std::string& out,
+                                           const std::string& qkv_weight, const std::string& o_weight,
+                                           const std::string& state) const {
+    // window 0 means "unbounded" in the IR; ops::swa_attention refuses it.
+    if (window == 0) throw std::runtime_error("swa export_ir: window must be >= 1");
+    return fused_qkv_attention_ir(*c_attn, *c_proj, H, dk, window, sinks, in, out, qkv_weight, o_weight, state);
 }
 
 ir::json MLP::export_ir(const std::string& in, const std::string& out, const std::string& up_weight,
@@ -256,8 +275,11 @@ ir::json MLP::export_ir(const std::string& in, const std::string& out, const std
                             c_proj->export_ir("u", out, down_weight)});
 }
 
-ir::json gpt2_block_ir(const LayerNorm& ln1, const CausalSelfAttention& attn, const LayerNorm& ln2, const MLP& mlp,
-                       size_t n_ctx) {
+namespace {
+// Either attention module: its own nodes, and a kv state with its window/sinks.
+template <class Attn>
+ir::json gpt2_block_ir_of(const LayerNorm& ln1, const Attn& attn, const LayerNorm& ln2, const MLP& mlp, size_t n_ctx,
+                          size_t window, size_t sinks) {
     const std::string p = "blk.{i}.";
     ir::json n = ir::json::array();
     n.push_back(ln1.export_ir("x", "h", p + "attn_norm"));
@@ -267,7 +289,19 @@ ir::json gpt2_block_ir(const LayerNorm& ln1, const CausalSelfAttention& attn, co
     n.push_back(ln2.export_ir("x", "h2", p + "ffn_norm"));
     for (const auto& node : mlp.export_ir("h2", "f", p + "ffn_up.weight", p + "ffn_down.weight")) n.push_back(node);
     n.push_back(ir::binary("add", "x", "f", "x"));
-    return {{"state", ir::json::array({ir::kv_state("kv", attn.H, attn.H, attn.dk, n_ctx, 0, 0)})}, {"nodes", n}};
+    return {{"state", ir::json::array({ir::kv_state("kv", attn.H, attn.H, attn.dk, n_ctx, window, sinks)})},
+            {"nodes", n}};
+}
+}  // namespace
+
+ir::json gpt2_block_ir(const LayerNorm& ln1, const CausalSelfAttention& attn, const LayerNorm& ln2, const MLP& mlp,
+                       size_t n_ctx) {
+    return gpt2_block_ir_of(ln1, attn, ln2, mlp, n_ctx, 0, 0);
+}
+
+ir::json gpt2_block_ir(const LayerNorm& ln1, const SlidingWindowAttention& attn, const LayerNorm& ln2,
+                       const MLP& mlp, size_t n_ctx) {
+    return gpt2_block_ir_of(ln1, attn, ln2, mlp, n_ctx, attn.window, attn.sinks);
 }
 
 ir::json gpt2_ir(const Embedding& wte, const Embedding& wpe, const std::vector<ir::json>& blocks,
@@ -286,22 +320,30 @@ ir::json gpt2_ir(const Embedding& wte, const Embedding& wpe, const std::vector<i
                        {"weight", "output.weight"}, {"bias", nullptr},
                        {"tied_to", "token_embd.weight"}, {"out", "logits"}};
     }
+    // A windowed kv state keeps fewer rows than it has seen, so "cache
+    // length" would be the wrong decode position; say which count is meant.
+    const auto& kv = blocks[0]["state"][0];
+    const bool windowed = kv["window"].get<size_t>() != 0;
     ir::json doc;
     doc["ir_version"] = ir::kVersion;
-    doc["family_hint"] = "gpt2";
+    doc["family_hint"] = windowed ? "gpt2_swa" : "gpt2";
     doc["model"] = {{"vocab", vocab}, {"d", d}, {"n_layers", blocks.size()}, {"ctx", ctx}, {"dtype", "f32"}};
     doc["inputs"] = ir::json::array(
         {{{"name", "tokens"}, {"kind", "token_ids"}},
          {{"name", "pos"},
           {"kind", "positions"},
-          {"note", "absolute positions; prefill 0..T-1, decode = cache length; must stay below model.ctx"}}});
+          {"note", windowed ? "absolute positions; prefill 0..T-1, decode = tokens seen so far (not the rows the "
+                              "windowed kv state keeps); must stay below model.ctx"
+                            : "absolute positions; prefill 0..T-1, decode = cache length; must stay below model.ctx"}}});
     doc["embed"] = {{"nodes", ir::json::array({wte.export_ir("tokens", "x", "token_embd.weight"),
                                                ir::pos_embedding("x", "pos", "position_embd.weight", "x")})}};
     doc["block"] = {{"repeat", blocks.size()}, {"state", blocks[0]["state"]}, {"nodes", blocks[0]["nodes"]}};
     doc["head"] = {{"nodes", ir::json::array({ln_f.export_ir("x", "h", "output_norm"), head_linear})}};
     doc["outputs"] = ir::json::array({{{"name", "logits"}, {"kind", "logits"}}});
     doc["modes"] = {{"prefill", "all nodes over T tokens"},
-                    {"decode", "the same graph with T = 1, attention reads and appends to the kv state"}};
+                    {"decode", windowed ? "the same graph with T = 1, attention reads and appends to the kv state, "
+                                          "which needs only the first sinks and the last window rows"
+                                        : "the same graph with T = 1, attention reads and appends to the kv state"}};
     return doc;
 }
 

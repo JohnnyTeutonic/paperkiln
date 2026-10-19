@@ -8,7 +8,9 @@ embedded document; the dense IR is the hand-written v0 worked example
 one moe_ffn node in place of the dense FFN's five. The gpt2 family exports
 in llama.cpp's gpt2 layout (shapes, metadata and bytes against the
 safetensors) with a layernorm / split / gelu IR; flex exports when it has
-the GPT-2 flavour, and other flavours are skipped. Needs MTSTUDIO_BIN (or
+the GPT-2 flavour, and other flavours are skipped. Sliding-window attention
+(gpt2 and flex) exports the same gpt2 tensors with family_hint "gpt2_swa" and
+the window and sinks on the attention node and kv state. Needs MTSTUDIO_BIN (or
 ./build/mtstudio); skipped otherwise.
 """
 import copy
@@ -228,6 +230,60 @@ def test_gpt2_flavoured_flex_exports_and_others_skip(tmp_path):
         assert not [e for e in ev if e["event"] == "export" and e["format"] == "gguf"]
         assert any(e["event"] == "export_skipped" and e["format"] == "gguf" for e in ev)
         assert not (tmp_path / sub / "s" / "s.ir.json").exists()
+
+
+@needs_bin
+@pytest.mark.parametrize("layers", [2, 3])  # 2: ParityLM(SWA); 3: flex with attention swa
+def test_swa_exports_gpt2_tensors_with_a_windowed_ir(tmp_path, layers):
+    window, sinks, d, T, V, heads = 4, 2, 32, 16, 15, 2
+    spec = gpt2_setup(tmp_path / "swa", "w", {"layers": layers, "attention": "swa", "window": window, "sinks": sinks})
+    run(spec)
+    ex = [e for e in events(spec) if e["event"] == "export" and e["format"] == "gguf"]
+    assert len(ex) == 1, ex
+    # The event says what a GGUF-only engine would get wrong.
+    assert (ex[0]["arch"], ex[0]["attention"], ex[0]["window"], ex[0]["sinks"]) == ("gpt2", "swa", window, sinks)
+    assert "dense attention" in ex[0]["warning"]
+    path = ex[0]["path"]
+    assert ir_check.check(path) == []  # every IR weight name is a tensor of the file
+    meta, tensors, *_ = ir_check.read_gguf(path)
+    assert meta["general.architecture"][1] == "gpt2"
+    # Exactly the dense gpt2 tensor set: no sink parameters, nothing extra.
+    names = {t[0] for t in tensors}
+    want = {"token_embd.weight", "position_embd.weight", "output_norm.weight", "output_norm.bias", "output.weight"}
+    for i in range(layers):
+        want |= {f"blk.{i}.{t}.{w}" for t in ("attn_norm", "attn_qkv", "attn_output", "ffn_norm", "ffn_up", "ffn_down")
+                 for w in ("weight", "bias")}
+    assert names == want
+    doc = embedded(path)
+    # Not "llama" (ember's dense fast path) and not plain "gpt2".
+    assert doc["family_hint"] == "gpt2_swa"
+    g = {k.split(".", 1)[1]: v[1] for k, v in meta.items() if k.startswith("gpt2.")}
+    assert doc["model"] == {"vocab": V, "d": d, "n_layers": layers, "ctx": T, "dtype": "f32"}
+    assert (doc["model"]["d"], doc["model"]["vocab"], doc["model"]["ctx"], doc["model"]["n_layers"]) == (
+        g["embedding_length"], g["vocab_size"], g["context_length"], g["block_count"])
+    assert doc["block"]["repeat"] == g["block_count"] == layers
+    # The kv state ember allocates: windowed, with the sinks it must keep.
+    assert doc["block"]["state"] == [{"name": "kv", "kind": "kv", "heads": heads, "kv_heads": heads,
+                                      "head_dim": d // heads, "max_len": T, "window": window, "sinks": sinks,
+                                      "dtype": "f32"}]
+    nodes = doc["block"]["nodes"]
+    assert [n["op"] for n in nodes] == GPT2_OPS
+    att = nodes[3]
+    assert att["state"] == "kv" and att["in"] == ["q", "k", "v"] and att["out"] == "a"
+    assert (att["heads"], att["kv_heads"], att["head_dim"], att["causal"]) == (heads, heads, d // heads, True)
+    assert (att["window"], att["sinks"]) == (window, sinks)
+    assert abs(att["scale"] - (d // heads) ** -0.5) < 1e-7
+    # Everything else is the dense gpt2 IR of the same shape.
+    dense = gpt2_setup(tmp_path / "dense", "e", {"layers": layers})
+    run(dense)
+    ddoc = embedded([e for e in events(dense) if e["event"] == "export" and e["format"] == "gguf"][0]["path"])
+    a, b = ir_check.strip(doc), ir_check.strip(ddoc)
+    for x in (a, b):
+        x.pop("family_hint"), x.pop("inputs"), x.pop("modes")
+        x["block"]["state"][0].pop("window"), x["block"]["state"][0].pop("sinks")
+        x["block"]["nodes"][3].pop("window"), x["block"]["nodes"][3].pop("sinks")
+    assert a == b
+    assert ddoc["family_hint"] == "gpt2" and ddoc["block"]["nodes"][3]["window"] == 0
 
 
 @needs_bin

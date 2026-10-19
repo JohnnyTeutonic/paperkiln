@@ -22,8 +22,10 @@ enum class AttnKind { EXACT, KIMI, SRD, SWA };
 
 // GPT-2 export helpers (gguf::export_gguf_gpt2 reads HF GPT-2 names, which
 // are also nn::GPT2's): one pre-LN block's tensors as h.<b>.*, copied.
-inline void put_gpt2_block(std::map<std::string, Matrix>& sd, size_t b, const nn::LayerNorm& ln1,
-                           const nn::CausalSelfAttention& attn, const nn::LayerNorm& ln2, const nn::MLP& mlp) {
+// Attn: nn::CausalSelfAttention or nn::SlidingWindowAttention (same layout).
+template <class Attn>
+void put_gpt2_block(std::map<std::string, Matrix>& sd, size_t b, const nn::LayerNorm& ln1, const Attn& attn,
+                    const nn::LayerNorm& ln2, const nn::MLP& mlp) {
     const std::string h = "h." + std::to_string(b) + ".";
     sd[h + "ln_1.weight"] = ln1.weight->data;
     sd[h + "ln_1.bias"] = ln1.bias->data;
@@ -115,23 +117,35 @@ public:
         return head->forward(ln_f->forward(h));
     }
 
-    // GPT-2 export (GGUF arch "gpt2" + IR): exact attention only. kimi, srd
-    // and swa have no llama.cpp gpt2 form and no IR op yet.
+    // GPT-2 export (GGUF arch "gpt2" + IR): exact or sliding-window
+    // attention (same tensors; the IR carries the window and sinks, and
+    // llama.cpp's gpt2 computes dense attention). kimi and srd have no
+    // llama.cpp gpt2 form and no IR op yet.
     std::string gpt2_export_blocker() const {
-        return kind_ == AttnKind::EXACT ? "" : "attention is not exact softmax (kimi/srd/swa have no gpt2 export)";
+        return kind_ == AttnKind::EXACT || kind_ == AttnKind::SWA
+                   ? ""
+                   : "attention is not softmax attention (kimi/srd have no gpt2 export)";
     }
+    bool windowed() const { return kind_ == AttnKind::SWA; }
     ir::json export_ir() const {
         if (!gpt2_export_blocker().empty()) throw std::runtime_error("ParityLM export_ir: " + gpt2_export_blocker());
         std::vector<ir::json> blocks;
+        const size_t ctx = wpe->weight->data.rows();
         for (int b = 0; b < 2; ++b)
-            blocks.push_back(nn::gpt2_block_ir(*ln1[b], *exact[b], *ln2[b], *mlp[b], wpe->weight->data.rows()));
+            blocks.push_back(windowed() ? nn::gpt2_block_ir(*ln1[b], *swa[b], *ln2[b], *mlp[b], ctx)
+                                        : nn::gpt2_block_ir(*ln1[b], *exact[b], *ln2[b], *mlp[b], ctx));
         return nn::gpt2_ir(*wte, *wpe, blocks, *ln_f, head.get());
     }
     std::map<std::string, Matrix> gpt2_state_dict() const {
         if (!gpt2_export_blocker().empty()) throw std::runtime_error("ParityLM gpt2_state_dict: " + gpt2_export_blocker());
         std::map<std::string, Matrix> sd;
         put_gpt2_shell(sd, *wte, *wpe, *ln_f, *head);
-        for (int b = 0; b < 2; ++b) put_gpt2_block(sd, b, *ln1[b], *exact[b], *ln2[b], *mlp[b]);
+        for (int b = 0; b < 2; ++b) {
+            if (windowed())
+                put_gpt2_block(sd, b, *ln1[b], *swa[b], *ln2[b], *mlp[b]);
+            else
+                put_gpt2_block(sd, b, *ln1[b], *exact[b], *ln2[b], *mlp[b]);
+        }
         return sd;
     }
 
@@ -382,27 +396,37 @@ public:
 
     // GPT-2 export: only the GPT-2 flavour (the equivalence pin's config at
     // any depth and d_ff): layernorm, gelu, learned positions, residual,
-    // exact attention. "" when exportable, else the reason.
+    // exact or sliding-window attention (the window and sinks travel in
+    // the IR). "" when exportable, else the reason.
     std::string gpt2_export_blocker() const {
         if (cfg.norm != "layernorm") return "norm " + cfg.norm + " (gpt2 export needs layernorm)";
         if (cfg.act != "gelu") return "activation " + cfg.act + " (gpt2 export needs gelu)";
         if (cfg.pos != "learned") return "position " + cfg.pos + " (gpt2 export needs learned)";
         if (cfg.residual != "residual") return "residual " + cfg.residual + " (gpt2 export needs residual)";
-        if (cfg.attention != "exact") return "attention " + cfg.attention + " (gpt2 export needs exact)";
+        if (cfg.attention != "exact" && cfg.attention != "swa")
+            return "attention " + cfg.attention + " (gpt2 export needs exact or swa)";
         return "";
     }
+    bool windowed() const { return cfg.attention == "swa"; }
     ir::json export_ir() const {
         if (!gpt2_export_blocker().empty()) throw std::runtime_error("FlexLM export_ir: " + gpt2_export_blocker());
         std::vector<ir::json> irs;
-        for (const auto& b : blocks) irs.push_back(nn::gpt2_block_ir(*b->ln1, *b->attn, *b->ln2, *b->mlp, cfg.n_ctx));
+        for (const auto& b : blocks)
+            irs.push_back(b->swa_attn ? nn::gpt2_block_ir(*b->ln1, *b->swa_attn, *b->ln2, *b->mlp, cfg.n_ctx)
+                                      : nn::gpt2_block_ir(*b->ln1, *b->attn, *b->ln2, *b->mlp, cfg.n_ctx));
         return nn::gpt2_ir(*wte, *wpe, irs, *ln_f_ln, head.get());
     }
     std::map<std::string, Matrix> gpt2_state_dict() const {
         if (!gpt2_export_blocker().empty()) throw std::runtime_error("FlexLM gpt2_state_dict: " + gpt2_export_blocker());
         std::map<std::string, Matrix> sd;
         put_gpt2_shell(sd, *wte, *wpe, *ln_f_ln, *head);
-        for (size_t b = 0; b < blocks.size(); ++b)
-            put_gpt2_block(sd, b, *blocks[b]->ln1, *blocks[b]->attn, *blocks[b]->ln2, *blocks[b]->mlp);
+        for (size_t b = 0; b < blocks.size(); ++b) {
+            const auto& k = *blocks[b];
+            if (k.swa_attn)
+                put_gpt2_block(sd, b, *k.ln1, *k.swa_attn, *k.ln2, *k.mlp);
+            else
+                put_gpt2_block(sd, b, *k.ln1, *k.attn, *k.ln2, *k.mlp);
+        }
         return sd;
     }
 
