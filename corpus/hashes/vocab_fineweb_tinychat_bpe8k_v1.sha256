@@ -1,0 +1,2 @@
+# tools/bpe.py train on 40 MB fineweb_edu_sample_v1 + 10 MB tinychat_hf_sample_v1, vocab 8192
+c79eec5b5ec2036b7f398061e9901c34014b54096db64f9dce6f030532e75b23  fineweb_tinychat_bpe8k.gguf

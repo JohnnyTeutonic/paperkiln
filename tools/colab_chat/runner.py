@@ -33,9 +33,15 @@ COL = os.path.expanduser("~/.local/bin/colab")
 COLPY = os.path.expanduser("~/.local/share/uv/tools/google-colab-cli/bin/python")
 HERE = os.path.dirname(os.path.abspath(__file__))
 ADOPT = os.path.join(os.path.dirname(HERE), "colab_adopt.py")
+# Defaults are the TinyChat base run's; main() overrides them from the
+# command line (--name, --art, --state-dir, --boot, --model-name) so another
+# run (e.g. the FineWeb-Edu base, experiments/chat_general/PLAN.md) gets its
+# own session name, artifacts and state and can never touch this one's.
 NAME = "pk-chat"
 ART = "/mnt/c/ml_artifacts/chat_base"
 HOME = os.path.expanduser("~/pk_chat_runner")
+BOOT = "boot_base.sh"
+MODEL = "chat_base"
 CHUNK = 45 * 1024 * 1024
 TICK = 240
 
@@ -156,11 +162,11 @@ def launch(st, commit):
     except RuntimeError as e:
         log(str(e))
         return False
-    url = f"https://raw.githubusercontent.com/JohnnyTeutonic/paperkiln/{commit}/tools/colab_chat/boot_base.sh"
+    url = f"https://raw.githubusercontent.com/JohnnyTeutonic/paperkiln/{commit}/tools/colab_chat/{BOOT}"
     rc, out = exec_py(
         "import subprocess, urllib.request\n"
-        f"open('/content/boot_base.sh','wb').write(urllib.request.urlopen('{url}').read())\n"
-        f"subprocess.Popen('nohup bash /content/boot_base.sh {commit} > /dev/null 2>&1 &', shell=True)\n"
+        f"open('/content/{BOOT}','wb').write(urllib.request.urlopen('{url}').read())\n"
+        f"subprocess.Popen('nohup bash /content/{BOOT} {commit} > /dev/null 2>&1 &', shell=True)\n"
         "print('BOOTED')\n")
     if "BOOTED" not in out:
         log(f"boot exec failed: {out.strip()[-160:]}")
@@ -230,12 +236,19 @@ def hold_done(st, tag):
 
 
 def main():
+    global NAME, ART, HOME, BOOT, MODEL
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--commit", required=True)
     ap.add_argument("--max-hours", type=float, default=20.0)
+    ap.add_argument("--name", default=NAME, help="Colab session name (this run's own)")
+    ap.add_argument("--art", default=ART, help="local artifact directory")
+    ap.add_argument("--state-dir", default=HOME, help="runner state, pid file and log")
+    ap.add_argument("--boot", default=BOOT, help="VM boot script under tools/colab_chat/")
+    ap.add_argument("--model-name", default=MODEL, help="the spec's name (final export files)")
     ap.add_argument("--hold", default="", help="after the base finishes, keep the session until this "
                     "sft_preview.sh TAG finishes and its outputs are home")
     a = ap.parse_args()
+    NAME, ART, HOME, BOOT, MODEL = a.name, a.art, os.path.expanduser(a.state_dir), a.boot, a.model_name
     os.makedirs(HOME, exist_ok=True)
     pid = os.path.join(HOME, "runner.pid")
     if os.path.exists(pid):
@@ -268,7 +281,7 @@ def main():
                 relay_checkpoint(st)
             if status == "FINISHED":
                 if not st.d.get("base_fetched"):
-                    for f in ("chat_base.safetensors", "chat_base.gguf", "events.jsonl", "result.json"):
+                    for f in (f"{MODEL}.safetensors", f"{MODEL}.gguf", "events.jsonl", "result.json"):
                         colab("download", "-s", NAME, f"/content/chat/base/{f}", os.path.join(ART, f), timeout=900)
                     colab("download", "-s", NAME, "/content/chat/tinychat_hf_full_v1.sha256",
                           os.path.join(ART, "tinychat_hf_full_v1.sha256"), timeout=120)
