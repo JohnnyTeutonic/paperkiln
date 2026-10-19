@@ -60,3 +60,15 @@ def test_pairs_join_samples_to_references(tmp_path):
     assert p["prompt"] == ex[0]["prompt"] and p["chosen"] == "Hello friend" and p["rejected"] == "Hello hello hello"
     assert p["chosen_evidence"]["evidence_kind"] == "reference" and p["chosen_evidence"]["evidence_uri"] == "u1"
     assert p["rejected_evidence"]["evidence_kind"] == "policy_sample"
+
+
+def test_mix_is_seeded_and_counts_sources(tmp_path):
+    a, b = tmp_path / "a.jsonl", tmp_path / "b.jsonl"
+    a.write_text("".join(json.dumps({"prompt": f"p{i}", "completion": "x"}) + "\n" for i in range(5)), encoding="utf-8")
+    b.write_text("".join(json.dumps({"prompt": f"q{i}", "completion": "y"}) + "\n" for i in range(3)), encoding="utf-8")
+    tool = [sys.executable, str(ROOT / "tools" / "chat_data.py"), "mix", str(a), str(b), "--seed", "3"]
+    o1, o2 = tmp_path / "m1.jsonl", tmp_path / "m2.jsonl"
+    r = json.loads(subprocess.run(tool + ["--out", str(o1)], capture_output=True, text=True, check=True).stdout)
+    subprocess.run(tool + ["--out", str(o2)], capture_output=True, text=True, check=True)
+    assert r["examples"] == 8 and r["by_source"] == {"a.jsonl": 5, "b.jsonl": 3}
+    assert o1.read_text(encoding="utf-8") == o2.read_text(encoding="utf-8")  # same seed, same order

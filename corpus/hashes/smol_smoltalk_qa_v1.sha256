@@ -1,0 +1,4 @@
+# HuggingFaceTB/smol-smoltalk@f73fe857d519ff6ac5af2ea67c4d3834da7b8bcc train shards 0-3, sources ['everyday-conversations', 'openhermes-50k', 'smol-magpie-ultra-short'], split 98/1/1 by sha256 of the first user turn
+27f78979d430849afb7dc5fdce7d0921575d5924c4c0f73b1570db058372d819  dialogues_test.jsonl
+75e470988070732ae4aa13fd539fa064c0095e4855d21f28ed5138d57e77b4ae  dialogues_train.jsonl
+1cf6ff83817a00f53ae57b160d9cfe8ebf4848c37a7710f61932a6cc605e9880  dialogues_val.jsonl

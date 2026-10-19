@@ -5,6 +5,7 @@
     python tools/chat_data.py sft DIALOGUES.jsonl --vocab V.gguf --T 256 --out SFT.jsonl [--max N] [--skip N]
     python tools/chat_data.py prompts SFT.jsonl --out PROMPTS.jsonl
     python tools/chat_data.py pairs SFT.jsonl SAMPLES.jsonl --vocab V.gguf --T 256 --out PAIRS.jsonl
+    python tools/chat_data.py mix A.jsonl B.jsonl [...] --seed 1 --out MIX.jsonl
 
 The template (tools/mtstudio.cpp chat_prompt_bpe): every past turn is
 <|user|>U<|assistant|>A<|endoftext|>, and a reply is prompted by
@@ -120,9 +121,31 @@ def cmd_pairs(a):
     return {"pairs": len(pairs), "identical_to_reference": same, "over_T": over, "out": a.out}
 
 
+def cmd_mix(a):
+    """Shuffle several SFT example files into one with a fixed seed. mtstudio
+    holds out the file's tail as validation, so the shuffle also makes the
+    held-out set a sample of every source; each example records its source file."""
+    import random
+    rows = []
+    for path in a.inputs:
+        for ex in read_jsonl(path):
+            ex.setdefault("mix_source", os.path.basename(path))
+            rows.append(ex)
+    random.Random(a.seed).shuffle(rows)
+    write_jsonl(a.out, rows)
+    by = {}
+    for r in rows:
+        by[r["mix_source"]] = by.get(r["mix_source"], 0) + 1
+    return {"examples": len(rows), "by_source": by, "seed": a.seed, "out": a.out}
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
+    mx = sub.add_parser("mix")
+    mx.add_argument("inputs", nargs="+")
+    mx.add_argument("--seed", type=int, default=1)
+    mx.add_argument("--out", required=True)
     s = sub.add_parser("sft")
     s.add_argument("dialogues")
     s.add_argument("--vocab", required=True)
@@ -140,7 +163,7 @@ def main(argv=None):
     q.add_argument("--T", type=int, default=256)
     q.add_argument("--out", required=True)
     a = ap.parse_args(argv)
-    print(json.dumps({"sft": cmd_sft, "prompts": cmd_prompts, "pairs": cmd_pairs}[a.cmd](a)))
+    print(json.dumps({"sft": cmd_sft, "prompts": cmd_prompts, "pairs": cmd_pairs, "mix": cmd_mix}[a.cmd](a)))
     return 0
 
 
