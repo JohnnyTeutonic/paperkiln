@@ -28,13 +28,25 @@ endif()
 # clones from GitHub use the VENDORED copy in third_party/ (synced via
 # tools/sync_vendor.sh). CI discovered the sibling-only assumption made
 # the pushed repo unbuildable by anyone else (workflow run #13).
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../transformer_cpp/CMakeLists.txt)
+# The sibling may carry the GitHub name (coalfire.cpp) or the old local
+# name (transformer_cpp). Falling back to the vendored copy is announced
+# with a WARNING: a renamed sibling once made builds pick it up silently.
+# -DMICROTORCH_TCPP_DIR=<path> overrides the search.
+if(MICROTORCH_TCPP_DIR)
+    if(NOT EXISTS ${MICROTORCH_TCPP_DIR}/CMakeLists.txt)
+        message(FATAL_ERROR "MICROTORCH_TCPP_DIR=${MICROTORCH_TCPP_DIR} has no CMakeLists.txt")
+    endif()
+elseif(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../coalfire.cpp/CMakeLists.txt)
+    set(MICROTORCH_TCPP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../coalfire.cpp)
+elseif(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../transformer_cpp/CMakeLists.txt)
     set(MICROTORCH_TCPP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../transformer_cpp)
 elseif(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/third_party/transformer_cpp/CMakeLists.txt)
     set(MICROTORCH_TCPP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/transformer_cpp)
+    message(WARNING "No sibling coalfire.cpp or transformer_cpp found; using the "
+                    "VENDORED third_party/transformer_cpp (synced by tools/sync_vendor.sh)")
 else()
-    message(FATAL_ERROR "transformer_cpp sources not found (sibling dir or "
-                        "third_party/transformer_cpp)")
+    message(FATAL_ERROR "transformer_core sources not found (sibling coalfire.cpp, "
+                        "sibling transformer_cpp, or third_party/transformer_cpp)")
 endif()
 message(STATUS "transformer_core from: ${MICROTORCH_TCPP_DIR}")
 add_subdirectory(${MICROTORCH_TCPP_DIR}
