@@ -1598,13 +1598,13 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             gc.embedding_length = (uint32_t)s.d;
             gc.block_count = (uint32_t)s.layers;
             gc.head_count = (uint32_t)s.heads;
-            gc.feed_forward_length = (uint32_t)(3 * s.d);
+            // The model's real FFN width. Exports before 19 Oct 2026 wrote 3d
+            // whatever arch.custom.d_ff said; llama.cpp checks ffn tensor
+            // shapes against this value.
+            gc.feed_forward_length = (uint32_t)llama->cfg.d_ff;
             if (s.moe_experts > 0) {
                 gc.expert_count = (uint32_t)s.moe_experts;
                 gc.expert_used_count = (uint32_t)s.moe_top_k;
-                // An MoE run is new: give the exporter the model's real d_ff
-                // (the dense line above keeps its historical 3d for old runs).
-                gc.feed_forward_length = (uint32_t)llama->cfg.d_ff;
             }
             gc.vocab_size = (uint32_t)tokens.size();
             gc.context_length = (uint32_t)s.T;

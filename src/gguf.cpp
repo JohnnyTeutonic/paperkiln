@@ -79,6 +79,13 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
     std::vector<std::unique_ptr<std::vector<float>>> owned;
     std::vector<std::string> mapped_keys;  // dict keys we consumed
 
+    // NOTE: GGUFWriter takes `shape` in row-major (numpy) order and writes it
+    // REVERSED, so ne0 (the contiguous axis) is the LAST entry passed. An
+    // [out][in] buffer is passed as {out, in} and lands as ne = {in, out}, the
+    // order llama.cpp checks. (Exports before 19 Oct 2026 passed {in, out} and
+    // recorded the dims reversed; the bytes were right and ember, which reads
+    // by element count, loaded them unchanged.)
+    //
     // 2-D projection in llama layout [out][in] row-major, ne = {in, out}.
     auto add_proj = [&](const Matrix& w, const std::string& gguf_name) {
         TensorExportInfo info;
@@ -90,14 +97,14 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
             auto buf = std::make_unique<std::vector<float>>(R * C);
             for (size_t i = 0; i < R; ++i)
                 for (size_t j = 0; j < C; ++j) (*buf)[j * R + i] = w(i, j);
-            info.shape = {static_cast<uint64_t>(R), static_cast<uint64_t>(C)};  // ne={in,out}
+            info.shape = {static_cast<uint64_t>(C), static_cast<uint64_t>(R)};  // {out,in} -> ne={in,out}
             info.data = buf->data();
             info.num_elements = R * C;
             owned.push_back(std::move(buf));
         } else {
             // HF layout rows=[out], cols=[in] is already llama's byte order.
-            info.shape = {static_cast<uint64_t>(w.cols()),
-                          static_cast<uint64_t>(w.rows())};  // ne={in,out}
+            info.shape = {static_cast<uint64_t>(w.rows()),
+                          static_cast<uint64_t>(w.cols())};  // {out,in} -> ne={in,out}
             info.data = &w(0, 0);
             info.num_elements = w.rows() * w.cols();
         }
@@ -122,14 +129,9 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
         return *m;
     };
 
-    // MoE tensors in llama.cpp's dimension order. NOTE: GGUFWriter takes
-    // `shape` in row-major (numpy) order and writes it REVERSED, so ne0 (the
-    // contiguous axis) is the LAST entry passed. Passing {E, out, in} for a
-    // buffer laid out [E][out][in] gives the file ne = {in, out, E}, which is
-    // what llama.cpp's create_tensor checks. (add_proj above passes {in, out}
-    // for an [out][in] buffer, so the dense 2-D projections land as
-    // ne = {out, in}; ember ignores stored dims, llama.cpp would not. Left
-    // unchanged here so existing exports stay byte-identical.)
+    // MoE tensors in llama.cpp's dimension order, by the same convention:
+    // passing {E, out, in} for a buffer laid out [E][out][in] gives the file
+    // ne = {in, out, E}, which is what llama.cpp's create_tensor checks.
     //
     // Stack E projections as [E][out][in] row-major (transposed per matrix
     // under weights_in_out). Returns the buffer; in/out via the references.
@@ -183,7 +185,7 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
         const Matrix& emb = require("embed_tokens.weight");
         TensorExportInfo info;
         info.name = "token_embd.weight";
-        info.shape = {static_cast<uint64_t>(emb.cols()), static_cast<uint64_t>(emb.rows())};
+        info.shape = {static_cast<uint64_t>(emb.rows()), static_cast<uint64_t>(emb.cols())};  // {vocab,hidden} -> ne={hidden,vocab}
         info.type = GGMLType::F32;
         info.data = &emb(0, 0);
         info.num_elements = emb.rows() * emb.cols();

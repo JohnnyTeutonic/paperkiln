@@ -143,6 +143,10 @@ void expect_bytes(const ParsedGGUF& g, const std::string& name, const Matrix& sr
         uint64_t count = 1;
         for (auto d : t.dims) count *= d;
         CHECK(count == n);
+        // src is [out][in] row-major, so ggml order is ne = {in, out}: the
+        // order llama.cpp checks (ne0 is the contiguous axis).
+        if (t.dims.size() == 2)
+            CHECK(t.dims == std::vector<uint64_t>({src.cols(), src.rows()}));
         CHECK(t.type == 0);           // F32
         CHECK((t.offset % 32) == 0);  // every offset aligned
         const uint8_t* file_bytes = g.bytes.data() + g.data_start + t.offset;
