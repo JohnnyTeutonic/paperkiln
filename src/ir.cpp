@@ -87,5 +87,64 @@ json pos_embedding(const std::string& x, const std::string& pos, const std::stri
     return {{"op", "pos_embedding"}, {"in", json::array({x, pos})}, {"weight", weight}, {"out", out}};
 }
 
+json affine(const std::string& in, float scale, float shift, const std::string& out) {
+    return {{"op", "affine"}, {"in", json::array({in})}, {"scale", f32(scale)}, {"shift", f32(shift)}, {"out", out}};
+}
+
+json rms_row(const std::string& in, float eps, const std::string& out) {
+    return {{"op", "rms_row"}, {"in", json::array({in})}, {"eps", f32(eps)}, {"out", out}};
+}
+
+json linear_attention(const std::string& q, const std::string& k, const std::string& v, const std::string& state,
+                      size_t heads, size_t head_dim, const std::string& out) {
+    return {{"op", "linear_attention"},
+            {"in", json::array({q, k, v})},
+            {"state", state},
+            {"heads", heads},
+            {"head_dim", head_dim},
+            {"causal", true},
+            {"feature_map", "elu_plus_one"},
+            {"den_floor", f32(1e-8f)},
+            {"out", out}};
+}
+
+namespace {
+json recurrent_state(const std::string& name, const std::string& op, const json& tensors) {
+    return {{"name", name}, {"kind", "recurrent"}, {"op", op}, {"dtype", "f32"}, {"tensors", tensors}};
+}
+}  // namespace
+
+json linear_attention_state(const std::string& name, size_t heads, size_t head_dim) {
+    const json shape = json::array({heads, head_dim});
+    return recurrent_state(name, "linear_attention",
+                           json::array({{{"name", "num"}, {"shape", shape}, {"init", 0}},
+                                        {{"name", "den"}, {"shape", shape}, {"init", 0}}}));
+}
+
+json depth_attend(const std::vector<std::string>& ins, const std::string& weight, float eps, const std::string& out) {
+    if (ins.empty()) throw std::runtime_error("ir::depth_attend: needs a list input");
+    return {{"op", "depth_attend"}, {"in", ins}, {"weight", weight}, {"eps", f32(eps)}, {"out", out}};
+}
+
+json list(const std::vector<std::string>& ins, const std::string& out) {
+    return {{"op", "list"}, {"in", ins}, {"out", out}};
+}
+
+json append(const std::string& list, const std::string& x, const std::string& out) {
+    return {{"op", "append"}, {"in", json::array({list, x})}, {"out", out}};
+}
+
+json ssm_scan(const std::string& in, const std::string& state, const std::string& prefix, size_t n,
+              const std::string& out) {
+    return {{"op", "ssm_scan"},       {"in", json::array({in})},  {"state", state},
+            {"n", n},                 {"a", prefix + "ssm_a.weight"}, {"b", prefix + "ssm_b.weight"},
+            {"c", prefix + "ssm_c.weight"}, {"d", prefix + "ssm_d.weight"}, {"out", out}};
+}
+
+json ssm_state(const std::string& name, size_t n) {
+    return recurrent_state(name, "ssm_scan",
+                           json::array({{{"name", "s"}, {"shape", json::array({n})}, {"init", 0}}}));
+}
+
 }  // namespace ir
 }  // namespace microtorch

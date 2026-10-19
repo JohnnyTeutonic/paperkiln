@@ -1,11 +1,13 @@
 """Reference interpreter for the paperkiln IR embedded in a GGUF (numpy, f32
 tensors only): an independent check that the exported IR alone reproduces
 mtstudio's greedy replies. Each step re-runs the last ctx tokens from
-position 0, as mtstudio does. Ops: embedding, pos_embedding, linear,
-layernorm, rmsnorm, gelu, silu, add, mul, split, rope, moe_ffn, attention
-(causal, or a sliding window with sinks); any other op stops with its name.
-40/40 vs mtstudio on chat_sftfinal_v3, moe_tiny_v3 and gpt2_tiny (20 Oct
-2026), and swa_tiny with replies up to 200 tokens.
+position 0, as mtstudio does (recurrent ops therefore scan from a zero
+state every step). Ops: embedding, pos_embedding, linear, layernorm,
+rmsnorm, gelu, silu, relu, sigmoid, add, sub, mul, mul_col, affine,
+rms_row, split, rope, moe_ffn, attention (causal, or a sliding window with
+sinks), linear_attention, list, append, depth_attend, ssm_scan; any other
+op stops with its name. 40/40 vs mtstudio on chat_sftfinal_v3, moe_tiny_v3
+and gpt2_tiny (20 Oct 2026), and swa_tiny with replies up to 200 tokens.
 
     python tools/ir_run.py model.gguf receipt.jsonl tools/ [out.jsonl]
         [--max-new N] [--no-window]
@@ -77,8 +79,61 @@ def run_nodes(nodes, env, i=None):
                 y = 0.5 * x * (1 + ERF(x / np.float32(math.sqrt(2))).astype(np.float32))
         elif op == "silu":
             y = x / (1 + np.exp(-x))
-        elif op in ("add", "mul"):
-            y = x + env[ins[1]] if op == "add" else x * env[ins[1]]
+        elif op in ("add", "mul", "sub"):
+            y = x + env[ins[1]] if op == "add" else x * env[ins[1]] if op == "mul" else x - env[ins[1]]
+        elif op == "relu":
+            y = np.maximum(x, np.float32(0))
+        elif op == "sigmoid":
+            y = np.float32(1) / (np.float32(1) + np.exp(-x))
+        elif op == "affine":
+            y = (x * np.float32(nd["scale"])).astype(np.float32) + np.float32(nd["shift"])
+        elif op == "mul_col":
+            y = x * env[ins[1]]  # [T, w] * [T, 1]
+        elif op == "rms_row":
+            y = np.sqrt((x * x).sum(axis=1, keepdims=True) / np.float32(x.shape[1]) + np.float32(nd["eps"]))
+        elif op == "linear_attention":
+            # elu+1 features; num/den running sums over the tokens (a
+            # sequential scan, np.cumsum), then phi(q) num / max(den, floor).
+            assert nd["feature_map"] == "elu_plus_one" and nd["causal"]
+            one = np.float32(1)
+
+            def phi(a):
+                return np.where(a > 0, a + one, (np.exp(a) - one) + one).astype(np.float32)
+
+            q, k, v = (env[n] for n in ins)
+            pk = phi(k)
+            num = np.cumsum(pk * v, axis=0, dtype=np.float32)
+            den = np.cumsum(pk, axis=0, dtype=np.float32)
+            y = (phi(q) * num) / np.maximum(den, np.float32(nd["den_floor"]))
+        elif op == "list":
+            env[nd["out"]] = [env[n] for n in ins]
+            continue
+        elif op == "append":
+            env[nd["out"]] = env[ins[0]] + [env[ins[1]]]
+            continue
+        elif op == "depth_attend":
+            src = list(env[ins[0]]) + [env[n] for n in ins[1:]]
+            if len(src) == 1:
+                y = src[0]
+            else:
+                wq, eps = w(nd["weight"]), np.float32(nd["eps"])
+                logits = []
+                for s in src:
+                    r = np.float32(1) / np.sqrt((s * s).sum(axis=1, keepdims=True) / np.float32(s.shape[1]) + eps)
+                    logits.append(((s * r) * wq).sum(axis=1))
+                lg = np.stack(logits, axis=1)
+                e = np.exp(lg - lg.max(axis=1, keepdims=True))
+                a = e / e.sum(axis=1, keepdims=True)
+                y = src[0] * a[:, 0:1]
+                for j in range(1, len(src)):
+                    y = y + src[j] * a[:, j:j + 1]
+        elif op == "ssm_scan":
+            A, b, c, d = (w(nd[n]) for n in ("a", "b", "c", "d"))
+            s = np.zeros(nd["n"], dtype=np.float32)
+            y = np.zeros_like(x)
+            for t in range(x.shape[0]):
+                s = (A @ s + b * x[t]).astype(np.float32)
+                y[t] = c * s + d[0] * x[t]
         elif op == "split":
             outs, at = [], 0
             for s in nd["sizes"]:

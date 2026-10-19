@@ -46,7 +46,7 @@ public:
     size_t d_model() const { return d_model_; }
     size_t d_state() const { return d_state_; }
 
-private:
+    // Public for export (the IR / GGUF writer, tools/parity_model.hpp MambaLM).
     size_t d_model_, d_state_;
 
     // State-space matrices
@@ -66,7 +66,7 @@ public:
     // Forward: Pre-LN normalization + S4 + output gate
     Var forward(const Var& x) const;
 
-private:
+    // Public for export, as S4Layer's.
     std::shared_ptr<nn::LayerNorm> norm;
     std::shared_ptr<S4Layer> s4;
     std::shared_ptr<nn::Linear> out_gate;

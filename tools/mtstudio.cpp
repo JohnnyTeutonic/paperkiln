@@ -56,7 +56,7 @@ namespace {
 struct Spec {
     std::string name = "run";
     // arch
-    std::string family = "gpt2";      // gpt2 | llama | flex
+    std::string family = "gpt2";      // gpt2 | llama | flex | mamba
     std::string attention = "exact";  // exact | kimi | srd (gpt2 family)
     size_t d = 128, layers = 2, heads = 4, T = 128;
     // Paper-faithful flavor knobs (the flex family; empty = family default).
@@ -65,6 +65,7 @@ struct Spec {
     float gate_bias_init = -2.0f;   // highway only (registry #0001)
     size_t d_ff = 0;                // 0 = family default (4d gpt2/flex, 3d llama)
     size_t window = 64, sinks = 1;  // swa lane only (S1 baseline)
+    size_t d_state = 64;            // mamba family: the S4 scan's state width
     // llama family: RoPE on "all" heads or, legacy, the "first" head only.
     // Empty = not stated: a new run gets "all"; resuming or loading a run
     // takes what the run recorded, and a run that recorded nothing is
@@ -144,7 +145,7 @@ const std::map<std::string, std::array<size_t, 4>> PRESETS = {
     {"gpt2-nano", {128, 2, 4, 128}},  {"llama-tiny", {128, 2, 4, 128}},
     {"gpt2-small", {256, 4, 8, 256}}, {"kimi-tiny", {128, 2, 4, 128}},
     {"srd-tiny", {128, 2, 4, 128}},   {"attnres-tiny", {128, 2, 4, 128}},
-    {"swa-tiny", {128, 2, 4, 128}},
+    {"swa-tiny", {128, 2, 4, 128}},   {"mamba-tiny", {128, 2, 4, 128}},
 };
 
 // export.formats "gguf_q8_0" | "gguf_q8_0_out" | "gguf_q8_0_all" | "gguf_q4_0" |
@@ -181,6 +182,7 @@ Spec parse_spec(const std::string& path) {
         if (p.rfind("swa", 0) == 0) s.attention = "swa";
         if (p.rfind("attnres", 0) == 0) s.attention = "attnres";
         if (p.rfind("llama", 0) == 0) s.family = "llama";
+        if (p.rfind("mamba", 0) == 0) s.family = "mamba";
     }
     if (arch.contains("rope_heads")) {
         s.rope_heads = arch["rope_heads"].get<std::string>();
@@ -202,11 +204,16 @@ Spec parse_spec(const std::string& path) {
         s.d_ff = c.value("d_ff", s.d_ff);
         s.window = c.value("window", s.window);
         s.sinks = c.value("sinks", s.sinks);
+        s.d_state = c.value("d_state", s.d_state);
     }
     // Family resolution for the flavor knobs. RoPE lives inside the llama
     // block (rmsnorm/swiglu come with it); every other flavor combination
     // is the flex family — the paper-faithful decoder.
-    if (s.position == "rope") {
+    if (s.family == "mamba" && (!s.norm.empty() || !s.activation.empty() || !s.position.empty() ||
+                                !s.residual.empty() || s.attention != "exact"))
+        throw std::runtime_error("the mamba preset takes no flavor knobs or attention kind (d, layers, d_state)");
+    if (s.family == "mamba") {
+    } else if (s.position == "rope") {
         if ((!s.norm.empty() && s.norm != "rmsnorm") ||
             (!s.activation.empty() && s.activation != "swiglu") ||
             (!s.residual.empty() && s.residual != "residual"))
@@ -887,9 +894,16 @@ std::string write_ir_doc(const Spec& s, const ir::json& model_ir, const std::vec
 // tensors (so the file loads anywhere) and put the window and sinks in the
 // IR only: an engine reading the GGUF alone computes dense attention.
 void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama, const parity::ParityLM* gpt,
-                  const parity::FlexLM* flex, const std::vector<std::string>& tokens,
+                  const parity::FlexLM* flex, const parity::AttnResLM* attnres, const parity::MambaLM* mamba,
+                  const std::vector<std::string>& tokens,
                   const std::map<std::string, int>& vocab, const std::string& rope_heads,
                   const std::string& out_dir, const std::function<void(const json&)>& emit) {
+    // kimi, srd, attnres and the non-GPT-2 flex flavours (FamilyExport).
+    const std::optional<parity::FamilyExport> fx = gpt       ? gpt->family_export()
+                                                   : flex    ? flex->family_export()
+                                                   : attnres ? attnres->family_export()
+                                                   : mamba   ? mamba->family_export(s.T)
+                                                             : std::nullopt;
     if (llama && s.moe_experts > 0 && s.moe_gate == "raw") {
         // llama.cpp's llama-architecture MoE renormalises its top-k gates;
         // a raw-gate (Switch) model would be served with different outputs.
@@ -1000,6 +1014,57 @@ void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama, 
                 "tensors without it (llama.cpp) computes dense attention and diverges once a "
                 "sequence is longer than window + sinks";
         }
+        emit(xe);
+    } else if (fx) {
+        // F32, the IR from the family's own export (microtorch/ir.hpp,
+        // Families); gpt2 when the tensors are exactly llama.cpp's gpt2 set.
+        for (const auto& q : s.exp_gguf_quants)
+            emit({{"event", "export_skipped"}, {"format", "gguf_" + q}, {"reason", "the " + fx->arch + " export is F32 only"}});
+        if (!s.exp_gguf) return;
+        const std::string ir_path = out_dir + "/" + s.name + ".ir.json";
+        const std::string gpath = out_dir + "/" + s.name + ".gguf";
+        const std::string ir_str = write_ir_doc(s, fx->ir, tokens, vocab, ir_path);
+        const size_t n_params = model_ref.named_parameters().size();
+        if (fx->arch == "gpt2") {
+            gguf::Gpt2ExportConfig gc;
+            gc.name = s.name;
+            gc.context_length = (uint32_t)s.T;
+            gc.embedding_length = (uint32_t)s.d;
+            gc.block_count = (uint32_t)s.layers;
+            gc.head_count = (uint32_t)fx->heads;
+            gc.feed_forward_length = (uint32_t)fx->d_ff;
+            for (const auto& n : fx->ir["block"]["nodes"])
+                if (n["op"] == "layernorm" && n["eps"] != ir::f32(1e-5f))
+                    throw std::runtime_error("export: the gpt2 GGUF holds layer-norm epsilon 1e-5 only");
+            set_export_tokenizer(gc, s, tokens, vocab);
+            gc.ir = ir_str;
+            std::vector<std::string> unmapped;
+            gguf::export_gguf_gpt2(gpath, fx->gpt2_sd, gc, &unmapped);
+            if (!unmapped.empty()) throw std::runtime_error("export: gpt2 tensor not exported: " + unmapped[0]);
+            if (fx->gpt2_sd.size() != n_params)
+                throw std::runtime_error("export: the gpt2 state dict has " + std::to_string(fx->gpt2_sd.size()) +
+                                         " tensors, the model " + std::to_string(n_params));
+        } else {
+            gguf::PaperkilnExportConfig gc;
+            gc.name = s.name;
+            gc.context_length = (uint32_t)s.T;
+            gc.embedding_length = (uint32_t)s.d;
+            gc.block_count = (uint32_t)fx->ir["model"]["n_layers"].get<size_t>();
+            gc.head_count = (uint32_t)fx->heads;
+            gc.feed_forward_length = (uint32_t)fx->d_ff;
+            set_export_tokenizer(gc, s, tokens, vocab);
+            gc.ir = ir_str;
+            // Every trained parameter in the file, once (the extra tensors
+            // are the fixed tables and unread rows FamilyExport counts).
+            if (fx->tensors.size() != n_params + fx->constants)
+                throw std::runtime_error("export: " + std::to_string(fx->tensors.size()) + " tensors for " +
+                                         std::to_string(n_params) + " parameters and " +
+                                         std::to_string(fx->constants) + " constants");
+            gguf::export_gguf_paperkiln(gpath, fx->tensors, gc);
+        }
+        json xe = {{"event", "export"},           {"format", "gguf"}, {"path", gpath}, {"arch", fx->arch},
+                   {"family", fx->ir["family_hint"]}, {"ir", ir_path}};
+        if (!fx->warning.empty()) xe["warning"] = fx->warning;
         emit(xe);
     } else {
         const std::string why = gpt     ? gpt->gpt2_export_blocker()
@@ -1174,7 +1239,12 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     std::shared_ptr<nn::Llama> llama;
     std::shared_ptr<parity::AttnResLM> attnres;
     std::shared_ptr<parity::FlexLM> flex;
-    if (s.family == "flex") {
+    std::shared_ptr<parity::MambaLM> mamba;
+    if (s.family == "mamba") {
+        mamba = std::make_shared<parity::MambaLM>(tokens.size(), s.d, s.layers, s.d_state, s.seed);
+        if (s.ckpt_act)
+            throw std::runtime_error("train.checkpoint_activations requires the llama family for now");
+    } else if (s.family == "flex") {
         // The paper-faithful decoder: every extracted flavor is
         // constructor-real (norm/activation/position/d_ff/depth).
         parity::FlexConfig fc;
@@ -1238,7 +1308,8 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     }
     // Atlas stage-0 structural echo: the run's identity as a data point.
     nn::Module& model_pick =
-        flex      ? static_cast<nn::Module&>(*flex)
+        mamba     ? static_cast<nn::Module&>(*mamba)
+        : flex    ? static_cast<nn::Module&>(*flex)
         : attnres ? static_cast<nn::Module&>(*attnres)
                   : (llama ? static_cast<nn::Module&>(*llama) : static_cast<nn::Module&>(*gpt));
     const size_t n_params = model_pick.parameter_count();
@@ -1247,7 +1318,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     // under-describe the data point).
     const std::string r_norm = flex ? flex->cfg.norm : (llama ? "rmsnorm" : "layernorm");
     const std::string r_act = flex ? flex->cfg.act : (llama ? "swiglu" : "gelu");
-    const std::string r_pos = flex ? flex->cfg.pos : (llama ? "rope" : "learned");
+    const std::string r_pos = flex ? flex->cfg.pos : (llama ? "rope" : mamba ? "none" : "learned");
     const size_t r_dff = flex ? flex->cfg.d_ff : (llama ? llama->cfg.d_ff : 4 * s.d);
     json model_ev = {{"event", "model"},
                      {"family", s.family},
@@ -1284,6 +1355,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     ev.emit(model_ev);
     nn::Module& model_ref = model_pick;
     auto fwd = [&](const std::vector<int>& ids, size_t seq_len = 0) {
+        if (mamba) return mamba->forward(ids, seq_len);
         if (flex) return flex->forward(ids, seq_len);
         if (attnres) return attnres->forward(ids, seq_len);
         return llama ? llama->forward(ids, seq_len) : gpt->forward(ids, seq_len);
@@ -1790,7 +1862,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         ev.emit({{"event", "export"}, {"format", "safetensors"}, {"path", spath}});
     }
     if (s.exp_gguf || !s.exp_gguf_quants.empty())
-        export_ggufs(s, model_ref, llama.get(), gpt.get(), flex.get(), tokens, vocab, rope_heads, s.out_dir,
+        export_ggufs(s, model_ref, llama.get(), gpt.get(), flex.get(), attnres.get(), mamba.get(), tokens, vocab, rope_heads, s.out_dir,
                      [&](const json& j) { ev.emit(j); });
     const double wall_s =
         std::chrono::duration<double>(std::chrono::steady_clock::now() - t_train0).count();
@@ -1976,6 +2048,7 @@ struct LoadedLM {
     std::shared_ptr<nn::Llama> llama;
     std::shared_ptr<parity::AttnResLM> attnres;
     std::shared_ptr<parity::FlexLM> flex;
+    std::shared_ptr<parity::MambaLM> mamba;
     std::string rope_heads;  // llama family: what the run was trained with
 
     explicit LoadedLM(const Spec& spec) : s(spec) {
@@ -1989,7 +2062,9 @@ struct LoadedLM {
         for (size_t i = 0; i < tokens.size(); ++i) vocab.emplace(tokens[i], static_cast<int>(i));
         eos = wordtok::eos_id(vocab);
 
-        if (s.family == "flex") {
+        if (s.family == "mamba") {
+            mamba = std::make_shared<parity::MambaLM>(tokens.size(), s.d, s.layers, s.d_state, s.seed);
+        } else if (s.family == "flex") {
             parity::FlexConfig fc;
             fc.vocab = tokens.size();
             fc.d = s.d;
@@ -2030,12 +2105,14 @@ struct LoadedLM {
         model().eval();
     }
     nn::Module& model() {
+        if (mamba) return *mamba;
         return flex ? static_cast<nn::Module&>(*flex)
                : attnres
                    ? static_cast<nn::Module&>(*attnres)
                    : (llama ? static_cast<nn::Module&>(*llama) : static_cast<nn::Module&>(*gpt));
     }
     Var forward(const std::vector<int>& ids, size_t seq_len = 0) {
+        if (mamba) return mamba->forward(ids, seq_len);
         if (flex) return flex->forward(ids, seq_len);
         if (attnres) return attnres->forward(ids, seq_len);
         return llama ? llama->forward(ids, seq_len) : gpt->forward(ids, seq_len);
@@ -2128,7 +2205,8 @@ int export_cmd(Spec s, const std::string& from, const std::string& formats, cons
     LoadedLM lm(from.empty() ? s : at_safetensors(s, from, "--from"));
     const std::string dest = out_dir.empty() ? s.out_dir : out_dir;
     std::filesystem::create_directories(dest);
-    export_ggufs(s, lm.model(), lm.llama.get(), lm.gpt.get(), lm.flex.get(), lm.tokens, lm.vocab, lm.rope_heads, dest,
+    export_ggufs(s, lm.model(), lm.llama.get(), lm.gpt.get(), lm.flex.get(), lm.attnres.get(), lm.mamba.get(),
+                 lm.tokens, lm.vocab, lm.rope_heads, dest,
                  [](const json& j) { std::printf("%s\n", j.dump().c_str()); });
     return 0;
 }

@@ -6,12 +6,16 @@
 #include <cmath>
 #include <map>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
+#include "microtorch/gguf.hpp"
 #include "microtorch/ir.hpp"
+#include "microtorch/mamba.hpp"
 #include "microtorch/nn.hpp"
+#include "microtorch/ops.hpp"
 #include "microtorch/srd.hpp"
 
 namespace parity {
@@ -48,6 +52,80 @@ inline void put_gpt2_shell(std::map<std::string, Matrix>& sd, const nn::Embeddin
     sd["ln_f.weight"] = ln_f.weight->data;
     sd["ln_f.bias"] = ln_f.bias->data;
     sd["lm_head.weight"] = head.W->data;  // untied: its own [d, vocab] matrix
+}
+
+// A family's GGUF + IR export (microtorch/ir.hpp, Families): the gpt2
+// architecture when the tensors are exactly llama.cpp's gpt2 set (gpt2_sd,
+// HF GPT-2 names, for gguf::export_gguf_gpt2), else "paperkiln" (tensors,
+// for gguf::export_gguf_paperkiln). Either way the IR is the model.
+struct FamilyExport {
+    std::string arch;  // "gpt2" | "paperkiln"
+    ir::json ir;
+    std::map<std::string, Matrix> gpt2_sd;
+    std::vector<gguf::NamedTensor> tensors;
+    size_t heads = 0, d_ff = 0;
+    size_t constants = 0;  // tensors that are no parameter (a fixed table, an unread zero query)
+    std::string warning;   // what an engine reading the tensors without the IR gets wrong
+};
+
+inline void put_tensor(std::vector<gguf::NamedTensor>& t, const std::string& name, const Matrix& m,
+                       gguf::NamedTensor::Layout layout) {
+    t.push_back({name, m, layout});
+}
+// weight [in, out] -> base.weight [out][in], bias -> base.bias.
+inline void put_linear(std::vector<gguf::NamedTensor>& t, const std::string& base, const nn::Linear& l) {
+    put_tensor(t, base + ".weight", l.W->data, gguf::NamedTensor::Layout::PROJ);
+    if (l.b) put_tensor(t, base + ".bias", l.b->data, gguf::NamedTensor::Layout::VEC);
+}
+inline void put_layernorm(std::vector<gguf::NamedTensor>& t, const std::string& base, const nn::LayerNorm& ln) {
+    put_tensor(t, base + ".weight", ln.weight->data, gguf::NamedTensor::Layout::VEC);
+    put_tensor(t, base + ".bias", ln.bias->data, gguf::NamedTensor::Layout::VEC);
+}
+
+// The document around a family's nodes, laid out as nn::gpt2_ir's.
+// `positions`: the model reads input "pos" (no recurrent-only model does).
+inline ir::json family_doc(const std::string& hint, size_t vocab, size_t d, size_t n_layers, size_t ctx,
+                           bool positions, const ir::json& embed, const ir::json& state, const ir::json& nodes,
+                           const ir::json& head) {
+    bool kv = false, recurrent = false;
+    for (const auto& s : state) (s["kind"] == "kv" ? kv : recurrent) = true;
+    ir::json doc;
+    doc["ir_version"] = ir::kVersion;
+    doc["family_hint"] = hint;
+    doc["model"] = {{"vocab", vocab}, {"d", d}, {"n_layers", n_layers}, {"ctx", ctx}, {"dtype", "f32"}};
+    doc["inputs"] = ir::json::array({{{"name", "tokens"}, {"kind", "token_ids"}}});
+    if (positions)
+        doc["inputs"].push_back({{"name", "pos"},
+                                 {"kind", "positions"},
+                                 {"note", "absolute positions; prefill 0..T-1, decode = tokens seen so far; must "
+                                          "stay below model.ctx"}});
+    doc["embed"] = {{"nodes", embed}};
+    doc["block"] = {{"repeat", n_layers}, {"state", state}, {"nodes", nodes}};
+    doc["head"] = {{"nodes", head}};
+    doc["outputs"] = ir::json::array({{{"name", "logits"}, {"kind", "logits"}}});
+    std::string dec = "the same graph with T = 1";
+    if (kv) dec += "; attention reads and appends to its kv state";
+    if (recurrent) dec += "; each recurrent op applies one update to its recurrent state";
+    doc["modes"] = {{"prefill", recurrent ? "all nodes over T tokens; each recurrent op scans t = 0..T-1 in order"
+                                          : "all nodes over T tokens"},
+                    {"decode", dec}};
+    return doc;
+}
+
+// Learned positions + the ln_f / untied head shell of the gpt2-shaped models.
+inline ir::json gpt2_embed_ir(const nn::Embedding& wte) {
+    return ir::json::array({wte.export_ir("tokens", "x", "token_embd.weight"),
+                            ir::pos_embedding("x", "pos", "position_embd.weight", "x")});
+}
+inline ir::json gpt2_head_ir(const nn::LayerNorm& ln_f, const nn::Linear& head, const std::string& in = "x") {
+    return ir::json::array({ln_f.export_ir(in, "h", "output_norm"), head.export_ir("h", "logits", "output.weight")});
+}
+// x += mlp(ln2 x), as gpt2_block_ir.
+inline void gpt2_ffn_ir(ir::json& n, const nn::LayerNorm& ln2, const nn::MLP& mlp) {
+    const std::string p = "blk.{i}.";
+    n.push_back(ln2.export_ir("x", "h2", p + "ffn_norm"));
+    for (const auto& node : mlp.export_ir("h2", "f", p + "ffn_up.weight", p + "ffn_down.weight")) n.push_back(node);
+    n.push_back(ir::binary("add", "x", "f", "x"));
 }
 
 class ParityLM : public nn::Module {
@@ -149,6 +227,86 @@ public:
         return sd;
     }
 
+    // kimi (gpt2 tensors, linear_attention in the IR) and srd (paperkiln:
+    // the router's predictor is not a gpt2 tensor); nullopt for exact/swa,
+    // which export through gpt2_state_dict/export_ir above.
+    std::optional<FamilyExport> family_export() const {
+        if (kind_ != AttnKind::KIMI && kind_ != AttnKind::SRD) return std::nullopt;
+        const size_t vocab = wte->weight->data.rows(), d = wte->weight->data.cols();
+        const size_t ctx = wpe->weight->data.rows();
+        const std::string p = "blk.{i}.";
+        FamilyExport fx;
+        fx.d_ff = 4 * d;
+        ir::json n = ir::json::array(), state = ir::json::array();
+        n.push_back(ln1[0]->export_ir("x", "h", p + "attn_norm"));
+        if (kind_ == AttnKind::KIMI) {
+            const auto& a = *kimi[0];
+            fx.heads = a.H;
+            n.push_back(a.c_attn->export_ir("h", "qkv", p + "attn_qkv.weight"));
+            n.push_back(ir::split("qkv", {d, d, d}, {"q", "k", "v"}));
+            n.push_back(ir::linear_attention("q", "k", "v", "lin", a.H, a.dk, "a"));
+            n.push_back(a.c_proj->export_ir("a", "o", p + "attn_output.weight"));
+            state.push_back(ir::linear_attention_state("lin", a.H, a.dk));
+        } else {
+            // SurpriseRoutedAttention::forward, node for node: the router on
+            // the normalised input, both paths on one qkv, the per-token blend.
+            const auto& a = *srd[0];
+            fx.heads = a.H;
+            n.push_back(a.predictor->fc1->export_ir("h", "p", p + "srd_pred_up.weight"));
+            n.push_back(ir::gelu("p", "tanh", "p"));
+            n.push_back(a.predictor->fc2->export_ir("p", "p", p + "srd_pred_down.weight"));
+            n.push_back(ir::binary("sub", "h", "p", "p"));
+            n.push_back(ir::rms_row("p", 1e-8f, "g"));  // ops::rms_row's default eps
+            n.push_back(ir::affine("g", nn::SurpriseRoutedAttention::GATE_SCALE,
+                                   nn::SurpriseRoutedAttention::GATE_BIAS, "g"));
+            n.push_back(ir::unary("sigmoid", "g", "g"));
+            n.push_back(ir::affine("g", -1.0f, 1.0f, "gi"));
+            n.push_back(a.c_attn->export_ir("h", "qkv", p + "attn_qkv.weight"));
+            n.push_back(ir::split("qkv", {d, d, d}, {"q", "k", "v"}));
+            const float sc = 1.0f / std::sqrt(static_cast<float>(a.dk));
+            n.push_back(ir::attention("q", "k", "v", "kv", a.H, a.H, a.dk, sc, /*causal=*/true, 0, 0, "a"));
+            n.push_back(ir::linear_attention("q", "k", "v", "lin", a.H, a.dk, "l"));
+            n.push_back(ir::binary("mul_col", "a", "g", "a"));
+            n.push_back(ir::binary("mul_col", "l", "gi", "l"));
+            n.push_back(ir::binary("add", "a", "l", "a"));
+            n.push_back(a.c_proj->export_ir("a", "o", p + "attn_output.weight"));
+            state.push_back(ir::kv_state("kv", a.H, a.H, a.dk, ctx, 0, 0));
+            state.push_back(ir::linear_attention_state("lin", a.H, a.dk));
+        }
+        n.push_back(ir::binary("add", "x", "o", "x"));
+        gpt2_ffn_ir(n, *ln2[0], *mlp[0]);
+        fx.ir = family_doc(kind_ == AttnKind::KIMI ? "kimi" : "srd", vocab, d, 2, ctx, /*positions=*/true,
+                           gpt2_embed_ir(*wte), state, n, gpt2_head_ir(*ln_f, *head));
+        if (kind_ == AttnKind::KIMI) {
+            fx.arch = "gpt2";
+            put_gpt2_shell(fx.gpt2_sd, *wte, *wpe, *ln_f, *head);
+            for (int b = 0; b < 2; ++b) put_gpt2_block(fx.gpt2_sd, b, *ln1[b], *kimi[b], *ln2[b], *mlp[b]);
+            fx.warning =
+                "kimi linear attention lives in the embedded IR only: an engine reading the gpt2 tensors "
+                "without it (llama.cpp) computes softmax attention, a different model";
+            return fx;
+        }
+        fx.arch = "paperkiln";
+        using L = gguf::NamedTensor::Layout;
+        put_tensor(fx.tensors, "token_embd.weight", wte->weight->data, L::ROWS);
+        put_tensor(fx.tensors, "position_embd.weight", wpe->weight->data, L::ROWS);
+        for (int b = 0; b < 2; ++b) {
+            const std::string g = "blk." + std::to_string(b) + ".";
+            const auto& a = *srd[b];
+            put_layernorm(fx.tensors, g + "attn_norm", *ln1[b]);
+            put_linear(fx.tensors, g + "srd_pred_up", *a.predictor->fc1);
+            put_linear(fx.tensors, g + "srd_pred_down", *a.predictor->fc2);
+            put_linear(fx.tensors, g + "attn_qkv", *a.c_attn);
+            put_linear(fx.tensors, g + "attn_output", *a.c_proj);
+            put_layernorm(fx.tensors, g + "ffn_norm", *ln2[b]);
+            put_linear(fx.tensors, g + "ffn_up", *mlp[b]->c_fc);
+            put_linear(fx.tensors, g + "ffn_down", *mlp[b]->c_proj);
+        }
+        put_layernorm(fx.tensors, "output_norm", *ln_f);
+        put_linear(fx.tensors, "output", *head);
+        return fx;
+    }
+
     Var mean_gate() const {
         return ops::scale(ops::add(ops::mean(srd[0]->gate()), ops::mean(srd[1]->gate())), 0.5f);
     }
@@ -211,6 +369,11 @@ public:
                 std::shared_ptr<nn::LayerNorm> ln;
                 std::shared_ptr<nn::MLP> mlp;
             };
+            // Kept for export only (registration is through `owned`).
+            ln_a.push_back(lna);
+            attns.push_back(attn);
+            ln_m.push_back(lnm);
+            mlps.push_back(mlp);
             auto asub = std::make_shared<AttnSub>(lna, attn);
             auto msub = std::make_shared<MlpSub>(lnm, mlp);
             owned.push_back(asub);
@@ -235,7 +398,69 @@ public:
         return head->forward(ln_f->forward(stack->forward(h)));
     }
 
+    // microtorch/ir.hpp, Families: attnres. The stack's block form with
+    // two sublayers per bank entry is one transformer block per IR block:
+    // block i's attention sublayer is AttnRes layer 2i (query w[2i]), its
+    // FFN layer 2i + 1, the final aggregation w[2n].
+    std::optional<FamilyExport> family_export() const {
+        const size_t n_blocks = attns.size();
+        if (stack->block_size != 2)
+            throw std::runtime_error("AttnResLM export: needs the block form with two sublayers per block");
+        const size_t vocab = wte->weight->data.rows(), d = wte->weight->data.cols();
+        const size_t ctx = wpe->weight->data.rows();
+        const float eps = ops::kRmsNormEps;  // depth_attend's parameter-free rmsnorm
+        const std::string p = "blk.{i}.";
+        ir::json embed = gpt2_embed_ir(*wte);
+        embed.push_back(ir::list({"x"}, "bank"));
+        ir::json n = ir::json::array();
+        n.push_back(ir::depth_attend({"bank"}, p + "attnres_attn_q.weight", eps, "h"));
+        n.push_back(ln_a[0]->export_ir("h", "h", p + "attn_norm"));
+        for (const auto& node :
+             attns[0]->export_ir("h", "o", p + "attn_qkv.weight", p + "attn_output.weight", "kv"))
+            n.push_back(node);
+        n.push_back(ir::depth_attend({"bank", "o"}, p + "attnres_ffn_q.weight", eps, "h2"));
+        n.push_back(ln_m[0]->export_ir("h2", "h2", p + "ffn_norm"));
+        for (const auto& node : mlps[0]->export_ir("h2", "f", p + "ffn_up.weight", p + "ffn_down.weight"))
+            n.push_back(node);
+        n.push_back(ir::binary("add", "o", "f", "o"));  // the block's bank entry: the sum of its two outputs
+        n.push_back(ir::append("bank", "o", "bank"));
+        ir::json head_nodes = ir::json::array({ir::depth_attend({"bank"}, "attnres_out_q.weight", eps, "x")});
+        for (const auto& node : gpt2_head_ir(*ln_f, *head)) head_nodes.push_back(node);
+        const auto& a0 = *attns[0];
+        FamilyExport fx;
+        fx.arch = "paperkiln";
+        fx.heads = a0.H;
+        fx.d_ff = 4 * d;
+        fx.ir = family_doc("attnres", vocab, d, n_blocks, ctx, /*positions=*/true, embed,
+                           ir::json::array({ir::kv_state("kv", a0.H, a0.H, a0.dk, ctx, 0, 0)}), n, head_nodes);
+        using L = gguf::NamedTensor::Layout;
+        put_tensor(fx.tensors, "token_embd.weight", wte->weight->data, L::ROWS);
+        put_tensor(fx.tensors, "position_embd.weight", wpe->weight->data, L::ROWS);
+        for (size_t b = 0; b < n_blocks; ++b) {
+            const std::string g = "blk." + std::to_string(b) + ".";
+            // Layer 0 has no query (one source); a zero row keeps every
+            // block's tensor set the same, and depth_attend never reads it.
+            put_tensor(fx.tensors, g + "attnres_attn_q.weight", b == 0 ? Matrix(1, d) : stack->w[2 * b]->data,
+                       L::VEC);
+            put_layernorm(fx.tensors, g + "attn_norm", *ln_a[b]);
+            put_linear(fx.tensors, g + "attn_qkv", *attns[b]->c_attn);
+            put_linear(fx.tensors, g + "attn_output", *attns[b]->c_proj);
+            put_tensor(fx.tensors, g + "attnres_ffn_q.weight", stack->w[2 * b + 1]->data, L::VEC);
+            put_layernorm(fx.tensors, g + "ffn_norm", *ln_m[b]);
+            put_linear(fx.tensors, g + "ffn_up", *mlps[b]->c_fc);
+            put_linear(fx.tensors, g + "ffn_down", *mlps[b]->c_proj);
+        }
+        put_tensor(fx.tensors, "attnres_out_q.weight", stack->w[2 * n_blocks]->data, L::VEC);
+        put_layernorm(fx.tensors, "output_norm", *ln_f);
+        put_linear(fx.tensors, "output", *head);
+        fx.constants = 1;
+        return fx;
+    }
+
     std::shared_ptr<nn::Embedding> wte, wpe;
+    std::vector<std::shared_ptr<nn::LayerNorm>> ln_a, ln_m;
+    std::vector<std::shared_ptr<nn::CausalSelfAttention>> attns;
+    std::vector<std::shared_ptr<nn::MLP>> mlps;
     std::shared_ptr<nn::AttnResStack> stack;
     std::shared_ptr<nn::LayerNorm> ln_f;
     std::shared_ptr<nn::Linear> head;
@@ -418,6 +643,122 @@ public:
     }
     std::map<std::string, Matrix> gpt2_state_dict() const {
         if (!gpt2_export_blocker().empty()) throw std::runtime_error("FlexLM gpt2_state_dict: " + gpt2_export_blocker());
+        return gpt2_tensors();
+    }
+
+    // Every other flavour (microtorch/ir.hpp, Families: flex, flex_highway,
+    // flex_plain); nullopt for the GPT-2 flavour, which exports as gpt2.
+    std::optional<FamilyExport> family_export() const {
+        if (gpt2_export_blocker().empty()) return std::nullopt;
+        const auto& c = cfg;
+        const std::string p = "blk.{i}.";
+        const auto& b0 = *blocks[0];
+        const bool rms = c.norm == "rmsnorm", plain = c.residual == "plain", highway = c.residual == "highway";
+        const size_t H = b0.attn ? b0.attn->H : b0.swa_attn->H, dk = c.d / H;
+        ir::json n = ir::json::array();
+        auto norm = [&](const std::shared_ptr<nn::LayerNorm>& ln, const std::string& in, const std::string& out,
+                        const std::string& name) {
+            n.push_back(rms ? ir::rmsnorm(in, name + ".weight", ops::kRmsNormEps, out) : ln->export_ir(in, out, name));
+        };
+        // FlexBlock::combine of the stream x with the sublayer output f.
+        auto combine = [&](const std::string& f, const std::shared_ptr<nn::Linear>& gate, const std::string& name) {
+            if (highway) {
+                n.push_back(gate->export_ir("x", "t", p + name + ".weight"));
+                n.push_back(ir::unary("sigmoid", "t", "t"));
+                n.push_back(ir::binary("sub", f, "x", f));
+                n.push_back(ir::binary("mul", "t", f, f));
+            }
+            if (!plain) n.push_back(ir::binary("add", "x", f, "x"));
+        };
+        // plain: the sublayer's last node writes the stream itself.
+        const std::string o = plain ? "x" : "o", f = plain ? "x" : "f";
+        norm(b0.ln1, "x", "h", p + "attn_norm");
+        const auto attn = b0.attn ? b0.attn->export_ir("h", o, p + "attn_qkv.weight", p + "attn_output.weight", "kv")
+                                  : b0.swa_attn->export_ir("h", o, p + "attn_qkv.weight", p + "attn_output.weight", "kv");
+        for (const auto& node : attn) n.push_back(node);
+        combine(o, b0.gate_a, "highway_attn");
+        norm(b0.ln2, "x", "h2", p + "ffn_norm");
+        if (b0.mlp) {
+            for (const auto& node : b0.mlp->export_ir("h2", f, p + "ffn_up.weight", p + "ffn_down.weight"))
+                n.push_back(node);
+        } else if (b0.gate) {  // swiglu: down(silu(gate h2) * up h2)
+            n.push_back(b0.gate->export_ir("h2", "g", p + "ffn_gate.weight"));
+            n.push_back(ir::unary("silu", "g", "g"));
+            n.push_back(b0.up->export_ir("h2", "u", p + "ffn_up.weight"));
+            n.push_back(ir::binary("mul", "g", "u", "g"));
+            n.push_back(b0.down->export_ir("g", f, p + "ffn_down.weight"));
+        } else {  // relu
+            n.push_back(b0.fc->export_ir("h2", "u", p + "ffn_up.weight"));
+            n.push_back(ir::unary("relu", "u", "u"));
+            n.push_back(b0.proj->export_ir("u", f, p + "ffn_down.weight"));
+        }
+        combine(f, b0.gate_m, "highway_ffn");
+        const size_t window = b0.swa_attn ? c.window : 0, sinks = b0.swa_attn ? c.sinks : 0;
+        const ir::json state = ir::json::array({ir::kv_state("kv", H, H, dk, c.n_ctx, window, sinks)});
+        ir::json head_nodes = ir::json::array();
+        head_nodes.push_back(rms ? ir::rmsnorm("x", "output_norm.weight", ops::kRmsNormEps, "h")
+                                 : ln_f_ln->export_ir("x", "h", "output_norm"));
+        head_nodes.push_back(head->export_ir("h", "logits", "output.weight"));
+        FamilyExport fx;
+        fx.heads = H;
+        fx.d_ff = c.d_ff;
+        fx.ir = family_doc(c.residual == "residual" ? "flex" : "flex_" + c.residual, c.vocab, c.d, c.n_layers,
+                           c.n_ctx, /*positions=*/true, gpt2_embed_ir(*wte), state, n, head_nodes);
+        if (!rms && c.act == "gelu" && c.pos == "learned" && plain) {
+            // llama.cpp's gpt2 tensors exactly, but no gpt2 graph computes
+            // a block without its skip connections.
+            fx.arch = "gpt2";
+            fx.gpt2_sd = gpt2_tensors();
+            fx.warning =
+                "residual plain lives in the embedded IR only: an engine reading the gpt2 tensors without it "
+                "(llama.cpp) adds skip connections this model does not have";
+            return fx;
+        }
+        fx.arch = "paperkiln";
+        using L = gguf::NamedTensor::Layout;
+        put_tensor(fx.tensors, "token_embd.weight", wte->weight->data, L::ROWS);
+        // Sinusoidal positions: the fixed table, as the model adds it.
+        put_tensor(fx.tensors, "position_embd.weight", wpe ? wpe->weight->data : sin_table, L::ROWS);
+        fx.constants = wpe ? 0 : 1;
+        for (size_t b = 0; b < blocks.size(); ++b) {
+            const std::string g = "blk." + std::to_string(b) + ".";
+            const auto& k = *blocks[b];
+            if (rms)
+                put_tensor(fx.tensors, g + "attn_norm.weight", k.n1_w->data, L::VEC);
+            else
+                put_layernorm(fx.tensors, g + "attn_norm", *k.ln1);
+            const nn::Linear& qkv = k.attn ? *k.attn->c_attn : *k.swa_attn->c_attn;
+            const nn::Linear& out = k.attn ? *k.attn->c_proj : *k.swa_attn->c_proj;
+            put_linear(fx.tensors, g + "attn_qkv", qkv);
+            put_linear(fx.tensors, g + "attn_output", out);
+            if (highway) put_linear(fx.tensors, g + "highway_attn", *k.gate_a);
+            if (rms)
+                put_tensor(fx.tensors, g + "ffn_norm.weight", k.n2_w->data, L::VEC);
+            else
+                put_layernorm(fx.tensors, g + "ffn_norm", *k.ln2);
+            if (k.mlp) {
+                put_linear(fx.tensors, g + "ffn_up", *k.mlp->c_fc);
+                put_linear(fx.tensors, g + "ffn_down", *k.mlp->c_proj);
+            } else if (k.gate) {
+                put_linear(fx.tensors, g + "ffn_gate", *k.gate);
+                put_linear(fx.tensors, g + "ffn_up", *k.up);
+                put_linear(fx.tensors, g + "ffn_down", *k.down);
+            } else {
+                put_linear(fx.tensors, g + "ffn_up", *k.fc);
+                put_linear(fx.tensors, g + "ffn_down", *k.proj);
+            }
+            if (highway) put_linear(fx.tensors, g + "highway_ffn", *k.gate_m);
+        }
+        if (rms)
+            put_tensor(fx.tensors, "output_norm.weight", ln_f_w->data, L::VEC);
+        else
+            put_layernorm(fx.tensors, "output_norm", *ln_f_ln);
+        put_linear(fx.tensors, "output", *head);
+        return fx;
+    }
+
+private:
+    std::map<std::string, Matrix> gpt2_tensors() const {
         std::map<std::string, Matrix> sd;
         put_gpt2_shell(sd, *wte, *wpe, *ln_f_ln, *head);
         for (size_t b = 0; b < blocks.size(); ++b) {
@@ -430,6 +771,8 @@ public:
         return sd;
     }
 
+public:
+
     FlexConfig cfg;
     std::shared_ptr<nn::Embedding> wte, wpe;
     Matrix sin_table;
@@ -437,6 +780,96 @@ public:
     std::shared_ptr<nn::LayerNorm> ln_f_ln;
     Var ln_f_w;
     std::shared_ptr<nn::Linear> head;
+};
+
+// The Mamba-style SSM LM (mamba::MambaModel's stack, same names and seeds)
+// as an mtstudio family: token embedding, no positions, mamba::MambaBlock x
+// L (pre-LN, S4 scan with ops::ssm_scan, gelu output gates, skip), final
+// LayerNorm, biased head. MambaModel::forward takes token ids as a float
+// column; this one takes ids, and runs a stacked mini-batch one sequence at
+// a time so no scan state crosses a sequence boundary.
+class MambaLM : public nn::Module {
+public:
+    MambaLM(size_t vocab, size_t d, size_t n_layers, size_t d_state, unsigned seed) : d_state(d_state) {
+        embed = mod<nn::Embedding>("embed", vocab, d);
+        norm_final = mod<nn::LayerNorm>("norm_final", d);
+        lm_head = mod<nn::Linear>("lm_head", d, vocab, true, seed + 21);
+        for (size_t i = 0; i < n_layers; ++i)
+            blocks.push_back(mod<mamba::MambaBlock>("block_" + std::to_string(i), d, d_state,
+                                                    seed + 30 + static_cast<unsigned>(i)));
+    }
+
+    Var forward(const std::vector<int>& ids, size_t seq_len = 0) const {
+        const size_t sl = seq_len == 0 ? ids.size() : seq_len;
+        if (sl == 0 || ids.size() % sl != 0) throw std::runtime_error("MambaLM: rows not a multiple of seq_len");
+        if (sl == ids.size()) return one(ids);
+        Var out;
+        for (size_t b = 0; b < ids.size() / sl; ++b) {
+            std::vector<int> part(ids.begin() + b * sl, ids.begin() + (b + 1) * sl), rows(sl);
+            for (size_t t = 0; t < sl; ++t) rows[t] = static_cast<int>(b * sl + t);
+            Var placed = ops::scatter_add_rows(one(part), rows, ids.size());
+            out = out ? ops::add(out, placed) : placed;
+        }
+        return out;
+    }
+
+    // microtorch/ir.hpp, Families: mamba (paperkiln).
+    std::optional<FamilyExport> family_export(size_t ctx) const {
+        const size_t vocab = embed->weight->data.rows(), d = embed->weight->data.cols(), n = d_state;
+        const std::string p = "blk.{i}.";
+        const auto& b0 = *blocks[0];
+        const auto& s4 = *b0.s4;
+        ir::json nd = ir::json::array();
+        nd.push_back(b0.norm->export_ir("x", "h", p + "ssm_norm"));
+        nd.push_back(s4.proj_in->export_ir("h", "u", p + "ssm_in.weight"));
+        nd.push_back(ir::ssm_scan("u", "ssm", p, n, "y"));
+        nd.push_back(s4.proj_out->export_ir("y", "y", p + "ssm_out.weight"));
+        nd.push_back(s4.gate_proj->export_ir("h", "g", p + "ssm_gate.weight"));
+        nd.push_back(ir::gelu("g", "tanh", "g"));
+        nd.push_back(ir::binary("mul", "y", "g", "y"));
+        nd.push_back(b0.out_gate->export_ir("x", "g", p + "ssm_out_gate.weight"));
+        nd.push_back(ir::gelu("g", "tanh", "g"));
+        nd.push_back(ir::binary("mul", "y", "g", "y"));
+        nd.push_back(ir::binary("add", "x", "y", "x"));
+        const ir::json embed_nodes = ir::json::array({embed->export_ir("tokens", "x", "token_embd.weight")});
+        const ir::json head_nodes = ir::json::array(
+            {norm_final->export_ir("x", "h", "output_norm"), lm_head->export_ir("h", "logits", "output.weight")});
+        FamilyExport fx;
+        fx.arch = "paperkiln";
+        fx.ir = family_doc("mamba", vocab, d, blocks.size(), ctx, /*positions=*/false, embed_nodes,
+                           ir::json::array({ir::ssm_state("ssm", n)}), nd, head_nodes);
+        using L = gguf::NamedTensor::Layout;
+        put_tensor(fx.tensors, "token_embd.weight", embed->weight->data, L::ROWS);
+        for (size_t b = 0; b < blocks.size(); ++b) {
+            const std::string g = "blk." + std::to_string(b) + ".";
+            const auto& k = *blocks[b];
+            put_layernorm(fx.tensors, g + "ssm_norm", *k.norm);
+            put_linear(fx.tensors, g + "ssm_in", *k.s4->proj_in);
+            put_tensor(fx.tensors, g + "ssm_a.weight", k.s4->A->data, L::ROWS);  // A[i][j] row-major
+            put_tensor(fx.tensors, g + "ssm_b.weight", k.s4->B->data, L::VEC);   // [n, 1]
+            put_tensor(fx.tensors, g + "ssm_c.weight", k.s4->C->data, L::VEC);   // [1, n]
+            put_tensor(fx.tensors, g + "ssm_d.weight", k.s4->D->data, L::VEC);   // [1, 1]
+            put_linear(fx.tensors, g + "ssm_out", *k.s4->proj_out);
+            put_linear(fx.tensors, g + "ssm_gate", *k.s4->gate_proj);
+            put_linear(fx.tensors, g + "ssm_out_gate", *k.out_gate);
+        }
+        put_layernorm(fx.tensors, "output_norm", *norm_final);
+        put_linear(fx.tensors, "output", *lm_head);
+        return fx;
+    }
+
+    size_t d_state;
+    std::shared_ptr<nn::Embedding> embed;
+    std::vector<std::shared_ptr<mamba::MambaBlock>> blocks;
+    std::shared_ptr<nn::LayerNorm> norm_final;
+    std::shared_ptr<nn::Linear> lm_head;
+
+private:
+    Var one(const std::vector<int>& ids) const {
+        Var h = embed->forward(ids);
+        for (const auto& b : blocks) h = b->forward(h);
+        return lm_head->forward(norm_final->forward(h));
+    }
 };
 
 }  // namespace parity

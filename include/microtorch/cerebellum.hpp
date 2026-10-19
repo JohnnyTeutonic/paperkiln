@@ -34,7 +34,7 @@ public:
     explicit RoutinePredictor(size_t d_model, unsigned seed = 0);
     Var forward(const Var& x) const;  // x: [T, d] -> [T, d] (same shape)
 
-private:
+    // Public for export (the SRD router's IR and GGUF tensors).
     std::shared_ptr<nn::Linear> fc1, fc2;  // Small MLP: d -> d/4 -> d
 };
 

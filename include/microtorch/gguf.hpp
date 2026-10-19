@@ -195,5 +195,37 @@ struct Gpt2ExportConfig {
 void export_gguf_gpt2(const std::string& path, const std::map<std::string, Matrix>& state_dict,
                       const Gpt2ExportConfig& cfg, std::vector<std::string>* unmapped = nullptr);
 
+// A family no llama.cpp graph computes (microtorch/ir.hpp, Families): the
+// embedded IR is the model, the tensors are what it names.
+struct PaperkilnExportConfig {
+    std::string name = "microtorch-model";
+    // Written as paperkiln.<key>; 0 = not applicable, key omitted (except
+    // the four required ones).
+    uint32_t context_length = 0, embedding_length = 0, block_count = 0, vocab_size = 0;  // required
+    uint32_t head_count = 0, feed_forward_length = 0;
+    std::vector<std::string> tokens;
+    std::string tokenizer_model = "word";
+    std::vector<std::string> merges;
+    uint32_t bos_token_id = 1, eos_token_id = 1;
+    uint32_t unk_token_id = 0, pad_token_id = 0;
+    std::string ir;  // required: without it nothing can run the file
+};
+
+// One tensor, in microtorch's layout, with its GGUF name:
+//   ROWS  [rows, cols] written as is (embedding tables, A of ssm_scan): ne={cols, rows}
+//   PROJ  an nn::Linear weight [in, out], transposed to [out][in]: ne={in, out}
+//   VEC   a [1, n] row (norms, biases, pseudo-queries; also a [n, 1] column): ne={n}
+struct NamedTensor {
+    enum class Layout { ROWS, PROJ, VEC };
+    std::string name;
+    Matrix m;
+    Layout layout;
+};
+
+// general.architecture = "paperkiln", F32 tensors in the order given.
+// Throws on a duplicate name or a missing required field.
+void export_gguf_paperkiln(const std::string& path, const std::vector<NamedTensor>& tensors,
+                           const PaperkilnExportConfig& cfg);
+
 }  // namespace gguf
 }  // namespace microtorch

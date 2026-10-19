@@ -694,5 +694,66 @@ void export_gguf_gpt2(const std::string& path, const std::map<std::string, Matri
     if (!writer.finalize()) throw std::runtime_error(std::string(who) + ": finalize failed for " + path);
 }
 
+void export_gguf_paperkiln(const std::string& path, const std::vector<NamedTensor>& tensors,
+                           const PaperkilnExportConfig& cfg) {
+    const char* who = "export_gguf_paperkiln";
+    if (cfg.context_length == 0 || cfg.embedding_length == 0 || cfg.block_count == 0 || cfg.vocab_size == 0)
+        throw std::runtime_error(std::string(who) +
+                                 ": context_length, embedding_length, block_count and vocab_size must all be set");
+    if (cfg.ir.empty()) throw std::runtime_error(std::string(who) + ": a paperkiln file needs its IR");
+    for (size_t i = 0; i < tensors.size(); ++i)
+        for (size_t j = 0; j < i; ++j)
+            if (tensors[i].name == tensors[j].name)
+                throw std::runtime_error(std::string(who) + ": tensor " + tensors[i].name + " given twice");
+
+    GGUFWriter writer(path);
+    const std::string a = "paperkiln";
+    writer.write_metadata_string("general.architecture", a);
+    writer.write_metadata_string("general.name", cfg.name);
+    writer.write_metadata_uint32("general.alignment", gguf_export::GGUF_DEFAULT_ALIGNMENT);
+    writer.write_metadata_uint32(a + ".context_length", cfg.context_length);
+    writer.write_metadata_uint32(a + ".embedding_length", cfg.embedding_length);
+    writer.write_metadata_uint32(a + ".block_count", cfg.block_count);
+    if (cfg.feed_forward_length) writer.write_metadata_uint32(a + ".feed_forward_length", cfg.feed_forward_length);
+    if (cfg.head_count) writer.write_metadata_uint32(a + ".attention.head_count", cfg.head_count);
+    writer.write_metadata_uint32(a + ".vocab_size", cfg.vocab_size);
+    write_tokenizer(writer, cfg);
+    write_ir(writer, cfg.ir, who);
+
+    // As export_gguf_gpt2: shapes row-major, written reversed; the writer
+    // holds raw pointers until finalize(), so every buffer is owned here.
+    std::vector<std::unique_ptr<std::vector<float>>> owned;
+    for (const auto& t : tensors) {
+        const Matrix& m = t.m;
+        const size_t R = m.rows(), C = m.cols();
+        auto buf = std::make_unique<std::vector<float>>(R * C);
+        std::vector<uint64_t> shape;
+        if (t.layout == NamedTensor::Layout::PROJ) {
+            for (size_t i = 0; i < R; ++i)
+                for (size_t j = 0; j < C; ++j) (*buf)[j * R + i] = m(i, j);
+            shape = {static_cast<uint64_t>(C), static_cast<uint64_t>(R)};
+        } else {
+            for (size_t i = 0; i < R; ++i)
+                for (size_t j = 0; j < C; ++j) (*buf)[i * C + j] = m(i, j);
+            if (t.layout == NamedTensor::Layout::ROWS) {
+                shape = {static_cast<uint64_t>(R), static_cast<uint64_t>(C)};
+            } else {
+                if (R != 1 && C != 1)
+                    throw std::runtime_error(std::string(who) + ": " + t.name + " is not a vector");
+                shape = {static_cast<uint64_t>(R * C)};
+            }
+        }
+        TensorExportInfo info;
+        info.type = GGMLType::F32;
+        info.name = t.name;
+        info.shape = std::move(shape);
+        info.data = buf->data();
+        info.num_elements = R * C;
+        writer.add_tensor(info);
+        owned.push_back(std::move(buf));
+    }
+    if (!writer.finalize()) throw std::runtime_error(std::string(who) + ": finalize failed for " + path);
+}
+
 }  // namespace gguf
 }  // namespace microtorch

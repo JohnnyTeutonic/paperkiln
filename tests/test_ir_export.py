@@ -7,11 +7,15 @@ embedded document; the dense IR is the hand-written v0 worked example
 (ir/chat_sftfinal.ir.json) with this model's dimensions; the MoE block has
 one moe_ffn node in place of the dense FFN's five. The gpt2 family exports
 in llama.cpp's gpt2 layout (shapes, metadata and bytes against the
-safetensors) with a layernorm / split / gelu IR; flex exports when it has
-the GPT-2 flavour, and other flavours are skipped. Sliding-window attention
-(gpt2 and flex) exports the same gpt2 tensors with family_hint "gpt2_swa" and
-the window and sinks on the attention node and kv state. Needs MTSTUDIO_BIN (or
-./build/mtstudio); skipped otherwise.
+safetensors) with a layernorm / split / gelu IR, as does flex with the GPT-2
+flavour. Sliding-window attention (gpt2 and flex) exports the same gpt2
+tensors with family_hint "gpt2_swa" and the window and sinks on the
+attention node and kv state. The other families (ir.hpp "Families": kimi,
+srd, attnres, flex highway / plain / other flavours) export F32 with their
+IR: every IR weight is a tensor and every tensor an IR weight, the model
+fields agree with the GGUF metadata, and the state slots (kv, recurrent)
+are declared in full. Needs MTSTUDIO_BIN (or ./build/mtstudio); skipped
+otherwise.
 """
 import copy
 import json
@@ -91,12 +95,12 @@ def test_moe_ir_names_the_expert_tensors(tmp_path):
     assert moe["experts"] == {k: f"blk.{{i}}.ffn_{k}_exps.weight" for k in ("gate", "up", "down")}
 
 
-def gpt2_setup(tmp, name, custom, formats=("safetensors", "gguf")):
+def gpt2_setup(tmp, name, custom, formats=("safetensors", "gguf"), preset="gpt2-nano"):
     """A tiny gpt2-family spec (2 layers: the ParityLM; other depths and flavours: flex)."""
     tmp.mkdir(parents=True, exist_ok=True)
     write_vocab_gguf(tmp / "v.gguf", ["<unk>"] + WORDS)
     (tmp / "c.txt").write_text(corpus(), encoding="utf-8")
-    spec = {"name": name, "arch": {"preset": "gpt2-nano", "custom": dict({"d": 32, "layers": 2, "heads": 2}, **custom)},
+    spec = {"name": name, "arch": {"preset": preset, "custom": dict({"d": 32, "layers": 2, "heads": 2}, **custom)},
             "data": {"vocab": str(tmp / "v.gguf"), "corpus": str(tmp / "c.txt"), "T": 16, "max_tokens": 0},
             "train": {"steps": 2, "lr": 0.003, "eval_every": 10, "checkpoint_every": 10, "batch": 2, "seed": 3,
                       "gradmap_every": 0},
@@ -212,7 +216,7 @@ def test_gpt2_gguf_and_ir(tmp_path):
 
 
 @needs_bin
-def test_gpt2_flavoured_flex_exports_and_others_skip(tmp_path):
+def test_gpt2_flavoured_flex_exports(tmp_path):
     # Depth 3 promotes to flex; with its GPT-2 flavour it exports, d_ff included.
     spec = gpt2_setup(tmp_path / "deep", "f", {"layers": 3, "d_ff": 48})
     run(spec)
@@ -222,14 +226,160 @@ def test_gpt2_flavoured_flex_exports_and_others_skip(tmp_path):
     meta, tensors, *_ = ir_check.read_gguf(ex[0]["path"])
     assert (meta["gpt2.block_count"][1], meta["gpt2.feed_forward_length"][1]) == (3, 48)
     assert embedded(ex[0]["path"])["block"]["repeat"] == 3
-    # Another flavour (rmsnorm) or attention kind (kimi) is skipped, with no IR.
-    for sub, custom in (("rms", {"layers": 3, "norm": "rmsnorm"}), ("kimi", {"attention": "kimi"})):
-        spec = gpt2_setup(tmp_path / sub, "s", custom)
-        run(spec)
-        ev = events(spec)
-        assert not [e for e in ev if e["event"] == "export" and e["format"] == "gguf"]
-        assert any(e["event"] == "export_skipped" and e["format"] == "gguf" for e in ev)
-        assert not (tmp_path / sub / "s" / "s.ir.json").exists()
+
+
+# ---- the families of microtorch/ir.hpp "Families" ----------------------------
+
+def family_export(tmp, name, custom, arch, hint, formats=("safetensors", "gguf", "gguf_q8_0"), preset="gpt2-nano"):
+    """Train a tiny model for two steps; check what every family export must
+    satisfy, and return (path, meta, {tensor: ne dims}, IR)."""
+    spec = gpt2_setup(tmp, name, custom, formats=formats, preset=preset)
+    run(spec)
+    ev = events(spec)
+    ex = [e for e in ev if e["event"] == "export" and e["format"] == "gguf"]
+    assert len(ex) == 1, ev[-5:]
+    assert (ex[0]["arch"], ex[0]["family"]) == (arch, hint)
+    # F32 only: a quantised variant is refused by name.
+    assert any(e["event"] == "export_skipped" and e["format"] == "gguf_q8_0" for e in ev)
+    path = ex[0]["path"]
+    # Every IR weight name is a tensor; model fields and state slots complete.
+    assert ir_check.check(path) == []
+    meta, tensors, *_ = ir_check.read_gguf(path)
+    dims = {t[0]: t[1] for t in tensors}
+    doc = embedded(path)
+    assert meta["general.architecture"][1] == arch and doc["family_hint"] == hint
+    # And every tensor is one the IR reads: nothing in the file is unexplained.
+    assert {n for _, n, _ in ir_check.weight_refs(doc)} == set(dims)
+    g = {k.split(".", 1)[1]: v[1] for k, v in meta.items() if k.startswith(arch + ".")}
+    m = doc["model"]
+    assert (m["d"], m["vocab"], m["ctx"], m["n_layers"]) == (
+        g["embedding_length"], g["vocab_size"], g["context_length"], g["block_count"])
+    assert doc["block"]["repeat"] == m["n_layers"] and m["dtype"] == "f32"
+    return path, meta, dims, doc
+
+
+def lin_state(heads, hd, name="lin"):
+    return {"name": name, "kind": "recurrent", "op": "linear_attention", "dtype": "f32",
+            "tensors": [{"name": "num", "shape": [heads, hd], "init": 0},
+                        {"name": "den", "shape": [heads, hd], "init": 0}]}
+
+
+def kv_state(heads, hd, ctx):
+    return {"name": "kv", "kind": "kv", "heads": heads, "kv_heads": heads, "head_dim": hd, "max_len": ctx,
+            "window": 0, "sinks": 0, "dtype": "f32"}
+
+
+GPT2_TENSORS = {"token_embd.weight", "position_embd.weight", "output_norm.weight", "output_norm.bias", "output.weight"}
+
+
+def gpt2_block_tensors(layers):
+    return {f"blk.{i}.{t}.{w}" for i in range(layers) for t in
+            ("attn_norm", "attn_qkv", "attn_output", "ffn_norm", "ffn_up", "ffn_down") for w in ("weight", "bias")}
+
+
+@needs_bin
+def test_kimi_exports_gpt2_tensors_with_linear_attention(tmp_path):
+    path, meta, dims, doc = family_export(tmp_path, "k", {"attention": "kimi"}, "gpt2", "kimi")
+    assert set(dims) == GPT2_TENSORS | gpt2_block_tensors(2)
+    assert doc["block"]["state"] == [lin_state(2, 16)]
+    nodes = doc["block"]["nodes"]
+    assert [n["op"] for n in nodes] == ["layernorm", "linear", "split", "linear_attention", "linear", "add",
+                                        "layernorm", "linear", "gelu", "linear", "add"]
+    assert nodes[3] == {"op": "linear_attention", "in": ["q", "k", "v"], "state": "lin", "heads": 2,
+                        "head_dim": 16, "causal": True, "feature_map": "elu_plus_one", "den_floor": 1e-08,
+                        "out": "a"}
+    assert "dense" not in json.dumps(doc["modes"]) and "scans" in doc["modes"]["prefill"]
+
+
+@needs_bin
+def test_srd_exports_router_and_both_paths(tmp_path):
+    path, meta, dims, doc = family_export(tmp_path, "r", {"attention": "srd"}, "paperkiln", "srd")
+    d = 32
+    pred = {f"blk.{i}.srd_pred_{a}.{w}" for i in range(2) for a in ("up", "down") for w in ("weight", "bias")}
+    assert set(dims) == GPT2_TENSORS | gpt2_block_tensors(2) | pred
+    assert (dims["blk.0.srd_pred_up.weight"], dims["blk.0.srd_pred_down.weight"]) == ([d, d // 4], [d // 4, d])
+    assert {k: meta[k][1] for k in ("paperkiln.attention.head_count", "paperkiln.feed_forward_length")} == {
+        "paperkiln.attention.head_count": 2, "paperkiln.feed_forward_length": 4 * d}
+    assert doc["block"]["state"] == [kv_state(2, 16, 16), lin_state(2, 16)]
+    ops = [n["op"] for n in doc["block"]["nodes"]]
+    assert ops == ["layernorm", "linear", "gelu", "linear", "sub", "rms_row", "affine", "sigmoid", "affine",
+                   "linear", "split", "attention", "linear_attention", "mul_col", "mul_col", "add", "linear", "add",
+                   "layernorm", "linear", "gelu", "linear", "add"]
+    by = {n["op"] + str(i): n for i, n in enumerate(doc["block"]["nodes"])}
+    assert (by["affine6"]["scale"], by["affine6"]["shift"]) == (4.0, -1.0)
+    assert (by["affine8"]["scale"], by["affine8"]["shift"], by["affine8"]["out"]) == (-1.0, 1.0, "gi")
+    assert by["rms_row5"]["eps"] == 1e-08
+    assert by["mul_col13"]["in"] == ["a", "g"] and by["mul_col14"]["in"] == ["l", "gi"]
+
+
+@needs_bin
+@pytest.mark.parametrize("layers", [2, 3])
+def test_attnres_exports_depth_attention(tmp_path, layers):
+    path, meta, dims, doc = family_export(tmp_path, "a", {"attention": "attnres", "layers": layers},
+                                          "paperkiln", "attnres")
+    q = {f"blk.{i}.attnres_{s}_q.weight" for i in range(layers) for s in ("attn", "ffn")}
+    assert set(dims) == GPT2_TENSORS | gpt2_block_tensors(layers) | q | {"attnres_out_q.weight"}
+    assert dims["attnres_out_q.weight"] == [32]
+    # Layer 0 has one source: its query is written as zeros and never read.
+    assert set(gguf_tensor(path, "blk.0.attnres_attn_q.weight")[1]) == {0.0}
+    assert doc["block"]["state"] == [kv_state(2, 16, 16)]
+    assert [n["op"] for n in doc["embed"]["nodes"]] == ["embedding", "pos_embedding", "list"]
+    nodes = doc["block"]["nodes"]
+    assert [n["op"] for n in nodes] == ["depth_attend", "layernorm", "linear", "split", "attention", "linear",
+                                        "depth_attend", "layernorm", "linear", "gelu", "linear", "add", "append"]
+    assert nodes[0]["in"] == ["bank"] and nodes[6]["in"] == ["bank", "o"] and nodes[0]["eps"] == 1e-05
+    assert nodes[-1] == {"op": "append", "in": ["bank", "o"], "out": "bank"}
+    head = doc["head"]["nodes"]
+    assert [n["op"] for n in head] == ["depth_attend", "layernorm", "linear"]
+    assert head[0]["weight"] == "attnres_out_q.weight"
+
+
+FLEX = [  # (custom, arch, hint, extra tensors per block or None)
+    ({"layers": 3, "residual": "highway"}, "paperkiln", "flex_highway", ("highway_attn", "highway_ffn")),
+    ({"layers": 3, "residual": "plain"}, "gpt2", "flex_plain", ()),
+    ({"layers": 3, "norm": "rmsnorm", "activation": "swiglu", "position": "sinusoidal"}, "paperkiln", "flex", None),
+    ({"layers": 2, "activation": "relu", "residual": "highway", "attention": "swa", "window": 4, "sinks": 2},
+     "paperkiln", "flex_highway", ("highway_attn", "highway_ffn")),
+]
+
+
+@needs_bin
+@pytest.mark.parametrize("custom,arch,hint,extra", FLEX)
+def test_flex_flavours_export(tmp_path, custom, arch, hint, extra):
+    path, meta, dims, doc = family_export(tmp_path, "x", custom, arch, hint)
+    L = custom["layers"]
+    if extra is not None:
+        assert set(dims) == GPT2_TENSORS | gpt2_block_tensors(L) | {
+            f"blk.{i}.{t}.{w}" for i in range(L) for t in extra for w in ("weight", "bias")}
+    nodes = doc["block"]["nodes"]
+    ops = [n["op"] for n in nodes]
+    if custom.get("residual") == "highway":
+        # x + sigmoid(W x + b) * (f - x), for both sublayers.
+        assert ops.count("sigmoid") == 2 and ops.count("sub") == 2
+        i = ops.index("sigmoid")
+        assert nodes[i - 1]["weight"] == "blk.{i}.highway_attn.weight" and nodes[i - 1]["in"] == ["x"]
+        assert [nodes[i + 1]["op"], nodes[i + 2]["op"], nodes[i + 3]["op"]] == ["sub", "mul", "add"]
+    if custom.get("residual") == "plain":
+        assert "add" not in ops
+        assert [n["out"] for n in nodes if n["op"] == "linear"][1::2] == ["x", "x"]
+    if custom.get("norm") == "rmsnorm":
+        assert ops.count("rmsnorm") == 2 and "blk.0.attn_norm.bias" not in dims
+        assert ops[-6:] == ["linear", "silu", "linear", "mul", "linear", "add"]
+        # Sinusoidal positions: the fixed table, sin on even columns, cos on odd.
+        import math
+        table = gguf_tensor(path, "position_embd.weight")[1]
+        d = 32
+        for p_ in (0, 5):
+            for i in (0, 1, 6, 7):
+                ang = p_ / 10000.0 ** (2 * (i // 2) / d)
+                want = math.sin(ang) if i % 2 == 0 else math.cos(ang)
+                assert abs(table[p_ * d + i] - want) < 1e-6
+    if custom.get("activation") == "relu":
+        assert "relu" in ops
+    if custom.get("attention") == "swa":
+        att = [n for n in nodes if n["op"] == "attention"][0]
+        assert (att["window"], att["sinks"]) == (4, 2)
+        assert (doc["block"]["state"][0]["window"], doc["block"]["state"][0]["sinks"]) == (4, 2)
 
 
 @needs_bin
@@ -301,3 +451,31 @@ def test_checker_catches_a_wrong_ir(tmp_path):
     doc["block"]["nodes"][1]["weight"] = "blk.{i}.attn_qq.weight"
     side.write_text(json.dumps(doc), encoding="utf-8")
     assert any("sidecar" in e for e in ir_check.check(path))
+
+
+@needs_bin
+def test_mamba_exports_ssm_scan(tmp_path):
+    n, d, L = 8, 32, 2
+    path, meta, dims, doc = family_export(tmp_path, "m", {"d_state": n}, "paperkiln", "mamba", preset="mamba-tiny")
+    want = {"token_embd.weight", "output_norm.weight", "output_norm.bias", "output.weight", "output.bias"}
+    for i in range(L):
+        b = f"blk.{i}."
+        want |= {b + "ssm_norm.weight", b + "ssm_norm.bias", b + "ssm_a.weight", b + "ssm_b.weight",
+                 b + "ssm_c.weight", b + "ssm_d.weight"}
+        want |= {b + t + "." + w for t in ("ssm_in", "ssm_out", "ssm_gate", "ssm_out_gate") for w in ("weight", "bias")}
+    assert set(dims) == want
+    assert (dims["blk.0.ssm_a.weight"], dims["blk.0.ssm_b.weight"], dims["blk.0.ssm_c.weight"],
+            dims["blk.0.ssm_d.weight"], dims["blk.0.ssm_in.weight"]) == ([n, n], [n], [n], [1], [d, n])
+    # No positions, no attention metadata.
+    assert [x["name"] for x in doc["inputs"]] == ["tokens"]
+    assert "paperkiln.attention.head_count" not in meta
+    assert doc["block"]["state"] == [{"name": "ssm", "kind": "recurrent", "op": "ssm_scan", "dtype": "f32",
+                                      "tensors": [{"name": "s", "shape": [n], "init": 0}]}]
+    nodes = doc["block"]["nodes"]
+    assert [x["op"] for x in nodes] == ["layernorm", "linear", "ssm_scan", "linear", "linear", "gelu", "mul",
+                                        "linear", "gelu", "mul", "add"]
+    assert nodes[2] == {"op": "ssm_scan", "in": ["u"], "state": "ssm", "n": n, "a": "blk.{i}.ssm_a.weight",
+                        "b": "blk.{i}.ssm_b.weight", "c": "blk.{i}.ssm_c.weight", "d": "blk.{i}.ssm_d.weight",
+                        "out": "y"}
+    assert nodes[7]["in"] == ["x"]  # the outer gate reads the block input, not the normalised one
+    assert doc["head"]["nodes"][1]["bias"] == "output.bias"
