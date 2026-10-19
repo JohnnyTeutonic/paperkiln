@@ -2633,6 +2633,29 @@ std::string chat_prompt_bpe(const json& req) {
     return p + "<|user|>" + req["user_input"].get<std::string>() + "<|assistant|>";
 }
 
+// The request's history as whole (user, assistant) turns, oldest first:
+// [{role, content}] lists pair each assistant message with the user message
+// before it, as chat_prompt_bpe reads them.
+json history_turns(const json& req) {
+    json turns = json::array();
+    if (!req.contains("history") || !req["history"].is_array()) return turns;
+    std::string pending_user;
+    for (const auto& turn : req["history"]) {
+        if (!turn.is_object()) continue;
+        if (turn.contains("role")) {
+            const std::string role = turn.value("role", "");
+            if (role == "user") pending_user = turn.value("content", "");
+            if (role == "assistant") {
+                turns.push_back({{"user", pending_user}, {"assistant", turn.value("content", "")}});
+                pending_user.clear();
+            }
+            continue;
+        }
+        turns.push_back({{"user", turn.value("user", "")}, {"assistant", turn.value("assistant", "")}});
+    }
+    return turns;
+}
+
 std::string chat_prompt(const json& req) {
     if (g_bpe) return chat_prompt_bpe(req);
     std::string p;
@@ -2735,13 +2758,36 @@ int chat_cmd(const std::string& target, const std::string& host, int port) {
             const float temp = r.value("temperature", 0.1f);
             const int top_k = r.value("top_k", 40);
             const float top_p = r.value("top_p", 0.9f);
-            const std::string prompt = chat_prompt(r);
+            // The context contract (LOCAL_LLM_STACK.md section 3, shared with
+            // ember's server): drop the OLDEST whole turn while prompt +
+            // max_new_tokens exceeds the context; reject a prompt that still
+            // fills it (the newest message is never truncated); and never
+            // attend over more than T positions, so a reply that reaches the
+            // limit ends with P + reply = T + 1 and stop_reason "length".
+            const size_t T = s.T;
+            const json turns = history_turns(r);
+            json q = r;
+            size_t first = 0;
+            std::vector<int> ids;
+            while (true) {
+                q["history"] = json(turns.begin() + static_cast<std::ptrdiff_t>(first), turns.end());
+                const std::string prompt = chat_prompt(q);
+                ids = tokenize(prompt, lm.vocab, prompt.size() + 1);
+                if (first == turns.size() || ids.size() + static_cast<size_t>(max_new) <= T) break;
+                ++first;
+            }
+            if (ids.size() >= T) {
+                fail(400, "message is " + std::to_string(ids.size()) + " tokens; the model's context is " +
+                              std::to_string(T));
+                return;
+            }
             std::lock_guard<std::mutex> lk(gen_mu);
             std::mt19937 gen(r.contains("seed") ? r["seed"].get<unsigned>() : seeder());
             NoGrad ng;
-            std::vector<int> ids = tokenize(prompt, lm.vocab, prompt.size() + 1), out;
+            std::vector<int> out;
             std::string stop = "length";
             for (int t = 0; t < max_new; ++t) {
+                if (ids.size() > T) break;  // the context limit: "length"
                 const int pick = lm.next(ids, temp, top_k, top_p, gen);
                 if (pick == lm.eos) {
                     stop = "eos";
@@ -2762,7 +2808,11 @@ int chat_cmd(const std::string& target, const std::string& host, int port) {
             const auto e = reply.find_last_not_of(" \t\r\n");
             reply = b == std::string::npos ? "" : reply.substr(b, e - b + 1);
             res.set_content(
-                json({{"reply", reply}, {"stop_reason", stop}, {"tokens", out.size()}}).dump(),
+                json({{"reply", reply},
+                      {"stop_reason", stop},
+                      {"tokens", out.size()},
+                      {"history_turns_used", turns.size() - first}})
+                    .dump(),
                 "application/json");
         } catch (const json::exception& e) {
             fail(400, std::string("bad request field: ") + e.what());
