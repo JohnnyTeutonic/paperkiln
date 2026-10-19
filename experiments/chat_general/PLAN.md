@@ -59,8 +59,12 @@ the same pipeline then scales up unchanged.
    logged-in Claude Code CLI in print mode, no API key handled. Measured cost
    with a trimmed system prompt and no tools: **$0.0117 per call**. Listwise:
    one call ranks a prompt's 4 sampled replies, run twice with the order
-   reversed, and only agreeing ranks are kept. **1,000 prompts = 2,000 calls,
-   about $25**, needing Jonathan's OK. Best vs worst pairs, length-matched;
+   reversed, and only agreeing ranks are kept. About $0.03 per prompt.
+   **Budget: $100 total (Jonathan, 19 Oct 2026)**, enforced by
+   `chat_judge.py --max-usd 100` over the cache's whole recorded spend: a
+   200-prompt pilot (~$6) measures cost and agreement, then ~3,000 prompts
+   (~1,700-2,000 pairs; up to twice that with `--pairs-per-prompt 2`). Best vs
+   worst pairs, length-matched;
    DPO+NLL at a gentle rate. The arm fails if it repeats more than its SFT
    start (`chat_eval.py` repeat gate) or loses the ember side-by-side.
 
@@ -78,6 +82,6 @@ the same pipeline then scales up unchanged.
 
 - Colab: ~24 L4-hours for the base + ~1 hour for probe and SFT. Check the
   units against the Pro+ allowance before launch.
-- Judge: ~$25 per 1,000 prompts (Jonathan's OK first).
+- Judge: $100 cap, enforced by the tool.
 - My work before launch: fetcher + vocab + QA probe + listwise judge tool,
   about 3 hours, none of it touching Colab.

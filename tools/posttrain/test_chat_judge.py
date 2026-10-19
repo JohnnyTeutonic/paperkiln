@@ -72,3 +72,25 @@ def test_cap_and_failures(tmp_path):
 def test_parse_rejects_non_permutations():
     assert J.parse_ranking('{"ranking": ["A", "A"], "rationale": "x"}', [0, 1])[0] is None
     assert J.parse_ranking('```json\n{"ranking": ["B", "A"], "rationale": "x"}\n```', [1, 0])[0] == [0, 1]
+
+
+def test_dollar_cap_counts_earlier_runs(tmp_path):
+    cache = tmp_path / "c.jsonl"
+    t = fake(lambda s: len(s))  # each call reports $0.01
+    r1 = J.run(reqs(), str(cache), "claude-test", str(RUBRIC), 100, t, max_usd=0.02)
+    assert r1["calls"] == 2 and abs(r1["total_spent_usd"] - 0.02) < 1e-9
+    r2 = J.run(reqs(), str(cache), "claude-test", str(RUBRIC), 100, t, max_usd=0.02)
+    assert r2["calls"] == 0  # the cap covers the cache's whole history
+    r3 = J.run(reqs(), str(cache), "claude-test", str(RUBRIC), 100, t, max_usd=0.05)
+    assert r3["calls"] == 2
+
+
+def test_second_pair_needs_its_own_agreement(tmp_path):
+    cache = tmp_path / "c.jsonl"
+    score = {"I like pasta with tomato sauce.": 4, "I like rice.": 3, "Blue.": 2, "I am happy today today.": 1}
+    J.run(reqs()[:1], str(cache), "claude-test", str(RUBRIC), 100, fake(lambda s: score.get(s, 0)))
+    out = tmp_path / "p.jsonl"
+    rep = J.pairs(reqs()[:1], str(cache), "claude-test", str(RUBRIC), str(out), per_prompt=2)
+    ps = [json.loads(x) for x in out.read_text(encoding="utf-8").splitlines()]
+    assert [p["rank_pair"] for p in ps] == [[0, -1]]  # rice vs Blue. fails the length match (3 vs 1 words)
+    assert rep["length_mismatched"] == 1

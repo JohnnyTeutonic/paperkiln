@@ -104,9 +104,18 @@ def jobs(requests):
             yield r, order
 
 
-def run(requests, cache_path, judge_id, rubric_path, max_calls, transport, now=None):
+def spent(cache_path):
+    """Dollars already recorded for this cache: verdicts and failures alike."""
+    return sum(float(c.get("cost_usd", 0.0)) for p in (cache_path, cache_path + ".failures.jsonl")
+               for c in read_jsonl(p))
+
+
+def run(requests, cache_path, judge_id, rubric_path, max_calls, transport, now=None, max_usd=None):
+    """max_usd caps the cache's TOTAL recorded spend (earlier runs included):
+    no call starts once it is reached, so repeated runs cannot pass it."""
     rubric, version, rsha = rubric_identity(rubric_path)
     done = {c["key"] for c in read_jsonl(cache_path)}
+    before = spent(cache_path)
     calls, cost, failures = 0, 0.0, 0
     with open(cache_path, "a", encoding="utf-8", newline="\n") as cache, \
             open(cache_path + ".failures.jsonl", "a", encoding="utf-8", newline="\n") as fail:
@@ -114,7 +123,7 @@ def run(requests, cache_path, judge_id, rubric_path, max_calls, transport, now=N
             k = key_of(r["prompt"], r["candidates"], order, judge_id, version)
             if k in done:
                 continue
-            if calls >= max_calls:
+            if calls >= max_calls or (max_usd is not None and before + cost >= max_usd):
                 break
             text, c = transport(rubric, render(r["prompt"], r["candidates"], order))
             calls += 1
@@ -129,10 +138,14 @@ def run(requests, cache_path, judge_id, rubric_path, max_calls, transport, now=N
                 continue
             cache.write(json.dumps(dict(rec, ranking=ranking, rationale=why), ensure_ascii=False) + "\n")
             done.add(k)
-    return {"calls": calls, "cost_usd": round(cost, 4), "failures": failures}
+    return {"calls": calls, "cost_usd": round(cost, 4), "failures": failures,
+            "total_spent_usd": round(before + cost, 4)}
 
 
-def pairs(requests, cache_path, judge_id, rubric_path, out_path):
+def pairs(requests, cache_path, judge_id, rubric_path, out_path, per_prompt=1):
+    """Best vs worst where both orders agree on them; with per_prompt=2 (four
+    or more candidates) also second-best vs second-worst where both orders
+    agree on those positions too. Each pair must be length-matched."""
     _, version, _ = rubric_identity(rubric_path)
     cache = {c["key"]: c for c in read_jsonl(cache_path)}
     n_pairs = disagree = unranked = long_short = 0
@@ -148,18 +161,23 @@ def pairs(requests, cache_path, judge_id, rubric_path, out_path):
             if a[0] != b[0] or a[-1] != b[-1]:
                 disagree += 1
                 continue
-            best, worst = r["candidates"][a[0]], r["candidates"][a[-1]]
-            lb, lw = max(1, len(best.split())), max(1, len(worst.split()))
-            if max(lb, lw) / min(lb, lw) > 1.5:
-                long_short += 1
-                continue
             ev = {"evidence_kind": "judge", "judge_id": judge_id, "rubric_version": version,
                   "evidence_uri": f"{cache_path}#{got[0]['key']},{got[1]['key']}"}
-            g.write(json.dumps({"prompt": r["prompt"], "chosen": best, "rejected": worst, "uri": r.get("uri", ""),
-                                "chosen_evidence": dict(ev, rationale=got[0]["rationale"]),
-                                "rejected_evidence": dict(ev, rationale=got[1]["rationale"])},
-                               ensure_ascii=False) + "\n")
-            n_pairs += 1
+            ranks = [(0, -1)]
+            if per_prompt >= 2 and n >= 4 and a[1] == b[1] and a[-2] == b[-2]:
+                ranks.append((1, -2))
+            for hi, lo in ranks:
+                best, worst = r["candidates"][a[hi]], r["candidates"][a[lo]]
+                lb, lw = max(1, len(best.split())), max(1, len(worst.split()))
+                if max(lb, lw) / min(lb, lw) > 1.5:
+                    long_short += 1
+                    continue
+                g.write(json.dumps({"prompt": r["prompt"], "chosen": best, "rejected": worst, "uri": r.get("uri", ""),
+                                    "rank_pair": [hi, lo],
+                                    "chosen_evidence": dict(ev, rationale=got[0]["rationale"]),
+                                    "rejected_evidence": dict(ev, rationale=got[1]["rationale"])},
+                                   ensure_ascii=False) + "\n")
+                n_pairs += 1
     return {"pairs": n_pairs, "position_disagreements": disagree, "unranked": unranked,
             "length_mismatched": long_short, "out": out_path}
 
@@ -173,6 +191,8 @@ def main(argv=None):
     ap.add_argument("--judge-id", required=True)
     ap.add_argument("--claude-bin")
     ap.add_argument("--max-calls", type=int)
+    ap.add_argument("--max-usd", type=float, help="cap on the cache's total recorded spend (run needs it)")
+    ap.add_argument("--pairs-per-prompt", type=int, default=1, choices=[1, 2])
     ap.add_argument("--out")
     a = ap.parse_args(argv)
     reqs = read_jsonl(a.requests)
@@ -182,14 +202,14 @@ def main(argv=None):
         todo = sum(key_of(r["prompt"], r["candidates"], o, a.judge_id, version) not in done for r, o in jobs(reqs))
         print(json.dumps({"requests": len(reqs), "calls_needed": todo}))
     elif a.cmd == "run":
-        if not a.claude_bin or a.max_calls is None:
-            ap.error("run needs --claude-bin and --max-calls")
+        if not a.claude_bin or a.max_calls is None or a.max_usd is None:
+            ap.error("run needs --claude-bin, --max-calls and --max-usd")
         print(json.dumps(run(reqs, a.cache, a.judge_id, a.rubric, a.max_calls,
-                             claude_cli_transport(a.claude_bin, a.judge_id))))
+                             claude_cli_transport(a.claude_bin, a.judge_id), max_usd=a.max_usd)))
     else:
         if not a.out:
             ap.error("pairs needs --out")
-        print(json.dumps(pairs(reqs, a.cache, a.judge_id, a.rubric, a.out)))
+        print(json.dumps(pairs(reqs, a.cache, a.judge_id, a.rubric, a.out, per_prompt=a.pairs_per_prompt)))
     return 0
 
 
