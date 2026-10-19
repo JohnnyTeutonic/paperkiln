@@ -9,7 +9,7 @@ ember.cpp (BPE tokenizer, greedy parity 40/40 with mtstudio).*
 | Stage | What | Result |
 |---|---|---|
 | Base | llama-tiny d384, 6 layers, 6 heads, T 256, 14.65M params; TinyChat (starhopp3r, pinned) as plain dialogue; byte BPE 8192; 12,000 steps x 16 x 256 (49M tokens), AdamW lr 1e-3 constant; Colab L4 | val loss 3.72 (step 250) -> 1.99 (best 1.989); 2,526 tokens/s over the run |
-| SFT | 24,000 examples in the served template (`<|user|>U<|assistant|>A<|endoftext|>`), masked to the reply, 1500 steps, lr 3e-4; dialogues carrying source role markers dropped (ledger 0003) | val loss 1.90 at step 1000, 1.94 at 1500 |
+| SFT | 24,000 examples in the served template (`<|user|>U<|assistant|>A<|endoftext|>`), masked to the reply, 1500 steps, lr 3e-4; dialogues carrying source role markers dropped (ledger 0003) | val loss 1.871 at steps 250-500 (minimum), rising to 1.94 at 1500: it overfits after ~500 steps, so later SFT stops near 500 |
 | Preference | SPIN pilot on the step-1500 preview (reference reply chosen, own sample rejected; DPO beta 0.1 + NLL 0.2), lr 3e-5 / 1e-4 / 1e-5 | **retired**: held-out pair accuracy 0.89-0.91, but more off-topic replies, and at 1e-4 repetition and collapse onto one opening (ember side-by-side) |
 
 The base ran through three engine builds as they landed: 6.4 s/step, then
