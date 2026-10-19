@@ -2,7 +2,10 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
+#include <fstream>
+#include <limits>
 #include <memory>
 #include <stdexcept>
 
@@ -76,6 +79,170 @@ void quantize_q8_0(const float* x, size_t n, uint8_t* out) {
     }
 }
 
+// The 4- and 5-bit blocks follow ggml-quants.c's quantize_row_*_ref, the
+// path llama.cpp's quantiser takes without an importance matrix. Every
+// product is rounded to float before the following add, as there: GCC
+// would otherwise be free to fuse x * id + 8.5f into one FMA on a target
+// that has it, and the truncation below would then differ in the last place.
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC push_options
+#pragma GCC optimize("fp-contract=off")
+#endif
+
+namespace {
+
+// The first value of largest magnitude, with its sign (ggml: amax < |v|).
+float signed_absmax(const float* x, const char* who) {
+    float amax = 0.0f, max = 0.0f;
+    for (int i = 0; i < 32; ++i) {
+        if (!std::isfinite(x[i])) throw std::runtime_error(std::string(who) + ": non-finite input");
+        if (amax < std::fabs(x[i])) {
+            amax = std::fabs(x[i]);
+            max = x[i];
+        }
+    }
+    return max;
+}
+
+// Smallest and largest value of a block (ggml: min starts at FLT_MAX).
+void min_max(const float* x, const char* who, float& lo, float& hi) {
+    lo = std::numeric_limits<float>::max();
+    hi = -std::numeric_limits<float>::max();
+    for (int i = 0; i < 32; ++i) {
+        if (!std::isfinite(x[i])) throw std::runtime_error(std::string(who) + ": non-finite input");
+        lo = std::min(lo, x[i]);
+        hi = std::max(hi, x[i]);
+    }
+}
+
+// ggml's (int8_t)(v) cast: truncation toward zero; v stays well inside int8.
+int trunc_int(float v) { return static_cast<int>(v); }
+
+void put_fp16(uint8_t* out, float v) {
+    const uint16_t h = fp32_to_fp16(v);
+    std::memcpy(out, &h, 2);  // little-endian, as GGUF stores it
+}
+
+}  // namespace
+
+void quantize_q4_0(const float* x, size_t n, uint8_t* out) {
+    if (n % 32 != 0) throw std::runtime_error("quantize_q4_0: n must be a multiple of 32");
+    for (size_t b = 0; b < n / 32; ++b, x += 32, out += 18) {
+        const float d = signed_absmax(x, "quantize_q4_0") / -8;
+        const float id = d != 0.0f ? 1.0f / d : 0.0f;
+        put_fp16(out, d);
+        for (int j = 0; j < 16; ++j) {
+            const float x0 = x[j] * id;
+            const float x1 = x[16 + j] * id;
+            const int q0 = std::min(15, trunc_int(x0 + 8.5f));
+            const int q1 = std::min(15, trunc_int(x1 + 8.5f));
+            out[2 + j] = static_cast<uint8_t>(q0 | (q1 << 4));
+        }
+    }
+}
+
+void quantize_q5_0(const float* x, size_t n, uint8_t* out) {
+    if (n % 32 != 0) throw std::runtime_error("quantize_q5_0: n must be a multiple of 32");
+    for (size_t b = 0; b < n / 32; ++b, x += 32, out += 22) {
+        const float d = signed_absmax(x, "quantize_q5_0") / -16;
+        const float id = d != 0.0f ? 1.0f / d : 0.0f;
+        put_fp16(out, d);
+        uint32_t qh = 0;
+        for (int j = 0; j < 16; ++j) {
+            const float x0 = x[j] * id;
+            const float x1 = x[16 + j] * id;
+            const int q0 = std::min(31, trunc_int(x0 + 16.5f));
+            const int q1 = std::min(31, trunc_int(x1 + 16.5f));
+            out[6 + j] = static_cast<uint8_t>((q0 & 0x0F) | ((q1 & 0x0F) << 4));
+            qh |= static_cast<uint32_t>((q0 & 0x10) >> 4) << j;
+            qh |= static_cast<uint32_t>((q1 & 0x10) >> 4) << (j + 16);
+        }
+        std::memcpy(out + 2, &qh, 4);
+    }
+}
+
+void quantize_q5_1(const float* x, size_t n, uint8_t* out) {
+    if (n % 32 != 0) throw std::runtime_error("quantize_q5_1: n must be a multiple of 32");
+    for (size_t b = 0; b < n / 32; ++b, x += 32, out += 24) {
+        float lo, hi;
+        min_max(x, "quantize_q5_1", lo, hi);
+        const float d = (hi - lo) / 31;
+        const float id = d != 0.0f ? 1.0f / d : 0.0f;
+        put_fp16(out, d);
+        put_fp16(out + 2, lo);
+        uint32_t qh = 0;
+        for (int j = 0; j < 16; ++j) {
+            const float x0 = (x[j] - lo) * id;
+            const float x1 = (x[16 + j] - lo) * id;
+            const int q0 = std::min(31, trunc_int(x0 + 0.5f));
+            const int q1 = std::min(31, trunc_int(x1 + 0.5f));
+            out[8 + j] = static_cast<uint8_t>((q0 & 0x0F) | ((q1 & 0x0F) << 4));
+            qh |= static_cast<uint32_t>((q0 & 0x10) >> 4) << j;
+            qh |= static_cast<uint32_t>((q1 & 0x10) >> 4) << (j + 16);
+        }
+        std::memcpy(out + 4, &qh, 4);
+    }
+}
+
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC pop_options
+#endif
+
+namespace {
+
+// ggml type ids of the k-quants llama.cpp's mixes ask for; this exporter
+// stores none of them (see LlamaExportConfig::quant).
+constexpr uint32_t kQ4_K = 12, kQ5_K = 13, kQ6_K = 14;
+
+// llama.cpp's use_more_bits (llama-quant.cpp): the first and last eighth of
+// the layers, and every third layer between.
+bool use_more_bits(int i, int n) { return i < n / 8 || i >= 7 * n / 8 || (i - n / 8) % 3 == 2; }
+
+// llama.cpp's tensor order in a quantised file: its weight_name_comparer
+// (llama-model-loader) puts non-layer tensors first, then layers by number,
+// by name within each.
+bool llamacpp_before(const std::string& a, const std::string& b) {
+    int la = -1, lb = -1;
+    std::sscanf(a.c_str(), "blk.%d.", &la);
+    std::sscanf(b.c_str(), "blk.%d.", &lb);
+    if (la != lb) return la < lb;
+    return a < b;
+}
+
+// llama.cpp's llama_tensor_get_type for a dense llama model without an
+// importance matrix, for the ftypes the exporter offers, followed by its
+// fallback for k-quants whose 256-value super-block does not divide ne0.
+// The counters advance as llama.cpp's do (in file order).
+uint32_t llamacpp_type(const std::string& quant, const std::string& name, uint64_t ne0, bool has_output,
+                       int& i_attn_v, int n_attn_v, int& i_ffn_down, int n_ffn_down) {
+    uint32_t t = quant == "q4_0" ? static_cast<uint32_t>(GGMLType::Q4_0) : kQ4_K;
+    if (name == "output.weight" || (!has_output && name == "token_embd.weight")) {
+        t = kQ6_K;
+    } else if (name == "token_embd.weight") {
+        // the ftype's own type
+    } else if (name.find("attn_v.weight") != std::string::npos) {
+        if (quant == "q4_k_m" && use_more_bits(i_attn_v, n_attn_v))
+            t = kQ6_K;
+        else if (quant == "q4_k_s" && i_attn_v < 4)
+            t = kQ5_K;
+        ++i_attn_v;
+    } else if (name.find("ffn_down") != std::string::npos) {
+        if (quant == "q4_k_m" && use_more_bits(i_ffn_down, n_ffn_down))
+            t = kQ6_K;
+        else if (quant == "q4_k_s" && i_ffn_down < n_ffn_down / 8)
+            t = kQ5_K;
+        ++i_ffn_down;
+    }
+    if (ne0 % 256 != 0) {
+        if (t == kQ4_K) t = static_cast<uint32_t>(GGMLType::Q5_0);
+        if (t == kQ5_K) t = static_cast<uint32_t>(GGMLType::Q5_1);
+        if (t == kQ6_K) t = static_cast<uint32_t>(GGMLType::Q8_0);
+    }
+    return t;
+}
+
+}  // namespace
+
 void export_gguf_llama(const std::string& path, const std::map<std::string, Matrix>& state_dict,
                        const LlamaExportConfig& cfg, std::vector<std::string>* unmapped) {
     if (cfg.embedding_length == 0 || cfg.block_count == 0 || cfg.feed_forward_length == 0 ||
@@ -87,14 +254,15 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
     const uint32_t kv_heads = cfg.head_count_kv ? cfg.head_count_kv : cfg.head_count;
     const uint32_t head_dim = cfg.embedding_length / cfg.head_count;
     const bool q8 = cfg.quant.rfind("q8_0", 0) == 0;
-    if (cfg.quant != "f32" && cfg.quant != "q8_0" && cfg.quant != "q8_0_out" && cfg.quant != "q8_0_all")
-        throw std::runtime_error("export_gguf_llama: quant must be f32, q8_0, q8_0_out or q8_0_all, got " +
-                                 cfg.quant);
-    // GGUFWriter sizes a tensor as num_elements * ggml_type_size(type), and
-    // its size for Q8_0 is 1 (a byte count), so a Q8_0 tensor is handed over
-    // with num_elements = its byte count. Refuse a writer that changed that.
-    if (q8 && gguf_export::ggml_type_size(GGMLType::Q8_0) != 1)
-        throw std::runtime_error("export_gguf_llama: GGUFWriter's Q8_0 size convention changed");
+    // llama.cpp's own mixes: its tensor order, types and two extra keys.
+    const bool lcpp = cfg.quant == "q4_0" || cfg.quant == "q4_k_m" || cfg.quant == "q4_k_s";
+    if (cfg.quant != "f32" && cfg.quant != "q8_0" && cfg.quant != "q8_0_out" && cfg.quant != "q8_0_all" && !lcpp)
+        throw std::runtime_error(
+            "export_gguf_llama: quant must be f32, q8_0, q8_0_out, q8_0_all, q4_0, q4_k_m or q4_k_s, got " +
+            cfg.quant);
+    if (lcpp && cfg.expert_count > 0)
+        throw std::runtime_error("export_gguf_llama: " + cfg.quant +
+                                 " follows llama.cpp's dense-model type choice; MoE models are not supported");
 
     GGUFWriter writer(path);
 
@@ -131,6 +299,14 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
         writer.write_metadata_uint32("tokenizer.ggml.unknown_token_id", cfg.unk_token_id);
         writer.write_metadata_uint32("tokenizer.ggml.padding_token_id", cfg.pad_token_id);
     }
+    if (lcpp) {
+        // llama.cpp's quantiser copies the source keys and appends these two
+        // (GGML_QNT_VERSION, and the llama_ftype: MOSTLY_Q4_0 = 2,
+        // MOSTLY_Q4_K_S = 14, MOSTLY_Q4_K_M = 15).
+        writer.write_metadata_uint32("general.quantization_version", 2);
+        writer.write_metadata_uint32("general.file_type",
+                                     cfg.quant == "q4_0" ? 2u : cfg.quant == "q4_k_s" ? 14u : 15u);
+    }
 
     // ---- tensors ----
     // Keep-alive for transposed copies: GGUFWriter buffers raw pointers
@@ -139,29 +315,10 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
     std::vector<std::unique_ptr<std::vector<float>>> owned;
     std::vector<std::string> mapped_keys;  // dict keys we consumed
 
-    // Every tensor goes through here: under a Q8_0 quant the selected 2-D
-    // tensors are quantised into a kept-alive byte buffer (see
-    // LlamaExportConfig::quant for the selection, the reference's rule).
-    std::vector<std::unique_ptr<std::vector<uint8_t>>> owned_q8;
-    auto add = [&](TensorExportInfo info) {
-        const bool pick = q8 && info.shape.size() == 2 && info.type == GGMLType::F32 &&
-                          (info.name.rfind("blk.", 0) == 0 ||
-                           (cfg.quant != "q8_0" && info.name == "output.weight") ||
-                           (cfg.quant == "q8_0_all" && info.name == "token_embd.weight"));
-        if (pick) {
-            const uint64_t ne0 = info.shape.back();  // the writer reverses: last entry is ne0
-            if (ne0 % 32 != 0)
-                throw std::runtime_error("export_gguf_llama: " + info.name + " has ne0 = " + std::to_string(ne0) +
-                                         ", not a multiple of 32, so it cannot be stored as Q8_0");
-            auto buf = std::make_unique<std::vector<uint8_t>>(info.num_elements / 32 * 34);
-            quantize_q8_0(info.data, info.num_elements, buf->data());
-            info.type = GGMLType::Q8_0;
-            info.data = reinterpret_cast<const float*>(buf->data());  // written as raw bytes
-            info.num_elements = buf->size();
-            owned_q8.push_back(std::move(buf));
-        }
-        writer.add_tensor(info);
-    };
+    // Every tensor is collected here as F32 and handed to the writer at the
+    // end, quantised as LlamaExportConfig::quant says (see `emit` below).
+    std::vector<TensorExportInfo> pending;
+    auto add = [&](TensorExportInfo info) { pending.push_back(std::move(info)); };
 
     // NOTE: GGUFWriter takes `shape` in row-major (numpy) order and writes it
     // REVERSED, so ne0 (the contiguous axis) is the LAST entry passed. An
@@ -317,8 +474,100 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
         }
     }
 
+    // ---- quantise and hand the tensors to the writer ----
+    // GGUFWriter sizes a tensor as num_elements * ggml_type_size(type) and
+    // knows no block sizes, so a quantised tensor is handed over as its byte
+    // count in that unit, the kept-alive buffer zero-padded to a whole unit.
+    // The writer zero-pads every tensor to 32 bytes anyway, so the file is
+    // unchanged while the extra bytes stay inside that padding (checked).
+    std::vector<std::unique_ptr<std::vector<uint8_t>>> owned_q;
+    auto store = [&](TensorExportInfo info, GGMLType type) {
+        size_t block = 0;
+        void (*quantize)(const float*, size_t, uint8_t*) = nullptr;
+        const char* tname = "";
+        switch (type) {
+            case GGMLType::Q4_0: block = 18, quantize = quantize_q4_0, tname = "Q4_0"; break;
+            case GGMLType::Q5_0: block = 22, quantize = quantize_q5_0, tname = "Q5_0"; break;
+            case GGMLType::Q5_1: block = 24, quantize = quantize_q5_1, tname = "Q5_1"; break;
+            case GGMLType::Q8_0: block = 34, quantize = quantize_q8_0, tname = "Q8_0"; break;
+            default:
+                throw std::runtime_error("export_gguf_llama: " + info.name + ": no quantiser for ggml type " +
+                                         std::to_string(static_cast<uint32_t>(type)));
+        }
+        const uint64_t ne0 = info.shape.back();  // the writer reverses: last entry is ne0
+        if (ne0 % 32 != 0)
+            throw std::runtime_error("export_gguf_llama: " + info.name + " has ne0 = " + std::to_string(ne0) +
+                                     ", not a multiple of 32, so it cannot be stored as " + tname);
+        const size_t bytes = info.num_elements / 32 * block;
+        const size_t unit = gguf_export::ggml_type_size(type);
+        const size_t units = (bytes + unit - 1) / unit;
+        if (((bytes + 31) & ~size_t(31)) != ((units * unit + 31) & ~size_t(31)))
+            throw std::runtime_error("export_gguf_llama: GGUFWriter's size unit for " + std::string(tname) +
+                                     " cannot carry the " + std::to_string(bytes) + " bytes of " + info.name);
+        auto buf = std::make_unique<std::vector<uint8_t>>(units * unit, 0);
+        quantize(info.data, info.num_elements, buf->data());
+        info.type = type;
+        info.data = reinterpret_cast<const float*>(buf->data());  // written as raw bytes
+        info.num_elements = units;
+        owned_q.push_back(std::move(buf));
+        writer.add_tensor(info);
+    };
+
+    if (lcpp) {
+        // llama.cpp's quantiser: its tensor order, then its type for every
+        // tensor of two or more dimensions (1-D norms stay F32).
+        std::stable_sort(pending.begin(), pending.end(),
+                         [](const TensorExportInfo& x, const TensorExportInfo& y) {
+                             return llamacpp_before(x.name, y.name);
+                         });
+        bool has_output = false;
+        int n_attn_v = 0;
+        for (const auto& t : pending) {
+            has_output = has_output || t.name == "output.weight";
+            n_attn_v += t.name.find("attn_v.weight") != std::string::npos;
+        }
+        int i_attn_v = 0, i_ffn_down = 0;
+        for (const auto& t : pending) {
+            if (t.shape.size() < 2) {
+                writer.add_tensor(t);
+                continue;
+            }
+            const uint32_t type = llamacpp_type(cfg.quant, t.name, t.shape.back(), has_output, i_attn_v, n_attn_v,
+                                                i_ffn_down, static_cast<int>(cfg.block_count));
+            if (type == kQ4_K || type == kQ5_K || type == kQ6_K)
+                throw std::runtime_error("export_gguf_llama: llama.cpp's " + cfg.quant + " stores " + t.name +
+                                         " as a k-quant (its ne0 = " + std::to_string(t.shape.back()) +
+                                         " is a multiple of 256), which this exporter does not implement");
+            store(t, static_cast<GGMLType>(type));
+        }
+    } else {
+        // The Q8_0 variants' selection (see LlamaExportConfig::quant), in
+        // the exporter's own order.
+        for (const auto& t : pending) {
+            const bool pick = q8 && t.shape.size() == 2 && t.type == GGMLType::F32 &&
+                              (t.name.rfind("blk.", 0) == 0 ||
+                               (cfg.quant != "q8_0" && t.name == "output.weight") ||
+                               (cfg.quant == "q8_0_all" && t.name == "token_embd.weight"));
+            if (pick)
+                store(t, GGMLType::Q8_0);
+            else
+                writer.add_tensor(t);
+        }
+    }
+
     if (!writer.finalize()) {
         throw std::runtime_error("export_gguf_llama: finalize failed for " + path);
+    }
+    if (lcpp) {
+        // llama.cpp pads the last tensor to the alignment as well.
+        std::ifstream in(path, std::ios::binary | std::ios::ate);
+        const auto size = static_cast<uint64_t>(in.tellg());
+        in.close();
+        const uint64_t pad = (gguf_export::GGUF_DEFAULT_ALIGNMENT - size % gguf_export::GGUF_DEFAULT_ALIGNMENT) %
+                             gguf_export::GGUF_DEFAULT_ALIGNMENT;
+        std::ofstream out(path, std::ios::binary | std::ios::app);
+        for (uint64_t i = 0; i < pad; ++i) out.put('\0');
+        if (!out) throw std::runtime_error("export_gguf_llama: could not pad " + path);
     }
 }
 

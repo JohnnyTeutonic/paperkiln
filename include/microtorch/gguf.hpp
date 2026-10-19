@@ -73,6 +73,31 @@ struct LlamaExportConfig {
     // 3-D MoE expert stacks and the 1-D norms always stay F32. A selected
     // tensor whose ne0 is not a multiple of 32 throws, naming the tensor.
     // No metadata changes (no general.file_type), as in the reference.
+    //
+    // The 4-bit variants write the file llama.cpp's own quantiser
+    // (llama_model_quantize, no importance matrix) makes from this
+    // exporter's F32 file, byte for byte, for the llama.cpp ftype of the
+    // same name. (One exception, llama.cpp's: it copies metadata strings as
+    // C strings, so a token "\0" in the source vocabulary comes out empty
+    // there; this exporter keeps it.)
+    //   "q4_0"    MOSTLY_Q4_0
+    //   "q4_k_m"  MOSTLY_Q4_K_M
+    //   "q4_k_s"  MOSTLY_Q4_K_S
+    // As llama.cpp does, they write the tensors in its order (non-layer
+    // tensors, then layer by layer, by name within each), append
+    // general.quantization_version = 2 and general.file_type, pad the last
+    // tensor to 32 bytes, keep the 1-D norms F32 and choose each 2-D
+    // tensor's type with its llama_tensor_get_type rules: output.weight (or
+    // token_embd.weight when there is no output.weight) Q6_K; under q4_k_m,
+    // Q6_K for attn_v / ffn_down in the layers use_more_bits picks; under
+    // q4_k_s, Q5_K for attn_v in the first four layers and ffn_down in the
+    // first eighth; the ftype's type for the rest. A k-quant (Q4_K, Q5_K,
+    // Q6_K) needs ne0 to be a multiple of 256; where it is not, llama.cpp
+    // falls back to Q5_0, Q5_1 and Q8_0 respectively, and so does this
+    // exporter. The k-quant blocks themselves are not implemented: a tensor
+    // that llama.cpp would store as one throws, naming it. (On a d = 384,
+    // d_ff = 1152 model q4_k_m and q4_k_s therefore contain no Q4_K at all,
+    // as with llama.cpp.) Dense models only: MoE throws.
     std::string quant = "f32";
 };
 
@@ -83,6 +108,22 @@ struct LlamaExportConfig {
 // quants.Q8_0 (itself bit-exact with ggml-quants.c). Throws on n % 32 != 0
 // or a non-finite input.
 void quantize_q8_0(const float* x, size_t n, uint8_t* out);
+
+// ggml-quants.c's reference blocks (quantize_row_*_ref, what llama.cpp's
+// quantiser runs without an importance matrix), bit for bit; n a multiple
+// of 32, finite inputs, else they throw. Per 32 values:
+//   Q4_0 (n / 32 * 18 bytes): fp16 d = m / -8, m the first value of largest
+//     magnitude; 16 bytes of nibbles q = min(15, trunc(x / d + 8.5)), value
+//     j in the low nibble of byte j and value 16 + j in its high nibble.
+//   Q5_0 (22 bytes): fp16 d = m / -16; 4 bytes qh holding bit 4 of each
+//     q = min(31, trunc(x / d + 16.5)) (bit j for value j); 16 bytes of
+//     low nibbles laid out as in Q4_0.
+//   Q5_1 (24 bytes): fp16 d = (max - min) / 31, fp16 min, then qh and the
+//     nibbles of q = min(31, trunc((x - min) / d + 0.5)) as in Q5_0.
+// Here x / d is x * (1 / d), and 1 / d is taken as 0 when d is 0.
+void quantize_q4_0(const float* x, size_t n, uint8_t* out);
+void quantize_q5_0(const float* x, size_t n, uint8_t* out);
+void quantize_q5_1(const float* x, size_t n, uint8_t* out);
 
 // Export a state_dict with HF-Llama naming to GGUF:
 //   model.embed_tokens.weight            -> token_embd.weight

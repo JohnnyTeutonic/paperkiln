@@ -129,8 +129,9 @@ struct Spec {
     float es_min_delta = 0.0f;
     // export/serve
     bool exp_safetensors = true, exp_gguf = false;
-    // Quantised GGUFs (formats gguf_q8_0 / gguf_q8_0_out / gguf_q8_0_all):
-    // the LlamaExportConfig::quant values, each written to <name>_<quant>.gguf.
+    // Quantised GGUFs (formats gguf_q8_0 / gguf_q8_0_out / gguf_q8_0_all /
+    // gguf_q4_0 / gguf_q4_k_m / gguf_q4_k_s): the LlamaExportConfig::quant
+    // values, each written to <name>_<quant>.gguf.
     std::vector<std::string> exp_gguf_quants;
     bool serve = false;
     std::string out_dir = "mtstudio_out";
@@ -145,14 +146,16 @@ const std::map<std::string, std::array<size_t, 4>> PRESETS = {
     {"swa-tiny", {128, 2, 4, 128}},
 };
 
-// export.formats "gguf_q8_0" | "gguf_q8_0_out" | "gguf_q8_0_all" -> the
-// LlamaExportConfig::quant value. Any other gguf_* format is refused: a
-// mistyped format must not quietly export nothing.
+// export.formats "gguf_q8_0" | "gguf_q8_0_out" | "gguf_q8_0_all" | "gguf_q4_0" |
+// "gguf_q4_k_m" | "gguf_q4_k_s" -> the LlamaExportConfig::quant value. Any
+// other gguf_* format is refused: a mistyped format must not quietly export
+// nothing.
 std::string gguf_quant_of(const std::string& fmt) {
     const std::string q = fmt.substr(5);
-    if (q != "q8_0" && q != "q8_0_out" && q != "q8_0_all")
+    if (q != "q8_0" && q != "q8_0_out" && q != "q8_0_all" && q != "q4_0" && q != "q4_k_m" && q != "q4_k_s")
         throw std::runtime_error("unknown export format " + fmt +
-                                 " (gguf, gguf_q8_0, gguf_q8_0_out, gguf_q8_0_all, safetensors)");
+                                 " (gguf, gguf_q8_0, gguf_q8_0_out, gguf_q8_0_all, gguf_q4_0, gguf_q4_k_m, "
+                                 "gguf_q4_k_s, safetensors)");
     return q;
 }
 
@@ -817,7 +820,7 @@ std::vector<double> pair_margins(const Matrix& logits, const PrefBatch& b, size_
 
 // GGUF exports of a trained model into out_dir: <name>.gguf (F32) when
 // s.exp_gguf, and <name>_<quant>.gguf for each of s.exp_gguf_quants (the
-// Q8_0 variants). Shared by `run` and `export`; `llama` is null for the
+// Q8_0 and 4-bit variants). Shared by `run` and `export`; `llama` is null for the
 // non-llama families, which are reported as skipped.
 void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama,
                   const std::vector<std::string>& tokens, const std::map<std::string, int>& vocab,
@@ -2008,7 +2011,7 @@ int export_cmd(Spec s, const std::string& from, const std::string& formats, cons
                 s.exp_gguf_quants.push_back(gguf_quant_of(fmt));
             else
                 throw std::runtime_error("export: unknown format " + fmt +
-                                         " (gguf, gguf_q8_0, gguf_q8_0_out, gguf_q8_0_all)");
+                                         " (gguf, gguf_q8_0, gguf_q8_0_out, gguf_q8_0_all, gguf_q4_0, gguf_q4_k_m, gguf_q4_k_s)");
         }
     }
     if (!s.exp_gguf && s.exp_gguf_quants.empty())
@@ -2778,7 +2781,8 @@ int main(int argc, char** argv) {
                  "       mtstudio sample-set spec.json --prompts P.jsonl --out R.jsonl [--n 8] "
                  "[--temp 1.0] [--seed 17] [--max-new 16]\n"
                  "       mtstudio export spec.json [--from model.safetensors] "
-                 "[--formats gguf,gguf_q8_0,gguf_q8_0_out,gguf_q8_0_all] [--out-dir DIR]\n"
+                 "[--formats gguf,gguf_q8_0,gguf_q8_0_out,gguf_q8_0_all,gguf_q4_0,gguf_q4_k_m,gguf_q4_k_s]\n"
+                 "         [--out-dir DIR]\n"
                  "       mtstudio serve <out_dir> [port] [spec]   (MTSTUDIO_UI "
                  "overrides the index.html path)\n"
                  "       mtstudio chat <out_dir|spec.json> [--port 8080] [--host 127.0.0.1]\n");

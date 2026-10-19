@@ -277,7 +277,7 @@ int main() {
             msg = e.what();
         }
         CHECK(msg.find("blk.0.ffn_down.weight") != std::string::npos);
-        c2.quant = "q4_0";
+        c2.quant = "q4_1";
         msg.clear();
         try {
             gguf::export_gguf_llama(base + "/gguf_q8_test_bad.gguf", sd, c2);
