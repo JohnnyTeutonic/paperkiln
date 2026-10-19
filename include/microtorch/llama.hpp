@@ -36,12 +36,15 @@ public:
     // aux: MoE blocks append their routing record (ignored when dense).
     Var forward(const Var& x, const std::vector<int>& positions, size_t seq_len = 0,
                 MoEAux* aux = nullptr) const;
+    // The IR block (microtorch/ir.hpp): {"state": [kv], "nodes": [...]},
+    // GGUF names templated on "{i}". Reads x and pos, writes x.
+    ir::json export_ir() const;
 
     Var ln1_w, ln2_w;  // input/post_attention layernorm gammas
     std::shared_ptr<Linear> q_proj, k_proj, v_proj, o_proj;
     std::shared_ptr<Linear> gate_proj, up_proj, down_proj;  // dense FFN (null under MoE)
     std::shared_ptr<MoEFFN> moe;                             // MoE FFN (null when dense)
-    size_t H, dk;
+    size_t H, dk, n_ctx;
     float rope_theta_, rms_eps_;
     bool rope_all_heads_;
 };
@@ -54,6 +57,11 @@ public:
     // aux (MoE models): collects every block's routing record and auxiliary
     // losses for this forward. Not supported under checkpoint_blocks.
     Var forward(const std::vector<int>& ids, size_t seq_len = 0, MoEAux* aux = nullptr) const;
+    // The whole model as a paperkiln IR document (microtorch/ir.hpp) over
+    // the tensor names export_gguf_llama writes: embed -> block x n_layers
+    // -> head. Everything but "tokenizer", which the vocabulary owns and
+    // the caller adds.
+    ir::json export_ir() const;
 
     LlamaConfig cfg;
     // Activation checkpointing per block (see autograd.hpp).

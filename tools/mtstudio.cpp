@@ -39,6 +39,7 @@
 #include "microtorch/device.hpp"
 #include "microtorch/device_cache.hpp"
 #include "microtorch/gguf.hpp"
+#include "microtorch/ir.hpp"
 #include "microtorch/llama.hpp"
 #include "microtorch/safetensors.hpp"
 #include "microtorch/posttrain/grpo.hpp"
@@ -818,10 +819,32 @@ std::vector<double> pair_margins(const Matrix& logits, const PrefBatch& b, size_
     return m;
 }
 
+// The IR's tokenizer section (microtorch/ir.hpp): the GGUF carries the
+// vocabulary itself; this names the specials an engine needs. BPE: the
+// tokenizer's fixed specials by role. Word-level: out-of-vocabulary words
+// map to id 0, and the end-of-text word when the vocabulary has one. No
+// BOS is ever prepended.
+ir::json ir_tokenizer(const std::vector<std::string>& tokens, const std::map<std::string, int>& vocab) {
+    ir::json sp = ir::json::object();
+    if (g_bpe) {
+        static const char* roles[] = {"unk", "eot", "user", "assistant"};  // bpe::specials() order
+        for (size_t k = 0; k < bpe::specials().size() && k < 4; ++k) {
+            const auto it = std::find(tokens.begin(), tokens.end(), bpe::specials()[k]);
+            if (it != tokens.end()) sp[roles[k]] = it - tokens.begin();
+        }
+    } else {
+        sp["unk"] = 0;
+        if (const int e = wordtok::eos_id(vocab); e >= 0) sp["eot"] = e;
+    }
+    return {{"type", g_bpe ? "bpe" : "word"}, {"source", "gguf"}, {"specials", sp}, {"bos", nullptr}};
+}
+
 // GGUF exports of a trained model into out_dir: <name>.gguf (F32) when
 // s.exp_gguf, and <name>_<quant>.gguf for each of s.exp_gguf_quants (the
-// Q8_0 and 4-bit variants). Shared by `run` and `export`; `llama` is null for the
-// non-llama families, which are reported as skipped.
+// Q8_0 and 4-bit variants). Every variant embeds the model's IR (paperkiln.ir),
+// also written once beside them as <name>.ir.json. Shared by `run` and
+// `export`; `llama` is null for the non-llama families, which are reported as
+// skipped and get no IR.
 void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama,
                   const std::vector<std::string>& tokens, const std::map<std::string, int>& vocab,
                   const std::string& rope_heads, const std::string& out_dir,
@@ -832,6 +855,7 @@ void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama,
         emit({{"event", "export_skipped"},
               {"format", "gguf"},
               {"reason", "moe gate=raw: llama.cpp renormalises top-k gates, so it would not reproduce this model"}});
+        std::fprintf(stderr, "export: no IR written (no GGUF for a gate=raw MoE model)\n");
     } else if (llama) {
         auto sd2 = model_ref.state_dict();
         // Tied head: inject lm_head = E^T in microtorch [in, out]
@@ -875,6 +899,23 @@ void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama,
         // external engine stops where this one does (else keep the
         // exporter's default).
         if (const int e = wordtok::eos_id(vocab); e >= 0) gc.eos_token_id = (uint32_t)e;
+        // The IR, from the modules themselves (Llama::export_ir), with the
+        // vocabulary's tokenizer section after "model" as in ir/*.ir.json.
+        ir::json doc = {{"_comment", "paperkiln IR v" + std::to_string(ir::kVersion) + " for " + s.name +
+                                         ", exported by mtstudio. Schema and semantics: microtorch/ir.hpp "
+                                         "and LOCAL_LLM_STACK.md section 4."}};
+        const ir::json model_ir = llama->export_ir();
+        for (const auto& [k, v] : model_ir.items()) {
+            doc[k] = v;
+            if (k == "model") doc["tokenizer"] = ir_tokenizer(tokens, vocab);
+        }
+        gc.ir = doc.dump();
+        const std::string ir_path = out_dir + "/" + s.name + ".ir.json";
+        {
+            std::ofstream f(ir_path);
+            f << doc.dump(2) << "\n";
+            if (!f) throw std::runtime_error("export: could not write " + ir_path);
+        }
         std::vector<std::string> quants;
         if (s.exp_gguf) quants.push_back("f32");
         quants.insert(quants.end(), s.exp_gguf_quants.begin(), s.exp_gguf_quants.end());
@@ -886,7 +927,8 @@ void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama,
             json xe = {{"event", "export"},
                        {"format", f32 ? "gguf" : "gguf_" + q},
                        {"path", gpath},
-                       {"rope_heads", rope_heads}};
+                       {"rope_heads", rope_heads},
+                       {"ir", ir_path}};
             // GGUF llama (rope.dimension_count = d/H) means RoPE on every
             // head; engines reading it reproduce this model only under "all".
             if (rope_heads == "first" && s.heads > 1)
@@ -899,6 +941,8 @@ void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama,
         emit({{"event", "export_skipped"},
               {"format", "gguf"},
               {"reason", "gpt2-family blocks are not llama-shaped"}});
+        // Only the llama family exports its IR so far; none beats a wrong one.
+        std::fprintf(stderr, "export: no IR written (family %s has no IR export yet)\n", s.family.c_str());
     }
 }
 

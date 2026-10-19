@@ -79,6 +79,9 @@ public:
     // layers.N.mlp.router.weight and layers.N.mlp.experts.{e}.gate_proj.weight.
     MoEFFN(size_t d, size_t d_ff, const MoEConfig& cfg, unsigned seed);
     Var forward(const Var& x, MoEAux* aux = nullptr) const;
+    // One moe_ffn IR node (microtorch/ir.hpp) over the GGUF's llama.cpp
+    // expert tensors, `prefix` + ffn_gate_inp / ffn_{gate,up,down}_exps.weight.
+    ir::json export_ir(const std::string& in, const std::string& out, const std::string& prefix) const;
 
     MoEConfig cfg;
     std::shared_ptr<Linear> router;

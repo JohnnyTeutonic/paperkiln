@@ -3,12 +3,15 @@
 #include <cmath>
 #include <stdexcept>
 
+#include "microtorch/ir.hpp"
+
 namespace microtorch {
 namespace nn {
 
 LlamaBlock::LlamaBlock(const LlamaConfig& cfg, unsigned seed)
     : H(cfg.n_heads),
       dk(cfg.d / cfg.n_heads),
+      n_ctx(cfg.n_ctx),
       rope_theta_(cfg.rope_theta),
       rms_eps_(cfg.rms_eps),
       rope_all_heads_(cfg.rope_all_heads) {
@@ -71,6 +74,33 @@ Var LlamaBlock::forward(const Var& x, const std::vector<int>& pos, size_t seq_le
     return ops::add(x1, ffn);
 }
 
+ir::json LlamaBlock::export_ir() const {
+    // forward() above, node for node. The scale is the float it computes.
+    const float sc = 1.0f / std::sqrt(static_cast<float>(dk));
+    const std::string p = "blk.{i}.";
+    ir::json n = ir::json::array();
+    n.push_back(ir::rmsnorm("x", p + "attn_norm.weight", ops::kRmsNormEps, "h"));
+    n.push_back(q_proj->export_ir("h", "q", p + "attn_q.weight"));
+    n.push_back(k_proj->export_ir("h", "k", p + "attn_k.weight"));
+    n.push_back(v_proj->export_ir("h", "v", p + "attn_v.weight"));
+    n.push_back(ir::rope("q", "k", "pos", H, dk, rope_theta_, rope_all_heads_));
+    n.push_back(ir::attention("q", "k", "v", "kv", H, H, dk, sc, /*causal=*/true, 0, 0, "a"));
+    n.push_back(o_proj->export_ir("a", "o", p + "attn_output.weight"));
+    n.push_back(ir::binary("add", "x", "o", "x"));
+    n.push_back(ir::rmsnorm("x", p + "ffn_norm.weight", ops::kRmsNormEps, "h2"));
+    if (moe) {
+        n.push_back(moe->export_ir("h2", "f", p));
+    } else {
+        n.push_back(gate_proj->export_ir("h2", "g", p + "ffn_gate.weight"));
+        n.push_back(up_proj->export_ir("h2", "u", p + "ffn_up.weight"));
+        n.push_back(ir::unary("silu", "g", "g"));
+        n.push_back(ir::binary("mul", "g", "u", "gu"));
+        n.push_back(down_proj->export_ir("gu", "f", p + "ffn_down.weight"));
+    }
+    n.push_back(ir::binary("add", "x", "f", "x"));
+    return {{"state", ir::json::array({ir::kv_state("kv", H, H, dk, n_ctx, 0, 0)})}, {"nodes", n}};
+}
+
 Llama::Llama(const LlamaConfig& cfg_, unsigned seed) : cfg(cfg_) {
     embed_tokens = mod<Embedding>("embed_tokens", cfg.vocab, cfg.d, seed + 11);
     for (size_t i = 0; i < cfg.n_layers; ++i)
@@ -102,6 +132,47 @@ Var Llama::forward(const std::vector<int>& ids, size_t seq_len, MoEAux* aux) con
     // through the gather and through the head matmul).
     if (lm_head) return lm_head->forward(h);
     return ops::matmul(h, ops::transpose(embed_tokens->weight));
+}
+
+ir::json Llama::export_ir() const {
+    // One block template for all layers. Every LlamaBlock is built from the
+    // same config, but check: a block that differed would need a per-layer
+    // override, which this exporter does not write.
+    const ir::json blk = blocks.at(0)->export_ir();
+    for (size_t i = 1; i < blocks.size(); ++i)
+        if (blocks[i]->export_ir() != blk)
+            throw std::runtime_error("llama export_ir: block " + std::to_string(i) + " differs from block 0");
+
+    // Tied head: the exporter writes output.weight = E when it is given one
+    // (mtstudio does); tied_to tells an engine where to read otherwise.
+    ir::json head_linear;
+    if (lm_head) {
+        head_linear = lm_head->export_ir("h", "logits", "output.weight");
+    } else {
+        head_linear = {{"op", "linear"},       {"in", ir::json::array({"h"})},
+                       {"weight", "output.weight"}, {"bias", nullptr},
+                       {"tied_to", "token_embd.weight"}, {"out", "logits"}};
+    }
+    ir::json doc;
+    doc["ir_version"] = ir::kVersion;
+    doc["family_hint"] = "llama";
+    doc["model"] = {{"vocab", cfg.vocab},
+                    {"d", cfg.d},
+                    {"n_layers", cfg.n_layers},
+                    {"ctx", cfg.n_ctx},
+                    {"dtype", "f32"}};
+    doc["inputs"] = ir::json::array({{{"name", "tokens"}, {"kind", "token_ids"}},
+                                     {{"name", "pos"},
+                                      {"kind", "positions"},
+                                      {"note", "absolute positions; prefill 0..T-1, decode = cache length"}}});
+    doc["embed"] = {{"nodes", ir::json::array({embed_tokens->export_ir("tokens", "x", "token_embd.weight")})}};
+    doc["block"] = {{"repeat", blocks.size()}, {"state", blk["state"]}, {"nodes", blk["nodes"]}};
+    const ir::json final_norm = ir::rmsnorm("x", "output_norm.weight", ops::kRmsNormEps, "h");
+    doc["head"] = {{"nodes", ir::json::array({final_norm, head_linear})}};
+    doc["outputs"] = ir::json::array({{{"name", "logits"}, {"kind", "logits"}}});
+    doc["modes"] = {{"prefill", "all nodes over T tokens"},
+                    {"decode", "the same graph with T = 1, attention reads and appends to the kv state"}};
+    return doc;
 }
 
 }  // namespace nn

@@ -6,6 +6,7 @@
 #include <stdexcept>
 
 #include "microtorch/device.hpp"
+#include "microtorch/ir.hpp"
 #include "microtorch/ops.hpp"
 
 namespace microtorch {
@@ -47,6 +48,31 @@ MoEFFN::MoEFFN(size_t d, size_t d_ff, const MoEConfig& c, unsigned seed) : cfg(c
     for (size_t e = 0; e < cfg.experts; ++e)
         experts.push_back(mod<SwiGLUExpert>("experts." + std::to_string(e), d, d_ff,
                                             seed + 10007u * static_cast<unsigned>(e)));
+}
+
+ir::json MoEFFN::export_ir(const std::string& in, const std::string& out, const std::string& prefix) const {
+    // The forward below, as the IR states it: gates from the k selected
+    // logits (renorm) or the full softmax (raw); experts summed by index.
+    const bool renorm = cfg.renormalize;
+    return {{"op", "moe_ffn"},
+            {"in", ir::json::array({in})},
+            {"router", prefix + "ffn_gate_inp.weight"},
+            {"experts",
+             {{"gate", prefix + "ffn_gate_exps.weight"},
+              {"up", prefix + "ffn_up_exps.weight"},
+              {"down", prefix + "ffn_down_exps.weight"}}},
+            {"n_experts", cfg.experts},
+            {"top_k", cfg.top_k},
+            {"gate_norm", renorm ? "renorm" : "raw"},
+            {"activation", "silu"},
+            {"routing", renorm ? "softmax over E logits, top-k (ties to the lower index), renormalise "
+                                 "the k probabilities, sum of gate * SwiGLU_e(x)"
+                               : "softmax over E logits, top-k (ties to the lower index), "
+                                 "sum of p * SwiGLU_e(x)"},
+            {"_note",
+             "paperkiln computes the renormalised gates as a softmax over the k selected logits (the same "
+             "quantity) and accumulates the expert outputs in ascending expert index"},
+            {"out", out}};
 }
 
 Var MoEFFN::forward(const Var& x, MoEAux* aux) const {

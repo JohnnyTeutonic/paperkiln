@@ -690,7 +690,7 @@ Var rmsnorm(const Var& x, const Var& w) {
     // No mean centering, no bias. Stores RMS inverse for backward.
     auto rms_inv = std::make_shared<std::vector<float>>(R);
     Matrix out(R, C);
-    const float eps = 1e-5f;
+    const float eps = kRmsNormEps;
     // B2.1a seam: kernel computes out + rms_inv (write-through caches).
     if (!device::devops::rmsnorm_fwd(x->data, w->data, eps, out, *rms_inv)) {
         for (size_t i = 0; i < R; ++i) {

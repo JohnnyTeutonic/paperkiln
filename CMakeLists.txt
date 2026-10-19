@@ -61,6 +61,7 @@ add_library(microtorch STATIC
     src/safetensors.cpp
     src/gguf.cpp
     src/quant.cpp
+    src/ir.cpp
     src/llama.cpp
     src/moe.cpp
     src/kimi_linear.cpp
@@ -70,8 +71,9 @@ add_library(microtorch STATIC
     src/posttrain/verifier.cpp
 )
 target_include_directories(microtorch PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_link_libraries(microtorch PUBLIC transformer_core
-                                 PRIVATE nlohmann_json::nlohmann_json)
+# nlohmann_json is PUBLIC: module headers declare their IR export
+# (microtorch/ir.hpp) through <nlohmann/json_fwd.hpp>.
+target_link_libraries(microtorch PUBLIC transformer_core nlohmann_json::nlohmann_json)
 if(MICROTORCH_CUDA)
     # USE_CUDA/CUDA_AVAILABLE mirror transformer_cpp's own compile defs
     # (its add_compile_definitions is directory-scoped and does not reach

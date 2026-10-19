@@ -14,9 +14,14 @@
 #include <utility>
 #include <vector>
 
+#include <nlohmann/json_fwd.hpp>
+
 #include "microtorch/ops.hpp"
 
 namespace microtorch {
+namespace ir {
+using json = nlohmann::ordered_json;  // IR node specs (microtorch/ir.hpp)
+}
 namespace nn {
 
 class Module {
@@ -68,6 +73,8 @@ public:
     // storage order, so its checkpoints load without transposition.
     Linear(size_t in, size_t out, bool bias = true, unsigned seed = 0);
     Var forward(const Var& x) const;
+    // IR node (microtorch/ir.hpp): out = in W, `weight` its GGUF tensor name.
+    ir::json export_ir(const std::string& in, const std::string& out, const std::string& weight) const;
     Var W, b;  // b empty when bias=false
 };
 
@@ -83,6 +90,7 @@ class Embedding : public Module {
 public:
     Embedding(size_t vocab, size_t d, unsigned seed = 0);
     Var forward(const std::vector<int>& ids) const;
+    ir::json export_ir(const std::string& in, const std::string& out, const std::string& weight) const;
     Var weight;
 };
 

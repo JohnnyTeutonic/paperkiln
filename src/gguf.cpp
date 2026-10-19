@@ -10,6 +10,7 @@
 #include <stdexcept>
 
 #include "gguf_export.hpp"  // transformer_cpp's verified writer
+#include "microtorch/ir.hpp"
 
 namespace microtorch {
 namespace gguf {
@@ -306,6 +307,14 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
         writer.write_metadata_uint32("general.quantization_version", 2);
         writer.write_metadata_uint32("general.file_type",
                                      cfg.quant == "q4_0" ? 2u : cfg.quant == "q4_k_s" ? 14u : 15u);
+    }
+    if (!cfg.ir.empty()) {
+        // Last, so every key before it sits where it did without the IR.
+        const auto doc = ir::json::parse(cfg.ir);
+        if (!doc.contains("ir_version") || !doc["ir_version"].is_number_unsigned())
+            throw std::runtime_error("export_gguf_llama: the IR has no unsigned ir_version");
+        writer.write_metadata_string(ir::kGGUFKey, doc.dump());
+        writer.write_metadata_uint32(ir::kGGUFVersionKey, doc["ir_version"].get<uint32_t>());
     }
 
     // ---- tensors ----

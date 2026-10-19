@@ -80,6 +80,9 @@ Var silu(const Var& x);                   // x * sigmoid(x) (DiT's nonlinearity
                                           // for the conditioning MLP)
 
 // ---- phase 2b additions (Llama-family dependencies) ----
+// The epsilon rmsnorm adds to mean(x^2), on host and device alike (the IR
+// export states it from here).
+constexpr float kRmsNormEps = 1e-5f;
 Var rmsnorm(const Var& x, const Var& w);  // RMS normalization: x / RMS(x) * w
                                           // (no bias, no mean centering);
                                           // w: [1, d], learned scale per feature

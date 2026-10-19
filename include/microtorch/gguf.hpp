@@ -99,6 +99,14 @@ struct LlamaExportConfig {
     // d_ff = 1152 model q4_k_m and q4_k_s therefore contain no Q4_K at all,
     // as with llama.cpp.) Dense models only: MoE throws.
     std::string quant = "f32";
+
+    // The model's paperkiln IR (microtorch/ir.hpp; nn::Llama::export_ir), a
+    // JSON document. When non-empty it is written compact as the string key
+    // paperkiln.ir, with its ir_version as the uint32 paperkiln.ir_version,
+    // after every other metadata key: only the header grows, so tensor infos
+    // and data are the bytes an export without it writes. Empty (the
+    // default) writes neither key.
+    std::string ir;
 };
 
 // Q8_0 blocks of `n` floats (n a multiple of 32) into n / 32 * 34 bytes:

@@ -5,6 +5,7 @@
 #include <stdexcept>
 
 #include "microtorch/device.hpp"
+#include "microtorch/ir.hpp"
 
 namespace microtorch {
 namespace nn {
@@ -108,6 +109,18 @@ Var Linear::forward(const Var& x) const {
     return b ? ops::add_bias(y, b) : y;
 }
 
+ir::json Linear::export_ir(const std::string& in, const std::string& out, const std::string& weight) const {
+    // The GGUF stores the bias beside its weight ("x.weight" -> "x.bias").
+    ir::json bias = nullptr;
+    if (b) {
+        const std::string suf = ".weight";
+        const bool tail = weight.size() >= suf.size() &&
+                          weight.compare(weight.size() - suf.size(), suf.size(), suf) == 0;
+        bias = (tail ? weight.substr(0, weight.size() - suf.size()) : weight) + ".bias";
+    }
+    return {{"op", "linear"}, {"in", ir::json::array({in})}, {"weight", weight}, {"bias", bias}, {"out", out}};
+}
+
 LayerNorm::LayerNorm(size_t d, float e) : eps(e) {
     weight = reg("weight", Matrix(1, d, 1.0f));
     bias = reg("bias", Matrix(1, d));
@@ -123,6 +136,10 @@ Embedding::Embedding(size_t vocab, size_t d, unsigned seed) {
 
 Var Embedding::forward(const std::vector<int>& ids) const {
     return ops::embedding(weight, ids);
+}
+
+ir::json Embedding::export_ir(const std::string& in, const std::string& out, const std::string& w) const {
+    return {{"op", "embedding"}, {"in", ir::json::array({in})}, {"weight", w}, {"out", out}};
 }
 
 CausalSelfAttention::CausalSelfAttention(size_t d, size_t n_heads, unsigned seed, bool causal_)
