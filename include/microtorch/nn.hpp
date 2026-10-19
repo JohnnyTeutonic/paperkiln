@@ -82,6 +82,8 @@ class LayerNorm : public Module {
 public:
     explicit LayerNorm(size_t d, float eps = 1e-5f);
     Var forward(const Var& x) const;
+    // IR node: layernorm with weight `prefix`.weight, bias `prefix`.bias.
+    ir::json export_ir(const std::string& in, const std::string& out, const std::string& prefix) const;
     Var weight, bias;
     float eps;
 };
@@ -105,6 +107,11 @@ public:
     // with seq_len = T (sequences are isolated by a block-diagonal mask;
     // seq_len 0 = single sequence spanning all rows).
     Var forward(const Var& x, size_t seq_len = 0) const;
+    // IR nodes, in -> out: the fused projection `qkv_weight` (+ its bias),
+    // split into q, k, v (d columns each, head h at columns h*dk..), causal
+    // attention over the kv slot `state` (no RoPE), then `o_weight` (+ bias).
+    ir::json export_ir(const std::string& in, const std::string& out, const std::string& qkv_weight,
+                       const std::string& o_weight, const std::string& state) const;
     std::shared_ptr<Linear> c_attn, c_proj;
     size_t H, dk;
     bool causal;
@@ -139,8 +146,25 @@ class MLP : public Module {
 public:
     MLP(size_t d, size_t hidden, unsigned seed = 0);
     Var forward(const Var& x) const;
+    // IR nodes, in -> out: up_weight (+ bias), tanh-approximation gelu
+    // (ops::gelu), down_weight (+ bias).
+    ir::json export_ir(const std::string& in, const std::string& out, const std::string& up_weight,
+                       const std::string& down_weight) const;
     std::shared_ptr<Linear> c_fc, c_proj;
 };
+
+// The IR block of a pre-LN GPT-2 block (Block::forward's wiring: x += attn(ln1 x);
+// x += mlp(ln2 x)) in llama.cpp's gpt2 GGUF names: blk.{i}.attn_norm,
+// attn_qkv, attn_output, ffn_norm, ffn_up, ffn_down (each .weight/.bias).
+// {"state": [kv, max_len n_ctx], "nodes": [...]}.
+ir::json gpt2_block_ir(const LayerNorm& ln1, const CausalSelfAttention& attn, const LayerNorm& ln2, const MLP& mlp,
+                       size_t n_ctx);
+// A whole GPT-2-shaped model's IR (family_hint "gpt2"): wte -> token_embd
+// plus learned positions wpe -> position_embd (ctx = its rows), `blocks`
+// (one gpt2_block_ir per layer; all must be equal), ln_f -> output_norm,
+// then `head` -> output.weight, or the tied embedding when head is null.
+ir::json gpt2_ir(const Embedding& wte, const Embedding& wpe, const std::vector<ir::json>& blocks,
+                 const LayerNorm& ln_f, const Linear* head);
 
 class Block : public Module {  // pre-LN transformer block, GPT-2 wiring
 public:

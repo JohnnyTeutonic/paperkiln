@@ -4,9 +4,10 @@
 // interpret any paperkiln model rather than recognise a fixed architecture.
 //
 // Exported per module, never traced from the tape: each module emits its
-// own node spec (Embedding/Linear/MoEFFN/LlamaBlock/Llama::export_ir); the
-// free functions below cover the ops that have no module of their own
-// (rmsnorm, rope, attention and the elementwise ops a block wires inline).
+// own node spec (Embedding/Linear/LayerNorm/MLP/CausalSelfAttention/MoEFFN/
+// LlamaBlock/Llama::export_ir, nn::gpt2_block_ir); the free functions below
+// cover the ops that have no module of their own (rmsnorm, rope, attention,
+// split, pos_embedding and the elementwise ops a block wires inline).
 //
 // Shape of a document (ir/chat_sftfinal.ir.json is the worked example):
 //   ir_version, family_hint, model {vocab, d, n_layers, ctx, dtype},
@@ -20,9 +21,26 @@
 //
 // Ops (v0):
 //   embedding   rows of weight [vocab, d] gathered by token id. EXACT.
-//   linear      x W^T (+ bias), weight [out, in]; "tied_to" names the tensor
-//               to read instead when "weight" is absent. ROUNDING.
+//   pos_embedding  learned absolute positions: in [x, pos], out = x +
+//               weight[pos] row by row, weight [ctx, d] (position_embd).
+//               pos must be < ctx: an engine stops or re-prefills a sliding
+//               window before then (mtstudio re-runs the last ctx tokens
+//               from position 0). One float add per element. EXACT.
+//   linear      x W^T (+ bias), weight [out, in], bias [out] (the bias is
+//               added once to the finished dot product); "tied_to" names
+//               the tensor to read instead when "weight" is absent. ROUNDING.
+//   split       in [x], sizes [s0, s1, ...] summing to x's width, out
+//               [o0, o1, ...]: o_k = the s_k consecutive columns of x after
+//               the first s0 + ... + s_{k-1} (a fused qkv projection read as
+//               q, k, v). Copies. EXACT.
 //   rmsnorm     x / sqrt(mean(x^2) + eps) * weight. ROUNDING.
+//   layernorm   (x - mean(x)) / sqrt(var(x) + eps) * weight + bias over each
+//               row, var the biased (divide by width) mean of squared
+//               deviations; weight and bias [d]. ROUNDING.
+//   gelu        approx "tanh": 0.5 x (1 + tanh(sqrt(2/pi) (x + 0.044715 x^3)))
+//               (GPT-2's, and what paperkiln trains with); "none": the exact
+//               0.5 x (1 + erf(x / sqrt(2))). An engine must not substitute
+//               one for the other. ROUNDING.
 //   rope        rotates q and k in place; rope_heads "all" (every head) or
 //               "first" (head 0 only, legacy runs); pairing "interleaved" =
 //               adjacent pairs (x[2j], x[2j+1]) within a head, angle
@@ -49,6 +67,7 @@
 // uint32 key kGGUFVersionKey, written after every other metadata key.
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include <nlohmann/json.hpp>
 
@@ -77,6 +96,12 @@ json kv_state(const std::string& name, size_t heads, size_t kv_heads, size_t hea
               size_t window, size_t sinks);
 json binary(const std::string& op, const std::string& a, const std::string& b, const std::string& out);
 json unary(const std::string& op, const std::string& in, const std::string& out);
+json layernorm(const std::string& in, const std::string& weight, const std::string& bias, float eps,
+               const std::string& out);
+// approx: "tanh" | "none" (anything else throws).
+json gelu(const std::string& in, const std::string& approx, const std::string& out);
+json split(const std::string& in, const std::vector<size_t>& sizes, const std::vector<std::string>& outs);
+json pos_embedding(const std::string& x, const std::string& pos, const std::string& weight, const std::string& out);
 
 }  // namespace ir
 }  // namespace microtorch

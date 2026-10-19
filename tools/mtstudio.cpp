@@ -839,16 +839,55 @@ ir::json ir_tokenizer(const std::vector<std::string>& tokens, const std::map<std
     return {{"type", g_bpe ? "bpe" : "word"}, {"source", "gguf"}, {"specials", sp}, {"bos", nullptr}};
 }
 
+// The vocabulary onto an export config (llama or gpt2): its tokens, a BPE
+// vocabulary's merges, and the end-of-text id when it has one.
+template <class Cfg>
+void set_export_tokenizer(Cfg& gc, const Spec& s, const std::vector<std::string>& tokens,
+                          const std::map<std::string, int>& vocab) {
+    gc.vocab_size = (uint32_t)tokens.size();
+    gc.tokens = tokens;
+    // A BPE vocabulary travels with the model: without its merges an
+    // engine reading the export would split text into bytes only.
+    if (g_bpe) {
+        gc.tokenizer_model = "bpe";
+        gc.merges = bpe::read_gguf_tokenizer(s.vocab_gguf).merges;
+    }
+    // End-of-text in the vocabulary -> the GGUF's eos id, so an
+    // external engine stops where this one does (else keep the
+    // exporter's default).
+    if (const int e = wordtok::eos_id(vocab); e >= 0) gc.eos_token_id = (uint32_t)e;
+}
+
+// The IR document for a model's own export_ir(), with the vocabulary's
+// tokenizer section after "model" as in ir/*.ir.json, written beside the
+// GGUFs as <name>.ir.json; returns the compact dump the GGUFs embed.
+std::string write_ir_doc(const Spec& s, const ir::json& model_ir, const std::vector<std::string>& tokens,
+                         const std::map<std::string, int>& vocab, const std::string& ir_path) {
+    ir::json doc = {{"_comment", "paperkiln IR v" + std::to_string(ir::kVersion) + " for " + s.name +
+                                     ", exported by mtstudio. Schema and semantics: microtorch/ir.hpp "
+                                     "and LOCAL_LLM_STACK.md section 4."}};
+    for (const auto& [k, v] : model_ir.items()) {
+        doc[k] = v;
+        if (k == "model") doc["tokenizer"] = ir_tokenizer(tokens, vocab);
+    }
+    std::ofstream f(ir_path);
+    f << doc.dump(2) << "\n";
+    if (!f) throw std::runtime_error("export: could not write " + ir_path);
+    return doc.dump();
+}
+
 // GGUF exports of a trained model into out_dir: <name>.gguf (F32) when
 // s.exp_gguf, and <name>_<quant>.gguf for each of s.exp_gguf_quants (the
 // Q8_0 and 4-bit variants). Every variant embeds the model's IR (paperkiln.ir),
 // also written once beside them as <name>.ir.json. Shared by `run` and
-// `export`; `llama` is null for the non-llama families, which are reported as
-// skipped and get no IR.
-void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama,
-                  const std::vector<std::string>& tokens, const std::map<std::string, int>& vocab,
-                  const std::string& rope_heads, const std::string& out_dir,
-                  const std::function<void(const json&)>& emit) {
+// `export`. The llama family exports through `llama`; the gpt2 family
+// (`gpt`, exact attention) and the GPT-2 flavour of flex (`flex`) export
+// F32 in llama.cpp's gpt2 architecture; everything else is reported as
+// skipped and gets no IR.
+void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama, const parity::ParityLM* gpt,
+                  const parity::FlexLM* flex, const std::vector<std::string>& tokens,
+                  const std::map<std::string, int>& vocab, const std::string& rope_heads,
+                  const std::string& out_dir, const std::function<void(const json&)>& emit) {
     if (llama && s.moe_experts > 0 && s.moe_gate == "raw") {
         // llama.cpp's llama-architecture MoE renormalises its top-k gates;
         // a raw-gate (Switch) model would be served with different outputs.
@@ -881,41 +920,16 @@ void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama,
             gc.expert_count = (uint32_t)s.moe_experts;
             gc.expert_used_count = (uint32_t)s.moe_top_k;
         }
-        gc.vocab_size = (uint32_t)tokens.size();
         gc.context_length = (uint32_t)s.T;
         // The epsilon ops::rmsnorm trains with (src/ops.cpp). Exports
         // before 19 Oct 2026 wrote 1e-6, so engines normalised slightly
         // differently from training (greedy parity held at 40/40).
         gc.rms_eps = 1e-5f;
         gc.weights_in_out = true;  // microtorch Linear is [in, out]
-        gc.tokens = tokens;
-        // A BPE vocabulary travels with the model: without its merges an
-        // engine reading the export would split text into bytes only.
-        if (g_bpe) {
-            gc.tokenizer_model = "bpe";
-            gc.merges = bpe::read_gguf_tokenizer(s.vocab_gguf).merges;
-        }
-        // End-of-text in the vocabulary -> the GGUF's eos id, so an
-        // external engine stops where this one does (else keep the
-        // exporter's default).
-        if (const int e = wordtok::eos_id(vocab); e >= 0) gc.eos_token_id = (uint32_t)e;
-        // The IR, from the modules themselves (Llama::export_ir), with the
-        // vocabulary's tokenizer section after "model" as in ir/*.ir.json.
-        ir::json doc = {{"_comment", "paperkiln IR v" + std::to_string(ir::kVersion) + " for " + s.name +
-                                         ", exported by mtstudio. Schema and semantics: microtorch/ir.hpp "
-                                         "and LOCAL_LLM_STACK.md section 4."}};
-        const ir::json model_ir = llama->export_ir();
-        for (const auto& [k, v] : model_ir.items()) {
-            doc[k] = v;
-            if (k == "model") doc["tokenizer"] = ir_tokenizer(tokens, vocab);
-        }
-        gc.ir = doc.dump();
+        set_export_tokenizer(gc, s, tokens, vocab);
+        // The IR, from the modules themselves (Llama::export_ir).
         const std::string ir_path = out_dir + "/" + s.name + ".ir.json";
-        {
-            std::ofstream f(ir_path);
-            f << doc.dump(2) << "\n";
-            if (!f) throw std::runtime_error("export: could not write " + ir_path);
-        }
+        gc.ir = write_ir_doc(s, llama->export_ir(), tokens, vocab, ir_path);
         std::vector<std::string> quants;
         if (s.exp_gguf) quants.push_back("f32");
         quants.insert(quants.end(), s.exp_gguf_quants.begin(), s.exp_gguf_quants.end());
@@ -937,12 +951,50 @@ void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama,
                     "reproduce this model's outputs";
             emit(xe);
         }
+    } else if ((gpt || flex) && (gpt ? gpt->gpt2_export_blocker() : flex->gpt2_export_blocker()).empty()) {
+        // llama.cpp's gpt2 architecture: LayerNorm with bias, fused qkv,
+        // tanh GELU (llama.cpp's gpt2 uses the same approximation), learned
+        // positions, untied head. Quantised variants are not offered yet.
+        for (const auto& q : s.exp_gguf_quants)
+            emit({{"event", "export_skipped"},
+                  {"format", "gguf_" + q},
+                  {"reason", "the gpt2 export is F32 only"}});
+        if (!s.exp_gguf) return;
+        gguf::Gpt2ExportConfig gc;
+        gc.name = s.name;
+        gc.context_length = (uint32_t)s.T;  // = the learned position table's rows
+        gc.embedding_length = (uint32_t)s.d;
+        gc.block_count = (uint32_t)s.layers;
+        gc.head_count = (uint32_t)s.heads;
+        gc.feed_forward_length = (uint32_t)(gpt ? 4 * s.d : flex->cfg.d_ff);
+        // One epsilon in the file: every LayerNorm's must be the same.
+        const float eps = gpt ? gpt->ln_f->eps : flex->ln_f_ln->eps;
+        gc.layer_norm_eps = eps;
+        const ir::json model_ir = gpt ? gpt->export_ir() : flex->export_ir();
+        for (const auto& n : model_ir["block"]["nodes"])
+            if (n["op"] == "layernorm" && n["eps"] != ir::f32(eps))
+                throw std::runtime_error("export: the gpt2 GGUF holds one layer-norm epsilon, but the blocks differ");
+        set_export_tokenizer(gc, s, tokens, vocab);
+        const std::string ir_path = out_dir + "/" + s.name + ".ir.json";
+        gc.ir = write_ir_doc(s, model_ir, tokens, vocab, ir_path);
+        const std::string gpath = out_dir + "/" + s.name + ".gguf";
+        std::vector<std::string> unmapped;
+        const auto sd = gpt ? gpt->gpt2_state_dict() : flex->gpt2_state_dict();
+        gguf::export_gguf_gpt2(gpath, sd, gc, &unmapped);
+        if (!unmapped.empty()) throw std::runtime_error("export: gpt2 tensor not exported: " + unmapped[0]);
+        // Every trained parameter must be in the file (gpt2_state_dict is a
+        // copy under other names, so count them).
+        if (sd.size() != model_ref.named_parameters().size())
+            throw std::runtime_error("export: the gpt2 state dict has " + std::to_string(sd.size()) +
+                                     " tensors, the model " + std::to_string(model_ref.named_parameters().size()));
+        emit({{"event", "export"}, {"format", "gguf"}, {"path", gpath}, {"arch", "gpt2"}, {"ir", ir_path}});
     } else {
-        emit({{"event", "export_skipped"},
-              {"format", "gguf"},
-              {"reason", "gpt2-family blocks are not llama-shaped"}});
-        // Only the llama family exports its IR so far; none beats a wrong one.
-        std::fprintf(stderr, "export: no IR written (family %s has no IR export yet)\n", s.family.c_str());
+        const std::string why = gpt     ? gpt->gpt2_export_blocker()
+                                : flex  ? flex->gpt2_export_blocker()
+                                        : "family " + s.family + " (" + s.attention + ") has no GGUF export";
+        emit({{"event", "export_skipped"}, {"format", "gguf"}, {"reason", why}});
+        // No IR for a model without an export; none beats a wrong one.
+        std::fprintf(stderr, "export: no IR written (%s)\n", why.c_str());
     }
 }
 
@@ -1725,7 +1777,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         ev.emit({{"event", "export"}, {"format", "safetensors"}, {"path", spath}});
     }
     if (s.exp_gguf || !s.exp_gguf_quants.empty())
-        export_ggufs(s, model_ref, llama.get(), tokens, vocab, rope_heads, s.out_dir,
+        export_ggufs(s, model_ref, llama.get(), gpt.get(), flex.get(), tokens, vocab, rope_heads, s.out_dir,
                      [&](const json& j) { ev.emit(j); });
     const double wall_s =
         std::chrono::duration<double>(std::chrono::steady_clock::now() - t_train0).count();
@@ -2063,7 +2115,7 @@ int export_cmd(Spec s, const std::string& from, const std::string& formats, cons
     LoadedLM lm(from.empty() ? s : at_safetensors(s, from, "--from"));
     const std::string dest = out_dir.empty() ? s.out_dir : out_dir;
     std::filesystem::create_directories(dest);
-    export_ggufs(s, lm.model(), lm.llama.get(), lm.tokens, lm.vocab, lm.rope_heads, dest,
+    export_ggufs(s, lm.model(), lm.llama.get(), lm.gpt.get(), lm.flex.get(), lm.tokens, lm.vocab, lm.rope_heads, dest,
                  [](const json& j) { std::printf("%s\n", j.dump().c_str()); });
     return 0;
 }

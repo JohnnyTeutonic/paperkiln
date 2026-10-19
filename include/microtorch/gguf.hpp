@@ -149,5 +149,51 @@ void quantize_q5_1(const float* x, size_t n, uint8_t* out);
 void export_gguf_llama(const std::string& path, const std::map<std::string, Matrix>& state_dict,
                        const LlamaExportConfig& cfg, std::vector<std::string>* unmapped = nullptr);
 
+// Hyperparameters + tokenizer for a GPT-2-family export in llama.cpp's
+// "gpt2" architecture (pre-LN blocks, LayerNorm with bias, fused qkv with
+// bias, tanh-approximation GELU MLP with biases, learned absolute
+// positions). Tokenizer and IR fields as in LlamaExportConfig.
+struct Gpt2ExportConfig {
+    std::string name = "microtorch-model";
+    // Learned positions: position_embd has exactly this many rows, and
+    // llama.cpp checks it against gpt2.context_length.
+    uint32_t context_length = 0;
+    uint32_t embedding_length = 0;     // d_model (required)
+    uint32_t block_count = 0;          // n_layers (required)
+    uint32_t feed_forward_length = 0;  // MLP hidden width (required)
+    uint32_t head_count = 0;           // n_heads (required)
+    uint32_t vocab_size = 0;           // required
+    float layer_norm_eps = 1e-5f;      // nn::LayerNorm's default
+    std::vector<std::string> tokens;
+    std::string tokenizer_model = "word";
+    std::vector<std::string> merges;
+    uint32_t bos_token_id = 1, eos_token_id = 1;
+    uint32_t unk_token_id = 0, pad_token_id = 0;
+    std::string ir;  // written as paperkiln.ir / paperkiln.ir_version when non-empty
+};
+
+// Export a GPT-2 state_dict (HF GPT-2 names; every 2-D projection in the
+// HF Conv1D / microtorch nn::Linear layout rows=[in], cols=[out], so each is
+// transposed to llama.cpp's [out][in]) to an F32 GGUF:
+//   wte.weight [vocab, d]                -> token_embd.weight     ne={d, vocab}
+//   wpe.weight [ctx, d]                  -> position_embd.weight  ne={d, ctx}
+//   h.N.ln_1.{weight,bias}               -> blk.N.attn_norm.{weight,bias}
+//   h.N.attn.c_attn.weight [d, 3d], bias -> blk.N.attn_qkv.weight ne={d, 3d}, .bias {3d}
+//                                           (columns q | k | v, head h at h*dk within each)
+//   h.N.attn.c_proj.{weight,bias}        -> blk.N.attn_output.{weight,bias}
+//   h.N.ln_2.{weight,bias}               -> blk.N.ffn_norm.{weight,bias}
+//   h.N.mlp.c_fc.{weight,bias}           -> blk.N.ffn_up.{weight,bias}    ne={d, ff}, {ff}
+//   h.N.mlp.c_proj.{weight,bias}         -> blk.N.ffn_down.{weight,bias}  ne={ff, d}, {d}
+//   ln_f.{weight,bias}                   -> output_norm.{weight,bias}
+//   lm_head.weight [d, vocab]            -> output.weight ne={d, vocab} (omitted if
+//                                           absent: llama.cpp then ties to token_embd)
+// with general.architecture = "gpt2" and gpt2.{context_length,
+// embedding_length, block_count, feed_forward_length, attention.head_count,
+// attention.layer_norm_epsilon, vocab_size}. A leading "transformer." is
+// optional on every key. Every shape is checked against the config; keys
+// outside the map go to `unmapped` if given. F32 only.
+void export_gguf_gpt2(const std::string& path, const std::map<std::string, Matrix>& state_dict,
+                      const Gpt2ExportConfig& cfg, std::vector<std::string>* unmapped = nullptr);
+
 }  // namespace gguf
 }  // namespace microtorch

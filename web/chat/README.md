@@ -35,9 +35,10 @@ site/model/card.json          the model card (tools/model_card.py), if the run h
 
 The vocabulary is the one `mtstudio` uses: the spec's vocab GGUF, capped
 at `data.vocab_cap`, or the run's exported `<name>.gguf` if the spec's file
-cannot be found. gpt2-family runs export no GGUF,
-so run the exporter from the training directory or pass `--vocab
-releases/tinychat_vocab.gguf`. The exporter fails, with a reason, when the
+cannot be found. Runs whose spec did not ask for a GGUF (and kimi, srd,
+attnres, sliding-window and non-GPT-2 flex runs, which export none) have
+no such file, so run the exporter from the training directory or pass
+`--vocab releases/tinychat_vocab.gguf`. The exporter fails, with a reason, when the
 vocabulary does not match the weights or the attention type is not yet
 supported in the browser. Exact attention is supported in the llama, flex
 and gpt2 families; kimi, srd, attnres and sliding-window attention are not.

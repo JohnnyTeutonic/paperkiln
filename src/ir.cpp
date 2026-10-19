@@ -2,6 +2,7 @@
 
 #include <charconv>
 #include <cstdlib>
+#include <stdexcept>
 
 namespace microtorch {
 namespace ir {
@@ -62,6 +63,28 @@ json binary(const std::string& op, const std::string& a, const std::string& b, c
 
 json unary(const std::string& op, const std::string& in, const std::string& out) {
     return {{"op", op}, {"in", json::array({in})}, {"out", out}};
+}
+
+json layernorm(const std::string& in, const std::string& weight, const std::string& bias, float eps,
+               const std::string& out) {
+    return {{"op", "layernorm"}, {"in", json::array({in})}, {"weight", weight},
+            {"bias", bias},      {"eps", f32(eps)},         {"out", out}};
+}
+
+json gelu(const std::string& in, const std::string& approx, const std::string& out) {
+    if (approx != "tanh" && approx != "none")
+        throw std::runtime_error("ir::gelu: approx must be \"tanh\" or \"none\", got \"" + approx + "\"");
+    return {{"op", "gelu"}, {"in", json::array({in})}, {"approx", approx}, {"out", out}};
+}
+
+json split(const std::string& in, const std::vector<size_t>& sizes, const std::vector<std::string>& outs) {
+    if (sizes.size() != outs.size() || sizes.empty())
+        throw std::runtime_error("ir::split: one size per output, at least one");
+    return {{"op", "split"}, {"in", json::array({in})}, {"sizes", sizes}, {"out", outs}};
+}
+
+json pos_embedding(const std::string& x, const std::string& pos, const std::string& weight, const std::string& out) {
+    return {{"op", "pos_embedding"}, {"in", json::array({x, pos})}, {"weight", weight}, {"out", out}};
 }
 
 }  // namespace ir

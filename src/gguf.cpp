@@ -242,6 +242,32 @@ uint32_t llamacpp_type(const std::string& quant, const std::string& name, uint64
     return t;
 }
 
+// The tokenizer block, shared by the llama and gpt2 exports (an empty token
+// list writes none).
+template <class Cfg>
+void write_tokenizer(GGUFWriter& writer, const Cfg& cfg) {
+    if (cfg.tokens.empty()) return;
+    writer.write_metadata_string("tokenizer.ggml.model", cfg.tokenizer_model);
+    writer.write_metadata_string_array("tokenizer.ggml.tokens", cfg.tokens);
+    if (!cfg.merges.empty()) writer.write_metadata_string_array("tokenizer.ggml.merges", cfg.merges);
+    writer.write_metadata_float_array("tokenizer.ggml.scores", std::vector<float>(cfg.tokens.size(), 0.0f));
+    writer.write_metadata_uint32("tokenizer.ggml.bos_token_id", cfg.bos_token_id);
+    writer.write_metadata_uint32("tokenizer.ggml.eos_token_id", cfg.eos_token_id);
+    writer.write_metadata_uint32("tokenizer.ggml.unknown_token_id", cfg.unk_token_id);
+    writer.write_metadata_uint32("tokenizer.ggml.padding_token_id", cfg.pad_token_id);
+}
+
+// The IR keys, written last so every key before them sits where it did
+// without the IR (an empty `ir` writes neither).
+void write_ir(GGUFWriter& writer, const std::string& ir, const char* who) {
+    if (ir.empty()) return;
+    const auto doc = ir::json::parse(ir);
+    if (!doc.contains("ir_version") || !doc["ir_version"].is_number_unsigned())
+        throw std::runtime_error(std::string(who) + ": the IR has no unsigned ir_version");
+    writer.write_metadata_string(ir::kGGUFKey, doc.dump());
+    writer.write_metadata_uint32(ir::kGGUFVersionKey, doc["ir_version"].get<uint32_t>());
+}
+
 }  // namespace
 
 void export_gguf_llama(const std::string& path, const std::map<std::string, Matrix>& state_dict,
@@ -289,17 +315,7 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
         writer.write_metadata_uint32(a + ".expert_used_count", cfg.expert_used_count);
     }
 
-    if (!cfg.tokens.empty()) {
-        writer.write_metadata_string("tokenizer.ggml.model", cfg.tokenizer_model);
-        writer.write_metadata_string_array("tokenizer.ggml.tokens", cfg.tokens);
-        if (!cfg.merges.empty()) writer.write_metadata_string_array("tokenizer.ggml.merges", cfg.merges);
-        writer.write_metadata_float_array("tokenizer.ggml.scores",
-                                          std::vector<float>(cfg.tokens.size(), 0.0f));
-        writer.write_metadata_uint32("tokenizer.ggml.bos_token_id", cfg.bos_token_id);
-        writer.write_metadata_uint32("tokenizer.ggml.eos_token_id", cfg.eos_token_id);
-        writer.write_metadata_uint32("tokenizer.ggml.unknown_token_id", cfg.unk_token_id);
-        writer.write_metadata_uint32("tokenizer.ggml.padding_token_id", cfg.pad_token_id);
-    }
+    write_tokenizer(writer, cfg);
     if (lcpp) {
         // llama.cpp's quantiser copies the source keys and appends these two
         // (GGML_QNT_VERSION, and the llama_ftype: MOSTLY_Q4_0 = 2,
@@ -308,14 +324,7 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
         writer.write_metadata_uint32("general.file_type",
                                      cfg.quant == "q4_0" ? 2u : cfg.quant == "q4_k_s" ? 14u : 15u);
     }
-    if (!cfg.ir.empty()) {
-        // Last, so every key before it sits where it did without the IR.
-        const auto doc = ir::json::parse(cfg.ir);
-        if (!doc.contains("ir_version") || !doc["ir_version"].is_number_unsigned())
-            throw std::runtime_error("export_gguf_llama: the IR has no unsigned ir_version");
-        writer.write_metadata_string(ir::kGGUFKey, doc.dump());
-        writer.write_metadata_uint32(ir::kGGUFVersionKey, doc["ir_version"].get<uint32_t>());
-    }
+    write_ir(writer, cfg.ir, "export_gguf_llama");
 
     // ---- tensors ----
     // Keep-alive for transposed copies: GGUFWriter buffers raw pointers
@@ -578,6 +587,111 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
         for (uint64_t i = 0; i < pad; ++i) out.put('\0');
         if (!out) throw std::runtime_error("export_gguf_llama: could not pad " + path);
     }
+}
+
+void export_gguf_gpt2(const std::string& path, const std::map<std::string, Matrix>& state_dict,
+                      const Gpt2ExportConfig& cfg, std::vector<std::string>* unmapped) {
+    const char* who = "export_gguf_gpt2";
+    if (cfg.context_length == 0 || cfg.embedding_length == 0 || cfg.block_count == 0 ||
+        cfg.feed_forward_length == 0 || cfg.head_count == 0 || cfg.vocab_size == 0)
+        throw std::runtime_error(std::string(who) +
+                                 ": context_length, embedding_length, block_count, feed_forward_length, "
+                                 "head_count and vocab_size must all be set");
+    if (cfg.embedding_length % cfg.head_count != 0)
+        throw std::runtime_error(std::string(who) + ": embedding_length must divide by head_count");
+    const uint64_t d = cfg.embedding_length, ff = cfg.feed_forward_length;
+
+    GGUFWriter writer(path);
+    const std::string a = "gpt2";
+    writer.write_metadata_string("general.architecture", a);
+    writer.write_metadata_string("general.name", cfg.name);
+    writer.write_metadata_uint32("general.alignment", gguf_export::GGUF_DEFAULT_ALIGNMENT);
+    writer.write_metadata_uint32(a + ".context_length", cfg.context_length);
+    writer.write_metadata_uint32(a + ".embedding_length", cfg.embedding_length);
+    writer.write_metadata_uint32(a + ".block_count", cfg.block_count);
+    writer.write_metadata_uint32(a + ".feed_forward_length", cfg.feed_forward_length);
+    writer.write_metadata_uint32(a + ".attention.head_count", cfg.head_count);
+    writer.write_metadata_float32(a + ".attention.layer_norm_epsilon", cfg.layer_norm_eps);
+    writer.write_metadata_uint32(a + ".vocab_size", cfg.vocab_size);
+    write_tokenizer(writer, cfg);
+    write_ir(writer, cfg.ir, who);
+
+    // GGUFWriter buffers raw pointers until finalize(): transposed copies
+    // live in `owned` until then. Shapes are passed row-major and written
+    // reversed (ne0 = the last entry), as in export_gguf_llama.
+    std::vector<std::unique_ptr<std::vector<float>>> owned;
+    std::vector<std::string> mapped_keys;
+    auto require = [&](const std::string& key, uint64_t rows, uint64_t cols) -> const Matrix& {
+        auto it = state_dict.find(key);
+        if (it == state_dict.end()) it = state_dict.find("transformer." + key);
+        if (it == state_dict.end()) throw std::runtime_error(std::string(who) + ": missing tensor " + key);
+        if (it->second.rows() != rows || it->second.cols() != cols)
+            throw std::runtime_error(std::string(who) + ": " + key + " is [" + std::to_string(it->second.rows()) +
+                                     ", " + std::to_string(it->second.cols()) + "], expected [" +
+                                     std::to_string(rows) + ", " + std::to_string(cols) + "]");
+        mapped_keys.push_back(key);
+        return it->second;
+    };
+    auto add = [&](const std::string& name, std::vector<uint64_t> shape, const float* data, size_t n) {
+        TensorExportInfo info;
+        info.type = GGMLType::F32;
+        info.name = name;
+        info.shape = std::move(shape);
+        info.data = data;
+        info.num_elements = n;
+        writer.add_tensor(info);
+    };
+    // A [rows, cols] table already in llama.cpp's byte order (embeddings).
+    auto add_rows = [&](const Matrix& m, const std::string& name) {
+        add(name, {static_cast<uint64_t>(m.rows()), static_cast<uint64_t>(m.cols())}, &m(0, 0), m.rows() * m.cols());
+    };
+    // [in][out] -> [out][in] bytes, ne = {in, out}.
+    auto add_proj = [&](const Matrix& w, const std::string& name) {
+        const size_t R = w.rows(), C = w.cols();
+        auto buf = std::make_unique<std::vector<float>>(R * C);
+        for (size_t i = 0; i < R; ++i)
+            for (size_t j = 0; j < C; ++j) (*buf)[j * R + i] = w(i, j);
+        add(name, {static_cast<uint64_t>(C), static_cast<uint64_t>(R)}, buf->data(), R * C);
+        owned.push_back(std::move(buf));
+    };
+    // [1, n] -> 1-D {n} (norm weights and biases).
+    auto add_vec = [&](const Matrix& v, const std::string& name) {
+        add(name, {static_cast<uint64_t>(v.cols())}, &v(0, 0), v.cols());
+    };
+    // A LayerNorm or a biased projection: hf.weight / hf.bias -> gg.weight / gg.bias.
+    auto add_norm = [&](const std::string& hf, const std::string& gg) {
+        add_vec(require(hf + ".weight", 1, d), gg + ".weight");
+        add_vec(require(hf + ".bias", 1, d), gg + ".bias");
+    };
+    auto add_linear = [&](const std::string& hf, const std::string& gg, uint64_t in, uint64_t out) {
+        add_proj(require(hf + ".weight", in, out), gg + ".weight");
+        add_vec(require(hf + ".bias", 1, out), gg + ".bias");
+    };
+
+    add_rows(require("wte.weight", cfg.vocab_size, d), "token_embd.weight");
+    add_rows(require("wpe.weight", cfg.context_length, d), "position_embd.weight");
+    for (uint32_t l = 0; l < cfg.block_count; ++l) {
+        const std::string hf = "h." + std::to_string(l) + ".";
+        const std::string gg = "blk." + std::to_string(l) + ".";
+        add_norm(hf + "ln_1", gg + "attn_norm");
+        add_linear(hf + "attn.c_attn", gg + "attn_qkv", d, 3 * d);
+        add_linear(hf + "attn.c_proj", gg + "attn_output", d, d);
+        add_norm(hf + "ln_2", gg + "ffn_norm");
+        add_linear(hf + "mlp.c_fc", gg + "ffn_up", d, ff);
+        add_linear(hf + "mlp.c_proj", gg + "ffn_down", ff, d);
+    }
+    add_norm("ln_f", "output_norm");
+    if (state_dict.count("lm_head.weight") || state_dict.count("transformer.lm_head.weight"))
+        add_proj(require("lm_head.weight", d, cfg.vocab_size), "output.weight");
+
+    if (unmapped) {
+        for (const auto& [key, m] : state_dict) {
+            const std::string bare = key.rfind("transformer.", 0) == 0 ? key.substr(12) : key;
+            if (std::find(mapped_keys.begin(), mapped_keys.end(), bare) == mapped_keys.end())
+                unmapped->push_back(key);
+        }
+    }
+    if (!writer.finalize()) throw std::runtime_error(std::string(who) + ": finalize failed for " + path);
 }
 
 }  // namespace gguf

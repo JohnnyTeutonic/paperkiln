@@ -232,6 +232,79 @@ Var MLP::forward(const Var& x) const {
     return c_proj->forward(ops::gelu(c_fc->forward(x)));
 }
 
+ir::json LayerNorm::export_ir(const std::string& in, const std::string& out, const std::string& prefix) const {
+    return ir::layernorm(in, prefix + ".weight", prefix + ".bias", eps, out);
+}
+
+ir::json CausalSelfAttention::export_ir(const std::string& in, const std::string& out, const std::string& qkv_weight,
+                                        const std::string& o_weight, const std::string& state) const {
+    if (!causal) throw std::runtime_error("attention export_ir: only causal attention has an IR");
+    // forward() above, node for node; the scale is the float it computes.
+    const size_t d = H * dk;
+    const float sc = 1.0f / std::sqrt(static_cast<float>(dk));
+    ir::json n = ir::json::array();
+    n.push_back(c_attn->export_ir(in, "qkv", qkv_weight));
+    n.push_back(ir::split("qkv", {d, d, d}, {"q", "k", "v"}));
+    n.push_back(ir::attention("q", "k", "v", state, H, H, dk, sc, /*causal=*/true, 0, 0, "a"));
+    n.push_back(c_proj->export_ir("a", out, o_weight));
+    return n;
+}
+
+ir::json MLP::export_ir(const std::string& in, const std::string& out, const std::string& up_weight,
+                        const std::string& down_weight) const {
+    return ir::json::array({c_fc->export_ir(in, "u", up_weight), ir::gelu("u", "tanh", "u"),
+                            c_proj->export_ir("u", out, down_weight)});
+}
+
+ir::json gpt2_block_ir(const LayerNorm& ln1, const CausalSelfAttention& attn, const LayerNorm& ln2, const MLP& mlp,
+                       size_t n_ctx) {
+    const std::string p = "blk.{i}.";
+    ir::json n = ir::json::array();
+    n.push_back(ln1.export_ir("x", "h", p + "attn_norm"));
+    for (const auto& node : attn.export_ir("h", "o", p + "attn_qkv.weight", p + "attn_output.weight", "kv"))
+        n.push_back(node);
+    n.push_back(ir::binary("add", "x", "o", "x"));
+    n.push_back(ln2.export_ir("x", "h2", p + "ffn_norm"));
+    for (const auto& node : mlp.export_ir("h2", "f", p + "ffn_up.weight", p + "ffn_down.weight")) n.push_back(node);
+    n.push_back(ir::binary("add", "x", "f", "x"));
+    return {{"state", ir::json::array({ir::kv_state("kv", attn.H, attn.H, attn.dk, n_ctx, 0, 0)})}, {"nodes", n}};
+}
+
+ir::json gpt2_ir(const Embedding& wte, const Embedding& wpe, const std::vector<ir::json>& blocks,
+                 const LayerNorm& ln_f, const Linear* head) {
+    if (blocks.empty()) throw std::runtime_error("gpt2 export_ir: no blocks");
+    // One block template for all layers, as for llama.
+    for (size_t i = 1; i < blocks.size(); ++i)
+        if (blocks[i] != blocks[0])
+            throw std::runtime_error("gpt2 export_ir: block " + std::to_string(i) + " differs from block 0");
+    const size_t vocab = wte.weight->data.rows(), d = wte.weight->data.cols(), ctx = wpe.weight->data.rows();
+    ir::json head_linear;
+    if (head) {
+        head_linear = head->export_ir("h", "logits", "output.weight");
+    } else {
+        head_linear = {{"op", "linear"},       {"in", ir::json::array({"h"})},
+                       {"weight", "output.weight"}, {"bias", nullptr},
+                       {"tied_to", "token_embd.weight"}, {"out", "logits"}};
+    }
+    ir::json doc;
+    doc["ir_version"] = ir::kVersion;
+    doc["family_hint"] = "gpt2";
+    doc["model"] = {{"vocab", vocab}, {"d", d}, {"n_layers", blocks.size()}, {"ctx", ctx}, {"dtype", "f32"}};
+    doc["inputs"] = ir::json::array(
+        {{{"name", "tokens"}, {"kind", "token_ids"}},
+         {{"name", "pos"},
+          {"kind", "positions"},
+          {"note", "absolute positions; prefill 0..T-1, decode = cache length; must stay below model.ctx"}}});
+    doc["embed"] = {{"nodes", ir::json::array({wte.export_ir("tokens", "x", "token_embd.weight"),
+                                               ir::pos_embedding("x", "pos", "position_embd.weight", "x")})}};
+    doc["block"] = {{"repeat", blocks.size()}, {"state", blocks[0]["state"]}, {"nodes", blocks[0]["nodes"]}};
+    doc["head"] = {{"nodes", ir::json::array({ln_f.export_ir("x", "h", "output_norm"), head_linear})}};
+    doc["outputs"] = ir::json::array({{{"name", "logits"}, {"kind", "logits"}}});
+    doc["modes"] = {{"prefill", "all nodes over T tokens"},
+                    {"decode", "the same graph with T = 1, attention reads and appends to the kv state"}};
+    return doc;
+}
+
 Block::Block(size_t d, size_t n_heads, unsigned seed) {
     ln_1 = mod<LayerNorm>("ln_1", d);
     attn = mod<CausalSelfAttention>("attn", d, n_heads, seed + 23);
