@@ -138,6 +138,10 @@ add_test(NAME train_utils COMMAND test_train_utils)
 add_executable(test_gguf_export tests/test_gguf_export.cpp)
 target_link_libraries(test_gguf_export PRIVATE microtorch)
 add_test(NAME gguf_export COMMAND test_gguf_export)
+# Q8_0 GGUF export: block quantiser vectors + tiny exports parsed back.
+add_executable(test_gguf_q8 tests/test_gguf_q8.cpp)
+target_link_libraries(test_gguf_q8 PRIVATE microtorch)
+add_test(NAME gguf_q8 COMMAND test_gguf_q8)
 
 add_executable(test_attention_blocked tests/test_attention_blocked.cpp)
 target_link_libraries(test_attention_blocked PRIVATE microtorch)

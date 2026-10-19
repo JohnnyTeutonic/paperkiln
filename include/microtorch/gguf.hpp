@@ -8,6 +8,8 @@
 // data section starts at align_up(header_end, 32); offsets are relative to
 // that aligned start) and is argmax-parity verified against tinyllama.cpp.
 // This header only maps microtorch state_dicts onto that writer.
+#include <cstddef>
+#include <cstdint>
 #include <map>
 #include <string>
 #include <vector>
@@ -60,7 +62,27 @@ struct LlamaExportConfig {
     std::vector<std::string> merges;
     uint32_t bos_token_id = 1, eos_token_id = 1;
     uint32_t unk_token_id = 0, pad_token_id = 0;
+
+    // Weight storage. "f32" (default) writes every tensor as F32. The Q8_0
+    // variants (llama.cpp's block format, see quantize_q8_0) quantise the 2-D
+    // tensors below and leave everything else F32, matching the ember
+    // session's quantize_gguf.py byte for byte:
+    //   "q8_0"      every 2-D blk.* tensor (attention, dense FFN, MoE router)
+    //   "q8_0_out"  ... plus output.weight (the LM head, as llama.cpp does)
+    //   "q8_0_all"  ... plus token_embd.weight
+    // 3-D MoE expert stacks and the 1-D norms always stay F32. A selected
+    // tensor whose ne0 is not a multiple of 32 throws, naming the tensor.
+    // No metadata changes (no general.file_type), as in the reference.
+    std::string quant = "f32";
 };
+
+// Q8_0 blocks of `n` floats (n a multiple of 32) into n / 32 * 34 bytes:
+// per 32 values an fp16 scale d = max|x| / 127, then 32 int8
+// q = round(x * (1 / d)), half away from zero. Float32 arithmetic and a
+// round-to-nearest-even fp16 conversion, so the bytes equal gguf-py's
+// quants.Q8_0 (itself bit-exact with ggml-quants.c). Throws on n % 32 != 0
+// or a non-finite input.
+void quantize_q8_0(const float* x, size_t n, uint8_t* out);
 
 // Export a state_dict with HF-Llama naming to GGUF:
 //   model.embed_tokens.weight            -> token_embd.weight

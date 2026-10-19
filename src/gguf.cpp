@@ -1,5 +1,8 @@
 #include "microtorch/gguf.hpp"
 
+#include <algorithm>
+#include <cmath>
+#include <cstring>
 #include <memory>
 #include <stdexcept>
 
@@ -23,7 +26,55 @@ const Matrix* find(const std::map<std::string, Matrix>& sd, const std::string& k
     return nullptr;
 }
 
+// float32 -> IEEE fp16 bits, round to nearest even (numpy's astype(float16),
+// which the reference quantiser uses for the block scale), with subnormals,
+// overflow to inf and NaN handled.
+uint16_t fp32_to_fp16(float f) {
+    uint32_t x;
+    std::memcpy(&x, &f, sizeof x);
+    const uint32_t sign = (x >> 16) & 0x8000u;
+    const uint32_t ax = x & 0x7fffffffu;
+    if (ax >= 0x7f800000u) return static_cast<uint16_t>(sign | 0x7c00u | (ax > 0x7f800000u ? 0x200u : 0u));
+    if (ax >= 0x477ff000u) return static_cast<uint16_t>(sign | 0x7c00u);  // >= 65520 rounds to inf
+    if (ax < 0x38800000u) {  // below 2^-14: fp16 subnormal or zero
+        if (ax <= 0x33000000u) return static_cast<uint16_t>(sign);  // <= 2^-25 ties to even 0
+        const uint32_t e = ax >> 23, m = (ax & 0x7fffffu) | 0x800000u;
+        const uint32_t shift = 126 - e;  // value in units of 2^-24 is m >> shift
+        uint32_t h = m >> shift;
+        const uint32_t rem = m & ((1u << shift) - 1), half = 1u << (shift - 1);
+        if (rem > half || (rem == half && (h & 1u))) ++h;  // may carry into the smallest normal
+        return static_cast<uint16_t>(sign | h);
+    }
+    const uint32_t m = ax & 0x7fffffu;
+    uint32_t h = (((ax >> 23) - 112) << 10) | (m >> 13);
+    const uint32_t rem = m & 0x1fffu;
+    if (rem > 0x1000u || (rem == 0x1000u && (h & 1u))) ++h;  // a carry steps the exponent, as it should
+    return static_cast<uint16_t>(sign | h);
+}
+
 }  // namespace
+
+void quantize_q8_0(const float* x, size_t n, uint8_t* out) {
+    if (n % 32 != 0) throw std::runtime_error("quantize_q8_0: n must be a multiple of 32");
+    for (size_t b = 0; b < n / 32; ++b, x += 32, out += 34) {
+        // gguf-py quants.Q8_0.quantize_blocks, operation for operation in
+        // float32: d = amax / 127, id = 1 / d (0 when d is 0), q = roundf(x * id)
+        // where its np_roundf rounds half away from zero, as std::round does.
+        float amax = 0.0f;
+        for (int i = 0; i < 32; ++i) {
+            if (!std::isfinite(x[i])) throw std::runtime_error("quantize_q8_0: non-finite input");
+            amax = std::max(amax, std::fabs(x[i]));
+        }
+        const float d = amax / 127.0f;
+        const float id = d == 0.0f ? 0.0f : 1.0f / d;
+        const uint16_t dh = fp32_to_fp16(d);
+        std::memcpy(out, &dh, 2);  // little-endian, as GGUF stores it
+        for (int i = 0; i < 32; ++i) {
+            const auto q = static_cast<int8_t>(std::round(x[i] * id));
+            std::memcpy(out + 2 + i, &q, 1);
+        }
+    }
+}
 
 void export_gguf_llama(const std::string& path, const std::map<std::string, Matrix>& state_dict,
                        const LlamaExportConfig& cfg, std::vector<std::string>* unmapped) {
@@ -35,6 +86,15 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
     }
     const uint32_t kv_heads = cfg.head_count_kv ? cfg.head_count_kv : cfg.head_count;
     const uint32_t head_dim = cfg.embedding_length / cfg.head_count;
+    const bool q8 = cfg.quant.rfind("q8_0", 0) == 0;
+    if (cfg.quant != "f32" && cfg.quant != "q8_0" && cfg.quant != "q8_0_out" && cfg.quant != "q8_0_all")
+        throw std::runtime_error("export_gguf_llama: quant must be f32, q8_0, q8_0_out or q8_0_all, got " +
+                                 cfg.quant);
+    // GGUFWriter sizes a tensor as num_elements * ggml_type_size(type), and
+    // its size for Q8_0 is 1 (a byte count), so a Q8_0 tensor is handed over
+    // with num_elements = its byte count. Refuse a writer that changed that.
+    if (q8 && gguf_export::ggml_type_size(GGMLType::Q8_0) != 1)
+        throw std::runtime_error("export_gguf_llama: GGUFWriter's Q8_0 size convention changed");
 
     GGUFWriter writer(path);
 
@@ -79,6 +139,30 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
     std::vector<std::unique_ptr<std::vector<float>>> owned;
     std::vector<std::string> mapped_keys;  // dict keys we consumed
 
+    // Every tensor goes through here: under a Q8_0 quant the selected 2-D
+    // tensors are quantised into a kept-alive byte buffer (see
+    // LlamaExportConfig::quant for the selection, the reference's rule).
+    std::vector<std::unique_ptr<std::vector<uint8_t>>> owned_q8;
+    auto add = [&](TensorExportInfo info) {
+        const bool pick = q8 && info.shape.size() == 2 && info.type == GGMLType::F32 &&
+                          (info.name.rfind("blk.", 0) == 0 ||
+                           (cfg.quant != "q8_0" && info.name == "output.weight") ||
+                           (cfg.quant == "q8_0_all" && info.name == "token_embd.weight"));
+        if (pick) {
+            const uint64_t ne0 = info.shape.back();  // the writer reverses: last entry is ne0
+            if (ne0 % 32 != 0)
+                throw std::runtime_error("export_gguf_llama: " + info.name + " has ne0 = " + std::to_string(ne0) +
+                                         ", not a multiple of 32, so it cannot be stored as Q8_0");
+            auto buf = std::make_unique<std::vector<uint8_t>>(info.num_elements / 32 * 34);
+            quantize_q8_0(info.data, info.num_elements, buf->data());
+            info.type = GGMLType::Q8_0;
+            info.data = reinterpret_cast<const float*>(buf->data());  // written as raw bytes
+            info.num_elements = buf->size();
+            owned_q8.push_back(std::move(buf));
+        }
+        writer.add_tensor(info);
+    };
+
     // NOTE: GGUFWriter takes `shape` in row-major (numpy) order and writes it
     // REVERSED, so ne0 (the contiguous axis) is the LAST entry passed. An
     // [out][in] buffer is passed as {out, in} and lands as ne = {in, out}, the
@@ -108,7 +192,7 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
             info.data = &w(0, 0);
             info.num_elements = w.rows() * w.cols();
         }
-        writer.add_tensor(info);
+        add(info);
     };
 
     // RMSNorm gamma stored [1, d] -> 1-D tensor {d}.
@@ -119,7 +203,7 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
         info.type = GGMLType::F32;
         info.data = &g(0, 0);
         info.num_elements = g.rows() * g.cols();
-        writer.add_tensor(info);
+        add(info);
     };
 
     auto require = [&](const std::string& key) -> const Matrix& {
@@ -158,7 +242,7 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
         info.data = buf->data();
         info.num_elements = buf->size();
         owned.push_back(std::move(buf));
-        writer.add_tensor(info);
+        add(info);
     };
     // Router: microtorch [d, E] (or HF [E, d]) -> [E][d] bytes, ne = {d, E}.
     auto add_router = [&](const std::string& hf_prefix, const std::string& gguf_name) {
@@ -189,7 +273,7 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
         info.type = GGMLType::F32;
         info.data = &emb(0, 0);
         info.num_elements = emb.rows() * emb.cols();
-        writer.add_tensor(info);
+        add(info);
     }
 
     for (uint32_t l = 0; l < cfg.block_count; ++l) {

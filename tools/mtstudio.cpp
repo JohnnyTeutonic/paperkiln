@@ -2,12 +2,13 @@
 //
 //   mtstudio run spec.json          execute the spec
 //   mtstudio plan spec.json         print the resolved plan and exit
+//   mtstudio export spec.json       re-export trained weights (GGUF F32 / Q8_0)
 //
 // One JSON describes the lifecycle; this driver executes it stage by
 // stage and emits a JSONL event stream (stdout + <out>/events.jsonl) that
 // the M2 UI will consume. v0 scope: arch presets + custom dims, corpus +
 // GGUF vocab, train with early stopping + checkpoint/resume, safetensors
-// export, GGUF export for llama-family models, serve-command print.
+// export, GGUF export (F32 or Q8_0) for llama-family models, serve-command print.
 // (arXiv arch population and the finetune stage are the documented next
 // increments; papers/fetch.py already emits the config this schema takes.)
 #include <algorithm>
@@ -24,6 +25,7 @@
 #include <map>
 #include <mutex>
 #include <random>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -127,6 +129,9 @@ struct Spec {
     float es_min_delta = 0.0f;
     // export/serve
     bool exp_safetensors = true, exp_gguf = false;
+    // Quantised GGUFs (formats gguf_q8_0 / gguf_q8_0_out / gguf_q8_0_all):
+    // the LlamaExportConfig::quant values, each written to <name>_<quant>.gguf.
+    std::vector<std::string> exp_gguf_quants;
     bool serve = false;
     std::string out_dir = "mtstudio_out";
 };
@@ -139,6 +144,17 @@ const std::map<std::string, std::array<size_t, 4>> PRESETS = {
     {"srd-tiny", {128, 2, 4, 128}},   {"attnres-tiny", {128, 2, 4, 128}},
     {"swa-tiny", {128, 2, 4, 128}},
 };
+
+// export.formats "gguf_q8_0" | "gguf_q8_0_out" | "gguf_q8_0_all" -> the
+// LlamaExportConfig::quant value. Any other gguf_* format is refused: a
+// mistyped format must not quietly export nothing.
+std::string gguf_quant_of(const std::string& fmt) {
+    const std::string q = fmt.substr(5);
+    if (q != "q8_0" && q != "q8_0_out" && q != "q8_0_all")
+        throw std::runtime_error("unknown export format " + fmt +
+                                 " (gguf, gguf_q8_0, gguf_q8_0_out, gguf_q8_0_all, safetensors)");
+    return q;
+}
 
 Spec parse_spec(const std::string& path) {
     std::ifstream f(path);
@@ -320,6 +336,7 @@ Spec parse_spec(const std::string& path) {
     for (const auto& fmt : ex.value("formats", std::vector<std::string>{"safetensors"})) {
         if (fmt == "gguf") s.exp_gguf = true;
         if (fmt == "safetensors") s.exp_safetensors = true;
+        if (fmt.rfind("gguf_", 0) == 0) s.exp_gguf_quants.push_back(gguf_quant_of(fmt));
     }
     s.serve = j.value("serve", json::object()).value("on_finish", false);
     s.out_dir = j.value("out_dir", s.out_dir);
@@ -798,6 +815,90 @@ std::vector<double> pair_margins(const Matrix& logits, const PrefBatch& b, size_
     return m;
 }
 
+// GGUF exports of a trained model into out_dir: <name>.gguf (F32) when
+// s.exp_gguf, and <name>_<quant>.gguf for each of s.exp_gguf_quants (the
+// Q8_0 variants). Shared by `run` and `export`; `llama` is null for the
+// non-llama families, which are reported as skipped.
+void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama,
+                  const std::vector<std::string>& tokens, const std::map<std::string, int>& vocab,
+                  const std::string& rope_heads, const std::string& out_dir,
+                  const std::function<void(const json&)>& emit) {
+    if (llama && s.moe_experts > 0 && s.moe_gate == "raw") {
+        // llama.cpp's llama-architecture MoE renormalises its top-k gates;
+        // a raw-gate (Switch) model would be served with different outputs.
+        emit({{"event", "export_skipped"},
+              {"format", "gguf"},
+              {"reason", "moe gate=raw: llama.cpp renormalises top-k gates, so it would not reproduce this model"}});
+    } else if (llama) {
+        auto sd2 = model_ref.state_dict();
+        // Tied head: inject lm_head = E^T in microtorch [in, out]
+        // layout; the exporter transposes it back into llama
+        // [vocab, hidden] byte order under weights_in_out.
+        if (!sd2.count("lm_head.weight")) {
+            const Matrix& E = llama->embed_tokens->weight->data;
+            Matrix ET(E.cols(), E.rows());
+            for (size_t i = 0; i < E.rows(); ++i)
+                for (size_t j = 0; j < E.cols(); ++j) ET(j, i) = E(i, j);
+            sd2.emplace("lm_head.weight", std::move(ET));
+        }
+        gguf::LlamaExportConfig gc;
+        gc.name = s.name;
+        gc.embedding_length = (uint32_t)s.d;
+        gc.block_count = (uint32_t)s.layers;
+        gc.head_count = (uint32_t)s.heads;
+        // The model's real FFN width. Exports before 19 Oct 2026 wrote 3d
+        // whatever arch.custom.d_ff said; llama.cpp checks ffn tensor
+        // shapes against this value.
+        gc.feed_forward_length = (uint32_t)llama->cfg.d_ff;
+        if (s.moe_experts > 0) {
+            gc.expert_count = (uint32_t)s.moe_experts;
+            gc.expert_used_count = (uint32_t)s.moe_top_k;
+        }
+        gc.vocab_size = (uint32_t)tokens.size();
+        gc.context_length = (uint32_t)s.T;
+        // The epsilon ops::rmsnorm trains with (src/ops.cpp). Exports
+        // before 19 Oct 2026 wrote 1e-6, so engines normalised slightly
+        // differently from training (greedy parity held at 40/40).
+        gc.rms_eps = 1e-5f;
+        gc.weights_in_out = true;  // microtorch Linear is [in, out]
+        gc.tokens = tokens;
+        // A BPE vocabulary travels with the model: without its merges an
+        // engine reading the export would split text into bytes only.
+        if (g_bpe) {
+            gc.tokenizer_model = "bpe";
+            gc.merges = bpe::read_gguf_tokenizer(s.vocab_gguf).merges;
+        }
+        // End-of-text in the vocabulary -> the GGUF's eos id, so an
+        // external engine stops where this one does (else keep the
+        // exporter's default).
+        if (const int e = wordtok::eos_id(vocab); e >= 0) gc.eos_token_id = (uint32_t)e;
+        std::vector<std::string> quants;
+        if (s.exp_gguf) quants.push_back("f32");
+        quants.insert(quants.end(), s.exp_gguf_quants.begin(), s.exp_gguf_quants.end());
+        for (const auto& q : quants) {
+            gc.quant = q;
+            const bool f32 = q == "f32";
+            const std::string gpath = out_dir + "/" + s.name + (f32 ? "" : "_" + q) + ".gguf";
+            gguf::export_gguf_llama(gpath, sd2, gc);
+            json xe = {{"event", "export"},
+                       {"format", f32 ? "gguf" : "gguf_" + q},
+                       {"path", gpath},
+                       {"rope_heads", rope_heads}};
+            // GGUF llama (rope.dimension_count = d/H) means RoPE on every
+            // head; engines reading it reproduce this model only under "all".
+            if (rope_heads == "first" && s.heads > 1)
+                xe["warning"] =
+                    "rope_heads=first: GGUF engines rotate every head, so they will not "
+                    "reproduce this model's outputs";
+            emit(xe);
+        }
+    } else {
+        emit({{"event", "export_skipped"},
+              {"format", "gguf"},
+              {"reason", "gpt2-family blocks are not llama-shaped"}});
+    }
+}
+
 int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     std::printf("== mtstudio: %s ==\n", s.name.c_str());
     std::printf("arch: %s d=%zu layers=%zu heads=%zu | T=%zu vocab_cap=%zu\n", s.attention.c_str(),
@@ -807,8 +908,10 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         "ckpt_every=%d early_stop(patience=%zu, min_delta=%g)\n",
         s.steps, s.batch, s.accum, s.lr, s.clip, s.eval_every, s.ckpt_every, s.es_patience,
         s.es_min_delta);
-    std::printf("export: %s%s | serve: %s | out: %s\n", s.exp_safetensors ? "safetensors " : "",
-                s.exp_gguf ? "gguf" : "", s.serve ? "yes" : "no", s.out_dir.c_str());
+    std::string quants;
+    for (const auto& q : s.exp_gguf_quants) quants += " gguf_" + q;
+    std::printf("export: %s%s%s | serve: %s | out: %s\n", s.exp_safetensors ? "safetensors " : "",
+                s.exp_gguf ? "gguf" : "", quants.c_str(), s.serve ? "yes" : "no", s.out_dir.c_str());
     if (s.family == "llama")
         std::printf("rope_heads: %s\n", s.rope_heads.empty()
                                             ? "unstated (all for a new run; a resumed run keeps "
@@ -1574,75 +1677,9 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         save_safetensors(spath, model_ref.state_dict());
         ev.emit({{"event", "export"}, {"format", "safetensors"}, {"path", spath}});
     }
-    if (s.exp_gguf) {
-        if (llama && s.moe_experts > 0 && s.moe_gate == "raw") {
-            // llama.cpp's llama-architecture MoE renormalises its top-k gates;
-            // a raw-gate (Switch) model would be served with different outputs.
-            ev.emit({{"event", "export_skipped"},
-                     {"format", "gguf"},
-                     {"reason", "moe gate=raw: llama.cpp renormalises top-k gates, so it would not reproduce this model"}});
-        } else if (llama) {
-            auto sd2 = model_ref.state_dict();
-            // Tied head: inject lm_head = E^T in microtorch [in, out]
-            // layout; the exporter transposes it back into llama
-            // [vocab, hidden] byte order under weights_in_out.
-            if (!sd2.count("lm_head.weight")) {
-                const Matrix& E = llama->embed_tokens->weight->data;
-                Matrix ET(E.cols(), E.rows());
-                for (size_t i = 0; i < E.rows(); ++i)
-                    for (size_t j = 0; j < E.cols(); ++j) ET(j, i) = E(i, j);
-                sd2.emplace("lm_head.weight", std::move(ET));
-            }
-            gguf::LlamaExportConfig gc;
-            gc.name = s.name;
-            gc.embedding_length = (uint32_t)s.d;
-            gc.block_count = (uint32_t)s.layers;
-            gc.head_count = (uint32_t)s.heads;
-            // The model's real FFN width. Exports before 19 Oct 2026 wrote 3d
-            // whatever arch.custom.d_ff said; llama.cpp checks ffn tensor
-            // shapes against this value.
-            gc.feed_forward_length = (uint32_t)llama->cfg.d_ff;
-            if (s.moe_experts > 0) {
-                gc.expert_count = (uint32_t)s.moe_experts;
-                gc.expert_used_count = (uint32_t)s.moe_top_k;
-            }
-            gc.vocab_size = (uint32_t)tokens.size();
-            gc.context_length = (uint32_t)s.T;
-            // The epsilon ops::rmsnorm trains with (src/ops.cpp). Exports
-            // before 19 Oct 2026 wrote 1e-6, so engines normalised slightly
-            // differently from training (greedy parity held at 40/40).
-            gc.rms_eps = 1e-5f;
-            gc.weights_in_out = true;  // microtorch Linear is [in, out]
-            gc.tokens = tokens;
-            // A BPE vocabulary travels with the model: without its merges an
-            // engine reading the export would split text into bytes only.
-            if (g_bpe) {
-                gc.tokenizer_model = "bpe";
-                gc.merges = bpe::read_gguf_tokenizer(s.vocab_gguf).merges;
-            }
-            // End-of-text in the vocabulary -> the GGUF's eos id, so an
-            // external engine stops where this one does (else keep the
-            // exporter's default).
-            if (const int e = wordtok::eos_id(vocab); e >= 0) gc.eos_token_id = (uint32_t)e;
-            const std::string gpath = s.out_dir + "/" + s.name + ".gguf";
-            gguf::export_gguf_llama(gpath, sd2, gc);
-            json xe = {{"event", "export"},
-                       {"format", "gguf"},
-                       {"path", gpath},
-                       {"rope_heads", rope_heads}};
-            // GGUF llama (rope.dimension_count = d/H) means RoPE on every
-            // head; engines reading it reproduce this model only under "all".
-            if (rope_heads == "first" && s.heads > 1)
-                xe["warning"] =
-                    "rope_heads=first: GGUF engines rotate every head, so they will not "
-                    "reproduce this model's outputs";
-            ev.emit(xe);
-        } else {
-            ev.emit({{"event", "export_skipped"},
-                     {"format", "gguf"},
-                     {"reason", "gpt2-family blocks are not llama-shaped"}});
-        }
-    }
+    if (s.exp_gguf || !s.exp_gguf_quants.empty())
+        export_ggufs(s, model_ref, llama.get(), tokens, vocab, rope_heads, s.out_dir,
+                     [&](const json& j) { ev.emit(j); });
     const double wall_s =
         std::chrono::duration<double>(std::chrono::steady_clock::now() - t_train0).count();
     ev.emit({{"event", "done"},
@@ -1936,17 +1973,52 @@ struct LoadedLM {
     }
 };
 
-std::function<Var(const std::vector<int>&, size_t)> make_reference(const Spec& s) {
+// The spec re-pointed at a .safetensors file (out_dir = its directory, name =
+// its stem), which is where LoadedLM looks for weights.
+Spec at_safetensors(const Spec& s, const std::string& path, const std::string& what) {
     const std::string suffix = ".safetensors";
-    if (s.init_from.size() <= suffix.size() || s.init_from.compare(s.init_from.size() - suffix.size(), suffix.size(), suffix) != 0)
-        throw std::runtime_error("train.init_from must name a .safetensors file");
+    if (path.size() <= suffix.size() || path.compare(path.size() - suffix.size(), suffix.size(), suffix) != 0)
+        throw std::runtime_error(what + " must name a .safetensors file");
     Spec r = s;
-    const auto slash = s.init_from.find_last_of('/');
-    r.out_dir = slash == std::string::npos ? "." : s.init_from.substr(0, slash);
-    r.name = s.init_from.substr(slash == std::string::npos ? 0 : slash + 1);
+    const auto slash = path.find_last_of('/');
+    r.out_dir = slash == std::string::npos ? "." : path.substr(0, slash);
+    r.name = path.substr(slash == std::string::npos ? 0 : slash + 1);
     r.name.resize(r.name.size() - suffix.size());
-    auto lm = std::make_shared<LoadedLM>(r);
+    return r;
+}
+
+std::function<Var(const std::vector<int>&, size_t)> make_reference(const Spec& s) {
+    auto lm = std::make_shared<LoadedLM>(at_safetensors(s, s.init_from, "train.init_from"));
     return [lm](const std::vector<int>& ids, size_t seq_len) { return lm->forward(ids, seq_len); };
+}
+
+// Re-export a trained model without training: rebuild the spec's model, load
+// `from` (default: the run's <out_dir>/<name>.safetensors) and write the
+// comma-separated GGUF `formats` (default: the spec's export.formats) into
+// `out_dir` (default: the spec's), named after the spec.
+int export_cmd(Spec s, const std::string& from, const std::string& formats, const std::string& out_dir) {
+    if (!formats.empty()) {
+        s.exp_gguf = false;
+        s.exp_gguf_quants.clear();
+        std::stringstream ss(formats);
+        for (std::string fmt; std::getline(ss, fmt, ',');) {
+            if (fmt == "gguf")
+                s.exp_gguf = true;
+            else if (fmt.rfind("gguf_", 0) == 0)
+                s.exp_gguf_quants.push_back(gguf_quant_of(fmt));
+            else
+                throw std::runtime_error("export: unknown format " + fmt +
+                                         " (gguf, gguf_q8_0, gguf_q8_0_out, gguf_q8_0_all)");
+        }
+    }
+    if (!s.exp_gguf && s.exp_gguf_quants.empty())
+        throw std::runtime_error("export: no GGUF format requested (--formats or export.formats)");
+    LoadedLM lm(from.empty() ? s : at_safetensors(s, from, "--from"));
+    const std::string dest = out_dir.empty() ? s.out_dir : out_dir;
+    std::filesystem::create_directories(dest);
+    export_ggufs(s, lm.model(), lm.llama.get(), lm.tokens, lm.vocab, lm.rope_heads, dest,
+                 [](const json& j) { std::printf("%s\n", j.dump().c_str()); });
+    return 0;
 }
 
 // The quick-look sampler (ECOSYSTEM.md feature 2): rebuild the spec's
@@ -2674,6 +2746,17 @@ int main(int argc, char** argv) {
             const std::string spec = argc > 4 ? argv[4] : "";
             return serve_ui(argv[2], port, ui ? ui : "studio/index.html", spec, self_exe(argv[0]));
         }
+        if (cmd == "export" && argc >= 3) {
+            std::string from, formats, out_dir;
+            for (int i = 3; i + 1 < argc; i += 2) {
+                const std::string k = argv[i], v = argv[i + 1];
+                if (k == "--from") from = v;
+                else if (k == "--formats") formats = v;
+                else if (k == "--out-dir") out_dir = v;
+                else throw std::runtime_error("export: unknown option " + k);
+            }
+            return export_cmd(parse_spec(argv[2]), from, formats, out_dir);
+        }
         if (cmd == "chat" && argc >= 3) {
             std::string host = "127.0.0.1";
             int port = 8080;
@@ -2694,6 +2777,8 @@ int main(int argc, char** argv) {
                  "[--topk K] [--seed S] [--out FILE]\n"
                  "       mtstudio sample-set spec.json --prompts P.jsonl --out R.jsonl [--n 8] "
                  "[--temp 1.0] [--seed 17] [--max-new 16]\n"
+                 "       mtstudio export spec.json [--from model.safetensors] "
+                 "[--formats gguf,gguf_q8_0,gguf_q8_0_out,gguf_q8_0_all] [--out-dir DIR]\n"
                  "       mtstudio serve <out_dir> [port] [spec]   (MTSTUDIO_UI "
                  "overrides the index.html path)\n"
                  "       mtstudio chat <out_dir|spec.json> [--port 8080] [--host 127.0.0.1]\n");
