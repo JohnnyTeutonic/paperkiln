@@ -37,8 +37,8 @@ import time
 
 COL = os.path.expanduser("~/.local/bin/colab")
 REPO = "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete"
-CORPUS = f"{REPO}/transformer_cpp/data/tinystories-txt/train-0-small.txt"
-VOCAB = f"{REPO}/transformer_cpp/releases/chat7b.gguf"
+CORPUS = f"{REPO}/coalfire.cpp/data/tinystories-txt/train-0-small.txt"
+VOCAB = f"{REPO}/coalfire.cpp/releases/chat7b.gguf"
 PAPERKILN = "https://github.com/JohnnyTeutonic/paperkiln.git"
 COALFIRE = "https://github.com/JohnnyTeutonic/coalfire.cpp.git"
 

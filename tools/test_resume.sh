@@ -15,8 +15,8 @@
 set -euo pipefail
 REPO=/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete
 MT=$HOME/mtrel/mtstudio
-CORPUS=$REPO/transformer_cpp/data/tinystories-txt/train-0-small.txt
-VOCAB=$REPO/transformer_cpp/releases/chat7b.gguf
+CORPUS=$REPO/coalfire.cpp/data/tinystories-txt/train-0-small.txt
+VOCAB=$REPO/coalfire.cpp/releases/chat7b.gguf
 W=/tmp/resume_test
 rm -rf "$W"; mkdir -p "$W"
 

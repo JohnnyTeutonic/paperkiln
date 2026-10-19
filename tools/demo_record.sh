@@ -30,7 +30,7 @@ cd "$(dirname "$0")/.."   # repo root, wherever the script is launched from
 
 # Arguments optional: defaults point at the standard sibling-repo layout
 # (override by passing paths, or via DEMO_CORPUS / DEMO_VOCAB / DEMO_TL).
-_SIB=$(cd .. 2>/dev/null && pwd)/transformer_cpp
+_SIB=$(cd .. 2>/dev/null && pwd)/coalfire.cpp
 CORPUS=${1:-${DEMO_CORPUS:-$_SIB/data/tinystories-txt/train-0-small.txt}}
 VOCAB=${2:-${DEMO_VOCAB:-$_SIB/releases/chat7b.gguf}}
 TL=${3:-${DEMO_TL:-$HOME/tlbuild/tinyllama}}

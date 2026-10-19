@@ -11,7 +11,7 @@
 # the final chat step.
 set -e
 cd "$(dirname "$0")/.."   # repo root, wherever the script is launched from
-_SIB=$(cd .. 2>/dev/null && pwd)/transformer_cpp
+_SIB=$(cd .. 2>/dev/null && pwd)/coalfire.cpp
 CORPUS=${1:-${DEMO_CORPUS:-$_SIB/data/tinystories-txt/train-0-small.txt}}
 VOCAB=${2:-${DEMO_VOCAB:-$_SIB/releases/chat7b.gguf}}
 TL=${3:-${DEMO_TL:-$HOME/tlbuild/tinyllama}}

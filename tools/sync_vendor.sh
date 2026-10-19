@@ -4,7 +4,7 @@
 # locally; clones build from the vendored copy.)
 set -e
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
-SRC="$HERE/../transformer_cpp"
+SRC="$HERE/../coalfire.cpp"
 DST="$HERE/third_party/transformer_cpp"
 [ -f "$SRC/CMakeLists.txt" ] || { echo "no sibling transformer_cpp"; exit 1; }
 rm -rf "$DST" && mkdir -p "$DST"

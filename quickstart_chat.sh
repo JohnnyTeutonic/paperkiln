@@ -152,7 +152,7 @@ MTSTUDIO="$BUILD/mtstudio"
 
 build_mtstudio() {
   step "Building paperkiln (a few minutes the first time)"
-  [ -e third_party/transformer_cpp ] || [ -e ../transformer_cpp ] \
+  [ -e third_party/transformer_cpp ] || [ -e ../coalfire.cpp ] || [ -e ../transformer_cpp ] \
     || die "third_party/transformer_cpp is missing; re-clone with: git clone --recursive https://github.com/JohnnyTeutonic/paperkiln"
   cmake -S . -B "$BUILD" -DCMAKE_BUILD_TYPE=Release >"$BUILD.configure.log" 2>&1 \
     || { tail -20 "$BUILD.configure.log"; die "CMake configuration failed (full log: $BUILD.configure.log)."; }
