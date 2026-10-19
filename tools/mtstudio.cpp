@@ -1477,7 +1477,10 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             gc.feed_forward_length = (uint32_t)(3 * s.d);
             gc.vocab_size = (uint32_t)tokens.size();
             gc.context_length = (uint32_t)s.T;
-            gc.rms_eps = 1e-6f;
+            // The epsilon ops::rmsnorm trains with (src/ops.cpp). Exports
+            // before 19 Oct 2026 wrote 1e-6, so engines normalised slightly
+            // differently from training (greedy parity held at 40/40).
+            gc.rms_eps = 1e-5f;
             gc.weights_in_out = true;  // microtorch Linear is [in, out]
             gc.tokens = tokens;
             // A BPE vocabulary travels with the model: without its merges an
