@@ -1,0 +1,21 @@
+{
+  "T": 256,
+  "accum": 1,
+  "attention": "exact",
+  "batch": 16,
+  "best_val": 2.631129264831543,
+  "checkpoint_activations": false,
+  "d": 384,
+  "early_stopped": false,
+  "family": "llama",
+  "final_step": 500,
+  "heads": 6,
+  "layers": 6,
+  "lr": 0.0003000000142492354,
+  "name": "chat_fwsft",
+  "params": 14652288,
+  "seed": 1,
+  "steps_requested": 500,
+  "tokens_per_second": 1520.5139217753465,
+  "wall_seconds": 1346.913021098
+}

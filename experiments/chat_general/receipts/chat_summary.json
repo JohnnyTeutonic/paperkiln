@@ -1,0 +1,35 @@
+{
+ "live": {
+  "clean_stop": 1.0,
+  "distinct2": 0.9992307692307691,
+  "repeat_frac": 0.0,
+  "prompt_overlap": 0.14959126984126983,
+  "ref_f1": 0.16238900247825197,
+  "words": 14.21,
+  "ref_bpb": 0.5645141478396074,
+  "ref_examples": 100,
+  "samples": 100
+ },
+ "fwsft": {
+  "clean_stop": 1.0,
+  "distinct2": 0.9924987984450899,
+  "repeat_frac": 0.1,
+  "prompt_overlap": 0.14103174603174604,
+  "ref_f1": 0.08506721056721057,
+  "words": 14.77,
+  "ref_bpb": 0.8378735510040528,
+  "ref_examples": 100,
+  "samples": 100
+ },
+ "fwmix": {
+  "clean_stop": 1.0,
+  "distinct2": 0.9903522408963586,
+  "repeat_frac": 0.06,
+  "prompt_overlap": 0.134,
+  "ref_f1": 0.08862189564821144,
+  "words": 14.71,
+  "ref_bpb": 0.8422480572331275,
+  "ref_examples": 100,
+  "samples": 100
+ }
+}

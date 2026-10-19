@@ -1,0 +1,21 @@
+{
+  "T": 256,
+  "accum": 1,
+  "attention": "exact",
+  "batch": 16,
+  "best_val": 3.4372828006744385,
+  "checkpoint_activations": false,
+  "d": 384,
+  "early_stopped": false,
+  "family": "llama",
+  "final_step": 47500,
+  "heads": 6,
+  "layers": 6,
+  "lr": 0.0010000000474974513,
+  "name": "fw_base",
+  "params": 14652288,
+  "seed": 1,
+  "steps_requested": 47500,
+  "tokens_per_second": 3587.375427747874,
+  "wall_seconds": 50809.290432819
+}
