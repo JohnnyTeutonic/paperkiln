@@ -98,32 +98,49 @@ def upload_file(src, dst):
             i += 1
 
 
-def relay(st, name):
-    """Download the job's state.txt; if its step advanced, the checkpoint too."""
+def relay(st, name, every=0):
+    """If the job's step advanced (by at least `every`), snapshot its
+    checkpoint set on the VM and download the snapshot. Downloading the live
+    files raced the saves: at ~1.6 MB/s a 0.85-1.1 GB set takes longer than a
+    save interval, so every relay came home torn and was discarded."""
     art = os.path.join(ART, name)
     os.makedirs(art, exist_ok=True)
     js = st.job(name)
-    tmp = os.path.join(art, "state.txt.new")
-    rc, _ = colab("download", "-s", NAME, f"/content/chat/{name}/state.txt", tmp, timeout=200)
-    if rc != 0 or not os.path.exists(tmp):
+    src, snap = f"/content/chat/{name}", f"/content/chat/relay_{name}"
+    rc, out = exec_py(
+        "import os, shutil\n"
+        f"src, snap = {src!r}, {snap!r}\n"
+        "def step():\n"
+        "    p = os.path.join(src, 'state.txt')\n"
+        "    return int(open(p).readline().strip() or 0) if os.path.exists(p) else 0\n"
+        "s0 = step()\n"
+        f"if s0 > {js['relayed_step']} and s0 - {js['relayed_step']} >= {every}:\n"
+        "    os.makedirs(snap + '.tmp', exist_ok=True)\n"
+        "    for f in ('model.safetensors', 'optim.safetensors', 'events.jsonl', 'state.txt'):\n"
+        "        shutil.copyfile(os.path.join(src, f), os.path.join(snap + '.tmp', f))\n"
+        "    if step() == s0 and int(open(os.path.join(snap + '.tmp', 'state.txt')).readline()) == s0:\n"
+        "        shutil.rmtree(snap, ignore_errors=True)\n"
+        "        os.replace(snap + '.tmp', snap)\n"
+        "        print('SNAP', s0)\n"
+        "    else:\n"
+        "        print('SNAPTORN', s0)\n"
+        "else:\n"
+        "    print('SNAPSKIP', s0)\n")
+    m = re.search(r"SNAP (\d+)", out)
+    if not m:
+        if "SNAPTORN" in out:
+            log(f"{name}: snapshot overtaken by a save; will retry")
         return
-    step = int(open(tmp).readline().strip() or 0)
-    if step <= js["relayed_step"]:
-        os.remove(tmp)
-        return
+    step = int(m.group(1))
     ok = True
-    for f in ("model.safetensors", "optim.safetensors", "events.jsonl"):
-        rc, _ = colab("download", "-s", NAME, f"/content/chat/{name}/{f}", os.path.join(art, f + ".new"), timeout=1800)
+    for f in ("model.safetensors", "optim.safetensors", "events.jsonl", "state.txt"):
+        dst = os.path.join(art, "state.txt.new" if f == "state.txt" else f + ".new")
+        rc, _ = colab("download", "-s", NAME, f"{snap}/{f}", dst, timeout=2400)
         ok = ok and rc == 0
-    tmp2 = os.path.join(art, "state.txt.check")
-    rc, _ = colab("download", "-s", NAME, f"/content/chat/{name}/state.txt", tmp2, timeout=200)
-    if rc == 0 and os.path.exists(tmp2):
-        ok = ok and int(open(tmp2).readline().strip() or 0) == step
-        os.remove(tmp2)
-    else:
-        ok = False
+    tmp = os.path.join(art, "state.txt.new")
+    ok = ok and os.path.exists(tmp) and int(open(tmp).readline().strip() or 0) == step
     if not ok:
-        log(f"{name}: relay at step {step} incomplete or overtaken by a save; will retry")
+        log(f"{name}: relay download of the step-{step} snapshot failed; will retry")
         return
     for f in ("model.safetensors", "optim.safetensors", "events.jsonl"):
         os.replace(os.path.join(art, f + ".new"), os.path.join(art, f))
@@ -286,8 +303,8 @@ def main():
                     log(f"{n}: {r[n]}  {r.get(n + '_tail', '')[-120:]}")
                     js["status"] = r[n]
                     st.save()
-                if r[n] in ("RUNNING", "FINISHED") and not js["home"]:
-                    relay(st, n)
+                if r[n] == "RUNNING" and not js["home"]:
+                    relay(st, n, j.get("relay_every_steps", 0))
                 if r[n] == "FINISHED" and not js["home"]:
                     fetch_final(st, n, j.get("model_name", n))
                 # FAILED counts only when seen on two ticks running: a status
