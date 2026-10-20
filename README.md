@@ -118,7 +118,7 @@ onto the page. The extracted architecture fills the spec builder, the diagram re
 checkpoint. Every GGUF carries its tokeniser and the model's graph (`paperkiln.ir`).
 
 - [ember.cpp](https://github.com/JohnnyTeutonic/ember.cpp) runs every family (CPU, CUDA,
-  WebAssembly); the flex_plain check is pending.
+  WebAssembly).
 - llama.cpp runs the llama, MoE and gpt2 exports, given token ids.
 - `python tools/hf_export.py <run> --hf-dir <dir>` turns a llama-family run into a folder that
   `transformers.from_pretrained` opens.
