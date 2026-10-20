@@ -743,6 +743,33 @@ Var silu(const Var& x) {
     });
 }
 
+Var swiglu(const Var& gate, const Var& up) {
+    // The llama FFN's silu(gate) .* up as one device op (20 Oct 2026): the
+    // [rows, d_ff] silu output, a quarter of a dense layer's kept
+    // activations, is recomputed from gate in the backward rather than
+    // stored. The kernels evaluate silu, its derivative and both products
+    // exactly as k_silu_fwd/k_silu_bwd and k_mul do, so the gradients and
+    // the step are bit for bit those of mul(silu(gate), up), which is what
+    // runs whenever the device op does not (CPU, host-fresh operands).
+    if (device_side(gate->data, up->data)) {
+        Matrix out = device::out_matrix(gate->data.rows(), gate->data.cols());
+        if (device::devops::swiglu_fwd(gate->data, up->data, out))
+            return record(std::move(out), {gate, up}, [](Variable* self) {
+                const Var& g = self->parents[0];
+                const Var& u = self->parents[1];
+                const size_t R = self->grad.rows(), C = self->grad.cols();
+                Matrix dg = g->requires_grad ? device::out_matrix(R, C) : Matrix();
+                Matrix du = u->requires_grad ? device::out_matrix(R, C) : Matrix();
+                if (!device::devops::swiglu_bwd(g->data, u->data, self->grad, g->requires_grad ? &dg : nullptr,
+                                                u->requires_grad ? &du : nullptr))
+                    throw std::runtime_error("swiglu: device backward unavailable");
+                if (g->requires_grad) g->accumulate(std::move(dg));
+                if (u->requires_grad) u->accumulate(std::move(du));
+            });
+    }
+    return mul(silu(gate), up);
+}
+
 Var rmsnorm(const Var& x, const Var& w) {
     const size_t R = x->data.rows(), C = x->data.cols();
     if (w->data.rows() != 1 || w->data.cols() != C) {

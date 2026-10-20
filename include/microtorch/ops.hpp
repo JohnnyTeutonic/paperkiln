@@ -78,6 +78,10 @@ Var mul_row(const Var& x, const Var& r);  // x .* broadcast row r [1, cols];
                                           // multiplicative twin of add_bias
 Var silu(const Var& x);                   // x * sigmoid(x) (DiT's nonlinearity
                                           // for the conditioning MLP)
+Var swiglu(const Var& gate, const Var& up);  // mul(silu(gate), up), the same
+                                             // bits; on the device one op that
+                                             // recomputes silu(gate) in backward
+                                             // instead of keeping it
 
 // ---- phase 2b additions (Llama-family dependencies) ----
 // The epsilon rmsnorm adds to mean(x^2), on host and device alike (the IR

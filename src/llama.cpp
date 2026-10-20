@@ -89,7 +89,7 @@ Var LlamaBlock::forward(const Var& x, const std::vector<int>& pos, size_t seq_le
     // ---- SwiGLU FFN sublayer (dense, or a top-k mixture of SwiGLU experts) ----
     Var h2 = ops::rmsnorm(x1, ln2_w);
     Var ffn = moe ? moe->forward(h2, aux)
-                  : down_proj->forward(ops::mul(ops::silu(gate_proj->forward(h2)), up_proj->forward(h2)));
+                  : down_proj->forward(ops::swiglu(gate_proj->forward(h2), up_proj->forward(h2)));
     Var out = ops::add(x1, ffn);
     if (!moe) device::release(ffn->data);
     return out;

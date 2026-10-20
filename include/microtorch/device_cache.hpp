@@ -253,6 +253,10 @@ bool sigmoid_fwd(const Matrix& x, Matrix& y);
 bool sigmoid_bwd(const Matrix& s, const Matrix& dy, Matrix& dx);
 bool silu_fwd(const Matrix& x, Matrix& y);
 bool silu_bwd(const Matrix& x, const Matrix& dy, Matrix& dx);
+// ops::swiglu: y = silu(g) .* u; backward dg = (dy .* u) silu'(g) and
+// du = dy .* silu(g), silu recomputed (dg/du may be null: not wanted).
+bool swiglu_fwd(const Matrix& g, const Matrix& u, Matrix& y);
+bool swiglu_bwd(const Matrix& g, const Matrix& u, const Matrix& dy, Matrix* dg, Matrix* du);
 bool gelu_fwd(const Matrix& x, Matrix& y);
 bool gelu_bwd(const Matrix& x, const Matrix& dy, Matrix& dx);
 // rowwise (parallel reduction order != serial CPU order: results carry

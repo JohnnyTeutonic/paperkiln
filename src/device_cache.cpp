@@ -109,6 +109,12 @@ bool silu_fwd(const Matrix&, Matrix&) {
 bool silu_bwd(const Matrix&, const Matrix&, Matrix&) {
     return false;
 }
+bool swiglu_fwd(const Matrix&, const Matrix&, Matrix&) {
+    return false;
+}
+bool swiglu_bwd(const Matrix&, const Matrix&, const Matrix&, Matrix*, Matrix*) {
+    return false;
+}
 bool gelu_fwd(const Matrix&, Matrix&) {
     return false;
 }

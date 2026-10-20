@@ -25,6 +25,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -194,6 +195,27 @@ __global__ void k_silu_bwd(const float* x, const float* dy, float* dx, size_t n)
         const float v = x[i];
         const float s = 1.0f / (1.0f + expf(-v));
         dx[i] = dy[i] * (s * (1.0f + v * (1.0f - s)));
+    }
+}
+// SwiGLU (ops::swiglu): k_silu_fwd's silu, then k_mul's product.
+__global__ void k_swiglu_fwd(const float* g, const float* u, float* y, size_t n) {
+    for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += gridDim.x * blockDim.x) {
+        const float v = g[i];
+        const float sv = v / (1.0f + expf(-v));
+        y[i] = sv * u[i];
+    }
+}
+// du = dy * silu(g) (k_mul on the saved silu), dg = (dy * u) * silu'(g)
+// (k_mul, then k_silu_bwd on that product). Either output may be null.
+__global__ void k_swiglu_bwd(const float* g, const float* u, const float* dy, float* dg, float* du, size_t n) {
+    for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += gridDim.x * blockDim.x) {
+        const float v = g[i];
+        if (du) du[i] = dy[i] * (v / (1.0f + expf(-v)));
+        if (dg) {
+            const float da = dy[i] * u[i];
+            const float s = 1.0f / (1.0f + expf(-v));
+            dg[i] = da * (s * (1.0f + v * (1.0f - s)));
+        }
     }
 }
 
@@ -824,6 +846,32 @@ bool silu_bwd(const Matrix& x, const Matrix& dy, Matrix& dx) {
     k_silu_bwd<<<ew_grid(n), NTHREADS>>>(dxi.d, dgy.d, dgx.d, n);
     cuda_check(cudaGetLastError(), "silu_bwd");
     dgx.finish();
+    return true;
+}
+
+bool swiglu_fwd(const Matrix& g, const Matrix& u, Matrix& y) {
+    if (!active()) return false;
+    const size_t n = g.rows() * g.cols();
+    In dg(g.get_data(), n), du(u.get_data(), n);
+    Out dy(y.get_data(), n);
+    k_swiglu_fwd<<<ew_grid(n), NTHREADS>>>(dg.d, du.d, dy.d, n);
+    cuda_check(cudaGetLastError(), "swiglu_fwd");
+    dy.finish();
+    return true;
+}
+
+bool swiglu_bwd(const Matrix& g, const Matrix& u, const Matrix& dy, Matrix* dg, Matrix* du) {
+    if (!active()) return false;
+    const size_t n = g.rows() * g.cols();
+    In ig(g.get_data(), n), iu(u.get_data(), n), idy(dy.get_data(), n);
+    // Outputs: an Out per wanted gradient (finish() downloads it when not deferring).
+    std::unique_ptr<Out> og, ou;
+    if (dg) og.reset(new Out(dg->get_data(), n, false, "swiglu_bwd"));
+    if (du) ou.reset(new Out(du->get_data(), n, false, "swiglu_bwd"));
+    k_swiglu_bwd<<<ew_grid(n), NTHREADS>>>(ig.d, iu.d, idy.d, og ? og->d : nullptr, ou ? ou->d : nullptr, n);
+    cuda_check(cudaGetLastError(), "swiglu_bwd");
+    if (og) og->finish();
+    if (ou) ou->finish();
     return true;
 }
 

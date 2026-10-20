@@ -20,7 +20,7 @@ SwiGLUExpert::SwiGLUExpert(size_t d, size_t d_ff, unsigned s) {
 
 Var SwiGLUExpert::forward(const Var& x) const {
     // The dense LlamaBlock expression, verbatim.
-    return down_proj->forward(ops::mul(ops::silu(gate_proj->forward(x)), up_proj->forward(x)));
+    return down_proj->forward(ops::swiglu(gate_proj->forward(x), up_proj->forward(x)));
 }
 
 double routing_entropy(const std::vector<double>& frac) {
