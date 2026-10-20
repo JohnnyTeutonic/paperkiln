@@ -34,6 +34,29 @@ Device get() {
     return g_device;
 }
 
+namespace {
+// Matrix(rows, cols, Matrix::uninitialized) when the vendored Matrix has
+// it (third_party/transformer_cpp since 20 Oct 2026), the zero-filling
+// constructor when an older sibling coalfire.cpp is built instead.
+template <class M>
+auto make_uninit(size_t r, size_t c, int) -> decltype(M(r, c, M::uninitialized)) {
+    return M(r, c, M::uninitialized);
+}
+template <class M>
+M make_uninit(size_t r, size_t c, long) {
+    return M(r, c);
+}
+}  // namespace
+
+bool out_matrix_uninit() {
+    return g_device_ops && g_device == Device::CUDA;
+}
+
+Matrix out_matrix(size_t rows, size_t cols) {
+    if (out_matrix_uninit()) return make_uninit<Matrix>(rows, cols, 0);
+    return Matrix(rows, cols);
+}
+
 bool cuda_compiled() {
 #ifdef MICROTORCH_CUDA
     return true;
@@ -64,6 +87,11 @@ void set_from_env() {
     // inert without step residency, since deferral is window-scoped).
     if (const char* dd = std::getenv("MICROTORCH_DEFER_DOWNLOADS")) {
         if (std::strcmp(dd, "1") == 0) set_defer_downloads(true);
+    }
+    // Profiling: host waits for the device block instead of spinning, so
+    // process CPU time counts host work only (no-op in CPU builds).
+    if (const char* bs = std::getenv("MICROTORCH_BLOCKING_SYNC")) {
+        if (std::strcmp(bs, "1") == 0) set_blocking_sync();
     }
     const char* v = std::getenv("MICROTORCH_DEVICE");
     if (!v) return;
@@ -106,8 +134,9 @@ Matrix gemm(const Matrix& A, DevState** devA, Trans tA, const Matrix& B, DevStat
     if (Ka != Kb) throw std::runtime_error("gemm: inner dimensions disagree");
 #ifdef MICROTORCH_CUDA
     if (g_device == Device::CUDA) {
-        Matrix C(M, N);
+        Matrix C = out_matrix(M, N);  // the B2 gemm writes every element
         if (step_resident_gemm(A, devA, tA, B, devB, tB, C)) return C;
+        zero_if_uninit(C);
         auto run = [&C](const Matrix& a, const Matrix& b) {
             if (resident_matmul(a, b, C)) return;
             cuda::matmul(a, b, C);

@@ -507,6 +507,7 @@ void AdamW::step() {
                 "AdamW: persistent device state exists but device ops are "
                 "off — do not toggle MICROTORCH_DEVICE_OPS mid-run");
         }
+        device::materialize(p->grad);  // no-op unless the step left it on the device
         for (size_t i = 0; i < p->data.rows(); ++i)
             for (size_t j = 0; j < p->data.cols(); ++j) {
                 const float g = p->grad(i, j);

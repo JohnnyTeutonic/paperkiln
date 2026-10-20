@@ -17,7 +17,15 @@ size_t live_variables() {
 
 void Variable::accumulate(const Matrix& g) {
     if (grad.rows() == 0) {
-        grad = Matrix(data.rows(), data.cols());  // zero-filled by ctor
+        if (device::host_stale(g) && device::out_matrix_uninit()) {
+            // A device-fresh g is added on the device below: zero the new
+            // grad there rather than zero-filling host storage and uploading
+            // it. The sum is the same 0 + g either way.
+            grad = device::out_matrix(data.rows(), data.cols());
+            if (!device::devops::fill(grad, 0.0f)) grad.fill(0.0f);
+        } else {
+            grad = Matrix(data.rows(), data.cols());  // zero-filled by ctor
+        }
     }
     if (g.rows() != grad.rows() || g.cols() != grad.cols()) {
         throw std::runtime_error("accumulate: gradient shape mismatch");
@@ -56,7 +64,9 @@ void Variable::accumulate(Matrix&& g) {
 
 void Variable::accumulate_cols(size_t c0, const Matrix& g) {
     const bool fresh = grad.rows() == 0;
-    if (fresh) grad = Matrix(data.rows(), data.cols());  // zero-filled by ctor
+    // A fresh grad the device kernel writes whole needs no host zero-fill.
+    const bool dev_fresh = fresh && device::host_stale(g);
+    if (fresh) grad = dev_fresh ? device::out_matrix(data.rows(), data.cols()) : Matrix(data.rows(), data.cols());
     if (g.rows() != grad.rows() || c0 + g.cols() > grad.cols()) {
         throw std::runtime_error("accumulate_cols: gradient shape mismatch");
     }
@@ -66,6 +76,7 @@ void Variable::accumulate_cols(size_t c0, const Matrix& g) {
     // current device copy.
     const bool device_side = device::host_stale(g) || device::host_stale(grad);
     if (device_side && device::devops::accumulate_cols(grad, c0, g, fresh)) return;
+    if (dev_fresh) device::zero_if_uninit(grad);
     device::materialize(grad);
     device::materialize(g);
     for (size_t i = 0; i < g.rows(); ++i)
@@ -158,8 +169,14 @@ Var checkpoint(const std::function<Var(const Var&)>& fn, const Var& x) {
 }
 
 void zero_grad(const std::vector<Var>& vars) {
+    // Inside a deferring step window the zeros are written on the device:
+    // the first accumulate then adds there without uploading host zeros
+    // (every parameter's grad crossed the bus that way each step), and a
+    // grad nothing touches is downloaded as zeros at step_end().
+    const bool dev = device::deferring();
     for (const auto& v : vars) {
-        if (v->grad.rows() != 0) v->grad.fill(0.0f);
+        if (v->grad.rows() == 0) continue;
+        if (!(dev && device::devops::fill(v->grad, 0.0f))) v->grad.fill(0.0f);
     }
 }
 

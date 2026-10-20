@@ -19,6 +19,8 @@
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include "microtorch/device_cache.hpp"
 
@@ -67,6 +69,7 @@ struct VBuf {
     size_t n = 0;
     unsigned long long epoch = 0;
     bool stale = false;
+    bool kept = false;  // stale across a step_end_keeping() boundary (see there)
 };
 std::unordered_map<const float*, VBuf> g_vcache;
 
@@ -160,6 +163,14 @@ float* vcache_hit(const float* key, size_t n) {
 float* window_operand(const Matrix& m, DevState** slot, bool& owned) {
     const size_t bytes = m.rows() * m.cols() * sizeof(float);
     if (float* v = vcache_hit(m.get_data(), m.rows() * m.cols())) {
+        // A parameter the optimizer updated on the device and kept across
+        // the step boundary (step_end_keeping) lives here from now on: its
+        // slot copy, uploaded on the first step, is dead weight.
+        if (slot != nullptr && *slot != nullptr && (*slot)->d != nullptr) {
+            pool::dfree((*slot)->d);
+            (*slot)->d = nullptr;
+            (*slot)->epoch = 0;
+        }
         owned = false;
         return v;
     }
@@ -281,6 +292,72 @@ size_t device_bytes_in_use() {
 
 size_t pool_live_bytes() { return pool::live_bytes(); }
 size_t pool_cached_bytes() { return pool::cached_bytes(); }
+void synchronize() { cuda_check(cudaDeviceSynchronize(), "synchronize"); }
+
+// ---- MICROTORCH_GPU_PROFILE: per-op GPU time from CUDA events ----------
+namespace {
+struct GpuMark {
+    const char* op;
+    cudaEvent_t a, b;
+};
+std::vector<GpuMark> g_marks;
+std::vector<cudaEvent_t> g_free_events;
+const char* g_open_op = nullptr;
+cudaEvent_t g_open_ev = nullptr;
+cudaEvent_t take_event() {
+    if (!g_free_events.empty()) {
+        cudaEvent_t e = g_free_events.back();
+        g_free_events.pop_back();
+        return e;
+    }
+    cudaEvent_t e = nullptr;
+    cuda_check(cudaEventCreate(&e), "event create");
+    return e;
+}
+}  // namespace
+
+void set_blocking_sync() { cuda_check(cudaSetDeviceFlags(cudaDeviceScheduleBlockingSync), "set blocking sync"); }
+
+bool gpu_profile_on() {
+    static const bool on = [] {
+        const char* v = std::getenv("MICROTORCH_GPU_PROFILE");
+        return v && std::strcmp(v, "1") == 0;
+    }();
+    return on;
+}
+
+namespace detail {
+void gpu_profile_begin(const char* op) {
+    if (!gpu_profile_on() || g_open_op) return;
+    g_open_op = op;
+    g_open_ev = take_event();
+    cuda_check(cudaEventRecord(g_open_ev), "event record");
+}
+void gpu_profile_end(const char* op) {
+    if (!gpu_profile_on() || g_open_op != op) return;
+    cudaEvent_t e = take_event();
+    cuda_check(cudaEventRecord(e), "event record");
+    g_marks.push_back({op, g_open_ev, e});
+    g_open_op = nullptr;
+}
+}  // namespace detail
+
+std::vector<std::pair<std::string, double>> gpu_profile_take() {
+    std::vector<std::pair<std::string, double>> out;
+    if (!gpu_profile_on()) return out;
+    cuda_check(cudaDeviceSynchronize(), "profile sync");
+    std::unordered_map<std::string, double> sum;
+    for (const auto& m : g_marks) {
+        float ms = 0.0f;
+        cuda_check(cudaEventElapsedTime(&ms, m.a, m.b), "event elapsed");
+        sum[m.op] += ms;
+        g_free_events.push_back(m.a);
+        g_free_events.push_back(m.b);
+    }
+    g_marks.clear();
+    for (const auto& kv : sum) out.emplace_back(kv.first, kv.second);
+    return out;
+}
 
 // ---- Phase B2.0 ----
 
@@ -289,6 +366,13 @@ bool step_residency_enabled() { return g_step_residency; }
 void step_begin() {
     ++g_epoch;
     g_in_step = true;
+    // Entries kept across the last boundary join this window as its own
+    // device-fresh values, so every epoch check downstream is unchanged.
+    for (auto& kv : g_vcache)
+        if (kv.second.kept) {
+            kv.second.kept = false;
+            if (kv.second.stale) kv.second.epoch = g_epoch;
+        }
 }
 void step_end() {
     // B2.1b: the window edge is a materialize boundary — the optimizer,
@@ -296,11 +380,29 @@ void step_end() {
     if (g_defer_downloads) materialize_all();
     g_in_step = false;
 }
+void step_end_keeping(const std::vector<const Matrix*>& keep) {
+    if (g_defer_downloads) {
+        for (const Matrix* m : keep) {
+            auto it = g_vcache.find(m->get_data());
+            if (it != g_vcache.end() && it->second.stale) it->second.kept = true;
+        }
+        for (auto& kv : g_vcache) {
+            if (!kv.second.stale || kv.second.kept) continue;
+            cuda_check(cudaMemcpy(const_cast<float*>(kv.first), kv.second.d, kv.second.n * sizeof(float),
+                                  cudaMemcpyDeviceToHost),
+                       "D2H step_end_keeping");
+            kv.second.stale = false;
+        }
+    }
+    g_in_step = false;
+}
 
 // ---- Phase B2.1b ----
 
 void set_defer_downloads(bool on) { g_defer_downloads = on; }
 bool defer_downloads_enabled() { return g_defer_downloads; }
+
+bool deferring() { return defer_active(); }
 
 bool host_stale(const Matrix& m) {
     auto it = g_vcache.find(m.get_data());
@@ -323,6 +425,7 @@ void materialize_all() {
                               kv.second.n * sizeof(float),
                               cudaMemcpyDeviceToHost), "D2H materialize_all");
         kv.second.stale = false;
+        kv.second.kept = false;
     }
 }
 
@@ -454,6 +557,7 @@ bool step_resident_gemm(const Matrix& A, DevState** devA, Trans tA,
     dim3 block(TILE, TILE);
     dim3 grid((N + TILE - 1) / TILE, (M + TILE - 1) / TILE);
     const bool ta = (tA == Trans::T), tb = (tB == Trans::T);
+    detail::gpu_profile_begin("gemm");
     if (cublas_on())
         cublas_gemm_rowmajor(dA, ta, dB, tb, dC, M, N, K);
     else if (!ta && !tb)
@@ -465,6 +569,7 @@ bool step_resident_gemm(const Matrix& A, DevState** devA, Trans tA,
     else
         gemm_tiled_ops<true, true><<<grid, block>>>(dA, dB, dC, M, N, K);
     cuda_check(cudaGetLastError(), "gemm_ops launch");
+    detail::gpu_profile_end("gemm");
     if (!deferred) {
         cuda_check(cudaMemcpy(C.get_data(), dC, nC * sizeof(float),
                               cudaMemcpyDeviceToHost), "D2H");

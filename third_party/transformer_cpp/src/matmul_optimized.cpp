@@ -56,19 +56,20 @@
     #define SIMD_WIDTH 1
 #endif
 
-// Diagnostic: Print which SIMD path was selected (only once)
+// Diagnostic: Print which SIMD path was selected (only once). On stderr:
+// tools that print JSON on stdout (mtstudio export-ir) must not get it.
 #include <iostream>
 namespace {
     struct SIMDDiagnostic {
         SIMDDiagnostic() {
             #if defined(HAS_AVX2)
-                std::cout << "[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)" << std::endl;
+                std::cerr << "[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)" << std::endl;
             #elif defined(HAS_AVX)
-                std::cout << "[matmul] Using AVX SIMD (8 floats/instruction)" << std::endl;
+                std::cerr << "[matmul] Using AVX SIMD (8 floats/instruction)" << std::endl;
             #elif defined(HAS_SSE2)
-                std::cout << "[matmul] Using SSE2 SIMD (4 floats/instruction)" << std::endl;
+                std::cerr << "[matmul] Using SSE2 SIMD (4 floats/instruction)" << std::endl;
             #else
-                std::cout << "[matmul] WARNING: No SIMD detected, using scalar fallback" << std::endl;
+                std::cerr << "[matmul] WARNING: No SIMD detected, using scalar fallback" << std::endl;
             #endif
         }
     };

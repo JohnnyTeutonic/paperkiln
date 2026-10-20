@@ -29,6 +29,7 @@ bool step_residency_enabled() {
 }
 void step_begin() {}
 void step_end() {}
+void step_end_keeping(const std::vector<const Matrix*>&) {}
 size_t device_bytes_in_use() {
     return 0;
 }
@@ -38,6 +39,18 @@ size_t pool_live_bytes() {
 size_t pool_cached_bytes() {
     return 0;
 }
+void synchronize() {}
+bool gpu_profile_on() {
+    return false;
+}
+void set_blocking_sync() {}
+std::vector<std::pair<std::string, double>> gpu_profile_take() {
+    return {};
+}
+namespace detail {
+void gpu_profile_begin(const char*) {}
+void gpu_profile_end(const char*) {}
+}  // namespace detail
 namespace detail {
 void release_devstate_impl(DevState*) {}
 }  // namespace detail
@@ -45,6 +58,9 @@ void release_devstate_impl(DevState*) {}
 // B2.1b stubs: no CUDA, nothing can defer, nothing is ever stale.
 void set_defer_downloads(bool) {}
 bool defer_downloads_enabled() {
+    return false;
+}
+bool deferring() {
     return false;
 }
 bool host_stale(const Matrix&) {
@@ -160,6 +176,12 @@ bool rmsnorm_bwd(const Matrix&, const Matrix&, const std::vector<float>&, const 
                  Matrix*, bool, Matrix*) {
     return false;
 }
+bool rmsnorm_fwd(const Matrix&, const Matrix&, float, Matrix&, Matrix&) {
+    return false;
+}
+bool rmsnorm_bwd(const Matrix&, const Matrix&, const Matrix&, const Matrix&, bool, Matrix*, bool, Matrix*) {
+    return false;
+}
 bool rope_fwd(const Matrix&, const std::vector<int>&, size_t, size_t, float, Matrix&) {
     return false;
 }
@@ -203,6 +225,15 @@ bool mul_col_dx(const Matrix&, const Matrix&, Matrix&) {
     return false;
 }
 bool mul_col_dc(const Matrix&, const Matrix&, Matrix&) {
+    return false;
+}
+bool transpose(const Matrix&, Matrix&) {
+    return false;
+}
+bool embed_scatter_add(const Matrix&, const std::vector<int>&, Matrix&) {
+    return false;
+}
+bool sumsq(const std::vector<const Matrix*>&, std::vector<double>&) {
     return false;
 }
 }  // namespace devops

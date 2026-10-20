@@ -22,6 +22,7 @@
 
 #include "device_pool.cuh"
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <stdexcept>
@@ -109,14 +110,18 @@ struct Out {
     float* host = nullptr;
     size_t n = 0;
     bool deferred = false;
-    Out(float* h, size_t n_, bool need_current = false) : host(h), n(n_) {
+    const char* op = nullptr;  // the entry point's name, for MICROTORCH_GPU_PROFILE
+    Out(float* h, size_t n_, bool need_current = false, const char* op_ = __builtin_FUNCTION())
+        : host(h), n(n_), op(op_) {
         d = detail::vc_output(h, n_, deferred, need_current, h);
         if (!deferred) {
             d = dalloc(n_);
             if (need_current) h2d(d, h, n_);
         }
+        detail::gpu_profile_begin(op);
     }
     void finish() {
+        detail::gpu_profile_end(op);
         if (!deferred) d2h(host, d, n);
     }
     ~Out() {
@@ -1153,32 +1158,70 @@ bool rmsnorm_fwd(const Matrix& x, const Matrix& w, float eps, Matrix& y,
     return true;
 }
 
+namespace {
+// The shared body of both rmsnorm_bwd overloads: rms_inv already on device.
+void rmsnorm_bwd_dev(const float* ddy, const float* dxi, const float* dri, const Matrix& dY, const Matrix& w,
+                     bool want_dw, Matrix* dw, bool want_dx, Matrix* dx);
+}  // namespace
+
+bool rmsnorm_fwd(const Matrix& x, const Matrix& w, float eps, Matrix& y, Matrix& rms_inv) {
+    if (!active()) return false;
+    const int R = static_cast<int>(x.rows());
+    const int C = static_cast<int>(x.cols());
+    if (rms_inv.rows() != x.rows() || rms_inv.cols() != 1) return false;
+    const size_t n = static_cast<size_t>(R) * C;
+    In dx(x.get_data(), n), dw(w.get_data(), C);
+    Out dy(y.get_data(), n), dri(rms_inv.get_data(), static_cast<size_t>(R));
+    k_rmsnorm_fwd<<<R, ROW_THREADS, ROW_THREADS * sizeof(float)>>>(dx.d, dw.d, eps, dy.d, dri.d, C);
+    cuda_check(cudaGetLastError(), "rmsnorm_fwd");
+    dy.finish();
+    dri.finish();
+    return true;
+}
+
+bool rmsnorm_bwd(const Matrix& dY, const Matrix& x, const Matrix& rms_inv, const Matrix& w, bool want_dw,
+                 Matrix* dw, bool want_dx, Matrix* dx) {
+    if (!active()) return false;
+    if (rms_inv.rows() != dY.rows() || rms_inv.cols() != 1) return false;
+    const size_t n = dY.rows() * dY.cols();
+    In ddy(dY.get_data(), n), dxi(x.get_data(), n), dri(rms_inv.get_data(), dY.rows());
+    rmsnorm_bwd_dev(ddy.d, dxi.d, dri.d, dY, w, want_dw, dw, want_dx, dx);
+    return true;
+}
+
 bool rmsnorm_bwd(const Matrix& dY, const Matrix& x,
                  const std::vector<float>& rms_inv, const Matrix& w,
                  bool want_dw, Matrix* dw, bool want_dx, Matrix* dx) {
     if (!active()) return false;
+    const size_t n = dY.rows() * dY.cols();
+    In ddy(dY.get_data(), n), dxi(x.get_data(), n);
+    DBuf dri(rms_inv.data(), dY.rows());
+    rmsnorm_bwd_dev(ddy.d, dxi.d, dri.d, dY, w, want_dw, dw, want_dx, dx);
+    return true;
+}
+
+namespace {
+void rmsnorm_bwd_dev(const float* ddy, const float* dxi, const float* dri, const Matrix& dY, const Matrix& w,
+                     bool want_dw, Matrix* dw, bool want_dx, Matrix* dx) {
     const int R = static_cast<int>(dY.rows());
     const int C = static_cast<int>(dY.cols());
     const size_t n = static_cast<size_t>(R) * C;
-    In ddy(dY.get_data(), n), dxi(x.get_data(), n);
-    DBuf dri(rms_inv.data(), static_cast<size_t>(R));
     if (want_dw) {
-        Out ddw(dw->get_data(), static_cast<size_t>(C));
+        Out ddw(dw->get_data(), static_cast<size_t>(C), false, "rmsnorm_bwd");
         const int grid = (C + NTHREADS - 1) / NTHREADS;
-        k_rmsnorm_bwd_dw<<<grid, NTHREADS>>>(ddy.d, dxi.d, dri.d, ddw.d, R, C);
+        k_rmsnorm_bwd_dw<<<grid, NTHREADS>>>(ddy, dxi, dri, ddw.d, R, C);
         cuda_check(cudaGetLastError(), "rmsnorm_bwd dw");
         ddw.finish();
     }
     if (want_dx) {
         In dwv(w.get_data(), static_cast<size_t>(C));
-        Out ddx(dx->get_data(), n);
-        k_rmsnorm_bwd_dx<<<R, ROW_THREADS, ROW_THREADS * sizeof(float)>>>(
-            ddy.d, dxi.d, dri.d, dwv.d, ddx.d, C);
+        Out ddx(dx->get_data(), n, false, "rmsnorm_bwd");
+        k_rmsnorm_bwd_dx<<<R, ROW_THREADS, ROW_THREADS * sizeof(float)>>>(ddy, dxi, dri, dwv.d, ddx.d, C);
         cuda_check(cudaGetLastError(), "rmsnorm_bwd dx");
         ddx.finish();
     }
-    return true;
 }
+}  // namespace
 
 // ---- blocked attention (18 Oct 2026) ---------------------------------
 // The device side of ops::fused_attention_blocked. The rows of q, k, v
@@ -1190,6 +1233,7 @@ bool rmsnorm_bwd(const Matrix& dY, const Matrix& x,
 // rowsum(dA .* A)), dQ = ds K, dK = ds^T Q), summed in a different order,
 // so equal to rounding, not bit for bit. Measured reason (gdb samples of
 // the chat run on an L4): the host path was ~44% of a training step.
+// The tiled kernels below (20 Oct 2026) keep the first kernels' bits.
 
 namespace {
 
@@ -1211,24 +1255,163 @@ __device__ inline float blk_reduce(float v, float* red, bool is_max) {
     return r;
 }
 
-__global__ void k_blk_fwd_softmax(const float* q, const float* k, float* A, float scale, int sl, int causal,
-                                  int dk) {
-    extern __shared__ float sh[];
-    float* qs = sh;
-    float* red = sh + dk;
-    const int i = blockIdx.x, li = i % sl, b0 = i - li, hi = blk_hi(li, sl, causal);
-    for (int d = threadIdx.x; d < dk; d += blockDim.x) qs[d] = q[static_cast<size_t>(i) * dk + d];
-    __syncthreads();
+// Tiled products (20 Oct 2026). The first kernels gave every query row its
+// own block and read keys/values with one thread per key row: 690 ms of a
+// 1.37 s d512 L8 step on the GPU went to attention. These tile 64 x 64
+// outputs per 256-thread block through shared memory, and every output
+// element still runs the first kernels' exact chain, acc = fmaf(x, y, acc)
+// from 0.0f over the same index range in ascending order, so results are
+// unchanged bit for bit. Tiles never straddle two sequences: blockIdx.x
+// enumerates (sequence, 64-row tile within it).
+constexpr int AT = 64;  // output tile edge
+constexpr int AK = 16;  // reduction chunk staged per pass
+
+// S(b0 + li, lj) = scale * sum_d P(b0 + li, d) Q(b0 + lj, d) for lj < hi(li);
+// masked entries are not written. P, Q are [T, D].
+__global__ void k_blk_scores(const float* P, const float* Q, float* S, float scale, int sl, int causal, int D) {
+    __shared__ float Ps[AK][AT];
+    __shared__ float Qs[AK][AT];
+    const int nt = (sl + AT - 1) / AT;
+    const int b0 = (blockIdx.x / nt) * sl, q0 = (blockIdx.x % nt) * AT, k0 = blockIdx.y * AT;
+    if (causal && k0 > q0 + AT - 1) return;  // the whole tile is above the diagonal
+    const int tx = threadIdx.x % 16, ty = threadIdx.x / 16;
+    float acc[4][4] = {};
+    for (int d0 = 0; d0 < D; d0 += AK) {
+        for (int idx = threadIdx.x; idx < AT * AK; idx += blockDim.x) {
+            const int r = idx / AK, dd = idx % AK, d = d0 + dd;
+            Ps[dd][r] = (q0 + r < sl && d < D) ? P[static_cast<size_t>(b0 + q0 + r) * D + d] : 0.0f;
+            Qs[dd][r] = (k0 + r < sl && d < D) ? Q[static_cast<size_t>(b0 + k0 + r) * D + d] : 0.0f;
+        }
+        __syncthreads();
+        const int dn = min(AK, D - d0);
+        for (int dd = 0; dd < dn; ++dd)
+#pragma unroll
+            for (int a = 0; a < 4; ++a) {
+                const float p = Ps[dd][ty + 16 * a];
+#pragma unroll
+                for (int c = 0; c < 4; ++c) acc[a][c] = fmaf(p, Qs[dd][tx + 16 * c], acc[a][c]);
+            }
+        __syncthreads();
+    }
+#pragma unroll
+    for (int a = 0; a < 4; ++a) {
+        const int li = q0 + ty + 16 * a;
+        if (li >= sl) continue;
+        const int hi = blk_hi(li, sl, causal);
+#pragma unroll
+        for (int c = 0; c < 4; ++c) {
+            const int lj = k0 + tx + 16 * c;
+            if (lj < hi) S[static_cast<size_t>(b0 + li) * sl + lj] = acc[a][c] * scale;
+        }
+    }
+}
+
+// C(b0 + li, n) = sum_{j < hi(li)} X(b0 + li, j) Y(b0 + j, n): A V and ds K.
+// X is block-local [T, sl]; Y and C are [T, N].
+__global__ void k_blk_rowprod(const float* X, const float* Y, float* C, int sl, int causal, int N) {
+    __shared__ float Xs[AK][AT];
+    __shared__ float Ys[AK][AT];
+    const int nt = (sl + AT - 1) / AT;
+    const int b0 = (blockIdx.x / nt) * sl, q0 = (blockIdx.x % nt) * AT, n0 = blockIdx.y * AT;
+    const int tx = threadIdx.x % 16, ty = threadIdx.x / 16;
+    int hi[4];
+#pragma unroll
+    for (int a = 0; a < 4; ++a) {
+        const int li = q0 + ty + 16 * a;
+        hi[a] = li < sl ? blk_hi(li, sl, causal) : 0;
+    }
+    const int jmax = causal ? min(sl, q0 + AT) : sl;
+    float acc[4][4] = {};
+    for (int j0 = 0; j0 < jmax; j0 += AK) {
+        for (int idx = threadIdx.x; idx < AT * AK; idx += blockDim.x) {
+            const int r = idx / AK, jj = idx % AK, j = j0 + jj;
+            Xs[jj][r] = (q0 + r < sl && j < sl) ? X[static_cast<size_t>(b0 + q0 + r) * sl + j] : 0.0f;
+            const int jy = idx / AT, c = idx % AT;
+            Ys[jy][c] = (j0 + jy < sl && n0 + c < N) ? Y[static_cast<size_t>(b0 + j0 + jy) * N + n0 + c] : 0.0f;
+        }
+        __syncthreads();
+        const int jn = min(AK, jmax - j0);
+        for (int jj = 0; jj < jn; ++jj) {
+            const int j = j0 + jj;
+#pragma unroll
+            for (int a = 0; a < 4; ++a) {
+                if (j >= hi[a]) continue;
+                const float x = Xs[jj][ty + 16 * a];
+#pragma unroll
+                for (int c = 0; c < 4; ++c) acc[a][c] = fmaf(x, Ys[jj][tx + 16 * c], acc[a][c]);
+            }
+        }
+        __syncthreads();
+    }
+#pragma unroll
+    for (int a = 0; a < 4; ++a) {
+        const int li = q0 + ty + 16 * a;
+        if (li >= sl) continue;
+#pragma unroll
+        for (int c = 0; c < 4; ++c) {
+            const int n = n0 + tx + 16 * c;
+            if (n < N) C[static_cast<size_t>(b0 + li) * N + n] = acc[a][c];
+        }
+    }
+}
+
+// C(b0 + lj, n) = sum_{li = lo(lj)}^{sl - 1} X(b0 + li, lj) Y(b0 + li, n),
+// lo = lj when causal else 0: ds^T Q and A^T dY, over the queries that see
+// key lj, ascending.
+__global__ void k_blk_colprod(const float* X, const float* Y, float* C, int sl, int causal, int N) {
+    __shared__ float Xs[AK][AT];
+    __shared__ float Ys[AK][AT];
+    const int nt = (sl + AT - 1) / AT;
+    const int b0 = (blockIdx.x / nt) * sl, k0 = (blockIdx.x % nt) * AT, n0 = blockIdx.y * AT;
+    const int tx = threadIdx.x % 16, ty = threadIdx.x / 16;
+    int lo[4];
+#pragma unroll
+    for (int a = 0; a < 4; ++a) {
+        const int lj = k0 + ty + 16 * a;
+        lo[a] = lj < sl ? (causal ? lj : 0) : sl;  // rows past the sequence take nothing
+    }
+    float acc[4][4] = {};
+    for (int i0 = causal ? k0 : 0; i0 < sl; i0 += AK) {
+        for (int idx = threadIdx.x; idx < AT * AK; idx += blockDim.x) {
+            const int ii = idx / AT, r = idx % AT, li = i0 + ii;
+            Xs[ii][r] = (li < sl && k0 + r < sl) ? X[static_cast<size_t>(b0 + li) * sl + k0 + r] : 0.0f;
+            Ys[ii][r] = (li < sl && n0 + r < N) ? Y[static_cast<size_t>(b0 + li) * N + n0 + r] : 0.0f;
+        }
+        __syncthreads();
+        const int in = min(AK, sl - i0);
+        for (int ii = 0; ii < in; ++ii) {
+            const int li = i0 + ii;
+#pragma unroll
+            for (int a = 0; a < 4; ++a) {
+                if (li < lo[a]) continue;
+                const float x = Xs[ii][ty + 16 * a];
+#pragma unroll
+                for (int c = 0; c < 4; ++c) acc[a][c] = fmaf(x, Ys[ii][tx + 16 * c], acc[a][c]);
+            }
+        }
+        __syncthreads();
+    }
+#pragma unroll
+    for (int a = 0; a < 4; ++a) {
+        const int lj = k0 + ty + 16 * a;
+        if (lj >= sl) continue;
+#pragma unroll
+        for (int c = 0; c < 4; ++c) {
+            const int n = n0 + tx + 16 * c;
+            if (n < N) C[static_cast<size_t>(b0 + lj) * N + n] = acc[a][c];
+        }
+    }
+}
+
+// Row i of the scaled scores (already in A for j < hi) -> softmax weights:
+// max-shifted exp, masked entries hard zeros. One block per row, the first
+// kernel's thread-to-column map and reduction tree, so the same bits.
+__global__ void k_blk_softmax_rows(float* A, int sl, int causal) {
+    extern __shared__ float red[];
+    const int i = blockIdx.x, li = i % sl, hi = blk_hi(li, sl, causal);
     float* Ar = A + static_cast<size_t>(i) * sl;
     float mx = -1e30f;
-    for (int j = threadIdx.x; j < hi; j += blockDim.x) {
-        const float* kr = k + static_cast<size_t>(b0 + j) * dk;
-        float s = 0.0f;
-        for (int d = 0; d < dk; ++d) s += qs[d] * kr[d];
-        s *= scale;
-        Ar[j] = s;
-        mx = fmaxf(mx, s);
-    }
+    for (int j = threadIdx.x; j < hi; j += blockDim.x) mx = fmaxf(mx, Ar[j]);
     mx = blk_reduce(mx, red, true);
     float z = 0.0f;
     for (int j = threadIdx.x; j < hi; j += blockDim.x) {
@@ -1240,69 +1423,25 @@ __global__ void k_blk_fwd_softmax(const float* q, const float* k, float* A, floa
     for (int j = threadIdx.x; j < sl; j += blockDim.x) Ar[j] = j < hi ? Ar[j] / z : 0.0f;
 }
 
-// y(i, :) = sum_j A(i, j) v(b0 + j, :)
-__global__ void k_blk_fwd_av(const float* A, const float* v, float* y, int sl, int causal, int dv) {
-    const int i = blockIdx.x, li = i % sl, b0 = i - li, hi = blk_hi(li, sl, causal);
-    const float* Ar = A + static_cast<size_t>(i) * sl;
-    for (int d = threadIdx.x; d < dv; d += blockDim.x) {
-        float acc = 0.0f;
-        for (int j = 0; j < hi; ++j) acc += Ar[j] * v[static_cast<size_t>(b0 + j) * dv + d];
-        y[static_cast<size_t>(i) * dv + d] = acc;
-    }
-}
-
-// ds(i, j) = scale * A(i, j) * (dA(i, j) - sum_j' A(i, j') dA(i, j')), dA = dY V^T
-__global__ void k_blk_bwd_ds(const float* gy, const float* v, const float* A, float* ds, float scale, int sl,
-                             int causal, int dv) {
-    extern __shared__ float sh[];
-    float* gs = sh;
-    float* red = sh + dv;
-    const int i = blockIdx.x, li = i % sl, b0 = i - li, hi = blk_hi(li, sl, causal);
-    for (int d = threadIdx.x; d < dv; d += blockDim.x) gs[d] = gy[static_cast<size_t>(i) * dv + d];
-    __syncthreads();
+// ds(i, j) = scale * A(i, j) * (dA(i, j) - sum_j' A(i, j') dA(i, j')), with
+// dA = dY V^T already in ds for j < hi. Same map and tree as the first kernel.
+__global__ void k_blk_ds_rows(const float* A, float* ds, float scale, int sl, int causal) {
+    extern __shared__ float red[];
+    const int i = blockIdx.x, li = i % sl, hi = blk_hi(li, sl, causal);
     const float* Ar = A + static_cast<size_t>(i) * sl;
     float* dr = ds + static_cast<size_t>(i) * sl;
     float part = 0.0f;
-    for (int j = threadIdx.x; j < hi; j += blockDim.x) {
-        const float* vr = v + static_cast<size_t>(b0 + j) * dv;
-        float da = 0.0f;
-        for (int d = 0; d < dv; ++d) da += gs[d] * vr[d];
-        dr[j] = da;
-        part += da * Ar[j];
-    }
+    for (int j = threadIdx.x; j < hi; j += blockDim.x) part += dr[j] * Ar[j];
     const float dot = blk_reduce(part, red, false);
     for (int j = threadIdx.x; j < sl; j += blockDim.x) dr[j] = j < hi ? scale * Ar[j] * (dr[j] - dot) : 0.0f;
 }
 
-// dq(i, :) = sum_j ds(i, j) k(b0 + j, :)
-__global__ void k_blk_bwd_dq(const float* ds, const float* k, float* dq, int sl, int causal, int dk) {
-    const int i = blockIdx.x, li = i % sl, b0 = i - li, hi = blk_hi(li, sl, causal);
-    const float* dr = ds + static_cast<size_t>(i) * sl;
-    for (int d = threadIdx.x; d < dk; d += blockDim.x) {
-        float acc = 0.0f;
-        for (int j = 0; j < hi; ++j) acc += dr[j] * k[static_cast<size_t>(b0 + j) * dk + d];
-        dq[static_cast<size_t>(i) * dk + d] = acc;
-    }
+dim3 blk_grid(int T, int sl, int N) {
+    const int nt = (sl + AT - 1) / AT;
+    return dim3(static_cast<unsigned>((T / sl) * nt), static_cast<unsigned>((N + AT - 1) / AT));
 }
 
-// Key row r (local lj): dk(r, :) = sum_i ds(i, lj) q(i, :), dv(r, :) = sum_i A(i, lj) dY(i, :), over the
-// queries i of its block that see it (local index >= lj when causal).
-__global__ void k_blk_bwd_dkv(const float* ds, const float* A, const float* q, const float* gy, float* dk_out,
-                              float* dv_out, int sl, int causal, int dk, int dv) {
-    const int r = blockIdx.x, lj = r % sl, b0 = r - lj, i0 = causal ? lj : 0;
-    for (int d = threadIdx.x; d < dk; d += blockDim.x) {
-        float acc = 0.0f;
-        for (int li = i0; li < sl; ++li)
-            acc += ds[static_cast<size_t>(b0 + li) * sl + lj] * q[static_cast<size_t>(b0 + li) * dk + d];
-        dk_out[static_cast<size_t>(r) * dk + d] = acc;
-    }
-    for (int d = threadIdx.x; d < dv; d += blockDim.x) {
-        float acc = 0.0f;
-        for (int li = i0; li < sl; ++li)
-            acc += A[static_cast<size_t>(b0 + li) * sl + lj] * gy[static_cast<size_t>(b0 + li) * dv + d];
-        dv_out[static_cast<size_t>(r) * dv + d] = acc;
-    }
-}
+constexpr int AT_THREADS = 256;  // 16 x 16, four by four outputs each
 
 int col_threads(int n) {
     int t = 32;
@@ -1323,10 +1462,12 @@ bool attn_blocked_fwd(const Matrix& q, const Matrix& k, const Matrix& v, float s
     In dq(q.get_data(), static_cast<size_t>(T) * dk), dkk(k.get_data(), static_cast<size_t>(T) * dk),
         dvv(v.get_data(), static_cast<size_t>(T) * dv);
     Out dA(A.get_data(), static_cast<size_t>(T) * sl), dy(y.get_data(), static_cast<size_t>(T) * dv);
-    k_blk_fwd_softmax<<<T, ROW_THREADS, (dk + ROW_THREADS) * sizeof(float)>>>(dq.d, dkk.d, dA.d, scale, sl,
-                                                                               causal ? 1 : 0, dk);
+    const int c = causal ? 1 : 0;
+    k_blk_scores<<<blk_grid(T, sl, sl), AT_THREADS>>>(dq.d, dkk.d, dA.d, scale, sl, c, dk);
+    cuda_check(cudaGetLastError(), "attn_blocked_fwd scores");
+    k_blk_softmax_rows<<<T, ROW_THREADS, ROW_THREADS * sizeof(float)>>>(dA.d, sl, c);
     cuda_check(cudaGetLastError(), "attn_blocked_fwd softmax");
-    k_blk_fwd_av<<<T, col_threads(dv)>>>(dA.d, dvv.d, dy.d, sl, causal ? 1 : 0, dv);
+    k_blk_rowprod<<<blk_grid(T, sl, dv), AT_THREADS>>>(dA.d, dvv.d, dy.d, sl, c, dv);
     cuda_check(cudaGetLastError(), "attn_blocked_fwd av");
     dA.finish();
     dy.finish();
@@ -1348,14 +1489,16 @@ bool attn_blocked_bwd(const Matrix& q, const Matrix& k, const Matrix& v, const M
     DBuf ds(static_cast<size_t>(T) * sl);
     Out odq(dq.get_data(), nq), odk(dk.get_data(), nq), odv(dv.get_data(), nv);
     const int c = causal ? 1 : 0;
-    k_blk_bwd_ds<<<T, ROW_THREADS, (dvd + ROW_THREADS) * sizeof(float)>>>(igy.d, iv.d, iA.d, ds.d, scale, sl, c,
-                                                                           dvd);
+    k_blk_scores<<<blk_grid(T, sl, sl), AT_THREADS>>>(igy.d, iv.d, ds.d, 1.0f, sl, c, dvd);  // dA = dY V^T
+    cuda_check(cudaGetLastError(), "attn_blocked_bwd dA");
+    k_blk_ds_rows<<<T, ROW_THREADS, ROW_THREADS * sizeof(float)>>>(iA.d, ds.d, scale, sl, c);
     cuda_check(cudaGetLastError(), "attn_blocked_bwd ds");
-    k_blk_bwd_dq<<<T, col_threads(dkd)>>>(ds.d, ik.d, odq.d, sl, c, dkd);
+    k_blk_rowprod<<<blk_grid(T, sl, dkd), AT_THREADS>>>(ds.d, ik.d, odq.d, sl, c, dkd);
     cuda_check(cudaGetLastError(), "attn_blocked_bwd dq");
-    k_blk_bwd_dkv<<<T, col_threads(dkd > dvd ? dkd : dvd)>>>(ds.d, iA.d, iq.d, igy.d, odk.d, odv.d, sl, c, dkd,
-                                                              dvd);
-    cuda_check(cudaGetLastError(), "attn_blocked_bwd dkv");
+    k_blk_colprod<<<blk_grid(T, sl, dkd), AT_THREADS>>>(ds.d, iq.d, odk.d, sl, c, dkd);
+    cuda_check(cudaGetLastError(), "attn_blocked_bwd dk");
+    k_blk_colprod<<<blk_grid(T, sl, dvd), AT_THREADS>>>(iA.d, igy.d, odv.d, sl, c, dvd);
+    cuda_check(cudaGetLastError(), "attn_blocked_bwd dv");
     odq.finish();
     odk.finish();
     odv.finish();
@@ -1788,6 +1931,135 @@ bool mul_col_dc(const Matrix& dy, const Matrix& x, Matrix& dc) {
     k_mul_col_dc<<<(R + NTHREADS - 1) / NTHREADS, NTHREADS>>>(idy.d, ix.d, odc.d, R, C);
     cuda_check(cudaGetLastError(), "mul_col_dc");
     odc.finish();
+    return true;
+}
+
+// ---- dense training step: the tied head, the embedding backward and the
+// grad-norm clip on the device (20 Oct 2026). Transpose and the scatter are
+// exact (copies; each element's adds in the host loop's order). The sum of
+// squares is double like the host loop's, but summed in a different order.
+
+namespace {
+
+constexpr int TR_TILE = 32;
+
+// y[C, R] = x[R, C]^T through a padded shared tile (both sides coalesced).
+__global__ void k_transpose(const float* x, float* y, int R, int C) {
+    __shared__ float t[TR_TILE][TR_TILE + 1];
+    const int bx = blockIdx.x * TR_TILE, by = blockIdx.y * TR_TILE;
+    for (int k = threadIdx.y; k < TR_TILE; k += blockDim.y) {
+        const int r = by + k, c = bx + threadIdx.x;
+        if (r < R && c < C) t[k][threadIdx.x] = x[static_cast<size_t>(r) * C + c];
+    }
+    __syncthreads();
+    for (int k = threadIdx.y; k < TR_TILE; k += blockDim.y) {
+        const int c = bx + k, r = by + threadIdx.x;
+        if (c < C && r < R) y[static_cast<size_t>(c) * R + r] = t[threadIdx.x][k];
+    }
+}
+
+// Embedding backward: block u owns table row rows[u] and adds the gradient
+// rows src[off[u] .. off[u + 1]) into it one after another, ascending, as
+// the host loop does (t->grad(ids[i], j) += g(i, j) for i = 0, 1, ...).
+__global__ void k_embed_scatter(const float* g, const int* rows, const int* off, const int* src, float* y,
+                                int d) {
+    const int u = blockIdx.x;
+    float* yr = y + static_cast<size_t>(rows[u]) * d;
+    for (int j = threadIdx.x; j < d; j += blockDim.x) {
+        float acc = yr[j];
+        for (int k = off[u]; k < off[u + 1]; ++k) acc += g[static_cast<size_t>(src[k]) * d + j];
+        yr[j] = acc;
+    }
+}
+
+constexpr int SQ_BLOCKS = 256;
+
+// Per-block partial sums of x^2 in double; k_sumsq_fold adds the partials
+// in block order, so the result is the same run to run.
+__global__ void k_sumsq_part(const float* x, size_t n, double* part) {
+    __shared__ double sh[NTHREADS];
+    double acc = 0.0;
+    for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += static_cast<size_t>(gridDim.x) * blockDim.x) {
+        const double v = x[i];
+        acc += v * v;
+    }
+    sh[threadIdx.x] = acc;
+    __syncthreads();
+    for (int s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (threadIdx.x < s) sh[threadIdx.x] += sh[threadIdx.x + s];
+        __syncthreads();
+    }
+    if (threadIdx.x == 0) part[blockIdx.x] = sh[0];
+}
+
+__global__ void k_sumsq_fold(const double* part, int n, double* out) {
+    double s = 0.0;
+    for (int i = 0; i < n; ++i) s += part[i];
+    *out = s;
+}
+
+}  // namespace
+
+bool transpose(const Matrix& x, Matrix& y) {
+    if (!active()) return false;
+    const int R = static_cast<int>(x.rows()), C = static_cast<int>(x.cols());
+    if (y.rows() != x.cols() || y.cols() != x.rows()) return false;
+    const size_t n = x.rows() * x.cols();
+    In ix(x.get_data(), n);
+    Out oy(y.get_data(), n);
+    const dim3 grid((C + TR_TILE - 1) / TR_TILE, (R + TR_TILE - 1) / TR_TILE), block(TR_TILE, 8);
+    k_transpose<<<grid, block>>>(ix.d, oy.d, R, C);
+    cuda_check(cudaGetLastError(), "transpose");
+    oy.finish();
+    return true;
+}
+
+bool embed_scatter_add(const Matrix& g, const std::vector<int>& ids, Matrix& table_grad) {
+    if (!active()) return false;
+    const int d = static_cast<int>(table_grad.cols());
+    if (g.rows() != ids.size() || g.cols() != table_grad.cols() || ids.empty()) return false;
+    // Group source rows by table row (ids were bounds-checked by the caller):
+    // a counting sort keeps each row's sources in ascending order.
+    const size_t V = table_grad.rows();
+    std::vector<int> count(V, 0);
+    for (int id : ids) ++count[id];
+    std::vector<int> rows, off{0}, start(V, 0);
+    for (size_t r = 0; r < V; ++r)
+        if (count[r]) {
+            start[r] = off.back();
+            rows.push_back(static_cast<int>(r));
+            off.push_back(off.back() + count[r]);
+        }
+    std::vector<int> src(ids.size());
+    for (size_t i = 0; i < ids.size(); ++i) src[start[ids[i]]++] = static_cast<int>(i);
+    In ig(g.get_data(), g.rows() * g.cols());
+    IBuf drows(rows.data(), rows.size()), doff(off.data(), off.size()), dsrc(src.data(), src.size());
+    Out oy(table_grad.get_data(), table_grad.rows() * table_grad.cols(), /*need_current=*/true);
+    k_embed_scatter<<<static_cast<int>(rows.size()), col_threads(d)>>>(ig.d, drows.d, doff.d, dsrc.d, oy.d, d);
+    cuda_check(cudaGetLastError(), "embed_scatter_add");
+    oy.finish();
+    return true;
+}
+
+bool sumsq(const std::vector<const Matrix*>& xs, std::vector<double>& out) {
+    if (!active()) return false;
+    out.assign(xs.size(), 0.0);
+    if (xs.empty()) return true;
+    double* part = nullptr;
+    double* res = nullptr;
+    cuda_check(pool::dmalloc(&part, SQ_BLOCKS * sizeof(double)), "sumsq malloc");
+    cuda_check(pool::dmalloc(&res, xs.size() * sizeof(double)), "sumsq malloc");
+    for (size_t k = 0; k < xs.size(); ++k) {
+        const size_t n = xs[k]->rows() * xs[k]->cols();
+        In ix(xs[k]->get_data(), n);
+        const int blocks = static_cast<int>(std::min<size_t>(SQ_BLOCKS, (n + NTHREADS - 1) / NTHREADS));
+        k_sumsq_part<<<blocks, NTHREADS>>>(ix.d, n, part);
+        k_sumsq_fold<<<1, 1>>>(part, blocks, res + k);
+        cuda_check(cudaGetLastError(), "sumsq");
+    }
+    cuda_check(cudaMemcpy(out.data(), res, xs.size() * sizeof(double), cudaMemcpyDeviceToHost), "sumsq D2H");
+    pool::dfree(part);
+    pool::dfree(res);
     return true;
 }
 

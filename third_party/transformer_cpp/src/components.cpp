@@ -57,6 +57,20 @@ Matrix::Matrix(size_t rows, size_t cols, float init_val) {
     owns_data_ = true;
 }
 
+Matrix::Matrix(size_t rows, size_t cols, uninitialized_t) {
+    if (rows == 0 || cols == 0) {
+        throw std::runtime_error("Matrix dimensions cannot be zero");
+    }
+    if (rows > SIZE_MAX / cols || rows * cols > 1000000000) {
+        throw std::runtime_error("Matrix dimensions too large");
+    }
+    data_.resize(rows * cols);  // default-init allocator: nothing written
+    rows_ = rows;
+    cols_ = cols;
+    shape_ = std::make_tuple(rows, cols);
+    owns_data_ = true;
+}
+
 Matrix::Matrix(size_t rows, size_t cols, float* external_data)
     : data_(external_data, external_data + rows * cols), rows_(rows), cols_(cols),
       shape_(std::make_tuple(rows, cols)), owns_data_(false) {}
@@ -106,7 +120,7 @@ void Matrix::resize(size_t new_rows, size_t new_cols) {
 
     try {
         // Create new vector with new size
-        std::vector<float> new_data(new_size, 0.0f);
+        decltype(data_) new_data(new_size, 0.0f);
 
         // Copy existing data if possible
         size_t min_rows = std::min(rows_, new_rows);

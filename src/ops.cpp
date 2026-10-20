@@ -85,7 +85,7 @@ bool device_side(const Matrix& a, const Matrix& b) {
 
 Var add(const Var& a, const Var& b) {
     if (device_side(a->data, b->data)) {
-        Matrix out(a->data.rows(), a->data.cols());
+        Matrix out = device::out_matrix(a->data.rows(), a->data.cols());
         if (device::devops::add(a->data, b->data, out))
             return record(std::move(out), {a, b}, [](Variable* self) {
                 if (self->parents[0]->requires_grad) self->parents[0]->accumulate(self->grad);
@@ -114,7 +114,7 @@ Var sub(const Var& a, const Var& b) {
 
 Var mul(const Var& a, const Var& b) {
     if (device_side(a->data, b->data)) {
-        Matrix out(a->data.rows(), a->data.cols());
+        Matrix out = device::out_matrix(a->data.rows(), a->data.cols());
         if (device::devops::mul(a->data, b->data, out))
             return record(std::move(out), {a, b}, [](Variable* self) {
                 const Var& a = self->parents[0];
@@ -122,7 +122,7 @@ Var mul(const Var& a, const Var& b) {
                 // The forward ran on the device, so the operands are (or
                 // were) device-fresh: the products stay there too.
                 if (a->requires_grad) {
-                    Matrix da(a->data.rows(), a->data.cols());
+                    Matrix da = device::out_matrix(a->data.rows(), a->data.cols());
                     if (!device::devops::mul(self->grad, b->data, da)) {
                         device::materialize(self->grad);
                         device::materialize(b->data);
@@ -131,7 +131,7 @@ Var mul(const Var& a, const Var& b) {
                     a->accumulate(std::move(da));
                 }
                 if (b->requires_grad) {
-                    Matrix db(b->data.rows(), b->data.cols());
+                    Matrix db = device::out_matrix(b->data.rows(), b->data.cols());
                     if (!device::devops::mul(self->grad, a->data, db)) {
                         device::materialize(self->grad);
                         device::materialize(a->data);
@@ -178,7 +178,7 @@ Var add_bias(const Var& x, const Var& b) {
 Var gelu(const Var& x) {
     // B2.1a seam: same tanh-GELU formula on device (cuda_ops.cu) or the
     // vendored apply_gelu on host; entry returns false -> CPU, unchanged.
-    Matrix out(x->data.rows(), x->data.cols());
+    Matrix out = device::out_matrix(x->data.rows(), x->data.cols());
     if (!device::devops::gelu_fwd(x->data, out)) {
         out = x->data;
         out.apply_gelu();
@@ -190,7 +190,7 @@ Var gelu(const Var& x) {
         // and NOT Matrix::apply_gelu_derivative -- see primitives.hpp.
         //   u  = sqrt(2/pi) (x + 0.044715 x^3)
         //   d  = cdf(u) + x * 0.5 sech^2(u) * u'
-        Matrix dx(self->grad.rows(), self->grad.cols());
+        Matrix dx = device::out_matrix(self->grad.rows(), self->grad.cols());
         if (!device::devops::gelu_bwd(x->data, self->grad, dx)) {
             device::materialize(self->grad);  // B2.3c: host-read below
             constexpr float k = 0.7978845608028654f;
@@ -268,11 +268,20 @@ Var scale(const Var& x, float s) {
 }
 
 Var transpose(const Var& x) {
-    device::materialize(x->data);
-    return record(x->data.transpose(), {x}, [](Variable* self) {
+    // Device seam (the tied head's E^T): an exact copy; false -> host.
+    Matrix out = device::out_matrix(x->data.cols(), x->data.rows());
+    if (!device::devops::transpose(x->data, out)) {
+        device::materialize(x->data);
+        out = x->data.transpose();
+    }
+    return record(std::move(out), {x}, [](Variable* self) {
         if (self->parents[0]->requires_grad) {
-            device::materialize(self->grad);  // B2.3c: host-read below
-            self->parents[0]->accumulate(self->grad.transpose());
+            Matrix g = device::out_matrix(self->grad.cols(), self->grad.rows());
+            if (!device::devops::transpose(self->grad, g)) {
+                device::materialize(self->grad);  // B2.3c: host-read below
+                g = self->grad.transpose();
+            }
+            self->parents[0]->accumulate(std::move(g));
         }
     });
 }
@@ -281,7 +290,7 @@ Var slice_cols(const Var& x, size_t j0, size_t j1) {
     if (j1 <= j0 || j1 > x->data.cols()) {
         throw std::runtime_error("slice_cols: bad range");
     }
-    Matrix out(x->data.rows(), j1 - j0);
+    Matrix out = device::out_matrix(x->data.rows(), j1 - j0);
     // Device seam (cuda_ops.cu): an exact copy; false -> the host loop.
     if (!device::devops::slice_cols(x->data, j0, j1 - j0, out)) {
         device::materialize(x->data);
@@ -306,7 +315,7 @@ Var concat_cols(const std::vector<Var>& xs) {
         }
         cols += x->data.cols();
     }
-    Matrix out(rows, cols);
+    Matrix out = device::out_matrix(rows, cols);
     std::vector<const Matrix*> parts;
     parts.reserve(xs.size());
     for (const auto& x : xs) parts.push_back(&x->data);
@@ -325,7 +334,7 @@ Var concat_cols(const std::vector<Var>& xs) {
         for (const auto& p : self->parents) {
             const size_t w = p->data.cols();
             if (p->requires_grad) {
-                Matrix dp(p->data.rows(), w);
+                Matrix dp = device::out_matrix(p->data.rows(), w);
                 if (!device::devops::slice_cols(self->grad, off, w, dp)) {
                     device::materialize(self->grad);  // B2.3c: host-read below
                     for (size_t i = 0; i < dp.rows(); ++i)
@@ -421,7 +430,7 @@ Var layernorm(const Var& x, const Var& gamma, const Var& beta, float eps) {
 
 Var embedding(const Var& table, const std::vector<int>& ids) {
     const size_t d = table->data.cols();
-    Matrix out(ids.size(), d);
+    Matrix out = device::out_matrix(ids.size(), d);
     // Bounds are checked HOST-SIDE for both paths (a kernel cannot throw).
     for (size_t i = 0; i < ids.size(); ++i) {
         if (ids[i] < 0 || static_cast<size_t>(ids[i]) >= table->data.rows()) {
@@ -441,6 +450,12 @@ Var embedding(const Var& table, const std::vector<int>& ids) {
         // Scatter-add straight into the table's grad. Going through
         // accumulate() would allocate a dense [vocab, d] temp per backward
         // -- 154 MB for GPT-2's wte -- for a handful of touched rows.
+        // On the device when the grad already lives there (zero_grad wrote
+        // it in a deferring window, or the tied head's gemm deferred it):
+        // the same adds in the same order, without downloading both.
+        if (t->grad.rows() != 0 && device::host_stale(t->grad) &&
+            device::devops::embed_scatter_add(self->grad, ids, t->grad))
+            return;
         device::materialize(self->grad);  // B2.3c: host-read below
         device::materialize(t->grad);     // tied weights: gemm may have deferred it
         if (t->grad.rows() == 0) t->grad = Matrix(t->data.rows(), t->data.cols());
@@ -463,7 +478,7 @@ Var cross_entropy(const Var& logits, const std::vector<int>& targets) {
     // (P - onehot)/N contract as softmax_cross_entropy_grad_kernel.
     // B2.2: softmax + nll on-device — the [R,vocab] logits never come
     // home and the host receives ONE float; host path as fallback.
-    auto P = cached(Matrix(R, C));
+    auto P = cached(device::out_matrix(R, C));
     Matrix out(1, 1);
     float lossv = 0.0f;
     if (device::devops::ce_fwd(logits->data, targets.data(), *P, lossv)) {
@@ -485,7 +500,7 @@ Var cross_entropy(const Var& logits, const std::vector<int>& targets) {
         const float g = self->grad(0, 0) / static_cast<float>(P->rows());
         // B2.2: (P - onehot) * g on-device; the gradient first touches
         // host at accumulate() (host-authoritative until B2.3).
-        Matrix dl(P->rows(), P->cols());
+        Matrix dl = device::out_matrix(P->rows(), P->cols());
         if (!device::devops::ce_bwd(*P, targets.data(), g, dl)) {
             device::materialize(*P);  // no-op unless P deferred on-device
             dl = *P;
@@ -699,7 +714,7 @@ Var mul_row(const Var& x, const Var& r) {
 Var silu(const Var& x) {
     // Device seam (18 Oct 2026), as gelu: the same formula in a kernel,
     // the host loop otherwise. Host path unchanged, bit for bit.
-    Matrix out(x->data.rows(), x->data.cols());
+    Matrix out = device::out_matrix(x->data.rows(), x->data.cols());
     if (!device::devops::silu_fwd(x->data, out)) {
         device::materialize(x->data);
         out = x->data;
@@ -713,7 +728,7 @@ Var silu(const Var& x) {
         const Var& x = self->parents[0];
         if (!x->requires_grad) return;
         // d/dx [x s(x)] = s(x) (1 + x (1 - s(x)))
-        Matrix dx(self->grad.rows(), self->grad.cols());
+        Matrix dx = device::out_matrix(self->grad.rows(), self->grad.cols());
         if (!device::devops::silu_bwd(x->data, self->grad, dx)) {
             device::materialize(self->grad);  // B2.3c: host-read below
             dx = self->grad;
@@ -734,19 +749,21 @@ Var rmsnorm(const Var& x, const Var& w) {
         throw std::runtime_error("rmsnorm: w must be [1, cols(x)]");
     }
     // RMS normalization: x / RMS(x) * w, where RMS = sqrt(mean(x^2))
-    // No mean centering, no bias. Stores RMS inverse for backward.
-    auto rms_inv = std::make_shared<std::vector<float>>(R);
-    Matrix out(R, C);
+    // No mean centering, no bias. Stores RMS inverse for backward, as an
+    // [R, 1] matrix so the device path keeps it resident between forward
+    // and backward (a host vector cost a D2H and an H2D, each a device sync).
+    auto rms_inv = cached(device::out_matrix(R, 1));
+    Matrix out = device::out_matrix(R, C);
     const float eps = kRmsNormEps;
-    // B2.1a seam: kernel computes out + rms_inv (write-through caches).
+    // B2.1a seam: kernel computes out + rms_inv.
     if (!device::devops::rmsnorm_fwd(x->data, w->data, eps, out, *rms_inv)) {
         for (size_t i = 0; i < R; ++i) {
             float rms_sq = 0.0f;
             for (size_t j = 0; j < C; ++j) rms_sq += x->data(i, j) * x->data(i, j);
             rms_sq /= static_cast<float>(C);
-            (*rms_inv)[i] = 1.0f / std::sqrt(rms_sq + eps);
+            (*rms_inv)(i, 0) = 1.0f / std::sqrt(rms_sq + eps);
             for (size_t j = 0; j < C; ++j)
-                out(i, j) = x->data(i, j) * (*rms_inv)[i] * w->data(0, j);
+                out(i, j) = x->data(i, j) * (*rms_inv)(i, 0) * w->data(0, j);
         }
     }
     return record(std::move(out), {x, w}, [rms_inv](Variable* self) {
@@ -754,15 +771,18 @@ Var rmsnorm(const Var& x, const Var& w) {
         const Var& w = self->parents[1];
         const size_t R = self->grad.rows(), C = self->grad.cols();
         // B2.1a seam: dw column sum + dx row formula in kernels.
-        Matrix dw(1, C), dx(R, C);
+        Matrix dw(1, C), dx = device::out_matrix(R, C);
         const bool on_dev = device::devops::rmsnorm_bwd(
             self->grad, x->data, *rms_inv, w->data, w->requires_grad, &dw, x->requires_grad, &dx);
-        if (!on_dev) device::materialize(self->grad);  // B2.3c: host-read below
+        if (!on_dev) {
+            device::materialize(self->grad);  // B2.3c: host-read below
+            device::materialize(*rms_inv);
+        }
         if (w->requires_grad) {
             if (!on_dev) {
                 for (size_t i = 0; i < R; ++i)
                     for (size_t j = 0; j < C; ++j)
-                        dw(0, j) += self->grad(i, j) * x->data(i, j) * (*rms_inv)[i];
+                        dw(0, j) += self->grad(i, j) * x->data(i, j) * (*rms_inv)(i, 0);
             }
             w->accumulate(std::move(dw));
         }
@@ -774,10 +794,10 @@ Var rmsnorm(const Var& x, const Var& w) {
                 float term = 0.0f;
                 for (size_t j = 0; j < C; ++j)
                     term += self->grad(i, j) * w->data(0, j) * x->data(i, j);
-                const float ri2 = (*rms_inv)[i] * (*rms_inv)[i];
+                const float ri2 = (*rms_inv)(i, 0) * (*rms_inv)(i, 0);
                 const float n_inv = 1.0f / static_cast<float>(C);
                 for (size_t j = 0; j < C; ++j)
-                    dx(i, j) = (*rms_inv)[i] * (self->grad(i, j) * w->data(0, j) -
+                    dx(i, j) = (*rms_inv)(i, 0) * (self->grad(i, j) * w->data(0, j) -
                                                 x->data(i, j) * ri2 * term * n_inv);
             }
         }
@@ -805,7 +825,7 @@ Var apply_rope(const Var& qk, const std::vector<int>& pos, float theta_base, siz
     // llama-family run before arch.rope_heads was trained with.
     const size_t n_rot = all_heads ? d / head_dim : 1;
     auto pos_cache = std::make_shared<std::vector<int>>(pos);
-    Matrix out(T, d3);
+    Matrix out = device::out_matrix(T, d3);
     // Device seam (cuda_ops.cu): the same rotation from a host-built
     // cos/sin table; false -> the host loop below.
     const bool on_dev = device::devops::rope_fwd(qk->data, pos, head_dim, n_rot, theta_base, out);
@@ -840,7 +860,7 @@ Var apply_rope(const Var& qk, const std::vector<int>& pos, float theta_base, siz
                       const Var& qk = self->parents[0];
                       if (!qk->requires_grad) return;
                       const size_t T = self->grad.rows(), d = d3 / 3;
-                      Matrix dqk(T, d3);
+                      Matrix dqk = device::out_matrix(T, d3);
                       if (device::devops::rope_bwd(self->grad, *pos_cache, head_dim, n_rot, theta_base, dqk)) {
                           qk->accumulate(std::move(dqk));
                           return;
@@ -1270,15 +1290,16 @@ Var fused_attention_blocked(const Var& q, const Var& k, const Var& v, float scal
     // block-local [T, sl] and resident between forward and backward. The
     // host loops below are the reference and the fallback.
     if (device::device_ops_enabled() && device::get() == device::Device::CUDA) {
-        auto Ab = cached(Matrix(T, sl));
-        Matrix yd(T, v->data.cols());
+        auto Ab = cached(device::out_matrix(T, sl));
+        Matrix yd = device::out_matrix(T, v->data.cols());
         if (device::devops::attn_blocked_fwd(q->data, k->data, v->data, scale, sl, causal, *Ab, yd)) {
             return record(std::move(yd), {q, k, v}, [Ab, scale, sl, causal](Variable* self) {
                 const Var& q = self->parents[0];
                 const Var& k = self->parents[1];
                 const Var& v = self->parents[2];
-                Matrix dq(q->data.rows(), q->data.cols()), dkm(k->data.rows(), k->data.cols()),
-                    dvm(v->data.rows(), v->data.cols());
+                Matrix dq = device::out_matrix(q->data.rows(), q->data.cols()),
+                       dkm = device::out_matrix(k->data.rows(), k->data.cols()),
+                       dvm = device::out_matrix(v->data.rows(), v->data.cols());
                 if (!device::devops::attn_blocked_bwd(q->data, k->data, v->data, *Ab, self->grad, scale, sl, causal,
                                                       dq, dkm, dvm))
                     throw std::runtime_error("fused_attention_blocked: device backward unavailable");
@@ -1774,10 +1795,29 @@ Matrix attention_mask(size_t rows, size_t seq_len, bool causal) {
 }
 
 float clip_grad_norm(const std::vector<Var>& params, float max_norm) {
+    // Grads still on the device (the optimizer runs inside the step window:
+    // mtstudio's dense path) reduce there, one double per parameter, and
+    // are scaled there; host-fresh grads keep the host loops. A device
+    // partial is summed in a different order from the host loop, so the
+    // norm agrees to double rounding (in practice the same float).
+    std::vector<const Matrix*> dev;
+    for (const auto& p : params)
+        if (p->grad.rows() != 0 && device::host_stale(p->grad)) dev.push_back(&p->grad);
+    std::vector<double> part;
+    if (!dev.empty() && !device::devops::sumsq(dev, part)) {
+        for (const Matrix* g : dev) device::materialize(*g);
+        dev.clear();
+    }
     double sq = 0.0;
+    size_t k = 0;
     for (const auto& p : params) {
         const Matrix& g = p->grad;
         if (g.rows() == 0) continue;  // never accumulated
+        if (k < dev.size() && dev[k] == &g) {
+            sq += part[k++];
+            continue;
+        }
+        device::materialize(g);
         for (size_t i = 0; i < g.rows(); ++i)
             for (size_t j = 0; j < g.cols(); ++j) sq += static_cast<double>(g(i, j)) * g(i, j);
     }
@@ -1786,6 +1826,9 @@ float clip_grad_norm(const std::vector<Var>& params, float max_norm) {
         const float scale = max_norm / total;
         for (const auto& p : params) {
             Matrix& g = p->grad;
+            if (g.rows() == 0) continue;
+            if (device::host_stale(g) && device::devops::scale(g, scale, g)) continue;
+            device::materialize(g);
             for (size_t i = 0; i < g.rows(); ++i)
                 for (size_t j = 0; j < g.cols(); ++j) g(i, j) *= scale;
         }

@@ -1520,11 +1520,32 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         }
     }
 
+    // MICROTORCH_STEP_TIMING=1: per-phase wall time on each step event
+    // ("t_ms"). Each mark waits for the device first, so the phases add up
+    // to the step; the waits cost a little throughput, so it is a profiling
+    // switch, never on for a timed run.
+    const bool step_timing = [] {
+        const char* v = std::getenv("MICROTORCH_STEP_TIMING");
+        return v && std::strcmp(v, "1") == 0;
+    }();
+    json t_ms;
+    auto t_last = std::chrono::steady_clock::now();
+    auto mark = [&](const char* phase) {
+        if (!step_timing) return;
+        device::synchronize();
+        const auto now = std::chrono::steady_clock::now();
+        const double ms = std::chrono::duration<double, std::milli>(now - t_last).count();
+        t_ms[phase] = (t_ms.contains(phase) ? t_ms[phase].get<double>() : 0.0) + ms;
+        t_last = now;
+    };
+
     // Train.
     bool stopped_early = false;
     const bool is_srd = attn_kind(s.attention) == parity::AttnKind::SRD;
     for (int step = start_step + 1; step <= s.steps; ++step) {
         last_step = step;
+        mark("other");  // eval, checkpoint and logging since the last step
+        t_ms = json::object();
         const size_t lim = (sft || grpo || po) ? 0 : val_start - s.T - 1;
         // Mini-batching + accumulation: each of s.accum micro-steps stacks
         // s.batch sequences into ONE forward ([batch*T, d] rows; positions
@@ -1538,6 +1559,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         // on a CUDA build.
         device::step_begin();
         opt.zero_grad();
+        mark("zero_grad");
         float task_mean = 0, gate_mean = 0;
         // MoE monitors, averaged over the accum micro-steps (unscaled
         // per-layer means; the loss adds coefficient * these).
@@ -1712,9 +1734,11 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                 x.insert(x.end(), ids.begin() + at, ids.begin() + at + s.T);
                 y.insert(y.end(), ids.begin() + at + 1, ids.begin() + at + s.T + 1);
             }
+            mark("data");
             nn::MoEAux maux;
             Var logits = s.moe_experts > 0 ? llama->forward(x, s.batch > 1 ? s.T : 0, &maux)
                                            : fwd(x, s.batch > 1 ? s.T : 0);
+            mark("forward");
             Var task = sft ? ops::cross_entropy_masked(logits, y, mask) : ops::cross_entropy(logits, y);
             Var loss = task;
             if (is_srd) loss = ops::add(task, ops::scale(gpt->mean_gate(), s.lambda_gate));
@@ -1728,20 +1752,68 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                 for (size_t l = 0; l < maux.frac.size(); ++l)
                     for (size_t e = 0; e < s.moe_experts; ++e) moe_frac[l][e] += maux.frac[l][e] / s.accum;
             }
+            mark("loss");
             backward(ops::scale(loss, 1.0f / static_cast<float>(s.accum)));
+            mark("backward");
             task_mean += task->data(0, 0) / static_cast<float>(s.accum);
             if (is_srd) gate_mean += gpt->mean_gate()->data(0, 0) / static_cast<float>(s.accum);
         }
-        device::step_end();
         // Per-module grad norms BEFORE clipping: this is the true signal
         // the glow UI wants (clipping would mask explosions).
+        const bool want_gm = s.gradmap_every > 0 && step % s.gradmap_every == 0;
+        // AdamW alone with deferred downloads: clip and the update run
+        // inside the window on the device-fresh grads, and the window then
+        // downloads the updated parameters, not every gradient (the grads
+        // used to cross the bus twice and the clip loop ran on the host).
+        // grad_map and Muon read grads on the host: they close it first.
+        const bool opt_in_window = device::deferring() && opt.muon.empty() && !want_gm;
+        if (!opt_in_window) device::step_end();
+        mark("step_end");
         json gm;
-        if (s.gradmap_every > 0 && step % s.gradmap_every == 0) gm = grad_map(model_ref);
+        if (want_gm) gm = grad_map(model_ref);
         const float total_norm = ops::clip_grad_norm(model_ref.parameters(), s.clip);
+        mark("clip");
         opt.step();
+        mark("optimizer");
+        if (opt_in_window) {
+            // The grads are spent (the next zero_grad rewrites them): drop
+            // their device copies instead of downloading them, so host grad
+            // storage is NOT current after an in-window step. Nothing reads
+            // it between steps on this path (grad_map closes the window first).
+            const auto params = model_ref.parameters();
+            for (const auto& p : params) device::discard(p->grad);
+            // Between two plain training steps nothing reads the parameters
+            // on the host, so the updated values stay on the device and the
+            // next window adopts them (no download now, no upload then).
+            // Eval, checkpoint and the last step read them: download first.
+            // MICROTORCH_KEEP_PARAMS=0 downloads every step. The llama
+            // family (dense and MoE) only: its forward reads every
+            // parameter through the device seams, verified bit for bit.
+            // The gpt2-family forward still has host reads of raw parameter
+            // storage (a kept run took a wrong step 2, 20 Oct 2026).
+            const bool keep_ok = [&llama] {
+                const char* v = std::getenv("MICROTORCH_KEEP_PARAMS");
+                return llama != nullptr && !(v && std::strcmp(v, "0") == 0);
+            }();
+            const bool host_next = step % s.eval_every == 0 || step % s.ckpt_every == 0 || step == s.steps;
+            if (keep_ok && !host_next) {
+                std::vector<const Matrix*> keep;
+                for (const auto& p : params) keep.push_back(&p->data);
+                device::step_end_keeping(keep);
+            } else {
+                device::step_end();
+            }
+            mark("step_end");
+        }
 
         json e = {
             {"event", "step"}, {"step", step}, {"loss", task_mean}, {"grad_norm", total_norm}};
+        if (step_timing) e["t_ms"] = t_ms;
+        if (device::gpu_profile_on()) {
+            json g = json::object();
+            for (const auto& [op, ms] : device::gpu_profile_take()) g[op] = ms;
+            e["gpu_ms"] = g;
+        }
         if (is_srd) e["gate"] = gate_mean;
         if (!moe_frac.empty()) {
             // Expert collapse is visible here: per-layer token fractions,

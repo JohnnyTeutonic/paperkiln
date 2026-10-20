@@ -11,12 +11,45 @@
 #include <random>
 #include <stdexcept>
 #include <tuple>
+#include <type_traits>
+#include <utility>
 #include <vector>
 #include "vector.hpp"  // Include Vector definition from vector.hpp
 #define M_PI 3.14159265358979323846
 // Forward declarations
 class Matrix;
 class Vector;
+
+/**
+ * @brief std::allocator that default-initialises on value-less construction.
+ *
+ * resize(n, v) still writes v everywhere; only resize(n) leaves the floats
+ * unwritten, which is what Matrix(rows, cols, Matrix::uninitialized) uses:
+ * a large fresh allocation then costs no page touches until it is written.
+ */
+template <class T, class A = std::allocator<T>>
+class default_init_allocator : public A {
+    using traits = std::allocator_traits<A>;
+
+  public:
+    template <class U>
+    struct rebind {
+        using other = default_init_allocator<U, typename traits::template rebind_alloc<U>>;
+    };
+    using A::A;
+    default_init_allocator() = default;
+    template <class U>
+    default_init_allocator(const default_init_allocator<U, typename traits::template rebind_alloc<U>>& o) noexcept
+        : A(static_cast<const typename traits::template rebind_alloc<U>&>(o)) {}
+    template <class U>
+    void construct(U* p) noexcept(std::is_nothrow_default_constructible<U>::value) {
+        ::new (static_cast<void*>(p)) U;
+    }
+    template <class U, class... Args>
+    void construct(U* p, Args&&... args) {
+        traits::construct(static_cast<A&>(*this), p, std::forward<Args>(args)...);
+    }
+};
 
 /**
  * @brief A 2D matrix class optimized for neural network operations.
@@ -31,7 +64,7 @@ class Vector;
  */
 class Matrix {
   private:
-    std::vector<float> data_;        ///< Matrix data storage on CPU
+    std::vector<float, default_init_allocator<float>> data_;  ///< Matrix data storage on CPU
     size_t rows_;                    ///< Number of rows
     size_t cols_;                    ///< Number of columns
     std::tuple<size_t, size_t> shape_; ///< Matrix shape as (rows, cols)
@@ -55,6 +88,21 @@ class Matrix {
      * @param init_val Initial value for all elements (default: 0.0f)
      */
     Matrix(size_t rows, size_t cols, float init_val = 0.0f);
+
+    /// Tag for the uninitialised constructor below.
+    struct uninitialized_t {
+        explicit uninitialized_t() = default;
+    };
+    static constexpr uninitialized_t uninitialized{};
+
+    /**
+     * @brief Constructs a matrix whose elements are left unwritten.
+     *
+     * For outputs the caller overwrites in full (a device kernel writing
+     * every element, a copy). Reading an element before writing it is
+     * undefined; use the zero-filling constructor otherwise.
+     */
+    Matrix(size_t rows, size_t cols, uninitialized_t);
 
     /**
      * @brief Constructs a matrix using external data.

@@ -9,6 +9,8 @@
 // CPU-only builds: every call is a no-op (residency_enabled() == false),
 // so callers never need #ifdefs.
 #pragma once
+#include <string>
+#include <utility>
 #include <vector>
 
 #include "matrix.hpp"
@@ -47,6 +49,15 @@ void set_step_residency(bool on);  // master switch (default off)
 bool step_residency_enabled();
 void step_begin();  // open a cache window: bump the epoch, enable caching
 void step_end();    // close it: caches are ignored until the next begin
+// step_end() that leaves the device-fresh values of `keep` (parameters the
+// optimizer just updated on the device) on the device instead of
+// downloading them: the next step_begin() adopts them as that window's
+// values, so the parameters never cross the bus between two training steps.
+// Until then their host storage is STALE: the caller guarantees nothing
+// reads it raw before the next window (materialize() still works, and a
+// plain step_end()/materialize_all() brings them home). mtstudio uses it
+// only when the next thing to run is another training step.
+void step_end_keeping(const std::vector<const Matrix*>& keep);
 
 // Device bytes currently allocated (total - free, via cudaMemGetInfo);
 // 0 on CPU-only builds. Exists so a test can assert memory is FLAT over
@@ -61,6 +72,22 @@ size_t device_bytes_in_use();
 // by MICROTORCH_POOL_MB). Both 0 on CPU-only builds.
 size_t pool_live_bytes();
 size_t pool_cached_bytes();
+// Wait for all queued device work (cudaDeviceSynchronize); no-op on CPU
+// builds. For phase timers only (MICROTORCH_STEP_TIMING), never the
+// training path: every copy back to host already orders itself.
+void synchronize();
+// MICROTORCH_GPU_PROFILE=1: CUDA events around every device op and gemm,
+// summed per op name. gpu_profile_take() waits for the device and returns
+// {op: ms} since the last call (empty when off and on CPU builds).
+bool gpu_profile_on();
+// cudaDeviceScheduleBlockingSync (env MICROTORCH_BLOCKING_SYNC=1, before
+// the first CUDA call): waits sleep, so CPU time is host work alone.
+void set_blocking_sync();
+std::vector<std::pair<std::string, double>> gpu_profile_take();
+namespace detail {
+void gpu_profile_begin(const char* op);  // no-op unless on, or an op is already open
+void gpu_profile_end(const char* op);    // closes the open op if it is `op`
+}  // namespace detail
 
 namespace detail {
 void release_devstate_impl(DevState*);  // frees the buffer + the struct
@@ -106,6 +133,22 @@ bool step_resident_gemm(const Matrix& A, DevState** devA, Trans tA, const Matrix
 void set_device_ops(bool on);  // master switch (default off)
 bool device_ops_enabled();
 
+// Storage for an op output that a device op will overwrite in full. With
+// the device op set live (switch on, process device CUDA) its elements are
+// left unwritten: the host used to zero-fill every output, and gemm, op
+// and gradient outputs that stay deferred on the device never needed it
+// (zero-fills were ~44% of a d512 forward's host samples, 20 Oct 2026).
+// Otherwise, and when the vendored Matrix predates the uninitialised
+// constructor, it is zero-filled exactly as Matrix(rows, cols). A caller
+// whose device op declines (returns false) and whose host fallback reads
+// the output before writing it must zero it first: zero_if_uninit().
+Matrix out_matrix(size_t rows, size_t cols);
+// True when out_matrix() hands out unwritten storage right now.
+bool out_matrix_uninit();
+inline void zero_if_uninit(Matrix& m) {
+    if (out_matrix_uninit()) m.fill(0.0f);
+}
+
 // ---- Phase B2.1b: deferred downloads (docs/CUDA_PHASE_B2.md checklist)
 //
 // With the switch on (set_defer_downloads / env MICROTORCH_DEFER_DOWNLOADS=1)
@@ -141,6 +184,9 @@ bool device_ops_enabled();
 void set_defer_downloads(bool on);  // master switch (default off)
 bool defer_downloads_enabled();
 
+// True while device op outputs defer (switch on, device ops live, window
+// open): a devops result written now stays on the device.
+bool deferring();
 // True iff the device holds a fresher copy of m's storage than the host.
 bool host_stale(const Matrix& m);
 // Download m's device-fresh copy into host storage (no-op if not stale).
@@ -257,6 +303,11 @@ bool rmsnorm_fwd(const Matrix& x, const Matrix& w, float eps, Matrix& y,
                  std::vector<float>& rms_inv);
 bool rmsnorm_bwd(const Matrix& dY, const Matrix& x, const std::vector<float>& rms_inv,
                  const Matrix& w, bool want_dw, Matrix* dw, bool want_dx, Matrix* dx);
+// The same with rms_inv an [R, 1] matrix: it rides the value cache like any
+// output, so forward and backward never sync the host for it (ops::rmsnorm).
+bool rmsnorm_fwd(const Matrix& x, const Matrix& w, float eps, Matrix& y, Matrix& rms_inv);
+bool rmsnorm_bwd(const Matrix& dY, const Matrix& x, const Matrix& rms_inv, const Matrix& w, bool want_dw,
+                 Matrix* dw, bool want_dx, Matrix* dx);
 // The llama block's head plumbing (ops::apply_rope / slice_cols /
 // concat_cols are the reference). RoPE runs over the fused [T, 3d] qkv
 // layout: heads h < n_rot_heads of q and k rotate, v is copied; the
@@ -302,6 +353,15 @@ bool logsumexp_bwd(const Matrix& x, const Matrix& lse, const Matrix& g, Matrix& 
 bool mul_col_fwd(const Matrix& x, const Matrix& c, Matrix& y);
 bool mul_col_dx(const Matrix& dy, const Matrix& c, Matrix& dx);
 bool mul_col_dc(const Matrix& dy, const Matrix& x, Matrix& dc);
+// The dense step's last host loops. transpose: y = x^T, an exact copy (the
+// tied head's E^T and its gradient). embed_scatter_add: table_grad(ids[i], :)
+// += g(i, :), each table row's adds in ascending i as ops::embedding's host
+// backward does, so bit for bit (ids bounds-checked by the caller). sumsq:
+// out[k] = sum of squares of xs[k] in double (clip_grad_norm's accumulator
+// type, a different summation order: equal to double rounding).
+bool transpose(const Matrix& x, Matrix& y);
+bool embed_scatter_add(const Matrix& g, const std::vector<int>& ids, Matrix& table_grad);
+bool sumsq(const std::vector<const Matrix*>& xs, std::vector<double>& out);
 }  // namespace devops
 
 }  // namespace device

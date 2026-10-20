@@ -8,7 +8,7 @@
 // Safety: every kernel and copy in these TUs runs on the default stream,
 // so work using a block is ordered before any later work on the block that
 // reuses it, the property cudaFree's implicit sync provided. Cached bytes
-// are capped (MICROTORCH_POOL_MB, default 1024), and the cache is returned
+// are capped (MICROTORCH_POOL_MB, default 3/4 of the device), and the cache is returned
 // to the driver if a cudaMalloc fails, before one retry. Pointers the pool
 // did not hand out are freed with cudaFree as before.
 #pragma once
@@ -40,7 +40,18 @@ inline Pool& get() {
     static Pool* p = [] {
         auto* q = new Pool;
         const char* e = std::getenv("MICROTORCH_POOL_MB");
-        q->cap = static_cast<size_t>(e ? std::atol(e) : 1024) << 20;
+        if (e) {
+            q->cap = static_cast<size_t>(std::atol(e)) << 20;
+        } else {
+            // Default: three quarters of the device. A 1 GiB cap held less
+            // than one step's activations from d512 up, so every backward
+            // returned blocks with a syncing cudaFree and the next forward
+            // cudaMalloc'd them again: ~470 of each per d512 L8 step
+            // (nsys, 20 Oct 2026). Cached blocks go back to the driver
+            // whenever a cudaMalloc fails, before its retry.
+            size_t free_b = 0, total_b = 0;
+            q->cap = cudaMemGetInfo(&free_b, &total_b) == cudaSuccess ? total_b / 4 * 3 : size_t(1024) << 20;
+        }
         return q;
     }();
     return *p;
