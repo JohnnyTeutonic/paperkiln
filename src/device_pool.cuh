@@ -32,6 +32,7 @@ struct Pool {
     size_t cached = 0;
     size_t cap = 0;
     size_t live_bytes = 0;  // sum of `live` (handed out, not yet returned)
+    size_t peak_bytes = 0;  // high-water mark of live_bytes since reset_peak()
 };
 
 inline Pool& get() {
@@ -101,6 +102,18 @@ inline size_t live_bytes() {
     return p.live_bytes;
 }
 
+inline size_t peak_bytes() {
+    Pool& p = get();
+    std::lock_guard<std::mutex> lk(p.mu);
+    return p.peak_bytes;
+}
+
+inline void reset_peak() {
+    Pool& p = get();
+    std::lock_guard<std::mutex> lk(p.mu);
+    p.peak_bytes = p.live_bytes;
+}
+
 template <class T>
 inline cudaError_t dmalloc(T** ptr, size_t bytes) {
     Pool& p = get();
@@ -113,6 +126,7 @@ inline cudaError_t dmalloc(T** ptr, size_t bytes) {
         p.cached -= b;
         p.live[q] = b;
         p.live_bytes += b;
+        if (p.live_bytes > p.peak_bytes) p.peak_bytes = p.live_bytes;
         *ptr = static_cast<T*>(q);
         return cudaSuccess;
     }
@@ -126,6 +140,7 @@ inline cudaError_t dmalloc(T** ptr, size_t bytes) {
     if (e != cudaSuccess) return e;
     p.live[q] = b;
     p.live_bytes += b;
+    if (p.live_bytes > p.peak_bytes) p.peak_bytes = p.live_bytes;
     *ptr = static_cast<T*>(q);
     return cudaSuccess;
 }

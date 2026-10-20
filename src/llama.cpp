@@ -3,6 +3,7 @@
 #include <cmath>
 #include <stdexcept>
 
+#include "microtorch/device_cache.hpp"
 #include "microtorch/ir.hpp"
 
 namespace microtorch {
@@ -47,10 +48,22 @@ Var LlamaBlock::forward(const Var& x, const std::vector<int>& pos, size_t seq_le
     // ops::apply_rope expects the fused [T, 3d] qkv layout; build it, rotate
     // each head's q/k columns (head 0 only under the legacy rope_heads =
     // "first"), slice back. concat/slice are tape ops, so gradients flow.
-    Var qkv = ops::apply_rope(ops::concat_cols({q, k, v}), pos, rope_theta_, dk, rope_all_heads_);
+    //
+    // Memory: the tape keeps every node until the step ends, but the
+    // projections, their concat, the rotated qkv and its slices are read by
+    // no backward (concat, rope and slice backwards touch gradients only)
+    // and by no later forward op once copied onward, so their device
+    // copies are released as soon as the next op has run
+    // (device::release; no-op unless deferring). 189 MB of a d768 layer's
+    // 470 MB at batch 16 x T 256; bit for bit the same step.
+    Var qkv_in = ops::concat_cols({q, k, v});
+    for (const Var* t : {&q, &k, &v}) device::release((*t)->data);
+    Var qkv = ops::apply_rope(qkv_in, pos, rope_theta_, dk, rope_all_heads_);
+    device::release(qkv_in->data);
     q = ops::slice_cols(qkv, 0, d);
     k = ops::slice_cols(qkv, d, 2 * d);
     v = ops::slice_cols(qkv, 2 * d, 3 * d);
+    device::release(qkv->data);
 
     // Fused per-head attention: causal within each sequence,
     // block-isolated across a stacked batch, no mask materialization
@@ -64,14 +77,22 @@ Var LlamaBlock::forward(const Var& x, const std::vector<int>& pos, size_t seq_le
         Var vh = ops::slice_cols(v, hh * dk, (hh + 1) * dk);
         heads.push_back(ops::fused_attention(qh, kh, vh, sc, seq_len, /*causal=*/true));
     }
-    Var attn = o_proj->forward(ops::concat_cols(heads));
+    for (const Var* t : {&q, &k, &v}) device::release((*t)->data);
+    // The attention backward reads q, k, v and its cached weights, never
+    // its output; the head concat feeds o_proj and is kept.
+    Var heads_cat = ops::concat_cols(heads);
+    for (const Var& hv : heads) device::release(hv->data);
+    Var attn = o_proj->forward(heads_cat);
     Var x1 = ops::add(x, attn);
+    device::release(attn->data);  // add's backward reads no data
 
     // ---- SwiGLU FFN sublayer (dense, or a top-k mixture of SwiGLU experts) ----
     Var h2 = ops::rmsnorm(x1, ln2_w);
     Var ffn = moe ? moe->forward(h2, aux)
                   : down_proj->forward(ops::mul(ops::silu(gate_proj->forward(h2)), up_proj->forward(h2)));
-    return ops::add(x1, ffn);
+    Var out = ops::add(x1, ffn);
+    if (!moe) device::release(ffn->data);
+    return out;
 }
 
 ir::json LlamaBlock::export_ir() const {

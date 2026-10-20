@@ -70,7 +70,13 @@ struct VBuf {
     unsigned long long epoch = 0;
     bool stale = false;
     bool kept = false;  // stale across a step_end_keeping() boundary (see there)
+    bool released = false;  // device-only value freed by release(): reads throw
 };
+
+[[noreturn]] void released_read(const char* where) {
+    throw std::runtime_error(std::string("device: read of a released activation at ") + where +
+                             " (device::release was called on a tensor that is still read)");
+}
 std::unordered_map<const float*, VBuf> g_vcache;
 
 // Deferral requires the device op set to be live: with devops off, the
@@ -137,6 +143,7 @@ float* operand(const Matrix& m, bool& owned) {
 // accumulate() choke point, so no stale entry outlives its matrix.
 float* vcache_hit(const float* key, size_t n) {
     auto it = g_vcache.find(key);
+    if (it != g_vcache.end() && it->second.released && it->second.n == n) released_read("device operand");
     if (it != g_vcache.end() && it->second.stale &&
         it->second.epoch == g_epoch && it->second.n == n)
         return it->second.d;
@@ -292,6 +299,8 @@ size_t device_bytes_in_use() {
 
 size_t pool_live_bytes() { return pool::live_bytes(); }
 size_t pool_cached_bytes() { return pool::cached_bytes(); }
+size_t pool_peak_bytes() { return pool::peak_bytes(); }
+void pool_reset_peak() { pool::reset_peak(); }
 void synchronize() { cuda_check(cudaDeviceSynchronize(), "synchronize"); }
 
 // ---- MICROTORCH_GPU_PROFILE: per-op GPU time from CUDA events ----------
@@ -411,6 +420,7 @@ bool host_stale(const Matrix& m) {
 
 void materialize(const Matrix& m) {
     auto it = g_vcache.find(m.get_data());
+    if (it != g_vcache.end() && it->second.released) released_read("materialize");
     if (it == g_vcache.end() || !it->second.stale) return;
     cuda_check(cudaMemcpy(const_cast<float*>(m.get_data()), it->second.d,
                           it->second.n * sizeof(float),
@@ -434,6 +444,22 @@ void discard(const Matrix& m) {
     if (it == g_vcache.end()) return;
     pool::dfree(it->second.d);
     g_vcache.erase(it);
+}
+
+void release(const Matrix& m) {
+    if (!defer_active()) return;
+    auto it = g_vcache.find(m.get_data());
+    if (it == g_vcache.end() || it->second.released) return;
+    if (!it->second.stale) {  // host holds the value: the device copy is a spare
+        pool::dfree(it->second.d);
+        g_vcache.erase(it);
+        return;
+    }
+    pool::dfree(it->second.d);
+    it->second.d = nullptr;
+    it->second.stale = false;
+    it->second.kept = false;
+    it->second.released = true;  // kept (n too) until the Variable's destructor discards it
 }
 
 void devcheck_host_read(const Matrix& m, const char* where) {
@@ -466,6 +492,7 @@ float* vc_output(const float* key, size_t n, bool& deferred,
         return nullptr;
     }
     VBuf& v = g_vcache[key];
+    v.released = false;  // written again: a value once more
     const bool had_fresh =
         (v.d != nullptr && v.stale && v.epoch == g_epoch && v.n == n);
     if (v.d != nullptr && v.n != n) {

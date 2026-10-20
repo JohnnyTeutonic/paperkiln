@@ -1561,19 +1561,23 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     // MICROTORCH_STEP_TIMING=1: per-phase wall time on each step event
     // ("t_ms"). Each mark waits for the device first, so the phases add up
     // to the step; the waits cost a little throughput, so it is a profiling
-    // switch, never on for a timed run.
+    // switch, never on for a timed run. It also logs the device pool's
+    // live MiB at each mark ("live_mb"), the step's high-water mark
+    // ("peak_mb") and the pool's cache ("cached_mb").
     const bool step_timing = [] {
         const char* v = std::getenv("MICROTORCH_STEP_TIMING");
         return v && std::strcmp(v, "1") == 0;
     }();
-    json t_ms;
+    json t_ms, live_mb;
     auto t_last = std::chrono::steady_clock::now();
+    auto mib = [](size_t b) { return static_cast<double>(b) / (1 << 20); };
     auto mark = [&](const char* phase) {
         if (!step_timing) return;
         device::synchronize();
         const auto now = std::chrono::steady_clock::now();
         const double ms = std::chrono::duration<double, std::milli>(now - t_last).count();
         t_ms[phase] = (t_ms.contains(phase) ? t_ms[phase].get<double>() : 0.0) + ms;
+        live_mb[phase] = mib(device::pool_live_bytes());
         t_last = now;
     };
 
@@ -1584,6 +1588,8 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         last_step = step;
         mark("other");  // eval, checkpoint and logging since the last step
         t_ms = json::object();
+        live_mb = json::object();
+        if (step_timing) device::pool_reset_peak();
         const size_t lim = (sft || grpo || po) ? 0 : val_start - s.T - 1;
         // Mini-batching + accumulation: each of s.accum micro-steps stacks
         // s.batch sequences into ONE forward ([batch*T, d] rows; positions
@@ -1849,7 +1855,12 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         json e = {
             {"event", "step"}, {"step", step}, {"loss", task_mean}, {"grad_norm", total_norm}};
         if (scheduled) e["lr"] = s.lr * lr_f;
-        if (step_timing) e["t_ms"] = t_ms;
+        if (step_timing) {
+            e["t_ms"] = t_ms;
+            e["live_mb"] = live_mb;
+            e["peak_mb"] = mib(device::pool_peak_bytes());
+            e["cached_mb"] = mib(device::pool_cached_bytes());
+        }
         if (device::gpu_profile_on()) {
             json g = json::object();
             for (const auto& [op, ms] : device::gpu_profile_take()) g[op] = ms;

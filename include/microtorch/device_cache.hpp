@@ -72,6 +72,10 @@ size_t device_bytes_in_use();
 // by MICROTORCH_POOL_MB). Both 0 on CPU-only builds.
 size_t pool_live_bytes();
 size_t pool_cached_bytes();
+// High-water mark of pool_live_bytes() since the last reset (the step's
+// true device working set, which nvidia-smi cannot separate from the cache).
+size_t pool_peak_bytes();
+void pool_reset_peak();
 // Wait for all queued device work (cudaDeviceSynchronize); no-op on CPU
 // builds. For phase timers only (MICROTORCH_STEP_TIMING), never the
 // training path: every copy back to host already orders itself.
@@ -200,6 +204,16 @@ void materialize_all();
 // found by the B2.2 T4 valgrind run, 30 Aug 2026): every op whose
 // deferred temporary dies before the step boundary MUST discard it.
 void discard(const Matrix& m);
+// Free the device copy of an activation that nothing reads again: its
+// forward consumers have all run and no backward reads it (a projection
+// feeding only a concat, an add or a column slice). The tape keeps the
+// Variable, and with it this buffer, alive until the step ends; this hands
+// the device memory back now. A device-only value is marked released: any
+// later device read or materialize() throws instead of reading garbage
+// (host storage was never written). No-op outside a deferring window and
+// on CPU builds. LlamaBlock::forward uses it (~40% of a dense llama
+// step's activations, 20 Oct 2026).
+void release(const Matrix& m);
 // Throws if m is host-stale — the DEVCHECK assert. Call sites compile to
 // nothing unless MICROTORCH_DEVCHECK is defined at build time.
 void devcheck_host_read(const Matrix& m, const char* where);

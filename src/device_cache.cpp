@@ -39,6 +39,10 @@ size_t pool_live_bytes() {
 size_t pool_cached_bytes() {
     return 0;
 }
+size_t pool_peak_bytes() {
+    return 0;
+}
+void pool_reset_peak() {}
 void synchronize() {}
 bool gpu_profile_on() {
     return false;
@@ -69,6 +73,7 @@ bool host_stale(const Matrix&) {
 void materialize(const Matrix&) {}
 void materialize_all() {}
 void discard(const Matrix&) {}
+void release(const Matrix&) {}
 void devcheck_host_read(const Matrix&, const char*) {}
 
 // CPU-only builds: the op-set entries are no-ops returning false, so the
