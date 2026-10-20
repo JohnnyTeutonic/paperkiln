@@ -1,0 +1,319 @@
+{
+ "_comment": "Capacity session (LOCAL_LLM_STACK.md section 8, 20 Oct 2026). (1) MoE upcycle of fw_base (E=8 top-2) vs a dense continuation, equal tokens, on FineWeb-Edu text the base never read (rest.txt, made by boot_jobs.sh), each then given the QA+chat mix SFT. (2) A bigger dense llama from scratch: d768 L12 H12 d_ff 2048 (~97M parameters; d and d_ff multiples of 256 for Q4_K), batch 32 x 256 = 8,192 tokens/step, 60,000 steps = ~490M tokens of the shard; if the measured L4 rate makes that longer than ~18 h, the big job is restarted early with fewer steps (cosine decay is tied to train.steps). Then the same SFT. (3) flex_plain_tiny retrained for ember's last family gate (gpt2 family: deferred downloads off). Runner: runner_multi.py --upload fw_base.safetensors=... --upload sft_mix.jsonl=...",
+ "max_parallel": 3,
+ "jobs": [
+  {
+   "name": "moe",
+   "model_name": "fw_moe",
+   "init_file": "fw_base.safetensors",
+   "init_key": "upcycle_from",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "custom": {
+      "d": 384,
+      "layers": 6,
+      "heads": 6
+     },
+     "moe": {
+      "experts": 8,
+      "top_k": 2,
+      "gate": "renorm",
+      "aux_loss": 0.01,
+      "z_loss": 0.001
+     }
+    },
+    "data": {
+     "corpus": "/content/pk/corpus/data/fineweb_edu_shard0_v1/rest.txt",
+     "vocab": "/content/pk/corpus/data/vocab_fineweb_tinychat_bpe8k_v1/fineweb_tinychat_bpe8k.gguf",
+     "vocab_cap": 8192,
+     "T": 256,
+     "max_tokens": 60000000
+    },
+    "train": {
+     "steps": 10000,
+     "lr": 0.0003,
+     "batch": 16,
+     "eval_every": 500,
+     "checkpoint_every": 500,
+     "gradmap_every": 0,
+     "seed": 2,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 200,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf",
+      "gguf_q8_0_all"
+     ]
+    }
+   }
+  },
+  {
+   "name": "ctrl",
+   "model_name": "fw_ctrl",
+   "init_file": "fw_base.safetensors",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "custom": {
+      "d": 384,
+      "layers": 6,
+      "heads": 6
+     }
+    },
+    "data": {
+     "corpus": "/content/pk/corpus/data/fineweb_edu_shard0_v1/rest.txt",
+     "vocab": "/content/pk/corpus/data/vocab_fineweb_tinychat_bpe8k_v1/fineweb_tinychat_bpe8k.gguf",
+     "vocab_cap": 8192,
+     "T": 256,
+     "max_tokens": 60000000
+    },
+    "train": {
+     "steps": 10000,
+     "lr": 0.0003,
+     "batch": 16,
+     "eval_every": 500,
+     "checkpoint_every": 500,
+     "gradmap_every": 0,
+     "seed": 2,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 200,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf",
+      "gguf_q8_0_all"
+     ]
+    }
+   }
+  },
+  {
+   "name": "big",
+   "model_name": "fw_big",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "custom": {
+      "d": 768,
+      "layers": 12,
+      "heads": 12,
+      "d_ff": 2048
+     }
+    },
+    "data": {
+     "corpus": "/content/pk/corpus/data/fineweb_edu_shard0_v1/pretrain_train.txt",
+     "vocab": "/content/pk/corpus/data/vocab_fineweb_tinychat_bpe8k_v1/fineweb_tinychat_bpe8k.gguf",
+     "vocab_cap": 8192,
+     "T": 256,
+     "max_tokens": 0
+    },
+    "train": {
+     "steps": 60000,
+     "lr": 0.0006,
+     "batch": 32,
+     "eval_every": 1000,
+     "checkpoint_every": 1000,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 1000,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf",
+      "gguf_q8_0_all"
+     ]
+    }
+   }
+  },
+  {
+   "name": "moe_sft",
+   "model_name": "chat_fw_moe",
+   "after": "moe",
+   "init_job": "moe",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "custom": {
+      "d": 384,
+      "layers": 6,
+      "heads": 6
+     },
+     "moe": {
+      "experts": 8,
+      "top_k": 2,
+      "gate": "renorm",
+      "aux_loss": 0.01,
+      "z_loss": 0.001
+     }
+    },
+    "data": {
+     "vocab": "/content/pk/corpus/data/vocab_fineweb_tinychat_bpe8k_v1/fineweb_tinychat_bpe8k.gguf",
+     "vocab_cap": 8192,
+     "T": 256,
+     "sft_examples": "/content/chat/upload/sft_mix.jsonl"
+    },
+    "train": {
+     "steps": 1500,
+     "lr": 0.0003,
+     "batch": 16,
+     "eval_every": 250,
+     "checkpoint_every": 250,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "objective": "sft"
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf",
+      "gguf_q8_0_all"
+     ]
+    }
+   }
+  },
+  {
+   "name": "ctrl_sft",
+   "model_name": "chat_fw_ctrl",
+   "after": "ctrl",
+   "init_job": "ctrl",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "custom": {
+      "d": 384,
+      "layers": 6,
+      "heads": 6
+     }
+    },
+    "data": {
+     "vocab": "/content/pk/corpus/data/vocab_fineweb_tinychat_bpe8k_v1/fineweb_tinychat_bpe8k.gguf",
+     "vocab_cap": 8192,
+     "T": 256,
+     "sft_examples": "/content/chat/upload/sft_mix.jsonl"
+    },
+    "train": {
+     "steps": 1500,
+     "lr": 0.0003,
+     "batch": 16,
+     "eval_every": 250,
+     "checkpoint_every": 250,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "objective": "sft"
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf",
+      "gguf_q8_0_all"
+     ]
+    }
+   }
+  },
+  {
+   "name": "big_sft",
+   "model_name": "chat_fw_big",
+   "after": "big",
+   "init_job": "big",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "custom": {
+      "d": 768,
+      "layers": 12,
+      "heads": 12,
+      "d_ff": 2048
+     }
+    },
+    "data": {
+     "vocab": "/content/pk/corpus/data/vocab_fineweb_tinychat_bpe8k_v1/fineweb_tinychat_bpe8k.gguf",
+     "vocab_cap": 8192,
+     "T": 256,
+     "sft_examples": "/content/chat/upload/sft_mix.jsonl"
+    },
+    "train": {
+     "steps": 1500,
+     "lr": 0.0001,
+     "batch": 16,
+     "eval_every": 250,
+     "checkpoint_every": 250,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "objective": "sft",
+     "lr_schedule": {
+      "warmup_steps": 100,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf",
+      "gguf_q8_0_all"
+     ]
+    }
+   }
+  },
+  {
+   "name": "flex_plain",
+   "model_name": "flex_plain_tiny",
+   "env": {
+    "MICROTORCH_DEFER_DOWNLOADS": 0
+   },
+   "spec": {
+    "arch": {
+     "preset": "gpt2-nano",
+     "custom": {
+      "d": 128,
+      "layers": 2,
+      "heads": 2,
+      "residual": "plain"
+     }
+    },
+    "data": {
+     "corpus": "/content/pk/corpus/data/tinychat_hf_sample_v1/pretrain_train.txt",
+     "vocab": "/content/pk/corpus/data/vocab_fineweb_tinychat_bpe8k_v1/fineweb_tinychat_bpe8k.gguf",
+     "vocab_cap": 8192,
+     "T": 128,
+     "max_tokens": 3000000
+    },
+    "train": {
+     "steps": 3000,
+     "lr": 0.001,
+     "batch": 16,
+     "eval_every": 500,
+     "checkpoint_every": 500,
+     "gradmap_every": 0,
+     "seed": 1
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   }
+  }
+ ]
+}
