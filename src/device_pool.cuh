@@ -46,7 +46,21 @@ inline Pool& get() {
     return *p;
 }
 
-inline size_t round_bytes(size_t b) { return b == 0 ? 512 : (b + 511) / 512 * 512; }
+// Size classes. Up to 1 MiB, multiples of 512 bytes (exact reuse for the
+// shapes that repeat every step). Above, eight classes per power of two
+// (at most 12.5% padding): an MoE layer's per-expert tensors change their
+// row count every step, and with exact sizes nearly every one missed the
+// cache, so the step paid a cudaMalloc per tensor and, once the cache had
+// filled with stale sizes, a syncing cudaFree per release (an E = 8 d384
+// MoE run under WSL: about 1,500 of each per step at ~4 ms apiece, nsys,
+// 20 Oct 2026).
+inline size_t round_bytes(size_t b) {
+    if (b <= (size_t(1) << 20)) return b == 0 ? 512 : (b + 511) / 512 * 512;
+    size_t top = size_t(1) << 20;
+    while (top * 2 <= b) top *= 2;
+    const size_t step = top / 8;
+    return (b + step - 1) / step * step;
+}
 
 // Return every cached block to the driver. Caller holds the lock.
 inline void release_cached_locked(Pool& p) {

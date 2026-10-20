@@ -78,7 +78,10 @@ ir::json MoEFFN::export_ir(const std::string& in, const std::string& out, const 
 Var MoEFFN::forward(const Var& x, MoEAux* aux) const {
     const size_t T = x->data.rows(), E = cfg.experts, k = cfg.top_k;
     Var logits = router->forward(x);  // [T, E]
-    device::materialize(logits->data);  // host-read: top-k selection
+    // Host-read: top-k selection. The routing has to reach the host anyway
+    // (each expert's token list sets its matrix shapes), and [T, E] logits
+    // are a few hundred KB; everything after the selection stays on device.
+    device::materialize(logits->data);
 
     // Top-k per token: descending logit, ties to the lower index. Selection
     // by logits equals selection by softmax probabilities (monotone).
@@ -116,15 +119,20 @@ Var MoEFFN::forward(const Var& x, MoEAux* aux) const {
             tok[e].push_back(static_cast<int>(t));
             slot[e].push_back(static_cast<int>(j));
         }
-    Var out;
+    // Combine: one scatter-add of every expert's gated rows, ascending
+    // expert index (the per-token sum order a chain of per-expert scatters
+    // and adds gives, without E dense [T, d] intermediates).
+    std::vector<Var> contribs;
+    std::vector<std::vector<int>> contrib_tok;
     for (size_t e = 0; e < E; ++e) {
         if (tok[e].empty()) continue;  // no tokens: no compute, no gradient
         Var xe = ops::gather_rows(x, tok[e]);
         Var ye = experts[e]->forward(xe);
         Var ge = ops::gather_elems(gates, tok[e], slot[e], 1);  // [n_e, 1]
-        Var contrib = ops::scatter_add_rows(ops::mul_col(ye, ge), tok[e], T);
-        out = out ? ops::add(out, contrib) : contrib;
+        contribs.push_back(ops::mul_col(ye, ge));
+        contrib_tok.push_back(tok[e]);
     }
+    Var out = ops::scatter_add_rows(contribs, contrib_tok, T);
 
     if (aux) {
         std::vector<double> frac(E, 0.0);

@@ -1564,6 +1564,233 @@ bool accumulate_cols(Matrix& y, size_t c0, const Matrix& g, bool y_is_zero) {
     return true;
 }
 
+// ---- mixture-of-experts dispatch ---------------------------------------
+// The MoE layer routes each token's row to k experts, runs every expert on
+// its gathered rows and scatter-adds the gated outputs back. On the host
+// these loops forced the activations home once per expert per layer. Here
+// they stay in the value cache. Scatters are deterministic and atomic-free:
+// the host builds, per destination row, its sources in ascending order
+// (one int upload: offsets then sources), and one thread per destination
+// element adds them in that order, which is the host loop's add sequence.
+
+namespace {
+
+// y[i, :] = x[idx[i], :] over n = rows(y) * C elements.
+__global__ void k_gather_rows(const float* x, const int* idx, float* y, size_t n, size_t C) {
+    for (size_t t = blockIdx.x * blockDim.x + threadIdx.x; t < n; t += gridDim.x * blockDim.x)
+        y[t] = x[static_cast<size_t>(idx[t / C]) * C + t % C];
+}
+
+// Destination row r sums x rows src[off[r] .. off[r + 1]) in that order.
+// SC_COPY: the first source is copied (scatter_add_rows' rule, keeping a
+// -0.0), rows with no source are zero. SC_ZERO: the sum starts from 0.0f
+// (a gather backward into a zero-filled matrix). SC_INTO: that sum is then
+// added to y, and rows with no source keep their value (dx, then grad +=
+// dx, without the dense dx).
+enum { SC_COPY = 0, SC_ZERO = 1, SC_INTO = 2 };
+__global__ void k_scatter_rows(const float* x, const int* off, const int* src, float* y, size_t n, size_t C,
+                               int mode) {
+    for (size_t t = blockIdx.x * blockDim.x + threadIdx.x; t < n; t += gridDim.x * blockDim.x) {
+        const size_t r = t / C, j = t % C;
+        const int b = off[r], e = off[r + 1];
+        if (mode == SC_INTO && b == e) continue;
+        float acc = 0.0f;
+        if (b < e) {
+            const float v = x[static_cast<size_t>(src[b]) * C + j];
+            acc = mode == SC_COPY ? v : acc + v;
+            for (int p = b + 1; p < e; ++p) acc += x[static_cast<size_t>(src[p]) * C + j];
+        }
+        y[t] = mode == SC_INTO ? y[t] + acc : acc;
+    }
+}
+
+// Counting sort of sources by destination row: stable, so each row's
+// sources stay ascending. Packed [offsets (n_rows + 1) | sources] for one
+// upload.
+std::vector<int> scatter_index(const std::vector<int>& idx, size_t n_rows) {
+    std::vector<int> pack(n_rows + 1 + idx.size(), 0);
+    int* off = pack.data();
+    int* src = off + n_rows + 1;
+    for (int r : idx) ++off[r + 1];
+    for (size_t r = 0; r < n_rows; ++r) off[r + 1] += off[r];
+    std::vector<int> fill(off, off + n_rows);
+    for (size_t i = 0; i < idx.size(); ++i) src[fill[idx[i]]++] = static_cast<int>(i);
+    return pack;
+}
+
+// One thread per row, the host loop verbatim: running max, then a double
+// sum of exp(x - max) in column order.
+__global__ void k_logsumexp_fwd(const float* x, float* lse, int R, int C) {
+    const int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= R) return;
+    const float* xr = x + static_cast<size_t>(i) * C;
+    float mx = xr[0];
+    for (int j = 1; j < C; ++j) mx = mx < xr[j] ? xr[j] : mx;
+    double s = 0.0;
+    for (int j = 0; j < C; ++j) s += exp(static_cast<double>(xr[j]) - mx);
+    lse[i] = mx + static_cast<float>(log(s));
+}
+
+__global__ void k_logsumexp_bwd(const float* x, const float* lse, const float* g, float* dx, size_t n, size_t C) {
+    for (size_t t = blockIdx.x * blockDim.x + threadIdx.x; t < n; t += gridDim.x * blockDim.x) {
+        const size_t i = t / C;
+        // The host's std::exp(float) is glibc's expf, correctly rounded in
+        // practice; the double exp rounded once to float matches it where
+        // the device expf (2 ulp) would not.
+        dx[t] = g[i] * static_cast<float>(exp(static_cast<double>(x[t] - lse[i])));
+    }
+}
+
+// y = x .* c[row]: mul_col's forward and its dx (dy .* c[row]).
+__global__ void k_mul_col(const float* x, const float* c, float* y, size_t n, size_t C) {
+    for (size_t t = blockIdx.x * blockDim.x + threadIdx.x; t < n; t += gridDim.x * blockDim.x)
+        y[t] = x[t] * c[t / C];
+}
+
+// dc[i] = sum_j dy[i,j] x[i,j], one thread per row in column order. The
+// host library is built without FMA (no -march), so the loop rounds the
+// product and then the sum; the _rn intrinsics stop nvcc contracting them.
+__global__ void k_mul_col_dc(const float* dy, const float* x, float* dc, int R, int C) {
+    const int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= R) return;
+    const size_t o = static_cast<size_t>(i) * C;
+    float s = 0.0f;
+    for (int j = 0; j < C; ++j) s = __fadd_rn(s, __fmul_rn(dy[o + j], x[o + j]));
+    dc[i] = s;
+}
+
+}  // namespace
+
+bool gather_rows(const Matrix& x, const std::vector<int>& idx, size_t C, Matrix& y) {
+    if (!active()) return false;
+    const size_t n_src = x.rows() * x.cols(), n = idx.size() * C;
+    if (idx.empty() || C == 0 || n_src % C != 0 || y.rows() * y.cols() != n) return false;
+    In dx(x.get_data(), n_src);
+    IBuf di(idx.data(), idx.size());
+    Out dy(y.get_data(), n);
+    k_gather_rows<<<ew_grid(n), NTHREADS>>>(dx.d, di.d, dy.d, n, C);
+    cuda_check(cudaGetLastError(), "gather_rows");
+    dy.finish();
+    return true;
+}
+
+bool scatter_rows(const Matrix& x, const std::vector<int>& idx, size_t n_rows, size_t C, bool first_copies,
+                  Matrix& y) {
+    if (!active()) return false;
+    const size_t n_src = idx.size() * C, n = n_rows * C;
+    if (idx.empty() || C == 0 || x.rows() * x.cols() != n_src || y.rows() * y.cols() != n) return false;
+    const std::vector<int> pack = scatter_index(idx, n_rows);
+    In dx(x.get_data(), n_src);
+    IBuf dp(pack.data(), pack.size());
+    Out dy(y.get_data(), n);
+    k_scatter_rows<<<ew_grid(n), NTHREADS>>>(dx.d, dp.d, dp.d + n_rows + 1, dy.d, n, C,
+                                             first_copies ? SC_COPY : SC_ZERO);
+    cuda_check(cudaGetLastError(), "scatter_rows");
+    dy.finish();
+    return true;
+}
+
+bool scatter_rows_multi(const std::vector<const Matrix*>& xs, const std::vector<int>& idx, size_t n_rows,
+                        size_t C, Matrix& y) {
+    if (!active()) return false;
+    const size_t n = n_rows * C;
+    size_t rows = 0;
+    for (const Matrix* x : xs) {
+        if (!x || x->cols() != C) return false;
+        rows += x->rows();
+    }
+    if (xs.empty() || C == 0 || rows != idx.size() || y.rows() * y.cols() != n) return false;
+    // Stack the inputs in one device-only buffer (no host shadow), then
+    // one scatter over the concatenated sources.
+    DBuf cat(rows * C);
+    size_t at = 0;
+    for (const Matrix* x : xs) {
+        const size_t m = x->rows() * C;
+        In dx(x->get_data(), m);
+        cuda_check(cudaMemcpyAsync(cat.d + at, dx.d, m * sizeof(float), cudaMemcpyDeviceToDevice, 0),
+                   "scatter_rows_multi stack");
+        at += m;
+    }
+    const std::vector<int> pack = scatter_index(idx, n_rows);
+    IBuf dp(pack.data(), pack.size());
+    Out dy(y.get_data(), n);
+    k_scatter_rows<<<ew_grid(n), NTHREADS>>>(cat.d, dp.d, dp.d + n_rows + 1, dy.d, n, C, SC_COPY);
+    cuda_check(cudaGetLastError(), "scatter_rows_multi");
+    dy.finish();
+    return true;
+}
+
+bool scatter_rows_into(const Matrix& g, const std::vector<int>& idx, Matrix& y, bool y_is_zero) {
+    if (!active()) return false;
+    const size_t n_rows = y.rows(), C = y.cols(), n = n_rows * C;
+    if (idx.empty() || C == 0 || g.rows() != idx.size() || g.cols() != C) return false;
+    const std::vector<int> pack = scatter_index(idx, n_rows);
+    In ig(g.get_data(), idx.size() * C);
+    IBuf dp(pack.data(), pack.size());
+    Out oy(y.get_data(), n, /*need_current=*/!y_is_zero);
+    k_scatter_rows<<<ew_grid(n), NTHREADS>>>(ig.d, dp.d, dp.d + n_rows + 1, oy.d, n, C,
+                                             y_is_zero ? SC_ZERO : SC_INTO);
+    cuda_check(cudaGetLastError(), "scatter_rows_into");
+    oy.finish();
+    return true;
+}
+
+bool logsumexp_fwd(const Matrix& x, Matrix& lse) {
+    if (!active()) return false;
+    const int R = static_cast<int>(x.rows()), C = static_cast<int>(x.cols());
+    if (R == 0 || C == 0 || lse.rows() != x.rows() || lse.cols() != 1) return false;
+    In dx(x.get_data(), x.rows() * x.cols());
+    Out dl(lse.get_data(), x.rows());
+    k_logsumexp_fwd<<<(R + NTHREADS - 1) / NTHREADS, NTHREADS>>>(dx.d, dl.d, R, C);
+    cuda_check(cudaGetLastError(), "logsumexp_fwd");
+    dl.finish();
+    return true;
+}
+
+bool logsumexp_bwd(const Matrix& x, const Matrix& lse, const Matrix& g, Matrix& dx) {
+    if (!active()) return false;
+    const size_t R = x.rows(), C = x.cols(), n = R * C;
+    if (n == 0 || lse.rows() != R || g.rows() != R || lse.cols() != 1 || g.cols() != 1 || dx.rows() != R ||
+        dx.cols() != C)
+        return false;
+    In ix(x.get_data(), n), il(lse.get_data(), R), ig(g.get_data(), R);
+    Out od(dx.get_data(), n);
+    k_logsumexp_bwd<<<ew_grid(n), NTHREADS>>>(ix.d, il.d, ig.d, od.d, n, C);
+    cuda_check(cudaGetLastError(), "logsumexp_bwd");
+    od.finish();
+    return true;
+}
+
+bool mul_col_fwd(const Matrix& x, const Matrix& c, Matrix& y) {
+    if (!active()) return false;
+    const size_t R = x.rows(), C = x.cols(), n = R * C;
+    if (n == 0 || c.rows() != R || c.cols() != 1 || y.rows() != R || y.cols() != C) return false;
+    In ix(x.get_data(), n), ic(c.get_data(), R);
+    Out oy(y.get_data(), n);
+    k_mul_col<<<ew_grid(n), NTHREADS>>>(ix.d, ic.d, oy.d, n, C);
+    cuda_check(cudaGetLastError(), "mul_col_fwd");
+    oy.finish();
+    return true;
+}
+
+bool mul_col_dx(const Matrix& dy, const Matrix& c, Matrix& dx) {
+    return mul_col_fwd(dy, c, dx);  // the same broadcast product
+}
+
+bool mul_col_dc(const Matrix& dy, const Matrix& x, Matrix& dc) {
+    if (!active()) return false;
+    const int R = static_cast<int>(x.rows()), C = static_cast<int>(x.cols());
+    const size_t n = x.rows() * x.cols();
+    if (n == 0 || dy.rows() != x.rows() || dy.cols() != x.cols() || dc.rows() != x.rows() || dc.cols() != 1)
+        return false;
+    In idy(dy.get_data(), n), ix(x.get_data(), n);
+    Out odc(dc.get_data(), x.rows());
+    k_mul_col_dc<<<(R + NTHREADS - 1) / NTHREADS, NTHREADS>>>(idy.d, ix.d, odc.d, R, C);
+    cuda_check(cudaGetLastError(), "mul_col_dc");
+    odc.finish();
+    return true;
+}
+
 }  // namespace devops
 }  // namespace device
 }  // namespace microtorch

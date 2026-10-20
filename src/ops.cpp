@@ -72,7 +72,26 @@ Var matmul(const Var& a, const Var& b) {
     });
 }
 
+// Elementwise add/mul run on the device when an operand is device-fresh
+// (accumulate()'s rule): the result then stays in the value cache instead
+// of pulling both operands home. One IEEE add or product per element on
+// either side, so bit for bit; host-fresh operands (scalars, host-built
+// tensors) keep the host loop and its host-fresh result.
+namespace {
+bool device_side(const Matrix& a, const Matrix& b) {
+    return a.rows() == b.rows() && a.cols() == b.cols() && (device::host_stale(a) || device::host_stale(b));
+}
+}  // namespace
+
 Var add(const Var& a, const Var& b) {
+    if (device_side(a->data, b->data)) {
+        Matrix out(a->data.rows(), a->data.cols());
+        if (device::devops::add(a->data, b->data, out))
+            return record(std::move(out), {a, b}, [](Variable* self) {
+                if (self->parents[0]->requires_grad) self->parents[0]->accumulate(self->grad);
+                if (self->parents[1]->requires_grad) self->parents[1]->accumulate(self->grad);
+            });
+    }
     device::materialize(a->data);
     device::materialize(b->data);
     return record(a->data + b->data, {a, b}, [](Variable* self) {
@@ -94,6 +113,34 @@ Var sub(const Var& a, const Var& b) {
 }
 
 Var mul(const Var& a, const Var& b) {
+    if (device_side(a->data, b->data)) {
+        Matrix out(a->data.rows(), a->data.cols());
+        if (device::devops::mul(a->data, b->data, out))
+            return record(std::move(out), {a, b}, [](Variable* self) {
+                const Var& a = self->parents[0];
+                const Var& b = self->parents[1];
+                // The forward ran on the device, so the operands are (or
+                // were) device-fresh: the products stay there too.
+                if (a->requires_grad) {
+                    Matrix da(a->data.rows(), a->data.cols());
+                    if (!device::devops::mul(self->grad, b->data, da)) {
+                        device::materialize(self->grad);
+                        device::materialize(b->data);
+                        da = self->grad.hadamard(b->data);
+                    }
+                    a->accumulate(std::move(da));
+                }
+                if (b->requires_grad) {
+                    Matrix db(b->data.rows(), b->data.cols());
+                    if (!device::devops::mul(self->grad, a->data, db)) {
+                        device::materialize(self->grad);
+                        device::materialize(a->data);
+                        db = self->grad.hadamard(a->data);
+                    }
+                    b->accumulate(std::move(db));
+                }
+            });
+    }
     device::materialize(a->data);
     device::materialize(b->data);
     return record(a->data.hadamard(b->data), {a, b}, [](Variable* self) {
@@ -975,28 +1022,40 @@ Var mul_col(const Var& x, const Var& c) {
     if (c->data.cols() != 1 || c->data.rows() != x->data.rows()) {
         throw std::runtime_error("mul_col: c must be [rows(x), 1]");
     }
-    device::materialize(x->data);
-    device::materialize(c->data);
-    Matrix out = x->data;
-    for (size_t i = 0; i < out.rows(); ++i)
-        for (size_t j = 0; j < out.cols(); ++j) out(i, j) *= c->data(i, 0);
+    // Device seam (the MoE gate product): the same per-element product, and
+    // dc's per-row sum in the host's column order.
+    Matrix out(x->data.rows(), x->data.cols());
+    if (!device::devops::mul_col_fwd(x->data, c->data, out)) {
+        device::materialize(x->data);
+        device::materialize(c->data);
+        out = x->data;
+        for (size_t i = 0; i < out.rows(); ++i)
+            for (size_t j = 0; j < out.cols(); ++j) out(i, j) *= c->data(i, 0);
+    }
     return record(std::move(out), {x, c}, [](Variable* self) {
         const Var& x = self->parents[0];
         const Var& c = self->parents[1];
         if (x->requires_grad) {
-            device::materialize(self->grad);  // B2.3c: host-read below
-            Matrix dx = self->grad;
-            for (size_t i = 0; i < dx.rows(); ++i)
-                for (size_t j = 0; j < dx.cols(); ++j) dx(i, j) *= c->data(i, 0);
+            Matrix dx(self->grad.rows(), self->grad.cols());
+            if (!device::devops::mul_col_dx(self->grad, c->data, dx)) {
+                device::materialize(self->grad);  // B2.3c: host-read below
+                device::materialize(c->data);
+                dx = self->grad;
+                for (size_t i = 0; i < dx.rows(); ++i)
+                    for (size_t j = 0; j < dx.cols(); ++j) dx(i, j) *= c->data(i, 0);
+            }
             x->accumulate(std::move(dx));
         }
         if (c->requires_grad) {
-            device::materialize(self->grad);  // B2.3c: host-read below
             Matrix dc(c->data.rows(), 1);
-            for (size_t i = 0; i < dc.rows(); ++i) {
-                float s = 0;
-                for (size_t j = 0; j < x->data.cols(); ++j) s += self->grad(i, j) * x->data(i, j);
-                dc(i, 0) = s;
+            if (!device::devops::mul_col_dc(self->grad, x->data, dc)) {
+                device::materialize(self->grad);  // B2.3c: host-read below
+                device::materialize(x->data);
+                for (size_t i = 0; i < dc.rows(); ++i) {
+                    float s = 0;
+                    for (size_t j = 0; j < x->data.cols(); ++j) s += self->grad(i, j) * x->data(i, j);
+                    dc(i, 0) = s;
+                }
             }
             c->accumulate(std::move(dc));
         }
@@ -1516,13 +1575,32 @@ Var gather_rows(const Var& x, const std::vector<int>& idx) {
     if (idx.empty()) throw std::runtime_error("gather_rows: empty index list");
     for (int i : idx)
         if (i < 0 || static_cast<size_t>(i) >= R) throw std::runtime_error("gather_rows: index out of range");
-    device::materialize(x->data);
+    // Device seam (cuda_ops.cu, the MoE dispatch): an exact copy, and the
+    // backward's scatter adds each row's sources in the host loop's order.
     Matrix out(idx.size(), C);
-    for (size_t i = 0; i < idx.size(); ++i)
-        for (size_t j = 0; j < C; ++j) out(i, j) = x->data(idx[i], j);
+    if (!device::devops::gather_rows(x->data, idx, C, out)) {
+        device::materialize(x->data);
+        for (size_t i = 0; i < idx.size(); ++i)
+            for (size_t j = 0; j < C; ++j) out(i, j) = x->data(idx[i], j);
+    }
     return record(std::move(out), {x}, [idx](Variable* self) {
         const Var& x = self->parents[0];
         if (!x->requires_grad) return;
+        // On the device the rows add straight into x's gradient: an MoE
+        // layer gathers once per expert, and a dense [rows(x), cols] dx per
+        // expert was most of its backward's host allocation. Same roundings
+        // as dx-then-accumulate (each row's sum starts from 0.0f).
+        if (x->grad.rows() == 0) {
+            // First gradient: the kernel writes a fresh one whole (a vector
+            // move keeps the buffer, so its value-cache entry moves too).
+            Matrix g(x->data.rows(), x->data.cols());
+            if (device::devops::scatter_rows_into(self->grad, idx, g, true)) {
+                x->grad = std::move(g);
+                return;
+            }
+        } else if (device::devops::scatter_rows_into(self->grad, idx, x->grad, false)) {
+            return;
+        }
         device::materialize(self->grad);  // host-read below
         Matrix dx(x->data.rows(), x->data.cols());
         for (size_t i = 0; i < idx.size(); ++i)
@@ -1537,28 +1615,81 @@ Var scatter_add_rows(const Var& x, const std::vector<int>& idx, size_t n_rows) {
     for (int i : idx)
         if (i < 0 || static_cast<size_t>(i) >= n_rows)
             throw std::runtime_error("scatter_add_rows: index out of range");
-    device::materialize(x->data);
     Matrix out(n_rows, C);
     // First write to a row copies, later ones add: a one-to-one scatter is
-    // then an exact copy (0.0f + v would turn a -0.0 into +0.0).
-    std::vector<char> touched(n_rows, 0);
-    for (size_t i = 0; i < idx.size(); ++i) {
-        const size_t r = static_cast<size_t>(idx[i]);
-        if (touched[r]) {
-            for (size_t j = 0; j < C; ++j) out(r, j) += x->data(i, j);
-        } else {
-            for (size_t j = 0; j < C; ++j) out(r, j) = x->data(i, j);
-            touched[r] = 1;
+    // then an exact copy (0.0f + v would turn a -0.0 into +0.0). The device
+    // seam keeps that rule and the ascending source order.
+    if (!device::devops::scatter_rows(x->data, idx, n_rows, C, true, out)) {
+        device::materialize(x->data);
+        std::vector<char> touched(n_rows, 0);
+        for (size_t i = 0; i < idx.size(); ++i) {
+            const size_t r = static_cast<size_t>(idx[i]);
+            if (touched[r]) {
+                for (size_t j = 0; j < C; ++j) out(r, j) += x->data(i, j);
+            } else {
+                for (size_t j = 0; j < C; ++j) out(r, j) = x->data(i, j);
+                touched[r] = 1;
+            }
         }
     }
     return record(std::move(out), {x}, [idx](Variable* self) {
         const Var& x = self->parents[0];
         if (!x->requires_grad) return;
-        device::materialize(self->grad);  // host-read below
         Matrix dx(idx.size(), self->grad.cols());
-        for (size_t i = 0; i < idx.size(); ++i)
-            for (size_t j = 0; j < dx.cols(); ++j) dx(i, j) = self->grad(idx[i], j);
+        if (!device::devops::gather_rows(self->grad, idx, dx.cols(), dx)) {
+            device::materialize(self->grad);  // host-read below
+            for (size_t i = 0; i < idx.size(); ++i)
+                for (size_t j = 0; j < dx.cols(); ++j) dx(i, j) = self->grad(idx[i], j);
+        }
         x->accumulate(std::move(dx));
+    });
+}
+
+Var scatter_add_rows(const std::vector<Var>& xs, const std::vector<std::vector<int>>& idx, size_t n_rows) {
+    if (xs.empty() || idx.size() != xs.size()) throw std::runtime_error("scatter_add_rows: one index list per input");
+    const size_t C = xs[0]->data.cols();
+    std::vector<int> all;  // the index lists concatenated, in input order
+    std::vector<const Matrix*> parts;
+    for (size_t e = 0; e < xs.size(); ++e) {
+        if (xs[e]->data.cols() != C || idx[e].size() != xs[e]->data.rows())
+            throw std::runtime_error("scatter_add_rows: one index per row of each input, equal widths");
+        for (int i : idx[e])
+            if (i < 0 || static_cast<size_t>(i) >= n_rows)
+                throw std::runtime_error("scatter_add_rows: index out of range");
+        all.insert(all.end(), idx[e].begin(), idx[e].end());
+        parts.push_back(&xs[e]->data);
+    }
+    Matrix out(n_rows, C);
+    // The single-input op's rule over the stacked inputs: first write
+    // copies, later ones add, sources in input order.
+    if (!device::devops::scatter_rows_multi(parts, all, n_rows, C, out)) {
+        std::vector<char> touched(n_rows, 0);
+        for (size_t e = 0; e < xs.size(); ++e) {
+            device::materialize(xs[e]->data);
+            const Matrix& x = xs[e]->data;
+            for (size_t i = 0; i < idx[e].size(); ++i) {
+                const size_t r = static_cast<size_t>(idx[e][i]);
+                if (touched[r]) {
+                    for (size_t j = 0; j < C; ++j) out(r, j) += x(i, j);
+                } else {
+                    for (size_t j = 0; j < C; ++j) out(r, j) = x(i, j);
+                    touched[r] = 1;
+                }
+            }
+        }
+    }
+    return record(std::move(out), xs, [idx](Variable* self) {
+        for (size_t e = 0; e < self->parents.size(); ++e) {
+            const Var& x = self->parents[e];
+            if (!x->requires_grad) continue;
+            Matrix dx(idx[e].size(), self->grad.cols());
+            if (!device::devops::gather_rows(self->grad, idx[e], dx.cols(), dx)) {
+                device::materialize(self->grad);  // host-read below
+                for (size_t i = 0; i < idx[e].size(); ++i)
+                    for (size_t j = 0; j < dx.cols(); ++j) dx(i, j) = self->grad(idx[e][i], j);
+            }
+            x->accumulate(std::move(dx));
+        }
     });
 }
 
@@ -1570,39 +1701,56 @@ Var gather_elems(const Var& x, const std::vector<int>& rows, const std::vector<i
         if (rows[i] < 0 || static_cast<size_t>(rows[i]) >= x->data.rows() || cols[i] < 0 ||
             static_cast<size_t>(cols[i]) >= x->data.cols())
             throw std::runtime_error("gather_elems: index out of range");
-    device::materialize(x->data);
+    // Device seam: the C = 1 row ops over flat element indices (the matrix
+    // storage is row-major), so the backward keeps the host's add order.
+    std::vector<int> flat(n);
+    for (size_t i = 0; i < n; ++i) flat[i] = rows[i] * static_cast<int>(x->data.cols()) + cols[i];
     Matrix out(n / out_cols, out_cols);
-    for (size_t i = 0; i < n; ++i) out(i / out_cols, i % out_cols) = x->data(rows[i], cols[i]);
-    return record(std::move(out), {x}, [rows, cols, out_cols](Variable* self) {
+    if (!device::devops::gather_rows(x->data, flat, 1, out)) {
+        device::materialize(x->data);
+        for (size_t i = 0; i < n; ++i) out(i / out_cols, i % out_cols) = x->data(rows[i], cols[i]);
+    }
+    return record(std::move(out), {x}, [rows, cols, out_cols, flat](Variable* self) {
         const Var& x = self->parents[0];
         if (!x->requires_grad) return;
-        device::materialize(self->grad);  // host-read below
         Matrix dx(x->data.rows(), x->data.cols());
-        for (size_t i = 0; i < rows.size(); ++i) dx(rows[i], cols[i]) += self->grad(i / out_cols, i % out_cols);
+        if (!device::devops::scatter_rows(self->grad, flat, dx.rows() * dx.cols(), 1, false, dx)) {
+            device::materialize(self->grad);  // host-read below
+            for (size_t i = 0; i < rows.size(); ++i)
+                dx(rows[i], cols[i]) += self->grad(i / out_cols, i % out_cols);
+        }
         x->accumulate(std::move(dx));
     });
 }
 
 Var logsumexp_row(const Var& x) {
-    device::materialize(x->data);
     const size_t R = x->data.rows(), C = x->data.cols();
     Matrix out(R, 1);
-    for (size_t i = 0; i < R; ++i) {
-        float mx = x->data(i, 0);
-        for (size_t j = 1; j < C; ++j) mx = std::max(mx, x->data(i, j));
-        double s = 0.0;
-        for (size_t j = 0; j < C; ++j) s += std::exp(static_cast<double>(x->data(i, j)) - mx);
-        out(i, 0) = mx + static_cast<float>(std::log(s));
+    // Device seam: one thread per row running this loop (the double sum's
+    // exp/log are the device libm's, so agreement is to rounding).
+    if (!device::devops::logsumexp_fwd(x->data, out)) {
+        device::materialize(x->data);
+        for (size_t i = 0; i < R; ++i) {
+            float mx = x->data(i, 0);
+            for (size_t j = 1; j < C; ++j) mx = std::max(mx, x->data(i, j));
+            double s = 0.0;
+            for (size_t j = 0; j < C; ++j) s += std::exp(static_cast<double>(x->data(i, j)) - mx);
+            out(i, 0) = mx + static_cast<float>(std::log(s));
+        }
     }
     return record(std::move(out), {x}, [](Variable* self) {
         const Var& x = self->parents[0];
         if (!x->requires_grad) return;
-        device::materialize(self->grad);  // host-read below
         const size_t R = x->data.rows(), C = x->data.cols();
         Matrix dx(R, C);
-        for (size_t i = 0; i < R; ++i) {
-            const float lse = self->data(i, 0), g = self->grad(i, 0);
-            for (size_t j = 0; j < C; ++j) dx(i, j) = g * std::exp(x->data(i, j) - lse);
+        if (!device::devops::logsumexp_bwd(x->data, self->data, self->grad, dx)) {
+            device::materialize(self->grad);  // host-read below
+            device::materialize(self->data);
+            device::materialize(x->data);
+            for (size_t i = 0; i < R; ++i) {
+                const float lse = self->data(i, 0), g = self->grad(i, 0);
+                for (size_t j = 0; j < C; ++j) dx(i, j) = g * std::exp(x->data(i, j) - lse);
+            }
         }
         x->accumulate(std::move(dx));
     });

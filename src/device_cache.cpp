@@ -178,6 +178,33 @@ bool concat_cols(const std::vector<const Matrix*>&, Matrix&) {
 bool accumulate_cols(Matrix&, size_t, const Matrix&, bool) {
     return false;
 }
+bool gather_rows(const Matrix&, const std::vector<int>&, size_t, Matrix&) {
+    return false;
+}
+bool scatter_rows(const Matrix&, const std::vector<int>&, size_t, size_t, bool, Matrix&) {
+    return false;
+}
+bool scatter_rows_multi(const std::vector<const Matrix*>&, const std::vector<int>&, size_t, size_t, Matrix&) {
+    return false;
+}
+bool scatter_rows_into(const Matrix&, const std::vector<int>&, Matrix&, bool) {
+    return false;
+}
+bool logsumexp_fwd(const Matrix&, Matrix&) {
+    return false;
+}
+bool logsumexp_bwd(const Matrix&, const Matrix&, const Matrix&, Matrix&) {
+    return false;
+}
+bool mul_col_fwd(const Matrix&, const Matrix&, Matrix&) {
+    return false;
+}
+bool mul_col_dx(const Matrix&, const Matrix&, Matrix&) {
+    return false;
+}
+bool mul_col_dc(const Matrix&, const Matrix&, Matrix&) {
+    return false;
+}
 }  // namespace devops
 }  // namespace device
 }  // namespace microtorch

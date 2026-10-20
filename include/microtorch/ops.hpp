@@ -131,15 +131,24 @@ Var add_scalar(const Var& x, float s);         // x + s (for affine gate logits)
 // weights through the experts, x through gather_rows, and the router
 // through the gate values picked by gather_elems (the top-k INDICES are
 // constants; selection is not differentiable). All FD-checked in
-// tests/test_moe.cpp. Host loops after device::materialize, like
-// embedding/mul_col; device kernels are a later increment.
+// tests/test_moe.cpp. With the device op set on (CUDA) each has a kernel
+// that keeps its result resident in the step window, the scatters
+// deterministic (no atomics) and equal to the host loops bit for bit
+// (tests/test_moe_device.cpp).
 Var gather_rows(const Var& x, const std::vector<int>& idx);
 // out[i, :] = x[idx[i], :]   ([n, cols]);   dx[idx[i], :] += dY[i, :]
-// (repeated indices accumulate). idx must be non-empty and in range.
+// (repeated indices accumulate; the backward adds into x's gradient in
+// place rather than through a dense [rows(x), cols] temporary). idx must
+// be non-empty and in range.
 Var scatter_add_rows(const Var& x, const std::vector<int>& idx, size_t n_rows);
 // out [n_rows, cols], out[idx[i], :] += x[i, :] (rows never named stay
 // zero; a row named once is a COPY, so a one-to-one scatter is
 // bit-exact);   dx[i, :] = dY[idx[i], :]. Adjoint of gather_rows.
+Var scatter_add_rows(const std::vector<Var>& xs, const std::vector<std::vector<int>>& idx, size_t n_rows);
+// The sum of the scatters of xs[e] by idx[e], as ONE op: a destination
+// row adds its sources in input order, then row order (the first copies).
+// The MoE combine: one [n_rows, cols] output where a chain of per-expert
+// scatters and adds would build E of them (and their gradients).
 Var gather_elems(const Var& x, const std::vector<int>& rows, const std::vector<int>& cols,
                  size_t out_cols);
 // Pick entries x(rows[i], cols[i]) into an [n/out_cols, out_cols] matrix,

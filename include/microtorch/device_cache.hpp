@@ -274,6 +274,34 @@ bool concat_cols(const std::vector<const Matrix*>& xs, Matrix& y);
 // backward). y_is_zero: y was just created zero, so it is written whole
 // (zeros outside the range) and never uploaded.
 bool accumulate_cols(Matrix& y, size_t c0, const Matrix& g, bool y_is_zero);
+// Mixture-of-experts dispatch (ops::gather_rows / scatter_add_rows /
+// gather_elems / logsumexp_row / mul_col are the reference; the host
+// caller bounds-checks every index first). Rows are C-wide; the element
+// ops are the C = 1 case over flat (row * cols + col) indices. A scatter
+// sums each destination row's sources in ascending source order from a
+// host-built index (no atomics), first write copying when first_copies
+// (scatter_add_rows) or adding to 0.0f otherwise (the gather backwards):
+// the host loops' exact add sequence, so results agree bit for bit.
+bool gather_rows(const Matrix& x, const std::vector<int>& idx, size_t C, Matrix& y);
+bool scatter_rows(const Matrix& x, const std::vector<int>& idx, size_t n_rows, size_t C, bool first_copies,
+                  Matrix& y);
+// scatter_rows over several inputs at once (xs stacked in order; idx is
+// their index lists concatenated), first write copying.
+bool scatter_rows_multi(const std::vector<const Matrix*>& xs, const std::vector<int>& idx, size_t n_rows,
+                        size_t C, Matrix& y);
+// y += scatter(g by idx) in place, each row's sources summed from 0.0f in
+// ascending order and then added (the host's dx-then-accumulate rounding).
+// y_is_zero: y was just created zero, so it is written whole, never uploaded.
+bool scatter_rows_into(const Matrix& g, const std::vector<int>& idx, Matrix& y, bool y_is_zero);
+// lse[i] = log sum_j exp(x[i,j]) with the host's double accumulation;
+// backward dx = g * exp(x - lse).
+bool logsumexp_fwd(const Matrix& x, Matrix& lse);
+bool logsumexp_bwd(const Matrix& x, const Matrix& lse, const Matrix& g, Matrix& dx);
+// y = x .* c (c a column, broadcast over cols); backward dx = dy .* c and
+// dc[i] = sum_j dy[i,j] x[i,j], serial per row in the host's order.
+bool mul_col_fwd(const Matrix& x, const Matrix& c, Matrix& y);
+bool mul_col_dx(const Matrix& dy, const Matrix& c, Matrix& dx);
+bool mul_col_dc(const Matrix& dy, const Matrix& x, Matrix& dc);
 }  // namespace devops
 
 }  // namespace device
