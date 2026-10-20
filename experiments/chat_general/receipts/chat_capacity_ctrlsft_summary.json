@@ -1,0 +1,35 @@
+{
+ "live": {
+  "clean_stop": 1.0,
+  "distinct2": 0.9992307692307691,
+  "repeat_frac": 0.0,
+  "prompt_overlap": 0.14959126984126983,
+  "ref_f1": 0.16238900247825197,
+  "words": 14.2,
+  "ref_bpb": 0.5645141478396074,
+  "ref_examples": 100,
+  "samples": 100
+ },
+ "fwmix": {
+  "clean_stop": 1.0,
+  "distinct2": 0.9903522408963586,
+  "repeat_frac": 0.06,
+  "prompt_overlap": 0.134,
+  "ref_f1": 0.08862189564821144,
+  "words": 14.71,
+  "ref_bpb": 0.8422480572331275,
+  "ref_examples": 100,
+  "samples": 100
+ },
+ "ctrlsft": {
+  "clean_stop": 0.99,
+  "distinct2": 0.9920842939739998,
+  "repeat_frac": 0.05,
+  "prompt_overlap": 0.18456746031746032,
+  "ref_f1": 0.12340513571395924,
+  "words": 15.51,
+  "ref_bpb": 0.8310937925680936,
+  "ref_examples": 100,
+  "samples": 100
+ }
+}

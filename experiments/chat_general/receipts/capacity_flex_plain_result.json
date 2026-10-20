@@ -1,0 +1,21 @@
+{
+  "T": 128,
+  "accum": 1,
+  "attention": "exact",
+  "batch": 16,
+  "best_val": 5.679227828979492,
+  "checkpoint_activations": false,
+  "d": 128,
+  "early_stopped": false,
+  "family": "flex",
+  "final_step": 3000,
+  "heads": 2,
+  "layers": 2,
+  "lr": 0.0010000000474974513,
+  "name": "flex_plain_tiny",
+  "params": 2510336,
+  "seed": 1,
+  "steps_requested": 3000,
+  "tokens_per_second": 4561.385616744663,
+  "wall_seconds": 673.479564789
+}

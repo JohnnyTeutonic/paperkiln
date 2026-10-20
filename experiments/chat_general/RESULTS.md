@@ -50,6 +50,36 @@ Simple-QA probe (`tools/qa_eval.py`, 60 frozen questions, greedy):
 - ember gates: fwsft f32 40/40 greedy vs mtstudio on CPU, CUDA and WASM,
   q8_0_all 35/40, context-contract harness 13/13.
 
+## Capacity session (20-21 Oct 2026)
+
+One Colab L4 session (tools/colab_chat/runner_multi.py, capacity_v2.json),
+after the training-speed work (d384 1.14 -> 0.109 s/step on the L4).
+
+- **MoE vs dense at equal tokens.** From fw_base, 10,000 steps (41M tokens)
+  of FineWeb-Edu text the base never read, same seed, data and warmup +
+  cosine schedule. Dense continuation (ctrl): best val 3.3735. E=8 top-2
+  renorm upcycle (moe, 70M parameters, ~2x FFN compute per token): best val
+  3.3516. A real but small gain at this length. ctrl's rerun on a second VM
+  reproduced 3.3734705448150635 exactly.
+- **ctrl_sft** (ctrl + the 48k QA+chat mix, 1,500 steps; SFT val 2.410 vs
+  fwmix 2.52):
+
+| model | QA all | fact | science | turn | ref F1 | prompt overlap | repeats |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| live | 0.03 | 0.00 | 0.00 | 0.20 | 0.162 | 0.150 | 0.00 |
+| fwmix | 0.07 | 0.08 | 0.07 | 0.10 | 0.089 | 0.134 | 0.06 |
+| ctrl_sft | 0.12 | 0.12 | 0.13 | 0.20 | 0.123 | 0.185 | 0.05 |
+
+  The first correct content ("Carbon dioxide gas is a gas...", "Plants need
+  sunlight to grow"), but capitals and numbers stay wrong and greedy replies
+  loop; several hits are lenient containment matches inside loops
+  (`receipts/qa_capacity_ctrlsft.md`). Progress, not a model to ship.
+- Still running: moe_sft, and a d768 L12 dense model (~97M parameters,
+  60,000 steps x 8,192 tokens) from scratch with its SFT.
+- Training and serving templates are identical (8,986/8,986 multi-turn SFT
+  examples rebuild to /chat's token ids; the SFT loader appends and trains
+  <|endoftext|>), so the gap is data and capacity, not serialisation.
+
 ## What it says
 
 At 14.6M parameters and ~195M tokens the model has room for the register of
