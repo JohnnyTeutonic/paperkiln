@@ -290,7 +290,10 @@ def main():
                     relay(st, n)
                 if r[n] == "FINISHED" and not js["home"]:
                     fetch_final(st, n, j.get("model_name", n))
-                if r[n] == "FAILED" and not js["home"]:
+                # FAILED counts only when seen on two ticks running: a status
+                # read mid-reset (a job being restarted by hand) is not final.
+                js["failed_seen"] = js.get("failed_seen", 0) + 1 if r[n] == "FAILED" else 0
+                if r[n] == "FAILED" and js["failed_seen"] >= 2 and not js["home"]:
                     colab("download", "-s", NAME, f"/content/chat/{n}_train.log",
                           os.path.join(ART, n, f"{n}_train.log"), timeout=300)
                     js["home"] = True

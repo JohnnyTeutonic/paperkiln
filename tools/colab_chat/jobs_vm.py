@@ -78,14 +78,64 @@ def spec_for(job, jobs):
     return path
 
 
+class Adopted:
+    """A job process this manager did not start (a previous manager's): poll()
+    like Popen, with success read from the run's result.json at exit."""
+
+    def __init__(self, pid, name):
+        self.pid, self.name = pid, name
+
+    def poll(self):
+        if os.path.exists(f"/proc/{self.pid}"):
+            return None
+        return 0 if os.path.exists(f"{C}/{self.name}/result.json") else 1
+
+
+def live_job_pid(name):
+    """The pid of a live `mtstudio run <this job's spec>`, if any."""
+    want = f"{C}/{name}_spec.json"
+    for d in os.listdir("/proc"):
+        if not d.isdigit():
+            continue
+        try:
+            args = open(f"/proc/{d}/cmdline", "rb").read().split(b"\0")
+        except OSError:
+            continue
+        if b"run" in args and want.encode() in args:
+            return int(d)
+    return None
+
+
+def take_lock():
+    """One manager per VM: two managers reading the same status files start
+    each other's jobs (20 Oct 2026)."""
+    lock = f"{C}/jobs_vm.pid"
+    if os.path.exists(lock):
+        try:
+            other = int(open(lock).read())
+            if other != os.getpid() and os.path.exists(f"/proc/{other}"):
+                sys.exit(f"another jobs_vm.py (pid {other}) is running; refusing")
+        except ValueError:
+            pass
+    open(lock, "w").write(str(os.getpid()))
+
+
 def main():
     cfg = json.load(open(sys.argv[1]))
     jobs = {j["name"]: j for j in cfg["jobs"]}
     max_parallel = cfg.get("max_parallel", len(jobs))
+    take_lock()
     t0 = time.time()
     running = {}
     for name in jobs:
-        if status(name) not in ("FINISHED", "FAILED"):
+        st = status(name)
+        if st == "RUNNING":
+            pid = live_job_pid(name)
+            if pid:
+                running[name] = Adopted(pid, name)
+                print(f"{name}: adopted running pid {pid}", flush=True)
+                continue
+        if st not in ("FINISHED", "FAILED"):
             restore(name)
             set_status(name, "WAITING")
     while True:
