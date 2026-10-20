@@ -169,6 +169,22 @@ def fetch_final(st, name, model_name):
         log(f"{name}: final outputs downloaded")
 
 
+def fetch_outputs(st, name, outputs):
+    """A data job's declared outputs, paths relative to /content/chat/<name>/,
+    plus its log. All must arrive before the job counts as home."""
+    art = os.path.join(ART, name)
+    os.makedirs(art, exist_ok=True)
+    ok = True
+    for f in [*outputs, f"../{name}_train.log"]:
+        rc, _ = colab("download", "-s", NAME, f"/content/chat/{name}/{f}", os.path.join(art, os.path.basename(f)),
+                      timeout=1800)
+        ok = ok and rc == 0
+    if ok:
+        st.job(name)["home"] = True
+        st.save()
+        log(f"{name}: outputs downloaded")
+
+
 def launch(st, commit, jobs_rel, jobs, uploads):
     colab("stop", "-s", NAME, timeout=120)
     rc, out = colab("new", "-s", NAME, "--gpu", "L4", timeout=600)
@@ -338,10 +354,13 @@ def main():
                     log(f"{n}: {r[n]}  {r.get(n + '_tail', '')[-120:]}")
                     js["status"] = r[n]
                     st.save()
-                if r[n] == "RUNNING" and not js["home"]:
+                if r[n] == "RUNNING" and not js["home"] and "cmd" not in j:
                     relay(st, n, j.get("relay_every_steps", 0))
                 if r[n] == "FINISHED" and not js["home"]:
-                    fetch_final(st, n, j.get("model_name", n))
+                    if "cmd" in j:
+                        fetch_outputs(st, n, j.get("outputs", []))
+                    else:
+                        fetch_final(st, n, j.get("model_name", n))
                 # FAILED counts only when seen on two ticks running: a status
                 # read mid-reset (a job being restarted by hand) is not final.
                 js["failed_seen"] = js.get("failed_seen", 0) + 1 if r[n] == "FAILED" else 0

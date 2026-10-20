@@ -4,7 +4,10 @@
     python3 jobs_vm.py JOBS.json
 
 Each job in JOBS.json is {"name", "spec", "after"?, "init_job"?, "init_file"?,
-"init_key"?}. A job trains with `mtstudio run` in /content/chat/<name>/ (its
+"init_key"?}, or a data job {"name", "cmd": [argv...], "outputs": [files]}
+whose argv runs from the repo root with "{out}" = /content/chat/<name> and
+"{upload}" = /content/chat/upload (finished when it exits 0; no checkpoints).
+A training job runs `mtstudio run` in /content/chat/<name>/ (its
 out_dir), writes /content/chat/STATUS_<name> (WAITING, RUNNING, FINISHED,
 FAILED) and logs to /content/chat/<name>_train.log. A job with "after" waits
 until that job is FINISHED; "init_job" points train.init_from (or
@@ -21,8 +24,9 @@ import subprocess
 import sys
 import time
 
-# Overridable for a local dry run (JOBS_CHAT_DIR, JOBS_MTSTUDIO).
+# Overridable for a local dry run (JOBS_CHAT_DIR, JOBS_MTSTUDIO, JOBS_REPO).
 C = os.environ.get("JOBS_CHAT_DIR", "/content/chat")
+REPO = os.environ.get("JOBS_REPO", "/content/pk")
 BIN = os.environ.get("JOBS_MTSTUDIO", "/content/pk/build_cuda/mtstudio")
 ENV = {"MICROTORCH_DEVICE": "cuda", "MICROTORCH_DEVICE_OPS": "1", "MICROTORCH_ATTN_BLOCKED": "1",
        "MICROTORCH_STEP_RESIDENCY": "1", "MICROTORCH_DEFER_DOWNLOADS": "1", "MICROTORCH_CUBLAS": "1",
@@ -88,11 +92,23 @@ class Adopted:
     def poll(self):
         if os.path.exists(f"/proc/{self.pid}"):
             return None
+        rc = f"{C}/{self.name}.rc"
+        if os.path.exists(rc):
+            return int(open(rc).read().strip() or 1)
         return 0 if os.path.exists(f"{C}/{self.name}/result.json") else 1
 
 
 def live_job_pid(name):
-    """The pid of a live `mtstudio run <this job's spec>`, if any."""
+    """The pid of a live `mtstudio run <this job's spec>`, or of a data job's
+    wrapper, if any."""
+    pf = f"{C}/{name}.pid"
+    if os.path.exists(pf):
+        try:
+            pid = int(open(pf).read())
+            if os.path.exists(f"/proc/{pid}") and not os.path.exists(f"{C}/{name}.rc"):
+                return pid
+        except ValueError:
+            pass
     want = f"{C}/{name}_spec.json"
     for d in os.listdir("/proc"):
         if not d.isdigit():
@@ -162,12 +178,30 @@ def main():
                 continue
             if after and status(after) != "FINISHED":
                 continue
-            spec = spec_for(jobs[name], jobs)
             log = open(f"{C}/{name}_train.log", "a")
             # A job's "env" overrides the fast defaults (e.g. gpt2-family runs
             # need MICROTORCH_DEFER_DOWNLOADS=0: deferral corrupts them).
             env = {**os.environ, **ENV, **{k: str(v) for k, v in jobs[name].get("env", {}).items()}}
-            running[name] = subprocess.Popen([BIN, "run", spec], stdout=log, stderr=subprocess.STDOUT, env=env)
+            if "cmd" in jobs[name]:
+                # A data job (corpus build, decontamination, tokenising) on the
+                # VM's spare CPUs: argv run from the repo root, "{out}" replaced
+                # by the job's own directory /content/chat/<name>; the runner
+                # brings the files listed in "outputs" home.
+                out = f"{C}/{name}"
+                os.makedirs(out, exist_ok=True)
+                argv = [a.replace("{out}", out).replace("{upload}", f"{C}/upload") for a in jobs[name]["cmd"]]
+                # The wrapper records pid and exit code, so a later manager can
+                # adopt a data job that outlived this one.
+                for f in (f"{C}/{name}.pid", f"{C}/{name}.rc"):
+                    if os.path.exists(f):
+                        os.remove(f)
+                wrap = ['sh', '-c', f'echo $$ > {C}/{name}.pid; "$@"; r=$?; echo $r > {C}/{name}.rc; exit $r', 'sh',
+                        *argv]
+                running[name] = subprocess.Popen(wrap, cwd=REPO, stdout=log, stderr=subprocess.STDOUT,
+                                                 env=env)
+            else:
+                spec = spec_for(jobs[name], jobs)
+                running[name] = subprocess.Popen([BIN, "run", spec], stdout=log, stderr=subprocess.STDOUT, env=env)
             set_status(name, "RUNNING")
             print(f"{name}: started {time.strftime('%H:%M:%S')}", flush=True)
         time.sleep(20)
