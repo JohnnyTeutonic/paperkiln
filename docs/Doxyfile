@@ -2,9 +2,9 @@
 # Run from repo root:  doxygen docs/Doxyfile
 # Output lands in docs/html/ (gitignored; published by the docs workflow).
 
-PROJECT_NAME           = "microtorch"
-PROJECT_BRIEF          = "Research-grade autograd + novel attention mechanisms"
-PROJECT_NUMBER         = 0.3.0
+PROJECT_NAME           = "paperkiln"
+PROJECT_BRIEF          = "Readable C++ LLM training stack: autograd, model families, studio, GGUF export (C++ namespace: microtorch)"
+PROJECT_NUMBER         = 0.3.1
 OUTPUT_DIRECTORY       = docs
 INPUT                  = include src README.md
 USE_MDFILE_AS_MAINPAGE = README.md

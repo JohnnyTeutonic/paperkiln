@@ -1,0 +1,763 @@
+# paperkiln: the full tour
+
+The [README](../README.md) is the short version with quick starts. This page keeps the long
+form: what makes the project different, the studio in detail, the spec format, the full
+feature matrix, the novel mechanisms, the Architecture Atlas, the verification philosophy,
+the arXiv fetcher, the export pipeline, LoRA/QLoRA, CUDA and the repository layout.
+
+## What makes this different
+
+Minimal autograd engines are a well-populated genre. Six things here are not:
+
+1. **Papers in, running models out — with provenance.** `papers/fetch.py` pulls a
+   paper's actual LaTeX source, extracts the architecture, and attaches an
+   **evidence snippet to every extracted value**. Fields it cannot resolve are
+   reported as unresolved rather than silently guessed. This is constrained
+   config-delta extraction with citations, not free-form generation.
+2. **The paper's architecture is what actually trains.** Extracted depth, d_ff,
+   norm flavour, activation, and position encoding are **constructor-real** via
+   the flex model family — *Attention Is All You Need* trains as
+   512/6/8/2048 with LayerNorm, ReLU and sinusoidal positions; Primer's 110M
+   decoder reconstructs at 114M. The generalization is pinned, not trusted:
+   flex at its defaults reproduces the reference block **bit-for-bit**
+   (`tests/test_flex.cpp`).
+3. **The extraction is measured, not vibed.** A paper *mentions* many
+   alternatives; it *uses* one. The contribution-vs-mention scorer separates
+   them with explainable cues and is benchmarked on **40 real papers** with
+   ground-truth architectures: grouped AUROC 0.905 [bootstrap 95% CI
+   0.789–1.000] vs 0.841 for naive first-match, pooled 0.810 [0.730–0.893]
+   vs 0.773, and **no wrong assertion in 92 verdicts** —
+   explicit rejections ("we choose not to adopt SwiGLU") veto a candidate
+   outright, and close calls abstain and ask the human. The zero-wrong
+   record held for 29 papers and broke three times over the next eleven,
+   in **two distinct ways**. Twice it was evidential — *what a paper uses
+   is often stated indirectly, and indirect evidence loses to any
+   direct-looking mention*: Megatron-LM states its activation only by
+   attributing it to the models it copies, and Cerebras-GPT's true
+   positional encoding is inherited from "a GPT-3-like architecture"
+   while RoPE appears purely as *future work*. Once it was lexical:
+   LaMDA's "gated-GELU" is GeGLU, and the scorer matched the substring
+   "GELU". Each was registered with its diagnosis and a named fix
+   (`KNOWN_WRONG` — new failures still fail the build), and each fix is
+   now in: inheritance outranks third-party attribution, future-work
+   mentions veto, "X-like" counts as inheritance, and the longest name
+   wins (`gated-GELU` is GeGLU). A benchmark that never fails is not
+   measuring anything; growing this one from 26 to 40 papers is what
+   found them, and growing it further is how the next ones are found. The benchmark, its CIs and its growth protocol ship in
+   the repo.
+4. **Falsifiers ship inside the modules.** Novel mechanisms carry the experiment
+   designed to kill them — `SurpriseRoutedAttention::shuffle_predictor` feeds the
+   router a permuted input so the gate keeps its distribution but loses its
+   information. When a result fails, [the negative gets
+   published](SPARSE_ATTENTION.md), not buried.
+5. **The loop actually closes, across two engines.** A model trained on this tape
+   exports to byte-exact GGUF and produces coherent English inside
+   `ember.cpp` — a *separately written* inference engine. Both halves of the
+   pipeline are in this stack, and the studio's chat panel talks to it from the
+   same page that trained the model.
+6. **It runs designed experiments on itself.** The
+   [Architecture Atlas](../atlas/ARCHITECTURE_ATLAS.md) treats architecture comparison as
+   a science: Plackett–Burman screens, token-matched factorials, multi-seed
+   cells, findings published with effect sizes and standard errors — including
+   the finding that its own best-cell ranking was inside seed noise while the
+   designed contrasts ran 6–10σ. The registry
+   ([atlas/FINDINGS.md](../atlas/FINDINGS.md)) holds **35 findings —
+   including 3 published retractions and 4 supersessions** — every row with its receipts; 18 carry a manifest that `python tools/reproduce.py <id>` re-runs. Labs
+   that never retract anything aren't more careful; they're less candid
+   about resolution.
+
+## pip install paperkiln-fetch
+
+The extractor now ships standalone — no C++ build, no repo checkout:
+
+```bash
+pip install paperkiln-fetch
+paperfetch 1706.03762                # evidence-carrying summary
+paperfetch 2302.13971 --emit-hf cfg.json
+```
+
+`--emit-hf` writes a config that `transformers.AutoConfig.from_pretrained`
+opens directly — llama- or gpt2-family, chosen from the extracted flavours
+— with every value's evidence snippet and every declared default riding
+inside it under the `_paperkiln` key. A Hugging Face config with
+citations built in. Package source: [paperkiln_fetch/](../paperkiln_fetch/)
+(vendors `papers/fetch.py` verbatim; CI fails on drift via
+`python tools/sync_fetch_pkg.py --check`).
+
+## The crossing theorem — and the zone where no experiment can answer
+
+The registry's own results explain themselves. Sliding-window attention
+is a *nested* subclass of exact attention — this repo pins that
+**bitwise** (`tests/test_swa.cpp`: window ≥ T with sinks=0 reproduces
+full causal attention exactly). Write the gap to each class's best
+achievable loss and the comparison decomposes to
+
+    Delta(b) = A - D(b),   A = L*_swa - L*_exact >= 0  (by nesting)
+
+with `D` the difference of unclosed optimisation gaps. Under nesting,
+decay, and non-increasing `D`, **Delta is monotone, crosses at most
+once (always sparse→dense, never back), and no basin is admissible** —
+which is exactly the shape the 15-seed data shows. The corollary is the
+part with teeth:
+
+    zone width  ~=  2 t SD / ( sqrt(n) |dDelta/db| )
+
+There is, for every finite seed budget, an interval of training budgets
+in which the comparison **has no answer** — and it closes only as
+√n, so halving it costs four times the seeds. At d=256 that zone opens
+around 1600 steps and has not closed by 3600. The seed lottery below is
+this corollary in anecdote form; [the theorem](../atlas/THEOREM_CROSSING.md)
+is it in closed form, with its own falsifier pre-registered
+(`experiments/sparse_s1_longbudget/`): a *second* crossing at long
+budget would prove the monotonicity assumption fails, and it should
+appear if and only if the larger class overfits first.
+
+## The seed lottery
+
+Run five copies of an *identical* experiment — same code, same corpus, same
+architecture, same budget — varying only the random seed, and ask: does
+sliding-window attention beat exact attention? From the banked receipts of a
+pre-registered experiment
+([the full exhibit](../atlas/SEED_LOTTERY.md), regenerated by
+`python tools/seed_lottery.py`):
+
+| budget (steps) | verdicts: exact / swa | P(two one-seed labs contradict) |
+|---:|:---:|:---:|
+| 400 | 0 / 5 | 0% |
+| 1200 | 0 / 5 | 0% |
+| 1600 | 1 / 4 | 32% |
+| 2000–3600 | 3 / 2 | **48%** |
+
+At 400 steps every seed agrees — on the conclusion that *reverses* by 1200.
+From 2,000 steps on, **two labs publishing off one seed each contradict each
+other on the sign of the effect almost every other pairing**. Single-seed,
+single-budget ablation tables — the field's default evidence — are lottery
+tickets, and this repo's methodology (pre-registered decision rules committed
+to git before data exists, paired seeds, budget scopes on every claim, a
+registry that records retractions instead of deleting them) is what it costs
+to stop playing.
+
+## Why it exists
+
+PyTorch is 4M+ lines; understanding *why* your gradient is wrong means reading
+dispatcher internals. paperkiln takes the opposite bet: every operation is a
+readable forward + hand-derived backward pair, every backward is verified against
+finite differences, and the whole tape fits in
+[one header](../include/microtorch/autograd.hpp).
+
+That makes it three things at once:
+
+1. **A working training stack** — load a HF GPT-2 or Qwen checkpoint, fine-tune
+   it, save it back as safetensors.
+2. **A research vehicle** — novel mechanisms (linear attention, selective
+   computation, state-space models) land here in days, not framework-release
+   cycles.
+3. **A reference implementation** — if you want to know what RoPE or a
+   cross-entropy backward *actually does*, the answer is one file away, not forty.
+
+## Quick start
+
+Build, fetch a public corpus, train a small model, chat with it from
+Python. Needs a C++17 compiler, CMake 3.16+, Python 3.9+ and about half
+an hour of CPU for the 3,000-step run (the 300-step one takes five
+minutes).
+
+```bash
+git clone https://github.com/JohnnyTeutonic/paperkiln.git
+cd paperkiln
+mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+make -j$(nproc) mtstudio            # or plain make -j for everything
+ctest --output-on-failure           # optional: gradchecks + unit + integration tests
+cd ..
+
+pip install huggingface_hub gguf transformers torch tokenizers safetensors
+python tools/get_tinystories_data.py            # -> data/tinystories_valid.txt + releases/tinystories_vocab.gguf
+
+./build/mtstudio run specs/tinystories-llama-3k.json     # train, eval, export safetensors + GGUF
+python tools/hf_export.py runs/tinystories-llama-3k --hf-dir runs/tinystories-llama-3k/hf
+python tools/hf_chat.py runs/tinystories-llama-3k/hf      # type a prompt at you>
+```
+
+The corpus is a slice of TinyStories (Eldan & Li, 2023) and the
+vocabulary is built from it, so nothing here depends on a file from the
+author's machine. `docs/CHAT_WITH_A_PAPERKILN_MODEL.md` covers what the
+exported folder contains, the ember.cpp route from the GGUF, and why the
+chat script runs its own sampling loop. `tools/hf_export_verify.py` is
+the receipt that the Python path reproduces `mtstudio sample` token for
+token under greedy decoding.
+
+## Quickstart: chat with your own model
+
+No CMake knowledge needed. One script asks a few questions and does the
+rest: checks your tools (and tells you the exact command for anything
+missing), builds paperkiln, makes a practice corpus, trains a model on
+your CPU, writes a plain-language card about what you trained, and
+opens a chat page in your browser.
+
+```bash
+git clone https://github.com/JohnnyTeutonic/paperkiln.git
+cd paperkiln
+bash quickstart_chat.sh
+```
+
+Linux, macOS, and Windows through WSL2 (in PowerShell as Administrator:
+`wsl --install`, restart, then run the lines above in the Ubuntu app).
+Native Windows is not supported yet.
+
+**What it asks.**
+1. Your system, detected for you to confirm.
+2. Chat with the ready-made model, or train your own. Training needs a
+   C++ compiler and CMake; if you have no administrator rights, the
+   script installs CMake for just you and points to a compiler you can
+   install without one.
+3. Quick (a model of about 450,000 parameters, about 10 minutes on a laptop
+   CPU) or Better (a larger model, about an hour on a CPU). The ready-made
+   model is the Quick model on TinyChat v2, already trained.
+4. Whether to make a public link. If you say yes, it starts a free,
+   anonymous Cloudflare quick tunnel and prints a `trycloudflare.com`
+   address anyone can open to chat with your model. The link lasts as
+   long as the script runs. Anyone with the link can use it, so share it
+   with people, not posts.
+
+**What you get.** A chat page at `http://127.0.0.1:8080/`, the trained
+model in `runs/tinychat-<preset>/` (safetensors and GGUF), and a
+`card.md` beside it that says in plain language what the architecture
+does, how big it is, what it was trained on, and how it did on a fixed
+set of test questions.
+
+**What to expect from it.** The practice corpus is TinyChat: synthetic
+small talk in eight kinds of exchange (how are you, food, drinks, where
+you went, weather, hobbies, pets, invitations) with a vocabulary of
+259 words and symbols. A model this small learns those exchanges well: ask it
+how it is, what it likes to eat or whether it has a pet, and it answers
+in kind. It knows no facts, cannot do sums and loses the thread over
+several turns; the card's test results show where. TinyChat is used
+because a model of this size learns the *register* of real dialogue
+(DailyDialog) but not which answer goes with which question, while on
+a world small enough to master it gives the right kind of reply.
+
+Flags for scripted use: `--mode default|train`, `--preset quick|better`,
+`--share` / `--no-share`, `--port N`, `--yes`. The pieces also run on
+their own:
+
+```bash
+python3 tools/get_tinychat_data.py --version 2 --dialogues 1500   # corpus + vocabulary GGUF, standard library only
+./build/mtstudio run specs/tinychat-quick.json          # train
+python3 tools/model_card.py runs/tinychat-quick --probe # the card
+./build/mtstudio chat runs/tinychat-quick --port 8080   # chat page + POST /chat
+```
+
+**Share a model you trained** on the Hugging Face Hub (optional; you need
+a free account and a write token from huggingface.co/settings/tokens):
+
+```bash
+python3 -m pip install --user huggingface_hub
+export HF_TOKEN=hf_...      # never committed or printed by the tool
+python3 tools/publish_hf.py runs/tinychat-quick --repo your-name/tinychat-quick --dry-run
+python3 tools/publish_hf.py runs/tinychat-quick --repo your-name/tinychat-quick
+```
+
+The Hub page is the model card, with a "chat with it" section.
+
+## The studio — spec in, chatting model out
+
+![the terminal loop: paper → provenance-carrying extraction → train → Atlas row → chat](media/demo.gif)
+
+*The same loop driven from the terminal (`tools/demo.sh`): fetch,
+evidence, train on the FD-checked tape, the run's Atlas row, and a chat
+with the exported GGUF through ember.cpp.*
+
+One JSON file describes the whole lifecycle; `mtstudio` executes it.
+
+```bash
+./mtstudio plan specs/tinystories-llama.json   # dry-run: resolve and print
+./mtstudio run  specs/tinystories-llama.json   # train, eval, export, serve
+./mtstudio serve /tmp/mtstudio_llama3k 8080    # live dashboard on a running job
+```
+
+That spec trains a Llama-family model (RMSNorm + RoPE + SwiGLU, tied embeddings)
+on TinyStories with early stopping, checkpoint/resume and a JSONL event stream,
+then exports safetensors **and** a GGUF with the vocabulary embedded. Feeding
+that GGUF straight into ember.cpp (the serve command it prints):
+
+> **prompt:** once upon a time
+> **model (300 training steps, d=128):** she was a little big he had very time
+> tree the girl and day a little big time they were so play to the man and said
+>
+> **same architecture, 3,000 steps (val loss 4.64 → 3.68):** there was a little
+> girl named timmy he had a big hug and said goodbye to the park with her mom
+> and she started to play outside in the sky but it was too late that they were
+> playing together all day
+
+Three hundred steps buys the word distribution; three thousand buys syntax —
+clause chains, narrative connectives, attempted coreference (pronoun drift and
+all). Both runs are CPU-only.
+
+### The dashboard — `studio/index.html`
+
+A single self-contained HTML file, no build step and no dependencies. Drop an
+`events.jsonl` on it, or point it at a live run with `mtstudio serve` and it
+polls every two seconds while training proceeds.
+
+- **Loss chart** — train curve, validation points, and (for SRD runs) the mean
+  gate on its own 0–1 axis as a dashed overlay.
+- **Gradient glow** — per-module gradient L2 norms, taken pre-clip, drawn as
+  bars. Colour is not absolute magnitude: it is `log10(norm / that module's own
+  running median)`, so a module is red when *it* is hot relative to its own
+  history and navy when it is fading. Vanishing and exploding gradients become
+  visible per-layer while the run is still going.
+- **Run stats** — step, train loss, best val, grad norm, mean gate, early-stop
+  trigger.
+- **Spec builder** — a form that writes the very same `spec.json` that
+  `mtstudio run` consumes, previews the JSON live, downloads it, and prints the
+  exact run and serve commands. Preset dropdown covers `llama-tiny`,
+  `gpt2-nano`, `gpt2-small`, `kimi-tiny`, `srd-tiny`, `attnres-tiny`, plus
+  editable d/layers/heads overrides (`arch.custom`).
+- **Architecture diagram** — a labeled block diagram (pure SVG, still zero
+  dependencies) of exactly what the current spec builds: tokens → embed →
+  [norm → attention → ⊕ → norm → FFN → ⊕] × L → head, with family-aware
+  labels, per-head dims, residual arcs (replaced by an attention-over-depth
+  annotation for `attnres`), and a rough parameter estimate. Redraws on every
+  keystroke.
+- **From paper** (serve mode) — drag an arxiv.org link onto the page (or type
+  the id): the server forks `papers/fetch.py` and **everything extracted
+  becomes constructor-real** — d, layers, heads, d_ff, *and the flavours*
+  (LayerNorm vs RMSNorm, GELU/ReLU/SwiGLU, learned/sinusoidal/RoPE
+  positions) land in the editable builder via the flex family, so the model
+  you train is the paper's architecture, not the nearest preset (verified:
+  Attention Is All You Need trains as 512/6/8/2048 layernorm+relu+sinusoidal;
+  Primer's 110M decoder reconstructs at 114M). Contested extractions and
+  fields the fetcher can't build yet are reported, never silently applied.
+  The diagram redraws, the evidence view is one click away, ▶ train runs in
+  the same tab, and the exported `.safetensors`/`.gguf` end as download
+  links.
+- **Chat** — talks to any server with the `/chat` API, either the built-in
+  `mtstudio chat <run>` or ember.cpp's `tinyllama_server` serving the GGUF this
+  page just exported, answering in the same tab (set the endpoint field to
+  its address). The whole paper → config → train → export → **chat** loop is one
+  page.
+
+### Custom configuration — the spec format
+
+Every field below is optional and falls back to a sane default. Use
+`arch.preset` for a known configuration, or `arch.custom` to dimension a model
+yourself and pick the attention mechanism.
+
+```jsonc
+{
+  "name": "tinystories-llama-3k",
+  "arch": {
+    "preset": "llama-tiny",           // or omit and use "custom" below
+    "rope_heads": "all",              // llama: RoPE on every head (default for new runs); "first" = head 0 only, how runs that recorded no rope_heads were trained and still load
+    "custom": {                       // overrides the preset field-by-field
+      "d": 256, "layers": 4, "heads": 8,
+      "attention": "srd"              // exact | swa | kimi | srd (attnres: the attnres-tiny preset)
+    }
+  },
+  "data": {
+    "corpus":    "data/train.txt",    // raw text
+    "vocab":     "releases/tinystories_vocab.gguf",  // any GGUF: its tokenizer.ggml.tokens is the vocabulary (tools/get_tinystories_data.py builds one)
+    "vocab_cap": 4096,                // truncate to the top-N tokens
+    "max_tokens": 400000,             // corpus read cap in tokens (0 = whole
+                                      // file); raise it for bigger corpora
+    "T":         256                  // context length
+  },
+  "train": {
+    "steps": 3000, "lr": 3e-3, "clip": 1.0,
+    "batch": 4,                       // sequences stacked into ONE forward
+                                      // (positions + attention mask restart
+                                      // per sequence; parity-tested)
+    "accum": 2,                       // gradient accumulation over batches
+    "checkpoint_activations": false,  // rematerialise block interiors on
+                                      // backward (llama family; bit-identical
+                                      // grads, ~95% fewer live tape nodes)
+    "eval_every": 100,
+    "checkpoint_every": 100,          // resume picks up from here
+    "gradmap_every": 10,              // per-module grad-norm event cadence
+    "early_stopping": { "patience": 8, "min_delta": 0.003 }
+  },
+  "export": { "formats": ["safetensors", "gguf"] },
+  "serve":  { "on_finish": true },    // print the tinyllama serve command
+  "out_dir": "/tmp/mtstudio_llama3k"
+}
+```
+
+When the vocabulary contains `<|endoftext|>` (TinyStories' story separator;
+`tools/get_tinystories_data.py` puts it at id 1), the tokeniser reads that
+literal as one token, the GGUF export records it as `eos_token_id`, and
+sampling stops there. Vocabularies without it tokenize exactly as before.
+`mtstudio run` also copies the spec to `out_dir/spec.json`, so
+`mtstudio chat <out_dir>` can rebuild the model from the directory alone.
+
+The event stream (`out_dir/events.jsonl`) is the contract between trainer and
+UI — `start`, `step` (loss, grad_norm, optional per-module `grads` and SRD
+`gate`), `eval`, `early_stop`, `export`, `done`. Anything that can read JSONL
+can consume a run.
+
+## Feature matrix
+
+| Component | Status | Notes |
+|---|---|---|
+| Reverse-mode autograd | ✅ | DAG tape, topological sort, `NoGrad` scope |
+| Gradient verification | ✅ | Every op finite-difference checked in CI |
+| Layers | ✅ | Linear, LayerNorm, RMSNorm, Embedding, Attention, MLP, Dropout |
+| Full GPT-2 | ✅ | Logit-parity verified against HF checkpoint |
+| Llama-family ops | ✅ | RMSNorm + RoPE + SwiGLU; Qwen 1.5-1.8B load verified |
+| Optimisers | ✅ | SGD (momentum), AdamW, **Muon** (K3 per-head Newton-Schulz, golden-pinned to the reference; `train.optimizer: "muon"` = deployment-faithful hybrid) |
+| LR schedulers | ✅ | Cosine-with-warmup, StepLR |
+| Grad clipping | ✅ | Global-norm (`clip_grad_norm`) |
+| Mini-batching | ✅ | Stacked `[B*T, d]` batches, block-isolated attention; stacked-vs-per-seq logits/loss/grads equal to fp epsilon (`test_batching`), 1.34x measured at B=4/T=128 |
+| Gradient checkpointing | ✅ | `checkpoint(fn, x)` rematerialises block interiors on backward: loss+grads **bit-identical**, live tape nodes after forward 211→11 (GPT-2) / 229→9 (Llama) (`test_checkpointing`) |
+| Fused attention | ✅ | `fused_attention`: GEMMs + one in-place scale/mask/softmax pass, one tape node per head, mask never materialised; 12 FD receipts; 1.87x wall-clock (2.19x with batching) |
+| Checkpoint IO | ✅ | safetensors load **and** save (HF round-trip) |
+| **HF export** | ✅ | `tools/hf_export.py`: llama-family runs open in `transformers.from_pretrained` — weights re-laid out (incl. the interleaved→rotate-half RoPE permutation), config + WordLevel tokeniser emitted; **argmax parity verified** vs the tape (`hf_export_verify.py`) |
+| GGUF export | ✅ | `export_gguf_llama`: state_dict → .gguf for ember.cpp |
+| **Mixture of experts** | ✅ | Top-k routing (renorm or raw gates), load-balance + router z-loss, sparse upcycling from a dense checkpoint, CUDA routing kernels; GGUF in llama.cpp's expert layout (llama.cpp runs it 40/40 vs mtstudio) |
+| **Quantised GGUF export** | ✅ | q8_0 / q8_0_out / q8_0_all (byte-identical to ember's quantiser); q4_0 / q4_k_m / q4_k_s (tensor bytes identical to llama.cpp's quantiser, incl. its k-quant fallbacks) |
+| **IR export (any architecture)** | ✅ | Every GGUF carries the model graph (`paperkiln.ir`): llama, MoE, gpt2, gpt2_swa, kimi, srd, attnres, flex, mamba; `tools/ir_run.py` numpy reference interpreter (40/40 per family), `tools/ir_check.py`; ember.cpp runs every family from it |
+| Cross-entropy loss | ✅ | Fused softmax backward |
+| Python bindings | ✅ | pybind11, numpy interop: `pip install paperkiln` (Linux x86-64 wheels for Python 3.10–3.12; `import microtorch`), or build with `-DMICROTORCH_BUILD_PYTHON=ON` |
+| **Run studio** | ✅ | Declarative spec → train/eval/export/serve; `plan` dry-run; resume |
+| **Live dashboard** | ✅ | Loss + val + gate chart, per-module gradient glow, spec builder, SVG architecture diagram, in-page chat |
+| **Flex family (paper-faithful)** | ✅ | Any depth; d_ff, LayerNorm/RMSNorm, GELU/ReLU/SwiGLU, learned/sinusoidal all spec-real; bitwise equivalence pin at defaults (`test_flex`, 6 receipts) |
+| **From-paper flow** | ✅ | Drag an arXiv link → scored extraction (grouped AUROC 0.905, no wrong assertion in 92 verdicts on the 40-paper bench) → editable spec → ▶ train → artifact downloads → chat |
+| **Atlas experiment engine** | ✅ | `mtsweep` (grid/PB12/fold-over PB12f, linked factors, aliasing advisories, resumable, OMP-aware) + `atlas_analyze` (main effects + two-way interactions, seed-based SEs); Stages 2–3 findings published |
+| **Atlas viewer** | ✅ | `studio/atlas.html` (+ `/atlas` in serve mode): in-page effects, clickable interaction heatmap, seed spreads — client math pinned to the Python analyser on real Stage 3 rows |
+| LoRA | ✅ | `LoRALinear`: frozen base + rank-r adapters, `merged_weight()` |
+| Quantization | ✅ | int8 blockwise (absmax/block), `QLinear` ~3.7x smaller weights |
+| QLoRA | ✅ | `QLoRALinear`: quantized frozen base + trainable adapters |
+| CUDA dispatch seam | ✅ | `device::matmul` → `cuda::matmul`; suites **pass on a T4** |
+| **Kimi linear attention** | ✅ | O(n·d²) vs O(n²·d); drop-in `KimiLinearAttention` |
+| **Cerebellum selective gating** | ✅ | Prediction-residual gating; skips compute on routine tokens |
+| **Mamba / S4 state-space** | ✅ | Trainable through time: `ssm_scan` tape op, BPTT FD-gradchecked; a linear time-invariant SSM with a sequential scan (no input-dependent selection yet) |
+| **Surprise-routed density (SRD)** | 🧪 | Falsifier passed 5-6σ twice; gate concentrates on retrieval sites (5x replicated). Recall claim **failed replication and the negative is published** — [docs/SPARSE_ATTENTION.md](SPARSE_ATTENTION.md) |
+| GPU training | ✅ | Device-resident step: resident tensors, the device op set, tiled attention, fused SwiGLU, clip + AdamW on device, MoE routing kernels; L4 d384 L6 0.109 s/step (6.4 → 1.14 → 0.109), local RTX 4060 d768 L12 2.1-2.3 s/step; deferred downloads work for the llama family, gpt2 family still open ([CUDA_PHASE_B2.md](CUDA_PHASE_B2.md), D1) |
+
+## Train something (C++)
+
+```cpp
+#include "microtorch/nn.hpp"
+using namespace microtorch;
+
+nn::GPT2Config cfg;                 // 124M defaults
+nn::GPT2 model(cfg, /*seed=*/42);
+
+nn::AdamW opt(model.parameters(), /*lr=*/3e-4f);
+nn::CosineWarmupLR<nn::AdamW> sched(opt, /*warmup=*/100, /*total=*/10000);
+
+for (auto [ids, targets] : batches) {
+    Var logits = model.forward(ids);
+    Var loss = ops::cross_entropy(logits, targets);
+    opt.zero_grad();
+    backward(loss);
+    ops::clip_grad_norm(model.parameters(), 1.0f);
+    opt.step();
+    sched.step();
+}
+save_safetensors("ckpt.safetensors", model.state_dict());
+```
+
+### Python
+
+```bash
+cmake .. -DMICROTORCH_BUILD_PYTHON=ON && make _microtorch
+```
+
+```python
+import numpy as np, _microtorch as mt
+
+x = mt.tensor(np.random.randn(8, 256).astype(np.float32), requires_grad=True)
+attn = mt.nn.KimiLinearAttention(d=256, n_heads=4)
+loss = mt.ops.mean(attn(x))
+mt.backward(loss)
+print(x.grad.shape)        # (8, 256)
+```
+
+### Load a HuggingFace checkpoint
+
+```cpp
+auto sd = load_safetensors("gpt2/model.safetensors");
+nn::GPT2 model(cfg);
+model.load_state_dict(sd, /*strict=*/true);   // fails loudly on any mismatch
+```
+
+## The novel mechanisms
+
+### Kimi linear attention — [kimi_linear.hpp](../include/microtorch/kimi_linear.hpp)
+
+Standard attention pays O(n²·d) to build the full attention matrix. The
+linear-attention family replaces softmax with a feature map φ(x) = elu(x)+1 and
+reassociates the product, paying O(n·d²) instead:
+
+```
+out_i = φ(q_i)ᵀ · Σ_{j≤i} φ(k_j) v_jᵀ  /  φ(q_i)ᵀ · Σ_{j≤i} φ(k_j)
+```
+
+The cumulative sums preserve causality without a mask. `nn::KimiLinearAttention`
+is interface-identical to `nn::CausalSelfAttention` — swap one line to try it.
+Measured on CPU: ~8.9x faster forward+backward at seq=16, converging to ~1.1x as
+n approaches d (the crossover regime the complexity analysis predicts).
+
+### Cerebellum-inspired selective gating — [cerebellum.hpp](../include/microtorch/cerebellum.hpp)
+
+Motivated by cerebellar prediction-error filtering: a small predictor
+(d → d/4 → d) learns what "routine" hidden states look like; the gate
+`σ(‖x − predict(x)‖)` mixes the expensive layer's output with the identity path
+per token. Surprising tokens get full compute, routine tokens skip it. Wraps any
+layer via `std::function` — no changes to the wrapped code.
+
+### Mamba / S4 state-space — [mamba.hpp](../include/microtorch/mamba.hpp)
+
+Discrete state-space recurrence `x[t+1] = A·x[t] + B·u[t]` as a drop-in sequence
+backbone: O(1) memory per generated token instead of a growing KV cache.
+Trainable through time — `ssm_scan` is a tape op with BPTT verified against
+finite differences on all five inputs. The SSM is linear time-invariant (no
+Mamba-style input-dependent selection) and the scan is sequential; a selective,
+parallel scan is on the [roadmap](../ROADMAP.md).
+
+### Surprise-routed density — [srd.hpp](../include/microtorch/srd.hpp)
+
+Research, and currently a partial negative. Per-query density routed by
+prediction residual rather than attention-affinity scores: one shared qkv
+projection feeds both an exact and a linear path, and the gate
+`σ(scale·rms(x − predict(x)) + bias)` blends them per query. Training is soft and
+fully differentiable; inference hardens the gate to `g > τ`, giving
+O(ρn²d + nd²) for surprise rate ρ. `mean(gate())` is exposed so density can be
+priced directly in the loss.
+
+The falsifier (`shuffle_predictor`) permutes the predictor's view of the input,
+preserving the gate's distribution while destroying its alignment. It passed at
+5-6σ twice, and the gate demonstrably concentrates on retrieval-critical
+positions across five runs. **The recall-performance claim did not replicate
+across seeds and that failure is written up in full**, including what survived
+and what the next pre-registered test is.
+
+## The Architecture Atlas — a cumulative science of neural architectures
+
+Leaderboards rank; they don't explain. The
+[Atlas](../atlas/ARCHITECTURE_ATLAS.md) treats architecture comparison the way
+industrial statistics treats process optimisation: designed experiments,
+multi-seed cells, effect sizes with standard errors, and published
+findings — negative ones included. Every mtstudio run already emits its
+Atlas row (structural echo + behavioural metrics); `tools/mtsweep.py`
+materialises whole designs (grid, Plackett–Burman, linked token-matched
+factors) as spec files, and `tools/atlas_analyze.py` turns the rows into
+main-effects tables.
+
+**Stage 2 is complete** — a 7-factor Plackett–Burman screen, 36 runs in
+one night on a laptop CPU ([full writeup](../atlas/ATLAS_STAGE2_RESULTS.md), raw
+rows in [experiments/atlas_stage2/](../experiments/atlas_stage2/)):
+
+| Finding | Evidence |
+|---|---|
+| **Muon is the strongest factor in the screen** — better final loss *and* a measured throughput price | loss-AUC t = −10.8, best_val −0.34 (t = −6.2), −148 tok/s (t = −2.4) |
+| **Learning rate decouples speed from quality** — faster early descent, 3× the gradient spikes, zero final-loss gain | half-gap t = −8.8; spikes t = +3.5; best_val n.s. |
+| **Head count doesn't matter at this scale** — a genuine null, recorded | \|t\| ≤ 0.5 on every metric |
+| **Best-cell ranking was inside seed noise while the designed contrasts ran 6–10σ** — the case for designed experiments over leaderboard-style cell-hunting, demonstrated in our own data | top-2 cell gap 0.021 < seed noise 0.027 |
+
+**Every claim is a row in the [findings registry](../atlas/FINDINGS.md)**
+(`atlas/findings.jsonl`): effect, SE, t, design, scope, status
+(`supported/replicated/superseded/retracted/pending`) and receipt paths —
+retractions are rows, never deletions, because a registry that visibly
+corrects itself is the trustworthy kind. Three verbs operate on it:
+
+```bash
+python tools/atlas_findings.py render          # the registry as a table
+python tools/atlas_findings.py advise "what lr with muon at tiny scale?"
+python tools/reproduce.py S3-lrxopt            # plan + cost estimate up front
+python tools/reproduce.py S3-lrxopt --run      # re-run the experiment, verdict:
+                                               # REPLICATED / DID-NOT-REPLICATE
+```
+
+The **advisor answers from the registry with citations — or refuses**
+("NO EVIDENCE … absence of evidence is the honest answer"), and surfaces
+corrected records alongside live ones. **`reproduce` makes replication a
+one-command verb**: cost quoted up front from the original run's own
+wall-clock receipts, fresh out_root, machine-checked verdict against the
+registered effect. All six checkable findings verify against their own
+committed rows, and the nine Stage 2–3 findings, produced before the RoPE
+head-coverage fix, hold when re-run with every head rotated
+([docs/ROPE_HEADS.md](ROPE_HEADS.md)).
+
+**Stage 3 is complete**: a full 2⁴ factorial on the survivors
+({optimiser, context, lr, d} × 3 seeds, 48 runs) with **token-matched
+context** — T=128×1200 steps vs T=256×600 steps, both exactly 614,400
+tokens, de-aliasing "longer context" from "more data". Interactions are
+the point: the full factorial leaves all six two-way effects
+unconfounded.
+
+## Verification philosophy
+
+Nothing merges without:
+
+1. **Finite-difference gradcheck** — every op's backward vs central differences,
+   with the measured error printed, not merely asserted.
+2. **Parity tests** — GPT-2 logits match the HF reference end-to-end; Qwen
+   tensors load and map onto modules by name with zero translation tables.
+3. **Round-trip tests** — save → load → bit-identical.
+4. **Falsifiers for research claims** — every novel mechanism ships with the
+   experiment that would kill it, and the result is published either way.
+
+CI builds and runs the CTest and Python suites and checks formatting with
+clang-format on every push; cppcheck and Valgrind run as advisory steps that do
+not fail the build —
+see [.github/workflows](../.github/workflows). API documentation is generated by
+Doxygen (`doxygen docs/Doxyfile` → docs/html/) and published to GitHub Pages by
+the docs workflow.
+
+## Paper-to-architecture: the arXiv fetcher
+
+```bash
+pip install requests
+python papers/fetch.py 1706.03762                     # Attention Is All You Need
+python papers/fetch.py 2302.13971 --emit-cpp llama.cpp --json llama.json
+```
+
+`papers/fetch.py` downloads a paper's **LaTeX source** from arXiv, sweeps prose
+and model-size tables for the architecture hyperparameters, and emits a
+normalised config — every extracted value carries an **evidence snippet** from
+the paper, and anything it cannot resolve is listed as unresolved rather than
+guessed. `--emit-cpp` generates compilable microtorch code (GPT-2-family
+`GPT2Config` or, when it detects RMSNorm/RoPE, a Llama-family
+`LlamaExportConfig`).
+
+Flavour fields (norm/activation/position) go through **contribution-vs-mention
+scoring**: a paper *mentions* many alternatives (baselines, related work,
+"such as" lists) but *uses* one, and first-match extraction confuses the two.
+Every candidate occurrence is scored by explainable cues — usage verbs,
+"replace X with Y" direction, config-table rows, section class (related-work
+penalized), ablation/comparative phrasing, possessive attribution ("the
+Transformer's ReLU"), plus-compound baseline names ("Transformer+GELU") — and
+a value is asserted only when a clear winner exists; close calls are
+**contested** (both candidates shown with evidence, nothing auto-applied).
+Papers that never *state* their flavours — they inherit an architecture by
+citation ("the same model and architecture as GPT-2") — are handled by
+**inheritance resolution**: a small curated ancestor table fills what the
+prose leaves open, marked `inherited` with the inheritance sentence as
+evidence, and the paper's own statements always override the base. The
+guard that matters: the generic `transformer` ancestor never fills
+fields, because "based on the Transformer" is said by every decoder LM
+while the deltas go unstated — BERT is "based on the Transformer" and
+silently switches to GELU and learned positions.
+
+Measured on `papers/flavor_bench.py`, **40 real papers** with ground-truth
+architectures (Vaswani through OLMo, including designed negatives whose
+true flavour is outside the lattice): **grouped AUROC 0.905** [bootstrap 95%
+CI 0.789–1.000, resampling papers] vs 0.841 for naive first-match, pooled
+0.810 [0.730–0.893] vs 0.773 (0.813 post-veto), **72/92 field verdicts
+correct, none wrong, the rest abstentions** (the three wrong assertions
+the bench found, Megatron-LM, LaMDA and Cerebras-GPT, are fixed by their
+named root causes) — where first-match extraction claimed RoPE for the ALiBi
+paper and SwiGLU for Primer *and* Falcon ("we choose not to adopt SwiGLU"
+now vetoes the candidate outright). The first 10-paper cut scored a
+grouped 1.000, and the 29-paper cut 0.895 with zero wrong — the larger samples deflated that, which is exactly
+what the benchmark is for; the growth protocol continues
+(STUDIO_PLAN §13.1).
+
+Validated live against: *Attention Is All You Need* (d_model=512, N=6, h=8,
+d_ff=2048, sinusoidal), *LLaMA* (4096/32/32 from its model-size table +
+RMSNorm/SwiGLU/RoPE), *TinyLlama* (22 layers, 32 heads, vocab 32000), plus
+the 40-paper flavour benchmark above. Offline fixture tests:
+`python papers/test_fetch.py` — no network needed in CI.
+
+This is the constrained config-delta approach: most transformer papers are
+deltas over a known skeleton, so the search space is tractable — and the
+contribution is the part nobody else ships: **provenance**. Every extracted
+field carries the evidence that produced it (the table cell, the sentence,
+the equation it was read from), every unresolved field is surfaced loudly
+instead of silently defaulted, and a wrong assertion is treated as a bug,
+not a rounding error — the scorer abstains rather than guesses, and every
+wrong assertion it has made is registered with its diagnosis and a named fix
+(the three found on the 40-paper bench are fixed). Free-form code
+generation produces plausible architectures; evidence-linked extraction
+produces *auditable* ones. That difference is the tool.
+
+## The training → inference pipeline
+
+paperkiln is the training half of a two-engine pipeline:
+
+```
+HF checkpoint ──load_safetensors──► paperkiln (fine-tune on the tape)
+                                        │
+                              export_gguf_llama(path, state_dict, cfg)
+                                        │
+                                        ▼
+                              .gguf ──► ember.cpp (inference engine)
+```
+
+```cpp
+#include "microtorch/gguf.hpp"
+
+gguf::LlamaExportConfig cfg;
+cfg.embedding_length = 2048; cfg.block_count = 24;
+cfg.feed_forward_length = 5504; cfg.head_count = 16;
+cfg.vocab_size = 151936; cfg.tokens = vocab;
+gguf::export_gguf_llama("model.gguf", model.state_dict(), cfg);
+```
+
+The GGUF writer is the alignment-audited implementation from `transformer_core`
+(the tensor-data section starts at `align_up(header_end, 32)` — the exact detail
+that once turned a working model into word salad, now regression-tested in
+`test_gguf_export`).
+
+## Fine-tuning on a budget: LoRA / QLoRA
+
+```cpp
+#include "microtorch/quant.hpp"
+
+// Frozen base + rank-8 adapters; only A and B train.
+nn::LoRALinear lora(W_pretrained, /*rank=*/8, /*alpha=*/16.0f);
+nn::AdamW opt(lora.parameters(), 1e-3f);      // 2 tensors, not the base
+// ... train ...
+Matrix W_final = lora.merged_weight();        // fold in for zero-cost inference
+
+// QLoRA: the base lives as int8 blocks (~3.7x smaller), adapters in fp32.
+nn::QLoRALinear qlora(W_pretrained, bias, /*rank=*/8, /*alpha=*/16.0f);
+```
+
+Properties enforced by `test_lora_quant`: adapter output is *exactly* the base at
+init (B=0), gradients touch only A/B, `merged_weight()` matches the adapter
+forward to 1e-4, int8 round-trip error is bounded by half a quantization step.
+
+## CUDA
+
+The dispatch seam is live: every matmul routes through `device::matmul`
+([device.hpp](../include/microtorch/device.hpp)). Default builds are CPU-only and
+bit-identical to before. `-DMICROTORCH_CUDA=ON` compiles transformer_core's
+kernel tree and `device::set(Device::CUDA)` (or `MICROTORCH_DEVICE=cuda`)
+dispatches to `cuda::matmul`. Validation runs the same gradcheck suite on GPU —
+[tools/colab_cuda_validate.sh](../tools/colab_cuda_validate.sh). Phase B (resident
+device memory, the device op set and on-device optimiser state) is complete and
+T4/L4-validated, and the training step now runs device-resident: tiled attention, no host zero-fills, clip + AdamW in the step window, fused SwiGLU, all heads in one op, MoE routing on device. L4: d384 L6 0.109 s/step (6.4 → 1.14 → 0.109); local RTX 4060: d384 0.385 s/step, d768 L12 2.1-2.3 s/step, MoE E8 top-2 0.79 s/step, with d384 and MoE losses bit-identical to the slower path. Deferred downloads work for the llama family (every production run); the gpt2 family is still open ([CUDA_PHASE_B2.md](CUDA_PHASE_B2.md), defect D1).
+
+## Repository layout
+
+```
+include/microtorch/   public headers (one concern per header)
+  autograd.hpp        the tape: Variable, backward(), NoGrad
+  ops.hpp             op set — every op forward + audited backward
+  nn.hpp              Module, layers, optimisers, schedulers
+  llama.hpp           Llama-family: RMSNorm + RoPE + SwiGLU, HF-native names
+  kimi_linear.hpp     phase 3a: linear attention
+  cerebellum.hpp      phase 3b: selective gating
+  mamba.hpp           phase 3c: state-space models
+  srd.hpp             research: surprise-routed density + its falsifier
+  gguf.hpp            GGUF export (alignment-audited)
+  quant.hpp           int8 blockwise, LoRA, QLoRA
+  safetensors.hpp     HF checkpoint load/save
+src/                  implementations
+tools/                mtstudio (the run driver), parity checkers, benchmarks
+studio/               the dashboard (index.html), Atlas viewer (atlas.html), chat page (chat.html)
+web/chat/             zero-server browser chat engine (plain JavaScript)
+specs/                example run specs
+papers/               arXiv → architecture fetcher + offline fixture tests
+paperkiln_fetch/      the fetcher as a standalone pip package
+atlas/                findings registry, charter, Stage 2–3 write-ups
+registry/             architecture archaeology entries (highway networks)
+experiments/          one directory per pre-registered study, with receipts
+tests/                gradchecks + unit tests (all in CI)
+python/               pybind11 bindings (the paperkiln wheel)
+third_party/          vendored transformer_core and cpp-httplib
+docs/                 design docs, records, decisions, Doxygen config
+```

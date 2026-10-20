@@ -16,6 +16,11 @@ left to do — then come back for context.
 
 ## Entry points by question
 
+**"What does paperkiln do, in full?"**
+→ [`TOUR.md`](TOUR.md) — the long form of the README: studio, spec
+format, feature matrix, mechanisms, Atlas, fetcher, export, LoRA/QLoRA,
+CUDA and the repository layout
+
 **"What should I work on?"** and **"What is Jonathan blocking on?"**
 → [`../ROADMAP.md`](../ROADMAP.md)
 
