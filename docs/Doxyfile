@@ -1,4 +1,4 @@
-# Doxygen configuration for microtorch.
+# Doxygen configuration for paperkiln.
 # Run from repo root:  doxygen docs/Doxyfile
 # Output lands in docs/html/ (gitignored; published by the docs workflow).
 
@@ -11,6 +11,8 @@ USE_MDFILE_AS_MAINPAGE = README.md
 FILE_PATTERNS          = *.hpp *.cpp *.md
 RECURSIVE              = YES
 EXCLUDE_PATTERNS       = */build*/* */models/*
+# Markdown pages: mermaid diagrams drawn, repository links pointed at GitHub.
+FILTER_PATTERNS        = "*.md=python3 docs/doxygen/md_filter.py https://github.com/JohnnyTeutonic/paperkiln master"
 
 # The codebase documents itself with // prose comments rather than
 # /** */ blocks; JAVADOC_BANNER + EXTRACT_ALL pulls those in so existing
@@ -25,6 +27,10 @@ GENERATE_HTML          = YES
 HTML_OUTPUT            = html
 GENERATE_LATEX         = NO
 GENERATE_TREEVIEW      = YES
+DISABLE_INDEX          = NO
+FULL_SIDEBAR           = NO
+HTML_COLORSTYLE        = LIGHT
+HTML_EXTRA_STYLESHEET  = docs/doxygen/doxygen-awesome.css docs/doxygen/doxygen-awesome-sidebar-only.css
 HAVE_DOT               = NO
 
 SOURCE_BROWSER         = YES

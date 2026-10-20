@@ -1,34 +1,54 @@
 name: Documentation
 
+# Builds the Doxygen site on every push and pull request; deploys it to GitHub Pages on pushes
+# to master. Local equivalent, from the repo root: doxygen docs/Doxyfile (output in docs/html).
+
 on:
   push:
-    branches: [ master ]
+  pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build-docs:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: ubuntu-24.04  # Doxygen 1.9.8, the version the Doxyfile is tested with
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Doxygen
-        run: sudo apt-get update && sudo apt-get install -y doxygen
+      - name: Install Doxygen and Graphviz
+        run: sudo apt-get update && sudo apt-get install -y doxygen graphviz
 
       - name: Generate documentation
-        run: doxygen docs/Doxyfile
+        run: |
+          ( cat docs/Doxyfile; echo "WARN_LOGFILE = doxygen-warnings.log" ) | doxygen -
+          test -f docs/html/index.html
+          n=$(grep -c "warning:" doxygen-warnings.log || true)
+          echo "Doxygen $(doxygen --version): $(find docs/html -name '*.html' | wc -l) pages, $n warnings" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$n" -gt 0 ]; then
+            { echo '```'; head -n 50 doxygen-warnings.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          fi
 
-      - name: Upload Pages artifact
+      - name: Upload site
         uses: actions/upload-pages-artifact@v3
         with:
           path: docs/html
 
   deploy:
-    needs: build-docs
-    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
