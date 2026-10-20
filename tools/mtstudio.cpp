@@ -129,6 +129,13 @@ struct Spec {
     int gradmap_every = 5;   // per-layer grad-norm event cadence
     size_t es_patience = 0;  // early stopping (0 = off)
     float es_min_delta = 0.0f;
+    // Learning-rate schedule (train.lr_schedule), a pure function of the
+    // step so a resumed run follows it exactly: linear warmup over
+    // warmup_steps, then constant ("none") or cosine decay to
+    // min_lr_frac * lr at train.steps. Absent = constant lr, as before.
+    size_t lr_warmup = 0;
+    std::string lr_decay = "none";
+    float lr_min_frac = 0.1f;
     // export/serve
     bool exp_safetensors = true, exp_gguf = false;
     // Quantised GGUFs (formats gguf_q8_0 / gguf_q8_0_out / gguf_q8_0_all /
@@ -289,6 +296,18 @@ Spec parse_spec(const std::string& path) {
     s.accum = tr.value("accum", s.accum);
     s.ckpt_act = tr.value("checkpoint_activations", s.ckpt_act);
     s.seed = tr.value("seed", s.seed);
+    if (tr.contains("lr_schedule")) {
+        // {"warmup_steps": N, "decay": "none" | "cosine", "min_lr_frac": f}
+        const json ls = tr["lr_schedule"];
+        if (!ls.is_object()) throw std::runtime_error("train.lr_schedule must be an object");
+        s.lr_warmup = ls.value("warmup_steps", s.lr_warmup);
+        s.lr_decay = ls.value("decay", s.lr_decay);
+        s.lr_min_frac = ls.value("min_lr_frac", s.lr_min_frac);
+        if (s.lr_decay != "none" && s.lr_decay != "cosine")
+            throw std::runtime_error("train.lr_schedule.decay must be \"none\" or \"cosine\"");
+        if (s.lr_min_frac < 0.0f || s.lr_min_frac > 1.0f)
+            throw std::runtime_error("train.lr_schedule.min_lr_frac must be in [0, 1]");
+    }
     s.objective = tr.value("objective", s.objective);
     s.allow_human_labels = tr.value("allow_human_labels", s.allow_human_labels);
     s.init_from = tr.value("init_from", "");
@@ -1342,6 +1361,9 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                      {"seed", s.seed},
                      {"checkpoint_activations", s.ckpt_act},
                      {"params", n_params}};
+    if (s.lr_warmup > 0 || s.lr_decay != "none")
+        model_ev["lr_schedule"] = {
+            {"warmup_steps", s.lr_warmup}, {"decay", s.lr_decay}, {"min_lr_frac", s.lr_min_frac}};
     if (llama) model_ev["rope_heads"] = rope_heads;
     // Absent for dense models: their model event is unchanged.
     if (s.moe_experts > 0)
@@ -1380,7 +1402,23 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             for (auto& o : adamw) o.step();
             for (auto& o : muon) o.step();
         }
+        // Scale every optimiser's rate from its base (the spec's lr / muon_lr).
+        void set_lr_scale(float f, float adamw_lr, float muon_lr) {
+            for (auto& o : adamw) o.lr = adamw_lr * f;
+            for (auto& o : muon) o.lr = muon_lr * f;
+        }
     } opt;
+    // train.lr_schedule as a multiplier of the base rate at `step` (1-based).
+    auto lr_scale = [&s](int step) -> float {
+        if (s.lr_warmup > 0 && static_cast<size_t>(step) <= s.lr_warmup)
+            return static_cast<float>(step) / static_cast<float>(s.lr_warmup);
+        if (s.lr_decay != "cosine" || s.steps <= s.lr_warmup) return 1.0f;
+        const double p = static_cast<double>(step - static_cast<int>(s.lr_warmup)) /
+                         static_cast<double>(s.steps - s.lr_warmup);
+        const double cosine = 0.5 * (1.0 + std::cos(3.14159265358979323846 * std::min(1.0, p)));
+        return static_cast<float>(s.lr_min_frac + (1.0 - s.lr_min_frac) * cosine);
+    };
+    const bool scheduled = s.lr_warmup > 0 || s.lr_decay != "none";
     if (s.optimizer == "muon") {
         std::vector<Var> qkv, hidden, rest;
         for (const auto& [name, p] : model_ref.named_parameters()) {
@@ -1773,6 +1811,8 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         if (want_gm) gm = grad_map(model_ref);
         const float total_norm = ops::clip_grad_norm(model_ref.parameters(), s.clip);
         mark("clip");
+        const float lr_f = scheduled ? lr_scale(step) : 1.0f;
+        if (scheduled) opt.set_lr_scale(lr_f, s.lr, s.muon_lr);
         opt.step();
         mark("optimizer");
         if (opt_in_window) {
@@ -1808,6 +1848,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
 
         json e = {
             {"event", "step"}, {"step", step}, {"loss", task_mean}, {"grad_norm", total_norm}};
+        if (scheduled) e["lr"] = s.lr * lr_f;
         if (step_timing) e["t_ms"] = t_ms;
         if (device::gpu_profile_on()) {
             json g = json::object();
