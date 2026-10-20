@@ -170,8 +170,13 @@ advisory steps that cannot fail the build.
 ## 6. Engine
 
 - **CUDA** (records: `docs/CUDA_PHASE_B2.md`):
-  - Fix the `MICROTORCH_DEFER_DOWNLOADS` crash in mtstudio (defect
-    record D1), and add an end-to-end mtstudio leg under deferral.
+  - Fix the `MICROTORCH_DEFER_DOWNLOADS` crash for the gpt2 family (defect
+    record D1; deferral works for llama runs and every production run
+    uses it), and add an end-to-end mtstudio leg under deferral.
+  - SFT evaluation is the slow part of a fine-tune: on the Colab L4 an
+    `objective: sft` run spends ~10-20 minutes at each `eval_every`
+    checkpoint with the process on the CPU (capacity session, 20 Oct 2026),
+    while its training steps are fast. Put the SFT eval on the device path.
   - Wire `MT_DEVCHECK_HOST_READ` at real call sites; today it is defined
     and never called.
   - Coalesce loads in the transposed GEMM paths.
