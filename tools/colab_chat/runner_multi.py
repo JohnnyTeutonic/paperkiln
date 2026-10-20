@@ -282,10 +282,26 @@ def main():
                 ep = st.d.get("endpoint")
                 rc, out = sh([COLPY, ADOPT, "--adopt", f"{ep}={NAME}"], 180) if ep else (1, "")
                 if not (rc == 0 and "adopted" in out):
-                    log("session gone (reclaimed?); relaunching from the relayed checkpoints")
-                    if not launch(st, a.commit, a.jobs, jobs, uploads):
+                    # The listing comes back empty now and then while the VM is
+                    # fine, and a relaunch begins with `colab stop`: on 20 Oct
+                    # one empty listing destroyed a live VM's unrelayed work.
+                    # Relaunch only after three straight ticks with no listing,
+                    # no adoption and no answer from the VM itself.
+                    probe = vm_status(jobs)
+                    st.d["gone_ticks"] = 0 if probe is not None else st.d.get("gone_ticks", 0) + 1
+                    st.save()
+                    if probe is None and st.d["gone_ticks"] >= 3:
+                        log("session gone on 3 consecutive ticks; relaunching from the relayed checkpoints")
+                        st.d["gone_ticks"] = 0
+                        if not launch(st, a.commit, a.jobs, jobs, uploads):
+                            time.sleep(TICK)
+                            continue
+                    elif probe is None:
+                        log(f"session not listed and VM silent ({st.d['gone_ticks']}/3); waiting")
                         time.sleep(TICK)
                         continue
+            else:
+                st.d["gone_ticks"] = 0
             r = vm_status(jobs)
             if r is None:
                 log("vm status: no reply")
