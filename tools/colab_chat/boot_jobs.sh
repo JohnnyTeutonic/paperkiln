@@ -39,6 +39,11 @@ cat corpus/hashes/fineweb_edu_shard0_v1.sha256 || true
 R=corpus/data/fineweb_edu_shard0_v1/rest.txt
 [ -s $R ] || tail -c +1000000001 corpus/data/fineweb_edu_shard0_v1/pretrain_train.txt > $R
 ls -la $R
+# The big model's corpus: the first 2.2 GB (~500M tokens). Tokenising the
+# whole 3.46 GB shard took over 30 GB of host RAM and the OOM killer.
+B=corpus/data/fineweb_edu_shard0_v1/big.txt
+[ -s $B ] || head -c 2200000000 corpus/data/fineweb_edu_shard0_v1/pretrain_train.txt > $B
+ls -la $B
 if pgrep -f "[j]obs_vm.py" > /dev/null; then echo "jobs_vm already running"; exit 0; fi
 echo RUNNING > /content/chat/STATUS
 nohup bash -c "python3 -u tools/colab_chat/jobs_vm.py $JOBS > /content/chat/jobs.log 2>&1; echo FINISHED > /content/chat/STATUS" \

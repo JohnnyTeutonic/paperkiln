@@ -82,6 +82,7 @@ def main():
     cfg = json.load(open(sys.argv[1]))
     jobs = {j["name"]: j for j in cfg["jobs"]}
     max_parallel = cfg.get("max_parallel", len(jobs))
+    t0 = time.time()
     running = {}
     for name in jobs:
         if status(name) not in ("FINISHED", "FAILED"):
@@ -100,6 +101,10 @@ def main():
         for name in pending:
             if len(running) >= max_parallel:
                 break
+            # "delay_s": hold a job until that long after this manager started,
+            # so big corpora are not tokenised at once (host RAM is shared).
+            if time.time() - t0 < jobs[name].get("delay_s", 0):
+                continue
             after = jobs[name].get("after")
             if after and status(after) == "FAILED":
                 set_status(name, "FAILED")

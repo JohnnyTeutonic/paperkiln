@@ -1,0 +1,196 @@
+{
+ "max_parallel": 3,
+ "jobs": [
+  {
+   "name": "moe",
+   "model_name": "fw_moe",
+   "init_file": "fw_base.safetensors",
+   "init_key": "upcycle_from",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "custom": {
+      "d": 384,
+      "layers": 6,
+      "heads": 6
+     },
+     "moe": {
+      "experts": 8,
+      "top_k": 2,
+      "gate": "renorm",
+      "aux_loss": 0.01,
+      "z_loss": 0.001
+     }
+    },
+    "data": {
+     "corpus": "/content/pk/corpus/data/fineweb_edu_shard0_v1/rest.txt",
+     "vocab": "/content/pk/corpus/data/vocab_fineweb_tinychat_bpe8k_v1/fineweb_tinychat_bpe8k.gguf",
+     "vocab_cap": 8192,
+     "T": 256,
+     "max_tokens": 60000000
+    },
+    "train": {
+     "steps": 10000,
+     "lr": 0.0003,
+     "batch": 16,
+     "eval_every": 500,
+     "checkpoint_every": 500,
+     "gradmap_every": 0,
+     "seed": 2,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 200,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf",
+      "gguf_q8_0_all"
+     ]
+    }
+   }
+  },
+  {
+   "name": "big",
+   "model_name": "fw_big",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "custom": {
+      "d": 768,
+      "layers": 12,
+      "heads": 12,
+      "d_ff": 2048
+     }
+    },
+    "data": {
+     "corpus": "/content/pk/corpus/data/fineweb_edu_shard0_v1/big.txt",
+     "vocab": "/content/pk/corpus/data/vocab_fineweb_tinychat_bpe8k_v1/fineweb_tinychat_bpe8k.gguf",
+     "vocab_cap": 8192,
+     "T": 256,
+     "max_tokens": 500000000
+    },
+    "train": {
+     "steps": 60000,
+     "lr": 0.0006,
+     "batch": 32,
+     "eval_every": 1000,
+     "checkpoint_every": 1000,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 1000,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf",
+      "gguf_q8_0_all"
+     ]
+    }
+   },
+   "delay_s": 300
+  },
+  {
+   "name": "moe_sft",
+   "model_name": "chat_fw_moe",
+   "after": "moe",
+   "init_job": "moe",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "custom": {
+      "d": 384,
+      "layers": 6,
+      "heads": 6
+     },
+     "moe": {
+      "experts": 8,
+      "top_k": 2,
+      "gate": "renorm",
+      "aux_loss": 0.01,
+      "z_loss": 0.001
+     }
+    },
+    "data": {
+     "vocab": "/content/pk/corpus/data/vocab_fineweb_tinychat_bpe8k_v1/fineweb_tinychat_bpe8k.gguf",
+     "vocab_cap": 8192,
+     "T": 256,
+     "sft_examples": "/content/chat/upload/sft_mix.jsonl"
+    },
+    "train": {
+     "steps": 1500,
+     "lr": 0.0003,
+     "batch": 16,
+     "eval_every": 250,
+     "checkpoint_every": 250,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "objective": "sft"
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf",
+      "gguf_q8_0_all"
+     ]
+    }
+   }
+  },
+  {
+   "name": "big_sft",
+   "model_name": "chat_fw_big",
+   "after": "big",
+   "init_job": "big",
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "custom": {
+      "d": 768,
+      "layers": 12,
+      "heads": 12,
+      "d_ff": 2048
+     }
+    },
+    "data": {
+     "vocab": "/content/pk/corpus/data/vocab_fineweb_tinychat_bpe8k_v1/fineweb_tinychat_bpe8k.gguf",
+     "vocab_cap": 8192,
+     "T": 256,
+     "sft_examples": "/content/chat/upload/sft_mix.jsonl"
+    },
+    "train": {
+     "steps": 1500,
+     "lr": 0.0001,
+     "batch": 16,
+     "eval_every": 250,
+     "checkpoint_every": 250,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "objective": "sft",
+     "lr_schedule": {
+      "warmup_steps": 100,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf",
+      "gguf_q8_0_all"
+     ]
+    }
+   }
+  }
+ ],
+ "_comment": "Restart of the four capacity_v2 jobs the v1 OOM took down, beside the still-running ctrl and flex_plain."
+}
