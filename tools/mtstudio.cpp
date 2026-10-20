@@ -2216,6 +2216,13 @@ struct LoadedLM {
             lc.n_heads = s.heads;
             lc.d_ff = s.d_ff ? s.d_ff : 3 * s.d;
             lc.n_ctx = s.T;
+            // Bare weights (no events.jsonl, so no run record) with no
+            // arch.rope_heads in the spec: the coverage is unknown, and the
+            // legacy default "first" silently served an all-heads model with
+            // the wrong RoPE (20 Oct 2026). chat_eval.py refuses the same case.
+            if (s.rope_heads.empty() && !std::filesystem::exists(s.out_dir + "/events.jsonl"))
+                throw std::runtime_error(s.out_dir + " has bare weights and no run record: set arch.rope_heads "
+                                         "(\"all\" for models trained since 18 Oct 2026, \"first\" for older ones)");
             rope_heads = resolve_rope_heads(s, /*existing=*/true);
             lc.rope_all_heads = rope_heads == "all";
             apply_moe(lc, s);
