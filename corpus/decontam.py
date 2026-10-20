@@ -149,13 +149,13 @@ def run(inp, out, report, field="messages", dc=None):
             users, text = row_text(row, field)
             d, f = dc.check(users, text)
             ref = {"line": line_no, "uri": row.get("uri")}
-            for x in f:
-                flags.append({**ref, **x})
             if d:
                 drops.append({**ref, "matches": d})
                 rule_counts.update({x["rule"] for x in d})
                 eval_counts.update({x["eval"].split(":reference")[0] for x in d})
                 continue
+            for x in f:                      # flags only on rows that are kept
+                flags.append({**ref, **x})
             fo.write(line if line.endswith("\n") else line + "\n")
             n_out += 1
     summary = {"input": os.path.basename(inp), "rows_in": n_in, "rows_kept": n_out, "rows_dropped": n_in - n_out,
