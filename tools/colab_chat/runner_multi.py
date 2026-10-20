@@ -177,9 +177,21 @@ def launch(st, commit, jobs_rel, jobs, uploads):
         return False
     st.d["endpoint"] = listed()
     st.d["launches"] += 1
+    st.d["booted"] = False
     st.save()
     log(f"session up, endpoint {st.d['endpoint']} (launch {st.d['launches']})")
-    exec_py("import os\nos.makedirs('/content/chat/upload', exist_ok=True)\nprint('OK')\n")
+    return prepare(st, commit, jobs_rel, jobs, uploads)
+
+
+def prepare(st, commit, jobs_rel, jobs, uploads):
+    """Inputs, relayed checkpoints and the boot onto a session that is up but
+    not yet booted. Retried every tick until it succeeds (st.d["booted"]), so
+    a failed upload never leaves a provisioned VM idle."""
+    dirs = ["/content/chat/upload"] + [f"/content/chat/upload/{j['name']}" for j in jobs]
+    rc, out = exec_py(f"import os\nfor d in {dirs!r}: os.makedirs(d, exist_ok=True)\nprint('DIRS_OK')\n")
+    if "DIRS_OK" not in out:
+        log(f"prepare: upload dirs not created: {out.strip()[-120:]}")
+        return False
     try:
         for key, src in uploads:
             upload_file(src, f"/content/chat/upload/{key}")
@@ -222,6 +234,8 @@ def launch(st, commit, jobs_rel, jobs, uploads):
     if "BOOTED" not in out:
         log(f"boot exec failed: {out.strip()[-160:]}")
         return False
+    st.d["booted"] = True
+    st.save()
     log("boot launched")
     return True
 
@@ -302,6 +316,11 @@ def main():
                         continue
             else:
                 st.d["gone_ticks"] = 0
+            if not st.d.get("booted", True):
+                log("session up but not booted; preparing it")
+                if not prepare(st, a.commit, a.jobs, jobs, uploads):
+                    time.sleep(TICK)
+                    continue
             r = vm_status(jobs)
             if r is None:
                 log("vm status: no reply")
