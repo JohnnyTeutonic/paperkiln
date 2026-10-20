@@ -1315,10 +1315,17 @@ constexpr int AT = 64;  // output tile edge
 constexpr int AK = 16;  // reduction chunk staged per pass
 
 // S(b0 + li, lj) = scale * sum_d P(b0 + li, d) Q(b0 + lj, d) for lj < hi(li);
-// masked entries are not written. P, Q are [T, D].
-__global__ void k_blk_scores(const float* P, const float* Q, float* S, float scale, int sl, int causal, int D) {
+// masked entries are not written. P, Q are [T, D] with row strides ldp, ldq.
+// blockIdx.z is the head: each pointer advances by its head stride (hs*),
+// so one launch covers every head of a fused [T, 3d] qkv (ops::attention_heads);
+// gridDim.z = 1 with zero strides is the single-head call.
+__global__ void k_blk_scores(const float* P, int ldp, const float* Q, int ldq, float* S, float scale, int sl,
+                             int causal, int D, size_t hsP, size_t hsQ, size_t hsS) {
     __shared__ float Ps[AK][AT];
     __shared__ float Qs[AK][AT];
+    P += blockIdx.z * hsP;
+    Q += blockIdx.z * hsQ;
+    S += blockIdx.z * hsS;
     const int nt = (sl + AT - 1) / AT;
     const int b0 = (blockIdx.x / nt) * sl, q0 = (blockIdx.x % nt) * AT, k0 = blockIdx.y * AT;
     if (causal && k0 > q0 + AT - 1) return;  // the whole tile is above the diagonal
@@ -1327,8 +1334,8 @@ __global__ void k_blk_scores(const float* P, const float* Q, float* S, float sca
     for (int d0 = 0; d0 < D; d0 += AK) {
         for (int idx = threadIdx.x; idx < AT * AK; idx += blockDim.x) {
             const int r = idx / AK, dd = idx % AK, d = d0 + dd;
-            Ps[dd][r] = (q0 + r < sl && d < D) ? P[static_cast<size_t>(b0 + q0 + r) * D + d] : 0.0f;
-            Qs[dd][r] = (k0 + r < sl && d < D) ? Q[static_cast<size_t>(b0 + k0 + r) * D + d] : 0.0f;
+            Ps[dd][r] = (q0 + r < sl && d < D) ? P[static_cast<size_t>(b0 + q0 + r) * ldp + d] : 0.0f;
+            Qs[dd][r] = (k0 + r < sl && d < D) ? Q[static_cast<size_t>(b0 + k0 + r) * ldq + d] : 0.0f;
         }
         __syncthreads();
         const int dn = min(AK, D - d0);
@@ -1355,10 +1362,15 @@ __global__ void k_blk_scores(const float* P, const float* Q, float* S, float sca
 }
 
 // C(b0 + li, n) = sum_{j < hi(li)} X(b0 + li, j) Y(b0 + j, n): A V and ds K.
-// X is block-local [T, sl]; Y and C are [T, N].
-__global__ void k_blk_rowprod(const float* X, const float* Y, float* C, int sl, int causal, int N) {
+// X is block-local [T, sl]; Y and C are [T, N] with row strides ldy, ldc.
+// Head strides as k_blk_scores.
+__global__ void k_blk_rowprod(const float* X, const float* Y, int ldy, float* C, int ldc, int sl, int causal, int N,
+                              size_t hsX, size_t hsY, size_t hsC) {
     __shared__ float Xs[AK][AT];
     __shared__ float Ys[AK][AT];
+    X += blockIdx.z * hsX;
+    Y += blockIdx.z * hsY;
+    C += blockIdx.z * hsC;
     const int nt = (sl + AT - 1) / AT;
     const int b0 = (blockIdx.x / nt) * sl, q0 = (blockIdx.x % nt) * AT, n0 = blockIdx.y * AT;
     const int tx = threadIdx.x % 16, ty = threadIdx.x / 16;
@@ -1375,7 +1387,7 @@ __global__ void k_blk_rowprod(const float* X, const float* Y, float* C, int sl, 
             const int r = idx / AK, jj = idx % AK, j = j0 + jj;
             Xs[jj][r] = (q0 + r < sl && j < sl) ? X[static_cast<size_t>(b0 + q0 + r) * sl + j] : 0.0f;
             const int jy = idx / AT, c = idx % AT;
-            Ys[jy][c] = (j0 + jy < sl && n0 + c < N) ? Y[static_cast<size_t>(b0 + j0 + jy) * N + n0 + c] : 0.0f;
+            Ys[jy][c] = (j0 + jy < sl && n0 + c < N) ? Y[static_cast<size_t>(b0 + j0 + jy) * ldy + n0 + c] : 0.0f;
         }
         __syncthreads();
         const int jn = min(AK, jmax - j0);
@@ -1398,17 +1410,21 @@ __global__ void k_blk_rowprod(const float* X, const float* Y, float* C, int sl, 
 #pragma unroll
         for (int c = 0; c < 4; ++c) {
             const int n = n0 + tx + 16 * c;
-            if (n < N) C[static_cast<size_t>(b0 + li) * N + n] = acc[a][c];
+            if (n < N) C[static_cast<size_t>(b0 + li) * ldc + n] = acc[a][c];
         }
     }
 }
 
 // C(b0 + lj, n) = sum_{li = lo(lj)}^{sl - 1} X(b0 + li, lj) Y(b0 + li, n),
 // lo = lj when causal else 0: ds^T Q and A^T dY, over the queries that see
-// key lj, ascending.
-__global__ void k_blk_colprod(const float* X, const float* Y, float* C, int sl, int causal, int N) {
+// key lj, ascending. Strides as k_blk_rowprod.
+__global__ void k_blk_colprod(const float* X, const float* Y, int ldy, float* C, int ldc, int sl, int causal, int N,
+                              size_t hsX, size_t hsY, size_t hsC) {
     __shared__ float Xs[AK][AT];
     __shared__ float Ys[AK][AT];
+    X += blockIdx.z * hsX;
+    Y += blockIdx.z * hsY;
+    C += blockIdx.z * hsC;
     const int nt = (sl + AT - 1) / AT;
     const int b0 = (blockIdx.x / nt) * sl, k0 = (blockIdx.x % nt) * AT, n0 = blockIdx.y * AT;
     const int tx = threadIdx.x % 16, ty = threadIdx.x / 16;
@@ -1423,7 +1439,7 @@ __global__ void k_blk_colprod(const float* X, const float* Y, float* C, int sl, 
         for (int idx = threadIdx.x; idx < AT * AK; idx += blockDim.x) {
             const int ii = idx / AT, r = idx % AT, li = i0 + ii;
             Xs[ii][r] = (li < sl && k0 + r < sl) ? X[static_cast<size_t>(b0 + li) * sl + k0 + r] : 0.0f;
-            Ys[ii][r] = (li < sl && n0 + r < N) ? Y[static_cast<size_t>(b0 + li) * N + n0 + r] : 0.0f;
+            Ys[ii][r] = (li < sl && n0 + r < N) ? Y[static_cast<size_t>(b0 + li) * ldy + n0 + r] : 0.0f;
         }
         __syncthreads();
         const int in = min(AK, sl - i0);
@@ -1446,7 +1462,7 @@ __global__ void k_blk_colprod(const float* X, const float* Y, float* C, int sl, 
 #pragma unroll
         for (int c = 0; c < 4; ++c) {
             const int n = n0 + tx + 16 * c;
-            if (n < N) C[static_cast<size_t>(b0 + lj) * N + n] = acc[a][c];
+            if (n < N) C[static_cast<size_t>(b0 + lj) * ldc + n] = acc[a][c];
         }
     }
 }
@@ -1484,9 +1500,10 @@ __global__ void k_blk_ds_rows(const float* A, float* ds, float scale, int sl, in
     for (int j = threadIdx.x; j < sl; j += blockDim.x) dr[j] = j < hi ? scale * Ar[j] * (dr[j] - dot) : 0.0f;
 }
 
-dim3 blk_grid(int T, int sl, int N) {
+dim3 blk_grid(int T, int sl, int N, int heads = 1) {
     const int nt = (sl + AT - 1) / AT;
-    return dim3(static_cast<unsigned>((T / sl) * nt), static_cast<unsigned>((N + AT - 1) / AT));
+    return dim3(static_cast<unsigned>((T / sl) * nt), static_cast<unsigned>((N + AT - 1) / AT),
+                static_cast<unsigned>(heads));
 }
 
 constexpr int AT_THREADS = 256;  // 16 x 16, four by four outputs each
@@ -1511,11 +1528,11 @@ bool attn_blocked_fwd(const Matrix& q, const Matrix& k, const Matrix& v, float s
         dvv(v.get_data(), static_cast<size_t>(T) * dv);
     Out dA(A.get_data(), static_cast<size_t>(T) * sl), dy(y.get_data(), static_cast<size_t>(T) * dv);
     const int c = causal ? 1 : 0;
-    k_blk_scores<<<blk_grid(T, sl, sl), AT_THREADS>>>(dq.d, dkk.d, dA.d, scale, sl, c, dk);
+    k_blk_scores<<<blk_grid(T, sl, sl), AT_THREADS>>>(dq.d, dk, dkk.d, dk, dA.d, scale, sl, c, dk, 0, 0, 0);
     cuda_check(cudaGetLastError(), "attn_blocked_fwd scores");
     k_blk_softmax_rows<<<T, ROW_THREADS, ROW_THREADS * sizeof(float)>>>(dA.d, sl, c);
     cuda_check(cudaGetLastError(), "attn_blocked_fwd softmax");
-    k_blk_rowprod<<<blk_grid(T, sl, dv), AT_THREADS>>>(dA.d, dvv.d, dy.d, sl, c, dv);
+    k_blk_rowprod<<<blk_grid(T, sl, dv), AT_THREADS>>>(dA.d, dvv.d, dv, dy.d, dv, sl, c, dv, 0, 0, 0);
     cuda_check(cudaGetLastError(), "attn_blocked_fwd av");
     dA.finish();
     dy.finish();
@@ -1537,19 +1554,87 @@ bool attn_blocked_bwd(const Matrix& q, const Matrix& k, const Matrix& v, const M
     DBuf ds(static_cast<size_t>(T) * sl);
     Out odq(dq.get_data(), nq), odk(dk.get_data(), nq), odv(dv.get_data(), nv);
     const int c = causal ? 1 : 0;
-    k_blk_scores<<<blk_grid(T, sl, sl), AT_THREADS>>>(igy.d, iv.d, ds.d, 1.0f, sl, c, dvd);  // dA = dY V^T
+    k_blk_scores<<<blk_grid(T, sl, sl), AT_THREADS>>>(igy.d, dvd, iv.d, dvd, ds.d, 1.0f, sl, c, dvd, 0, 0,
+                                                      0);  // dA = dY V^T
     cuda_check(cudaGetLastError(), "attn_blocked_bwd dA");
     k_blk_ds_rows<<<T, ROW_THREADS, ROW_THREADS * sizeof(float)>>>(iA.d, ds.d, scale, sl, c);
     cuda_check(cudaGetLastError(), "attn_blocked_bwd ds");
-    k_blk_rowprod<<<blk_grid(T, sl, dkd), AT_THREADS>>>(ds.d, ik.d, odq.d, sl, c, dkd);
+    k_blk_rowprod<<<blk_grid(T, sl, dkd), AT_THREADS>>>(ds.d, ik.d, dkd, odq.d, dkd, sl, c, dkd, 0, 0, 0);
     cuda_check(cudaGetLastError(), "attn_blocked_bwd dq");
-    k_blk_colprod<<<blk_grid(T, sl, dkd), AT_THREADS>>>(ds.d, iq.d, odk.d, sl, c, dkd);
+    k_blk_colprod<<<blk_grid(T, sl, dkd), AT_THREADS>>>(ds.d, iq.d, dkd, odk.d, dkd, sl, c, dkd, 0, 0, 0);
     cuda_check(cudaGetLastError(), "attn_blocked_bwd dk");
-    k_blk_colprod<<<blk_grid(T, sl, dvd), AT_THREADS>>>(iA.d, igy.d, odv.d, sl, c, dvd);
+    k_blk_colprod<<<blk_grid(T, sl, dvd), AT_THREADS>>>(iA.d, igy.d, dvd, odv.d, dvd, sl, c, dvd, 0, 0, 0);
     cuda_check(cudaGetLastError(), "attn_blocked_bwd dv");
     odq.finish();
     odk.finish();
     odv.finish();
+    return true;
+}
+
+// ---- all heads in one launch (ops::attention_heads, 20 Oct 2026) -------
+// The same kernels over a fused [T, 3d] qkv (q | k | v, head h in columns
+// h dk .. (h + 1) dk of each part), blockIdx.z = head: no per-head slice,
+// concat or column accumulate, and H times the blocks per launch (one
+// head's d768 b16 launch was 64 blocks, under three per SM on an L4). Each
+// output element runs the per-head kernels' fmaf chain over the same
+// operands, so y, A and the gradients are those of the per-head path. A is
+// [H T, sl] (head-major), y [T, d], dqkv [T, 3d].
+bool attn_heads_fwd(const Matrix& qkv, size_t heads, float scale, size_t seq_len, bool causal, Matrix& A,
+                    Matrix& y) {
+    if (!active()) return false;
+    const int T = static_cast<int>(qkv.rows()), H = static_cast<int>(heads), sl = static_cast<int>(seq_len);
+    if (H <= 0 || qkv.cols() % (3 * heads) != 0 || sl <= 0 || T % sl != 0) return false;
+    const int d = static_cast<int>(qkv.cols() / 3), dk = d / H, ld = 3 * d;
+    if (A.rows() != heads * qkv.rows() || A.cols() != seq_len || y.rows() != qkv.rows() ||
+        y.cols() != static_cast<size_t>(d))
+        return false;
+    In iqkv(qkv.get_data(), static_cast<size_t>(T) * ld);
+    Out oA(A.get_data(), static_cast<size_t>(H) * T * sl), oy(y.get_data(), static_cast<size_t>(T) * d);
+    const int c = causal ? 1 : 0;
+    const size_t hsA = static_cast<size_t>(T) * sl;
+    k_blk_scores<<<blk_grid(T, sl, sl, H), AT_THREADS>>>(iqkv.d, ld, iqkv.d + d, ld, oA.d, scale, sl, c, dk, dk, dk,
+                                                         hsA);
+    cuda_check(cudaGetLastError(), "attn_heads_fwd scores");
+    k_blk_softmax_rows<<<H * T, ROW_THREADS, ROW_THREADS * sizeof(float)>>>(oA.d, sl, c);
+    cuda_check(cudaGetLastError(), "attn_heads_fwd softmax");
+    k_blk_rowprod<<<blk_grid(T, sl, dk, H), AT_THREADS>>>(oA.d, iqkv.d + 2 * d, ld, oy.d, d, sl, c, dk, hsA, dk, dk);
+    cuda_check(cudaGetLastError(), "attn_heads_fwd av");
+    oA.finish();
+    oy.finish();
+    return true;
+}
+
+bool attn_heads_bwd(const Matrix& qkv, size_t heads, const Matrix& A, const Matrix& dY, float scale, size_t seq_len,
+                    bool causal, Matrix& dqkv) {
+    if (!active()) return false;
+    const int T = static_cast<int>(qkv.rows()), H = static_cast<int>(heads), sl = static_cast<int>(seq_len);
+    if (H <= 0 || qkv.cols() % (3 * heads) != 0 || sl <= 0 || T % sl != 0) return false;
+    const int d = static_cast<int>(qkv.cols() / 3), dk = d / H, ld = 3 * d;
+    if (A.rows() != heads * qkv.rows() || A.cols() != seq_len || dY.rows() != qkv.rows() ||
+        dY.cols() != static_cast<size_t>(d) || dqkv.rows() != qkv.rows() || dqkv.cols() != qkv.cols())
+        return false;
+    const size_t hsA = static_cast<size_t>(T) * sl;
+    In iqkv(qkv.get_data(), static_cast<size_t>(T) * ld), iA(A.get_data(), H * hsA),
+        igy(dY.get_data(), static_cast<size_t>(T) * d);
+    DBuf ds(H * hsA);
+    Out og(dqkv.get_data(), static_cast<size_t>(T) * ld);  // every element written below
+    const int c = causal ? 1 : 0;
+    const float* q = iqkv.d;
+    const float* k = iqkv.d + d;
+    const float* v = iqkv.d + 2 * d;
+    k_blk_scores<<<blk_grid(T, sl, sl, H), AT_THREADS>>>(igy.d, d, v, ld, ds.d, 1.0f, sl, c, dk, dk, dk,
+                                                         hsA);  // dA = dY V^T
+    cuda_check(cudaGetLastError(), "attn_heads_bwd dA");
+    k_blk_ds_rows<<<H * T, ROW_THREADS, ROW_THREADS * sizeof(float)>>>(iA.d, ds.d, scale, sl, c);
+    cuda_check(cudaGetLastError(), "attn_heads_bwd ds");
+    k_blk_rowprod<<<blk_grid(T, sl, dk, H), AT_THREADS>>>(ds.d, k, ld, og.d, ld, sl, c, dk, hsA, dk, dk);
+    cuda_check(cudaGetLastError(), "attn_heads_bwd dq");
+    k_blk_colprod<<<blk_grid(T, sl, dk, H), AT_THREADS>>>(ds.d, q, ld, og.d + d, ld, sl, c, dk, hsA, dk, dk);
+    cuda_check(cudaGetLastError(), "attn_heads_bwd dk");
+    k_blk_colprod<<<blk_grid(T, sl, dk, H), AT_THREADS>>>(iA.d, igy.d, d, og.d + 2 * d, ld, sl, c, dk, hsA, dk,
+                                                          dk);
+    cuda_check(cudaGetLastError(), "attn_heads_bwd dv");
+    og.finish();
     return true;
 }
 

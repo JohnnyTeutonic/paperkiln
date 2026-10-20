@@ -282,6 +282,13 @@ bool attn_blocked_fwd(const Matrix& q, const Matrix& k, const Matrix& v, float s
                       bool causal, Matrix& A, Matrix& y);
 bool attn_blocked_bwd(const Matrix& q, const Matrix& k, const Matrix& v, const Matrix& A, const Matrix& dY,
                       float scale, size_t seq_len, bool causal, Matrix& dq, Matrix& dk, Matrix& dv);
+// The same for every head of a fused [T, 3d] qkv in one launch per kernel
+// (ops::attention_heads): A is [heads T, seq_len] head-major, y [T, d] in
+// the head-concat layout, dqkv [T, 3d] written whole.
+bool attn_heads_fwd(const Matrix& qkv, size_t heads, float scale, size_t seq_len, bool causal, Matrix& A,
+                    Matrix& y);
+bool attn_heads_bwd(const Matrix& qkv, size_t heads, const Matrix& A, const Matrix& dY, float scale, size_t seq_len,
+                    bool causal, Matrix& dqkv);
 // B2.2: embedding gather (ids bounds-checked by the HOST caller first;
 // backward scatter-add stays host until B2.3) and cross-entropy
 // (softmax + nll on-device, host receives ONE float; P cached for the

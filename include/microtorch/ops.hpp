@@ -55,6 +55,13 @@ Var fused_attention_blocked(const Var& q, const Var& k, const Var& v, float scal
 // of O((B * seq_len)^2). fused_attention dispatches to it only when
 // blocked_attention_enabled() (env MICROTORCH_ATTN_BLOCKED=1).
 bool blocked_attention_enabled();
+// Causal-or-not multi-head attention over a fused [T, 3d] qkv (q | k | v,
+// head h in columns h dk .. (h + 1) dk of each part) -> [T, d], heads
+// concatenated: exactly concat_cols of fused_attention per head on column
+// slices, which is what runs off the device. On the device with blocked
+// attention live (sl < T) it is one op over all heads (no slices), the
+// same floats.
+Var attention_heads(const Var& qkv, size_t heads, float scale, size_t seq_len, bool causal);
 Var dpo_weighted(const Var& logits, const std::vector<int>& targets, const std::vector<int>& row_pair,
                  const std::vector<int8_t>& row_sign, const std::vector<double>& ref_margin,
                  const std::vector<float>& pair_w, float beta);

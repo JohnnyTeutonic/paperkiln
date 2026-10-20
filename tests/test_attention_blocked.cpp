@@ -134,6 +134,35 @@ void test_device_matches_host(bool causal) {
     CHECK(worst < 1e-5);
 }
 
+// ops::attention_heads (all heads of a fused [T, 3d] qkv in one op on the
+// device) against the composition it replaces: slices, fused_attention per
+// head, concat. Bit for bit on either path, output and the qkv gradient,
+// at shapes off the kernels' 64-wide tiles.
+void test_heads_equal_per_head(bool causal) {
+    const size_t B = 3, sl = 70, H = 3, dk = 20, d = H * dk, T = B * sl;
+    const Matrix QKV = randn(T, 3 * d, 21), G = randn(T, d, 22);
+    const float sc = 0.2f;
+    Var a = make_var(QKV, true);
+    Var ya = ops::attention_heads(a, H, sc, sl, causal);
+    microtorch::backward(ops::mean(ops::mul(ya, make_var(G))));
+    Var b = make_var(QKV, true);
+    std::vector<Var> hs;
+    for (size_t h = 0; h < H; ++h)
+        hs.push_back(ops::fused_attention(ops::slice_cols(b, h * dk, (h + 1) * dk),
+                                          ops::slice_cols(b, d + h * dk, d + (h + 1) * dk),
+                                          ops::slice_cols(b, 2 * d + h * dk, 2 * d + (h + 1) * dk), sc, sl, causal));
+    Var yb = ops::concat_cols(hs);
+    microtorch::backward(ops::mean(ops::mul(yb, make_var(G))));
+    microtorch::device::materialize(ya->data);
+    microtorch::device::materialize(yb->data);
+    microtorch::device::materialize(a->grad);
+    microtorch::device::materialize(b->grad);
+    CHECK(std::memcmp(ya->data.get_data(), yb->data.get_data(), T * d * sizeof(float)) == 0);
+    CHECK(std::memcmp(a->grad.get_data(), b->grad.get_data(), T * 3 * d * sizeof(float)) == 0);
+    std::printf("  attention_heads == per-head slices + concat, bit for bit%s (causal=%d)\n",
+                on_device() ? " (device kernels)" : "", causal);
+}
+
 }  // namespace
 
 int main() {
@@ -142,6 +171,8 @@ int main() {
     test_equals_per_sequence(true);
     test_equals_per_sequence(false);
     test_gradcheck();
+    test_heads_equal_per_head(true);
+    test_heads_equal_per_head(false);
     if (on_device()) {
         test_device_matches_host(true);
         test_device_matches_host(false);

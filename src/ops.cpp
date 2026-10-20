@@ -1311,6 +1311,48 @@ static Matrix block_rows(const Matrix& m, size_t r0, size_t n) {
     return out;
 }
 
+Var attention_heads(const Var& qkv, size_t heads, float scale, size_t seq_len, bool causal) {
+    const size_t T = qkv->data.rows(), d3 = qkv->data.cols();
+    if (heads == 0 || d3 % (3 * heads) != 0) throw std::runtime_error("attention_heads: bad head split");
+    const size_t d = d3 / 3, dk = d / heads, sl = seq_len == 0 ? T : seq_len;
+    // All heads in one device op (20 Oct 2026) where the per-head path would
+    // take the blocked device kernels: the same kernels with head strides,
+    // reading q, k, v straight out of qkv. Per-head slices, their column
+    // accumulates and the head concat go, as do ~13 launches per head.
+    if (sl < T && T % sl == 0 && blocked_attention_enabled() && device::device_ops_enabled() &&
+        device::get() == device::Device::CUDA) {
+        auto Ab = cached(device::out_matrix(heads * T, sl));
+        Matrix y = device::out_matrix(T, d);
+        if (device::devops::attn_heads_fwd(qkv->data, heads, scale, sl, causal, *Ab, y)) {
+            return record(std::move(y), {qkv}, [Ab, heads, scale, sl, causal](Variable* self) {
+                const Var& qkv = self->parents[0];
+                if (!qkv->requires_grad) return;
+                Matrix g = device::out_matrix(qkv->data.rows(), qkv->data.cols());
+                if (!device::devops::attn_heads_bwd(qkv->data, heads, *Ab, self->grad, scale, sl, causal, g))
+                    throw std::runtime_error("attention_heads: device backward unavailable");
+                qkv->accumulate(std::move(g));
+            });
+        }
+    }
+    // Per head: slice q, k, v, attend, concatenate. The slices are read by
+    // no backward, so their device copies go once the heads are sliced
+    // (device::release; no-op unless deferring).
+    Var q = slice_cols(qkv, 0, d), k = slice_cols(qkv, d, 2 * d), v = slice_cols(qkv, 2 * d, 3 * d);
+    std::vector<Var> hs;
+    hs.reserve(heads);
+    for (size_t h = 0; h < heads; ++h) {
+        Var qh = slice_cols(q, h * dk, (h + 1) * dk);
+        Var kh = slice_cols(k, h * dk, (h + 1) * dk);
+        Var vh = slice_cols(v, h * dk, (h + 1) * dk);
+        hs.push_back(fused_attention(qh, kh, vh, scale, seq_len, causal));
+    }
+    for (const Var* t : {&q, &k, &v}) device::release((*t)->data);
+    // The attention backward reads q, k, v and its weights, never its output.
+    Var out = concat_cols(hs);
+    for (const Var& hv : hs) device::release(hv->data);
+    return out;
+}
+
 Var fused_attention_blocked(const Var& q, const Var& k, const Var& v, float scale, size_t sl, bool causal) {
     const size_t T = q->data.rows(), nb = T / sl;
     // Device path (18 Oct 2026): the same formulas in kernels, with A kept

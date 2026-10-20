@@ -38,8 +38,6 @@ LlamaBlock::LlamaBlock(const LlamaConfig& cfg, unsigned seed)
 }
 
 Var LlamaBlock::forward(const Var& x, const std::vector<int>& pos, size_t seq_len, MoEAux* aux) const {
-    const size_t d = H * dk;
-
     // ---- attention sublayer (pre-RMSNorm) ----
     Var h = ops::rmsnorm(x, ln1_w);
     Var q = q_proj->forward(h);
@@ -47,41 +45,25 @@ Var LlamaBlock::forward(const Var& x, const std::vector<int>& pos, size_t seq_le
     Var v = v_proj->forward(h);
     // ops::apply_rope expects the fused [T, 3d] qkv layout; build it, rotate
     // each head's q/k columns (head 0 only under the legacy rope_heads =
-    // "first"), slice back. concat/slice are tape ops, so gradients flow.
+    // "first"), attend per head. concat is a tape op, so gradients flow.
     //
     // Memory: the tape keeps every node until the step ends, but the
-    // projections, their concat, the rotated qkv and its slices are read by
-    // no backward (concat, rope and slice backwards touch gradients only)
-    // and by no later forward op once copied onward, so their device
-    // copies are released as soon as the next op has run
-    // (device::release; no-op unless deferring). 189 MB of a d768 layer's
-    // 470 MB at batch 16 x T 256; bit for bit the same step.
+    // projections and their concat are read by no backward (concat and
+    // rope backwards touch gradients only) and by no later forward op once
+    // copied onward, so their device copies are released as soon as the
+    // next op has run (device::release; no-op unless deferring); bit for
+    // bit the same step.
     Var qkv_in = ops::concat_cols({q, k, v});
     for (const Var* t : {&q, &k, &v}) device::release((*t)->data);
     Var qkv = ops::apply_rope(qkv_in, pos, rope_theta_, dk, rope_all_heads_);
     device::release(qkv_in->data);
-    q = ops::slice_cols(qkv, 0, d);
-    k = ops::slice_cols(qkv, d, 2 * d);
-    v = ops::slice_cols(qkv, 2 * d, 3 * d);
-    device::release(qkv->data);
 
-    // Fused per-head attention: causal within each sequence,
+    // Fused multi-head attention: causal within each sequence,
     // block-isolated across a stacked batch, no mask materialization
-    // (ops::fused_attention; FD-checked).
+    // (ops::attention_heads = concat of ops::fused_attention per head;
+    // FD-checked). Its output, the head concat, feeds o_proj.
     const float sc = 1.0f / std::sqrt(static_cast<float>(dk));
-    std::vector<Var> heads;
-    heads.reserve(H);
-    for (size_t hh = 0; hh < H; ++hh) {
-        Var qh = ops::slice_cols(q, hh * dk, (hh + 1) * dk);
-        Var kh = ops::slice_cols(k, hh * dk, (hh + 1) * dk);
-        Var vh = ops::slice_cols(v, hh * dk, (hh + 1) * dk);
-        heads.push_back(ops::fused_attention(qh, kh, vh, sc, seq_len, /*causal=*/true));
-    }
-    for (const Var* t : {&q, &k, &v}) device::release((*t)->data);
-    // The attention backward reads q, k, v and its cached weights, never
-    // its output; the head concat feeds o_proj and is kept.
-    Var heads_cat = ops::concat_cols(heads);
-    for (const Var& hv : heads) device::release(hv->data);
+    Var heads_cat = ops::attention_heads(qkv, H, sc, seq_len, /*causal=*/true);
     Var attn = o_proj->forward(heads_cat);
     Var x1 = ops::add(x, attn);
     device::release(attn->data);  // add's backward reads no data

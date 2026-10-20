@@ -143,6 +143,12 @@ bool attn_blocked_bwd(const Matrix&, const Matrix&, const Matrix&, const Matrix&
                       bool, Matrix&, Matrix&, Matrix&) {
     return false;
 }
+bool attn_heads_fwd(const Matrix&, size_t, float, size_t, bool, Matrix&, Matrix&) {
+    return false;
+}
+bool attn_heads_bwd(const Matrix&, size_t, const Matrix&, const Matrix&, float, size_t, bool, Matrix&) {
+    return false;
+}
 bool embed_gather(const Matrix&, const int*, size_t, Matrix&) {
     return false;
 }
