@@ -570,7 +570,7 @@ def parse_reply(text: str):
     a, b = text.find("{"), text.rfind("}")
     if a < 0 or b < a:
         raise json.JSONDecodeError("no JSON object", text, 0)
-    return json.loads(text[a:b + 1])
+    return json.loads(text[a:b + 1], strict=False)  # a raw newline inside a quoted LaTeX span is common
 
 
 def request_params(text: str, arxiv_id: str, part: int = 0, n_parts: int = 1, model: str = MODEL,
@@ -1451,11 +1451,18 @@ def cmd_pilot(a) -> int:
         raise SystemExit(f"the pilot is capped at {a.max_papers} papers")
     client = make_client()
     stamp = time.strftime("%Y-%m-%d")
-    results = []
+    results, failed = [], []
     for aid in a.ids:
-        tex = get_tex(aid, a.offline)
-        ext = run_extraction(aid, tex, client, a.tag, a.budget_usd, a.model, a.effort, a.max_tokens,
-                             not a.no_fallback, ledger=a.ledger)
+        try:
+            tex = get_tex(aid, a.offline)
+            ext = run_extraction(aid, tex, client, a.tag, a.budget_usd, a.model, a.effort, a.max_tokens,
+                                 not a.no_fallback, ledger=a.ledger)
+        except SystemExit as e:  # one paper's failure is recorded; a budget stop ends the run
+            print(f"arXiv:{aid}: FAILED: {e}")
+            failed.append({"arxiv_id": aid, "error": str(e)})
+            if str(e).startswith("budget:"):
+                break
+            continue
         write_json(RECEIPTS / f"{aid}.extraction.json", ext)
         print_report(ext)
         cmp = compare(aid, tex, ext["llm"]["verification"])
@@ -1474,9 +1481,9 @@ def cmd_pilot(a) -> int:
                 tally[who][row[f"{who}_score"]] += 1
     summary = {"date": stamp, "tag": a.tag, "model": a.model, "effort": a.effort, "budget_usd": a.budget_usd,
                "spent_usd": round(total, 6), "tag_spent_usd": round(ledger_spent(a.tag, a.ledger), 6),
-               "papers": results, "tally": tally}
-    write_json(RECEIPTS / f"{stamp}_pilot.json", summary)
-    print(f"\npilot: {len(results)} paper(s), ${total:.4f} this run; verdicts vs truth {tally}")
+               "papers": results, "failed": failed, "tally": tally}
+    write_json(RECEIPTS / f"{stamp}_{a.tag}.json", summary)
+    print(f"\npilot: {len(results)} paper(s), {len(failed)} failed, ${total:.4f} this run; verdicts vs truth {tally}")
     return 0
 
 
