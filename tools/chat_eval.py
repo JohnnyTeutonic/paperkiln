@@ -17,8 +17,11 @@ Every model gets the same prompts in the served chat template
   ref_f1       content-word F1 between the reply and the dataset's reply
                (both crude lexical proxies for topic and relevance)
   ref_bpb      bits per byte of the REFERENCE reply under the model, via a
-               masked-SFT evaluation pass (how well it predicts a good answer)
-and writes side_by_side.md: each prompt, the reference, and every model's
+               masked-SFT evaluation pass (how well it predicts a good answer).
+
+When the prompts carry more than one "source", every metric is also
+reported per source (by_source; one extra ref_bpb pass each).
+It writes side_by_side.md: each prompt, the reference, and every model's
 reply, for reading. Metrics are descriptive; a pre-registered comparison
 reads them from summary.json.
 
@@ -143,7 +146,7 @@ def check_rope_heads(spec_path):
                  "the weights as rope_heads=\"first\"; state arch.rope_heads or copy the run's events.jsonl")
 
 
-def sample_ember(ember_bin, port, spec_path, prompts, n, temp, max_new, out, greedy=False):
+def sample_ember(ember_bin, port, spec_path, prompts, n, temp, max_new, out, greedy=False, repeat=(1.0, 64)):
     """Serve the model's GGUF with ember and sample n replies per prompt."""
     import time
     import urllib.request
@@ -184,7 +187,8 @@ def sample_ember(ember_bin, port, spec_path, prompts, n, temp, max_new, out, gre
                                        ensure_ascii=False) + "\n")
         subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "chat_sample_ember.py"),
                         ex, "--url", url, "--vocab", spec["data"]["vocab"], "--out", out, "--temp", repr(temp),
-                        "--max-new", str(max_new), "--seed", "7"] + (["--greedy"] if greedy else []),
+                        "--max-new", str(max_new), "--seed", "7"] + (["--greedy"] if greedy else []) +
+                       ["--repeat-penalty", repr(repeat[0]), "--repeat-last-n", str(repeat[1])],
                        check=True, capture_output=True)
     finally:
         srv.terminate()
@@ -193,6 +197,18 @@ def sample_ember(ember_bin, port, spec_path, prompts, n, temp, max_new, out, gre
     for r in recs:  # back to an index into prompts (the examples repeat them n times)
         r["prompt_index"] %= len(prompts)
     return recs
+
+
+def reply_metrics(recs, clean, prompts):
+    n = len(recs)
+    return {"clean_stop": sum(clean) / n,
+            "distinct2": sum(distinct2(r["completion"]) for r in recs) / n,
+            "repeat_frac": sum(repeats(r["completion"]) for r in recs) / n,
+            "prompt_overlap": sum(prompt_overlap(r["completion"], prompts[r["prompt_index"]]["prompt"])
+                                  for r in recs) / n,
+            "ref_f1": sum(ref_f1(r["completion"], prompts[r["prompt_index"]]["reference"]) for r in recs) / n,
+            "words": sum(len(r["completion"].split()) for r in recs) / n,
+            "samples": n}
 
 
 def main(argv=None):
@@ -207,6 +223,8 @@ def main(argv=None):
     ap.add_argument("--limit", type=int, default=200)
     ap.add_argument("--ember-bin", default="", help="sample with this ember.cpp tinyllama_server instead")
     ap.add_argument("--port", type=int, default=8092)
+    ap.add_argument("--repeat-penalty", type=float, default=1.0, help="contract repetition penalty (ember only; 1.0 = off)")
+    ap.add_argument("--repeat-last-n", type=int, default=64)
     a = ap.parse_args(argv)
     for m in a.model:
         check_rope_heads(m.split("=", 1)[1])
@@ -221,7 +239,8 @@ def main(argv=None):
         tag, spec = m.split("=", 1)
         out = os.path.join(a.out, f"{tag}_samples.jsonl")
         if a.ember_bin:
-            recs = sample_ember(a.ember_bin, a.port, spec, prompts, a.n, a.temp, a.max_new, out)
+            recs = sample_ember(a.ember_bin, a.port, spec, prompts, a.n, a.temp, a.max_new, out,
+                                repeat=(a.repeat_penalty, a.repeat_last_n))
         else:
             subprocess.run([a.mtstudio, "sample-set", spec, "--prompts", pf, "--out", out, "--n", str(a.n),
                             "--temp", repr(a.temp), "--seed", "7", "--max-new", str(a.max_new)], check=True,
@@ -230,15 +249,20 @@ def main(argv=None):
         clean = [r["stop"] == "eos" and not any(t in r["completion"] for t in ("<|user|>", "<|assistant|>"))
                  for r in recs]
         bpb, nref = ref_bpb(a.mtstudio, spec, prompts, a.out, tag)
-        summary[tag] = {"clean_stop": sum(clean) / len(recs),
-                        "distinct2": sum(distinct2(r["completion"]) for r in recs) / len(recs),
-                        "repeat_frac": sum(repeats(r["completion"]) for r in recs) / len(recs),
-                        "prompt_overlap": sum(prompt_overlap(r["completion"], prompts[r["prompt_index"]]["prompt"])
-                                              for r in recs) / len(recs),
-                        "ref_f1": sum(ref_f1(r["completion"], prompts[r["prompt_index"]]["reference"])
-                                      for r in recs) / len(recs),
-                        "words": sum(len(r["completion"].split()) for r in recs) / len(recs),
-                        "ref_bpb": bpb, "ref_examples": nref, "samples": len(recs)}
+        summary[tag] = {**reply_metrics(recs, clean, prompts), "ref_bpb": bpb, "ref_examples": nref}
+        # Per source: chat_prompts_v1's everyday half is greetings whose
+        # reference reply ("Hello! How can I help you today?") is in the
+        # everyday training data thousands of times, below decontam's
+        # thresholds, so a gate reads the other half.
+        sources = sorted({p.get("source", "") for p in prompts})
+        if len(sources) > 1:
+            summary[tag]["by_source"] = {}
+            for src in sources:
+                idx = [i for i, p in enumerate(prompts) if p.get("source", "") == src]
+                keep = [k for k, r in enumerate(recs) if prompts[r["prompt_index"]].get("source", "") == src]
+                sb, sn = ref_bpb(a.mtstudio, spec, [prompts[i] for i in idx], a.out, f"{tag}_{src}")
+                summary[tag]["by_source"][src] = {**reply_metrics([recs[k] for k in keep], [clean[k] for k in keep],
+                                                                  prompts), "ref_bpb": sb, "ref_examples": sn}
         replies[tag] = {}
         for r in recs:
             replies[tag].setdefault(r["prompt_index"], r["completion"])
@@ -248,8 +272,10 @@ def main(argv=None):
          "| model | clean stop | distinct-2 | repeats | words | prompt overlap | ref F1 | ref bits/byte |",
          "|---|---:|---:|---:|---:|---:|---:|---:|"]
     for t, s in summary.items():
-        L.append(f"| {t} | {s['clean_stop']:.2f} | {s['distinct2']:.2f} | {s['repeat_frac']:.2f} | {s['words']:.1f} | "
-                 f"{s['prompt_overlap']:.3f} | {s['ref_f1']:.3f} | {s['ref_bpb']:.3f} |")
+        rows = [(t, s)] + [(f"{t} ({src})", v) for src, v in s.get("by_source", {}).items()]
+        for name, v in rows:
+            L.append(f"| {name} | {v['clean_stop']:.2f} | {v['distinct2']:.2f} | {v['repeat_frac']:.2f} | "
+                     f"{v['words']:.1f} | {v['prompt_overlap']:.3f} | {v['ref_f1']:.3f} | {v['ref_bpb']:.3f} |")
     L += ["", "Prompt overlap and ref F1 are content-word measures, crude proxies for topic and relevance, not judges."]
     L.append("")
     for i, p in enumerate(prompts):
