@@ -214,6 +214,9 @@ def check(d, heldout, binary=None):
     samples, report = list(HARD_CASES), {"bytes_per_token": {}}
     for path, nbytes in heldout:
         _, rest = cut(path, nbytes)
+        if not rest.strip():    # the whole file went into training: nothing held out to measure
+            report["bytes_per_token"][path] = None
+            continue
         lines = [x for x in rest.split("\n") if x.strip()][:300]
         samples += lines
         enc = tok.encode(rest).ids
@@ -247,7 +250,7 @@ def main(argv=None):
     t.add_argument("--out", required=True)
     c = sub.add_parser("check")
     c.add_argument("--dir", required=True)
-    c.add_argument("--heldout", action="append", default=[], help="PATH=BYTES: text after the training cut")
+    c.add_argument("--heldout", action="append", default=[], help="PATH=BYTES: text after the training cut (bytes_per_token null when nothing is left)")
     c.add_argument("--llama-tokenize", default=None)
     a = ap.parse_args(argv)
     if a.cmd == "train":
