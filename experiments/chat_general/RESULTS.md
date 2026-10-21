@@ -62,7 +62,8 @@ after the training-speed work (d384 1.14 -> 0.109 s/step on the L4).
   3.3516. A real but small gain at this length. ctrl's rerun on a second VM
   reproduced 3.3734705448150635 exactly.
 - **ctrl_sft** (ctrl + the 48k QA+chat mix, 1,500 steps; SFT val 2.410 vs
-  fwmix 2.52):
+  fwmix 2.52). QA columns (QA all to turn): simple_qa_v1. Chat columns (ref F1 onward):
+  tinychat_hf_prompts_v1, 100 TinyChat prompts, not chat_prompts_v1:
 
 | model | QA all | fact | science | turn | ref F1 | prompt overlap | repeats |
 |---|---:|---:|---:|---:|---:|---:|---:|
