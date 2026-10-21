@@ -182,6 +182,79 @@
 //               or running again from the start.
 // A block may declare several slots (srd: one kv and one recurrent).
 //
+// Third-party graphs (LOCAL_LLM_STACK.md section 7): an engine builds the IR
+// of a llama.cpp GGUF without paperkiln.ir from general.architecture and its
+// metadata, as tools/gguf_ir.py does (the reference; tools/ir_numpy.py runs
+// it). Attributes and ops they add:
+//   per-layer attributes  any attribute of a block node or of a block state
+//               slot may be {"per_layer": [v_0, ..., v_{L-1}]}, L =
+//               block.repeat: block i reads v_i (gemma3: attention window
+//               and kv window 512 on local layers, 0 on global ones; rope
+//               theta 10000 / 1e6). Every other attribute is the same in
+//               every block.
+//   attention   kv_heads < heads (grouped-query): query head h reads k/v
+//               head h / (heads / kv_heads); k and v are [T, kv_heads *
+//               head_dim]. heads % kv_heads == 0.
+//   rope        kv_heads (default heads): k's head count. pairing "neox":
+//               the pair (x[j], x[j + n_rot/2]) within a head (llama.cpp
+//               NEOX, HF rotate_half). n_rot (default head_dim, even):
+//               only a head's first n_rot dims rotate, the rest pass
+//               through (partial rotary, GPT-NeoX); the angle of pair j is
+//               (pos * freq_scale) * theta^(-2j/n_rot), freq_scale default 1
+//               (linear RoPE scaling: 1 / factor). EXACT given the angle
+//               table (computed in double, then rounded to f32 cos/sin).
+//   rmsnorm     group g (default the row width): each consecutive g columns
+//               normalised on their own, weight [g] shared by every group
+//               (per-head q/k norm: qwen3, gemma3). weight_offset c (default
+//               0): the weight is read as w + c, rounded to f32 once at load
+//               (a load-time transform; Gemma's (1 + w), needed only when a
+//               file holds HF's raw w: llama.cpp's convert already stores 1 + w).
+//   conv1d_causal  depthwise causal convolution over time (Mamba): in [x]
+//               [T, C]; weight [C, K] (ssm_conv1d), bias [C] optional;
+//               attributes channels C, kernel K; state names a recurrent
+//               slot with tensor x [K - 1, C], the K - 1 previous inputs,
+//               oldest first, initial 0. With xx = the state's rows then x's:
+//                 out[t, c] = sum over k = 0..K-1, ascending, of
+//                             w[c, k] * xx[t + k, c]  (+ bias[c], added once
+//                             to the finished sum)
+//               then the state becomes the last K - 1 rows of xx. ROUNDING.
+//   selective_scan  Mamba-1's selective state-space scan (ggml_ssm_scan):
+//               in [x, dt, B, C]: x and dt [T, D], B and C [T, N]; weights
+//               "a" [D, N] (A as stored: llama.cpp writes -exp(A_log)), "d"
+//               [D] optional (the skip); attributes channels D, d_state N,
+//               dt_softplus (true). State: a recurrent slot with tensor s
+//               [D, N], initial 0. For t = 0..T-1, every channel c:
+//                 delta  = dt[t, c] <= 20 ? log1p(exp(dt[t, c])) : dt[t, c]
+//                          (softplus; delta = dt when dt_softplus is false)
+//                 xd     = x[t, c] * delta
+//                 s[c,n] = s[c,n] * exp(delta * A[c,n]) + B[t,n] * xd
+//                 y[t,c] = sum over n ascending of s[c,n] * C[t,n]
+//                          (+ d[c] * x[t, c] after the sum)
+//               Prefill is the sequential scan. ROUNDING (exp, log1p).
+// Third-party families (family_hint = general.architecture; llama.cpp's
+// tensor names; tools/gguf_ir.py's docstring has each graph):
+//   llama, mistral  pre-RMSNorm, interleaved RoPE, grouped-query attention,
+//               SwiGLU; <arch>.attention.sliding_window w sets window w,
+//               sinks 0 (HF Mistral's mask; llama.cpp b6000 ignores it).
+//   qwen2, qwen3  llama with NEOX RoPE; qwen2 biased q/k/v, qwen3 per-head
+//               q/k rmsnorm (group head_dim) before RoPE.
+//   gpt2        as paperkiln's gpt2 (fused qkv split q | k | v, tanh GELU).
+//   gptneox     gpt2 without positions, NEOX partial RoPE (n_rot =
+//               rope.dimension_count), exact GELU, untied head; parallel
+//               residual x = (ffn(ln2 x) + x) + attn(ln1 x) when
+//               use_parallel_residual.
+//   gemma3      embedding then affine(scale sqrt(d)); sandwich rmsnorms
+//               (attn_norm, post_attention_norm, ffn_norm, post_ffw_norm),
+//               q/k rmsnorm, NEOX RoPE, GeGLU (gelu tanh of gate, times
+//               up), scale 1/sqrt(key_length); local layers (i % 6 < 5) have
+//               window = attention.sliding_window and theta 10000, global
+//               ones window 0 and rope.freq_base: per-layer attributes.
+//   mamba       (Mamba-1; not paperkiln's "mamba" family, which has
+//               architecture "paperkiln") rmsnorm, ssm_in -> split x | z,
+//               conv1d_causal (state "conv") + silu, ssm_x -> split dt | B |
+//               C, ssm_dt (biased), selective_scan (state "ssm"; a = ssm_a,
+//               d = ssm_d), * silu(z), ssm_out, residual add.
+//
 // Families (family_hint; GGUF general.architecture). A tensor that is the
 // same thing as a gpt2 tensor keeps llama.cpp's gpt2 name: token_embd,
 // position_embd, blk.{i}.attn_norm, attn_qkv, attn_output, ffn_norm, ffn_up,
