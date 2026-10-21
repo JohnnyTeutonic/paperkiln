@@ -40,7 +40,7 @@ def _binary():
 
 def _records(seed, n):
     rng = random.Random(seed)
-    recs = [l for l in TEXT.split("\n")[:12]]
+    recs = TEXT.split("\n")[:12]
     for _ in range(n):
         recs.append("".join(rng.choice(PIECES) for _ in range(rng.randrange(1, 30))))
     return recs
