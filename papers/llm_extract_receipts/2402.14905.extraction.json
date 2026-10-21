@@ -1,0 +1,1906 @@
+{
+ "arxiv_id": "2402.14905",
+ "title": "MobileLLM: Optimizing Sub-billion Parameter Language Models for On-Device Use Cases",
+ "fields": {
+  "d_model": {
+   "value": 576,
+   "evidence": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M [Table tab:larger_architecture]",
+   "verdict": "used"
+  },
+  "n_layers": {
+   "value": 30,
+   "evidence": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M [Table tab:larger_architecture]",
+   "verdict": "used"
+  },
+  "n_heads": {
+   "value": 9,
+   "evidence": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M [Table tab:larger_architecture]",
+   "verdict": "used"
+  },
+  "n_kv_heads": {
+   "value": 3,
+   "evidence": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M [Table tab:larger_architecture]",
+   "verdict": "used"
+  },
+  "d_ff": {
+   "value": 1536,
+   "evidence": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M [Table tab:larger_architecture]",
+   "verdict": "used"
+  },
+  "activation": {
+   "value": "swiglu",
+   "evidence": "Therefore, we use SwiGLU in FFN for the experiments afterward. [Sec. 2.2.1 Feed-forward Network Choice]",
+   "verdict": "used"
+  },
+  "attention": {
+   "value": "exact",
+   "evidence": "In contrast, our primary goal is to optimize model size without introducing new attention computation or efficient hardware implementation methods. [Sec. 4 Related Work]",
+   "verdict": "used"
+  }
+ },
+ "unresolved": [
+  "vocab_size",
+  "context_length",
+  "norm",
+  "positional",
+  "residual"
+ ],
+ "unverified": [],
+ "mentions": {},
+ "inherits": null,
+ "variants": [
+  {
+   "d_model": 576,
+   "n_layers": 30,
+   "n_heads": 9,
+   "n_kv_heads": 3,
+   "d_ff": 1536
+  },
+  {
+   "d_model": 960,
+   "n_layers": 32,
+   "n_heads": 15,
+   "n_kv_heads": 5,
+   "d_ff": 2560
+  },
+  {
+   "d_model": 1152,
+   "n_layers": 40,
+   "n_heads": 18,
+   "n_kv_heads": 6,
+   "d_ff": 3072
+  },
+  {
+   "d_model": 1280,
+   "n_layers": 54,
+   "n_heads": 20,
+   "n_kv_heads": 5,
+   "d_ff": 3584
+  },
+  {
+   "d_model": 1600,
+   "n_layers": 54,
+   "n_heads": 25,
+   "n_kv_heads": 5,
+   "d_ff": 4352
+  }
+ ],
+ "mechanism_scan": [
+  {
+   "mechanism": "grouped or multi-query attention",
+   "where": "llm extraction, verified quote, Table tab:larger_architecture",
+   "blocking": true,
+   "evidence": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M"
+  },
+  {
+   "mechanism": "MobileLLM-LS variant: immediate block-wise layer sharing, each block's weights computed twice in a row (2x30 layers for 125M)",
+   "where": "llm extraction, verified quote, Appendix: Layer-Sharing Number Ablation",
+   "blocking": true,
+   "evidence": "Consequently, in our experiments, we adopt a configuration where every two blocks share weights, effectively doubling the total number of layers."
+  }
+ ],
+ "source": {
+  "tex_sha256": "b8c5949f33df0ddf0436e8b017f11cb670762506d3fbdcf8b19461cbfa4f33cd",
+  "sent_sha256": "82cddd023d37a319413a70a1dd992416df3564959118a3f9ba4982836fa22261",
+  "from": "https://arxiv.org/e-print/2402.14905",
+  "extractor": "papers/llm_extract.py",
+  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "model": "claude-opus-5-5",
+  "effort": "high",
+  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "n_calls": 1,
+  "cost_usd": 0.0,
+  "request_ids": [
+   "req_011CgFdBibfVnRhwDAsdMira"
+  ]
+ },
+ "llm": {
+  "output": {
+   "title": "MobileLLM: Optimizing Sub-billion Parameter Language Models for On-Device Use Cases",
+   "model_name": "MobileLLM",
+   "family": {
+    "value": "decoder_only",
+    "status": "stated",
+    "quote": "resulting in improved overall execution speed for auto-regressive inference",
+    "where": "Sec. 2.3 Layer Sharing"
+   },
+   "inherits": {
+    "ancestor": "",
+    "quote": "",
+    "where": ""
+   },
+   "configs": [
+    {
+     "name": "MobileLLM-125M",
+     "d_model": {
+      "value": "576",
+      "status": "stated",
+      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+      "where": "Table tab:larger_architecture"
+     },
+     "n_layers": {
+      "value": "30",
+      "status": "stated",
+      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+      "where": "Table tab:larger_architecture"
+     },
+     "n_heads": {
+      "value": "9",
+      "status": "stated",
+      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+      "where": "Table tab:larger_architecture"
+     },
+     "n_kv_heads": {
+      "value": "3",
+      "status": "stated",
+      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+      "where": "Table tab:larger_architecture"
+     },
+     "head_dim": {
+      "value": "64",
+      "status": "stated",
+      "quote": "we incorporate grouped query attention with a head dimension equal to 64",
+      "where": "Appendix: Impact of Each Design Choice"
+     },
+     "d_ff": {
+      "value": "1536",
+      "status": "stated",
+      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+      "where": "Table tab:larger_architecture"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     }
+    },
+    {
+     "name": "MobileLLM-350M",
+     "d_model": {
+      "value": "960",
+      "status": "stated",
+      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560 & 345.3M",
+      "where": "Table tab:larger_architecture"
+     },
+     "n_layers": {
+      "value": "32",
+      "status": "stated",
+      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560 & 345.3M",
+      "where": "Table tab:larger_architecture"
+     },
+     "n_heads": {
+      "value": "15",
+      "status": "stated",
+      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560 & 345.3M",
+      "where": "Table tab:larger_architecture"
+     },
+     "n_kv_heads": {
+      "value": "5",
+      "status": "stated",
+      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560 & 345.3M",
+      "where": "Table tab:larger_architecture"
+     },
+     "head_dim": {
+      "value": "64",
+      "status": "stated",
+      "quote": "we incorporate grouped query attention with a head dimension equal to 64",
+      "where": "Appendix: Impact of Each Design Choice"
+     },
+     "d_ff": {
+      "value": "2560",
+      "status": "stated",
+      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560 & 345.3M",
+      "where": "Table tab:larger_architecture"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     }
+    },
+    {
+     "name": "MobileLLM-600M",
+     "d_model": {
+      "value": "1152",
+      "status": "stated",
+      "quote": "$\\ours{}$-600M & 40 & 18 & 6 & 1152 & 3072 & 603.1M",
+      "where": "Table tab:larger_architecture"
+     },
+     "n_layers": {
+      "value": "40",
+      "status": "stated",
+      "quote": "$\\ours{}$-600M & 40 & 18 & 6 & 1152 & 3072 & 603.1M",
+      "where": "Table tab:larger_architecture"
+     },
+     "n_heads": {
+      "value": "18",
+      "status": "stated",
+      "quote": "$\\ours{}$-600M & 40 & 18 & 6 & 1152 & 3072 & 603.1M",
+      "where": "Table tab:larger_architecture"
+     },
+     "n_kv_heads": {
+      "value": "6",
+      "status": "stated",
+      "quote": "$\\ours{}$-600M & 40 & 18 & 6 & 1152 & 3072 & 603.1M",
+      "where": "Table tab:larger_architecture"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "3072",
+      "status": "stated",
+      "quote": "$\\ours{}$-600M & 40 & 18 & 6 & 1152 & 3072 & 603.1M",
+      "where": "Table tab:larger_architecture"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     }
+    },
+    {
+     "name": "MobileLLM-1B",
+     "d_model": {
+      "value": "1280",
+      "status": "stated",
+      "quote": "$\\ours{}$-1B & 54 & 20 & 5 & 1280 & 3584 & 1.0B",
+      "where": "Table tab:larger_architecture"
+     },
+     "n_layers": {
+      "value": "54",
+      "status": "stated",
+      "quote": "$\\ours{}$-1B & 54 & 20 & 5 & 1280 & 3584 & 1.0B",
+      "where": "Table tab:larger_architecture"
+     },
+     "n_heads": {
+      "value": "20",
+      "status": "stated",
+      "quote": "$\\ours{}$-1B & 54 & 20 & 5 & 1280 & 3584 & 1.0B",
+      "where": "Table tab:larger_architecture"
+     },
+     "n_kv_heads": {
+      "value": "5",
+      "status": "stated",
+      "quote": "$\\ours{}$-1B & 54 & 20 & 5 & 1280 & 3584 & 1.0B",
+      "where": "Table tab:larger_architecture"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "3584",
+      "status": "stated",
+      "quote": "$\\ours{}$-1B & 54 & 20 & 5 & 1280 & 3584 & 1.0B",
+      "where": "Table tab:larger_architecture"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     }
+    },
+    {
+     "name": "MobileLLM-1.5B",
+     "d_model": {
+      "value": "1600",
+      "status": "stated",
+      "quote": "$\\ours{}$-1.5B & 54 & 25 & 5 & 1600 & 4352 & 1.5B",
+      "where": "Table tab:larger_architecture"
+     },
+     "n_layers": {
+      "value": "54",
+      "status": "stated",
+      "quote": "$\\ours{}$-1.5B & 54 & 25 & 5 & 1600 & 4352 & 1.5B",
+      "where": "Table tab:larger_architecture"
+     },
+     "n_heads": {
+      "value": "25",
+      "status": "stated",
+      "quote": "$\\ours{}$-1.5B & 54 & 25 & 5 & 1600 & 4352 & 1.5B",
+      "where": "Table tab:larger_architecture"
+     },
+     "n_kv_heads": {
+      "value": "5",
+      "status": "stated",
+      "quote": "$\\ours{}$-1.5B & 54 & 25 & 5 & 1600 & 4352 & 1.5B",
+      "where": "Table tab:larger_architecture"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "4352",
+      "status": "stated",
+      "quote": "$\\ours{}$-1.5B & 54 & 25 & 5 & 1600 & 4352 & 1.5B",
+      "where": "Table tab:larger_architecture"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     }
+    }
+   ],
+   "primary_config": "MobileLLM-125M",
+   "flavours": {
+    "norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "activation": {
+     "value": "swiglu",
+     "status": "stated",
+     "quote": "Therefore, we use SwiGLU in FFN for the experiments afterward.",
+     "where": "Sec. 2.2.1 Feed-forward Network Choice"
+    },
+    "positional": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_theta": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "residual": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "parallel_block": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "attention": {
+     "value": "exact",
+     "status": "stated",
+     "quote": "In contrast, our primary goal is to optimize model size without introducing new attention computation or efficient hardware implementation methods.",
+     "where": "Sec. 4 Related Work"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "qkv_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "tied_embeddings": {
+     "value": "true",
+     "status": "stated",
+     "quote": "By sharing the embedding, we reuse the input embedding weights as the output fully connected layer weights, resulting in a more efficient and compact model architecture.",
+     "where": "Sec. 2.2.3 Embedding Sharing"
+    },
+    "moe": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    }
+   },
+   "block_ops": [
+    {
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding (shared with output head)",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "x",
+     "attributes": [
+      {
+       "name": "d",
+       "value": "576",
+       "status": "stated",
+       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+       "where": "Table tab:larger_architecture"
+      },
+      {
+       "name": "vocab",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "query projection",
+     "inputs": [
+      "x"
+     ],
+     "output": "q",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "576",
+       "status": "stated",
+       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+       "where": "Table tab:larger_architecture"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "key projection (3 kv heads x 64)",
+     "inputs": [
+      "x"
+     ],
+     "output": "k",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "value projection (3 kv heads x 64)",
+     "inputs": [
+      "x"
+     ],
+     "output": "v",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "attention",
+     "role": "grouped-query self-attention",
+     "inputs": [
+      "q",
+      "k",
+      "v"
+     ],
+     "output": "a",
+     "attributes": [
+      {
+       "name": "heads",
+       "value": "9",
+       "status": "stated",
+       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+       "where": "Table tab:larger_architecture"
+      },
+      {
+       "name": "kv_heads",
+       "value": "3",
+       "status": "stated",
+       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+       "where": "Table tab:larger_architecture"
+      },
+      {
+       "name": "head_dim",
+       "value": "64",
+       "status": "stated",
+       "quote": "we incorporate grouped query attention with a head dimension equal to 64",
+       "where": "Appendix: Impact of Each Design Choice"
+      },
+      {
+       "name": "scale",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "causal",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "window",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "sinks",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "o",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "576",
+       "status": "stated",
+       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+       "where": "Table tab:larger_architecture"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual add (assumed; not stated)",
+     "inputs": [
+      "x",
+      "o"
+     ],
+     "output": "h",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "SwiGLU gate projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "g",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "1536",
+       "status": "stated",
+       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+       "where": "Table tab:larger_architecture"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "SwiGLU up projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "u",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "1536",
+       "status": "stated",
+       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+       "where": "Table tab:larger_architecture"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "silu",
+     "role": "SwiGLU gate activation",
+     "inputs": [
+      "g"
+     ],
+     "output": "gs",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "mul",
+     "role": "SwiGLU gating",
+     "inputs": [
+      "gs",
+      "u"
+     ],
+     "output": "m",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "SwiGLU down projection",
+     "inputs": [
+      "m"
+     ],
+     "output": "f",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "576",
+       "status": "stated",
+       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+       "where": "Table tab:larger_architecture"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual add (assumed; not stated)",
+     "inputs": [
+      "h",
+      "f"
+     ],
+     "output": "x",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "linear",
+     "role": "output logits, tied to input embedding",
+     "inputs": [
+      "x"
+     ],
+     "output": "logits",
+     "attributes": [
+      {
+       "name": "tied_to",
+       "value": "token_embd",
+       "status": "stated",
+       "quote": "By sharing the embedding, we reuse the input embedding weights as the output fully connected layer weights",
+       "where": "Sec. 2.2.3 Embedding Sharing"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    }
+   ],
+   "new_ops": [],
+   "mechanisms_outside_ir": [
+    {
+     "mechanism": "MobileLLM-LS variant: immediate block-wise layer sharing, each block's weights computed twice in a row (2x30 layers for 125M)",
+     "quote": "Consequently, in our experiments, we adopt a configuration where every two blocks share weights, effectively doubling the total number of layers.",
+     "where": "Appendix: Layer-Sharing Number Ablation"
+    }
+   ],
+   "notes": "Described the MobileLLM baseline (no layer sharing), 125M as primary; block_ops attributes use 125M sizes. The layer-sharing MobileLLM-LS variant is listed under mechanisms_outside_ir. Normalization type and placement, positional encoding, biases, residual form, causal masking, vocab size and context length are never stated. The embedding-sharing section mentions a \"vocabulary size of 32k\", but only as an illustrative example, so vocab_size is left not_stated. The residual adds are included structurally but are not stated in the paper, and no norm ops are listed because none are described. head_dim 64 is stated only for the 125M/350M design (576/9 and 960/15). The larger configs also give 64 by division, but that is not stated, so it is left not_stated for them."
+  },
+  "verification": {
+   "errors": [],
+   "warnings": [],
+   "inherits": null,
+   "family": {
+    "value": "decoder_only",
+    "status": "stated",
+    "quote": "resulting in improved overall execution speed for auto-regressive inference",
+    "where": "Sec. 2.3 Layer Sharing",
+    "reasons": [],
+    "check": "quote_only"
+   },
+   "configs": [
+    {
+     "name": "MobileLLM-125M",
+     "d_model": {
+      "value": "576",
+      "status": "stated",
+      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+      "where": "Table tab:larger_architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "30",
+      "status": "stated",
+      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+      "where": "Table tab:larger_architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "9",
+      "status": "stated",
+      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+      "where": "Table tab:larger_architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "3",
+      "status": "stated",
+      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+      "where": "Table tab:larger_architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "head_dim": {
+      "value": "64",
+      "status": "stated",
+      "quote": "we incorporate grouped query attention with a head dimension equal to 64",
+      "where": "Appendix: Impact of Each Design Choice",
+      "reasons": [],
+      "check": "verified"
+     },
+     "d_ff": {
+      "value": "1536",
+      "status": "stated",
+      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+      "where": "Table tab:larger_architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      },
+      {
+       "check": "n_kv_heads divides n_heads",
+       "ok": true
+      },
+      {
+       "check": "n_kv_heads <= n_heads",
+       "ok": true
+      },
+      {
+       "check": "head_dim * n_heads == d_model",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "name": "MobileLLM-350M",
+     "d_model": {
+      "value": "960",
+      "status": "stated",
+      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560 & 345.3M",
+      "where": "Table tab:larger_architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "32",
+      "status": "stated",
+      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560 & 345.3M",
+      "where": "Table tab:larger_architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "15",
+      "status": "stated",
+      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560 & 345.3M",
+      "where": "Table tab:larger_architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "5",
+      "status": "stated",
+      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560 & 345.3M",
+      "where": "Table tab:larger_architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "head_dim": {
+      "value": "64",
+      "status": "stated",
+      "quote": "we incorporate grouped query attention with a head dimension equal to 64",
+      "where": "Appendix: Impact of Each Design Choice",
+      "reasons": [],
+      "check": "verified"
+     },
+     "d_ff": {
+      "value": "2560",
+      "status": "stated",
+      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560 & 345.3M",
+      "where": "Table tab:larger_architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      },
+      {
+       "check": "n_kv_heads divides n_heads",
+       "ok": true
+      },
+      {
+       "check": "n_kv_heads <= n_heads",
+       "ok": true
+      },
+      {
+       "check": "head_dim * n_heads == d_model",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "name": "MobileLLM-600M",
+     "d_model": {
+      "value": "1152",
+      "status": "stated",
+      "quote": "$\\ours{}$-600M & 40 & 18 & 6 & 1152 & 3072 & 603.1M",
+      "where": "Table tab:larger_architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "40",
+      "status": "stated",
+      "quote": "$\\ours{}$-600M & 40 & 18 & 6 & 1152 & 3072 & 603.1M",
+      "where": "Table tab:larger_architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "18",
+      "status": "stated",
+      "quote": "$\\ours{}$-600M & 40 & 18 & 6 & 1152 & 3072 & 603.1M",
+      "where": "Table tab:larger_architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "6",
+      "status": "stated",
+      "quote": "$\\ours{}$-600M & 40 & 18 & 6 & 1152 & 3072 & 603.1M",
+      "where": "Table tab:larger_architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "3072",
+      "status": "stated",
+      "quote": "$\\ours{}$-600M & 40 & 18 & 6 & 1152 & 3072 & 603.1M",
+      "where": "Table tab:larger_architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      },
+      {
+       "check": "n_kv_heads divides n_heads",
+       "ok": true
+      },
+      {
+       "check": "n_kv_heads <= n_heads",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "name": "MobileLLM-1B",
+     "d_model": {
+      "value": "1280",
+      "status": "stated",
+      "quote": "$\\ours{}$-1B & 54 & 20 & 5 & 1280 & 3584 & 1.0B",
+      "where": "Table tab:larger_architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "54",
+      "status": "stated",
+      "quote": "$\\ours{}$-1B & 54 & 20 & 5 & 1280 & 3584 & 1.0B",
+      "where": "Table tab:larger_architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "20",
+      "status": "stated",
+      "quote": "$\\ours{}$-1B & 54 & 20 & 5 & 1280 & 3584 & 1.0B",
+      "where": "Table tab:larger_architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "5",
+      "status": "stated",
+      "quote": "$\\ours{}$-1B & 54 & 20 & 5 & 1280 & 3584 & 1.0B",
+      "where": "Table tab:larger_architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "3584",
+      "status": "stated",
+      "quote": "$\\ours{}$-1B & 54 & 20 & 5 & 1280 & 3584 & 1.0B",
+      "where": "Table tab:larger_architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      },
+      {
+       "check": "n_kv_heads divides n_heads",
+       "ok": true
+      },
+      {
+       "check": "n_kv_heads <= n_heads",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "name": "MobileLLM-1.5B",
+     "d_model": {
+      "value": "1600",
+      "status": "stated",
+      "quote": "$\\ours{}$-1.5B & 54 & 25 & 5 & 1600 & 4352 & 1.5B",
+      "where": "Table tab:larger_architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "54",
+      "status": "stated",
+      "quote": "$\\ours{}$-1.5B & 54 & 25 & 5 & 1600 & 4352 & 1.5B",
+      "where": "Table tab:larger_architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "25",
+      "status": "stated",
+      "quote": "$\\ours{}$-1.5B & 54 & 25 & 5 & 1600 & 4352 & 1.5B",
+      "where": "Table tab:larger_architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "5",
+      "status": "stated",
+      "quote": "$\\ours{}$-1.5B & 54 & 25 & 5 & 1600 & 4352 & 1.5B",
+      "where": "Table tab:larger_architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "4352",
+      "status": "stated",
+      "quote": "$\\ours{}$-1.5B & 54 & 25 & 5 & 1600 & 4352 & 1.5B",
+      "where": "Table tab:larger_architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      },
+      {
+       "check": "n_kv_heads divides n_heads",
+       "ok": true
+      },
+      {
+       "check": "n_kv_heads <= n_heads",
+       "ok": true
+      }
+     ]
+    }
+   ],
+   "primary_config": "MobileLLM-125M",
+   "flavours": {
+    "norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "activation": {
+     "value": "swiglu",
+     "status": "stated",
+     "quote": "Therefore, we use SwiGLU in FFN for the experiments afterward.",
+     "where": "Sec. 2.2.1 Feed-forward Network Choice",
+     "reasons": [],
+     "check": "verified"
+    },
+    "positional": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_theta": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "residual": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "parallel_block": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "attention": {
+     "value": "exact",
+     "status": "stated",
+     "quote": "In contrast, our primary goal is to optimize model size without introducing new attention computation or efficient hardware implementation methods.",
+     "where": "Sec. 4 Related Work",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "qkv_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "tied_embeddings": {
+     "value": "true",
+     "status": "stated",
+     "quote": "By sharing the embedding, we reuse the input embedding weights as the output fully connected layer weights, resulting in a more efficient and compact model architecture.",
+     "where": "Sec. 2.2.3 Embedding Sharing",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "moe": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    }
+   },
+   "new_ops": [],
+   "block_ops": [
+    {
+     "i": 0,
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding (shared with output head)",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "576",
+       "status": "stated",
+       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+       "where": "Table tab:larger_architecture",
+       "reasons": [],
+       "check": "verified",
+       "name": "d"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "vocab"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 1,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "query projection",
+     "inputs": [
+      "x"
+     ],
+     "output": "q",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "576",
+       "status": "stated",
+       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+       "where": "Table tab:larger_architecture",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 2,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "key projection (3 kv heads x 64)",
+     "inputs": [
+      "x"
+     ],
+     "output": "k",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 3,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "value projection (3 kv heads x 64)",
+     "inputs": [
+      "x"
+     ],
+     "output": "v",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 4,
+     "subgraph": "block",
+     "op": "attention",
+     "role": "grouped-query self-attention",
+     "inputs": [
+      "q",
+      "k",
+      "v"
+     ],
+     "output": "a",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "9",
+       "status": "stated",
+       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+       "where": "Table tab:larger_architecture",
+       "reasons": [],
+       "check": "verified",
+       "name": "heads"
+      },
+      {
+       "value": "3",
+       "status": "stated",
+       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+       "where": "Table tab:larger_architecture",
+       "reasons": [],
+       "check": "verified",
+       "name": "kv_heads"
+      },
+      {
+       "value": "64",
+       "status": "stated",
+       "quote": "we incorporate grouped query attention with a head dimension equal to 64",
+       "where": "Appendix: Impact of Each Design Choice",
+       "reasons": [],
+       "check": "verified",
+       "name": "head_dim"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "scale"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "causal"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "window"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "sinks"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 5,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "o",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "576",
+       "status": "stated",
+       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+       "where": "Table tab:larger_architecture",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 6,
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual add (assumed; not stated)",
+     "inputs": [
+      "x",
+      "o"
+     ],
+     "output": "h",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 7,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "SwiGLU gate projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "g",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "1536",
+       "status": "stated",
+       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+       "where": "Table tab:larger_architecture",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 8,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "SwiGLU up projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "u",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "1536",
+       "status": "stated",
+       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+       "where": "Table tab:larger_architecture",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 9,
+     "subgraph": "block",
+     "op": "silu",
+     "role": "SwiGLU gate activation",
+     "inputs": [
+      "g"
+     ],
+     "output": "gs",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 10,
+     "subgraph": "block",
+     "op": "mul",
+     "role": "SwiGLU gating",
+     "inputs": [
+      "gs",
+      "u"
+     ],
+     "output": "m",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 11,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "SwiGLU down projection",
+     "inputs": [
+      "m"
+     ],
+     "output": "f",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "576",
+       "status": "stated",
+       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+       "where": "Table tab:larger_architecture",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 12,
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual add (assumed; not stated)",
+     "inputs": [
+      "h",
+      "f"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 13,
+     "subgraph": "head",
+     "op": "linear",
+     "role": "output logits, tied to input embedding",
+     "inputs": [
+      "x"
+     ],
+     "output": "logits",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "token_embd",
+       "status": "stated",
+       "quote": "By sharing the embedding, we reuse the input embedding weights as the output fully connected layer weights",
+       "where": "Sec. 2.2.3 Embedding Sharing",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "tied_to"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    }
+   ],
+   "mechanisms_outside_ir": [
+    {
+     "mechanism": "MobileLLM-LS variant: immediate block-wise layer sharing, each block's weights computed twice in a row (2x30 layers for 125M)",
+     "quote": "Consequently, in our experiments, we adopt a configuration where every two blocks share weights, effectively doubling the total number of layers.",
+     "where": "Appendix: Layer-Sharing Number Ablation",
+     "check": "verified"
+    }
+   ],
+   "summary": {
+    "counts": {
+     "verified": 37,
+     "quote_only": 4,
+     "unverified": 0,
+     "not_stated": 45
+    },
+    "unverified": [],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 14
+   }
+  }
+ }
+}

@@ -1,0 +1,1764 @@
+{
+ "arxiv_id": "2006.03654",
+ "title": "DeBERTa: Decoding-enhanced BERT with Disentangled Attention",
+ "fields": {
+  "d_model": {
+   "value": 768,
+   "evidence": "Hidden size&1536 &1024 &768 &768 [Table tbl:hyper-pre-train]",
+   "verdict": "used"
+  },
+  "n_layers": {
+   "value": 12,
+   "evidence": "Number of Layers& 48& 24 &12 &12 [Table tbl:hyper-pre-train]",
+   "verdict": "used"
+  },
+  "n_heads": {
+   "value": 12,
+   "evidence": "Attention Heads &24 & 16 & 12 & 12 [Table tbl:hyper-pre-train]",
+   "verdict": "used"
+  },
+  "d_ff": {
+   "value": 3072,
+   "evidence": "FNN inner hidden size & 6144& 4096 & 3072& 3072 [Table tbl:hyper-pre-train]",
+   "verdict": "used"
+  },
+  "norm": {
+   "value": "layernorm",
+   "evidence": "The base model structure follows that of the BERT base model, i.e., $L=12, H=768, A=12$. [Sec. Performance on Base Models]",
+   "verdict": "inherited"
+  },
+  "activation": {
+   "value": "gelu",
+   "evidence": "The base model structure follows that of the BERT base model, i.e., $L=12, H=768, A=12$. [Sec. Performance on Base Models]",
+   "verdict": "inherited"
+  },
+  "positional": {
+   "value": "relative",
+   "evidence": "Since we use \\emph{relative} position embedding, the position-to-position term does not provide much additional information and is removed from \\eqref{decomposition} in our implementation. [Sec. 3.1 Disentangled Attention]",
+   "verdict": "used"
+  },
+  "residual": {
+   "value": "residual",
+   "evidence": "The base model structure follows that of the BERT base model, i.e., $L=12, H=768, A=12$. [Sec. Performance on Base Models]",
+   "verdict": "unverified",
+   "reasons": [
+    "inherited from bert, whose curated entry has no residual"
+   ]
+  },
+  "attention": {
+   "value": "new_primitive:disentangled_attention",
+   "evidence": "We can represent the disentangled self-attention with relative position bias as \\eqref{dis-att}, [Sec. 3.1 Disentangled Attention]",
+   "verdict": "used"
+  }
+ },
+ "unresolved": [
+  "n_kv_heads",
+  "vocab_size",
+  "context_length"
+ ],
+ "unverified": [
+  {
+   "field": "residual",
+   "reasons": [
+    "inherited from bert, whose curated entry has no residual"
+   ]
+  }
+ ],
+ "mentions": {},
+ "inherits": {
+  "ancestor": "bert",
+  "evidence": "The base model structure follows that of the BERT base model, i.e., $L=12, H=768, A=12$.",
+  "section": "Sec. Performance on Base Models"
+ },
+ "variants": [
+  {
+   "d_model": 1536,
+   "n_layers": 48,
+   "n_heads": 24,
+   "d_ff": 6144
+  },
+  {
+   "d_model": 1024,
+   "n_layers": 24,
+   "n_heads": 16,
+   "d_ff": 4096
+  },
+  {
+   "d_model": 768,
+   "n_layers": 12,
+   "n_heads": 12,
+   "d_ff": 3072
+  }
+ ],
+ "mechanism_scan": [
+  {
+   "mechanism": "encoder-decoder or encoder-only model",
+   "where": "llm extraction, verified quote, Sec. 1 Introduction, Enhanced mask decoder",
+   "blocking": true,
+   "evidence": "Like BERT, DeBERTa is pre-trained using masked language modeling (MLM)."
+  },
+  {
+   "mechanism": "new op disentangled_attention (needs a new primitive: Attention score is Q_c K_c^T + Q_c K_r[delta(i,j)]^T + K_c Q_r[delta(j,i)]^T scaled by 1/sqrt(3d), with clipped relative)",
+   "where": "llm extraction, verified quote, Sec. 3.1 Disentangled Attention (eq dis-att)",
+   "blocking": true,
+   "evidence": "We can represent the disentangled self-attention with relative position bias as \\eqref{dis-att},"
+  },
+  {
+   "mechanism": "new op enhanced_mask_decoder (needs a new primitive: A transformer-style decoder layer whose query comes from I (absolute position embedding added to content) and keys/value)",
+   "where": "llm extraction, verified quote, Appendix: Additional Details of Enhanced Mask Decoder",
+   "blocking": true,
+   "evidence": "In our experiment we share the same weight for $n=2$ layers to reduce the number of parameters and use absolute position embedding as $I$ of the first EMD layer."
+  },
+  {
+   "mechanism": "Relative position embedding table P shared across all layers",
+   "where": "llm extraction, verified quote, Sec. 3.1 Disentangled Attention",
+   "blocking": true,
+   "evidence": "$\\bm{P} \\in R^{2k \\times d}$ represents the relative position embedding vectors shared across all layers (i.e., staying fixed during forward propagation),"
+  },
+  {
+   "mechanism": "DeBERTa_1.5B only: position projections shared with content projections",
+   "where": "llm extraction, verified quote, Sec. Scale up to 1.5 billion parameters",
+   "blocking": true,
+   "evidence": "First, we share the projection matrices of relative position embedding $W_{k,r},W_{q,r}$ with $W_{k,c},W_{q,c}$, respectively, in all attention layers to reduce the number of model parameters."
+  },
+  {
+   "mechanism": "DeBERTa_1.5B only: convolution layer beside the first Transformer layer, summed with its output",
+   "where": "llm extraction, verified quote, Sec. Scale up to 1.5 billion parameters",
+   "blocking": true,
+   "evidence": "Second, a convolution layer is added aside the first Transformer layer to induce n-gram knowledge of sub-word encodings and their outputs are summed up before feeding to the next Transformer layer"
+  }
+ ],
+ "source": {
+  "tex_sha256": "4de14efa8b71bd6a7c87d1f4ff6382a5b003a08261be60d31da2497d4f812932",
+  "sent_sha256": "3327b6770208bde1cfa3ca69fa58c89346082a1a3e2463e98193abfb56db6aa6",
+  "from": "https://arxiv.org/e-print/2006.03654",
+  "extractor": "papers/llm_extract.py",
+  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "model": "claude-opus-5-5",
+  "effort": "high",
+  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "n_calls": 1,
+  "cost_usd": 0.0,
+  "request_ids": [
+   "req_011CgFbaNmDzhGWYx4atgsiK"
+  ]
+ },
+ "llm": {
+  "output": {
+   "title": "DeBERTa: Decoding-enhanced BERT with Disentangled Attention",
+   "model_name": "DeBERTa",
+   "family": {
+    "value": "encoder_only",
+    "status": "stated",
+    "quote": "Like BERT, DeBERTa is pre-trained using masked language modeling (MLM).",
+    "where": "Sec. 1 Introduction, Enhanced mask decoder"
+   },
+   "inherits": {
+    "ancestor": "BERT",
+    "quote": "The base model structure follows that of the BERT base model, i.e., $L=12, H=768, A=12$.",
+    "where": "Sec. Performance on Base Models"
+   },
+   "configs": [
+    {
+     "name": "DeBERTa_1.5B",
+     "d_model": {
+      "value": "1536",
+      "status": "stated",
+      "quote": "Hidden size&1536 &1024 &768 &768",
+      "where": "Table tbl:hyper-pre-train"
+     },
+     "n_layers": {
+      "value": "48",
+      "status": "stated",
+      "quote": "Number of Layers& 48& 24 &12 &12",
+      "where": "Table tbl:hyper-pre-train"
+     },
+     "n_heads": {
+      "value": "24",
+      "status": "stated",
+      "quote": "Attention Heads &24 & 16 & 12 & 12",
+      "where": "Table tbl:hyper-pre-train"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "64",
+      "status": "stated",
+      "quote": "Attention Head size &64 & 64 & 64& 64",
+      "where": "Table tbl:hyper-pre-train"
+     },
+     "d_ff": {
+      "value": "6144",
+      "status": "stated",
+      "quote": "FNN inner hidden size & 6144& 4096 & 3072& 3072",
+      "where": "Table tbl:hyper-pre-train"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     }
+    },
+    {
+     "name": "DeBERTa_large",
+     "d_model": {
+      "value": "1024",
+      "status": "stated",
+      "quote": "Hidden size&1536 &1024 &768 &768",
+      "where": "Table tbl:hyper-pre-train"
+     },
+     "n_layers": {
+      "value": "24",
+      "status": "stated",
+      "quote": "Number of Layers& 48& 24 &12 &12",
+      "where": "Table tbl:hyper-pre-train"
+     },
+     "n_heads": {
+      "value": "16",
+      "status": "stated",
+      "quote": "Attention Heads &24 & 16 & 12 & 12",
+      "where": "Table tbl:hyper-pre-train"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "64",
+      "status": "stated",
+      "quote": "Attention Head size &64 & 64 & 64& 64",
+      "where": "Table tbl:hyper-pre-train"
+     },
+     "d_ff": {
+      "value": "4096",
+      "status": "stated",
+      "quote": "FNN inner hidden size & 6144& 4096 & 3072& 3072",
+      "where": "Table tbl:hyper-pre-train"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     }
+    },
+    {
+     "name": "DeBERTa_base",
+     "d_model": {
+      "value": "768",
+      "status": "stated",
+      "quote": "Hidden size&1536 &1024 &768 &768",
+      "where": "Table tbl:hyper-pre-train"
+     },
+     "n_layers": {
+      "value": "12",
+      "status": "stated",
+      "quote": "Number of Layers& 48& 24 &12 &12",
+      "where": "Table tbl:hyper-pre-train"
+     },
+     "n_heads": {
+      "value": "12",
+      "status": "stated",
+      "quote": "Attention Heads &24 & 16 & 12 & 12",
+      "where": "Table tbl:hyper-pre-train"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "64",
+      "status": "stated",
+      "quote": "Attention Head size &64 & 64 & 64& 64",
+      "where": "Table tbl:hyper-pre-train"
+     },
+     "d_ff": {
+      "value": "3072",
+      "status": "stated",
+      "quote": "FNN inner hidden size & 6144& 4096 & 3072& 3072",
+      "where": "Table tbl:hyper-pre-train"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     }
+    }
+   ],
+   "primary_config": "DeBERTa_base",
+   "flavours": {
+    "norm": {
+     "value": "layernorm",
+     "status": "inherited",
+     "quote": "The base model structure follows that of the BERT base model, i.e., $L=12, H=768, A=12$.",
+     "where": "Sec. Performance on Base Models"
+    },
+    "norm_placement": {
+     "value": "post",
+     "status": "inherited",
+     "quote": "The base model structure follows that of the BERT base model, i.e., $L=12, H=768, A=12$.",
+     "where": "Sec. Performance on Base Models"
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "activation": {
+     "value": "gelu",
+     "status": "inherited",
+     "quote": "The base model structure follows that of the BERT base model, i.e., $L=12, H=768, A=12$.",
+     "where": "Sec. Performance on Base Models"
+    },
+    "positional": {
+     "value": "relative",
+     "status": "stated",
+     "quote": "Since we use \\emph{relative} position embedding, the position-to-position term does not provide much additional information and is removed from \\eqref{decomposition} in our implementation.",
+     "where": "Sec. 3.1 Disentangled Attention"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_theta": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "residual": {
+     "value": "residual",
+     "status": "inherited",
+     "quote": "The base model structure follows that of the BERT base model, i.e., $L=12, H=768, A=12$.",
+     "where": "Sec. Performance on Base Models"
+    },
+    "parallel_block": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "The base model structure follows that of the BERT base model, i.e., $L=12, H=768, A=12$.",
+     "where": "Sec. Performance on Base Models"
+    },
+    "attention": {
+     "value": "new_op:disentangled_attention",
+     "status": "stated",
+     "quote": "We can represent the disentangled self-attention with relative position bias as \\eqref{dis-att},",
+     "where": "Sec. 3.1 Disentangled Attention"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "qkv_bias": {
+     "value": "true",
+     "status": "inherited",
+     "quote": "The base model structure follows that of the BERT base model, i.e., $L=12, H=768, A=12$.",
+     "where": "Sec. Performance on Base Models"
+    },
+    "mlp_bias": {
+     "value": "true",
+     "status": "inherited",
+     "quote": "The base model structure follows that of the BERT base model, i.e., $L=12, H=768, A=12$.",
+     "where": "Sec. Performance on Base Models"
+    },
+    "tied_embeddings": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "moe": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    }
+   },
+   "block_ops": [
+    {
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token content embedding (no absolute position added at input)",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "x",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "content query projection W_{q,c}",
+     "inputs": [
+      "x"
+     ],
+     "output": "qc",
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "true",
+       "status": "inherited",
+       "quote": "The base model structure follows that of the BERT base model, i.e., $L=12, H=768, A=12$.",
+       "where": "Sec. Performance on Base Models"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "content key projection W_{k,c}",
+     "inputs": [
+      "x"
+     ],
+     "output": "kc",
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "true",
+       "status": "inherited",
+       "quote": "The base model structure follows that of the BERT base model, i.e., $L=12, H=768, A=12$.",
+       "where": "Sec. Performance on Base Models"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "content value projection W_{v,c}",
+     "inputs": [
+      "x"
+     ],
+     "output": "vc",
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "true",
+       "status": "inherited",
+       "quote": "The base model structure follows that of the BERT base model, i.e., $L=12, H=768, A=12$.",
+       "where": "Sec. Performance on Base Models"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "unsupported",
+     "role": "disentangled self-attention (c2c + c2p + p2c, relative positions, bidirectional)",
+     "inputs": [
+      "qc",
+      "kc",
+      "vc",
+      "P"
+     ],
+     "output": "a",
+     "attributes": [
+      {
+       "name": "scale",
+       "value": "1/sqrt(3d)",
+       "status": "stated",
+       "quote": "Finally, we apply a scaling factor of $\\frac{1}{\\sqrt{3d}}$ on $\\bm{\\tilde{A}}$.",
+       "where": "Sec. 3.1 Disentangled Attention"
+      },
+      {
+       "name": "max_relative_distance",
+       "value": "512",
+       "status": "stated",
+       "quote": "In our experiments, we set the maximum relative distance $k$ to 512 for pre-training.",
+       "where": "Sec. 3.1.1 Efficient implementation"
+      },
+      {
+       "name": "causal",
+       "value": "false",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": "disentangled_attention"
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "ao",
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "true",
+       "status": "inherited",
+       "quote": "The base model structure follows that of the BERT base model, i.e., $L=12, H=768, A=12$.",
+       "where": "Sec. Performance on Base Models"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual",
+     "inputs": [
+      "x",
+      "ao"
+     ],
+     "output": "r1",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "layernorm",
+     "role": "post-attention layernorm",
+     "inputs": [
+      "r1"
+     ],
+     "output": "h",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN up projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "u",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "3072",
+       "status": "stated",
+       "quote": "FNN inner hidden size & 6144& 4096 & 3072& 3072",
+       "where": "Table tbl:hyper-pre-train"
+      },
+      {
+       "name": "bias",
+       "value": "true",
+       "status": "inherited",
+       "quote": "The base model structure follows that of the BERT base model, i.e., $L=12, H=768, A=12$.",
+       "where": "Sec. Performance on Base Models"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "gelu",
+     "role": "FFN activation",
+     "inputs": [
+      "u"
+     ],
+     "output": "g",
+     "attributes": [
+      {
+       "name": "approx",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN down projection",
+     "inputs": [
+      "g"
+     ],
+     "output": "f",
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "true",
+       "status": "inherited",
+       "quote": "The base model structure follows that of the BERT base model, i.e., $L=12, H=768, A=12$.",
+       "where": "Sec. Performance on Base Models"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual",
+     "inputs": [
+      "h",
+      "f"
+     ],
+     "output": "r2",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "layernorm",
+     "role": "post-FFN layernorm",
+     "inputs": [
+      "r2"
+     ],
+     "output": "x",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "pos_embedding",
+     "role": "absolute position embedding used as input I of first EMD layer",
+     "inputs": [
+      "x",
+      "pos"
+     ],
+     "output": "i0",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "unsupported",
+     "role": "Enhanced Mask Decoder: 2 weight-shared decoder layers taking (I, H)",
+     "inputs": [
+      "i0",
+      "x"
+     ],
+     "output": "d",
+     "attributes": [
+      {
+       "name": "n_layers",
+       "value": "2",
+       "status": "stated",
+       "quote": "In our experiment we share the same weight for $n=2$ layers to reduce the number of parameters and use absolute position embedding as $I$ of the first EMD layer.",
+       "where": "Appendix: Additional Details of Enhanced Mask Decoder"
+      }
+     ],
+     "new_op": "enhanced_mask_decoder"
+    },
+    {
+     "subgraph": "head",
+     "op": "linear",
+     "role": "MLM output head (language model head)",
+     "inputs": [
+      "d"
+     ],
+     "output": "logits",
+     "attributes": [
+      {
+       "name": "tied_to",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    }
+   ],
+   "new_ops": [
+    {
+     "name": "disentangled_attention",
+     "kind": "needs_new_primitive",
+     "expr": "",
+     "inputs": [
+      {
+       "name": "x",
+       "meaning": "content queries Q_c"
+      },
+      {
+       "name": "a",
+       "meaning": "content keys K_c"
+      },
+      {
+       "name": "b",
+       "meaning": "content values V_c"
+      },
+      {
+       "name": "c",
+       "meaning": "relative position embedding P [2k, d] shared across layers, projected by W_{q,r}, W_{k,r}"
+      }
+     ],
+     "replaces": "self-attention",
+     "reason": "Attention score is Q_c K_c^T + Q_c K_r[delta(i,j)]^T + K_c Q_r[delta(j,i)]^T scaled by 1/sqrt(3d), with clipped relative distance delta in [0,2k); requires an attention primitive with gathered content-to-position and position-to-content relative terms over a [2k,d] relative embedding table.",
+     "quote": "We can represent the disentangled self-attention with relative position bias as \\eqref{dis-att},",
+     "where": "Sec. 3.1 Disentangled Attention (eq dis-att)"
+    },
+    {
+     "name": "enhanced_mask_decoder",
+     "kind": "needs_new_primitive",
+     "expr": "",
+     "inputs": [
+      {
+       "name": "x",
+       "meaning": "I: absolute position embedding (first layer) or previous EMD output"
+      },
+      {
+       "name": "a",
+       "meaning": "H: hidden states from the last Transformer layer"
+      }
+     ],
+     "replaces": "MLM decoding layer",
+     "reason": "A transformer-style decoder layer whose query comes from I (absolute position embedding added to content) and keys/values from H, stacked n=2 times with shared weights; needs a cross-input attention layer primitive not in the IR.",
+     "quote": "In our experiment we share the same weight for $n=2$ layers to reduce the number of parameters and use absolute position embedding as $I$ of the first EMD layer.",
+     "where": "Appendix: Additional Details of Enhanced Mask Decoder"
+    }
+   ],
+   "mechanisms_outside_ir": [
+    {
+     "mechanism": "Relative position embedding table P shared across all layers",
+     "quote": "$\\bm{P} \\in R^{2k \\times d}$ represents the relative position embedding vectors shared across all layers (i.e., staying fixed during forward propagation),",
+     "where": "Sec. 3.1 Disentangled Attention"
+    },
+    {
+     "mechanism": "DeBERTa_1.5B only: position projections shared with content projections",
+     "quote": "First, we share the projection matrices of relative position embedding $W_{k,r},W_{q,r}$ with $W_{k,c},W_{q,c}$, respectively, in all attention layers to reduce the number of model parameters.",
+     "where": "Sec. Scale up to 1.5 billion parameters"
+    },
+    {
+     "mechanism": "DeBERTa_1.5B only: convolution layer beside the first Transformer layer, summed with its output",
+     "quote": "Second, a convolution layer is added aside the first Transformer layer to induce n-gram knowledge of sub-word encodings and their outputs are summed up before feeding to the next Transformer layer",
+     "where": "Sec. Scale up to 1.5 billion parameters"
+    }
+   ],
+   "notes": "Described DeBERTa_base (primary) with separate W_{q,r}, W_{k,r} and no conv layer; 1.5B modifications listed under mechanisms. Vocab: base/large use the GPT-2/RoBERTa BPE vocabulary (size not given); 1.5B uses '128K' vocab, left not_stated because the exact integer is not written. Context length not stated (k=512 is max relative distance). Norm/placement/activation/biases inherited from BERT via the base-structure sentence; eps and GELU form not stated. Attention output projection is not explicit in the paper (inherited from BERT). Paper's ablation labels for C2P/P2C appear swapped relative to eq. dis-att."
+  },
+  "verification": {
+   "errors": [],
+   "warnings": [],
+   "inherits": {
+    "ancestor": "BERT",
+    "resolved": "bert",
+    "quote": "The base model structure follows that of the BERT base model, i.e., $L=12, H=768, A=12$.",
+    "where": "Sec. Performance on Base Models",
+    "quote_found": true
+   },
+   "family": {
+    "value": "encoder_only",
+    "status": "stated",
+    "quote": "Like BERT, DeBERTa is pre-trained using masked language modeling (MLM).",
+    "where": "Sec. 1 Introduction, Enhanced mask decoder",
+    "reasons": [],
+    "check": "verified"
+   },
+   "configs": [
+    {
+     "name": "DeBERTa_1.5B",
+     "d_model": {
+      "value": "1536",
+      "status": "stated",
+      "quote": "Hidden size&1536 &1024 &768 &768",
+      "where": "Table tbl:hyper-pre-train",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "48",
+      "status": "stated",
+      "quote": "Number of Layers& 48& 24 &12 &12",
+      "where": "Table tbl:hyper-pre-train",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "24",
+      "status": "stated",
+      "quote": "Attention Heads &24 & 16 & 12 & 12",
+      "where": "Table tbl:hyper-pre-train",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "64",
+      "status": "stated",
+      "quote": "Attention Head size &64 & 64 & 64& 64",
+      "where": "Table tbl:hyper-pre-train",
+      "reasons": [],
+      "check": "verified"
+     },
+     "d_ff": {
+      "value": "6144",
+      "status": "stated",
+      "quote": "FNN inner hidden size & 6144& 4096 & 3072& 3072",
+      "where": "Table tbl:hyper-pre-train",
+      "reasons": [],
+      "check": "verified"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      },
+      {
+       "check": "head_dim * n_heads == d_model",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "name": "DeBERTa_large",
+     "d_model": {
+      "value": "1024",
+      "status": "stated",
+      "quote": "Hidden size&1536 &1024 &768 &768",
+      "where": "Table tbl:hyper-pre-train",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "24",
+      "status": "stated",
+      "quote": "Number of Layers& 48& 24 &12 &12",
+      "where": "Table tbl:hyper-pre-train",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "16",
+      "status": "stated",
+      "quote": "Attention Heads &24 & 16 & 12 & 12",
+      "where": "Table tbl:hyper-pre-train",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "64",
+      "status": "stated",
+      "quote": "Attention Head size &64 & 64 & 64& 64",
+      "where": "Table tbl:hyper-pre-train",
+      "reasons": [],
+      "check": "verified"
+     },
+     "d_ff": {
+      "value": "4096",
+      "status": "stated",
+      "quote": "FNN inner hidden size & 6144& 4096 & 3072& 3072",
+      "where": "Table tbl:hyper-pre-train",
+      "reasons": [],
+      "check": "verified"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      },
+      {
+       "check": "head_dim * n_heads == d_model",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "name": "DeBERTa_base",
+     "d_model": {
+      "value": "768",
+      "status": "stated",
+      "quote": "Hidden size&1536 &1024 &768 &768",
+      "where": "Table tbl:hyper-pre-train",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "12",
+      "status": "stated",
+      "quote": "Number of Layers& 48& 24 &12 &12",
+      "where": "Table tbl:hyper-pre-train",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "12",
+      "status": "stated",
+      "quote": "Attention Heads &24 & 16 & 12 & 12",
+      "where": "Table tbl:hyper-pre-train",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "64",
+      "status": "stated",
+      "quote": "Attention Head size &64 & 64 & 64& 64",
+      "where": "Table tbl:hyper-pre-train",
+      "reasons": [],
+      "check": "verified"
+     },
+     "d_ff": {
+      "value": "3072",
+      "status": "stated",
+      "quote": "FNN inner hidden size & 6144& 4096 & 3072& 3072",
+      "where": "Table tbl:hyper-pre-train",
+      "reasons": [],
+      "check": "verified"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      },
+      {
+       "check": "head_dim * n_heads == d_model",
+       "ok": true
+      }
+     ]
+    }
+   ],
+   "primary_config": "DeBERTa_base",
+   "flavours": {
+    "norm": {
+     "value": "layernorm",
+     "status": "inherited",
+     "quote": "The base model structure follows that of the BERT base model, i.e., $L=12, H=768, A=12$.",
+     "where": "Sec. Performance on Base Models",
+     "reasons": [],
+     "check": "verified"
+    },
+    "norm_placement": {
+     "value": "post",
+     "status": "inherited",
+     "quote": "The base model structure follows that of the BERT base model, i.e., $L=12, H=768, A=12$.",
+     "where": "Sec. Performance on Base Models",
+     "reasons": [
+      "inherited from bert, whose curated entry has no norm_placement"
+     ],
+     "check": "unverified"
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "activation": {
+     "value": "gelu",
+     "status": "inherited",
+     "quote": "The base model structure follows that of the BERT base model, i.e., $L=12, H=768, A=12$.",
+     "where": "Sec. Performance on Base Models",
+     "reasons": [],
+     "check": "verified"
+    },
+    "positional": {
+     "value": "relative",
+     "status": "stated",
+     "quote": "Since we use \\emph{relative} position embedding, the position-to-position term does not provide much additional information and is removed from \\eqref{decomposition} in our implementation.",
+     "where": "Sec. 3.1 Disentangled Attention",
+     "reasons": [],
+     "check": "verified"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_theta": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "residual": {
+     "value": "residual",
+     "status": "inherited",
+     "quote": "The base model structure follows that of the BERT base model, i.e., $L=12, H=768, A=12$.",
+     "where": "Sec. Performance on Base Models",
+     "reasons": [
+      "inherited from bert, whose curated entry has no residual"
+     ],
+     "check": "unverified"
+    },
+    "parallel_block": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "The base model structure follows that of the BERT base model, i.e., $L=12, H=768, A=12$.",
+     "where": "Sec. Performance on Base Models",
+     "reasons": [
+      "inherited from bert, whose curated entry has no parallel_block"
+     ],
+     "check": "unverified"
+    },
+    "attention": {
+     "value": "new_op:disentangled_attention",
+     "status": "stated",
+     "quote": "We can represent the disentangled self-attention with relative position bias as \\eqref{dis-att},",
+     "where": "Sec. 3.1 Disentangled Attention",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "qkv_bias": {
+     "value": "true",
+     "status": "inherited",
+     "quote": "The base model structure follows that of the BERT base model, i.e., $L=12, H=768, A=12$.",
+     "where": "Sec. Performance on Base Models",
+     "reasons": [
+      "inherited from bert, whose curated entry has no qkv_bias"
+     ],
+     "check": "unverified"
+    },
+    "mlp_bias": {
+     "value": "true",
+     "status": "inherited",
+     "quote": "The base model structure follows that of the BERT base model, i.e., $L=12, H=768, A=12$.",
+     "where": "Sec. Performance on Base Models",
+     "reasons": [
+      "inherited from bert, whose curated entry has no mlp_bias"
+     ],
+     "check": "unverified"
+    },
+    "tied_embeddings": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "moe": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    }
+   },
+   "new_ops": [
+    {
+     "name": "disentangled_attention",
+     "kind": "needs_new_primitive",
+     "replaces": "self-attention",
+     "reason": "Attention score is Q_c K_c^T + Q_c K_r[delta(i,j)]^T + K_c Q_r[delta(j,i)]^T scaled by 1/sqrt(3d), with clipped relative distance delta in [0,2k); requires an attention primitive with gathered content-to-position and position-to-content relative terms over a [2k,d] relative embedding table.",
+     "quote": "We can represent the disentangled self-attention with relative position bias as \\eqref{dis-att},",
+     "where": "Sec. 3.1 Disentangled Attention (eq dis-att)",
+     "inputs": [
+      {
+       "name": "x",
+       "meaning": "content queries Q_c"
+      },
+      {
+       "name": "a",
+       "meaning": "content keys K_c"
+      },
+      {
+       "name": "b",
+       "meaning": "content values V_c"
+      },
+      {
+       "name": "c",
+       "meaning": "relative position embedding P [2k, d] shared across layers, projected by W_{q,r}, W_{k,r}"
+      }
+     ],
+     "errors": [],
+     "quote_found": true,
+     "check": "verified"
+    },
+    {
+     "name": "enhanced_mask_decoder",
+     "kind": "needs_new_primitive",
+     "replaces": "MLM decoding layer",
+     "reason": "A transformer-style decoder layer whose query comes from I (absolute position embedding added to content) and keys/values from H, stacked n=2 times with shared weights; needs a cross-input attention layer primitive not in the IR.",
+     "quote": "In our experiment we share the same weight for $n=2$ layers to reduce the number of parameters and use absolute position embedding as $I$ of the first EMD layer.",
+     "where": "Appendix: Additional Details of Enhanced Mask Decoder",
+     "inputs": [
+      {
+       "name": "x",
+       "meaning": "I: absolute position embedding (first layer) or previous EMD output"
+      },
+      {
+       "name": "a",
+       "meaning": "H: hidden states from the last Transformer layer"
+      }
+     ],
+     "errors": [],
+     "quote_found": true,
+     "check": "verified"
+    }
+   ],
+   "block_ops": [
+    {
+     "i": 0,
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token content embedding (no absolute position added at input)",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 1,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "content query projection W_{q,c}",
+     "inputs": [
+      "x"
+     ],
+     "output": "qc",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "true",
+       "status": "inherited",
+       "quote": "The base model structure follows that of the BERT base model, i.e., $L=12, H=768, A=12$.",
+       "where": "Sec. Performance on Base Models",
+       "reasons": [
+        "inherited from bert, whose curated entry has no bias"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 2,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "content key projection W_{k,c}",
+     "inputs": [
+      "x"
+     ],
+     "output": "kc",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "true",
+       "status": "inherited",
+       "quote": "The base model structure follows that of the BERT base model, i.e., $L=12, H=768, A=12$.",
+       "where": "Sec. Performance on Base Models",
+       "reasons": [
+        "inherited from bert, whose curated entry has no bias"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 3,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "content value projection W_{v,c}",
+     "inputs": [
+      "x"
+     ],
+     "output": "vc",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "true",
+       "status": "inherited",
+       "quote": "The base model structure follows that of the BERT base model, i.e., $L=12, H=768, A=12$.",
+       "where": "Sec. Performance on Base Models",
+       "reasons": [
+        "inherited from bert, whose curated entry has no bias"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 4,
+     "subgraph": "block",
+     "op": "unsupported",
+     "role": "disentangled self-attention (c2c + c2p + p2c, relative positions, bidirectional)",
+     "inputs": [
+      "qc",
+      "kc",
+      "vc",
+      "P"
+     ],
+     "output": "a",
+     "new_op": "disentangled_attention",
+     "attributes": [
+      {
+       "value": "1/sqrt(3d)",
+       "status": "stated",
+       "quote": "Finally, we apply a scaling factor of $\\frac{1}{\\sqrt{3d}}$ on $\\bm{\\tilde{A}}$.",
+       "where": "Sec. 3.1 Disentangled Attention",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "scale"
+      },
+      {
+       "value": "512",
+       "status": "stated",
+       "quote": "In our experiments, we set the maximum relative distance $k$ to 512 for pre-training.",
+       "where": "Sec. 3.1.1 Efficient implementation",
+       "reasons": [],
+       "check": "verified",
+       "name": "max_relative_distance"
+      },
+      {
+       "value": "false",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [
+        "not_stated carries a value or quote (ignored)"
+       ],
+       "check": "not_stated",
+       "name": "causal"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 5,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "ao",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "true",
+       "status": "inherited",
+       "quote": "The base model structure follows that of the BERT base model, i.e., $L=12, H=768, A=12$.",
+       "where": "Sec. Performance on Base Models",
+       "reasons": [
+        "inherited from bert, whose curated entry has no bias"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 6,
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual",
+     "inputs": [
+      "x",
+      "ao"
+     ],
+     "output": "r1",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 7,
+     "subgraph": "block",
+     "op": "layernorm",
+     "role": "post-attention layernorm",
+     "inputs": [
+      "r1"
+     ],
+     "output": "h",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 8,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN up projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "u",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "3072",
+       "status": "stated",
+       "quote": "FNN inner hidden size & 6144& 4096 & 3072& 3072",
+       "where": "Table tbl:hyper-pre-train",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "true",
+       "status": "inherited",
+       "quote": "The base model structure follows that of the BERT base model, i.e., $L=12, H=768, A=12$.",
+       "where": "Sec. Performance on Base Models",
+       "reasons": [
+        "inherited from bert, whose curated entry has no bias"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 9,
+     "subgraph": "block",
+     "op": "gelu",
+     "role": "FFN activation",
+     "inputs": [
+      "u"
+     ],
+     "output": "g",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "approx"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 10,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN down projection",
+     "inputs": [
+      "g"
+     ],
+     "output": "f",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "true",
+       "status": "inherited",
+       "quote": "The base model structure follows that of the BERT base model, i.e., $L=12, H=768, A=12$.",
+       "where": "Sec. Performance on Base Models",
+       "reasons": [
+        "inherited from bert, whose curated entry has no bias"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 11,
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual",
+     "inputs": [
+      "h",
+      "f"
+     ],
+     "output": "r2",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 12,
+     "subgraph": "block",
+     "op": "layernorm",
+     "role": "post-FFN layernorm",
+     "inputs": [
+      "r2"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 13,
+     "subgraph": "head",
+     "op": "pos_embedding",
+     "role": "absolute position embedding used as input I of first EMD layer",
+     "inputs": [
+      "x",
+      "pos"
+     ],
+     "output": "i0",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 14,
+     "subgraph": "head",
+     "op": "unsupported",
+     "role": "Enhanced Mask Decoder: 2 weight-shared decoder layers taking (I, H)",
+     "inputs": [
+      "i0",
+      "x"
+     ],
+     "output": "d",
+     "new_op": "enhanced_mask_decoder",
+     "attributes": [
+      {
+       "value": "2",
+       "status": "stated",
+       "quote": "In our experiment we share the same weight for $n=2$ layers to reduce the number of parameters and use absolute position embedding as $I$ of the first EMD layer.",
+       "where": "Appendix: Additional Details of Enhanced Mask Decoder",
+       "reasons": [],
+       "check": "verified",
+       "name": "n_layers"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 15,
+     "subgraph": "head",
+     "op": "linear",
+     "role": "MLM output head (language model head)",
+     "inputs": [
+      "d"
+     ],
+     "output": "logits",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "tied_to"
+      }
+     ],
+     "errors": []
+    }
+   ],
+   "mechanisms_outside_ir": [
+    {
+     "mechanism": "Relative position embedding table P shared across all layers",
+     "quote": "$\\bm{P} \\in R^{2k \\times d}$ represents the relative position embedding vectors shared across all layers (i.e., staying fixed during forward propagation),",
+     "where": "Sec. 3.1 Disentangled Attention",
+     "check": "verified"
+    },
+    {
+     "mechanism": "DeBERTa_1.5B only: position projections shared with content projections",
+     "quote": "First, we share the projection matrices of relative position embedding $W_{k,r},W_{q,r}$ with $W_{k,c},W_{q,c}$, respectively, in all attention layers to reduce the number of model parameters.",
+     "where": "Sec. Scale up to 1.5 billion parameters",
+     "check": "verified"
+    },
+    {
+     "mechanism": "DeBERTa_1.5B only: convolution layer beside the first Transformer layer, summed with its output",
+     "quote": "Second, a convolution layer is added aside the first Transformer layer to induce n-gram knowledge of sub-word encodings and their outputs are summed up before feeding to the next Transformer layer",
+     "where": "Sec. Scale up to 1.5 billion parameters",
+     "check": "verified"
+    }
+   ],
+   "summary": {
+    "counts": {
+     "verified": 22,
+     "quote_only": 2,
+     "unverified": 11,
+     "not_stated": 25
+    },
+    "unverified": [
+     {
+      "field": "flavours.norm_placement",
+      "reasons": [
+       "inherited from bert, whose curated entry has no norm_placement"
+      ]
+     },
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "inherited from bert, whose curated entry has no residual"
+      ]
+     },
+     {
+      "field": "flavours.parallel_block",
+      "reasons": [
+       "inherited from bert, whose curated entry has no parallel_block"
+      ]
+     },
+     {
+      "field": "flavours.qkv_bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no qkv_bias"
+      ]
+     },
+     {
+      "field": "flavours.mlp_bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no mlp_bias"
+      ]
+     },
+     {
+      "field": "block_ops[1].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[2].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[3].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[5].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[8].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[10].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 2,
+    "n_block_ops": 16
+   }
+  }
+ }
+}

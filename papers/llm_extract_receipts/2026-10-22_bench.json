@@ -1,0 +1,4702 @@
+{
+ "date": "2026-10-22",
+ "tag": "bench",
+ "model": "claude-opus-5-5",
+ "effort": "high",
+ "budget_usd": 40.0,
+ "spent_usd": 0.991692,
+ "tag_spent_usd": 18.107253,
+ "papers": [
+  {
+   "arxiv_id": "1706.03762",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFaGGAUFFaRGJS1hVbrQ"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 24,
+     "quote_only": 10,
+     "unverified": 8,
+     "not_stated": 22
+    },
+    "unverified": [
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "the quote does not name residual (looked for /residual|skip/)"
+      ]
+     },
+     {
+      "field": "block_ops[1].scale",
+      "reasons": [
+       "22.627417 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[1].shift",
+      "reasons": [
+       "0 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[4].out",
+      "reasons": [
+       "512 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[5].out",
+      "reasons": [
+       "512 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[6].out",
+      "reasons": [
+       "512 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[7].scale",
+      "reasons": [
+       "0.125 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[7].window",
+      "reasons": [
+       "0 does not occur in its quote"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 2,
+    "n_block_ops": 20
+   },
+   "comparison": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": "layernorm",
+     "rule_score": "correct",
+     "llm": "layernorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "relu",
+     "rule": "relu",
+     "rule_score": "correct",
+     "llm": "relu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "sinusoidal",
+     "rule": "sinusoidal",
+     "rule_score": "correct",
+     "llm": "sinusoidal",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "encoder-decoder or encoder-only model",
+     "where": "llm extraction, verified quote, Sec. 3 Model Architecture",
+     "blocking": true,
+     "evidence": "The Transformer follows this overall architecture using stacked self-attention and point-wise, fully connected layers for both the encoder and decoder"
+    },
+    {
+     "mechanism": "new op sinusoidal_pe (needs a new primitive: Needs a fixed (non-learned) [T, d_model] table indexed by position and feature index: PE(pos,2i)=sin(pos/10000^(2i/d_mod)",
+     "where": "llm extraction, verified quote, Sec. 3.5 Positional Encoding",
+     "blocking": true,
+     "evidence": "PE_{(pos,2i)} = sin(pos / 10000^{2i/\\dmodel}) \\\\\n    PE_{(pos,2i+1)} = cos(pos / 10000^{2i/\\dmodel})"
+    },
+    {
+     "mechanism": "new op cross_attention (needs a new primitive: Multi-head attention whose queries come from the decoder [T_dec, d] and keys/values from the encoder output [T_enc, d], )",
+     "where": "llm extraction, verified quote, Sec. 3.2.3 Applications of Attention in our Model",
+     "blocking": true,
+     "evidence": "In \"encoder-decoder attention\" layers, the queries come from the previous decoder layer, and the memory keys and values come from the output of the encoder."
+    },
+    {
+     "mechanism": "Separate 6-layer encoder stack (bidirectional self-attention + FFN, post-LN) whose output feeds the decoder cross-attention",
+     "where": "llm extraction, verified quote, Sec. 3.1 Encoder and Decoder Stacks",
+     "blocking": true,
+     "evidence": "The encoder is composed of a stack of $N=6$ identical layers. Each layer has two sub-layers."
+    },
+    {
+     "mechanism": "Encoder-decoder cross-attention sub-layer in every decoder layer",
+     "where": "llm extraction, verified quote, Sec. 3.1 Encoder and Decoder Stacks",
+     "blocking": true,
+     "evidence": "In addition to the two sub-layers in each encoder layer, the decoder inserts a third sub-layer, which performs multi-head attention over the output of the encoder stack."
+    },
+    {
+     "mechanism": "Shared weight matrix across source embedding, target embedding and output projection",
+     "where": "llm extraction, verified quote, Sec. 3.4 Embeddings and Softmax",
+     "blocking": true,
+     "evidence": "In our model, we share the same weight matrix between the two embedding layers and the pre-softmax linear transformation"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "1810.04805",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFaN3VPykoGx6szWXhLq"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 20,
+     "quote_only": 3,
+     "unverified": 5,
+     "not_stated": 34
+    },
+    "unverified": [
+     {
+      "field": "flavours.norm",
+      "reasons": [
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.norm_placement",
+      "reasons": [
+       "inherited from transformer, whose curated entry has no norm_placement",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "inherited from transformer, whose curated entry has no residual",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[1].vocab",
+      "reasons": [
+       "2 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[16].out",
+      "reasons": [
+       "30000 does not occur in its quote"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 17
+   },
+   "comparison": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": null,
+     "llm_score": "abstain",
+     "llm_check": "unverified"
+    },
+    {
+     "field": "activation",
+     "truth": "gelu",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": "gelu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "learned",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": "learned",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "encoder-decoder or encoder-only model",
+     "where": "llm extraction, verified quote, Sec. BERT, Model Architecture",
+     "blocking": true,
+     "evidence": "BERT's model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in \\citet{vaswani-etal:2017:_atten}"
+    },
+    {
+     "mechanism": "Next sentence prediction binary classifier on the final [CLS] hidden vector C (pre-training head)",
+     "where": "llm extraction, verified quote, Sec. Pre-training BERT, Task #2",
+     "blocking": true,
+     "evidence": "As we show in Figure~\\ref{fig:bert_overall}, $C$ is used for  next sentence prediction (NSP)."
+    },
+    {
+     "mechanism": "Special [CLS] token prepended to every sequence and [SEP] separator between packed sentences",
+     "where": "llm extraction, verified quote, Sec. BERT, Input/Output Representations",
+     "blocking": true,
+     "evidence": "The first token of every sequence is always a special classification token ({\\tt [CLS]})."
+    },
+    {
+     "mechanism": "Dropout of 0.1 on all layers",
+     "where": "llm extraction, verified quote, Appendix Pre-training Procedure",
+     "blocking": true,
+     "evidence": "We use a dropout probability of 0.1 on all layers."
+    }
+   ]
+  },
+  {
+   "arxiv_id": "1901.02860",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFaSBm6FPgPbASAEyEdy"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 8,
+     "quote_only": 9,
+     "unverified": 1,
+     "not_stated": 52
+    },
+    "unverified": [
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "the quote does not name residual (looked for /residual|skip/)"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 2,
+    "n_block_ops": 7
+   },
+   "comparison": [
+    {
+     "field": "positional",
+     "truth": null,
+     "rule": null,
+     "rule_score": "correct",
+     "llm": "relative",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "new op xl_relative_attention (needs a new primitive: Needs an attention primitive where queries come from the current segment and keys/values from the concatenation [SG(mem))",
+     "where": "llm extraction, verified quote, Sec. Relative Positional Encodings (computational procedure)",
+     "blocking": true,
+     "evidence": "{\\rvq_{\\tau,i}^{n}}^\\top \\rvk_{\\tau,j}^{n} + {\\rvq_{\\tau,i}^{n}}^\\top \\rmW_{k,R}^{n} \\rmR_{i-j}"
+    },
+    {
+     "mechanism": "new op positionwise_feed_forward (needs a new primitive: The paper names a Positionwise-Feed-Forward sublayer but does not state its width, activation, bias, or whether it has i)",
+     "where": "llm extraction, verified quote, Sec. Relative Positional Encodings (computational procedure)",
+     "blocking": true,
+     "evidence": "\\text{Positionwise-Feed-Forward}(\\rvo_{\\tau}^{n})"
+    },
+    {
+     "mechanism": "Segment-level recurrence: hidden states of previous segment(s) cached with stop-gradient as memory of length M for every layer",
+     "where": "llm extraction, verified quote, Sec. Segment-Level Recurrence with State Reuse",
+     "blocking": true,
+     "evidence": "During training, the hidden state sequence computed for the previous segment is \\textit{fixed} and \\textit{cached} to be reused as an extended context when the model processes the next new segment, as shown in Fig. \\ref{fig:xl-train}."
+    },
+    {
+     "mechanism": "Memory length M equals segment length in training, increased at evaluation",
+     "where": "llm extraction, verified quote, Sec. Segment-Level Recurrence with State Reuse",
+     "blocking": true,
+     "evidence": "In our experiments, we set $M$ equal to the segment length during training, and increase it by multiple times during evaluation."
+    },
+    {
+     "mechanism": "Fixed (non-learned) sinusoid relative position table R",
+     "where": "llm extraction, verified quote, Sec. Relative Positional Encodings",
+     "blocking": true,
+     "evidence": "Note that $\\cyan{\\rmR}$ is a sinusoid encoding matrix~\\citep{vaswani2017attention} without learnable parameters."
+    },
+    {
+     "mechanism": "Adaptive input embeddings and adaptive softmax on WikiText-103",
+     "where": "llm extraction, verified quote, Sec. Experiments, Main Results",
+     "blocking": true,
+     "evidence": "We adopted adaptive softmax and input representations \\citep{baevski2018adaptive,grave2016efficient}."
+    }
+   ]
+  },
+  {
+   "arxiv_id": "1906.08237",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFaYsj5trq4fLjtiDwRY"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 13,
+     "quote_only": 7,
+     "unverified": 1,
+     "not_stated": 21
+    },
+    "unverified": [
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "the quote does not name residual (looked for /residual|skip/)"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 1,
+    "n_block_ops": 10
+   },
+   "comparison": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": "layernorm",
+     "rule_score": "correct",
+     "llm": "layernorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": null,
+     "rule": null,
+     "rule_score": "correct",
+     "llm": "relative",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "new op two_stream_rel_attn (needs a new primitive: Needs a Transformer-XL relative-position attention primitive (relative positional encodings plus per-head relative segme)",
+     "where": "llm extraction, verified quote, Sec. 2.3 Two-Stream Self-Attention",
+     "blocking": true,
+     "evidence": "g_{z_t}^{(m)} &\\leftarrow \\text{Attention}(\n\t\t\\text{Q} = g_{z_t}^{(m-1)}, \\text{KV}= \\rvh_{\\magenta{\\rvz_{<t}}}^{(m-1)}; \\theta),"
+    },
+    {
+     "mechanism": "Query stream initialised with a trainable vector w, run alongside the content stream through every layer with shared parameters; dropped at finetuning",
+     "where": "llm extraction, verified quote, Sec. 2.3",
+     "blocking": true,
+     "evidence": "Computationally, the first layer query stream is initialized with a trainable vector, i.e. $g_i^{(0)} = w$, while the content stream is set to the corresponding word embedding, i.e. $h_i^{(0)} = e(x_i)$."
+    },
+    {
+     "mechanism": "Segment recurrence memory: cached per-layer content representations from the previous segment are concatenated into keys/values",
+     "where": "llm extraction, verified quote, Sec. 2.4",
+     "blocking": true,
+     "evidence": "Then, based on the permutation $\\tilde{\\rvz}$, we process the first segment, and then cache the obtained content representations $\\tilde{\\rvh}^{(m)}$ for each layer $m$."
+    },
+    {
+     "mechanism": "Relative segment encodings: learned per-head s_+ / s_- and bias b added to attention scores",
+     "where": "llm extraction, verified quote, Sec. 2.5 Relative Segment Encodings",
+     "blocking": true,
+     "evidence": "When $i$ attends to $j$, the segment encoding $\\mathbf{s}_{ij}$ is used to compute an attention weight $a_{ij} = (\\mb{q}_i + \\mb{b})^\\top \\mb{s}_{ij}$, where $\\mb{q}_i$ is the query vector as in a standard attention operation and $\\mb{b}$ i"
+    },
+    {
+     "mechanism": "Permutation of factorization order realised through attention masks, with positional encodings kept on the original order",
+     "where": "llm extraction, verified quote, Sec. 2.2 Remark on Permutation",
+     "blocking": true,
+     "evidence": "In other words, we keep the original sequence order, use the positional encodings corresponding to the original sequence, and rely on a proper attention mask in Transformers to achieve permutation of the factorization order."
+    }
+   ]
+  },
+  {
+   "arxiv_id": "1907.11692",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFacghAydaow5SUXDurK"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 22,
+     "quote_only": 0,
+     "unverified": 20,
+     "not_stated": 22
+    },
+    "unverified": [
+     {
+      "field": "family",
+      "reasons": [
+       "inherited from bert, whose curated entry has no family",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.norm",
+      "reasons": [
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.norm_placement",
+      "reasons": [
+       "inherited from bert, whose curated entry has no norm_placement",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.positional",
+      "reasons": [
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "inherited from bert, whose curated entry has no residual"
+      ]
+     },
+     {
+      "field": "flavours.parallel_block",
+      "reasons": [
+       "inherited from bert, whose curated entry has no parallel_block"
+      ]
+     },
+     {
+      "field": "flavours.attention",
+      "reasons": [
+       "inherited from bert, whose curated entry has no attention"
+      ]
+     },
+     {
+      "field": "flavours.qkv_bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no qkv_bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.mlp_bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no mlp_bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.tied_embeddings",
+      "reasons": [
+       "inherited from bert, whose curated entry has no tied_embeddings",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.moe",
+      "reasons": [
+       "inherited from bert, whose curated entry has no moe",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[3].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[4].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[5].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[6].causal",
+      "reasons": [
+       "inherited from bert, whose curated entry has no causal",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[6].window",
+      "reasons": [
+       "inherited from bert, whose curated entry has no window",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[7].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[10].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[12].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[15].tied_to",
+      "reasons": [
+       "inherited from bert, whose curated entry has no tied_to",
+       "the inheritance quote does not name the ancestor"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 16
+   },
+   "comparison": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": "layernorm",
+     "rule_score": "correct",
+     "llm": null,
+     "llm_score": "abstain",
+     "llm_check": "unverified"
+    },
+    {
+     "field": "activation",
+     "truth": "gelu",
+     "rule": "gelu",
+     "rule_score": "correct",
+     "llm": "gelu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "learned",
+     "rule": "learned",
+     "rule_score": "correct",
+     "llm": null,
+     "llm_score": "abstain",
+     "llm_check": "unverified"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "encoder-decoder or encoder-only model",
+     "where": "llm extraction, UNVERIFIED quote, Sec. 5.1 GLUE Results",
+     "blocking": true,
+     "evidence": "Crucially, \\ourmodel{} uses the same masked language modeling pretraining objective and architecture as \\bertlarge{}, yet consistently outperforms both \\bertlarge{} and \\xlnetlarge{}."
+    }
+   ]
+  },
+  {
+   "arxiv_id": "1909.08053",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFah7wKafQXVg4aeedk9"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 26,
+     "quote_only": 9,
+     "unverified": 0,
+     "not_stated": 32
+    },
+    "unverified": [],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 14
+   },
+   "comparison": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": "layernorm",
+     "rule_score": "correct",
+     "llm": "layernorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "gelu",
+     "rule": "gelu",
+     "rule_score": "correct",
+     "llm": "gelu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "Dropout of 0.1 throughout, including before residual connections (training-time only)",
+     "where": "llm extraction, verified quote, Sec. Training Optimization and Hyperparameters",
+     "blocking": true,
+     "evidence": "In all cases, a dropout of 0.1 is used."
+    }
+   ]
+  },
+  {
+   "arxiv_id": "1909.11942",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFb4cvv9VxuCWLuRxYEv"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 30,
+     "quote_only": 1,
+     "unverified": 6,
+     "not_stated": 41
+    },
+    "unverified": [
+     {
+      "field": "configs[ALBERT-base].d_ff",
+      "reasons": [
+       "3072 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "configs[ALBERT-large].d_ff",
+      "reasons": [
+       "4096 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "configs[ALBERT-xlarge].d_ff",
+      "reasons": [
+       "8192 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "configs[ALBERT-xxlarge].d_ff",
+      "reasons": [
+       "16384 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[1].out",
+      "reasons": [
+       "4096 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[8].out",
+      "reasons": [
+       "16384 does not occur in its quote"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 13
+   },
+   "comparison": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": "layernorm",
+     "rule_score": "correct",
+     "llm": null,
+     "llm_score": "abstain",
+     "llm_check": "not_stated"
+    },
+    {
+     "field": "activation",
+     "truth": "gelu",
+     "rule": "gelu",
+     "rule_score": "correct",
+     "llm": "gelu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "learned",
+     "rule": "learned",
+     "rule_score": "correct",
+     "llm": null,
+     "llm_score": "abstain",
+     "llm_check": "not_stated"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "encoder-decoder or encoder-only model",
+     "where": "llm extraction, verified quote, Sec. The Elements of ALBERT / Model architecture choices",
+     "blocking": true,
+     "evidence": "The backbone of the ALBERT architecture is similar to BERT in that it uses a transformer encoder~\\citep{vaswani2017attention} with GELU nonlinearities~\\citep{hendrycks2016gelus}."
+    },
+    {
+     "mechanism": "Cross-layer parameter sharing: all block parameters are shared across the L layers.",
+     "where": "llm extraction, verified quote, Sec. Cross-layer parameter sharing",
+     "blocking": true,
+     "evidence": "The default decision for ALBERT is to share all parameters across layers. All our experiments use this default decision unless otherwise specified."
+    },
+    {
+     "mechanism": "Sentence-order prediction (SOP) classification head/loss alongside MLM.",
+     "where": "llm extraction, verified quote, Sec. Inter-sentence coherence loss",
+     "blocking": true,
+     "evidence": "That is, for ALBERT, we use a sentence-order prediction (SOP) loss, which avoids topic prediction and instead focuses on modeling inter-sentence coherence."
+    },
+    {
+     "mechanism": "Final model trained without dropout.",
+     "where": "llm extraction, verified quote, Sec. Current State-of-the-art on NLU Tasks",
+     "blocking": true,
+     "evidence": "an ALBERT-xxlarge configuration (Table~\\ref{table:model_architecture}) using combined MLM and SOP losses, and no dropout."
+    }
+   ]
+  },
+  {
+   "arxiv_id": "1910.10683",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFb9hYsJEpFzwhtg4itr"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 45,
+     "quote_only": 7,
+     "unverified": 2,
+     "not_stated": 29
+    },
+    "unverified": [
+     {
+      "field": "flavours.norm",
+      "reasons": [
+       "the quote does not name rmsnorm (looked for /RMS|root[- ]mean[- ]square/)"
+      ]
+     },
+     {
+      "field": "flavours.positional",
+      "reasons": [
+       "the quote does not name relative (looked for /relative/)"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 1,
+    "n_block_ops": 14
+   },
+   "comparison": [
+    {
+     "field": "activation",
+     "truth": "relu",
+     "rule": "relu",
+     "rule_score": "correct",
+     "llm": "relu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "encoder-decoder or encoder-only model",
+     "where": "llm extraction, verified quote, Sec. 2.1 Model",
+     "blocking": true,
+     "evidence": "Overall, our encoder-decoder Transformer implementation closely follows its originally-proposed form \\citep{vaswani2017attention}."
+    },
+    {
+     "mechanism": "new op t5_relative_position_bias (needs a new primitive: The attention op has no additive logit bias. Each head adds a learned scalar to its [T,T] attention logits. The scalar i)",
+     "where": "llm extraction, verified quote, Sec. 2.1 Model",
+     "blocking": true,
+     "evidence": "In this work, we use $32$ embeddings for all of our models with ranges that increase in size logarithmically up to an offset of $128$ beyond which we assign all relative positions to the same embedding."
+    },
+    {
+     "mechanism": "Encoder-decoder structure: a separate encoder stack with fully-visible (non-causal) self-attention whose output is consumed by the decoder",
+     "where": "llm extraction, verified quote, Sec. 3.2.1 Model Structures",
+     "blocking": true,
+     "evidence": "The encoder uses a ``fully-visible'' attention mask."
+    },
+    {
+     "mechanism": "Encoder-decoder cross-attention inserted after each decoder self-attention layer",
+     "where": "llm extraction, verified quote, Sec. 2.1 Model",
+     "blocking": true,
+     "evidence": "The decoder is similar in structure to the encoder except that it includes a standard attention mechanism after each self-attention layer that attends to the output of the encoder."
+    },
+    {
+     "mechanism": "Relative position bias parameters shared across all layers (per-head distinct)",
+     "where": "llm extraction, verified quote, Sec. 2.1 Model",
+     "blocking": true,
+     "evidence": "For efficiency, we also share the position embedding parameters across all layers in our model, though within a given layer each attention head uses a different learned position embedding."
+    }
+   ]
+  },
+  {
+   "arxiv_id": "1910.13461",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFbHjqWKuUDgTbiUXW9n"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 7,
+     "quote_only": 3,
+     "unverified": 6,
+     "not_stated": 48
+    },
+    "unverified": [
+     {
+      "field": "flavours.norm_placement",
+      "reasons": [
+       "inherited from transformer, whose curated entry has no norm_placement"
+      ]
+     },
+     {
+      "field": "flavours.positional",
+      "reasons": [
+       "the quote does not name learned (looked for /learn|trainable|absolute/)"
+      ]
+     },
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "inherited from transformer, whose curated entry has no residual"
+      ]
+     },
+     {
+      "field": "flavours.parallel_block",
+      "reasons": [
+       "inherited from transformer, whose curated entry has no parallel_block"
+      ]
+     },
+     {
+      "field": "flavours.attention",
+      "reasons": [
+       "inherited from transformer, whose curated entry has no attention"
+      ]
+     },
+     {
+      "field": "flavours.moe",
+      "reasons": [
+       "inherited from transformer, whose curated entry has no moe"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 1,
+    "n_block_ops": 18
+   },
+   "comparison": [
+    {
+     "field": "activation",
+     "truth": "gelu",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": "gelu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "encoder-decoder or encoder-only model",
+     "where": "llm extraction, verified quote, Sec. 2 Model",
+     "blocking": true,
+     "evidence": "It is implemented as a sequence-to-sequence model with a bidirectional encoder over corrupted text and a left-to-right autoregressive decoder."
+    },
+    {
+     "mechanism": "new op cross_attention (needs a new primitive: Requires non-causal multi-head attention whose queries come from the decoder stream [T, d] and keys/values from a second)",
+     "where": "llm extraction, verified quote, Sec. 2.1 Architecture",
+     "blocking": true,
+     "evidence": "each layer of the decoder additionally performs cross-attention over the final hidden layer of the encoder (as in the transformer sequence-to-sequence model)"
+    },
+    {
+     "mechanism": "Separate bidirectional (non-causal) Transformer encoder stack with the same number of layers as the decoder, whose final hidden states feed decoder cross-attention",
+     "where": "llm extraction, verified quote, Sec. 2.1 Architecture",
+     "blocking": true,
+     "evidence": "For our base model, we use 6 layers in the encoder and decoder, and for our large model we use 12 layers in each."
+    },
+    {
+     "mechanism": "Encoder-decoder cross-attention in every decoder layer",
+     "where": "llm extraction, verified quote, Sec. 2.1 Architecture",
+     "blocking": true,
+     "evidence": "each layer of the decoder additionally performs cross-attention over the final hidden layer of the encoder (as in the transformer sequence-to-sequence model)"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2004.05150",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFbNRW6Ae57icHogvJ5V"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 15,
+     "quote_only": 4,
+     "unverified": 1,
+     "not_stated": 42
+    },
+    "unverified": [
+     {
+      "field": "block_ops[5].scale",
+      "reasons": [
+       "1/sqrt(d_k) does not occur in its quote"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 1,
+    "n_block_ops": 14
+   },
+   "comparison": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": "layernorm",
+     "rule_score": "correct",
+     "llm": "layernorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "gelu",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": "gelu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "learned",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": "relative",
+     "llm_score": "WRONG",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "new op dilated_sliding_window_attention (needs a new primitive: Banded causal attention where each query attends only to the previous w keys of a window that differs per layer (small i)",
+     "where": "llm extraction, verified quote, Sec. 3.1 Attention Pattern, Dilated Sliding Window",
+     "blocking": true,
+     "evidence": "This is analogous to dilated CNNs~\\cite{Oord2016WaveNetAG} where the window has gaps of size dilation $d$ (Fig.~\\ref{fig:attnc})."
+    },
+    {
+     "mechanism": "Transformer-XL style relative position embeddings with sinusoidal weights, adapted to the dilated window",
+     "where": "llm extraction, verified quote, Sec. Character LM Hyperparameters (appendix)",
+     "blocking": true,
+     "evidence": "Our implementation\nalso includes a version of the relative position embedding\nthat is compatible with our dilated sliding window attention."
+    },
+    {
+     "mechanism": "Per-layer window sizes increasing from bottom to top layer; doubled each training phase",
+     "where": "llm extraction, verified quote, Table tab:char-hyperparams",
+     "blocking": true,
+     "evidence": "Phase 1 window sizes & 32 (bottom layer) - 8,192 (top layer)"
+    },
+    {
+     "mechanism": "Per-layer dilation schedule (small model) applied to 2 heads only",
+     "where": "llm extraction, verified quote, Table tab:char-hyperparams",
+     "blocking": true,
+     "evidence": "Dilation (small model) & 0 (layers 0-5), 1 (layers 6-7), 2 (layers 8-9), 3 (layers 10-11)"
+    },
+    {
+     "mechanism": "Symmetric global attention on task-selected tokens with separate Q_g, K_g, V_g projections (used in the pretrained/finetuned encoder variant, not in char-LM)",
+     "where": "llm extraction, verified quote, Sec. 3.1 Linear Projections for Global Attention",
+     "blocking": true,
+     "evidence": "We use two sets of projections, $Q_s$, $K_s$, $V_s$ to compute attention scores of sliding window attention, and  $Q_g$, $K_g$, $V_g$ to  compute attention scores for the global attention."
+    },
+    {
+     "mechanism": "Encoder-decoder variant LED with cross-attention, initialised from BART",
+     "where": "llm extraction, verified quote, Sec. Longformer-Encoder-Decoder (LED)",
+     "blocking": true,
+     "evidence": "The decoder uses the full self-attention to the entire encoded tokens and to previously decoded locations."
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2005.14165",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFbTT4jSgBm5ETcdAScQ"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 48,
+     "quote_only": 4,
+     "unverified": 28,
+     "not_stated": 23
+    },
+    "unverified": [
+     {
+      "field": "configs[GPT-3 Small].d_ff",
+      "reasons": [
+       "3072 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "configs[GPT-3 Small].vocab_size",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no vocab_size"
+      ]
+     },
+     {
+      "field": "configs[GPT-3 Medium].d_ff",
+      "reasons": [
+       "4096 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "configs[GPT-3 Medium].vocab_size",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no vocab_size"
+      ]
+     },
+     {
+      "field": "configs[GPT-3 Large].d_ff",
+      "reasons": [
+       "6144 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "configs[GPT-3 Large].vocab_size",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no vocab_size"
+      ]
+     },
+     {
+      "field": "configs[GPT-3 XL].d_ff",
+      "reasons": [
+       "8192 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "configs[GPT-3 XL].vocab_size",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no vocab_size"
+      ]
+     },
+     {
+      "field": "configs[GPT-3 2.7B].d_ff",
+      "reasons": [
+       "10240 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "configs[GPT-3 2.7B].vocab_size",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no vocab_size"
+      ]
+     },
+     {
+      "field": "configs[GPT-3 6.7B].d_ff",
+      "reasons": [
+       "16384 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "configs[GPT-3 6.7B].vocab_size",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no vocab_size"
+      ]
+     },
+     {
+      "field": "configs[GPT-3 13B].d_ff",
+      "reasons": [
+       "20560 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "configs[GPT-3 13B].vocab_size",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no vocab_size"
+      ]
+     },
+     {
+      "field": "configs[GPT-3 175B].d_ff",
+      "reasons": [
+       "49152 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "configs[GPT-3 175B].vocab_size",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no vocab_size"
+      ]
+     },
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no residual"
+      ]
+     },
+     {
+      "field": "flavours.parallel_block",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no parallel_block"
+      ]
+     },
+     {
+      "field": "flavours.qkv_bias",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no qkv_bias"
+      ]
+     },
+     {
+      "field": "flavours.mlp_bias",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no mlp_bias"
+      ]
+     },
+     {
+      "field": "flavours.tied_embeddings",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no tied_embeddings"
+      ]
+     },
+     {
+      "field": "block_ops[3].bias",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[9].out",
+      "reasons": [
+       "49152 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[9].bias",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[10].approx",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no approx"
+      ]
+     },
+     {
+      "field": "block_ops[11].bias",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[14].tied_to",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no tied_to"
+      ]
+     },
+     {
+      "field": "block_ops[14].bias",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no bias"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 15
+   },
+   "comparison": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": "layernorm",
+     "rule_score": "correct",
+     "llm": "layernorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "learned",
+     "rule": "learned",
+     "rule_score": "correct",
+     "llm": "learned",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "sparse or banded attention",
+     "where": "llm extraction, verified quote, Sec. 2.1 Model and Architectures",
+     "blocking": true,
+     "evidence": "with the exception that we use alternating dense and locally banded sparse attention patterns in the layers of the transformer, similar to the Sparse Transformer \\cite{child2019generating}"
+    },
+    {
+     "mechanism": "Layer-alternating attention patterns: dense attention in some layers and locally banded sparse attention (Sparse Transformer style) in others. Band width and the alternation schedule are not given, so a single repeated block cannot represent this.",
+     "where": "llm extraction, verified quote, Sec. 2.1 Model and Architectures",
+     "blocking": true,
+     "evidence": "with the exception that we use alternating dense and locally banded sparse attention patterns in the layers of the transformer, similar to the Sparse Transformer \\cite{child2019generating}"
+    },
+    {
+     "mechanism": "GPT-2 modified initialization (a training-time detail, not part of the forward graph).",
+     "where": "llm extraction, verified quote, Sec. 2.1 Model and Architectures",
+     "blocking": true,
+     "evidence": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2006.03654",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFbaNmDzhGWYx4atgsiK"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 22,
+     "quote_only": 2,
+     "unverified": 11,
+     "not_stated": 25
+    },
+    "unverified": [
+     {
+      "field": "flavours.norm_placement",
+      "reasons": [
+       "inherited from bert, whose curated entry has no norm_placement"
+      ]
+     },
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "inherited from bert, whose curated entry has no residual"
+      ]
+     },
+     {
+      "field": "flavours.parallel_block",
+      "reasons": [
+       "inherited from bert, whose curated entry has no parallel_block"
+      ]
+     },
+     {
+      "field": "flavours.qkv_bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no qkv_bias"
+      ]
+     },
+     {
+      "field": "flavours.mlp_bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no mlp_bias"
+      ]
+     },
+     {
+      "field": "block_ops[1].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[2].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[3].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[5].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[8].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[10].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 2,
+    "n_block_ops": 16
+   },
+   "comparison": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": "layernorm",
+     "rule_score": "correct",
+     "llm": "layernorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "gelu",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": "gelu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": null,
+     "rule": null,
+     "rule_score": "correct",
+     "llm": "relative",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "encoder-decoder or encoder-only model",
+     "where": "llm extraction, verified quote, Sec. 1 Introduction, Enhanced mask decoder",
+     "blocking": true,
+     "evidence": "Like BERT, DeBERTa is pre-trained using masked language modeling (MLM)."
+    },
+    {
+     "mechanism": "new op disentangled_attention (needs a new primitive: Attention score is Q_c K_c^T + Q_c K_r[delta(i,j)]^T + K_c Q_r[delta(j,i)]^T scaled by 1/sqrt(3d), with clipped relative)",
+     "where": "llm extraction, verified quote, Sec. 3.1 Disentangled Attention (eq dis-att)",
+     "blocking": true,
+     "evidence": "We can represent the disentangled self-attention with relative position bias as \\eqref{dis-att},"
+    },
+    {
+     "mechanism": "new op enhanced_mask_decoder (needs a new primitive: A transformer-style decoder layer whose query comes from I (absolute position embedding added to content) and keys/value)",
+     "where": "llm extraction, verified quote, Appendix: Additional Details of Enhanced Mask Decoder",
+     "blocking": true,
+     "evidence": "In our experiment we share the same weight for $n=2$ layers to reduce the number of parameters and use absolute position embedding as $I$ of the first EMD layer."
+    },
+    {
+     "mechanism": "Relative position embedding table P shared across all layers",
+     "where": "llm extraction, verified quote, Sec. 3.1 Disentangled Attention",
+     "blocking": true,
+     "evidence": "$\\bm{P} \\in R^{2k \\times d}$ represents the relative position embedding vectors shared across all layers (i.e., staying fixed during forward propagation),"
+    },
+    {
+     "mechanism": "DeBERTa_1.5B only: position projections shared with content projections",
+     "where": "llm extraction, verified quote, Sec. Scale up to 1.5 billion parameters",
+     "blocking": true,
+     "evidence": "First, we share the projection matrices of relative position embedding $W_{k,r},W_{q,r}$ with $W_{k,c},W_{q,c}$, respectively, in all attention layers to reduce the number of model parameters."
+    },
+    {
+     "mechanism": "DeBERTa_1.5B only: convolution layer beside the first Transformer layer, summed with its output",
+     "where": "llm extraction, verified quote, Sec. Scale up to 1.5 billion parameters",
+     "blocking": true,
+     "evidence": "Second, a convolution layer is added aside the first Transformer layer to induce n-gram knowledge of sub-word encodings and their outputs are summed up before feeding to the next Transformer layer"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2104.09864",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFbfX5RLSeL4Pzg6ZGfJ"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 5,
+     "quote_only": 5,
+     "unverified": 53,
+     "not_stated": 6
+    },
+    "unverified": [
+     {
+      "field": "family",
+      "reasons": [
+       "inherited from bert, whose curated entry has no family",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[RoFormer (bert-base-uncased with RoPE)].d_model",
+      "reasons": [
+       "inherited from bert, whose curated entry has no d_model",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[RoFormer (bert-base-uncased with RoPE)].n_layers",
+      "reasons": [
+       "inherited from bert, whose curated entry has no n_layers",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[RoFormer (bert-base-uncased with RoPE)].n_heads",
+      "reasons": [
+       "inherited from bert, whose curated entry has no n_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[RoFormer (bert-base-uncased with RoPE)].n_kv_heads",
+      "reasons": [
+       "inherited from bert, whose curated entry has no n_kv_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[RoFormer (bert-base-uncased with RoPE)].head_dim",
+      "reasons": [
+       "inherited from bert, whose curated entry has no head_dim",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[RoFormer (bert-base-uncased with RoPE)].d_ff",
+      "reasons": [
+       "inherited from bert, whose curated entry has no d_ff",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[RoFormer (bert-base-uncased with RoPE)].vocab_size",
+      "reasons": [
+       "inherited from bert, whose curated entry has no vocab_size",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.norm",
+      "reasons": [
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.norm_placement",
+      "reasons": [
+       "inherited from bert, whose curated entry has no norm_placement",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.norm_eps",
+      "reasons": [
+       "inherited from bert, whose curated entry has no norm_eps",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.activation",
+      "reasons": [
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.rope_pairing",
+      "reasons": [
+       "the quote does not name interleaved (looked for /interleav|adjacent|pair/)"
+      ]
+     },
+     {
+      "field": "flavours.rope_fraction",
+      "reasons": [
+       "1 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "inherited from bert, whose curated entry has no residual",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.parallel_block",
+      "reasons": [
+       "inherited from bert, whose curated entry has no parallel_block",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.qkv_bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no qkv_bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.mlp_bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no mlp_bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.tied_embeddings",
+      "reasons": [
+       "inherited from bert, whose curated entry has no tied_embeddings",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.moe",
+      "reasons": [
+       "inherited from bert, whose curated entry has no moe",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[0].vocab",
+      "reasons": [
+       "inherited from bert, whose curated entry has no vocab",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[0].d",
+      "reasons": [
+       "inherited from bert, whose curated entry has no d",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[1].eps",
+      "reasons": [
+       "inherited from bert, whose curated entry has no eps",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[2].out",
+      "reasons": [
+       "inherited from bert, whose curated entry has no out",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[2].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[3].out",
+      "reasons": [
+       "inherited from bert, whose curated entry has no out",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[3].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[4].out",
+      "reasons": [
+       "inherited from bert, whose curated entry has no out",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[4].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[5].n_rot",
+      "reasons": [
+       "inherited from bert, whose curated entry has no n_rot",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[6].n_rot",
+      "reasons": [
+       "inherited from bert, whose curated entry has no n_rot",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[7].heads",
+      "reasons": [
+       "inherited from bert, whose curated entry has no heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[7].kv_heads",
+      "reasons": [
+       "inherited from bert, whose curated entry has no kv_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[7].head_dim",
+      "reasons": [
+       "inherited from bert, whose curated entry has no head_dim",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[7].scale",
+      "reasons": [
+       "inherited from bert, whose curated entry has no scale",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[7].causal",
+      "reasons": [
+       "inherited from bert, whose curated entry has no causal",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[7].window",
+      "reasons": [
+       "inherited from bert, whose curated entry has no window",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[8].out",
+      "reasons": [
+       "inherited from bert, whose curated entry has no out",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[8].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[10].eps",
+      "reasons": [
+       "inherited from bert, whose curated entry has no eps",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[11].out",
+      "reasons": [
+       "inherited from bert, whose curated entry has no out",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[11].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[12].approx",
+      "reasons": [
+       "inherited from bert, whose curated entry has no approx",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[13].out",
+      "reasons": [
+       "inherited from bert, whose curated entry has no out",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[13].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[15].eps",
+      "reasons": [
+       "inherited from bert, whose curated entry has no eps",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[16].out",
+      "reasons": [
+       "inherited from bert, whose curated entry has no out",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[16].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[17].approx",
+      "reasons": [
+       "inherited from bert, whose curated entry has no approx",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[18].eps",
+      "reasons": [
+       "inherited from bert, whose curated entry has no eps",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[19].out",
+      "reasons": [
+       "inherited from bert, whose curated entry has no out",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[19].bias",
+      "reasons": [
+       "inherited from bert, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[19].tied_to",
+      "reasons": [
+       "inherited from bert, whose curated entry has no tied_to",
+       "the inheritance quote does not name the ancestor"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 20
+   },
+   "comparison": [
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "encoder-decoder or encoder-only model",
+     "where": "llm extraction, UNVERIFIED quote, Sec. Pre-training Language Modeling / Experimental Settings",
+     "blocking": true,
+     "evidence": "Note that we use bert-base-uncased in our experiments."
+    },
+    {
+     "mechanism": "BERT token-type (segment) embeddings added to token embeddings in the embed subgraph (inherited from bert-base-uncased; not restated)",
+     "where": "llm extraction, verified quote, Sec. Pre-training Language Modeling / Experimental Settings",
+     "blocking": true,
+     "evidence": "Note that we use bert-base-uncased in our experiments."
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2108.12409",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFbkjoXUxGioaNmEzPaw"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 18,
+     "quote_only": 5,
+     "unverified": 0,
+     "not_stated": 35
+    },
+    "unverified": [],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 11
+   },
+   "comparison": [
+    {
+     "field": "positional",
+     "truth": "alibi",
+     "rule": "alibi",
+     "rule_score": "correct",
+     "llm": "alibi",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "Adaptive word embedding and adaptive softmax (Baevski & Auli) in the WikiText-103 model; replaced by a plain tied embedding/softmax for Toronto BookCorpus",
+     "where": "llm extraction, verified quote, Appendix A.3 Results on the Toronto Book Corpus",
+     "blocking": true,
+     "evidence": "Since the vocabulary is much smaller than WikiText-103's, we replace the adaptive word embedding and softmax of \\citet{baevski} with a tied word embedding and softmax matrix \\citep{tying,inan2017}."
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2109.08668",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFZj8h9Zq5jLa5kuc5dw"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 13,
+     "quote_only": 5,
+     "unverified": 0,
+     "not_stated": 46
+    },
+    "unverified": [],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 2,
+    "n_block_ops": 17
+   },
+   "comparison": [
+    {
+     "field": "norm",
+     "truth": "rmsnorm",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": null,
+     "llm_score": "abstain",
+     "llm_check": "not_stated"
+    },
+    {
+     "field": "activation",
+     "truth": null,
+     "rule": null,
+     "rule_score": "correct",
+     "llm": "new_op:squared_relu",
+     "llm_score": "correct",
+     "llm_check": "quote_only"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "new op squared_relu = (relu(x)^2) (expr)",
+     "where": "llm extraction, verified quote, Sec. Primer, Squared ReLU",
+     "blocking": true,
+     "evidence": "The most effective modification is the improvement from a ReLU activation to a squared ReLU activation in the Transformer's feed forward block."
+    },
+    {
+     "mechanism": "new op mdha_dconv (needs a new primitive: Needs a causal depthwise 1-D convolution over the time axis: kernel width 3, one learned filter per channel (per head ch)",
+     "where": "llm extraction, verified quote, Sec. Primer, MDHA",
+     "blocking": true,
+     "evidence": "Another effective modification is adding 3x1 depthwise convolutions after each of the multi-head projections for query $Q$, key $K$ and value $V$ in self-attention. These depthwise convolutions are performed over the spatial dimension of ea"
+    },
+    {
+     "mechanism": "T5/Lingvo relative attention position bias (positional scheme of the T5-codebase configurations); exact form not given in paper",
+     "where": "llm extraction, verified quote, Sec. Full Training Details",
+     "blocking": true,
+     "evidence": "T2T uses positional embeddings and subword tokenization, while T5 and Lingvo use relative attention~\\cite{Shaw2018SelfAttentionWR} and SentencePieces"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2112.11446",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFbqUQTapbdgur2oYXDv"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 45,
+     "quote_only": 2,
+     "unverified": 25,
+     "not_stated": 20
+    },
+    "unverified": [
+     {
+      "field": "configs[44M].d_ff",
+      "reasons": [
+       "2048 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "configs[117M].d_ff",
+      "reasons": [
+       "3072 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "configs[417M].d_ff",
+      "reasons": [
+       "6144 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "configs[1.4B].d_ff",
+      "reasons": [
+       "8192 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "configs[7.1B].d_ff",
+      "reasons": [
+       "16384 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "configs[Gopher 280B].d_ff",
+      "reasons": [
+       "65536 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "flavours.norm_placement",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no norm_placement",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.activation",
+      "reasons": [
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no residual",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.parallel_block",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no parallel_block",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.attention",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no attention",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.qkv_bias",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no qkv_bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.mlp_bias",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no mlp_bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.tied_embeddings",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no tied_embeddings",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.moe",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no moe",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[2].out",
+      "reasons": [
+       "49152 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[2].bias",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[3].sizes",
+      "reasons": [
+       "16384,16384,16384 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[5].bias",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[8].out",
+      "reasons": [
+       "65536 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[8].bias",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[9].approx",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no approx",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[10].bias",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[13].bias",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[13].tied_to",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no tied_to",
+       "the inheritance quote does not name the ancestor"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 1,
+    "n_block_ops": 14
+   },
+   "comparison": [
+    {
+     "field": "norm",
+     "truth": "rmsnorm",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": "rmsnorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": null,
+     "rule": null,
+     "rule_score": "correct",
+     "llm": "relative",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "new op transformerxl_relative_attention (needs a new primitive: The model uses the Transformer-XL (Dai et al. 2019) relative positional encoding scheme. This needs a causal softmax att)",
+     "where": "llm extraction, verified quote, Sec. 3.1 Models",
+     "blocking": true,
+     "evidence": "we use the relative positional encoding scheme from \\citet{dai2019transformer} rather than absolute positional encodings."
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2201.08239",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFbxtpLddaHWbEvBSwZh"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 23,
+     "quote_only": 3,
+     "unverified": 0,
+     "not_stated": 40
+    },
+    "unverified": [],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 1,
+    "n_block_ops": 15
+   },
+   "comparison": [
+    {
+     "field": "activation",
+     "truth": "geglu",
+     "rule": "geglu",
+     "rule_score": "correct",
+     "llm": "geglu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": null,
+     "rule": null,
+     "rule_score": "correct",
+     "llm": "relative",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "new op t5_relative_attention_bias (needs a new primitive: T5 relative attention adds a learned scalar bias per head, indexed by a bucketed relative distance (key position minus q)",
+     "where": "llm extraction, verified quote, Sec. 3 LaMDA pre-training",
+     "blocking": true,
+     "evidence": "relative attention as described in T5~\\cite{t5}"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2204.02311",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFc2ntGRbVWfqxehTH72"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 28,
+     "quote_only": 21,
+     "unverified": 11,
+     "not_stated": 21
+    },
+    "unverified": [
+     {
+      "field": "configs[PaLM 8B].d_ff",
+      "reasons": [
+       "16384 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "configs[PaLM 62B].d_ff",
+      "reasons": [
+       "32768 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "configs[PaLM 540B].d_ff",
+      "reasons": [
+       "73728 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "the quote does not name residual (looked for /residual|skip/)"
+      ]
+     },
+     {
+      "field": "block_ops[2].out",
+      "reasons": [
+       "4096 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[3].out",
+      "reasons": [
+       "256 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[4].out",
+      "reasons": [
+       "256 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[7].window",
+      "reasons": [
+       "0 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[9].out",
+      "reasons": [
+       "16384 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[10].out",
+      "reasons": [
+       "16384 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[17].scale",
+      "reasons": [
+       "0.015625 does not occur in its quote"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 18
+   },
+   "comparison": [
+    {
+     "field": "activation",
+     "truth": "swiglu",
+     "rule": "swiglu",
+     "rule_score": "correct",
+     "llm": "swiglu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": "rope",
+     "rule_score": "correct",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "parallel attention and FFN sublayers",
+     "where": "llm extraction, verified quote, Sec. 2 Parallel Layers",
+     "blocking": true,
+     "evidence": "We use a ``parallel'' formulation in each Transformer block~\\citep{gpt-j}, rather than the standard ``serialized'' formulation."
+    },
+    {
+     "mechanism": "grouped or multi-query attention",
+     "where": "llm extraction, verified quote, Sec. 2 Multi-Query Attention",
+     "blocking": true,
+     "evidence": "``key'' and ``value'' are projected to $[1, h]$, but ``query'' is still projected to shape $[k, h]$"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2204.06745",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFc7XMknyJfbsQvK3Y7W"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 14,
+     "quote_only": 11,
+     "unverified": 4,
+     "not_stated": 29
+    },
+    "unverified": [
+     {
+      "field": "configs[GPT-NeoX-20B].d_ff",
+      "reasons": [
+       "inherited from gpt-3, whose curated entry has no d_ff",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "the quote does not name residual (looked for /residual|skip/)"
+      ]
+     },
+     {
+      "field": "block_ops[8].window",
+      "reasons": [
+       "0 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[10].out",
+      "reasons": [
+       "inherited from gpt-3, whose curated entry has no out",
+       "the inheritance quote does not name the ancestor"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 17
+   },
+   "comparison": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": "layernorm",
+     "rule_score": "correct",
+     "llm": "layernorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "gelu",
+     "rule": "gelu",
+     "rule_score": "correct",
+     "llm": "other:gelu (exact erf vs tanh approximation not stated)",
+     "llm_score": "abstain",
+     "llm_check": "quote_only"
+    },
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "parallel attention and FFN sublayers",
+     "where": "llm extraction, verified quote, Sec. 2.1.2 Parallel Attention + FF Layers",
+     "blocking": true,
+     "evidence": "We compute the Attention and Feed-Forward (FF) layers in parallel"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2205.01068",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFcCR3PrKHpaFUYrvecx"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 38,
+     "quote_only": 2,
+     "unverified": 0,
+     "not_stated": 69
+    },
+    "unverified": [],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 12
+   },
+   "comparison": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": null,
+     "llm_score": "abstain",
+     "llm_check": "not_stated"
+    },
+    {
+     "field": "activation",
+     "truth": "relu",
+     "rule": "relu",
+     "rule_score": "correct",
+     "llm": "relu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "learned",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": null,
+     "llm_score": "abstain",
+     "llm_check": "not_stated"
+    }
+   ],
+   "mechanism_scan": []
+  },
+  {
+   "arxiv_id": "2211.05100",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFcGSaHR5Usk56SbHrB9"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 34,
+     "quote_only": 9,
+     "unverified": 0,
+     "not_stated": 46
+    },
+    "unverified": [],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 15
+   },
+   "comparison": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": "layernorm",
+     "rule_score": "correct",
+     "llm": "layernorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "gelu",
+     "rule": "gelu",
+     "rule_score": "correct",
+     "llm": "gelu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "alibi",
+     "rule": "alibi",
+     "rule_score": "correct",
+     "llm": "alibi",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "ALiBi attention bias: linear distance penalty added to attention scores with per-head slopes 2^(-8i/n); the IR attention op has no attribute for it (flavour positional=alibi)",
+     "where": "llm extraction, verified quote, Figure fig:architecture_diagram",
+     "blocking": true,
+     "evidence": "The $k_{head}$ slope parameters for ALIBI are taken as $2^\\frac{-8i}{n}$ with $n$ the number of heads and $i \\in {1, 2, ..., n}$."
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2211.09085",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFcM5Bo8DMJWqShpe3wt"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 34,
+     "quote_only": 11,
+     "unverified": 0,
+     "not_stated": 25
+    },
+    "unverified": [],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 11
+   },
+   "comparison": [
+    {
+     "field": "activation",
+     "truth": "gelu",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": "gelu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "learned",
+     "rule": "learned",
+     "rule_score": "correct",
+     "llm": "learned",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": []
+  },
+  {
+   "arxiv_id": "2302.13971",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFcShVVjWjFE5gXJijN3"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 20,
+     "quote_only": 4,
+     "unverified": 3,
+     "not_stated": 63
+    },
+    "unverified": [
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "inherited from transformer, whose curated entry has no residual"
+      ]
+     },
+     {
+      "field": "flavours.parallel_block",
+      "reasons": [
+       "inherited from transformer, whose curated entry has no parallel_block"
+      ]
+     },
+     {
+      "field": "flavours.moe",
+      "reasons": [
+       "inherited from transformer, whose curated entry has no moe"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 19
+   },
+   "comparison": [
+    {
+     "field": "norm",
+     "truth": "rmsnorm",
+     "rule": "rmsnorm",
+     "rule_score": "correct",
+     "llm": "rmsnorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "swiglu",
+     "rule": "swiglu",
+     "rule_score": "correct",
+     "llm": "swiglu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": "rope",
+     "rule_score": "correct",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": []
+  },
+  {
+   "arxiv_id": "2304.01373",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFcXCRPnLKdvNfd4zm3g"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 38,
+     "quote_only": 9,
+     "unverified": 11,
+     "not_stated": 54
+    },
+    "unverified": [
+     {
+      "field": "configs[70M].d_ff",
+      "reasons": [
+       "inherited from gpt-3, whose curated entry has no d_ff",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[160M].d_ff",
+      "reasons": [
+       "inherited from gpt-3, whose curated entry has no d_ff",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[410M].d_ff",
+      "reasons": [
+       "inherited from gpt-3, whose curated entry has no d_ff",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[1.0B].d_ff",
+      "reasons": [
+       "inherited from gpt-3, whose curated entry has no d_ff",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[1.4B].d_ff",
+      "reasons": [
+       "inherited from gpt-3, whose curated entry has no d_ff",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[2.8B].d_ff",
+      "reasons": [
+       "inherited from gpt-3, whose curated entry has no d_ff",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[6.9B].d_ff",
+      "reasons": [
+       "inherited from gpt-3, whose curated entry has no d_ff",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[12B].d_ff",
+      "reasons": [
+       "inherited from gpt-3, whose curated entry has no d_ff",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.norm_placement",
+      "reasons": [
+       "inherited from gpt-3, whose curated entry has no norm_placement",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[7].window",
+      "reasons": [
+       "0 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[16].tied_to",
+      "reasons": [
+       "status stated with an empty value"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 17
+   },
+   "comparison": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": "layernorm",
+     "rule_score": "correct",
+     "llm": "layernorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": "rope",
+     "rule_score": "correct",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "parallel attention and FFN sublayers",
+     "where": "llm extraction, verified quote, Sec. 2.3 Architecture",
+     "blocking": true,
+     "evidence": "We use the parallelized attention and feedforward technique and model initialization methods introduced by \\citet{gpt-j}"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2304.03208",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFZtC6Y354HxXkNSpEHM"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 51,
+     "quote_only": 18,
+     "unverified": 4,
+     "not_stated": 29
+    },
+    "unverified": [
+     {
+      "field": "flavours.norm_placement",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no norm_placement"
+      ]
+     },
+     {
+      "field": "block_ops[1].max_positions",
+      "reasons": [
+       "2048 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[6].scale",
+      "reasons": [
+       "1/sqrt(head_dim) does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[6].window",
+      "reasons": [
+       "0 does not occur in its quote"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 16
+   },
+   "comparison": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": "layernorm",
+     "rule_score": "correct",
+     "llm": "layernorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "gelu",
+     "rule": "gelu",
+     "rule_score": "correct",
+     "llm": "gelu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "learned",
+     "rule": "learned",
+     "rule_score": "correct",
+     "llm": "learned",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": []
+  },
+  {
+   "arxiv_id": "2307.09288",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFccsY1RMp153eaveqT2"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 15,
+     "quote_only": 4,
+     "unverified": 14,
+     "not_stated": 49
+    },
+    "unverified": [
+     {
+      "field": "configs[7B].d_model",
+      "reasons": [
+       "inherited from llama, whose curated entry has no d_model",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[7B].n_layers",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_layers",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[7B].n_heads",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[7B].n_kv_heads",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_kv_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[7B].head_dim",
+      "reasons": [
+       "inherited from llama, whose curated entry has no head_dim",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[13B].d_model",
+      "reasons": [
+       "inherited from llama, whose curated entry has no d_model",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[13B].n_layers",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_layers",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[13B].n_heads",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[13B].n_kv_heads",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_kv_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[13B].head_dim",
+      "reasons": [
+       "inherited from llama, whose curated entry has no head_dim",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "the quote does not name residual (looked for /residual|skip/)"
+      ]
+     },
+     {
+      "field": "block_ops[7].heads",
+      "reasons": [
+       "inherited from llama, whose curated entry has no heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[7].kv_heads",
+      "reasons": [
+       "inherited from llama, whose curated entry has no kv_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[7].head_dim",
+      "reasons": [
+       "inherited from llama, whose curated entry has no head_dim",
+       "the inheritance quote does not name the ancestor"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 19
+   },
+   "comparison": [
+    {
+     "field": "norm",
+     "truth": "rmsnorm",
+     "rule": "rmsnorm",
+     "rule_score": "correct",
+     "llm": "rmsnorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "swiglu",
+     "rule": "swiglu",
+     "rule_score": "correct",
+     "llm": "swiglu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": "rope",
+     "rule_score": "correct",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": []
+  },
+  {
+   "arxiv_id": "2308.12950",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFci2tDsQooy8R2SgDUW"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 8,
+     "quote_only": 4,
+     "unverified": 57,
+     "not_stated": 8
+    },
+    "unverified": [
+     {
+      "field": "configs[7B].d_model",
+      "reasons": [
+       "inherited from llama, whose curated entry has no d_model",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[7B].n_layers",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_layers",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[7B].n_heads",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[7B].n_kv_heads",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_kv_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[7B].head_dim",
+      "reasons": [
+       "inherited from llama, whose curated entry has no head_dim",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[7B].d_ff",
+      "reasons": [
+       "inherited from llama, whose curated entry has no d_ff",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[13B].d_model",
+      "reasons": [
+       "inherited from llama, whose curated entry has no d_model",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[13B].n_layers",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_layers",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[13B].n_heads",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[13B].n_kv_heads",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_kv_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[13B].head_dim",
+      "reasons": [
+       "inherited from llama, whose curated entry has no head_dim",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[13B].d_ff",
+      "reasons": [
+       "inherited from llama, whose curated entry has no d_ff",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[34B].d_model",
+      "reasons": [
+       "inherited from llama, whose curated entry has no d_model",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[34B].n_layers",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_layers",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[34B].n_heads",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[34B].n_kv_heads",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_kv_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[34B].head_dim",
+      "reasons": [
+       "inherited from llama, whose curated entry has no head_dim",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[34B].d_ff",
+      "reasons": [
+       "inherited from llama, whose curated entry has no d_ff",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[34B].vocab_size",
+      "reasons": [
+       "inherited from llama, whose curated entry has no vocab_size"
+      ]
+     },
+     {
+      "field": "configs[70B].d_model",
+      "reasons": [
+       "inherited from llama, whose curated entry has no d_model",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[70B].n_layers",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_layers",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[70B].n_heads",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[70B].n_kv_heads",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_kv_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[70B].head_dim",
+      "reasons": [
+       "inherited from llama, whose curated entry has no head_dim",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[70B].d_ff",
+      "reasons": [
+       "inherited from llama, whose curated entry has no d_ff",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.norm",
+      "reasons": [
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.norm_placement",
+      "reasons": [
+       "inherited from llama, whose curated entry has no norm_placement",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.norm_eps",
+      "reasons": [
+       "inherited from llama, whose curated entry has no norm_eps",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.activation",
+      "reasons": [
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.rope_pairing",
+      "reasons": [
+       "the quote does not name interleaved (looked for /interleav|adjacent|pair/)"
+      ]
+     },
+     {
+      "field": "flavours.rope_fraction",
+      "reasons": [
+       "inherited from llama, whose curated entry has no rope_fraction",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "inherited from llama, whose curated entry has no residual",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.parallel_block",
+      "reasons": [
+       "inherited from llama, whose curated entry has no parallel_block",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.attention",
+      "reasons": [
+       "inherited from llama, whose curated entry has no attention",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.qkv_bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no qkv_bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.mlp_bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no mlp_bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.tied_embeddings",
+      "reasons": [
+       "inherited from llama, whose curated entry has no tied_embeddings",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.moe",
+      "reasons": [
+       "inherited from llama, whose curated entry has no moe",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[1].eps",
+      "reasons": [
+       "inherited from llama, whose curated entry has no eps",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[2].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[3].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[4].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[5].rope_heads",
+      "reasons": [
+       "inherited from llama, whose curated entry has no rope_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[6].rope_heads",
+      "reasons": [
+       "inherited from llama, whose curated entry has no rope_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[7].heads",
+      "reasons": [
+       "inherited from llama, whose curated entry has no heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[7].kv_heads",
+      "reasons": [
+       "inherited from llama, whose curated entry has no kv_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[7].head_dim",
+      "reasons": [
+       "inherited from llama, whose curated entry has no head_dim",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[7].window",
+      "reasons": [
+       "inherited from llama, whose curated entry has no window",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[8].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[10].eps",
+      "reasons": [
+       "inherited from llama, whose curated entry has no eps",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[11].out",
+      "reasons": [
+       "inherited from llama, whose curated entry has no out",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[11].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[12].out",
+      "reasons": [
+       "inherited from llama, whose curated entry has no out",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[12].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[15].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[17].eps",
+      "reasons": [
+       "inherited from llama, whose curated entry has no eps",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[18].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 19
+   },
+   "comparison": [
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": "rope",
+     "rule_score": "correct",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "Infilling (FIM) tokenizer extension: four special tokens added to the Llama 2 tokenizer for the 7B/13B/70B models (training format, not a layer change)",
+     "where": "llm extraction, verified quote, Sec. 2.3 Infilling",
+     "blocking": true,
+     "evidence": "We extend \\llamavtwo's tokenizer with four special tokens that mark the beginning of the prefix, the middle part or the suffix, and the end of the infilling span."
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2309.16609",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFcogSpBUqNCg2kokJzk"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 16,
+     "quote_only": 13,
+     "unverified": 2,
+     "not_stated": 45
+    },
+    "unverified": [
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "the quote does not name residual (looked for /residual|skip/)"
+      ]
+     },
+     {
+      "field": "block_ops[17].tied_to",
+      "reasons": [
+       "status stated with an empty value"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 18
+   },
+   "comparison": [
+    {
+     "field": "norm",
+     "truth": "rmsnorm",
+     "rule": "rmsnorm",
+     "rule_score": "correct",
+     "llm": "rmsnorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "swiglu",
+     "rule": "gated-glu",
+     "rule_score": "correct",
+     "llm": "swiglu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": "rope",
+     "rule_score": "correct",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "Inference-only context extension via dynamic NTK-aware interpolation (adjusts RoPE base by chunks)",
+     "where": "llm extraction, verified quote, Sec. Context Length Extension",
+     "blocking": true,
+     "evidence": "To further improve performance, we have also implemented a trivial extension called dynamic NTK-aware interpolation, which is later formally discussed in~\\citep{yarn}."
+    },
+    {
+     "mechanism": "Inference-only LogN-Scaling of attention logits by context/training length ratio",
+     "where": "llm extraction, verified quote, Sec. Context Length Extension",
+     "blocking": true,
+     "evidence": "LogN-Scaling rescales the dot product of the query and value by a factor that depends on the ratio of the context length to the training length"
+    },
+    {
+     "mechanism": "Inference-only layer-wise window attention (shorter windows in lower layers), sizes not given",
+     "where": "llm extraction, verified quote, Sec. Context Length Extension",
+     "blocking": true,
+     "evidence": "we assign different window sizes to each layer, using shorter windows for lower layers and longer windows for higher layers."
+    },
+    {
+     "mechanism": "RoPE inverse frequencies kept in FP32",
+     "where": "llm extraction, verified quote, Sec. Architecture",
+     "blocking": true,
+     "evidence": "we have opted to use FP32 precision for the inverse frequency matrix, rather than BF16 or FP16"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2311.16867",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFctAPhfDRyN9hAVxsWd"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 30,
+     "quote_only": 17,
+     "unverified": 1,
+     "not_stated": 30
+    },
+    "unverified": [
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "the quote does not name residual (looked for /residual|skip/)"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 15
+   },
+   "comparison": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": "layernorm",
+     "rule_score": "correct",
+     "llm": "layernorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "gelu",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": "gelu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "parallel attention and FFN sublayers",
+     "where": "llm extraction, verified quote, Sec. Small tweaks help scalability (Recipe decision)",
+     "blocking": true,
+     "evidence": "We adopt parallel attention and MLP, and remove biases from linear layers."
+    },
+    {
+     "mechanism": "grouped or multi-query attention",
+     "where": "llm extraction, verified quote, Table tab:hyperparams",
+     "blocking": true,
+     "evidence": "$n_\\text{kv}$ & 1 & 8 & 8"
+    },
+    {
+     "mechanism": "Tree-structured attention masking for conversation data (and inter-document masking), with positions given by tree depth, used during pretraining",
+     "where": "llm extraction, verified quote, Sec. micro_data (Conversation trees and attention masking)",
+     "blocking": true,
+     "evidence": "Instead, we find that we can use the attention mask to encode a tree-like structure, allowing later comments to only attend to comments from their trajectory, ignoring \"side\" comments."
+    },
+    {
+     "mechanism": "Falcon-40B/180B use two separate layer norms (one for attention, one for MLP) in the parallel block instead of the single shared norm of Falcon-7B",
+     "where": "llm extraction, verified quote, Sec. Architectural nitpicks (Layer norms)",
+     "blocking": true,
+     "evidence": "This leads us to stay close to the vanilla architecture, and to use two separate layer norms"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2401.02385",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFcyeNqEqGagM15UNVGr"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 20,
+     "quote_only": 6,
+     "unverified": 19,
+     "not_stated": 21
+    },
+    "unverified": [
+     {
+      "field": "flavours.rope_theta",
+      "reasons": [
+       "inherited from llama, whose curated entry has no rope_theta"
+      ]
+     },
+     {
+      "field": "flavours.rope_fraction",
+      "reasons": [
+       "inherited from llama, whose curated entry has no rope_fraction"
+      ]
+     },
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "inherited from llama, whose curated entry has no residual"
+      ]
+     },
+     {
+      "field": "flavours.parallel_block",
+      "reasons": [
+       "inherited from llama, whose curated entry has no parallel_block"
+      ]
+     },
+     {
+      "field": "flavours.qkv_bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no qkv_bias"
+      ]
+     },
+     {
+      "field": "flavours.mlp_bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no mlp_bias"
+      ]
+     },
+     {
+      "field": "flavours.tied_embeddings",
+      "reasons": [
+       "inherited from llama, whose curated entry has no tied_embeddings"
+      ]
+     },
+     {
+      "field": "flavours.moe",
+      "reasons": [
+       "inherited from llama, whose curated entry has no moe"
+      ]
+     },
+     {
+      "field": "block_ops[2].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[3].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[4].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[5].theta",
+      "reasons": [
+       "inherited from llama, whose curated entry has no theta"
+      ]
+     },
+     {
+      "field": "block_ops[6].theta",
+      "reasons": [
+       "inherited from llama, whose curated entry has no theta"
+      ]
+     },
+     {
+      "field": "block_ops[8].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[11].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[12].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[15].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[18].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[18].tied_to",
+      "reasons": [
+       "status inherited with an empty value"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 19
+   },
+   "comparison": [
+    {
+     "field": "norm",
+     "truth": "rmsnorm",
+     "rule": "rmsnorm",
+     "rule_score": "correct",
+     "llm": "rmsnorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "swiglu",
+     "rule": "swiglu",
+     "rule_score": "correct",
+     "llm": "swiglu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": "rope",
+     "rule_score": "correct",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "grouped or multi-query attention",
+     "where": "llm extraction, verified quote, Sec. 2.2 Grouped-query Attention",
+     "blocking": true,
+     "evidence": "We have 32 heads for query attention and use 4 groups of key-value heads."
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2401.02954",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFd3njjZ29YqWviYFqj4"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 25,
+     "quote_only": 3,
+     "unverified": 21,
+     "not_stated": 25
+    },
+    "unverified": [
+     {
+      "field": "family",
+      "reasons": [
+       "inherited from llama, whose curated entry has no family"
+      ]
+     },
+     {
+      "field": "flavours.rope_theta",
+      "reasons": [
+       "inherited from llama, whose curated entry has no rope_theta"
+      ]
+     },
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "inherited from llama, whose curated entry has no residual"
+      ]
+     },
+     {
+      "field": "flavours.parallel_block",
+      "reasons": [
+       "inherited from llama, whose curated entry has no parallel_block"
+      ]
+     },
+     {
+      "field": "flavours.attention",
+      "reasons": [
+       "inherited from llama, whose curated entry has no attention"
+      ]
+     },
+     {
+      "field": "flavours.qkv_bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no qkv_bias"
+      ]
+     },
+     {
+      "field": "flavours.mlp_bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no mlp_bias"
+      ]
+     },
+     {
+      "field": "flavours.tied_embeddings",
+      "reasons": [
+       "inherited from llama, whose curated entry has no tied_embeddings"
+      ]
+     },
+     {
+      "field": "flavours.moe",
+      "reasons": [
+       "inherited from llama, whose curated entry has no moe"
+      ]
+     },
+     {
+      "field": "block_ops[2].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[3].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[4].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[5].theta",
+      "reasons": [
+       "inherited from llama, whose curated entry has no theta"
+      ]
+     },
+     {
+      "field": "block_ops[6].theta",
+      "reasons": [
+       "inherited from llama, whose curated entry has no theta"
+      ]
+     },
+     {
+      "field": "block_ops[7].causal",
+      "reasons": [
+       "inherited from llama, whose curated entry has no causal"
+      ]
+     },
+     {
+      "field": "block_ops[7].window",
+      "reasons": [
+       "inherited from llama, whose curated entry has no window"
+      ]
+     },
+     {
+      "field": "block_ops[8].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[11].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[12].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[15].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[18].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 19
+   },
+   "comparison": [
+    {
+     "field": "norm",
+     "truth": "rmsnorm",
+     "rule": "rmsnorm",
+     "rule_score": "correct",
+     "llm": "rmsnorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "swiglu",
+     "rule": "swiglu",
+     "rule_score": "correct",
+     "llm": "swiglu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": []
+  },
+  {
+   "arxiv_id": "2401.04088",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFd7wt1PaJUfc4WL7Ap7"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 23,
+     "quote_only": 6,
+     "unverified": 6,
+     "not_stated": 24
+    },
+    "unverified": [
+     {
+      "field": "flavours.norm",
+      "reasons": [
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.norm_placement",
+      "reasons": [
+       "inherited from mistral, whose curated entry has no norm_placement",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.positional",
+      "reasons": [
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "inherited from mistral, whose curated entry has no residual",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[5].rope_heads",
+      "reasons": [
+       "inherited from mistral, whose curated entry has no rope_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[6].window",
+      "reasons": [
+       "0 does not occur in its quote"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 14
+   },
+   "comparison": [
+    {
+     "field": "activation",
+     "truth": "swiglu",
+     "rule": "swiglu",
+     "rule_score": "correct",
+     "llm": "swiglu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "mixture of experts",
+     "where": "llm extraction, verified quote, Sec. 2.1 Sparse Mixture of Experts",
+     "blocking": true,
+     "evidence": "In a Transformer model, the MoE layer is applied independently per token and replaces the feed-forward (FFN) sub-block of the transformer block."
+    },
+    {
+     "mechanism": "grouped or multi-query attention",
+     "where": "llm extraction, verified quote, Table 1 (tab:param)",
+     "blocking": true,
+     "evidence": "\\texttt{n\\_kv\\_heads} & $8$"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2402.00838",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFZoqka6hezrTs8BF3Ty"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 20,
+     "quote_only": 18,
+     "unverified": 2,
+     "not_stated": 34
+    },
+    "unverified": [
+     {
+      "field": "configs[7B].n_kv_heads",
+      "reasons": [
+       "32 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[7].window",
+      "reasons": [
+       "0 does not occur in its quote"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 18
+   },
+   "comparison": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": "layernorm",
+     "rule_score": "correct",
+     "llm": "layernorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "swiglu",
+     "rule": "swiglu",
+     "rule_score": "correct",
+     "llm": "swiglu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": "rope",
+     "rule_score": "correct",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": []
+  },
+  {
+   "arxiv_id": "2402.14905",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFdBibfVnRhwDAsdMira"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 37,
+     "quote_only": 4,
+     "unverified": 0,
+     "not_stated": 45
+    },
+    "unverified": [],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 14
+   },
+   "comparison": [
+    {
+     "field": "activation",
+     "truth": "swiglu",
+     "rule": "swiglu",
+     "rule_score": "correct",
+     "llm": "swiglu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "grouped or multi-query attention",
+     "where": "llm extraction, verified quote, Table tab:larger_architecture",
+     "blocking": true,
+     "evidence": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M"
+    },
+    {
+     "mechanism": "MobileLLM-LS variant: immediate block-wise layer sharing, each block's weights computed twice in a row (2x30 layers for 125M)",
+     "where": "llm extraction, verified quote, Appendix: Layer-Sharing Number Ablation",
+     "blocking": true,
+     "evidence": "Consequently, in our experiments, we adopt a configuration where every two blocks share weights, effectively doubling the total number of layers."
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2403.04652",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFdG342tYpRYk7U1JknB"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 19,
+     "quote_only": 6,
+     "unverified": 3,
+     "not_stated": 40
+    },
+    "unverified": [
+     {
+      "field": "flavours.norm_placement",
+      "reasons": [
+       "inherited from llama, whose curated entry has no norm_placement"
+      ]
+     },
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "inherited from llama, whose curated entry has no residual"
+      ]
+     },
+     {
+      "field": "block_ops[7].window",
+      "reasons": [
+       "0 does not occur in its quote"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 19
+   },
+   "comparison": [
+    {
+     "field": "activation",
+     "truth": "swiglu",
+     "rule": "swiglu",
+     "rule_score": "correct",
+     "llm": "swiglu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": "rope",
+     "rule_score": "correct",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "grouped or multi-query attention",
+     "where": "llm extraction, verified quote, Table tab:model_config",
+     "blocking": true,
+     "evidence": "6B& 4096& 32& 4& 32& 4096&"
+    },
+    {
+     "mechanism": "Yi-VL extension: CLIP ViT-H/14 vision encoder plus a two-layer MLP projection with layer norms feeding the LLM (separate variant, not the base model)",
+     "where": "llm extraction, verified quote, Sec. Vision-Language",
+     "blocking": true,
+     "evidence": "The Vision Transformer (ViT), used for image encoding, is initialized with CLIP ViT-H/14 model~\\citep{ilharco_gabriel_2021_5143773}. A Projection Module, designed to align image features with text feature spcae, consists of a two-layer Mult"
+    },
+    {
+     "mechanism": "Yi-9B depth upscaling: Yi-6B's 32 layers expanded to 48 by duplicating middle layers 12-28, then continued pretraining (separate variant)",
+     "where": "llm extraction, verified quote, Sec. Depth Upscaling",
+     "blocking": true,
+     "evidence": "our goal is to upscale our Yi-6B base model, which has 32 layers, to a 9B model named the Yi-9B base model, featuring 48 layers, by duplicating the original 16 middle layers 12-28."
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2403.08295",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFdKqNRYxRq3MHy8JfC4"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 27,
+     "quote_only": 7,
+     "unverified": 5,
+     "not_stated": 35
+    },
+    "unverified": [
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "inherited from transformer, whose curated entry has no residual"
+      ]
+     },
+     {
+      "field": "flavours.parallel_block",
+      "reasons": [
+       "inherited from transformer, whose curated entry has no parallel_block"
+      ]
+     },
+     {
+      "field": "flavours.attention",
+      "reasons": [
+       "inherited from transformer, whose curated entry has no attention"
+      ]
+     },
+     {
+      "field": "flavours.moe",
+      "reasons": [
+       "inherited from transformer, whose curated entry has no moe"
+      ]
+     },
+     {
+      "field": "block_ops[7].causal",
+      "reasons": [
+       "inherited from transformer, whose curated entry has no causal"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 18
+   },
+   "comparison": [
+    {
+     "field": "norm",
+     "truth": "rmsnorm",
+     "rule": "rmsnorm",
+     "rule_score": "correct",
+     "llm": "rmsnorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "geglu",
+     "rule": "geglu",
+     "rule_score": "correct",
+     "llm": "geglu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": "rope",
+     "rule_score": "correct",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "grouped or multi-query attention",
+     "where": "llm extraction, verified quote, Table tab:model_params",
+     "blocking": true,
+     "evidence": "Num KV heads & 1 & 16"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2403.17297",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFdPy7NcxDZLSEnvqzgp"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 19,
+     "quote_only": 1,
+     "unverified": 15,
+     "not_stated": 36
+    },
+    "unverified": [
+     {
+      "field": "family",
+      "reasons": [
+       "inherited from llama, whose curated entry has no family"
+      ]
+     },
+     {
+      "field": "flavours.norm_placement",
+      "reasons": [
+       "inherited from llama, whose curated entry has no norm_placement"
+      ]
+     },
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "inherited from llama, whose curated entry has no residual"
+      ]
+     },
+     {
+      "field": "flavours.parallel_block",
+      "reasons": [
+       "inherited from llama, whose curated entry has no parallel_block"
+      ]
+     },
+     {
+      "field": "flavours.qkv_bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no qkv_bias"
+      ]
+     },
+     {
+      "field": "flavours.mlp_bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no mlp_bias"
+      ]
+     },
+     {
+      "field": "flavours.tied_embeddings",
+      "reasons": [
+       "inherited from llama, whose curated entry has no tied_embeddings"
+      ]
+     },
+     {
+      "field": "flavours.moe",
+      "reasons": [
+       "inherited from llama, whose curated entry has no moe"
+      ]
+     },
+     {
+      "field": "block_ops[2].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[6].causal",
+      "reasons": [
+       "inherited from llama, whose curated entry has no causal"
+      ]
+     },
+     {
+      "field": "block_ops[7].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[10].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[11].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[14].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[17].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 18
+   },
+   "comparison": [
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": "rope",
+     "rule_score": "correct",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "Fused Wqkv weight is stored with a per-head interleaved layout of Wk, Wq, Wv rather than three stacked blocks; this affects weight loading and the split order, not the computation.",
+     "where": "llm extraction, verified quote, Sec. 2.2 Model Structure",
+     "blocking": true,
+     "evidence": "Rather than stacking the $W_k$, $W_q$, and $W_v$ matrices in a straightforward manner, we adopt an interleaving approach for each head's $W_k$, $W_q$, and $W_v$"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2405.04434",
+   "cost_usd": 0.599016,
+   "request_ids": [
+    "req_011CgFe8GkSrFFrXWZUUPVDZ"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 34,
+     "quote_only": 10,
+     "unverified": 5,
+     "not_stated": 44
+    },
+    "unverified": [
+     {
+      "field": "flavours.norm",
+      "reasons": [
+       "inherited, but the ancestor is not in fetch.ANCESTORS (the curated table)"
+      ]
+     },
+     {
+      "field": "flavours.norm_placement",
+      "reasons": [
+       "inherited, but the ancestor is not in fetch.ANCESTORS (the curated table)"
+      ]
+     },
+     {
+      "field": "flavours.activation",
+      "reasons": [
+       "inherited, but the ancestor is not in fetch.ANCESTORS (the curated table)"
+      ]
+     },
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "the quote does not name residual (looked for /residual|skip/)"
+      ]
+     },
+     {
+      "field": "block_ops[17].activation",
+      "reasons": [
+       "inherited, but the ancestor is not in fetch.ANCESTORS (the curated table)"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 1,
+    "n_block_ops": 33
+   },
+   "comparison": [
+    {
+     "field": "norm",
+     "truth": "rmsnorm",
+     "rule": "rmsnorm",
+     "rule_score": "correct",
+     "llm": null,
+     "llm_score": "abstain",
+     "llm_check": "unverified"
+    },
+    {
+     "field": "activation",
+     "truth": "swiglu",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": null,
+     "llm_score": "abstain",
+     "llm_check": "unverified"
+    },
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": "rope",
+     "rule_score": "correct",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "mixture of experts",
+     "where": "llm extraction, verified quote, Sec. Hyper-Parameters",
+     "blocking": true,
+     "evidence": "Following \\citet{deepseekmoe}, we substitute all FFNs except for the first layer with MoE layers."
+    },
+    {
+     "mechanism": "new op mla_attention (needs a new primitive: Causal softmax attention whose per-head query is concat(q^C_i, q^R_i) and per-head key is concat(k^C_i, k^R) with k^R sh)",
+     "where": "llm extraction, verified quote, Sec. Decoupled Rotary Position Embedding",
+     "blocking": true,
+     "evidence": "\\mathbf{k}_{t, i} &= [\\mathbf{k}_{t, i}^{C}; \\mathbf{k}_{t}^{R}],"
+    },
+    {
+     "mechanism": "First layer uses a dense FFN instead of MoE (its intermediate width is not stated)",
+     "where": "llm extraction, verified quote, Sec. Hyper-Parameters",
+     "blocking": true,
+     "evidence": "Following \\citet{deepseekmoe}, we substitute all FFNs except for the first layer with MoE layers."
+    },
+    {
+     "mechanism": "Additional scaling factors at width bottlenecks (latent vectors, routed-expert intermediate states); values not stated",
+     "where": "llm extraction, verified quote, Sec. Hyper-Parameters",
+     "blocking": true,
+     "evidence": "Therefore, in practice, we employ additional RMS Norm layers after the compressed latent vectors, and multiply additional scaling factors at the width bottlenecks (i.e., the compressed latent vectors and the intermediate hidden states of ro"
+    },
+    {
+     "mechanism": "Device-limited routing: top-K restricted to experts on at most M=3 devices",
+     "where": "llm extraction, verified quote, Sec. Hyper-Parameters",
+     "blocking": true,
+     "evidence": "As for the device-limited routing, each token will be sent to at most 3 devices ($M=3$)."
+    },
+    {
+     "mechanism": "Device-level token dropping during training (capacity factor 1.0); no dropping at evaluation",
+     "where": "llm extraction, verified quote, Sec. Hyper-Parameters",
+     "blocking": true,
+     "evidence": "We employ the token-dropping strategy during training for acceleration, but do not drop any tokens for evaluation."
+    },
+    {
+     "mechanism": "YaRN context extension on the decoupled key (s=40, alpha=1, beta=32) with a modified attention length-scaling factor",
+     "where": "llm extraction, verified quote, Sec. Long Context Extension",
+     "blocking": true,
+     "evidence": "For YaRN, we set the scale $s$ to 40, $\\alpha$ to 1, $\\beta$ to 32, and the target maximum context length to 160K."
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2407.10671",
+   "cost_usd": 0.392676,
+   "request_ids": [
+    "req_011CgFeHhYh2Qfo1WS7eyMTB"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 56,
+     "quote_only": 11,
+     "unverified": 0,
+     "not_stated": 27
+    },
+    "unverified": [],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 18
+   },
+   "comparison": [
+    {
+     "field": "norm",
+     "truth": "rmsnorm",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": "rmsnorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "swiglu",
+     "rule": "swiglu",
+     "rule_score": "correct",
+     "llm": "swiglu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": "rope",
+     "rule_score": "correct",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "grouped or multi-query attention",
+     "where": "llm extraction, verified quote, Table tab:to_sota",
+     "blocking": true,
+     "evidence": "\\# KV Heads & 2 & 2 & 4 & 8 & 4 \\\\"
+    },
+    {
+     "mechanism": "Dual Chunk Attention for long sequences (chunked attention with relative positions within and across chunks), used beyond the trained context",
+     "where": "llm extraction, verified quote, Sec. Dual Chunk Attention with YARN",
+     "blocking": true,
+     "evidence": "To expand the context window of Qwen2, we implement Dual Chunk Attention (DCA, \\citealp{chunkllama}), which segments long sequences into chunks of manageable lengths."
+    },
+    {
+     "mechanism": "YARN rescaling of attention for length extrapolation (applied for contexts over 32K)",
+     "where": "llm extraction, verified quote, Sec. Dual Chunk Attention with YARN",
+     "blocking": true,
+     "evidence": "Moreover, we also employ YARN~\\citep{yarn} to rescale the attention weights for better length extrapolation."
+    },
+    {
+     "mechanism": "MoE variant Qwen2-57B-A14B: fine-grained experts with 64 routed experts, 8 activated per token, plus 8 shared experts; softmax gate over all experts, then top-k weighted sum",
+     "where": "llm extraction, verified quote, Table tab:to_sota",
+     "blocking": true,
+     "evidence": "\\# Routed Experts & - & -&- & -& 64\\\\"
+    },
+    {
+     "mechanism": "MoE shared experts alongside routed experts (not representable by moe_ffn)",
+     "where": "llm extraction, verified quote, Sec. Expert Routing",
+     "blocking": true,
+     "evidence": "Recently, there has been a notable trend towards integrating both shared and routing-specific experts within MoE layers \\citep{deepspeedmoe, deepseekmoe}."
+    },
+    {
+     "mechanism": "Embedding matrix padded beyond the vocabulary size for distributed training",
+     "where": "llm extraction, verified quote, Sec. Tokenizer",
+     "blocking": true,
+     "evidence": "It should be noted that, owing to considerations in distributed training, the effective size for the embeddings is larger."
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2408.00118",
+   "cost_usd": 0.0,
+   "request_ids": [
+    "req_011CgFdigayoz5xYFwDZNBTG"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 40,
+     "quote_only": 7,
+     "unverified": 1,
+     "not_stated": 37
+    },
+    "unverified": [
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "inherited from transformer, whose curated entry has no residual"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 2,
+    "n_block_ops": 21
+   },
+   "comparison": [
+    {
+     "field": "norm",
+     "truth": "rmsnorm",
+     "rule": "rmsnorm",
+     "rule_score": "correct",
+     "llm": "rmsnorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "geglu",
+     "rule": "geglu",
+     "rule_score": "correct",
+     "llm": "geglu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "grouped or multi-query attention",
+     "where": "llm extraction, verified quote, Table 1 (tab:model_params)",
+     "blocking": true,
+     "evidence": "Num KV heads & 4 & 8 & 16"
+    },
+    {
+     "mechanism": "new op final_logit_softcap = (30*tanh((x/30))) (expr)",
+     "where": "llm extraction, verified quote, Sec. 2 Model Architecture",
+     "blocking": true,
+     "evidence": "$$\\text{logits} \\leftarrow \\text{soft\\_cap} * \\tanh(\\text{logits} / \\text{soft\\_cap}).$$"
+    },
+    {
+     "mechanism": "new op softcapped_attention (needs a new primitive: Attention needs the pre-softmax score matrix [heads, T, T] transformed as 50*tanh(s/50) before causal (optionally slidin)",
+     "where": "llm extraction, verified quote, Sec. 2 Model Architecture",
+     "blocking": true,
+     "evidence": "We cap logits~\\citep{bello2016combinatorial} in each attention layer and the final layer such that the value of the logits stays between $-\\text{soft\\_cap}$ and $+\\text{soft\\_cap}$."
+    },
+    {
+     "mechanism": "Layer-wise alternation: local sliding-window attention (window 4096) and global attention (span 8192) alternate every other layer; a single repeated block cannot express this.",
+     "where": "llm extraction, verified quote, Sec. 2 Model Architecture",
+     "blocking": true,
+     "evidence": "We alternate between a local sliding window attention~\\citep{slidingwindow, beltagy2020longformer} and global attention~\\citep{globalattention} in every other layer."
+    }
+   ]
+  }
+ ],
+ "failed": [],
+ "tally": {
+  "rule": {
+   "correct": 72,
+   "abstain": 20
+  },
+  "llm": {
+   "correct": 80,
+   "abstain": 11,
+   "WRONG": 1
+  }
+ }
+}

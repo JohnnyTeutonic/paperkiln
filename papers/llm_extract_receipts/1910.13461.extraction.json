@@ -1,0 +1,1739 @@
+{
+ "arxiv_id": "1910.13461",
+ "title": "BART: Denoising Sequence-to-Sequence Pre-training for Natural Language Generation, Translation, and Comprehension",
+ "fields": {
+  "d_model": {
+   "value": 768,
+   "evidence": "We compare a range of options using base-size models (6 encoder and 6 decoder layers, with a hidden size of 768) [Sec. 4 Comparing Pre-training Objectives]",
+   "verdict": "used"
+  },
+  "n_layers": {
+   "value": 6,
+   "evidence": "For our base model, we use 6 layers in the encoder and decoder [Sec. 2.1 Architecture]",
+   "verdict": "used"
+  },
+  "norm": {
+   "value": "layernorm",
+   "evidence": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017} [Sec. 2.1 Architecture]",
+   "verdict": "inherited"
+  },
+  "activation": {
+   "value": "gelu",
+   "evidence": "we modify ReLU activation functions to GeLUs \\citep{gelu} [Sec. 2.1 Architecture]",
+   "verdict": "used"
+  },
+  "positional": {
+   "value": "learned",
+   "evidence": "we freeze most of BART parameters and only update the randomly initialized source encoder, the BART positional embeddings, and the self-attention input projection matrix of BART's encoder first layer. [Sec. 3.4 Machine Translation]",
+   "verdict": "unverified",
+   "reasons": [
+    "the quote does not name learned (looked for /learn|trainable|absolute/)"
+   ]
+  },
+  "residual": {
+   "value": "residual",
+   "evidence": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017} [Sec. 2.1 Architecture]",
+   "verdict": "unverified",
+   "reasons": [
+    "inherited from transformer, whose curated entry has no residual"
+   ]
+  },
+  "attention": {
+   "value": "exact",
+   "evidence": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017} [Sec. 2.1 Architecture]",
+   "verdict": "unverified",
+   "reasons": [
+    "inherited from transformer, whose curated entry has no attention"
+   ]
+  }
+ },
+ "unresolved": [
+  "n_heads",
+  "n_kv_heads",
+  "d_ff",
+  "vocab_size",
+  "context_length"
+ ],
+ "unverified": [
+  {
+   "field": "positional",
+   "reasons": [
+    "the quote does not name learned (looked for /learn|trainable|absolute/)"
+   ]
+  },
+  {
+   "field": "residual",
+   "reasons": [
+    "inherited from transformer, whose curated entry has no residual"
+   ]
+  },
+  {
+   "field": "attention",
+   "reasons": [
+    "inherited from transformer, whose curated entry has no attention"
+   ]
+  }
+ ],
+ "mentions": {},
+ "inherits": {
+  "ancestor": "transformer",
+  "evidence": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}, except, following GPT, that we modify ReLU activation functions to GeLUs \\citep{gelu} and initialise parameters from $\\mathcal{N}(0, 0.02)$.",
+  "section": "Sec. 2.1 Architecture"
+ },
+ "variants": [
+  {
+   "d_model": 768,
+   "n_layers": 6
+  },
+  {
+   "d_model": 1024,
+   "n_layers": 12
+  }
+ ],
+ "mechanism_scan": [
+  {
+   "mechanism": "encoder-decoder or encoder-only model",
+   "where": "llm extraction, verified quote, Sec. 2 Model",
+   "blocking": true,
+   "evidence": "It is implemented as a sequence-to-sequence model with a bidirectional encoder over corrupted text and a left-to-right autoregressive decoder."
+  },
+  {
+   "mechanism": "new op cross_attention (needs a new primitive: Requires non-causal multi-head attention whose queries come from the decoder stream [T, d] and keys/values from a second)",
+   "where": "llm extraction, verified quote, Sec. 2.1 Architecture",
+   "blocking": true,
+   "evidence": "each layer of the decoder additionally performs cross-attention over the final hidden layer of the encoder (as in the transformer sequence-to-sequence model)"
+  },
+  {
+   "mechanism": "Separate bidirectional (non-causal) Transformer encoder stack with the same number of layers as the decoder, whose final hidden states feed decoder cross-attention",
+   "where": "llm extraction, verified quote, Sec. 2.1 Architecture",
+   "blocking": true,
+   "evidence": "For our base model, we use 6 layers in the encoder and decoder, and for our large model we use 12 layers in each."
+  },
+  {
+   "mechanism": "Encoder-decoder cross-attention in every decoder layer",
+   "where": "llm extraction, verified quote, Sec. 2.1 Architecture",
+   "blocking": true,
+   "evidence": "each layer of the decoder additionally performs cross-attention over the final hidden layer of the encoder (as in the transformer sequence-to-sequence model)"
+  }
+ ],
+ "source": {
+  "tex_sha256": "aa61a8ffec6358131aea2afc4c1c7e319330acaea942fcf996365cd8a0c5034e",
+  "sent_sha256": "9dcf4202b2381751f4d017c511a7a594b9930f6929d1d77a80b0ec6ada97e629",
+  "from": "https://arxiv.org/e-print/1910.13461",
+  "extractor": "papers/llm_extract.py",
+  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "model": "claude-opus-5-5",
+  "effort": "high",
+  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "n_calls": 1,
+  "cost_usd": 0.0,
+  "request_ids": [
+   "req_011CgFbHjqWKuUDgTbiUXW9n"
+  ]
+ },
+ "llm": {
+  "output": {
+   "title": "BART: Denoising Sequence-to-Sequence Pre-training for Natural Language Generation, Translation, and Comprehension",
+   "model_name": "BART",
+   "family": {
+    "value": "encoder_decoder",
+    "status": "stated",
+    "quote": "It is implemented as a sequence-to-sequence model with a bidirectional encoder over corrupted text and a left-to-right autoregressive decoder.",
+    "where": "Sec. 2 Model"
+   },
+   "inherits": {
+    "ancestor": "Transformer (Vaswani et al., 2017) sequence-to-sequence architecture",
+    "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}, except, following GPT, that we modify ReLU activation functions to GeLUs \\citep{gelu} and initialise parameters from $\\mathcal{N}(0, 0.02)$.",
+    "where": "Sec. 2.1 Architecture"
+   },
+   "configs": [
+    {
+     "name": "base",
+     "d_model": {
+      "value": "768",
+      "status": "stated",
+      "quote": "We compare a range of options using base-size models (6 encoder and 6 decoder layers, with a hidden size of 768)",
+      "where": "Sec. 4 Comparing Pre-training Objectives"
+     },
+     "n_layers": {
+      "value": "6",
+      "status": "stated",
+      "quote": "For our base model, we use 6 layers in the encoder and decoder",
+      "where": "Sec. 2.1 Architecture"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     }
+    },
+    {
+     "name": "large",
+     "d_model": {
+      "value": "1024",
+      "status": "stated",
+      "quote": "We pre-train a large model with 12 layers in each of the encoder and decoder, and a hidden size of 1024.",
+      "where": "Sec. 5.1 Experimental Setup"
+     },
+     "n_layers": {
+      "value": "12",
+      "status": "stated",
+      "quote": "We pre-train a large model with 12 layers in each of the encoder and decoder, and a hidden size of 1024.",
+      "where": "Sec. 5.1 Experimental Setup"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     }
+    }
+   ],
+   "primary_config": "base",
+   "flavours": {
+    "norm": {
+     "value": "layernorm",
+     "status": "inherited",
+     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}",
+     "where": "Sec. 2.1 Architecture"
+    },
+    "norm_placement": {
+     "value": "post",
+     "status": "inherited",
+     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}",
+     "where": "Sec. 2.1 Architecture"
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "activation": {
+     "value": "gelu",
+     "status": "stated",
+     "quote": "we modify ReLU activation functions to GeLUs \\citep{gelu}",
+     "where": "Sec. 2.1 Architecture"
+    },
+    "positional": {
+     "value": "learned",
+     "status": "stated",
+     "quote": "we freeze most of BART parameters and only update the randomly initialized source encoder, the BART positional embeddings, and the self-attention input projection matrix of BART's encoder first layer.",
+     "where": "Sec. 3.4 Machine Translation"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_theta": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "residual": {
+     "value": "residual",
+     "status": "inherited",
+     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}",
+     "where": "Sec. 2.1 Architecture"
+    },
+    "parallel_block": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}",
+     "where": "Sec. 2.1 Architecture"
+    },
+    "attention": {
+     "value": "exact",
+     "status": "inherited",
+     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}",
+     "where": "Sec. 2.1 Architecture"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "qkv_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "tied_embeddings": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "moe": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}",
+     "where": "Sec. 2.1 Architecture"
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    }
+   },
+   "block_ops": [
+    {
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "e",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "embed",
+     "op": "pos_embedding",
+     "role": "learned absolute positional embedding added to token embedding",
+     "inputs": [
+      "e",
+      "pos"
+     ],
+     "output": "x",
+     "attributes": [
+      {
+       "name": "learned",
+       "value": "true",
+       "status": "stated",
+       "quote": "we freeze most of BART parameters and only update the randomly initialized source encoder, the BART positional embeddings, and the self-attention input projection matrix of BART's encoder first layer.",
+       "where": "Sec. 3.4 Machine Translation"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "query projection (decoder self-attention)",
+     "inputs": [
+      "x"
+     ],
+     "output": "q",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "key projection",
+     "inputs": [
+      "x"
+     ],
+     "output": "k",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "value projection",
+     "inputs": [
+      "x"
+     ],
+     "output": "v",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "attention",
+     "role": "causal multi-head self-attention of the decoder",
+     "inputs": [
+      "q",
+      "k",
+      "v"
+     ],
+     "output": "a",
+     "attributes": [
+      {
+       "name": "heads",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "kv_heads",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "head_dim",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "scale",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "causal",
+       "value": "true",
+       "status": "stated",
+       "quote": "a left-to-right autoregressive decoder",
+       "where": "Sec. 2 Model"
+      },
+      {
+       "name": "window",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "sinks",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "ao",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "residual add after self-attention",
+     "inputs": [
+      "x",
+      "ao"
+     ],
+     "output": "r1",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "layernorm",
+     "role": "post-norm after self-attention",
+     "inputs": [
+      "r1"
+     ],
+     "output": "h1",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "unsupported",
+     "role": "cross-attention over final encoder hidden states",
+     "inputs": [
+      "h1",
+      "enc_out"
+     ],
+     "output": "c",
+     "attributes": [],
+     "new_op": "cross_attention"
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "residual add after cross-attention",
+     "inputs": [
+      "h1",
+      "c"
+     ],
+     "output": "r2",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "layernorm",
+     "role": "post-norm after cross-attention",
+     "inputs": [
+      "r2"
+     ],
+     "output": "h2",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN up projection",
+     "inputs": [
+      "h2"
+     ],
+     "output": "u",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "gelu",
+     "role": "FFN activation",
+     "inputs": [
+      "u"
+     ],
+     "output": "g",
+     "attributes": [
+      {
+       "name": "approx",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN down projection",
+     "inputs": [
+      "g"
+     ],
+     "output": "f",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "residual add after FFN",
+     "inputs": [
+      "h2",
+      "f"
+     ],
+     "output": "r3",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "layernorm",
+     "role": "post-norm after FFN",
+     "inputs": [
+      "r3"
+     ],
+     "output": "x",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "linear",
+     "role": "output projection to vocabulary (no extra FFN before word prediction)",
+     "inputs": [
+      "x"
+     ],
+     "output": "logits",
+     "attributes": [
+      {
+       "name": "no_extra_ffn",
+       "value": "true",
+       "status": "stated",
+       "quote": "BERT uses an additional feed-forward network before word-prediction, which BART does not.",
+       "where": "Sec. 2.1 Architecture"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "tied_to",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    }
+   ],
+   "new_ops": [
+    {
+     "name": "cross_attention",
+     "kind": "needs_new_primitive",
+     "expr": "",
+     "inputs": [
+      {
+       "name": "x",
+       "meaning": "decoder hidden states [T, d] (queries)"
+      },
+      {
+       "name": "a",
+       "meaning": "final encoder hidden states [S, d] (keys/values)"
+      }
+     ],
+     "replaces": "encoder-decoder attention sublayer in each decoder layer",
+     "reason": "Requires non-causal multi-head attention whose queries come from the decoder stream [T, d] and keys/values from a second sequence (encoder output, [S, d], S != T); the IR attention op only attends within one sequence.",
+     "quote": "each layer of the decoder additionally performs cross-attention over the final hidden layer of the encoder (as in the transformer sequence-to-sequence model)",
+     "where": "Sec. 2.1 Architecture"
+    }
+   ],
+   "mechanisms_outside_ir": [
+    {
+     "mechanism": "Separate bidirectional (non-causal) Transformer encoder stack with the same number of layers as the decoder, whose final hidden states feed decoder cross-attention",
+     "quote": "For our base model, we use 6 layers in the encoder and decoder, and for our large model we use 12 layers in each.",
+     "where": "Sec. 2.1 Architecture"
+    },
+    {
+     "mechanism": "Encoder-decoder cross-attention in every decoder layer",
+     "quote": "each layer of the decoder additionally performs cross-attention over the final hidden layer of the encoder (as in the transformer sequence-to-sequence model)",
+     "where": "Sec. 2.1 Architecture"
+    }
+   ],
+   "notes": "Described the decoder block; the encoder block is the same without cross-attention and with non-causal self-attention. Base (6+6 layers, d=768) is the smallest configuration; large (12+12, d=1024) is the main pre-trained model. The paper declares the Vaswani et al. Transformer as its ancestor, so post-LayerNorm, residual connections and dense exact attention are marked inherited. Positional embeddings are marked learned because the paper says they are updated during MT fine-tuning, which differs from the ancestor's sinusoidal encoding. These are not stated: heads, d_ff, vocab size (only 'same BPE as GPT-2'), context length, eps, biases, embedding tying, and the GeLU form (exact or tanh). The machine-translation source encoder and the classification heads are fine-tuning additions and are not included."
+  },
+  "verification": {
+   "errors": [],
+   "warnings": [],
+   "inherits": {
+    "ancestor": "Transformer (Vaswani et al., 2017) sequence-to-sequence architecture",
+    "resolved": "transformer",
+    "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}, except, following GPT, that we modify ReLU activation functions to GeLUs \\citep{gelu} and initialise parameters from $\\mathcal{N}(0, 0.02)$.",
+    "where": "Sec. 2.1 Architecture",
+    "quote_found": true
+   },
+   "family": {
+    "value": "encoder_decoder",
+    "status": "stated",
+    "quote": "It is implemented as a sequence-to-sequence model with a bidirectional encoder over corrupted text and a left-to-right autoregressive decoder.",
+    "where": "Sec. 2 Model",
+    "reasons": [],
+    "check": "verified"
+   },
+   "configs": [
+    {
+     "name": "base",
+     "d_model": {
+      "value": "768",
+      "status": "stated",
+      "quote": "We compare a range of options using base-size models (6 encoder and 6 decoder layers, with a hidden size of 768)",
+      "where": "Sec. 4 Comparing Pre-training Objectives",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "6",
+      "status": "stated",
+      "quote": "For our base model, we use 6 layers in the encoder and decoder",
+      "where": "Sec. 2.1 Architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "consistency": []
+    },
+    {
+     "name": "large",
+     "d_model": {
+      "value": "1024",
+      "status": "stated",
+      "quote": "We pre-train a large model with 12 layers in each of the encoder and decoder, and a hidden size of 1024.",
+      "where": "Sec. 5.1 Experimental Setup",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "12",
+      "status": "stated",
+      "quote": "We pre-train a large model with 12 layers in each of the encoder and decoder, and a hidden size of 1024.",
+      "where": "Sec. 5.1 Experimental Setup",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "consistency": []
+    }
+   ],
+   "primary_config": "base",
+   "flavours": {
+    "norm": {
+     "value": "layernorm",
+     "status": "inherited",
+     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}",
+     "where": "Sec. 2.1 Architecture",
+     "reasons": [],
+     "check": "verified"
+    },
+    "norm_placement": {
+     "value": "post",
+     "status": "inherited",
+     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}",
+     "where": "Sec. 2.1 Architecture",
+     "reasons": [
+      "inherited from transformer, whose curated entry has no norm_placement"
+     ],
+     "check": "unverified"
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "activation": {
+     "value": "gelu",
+     "status": "stated",
+     "quote": "we modify ReLU activation functions to GeLUs \\citep{gelu}",
+     "where": "Sec. 2.1 Architecture",
+     "reasons": [],
+     "check": "verified"
+    },
+    "positional": {
+     "value": "learned",
+     "status": "stated",
+     "quote": "we freeze most of BART parameters and only update the randomly initialized source encoder, the BART positional embeddings, and the self-attention input projection matrix of BART's encoder first layer.",
+     "where": "Sec. 3.4 Machine Translation",
+     "reasons": [
+      "the quote does not name learned (looked for /learn|trainable|absolute/)"
+     ],
+     "check": "unverified"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_theta": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "residual": {
+     "value": "residual",
+     "status": "inherited",
+     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}",
+     "where": "Sec. 2.1 Architecture",
+     "reasons": [
+      "inherited from transformer, whose curated entry has no residual"
+     ],
+     "check": "unverified"
+    },
+    "parallel_block": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}",
+     "where": "Sec. 2.1 Architecture",
+     "reasons": [
+      "inherited from transformer, whose curated entry has no parallel_block"
+     ],
+     "check": "unverified"
+    },
+    "attention": {
+     "value": "exact",
+     "status": "inherited",
+     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}",
+     "where": "Sec. 2.1 Architecture",
+     "reasons": [
+      "inherited from transformer, whose curated entry has no attention"
+     ],
+     "check": "unverified"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "qkv_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "tied_embeddings": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "moe": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}",
+     "where": "Sec. 2.1 Architecture",
+     "reasons": [
+      "inherited from transformer, whose curated entry has no moe"
+     ],
+     "check": "unverified"
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    }
+   },
+   "new_ops": [
+    {
+     "name": "cross_attention",
+     "kind": "needs_new_primitive",
+     "replaces": "encoder-decoder attention sublayer in each decoder layer",
+     "reason": "Requires non-causal multi-head attention whose queries come from the decoder stream [T, d] and keys/values from a second sequence (encoder output, [S, d], S != T); the IR attention op only attends within one sequence.",
+     "quote": "each layer of the decoder additionally performs cross-attention over the final hidden layer of the encoder (as in the transformer sequence-to-sequence model)",
+     "where": "Sec. 2.1 Architecture",
+     "inputs": [
+      {
+       "name": "x",
+       "meaning": "decoder hidden states [T, d] (queries)"
+      },
+      {
+       "name": "a",
+       "meaning": "final encoder hidden states [S, d] (keys/values)"
+      }
+     ],
+     "errors": [],
+     "quote_found": true,
+     "check": "verified"
+    }
+   ],
+   "block_ops": [
+    {
+     "i": 0,
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "e",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 1,
+     "subgraph": "embed",
+     "op": "pos_embedding",
+     "role": "learned absolute positional embedding added to token embedding",
+     "inputs": [
+      "e",
+      "pos"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "true",
+       "status": "stated",
+       "quote": "we freeze most of BART parameters and only update the randomly initialized source encoder, the BART positional embeddings, and the self-attention input projection matrix of BART's encoder first layer.",
+       "where": "Sec. 3.4 Machine Translation",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "learned"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 2,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "query projection (decoder self-attention)",
+     "inputs": [
+      "x"
+     ],
+     "output": "q",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 3,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "key projection",
+     "inputs": [
+      "x"
+     ],
+     "output": "k",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 4,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "value projection",
+     "inputs": [
+      "x"
+     ],
+     "output": "v",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 5,
+     "subgraph": "block",
+     "op": "attention",
+     "role": "causal multi-head self-attention of the decoder",
+     "inputs": [
+      "q",
+      "k",
+      "v"
+     ],
+     "output": "a",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "heads"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "kv_heads"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "head_dim"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "scale"
+      },
+      {
+       "value": "true",
+       "status": "stated",
+       "quote": "a left-to-right autoregressive decoder",
+       "where": "Sec. 2 Model",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "causal"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "window"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "sinks"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 6,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "ao",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 7,
+     "subgraph": "block",
+     "op": "add",
+     "role": "residual add after self-attention",
+     "inputs": [
+      "x",
+      "ao"
+     ],
+     "output": "r1",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 8,
+     "subgraph": "block",
+     "op": "layernorm",
+     "role": "post-norm after self-attention",
+     "inputs": [
+      "r1"
+     ],
+     "output": "h1",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 9,
+     "subgraph": "block",
+     "op": "unsupported",
+     "role": "cross-attention over final encoder hidden states",
+     "inputs": [
+      "h1",
+      "enc_out"
+     ],
+     "output": "c",
+     "new_op": "cross_attention",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 10,
+     "subgraph": "block",
+     "op": "add",
+     "role": "residual add after cross-attention",
+     "inputs": [
+      "h1",
+      "c"
+     ],
+     "output": "r2",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 11,
+     "subgraph": "block",
+     "op": "layernorm",
+     "role": "post-norm after cross-attention",
+     "inputs": [
+      "r2"
+     ],
+     "output": "h2",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 12,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN up projection",
+     "inputs": [
+      "h2"
+     ],
+     "output": "u",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 13,
+     "subgraph": "block",
+     "op": "gelu",
+     "role": "FFN activation",
+     "inputs": [
+      "u"
+     ],
+     "output": "g",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "approx"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 14,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN down projection",
+     "inputs": [
+      "g"
+     ],
+     "output": "f",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 15,
+     "subgraph": "block",
+     "op": "add",
+     "role": "residual add after FFN",
+     "inputs": [
+      "h2",
+      "f"
+     ],
+     "output": "r3",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 16,
+     "subgraph": "block",
+     "op": "layernorm",
+     "role": "post-norm after FFN",
+     "inputs": [
+      "r3"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 17,
+     "subgraph": "head",
+     "op": "linear",
+     "role": "output projection to vocabulary (no extra FFN before word prediction)",
+     "inputs": [
+      "x"
+     ],
+     "output": "logits",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "true",
+       "status": "stated",
+       "quote": "BERT uses an additional feed-forward network before word-prediction, which BART does not.",
+       "where": "Sec. 2.1 Architecture",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "no_extra_ffn"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "tied_to"
+      }
+     ],
+     "errors": []
+    }
+   ],
+   "mechanisms_outside_ir": [
+    {
+     "mechanism": "Separate bidirectional (non-causal) Transformer encoder stack with the same number of layers as the decoder, whose final hidden states feed decoder cross-attention",
+     "quote": "For our base model, we use 6 layers in the encoder and decoder, and for our large model we use 12 layers in each.",
+     "where": "Sec. 2.1 Architecture",
+     "check": "verified"
+    },
+    {
+     "mechanism": "Encoder-decoder cross-attention in every decoder layer",
+     "quote": "each layer of the decoder additionally performs cross-attention over the final hidden layer of the encoder (as in the transformer sequence-to-sequence model)",
+     "where": "Sec. 2.1 Architecture",
+     "check": "verified"
+    }
+   ],
+   "summary": {
+    "counts": {
+     "verified": 7,
+     "quote_only": 3,
+     "unverified": 6,
+     "not_stated": 48
+    },
+    "unverified": [
+     {
+      "field": "flavours.norm_placement",
+      "reasons": [
+       "inherited from transformer, whose curated entry has no norm_placement"
+      ]
+     },
+     {
+      "field": "flavours.positional",
+      "reasons": [
+       "the quote does not name learned (looked for /learn|trainable|absolute/)"
+      ]
+     },
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "inherited from transformer, whose curated entry has no residual"
+      ]
+     },
+     {
+      "field": "flavours.parallel_block",
+      "reasons": [
+       "inherited from transformer, whose curated entry has no parallel_block"
+      ]
+     },
+     {
+      "field": "flavours.attention",
+      "reasons": [
+       "inherited from transformer, whose curated entry has no attention"
+      ]
+     },
+     {
+      "field": "flavours.moe",
+      "reasons": [
+       "inherited from transformer, whose curated entry has no moe"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 1,
+    "n_block_ops": 18
+   }
+  }
+ }
+}

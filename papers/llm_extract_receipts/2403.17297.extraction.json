@@ -1,0 +1,1843 @@
+{
+ "arxiv_id": "2403.17297",
+ "title": "InternLM2 Technical Report",
+ "fields": {
+  "d_model": {
+   "value": 2048,
+   "evidence": "1.8B & 24& 2048& 8& 2& 3e-4 & 4M [Table: Hyper-parameters for InternLM2 models]",
+   "verdict": "used"
+  },
+  "n_layers": {
+   "value": 24,
+   "evidence": "1.8B & 24& 2048& 8& 2& 3e-4 & 4M [Table: Hyper-parameters for InternLM2 models]",
+   "verdict": "used"
+  },
+  "n_kv_heads": {
+   "value": 8,
+   "evidence": "1.8B & 24& 2048& 8& 2& 3e-4 & 4M [Table: Hyper-parameters for InternLM2 models]",
+   "verdict": "used"
+  },
+  "context_length": {
+   "value": 32000,
+   "evidence": "The training context window of InternLM2 has been expanded to 32,000 tokens [Sec. 3.1.2 Code Data, Dependency sorting]",
+   "verdict": "used"
+  },
+  "norm": {
+   "value": "rmsnorm",
+   "evidence": "we opt to adhere to the structural design principles of LLaMA [Sec. 2.2 Model Structure]",
+   "verdict": "inherited"
+  },
+  "activation": {
+   "value": "swiglu",
+   "evidence": "we opt to adhere to the structural design principles of LLaMA [Sec. 2.2 Model Structure]",
+   "verdict": "inherited"
+  },
+  "positional": {
+   "value": "rope",
+   "evidence": "we adjusted the Rotary Positional Embedding (RoPE) base from 50,000 to 1,000,000 [Sec. 3.3.2 Long Context Training]",
+   "verdict": "used"
+  },
+  "residual": {
+   "value": "residual",
+   "evidence": "we opt to adhere to the structural design principles of LLaMA [Sec. 2.2 Model Structure]",
+   "verdict": "unverified",
+   "reasons": [
+    "inherited from llama, whose curated entry has no residual"
+   ]
+  },
+  "attention": {
+   "value": "exact",
+   "evidence": "InternLM2 series models all choose Grouped-Query Attention~(GQA) [Sec. 2.2 Model Structure]",
+   "verdict": "used"
+  }
+ },
+ "unresolved": [
+  "n_heads",
+  "d_ff",
+  "vocab_size"
+ ],
+ "unverified": [
+  {
+   "field": "residual",
+   "reasons": [
+    "inherited from llama, whose curated entry has no residual"
+   ]
+  }
+ ],
+ "mentions": {},
+ "inherits": {
+  "ancestor": "llama",
+  "evidence": "we opt to adhere to the structural design principles of LLaMA",
+  "section": "Sec. 2.2 Model Structure"
+ },
+ "variants": [
+  {
+   "d_model": 2048,
+   "n_layers": 24,
+   "n_kv_heads": 8,
+   "context_length": 32000
+  },
+  {
+   "d_model": 4096,
+   "n_layers": 32,
+   "n_kv_heads": 8,
+   "context_length": 32000
+  },
+  {
+   "d_model": 6144,
+   "n_layers": 48,
+   "n_kv_heads": 8,
+   "context_length": 32000
+  }
+ ],
+ "mechanism_scan": [
+  {
+   "mechanism": "Fused Wqkv weight is stored with a per-head interleaved layout of Wk, Wq, Wv rather than three stacked blocks; this affects weight loading and the split order, not the computation.",
+   "where": "llm extraction, verified quote, Sec. 2.2 Model Structure",
+   "blocking": true,
+   "evidence": "Rather than stacking the $W_k$, $W_q$, and $W_v$ matrices in a straightforward manner, we adopt an interleaving approach for each head's $W_k$, $W_q$, and $W_v$"
+  }
+ ],
+ "source": {
+  "tex_sha256": "c59a475e7ea107365fea55b84786905ad7496d819e392e40f8bb00b56920b59c",
+  "sent_sha256": "a52b97ff74c3c9028b8f812f4f047103009daf268ea3f265a8744af02ff0d33c",
+  "from": "https://arxiv.org/e-print/2403.17297",
+  "extractor": "papers/llm_extract.py",
+  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "model": "claude-opus-5-5",
+  "effort": "high",
+  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "n_calls": 1,
+  "cost_usd": 0.0,
+  "request_ids": [
+   "req_011CgFdPy7NcxDZLSEnvqzgp"
+  ]
+ },
+ "llm": {
+  "output": {
+   "title": "InternLM2 Technical Report",
+   "model_name": "InternLM2",
+   "family": {
+    "value": "decoder_only",
+    "status": "inherited",
+    "quote": "we opt to adhere to the structural design principles of LLaMA",
+    "where": "Sec. 2.2 Model Structure"
+   },
+   "inherits": {
+    "ancestor": "LLaMA",
+    "quote": "we opt to adhere to the structural design principles of LLaMA",
+    "where": "Sec. 2.2 Model Structure"
+   },
+   "configs": [
+    {
+     "name": "1.8B",
+     "d_model": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "1.8B &  24&  2048&  8&  2& 3e-4 & 4M",
+      "where": "Table: Hyper-parameters for InternLM2 models"
+     },
+     "n_layers": {
+      "value": "24",
+      "status": "stated",
+      "quote": "1.8B &  24&  2048&  8&  2& 3e-4 & 4M",
+      "where": "Table: Hyper-parameters for InternLM2 models"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "n_kv_heads": {
+      "value": "8",
+      "status": "stated",
+      "quote": "1.8B &  24&  2048&  8&  2& 3e-4 & 4M",
+      "where": "Table: Hyper-parameters for InternLM2 models"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "The training context window of InternLM2 has been expanded to 32,000 tokens",
+      "where": "Sec. 3.1.2 Code Data, Dependency sorting"
+     }
+    },
+    {
+     "name": "7B",
+     "d_model": {
+      "value": "4096",
+      "status": "stated",
+      "quote": "7B &  32&  4096&  8&  4& 3e-4 & 4M",
+      "where": "Table: Hyper-parameters for InternLM2 models"
+     },
+     "n_layers": {
+      "value": "32",
+      "status": "stated",
+      "quote": "7B &  32&  4096&  8&  4& 3e-4 & 4M",
+      "where": "Table: Hyper-parameters for InternLM2 models"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "n_kv_heads": {
+      "value": "8",
+      "status": "stated",
+      "quote": "7B &  32&  4096&  8&  4& 3e-4 & 4M",
+      "where": "Table: Hyper-parameters for InternLM2 models"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "The training context window of InternLM2 has been expanded to 32,000 tokens",
+      "where": "Sec. 3.1.2 Code Data, Dependency sorting"
+     }
+    },
+    {
+     "name": "20B",
+     "d_model": {
+      "value": "6144",
+      "status": "stated",
+      "quote": "20B &  48&  6144&  8&  6& 3e-4 & 5M",
+      "where": "Table: Hyper-parameters for InternLM2 models"
+     },
+     "n_layers": {
+      "value": "48",
+      "status": "stated",
+      "quote": "20B &  48&  6144&  8&  6& 3e-4 & 5M",
+      "where": "Table: Hyper-parameters for InternLM2 models"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "n_kv_heads": {
+      "value": "8",
+      "status": "stated",
+      "quote": "20B &  48&  6144&  8&  6& 3e-4 & 5M",
+      "where": "Table: Hyper-parameters for InternLM2 models"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "The training context window of InternLM2 has been expanded to 32,000 tokens",
+      "where": "Sec. 3.1.2 Code Data, Dependency sorting"
+     }
+    }
+   ],
+   "primary_config": "1.8B",
+   "flavours": {
+    "norm": {
+     "value": "rmsnorm",
+     "status": "inherited",
+     "quote": "we opt to adhere to the structural design principles of LLaMA",
+     "where": "Sec. 2.2 Model Structure"
+    },
+    "norm_placement": {
+     "value": "pre",
+     "status": "inherited",
+     "quote": "we opt to adhere to the structural design principles of LLaMA",
+     "where": "Sec. 2.2 Model Structure"
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "activation": {
+     "value": "swiglu",
+     "status": "inherited",
+     "quote": "we opt to adhere to the structural design principles of LLaMA",
+     "where": "Sec. 2.2 Model Structure"
+    },
+    "positional": {
+     "value": "rope",
+     "status": "stated",
+     "quote": "we adjusted the Rotary Positional Embedding (RoPE) base from 50,000 to 1,000,000",
+     "where": "Sec. 3.3.2 Long Context Training"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_theta": {
+     "value": "1000000",
+     "status": "stated",
+     "quote": "we adjusted the Rotary Positional Embedding (RoPE) base from 50,000 to 1,000,000",
+     "where": "Sec. 3.3.2 Long Context Training"
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "residual": {
+     "value": "residual",
+     "status": "inherited",
+     "quote": "we opt to adhere to the structural design principles of LLaMA",
+     "where": "Sec. 2.2 Model Structure"
+    },
+    "parallel_block": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "we opt to adhere to the structural design principles of LLaMA",
+     "where": "Sec. 2.2 Model Structure"
+    },
+    "attention": {
+     "value": "exact",
+     "status": "stated",
+     "quote": "InternLM2 series models all choose Grouped-Query Attention~(GQA)",
+     "where": "Sec. 2.2 Model Structure"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "qkv_bias": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "we opt to adhere to the structural design principles of LLaMA",
+     "where": "Sec. 2.2 Model Structure"
+    },
+    "mlp_bias": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "we opt to adhere to the structural design principles of LLaMA",
+     "where": "Sec. 2.2 Model Structure"
+    },
+    "tied_embeddings": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "we opt to adhere to the structural design principles of LLaMA",
+     "where": "Sec. 2.2 Model Structure"
+    },
+    "moe": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "we opt to adhere to the structural design principles of LLaMA",
+     "where": "Sec. 2.2 Model Structure"
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    }
+   },
+   "block_ops": [
+    {
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "x",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "attention pre-norm",
+     "inputs": [
+      "x"
+     ],
+     "output": "h",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "fused Wqkv projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "qkv",
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "inherited",
+       "quote": "we opt to adhere to the structural design principles of LLaMA",
+       "where": "Sec. 2.2 Model Structure"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "split",
+     "role": "split fused qkv into q, k, v",
+     "inputs": [
+      "qkv"
+     ],
+     "output": "q,k,v",
+     "attributes": [
+      {
+       "name": "sizes",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary embedding on q",
+     "inputs": [
+      "q",
+      "pos"
+     ],
+     "output": "q_r",
+     "attributes": [
+      {
+       "name": "theta",
+       "value": "1000000",
+       "status": "stated",
+       "quote": "we adjusted the Rotary Positional Embedding (RoPE) base from 50,000 to 1,000,000",
+       "where": "Sec. 3.3.2 Long Context Training"
+      },
+      {
+       "name": "pairing",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "n_rot",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary embedding on k",
+     "inputs": [
+      "k",
+      "pos"
+     ],
+     "output": "k_r",
+     "attributes": [
+      {
+       "name": "theta",
+       "value": "1000000",
+       "status": "stated",
+       "quote": "we adjusted the Rotary Positional Embedding (RoPE) base from 50,000 to 1,000,000",
+       "where": "Sec. 3.3.2 Long Context Training"
+      },
+      {
+       "name": "pairing",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "n_rot",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "attention",
+     "role": "grouped-query causal self-attention",
+     "inputs": [
+      "q_r",
+      "k_r",
+      "v"
+     ],
+     "output": "a",
+     "attributes": [
+      {
+       "name": "heads",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "kv_heads",
+       "value": "8",
+       "status": "stated",
+       "quote": "1.8B &  24&  2048&  8&  2& 3e-4 & 4M",
+       "where": "Table: Hyper-parameters for InternLM2 models"
+      },
+      {
+       "name": "head_dim",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "scale",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "causal",
+       "value": "true",
+       "status": "inherited",
+       "quote": "we opt to adhere to the structural design principles of LLaMA",
+       "where": "Sec. 2.2 Model Structure"
+      },
+      {
+       "name": "window",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "sinks",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "o",
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "inherited",
+       "quote": "we opt to adhere to the structural design principles of LLaMA",
+       "where": "Sec. 2.2 Model Structure"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual",
+     "inputs": [
+      "x",
+      "o"
+     ],
+     "output": "x1",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "FFN pre-norm",
+     "inputs": [
+      "x1"
+     ],
+     "output": "h2",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN gate projection",
+     "inputs": [
+      "h2"
+     ],
+     "output": "g",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "inherited",
+       "quote": "we opt to adhere to the structural design principles of LLaMA",
+       "where": "Sec. 2.2 Model Structure"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN up projection",
+     "inputs": [
+      "h2"
+     ],
+     "output": "u",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "inherited",
+       "quote": "we opt to adhere to the structural design principles of LLaMA",
+       "where": "Sec. 2.2 Model Structure"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "silu",
+     "role": "SwiGLU gate activation",
+     "inputs": [
+      "g"
+     ],
+     "output": "gs",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "mul",
+     "role": "SwiGLU gating",
+     "inputs": [
+      "gs",
+      "u"
+     ],
+     "output": "m",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN down projection",
+     "inputs": [
+      "m"
+     ],
+     "output": "f",
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "inherited",
+       "quote": "we opt to adhere to the structural design principles of LLaMA",
+       "where": "Sec. 2.2 Model Structure"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual",
+     "inputs": [
+      "x1",
+      "f"
+     ],
+     "output": "x",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "rmsnorm",
+     "role": "final norm",
+     "inputs": [
+      "x"
+     ],
+     "output": "hf",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "linear",
+     "role": "LM head (untied)",
+     "inputs": [
+      "hf"
+     ],
+     "output": "logits",
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "inherited",
+       "quote": "we opt to adhere to the structural design principles of LLaMA",
+       "where": "Sec. 2.2 Model Structure"
+      },
+      {
+       "name": "tied_to",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    }
+   ],
+   "new_ops": [],
+   "mechanisms_outside_ir": [
+    {
+     "mechanism": "Fused Wqkv weight is stored with a per-head interleaved layout of Wk, Wq, Wv rather than three stacked blocks; this affects weight loading and the split order, not the computation.",
+     "quote": "Rather than stacking the $W_k$, $W_q$, and $W_v$ matrices in a straightforward manner, we adopt an interleaving approach for each head's $W_k$, $W_q$, and $W_v$",
+     "where": "Sec. 2.2 Model Structure"
+    }
+   ],
+   "notes": "Described the base InternLM2 architecture, which is the same for 1.8B/7B/20B. The paper declares that it follows LLaMA; norm, activation, pre-norm, no biases, untied head and decoder-only are marked inherited from that sentence. The table gives n_kv_heads=8 and n_q_per_head=2/4/6; the implied query-head counts (16/32/48) are not written anywhere, so n_heads is left not_stated, as are head_dim and d_ff. Vocab size is left not_stated: the token counts given (60004+32397+147) do not sum to a clearly stated total. RoPE base was 50000 during 4k training and 1000000 after the 32k extension; the final value is given. The context length is given as 32000 from the '32,000 tokens' sentence; it may actually be 32768 ('32k'). Initial training used 4096 tokens. RoPE pairing and eps are not stated."
+  },
+  "verification": {
+   "errors": [],
+   "warnings": [],
+   "inherits": {
+    "ancestor": "LLaMA",
+    "resolved": "llama",
+    "quote": "we opt to adhere to the structural design principles of LLaMA",
+    "where": "Sec. 2.2 Model Structure",
+    "quote_found": true
+   },
+   "family": {
+    "value": "decoder_only",
+    "status": "inherited",
+    "quote": "we opt to adhere to the structural design principles of LLaMA",
+    "where": "Sec. 2.2 Model Structure",
+    "reasons": [
+     "inherited from llama, whose curated entry has no family"
+    ],
+    "check": "unverified"
+   },
+   "configs": [
+    {
+     "name": "1.8B",
+     "d_model": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "1.8B &  24&  2048&  8&  2& 3e-4 & 4M",
+      "where": "Table: Hyper-parameters for InternLM2 models",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "24",
+      "status": "stated",
+      "quote": "1.8B &  24&  2048&  8&  2& 3e-4 & 4M",
+      "where": "Table: Hyper-parameters for InternLM2 models",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "n_kv_heads": {
+      "value": "8",
+      "status": "stated",
+      "quote": "1.8B &  24&  2048&  8&  2& 3e-4 & 4M",
+      "where": "Table: Hyper-parameters for InternLM2 models",
+      "reasons": [],
+      "check": "verified"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "The training context window of InternLM2 has been expanded to 32,000 tokens",
+      "where": "Sec. 3.1.2 Code Data, Dependency sorting",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": []
+    },
+    {
+     "name": "7B",
+     "d_model": {
+      "value": "4096",
+      "status": "stated",
+      "quote": "7B &  32&  4096&  8&  4& 3e-4 & 4M",
+      "where": "Table: Hyper-parameters for InternLM2 models",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "32",
+      "status": "stated",
+      "quote": "7B &  32&  4096&  8&  4& 3e-4 & 4M",
+      "where": "Table: Hyper-parameters for InternLM2 models",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "n_kv_heads": {
+      "value": "8",
+      "status": "stated",
+      "quote": "7B &  32&  4096&  8&  4& 3e-4 & 4M",
+      "where": "Table: Hyper-parameters for InternLM2 models",
+      "reasons": [],
+      "check": "verified"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "The training context window of InternLM2 has been expanded to 32,000 tokens",
+      "where": "Sec. 3.1.2 Code Data, Dependency sorting",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": []
+    },
+    {
+     "name": "20B",
+     "d_model": {
+      "value": "6144",
+      "status": "stated",
+      "quote": "20B &  48&  6144&  8&  6& 3e-4 & 5M",
+      "where": "Table: Hyper-parameters for InternLM2 models",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "48",
+      "status": "stated",
+      "quote": "20B &  48&  6144&  8&  6& 3e-4 & 5M",
+      "where": "Table: Hyper-parameters for InternLM2 models",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "n_kv_heads": {
+      "value": "8",
+      "status": "stated",
+      "quote": "20B &  48&  6144&  8&  6& 3e-4 & 5M",
+      "where": "Table: Hyper-parameters for InternLM2 models",
+      "reasons": [],
+      "check": "verified"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "The training context window of InternLM2 has been expanded to 32,000 tokens",
+      "where": "Sec. 3.1.2 Code Data, Dependency sorting",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": []
+    }
+   ],
+   "primary_config": "1.8B",
+   "flavours": {
+    "norm": {
+     "value": "rmsnorm",
+     "status": "inherited",
+     "quote": "we opt to adhere to the structural design principles of LLaMA",
+     "where": "Sec. 2.2 Model Structure",
+     "reasons": [],
+     "check": "verified"
+    },
+    "norm_placement": {
+     "value": "pre",
+     "status": "inherited",
+     "quote": "we opt to adhere to the structural design principles of LLaMA",
+     "where": "Sec. 2.2 Model Structure",
+     "reasons": [
+      "inherited from llama, whose curated entry has no norm_placement"
+     ],
+     "check": "unverified"
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "activation": {
+     "value": "swiglu",
+     "status": "inherited",
+     "quote": "we opt to adhere to the structural design principles of LLaMA",
+     "where": "Sec. 2.2 Model Structure",
+     "reasons": [],
+     "check": "verified"
+    },
+    "positional": {
+     "value": "rope",
+     "status": "stated",
+     "quote": "we adjusted the Rotary Positional Embedding (RoPE) base from 50,000 to 1,000,000",
+     "where": "Sec. 3.3.2 Long Context Training",
+     "reasons": [],
+     "check": "verified"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_theta": {
+     "value": "1000000",
+     "status": "stated",
+     "quote": "we adjusted the Rotary Positional Embedding (RoPE) base from 50,000 to 1,000,000",
+     "where": "Sec. 3.3.2 Long Context Training",
+     "reasons": [],
+     "check": "verified"
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "residual": {
+     "value": "residual",
+     "status": "inherited",
+     "quote": "we opt to adhere to the structural design principles of LLaMA",
+     "where": "Sec. 2.2 Model Structure",
+     "reasons": [
+      "inherited from llama, whose curated entry has no residual"
+     ],
+     "check": "unverified"
+    },
+    "parallel_block": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "we opt to adhere to the structural design principles of LLaMA",
+     "where": "Sec. 2.2 Model Structure",
+     "reasons": [
+      "inherited from llama, whose curated entry has no parallel_block"
+     ],
+     "check": "unverified"
+    },
+    "attention": {
+     "value": "exact",
+     "status": "stated",
+     "quote": "InternLM2 series models all choose Grouped-Query Attention~(GQA)",
+     "where": "Sec. 2.2 Model Structure",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "qkv_bias": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "we opt to adhere to the structural design principles of LLaMA",
+     "where": "Sec. 2.2 Model Structure",
+     "reasons": [
+      "inherited from llama, whose curated entry has no qkv_bias"
+     ],
+     "check": "unverified"
+    },
+    "mlp_bias": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "we opt to adhere to the structural design principles of LLaMA",
+     "where": "Sec. 2.2 Model Structure",
+     "reasons": [
+      "inherited from llama, whose curated entry has no mlp_bias"
+     ],
+     "check": "unverified"
+    },
+    "tied_embeddings": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "we opt to adhere to the structural design principles of LLaMA",
+     "where": "Sec. 2.2 Model Structure",
+     "reasons": [
+      "inherited from llama, whose curated entry has no tied_embeddings"
+     ],
+     "check": "unverified"
+    },
+    "moe": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "we opt to adhere to the structural design principles of LLaMA",
+     "where": "Sec. 2.2 Model Structure",
+     "reasons": [
+      "inherited from llama, whose curated entry has no moe"
+     ],
+     "check": "unverified"
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    }
+   },
+   "new_ops": [],
+   "block_ops": [
+    {
+     "i": 0,
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 1,
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "attention pre-norm",
+     "inputs": [
+      "x"
+     ],
+     "output": "h",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 2,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "fused Wqkv projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "qkv",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "false",
+       "status": "inherited",
+       "quote": "we opt to adhere to the structural design principles of LLaMA",
+       "where": "Sec. 2.2 Model Structure",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 3,
+     "subgraph": "block",
+     "op": "split",
+     "role": "split fused qkv into q, k, v",
+     "inputs": [
+      "qkv"
+     ],
+     "output": "q,k,v",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "sizes"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 4,
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary embedding on q",
+     "inputs": [
+      "q",
+      "pos"
+     ],
+     "output": "q_r",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "1000000",
+       "status": "stated",
+       "quote": "we adjusted the Rotary Positional Embedding (RoPE) base from 50,000 to 1,000,000",
+       "where": "Sec. 3.3.2 Long Context Training",
+       "reasons": [],
+       "check": "verified",
+       "name": "theta"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "pairing"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "n_rot"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 5,
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary embedding on k",
+     "inputs": [
+      "k",
+      "pos"
+     ],
+     "output": "k_r",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "1000000",
+       "status": "stated",
+       "quote": "we adjusted the Rotary Positional Embedding (RoPE) base from 50,000 to 1,000,000",
+       "where": "Sec. 3.3.2 Long Context Training",
+       "reasons": [],
+       "check": "verified",
+       "name": "theta"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "pairing"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "n_rot"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 6,
+     "subgraph": "block",
+     "op": "attention",
+     "role": "grouped-query causal self-attention",
+     "inputs": [
+      "q_r",
+      "k_r",
+      "v"
+     ],
+     "output": "a",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "heads"
+      },
+      {
+       "value": "8",
+       "status": "stated",
+       "quote": "1.8B &  24&  2048&  8&  2& 3e-4 & 4M",
+       "where": "Table: Hyper-parameters for InternLM2 models",
+       "reasons": [],
+       "check": "verified",
+       "name": "kv_heads"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "head_dim"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "scale"
+      },
+      {
+       "value": "true",
+       "status": "inherited",
+       "quote": "we opt to adhere to the structural design principles of LLaMA",
+       "where": "Sec. 2.2 Model Structure",
+       "reasons": [
+        "inherited from llama, whose curated entry has no causal"
+       ],
+       "check": "unverified",
+       "name": "causal"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "window"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "sinks"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 7,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "o",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "false",
+       "status": "inherited",
+       "quote": "we opt to adhere to the structural design principles of LLaMA",
+       "where": "Sec. 2.2 Model Structure",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 8,
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual",
+     "inputs": [
+      "x",
+      "o"
+     ],
+     "output": "x1",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 9,
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "FFN pre-norm",
+     "inputs": [
+      "x1"
+     ],
+     "output": "h2",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 10,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN gate projection",
+     "inputs": [
+      "h2"
+     ],
+     "output": "g",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
+      {
+       "value": "false",
+       "status": "inherited",
+       "quote": "we opt to adhere to the structural design principles of LLaMA",
+       "where": "Sec. 2.2 Model Structure",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 11,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN up projection",
+     "inputs": [
+      "h2"
+     ],
+     "output": "u",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
+      {
+       "value": "false",
+       "status": "inherited",
+       "quote": "we opt to adhere to the structural design principles of LLaMA",
+       "where": "Sec. 2.2 Model Structure",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 12,
+     "subgraph": "block",
+     "op": "silu",
+     "role": "SwiGLU gate activation",
+     "inputs": [
+      "g"
+     ],
+     "output": "gs",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 13,
+     "subgraph": "block",
+     "op": "mul",
+     "role": "SwiGLU gating",
+     "inputs": [
+      "gs",
+      "u"
+     ],
+     "output": "m",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 14,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN down projection",
+     "inputs": [
+      "m"
+     ],
+     "output": "f",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "false",
+       "status": "inherited",
+       "quote": "we opt to adhere to the structural design principles of LLaMA",
+       "where": "Sec. 2.2 Model Structure",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 15,
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual",
+     "inputs": [
+      "x1",
+      "f"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 16,
+     "subgraph": "head",
+     "op": "rmsnorm",
+     "role": "final norm",
+     "inputs": [
+      "x"
+     ],
+     "output": "hf",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 17,
+     "subgraph": "head",
+     "op": "linear",
+     "role": "LM head (untied)",
+     "inputs": [
+      "hf"
+     ],
+     "output": "logits",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "false",
+       "status": "inherited",
+       "quote": "we opt to adhere to the structural design principles of LLaMA",
+       "where": "Sec. 2.2 Model Structure",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "tied_to"
+      }
+     ],
+     "errors": []
+    }
+   ],
+   "mechanisms_outside_ir": [
+    {
+     "mechanism": "Fused Wqkv weight is stored with a per-head interleaved layout of Wk, Wq, Wv rather than three stacked blocks; this affects weight loading and the split order, not the computation.",
+     "quote": "Rather than stacking the $W_k$, $W_q$, and $W_v$ matrices in a straightforward manner, we adopt an interleaving approach for each head's $W_k$, $W_q$, and $W_v$",
+     "where": "Sec. 2.2 Model Structure",
+     "check": "verified"
+    }
+   ],
+   "summary": {
+    "counts": {
+     "verified": 19,
+     "quote_only": 1,
+     "unverified": 15,
+     "not_stated": 36
+    },
+    "unverified": [
+     {
+      "field": "family",
+      "reasons": [
+       "inherited from llama, whose curated entry has no family"
+      ]
+     },
+     {
+      "field": "flavours.norm_placement",
+      "reasons": [
+       "inherited from llama, whose curated entry has no norm_placement"
+      ]
+     },
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "inherited from llama, whose curated entry has no residual"
+      ]
+     },
+     {
+      "field": "flavours.parallel_block",
+      "reasons": [
+       "inherited from llama, whose curated entry has no parallel_block"
+      ]
+     },
+     {
+      "field": "flavours.qkv_bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no qkv_bias"
+      ]
+     },
+     {
+      "field": "flavours.mlp_bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no mlp_bias"
+      ]
+     },
+     {
+      "field": "flavours.tied_embeddings",
+      "reasons": [
+       "inherited from llama, whose curated entry has no tied_embeddings"
+      ]
+     },
+     {
+      "field": "flavours.moe",
+      "reasons": [
+       "inherited from llama, whose curated entry has no moe"
+      ]
+     },
+     {
+      "field": "block_ops[2].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[6].causal",
+      "reasons": [
+       "inherited from llama, whose curated entry has no causal"
+      ]
+     },
+     {
+      "field": "block_ops[7].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[10].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[11].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[14].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[17].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 18
+   }
+  }
+ }
+}

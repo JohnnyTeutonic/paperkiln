@@ -1,0 +1,1881 @@
+{
+ "arxiv_id": "2309.16609",
+ "title": "Qwen Technical Report",
+ "fields": {
+  "d_model": {
+   "value": 2048,
+   "evidence": "1.8B & 2048 & 16 & 24 [Table tab:model-size]",
+   "verdict": "used"
+  },
+  "n_layers": {
+   "value": 24,
+   "evidence": "1.8B & 2048 & 16 & 24 [Table tab:model-size]",
+   "verdict": "used"
+  },
+  "n_heads": {
+   "value": 16,
+   "evidence": "1.8B & 2048 & 16 & 24 [Table tab:model-size]",
+   "verdict": "used"
+  },
+  "context_length": {
+   "value": 2048,
+   "evidence": "We train models with context lengths of \\num{2048}. [Sec. Training]",
+   "verdict": "used"
+  },
+  "norm": {
+   "value": "rmsnorm",
+   "evidence": "Additionally, we have replaced the traditional layer normalization technique described in~\\citep{layer_norm} with RMSNorm~\\citep{rmsnorm}. [Sec. Architecture]",
+   "verdict": "used"
+  },
+  "activation": {
+   "value": "swiglu",
+   "evidence": "We have selected SwiGLU~\\citep{noamglu} as our activation function, a combination of Swish~\\citep{swish} and Gated Linear Unit~\\citep{glu}. [Sec. Architecture]",
+   "verdict": "used"
+  },
+  "positional": {
+   "value": "rope",
+   "evidence": "We have chosen RoPE (Rotary Positional Embedding)~\\citep{rope} as our preferred option for incorporating positional information into our model. [Sec. Architecture]",
+   "verdict": "used"
+  },
+  "residual": {
+   "value": "residual",
+   "evidence": "\\qwen{} is designed using a modified version of the Transformer architecture. [Sec. Architecture]",
+   "verdict": "unverified",
+   "reasons": [
+    "the quote does not name residual (looked for /residual|skip/)"
+   ]
+  },
+  "attention": {
+   "value": "exact",
+   "evidence": "To improve computational efficiency and reduce memory usage, we employ Flash Attention in the attention modules~\\citep{flashattn}. [Sec. Training]",
+   "verdict": "used"
+  }
+ },
+ "unresolved": [
+  "n_kv_heads",
+  "d_ff",
+  "vocab_size"
+ ],
+ "unverified": [
+  {
+   "field": "residual",
+   "reasons": [
+    "the quote does not name residual (looked for /residual|skip/)"
+   ]
+  }
+ ],
+ "mentions": {},
+ "inherits": {
+  "ancestor": "llama",
+  "evidence": "Specifically, we have adopted the recent open-source approach of training large language models, LLaMA~\\citep{llama}, which is widely regarded as the top open-source LLM.",
+  "section": "Sec. Architecture"
+ },
+ "variants": [
+  {
+   "d_model": 2048,
+   "n_layers": 24,
+   "n_heads": 16,
+   "context_length": 2048
+  },
+  {
+   "d_model": 4096,
+   "n_layers": 32,
+   "n_heads": 32,
+   "context_length": 2048
+  },
+  {
+   "d_model": 5120,
+   "n_layers": 40,
+   "n_heads": 40,
+   "context_length": 2048
+  }
+ ],
+ "mechanism_scan": [
+  {
+   "mechanism": "Inference-only context extension via dynamic NTK-aware interpolation (adjusts RoPE base by chunks)",
+   "where": "llm extraction, verified quote, Sec. Context Length Extension",
+   "blocking": true,
+   "evidence": "To further improve performance, we have also implemented a trivial extension called dynamic NTK-aware interpolation, which is later formally discussed in~\\citep{yarn}."
+  },
+  {
+   "mechanism": "Inference-only LogN-Scaling of attention logits by context/training length ratio",
+   "where": "llm extraction, verified quote, Sec. Context Length Extension",
+   "blocking": true,
+   "evidence": "LogN-Scaling rescales the dot product of the query and value by a factor that depends on the ratio of the context length to the training length"
+  },
+  {
+   "mechanism": "Inference-only layer-wise window attention (shorter windows in lower layers), sizes not given",
+   "where": "llm extraction, verified quote, Sec. Context Length Extension",
+   "blocking": true,
+   "evidence": "we assign different window sizes to each layer, using shorter windows for lower layers and longer windows for higher layers."
+  },
+  {
+   "mechanism": "RoPE inverse frequencies kept in FP32",
+   "where": "llm extraction, verified quote, Sec. Architecture",
+   "blocking": true,
+   "evidence": "we have opted to use FP32 precision for the inverse frequency matrix, rather than BF16 or FP16"
+  }
+ ],
+ "source": {
+  "tex_sha256": "cf3c283bbbbc1cf473e34019622ab64aad99c7f4201bfd43c1cc40d695ec32e3",
+  "sent_sha256": "596a69edc440a12f4b6fe1a24cb8c5da375c9599798c80f5259de27636e5e61a",
+  "from": "https://arxiv.org/e-print/2309.16609",
+  "extractor": "papers/llm_extract.py",
+  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "model": "claude-opus-5-5",
+  "effort": "high",
+  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "n_calls": 1,
+  "cost_usd": 0.0,
+  "request_ids": [
+   "req_011CgFcogSpBUqNCg2kokJzk"
+  ]
+ },
+ "llm": {
+  "output": {
+   "title": "Qwen Technical Report",
+   "model_name": "Qwen (base pretrained language models)",
+   "family": {
+    "value": "decoder_only",
+    "status": "stated",
+    "quote": "To train \\qwen{}, we follow the standard approach of autoregressive language modeling, as described in~\\citet{gpt}.",
+    "where": "Sec. Training"
+   },
+   "inherits": {
+    "ancestor": "LLaMA",
+    "quote": "Specifically, we have adopted the recent open-source approach of training large language models, LLaMA~\\citep{llama}, which is widely regarded as the top open-source LLM.",
+    "where": "Sec. Architecture"
+   },
+   "configs": [
+    {
+     "name": "1.8B",
+     "d_model": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "1.8B     & 2048        & 16      & 24",
+      "where": "Table tab:model-size"
+     },
+     "n_layers": {
+      "value": "24",
+      "status": "stated",
+      "quote": "1.8B     & 2048        & 16      & 24",
+      "where": "Table tab:model-size"
+     },
+     "n_heads": {
+      "value": "16",
+      "status": "stated",
+      "quote": "1.8B     & 2048        & 16      & 24",
+      "where": "Table tab:model-size"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "We train models with context lengths of \\num{2048}.",
+      "where": "Sec. Training"
+     }
+    },
+    {
+     "name": "7B",
+     "d_model": {
+      "value": "4096",
+      "status": "stated",
+      "quote": "7B       & 4096        & 32      & 32",
+      "where": "Table tab:model-size"
+     },
+     "n_layers": {
+      "value": "32",
+      "status": "stated",
+      "quote": "7B       & 4096        & 32      & 32",
+      "where": "Table tab:model-size"
+     },
+     "n_heads": {
+      "value": "32",
+      "status": "stated",
+      "quote": "7B       & 4096        & 32      & 32",
+      "where": "Table tab:model-size"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "We train models with context lengths of \\num{2048}.",
+      "where": "Sec. Training"
+     }
+    },
+    {
+     "name": "14B",
+     "d_model": {
+      "value": "5120",
+      "status": "stated",
+      "quote": "14B      & 5120        & 40      & 40",
+      "where": "Table tab:model-size"
+     },
+     "n_layers": {
+      "value": "40",
+      "status": "stated",
+      "quote": "14B      & 5120        & 40      & 40",
+      "where": "Table tab:model-size"
+     },
+     "n_heads": {
+      "value": "40",
+      "status": "stated",
+      "quote": "14B      & 5120        & 40      & 40",
+      "where": "Table tab:model-size"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "We train models with context lengths of \\num{2048}.",
+      "where": "Sec. Training"
+     }
+    }
+   ],
+   "primary_config": "1.8B",
+   "flavours": {
+    "norm": {
+     "value": "rmsnorm",
+     "status": "stated",
+     "quote": "Additionally, we have replaced the traditional layer normalization technique described in~\\citep{layer_norm} with RMSNorm~\\citep{rmsnorm}.",
+     "where": "Sec. Architecture"
+    },
+    "norm_placement": {
+     "value": "pre",
+     "status": "stated",
+     "quote": "\\textbf{Pre-Norm \\& RMSNorm}. In modern Transformer models, pre-normalization is the most widely used approach",
+     "where": "Sec. Architecture"
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "activation": {
+     "value": "swiglu",
+     "status": "stated",
+     "quote": "We have selected SwiGLU~\\citep{noamglu} as our activation function, a combination of Swish~\\citep{swish} and Gated Linear Unit~\\citep{glu}.",
+     "where": "Sec. Architecture"
+    },
+    "positional": {
+     "value": "rope",
+     "status": "stated",
+     "quote": "We have chosen RoPE (Rotary Positional Embedding)~\\citep{rope} as our preferred option for incorporating positional information into our model.",
+     "where": "Sec. Architecture"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_theta": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "residual": {
+     "value": "residual",
+     "status": "stated",
+     "quote": "\\qwen{} is designed using a modified version of the Transformer architecture.",
+     "where": "Sec. Architecture"
+    },
+    "parallel_block": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "attention": {
+     "value": "exact",
+     "status": "stated",
+     "quote": "To improve computational efficiency and reduce memory usage, we employ Flash Attention in the attention modules~\\citep{flashattn}.",
+     "where": "Sec. Training"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "qkv_bias": {
+     "value": "true",
+     "status": "stated",
+     "quote": "For most layers, we remove biases following \\citet{palm}, but we add biases in the QKV layer of attention to enhance the extrapolation ability of the model~\\citep{qkv_bias}.",
+     "where": "Sec. Architecture"
+    },
+    "mlp_bias": {
+     "value": "false",
+     "status": "stated",
+     "quote": "For most layers, we remove biases following \\citet{palm}",
+     "where": "Sec. Architecture"
+    },
+    "tied_embeddings": {
+     "value": "false",
+     "status": "stated",
+     "quote": "we have opted for the untied embedding approach instead of tying the weights of input embedding and output projection",
+     "where": "Sec. Architecture"
+    },
+    "moe": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    }
+   },
+   "block_ops": [
+    {
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding (untied)",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "x",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "pre-attention norm",
+     "inputs": [
+      "x"
+     ],
+     "output": "h",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "fused QKV projection with bias",
+     "inputs": [
+      "h"
+     ],
+     "output": "qkv",
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "true",
+       "status": "stated",
+       "quote": "but we add biases in the QKV layer of attention to enhance the extrapolation ability of the model~\\citep{qkv_bias}.",
+       "where": "Sec. Architecture"
+      },
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "split",
+     "role": "split into q, k, v",
+     "inputs": [
+      "qkv"
+     ],
+     "output": "q,k,v",
+     "attributes": [
+      {
+       "name": "sizes",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary embedding on q",
+     "inputs": [
+      "q"
+     ],
+     "output": "q_r",
+     "attributes": [
+      {
+       "name": "rope_heads",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "pairing",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "n_rot",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "theta",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary embedding on k",
+     "inputs": [
+      "k"
+     ],
+     "output": "k_r",
+     "attributes": [
+      {
+       "name": "rope_heads",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "pairing",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "n_rot",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "theta",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "attention",
+     "role": "causal multi-head self-attention",
+     "inputs": [
+      "q_r",
+      "k_r",
+      "v"
+     ],
+     "output": "a",
+     "attributes": [
+      {
+       "name": "heads",
+       "value": "16",
+       "status": "stated",
+       "quote": "1.8B     & 2048        & 16      & 24",
+       "where": "Table tab:model-size"
+      },
+      {
+       "name": "kv_heads",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "head_dim",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "scale",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "causal",
+       "value": "true",
+       "status": "stated",
+       "quote": "This involves training the model to predict the next token based on the context provided by the previous tokens.",
+       "where": "Sec. Training"
+      },
+      {
+       "name": "window",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "sinks",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "o",
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "stated",
+       "quote": "For most layers, we remove biases following \\citet{palm}",
+       "where": "Sec. Architecture"
+      },
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual",
+     "inputs": [
+      "x",
+      "o"
+     ],
+     "output": "x1",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "pre-FFN norm",
+     "inputs": [
+      "x1"
+     ],
+     "output": "h2",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN gate projection",
+     "inputs": [
+      "h2"
+     ],
+     "output": "g",
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "stated",
+       "quote": "For most layers, we remove biases following \\citet{palm}",
+       "where": "Sec. Architecture"
+      },
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN up projection",
+     "inputs": [
+      "h2"
+     ],
+     "output": "u",
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "stated",
+       "quote": "For most layers, we remove biases following \\citet{palm}",
+       "where": "Sec. Architecture"
+      },
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "silu",
+     "role": "Swish on gate",
+     "inputs": [
+      "g"
+     ],
+     "output": "gs",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "mul",
+     "role": "GLU gating",
+     "inputs": [
+      "gs",
+      "u"
+     ],
+     "output": "m",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN down projection",
+     "inputs": [
+      "m"
+     ],
+     "output": "f",
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "stated",
+       "quote": "For most layers, we remove biases following \\citet{palm}",
+       "where": "Sec. Architecture"
+      },
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual",
+     "inputs": [
+      "x1",
+      "f"
+     ],
+     "output": "x",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "rmsnorm",
+     "role": "final norm (assumed for pre-norm stack; not explicitly stated)",
+     "inputs": [
+      "x"
+     ],
+     "output": "hf",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "linear",
+     "role": "untied output projection to vocabulary",
+     "inputs": [
+      "hf"
+     ],
+     "output": "logits",
+     "attributes": [
+      {
+       "name": "tied_to",
+       "value": "",
+       "status": "stated",
+       "quote": "we have opted for the untied embedding approach instead of tying the weights of input embedding and output projection",
+       "where": "Sec. Architecture"
+      },
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "stated",
+       "quote": "For most layers, we remove biases following \\citet{palm}",
+       "where": "Sec. Architecture"
+      }
+     ],
+     "new_op": ""
+    }
+   ],
+   "new_ops": [],
+   "mechanisms_outside_ir": [
+    {
+     "mechanism": "Inference-only context extension via dynamic NTK-aware interpolation (adjusts RoPE base by chunks)",
+     "quote": "To further improve performance, we have also implemented a trivial extension called dynamic NTK-aware interpolation, which is later formally discussed in~\\citep{yarn}.",
+     "where": "Sec. Context Length Extension"
+    },
+    {
+     "mechanism": "Inference-only LogN-Scaling of attention logits by context/training length ratio",
+     "quote": "LogN-Scaling rescales the dot product of the query and value by a factor that depends on the ratio of the context length to the training length",
+     "where": "Sec. Context Length Extension"
+    },
+    {
+     "mechanism": "Inference-only layer-wise window attention (shorter windows in lower layers), sizes not given",
+     "quote": "we assign different window sizes to each layer, using shorter windows for lower layers and longer windows for higher layers.",
+     "where": "Sec. Context Length Extension"
+    },
+    {
+     "mechanism": "RoPE inverse frequencies kept in FP32",
+     "quote": "we have opted to use FP32 precision for the inverse frequency matrix, rather than BF16 or FP16",
+     "where": "Sec. Architecture"
+    }
+   ],
+   "notes": "Described the base Qwen pretrained LM; three sizes (1.8B, 7B, 14B) from Table tab:model-size, primary = 1.8B. Paper says it follows LLaMA but restates/modifies components; no values were filled by inheritance. d_ff left not_stated: paper only says FFN reduced to 8/3 of hidden size (8/3*2048 is not an integer, exact size not given). Vocab is only 'approximately 152K', so left not_stated. KV heads, head_dim, norm eps, RoPE theta/pairing not given. QKV described as a single 'QKV layer', modelled as fused linear + split. Final norm before head is not explicitly mentioned. Window attention, LogN and NTK scaling are inference-time only, so training attention is full causal."
+  },
+  "verification": {
+   "errors": [],
+   "warnings": [],
+   "inherits": {
+    "ancestor": "LLaMA",
+    "resolved": "llama",
+    "quote": "Specifically, we have adopted the recent open-source approach of training large language models, LLaMA~\\citep{llama}, which is widely regarded as the top open-source LLM.",
+    "where": "Sec. Architecture",
+    "quote_found": true
+   },
+   "family": {
+    "value": "decoder_only",
+    "status": "stated",
+    "quote": "To train \\qwen{}, we follow the standard approach of autoregressive language modeling, as described in~\\citet{gpt}.",
+    "where": "Sec. Training",
+    "reasons": [],
+    "check": "quote_only"
+   },
+   "configs": [
+    {
+     "name": "1.8B",
+     "d_model": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "1.8B     & 2048        & 16      & 24",
+      "where": "Table tab:model-size",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "24",
+      "status": "stated",
+      "quote": "1.8B     & 2048        & 16      & 24",
+      "where": "Table tab:model-size",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "16",
+      "status": "stated",
+      "quote": "1.8B     & 2048        & 16      & 24",
+      "where": "Table tab:model-size",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "We train models with context lengths of \\num{2048}.",
+      "where": "Sec. Training",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "name": "7B",
+     "d_model": {
+      "value": "4096",
+      "status": "stated",
+      "quote": "7B       & 4096        & 32      & 32",
+      "where": "Table tab:model-size",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "32",
+      "status": "stated",
+      "quote": "7B       & 4096        & 32      & 32",
+      "where": "Table tab:model-size",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "32",
+      "status": "stated",
+      "quote": "7B       & 4096        & 32      & 32",
+      "where": "Table tab:model-size",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "We train models with context lengths of \\num{2048}.",
+      "where": "Sec. Training",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "name": "14B",
+     "d_model": {
+      "value": "5120",
+      "status": "stated",
+      "quote": "14B      & 5120        & 40      & 40",
+      "where": "Table tab:model-size",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "40",
+      "status": "stated",
+      "quote": "14B      & 5120        & 40      & 40",
+      "where": "Table tab:model-size",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "40",
+      "status": "stated",
+      "quote": "14B      & 5120        & 40      & 40",
+      "where": "Table tab:model-size",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "We train models with context lengths of \\num{2048}.",
+      "where": "Sec. Training",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      }
+     ]
+    }
+   ],
+   "primary_config": "1.8B",
+   "flavours": {
+    "norm": {
+     "value": "rmsnorm",
+     "status": "stated",
+     "quote": "Additionally, we have replaced the traditional layer normalization technique described in~\\citep{layer_norm} with RMSNorm~\\citep{rmsnorm}.",
+     "where": "Sec. Architecture",
+     "reasons": [],
+     "check": "verified"
+    },
+    "norm_placement": {
+     "value": "pre",
+     "status": "stated",
+     "quote": "\\textbf{Pre-Norm \\& RMSNorm}. In modern Transformer models, pre-normalization is the most widely used approach",
+     "where": "Sec. Architecture",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "activation": {
+     "value": "swiglu",
+     "status": "stated",
+     "quote": "We have selected SwiGLU~\\citep{noamglu} as our activation function, a combination of Swish~\\citep{swish} and Gated Linear Unit~\\citep{glu}.",
+     "where": "Sec. Architecture",
+     "reasons": [],
+     "check": "verified"
+    },
+    "positional": {
+     "value": "rope",
+     "status": "stated",
+     "quote": "We have chosen RoPE (Rotary Positional Embedding)~\\citep{rope} as our preferred option for incorporating positional information into our model.",
+     "where": "Sec. Architecture",
+     "reasons": [],
+     "check": "verified"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_theta": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "residual": {
+     "value": "residual",
+     "status": "stated",
+     "quote": "\\qwen{} is designed using a modified version of the Transformer architecture.",
+     "where": "Sec. Architecture",
+     "reasons": [
+      "the quote does not name residual (looked for /residual|skip/)"
+     ],
+     "check": "unverified"
+    },
+    "parallel_block": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "attention": {
+     "value": "exact",
+     "status": "stated",
+     "quote": "To improve computational efficiency and reduce memory usage, we employ Flash Attention in the attention modules~\\citep{flashattn}.",
+     "where": "Sec. Training",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "qkv_bias": {
+     "value": "true",
+     "status": "stated",
+     "quote": "For most layers, we remove biases following \\citet{palm}, but we add biases in the QKV layer of attention to enhance the extrapolation ability of the model~\\citep{qkv_bias}.",
+     "where": "Sec. Architecture",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "mlp_bias": {
+     "value": "false",
+     "status": "stated",
+     "quote": "For most layers, we remove biases following \\citet{palm}",
+     "where": "Sec. Architecture",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "tied_embeddings": {
+     "value": "false",
+     "status": "stated",
+     "quote": "we have opted for the untied embedding approach instead of tying the weights of input embedding and output projection",
+     "where": "Sec. Architecture",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "moe": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    }
+   },
+   "new_ops": [],
+   "block_ops": [
+    {
+     "i": 0,
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding (untied)",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 1,
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "pre-attention norm",
+     "inputs": [
+      "x"
+     ],
+     "output": "h",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 2,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "fused QKV projection with bias",
+     "inputs": [
+      "h"
+     ],
+     "output": "qkv",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "true",
+       "status": "stated",
+       "quote": "but we add biases in the QKV layer of attention to enhance the extrapolation ability of the model~\\citep{qkv_bias}.",
+       "where": "Sec. Architecture",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "bias"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 3,
+     "subgraph": "block",
+     "op": "split",
+     "role": "split into q, k, v",
+     "inputs": [
+      "qkv"
+     ],
+     "output": "q,k,v",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "sizes"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 4,
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary embedding on q",
+     "inputs": [
+      "q"
+     ],
+     "output": "q_r",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "rope_heads"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "pairing"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "n_rot"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "theta"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 5,
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary embedding on k",
+     "inputs": [
+      "k"
+     ],
+     "output": "k_r",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "rope_heads"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "pairing"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "n_rot"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "theta"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 6,
+     "subgraph": "block",
+     "op": "attention",
+     "role": "causal multi-head self-attention",
+     "inputs": [
+      "q_r",
+      "k_r",
+      "v"
+     ],
+     "output": "a",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "16",
+       "status": "stated",
+       "quote": "1.8B     & 2048        & 16      & 24",
+       "where": "Table tab:model-size",
+       "reasons": [],
+       "check": "verified",
+       "name": "heads"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "kv_heads"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "head_dim"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "scale"
+      },
+      {
+       "value": "true",
+       "status": "stated",
+       "quote": "This involves training the model to predict the next token based on the context provided by the previous tokens.",
+       "where": "Sec. Training",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "causal"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "window"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "sinks"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 7,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "o",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "false",
+       "status": "stated",
+       "quote": "For most layers, we remove biases following \\citet{palm}",
+       "where": "Sec. Architecture",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "bias"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 8,
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual",
+     "inputs": [
+      "x",
+      "o"
+     ],
+     "output": "x1",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 9,
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "pre-FFN norm",
+     "inputs": [
+      "x1"
+     ],
+     "output": "h2",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 10,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN gate projection",
+     "inputs": [
+      "h2"
+     ],
+     "output": "g",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "false",
+       "status": "stated",
+       "quote": "For most layers, we remove biases following \\citet{palm}",
+       "where": "Sec. Architecture",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "bias"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 11,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN up projection",
+     "inputs": [
+      "h2"
+     ],
+     "output": "u",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "false",
+       "status": "stated",
+       "quote": "For most layers, we remove biases following \\citet{palm}",
+       "where": "Sec. Architecture",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "bias"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 12,
+     "subgraph": "block",
+     "op": "silu",
+     "role": "Swish on gate",
+     "inputs": [
+      "g"
+     ],
+     "output": "gs",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 13,
+     "subgraph": "block",
+     "op": "mul",
+     "role": "GLU gating",
+     "inputs": [
+      "gs",
+      "u"
+     ],
+     "output": "m",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 14,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN down projection",
+     "inputs": [
+      "m"
+     ],
+     "output": "f",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "false",
+       "status": "stated",
+       "quote": "For most layers, we remove biases following \\citet{palm}",
+       "where": "Sec. Architecture",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "bias"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 15,
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual",
+     "inputs": [
+      "x1",
+      "f"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 16,
+     "subgraph": "head",
+     "op": "rmsnorm",
+     "role": "final norm (assumed for pre-norm stack; not explicitly stated)",
+     "inputs": [
+      "x"
+     ],
+     "output": "hf",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 17,
+     "subgraph": "head",
+     "op": "linear",
+     "role": "untied output projection to vocabulary",
+     "inputs": [
+      "hf"
+     ],
+     "output": "logits",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "stated",
+       "quote": "we have opted for the untied embedding approach instead of tying the weights of input embedding and output projection",
+       "where": "Sec. Architecture",
+       "reasons": [
+        "status stated with an empty value"
+       ],
+       "check": "unverified",
+       "name": "tied_to"
+      },
+      {
+       "value": "false",
+       "status": "stated",
+       "quote": "For most layers, we remove biases following \\citet{palm}",
+       "where": "Sec. Architecture",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    }
+   ],
+   "mechanisms_outside_ir": [
+    {
+     "mechanism": "Inference-only context extension via dynamic NTK-aware interpolation (adjusts RoPE base by chunks)",
+     "quote": "To further improve performance, we have also implemented a trivial extension called dynamic NTK-aware interpolation, which is later formally discussed in~\\citep{yarn}.",
+     "where": "Sec. Context Length Extension",
+     "check": "verified"
+    },
+    {
+     "mechanism": "Inference-only LogN-Scaling of attention logits by context/training length ratio",
+     "quote": "LogN-Scaling rescales the dot product of the query and value by a factor that depends on the ratio of the context length to the training length",
+     "where": "Sec. Context Length Extension",
+     "check": "verified"
+    },
+    {
+     "mechanism": "Inference-only layer-wise window attention (shorter windows in lower layers), sizes not given",
+     "quote": "we assign different window sizes to each layer, using shorter windows for lower layers and longer windows for higher layers.",
+     "where": "Sec. Context Length Extension",
+     "check": "verified"
+    },
+    {
+     "mechanism": "RoPE inverse frequencies kept in FP32",
+     "quote": "we have opted to use FP32 precision for the inverse frequency matrix, rather than BF16 or FP16",
+     "where": "Sec. Architecture",
+     "check": "verified"
+    }
+   ],
+   "summary": {
+    "counts": {
+     "verified": 16,
+     "quote_only": 13,
+     "unverified": 2,
+     "not_stated": 45
+    },
+    "unverified": [
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "the quote does not name residual (looked for /residual|skip/)"
+      ]
+     },
+     {
+      "field": "block_ops[17].tied_to",
+      "reasons": [
+       "status stated with an empty value"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 18
+   }
+  }
+ }
+}

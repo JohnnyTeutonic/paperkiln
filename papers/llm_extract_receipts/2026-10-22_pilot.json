@@ -1,0 +1,219 @@
+{
+ "date": "2026-10-22",
+ "tag": "pilot",
+ "model": "claude-opus-5-5",
+ "effort": "high",
+ "budget_usd": 5.0,
+ "spent_usd": 1.149004,
+ "tag_spent_usd": 1.149004,
+ "papers": [
+  {
+   "arxiv_id": "2109.08668",
+   "cost_usd": 0.357116,
+   "request_ids": [
+    "req_011CgFZj8h9Zq5jLa5kuc5dw"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 13,
+     "quote_only": 5,
+     "unverified": 0,
+     "not_stated": 46
+    },
+    "unverified": [],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 2,
+    "n_block_ops": 17
+   },
+   "comparison": [
+    {
+     "field": "norm",
+     "truth": "rmsnorm",
+     "rule": null,
+     "rule_score": "abstain",
+     "llm": null,
+     "llm_score": "abstain",
+     "llm_check": "not_stated"
+    },
+    {
+     "field": "activation",
+     "truth": null,
+     "rule": null,
+     "rule_score": "correct",
+     "llm": "new_op:squared_relu",
+     "llm_score": "correct",
+     "llm_check": "quote_only"
+    }
+   ],
+   "mechanism_scan": [
+    {
+     "mechanism": "new op squared_relu = (relu(x)^2) (expr)",
+     "where": "llm extraction, verified quote, Sec. Primer, Squared ReLU",
+     "blocking": true,
+     "evidence": "The most effective modification is the improvement from a ReLU activation to a squared ReLU activation in the Transformer's feed forward block."
+    },
+    {
+     "mechanism": "new op mdha_dconv (needs a new primitive: Needs a causal depthwise 1-D convolution over the time axis: kernel width 3, one learned filter per channel (per head ch)",
+     "where": "llm extraction, verified quote, Sec. Primer, MDHA",
+     "blocking": true,
+     "evidence": "Another effective modification is adding 3x1 depthwise convolutions after each of the multi-head projections for query $Q$, key $K$ and value $V$ in self-attention. These depthwise convolutions are performed over the spatial dimension of ea"
+    },
+    {
+     "mechanism": "T5/Lingvo relative attention position bias (positional scheme of the T5-codebase configurations); exact form not given in paper",
+     "where": "llm extraction, verified quote, Sec. Full Training Details",
+     "blocking": true,
+     "evidence": "T2T uses positional embeddings and subword tokenization, while T5 and Lingvo use relative attention~\\cite{Shaw2018SelfAttentionWR} and SentencePieces"
+    }
+   ]
+  },
+  {
+   "arxiv_id": "2402.00838",
+   "cost_usd": 0.349544,
+   "request_ids": [
+    "req_011CgFZoqka6hezrTs8BF3Ty"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 20,
+     "quote_only": 18,
+     "unverified": 2,
+     "not_stated": 34
+    },
+    "unverified": [
+     {
+      "field": "configs[7B].n_kv_heads",
+      "reasons": [
+       "32 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[7].window",
+      "reasons": [
+       "0 does not occur in its quote"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 18
+   },
+   "comparison": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": "layernorm",
+     "rule_score": "correct",
+     "llm": "layernorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "swiglu",
+     "rule": "swiglu",
+     "rule_score": "correct",
+     "llm": "swiglu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "rope",
+     "rule": "rope",
+     "rule_score": "correct",
+     "llm": "rope",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": []
+  },
+  {
+   "arxiv_id": "2304.03208",
+   "cost_usd": 0.442344,
+   "request_ids": [
+    "req_011CgFZtC6Y354HxXkNSpEHM"
+   ],
+   "summary": {
+    "counts": {
+     "verified": 51,
+     "quote_only": 18,
+     "unverified": 4,
+     "not_stated": 29
+    },
+    "unverified": [
+     {
+      "field": "flavours.norm_placement",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no norm_placement"
+      ]
+     },
+     {
+      "field": "block_ops[1].max_positions",
+      "reasons": [
+       "2048 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[6].scale",
+      "reasons": [
+       "1/sqrt(head_dim) does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[6].window",
+      "reasons": [
+       "0 does not occur in its quote"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 16
+   },
+   "comparison": [
+    {
+     "field": "norm",
+     "truth": "layernorm",
+     "rule": "layernorm",
+     "rule_score": "correct",
+     "llm": "layernorm",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "activation",
+     "truth": "gelu",
+     "rule": "gelu",
+     "rule_score": "correct",
+     "llm": "gelu",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    },
+    {
+     "field": "positional",
+     "truth": "learned",
+     "rule": "learned",
+     "rule_score": "correct",
+     "llm": "learned",
+     "llm_score": "correct",
+     "llm_check": "verified"
+    }
+   ],
+   "mechanism_scan": []
+  }
+ ],
+ "tally": {
+  "rule": {
+   "abstain": 1,
+   "correct": 7
+  },
+  "llm": {
+   "abstain": 1,
+   "correct": 7
+  }
+ }
+}

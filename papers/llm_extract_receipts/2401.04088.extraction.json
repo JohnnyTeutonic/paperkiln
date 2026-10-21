@@ -1,0 +1,1533 @@
+{
+ "arxiv_id": "2401.04088",
+ "title": "Mixtral of Experts",
+ "fields": {
+  "d_model": {
+   "value": 4096,
+   "evidence": "\\texttt{dim} & $4096$ [Table 1 (tab:param)]",
+   "verdict": "used"
+  },
+  "n_layers": {
+   "value": 32,
+   "evidence": "\\texttt{n\\_layers} & $32$ [Table 1 (tab:param)]",
+   "verdict": "used"
+  },
+  "n_heads": {
+   "value": 32,
+   "evidence": "\\texttt{n\\_heads} & $32$ [Table 1 (tab:param)]",
+   "verdict": "used"
+  },
+  "n_kv_heads": {
+   "value": 8,
+   "evidence": "\\texttt{n\\_kv\\_heads} & $8$ [Table 1 (tab:param)]",
+   "verdict": "used"
+  },
+  "d_ff": {
+   "value": 14336,
+   "evidence": "\\texttt{hidden\\_dim} & $14336$ [Table 1 (tab:param)]",
+   "verdict": "used"
+  },
+  "vocab_size": {
+   "value": 32000,
+   "evidence": "\\texttt{vocab\\_size} & $32000$ [Table 1 (tab:param)]",
+   "verdict": "used"
+  },
+  "context_length": {
+   "value": 32768,
+   "evidence": "\\texttt{context\\_len} & $32768$ [Table 1 (tab:param)]",
+   "verdict": "used"
+  },
+  "norm": {
+   "value": "rmsnorm",
+   "evidence": "uses the same modifications as described in \\cite{jiang2023mistral} [Sec. 2 Architectural details]",
+   "verdict": "unverified",
+   "reasons": [
+    "the inheritance quote does not name the ancestor"
+   ]
+  },
+  "activation": {
+   "value": "swiglu",
+   "evidence": "For \\mixtral we use the same SwiGLU architecture as the expert function $E_i(x)$ and set $K=2$. [Sec. 2.1 Sparse Mixture of Experts]",
+   "verdict": "used"
+  },
+  "positional": {
+   "value": "rope",
+   "evidence": "uses the same modifications as described in \\cite{jiang2023mistral} [Sec. 2 Architectural details]",
+   "verdict": "unverified",
+   "reasons": [
+    "the inheritance quote does not name the ancestor"
+   ]
+  },
+  "residual": {
+   "value": "residual",
+   "evidence": "\\mixtral is based on a transformer architecture~\\cite{vaswani2017attention} [Sec. 2 Architectural details]",
+   "verdict": "unverified",
+   "reasons": [
+    "inherited from mistral, whose curated entry has no residual",
+    "the inheritance quote does not name the ancestor"
+   ]
+  },
+  "attention": {
+   "value": "exact",
+   "evidence": "\\mixtral supports a fully dense context length of 32k tokens [Sec. 2 Architectural details]",
+   "verdict": "used"
+  }
+ },
+ "unresolved": [],
+ "unverified": [
+  {
+   "field": "norm",
+   "reasons": [
+    "the inheritance quote does not name the ancestor"
+   ]
+  },
+  {
+   "field": "positional",
+   "reasons": [
+    "the inheritance quote does not name the ancestor"
+   ]
+  },
+  {
+   "field": "residual",
+   "reasons": [
+    "inherited from mistral, whose curated entry has no residual",
+    "the inheritance quote does not name the ancestor"
+   ]
+  }
+ ],
+ "mentions": {},
+ "inherits": {
+  "ancestor": "mistral",
+  "evidence": "\\mixtral is based on a transformer architecture~\\cite{vaswani2017attention} and uses the same modifications as described in \\cite{jiang2023mistral}, with the notable exceptions that \\mixtral supports a fully dense context length of 32k tokens, and the feedforward blocks are replaced by Mixture-of-Expert layers",
+  "section": "Sec. 2 Architectural details"
+ },
+ "variants": [
+  {
+   "d_model": 4096,
+   "n_layers": 32,
+   "n_heads": 32,
+   "n_kv_heads": 8,
+   "d_ff": 14336,
+   "vocab_size": 32000,
+   "context_length": 32768
+  }
+ ],
+ "mechanism_scan": [
+  {
+   "mechanism": "mixture of experts",
+   "where": "llm extraction, verified quote, Sec. 2.1 Sparse Mixture of Experts",
+   "blocking": true,
+   "evidence": "In a Transformer model, the MoE layer is applied independently per token and replaces the feed-forward (FFN) sub-block of the transformer block."
+  },
+  {
+   "mechanism": "grouped or multi-query attention",
+   "where": "llm extraction, verified quote, Table 1 (tab:param)",
+   "blocking": true,
+   "evidence": "\\texttt{n\\_kv\\_heads} & $8$"
+  }
+ ],
+ "source": {
+  "tex_sha256": "a6f13401bf9357523a0444a1e6aed4c487ec97c0a5c58c27aef8dca6b4216efc",
+  "sent_sha256": "e12fdf3916a0b349f09fe2459e48d801eaf03337de8107f02e193843430e688e",
+  "from": "https://arxiv.org/e-print/2401.04088",
+  "extractor": "papers/llm_extract.py",
+  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "model": "claude-opus-5-5",
+  "effort": "high",
+  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "n_calls": 1,
+  "cost_usd": 0.0,
+  "request_ids": [
+   "req_011CgFd7wt1PaJUfc4WL7Ap7"
+  ]
+ },
+ "llm": {
+  "output": {
+   "title": "Mixtral of Experts",
+   "model_name": "Mixtral 8x7B",
+   "family": {
+    "value": "decoder_only",
+    "status": "stated",
+    "quote": "It is a decoder-only model where the feedforward block picks from a set of 8 distinct groups of parameters.",
+    "where": "Sec. 1 Introduction"
+   },
+   "inherits": {
+    "ancestor": "Mistral 7B",
+    "quote": "\\mixtral is based on a transformer architecture~\\cite{vaswani2017attention} and uses the same modifications as described in \\cite{jiang2023mistral}, with the notable exceptions that \\mixtral supports a fully dense context length of 32k tokens, and the feedforward blocks are replaced by Mixture-of-Expert layers",
+    "where": "Sec. 2 Architectural details"
+   },
+   "configs": [
+    {
+     "name": "Mixtral 8x7B",
+     "d_model": {
+      "value": "4096",
+      "status": "stated",
+      "quote": "\\texttt{dim}             & $4096$",
+      "where": "Table 1 (tab:param)"
+     },
+     "n_layers": {
+      "value": "32",
+      "status": "stated",
+      "quote": "\\texttt{n\\_layers}       & $32$",
+      "where": "Table 1 (tab:param)"
+     },
+     "n_heads": {
+      "value": "32",
+      "status": "stated",
+      "quote": "\\texttt{n\\_heads}        & $32$",
+      "where": "Table 1 (tab:param)"
+     },
+     "n_kv_heads": {
+      "value": "8",
+      "status": "stated",
+      "quote": "\\texttt{n\\_kv\\_heads}    & $8$",
+      "where": "Table 1 (tab:param)"
+     },
+     "head_dim": {
+      "value": "128",
+      "status": "stated",
+      "quote": "\\texttt{head\\_dim}       & $128$",
+      "where": "Table 1 (tab:param)"
+     },
+     "d_ff": {
+      "value": "14336",
+      "status": "stated",
+      "quote": "\\texttt{hidden\\_dim}     & $14336$",
+      "where": "Table 1 (tab:param)"
+     },
+     "vocab_size": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "\\texttt{vocab\\_size}     & $32000$",
+      "where": "Table 1 (tab:param)"
+     },
+     "context_length": {
+      "value": "32768",
+      "status": "stated",
+      "quote": "\\texttt{context\\_len} & $32768$",
+      "where": "Table 1 (tab:param)"
+     }
+    }
+   ],
+   "primary_config": "Mixtral 8x7B",
+   "flavours": {
+    "norm": {
+     "value": "rmsnorm",
+     "status": "inherited",
+     "quote": "uses the same modifications as described in \\cite{jiang2023mistral}",
+     "where": "Sec. 2 Architectural details"
+    },
+    "norm_placement": {
+     "value": "pre",
+     "status": "inherited",
+     "quote": "uses the same modifications as described in \\cite{jiang2023mistral}",
+     "where": "Sec. 2 Architectural details"
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "activation": {
+     "value": "swiglu",
+     "status": "stated",
+     "quote": "For \\mixtral we use the same SwiGLU architecture as the expert function $E_i(x)$ and set $K=2$.",
+     "where": "Sec. 2.1 Sparse Mixture of Experts"
+    },
+    "positional": {
+     "value": "rope",
+     "status": "inherited",
+     "quote": "uses the same modifications as described in \\cite{jiang2023mistral}",
+     "where": "Sec. 2 Architectural details"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_theta": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "residual": {
+     "value": "residual",
+     "status": "inherited",
+     "quote": "\\mixtral is based on a transformer architecture~\\cite{vaswani2017attention}",
+     "where": "Sec. 2 Architectural details"
+    },
+    "parallel_block": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "attention": {
+     "value": "exact",
+     "status": "stated",
+     "quote": "\\mixtral supports a fully dense context length of 32k tokens",
+     "where": "Sec. 2 Architectural details"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "qkv_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "tied_embeddings": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "moe": {
+     "value": "true",
+     "status": "stated",
+     "quote": "In a Transformer model, the MoE layer is applied independently per token and replaces the feed-forward (FFN) sub-block of the transformer block.",
+     "where": "Sec. 2.1 Sparse Mixture of Experts"
+    },
+    "n_experts": {
+     "value": "8",
+     "status": "stated",
+     "quote": "\\texttt{num\\_experts}  & $8$",
+     "where": "Table 1 (tab:param)"
+    },
+    "top_k": {
+     "value": "2",
+     "status": "stated",
+     "quote": "\\texttt{top\\_k\\_experts}  & $2$",
+     "where": "Table 1 (tab:param)"
+    },
+    "moe_gate_norm": {
+     "value": "renorm",
+     "status": "stated",
+     "quote": "G(x) := \\text{Softmax}(\\text{TopK}(x \\cdot W_g))",
+     "where": "Sec. 2.1 Sparse Mixture of Experts"
+    }
+   },
+   "block_ops": [
+    {
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "x",
+     "attributes": [
+      {
+       "name": "vocab",
+       "value": "32000",
+       "status": "stated",
+       "quote": "\\texttt{vocab\\_size}     & $32000$",
+       "where": "Table 1 (tab:param)"
+      },
+      {
+       "name": "d",
+       "value": "4096",
+       "status": "stated",
+       "quote": "\\texttt{dim}             & $4096$",
+       "where": "Table 1 (tab:param)"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "attention pre-norm",
+     "inputs": [
+      "x"
+     ],
+     "output": "h",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "query projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "q",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "4096",
+       "status": "stated",
+       "quote": "\\texttt{dim}             & $4096$",
+       "where": "Table 1 (tab:param)"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "key projection (8 kv heads x 128)",
+     "inputs": [
+      "h"
+     ],
+     "output": "k",
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "value projection (8 kv heads x 128)",
+     "inputs": [
+      "h"
+     ],
+     "output": "v",
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary position embedding on q and k",
+     "inputs": [
+      "q",
+      "k",
+      "pos"
+     ],
+     "output": "qk_rot",
+     "attributes": [
+      {
+       "name": "rope_heads",
+       "value": "all",
+       "status": "inherited",
+       "quote": "uses the same modifications as described in \\cite{jiang2023mistral}",
+       "where": "Sec. 2 Architectural details"
+      },
+      {
+       "name": "pairing",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "n_rot",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "theta",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "attention",
+     "role": "grouped-query causal self-attention, dense over full context",
+     "inputs": [
+      "qk_rot",
+      "v"
+     ],
+     "output": "a",
+     "attributes": [
+      {
+       "name": "heads",
+       "value": "32",
+       "status": "stated",
+       "quote": "\\texttt{n\\_heads}        & $32$",
+       "where": "Table 1 (tab:param)"
+      },
+      {
+       "name": "kv_heads",
+       "value": "8",
+       "status": "stated",
+       "quote": "\\texttt{n\\_kv\\_heads}    & $8$",
+       "where": "Table 1 (tab:param)"
+      },
+      {
+       "name": "head_dim",
+       "value": "128",
+       "status": "stated",
+       "quote": "\\texttt{head\\_dim}       & $128$",
+       "where": "Table 1 (tab:param)"
+      },
+      {
+       "name": "scale",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "causal",
+       "value": "true",
+       "status": "stated",
+       "quote": "It is a decoder-only model where the feedforward block picks from a set of 8 distinct groups of parameters.",
+       "where": "Sec. 1 Introduction"
+      },
+      {
+       "name": "window",
+       "value": "0",
+       "status": "stated",
+       "quote": "\\mixtral supports a fully dense context length of 32k tokens",
+       "where": "Sec. 2 Architectural details"
+      },
+      {
+       "name": "sinks",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "o",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "4096",
+       "status": "stated",
+       "quote": "\\texttt{dim}             & $4096$",
+       "where": "Table 1 (tab:param)"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual",
+     "inputs": [
+      "x",
+      "o"
+     ],
+     "output": "x1",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "FFN pre-norm",
+     "inputs": [
+      "x1"
+     ],
+     "output": "h2",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "moe_ffn",
+     "role": "sparse MoE of SwiGLU experts replacing the FFN",
+     "inputs": [
+      "h2"
+     ],
+     "output": "m",
+     "attributes": [
+      {
+       "name": "n_experts",
+       "value": "8",
+       "status": "stated",
+       "quote": "\\texttt{num\\_experts}  & $8$",
+       "where": "Table 1 (tab:param)"
+      },
+      {
+       "name": "top_k",
+       "value": "2",
+       "status": "stated",
+       "quote": "\\texttt{top\\_k\\_experts}  & $2$",
+       "where": "Table 1 (tab:param)"
+      },
+      {
+       "name": "gate_norm",
+       "value": "renorm",
+       "status": "stated",
+       "quote": "G(x) := \\text{Softmax}(\\text{TopK}(x \\cdot W_g))",
+       "where": "Sec. 2.1 Sparse Mixture of Experts"
+      },
+      {
+       "name": "activation",
+       "value": "swiglu",
+       "status": "stated",
+       "quote": "For \\mixtral we use the same SwiGLU architecture as the expert function $E_i(x)$ and set $K=2$.",
+       "where": "Sec. 2.1 Sparse Mixture of Experts"
+      },
+      {
+       "name": "d_ff",
+       "value": "14336",
+       "status": "stated",
+       "quote": "\\texttt{hidden\\_dim}     & $14336$",
+       "where": "Table 1 (tab:param)"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual",
+     "inputs": [
+      "x1",
+      "m"
+     ],
+     "output": "x_out",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "rmsnorm",
+     "role": "final norm",
+     "inputs": [
+      "x"
+     ],
+     "output": "hf",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "linear",
+     "role": "output projection to vocabulary",
+     "inputs": [
+      "hf"
+     ],
+     "output": "logits",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "32000",
+       "status": "stated",
+       "quote": "\\texttt{vocab\\_size}     & $32000$",
+       "where": "Table 1 (tab:param)"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "tied_to",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    }
+   ],
+   "new_ops": [],
+   "mechanisms_outside_ir": [],
+   "notes": "Described the base Mixtral 8x7B, the only size configuration given (Table 1). The paper says it uses the same modifications as Mistral 7B, except for dense 32k attention and MoE FFNs. On that basis RMSNorm, pre-norm, RoPE and the residual structure are marked inherited. RoPE theta and pairing, norm eps, biases and tied embeddings are not stated in this paper, so they are left not_stated. Mistral 7B's sliding window is explicitly replaced here by fully dense attention, so attention is exact with window 0. The gate is a softmax over the top-K logits with the rest set to -inf, which is renorm."
+  },
+  "verification": {
+   "errors": [],
+   "warnings": [],
+   "inherits": {
+    "ancestor": "Mistral 7B",
+    "resolved": "mistral",
+    "quote": "\\mixtral is based on a transformer architecture~\\cite{vaswani2017attention} and uses the same modifications as described in \\cite{jiang2023mistral}, with the notable exceptions that \\mixtral supports a fully dense context length of 32k tokens, and the feedforward blocks are replaced by Mixture-of-Expert layers",
+    "where": "Sec. 2 Architectural details",
+    "quote_found": true
+   },
+   "family": {
+    "value": "decoder_only",
+    "status": "stated",
+    "quote": "It is a decoder-only model where the feedforward block picks from a set of 8 distinct groups of parameters.",
+    "where": "Sec. 1 Introduction",
+    "reasons": [],
+    "check": "quote_only"
+   },
+   "configs": [
+    {
+     "name": "Mixtral 8x7B",
+     "d_model": {
+      "value": "4096",
+      "status": "stated",
+      "quote": "\\texttt{dim}             & $4096$",
+      "where": "Table 1 (tab:param)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "32",
+      "status": "stated",
+      "quote": "\\texttt{n\\_layers}       & $32$",
+      "where": "Table 1 (tab:param)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "32",
+      "status": "stated",
+      "quote": "\\texttt{n\\_heads}        & $32$",
+      "where": "Table 1 (tab:param)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "8",
+      "status": "stated",
+      "quote": "\\texttt{n\\_kv\\_heads}    & $8$",
+      "where": "Table 1 (tab:param)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "head_dim": {
+      "value": "128",
+      "status": "stated",
+      "quote": "\\texttt{head\\_dim}       & $128$",
+      "where": "Table 1 (tab:param)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "d_ff": {
+      "value": "14336",
+      "status": "stated",
+      "quote": "\\texttt{hidden\\_dim}     & $14336$",
+      "where": "Table 1 (tab:param)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "vocab_size": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "\\texttt{vocab\\_size}     & $32000$",
+      "where": "Table 1 (tab:param)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "32768",
+      "status": "stated",
+      "quote": "\\texttt{context\\_len} & $32768$",
+      "where": "Table 1 (tab:param)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      },
+      {
+       "check": "n_kv_heads divides n_heads",
+       "ok": true
+      },
+      {
+       "check": "n_kv_heads <= n_heads",
+       "ok": true
+      },
+      {
+       "check": "head_dim * n_heads == d_model",
+       "ok": true
+      }
+     ]
+    }
+   ],
+   "primary_config": "Mixtral 8x7B",
+   "flavours": {
+    "norm": {
+     "value": "rmsnorm",
+     "status": "inherited",
+     "quote": "uses the same modifications as described in \\cite{jiang2023mistral}",
+     "where": "Sec. 2 Architectural details",
+     "reasons": [
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
+    },
+    "norm_placement": {
+     "value": "pre",
+     "status": "inherited",
+     "quote": "uses the same modifications as described in \\cite{jiang2023mistral}",
+     "where": "Sec. 2 Architectural details",
+     "reasons": [
+      "inherited from mistral, whose curated entry has no norm_placement",
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "activation": {
+     "value": "swiglu",
+     "status": "stated",
+     "quote": "For \\mixtral we use the same SwiGLU architecture as the expert function $E_i(x)$ and set $K=2$.",
+     "where": "Sec. 2.1 Sparse Mixture of Experts",
+     "reasons": [],
+     "check": "verified"
+    },
+    "positional": {
+     "value": "rope",
+     "status": "inherited",
+     "quote": "uses the same modifications as described in \\cite{jiang2023mistral}",
+     "where": "Sec. 2 Architectural details",
+     "reasons": [
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_theta": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "residual": {
+     "value": "residual",
+     "status": "inherited",
+     "quote": "\\mixtral is based on a transformer architecture~\\cite{vaswani2017attention}",
+     "where": "Sec. 2 Architectural details",
+     "reasons": [
+      "inherited from mistral, whose curated entry has no residual",
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
+    },
+    "parallel_block": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "attention": {
+     "value": "exact",
+     "status": "stated",
+     "quote": "\\mixtral supports a fully dense context length of 32k tokens",
+     "where": "Sec. 2 Architectural details",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "qkv_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "tied_embeddings": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "moe": {
+     "value": "true",
+     "status": "stated",
+     "quote": "In a Transformer model, the MoE layer is applied independently per token and replaces the feed-forward (FFN) sub-block of the transformer block.",
+     "where": "Sec. 2.1 Sparse Mixture of Experts",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "n_experts": {
+     "value": "8",
+     "status": "stated",
+     "quote": "\\texttt{num\\_experts}  & $8$",
+     "where": "Table 1 (tab:param)",
+     "reasons": [],
+     "check": "verified"
+    },
+    "top_k": {
+     "value": "2",
+     "status": "stated",
+     "quote": "\\texttt{top\\_k\\_experts}  & $2$",
+     "where": "Table 1 (tab:param)",
+     "reasons": [],
+     "check": "verified"
+    },
+    "moe_gate_norm": {
+     "value": "renorm",
+     "status": "stated",
+     "quote": "G(x) := \\text{Softmax}(\\text{TopK}(x \\cdot W_g))",
+     "where": "Sec. 2.1 Sparse Mixture of Experts",
+     "reasons": [],
+     "check": "verified"
+    }
+   },
+   "new_ops": [],
+   "block_ops": [
+    {
+     "i": 0,
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "32000",
+       "status": "stated",
+       "quote": "\\texttt{vocab\\_size}     & $32000$",
+       "where": "Table 1 (tab:param)",
+       "reasons": [],
+       "check": "verified",
+       "name": "vocab"
+      },
+      {
+       "value": "4096",
+       "status": "stated",
+       "quote": "\\texttt{dim}             & $4096$",
+       "where": "Table 1 (tab:param)",
+       "reasons": [],
+       "check": "verified",
+       "name": "d"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 1,
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "attention pre-norm",
+     "inputs": [
+      "x"
+     ],
+     "output": "h",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 2,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "query projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "q",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "4096",
+       "status": "stated",
+       "quote": "\\texttt{dim}             & $4096$",
+       "where": "Table 1 (tab:param)",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 3,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "key projection (8 kv heads x 128)",
+     "inputs": [
+      "h"
+     ],
+     "output": "k",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 4,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "value projection (8 kv heads x 128)",
+     "inputs": [
+      "h"
+     ],
+     "output": "v",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 5,
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary position embedding on q and k",
+     "inputs": [
+      "q",
+      "k",
+      "pos"
+     ],
+     "output": "qk_rot",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "all",
+       "status": "inherited",
+       "quote": "uses the same modifications as described in \\cite{jiang2023mistral}",
+       "where": "Sec. 2 Architectural details",
+       "reasons": [
+        "inherited from mistral, whose curated entry has no rope_heads",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "rope_heads"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "pairing"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "n_rot"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "theta"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 6,
+     "subgraph": "block",
+     "op": "attention",
+     "role": "grouped-query causal self-attention, dense over full context",
+     "inputs": [
+      "qk_rot",
+      "v"
+     ],
+     "output": "a",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "32",
+       "status": "stated",
+       "quote": "\\texttt{n\\_heads}        & $32$",
+       "where": "Table 1 (tab:param)",
+       "reasons": [],
+       "check": "verified",
+       "name": "heads"
+      },
+      {
+       "value": "8",
+       "status": "stated",
+       "quote": "\\texttt{n\\_kv\\_heads}    & $8$",
+       "where": "Table 1 (tab:param)",
+       "reasons": [],
+       "check": "verified",
+       "name": "kv_heads"
+      },
+      {
+       "value": "128",
+       "status": "stated",
+       "quote": "\\texttt{head\\_dim}       & $128$",
+       "where": "Table 1 (tab:param)",
+       "reasons": [],
+       "check": "verified",
+       "name": "head_dim"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "scale"
+      },
+      {
+       "value": "true",
+       "status": "stated",
+       "quote": "It is a decoder-only model where the feedforward block picks from a set of 8 distinct groups of parameters.",
+       "where": "Sec. 1 Introduction",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "causal"
+      },
+      {
+       "value": "0",
+       "status": "stated",
+       "quote": "\\mixtral supports a fully dense context length of 32k tokens",
+       "where": "Sec. 2 Architectural details",
+       "reasons": [
+        "0 does not occur in its quote"
+       ],
+       "check": "unverified",
+       "name": "window"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "sinks"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 7,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "o",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "4096",
+       "status": "stated",
+       "quote": "\\texttt{dim}             & $4096$",
+       "where": "Table 1 (tab:param)",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 8,
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual",
+     "inputs": [
+      "x",
+      "o"
+     ],
+     "output": "x1",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 9,
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "FFN pre-norm",
+     "inputs": [
+      "x1"
+     ],
+     "output": "h2",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 10,
+     "subgraph": "block",
+     "op": "moe_ffn",
+     "role": "sparse MoE of SwiGLU experts replacing the FFN",
+     "inputs": [
+      "h2"
+     ],
+     "output": "m",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "8",
+       "status": "stated",
+       "quote": "\\texttt{num\\_experts}  & $8$",
+       "where": "Table 1 (tab:param)",
+       "reasons": [],
+       "check": "verified",
+       "name": "n_experts"
+      },
+      {
+       "value": "2",
+       "status": "stated",
+       "quote": "\\texttt{top\\_k\\_experts}  & $2$",
+       "where": "Table 1 (tab:param)",
+       "reasons": [],
+       "check": "verified",
+       "name": "top_k"
+      },
+      {
+       "value": "renorm",
+       "status": "stated",
+       "quote": "G(x) := \\text{Softmax}(\\text{TopK}(x \\cdot W_g))",
+       "where": "Sec. 2.1 Sparse Mixture of Experts",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "gate_norm"
+      },
+      {
+       "value": "swiglu",
+       "status": "stated",
+       "quote": "For \\mixtral we use the same SwiGLU architecture as the expert function $E_i(x)$ and set $K=2$.",
+       "where": "Sec. 2.1 Sparse Mixture of Experts",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "activation"
+      },
+      {
+       "value": "14336",
+       "status": "stated",
+       "quote": "\\texttt{hidden\\_dim}     & $14336$",
+       "where": "Table 1 (tab:param)",
+       "reasons": [],
+       "check": "verified",
+       "name": "d_ff"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 11,
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual",
+     "inputs": [
+      "x1",
+      "m"
+     ],
+     "output": "x_out",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 12,
+     "subgraph": "head",
+     "op": "rmsnorm",
+     "role": "final norm",
+     "inputs": [
+      "x"
+     ],
+     "output": "hf",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 13,
+     "subgraph": "head",
+     "op": "linear",
+     "role": "output projection to vocabulary",
+     "inputs": [
+      "hf"
+     ],
+     "output": "logits",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "32000",
+       "status": "stated",
+       "quote": "\\texttt{vocab\\_size}     & $32000$",
+       "where": "Table 1 (tab:param)",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "tied_to"
+      }
+     ],
+     "errors": []
+    }
+   ],
+   "mechanisms_outside_ir": [],
+   "summary": {
+    "counts": {
+     "verified": 23,
+     "quote_only": 6,
+     "unverified": 6,
+     "not_stated": 24
+    },
+    "unverified": [
+     {
+      "field": "flavours.norm",
+      "reasons": [
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.norm_placement",
+      "reasons": [
+       "inherited from mistral, whose curated entry has no norm_placement",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.positional",
+      "reasons": [
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "inherited from mistral, whose curated entry has no residual",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[5].rope_heads",
+      "reasons": [
+       "inherited from mistral, whose curated entry has no rope_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[6].window",
+      "reasons": [
+       "0 does not occur in its quote"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 14
+   }
+  }
+ }
+}

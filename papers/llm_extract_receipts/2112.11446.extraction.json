@@ -1,0 +1,2305 @@
+{
+ "arxiv_id": "2112.11446",
+ "title": "Scaling Language Models: Methods, Analysis & Insights from Training Gopher",
+ "fields": {
+  "d_model": {
+   "value": 16384,
+   "evidence": "\\gopher 280B & 80 & 128 & 128 & 16,384 [Table tab:arch]",
+   "verdict": "used"
+  },
+  "n_layers": {
+   "value": 80,
+   "evidence": "\\gopher 280B & 80 & 128 & 128 & 16,384 [Table tab:arch]",
+   "verdict": "used"
+  },
+  "n_heads": {
+   "value": 128,
+   "evidence": "\\gopher 280B & 80 & 128 & 128 & 16,384 [Table tab:arch]",
+   "verdict": "used"
+  },
+  "vocab_size": {
+   "value": 32000,
+   "evidence": "We tokenize the text using SentencePiece~\\citep{kudo2018sentencepiece} with a vocabulary of 32,000 [Sec. 3.1 Models]",
+   "verdict": "used"
+  },
+  "context_length": {
+   "value": 2048,
+   "evidence": "We train all models for 300 billion tokens with a 2048 token context window [Sec. 3.2 Training]",
+   "verdict": "used"
+  },
+  "norm": {
+   "value": "rmsnorm",
+   "evidence": "we use RMSNorm \\citep{zhang2019root} instead of LayerNorm~\\citep{ba2016layer}, [Sec. 3.1 Models]",
+   "verdict": "used"
+  },
+  "activation": {
+   "value": "gelu",
+   "evidence": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications [Sec. 3.1 Models]",
+   "verdict": "unverified",
+   "reasons": [
+    "the inheritance quote does not name the ancestor"
+   ]
+  },
+  "positional": {
+   "value": "relative",
+   "evidence": "we use the relative positional encoding scheme from \\citet{dai2019transformer} rather than absolute positional encodings. [Sec. 3.1 Models]",
+   "verdict": "used"
+  },
+  "residual": {
+   "value": "residual",
+   "evidence": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications [Sec. 3.1 Models]",
+   "verdict": "unverified",
+   "reasons": [
+    "inherited from gpt-2, whose curated entry has no residual",
+    "the inheritance quote does not name the ancestor"
+   ]
+  },
+  "attention": {
+   "value": "exact",
+   "evidence": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications [Sec. 3.1 Models]",
+   "verdict": "unverified",
+   "reasons": [
+    "inherited from gpt-2, whose curated entry has no attention",
+    "the inheritance quote does not name the ancestor"
+   ]
+  }
+ },
+ "unresolved": [
+  "n_kv_heads",
+  "d_ff"
+ ],
+ "unverified": [
+  {
+   "field": "d_ff",
+   "reasons": [
+    "65536 does not occur in its quote"
+   ]
+  },
+  {
+   "field": "activation",
+   "reasons": [
+    "the inheritance quote does not name the ancestor"
+   ]
+  },
+  {
+   "field": "residual",
+   "reasons": [
+    "inherited from gpt-2, whose curated entry has no residual",
+    "the inheritance quote does not name the ancestor"
+   ]
+  },
+  {
+   "field": "attention",
+   "reasons": [
+    "inherited from gpt-2, whose curated entry has no attention",
+    "the inheritance quote does not name the ancestor"
+   ]
+  }
+ ],
+ "mentions": {},
+ "inherits": {
+  "ancestor": "gpt-2",
+  "evidence": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+  "section": "Sec. 3.1 Models"
+ },
+ "variants": [
+  {
+   "d_model": 512,
+   "n_layers": 8,
+   "n_heads": 16,
+   "vocab_size": 32000,
+   "context_length": 2048
+  },
+  {
+   "d_model": 768,
+   "n_layers": 12,
+   "n_heads": 12,
+   "vocab_size": 32000,
+   "context_length": 2048
+  },
+  {
+   "d_model": 1536,
+   "n_layers": 12,
+   "n_heads": 12,
+   "vocab_size": 32000,
+   "context_length": 2048
+  },
+  {
+   "d_model": 2048,
+   "n_layers": 24,
+   "n_heads": 16,
+   "vocab_size": 32000,
+   "context_length": 2048
+  },
+  {
+   "d_model": 4096,
+   "n_layers": 32,
+   "n_heads": 32,
+   "vocab_size": 32000,
+   "context_length": 2048
+  },
+  {
+   "d_model": 16384,
+   "n_layers": 80,
+   "n_heads": 128,
+   "vocab_size": 32000,
+   "context_length": 2048
+  }
+ ],
+ "mechanism_scan": [
+  {
+   "mechanism": "new op transformerxl_relative_attention (needs a new primitive: The model uses the Transformer-XL (Dai et al. 2019) relative positional encoding scheme. This needs a causal softmax att)",
+   "where": "llm extraction, verified quote, Sec. 3.1 Models",
+   "blocking": true,
+   "evidence": "we use the relative positional encoding scheme from \\citet{dai2019transformer} rather than absolute positional encodings."
+  }
+ ],
+ "source": {
+  "tex_sha256": "ad4cc28f48ee536443e68282921095956d51ba826e8318ad771f626e10ffda3b",
+  "sent_sha256": "ab5fdca41c72b6ebc99113cf4eaf31fe541784587832a20bdfe35f804ecbe510",
+  "from": "https://arxiv.org/e-print/2112.11446",
+  "extractor": "papers/llm_extract.py",
+  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "model": "claude-opus-5-5",
+  "effort": "high",
+  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "n_calls": 1,
+  "cost_usd": 0.0,
+  "request_ids": [
+   "req_011CgFbqUQTapbdgur2oYXDv"
+  ]
+ },
+ "llm": {
+  "output": {
+   "title": "Scaling Language Models: Methods, Analysis & Insights from Training Gopher",
+   "model_name": "Gopher",
+   "family": {
+    "value": "decoder_only",
+    "status": "stated",
+    "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+    "where": "Sec. 3.1 Models"
+   },
+   "inherits": {
+    "ancestor": "GPT-2 (Radford et al. 2019)",
+    "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+    "where": "Sec. 3.1 Models"
+   },
+   "configs": [
+    {
+     "name": "44M",
+     "d_model": {
+      "value": "512",
+      "status": "stated",
+      "quote": "44M & 8 & 16 & 32 & 512",
+      "where": "Table tab:arch"
+     },
+     "n_layers": {
+      "value": "8",
+      "status": "stated",
+      "quote": "44M & 8 & 16 & 32 & 512",
+      "where": "Table tab:arch"
+     },
+     "n_heads": {
+      "value": "16",
+      "status": "stated",
+      "quote": "44M & 8 & 16 & 32 & 512",
+      "where": "Table tab:arch"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "32",
+      "status": "stated",
+      "quote": "44M & 8 & 16 & 32 & 512",
+      "where": "Table tab:arch"
+     },
+     "d_ff": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "The feed-forward size is always $4\\times \\textrm{d}_{\\textrm{model}}$.",
+      "where": "Table tab:arch caption"
+     },
+     "vocab_size": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "We tokenize the text using SentencePiece~\\citep{kudo2018sentencepiece} with a vocabulary of 32,000",
+      "where": "Sec. 3.1 Models"
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "We train all models for 300 billion tokens with a 2048 token context window",
+      "where": "Sec. 3.2 Training"
+     }
+    },
+    {
+     "name": "117M",
+     "d_model": {
+      "value": "768",
+      "status": "stated",
+      "quote": "117M & 12 &  12 & 64 & 768",
+      "where": "Table tab:arch"
+     },
+     "n_layers": {
+      "value": "12",
+      "status": "stated",
+      "quote": "117M & 12 &  12 & 64 & 768",
+      "where": "Table tab:arch"
+     },
+     "n_heads": {
+      "value": "12",
+      "status": "stated",
+      "quote": "117M & 12 &  12 & 64 & 768",
+      "where": "Table tab:arch"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "64",
+      "status": "stated",
+      "quote": "117M & 12 &  12 & 64 & 768",
+      "where": "Table tab:arch"
+     },
+     "d_ff": {
+      "value": "3072",
+      "status": "stated",
+      "quote": "The feed-forward size is always $4\\times \\textrm{d}_{\\textrm{model}}$.",
+      "where": "Table tab:arch caption"
+     },
+     "vocab_size": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "We tokenize the text using SentencePiece~\\citep{kudo2018sentencepiece} with a vocabulary of 32,000",
+      "where": "Sec. 3.1 Models"
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "We train all models for 300 billion tokens with a 2048 token context window",
+      "where": "Sec. 3.2 Training"
+     }
+    },
+    {
+     "name": "417M",
+     "d_model": {
+      "value": "1536",
+      "status": "stated",
+      "quote": "417M & 12 & 12 & 128 & 1,536",
+      "where": "Table tab:arch"
+     },
+     "n_layers": {
+      "value": "12",
+      "status": "stated",
+      "quote": "417M & 12 & 12 & 128 & 1,536",
+      "where": "Table tab:arch"
+     },
+     "n_heads": {
+      "value": "12",
+      "status": "stated",
+      "quote": "417M & 12 & 12 & 128 & 1,536",
+      "where": "Table tab:arch"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "128",
+      "status": "stated",
+      "quote": "417M & 12 & 12 & 128 & 1,536",
+      "where": "Table tab:arch"
+     },
+     "d_ff": {
+      "value": "6144",
+      "status": "stated",
+      "quote": "The feed-forward size is always $4\\times \\textrm{d}_{\\textrm{model}}$.",
+      "where": "Table tab:arch caption"
+     },
+     "vocab_size": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "We tokenize the text using SentencePiece~\\citep{kudo2018sentencepiece} with a vocabulary of 32,000",
+      "where": "Sec. 3.1 Models"
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "We train all models for 300 billion tokens with a 2048 token context window",
+      "where": "Sec. 3.2 Training"
+     }
+    },
+    {
+     "name": "1.4B",
+     "d_model": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "1.4B & 24 & 16 & 128 & 2,048",
+      "where": "Table tab:arch"
+     },
+     "n_layers": {
+      "value": "24",
+      "status": "stated",
+      "quote": "1.4B & 24 & 16 & 128 & 2,048",
+      "where": "Table tab:arch"
+     },
+     "n_heads": {
+      "value": "16",
+      "status": "stated",
+      "quote": "1.4B & 24 & 16 & 128 & 2,048",
+      "where": "Table tab:arch"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "128",
+      "status": "stated",
+      "quote": "1.4B & 24 & 16 & 128 & 2,048",
+      "where": "Table tab:arch"
+     },
+     "d_ff": {
+      "value": "8192",
+      "status": "stated",
+      "quote": "The feed-forward size is always $4\\times \\textrm{d}_{\\textrm{model}}$.",
+      "where": "Table tab:arch caption"
+     },
+     "vocab_size": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "We tokenize the text using SentencePiece~\\citep{kudo2018sentencepiece} with a vocabulary of 32,000",
+      "where": "Sec. 3.1 Models"
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "We train all models for 300 billion tokens with a 2048 token context window",
+      "where": "Sec. 3.2 Training"
+     }
+    },
+    {
+     "name": "7.1B",
+     "d_model": {
+      "value": "4096",
+      "status": "stated",
+      "quote": "7.1B & 32 & 32 & 128 & 4,096",
+      "where": "Table tab:arch"
+     },
+     "n_layers": {
+      "value": "32",
+      "status": "stated",
+      "quote": "7.1B & 32 & 32 & 128 & 4,096",
+      "where": "Table tab:arch"
+     },
+     "n_heads": {
+      "value": "32",
+      "status": "stated",
+      "quote": "7.1B & 32 & 32 & 128 & 4,096",
+      "where": "Table tab:arch"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "128",
+      "status": "stated",
+      "quote": "7.1B & 32 & 32 & 128 & 4,096",
+      "where": "Table tab:arch"
+     },
+     "d_ff": {
+      "value": "16384",
+      "status": "stated",
+      "quote": "The feed-forward size is always $4\\times \\textrm{d}_{\\textrm{model}}$.",
+      "where": "Table tab:arch caption"
+     },
+     "vocab_size": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "We tokenize the text using SentencePiece~\\citep{kudo2018sentencepiece} with a vocabulary of 32,000",
+      "where": "Sec. 3.1 Models"
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "We train all models for 300 billion tokens with a 2048 token context window",
+      "where": "Sec. 3.2 Training"
+     }
+    },
+    {
+     "name": "Gopher 280B",
+     "d_model": {
+      "value": "16384",
+      "status": "stated",
+      "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
+      "where": "Table tab:arch"
+     },
+     "n_layers": {
+      "value": "80",
+      "status": "stated",
+      "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
+      "where": "Table tab:arch"
+     },
+     "n_heads": {
+      "value": "128",
+      "status": "stated",
+      "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
+      "where": "Table tab:arch"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "128",
+      "status": "stated",
+      "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
+      "where": "Table tab:arch"
+     },
+     "d_ff": {
+      "value": "65536",
+      "status": "stated",
+      "quote": "The feed-forward size is always $4\\times \\textrm{d}_{\\textrm{model}}$.",
+      "where": "Table tab:arch caption"
+     },
+     "vocab_size": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "We tokenize the text using SentencePiece~\\citep{kudo2018sentencepiece} with a vocabulary of 32,000",
+      "where": "Sec. 3.1 Models"
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "We train all models for 300 billion tokens with a 2048 token context window",
+      "where": "Sec. 3.2 Training"
+     }
+    }
+   ],
+   "primary_config": "Gopher 280B",
+   "flavours": {
+    "norm": {
+     "value": "rmsnorm",
+     "status": "stated",
+     "quote": "we use RMSNorm \\citep{zhang2019root} instead of LayerNorm~\\citep{ba2016layer},",
+     "where": "Sec. 3.1 Models"
+    },
+    "norm_placement": {
+     "value": "pre",
+     "status": "inherited",
+     "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+     "where": "Sec. 3.1 Models"
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "activation": {
+     "value": "gelu_tanh",
+     "status": "inherited",
+     "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+     "where": "Sec. 3.1 Models"
+    },
+    "positional": {
+     "value": "relative",
+     "status": "stated",
+     "quote": "we use the relative positional encoding scheme from \\citet{dai2019transformer} rather than absolute positional encodings.",
+     "where": "Sec. 3.1 Models"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_theta": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "residual": {
+     "value": "residual",
+     "status": "inherited",
+     "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+     "where": "Sec. 3.1 Models"
+    },
+    "parallel_block": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+     "where": "Sec. 3.1 Models"
+    },
+    "attention": {
+     "value": "exact",
+     "status": "inherited",
+     "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+     "where": "Sec. 3.1 Models"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "qkv_bias": {
+     "value": "true",
+     "status": "inherited",
+     "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+     "where": "Sec. 3.1 Models"
+    },
+    "mlp_bias": {
+     "value": "true",
+     "status": "inherited",
+     "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+     "where": "Sec. 3.1 Models"
+    },
+    "tied_embeddings": {
+     "value": "true",
+     "status": "inherited",
+     "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+     "where": "Sec. 3.1 Models"
+    },
+    "moe": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+     "where": "Sec. 3.1 Models"
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    }
+   },
+   "block_ops": [
+    {
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding (token_embd)",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "x",
+     "attributes": [
+      {
+       "name": "vocab",
+       "value": "32000",
+       "status": "stated",
+       "quote": "We tokenize the text using SentencePiece~\\citep{kudo2018sentencepiece} with a vocabulary of 32,000",
+       "where": "Sec. 3.1 Models"
+      },
+      {
+       "name": "d",
+       "value": "16384",
+       "status": "stated",
+       "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
+       "where": "Table tab:arch"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "pre-attention norm",
+     "inputs": [
+      "x"
+     ],
+     "output": "h",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "fused qkv projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "qkv",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "49152",
+       "status": "stated",
+       "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
+       "where": "Table tab:arch"
+      },
+      {
+       "name": "bias",
+       "value": "true",
+       "status": "inherited",
+       "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+       "where": "Sec. 3.1 Models"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "split",
+     "role": "split into q, k, v",
+     "inputs": [
+      "qkv"
+     ],
+     "output": "q,k,v",
+     "attributes": [
+      {
+       "name": "sizes",
+       "value": "16384,16384,16384",
+       "status": "stated",
+       "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
+       "where": "Table tab:arch"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "unsupported",
+     "role": "causal multi-head attention with Transformer-XL relative positional encoding",
+     "inputs": [
+      "q",
+      "k",
+      "v"
+     ],
+     "output": "a",
+     "attributes": [
+      {
+       "name": "heads",
+       "value": "128",
+       "status": "stated",
+       "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
+       "where": "Table tab:arch"
+      },
+      {
+       "name": "head_dim",
+       "value": "128",
+       "status": "stated",
+       "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
+       "where": "Table tab:arch"
+      },
+      {
+       "name": "kv_heads",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "scale",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "causal",
+       "value": "true",
+       "status": "stated",
+       "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+       "where": "Sec. 3.1 Models"
+      }
+     ],
+     "new_op": "transformerxl_relative_attention"
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "o",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "16384",
+       "status": "stated",
+       "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
+       "where": "Table tab:arch"
+      },
+      {
+       "name": "bias",
+       "value": "true",
+       "status": "inherited",
+       "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+       "where": "Sec. 3.1 Models"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual",
+     "inputs": [
+      "x",
+      "o"
+     ],
+     "output": "x1",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "pre-FFN norm",
+     "inputs": [
+      "x1"
+     ],
+     "output": "h2",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN up projection",
+     "inputs": [
+      "h2"
+     ],
+     "output": "u",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "65536",
+       "status": "stated",
+       "quote": "The feed-forward size is always $4\\times \\textrm{d}_{\\textrm{model}}$.",
+       "where": "Table tab:arch caption"
+      },
+      {
+       "name": "bias",
+       "value": "true",
+       "status": "inherited",
+       "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+       "where": "Sec. 3.1 Models"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "gelu",
+     "role": "FFN activation",
+     "inputs": [
+      "u"
+     ],
+     "output": "g",
+     "attributes": [
+      {
+       "name": "approx",
+       "value": "tanh",
+       "status": "inherited",
+       "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+       "where": "Sec. 3.1 Models"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN down projection",
+     "inputs": [
+      "g"
+     ],
+     "output": "f",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "16384",
+       "status": "stated",
+       "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
+       "where": "Table tab:arch"
+      },
+      {
+       "name": "bias",
+       "value": "true",
+       "status": "inherited",
+       "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+       "where": "Sec. 3.1 Models"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual",
+     "inputs": [
+      "x1",
+      "f"
+     ],
+     "output": "x",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "rmsnorm",
+     "role": "final norm",
+     "inputs": [
+      "x"
+     ],
+     "output": "hf",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "linear",
+     "role": "output logits (tied to token embedding)",
+     "inputs": [
+      "hf"
+     ],
+     "output": "logits",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "32000",
+       "status": "stated",
+       "quote": "We tokenize the text using SentencePiece~\\citep{kudo2018sentencepiece} with a vocabulary of 32,000",
+       "where": "Sec. 3.1 Models"
+      },
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "inherited",
+       "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+       "where": "Sec. 3.1 Models"
+      },
+      {
+       "name": "tied_to",
+       "value": "token_embd",
+       "status": "inherited",
+       "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+       "where": "Sec. 3.1 Models"
+      }
+     ],
+     "new_op": ""
+    }
+   ],
+   "new_ops": [
+    {
+     "name": "transformerxl_relative_attention",
+     "kind": "needs_new_primitive",
+     "expr": "",
+     "inputs": [
+      {
+       "name": "q",
+       "meaning": "queries [T, heads*head_dim]"
+      },
+      {
+       "name": "k",
+       "meaning": "keys [T, heads*head_dim]"
+      },
+      {
+       "name": "v",
+       "meaning": "values [T, heads*head_dim]"
+      }
+     ],
+     "replaces": "attention with absolute positional embeddings",
+     "reason": "The model uses the Transformer-XL (Dai et al. 2019) relative positional encoding scheme. This needs a causal softmax attention primitive whose logits add content-position terms computed from relative-distance embeddings. In Transformer-XL these are sinusoidal relative embeddings projected per layer, plus learned global biases. The output has shape [T, heads*head_dim]. The relative distance can be clamped at 2048 when evaluating on longer contexts. The paper gives none of these internal details itself; it only references the scheme, so the exact formulation has to come from the cited work.",
+     "quote": "we use the relative positional encoding scheme from \\citet{dai2019transformer} rather than absolute positional encodings.",
+     "where": "Sec. 3.1 Models"
+    }
+   ],
+   "mechanisms_outside_ir": [],
+   "notes": "Described the Gopher family. Primary config is the singled-out Gopher 280B; the five smaller family models are listed as configs. The paper says it uses the GPT-2 architecture with RMSNorm and Transformer-XL relative positions. Values not restated are therefore marked inherited from GPT-2: pre-norm, GELU (tanh form, as in the GPT-2 implementation), biases, tied embeddings, final norm and no MoE. d_ff is derived from the caption '4 x d_model', so each per-config number does not appear verbatim in the source. n_kv_heads, norm eps and attention scale are not stated. Relative attention is represented as an unsupported new op."
+  },
+  "verification": {
+   "errors": [],
+   "warnings": [],
+   "inherits": {
+    "ancestor": "GPT-2 (Radford et al. 2019)",
+    "resolved": "gpt-2",
+    "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+    "where": "Sec. 3.1 Models",
+    "quote_found": true
+   },
+   "family": {
+    "value": "decoder_only",
+    "status": "stated",
+    "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+    "where": "Sec. 3.1 Models",
+    "reasons": [],
+    "check": "quote_only"
+   },
+   "configs": [
+    {
+     "name": "44M",
+     "d_model": {
+      "value": "512",
+      "status": "stated",
+      "quote": "44M & 8 & 16 & 32 & 512",
+      "where": "Table tab:arch",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "8",
+      "status": "stated",
+      "quote": "44M & 8 & 16 & 32 & 512",
+      "where": "Table tab:arch",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "16",
+      "status": "stated",
+      "quote": "44M & 8 & 16 & 32 & 512",
+      "where": "Table tab:arch",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "32",
+      "status": "stated",
+      "quote": "44M & 8 & 16 & 32 & 512",
+      "where": "Table tab:arch",
+      "reasons": [],
+      "check": "verified"
+     },
+     "d_ff": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "The feed-forward size is always $4\\times \\textrm{d}_{\\textrm{model}}$.",
+      "where": "Table tab:arch caption",
+      "reasons": [
+       "2048 does not occur in its quote"
+      ],
+      "check": "unverified"
+     },
+     "vocab_size": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "We tokenize the text using SentencePiece~\\citep{kudo2018sentencepiece} with a vocabulary of 32,000",
+      "where": "Sec. 3.1 Models",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "We train all models for 300 billion tokens with a 2048 token context window",
+      "where": "Sec. 3.2 Training",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      },
+      {
+       "check": "head_dim * n_heads == d_model",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "name": "117M",
+     "d_model": {
+      "value": "768",
+      "status": "stated",
+      "quote": "117M & 12 &  12 & 64 & 768",
+      "where": "Table tab:arch",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "12",
+      "status": "stated",
+      "quote": "117M & 12 &  12 & 64 & 768",
+      "where": "Table tab:arch",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "12",
+      "status": "stated",
+      "quote": "117M & 12 &  12 & 64 & 768",
+      "where": "Table tab:arch",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "64",
+      "status": "stated",
+      "quote": "117M & 12 &  12 & 64 & 768",
+      "where": "Table tab:arch",
+      "reasons": [],
+      "check": "verified"
+     },
+     "d_ff": {
+      "value": "3072",
+      "status": "stated",
+      "quote": "The feed-forward size is always $4\\times \\textrm{d}_{\\textrm{model}}$.",
+      "where": "Table tab:arch caption",
+      "reasons": [
+       "3072 does not occur in its quote"
+      ],
+      "check": "unverified"
+     },
+     "vocab_size": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "We tokenize the text using SentencePiece~\\citep{kudo2018sentencepiece} with a vocabulary of 32,000",
+      "where": "Sec. 3.1 Models",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "We train all models for 300 billion tokens with a 2048 token context window",
+      "where": "Sec. 3.2 Training",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      },
+      {
+       "check": "head_dim * n_heads == d_model",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "name": "417M",
+     "d_model": {
+      "value": "1536",
+      "status": "stated",
+      "quote": "417M & 12 & 12 & 128 & 1,536",
+      "where": "Table tab:arch",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "12",
+      "status": "stated",
+      "quote": "417M & 12 & 12 & 128 & 1,536",
+      "where": "Table tab:arch",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "12",
+      "status": "stated",
+      "quote": "417M & 12 & 12 & 128 & 1,536",
+      "where": "Table tab:arch",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "128",
+      "status": "stated",
+      "quote": "417M & 12 & 12 & 128 & 1,536",
+      "where": "Table tab:arch",
+      "reasons": [],
+      "check": "verified"
+     },
+     "d_ff": {
+      "value": "6144",
+      "status": "stated",
+      "quote": "The feed-forward size is always $4\\times \\textrm{d}_{\\textrm{model}}$.",
+      "where": "Table tab:arch caption",
+      "reasons": [
+       "6144 does not occur in its quote"
+      ],
+      "check": "unverified"
+     },
+     "vocab_size": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "We tokenize the text using SentencePiece~\\citep{kudo2018sentencepiece} with a vocabulary of 32,000",
+      "where": "Sec. 3.1 Models",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "We train all models for 300 billion tokens with a 2048 token context window",
+      "where": "Sec. 3.2 Training",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      },
+      {
+       "check": "head_dim * n_heads == d_model",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "name": "1.4B",
+     "d_model": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "1.4B & 24 & 16 & 128 & 2,048",
+      "where": "Table tab:arch",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "24",
+      "status": "stated",
+      "quote": "1.4B & 24 & 16 & 128 & 2,048",
+      "where": "Table tab:arch",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "16",
+      "status": "stated",
+      "quote": "1.4B & 24 & 16 & 128 & 2,048",
+      "where": "Table tab:arch",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "128",
+      "status": "stated",
+      "quote": "1.4B & 24 & 16 & 128 & 2,048",
+      "where": "Table tab:arch",
+      "reasons": [],
+      "check": "verified"
+     },
+     "d_ff": {
+      "value": "8192",
+      "status": "stated",
+      "quote": "The feed-forward size is always $4\\times \\textrm{d}_{\\textrm{model}}$.",
+      "where": "Table tab:arch caption",
+      "reasons": [
+       "8192 does not occur in its quote"
+      ],
+      "check": "unverified"
+     },
+     "vocab_size": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "We tokenize the text using SentencePiece~\\citep{kudo2018sentencepiece} with a vocabulary of 32,000",
+      "where": "Sec. 3.1 Models",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "We train all models for 300 billion tokens with a 2048 token context window",
+      "where": "Sec. 3.2 Training",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      },
+      {
+       "check": "head_dim * n_heads == d_model",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "name": "7.1B",
+     "d_model": {
+      "value": "4096",
+      "status": "stated",
+      "quote": "7.1B & 32 & 32 & 128 & 4,096",
+      "where": "Table tab:arch",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "32",
+      "status": "stated",
+      "quote": "7.1B & 32 & 32 & 128 & 4,096",
+      "where": "Table tab:arch",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "32",
+      "status": "stated",
+      "quote": "7.1B & 32 & 32 & 128 & 4,096",
+      "where": "Table tab:arch",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "128",
+      "status": "stated",
+      "quote": "7.1B & 32 & 32 & 128 & 4,096",
+      "where": "Table tab:arch",
+      "reasons": [],
+      "check": "verified"
+     },
+     "d_ff": {
+      "value": "16384",
+      "status": "stated",
+      "quote": "The feed-forward size is always $4\\times \\textrm{d}_{\\textrm{model}}$.",
+      "where": "Table tab:arch caption",
+      "reasons": [
+       "16384 does not occur in its quote"
+      ],
+      "check": "unverified"
+     },
+     "vocab_size": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "We tokenize the text using SentencePiece~\\citep{kudo2018sentencepiece} with a vocabulary of 32,000",
+      "where": "Sec. 3.1 Models",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "We train all models for 300 billion tokens with a 2048 token context window",
+      "where": "Sec. 3.2 Training",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      },
+      {
+       "check": "head_dim * n_heads == d_model",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "name": "Gopher 280B",
+     "d_model": {
+      "value": "16384",
+      "status": "stated",
+      "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
+      "where": "Table tab:arch",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "80",
+      "status": "stated",
+      "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
+      "where": "Table tab:arch",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "128",
+      "status": "stated",
+      "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
+      "where": "Table tab:arch",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "128",
+      "status": "stated",
+      "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
+      "where": "Table tab:arch",
+      "reasons": [],
+      "check": "verified"
+     },
+     "d_ff": {
+      "value": "65536",
+      "status": "stated",
+      "quote": "The feed-forward size is always $4\\times \\textrm{d}_{\\textrm{model}}$.",
+      "where": "Table tab:arch caption",
+      "reasons": [
+       "65536 does not occur in its quote"
+      ],
+      "check": "unverified"
+     },
+     "vocab_size": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "We tokenize the text using SentencePiece~\\citep{kudo2018sentencepiece} with a vocabulary of 32,000",
+      "where": "Sec. 3.1 Models",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "We train all models for 300 billion tokens with a 2048 token context window",
+      "where": "Sec. 3.2 Training",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      },
+      {
+       "check": "head_dim * n_heads == d_model",
+       "ok": true
+      }
+     ]
+    }
+   ],
+   "primary_config": "Gopher 280B",
+   "flavours": {
+    "norm": {
+     "value": "rmsnorm",
+     "status": "stated",
+     "quote": "we use RMSNorm \\citep{zhang2019root} instead of LayerNorm~\\citep{ba2016layer},",
+     "where": "Sec. 3.1 Models",
+     "reasons": [],
+     "check": "verified"
+    },
+    "norm_placement": {
+     "value": "pre",
+     "status": "inherited",
+     "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+     "where": "Sec. 3.1 Models",
+     "reasons": [
+      "inherited from gpt-2, whose curated entry has no norm_placement",
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "activation": {
+     "value": "gelu_tanh",
+     "status": "inherited",
+     "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+     "where": "Sec. 3.1 Models",
+     "reasons": [
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
+    },
+    "positional": {
+     "value": "relative",
+     "status": "stated",
+     "quote": "we use the relative positional encoding scheme from \\citet{dai2019transformer} rather than absolute positional encodings.",
+     "where": "Sec. 3.1 Models",
+     "reasons": [],
+     "check": "verified"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_theta": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "residual": {
+     "value": "residual",
+     "status": "inherited",
+     "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+     "where": "Sec. 3.1 Models",
+     "reasons": [
+      "inherited from gpt-2, whose curated entry has no residual",
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
+    },
+    "parallel_block": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+     "where": "Sec. 3.1 Models",
+     "reasons": [
+      "inherited from gpt-2, whose curated entry has no parallel_block",
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
+    },
+    "attention": {
+     "value": "exact",
+     "status": "inherited",
+     "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+     "where": "Sec. 3.1 Models",
+     "reasons": [
+      "inherited from gpt-2, whose curated entry has no attention",
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "qkv_bias": {
+     "value": "true",
+     "status": "inherited",
+     "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+     "where": "Sec. 3.1 Models",
+     "reasons": [
+      "inherited from gpt-2, whose curated entry has no qkv_bias",
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
+    },
+    "mlp_bias": {
+     "value": "true",
+     "status": "inherited",
+     "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+     "where": "Sec. 3.1 Models",
+     "reasons": [
+      "inherited from gpt-2, whose curated entry has no mlp_bias",
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
+    },
+    "tied_embeddings": {
+     "value": "true",
+     "status": "inherited",
+     "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+     "where": "Sec. 3.1 Models",
+     "reasons": [
+      "inherited from gpt-2, whose curated entry has no tied_embeddings",
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
+    },
+    "moe": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+     "where": "Sec. 3.1 Models",
+     "reasons": [
+      "inherited from gpt-2, whose curated entry has no moe",
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    }
+   },
+   "new_ops": [
+    {
+     "name": "transformerxl_relative_attention",
+     "kind": "needs_new_primitive",
+     "replaces": "attention with absolute positional embeddings",
+     "reason": "The model uses the Transformer-XL (Dai et al. 2019) relative positional encoding scheme. This needs a causal softmax attention primitive whose logits add content-position terms computed from relative-distance embeddings. In Transformer-XL these are sinusoidal relative embeddings projected per layer, plus learned global biases. The output has shape [T, heads*head_dim]. The relative distance can be clamped at 2048 when evaluating on longer contexts. The paper gives none of these internal details itself; it only references the scheme, so the exact formulation has to come from the cited work.",
+     "quote": "we use the relative positional encoding scheme from \\citet{dai2019transformer} rather than absolute positional encodings.",
+     "where": "Sec. 3.1 Models",
+     "inputs": [
+      {
+       "name": "q",
+       "meaning": "queries [T, heads*head_dim]"
+      },
+      {
+       "name": "k",
+       "meaning": "keys [T, heads*head_dim]"
+      },
+      {
+       "name": "v",
+       "meaning": "values [T, heads*head_dim]"
+      }
+     ],
+     "errors": [],
+     "quote_found": true,
+     "check": "verified"
+    }
+   ],
+   "block_ops": [
+    {
+     "i": 0,
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding (token_embd)",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "32000",
+       "status": "stated",
+       "quote": "We tokenize the text using SentencePiece~\\citep{kudo2018sentencepiece} with a vocabulary of 32,000",
+       "where": "Sec. 3.1 Models",
+       "reasons": [],
+       "check": "verified",
+       "name": "vocab"
+      },
+      {
+       "value": "16384",
+       "status": "stated",
+       "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
+       "where": "Table tab:arch",
+       "reasons": [],
+       "check": "verified",
+       "name": "d"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 1,
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "pre-attention norm",
+     "inputs": [
+      "x"
+     ],
+     "output": "h",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 2,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "fused qkv projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "qkv",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "49152",
+       "status": "stated",
+       "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
+       "where": "Table tab:arch",
+       "reasons": [
+        "49152 does not occur in its quote"
+       ],
+       "check": "unverified",
+       "name": "out"
+      },
+      {
+       "value": "true",
+       "status": "inherited",
+       "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+       "where": "Sec. 3.1 Models",
+       "reasons": [
+        "inherited from gpt-2, whose curated entry has no bias",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 3,
+     "subgraph": "block",
+     "op": "split",
+     "role": "split into q, k, v",
+     "inputs": [
+      "qkv"
+     ],
+     "output": "q,k,v",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "16384,16384,16384",
+       "status": "stated",
+       "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
+       "where": "Table tab:arch",
+       "reasons": [
+        "16384,16384,16384 does not occur in its quote"
+       ],
+       "check": "unverified",
+       "name": "sizes"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 4,
+     "subgraph": "block",
+     "op": "unsupported",
+     "role": "causal multi-head attention with Transformer-XL relative positional encoding",
+     "inputs": [
+      "q",
+      "k",
+      "v"
+     ],
+     "output": "a",
+     "new_op": "transformerxl_relative_attention",
+     "attributes": [
+      {
+       "value": "128",
+       "status": "stated",
+       "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
+       "where": "Table tab:arch",
+       "reasons": [],
+       "check": "verified",
+       "name": "heads"
+      },
+      {
+       "value": "128",
+       "status": "stated",
+       "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
+       "where": "Table tab:arch",
+       "reasons": [],
+       "check": "verified",
+       "name": "head_dim"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "kv_heads"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "scale"
+      },
+      {
+       "value": "true",
+       "status": "stated",
+       "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+       "where": "Sec. 3.1 Models",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "causal"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 5,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "o",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "16384",
+       "status": "stated",
+       "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
+       "where": "Table tab:arch",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "true",
+       "status": "inherited",
+       "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+       "where": "Sec. 3.1 Models",
+       "reasons": [
+        "inherited from gpt-2, whose curated entry has no bias",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 6,
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual",
+     "inputs": [
+      "x",
+      "o"
+     ],
+     "output": "x1",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 7,
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "pre-FFN norm",
+     "inputs": [
+      "x1"
+     ],
+     "output": "h2",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 8,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN up projection",
+     "inputs": [
+      "h2"
+     ],
+     "output": "u",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "65536",
+       "status": "stated",
+       "quote": "The feed-forward size is always $4\\times \\textrm{d}_{\\textrm{model}}$.",
+       "where": "Table tab:arch caption",
+       "reasons": [
+        "65536 does not occur in its quote"
+       ],
+       "check": "unverified",
+       "name": "out"
+      },
+      {
+       "value": "true",
+       "status": "inherited",
+       "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+       "where": "Sec. 3.1 Models",
+       "reasons": [
+        "inherited from gpt-2, whose curated entry has no bias",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 9,
+     "subgraph": "block",
+     "op": "gelu",
+     "role": "FFN activation",
+     "inputs": [
+      "u"
+     ],
+     "output": "g",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "tanh",
+       "status": "inherited",
+       "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+       "where": "Sec. 3.1 Models",
+       "reasons": [
+        "inherited from gpt-2, whose curated entry has no approx",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "approx"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 10,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN down projection",
+     "inputs": [
+      "g"
+     ],
+     "output": "f",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "16384",
+       "status": "stated",
+       "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384",
+       "where": "Table tab:arch",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "true",
+       "status": "inherited",
+       "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+       "where": "Sec. 3.1 Models",
+       "reasons": [
+        "inherited from gpt-2, whose curated entry has no bias",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 11,
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual",
+     "inputs": [
+      "x1",
+      "f"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 12,
+     "subgraph": "head",
+     "op": "rmsnorm",
+     "role": "final norm",
+     "inputs": [
+      "x"
+     ],
+     "output": "hf",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 13,
+     "subgraph": "head",
+     "op": "linear",
+     "role": "output logits (tied to token embedding)",
+     "inputs": [
+      "hf"
+     ],
+     "output": "logits",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "32000",
+       "status": "stated",
+       "quote": "We tokenize the text using SentencePiece~\\citep{kudo2018sentencepiece} with a vocabulary of 32,000",
+       "where": "Sec. 3.1 Models",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "false",
+       "status": "inherited",
+       "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+       "where": "Sec. 3.1 Models",
+       "reasons": [
+        "inherited from gpt-2, whose curated entry has no bias",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      },
+      {
+       "value": "token_embd",
+       "status": "inherited",
+       "quote": "We use the autoregressive Transformer architecture detailed in \\citet{radford2019language} with two modifications",
+       "where": "Sec. 3.1 Models",
+       "reasons": [
+        "inherited from gpt-2, whose curated entry has no tied_to",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "tied_to"
+      }
+     ],
+     "errors": []
+    }
+   ],
+   "mechanisms_outside_ir": [],
+   "summary": {
+    "counts": {
+     "verified": 45,
+     "quote_only": 2,
+     "unverified": 25,
+     "not_stated": 20
+    },
+    "unverified": [
+     {
+      "field": "configs[44M].d_ff",
+      "reasons": [
+       "2048 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "configs[117M].d_ff",
+      "reasons": [
+       "3072 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "configs[417M].d_ff",
+      "reasons": [
+       "6144 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "configs[1.4B].d_ff",
+      "reasons": [
+       "8192 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "configs[7.1B].d_ff",
+      "reasons": [
+       "16384 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "configs[Gopher 280B].d_ff",
+      "reasons": [
+       "65536 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "flavours.norm_placement",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no norm_placement",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.activation",
+      "reasons": [
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no residual",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.parallel_block",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no parallel_block",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.attention",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no attention",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.qkv_bias",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no qkv_bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.mlp_bias",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no mlp_bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.tied_embeddings",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no tied_embeddings",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.moe",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no moe",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[2].out",
+      "reasons": [
+       "49152 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[2].bias",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[3].sizes",
+      "reasons": [
+       "16384,16384,16384 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[5].bias",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[8].out",
+      "reasons": [
+       "65536 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[8].bias",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[9].approx",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no approx",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[10].bias",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[13].bias",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[13].tied_to",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no tied_to",
+       "the inheritance quote does not name the ancestor"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 1,
+    "n_block_ops": 14
+   }
+  }
+ }
+}

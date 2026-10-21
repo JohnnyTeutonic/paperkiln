@@ -1,0 +1,1983 @@
+{
+ "arxiv_id": "1910.10683",
+ "title": "Exploring the Limits of Transfer Learning with a Unified Text-to-Text Transformer",
+ "fields": {
+  "d_model": {
+   "value": 768,
+   "evidence": "All other sub-layers and embeddings have a dimensionality of $d_{\\mathrm{model}} = 768$. [Sec. 3.1.1 Model]",
+   "verdict": "used"
+  },
+  "n_layers": {
+   "value": 12,
+   "evidence": "Specifically, both the encoder and decoder consist of $12$ blocks (each block comprising self-attention, optional encoder-decoder attention, and a feed-forward network). [Sec. 3.1.1 Model]",
+   "verdict": "used"
+  },
+  "n_heads": {
+   "value": 12,
+   "evidence": "The ``key'' and ``value'' matrices of all attention mechanisms have an inner dimensionality of $d_{\\mathrm{kv}} = 64$ and all attention mechanisms have $12$ heads. [Sec. 3.1.1 Model]",
+   "verdict": "used"
+  },
+  "d_ff": {
+   "value": 3072,
+   "evidence": "The feed-forward networks in each block consist of a dense layer with an output dimensionality of $d_{\\mathrm{ff}} = 3072$ followed by a ReLU nonlinearity and another dense layer. [Sec. 3.1.1 Model]",
+   "verdict": "used"
+  },
+  "vocab_size": {
+   "value": 32000,
+   "evidence": "For all experiments, we use a vocabulary of $32{,}000$ wordpieces. [Sec. 3.1.3 Vocabulary]",
+   "verdict": "used"
+  },
+  "context_length": {
+   "value": 512,
+   "evidence": "We use a maximum sequence length of $512$ and a batch size of $128$ sequences. [Sec. 3.1.2 Training]",
+   "verdict": "used"
+  },
+  "norm": {
+   "value": "rmsnorm",
+   "evidence": "We use a simplified version of layer normalization where the activations are only rescaled and no additive bias is applied. [Sec. 2.1 Model]",
+   "verdict": "unverified",
+   "reasons": [
+    "the quote does not name rmsnorm (looked for /RMS|root[- ]mean[- ]square/)"
+   ]
+  },
+  "activation": {
+   "value": "relu",
+   "evidence": "The feed-forward networks in each block consist of a dense layer with an output dimensionality of $d_{\\mathrm{ff}} = 3072$ followed by a ReLU nonlinearity and another dense layer. [Sec. 3.1.1 Model]",
+   "verdict": "used"
+  },
+  "positional": {
+   "value": "relative",
+   "evidence": "We use a simplified form of position embeddings where each ``embedding'' is simply a scalar that is added to the corresponding logit used for computing the attention weights. [Sec. 2.1 Model]",
+   "verdict": "unverified",
+   "reasons": [
+    "the quote does not name relative (looked for /relative/)"
+   ]
+  },
+  "residual": {
+   "value": "residual",
+   "evidence": "After layer normalization, a residual skip connection \\citep{he2016deep} adds each subcomponent's input to its output. [Sec. 2.1 Model]",
+   "verdict": "used"
+  },
+  "attention": {
+   "value": "exact",
+   "evidence": "The self-attention mechanism in the decoder also uses a form of autoregressive or causal self-attention, which only allows the model to attend to past outputs. [Sec. 2.1 Model]",
+   "verdict": "used"
+  }
+ },
+ "unresolved": [
+  "n_kv_heads"
+ ],
+ "unverified": [
+  {
+   "field": "norm",
+   "reasons": [
+    "the quote does not name rmsnorm (looked for /RMS|root[- ]mean[- ]square/)"
+   ]
+  },
+  {
+   "field": "positional",
+   "reasons": [
+    "the quote does not name relative (looked for /relative/)"
+   ]
+  }
+ ],
+ "mentions": {},
+ "inherits": {
+  "ancestor": "transformer",
+  "evidence": "Overall, our encoder-decoder Transformer implementation closely follows its originally-proposed form \\citep{vaswani2017attention}.",
+  "section": "Sec. 2.1 Model"
+ },
+ "variants": [
+  {
+   "d_model": 512,
+   "n_layers": 6,
+   "n_heads": 8,
+   "d_ff": 2048,
+   "vocab_size": 32000,
+   "context_length": 512
+  },
+  {
+   "d_model": 768,
+   "n_layers": 12,
+   "n_heads": 12,
+   "d_ff": 3072,
+   "vocab_size": 32000,
+   "context_length": 512
+  },
+  {
+   "d_model": 1024,
+   "n_layers": 24,
+   "n_heads": 16,
+   "d_ff": 4096,
+   "vocab_size": 32000,
+   "context_length": 512
+  },
+  {
+   "d_model": 1024,
+   "n_layers": 24,
+   "n_heads": 32,
+   "d_ff": 16384,
+   "vocab_size": 32000,
+   "context_length": 512
+  },
+  {
+   "d_model": 1024,
+   "n_layers": 24,
+   "n_heads": 128,
+   "d_ff": 65536,
+   "vocab_size": 32000,
+   "context_length": 512
+  }
+ ],
+ "mechanism_scan": [
+  {
+   "mechanism": "encoder-decoder or encoder-only model",
+   "where": "llm extraction, verified quote, Sec. 2.1 Model",
+   "blocking": true,
+   "evidence": "Overall, our encoder-decoder Transformer implementation closely follows its originally-proposed form \\citep{vaswani2017attention}."
+  },
+  {
+   "mechanism": "new op t5_relative_position_bias (needs a new primitive: The attention op has no additive logit bias. Each head adds a learned scalar to its [T,T] attention logits. The scalar i)",
+   "where": "llm extraction, verified quote, Sec. 2.1 Model",
+   "blocking": true,
+   "evidence": "In this work, we use $32$ embeddings for all of our models with ranges that increase in size logarithmically up to an offset of $128$ beyond which we assign all relative positions to the same embedding."
+  },
+  {
+   "mechanism": "Encoder-decoder structure: a separate encoder stack with fully-visible (non-causal) self-attention whose output is consumed by the decoder",
+   "where": "llm extraction, verified quote, Sec. 3.2.1 Model Structures",
+   "blocking": true,
+   "evidence": "The encoder uses a ``fully-visible'' attention mask."
+  },
+  {
+   "mechanism": "Encoder-decoder cross-attention inserted after each decoder self-attention layer",
+   "where": "llm extraction, verified quote, Sec. 2.1 Model",
+   "blocking": true,
+   "evidence": "The decoder is similar in structure to the encoder except that it includes a standard attention mechanism after each self-attention layer that attends to the output of the encoder."
+  },
+  {
+   "mechanism": "Relative position bias parameters shared across all layers (per-head distinct)",
+   "where": "llm extraction, verified quote, Sec. 2.1 Model",
+   "blocking": true,
+   "evidence": "For efficiency, we also share the position embedding parameters across all layers in our model, though within a given layer each attention head uses a different learned position embedding."
+  }
+ ],
+ "source": {
+  "tex_sha256": "c5d6db4b3ff7c06e6efbef6bd72d8e372dec328ee2025632028af8bd053bf6de",
+  "sent_sha256": "9afd3f07bbdc3817435aea3d039cd0cfd3fd56661eff1cbecb135ad5c1c83607",
+  "from": "https://arxiv.org/e-print/1910.10683",
+  "extractor": "papers/llm_extract.py",
+  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "model": "claude-opus-5-5",
+  "effort": "high",
+  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "n_calls": 1,
+  "cost_usd": 0.0,
+  "request_ids": [
+   "req_011CgFb9hYsJEpFzwhtg4itr"
+  ]
+ },
+ "llm": {
+  "output": {
+   "title": "Exploring the Limits of Transfer Learning with a Unified Text-to-Text Transformer",
+   "model_name": "T5 (Text-to-Text Transfer Transformer)",
+   "family": {
+    "value": "encoder_decoder",
+    "status": "stated",
+    "quote": "Overall, our encoder-decoder Transformer implementation closely follows its originally-proposed form \\citep{vaswani2017attention}.",
+    "where": "Sec. 2.1 Model"
+   },
+   "inherits": {
+    "ancestor": "Transformer (Vaswani et al., 2017)",
+    "quote": "Overall, our encoder-decoder Transformer implementation closely follows its originally-proposed form \\citep{vaswani2017attention}.",
+    "where": "Sec. 2.1 Model"
+   },
+   "configs": [
+    {
+     "name": "Small",
+     "d_model": {
+      "value": "512",
+      "status": "stated",
+      "quote": "We consider a smaller model, which scales the baseline down by using $d_{\\mathrm{model}} = 512$, $d_{\\mathrm{ff}} = 2{,}048$, $8$-headed attention, and only $6$ layers each in the encoder and decoder.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)"
+     },
+     "n_layers": {
+      "value": "6",
+      "status": "stated",
+      "quote": "We consider a smaller model, which scales the baseline down by using $d_{\\mathrm{model}} = 512$, $d_{\\mathrm{ff}} = 2{,}048$, $8$-headed attention, and only $6$ layers each in the encoder and decoder.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)"
+     },
+     "n_heads": {
+      "value": "8",
+      "status": "stated",
+      "quote": "We consider a smaller model, which scales the baseline down by using $d_{\\mathrm{model}} = 512$, $d_{\\mathrm{ff}} = 2{,}048$, $8$-headed attention, and only $6$ layers each in the encoder and decoder.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "We consider a smaller model, which scales the baseline down by using $d_{\\mathrm{model}} = 512$, $d_{\\mathrm{ff}} = 2{,}048$, $8$-headed attention, and only $6$ layers each in the encoder and decoder.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)"
+     },
+     "vocab_size": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "For all experiments, we use a vocabulary of $32{,}000$ wordpieces.",
+      "where": "Sec. 3.1.3 Vocabulary"
+     },
+     "context_length": {
+      "value": "512",
+      "status": "stated",
+      "quote": "We therefore pre-train our models for $1$ million steps on a batch size of $2^{11}$ sequences of length $512$, corresponding to a total of about $1$ trillion pre-training tokens (about $32\\times$ as many as our baseline).",
+      "where": "Sec. 3.7 Putting It All Together (Longer training)"
+     }
+    },
+    {
+     "name": "Base",
+     "d_model": {
+      "value": "768",
+      "status": "stated",
+      "quote": "All other sub-layers and embeddings have a dimensionality of $d_{\\mathrm{model}} = 768$.",
+      "where": "Sec. 3.1.1 Model"
+     },
+     "n_layers": {
+      "value": "12",
+      "status": "stated",
+      "quote": "Specifically, both the encoder and decoder consist of $12$ blocks (each block comprising self-attention, optional encoder-decoder attention, and a feed-forward network).",
+      "where": "Sec. 3.1.1 Model"
+     },
+     "n_heads": {
+      "value": "12",
+      "status": "stated",
+      "quote": "The ``key'' and ``value'' matrices of all attention mechanisms have an inner dimensionality of $d_{\\mathrm{kv}} = 64$ and all attention mechanisms have $12$ heads.",
+      "where": "Sec. 3.1.1 Model"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "64",
+      "status": "stated",
+      "quote": "The ``key'' and ``value'' matrices of all attention mechanisms have an inner dimensionality of $d_{\\mathrm{kv}} = 64$ and all attention mechanisms have $12$ heads.",
+      "where": "Sec. 3.1.1 Model"
+     },
+     "d_ff": {
+      "value": "3072",
+      "status": "stated",
+      "quote": "The feed-forward networks in each block consist of a dense layer with an output dimensionality of $d_{\\mathrm{ff}} = 3072$ followed by a ReLU nonlinearity and another dense layer.",
+      "where": "Sec. 3.1.1 Model"
+     },
+     "vocab_size": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "For all experiments, we use a vocabulary of $32{,}000$ wordpieces.",
+      "where": "Sec. 3.1.3 Vocabulary"
+     },
+     "context_length": {
+      "value": "512",
+      "status": "stated",
+      "quote": "We use a maximum sequence length of $512$ and a batch size of $128$ sequences.",
+      "where": "Sec. 3.1.2 Training"
+     }
+    },
+    {
+     "name": "Large",
+     "d_model": {
+      "value": "1024",
+      "status": "stated",
+      "quote": "Specifically, this variant uses $d_{\\mathrm{model}} = 1{,}024$, $d_{\\mathrm{ff}} = 4{,}096$, $d_{\\mathrm{kv}} = 64$, $16$-headed attention, and $24$ layers each in the encoder and decoder, resulting in around $770$ million parameters.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)"
+     },
+     "n_layers": {
+      "value": "24",
+      "status": "stated",
+      "quote": "Specifically, this variant uses $d_{\\mathrm{model}} = 1{,}024$, $d_{\\mathrm{ff}} = 4{,}096$, $d_{\\mathrm{kv}} = 64$, $16$-headed attention, and $24$ layers each in the encoder and decoder, resulting in around $770$ million parameters.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)"
+     },
+     "n_heads": {
+      "value": "16",
+      "status": "stated",
+      "quote": "Specifically, this variant uses $d_{\\mathrm{model}} = 1{,}024$, $d_{\\mathrm{ff}} = 4{,}096$, $d_{\\mathrm{kv}} = 64$, $16$-headed attention, and $24$ layers each in the encoder and decoder, resulting in around $770$ million parameters.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "64",
+      "status": "stated",
+      "quote": "Specifically, this variant uses $d_{\\mathrm{model}} = 1{,}024$, $d_{\\mathrm{ff}} = 4{,}096$, $d_{\\mathrm{kv}} = 64$, $16$-headed attention, and $24$ layers each in the encoder and decoder, resulting in around $770$ million parameters.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)"
+     },
+     "d_ff": {
+      "value": "4096",
+      "status": "stated",
+      "quote": "Specifically, this variant uses $d_{\\mathrm{model}} = 1{,}024$, $d_{\\mathrm{ff}} = 4{,}096$, $d_{\\mathrm{kv}} = 64$, $16$-headed attention, and $24$ layers each in the encoder and decoder, resulting in around $770$ million parameters.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)"
+     },
+     "vocab_size": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "For all experiments, we use a vocabulary of $32{,}000$ wordpieces.",
+      "where": "Sec. 3.1.3 Vocabulary"
+     },
+     "context_length": {
+      "value": "512",
+      "status": "stated",
+      "quote": "We therefore pre-train our models for $1$ million steps on a batch size of $2^{11}$ sequences of length $512$, corresponding to a total of about $1$ trillion pre-training tokens (about $32\\times$ as many as our baseline).",
+      "where": "Sec. 3.7 Putting It All Together (Longer training)"
+     }
+    },
+    {
+     "name": "3B",
+     "d_model": {
+      "value": "1024",
+      "status": "stated",
+      "quote": "In both cases, we use $d_{\\mathrm{model}} = 1024$, a $24$ layer encoder and decoder, and $d_{\\mathrm{kv}} = 128$.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)"
+     },
+     "n_layers": {
+      "value": "24",
+      "status": "stated",
+      "quote": "In both cases, we use $d_{\\mathrm{model}} = 1024$, a $24$ layer encoder and decoder, and $d_{\\mathrm{kv}} = 128$.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)"
+     },
+     "n_heads": {
+      "value": "32",
+      "status": "stated",
+      "quote": "For the ``3B'' variant, we use $d_{\\mathrm{ff}} = 16{,}384$ with $32$-headed attention, which results in around $2.8$ billion parameters;",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "128",
+      "status": "stated",
+      "quote": "In both cases, we use $d_{\\mathrm{model}} = 1024$, a $24$ layer encoder and decoder, and $d_{\\mathrm{kv}} = 128$.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)"
+     },
+     "d_ff": {
+      "value": "16384",
+      "status": "stated",
+      "quote": "For the ``3B'' variant, we use $d_{\\mathrm{ff}} = 16{,}384$ with $32$-headed attention, which results in around $2.8$ billion parameters;",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)"
+     },
+     "vocab_size": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "For all experiments, we use a vocabulary of $32{,}000$ wordpieces.",
+      "where": "Sec. 3.1.3 Vocabulary"
+     },
+     "context_length": {
+      "value": "512",
+      "status": "stated",
+      "quote": "We therefore pre-train our models for $1$ million steps on a batch size of $2^{11}$ sequences of length $512$, corresponding to a total of about $1$ trillion pre-training tokens (about $32\\times$ as many as our baseline).",
+      "where": "Sec. 3.7 Putting It All Together (Longer training)"
+     }
+    },
+    {
+     "name": "11B",
+     "d_model": {
+      "value": "1024",
+      "status": "stated",
+      "quote": "In both cases, we use $d_{\\mathrm{model}} = 1024$, a $24$ layer encoder and decoder, and $d_{\\mathrm{kv}} = 128$.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)"
+     },
+     "n_layers": {
+      "value": "24",
+      "status": "stated",
+      "quote": "In both cases, we use $d_{\\mathrm{model}} = 1024$, a $24$ layer encoder and decoder, and $d_{\\mathrm{kv}} = 128$.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)"
+     },
+     "n_heads": {
+      "value": "128",
+      "status": "stated",
+      "quote": "for ``11B'' we use $d_{\\mathrm{ff}} = 65{,}536$ with $128$-headed attention producing a model with about $11$ billion parameters.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "128",
+      "status": "stated",
+      "quote": "In both cases, we use $d_{\\mathrm{model}} = 1024$, a $24$ layer encoder and decoder, and $d_{\\mathrm{kv}} = 128$.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)"
+     },
+     "d_ff": {
+      "value": "65536",
+      "status": "stated",
+      "quote": "for ``11B'' we use $d_{\\mathrm{ff}} = 65{,}536$ with $128$-headed attention producing a model with about $11$ billion parameters.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)"
+     },
+     "vocab_size": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "For all experiments, we use a vocabulary of $32{,}000$ wordpieces.",
+      "where": "Sec. 3.1.3 Vocabulary"
+     },
+     "context_length": {
+      "value": "512",
+      "status": "stated",
+      "quote": "We therefore pre-train our models for $1$ million steps on a batch size of $2^{11}$ sequences of length $512$, corresponding to a total of about $1$ trillion pre-training tokens (about $32\\times$ as many as our baseline).",
+      "where": "Sec. 3.7 Putting It All Together (Longer training)"
+     }
+    }
+   ],
+   "primary_config": "Base",
+   "flavours": {
+    "norm": {
+     "value": "rmsnorm",
+     "status": "stated",
+     "quote": "We use a simplified version of layer normalization where the activations are only rescaled and no additive bias is applied.",
+     "where": "Sec. 2.1 Model"
+    },
+    "norm_placement": {
+     "value": "pre",
+     "status": "stated",
+     "quote": "Layer normalization \\citep{ba2016layer} is applied to the input of each subcomponent.",
+     "where": "Sec. 2.1 Model"
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "activation": {
+     "value": "relu",
+     "status": "stated",
+     "quote": "The feed-forward networks in each block consist of a dense layer with an output dimensionality of $d_{\\mathrm{ff}} = 3072$ followed by a ReLU nonlinearity and another dense layer.",
+     "where": "Sec. 3.1.1 Model"
+    },
+    "positional": {
+     "value": "relative",
+     "status": "stated",
+     "quote": "We use a simplified form of position embeddings where each ``embedding'' is simply a scalar that is added to the corresponding logit used for computing the attention weights.",
+     "where": "Sec. 2.1 Model"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_theta": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "residual": {
+     "value": "residual",
+     "status": "stated",
+     "quote": "After layer normalization, a residual skip connection \\citep{he2016deep} adds each subcomponent's input to its output.",
+     "where": "Sec. 2.1 Model"
+    },
+    "parallel_block": {
+     "value": "false",
+     "status": "stated",
+     "quote": "The encoder consists of a stack of ``blocks'', each of which comprises two subcomponents: a self-attention layer followed by a small feed-forward network.",
+     "where": "Sec. 2.1 Model"
+    },
+    "attention": {
+     "value": "exact",
+     "status": "stated",
+     "quote": "The self-attention mechanism in the decoder also uses a form of autoregressive or causal self-attention, which only allows the model to attend to past outputs.",
+     "where": "Sec. 2.1 Model"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "qkv_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "tied_embeddings": {
+     "value": "true",
+     "status": "stated",
+     "quote": "The output of the final decoder block is fed into a dense layer with a softmax output, whose weights are shared with the input embedding matrix.",
+     "where": "Sec. 2.1 Model"
+    },
+    "moe": {
+     "value": "false",
+     "status": "stated",
+     "quote": "The feed-forward networks in each block consist of a dense layer with an output dimensionality of $d_{\\mathrm{ff}} = 3072$ followed by a ReLU nonlinearity and another dense layer.",
+     "where": "Sec. 3.1.1 Model"
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    }
+   },
+   "block_ops": [
+    {
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding (shared between input and output vocabulary)",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "x",
+     "attributes": [
+      {
+       "name": "vocab",
+       "value": "32000",
+       "status": "stated",
+       "quote": "For all experiments, we use a vocabulary of $32{,}000$ wordpieces.",
+       "where": "Sec. 3.1.3 Vocabulary"
+      },
+      {
+       "name": "d",
+       "value": "768",
+       "status": "stated",
+       "quote": "All other sub-layers and embeddings have a dimensionality of $d_{\\mathrm{model}} = 768$.",
+       "where": "Sec. 3.1.1 Model"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "pre-attention norm (scale only, no bias)",
+     "inputs": [
+      "x"
+     ],
+     "output": "h1",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "query projection",
+     "inputs": [
+      "h1"
+     ],
+     "output": "q",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "key projection",
+     "inputs": [
+      "h1"
+     ],
+     "output": "k",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "value projection",
+     "inputs": [
+      "h1"
+     ],
+     "output": "v",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "unsupported",
+     "role": "causal multi-head self-attention with learned relative position scalar bias added to logits",
+     "inputs": [
+      "q",
+      "k",
+      "v"
+     ],
+     "output": "a",
+     "attributes": [
+      {
+       "name": "heads",
+       "value": "12",
+       "status": "stated",
+       "quote": "The ``key'' and ``value'' matrices of all attention mechanisms have an inner dimensionality of $d_{\\mathrm{kv}} = 64$ and all attention mechanisms have $12$ heads.",
+       "where": "Sec. 3.1.1 Model"
+      },
+      {
+       "name": "head_dim",
+       "value": "64",
+       "status": "stated",
+       "quote": "The ``key'' and ``value'' matrices of all attention mechanisms have an inner dimensionality of $d_{\\mathrm{kv}} = 64$ and all attention mechanisms have $12$ heads.",
+       "where": "Sec. 3.1.1 Model"
+      },
+      {
+       "name": "causal",
+       "value": "true",
+       "status": "stated",
+       "quote": "The self-attention mechanism in the decoder also uses a form of autoregressive or causal self-attention, which only allows the model to attend to past outputs.",
+       "where": "Sec. 2.1 Model"
+      },
+      {
+       "name": "scale",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": "t5_relative_position_bias"
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "o",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "768",
+       "status": "stated",
+       "quote": "All other sub-layers and embeddings have a dimensionality of $d_{\\mathrm{model}} = 768$.",
+       "where": "Sec. 3.1.1 Model"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual",
+     "inputs": [
+      "x",
+      "o"
+     ],
+     "output": "x1",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "pre-FFN norm (scale only, no bias)",
+     "inputs": [
+      "x1"
+     ],
+     "output": "h2",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN up projection",
+     "inputs": [
+      "h2"
+     ],
+     "output": "u",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "3072",
+       "status": "stated",
+       "quote": "The feed-forward networks in each block consist of a dense layer with an output dimensionality of $d_{\\mathrm{ff}} = 3072$ followed by a ReLU nonlinearity and another dense layer.",
+       "where": "Sec. 3.1.1 Model"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "relu",
+     "role": "FFN activation",
+     "inputs": [
+      "u"
+     ],
+     "output": "r",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN down projection",
+     "inputs": [
+      "r"
+     ],
+     "output": "f",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "768",
+       "status": "stated",
+       "quote": "All other sub-layers and embeddings have a dimensionality of $d_{\\mathrm{model}} = 768$.",
+       "where": "Sec. 3.1.1 Model"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual",
+     "inputs": [
+      "x1",
+      "f"
+     ],
+     "output": "x2",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "linear",
+     "role": "output logits, tied to input embedding",
+     "inputs": [
+      "x2"
+     ],
+     "output": "logits",
+     "attributes": [
+      {
+       "name": "tied_to",
+       "value": "token_embd",
+       "status": "stated",
+       "quote": "The output of the final decoder block is fed into a dense layer with a softmax output, whose weights are shared with the input embedding matrix.",
+       "where": "Sec. 2.1 Model"
+      },
+      {
+       "name": "out",
+       "value": "32000",
+       "status": "stated",
+       "quote": "For all experiments, we use a vocabulary of $32{,}000$ wordpieces.",
+       "where": "Sec. 3.1.3 Vocabulary"
+      }
+     ],
+     "new_op": ""
+    }
+   ],
+   "new_ops": [
+    {
+     "name": "t5_relative_position_bias",
+     "kind": "needs_new_primitive",
+     "expr": "",
+     "inputs": [
+      {
+       "name": "x",
+       "meaning": "queries q"
+      },
+      {
+       "name": "a",
+       "meaning": "keys k"
+      },
+      {
+       "name": "b",
+       "meaning": "values v"
+      }
+     ],
+     "replaces": "attention position handling (absolute position embeddings)",
+     "reason": "The attention op has no additive logit bias. Each head adds a learned scalar to its [T,T] attention logits. The scalar is looked up from a table of 32 buckets indexed by the key-query offset. Bucket ranges grow logarithmically up to an offset of 128, and every larger offset maps to the same bucket. The table is shared across all layers, with a separate value per head. This needs an attention primitive that accepts a per-head [T,T] bias from bucketed relative positions.",
+     "quote": "In this work, we use $32$ embeddings for all of our models with ranges that increase in size logarithmically up to an offset of $128$ beyond which we assign all relative positions to the same embedding.",
+     "where": "Sec. 2.1 Model"
+    }
+   ],
+   "mechanisms_outside_ir": [
+    {
+     "mechanism": "Encoder-decoder structure: a separate encoder stack with fully-visible (non-causal) self-attention whose output is consumed by the decoder",
+     "quote": "The encoder uses a ``fully-visible'' attention mask.",
+     "where": "Sec. 3.2.1 Model Structures"
+    },
+    {
+     "mechanism": "Encoder-decoder cross-attention inserted after each decoder self-attention layer",
+     "quote": "The decoder is similar in structure to the encoder except that it includes a standard attention mechanism after each self-attention layer that attends to the output of the encoder.",
+     "where": "Sec. 2.1 Model"
+    },
+    {
+     "mechanism": "Relative position bias parameters shared across all layers (per-head distinct)",
+     "quote": "For efficiency, we also share the position embedding parameters across all layers in our model, though within a given layer each attention head uses a different learned position embedding.",
+     "where": "Sec. 2.1 Model"
+    }
+   ],
+   "notes": "Describes the T5 decoder block for the Base config (the paper's baseline). The encoder block is identical except that its attention is non-causal, and the decoder's cross-attention is omitted from block_ops (see mechanisms_outside_ir). Norm is mapped to rmsnorm from 'only rescaled and no additive bias'. The paper does not say explicitly whether the mean is subtracted. A final norm before the head is not stated, so it is omitted. Several values are left not_stated: q/k/v projection widths (heads*d_kv, not stated as a number), biases, eps, the attention scale, and n_kv_heads. Small's d_kv is not stated. Config order follows the Table 14 caption (Small, Base, Large, 3B, 11B). Primary config is Base because the paper singles it out as its baseline."
+  },
+  "verification": {
+   "errors": [],
+   "warnings": [],
+   "inherits": {
+    "ancestor": "Transformer (Vaswani et al., 2017)",
+    "resolved": "transformer",
+    "quote": "Overall, our encoder-decoder Transformer implementation closely follows its originally-proposed form \\citep{vaswani2017attention}.",
+    "where": "Sec. 2.1 Model",
+    "quote_found": true
+   },
+   "family": {
+    "value": "encoder_decoder",
+    "status": "stated",
+    "quote": "Overall, our encoder-decoder Transformer implementation closely follows its originally-proposed form \\citep{vaswani2017attention}.",
+    "where": "Sec. 2.1 Model",
+    "reasons": [],
+    "check": "verified"
+   },
+   "configs": [
+    {
+     "name": "Small",
+     "d_model": {
+      "value": "512",
+      "status": "stated",
+      "quote": "We consider a smaller model, which scales the baseline down by using $d_{\\mathrm{model}} = 512$, $d_{\\mathrm{ff}} = 2{,}048$, $8$-headed attention, and only $6$ layers each in the encoder and decoder.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "6",
+      "status": "stated",
+      "quote": "We consider a smaller model, which scales the baseline down by using $d_{\\mathrm{model}} = 512$, $d_{\\mathrm{ff}} = 2{,}048$, $8$-headed attention, and only $6$ layers each in the encoder and decoder.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "8",
+      "status": "stated",
+      "quote": "We consider a smaller model, which scales the baseline down by using $d_{\\mathrm{model}} = 512$, $d_{\\mathrm{ff}} = 2{,}048$, $8$-headed attention, and only $6$ layers each in the encoder and decoder.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "We consider a smaller model, which scales the baseline down by using $d_{\\mathrm{model}} = 512$, $d_{\\mathrm{ff}} = 2{,}048$, $8$-headed attention, and only $6$ layers each in the encoder and decoder.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "vocab_size": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "For all experiments, we use a vocabulary of $32{,}000$ wordpieces.",
+      "where": "Sec. 3.1.3 Vocabulary",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "512",
+      "status": "stated",
+      "quote": "We therefore pre-train our models for $1$ million steps on a batch size of $2^{11}$ sequences of length $512$, corresponding to a total of about $1$ trillion pre-training tokens (about $32\\times$ as many as our baseline).",
+      "where": "Sec. 3.7 Putting It All Together (Longer training)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "name": "Base",
+     "d_model": {
+      "value": "768",
+      "status": "stated",
+      "quote": "All other sub-layers and embeddings have a dimensionality of $d_{\\mathrm{model}} = 768$.",
+      "where": "Sec. 3.1.1 Model",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "12",
+      "status": "stated",
+      "quote": "Specifically, both the encoder and decoder consist of $12$ blocks (each block comprising self-attention, optional encoder-decoder attention, and a feed-forward network).",
+      "where": "Sec. 3.1.1 Model",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "12",
+      "status": "stated",
+      "quote": "The ``key'' and ``value'' matrices of all attention mechanisms have an inner dimensionality of $d_{\\mathrm{kv}} = 64$ and all attention mechanisms have $12$ heads.",
+      "where": "Sec. 3.1.1 Model",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "64",
+      "status": "stated",
+      "quote": "The ``key'' and ``value'' matrices of all attention mechanisms have an inner dimensionality of $d_{\\mathrm{kv}} = 64$ and all attention mechanisms have $12$ heads.",
+      "where": "Sec. 3.1.1 Model",
+      "reasons": [],
+      "check": "verified"
+     },
+     "d_ff": {
+      "value": "3072",
+      "status": "stated",
+      "quote": "The feed-forward networks in each block consist of a dense layer with an output dimensionality of $d_{\\mathrm{ff}} = 3072$ followed by a ReLU nonlinearity and another dense layer.",
+      "where": "Sec. 3.1.1 Model",
+      "reasons": [],
+      "check": "verified"
+     },
+     "vocab_size": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "For all experiments, we use a vocabulary of $32{,}000$ wordpieces.",
+      "where": "Sec. 3.1.3 Vocabulary",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "512",
+      "status": "stated",
+      "quote": "We use a maximum sequence length of $512$ and a batch size of $128$ sequences.",
+      "where": "Sec. 3.1.2 Training",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      },
+      {
+       "check": "head_dim * n_heads == d_model",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "name": "Large",
+     "d_model": {
+      "value": "1024",
+      "status": "stated",
+      "quote": "Specifically, this variant uses $d_{\\mathrm{model}} = 1{,}024$, $d_{\\mathrm{ff}} = 4{,}096$, $d_{\\mathrm{kv}} = 64$, $16$-headed attention, and $24$ layers each in the encoder and decoder, resulting in around $770$ million parameters.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "24",
+      "status": "stated",
+      "quote": "Specifically, this variant uses $d_{\\mathrm{model}} = 1{,}024$, $d_{\\mathrm{ff}} = 4{,}096$, $d_{\\mathrm{kv}} = 64$, $16$-headed attention, and $24$ layers each in the encoder and decoder, resulting in around $770$ million parameters.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "16",
+      "status": "stated",
+      "quote": "Specifically, this variant uses $d_{\\mathrm{model}} = 1{,}024$, $d_{\\mathrm{ff}} = 4{,}096$, $d_{\\mathrm{kv}} = 64$, $16$-headed attention, and $24$ layers each in the encoder and decoder, resulting in around $770$ million parameters.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "64",
+      "status": "stated",
+      "quote": "Specifically, this variant uses $d_{\\mathrm{model}} = 1{,}024$, $d_{\\mathrm{ff}} = 4{,}096$, $d_{\\mathrm{kv}} = 64$, $16$-headed attention, and $24$ layers each in the encoder and decoder, resulting in around $770$ million parameters.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "d_ff": {
+      "value": "4096",
+      "status": "stated",
+      "quote": "Specifically, this variant uses $d_{\\mathrm{model}} = 1{,}024$, $d_{\\mathrm{ff}} = 4{,}096$, $d_{\\mathrm{kv}} = 64$, $16$-headed attention, and $24$ layers each in the encoder and decoder, resulting in around $770$ million parameters.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "vocab_size": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "For all experiments, we use a vocabulary of $32{,}000$ wordpieces.",
+      "where": "Sec. 3.1.3 Vocabulary",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "512",
+      "status": "stated",
+      "quote": "We therefore pre-train our models for $1$ million steps on a batch size of $2^{11}$ sequences of length $512$, corresponding to a total of about $1$ trillion pre-training tokens (about $32\\times$ as many as our baseline).",
+      "where": "Sec. 3.7 Putting It All Together (Longer training)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      },
+      {
+       "check": "head_dim * n_heads == d_model",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "name": "3B",
+     "d_model": {
+      "value": "1024",
+      "status": "stated",
+      "quote": "In both cases, we use $d_{\\mathrm{model}} = 1024$, a $24$ layer encoder and decoder, and $d_{\\mathrm{kv}} = 128$.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "24",
+      "status": "stated",
+      "quote": "In both cases, we use $d_{\\mathrm{model}} = 1024$, a $24$ layer encoder and decoder, and $d_{\\mathrm{kv}} = 128$.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "32",
+      "status": "stated",
+      "quote": "For the ``3B'' variant, we use $d_{\\mathrm{ff}} = 16{,}384$ with $32$-headed attention, which results in around $2.8$ billion parameters;",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "128",
+      "status": "stated",
+      "quote": "In both cases, we use $d_{\\mathrm{model}} = 1024$, a $24$ layer encoder and decoder, and $d_{\\mathrm{kv}} = 128$.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "d_ff": {
+      "value": "16384",
+      "status": "stated",
+      "quote": "For the ``3B'' variant, we use $d_{\\mathrm{ff}} = 16{,}384$ with $32$-headed attention, which results in around $2.8$ billion parameters;",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "vocab_size": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "For all experiments, we use a vocabulary of $32{,}000$ wordpieces.",
+      "where": "Sec. 3.1.3 Vocabulary",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "512",
+      "status": "stated",
+      "quote": "We therefore pre-train our models for $1$ million steps on a batch size of $2^{11}$ sequences of length $512$, corresponding to a total of about $1$ trillion pre-training tokens (about $32\\times$ as many as our baseline).",
+      "where": "Sec. 3.7 Putting It All Together (Longer training)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      },
+      {
+       "check": "head_dim * n_heads == d_model",
+       "ok": false
+      }
+     ]
+    },
+    {
+     "name": "11B",
+     "d_model": {
+      "value": "1024",
+      "status": "stated",
+      "quote": "In both cases, we use $d_{\\mathrm{model}} = 1024$, a $24$ layer encoder and decoder, and $d_{\\mathrm{kv}} = 128$.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "24",
+      "status": "stated",
+      "quote": "In both cases, we use $d_{\\mathrm{model}} = 1024$, a $24$ layer encoder and decoder, and $d_{\\mathrm{kv}} = 128$.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "128",
+      "status": "stated",
+      "quote": "for ``11B'' we use $d_{\\mathrm{ff}} = 65{,}536$ with $128$-headed attention producing a model with about $11$ billion parameters.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "128",
+      "status": "stated",
+      "quote": "In both cases, we use $d_{\\mathrm{model}} = 1024$, a $24$ layer encoder and decoder, and $d_{\\mathrm{kv}} = 128$.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "d_ff": {
+      "value": "65536",
+      "status": "stated",
+      "quote": "for ``11B'' we use $d_{\\mathrm{ff}} = 65{,}536$ with $128$-headed attention producing a model with about $11$ billion parameters.",
+      "where": "Sec. 3.7 Putting It All Together (Model sizes)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "vocab_size": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "For all experiments, we use a vocabulary of $32{,}000$ wordpieces.",
+      "where": "Sec. 3.1.3 Vocabulary",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "512",
+      "status": "stated",
+      "quote": "We therefore pre-train our models for $1$ million steps on a batch size of $2^{11}$ sequences of length $512$, corresponding to a total of about $1$ trillion pre-training tokens (about $32\\times$ as many as our baseline).",
+      "where": "Sec. 3.7 Putting It All Together (Longer training)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      },
+      {
+       "check": "head_dim * n_heads == d_model",
+       "ok": false
+      }
+     ]
+    }
+   ],
+   "primary_config": "Base",
+   "flavours": {
+    "norm": {
+     "value": "rmsnorm",
+     "status": "stated",
+     "quote": "We use a simplified version of layer normalization where the activations are only rescaled and no additive bias is applied.",
+     "where": "Sec. 2.1 Model",
+     "reasons": [
+      "the quote does not name rmsnorm (looked for /RMS|root[- ]mean[- ]square/)"
+     ],
+     "check": "unverified"
+    },
+    "norm_placement": {
+     "value": "pre",
+     "status": "stated",
+     "quote": "Layer normalization \\citep{ba2016layer} is applied to the input of each subcomponent.",
+     "where": "Sec. 2.1 Model",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "activation": {
+     "value": "relu",
+     "status": "stated",
+     "quote": "The feed-forward networks in each block consist of a dense layer with an output dimensionality of $d_{\\mathrm{ff}} = 3072$ followed by a ReLU nonlinearity and another dense layer.",
+     "where": "Sec. 3.1.1 Model",
+     "reasons": [],
+     "check": "verified"
+    },
+    "positional": {
+     "value": "relative",
+     "status": "stated",
+     "quote": "We use a simplified form of position embeddings where each ``embedding'' is simply a scalar that is added to the corresponding logit used for computing the attention weights.",
+     "where": "Sec. 2.1 Model",
+     "reasons": [
+      "the quote does not name relative (looked for /relative/)"
+     ],
+     "check": "unverified"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_theta": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "residual": {
+     "value": "residual",
+     "status": "stated",
+     "quote": "After layer normalization, a residual skip connection \\citep{he2016deep} adds each subcomponent's input to its output.",
+     "where": "Sec. 2.1 Model",
+     "reasons": [],
+     "check": "verified"
+    },
+    "parallel_block": {
+     "value": "false",
+     "status": "stated",
+     "quote": "The encoder consists of a stack of ``blocks'', each of which comprises two subcomponents: a self-attention layer followed by a small feed-forward network.",
+     "where": "Sec. 2.1 Model",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "attention": {
+     "value": "exact",
+     "status": "stated",
+     "quote": "The self-attention mechanism in the decoder also uses a form of autoregressive or causal self-attention, which only allows the model to attend to past outputs.",
+     "where": "Sec. 2.1 Model",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "qkv_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "tied_embeddings": {
+     "value": "true",
+     "status": "stated",
+     "quote": "The output of the final decoder block is fed into a dense layer with a softmax output, whose weights are shared with the input embedding matrix.",
+     "where": "Sec. 2.1 Model",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "moe": {
+     "value": "false",
+     "status": "stated",
+     "quote": "The feed-forward networks in each block consist of a dense layer with an output dimensionality of $d_{\\mathrm{ff}} = 3072$ followed by a ReLU nonlinearity and another dense layer.",
+     "where": "Sec. 3.1.1 Model",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    }
+   },
+   "new_ops": [
+    {
+     "name": "t5_relative_position_bias",
+     "kind": "needs_new_primitive",
+     "replaces": "attention position handling (absolute position embeddings)",
+     "reason": "The attention op has no additive logit bias. Each head adds a learned scalar to its [T,T] attention logits. The scalar is looked up from a table of 32 buckets indexed by the key-query offset. Bucket ranges grow logarithmically up to an offset of 128, and every larger offset maps to the same bucket. The table is shared across all layers, with a separate value per head. This needs an attention primitive that accepts a per-head [T,T] bias from bucketed relative positions.",
+     "quote": "In this work, we use $32$ embeddings for all of our models with ranges that increase in size logarithmically up to an offset of $128$ beyond which we assign all relative positions to the same embedding.",
+     "where": "Sec. 2.1 Model",
+     "inputs": [
+      {
+       "name": "x",
+       "meaning": "queries q"
+      },
+      {
+       "name": "a",
+       "meaning": "keys k"
+      },
+      {
+       "name": "b",
+       "meaning": "values v"
+      }
+     ],
+     "errors": [],
+     "quote_found": true,
+     "check": "verified"
+    }
+   ],
+   "block_ops": [
+    {
+     "i": 0,
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding (shared between input and output vocabulary)",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "32000",
+       "status": "stated",
+       "quote": "For all experiments, we use a vocabulary of $32{,}000$ wordpieces.",
+       "where": "Sec. 3.1.3 Vocabulary",
+       "reasons": [],
+       "check": "verified",
+       "name": "vocab"
+      },
+      {
+       "value": "768",
+       "status": "stated",
+       "quote": "All other sub-layers and embeddings have a dimensionality of $d_{\\mathrm{model}} = 768$.",
+       "where": "Sec. 3.1.1 Model",
+       "reasons": [],
+       "check": "verified",
+       "name": "d"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 1,
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "pre-attention norm (scale only, no bias)",
+     "inputs": [
+      "x"
+     ],
+     "output": "h1",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 2,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "query projection",
+     "inputs": [
+      "h1"
+     ],
+     "output": "q",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 3,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "key projection",
+     "inputs": [
+      "h1"
+     ],
+     "output": "k",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 4,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "value projection",
+     "inputs": [
+      "h1"
+     ],
+     "output": "v",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 5,
+     "subgraph": "block",
+     "op": "unsupported",
+     "role": "causal multi-head self-attention with learned relative position scalar bias added to logits",
+     "inputs": [
+      "q",
+      "k",
+      "v"
+     ],
+     "output": "a",
+     "new_op": "t5_relative_position_bias",
+     "attributes": [
+      {
+       "value": "12",
+       "status": "stated",
+       "quote": "The ``key'' and ``value'' matrices of all attention mechanisms have an inner dimensionality of $d_{\\mathrm{kv}} = 64$ and all attention mechanisms have $12$ heads.",
+       "where": "Sec. 3.1.1 Model",
+       "reasons": [],
+       "check": "verified",
+       "name": "heads"
+      },
+      {
+       "value": "64",
+       "status": "stated",
+       "quote": "The ``key'' and ``value'' matrices of all attention mechanisms have an inner dimensionality of $d_{\\mathrm{kv}} = 64$ and all attention mechanisms have $12$ heads.",
+       "where": "Sec. 3.1.1 Model",
+       "reasons": [],
+       "check": "verified",
+       "name": "head_dim"
+      },
+      {
+       "value": "true",
+       "status": "stated",
+       "quote": "The self-attention mechanism in the decoder also uses a form of autoregressive or causal self-attention, which only allows the model to attend to past outputs.",
+       "where": "Sec. 2.1 Model",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "causal"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "scale"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 6,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "o",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "768",
+       "status": "stated",
+       "quote": "All other sub-layers and embeddings have a dimensionality of $d_{\\mathrm{model}} = 768$.",
+       "where": "Sec. 3.1.1 Model",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 7,
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual",
+     "inputs": [
+      "x",
+      "o"
+     ],
+     "output": "x1",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 8,
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "pre-FFN norm (scale only, no bias)",
+     "inputs": [
+      "x1"
+     ],
+     "output": "h2",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 9,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN up projection",
+     "inputs": [
+      "h2"
+     ],
+     "output": "u",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "3072",
+       "status": "stated",
+       "quote": "The feed-forward networks in each block consist of a dense layer with an output dimensionality of $d_{\\mathrm{ff}} = 3072$ followed by a ReLU nonlinearity and another dense layer.",
+       "where": "Sec. 3.1.1 Model",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 10,
+     "subgraph": "block",
+     "op": "relu",
+     "role": "FFN activation",
+     "inputs": [
+      "u"
+     ],
+     "output": "r",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 11,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN down projection",
+     "inputs": [
+      "r"
+     ],
+     "output": "f",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "768",
+       "status": "stated",
+       "quote": "All other sub-layers and embeddings have a dimensionality of $d_{\\mathrm{model}} = 768$.",
+       "where": "Sec. 3.1.1 Model",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 12,
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual",
+     "inputs": [
+      "x1",
+      "f"
+     ],
+     "output": "x2",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 13,
+     "subgraph": "head",
+     "op": "linear",
+     "role": "output logits, tied to input embedding",
+     "inputs": [
+      "x2"
+     ],
+     "output": "logits",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "token_embd",
+       "status": "stated",
+       "quote": "The output of the final decoder block is fed into a dense layer with a softmax output, whose weights are shared with the input embedding matrix.",
+       "where": "Sec. 2.1 Model",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "tied_to"
+      },
+      {
+       "value": "32000",
+       "status": "stated",
+       "quote": "For all experiments, we use a vocabulary of $32{,}000$ wordpieces.",
+       "where": "Sec. 3.1.3 Vocabulary",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      }
+     ],
+     "errors": []
+    }
+   ],
+   "mechanisms_outside_ir": [
+    {
+     "mechanism": "Encoder-decoder structure: a separate encoder stack with fully-visible (non-causal) self-attention whose output is consumed by the decoder",
+     "quote": "The encoder uses a ``fully-visible'' attention mask.",
+     "where": "Sec. 3.2.1 Model Structures",
+     "check": "verified"
+    },
+    {
+     "mechanism": "Encoder-decoder cross-attention inserted after each decoder self-attention layer",
+     "quote": "The decoder is similar in structure to the encoder except that it includes a standard attention mechanism after each self-attention layer that attends to the output of the encoder.",
+     "where": "Sec. 2.1 Model",
+     "check": "verified"
+    },
+    {
+     "mechanism": "Relative position bias parameters shared across all layers (per-head distinct)",
+     "quote": "For efficiency, we also share the position embedding parameters across all layers in our model, though within a given layer each attention head uses a different learned position embedding.",
+     "where": "Sec. 2.1 Model",
+     "check": "verified"
+    }
+   ],
+   "summary": {
+    "counts": {
+     "verified": 45,
+     "quote_only": 7,
+     "unverified": 2,
+     "not_stated": 29
+    },
+    "unverified": [
+     {
+      "field": "flavours.norm",
+      "reasons": [
+       "the quote does not name rmsnorm (looked for /RMS|root[- ]mean[- ]square/)"
+      ]
+     },
+     {
+      "field": "flavours.positional",
+      "reasons": [
+       "the quote does not name relative (looked for /relative/)"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 1,
+    "n_block_ops": 14
+   }
+  }
+ }
+}

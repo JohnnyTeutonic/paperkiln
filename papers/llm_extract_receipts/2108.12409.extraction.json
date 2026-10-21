@@ -1,0 +1,1327 @@
+{
+ "arxiv_id": "2108.12409",
+ "title": "Train Short, Test Long: Attention with Linear Biases Enables Input Length Extrapolation",
+ "fields": {
+  "d_model": {
+   "value": 1024,
+   "evidence": "The model has $16$ transformer layers of dimension $1024$, with $8$ heads, and a feedforward inner dimension of $4096$. [Sec. 2.1 Experiment Setup]",
+   "verdict": "used"
+  },
+  "n_layers": {
+   "value": 16,
+   "evidence": "The model has $16$ transformer layers of dimension $1024$, with $8$ heads, and a feedforward inner dimension of $4096$. [Sec. 2.1 Experiment Setup]",
+   "verdict": "used"
+  },
+  "n_heads": {
+   "value": 8,
+   "evidence": "The model has $16$ transformer layers of dimension $1024$, with $8$ heads, and a feedforward inner dimension of $4096$. [Sec. 2.1 Experiment Setup]",
+   "verdict": "used"
+  },
+  "d_ff": {
+   "value": 4096,
+   "evidence": "The model has $16$ transformer layers of dimension $1024$, with $8$ heads, and a feedforward inner dimension of $4096$. [Sec. 2.1 Experiment Setup]",
+   "verdict": "used"
+  },
+  "context_length": {
+   "value": 512,
+   "evidence": "our model trained on 512 tokens (which achieves 19.73 perplexity when evaluating subsequences of length 512 in the development set) [Sec. 4.1 Results on WikiText-103]",
+   "verdict": "used"
+  },
+  "positional": {
+   "value": "alibi",
+   "evidence": "When using ALiBi, we do not add position embeddings at any point in the network. [Sec. 3 Attention with Linear Biases (ALiBi)]",
+   "verdict": "used"
+  },
+  "attention": {
+   "value": "exact",
+   "evidence": "in practice, when training a transformer LM, query $\\mathbf{q}_i$ attends only to keys $1$ to $i$; this is implemented by adding a mask matrix to the query-key dot product before the softmax operation is applied [Sec. 3 Implementation]",
+   "verdict": "used"
+  }
+ },
+ "unresolved": [
+  "n_kv_heads",
+  "vocab_size",
+  "norm",
+  "activation",
+  "residual"
+ ],
+ "unverified": [],
+ "mentions": {},
+ "inherits": {
+  "ancestor": "Baevski & Auli (2019) adaptive-input transformer language model",
+  "evidence": "We first develop our method on the WikiText-103 corpus~\\citep{pointer}, replacing the sinusoidal position embeddings in the language model of~\\cite{baevski} with \\al.",
+  "section": "Sec. 4.1 Results on WikiText-103 and Toronto BookCorpus"
+ },
+ "variants": [
+  {
+   "d_model": 1024,
+   "n_layers": 16,
+   "n_heads": 8,
+   "d_ff": 4096,
+   "context_length": 512
+  },
+  {
+   "d_model": 2048,
+   "n_layers": 25,
+   "n_heads": 16,
+   "d_ff": 8192,
+   "context_length": 1024
+  }
+ ],
+ "mechanism_scan": [
+  {
+   "mechanism": "Adaptive word embedding and adaptive softmax (Baevski & Auli) in the WikiText-103 model; replaced by a plain tied embedding/softmax for Toronto BookCorpus",
+   "where": "llm extraction, verified quote, Appendix A.3 Results on the Toronto Book Corpus",
+   "blocking": true,
+   "evidence": "Since the vocabulary is much smaller than WikiText-103's, we replace the adaptive word embedding and softmax of \\citet{baevski} with a tied word embedding and softmax matrix \\citep{tying,inan2017}."
+  }
+ ],
+ "source": {
+  "tex_sha256": "0b6c5d575d59c842a526972b51009253e1ffed863b5c8073a47a99777aad90fe",
+  "sent_sha256": "4e7f049d85f5bf5d1b72475227b945011da10bfb5f61965608abd190b8be9f89",
+  "from": "https://arxiv.org/e-print/2108.12409",
+  "extractor": "papers/llm_extract.py",
+  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "model": "claude-opus-5-5",
+  "effort": "high",
+  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "n_calls": 1,
+  "cost_usd": 0.0,
+  "request_ids": [
+   "req_011CgFbkjoXUxGioaNmEzPaw"
+  ]
+ },
+ "llm": {
+  "output": {
+   "title": "Train Short, Test Long: Attention with Linear Biases Enables Input Length Extrapolation",
+   "model_name": "ALiBi transformer LM (Baevski & Auli LM with ALiBi)",
+   "family": {
+    "value": "decoder_only",
+    "status": "stated",
+    "quote": "this is done using a ``causal mask'' that ensures each position's prediction is influenced only by tokens to its left.",
+    "where": "Sec. 2.1 Background and Experimental Setup"
+   },
+   "inherits": {
+    "ancestor": "Baevski & Auli (2019) adaptive-input transformer language model",
+    "quote": "We first develop our method on the WikiText-103 corpus~\\citep{pointer}, replacing the sinusoidal position embeddings in the language model of~\\cite{baevski} with \\al.",
+    "where": "Sec. 4.1 Results on WikiText-103 and Toronto BookCorpus"
+   },
+   "configs": [
+    {
+     "name": "WikiText-103 (247M)",
+     "d_model": {
+      "value": "1024",
+      "status": "stated",
+      "quote": "The  model has $16$ transformer layers of dimension $1024$, with $8$ heads, and a feedforward inner dimension of $4096$.",
+      "where": "Sec. 2.1 Experiment Setup"
+     },
+     "n_layers": {
+      "value": "16",
+      "status": "stated",
+      "quote": "The  model has $16$ transformer layers of dimension $1024$, with $8$ heads, and a feedforward inner dimension of $4096$.",
+      "where": "Sec. 2.1 Experiment Setup"
+     },
+     "n_heads": {
+      "value": "8",
+      "status": "stated",
+      "quote": "The  model has $16$ transformer layers of dimension $1024$, with $8$ heads, and a feedforward inner dimension of $4096$.",
+      "where": "Sec. 2.1 Experiment Setup"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "4096",
+      "status": "stated",
+      "quote": "The  model has $16$ transformer layers of dimension $1024$, with $8$ heads, and a feedforward inner dimension of $4096$.",
+      "where": "Sec. 2.1 Experiment Setup"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "512",
+      "status": "stated",
+      "quote": "our model trained on 512 tokens (which achieves 19.73 perplexity when evaluating subsequences of length 512 in the development set)",
+      "where": "Sec. 4.1 Results on WikiText-103"
+     }
+    },
+    {
+     "name": "CC100+RoBERTa (1.3B)",
+     "d_model": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "Our models for this dataset have 25 transformer layers with 16 heads and a dimension of 2048, with an 8192 hidden dimension of the feedforward sublayers.",
+      "where": "Sec. 4.2 Results on the CC100+RoBERTa Corpus"
+     },
+     "n_layers": {
+      "value": "25",
+      "status": "stated",
+      "quote": "Our models for this dataset have 25 transformer layers with 16 heads and a dimension of 2048, with an 8192 hidden dimension of the feedforward sublayers.",
+      "where": "Sec. 4.2 Results on the CC100+RoBERTa Corpus"
+     },
+     "n_heads": {
+      "value": "16",
+      "status": "stated",
+      "quote": "Our models for this dataset have 25 transformer layers with 16 heads and a dimension of 2048, with an 8192 hidden dimension of the feedforward sublayers.",
+      "where": "Sec. 4.2 Results on the CC100+RoBERTa Corpus"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "8192",
+      "status": "stated",
+      "quote": "Our models for this dataset have 25 transformer layers with 16 heads and a dimension of 2048, with an 8192 hidden dimension of the feedforward sublayers.",
+      "where": "Sec. 4.2 Results on the CC100+RoBERTa Corpus"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "1024",
+      "status": "stated",
+      "quote": "the \\lt = 1024 model (that obtains 9.16 perplexity when \\li = 1024) achieves its best score (8.9) when extrapolating to 2024 tokens.",
+      "where": "Sec. 4.2 Results on the CC100+RoBERTa Corpus"
+     }
+    }
+   ],
+   "primary_config": "WikiText-103 (247M)",
+   "flavours": {
+    "norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "activation": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "positional": {
+     "value": "alibi",
+     "status": "stated",
+     "quote": "When using ALiBi, we do not add position embeddings at any point in the network.",
+     "where": "Sec. 3 Attention with Linear Biases (ALiBi)"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_theta": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "residual": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "parallel_block": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "attention": {
+     "value": "exact",
+     "status": "stated",
+     "quote": "in practice, when training a transformer LM, query $\\mathbf{q}_i$ attends only to keys $1$ to $i$; this is implemented by adding a mask matrix to the query-key dot product before the softmax operation is applied",
+     "where": "Sec. 3 Implementation"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "qkv_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "tied_embeddings": {
+     "value": "true",
+     "status": "stated",
+     "quote": "This model ties the word embedding and softmax matrices~\\citep{tying, inan2017}.",
+     "where": "Sec. 2.1 Experiment Setup"
+    },
+    "moe": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    }
+   },
+   "block_ops": [
+    {
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding (no position embedding added)",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "x",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "query projection",
+     "inputs": [
+      "x"
+     ],
+     "output": "q",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "1024",
+       "status": "stated",
+       "quote": "The  model has $16$ transformer layers of dimension $1024$, with $8$ heads, and a feedforward inner dimension of $4096$.",
+       "where": "Sec. 2.1 Experiment Setup"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "key projection",
+     "inputs": [
+      "x"
+     ],
+     "output": "k",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "1024",
+       "status": "stated",
+       "quote": "The  model has $16$ transformer layers of dimension $1024$, with $8$ heads, and a feedforward inner dimension of $4096$.",
+       "where": "Sec. 2.1 Experiment Setup"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "value projection",
+     "inputs": [
+      "x"
+     ],
+     "output": "v",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "1024",
+       "status": "stated",
+       "quote": "The  model has $16$ transformer layers of dimension $1024$, with $8$ heads, and a feedforward inner dimension of $4096$.",
+       "where": "Sec. 2.1 Experiment Setup"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "attention",
+     "role": "causal multi-head attention with ALiBi bias: softmax(q_i K^T + m*[-(i-1),...,-1,0]); head slopes m = geometric sequence starting at 2^(-8/n) with ratio 2^(-8/n); bias not multiplied by the sqrt(d_k) scale",
+     "inputs": [
+      "q",
+      "k",
+      "v"
+     ],
+     "output": "a",
+     "attributes": [
+      {
+       "name": "heads",
+       "value": "8",
+       "status": "stated",
+       "quote": "For our models with 8 heads, the slopes that we used are the geometric sequence:",
+       "where": "Sec. 3 Attention with Linear Biases (ALiBi)"
+      },
+      {
+       "name": "kv_heads",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "head_dim",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "scale",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "causal",
+       "value": "true",
+       "status": "stated",
+       "quote": "in practice, when training a transformer LM, query $\\mathbf{q}_i$ attends only to keys $1$ to $i$",
+       "where": "Sec. 3 Implementation"
+      },
+      {
+       "name": "window",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "sinks",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "o",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "1024",
+       "status": "stated",
+       "quote": "The  model has $16$ transformer layers of dimension $1024$, with $8$ heads, and a feedforward inner dimension of $4096$.",
+       "where": "Sec. 2.1 Experiment Setup"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual (residual connection not explicitly described in the paper)",
+     "inputs": [
+      "x",
+      "o"
+     ],
+     "output": "h",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN up projection (activation following it not stated)",
+     "inputs": [
+      "h"
+     ],
+     "output": "u",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "4096",
+       "status": "stated",
+       "quote": "The  model has $16$ transformer layers of dimension $1024$, with $8$ heads, and a feedforward inner dimension of $4096$.",
+       "where": "Sec. 2.1 Experiment Setup"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN down projection",
+     "inputs": [
+      "u"
+     ],
+     "output": "f",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "1024",
+       "status": "stated",
+       "quote": "The  model has $16$ transformer layers of dimension $1024$, with $8$ heads, and a feedforward inner dimension of $4096$.",
+       "where": "Sec. 2.1 Experiment Setup"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual (residual connection not explicitly described in the paper)",
+     "inputs": [
+      "h",
+      "f"
+     ],
+     "output": "x",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "linear",
+     "role": "tied softmax output layer",
+     "inputs": [
+      "x"
+     ],
+     "output": "logits",
+     "attributes": [
+      {
+       "name": "tied_to",
+       "value": "token_embd",
+       "status": "stated",
+       "quote": "This model ties the word embedding and softmax matrices~\\citep{tying, inan2017}.",
+       "where": "Sec. 2.1 Experiment Setup"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    }
+   ],
+   "new_ops": [],
+   "mechanisms_outside_ir": [
+    {
+     "mechanism": "Adaptive word embedding and adaptive softmax (Baevski & Auli) in the WikiText-103 model; replaced by a plain tied embedding/softmax for Toronto BookCorpus",
+     "quote": "Since the vocabulary is much smaller than WikiText-103's, we replace the adaptive word embedding and softmax of \\citet{baevski} with a tied word embedding and softmax matrix \\citep{tying,inan2017}.",
+     "where": "Appendix A.3 Results on the Toronto Book Corpus"
+    }
+   ],
+   "notes": "The paper contributes ALiBi as a position method inserted into the Baevski & Auli LM. It explicitly inherits that LM, but never restates norm type or placement, eps, FFN activation, biases, vocab or the residual form. Those are left not_stated rather than filled in from memory. Consequently the block_ops omit normalisation nodes and the FFN activation, so they are incomplete. Configs: the WikiText-103 247M model (16L/1024/8H/4096) and the CC100 1.3B model (25L/2048/16H/8192). Training length varies by experiment: 64-3072 on WikiText-103 and 512/1024/2048 on CC100. Representative lengths were chosen for context_length. The WikiText model uses adaptive input/softmax (tied); the books model uses a plain tied embedding with a BERT vocabulary of about 29K. ALiBi slopes for n heads form a geometric sequence starting at 2^(-8/n) with that same ratio; they are fixed, not learned. The bias is added before softmax and is not scaled by sqrt(d_k). Head_dim (presumably d/heads) is not stated."
+  },
+  "verification": {
+   "errors": [],
+   "warnings": [],
+   "inherits": {
+    "ancestor": "Baevski & Auli (2019) adaptive-input transformer language model",
+    "resolved": null,
+    "quote": "We first develop our method on the WikiText-103 corpus~\\citep{pointer}, replacing the sinusoidal position embeddings in the language model of~\\cite{baevski} with \\al.",
+    "where": "Sec. 4.1 Results on WikiText-103 and Toronto BookCorpus",
+    "quote_found": true
+   },
+   "family": {
+    "value": "decoder_only",
+    "status": "stated",
+    "quote": "this is done using a ``causal mask'' that ensures each position's prediction is influenced only by tokens to its left.",
+    "where": "Sec. 2.1 Background and Experimental Setup",
+    "reasons": [],
+    "check": "quote_only"
+   },
+   "configs": [
+    {
+     "name": "WikiText-103 (247M)",
+     "d_model": {
+      "value": "1024",
+      "status": "stated",
+      "quote": "The  model has $16$ transformer layers of dimension $1024$, with $8$ heads, and a feedforward inner dimension of $4096$.",
+      "where": "Sec. 2.1 Experiment Setup",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "16",
+      "status": "stated",
+      "quote": "The  model has $16$ transformer layers of dimension $1024$, with $8$ heads, and a feedforward inner dimension of $4096$.",
+      "where": "Sec. 2.1 Experiment Setup",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "8",
+      "status": "stated",
+      "quote": "The  model has $16$ transformer layers of dimension $1024$, with $8$ heads, and a feedforward inner dimension of $4096$.",
+      "where": "Sec. 2.1 Experiment Setup",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "4096",
+      "status": "stated",
+      "quote": "The  model has $16$ transformer layers of dimension $1024$, with $8$ heads, and a feedforward inner dimension of $4096$.",
+      "where": "Sec. 2.1 Experiment Setup",
+      "reasons": [],
+      "check": "verified"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "512",
+      "status": "stated",
+      "quote": "our model trained on 512 tokens (which achieves 19.73 perplexity when evaluating subsequences of length 512 in the development set)",
+      "where": "Sec. 4.1 Results on WikiText-103",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "name": "CC100+RoBERTa (1.3B)",
+     "d_model": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "Our models for this dataset have 25 transformer layers with 16 heads and a dimension of 2048, with an 8192 hidden dimension of the feedforward sublayers.",
+      "where": "Sec. 4.2 Results on the CC100+RoBERTa Corpus",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "25",
+      "status": "stated",
+      "quote": "Our models for this dataset have 25 transformer layers with 16 heads and a dimension of 2048, with an 8192 hidden dimension of the feedforward sublayers.",
+      "where": "Sec. 4.2 Results on the CC100+RoBERTa Corpus",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "16",
+      "status": "stated",
+      "quote": "Our models for this dataset have 25 transformer layers with 16 heads and a dimension of 2048, with an 8192 hidden dimension of the feedforward sublayers.",
+      "where": "Sec. 4.2 Results on the CC100+RoBERTa Corpus",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "8192",
+      "status": "stated",
+      "quote": "Our models for this dataset have 25 transformer layers with 16 heads and a dimension of 2048, with an 8192 hidden dimension of the feedforward sublayers.",
+      "where": "Sec. 4.2 Results on the CC100+RoBERTa Corpus",
+      "reasons": [],
+      "check": "verified"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "1024",
+      "status": "stated",
+      "quote": "the \\lt = 1024 model (that obtains 9.16 perplexity when \\li = 1024) achieves its best score (8.9) when extrapolating to 2024 tokens.",
+      "where": "Sec. 4.2 Results on the CC100+RoBERTa Corpus",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      }
+     ]
+    }
+   ],
+   "primary_config": "WikiText-103 (247M)",
+   "flavours": {
+    "norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "activation": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "positional": {
+     "value": "alibi",
+     "status": "stated",
+     "quote": "When using ALiBi, we do not add position embeddings at any point in the network.",
+     "where": "Sec. 3 Attention with Linear Biases (ALiBi)",
+     "reasons": [],
+     "check": "verified"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_theta": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "residual": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "parallel_block": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "attention": {
+     "value": "exact",
+     "status": "stated",
+     "quote": "in practice, when training a transformer LM, query $\\mathbf{q}_i$ attends only to keys $1$ to $i$; this is implemented by adding a mask matrix to the query-key dot product before the softmax operation is applied",
+     "where": "Sec. 3 Implementation",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "qkv_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "tied_embeddings": {
+     "value": "true",
+     "status": "stated",
+     "quote": "This model ties the word embedding and softmax matrices~\\citep{tying, inan2017}.",
+     "where": "Sec. 2.1 Experiment Setup",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "moe": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    }
+   },
+   "new_ops": [],
+   "block_ops": [
+    {
+     "i": 0,
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding (no position embedding added)",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 1,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "query projection",
+     "inputs": [
+      "x"
+     ],
+     "output": "q",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "1024",
+       "status": "stated",
+       "quote": "The  model has $16$ transformer layers of dimension $1024$, with $8$ heads, and a feedforward inner dimension of $4096$.",
+       "where": "Sec. 2.1 Experiment Setup",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 2,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "key projection",
+     "inputs": [
+      "x"
+     ],
+     "output": "k",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "1024",
+       "status": "stated",
+       "quote": "The  model has $16$ transformer layers of dimension $1024$, with $8$ heads, and a feedforward inner dimension of $4096$.",
+       "where": "Sec. 2.1 Experiment Setup",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 3,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "value projection",
+     "inputs": [
+      "x"
+     ],
+     "output": "v",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "1024",
+       "status": "stated",
+       "quote": "The  model has $16$ transformer layers of dimension $1024$, with $8$ heads, and a feedforward inner dimension of $4096$.",
+       "where": "Sec. 2.1 Experiment Setup",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 4,
+     "subgraph": "block",
+     "op": "attention",
+     "role": "causal multi-head attention with ALiBi bias: softmax(q_i K^T + m*[-(i-1),...,-1,0]); head slopes m = geometric sequence starting at 2^(-8/n) with ratio 2^(-8/n); bias not multiplied by the sqrt(d_k) scale",
+     "inputs": [
+      "q",
+      "k",
+      "v"
+     ],
+     "output": "a",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "8",
+       "status": "stated",
+       "quote": "For our models with 8 heads, the slopes that we used are the geometric sequence:",
+       "where": "Sec. 3 Attention with Linear Biases (ALiBi)",
+       "reasons": [],
+       "check": "verified",
+       "name": "heads"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "kv_heads"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "head_dim"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "scale"
+      },
+      {
+       "value": "true",
+       "status": "stated",
+       "quote": "in practice, when training a transformer LM, query $\\mathbf{q}_i$ attends only to keys $1$ to $i$",
+       "where": "Sec. 3 Implementation",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "causal"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "window"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "sinks"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 5,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "o",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "1024",
+       "status": "stated",
+       "quote": "The  model has $16$ transformer layers of dimension $1024$, with $8$ heads, and a feedforward inner dimension of $4096$.",
+       "where": "Sec. 2.1 Experiment Setup",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 6,
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual (residual connection not explicitly described in the paper)",
+     "inputs": [
+      "x",
+      "o"
+     ],
+     "output": "h",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 7,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN up projection (activation following it not stated)",
+     "inputs": [
+      "h"
+     ],
+     "output": "u",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "4096",
+       "status": "stated",
+       "quote": "The  model has $16$ transformer layers of dimension $1024$, with $8$ heads, and a feedforward inner dimension of $4096$.",
+       "where": "Sec. 2.1 Experiment Setup",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 8,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN down projection",
+     "inputs": [
+      "u"
+     ],
+     "output": "f",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "1024",
+       "status": "stated",
+       "quote": "The  model has $16$ transformer layers of dimension $1024$, with $8$ heads, and a feedforward inner dimension of $4096$.",
+       "where": "Sec. 2.1 Experiment Setup",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 9,
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual (residual connection not explicitly described in the paper)",
+     "inputs": [
+      "h",
+      "f"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 10,
+     "subgraph": "head",
+     "op": "linear",
+     "role": "tied softmax output layer",
+     "inputs": [
+      "x"
+     ],
+     "output": "logits",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "token_embd",
+       "status": "stated",
+       "quote": "This model ties the word embedding and softmax matrices~\\citep{tying, inan2017}.",
+       "where": "Sec. 2.1 Experiment Setup",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "tied_to"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    }
+   ],
+   "mechanisms_outside_ir": [
+    {
+     "mechanism": "Adaptive word embedding and adaptive softmax (Baevski & Auli) in the WikiText-103 model; replaced by a plain tied embedding/softmax for Toronto BookCorpus",
+     "quote": "Since the vocabulary is much smaller than WikiText-103's, we replace the adaptive word embedding and softmax of \\citet{baevski} with a tied word embedding and softmax matrix \\citep{tying,inan2017}.",
+     "where": "Appendix A.3 Results on the Toronto Book Corpus",
+     "check": "verified"
+    }
+   ],
+   "summary": {
+    "counts": {
+     "verified": 18,
+     "quote_only": 5,
+     "unverified": 0,
+     "not_stated": 35
+    },
+    "unverified": [],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 11
+   }
+  }
+ }
+}

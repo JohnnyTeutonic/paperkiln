@@ -1,0 +1,2446 @@
+{
+ "arxiv_id": "2308.12950",
+ "title": "Code Llama: Open Foundation Models for Code",
+ "fields": {
+  "context_length": {
+   "value": 16384,
+   "evidence": "we observe a steady decrease in perplexity well beyond 16384 tokens, which is the sequence length we use for long-context fine-tuning. [Sec. Long context evaluations]",
+   "verdict": "used"
+  },
+  "norm": {
+   "value": "rmsnorm",
+   "evidence": "All \\model models are initialized with \\llamavtwo model weights [Sec. 2.1 The Code Llama models family]",
+   "verdict": "unverified",
+   "reasons": [
+    "the inheritance quote does not name the ancestor"
+   ]
+  },
+  "activation": {
+   "value": "swiglu",
+   "evidence": "All \\model models are initialized with \\llamavtwo model weights [Sec. 2.1 The Code Llama models family]",
+   "verdict": "unverified",
+   "reasons": [
+    "the inheritance quote does not name the ancestor"
+   ]
+  },
+  "positional": {
+   "value": "rope",
+   "evidence": "we confirm the importance of modifying the rotation frequencies of the rotary position embedding used in the \\llamavtwo foundation models [Sec. 2.4 Long context fine-tuning]",
+   "verdict": "used"
+  },
+  "residual": {
+   "value": "residual",
+   "evidence": "All \\model models are initialized with \\llamavtwo model weights [Sec. 2.1 The Code Llama models family]",
+   "verdict": "unverified",
+   "reasons": [
+    "inherited from llama, whose curated entry has no residual",
+    "the inheritance quote does not name the ancestor"
+   ]
+  },
+  "attention": {
+   "value": "exact",
+   "evidence": "All \\model models are initialized with \\llamavtwo model weights [Sec. 2.1 The Code Llama models family]",
+   "verdict": "unverified",
+   "reasons": [
+    "inherited from llama, whose curated entry has no attention",
+    "the inheritance quote does not name the ancestor"
+   ]
+  }
+ },
+ "unresolved": [
+  "d_model",
+  "n_layers",
+  "n_heads",
+  "n_kv_heads",
+  "d_ff",
+  "vocab_size"
+ ],
+ "unverified": [
+  {
+   "field": "d_model",
+   "reasons": [
+    "inherited from llama, whose curated entry has no d_model",
+    "the inheritance quote does not name the ancestor"
+   ]
+  },
+  {
+   "field": "n_layers",
+   "reasons": [
+    "inherited from llama, whose curated entry has no n_layers",
+    "the inheritance quote does not name the ancestor"
+   ]
+  },
+  {
+   "field": "n_heads",
+   "reasons": [
+    "inherited from llama, whose curated entry has no n_heads",
+    "the inheritance quote does not name the ancestor"
+   ]
+  },
+  {
+   "field": "n_kv_heads",
+   "reasons": [
+    "inherited from llama, whose curated entry has no n_kv_heads",
+    "the inheritance quote does not name the ancestor"
+   ]
+  },
+  {
+   "field": "d_ff",
+   "reasons": [
+    "inherited from llama, whose curated entry has no d_ff",
+    "the inheritance quote does not name the ancestor"
+   ]
+  },
+  {
+   "field": "norm",
+   "reasons": [
+    "the inheritance quote does not name the ancestor"
+   ]
+  },
+  {
+   "field": "activation",
+   "reasons": [
+    "the inheritance quote does not name the ancestor"
+   ]
+  },
+  {
+   "field": "residual",
+   "reasons": [
+    "inherited from llama, whose curated entry has no residual",
+    "the inheritance quote does not name the ancestor"
+   ]
+  },
+  {
+   "field": "attention",
+   "reasons": [
+    "inherited from llama, whose curated entry has no attention",
+    "the inheritance quote does not name the ancestor"
+   ]
+  }
+ ],
+ "mentions": {},
+ "inherits": {
+  "ancestor": "llama",
+  "evidence": "All \\model models are initialized with \\llamavtwo model weights",
+  "section": "Sec. 2.1 The Code Llama models family"
+ },
+ "variants": [
+  {
+   "context_length": 16384
+  },
+  {
+   "context_length": 16384
+  },
+  {
+   "context_length": 16384
+  },
+  {
+   "context_length": 16384
+  }
+ ],
+ "mechanism_scan": [
+  {
+   "mechanism": "Infilling (FIM) tokenizer extension: four special tokens added to the Llama 2 tokenizer for the 7B/13B/70B models (training format, not a layer change)",
+   "where": "llm extraction, verified quote, Sec. 2.3 Infilling",
+   "blocking": true,
+   "evidence": "We extend \\llamavtwo's tokenizer with four special tokens that mark the beginning of the prefix, the middle part or the suffix, and the end of the infilling span."
+  }
+ ],
+ "source": {
+  "tex_sha256": "5968c869c2762dd2867d43eaa6a78d4ef97c580662f9e225278a80c399761536",
+  "sent_sha256": "2adadcb93b32d59d4e9e477aea749e9614d08e75b7e739e45b0dc9e3c5c92325",
+  "from": "https://arxiv.org/e-print/2308.12950",
+  "extractor": "papers/llm_extract.py",
+  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "model": "claude-opus-5-5",
+  "effort": "high",
+  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "n_calls": 1,
+  "cost_usd": 0.0,
+  "request_ids": [
+   "req_011CgFci2tDsQooy8R2SgDUW"
+  ]
+ },
+ "llm": {
+  "output": {
+   "title": "Code Llama: Open Foundation Models for Code",
+   "model_name": "Code Llama",
+   "family": {
+    "value": "decoder_only",
+    "status": "stated",
+    "quote": "\\model and its variants are autoregressive language models using optimized transformer architectures.",
+    "where": "Table: Model card for Code Llama"
+   },
+   "inherits": {
+    "ancestor": "Llama 2",
+    "quote": "All \\model models are initialized with \\llamavtwo model weights",
+    "where": "Sec. 2.1 The Code Llama models family"
+   },
+   "configs": [
+    {
+     "name": "7B",
+     "d_model": {
+      "value": "4096",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family"
+     },
+     "n_layers": {
+      "value": "32",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family"
+     },
+     "n_heads": {
+      "value": "32",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family"
+     },
+     "n_kv_heads": {
+      "value": "32",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family"
+     },
+     "head_dim": {
+      "value": "128",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family"
+     },
+     "d_ff": {
+      "value": "11008",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "16384",
+      "status": "stated",
+      "quote": "we observe a steady decrease in perplexity well beyond 16384 tokens, which is the sequence length we use for long-context fine-tuning.",
+      "where": "Sec. Long context evaluations"
+     }
+    },
+    {
+     "name": "13B",
+     "d_model": {
+      "value": "5120",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family"
+     },
+     "n_layers": {
+      "value": "40",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family"
+     },
+     "n_heads": {
+      "value": "40",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family"
+     },
+     "n_kv_heads": {
+      "value": "40",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family"
+     },
+     "head_dim": {
+      "value": "128",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family"
+     },
+     "d_ff": {
+      "value": "13824",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "16384",
+      "status": "stated",
+      "quote": "we observe a steady decrease in perplexity well beyond 16384 tokens, which is the sequence length we use for long-context fine-tuning.",
+      "where": "Sec. Long context evaluations"
+     }
+    },
+    {
+     "name": "34B",
+     "d_model": {
+      "value": "8192",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family"
+     },
+     "n_layers": {
+      "value": "48",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family"
+     },
+     "n_heads": {
+      "value": "64",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family"
+     },
+     "n_kv_heads": {
+      "value": "8",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family"
+     },
+     "head_dim": {
+      "value": "128",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family"
+     },
+     "d_ff": {
+      "value": "22016",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family"
+     },
+     "vocab_size": {
+      "value": "32000",
+      "status": "inherited",
+      "quote": "employing the same tokenizer as \\llama and \\llamavtwo",
+      "where": "Sec. 2.2 Dataset"
+     },
+     "context_length": {
+      "value": "16384",
+      "status": "stated",
+      "quote": "we observe a steady decrease in perplexity well beyond 16384 tokens, which is the sequence length we use for long-context fine-tuning.",
+      "where": "Sec. Long context evaluations"
+     }
+    },
+    {
+     "name": "70B",
+     "d_model": {
+      "value": "8192",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family"
+     },
+     "n_layers": {
+      "value": "80",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family"
+     },
+     "n_heads": {
+      "value": "64",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family"
+     },
+     "n_kv_heads": {
+      "value": "8",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family"
+     },
+     "head_dim": {
+      "value": "128",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family"
+     },
+     "d_ff": {
+      "value": "28672",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "16384",
+      "status": "stated",
+      "quote": "we observe a steady decrease in perplexity well beyond 16384 tokens, which is the sequence length we use for long-context fine-tuning.",
+      "where": "Sec. Long context evaluations"
+     }
+    }
+   ],
+   "primary_config": "7B",
+   "flavours": {
+    "norm": {
+     "value": "rmsnorm",
+     "status": "inherited",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
+     "where": "Sec. 2.1 The Code Llama models family"
+    },
+    "norm_placement": {
+     "value": "pre",
+     "status": "inherited",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
+     "where": "Sec. 2.1 The Code Llama models family"
+    },
+    "norm_eps": {
+     "value": "1e-5",
+     "status": "inherited",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
+     "where": "Sec. 2.1 The Code Llama models family"
+    },
+    "activation": {
+     "value": "swiglu",
+     "status": "inherited",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
+     "where": "Sec. 2.1 The Code Llama models family"
+    },
+    "positional": {
+     "value": "rope",
+     "status": "stated",
+     "quote": "we confirm the importance of modifying the rotation frequencies of the rotary position embedding used in the \\llamavtwo foundation models",
+     "where": "Sec. 2.4 Long context fine-tuning"
+    },
+    "rope_pairing": {
+     "value": "interleaved",
+     "status": "stated",
+     "quote": "where $\\mathbf{R}^d_{\\Theta,n}$ is a block diagonal matrix with entries of the form",
+     "where": "Sec. 2.4 Long context fine-tuning"
+    },
+    "rope_theta": {
+     "value": "1000000",
+     "status": "stated",
+     "quote": "we increase the base period $\\theta$ from 10,000 to 1,000,000 for fine-tuning.",
+     "where": "Sec. 2.4 Long context fine-tuning"
+    },
+    "rope_fraction": {
+     "value": "1",
+     "status": "inherited",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
+     "where": "Sec. 2.1 The Code Llama models family"
+    },
+    "residual": {
+     "value": "residual",
+     "status": "inherited",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
+     "where": "Sec. 2.1 The Code Llama models family"
+    },
+    "parallel_block": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
+     "where": "Sec. 2.1 The Code Llama models family"
+    },
+    "attention": {
+     "value": "exact",
+     "status": "inherited",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
+     "where": "Sec. 2.1 The Code Llama models family"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "qkv_bias": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
+     "where": "Sec. 2.1 The Code Llama models family"
+    },
+    "mlp_bias": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
+     "where": "Sec. 2.1 The Code Llama models family"
+    },
+    "tied_embeddings": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
+     "where": "Sec. 2.1 The Code Llama models family"
+    },
+    "moe": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
+     "where": "Sec. 2.1 The Code Llama models family"
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    }
+   },
+   "block_ops": [
+    {
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "x",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "pre-attention norm",
+     "inputs": [
+      "x"
+     ],
+     "output": "h",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "1e-5",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "query projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "q",
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "key projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "k",
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "value projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "v",
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary embedding on queries",
+     "inputs": [
+      "q",
+      "pos"
+     ],
+     "output": "q_r",
+     "attributes": [
+      {
+       "name": "rope_heads",
+       "value": "all",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family"
+      },
+      {
+       "name": "pairing",
+       "value": "interleaved",
+       "status": "stated",
+       "quote": "where $\\mathbf{R}^d_{\\Theta,n}$ is a block diagonal matrix with entries of the form",
+       "where": "Sec. 2.4 Long context fine-tuning"
+      },
+      {
+       "name": "theta",
+       "value": "1000000",
+       "status": "stated",
+       "quote": "we increase the base period $\\theta$ from 10,000 to 1,000,000 for fine-tuning.",
+       "where": "Sec. 2.4 Long context fine-tuning"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary embedding on keys",
+     "inputs": [
+      "k",
+      "pos"
+     ],
+     "output": "k_r",
+     "attributes": [
+      {
+       "name": "rope_heads",
+       "value": "all",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family"
+      },
+      {
+       "name": "pairing",
+       "value": "interleaved",
+       "status": "stated",
+       "quote": "where $\\mathbf{R}^d_{\\Theta,n}$ is a block diagonal matrix with entries of the form",
+       "where": "Sec. 2.4 Long context fine-tuning"
+      },
+      {
+       "name": "theta",
+       "value": "1000000",
+       "status": "stated",
+       "quote": "we increase the base period $\\theta$ from 10,000 to 1,000,000 for fine-tuning.",
+       "where": "Sec. 2.4 Long context fine-tuning"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "attention",
+     "role": "causal self-attention",
+     "inputs": [
+      "q_r",
+      "k_r",
+      "v"
+     ],
+     "output": "a",
+     "attributes": [
+      {
+       "name": "heads",
+       "value": "32",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family"
+      },
+      {
+       "name": "kv_heads",
+       "value": "32",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family"
+      },
+      {
+       "name": "head_dim",
+       "value": "128",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family"
+      },
+      {
+       "name": "causal",
+       "value": "true",
+       "status": "stated",
+       "quote": "\\model and its variants are autoregressive language models using optimized transformer architectures.",
+       "where": "Table: Model card for Code Llama"
+      },
+      {
+       "name": "window",
+       "value": "0",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "o",
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual",
+     "inputs": [
+      "x",
+      "o"
+     ],
+     "output": "x1",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "pre-FFN norm",
+     "inputs": [
+      "x1"
+     ],
+     "output": "h2",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "1e-5",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN gate projection",
+     "inputs": [
+      "h2"
+     ],
+     "output": "g",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "11008",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family"
+      },
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN up projection",
+     "inputs": [
+      "h2"
+     ],
+     "output": "u",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "11008",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family"
+      },
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "silu",
+     "role": "SwiGLU activation",
+     "inputs": [
+      "g"
+     ],
+     "output": "gs",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "mul",
+     "role": "SwiGLU gating",
+     "inputs": [
+      "gs",
+      "u"
+     ],
+     "output": "m",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN down projection",
+     "inputs": [
+      "m"
+     ],
+     "output": "f",
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual",
+     "inputs": [
+      "x1",
+      "f"
+     ],
+     "output": "x",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "rmsnorm",
+     "role": "final norm",
+     "inputs": [
+      "x"
+     ],
+     "output": "hf",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "1e-5",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "linear",
+     "role": "untied output head",
+     "inputs": [
+      "hf"
+     ],
+     "output": "logits",
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family"
+      }
+     ],
+     "new_op": ""
+    }
+   ],
+   "new_ops": [],
+   "mechanisms_outside_ir": [
+    {
+     "mechanism": "Infilling (FIM) tokenizer extension: four special tokens added to the Llama 2 tokenizer for the 7B/13B/70B models (training format, not a layer change)",
+     "quote": "We extend \\llamavtwo's tokenizer with four special tokens that mark the beginning of the prefix, the middle part or the suffix, and the end of the infilling span.",
+     "where": "Sec. 2.3 Infilling"
+    }
+   ],
+   "notes": "Described the base Code Llama (released, long-context fine-tuned) models. The architecture is not restated; the paper says all models are initialized from Llama 2 weights. On that basis I marked these values as inherited from Llama 2: sizes, RMSNorm, pre-norm, SwiGLU, no biases, untied head and GQA for 34B/70B. Positional encoding (RoPE, block-diagonal 2x2 i.e. interleaved pairs) and theta=1e6 are stated. Block-op attributes are given for the 7B config. Vocab size is left not_stated for 7B/13B/70B because those models add four FIM special tokens to Llama 2's tokenizer and the paper gives no final count; 34B (no infilling) inherits the Llama 2 tokenizer. Context length is the 16384 LCFT sequence length; initial code training used 4096."
+  },
+  "verification": {
+   "errors": [],
+   "warnings": [],
+   "inherits": {
+    "ancestor": "Llama 2",
+    "resolved": "llama",
+    "quote": "All \\model models are initialized with \\llamavtwo model weights",
+    "where": "Sec. 2.1 The Code Llama models family",
+    "quote_found": true
+   },
+   "family": {
+    "value": "decoder_only",
+    "status": "stated",
+    "quote": "\\model and its variants are autoregressive language models using optimized transformer architectures.",
+    "where": "Table: Model card for Code Llama",
+    "reasons": [],
+    "check": "quote_only"
+   },
+   "configs": [
+    {
+     "name": "7B",
+     "d_model": {
+      "value": "4096",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family",
+      "reasons": [
+       "inherited from llama, whose curated entry has no d_model",
+       "the inheritance quote does not name the ancestor"
+      ],
+      "check": "unverified"
+     },
+     "n_layers": {
+      "value": "32",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_layers",
+       "the inheritance quote does not name the ancestor"
+      ],
+      "check": "unverified"
+     },
+     "n_heads": {
+      "value": "32",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_heads",
+       "the inheritance quote does not name the ancestor"
+      ],
+      "check": "unverified"
+     },
+     "n_kv_heads": {
+      "value": "32",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_kv_heads",
+       "the inheritance quote does not name the ancestor"
+      ],
+      "check": "unverified"
+     },
+     "head_dim": {
+      "value": "128",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family",
+      "reasons": [
+       "inherited from llama, whose curated entry has no head_dim",
+       "the inheritance quote does not name the ancestor"
+      ],
+      "check": "unverified"
+     },
+     "d_ff": {
+      "value": "11008",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family",
+      "reasons": [
+       "inherited from llama, whose curated entry has no d_ff",
+       "the inheritance quote does not name the ancestor"
+      ],
+      "check": "unverified"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "16384",
+      "status": "stated",
+      "quote": "we observe a steady decrease in perplexity well beyond 16384 tokens, which is the sequence length we use for long-context fine-tuning.",
+      "where": "Sec. Long context evaluations",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": []
+    },
+    {
+     "name": "13B",
+     "d_model": {
+      "value": "5120",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family",
+      "reasons": [
+       "inherited from llama, whose curated entry has no d_model",
+       "the inheritance quote does not name the ancestor"
+      ],
+      "check": "unverified"
+     },
+     "n_layers": {
+      "value": "40",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_layers",
+       "the inheritance quote does not name the ancestor"
+      ],
+      "check": "unverified"
+     },
+     "n_heads": {
+      "value": "40",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_heads",
+       "the inheritance quote does not name the ancestor"
+      ],
+      "check": "unverified"
+     },
+     "n_kv_heads": {
+      "value": "40",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_kv_heads",
+       "the inheritance quote does not name the ancestor"
+      ],
+      "check": "unverified"
+     },
+     "head_dim": {
+      "value": "128",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family",
+      "reasons": [
+       "inherited from llama, whose curated entry has no head_dim",
+       "the inheritance quote does not name the ancestor"
+      ],
+      "check": "unverified"
+     },
+     "d_ff": {
+      "value": "13824",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family",
+      "reasons": [
+       "inherited from llama, whose curated entry has no d_ff",
+       "the inheritance quote does not name the ancestor"
+      ],
+      "check": "unverified"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "16384",
+      "status": "stated",
+      "quote": "we observe a steady decrease in perplexity well beyond 16384 tokens, which is the sequence length we use for long-context fine-tuning.",
+      "where": "Sec. Long context evaluations",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": []
+    },
+    {
+     "name": "34B",
+     "d_model": {
+      "value": "8192",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family",
+      "reasons": [
+       "inherited from llama, whose curated entry has no d_model",
+       "the inheritance quote does not name the ancestor"
+      ],
+      "check": "unverified"
+     },
+     "n_layers": {
+      "value": "48",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_layers",
+       "the inheritance quote does not name the ancestor"
+      ],
+      "check": "unverified"
+     },
+     "n_heads": {
+      "value": "64",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_heads",
+       "the inheritance quote does not name the ancestor"
+      ],
+      "check": "unverified"
+     },
+     "n_kv_heads": {
+      "value": "8",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_kv_heads",
+       "the inheritance quote does not name the ancestor"
+      ],
+      "check": "unverified"
+     },
+     "head_dim": {
+      "value": "128",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family",
+      "reasons": [
+       "inherited from llama, whose curated entry has no head_dim",
+       "the inheritance quote does not name the ancestor"
+      ],
+      "check": "unverified"
+     },
+     "d_ff": {
+      "value": "22016",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family",
+      "reasons": [
+       "inherited from llama, whose curated entry has no d_ff",
+       "the inheritance quote does not name the ancestor"
+      ],
+      "check": "unverified"
+     },
+     "vocab_size": {
+      "value": "32000",
+      "status": "inherited",
+      "quote": "employing the same tokenizer as \\llama and \\llamavtwo",
+      "where": "Sec. 2.2 Dataset",
+      "reasons": [
+       "inherited from llama, whose curated entry has no vocab_size"
+      ],
+      "check": "unverified"
+     },
+     "context_length": {
+      "value": "16384",
+      "status": "stated",
+      "quote": "we observe a steady decrease in perplexity well beyond 16384 tokens, which is the sequence length we use for long-context fine-tuning.",
+      "where": "Sec. Long context evaluations",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": []
+    },
+    {
+     "name": "70B",
+     "d_model": {
+      "value": "8192",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family",
+      "reasons": [
+       "inherited from llama, whose curated entry has no d_model",
+       "the inheritance quote does not name the ancestor"
+      ],
+      "check": "unverified"
+     },
+     "n_layers": {
+      "value": "80",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_layers",
+       "the inheritance quote does not name the ancestor"
+      ],
+      "check": "unverified"
+     },
+     "n_heads": {
+      "value": "64",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_heads",
+       "the inheritance quote does not name the ancestor"
+      ],
+      "check": "unverified"
+     },
+     "n_kv_heads": {
+      "value": "8",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_kv_heads",
+       "the inheritance quote does not name the ancestor"
+      ],
+      "check": "unverified"
+     },
+     "head_dim": {
+      "value": "128",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family",
+      "reasons": [
+       "inherited from llama, whose curated entry has no head_dim",
+       "the inheritance quote does not name the ancestor"
+      ],
+      "check": "unverified"
+     },
+     "d_ff": {
+      "value": "28672",
+      "status": "inherited",
+      "quote": "All \\model models are initialized with \\llamavtwo model weights",
+      "where": "Sec. 2.1 The Code Llama models family",
+      "reasons": [
+       "inherited from llama, whose curated entry has no d_ff",
+       "the inheritance quote does not name the ancestor"
+      ],
+      "check": "unverified"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "16384",
+      "status": "stated",
+      "quote": "we observe a steady decrease in perplexity well beyond 16384 tokens, which is the sequence length we use for long-context fine-tuning.",
+      "where": "Sec. Long context evaluations",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": []
+    }
+   ],
+   "primary_config": "7B",
+   "flavours": {
+    "norm": {
+     "value": "rmsnorm",
+     "status": "inherited",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
+     "where": "Sec. 2.1 The Code Llama models family",
+     "reasons": [
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
+    },
+    "norm_placement": {
+     "value": "pre",
+     "status": "inherited",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
+     "where": "Sec. 2.1 The Code Llama models family",
+     "reasons": [
+      "inherited from llama, whose curated entry has no norm_placement",
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
+    },
+    "norm_eps": {
+     "value": "1e-5",
+     "status": "inherited",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
+     "where": "Sec. 2.1 The Code Llama models family",
+     "reasons": [
+      "inherited from llama, whose curated entry has no norm_eps",
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
+    },
+    "activation": {
+     "value": "swiglu",
+     "status": "inherited",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
+     "where": "Sec. 2.1 The Code Llama models family",
+     "reasons": [
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
+    },
+    "positional": {
+     "value": "rope",
+     "status": "stated",
+     "quote": "we confirm the importance of modifying the rotation frequencies of the rotary position embedding used in the \\llamavtwo foundation models",
+     "where": "Sec. 2.4 Long context fine-tuning",
+     "reasons": [],
+     "check": "verified"
+    },
+    "rope_pairing": {
+     "value": "interleaved",
+     "status": "stated",
+     "quote": "where $\\mathbf{R}^d_{\\Theta,n}$ is a block diagonal matrix with entries of the form",
+     "where": "Sec. 2.4 Long context fine-tuning",
+     "reasons": [
+      "the quote does not name interleaved (looked for /interleav|adjacent|pair/)"
+     ],
+     "check": "unverified"
+    },
+    "rope_theta": {
+     "value": "1000000",
+     "status": "stated",
+     "quote": "we increase the base period $\\theta$ from 10,000 to 1,000,000 for fine-tuning.",
+     "where": "Sec. 2.4 Long context fine-tuning",
+     "reasons": [],
+     "check": "verified"
+    },
+    "rope_fraction": {
+     "value": "1",
+     "status": "inherited",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
+     "where": "Sec. 2.1 The Code Llama models family",
+     "reasons": [
+      "inherited from llama, whose curated entry has no rope_fraction",
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
+    },
+    "residual": {
+     "value": "residual",
+     "status": "inherited",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
+     "where": "Sec. 2.1 The Code Llama models family",
+     "reasons": [
+      "inherited from llama, whose curated entry has no residual",
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
+    },
+    "parallel_block": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
+     "where": "Sec. 2.1 The Code Llama models family",
+     "reasons": [
+      "inherited from llama, whose curated entry has no parallel_block",
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
+    },
+    "attention": {
+     "value": "exact",
+     "status": "inherited",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
+     "where": "Sec. 2.1 The Code Llama models family",
+     "reasons": [
+      "inherited from llama, whose curated entry has no attention",
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "qkv_bias": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
+     "where": "Sec. 2.1 The Code Llama models family",
+     "reasons": [
+      "inherited from llama, whose curated entry has no qkv_bias",
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
+    },
+    "mlp_bias": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
+     "where": "Sec. 2.1 The Code Llama models family",
+     "reasons": [
+      "inherited from llama, whose curated entry has no mlp_bias",
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
+    },
+    "tied_embeddings": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
+     "where": "Sec. 2.1 The Code Llama models family",
+     "reasons": [
+      "inherited from llama, whose curated entry has no tied_embeddings",
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
+    },
+    "moe": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "All \\model models are initialized with \\llamavtwo model weights",
+     "where": "Sec. 2.1 The Code Llama models family",
+     "reasons": [
+      "inherited from llama, whose curated entry has no moe",
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    }
+   },
+   "new_ops": [],
+   "block_ops": [
+    {
+     "i": 0,
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 1,
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "pre-attention norm",
+     "inputs": [
+      "x"
+     ],
+     "output": "h",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "1e-5",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family",
+       "reasons": [
+        "inherited from llama, whose curated entry has no eps",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 2,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "query projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "q",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "false",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 3,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "key projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "k",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "false",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 4,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "value projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "v",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "false",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 5,
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary embedding on queries",
+     "inputs": [
+      "q",
+      "pos"
+     ],
+     "output": "q_r",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "all",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family",
+       "reasons": [
+        "inherited from llama, whose curated entry has no rope_heads",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "rope_heads"
+      },
+      {
+       "value": "interleaved",
+       "status": "stated",
+       "quote": "where $\\mathbf{R}^d_{\\Theta,n}$ is a block diagonal matrix with entries of the form",
+       "where": "Sec. 2.4 Long context fine-tuning",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "pairing"
+      },
+      {
+       "value": "1000000",
+       "status": "stated",
+       "quote": "we increase the base period $\\theta$ from 10,000 to 1,000,000 for fine-tuning.",
+       "where": "Sec. 2.4 Long context fine-tuning",
+       "reasons": [],
+       "check": "verified",
+       "name": "theta"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 6,
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary embedding on keys",
+     "inputs": [
+      "k",
+      "pos"
+     ],
+     "output": "k_r",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "all",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family",
+       "reasons": [
+        "inherited from llama, whose curated entry has no rope_heads",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "rope_heads"
+      },
+      {
+       "value": "interleaved",
+       "status": "stated",
+       "quote": "where $\\mathbf{R}^d_{\\Theta,n}$ is a block diagonal matrix with entries of the form",
+       "where": "Sec. 2.4 Long context fine-tuning",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "pairing"
+      },
+      {
+       "value": "1000000",
+       "status": "stated",
+       "quote": "we increase the base period $\\theta$ from 10,000 to 1,000,000 for fine-tuning.",
+       "where": "Sec. 2.4 Long context fine-tuning",
+       "reasons": [],
+       "check": "verified",
+       "name": "theta"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 7,
+     "subgraph": "block",
+     "op": "attention",
+     "role": "causal self-attention",
+     "inputs": [
+      "q_r",
+      "k_r",
+      "v"
+     ],
+     "output": "a",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "32",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family",
+       "reasons": [
+        "inherited from llama, whose curated entry has no heads",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "heads"
+      },
+      {
+       "value": "32",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family",
+       "reasons": [
+        "inherited from llama, whose curated entry has no kv_heads",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "kv_heads"
+      },
+      {
+       "value": "128",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family",
+       "reasons": [
+        "inherited from llama, whose curated entry has no head_dim",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "head_dim"
+      },
+      {
+       "value": "true",
+       "status": "stated",
+       "quote": "\\model and its variants are autoregressive language models using optimized transformer architectures.",
+       "where": "Table: Model card for Code Llama",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "causal"
+      },
+      {
+       "value": "0",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family",
+       "reasons": [
+        "inherited from llama, whose curated entry has no window",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "window"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 8,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "o",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "false",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 9,
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual",
+     "inputs": [
+      "x",
+      "o"
+     ],
+     "output": "x1",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 10,
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "pre-FFN norm",
+     "inputs": [
+      "x1"
+     ],
+     "output": "h2",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "1e-5",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family",
+       "reasons": [
+        "inherited from llama, whose curated entry has no eps",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 11,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN gate projection",
+     "inputs": [
+      "h2"
+     ],
+     "output": "g",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "11008",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family",
+       "reasons": [
+        "inherited from llama, whose curated entry has no out",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "out"
+      },
+      {
+       "value": "false",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 12,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN up projection",
+     "inputs": [
+      "h2"
+     ],
+     "output": "u",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "11008",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family",
+       "reasons": [
+        "inherited from llama, whose curated entry has no out",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "out"
+      },
+      {
+       "value": "false",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 13,
+     "subgraph": "block",
+     "op": "silu",
+     "role": "SwiGLU activation",
+     "inputs": [
+      "g"
+     ],
+     "output": "gs",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 14,
+     "subgraph": "block",
+     "op": "mul",
+     "role": "SwiGLU gating",
+     "inputs": [
+      "gs",
+      "u"
+     ],
+     "output": "m",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 15,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN down projection",
+     "inputs": [
+      "m"
+     ],
+     "output": "f",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "false",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 16,
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual",
+     "inputs": [
+      "x1",
+      "f"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 17,
+     "subgraph": "head",
+     "op": "rmsnorm",
+     "role": "final norm",
+     "inputs": [
+      "x"
+     ],
+     "output": "hf",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "1e-5",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family",
+       "reasons": [
+        "inherited from llama, whose curated entry has no eps",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 18,
+     "subgraph": "head",
+     "op": "linear",
+     "role": "untied output head",
+     "inputs": [
+      "hf"
+     ],
+     "output": "logits",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "false",
+       "status": "inherited",
+       "quote": "All \\model models are initialized with \\llamavtwo model weights",
+       "where": "Sec. 2.1 The Code Llama models family",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    }
+   ],
+   "mechanisms_outside_ir": [
+    {
+     "mechanism": "Infilling (FIM) tokenizer extension: four special tokens added to the Llama 2 tokenizer for the 7B/13B/70B models (training format, not a layer change)",
+     "quote": "We extend \\llamavtwo's tokenizer with four special tokens that mark the beginning of the prefix, the middle part or the suffix, and the end of the infilling span.",
+     "where": "Sec. 2.3 Infilling",
+     "check": "verified"
+    }
+   ],
+   "summary": {
+    "counts": {
+     "verified": 8,
+     "quote_only": 4,
+     "unverified": 57,
+     "not_stated": 8
+    },
+    "unverified": [
+     {
+      "field": "configs[7B].d_model",
+      "reasons": [
+       "inherited from llama, whose curated entry has no d_model",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[7B].n_layers",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_layers",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[7B].n_heads",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[7B].n_kv_heads",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_kv_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[7B].head_dim",
+      "reasons": [
+       "inherited from llama, whose curated entry has no head_dim",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[7B].d_ff",
+      "reasons": [
+       "inherited from llama, whose curated entry has no d_ff",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[13B].d_model",
+      "reasons": [
+       "inherited from llama, whose curated entry has no d_model",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[13B].n_layers",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_layers",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[13B].n_heads",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[13B].n_kv_heads",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_kv_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[13B].head_dim",
+      "reasons": [
+       "inherited from llama, whose curated entry has no head_dim",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[13B].d_ff",
+      "reasons": [
+       "inherited from llama, whose curated entry has no d_ff",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[34B].d_model",
+      "reasons": [
+       "inherited from llama, whose curated entry has no d_model",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[34B].n_layers",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_layers",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[34B].n_heads",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[34B].n_kv_heads",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_kv_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[34B].head_dim",
+      "reasons": [
+       "inherited from llama, whose curated entry has no head_dim",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[34B].d_ff",
+      "reasons": [
+       "inherited from llama, whose curated entry has no d_ff",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[34B].vocab_size",
+      "reasons": [
+       "inherited from llama, whose curated entry has no vocab_size"
+      ]
+     },
+     {
+      "field": "configs[70B].d_model",
+      "reasons": [
+       "inherited from llama, whose curated entry has no d_model",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[70B].n_layers",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_layers",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[70B].n_heads",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[70B].n_kv_heads",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_kv_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[70B].head_dim",
+      "reasons": [
+       "inherited from llama, whose curated entry has no head_dim",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "configs[70B].d_ff",
+      "reasons": [
+       "inherited from llama, whose curated entry has no d_ff",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.norm",
+      "reasons": [
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.norm_placement",
+      "reasons": [
+       "inherited from llama, whose curated entry has no norm_placement",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.norm_eps",
+      "reasons": [
+       "inherited from llama, whose curated entry has no norm_eps",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.activation",
+      "reasons": [
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.rope_pairing",
+      "reasons": [
+       "the quote does not name interleaved (looked for /interleav|adjacent|pair/)"
+      ]
+     },
+     {
+      "field": "flavours.rope_fraction",
+      "reasons": [
+       "inherited from llama, whose curated entry has no rope_fraction",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "inherited from llama, whose curated entry has no residual",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.parallel_block",
+      "reasons": [
+       "inherited from llama, whose curated entry has no parallel_block",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.attention",
+      "reasons": [
+       "inherited from llama, whose curated entry has no attention",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.qkv_bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no qkv_bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.mlp_bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no mlp_bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.tied_embeddings",
+      "reasons": [
+       "inherited from llama, whose curated entry has no tied_embeddings",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.moe",
+      "reasons": [
+       "inherited from llama, whose curated entry has no moe",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[1].eps",
+      "reasons": [
+       "inherited from llama, whose curated entry has no eps",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[2].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[3].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[4].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[5].rope_heads",
+      "reasons": [
+       "inherited from llama, whose curated entry has no rope_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[6].rope_heads",
+      "reasons": [
+       "inherited from llama, whose curated entry has no rope_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[7].heads",
+      "reasons": [
+       "inherited from llama, whose curated entry has no heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[7].kv_heads",
+      "reasons": [
+       "inherited from llama, whose curated entry has no kv_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[7].head_dim",
+      "reasons": [
+       "inherited from llama, whose curated entry has no head_dim",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[7].window",
+      "reasons": [
+       "inherited from llama, whose curated entry has no window",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[8].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[10].eps",
+      "reasons": [
+       "inherited from llama, whose curated entry has no eps",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[11].out",
+      "reasons": [
+       "inherited from llama, whose curated entry has no out",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[11].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[12].out",
+      "reasons": [
+       "inherited from llama, whose curated entry has no out",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[12].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[15].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[17].eps",
+      "reasons": [
+       "inherited from llama, whose curated entry has no eps",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[18].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 19
+   }
+  }
+ }
+}

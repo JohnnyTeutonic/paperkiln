@@ -1,0 +1,1518 @@
+{
+ "arxiv_id": "1901.02860",
+ "title": "Transformer-XL: Attentive Language Models Beyond a Fixed-Length Context",
+ "fields": {
+  "n_layers": {
+   "value": 12,
+   "evidence": "Ours - 12L Transformer-XL & 41M & \\textbf{1.06} \\\\ [Table enwik8]",
+   "verdict": "used"
+  },
+  "norm": {
+   "value": "layernorm",
+   "evidence": "\\text{LayerNorm}(\\text{Linear}(\\rva_{\\tau}^{n}) + \\rvh_{\\tau}^{n-1}) [Sec. Relative Positional Encodings (computational procedure)]",
+   "verdict": "used"
+  },
+  "positional": {
+   "value": "relative",
+   "evidence": "In order to avoid this failure mode, the fundamental idea is to only encode the \\textit{relative} positional information in the hidden states. [Sec. Relative Positional Encodings]",
+   "verdict": "used"
+  },
+  "residual": {
+   "value": "residual",
+   "evidence": "\\text{LayerNorm}(\\text{Linear}(\\rva_{\\tau}^{n}) + \\rvh_{\\tau}^{n-1}) [Sec. Relative Positional Encodings (computational procedure)]",
+   "verdict": "unverified",
+   "reasons": [
+    "the quote does not name residual (looked for /residual|skip/)"
+   ]
+  },
+  "attention": {
+   "value": "new_primitive:xl_relative_attention",
+   "evidence": "{\\rvq_{\\tau,i}^{n}}^\\top \\rvk_{\\tau,j}^{n} + {\\rvq_{\\tau,i}^{n}}^\\top \\rmW_{k,R}^{n} \\rmR_{i-j} [Sec. Relative Positional Encodings (computational procedure)]",
+   "verdict": "used"
+  }
+ },
+ "unresolved": [
+  "d_model",
+  "n_heads",
+  "n_kv_heads",
+  "d_ff",
+  "vocab_size",
+  "context_length",
+  "activation"
+ ],
+ "unverified": [
+  {
+   "field": "residual",
+   "reasons": [
+    "the quote does not name residual (looked for /residual|skip/)"
+   ]
+  }
+ ],
+ "mentions": {},
+ "inherits": null,
+ "variants": [
+  {
+   "n_layers": 16,
+   "n_heads": 10
+  },
+  {
+   "n_layers": 12
+  },
+  {
+   "n_layers": 18
+  },
+  {
+   "n_layers": 24
+  },
+  {
+   "n_layers": 20
+  }
+ ],
+ "mechanism_scan": [
+  {
+   "mechanism": "new op xl_relative_attention (needs a new primitive: Needs an attention primitive where queries come from the current segment and keys/values from the concatenation [SG(mem))",
+   "where": "llm extraction, verified quote, Sec. Relative Positional Encodings (computational procedure)",
+   "blocking": true,
+   "evidence": "{\\rvq_{\\tau,i}^{n}}^\\top \\rvk_{\\tau,j}^{n} + {\\rvq_{\\tau,i}^{n}}^\\top \\rmW_{k,R}^{n} \\rmR_{i-j}"
+  },
+  {
+   "mechanism": "new op positionwise_feed_forward (needs a new primitive: The paper names a Positionwise-Feed-Forward sublayer but does not state its width, activation, bias, or whether it has i)",
+   "where": "llm extraction, verified quote, Sec. Relative Positional Encodings (computational procedure)",
+   "blocking": true,
+   "evidence": "\\text{Positionwise-Feed-Forward}(\\rvo_{\\tau}^{n})"
+  },
+  {
+   "mechanism": "Segment-level recurrence: hidden states of previous segment(s) cached with stop-gradient as memory of length M for every layer",
+   "where": "llm extraction, verified quote, Sec. Segment-Level Recurrence with State Reuse",
+   "blocking": true,
+   "evidence": "During training, the hidden state sequence computed for the previous segment is \\textit{fixed} and \\textit{cached} to be reused as an extended context when the model processes the next new segment, as shown in Fig. \\ref{fig:xl-train}."
+  },
+  {
+   "mechanism": "Memory length M equals segment length in training, increased at evaluation",
+   "where": "llm extraction, verified quote, Sec. Segment-Level Recurrence with State Reuse",
+   "blocking": true,
+   "evidence": "In our experiments, we set $M$ equal to the segment length during training, and increase it by multiple times during evaluation."
+  },
+  {
+   "mechanism": "Fixed (non-learned) sinusoid relative position table R",
+   "where": "llm extraction, verified quote, Sec. Relative Positional Encodings",
+   "blocking": true,
+   "evidence": "Note that $\\cyan{\\rmR}$ is a sinusoid encoding matrix~\\citep{vaswani2017attention} without learnable parameters."
+  },
+  {
+   "mechanism": "Adaptive input embeddings and adaptive softmax on WikiText-103",
+   "where": "llm extraction, verified quote, Sec. Experiments, Main Results",
+   "blocking": true,
+   "evidence": "We adopted adaptive softmax and input representations \\citep{baevski2018adaptive,grave2016efficient}."
+  }
+ ],
+ "source": {
+  "tex_sha256": "5c6c4dbb0128bed55b5ef8497592f0c0dd0f6d9c5976ea8c1124af0d89eea224",
+  "sent_sha256": "577d09110718b36a5982bbf7e9287cae4cc090b09d57edf13fa01571a73dc39e",
+  "from": "https://arxiv.org/e-print/1901.02860",
+  "extractor": "papers/llm_extract.py",
+  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "model": "claude-opus-5-5",
+  "effort": "high",
+  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "n_calls": 1,
+  "cost_usd": 0.0,
+  "request_ids": [
+   "req_011CgFaSBm6FPgPbASAEyEdy"
+  ]
+ },
+ "llm": {
+  "output": {
+   "title": "Transformer-XL: Attentive Language Models Beyond a Fixed-Length Context",
+   "model_name": "Transformer-XL",
+   "family": {
+    "value": "decoder_only",
+    "status": "stated",
+    "quote": "the task of language modeling is to estimate the joint probability $P(\\rvx)$, which is often auto-regressively factorized as $P(\\rvx) = \\prod_{t} P(x_t \\mid \\rvx_{<t})$.",
+    "where": "Sec. 3 Model"
+   },
+   "inherits": {
+    "ancestor": "",
+    "quote": "",
+    "where": ""
+   },
+   "configs": [
+    {
+     "name": "WikiText-103 SoTA (Transformer-XL Large, 257M)",
+     "d_model": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "n_layers": {
+      "value": "16",
+      "status": "stated",
+      "quote": "Recall that, this model has 16 10-head transformer layers and relies on a memory of length 640.",
+      "where": "Appendix: Attention Visualization"
+     },
+     "n_heads": {
+      "value": "10",
+      "status": "stated",
+      "quote": "Recall that, this model has 16 10-head transformer layers and relies on a memory of length 640.",
+      "where": "Appendix: Attention Visualization"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     }
+    },
+    {
+     "name": "enwik8 12L (41M)",
+     "d_model": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "n_layers": {
+      "value": "12",
+      "status": "stated",
+      "quote": "Ours - 12L Transformer-XL & 41M & \\textbf{1.06} \\\\",
+      "where": "Table enwik8"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     }
+    },
+    {
+     "name": "enwik8 18L (88M)",
+     "d_model": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "n_layers": {
+      "value": "18",
+      "status": "stated",
+      "quote": "Ours - 18L Transformer-XL & 88M & 1.03 \\\\",
+      "where": "Table enwik8"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     }
+    },
+    {
+     "name": "enwik8 24L (277M)",
+     "d_model": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "n_layers": {
+      "value": "24",
+      "status": "stated",
+      "quote": "Ours - 24L Transformer-XL & 277M & \\textbf{0.99} \\\\",
+      "where": "Table enwik8"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     }
+    },
+    {
+     "name": "One Billion Word ablation 20L (~0.3B)",
+     "d_model": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "n_layers": {
+      "value": "20",
+      "status": "stated",
+      "quote": "We train a 20-layer Transformer-XL with $\\sim$0.3B parameters for 400K steps.",
+      "where": "Sec. Ablation Study"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     }
+    }
+   ],
+   "primary_config": "enwik8 12L (41M)",
+   "flavours": {
+    "norm": {
+     "value": "layernorm",
+     "status": "stated",
+     "quote": "\\text{LayerNorm}(\\text{Linear}(\\rva_{\\tau}^{n}) + \\rvh_{\\tau}^{n-1})",
+     "where": "Sec. Relative Positional Encodings (computational procedure)"
+    },
+    "norm_placement": {
+     "value": "post",
+     "status": "stated",
+     "quote": "\\text{LayerNorm}(\\text{Linear}(\\rva_{\\tau}^{n}) + \\rvh_{\\tau}^{n-1})",
+     "where": "Sec. Relative Positional Encodings (computational procedure)"
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "activation": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "positional": {
+     "value": "relative",
+     "status": "stated",
+     "quote": "In order to avoid this failure mode, the fundamental idea is to only encode the \\textit{relative} positional information in the hidden states.",
+     "where": "Sec. Relative Positional Encodings"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_theta": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "residual": {
+     "value": "residual",
+     "status": "stated",
+     "quote": "\\text{LayerNorm}(\\text{Linear}(\\rva_{\\tau}^{n}) + \\rvh_{\\tau}^{n-1})",
+     "where": "Sec. Relative Positional Encodings (computational procedure)"
+    },
+    "parallel_block": {
+     "value": "false",
+     "status": "stated",
+     "quote": "\\text{Positionwise-Feed-Forward}(\\rvo_{\\tau}^{n})",
+     "where": "Sec. Relative Positional Encodings (computational procedure)"
+    },
+    "attention": {
+     "value": "new_op:xl_relative_attention",
+     "status": "stated",
+     "quote": "{\\rvq_{\\tau,i}^{n}}^\\top \\rvk_{\\tau,j}^{n} + {\\rvq_{\\tau,i}^{n}}^\\top \\rmW_{k,R}^{n} \\rmR_{i-j}",
+     "where": "Sec. Relative Positional Encodings (computational procedure)"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "qkv_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "tied_embeddings": {
+     "value": "true",
+     "status": "stated",
+     "quote": "Specifically, a trainable neural network is used to encode the context $\\rvx_{<t}$ into a fixed size hidden state, which is multiplied with the word embeddings to obtain the logits.",
+     "where": "Sec. 3 Model"
+    },
+    "moe": {
+     "value": "false",
+     "status": "stated",
+     "quote": "\\text{Positionwise-Feed-Forward}(\\rvo_{\\tau}^{n})",
+     "where": "Sec. Relative Positional Encodings (computational procedure)"
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    }
+   },
+   "block_ops": [
+    {
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "word embedding (h^0 = E_s, no absolute positional embedding added)",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "h",
+     "attributes": [
+      {
+       "name": "vocab",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "unsupported",
+     "role": "relative-position multi-head attention over [SG(memory) ; h] with u, v biases, causal mask",
+     "inputs": [
+      "h",
+      "mem"
+     ],
+     "output": "a",
+     "attributes": [
+      {
+       "name": "causal",
+       "value": "true",
+       "status": "stated",
+       "quote": "\\text{Masked-Softmax}(\\rmA_{\\tau}^{n}) \\rvv_{\\tau}^{n}",
+       "where": "Sec. Relative Positional Encodings (computational procedure)"
+      },
+      {
+       "name": "heads",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "head_dim",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": "xl_relative_attention"
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection Linear(a)",
+     "inputs": [
+      "a"
+     ],
+     "output": "a_proj",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "d_model",
+       "status": "stated",
+       "quote": "$\\rvh_{\\tau}^{n} \\in \\R^{L \\times d}$, where $d$ is the hidden dimension.",
+       "where": "Sec. Segment-Level Recurrence with State Reuse"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual",
+     "inputs": [
+      "a_proj",
+      "h"
+     ],
+     "output": "r",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "layernorm",
+     "role": "post-attention LayerNorm",
+     "inputs": [
+      "r"
+     ],
+     "output": "o",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "unsupported",
+     "role": "Positionwise-Feed-Forward (internals unspecified)",
+     "inputs": [
+      "o"
+     ],
+     "output": "h_next",
+     "attributes": [
+      {
+       "name": "d_ff",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": "positionwise_feed_forward"
+    },
+    {
+     "subgraph": "head",
+     "op": "linear",
+     "role": "output logits via word embeddings",
+     "inputs": [
+      "h_next"
+     ],
+     "output": "logits",
+     "attributes": [
+      {
+       "name": "tied_to",
+       "value": "token_embd",
+       "status": "stated",
+       "quote": "Specifically, a trainable neural network is used to encode the context $\\rvx_{<t}$ into a fixed size hidden state, which is multiplied with the word embeddings to obtain the logits.",
+       "where": "Sec. 3 Model"
+      }
+     ],
+     "new_op": ""
+    }
+   ],
+   "new_ops": [
+    {
+     "name": "xl_relative_attention",
+     "kind": "needs_new_primitive",
+     "expr": "",
+     "inputs": [
+      {
+       "name": "x",
+       "meaning": "current segment hidden states h^{n-1} [L, d]"
+      },
+      {
+       "name": "a",
+       "meaning": "cached memory of previous segment hidden states m^{n-1} [M, d] (stop-gradient)"
+      }
+     ],
+     "replaces": "self-attention with absolute positions",
+     "reason": "Needs an attention primitive where queries come from the current segment and keys/values from the concatenation [SG(mem); h] (length M+L), with score A_ij = q_i^T k_j + q_i^T W_kR R_{i-j} + u^T k_j + v^T W_kR R_{i-j}, R a fixed sinusoid relative-distance table, u, v learned global bias vectors, separate W_kE and W_kR, causal mask over relative distance (computed efficiently by a left-shift trick).",
+     "quote": "{\\rvq_{\\tau,i}^{n}}^\\top \\rvk_{\\tau,j}^{n} + {\\rvq_{\\tau,i}^{n}}^\\top \\rmW_{k,R}^{n} \\rmR_{i-j}",
+     "where": "Sec. Relative Positional Encodings (computational procedure)"
+    },
+    {
+     "name": "positionwise_feed_forward",
+     "kind": "needs_new_primitive",
+     "expr": "",
+     "inputs": [
+      {
+       "name": "x",
+       "meaning": "post-attention normalised hidden states o"
+      }
+     ],
+     "replaces": "FFN sublayer",
+     "reason": "The paper names a Positionwise-Feed-Forward sublayer but does not state its width, activation, bias, or whether it has its own residual and LayerNorm; it cannot be built without those values.",
+     "quote": "\\text{Positionwise-Feed-Forward}(\\rvo_{\\tau}^{n})",
+     "where": "Sec. Relative Positional Encodings (computational procedure)"
+    }
+   ],
+   "mechanisms_outside_ir": [
+    {
+     "mechanism": "Segment-level recurrence: hidden states of previous segment(s) cached with stop-gradient as memory of length M for every layer",
+     "quote": "During training, the hidden state sequence computed for the previous segment is \\textit{fixed} and \\textit{cached} to be reused as an extended context when the model processes the next new segment, as shown in Fig. \\ref{fig:xl-train}.",
+     "where": "Sec. Segment-Level Recurrence with State Reuse"
+    },
+    {
+     "mechanism": "Memory length M equals segment length in training, increased at evaluation",
+     "quote": "In our experiments, we set $M$ equal to the segment length during training, and increase it by multiple times during evaluation.",
+     "where": "Sec. Segment-Level Recurrence with State Reuse"
+    },
+    {
+     "mechanism": "Fixed (non-learned) sinusoid relative position table R",
+     "quote": "Note that $\\cyan{\\rmR}$ is a sinusoid encoding matrix~\\citep{vaswani2017attention} without learnable parameters.",
+     "where": "Sec. Relative Positional Encodings"
+    },
+    {
+     "mechanism": "Adaptive input embeddings and adaptive softmax on WikiText-103",
+     "quote": "We adopted adaptive softmax and input representations \\citep{baevski2018adaptive,grave2016efficient}.",
+     "where": "Sec. Experiments, Main Results"
+    }
+   ],
+   "notes": "Described the generic Transformer-XL layer from the paper's computational-procedure equations (written for a single head). Sizes are scarcely given: d_model, d_ff, head_dim, vocab and FFN activation are never stated; only layer counts (12/18/24 enwik8, 16 WT103 SoTA, 20 LM1B ablation) and 10 heads for the 16-layer model. The equations show residual+LayerNorm only around attention; residual/norm around the FFN are not stated. Training attention lengths (384 WT103, 784 enwik8) are attention spans incl. memory, so context_length left not_stated. Output tying taken from the general setup sentence; WikiText-103 instead uses adaptive softmax/input."
+  },
+  "verification": {
+   "errors": [],
+   "warnings": [],
+   "inherits": null,
+   "family": {
+    "value": "decoder_only",
+    "status": "stated",
+    "quote": "the task of language modeling is to estimate the joint probability $P(\\rvx)$, which is often auto-regressively factorized as $P(\\rvx) = \\prod_{t} P(x_t \\mid \\rvx_{<t})$.",
+    "where": "Sec. 3 Model",
+    "reasons": [],
+    "check": "quote_only"
+   },
+   "configs": [
+    {
+     "name": "WikiText-103 SoTA (Transformer-XL Large, 257M)",
+     "d_model": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "n_layers": {
+      "value": "16",
+      "status": "stated",
+      "quote": "Recall that, this model has 16 10-head transformer layers and relies on a memory of length 640.",
+      "where": "Appendix: Attention Visualization",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "10",
+      "status": "stated",
+      "quote": "Recall that, this model has 16 10-head transformer layers and relies on a memory of length 640.",
+      "where": "Appendix: Attention Visualization",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "consistency": []
+    },
+    {
+     "name": "enwik8 12L (41M)",
+     "d_model": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "n_layers": {
+      "value": "12",
+      "status": "stated",
+      "quote": "Ours - 12L Transformer-XL & 41M & \\textbf{1.06} \\\\",
+      "where": "Table enwik8",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "consistency": []
+    },
+    {
+     "name": "enwik8 18L (88M)",
+     "d_model": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "n_layers": {
+      "value": "18",
+      "status": "stated",
+      "quote": "Ours - 18L Transformer-XL & 88M & 1.03 \\\\",
+      "where": "Table enwik8",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "consistency": []
+    },
+    {
+     "name": "enwik8 24L (277M)",
+     "d_model": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "n_layers": {
+      "value": "24",
+      "status": "stated",
+      "quote": "Ours - 24L Transformer-XL & 277M & \\textbf{0.99} \\\\",
+      "where": "Table enwik8",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "consistency": []
+    },
+    {
+     "name": "One Billion Word ablation 20L (~0.3B)",
+     "d_model": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "n_layers": {
+      "value": "20",
+      "status": "stated",
+      "quote": "We train a 20-layer Transformer-XL with $\\sim$0.3B parameters for 400K steps.",
+      "where": "Sec. Ablation Study",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "consistency": []
+    }
+   ],
+   "primary_config": "enwik8 12L (41M)",
+   "flavours": {
+    "norm": {
+     "value": "layernorm",
+     "status": "stated",
+     "quote": "\\text{LayerNorm}(\\text{Linear}(\\rva_{\\tau}^{n}) + \\rvh_{\\tau}^{n-1})",
+     "where": "Sec. Relative Positional Encodings (computational procedure)",
+     "reasons": [],
+     "check": "verified"
+    },
+    "norm_placement": {
+     "value": "post",
+     "status": "stated",
+     "quote": "\\text{LayerNorm}(\\text{Linear}(\\rva_{\\tau}^{n}) + \\rvh_{\\tau}^{n-1})",
+     "where": "Sec. Relative Positional Encodings (computational procedure)",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "activation": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "positional": {
+     "value": "relative",
+     "status": "stated",
+     "quote": "In order to avoid this failure mode, the fundamental idea is to only encode the \\textit{relative} positional information in the hidden states.",
+     "where": "Sec. Relative Positional Encodings",
+     "reasons": [],
+     "check": "verified"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_theta": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "residual": {
+     "value": "residual",
+     "status": "stated",
+     "quote": "\\text{LayerNorm}(\\text{Linear}(\\rva_{\\tau}^{n}) + \\rvh_{\\tau}^{n-1})",
+     "where": "Sec. Relative Positional Encodings (computational procedure)",
+     "reasons": [
+      "the quote does not name residual (looked for /residual|skip/)"
+     ],
+     "check": "unverified"
+    },
+    "parallel_block": {
+     "value": "false",
+     "status": "stated",
+     "quote": "\\text{Positionwise-Feed-Forward}(\\rvo_{\\tau}^{n})",
+     "where": "Sec. Relative Positional Encodings (computational procedure)",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "attention": {
+     "value": "new_op:xl_relative_attention",
+     "status": "stated",
+     "quote": "{\\rvq_{\\tau,i}^{n}}^\\top \\rvk_{\\tau,j}^{n} + {\\rvq_{\\tau,i}^{n}}^\\top \\rmW_{k,R}^{n} \\rmR_{i-j}",
+     "where": "Sec. Relative Positional Encodings (computational procedure)",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "qkv_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "tied_embeddings": {
+     "value": "true",
+     "status": "stated",
+     "quote": "Specifically, a trainable neural network is used to encode the context $\\rvx_{<t}$ into a fixed size hidden state, which is multiplied with the word embeddings to obtain the logits.",
+     "where": "Sec. 3 Model",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "moe": {
+     "value": "false",
+     "status": "stated",
+     "quote": "\\text{Positionwise-Feed-Forward}(\\rvo_{\\tau}^{n})",
+     "where": "Sec. Relative Positional Encodings (computational procedure)",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    }
+   },
+   "new_ops": [
+    {
+     "name": "xl_relative_attention",
+     "kind": "needs_new_primitive",
+     "replaces": "self-attention with absolute positions",
+     "reason": "Needs an attention primitive where queries come from the current segment and keys/values from the concatenation [SG(mem); h] (length M+L), with score A_ij = q_i^T k_j + q_i^T W_kR R_{i-j} + u^T k_j + v^T W_kR R_{i-j}, R a fixed sinusoid relative-distance table, u, v learned global bias vectors, separate W_kE and W_kR, causal mask over relative distance (computed efficiently by a left-shift trick).",
+     "quote": "{\\rvq_{\\tau,i}^{n}}^\\top \\rvk_{\\tau,j}^{n} + {\\rvq_{\\tau,i}^{n}}^\\top \\rmW_{k,R}^{n} \\rmR_{i-j}",
+     "where": "Sec. Relative Positional Encodings (computational procedure)",
+     "inputs": [
+      {
+       "name": "x",
+       "meaning": "current segment hidden states h^{n-1} [L, d]"
+      },
+      {
+       "name": "a",
+       "meaning": "cached memory of previous segment hidden states m^{n-1} [M, d] (stop-gradient)"
+      }
+     ],
+     "errors": [],
+     "quote_found": true,
+     "check": "verified"
+    },
+    {
+     "name": "positionwise_feed_forward",
+     "kind": "needs_new_primitive",
+     "replaces": "FFN sublayer",
+     "reason": "The paper names a Positionwise-Feed-Forward sublayer but does not state its width, activation, bias, or whether it has its own residual and LayerNorm; it cannot be built without those values.",
+     "quote": "\\text{Positionwise-Feed-Forward}(\\rvo_{\\tau}^{n})",
+     "where": "Sec. Relative Positional Encodings (computational procedure)",
+     "inputs": [
+      {
+       "name": "x",
+       "meaning": "post-attention normalised hidden states o"
+      }
+     ],
+     "errors": [],
+     "quote_found": true,
+     "check": "verified"
+    }
+   ],
+   "block_ops": [
+    {
+     "i": 0,
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "word embedding (h^0 = E_s, no absolute positional embedding added)",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "h",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "vocab"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 1,
+     "subgraph": "block",
+     "op": "unsupported",
+     "role": "relative-position multi-head attention over [SG(memory) ; h] with u, v biases, causal mask",
+     "inputs": [
+      "h",
+      "mem"
+     ],
+     "output": "a",
+     "new_op": "xl_relative_attention",
+     "attributes": [
+      {
+       "value": "true",
+       "status": "stated",
+       "quote": "\\text{Masked-Softmax}(\\rmA_{\\tau}^{n}) \\rvv_{\\tau}^{n}",
+       "where": "Sec. Relative Positional Encodings (computational procedure)",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "causal"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "heads"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "head_dim"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 2,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection Linear(a)",
+     "inputs": [
+      "a"
+     ],
+     "output": "a_proj",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "d_model",
+       "status": "stated",
+       "quote": "$\\rvh_{\\tau}^{n} \\in \\R^{L \\times d}$, where $d$ is the hidden dimension.",
+       "where": "Sec. Segment-Level Recurrence with State Reuse",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 3,
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual",
+     "inputs": [
+      "a_proj",
+      "h"
+     ],
+     "output": "r",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 4,
+     "subgraph": "block",
+     "op": "layernorm",
+     "role": "post-attention LayerNorm",
+     "inputs": [
+      "r"
+     ],
+     "output": "o",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 5,
+     "subgraph": "block",
+     "op": "unsupported",
+     "role": "Positionwise-Feed-Forward (internals unspecified)",
+     "inputs": [
+      "o"
+     ],
+     "output": "h_next",
+     "new_op": "positionwise_feed_forward",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "d_ff"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 6,
+     "subgraph": "head",
+     "op": "linear",
+     "role": "output logits via word embeddings",
+     "inputs": [
+      "h_next"
+     ],
+     "output": "logits",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "token_embd",
+       "status": "stated",
+       "quote": "Specifically, a trainable neural network is used to encode the context $\\rvx_{<t}$ into a fixed size hidden state, which is multiplied with the word embeddings to obtain the logits.",
+       "where": "Sec. 3 Model",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "tied_to"
+      }
+     ],
+     "errors": []
+    }
+   ],
+   "mechanisms_outside_ir": [
+    {
+     "mechanism": "Segment-level recurrence: hidden states of previous segment(s) cached with stop-gradient as memory of length M for every layer",
+     "quote": "During training, the hidden state sequence computed for the previous segment is \\textit{fixed} and \\textit{cached} to be reused as an extended context when the model processes the next new segment, as shown in Fig. \\ref{fig:xl-train}.",
+     "where": "Sec. Segment-Level Recurrence with State Reuse",
+     "check": "verified"
+    },
+    {
+     "mechanism": "Memory length M equals segment length in training, increased at evaluation",
+     "quote": "In our experiments, we set $M$ equal to the segment length during training, and increase it by multiple times during evaluation.",
+     "where": "Sec. Segment-Level Recurrence with State Reuse",
+     "check": "verified"
+    },
+    {
+     "mechanism": "Fixed (non-learned) sinusoid relative position table R",
+     "quote": "Note that $\\cyan{\\rmR}$ is a sinusoid encoding matrix~\\citep{vaswani2017attention} without learnable parameters.",
+     "where": "Sec. Relative Positional Encodings",
+     "check": "verified"
+    },
+    {
+     "mechanism": "Adaptive input embeddings and adaptive softmax on WikiText-103",
+     "quote": "We adopted adaptive softmax and input representations \\citep{baevski2018adaptive,grave2016efficient}.",
+     "where": "Sec. Experiments, Main Results",
+     "check": "verified"
+    }
+   ],
+   "summary": {
+    "counts": {
+     "verified": 8,
+     "quote_only": 9,
+     "unverified": 1,
+     "not_stated": 52
+    },
+    "unverified": [
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "the quote does not name residual (looked for /residual|skip/)"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 2,
+    "n_block_ops": 7
+   }
+  }
+ }
+}

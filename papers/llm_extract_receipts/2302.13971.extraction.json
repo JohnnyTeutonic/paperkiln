@@ -1,0 +1,2064 @@
+{
+ "arxiv_id": "2302.13971",
+ "title": "LLaMA: Open and Efficient Foundation Language Models",
+ "fields": {
+  "d_model": {
+   "value": 4096,
+   "evidence": "6.7B & 4096 & 32 & 32 & $3.0e^{-4}$ & 4M & 1.0T [Table 2 (tab:architecture)]",
+   "verdict": "used"
+  },
+  "n_layers": {
+   "value": 32,
+   "evidence": "6.7B & 4096 & 32 & 32 & $3.0e^{-4}$ & 4M & 1.0T [Table 2 (tab:architecture)]",
+   "verdict": "used"
+  },
+  "n_heads": {
+   "value": 32,
+   "evidence": "6.7B & 4096 & 32 & 32 & $3.0e^{-4}$ & 4M & 1.0T [Table 2 (tab:architecture)]",
+   "verdict": "used"
+  },
+  "norm": {
+   "value": "rmsnorm",
+   "evidence": "We use the RMSNorm normalizing function, introduced by \\citet{zhang2019root}. [Sec. 2.2 Architecture, Pre-normalization]",
+   "verdict": "used"
+  },
+  "activation": {
+   "value": "swiglu",
+   "evidence": "We replace the ReLU non-linearity by the SwiGLU activation function, introduced by \\citet{shazeer2020glu} to improve the performance. [Sec. 2.2 Architecture, SwiGLU activation function]",
+   "verdict": "used"
+  },
+  "positional": {
+   "value": "rope",
+   "evidence": "We remove the absolute positional embeddings, and instead, add rotary positional embeddings (RoPE), introduced by \\citet{su2021roformer}, at each layer of the network. [Sec. 2.2 Architecture, Rotary Embeddings]",
+   "verdict": "used"
+  },
+  "residual": {
+   "value": "residual",
+   "evidence": "Following recent work on large language models, our network is based on the transformer architecture~\\cite{vaswaniAttention2017}. [Sec. 2.2 Architecture]",
+   "verdict": "unverified",
+   "reasons": [
+    "inherited from transformer, whose curated entry has no residual"
+   ]
+  },
+  "attention": {
+   "value": "exact",
+   "evidence": "First, we use an efficient implementation of the causal multi-head attention to reduce memory usage and runtime. [Sec. 2.4 Efficient implementation]",
+   "verdict": "used"
+  }
+ },
+ "unresolved": [
+  "n_kv_heads",
+  "d_ff",
+  "vocab_size",
+  "context_length"
+ ],
+ "unverified": [
+  {
+   "field": "residual",
+   "reasons": [
+    "inherited from transformer, whose curated entry has no residual"
+   ]
+  }
+ ],
+ "mentions": {},
+ "inherits": {
+  "ancestor": "transformer",
+  "evidence": "Following recent work on large language models, our network is based on the transformer architecture~\\cite{vaswaniAttention2017}.",
+  "section": "Sec. 2.2 Architecture"
+ },
+ "variants": [
+  {
+   "d_model": 4096,
+   "n_layers": 32,
+   "n_heads": 32
+  },
+  {
+   "d_model": 5120,
+   "n_layers": 40,
+   "n_heads": 40
+  },
+  {
+   "d_model": 6656,
+   "n_layers": 60,
+   "n_heads": 52
+  },
+  {
+   "d_model": 8192,
+   "n_layers": 80,
+   "n_heads": 64
+  }
+ ],
+ "mechanism_scan": [],
+ "source": {
+  "tex_sha256": "72a52317cda0bed5ccf08b30b870048097862b276e592b485db91448e7e90fad",
+  "sent_sha256": "493c54ab7deec283765072da40fe998edaaa05205cd98173444957b4b3e8aba9",
+  "from": "https://arxiv.org/e-print/2302.13971",
+  "extractor": "papers/llm_extract.py",
+  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "model": "claude-opus-5-5",
+  "effort": "high",
+  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "n_calls": 1,
+  "cost_usd": 0.0,
+  "request_ids": [
+   "req_011CgFcShVVjWjFE5gXJijN3"
+  ]
+ },
+ "llm": {
+  "output": {
+   "title": "LLaMA: Open and Efficient Foundation Language Models",
+   "model_name": "LLaMA",
+   "family": {
+    "value": "decoder_only",
+    "status": "stated",
+    "quote": "This is achieved by not storing the attention weights and not computing the key/query scores that are masked due to the causal nature of the language modeling task.",
+    "where": "Sec. 2.4 Efficient implementation"
+   },
+   "inherits": {
+    "ancestor": "Transformer (Vaswani et al., 2017)",
+    "quote": "Following recent work on large language models, our network is based on the transformer architecture~\\cite{vaswaniAttention2017}.",
+    "where": "Sec. 2.2 Architecture"
+   },
+   "configs": [
+    {
+     "name": "LLaMA-7B (6.7B)",
+     "d_model": {
+      "value": "4096",
+      "status": "stated",
+      "quote": "6.7B  & 4096 & 32 & 32 & $3.0e^{-4}$ & 4M & 1.0T",
+      "where": "Table 2 (tab:architecture)"
+     },
+     "n_layers": {
+      "value": "32",
+      "status": "stated",
+      "quote": "6.7B  & 4096 & 32 & 32 & $3.0e^{-4}$ & 4M & 1.0T",
+      "where": "Table 2 (tab:architecture)"
+     },
+     "n_heads": {
+      "value": "32",
+      "status": "stated",
+      "quote": "6.7B  & 4096 & 32 & 32 & $3.0e^{-4}$ & 4M & 1.0T",
+      "where": "Table 2 (tab:architecture)"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     }
+    },
+    {
+     "name": "LLaMA-13B (13.0B)",
+     "d_model": {
+      "value": "5120",
+      "status": "stated",
+      "quote": "13.0B & 5120 & 40 & 40 & $3.0e^{-4}$ & 4M & 1.0T",
+      "where": "Table 2 (tab:architecture)"
+     },
+     "n_layers": {
+      "value": "40",
+      "status": "stated",
+      "quote": "13.0B & 5120 & 40 & 40 & $3.0e^{-4}$ & 4M & 1.0T",
+      "where": "Table 2 (tab:architecture)"
+     },
+     "n_heads": {
+      "value": "40",
+      "status": "stated",
+      "quote": "13.0B & 5120 & 40 & 40 & $3.0e^{-4}$ & 4M & 1.0T",
+      "where": "Table 2 (tab:architecture)"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     }
+    },
+    {
+     "name": "LLaMA-33B (32.5B)",
+     "d_model": {
+      "value": "6656",
+      "status": "stated",
+      "quote": "32.5B & 6656 & 52 & 60 & $1.5e^{-4}$ & 4M & 1.4T",
+      "where": "Table 2 (tab:architecture)"
+     },
+     "n_layers": {
+      "value": "60",
+      "status": "stated",
+      "quote": "32.5B & 6656 & 52 & 60 & $1.5e^{-4}$ & 4M & 1.4T",
+      "where": "Table 2 (tab:architecture)"
+     },
+     "n_heads": {
+      "value": "52",
+      "status": "stated",
+      "quote": "32.5B & 6656 & 52 & 60 & $1.5e^{-4}$ & 4M & 1.4T",
+      "where": "Table 2 (tab:architecture)"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     }
+    },
+    {
+     "name": "LLaMA-65B (65.2B)",
+     "d_model": {
+      "value": "8192",
+      "status": "stated",
+      "quote": "65.2B & 8192 & 64 & 80 & $1.5e^{-4}$ & 4M & 1.4T",
+      "where": "Table 2 (tab:architecture)"
+     },
+     "n_layers": {
+      "value": "80",
+      "status": "stated",
+      "quote": "65.2B & 8192 & 64 & 80 & $1.5e^{-4}$ & 4M & 1.4T",
+      "where": "Table 2 (tab:architecture)"
+     },
+     "n_heads": {
+      "value": "64",
+      "status": "stated",
+      "quote": "65.2B & 8192 & 64 & 80 & $1.5e^{-4}$ & 4M & 1.4T",
+      "where": "Table 2 (tab:architecture)"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     }
+    }
+   ],
+   "primary_config": "LLaMA-7B (6.7B)",
+   "flavours": {
+    "norm": {
+     "value": "rmsnorm",
+     "status": "stated",
+     "quote": "We use the RMSNorm normalizing function, introduced by \\citet{zhang2019root}.",
+     "where": "Sec. 2.2 Architecture, Pre-normalization"
+    },
+    "norm_placement": {
+     "value": "pre",
+     "status": "stated",
+     "quote": "To improve the training stability, we normalize the input of each transformer sub-layer, instead of normalizing the output.",
+     "where": "Sec. 2.2 Architecture, Pre-normalization"
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "activation": {
+     "value": "swiglu",
+     "status": "stated",
+     "quote": "We replace the ReLU non-linearity by the SwiGLU activation function, introduced by \\citet{shazeer2020glu} to improve the performance.",
+     "where": "Sec. 2.2 Architecture, SwiGLU activation function"
+    },
+    "positional": {
+     "value": "rope",
+     "status": "stated",
+     "quote": "We remove the absolute positional embeddings, and instead, add rotary positional embeddings (RoPE), introduced by \\citet{su2021roformer}, at each layer of the network.",
+     "where": "Sec. 2.2 Architecture, Rotary Embeddings"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_theta": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "residual": {
+     "value": "residual",
+     "status": "inherited",
+     "quote": "Following recent work on large language models, our network is based on the transformer architecture~\\cite{vaswaniAttention2017}.",
+     "where": "Sec. 2.2 Architecture"
+    },
+    "parallel_block": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "Following recent work on large language models, our network is based on the transformer architecture~\\cite{vaswaniAttention2017}.",
+     "where": "Sec. 2.2 Architecture"
+    },
+    "attention": {
+     "value": "exact",
+     "status": "stated",
+     "quote": "First, we use an efficient implementation of the causal multi-head attention to reduce memory usage and runtime.",
+     "where": "Sec. 2.4 Efficient implementation"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "qkv_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "tied_embeddings": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "moe": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "Following recent work on large language models, our network is based on the transformer architecture~\\cite{vaswaniAttention2017}.",
+     "where": "Sec. 2.2 Architecture"
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    }
+   },
+   "block_ops": [
+    {
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding (token_embd)",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "x",
+     "attributes": [
+      {
+       "name": "vocab",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "d",
+       "value": "4096",
+       "status": "stated",
+       "quote": "6.7B  & 4096 & 32 & 32 & $3.0e^{-4}$ & 4M & 1.0T",
+       "where": "Table 2 (tab:architecture)"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "pre-attention RMSNorm",
+     "inputs": [
+      "x"
+     ],
+     "output": "h",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "query projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "q",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "4096",
+       "status": "stated",
+       "quote": "6.7B  & 4096 & 32 & 32 & $3.0e^{-4}$ & 4M & 1.0T",
+       "where": "Table 2 (tab:architecture)"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "key projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "k",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "value projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "v",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary embedding on queries",
+     "inputs": [
+      "q"
+     ],
+     "output": "q_r",
+     "attributes": [
+      {
+       "name": "rope_heads",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "pairing",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "n_rot",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "theta",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary embedding on keys",
+     "inputs": [
+      "k"
+     ],
+     "output": "k_r",
+     "attributes": [
+      {
+       "name": "rope_heads",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "pairing",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "n_rot",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "theta",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "attention",
+     "role": "causal multi-head self-attention",
+     "inputs": [
+      "q_r",
+      "k_r",
+      "v"
+     ],
+     "output": "a",
+     "attributes": [
+      {
+       "name": "heads",
+       "value": "32",
+       "status": "stated",
+       "quote": "6.7B  & 4096 & 32 & 32 & $3.0e^{-4}$ & 4M & 1.0T",
+       "where": "Table 2 (tab:architecture)"
+      },
+      {
+       "name": "kv_heads",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "head_dim",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "scale",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "causal",
+       "value": "true",
+       "status": "stated",
+       "quote": "First, we use an efficient implementation of the causal multi-head attention to reduce memory usage and runtime.",
+       "where": "Sec. 2.4 Efficient implementation"
+      },
+      {
+       "name": "window",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "sinks",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "o",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "4096",
+       "status": "stated",
+       "quote": "6.7B  & 4096 & 32 & 32 & $3.0e^{-4}$ & 4M & 1.0T",
+       "where": "Table 2 (tab:architecture)"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual add",
+     "inputs": [
+      "x",
+      "o"
+     ],
+     "output": "x1",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "pre-FFN RMSNorm",
+     "inputs": [
+      "x1"
+     ],
+     "output": "h2",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "SwiGLU gate projection",
+     "inputs": [
+      "h2"
+     ],
+     "output": "g",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "SwiGLU up projection",
+     "inputs": [
+      "h2"
+     ],
+     "output": "u",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "silu",
+     "role": "SwiGLU gate activation",
+     "inputs": [
+      "g"
+     ],
+     "output": "gs",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "mul",
+     "role": "SwiGLU gating",
+     "inputs": [
+      "gs",
+      "u"
+     ],
+     "output": "m",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN down projection",
+     "inputs": [
+      "m"
+     ],
+     "output": "f",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "4096",
+       "status": "stated",
+       "quote": "6.7B  & 4096 & 32 & 32 & $3.0e^{-4}$ & 4M & 1.0T",
+       "where": "Table 2 (tab:architecture)"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual add",
+     "inputs": [
+      "x1",
+      "f"
+     ],
+     "output": "x",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "rmsnorm",
+     "role": "final RMSNorm (not described in the paper)",
+     "inputs": [
+      "x"
+     ],
+     "output": "hf",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "linear",
+     "role": "output projection to vocabulary logits",
+     "inputs": [
+      "hf"
+     ],
+     "output": "logits",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "tied_to",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    }
+   ],
+   "new_ops": [],
+   "mechanisms_outside_ir": [],
+   "notes": "I described LLaMA-7B (6.7B), the smallest configuration in Table 2; all four sizes are listed.\n\nThe paper states the FFN width only as a formula (\"$\\frac23 4d$ instead of $4d$\"), with no integer per config, so d_ff and the gate/up widths are left not_stated.\n\nThe following are not stated: vocab size, context length, kv heads, head_dim, norm eps, RoPE pairing/theta/fraction, biases and embedding tying.\n\nThe tokenizer is SentencePiece BPE, with no vocab size given.\n\nresidual, parallel_block=false and moe=false are inherited from the base Transformer sentence. Biases and tying were deliberately not inherited from Vaswani et al.: the paper lists only norm, activation and positional changes, and inheriting those values would be unreliable.\n\nThe final RMSNorm in the head is not mentioned in the paper. It is included as a structural placeholder with eps not_stated.\n\nCausal multi-head attention is stated, but no GQA/MQA is mentioned; kv_heads is left not_stated."
+  },
+  "verification": {
+   "errors": [],
+   "warnings": [],
+   "inherits": {
+    "ancestor": "Transformer (Vaswani et al., 2017)",
+    "resolved": "transformer",
+    "quote": "Following recent work on large language models, our network is based on the transformer architecture~\\cite{vaswaniAttention2017}.",
+    "where": "Sec. 2.2 Architecture",
+    "quote_found": true
+   },
+   "family": {
+    "value": "decoder_only",
+    "status": "stated",
+    "quote": "This is achieved by not storing the attention weights and not computing the key/query scores that are masked due to the causal nature of the language modeling task.",
+    "where": "Sec. 2.4 Efficient implementation",
+    "reasons": [],
+    "check": "quote_only"
+   },
+   "configs": [
+    {
+     "name": "LLaMA-7B (6.7B)",
+     "d_model": {
+      "value": "4096",
+      "status": "stated",
+      "quote": "6.7B  & 4096 & 32 & 32 & $3.0e^{-4}$ & 4M & 1.0T",
+      "where": "Table 2 (tab:architecture)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "32",
+      "status": "stated",
+      "quote": "6.7B  & 4096 & 32 & 32 & $3.0e^{-4}$ & 4M & 1.0T",
+      "where": "Table 2 (tab:architecture)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "32",
+      "status": "stated",
+      "quote": "6.7B  & 4096 & 32 & 32 & $3.0e^{-4}$ & 4M & 1.0T",
+      "where": "Table 2 (tab:architecture)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "name": "LLaMA-13B (13.0B)",
+     "d_model": {
+      "value": "5120",
+      "status": "stated",
+      "quote": "13.0B & 5120 & 40 & 40 & $3.0e^{-4}$ & 4M & 1.0T",
+      "where": "Table 2 (tab:architecture)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "40",
+      "status": "stated",
+      "quote": "13.0B & 5120 & 40 & 40 & $3.0e^{-4}$ & 4M & 1.0T",
+      "where": "Table 2 (tab:architecture)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "40",
+      "status": "stated",
+      "quote": "13.0B & 5120 & 40 & 40 & $3.0e^{-4}$ & 4M & 1.0T",
+      "where": "Table 2 (tab:architecture)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "name": "LLaMA-33B (32.5B)",
+     "d_model": {
+      "value": "6656",
+      "status": "stated",
+      "quote": "32.5B & 6656 & 52 & 60 & $1.5e^{-4}$ & 4M & 1.4T",
+      "where": "Table 2 (tab:architecture)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "60",
+      "status": "stated",
+      "quote": "32.5B & 6656 & 52 & 60 & $1.5e^{-4}$ & 4M & 1.4T",
+      "where": "Table 2 (tab:architecture)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "52",
+      "status": "stated",
+      "quote": "32.5B & 6656 & 52 & 60 & $1.5e^{-4}$ & 4M & 1.4T",
+      "where": "Table 2 (tab:architecture)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "name": "LLaMA-65B (65.2B)",
+     "d_model": {
+      "value": "8192",
+      "status": "stated",
+      "quote": "65.2B & 8192 & 64 & 80 & $1.5e^{-4}$ & 4M & 1.4T",
+      "where": "Table 2 (tab:architecture)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "80",
+      "status": "stated",
+      "quote": "65.2B & 8192 & 64 & 80 & $1.5e^{-4}$ & 4M & 1.4T",
+      "where": "Table 2 (tab:architecture)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "64",
+      "status": "stated",
+      "quote": "65.2B & 8192 & 64 & 80 & $1.5e^{-4}$ & 4M & 1.4T",
+      "where": "Table 2 (tab:architecture)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      }
+     ]
+    }
+   ],
+   "primary_config": "LLaMA-7B (6.7B)",
+   "flavours": {
+    "norm": {
+     "value": "rmsnorm",
+     "status": "stated",
+     "quote": "We use the RMSNorm normalizing function, introduced by \\citet{zhang2019root}.",
+     "where": "Sec. 2.2 Architecture, Pre-normalization",
+     "reasons": [],
+     "check": "verified"
+    },
+    "norm_placement": {
+     "value": "pre",
+     "status": "stated",
+     "quote": "To improve the training stability, we normalize the input of each transformer sub-layer, instead of normalizing the output.",
+     "where": "Sec. 2.2 Architecture, Pre-normalization",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "activation": {
+     "value": "swiglu",
+     "status": "stated",
+     "quote": "We replace the ReLU non-linearity by the SwiGLU activation function, introduced by \\citet{shazeer2020glu} to improve the performance.",
+     "where": "Sec. 2.2 Architecture, SwiGLU activation function",
+     "reasons": [],
+     "check": "verified"
+    },
+    "positional": {
+     "value": "rope",
+     "status": "stated",
+     "quote": "We remove the absolute positional embeddings, and instead, add rotary positional embeddings (RoPE), introduced by \\citet{su2021roformer}, at each layer of the network.",
+     "where": "Sec. 2.2 Architecture, Rotary Embeddings",
+     "reasons": [],
+     "check": "verified"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_theta": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "residual": {
+     "value": "residual",
+     "status": "inherited",
+     "quote": "Following recent work on large language models, our network is based on the transformer architecture~\\cite{vaswaniAttention2017}.",
+     "where": "Sec. 2.2 Architecture",
+     "reasons": [
+      "inherited from transformer, whose curated entry has no residual"
+     ],
+     "check": "unverified"
+    },
+    "parallel_block": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "Following recent work on large language models, our network is based on the transformer architecture~\\cite{vaswaniAttention2017}.",
+     "where": "Sec. 2.2 Architecture",
+     "reasons": [
+      "inherited from transformer, whose curated entry has no parallel_block"
+     ],
+     "check": "unverified"
+    },
+    "attention": {
+     "value": "exact",
+     "status": "stated",
+     "quote": "First, we use an efficient implementation of the causal multi-head attention to reduce memory usage and runtime.",
+     "where": "Sec. 2.4 Efficient implementation",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "qkv_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "tied_embeddings": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "moe": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "Following recent work on large language models, our network is based on the transformer architecture~\\cite{vaswaniAttention2017}.",
+     "where": "Sec. 2.2 Architecture",
+     "reasons": [
+      "inherited from transformer, whose curated entry has no moe"
+     ],
+     "check": "unverified"
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    }
+   },
+   "new_ops": [],
+   "block_ops": [
+    {
+     "i": 0,
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding (token_embd)",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "vocab"
+      },
+      {
+       "value": "4096",
+       "status": "stated",
+       "quote": "6.7B  & 4096 & 32 & 32 & $3.0e^{-4}$ & 4M & 1.0T",
+       "where": "Table 2 (tab:architecture)",
+       "reasons": [],
+       "check": "verified",
+       "name": "d"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 1,
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "pre-attention RMSNorm",
+     "inputs": [
+      "x"
+     ],
+     "output": "h",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 2,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "query projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "q",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "4096",
+       "status": "stated",
+       "quote": "6.7B  & 4096 & 32 & 32 & $3.0e^{-4}$ & 4M & 1.0T",
+       "where": "Table 2 (tab:architecture)",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 3,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "key projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "k",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 4,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "value projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "v",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 5,
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary embedding on queries",
+     "inputs": [
+      "q"
+     ],
+     "output": "q_r",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "rope_heads"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "pairing"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "n_rot"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "theta"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 6,
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary embedding on keys",
+     "inputs": [
+      "k"
+     ],
+     "output": "k_r",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "rope_heads"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "pairing"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "n_rot"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "theta"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 7,
+     "subgraph": "block",
+     "op": "attention",
+     "role": "causal multi-head self-attention",
+     "inputs": [
+      "q_r",
+      "k_r",
+      "v"
+     ],
+     "output": "a",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "32",
+       "status": "stated",
+       "quote": "6.7B  & 4096 & 32 & 32 & $3.0e^{-4}$ & 4M & 1.0T",
+       "where": "Table 2 (tab:architecture)",
+       "reasons": [],
+       "check": "verified",
+       "name": "heads"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "kv_heads"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "head_dim"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "scale"
+      },
+      {
+       "value": "true",
+       "status": "stated",
+       "quote": "First, we use an efficient implementation of the causal multi-head attention to reduce memory usage and runtime.",
+       "where": "Sec. 2.4 Efficient implementation",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "causal"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "window"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "sinks"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 8,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "o",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "4096",
+       "status": "stated",
+       "quote": "6.7B  & 4096 & 32 & 32 & $3.0e^{-4}$ & 4M & 1.0T",
+       "where": "Table 2 (tab:architecture)",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 9,
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual add",
+     "inputs": [
+      "x",
+      "o"
+     ],
+     "output": "x1",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 10,
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "pre-FFN RMSNorm",
+     "inputs": [
+      "x1"
+     ],
+     "output": "h2",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 11,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "SwiGLU gate projection",
+     "inputs": [
+      "h2"
+     ],
+     "output": "g",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 12,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "SwiGLU up projection",
+     "inputs": [
+      "h2"
+     ],
+     "output": "u",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 13,
+     "subgraph": "block",
+     "op": "silu",
+     "role": "SwiGLU gate activation",
+     "inputs": [
+      "g"
+     ],
+     "output": "gs",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 14,
+     "subgraph": "block",
+     "op": "mul",
+     "role": "SwiGLU gating",
+     "inputs": [
+      "gs",
+      "u"
+     ],
+     "output": "m",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 15,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN down projection",
+     "inputs": [
+      "m"
+     ],
+     "output": "f",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "4096",
+       "status": "stated",
+       "quote": "6.7B  & 4096 & 32 & 32 & $3.0e^{-4}$ & 4M & 1.0T",
+       "where": "Table 2 (tab:architecture)",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 16,
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual add",
+     "inputs": [
+      "x1",
+      "f"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 17,
+     "subgraph": "head",
+     "op": "rmsnorm",
+     "role": "final RMSNorm (not described in the paper)",
+     "inputs": [
+      "x"
+     ],
+     "output": "hf",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 18,
+     "subgraph": "head",
+     "op": "linear",
+     "role": "output projection to vocabulary logits",
+     "inputs": [
+      "hf"
+     ],
+     "output": "logits",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "tied_to"
+      }
+     ],
+     "errors": []
+    }
+   ],
+   "mechanisms_outside_ir": [],
+   "summary": {
+    "counts": {
+     "verified": 20,
+     "quote_only": 4,
+     "unverified": 3,
+     "not_stated": 63
+    },
+    "unverified": [
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "inherited from transformer, whose curated entry has no residual"
+      ]
+     },
+     {
+      "field": "flavours.parallel_block",
+      "reasons": [
+       "inherited from transformer, whose curated entry has no parallel_block"
+      ]
+     },
+     {
+      "field": "flavours.moe",
+      "reasons": [
+       "inherited from transformer, whose curated entry has no moe"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 19
+   }
+  }
+ }
+}

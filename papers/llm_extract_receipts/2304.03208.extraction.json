@@ -1,0 +1,2170 @@
+{
+ "arxiv_id": "2304.03208",
+ "title": "Cerebras-GPT: Open Compute-Optimal Language Models Trained on the Cerebras Wafer-Scale Cluster",
+ "fields": {
+  "d_model": {
+   "value": 768,
+   "evidence": "111M & 768 & 10 & 64 & 3072 [Table table:model_details]",
+   "verdict": "used"
+  },
+  "n_layers": {
+   "value": 10,
+   "evidence": "111M & 768 & 10 & 64 & 3072 [Table table:model_details]",
+   "verdict": "used"
+  },
+  "d_ff": {
+   "value": 3072,
+   "evidence": "111M & 768 & 10 & 64 & 3072 [Table table:model_details]",
+   "verdict": "used"
+  },
+  "vocab_size": {
+   "value": 50257,
+   "evidence": "We tokenize the corpora with byte-pair encoding and the GPT-2 vocabulary of size 50257 [Sec. 2.2 Pre-training Corpus]",
+   "verdict": "used"
+  },
+  "context_length": {
+   "value": 2048,
+   "evidence": "All models are trained with a maximum sequence length of 2048 tokens. [Sec. 2.1 Model Architecture]",
+   "verdict": "used"
+  },
+  "norm": {
+   "value": "layernorm",
+   "evidence": "# Layer norms: 7 FLOPs/activation, 2 LNs per decoder block [Table code:flops_count]",
+   "verdict": "used"
+  },
+  "activation": {
+   "value": "gelu",
+   "evidence": "# GeLU: estimate 20 FLOPs/activation, applied in FFN with 4x hidden dim [Table code:flops_count]",
+   "verdict": "used"
+  },
+  "positional": {
+   "value": "learned",
+   "evidence": "Cerebras-GPT uses standard trainable positional embeddings. [Appendix: Differences Between Cerebras-GPT and Other Models]",
+   "verdict": "used"
+  },
+  "residual": {
+   "value": "residual",
+   "evidence": "for the last layer inside each residual network, following the GPT-2 initialization [Sec. 2.4 Standard (SP) and Maximal Update Parameterization]",
+   "verdict": "used"
+  },
+  "attention": {
+   "value": "exact",
+   "evidence": "we use dense attention in all decoder blocks. [Sec. 2.1 Model Architecture]",
+   "verdict": "used"
+  }
+ },
+ "unresolved": [
+  "n_heads",
+  "n_kv_heads"
+ ],
+ "unverified": [],
+ "mentions": {},
+ "inherits": {
+  "ancestor": "gpt-2",
+  "evidence": "OPT and Cerebras-GPT models use the standard GPT-2 transformer block, which orders attention sequentially before the feed forward layers.",
+  "section": "Appendix: Differences Between Cerebras-GPT and Other Models"
+ },
+ "variants": [
+  {
+   "d_model": 768,
+   "n_layers": 10,
+   "d_ff": 3072,
+   "vocab_size": 50257,
+   "context_length": 2048
+  },
+  {
+   "d_model": 1088,
+   "n_layers": 14,
+   "d_ff": 4352,
+   "vocab_size": 50257,
+   "context_length": 2048
+  },
+  {
+   "d_model": 1536,
+   "n_layers": 18,
+   "d_ff": 6144,
+   "vocab_size": 50257,
+   "context_length": 2048
+  },
+  {
+   "d_model": 2048,
+   "n_layers": 24,
+   "d_ff": 8192,
+   "vocab_size": 50257,
+   "context_length": 2048
+  },
+  {
+   "d_model": 2560,
+   "n_layers": 32,
+   "d_ff": 10240,
+   "vocab_size": 50257,
+   "context_length": 2048
+  },
+  {
+   "d_model": 4096,
+   "n_layers": 32,
+   "d_ff": 16384,
+   "vocab_size": 50257,
+   "context_length": 2048
+  },
+  {
+   "d_model": 5120,
+   "n_layers": 40,
+   "d_ff": 20480,
+   "vocab_size": 50257,
+   "context_length": 2048
+  }
+ ],
+ "mechanism_scan": [],
+ "source": {
+  "tex_sha256": "925521900d9c8c9f4c09fa21f2f3ebe34aa162161f9fcc7f7a8ac1a00cd33484",
+  "sent_sha256": "5ce3f90c5b16af35b5bba497057f2ba0993c13bce24ccb42a620b6ba052e5c1d",
+  "from": "https://arxiv.org/e-print/2304.03208",
+  "extractor": "papers/llm_extract.py",
+  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "model": "claude-opus-5-5",
+  "effort": "high",
+  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "n_calls": 1,
+  "cost_usd": 0.0,
+  "request_ids": [
+   "req_011CgFZtC6Y354HxXkNSpEHM"
+  ]
+ },
+ "llm": {
+  "output": {
+   "title": "Cerebras-GPT: Open Compute-Optimal Language Models Trained on the Cerebras Wafer-Scale Cluster",
+   "model_name": "Cerebras-GPT",
+   "family": {
+    "value": "decoder_only",
+    "status": "stated",
+    "quote": "Cerebras-GPT models have a GPT-3-like architecture, an autoregressive transformer decoder model",
+    "where": "Sec. 2.1 Model Architecture"
+   },
+   "inherits": {
+    "ancestor": "GPT-2 transformer block (GPT-3-like architecture)",
+    "quote": "OPT and Cerebras-GPT models use the standard GPT-2 transformer block, which orders attention sequentially before the feed forward layers.",
+    "where": "Appendix: Differences Between Cerebras-GPT and Other Models"
+   },
+   "configs": [
+    {
+     "name": "111M",
+     "d_model": {
+      "value": "768",
+      "status": "stated",
+      "quote": "111M       & 768      & 10        & 64      & 3072",
+      "where": "Table table:model_details"
+     },
+     "n_layers": {
+      "value": "10",
+      "status": "stated",
+      "quote": "111M       & 768      & 10        & 64      & 3072",
+      "where": "Table table:model_details"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "64",
+      "status": "stated",
+      "quote": "111M       & 768      & 10        & 64      & 3072",
+      "where": "Table table:model_details"
+     },
+     "d_ff": {
+      "value": "3072",
+      "status": "stated",
+      "quote": "111M       & 768      & 10        & 64      & 3072",
+      "where": "Table table:model_details"
+     },
+     "vocab_size": {
+      "value": "50257",
+      "status": "stated",
+      "quote": "We tokenize the corpora with byte-pair encoding and the GPT-2 vocabulary of size 50257",
+      "where": "Sec. 2.2 Pre-training Corpus"
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "All models are trained with a maximum sequence length of 2048 tokens.",
+      "where": "Sec. 2.1 Model Architecture"
+     }
+    },
+    {
+     "name": "256M",
+     "d_model": {
+      "value": "1088",
+      "status": "stated",
+      "quote": "256M       & 1088     & 14        & 64      & 4352",
+      "where": "Table table:model_details"
+     },
+     "n_layers": {
+      "value": "14",
+      "status": "stated",
+      "quote": "256M       & 1088     & 14        & 64      & 4352",
+      "where": "Table table:model_details"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "64",
+      "status": "stated",
+      "quote": "256M       & 1088     & 14        & 64      & 4352",
+      "where": "Table table:model_details"
+     },
+     "d_ff": {
+      "value": "4352",
+      "status": "stated",
+      "quote": "256M       & 1088     & 14        & 64      & 4352",
+      "where": "Table table:model_details"
+     },
+     "vocab_size": {
+      "value": "50257",
+      "status": "stated",
+      "quote": "We tokenize the corpora with byte-pair encoding and the GPT-2 vocabulary of size 50257",
+      "where": "Sec. 2.2 Pre-training Corpus"
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "All models are trained with a maximum sequence length of 2048 tokens.",
+      "where": "Sec. 2.1 Model Architecture"
+     }
+    },
+    {
+     "name": "590M",
+     "d_model": {
+      "value": "1536",
+      "status": "stated",
+      "quote": "590M       & 1536     & 18        & 128     & 6144",
+      "where": "Table table:model_details"
+     },
+     "n_layers": {
+      "value": "18",
+      "status": "stated",
+      "quote": "590M       & 1536     & 18        & 128     & 6144",
+      "where": "Table table:model_details"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "128",
+      "status": "stated",
+      "quote": "590M       & 1536     & 18        & 128     & 6144",
+      "where": "Table table:model_details"
+     },
+     "d_ff": {
+      "value": "6144",
+      "status": "stated",
+      "quote": "590M       & 1536     & 18        & 128     & 6144",
+      "where": "Table table:model_details"
+     },
+     "vocab_size": {
+      "value": "50257",
+      "status": "stated",
+      "quote": "We tokenize the corpora with byte-pair encoding and the GPT-2 vocabulary of size 50257",
+      "where": "Sec. 2.2 Pre-training Corpus"
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "All models are trained with a maximum sequence length of 2048 tokens.",
+      "where": "Sec. 2.1 Model Architecture"
+     }
+    },
+    {
+     "name": "1.3B",
+     "d_model": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "1.3B       & 2048     & 24        & 128     & 8192",
+      "where": "Table table:model_details"
+     },
+     "n_layers": {
+      "value": "24",
+      "status": "stated",
+      "quote": "1.3B       & 2048     & 24        & 128     & 8192",
+      "where": "Table table:model_details"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "128",
+      "status": "stated",
+      "quote": "1.3B       & 2048     & 24        & 128     & 8192",
+      "where": "Table table:model_details"
+     },
+     "d_ff": {
+      "value": "8192",
+      "status": "stated",
+      "quote": "1.3B       & 2048     & 24        & 128     & 8192",
+      "where": "Table table:model_details"
+     },
+     "vocab_size": {
+      "value": "50257",
+      "status": "stated",
+      "quote": "We tokenize the corpora with byte-pair encoding and the GPT-2 vocabulary of size 50257",
+      "where": "Sec. 2.2 Pre-training Corpus"
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "All models are trained with a maximum sequence length of 2048 tokens.",
+      "where": "Sec. 2.1 Model Architecture"
+     }
+    },
+    {
+     "name": "2.7B",
+     "d_model": {
+      "value": "2560",
+      "status": "stated",
+      "quote": "2.7B       & 2560     & 32        & 80      & 10240",
+      "where": "Table table:model_details"
+     },
+     "n_layers": {
+      "value": "32",
+      "status": "stated",
+      "quote": "2.7B       & 2560     & 32        & 80      & 10240",
+      "where": "Table table:model_details"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "80",
+      "status": "stated",
+      "quote": "2.7B       & 2560     & 32        & 80      & 10240",
+      "where": "Table table:model_details"
+     },
+     "d_ff": {
+      "value": "10240",
+      "status": "stated",
+      "quote": "2.7B       & 2560     & 32        & 80      & 10240",
+      "where": "Table table:model_details"
+     },
+     "vocab_size": {
+      "value": "50257",
+      "status": "stated",
+      "quote": "We tokenize the corpora with byte-pair encoding and the GPT-2 vocabulary of size 50257",
+      "where": "Sec. 2.2 Pre-training Corpus"
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "All models are trained with a maximum sequence length of 2048 tokens.",
+      "where": "Sec. 2.1 Model Architecture"
+     }
+    },
+    {
+     "name": "6.7B",
+     "d_model": {
+      "value": "4096",
+      "status": "stated",
+      "quote": "6.7B       & 4096     & 32        & 128     & 16384",
+      "where": "Table table:model_details"
+     },
+     "n_layers": {
+      "value": "32",
+      "status": "stated",
+      "quote": "6.7B       & 4096     & 32        & 128     & 16384",
+      "where": "Table table:model_details"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "128",
+      "status": "stated",
+      "quote": "6.7B       & 4096     & 32        & 128     & 16384",
+      "where": "Table table:model_details"
+     },
+     "d_ff": {
+      "value": "16384",
+      "status": "stated",
+      "quote": "6.7B       & 4096     & 32        & 128     & 16384",
+      "where": "Table table:model_details"
+     },
+     "vocab_size": {
+      "value": "50257",
+      "status": "stated",
+      "quote": "We tokenize the corpora with byte-pair encoding and the GPT-2 vocabulary of size 50257",
+      "where": "Sec. 2.2 Pre-training Corpus"
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "All models are trained with a maximum sequence length of 2048 tokens.",
+      "where": "Sec. 2.1 Model Architecture"
+     }
+    },
+    {
+     "name": "13B",
+     "d_model": {
+      "value": "5120",
+      "status": "stated",
+      "quote": "13B        & 5120     & 40        & 128     & 20480",
+      "where": "Table table:model_details"
+     },
+     "n_layers": {
+      "value": "40",
+      "status": "stated",
+      "quote": "13B        & 5120     & 40        & 128     & 20480",
+      "where": "Table table:model_details"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "128",
+      "status": "stated",
+      "quote": "13B        & 5120     & 40        & 128     & 20480",
+      "where": "Table table:model_details"
+     },
+     "d_ff": {
+      "value": "20480",
+      "status": "stated",
+      "quote": "13B        & 5120     & 40        & 128     & 20480",
+      "where": "Table table:model_details"
+     },
+     "vocab_size": {
+      "value": "50257",
+      "status": "stated",
+      "quote": "We tokenize the corpora with byte-pair encoding and the GPT-2 vocabulary of size 50257",
+      "where": "Sec. 2.2 Pre-training Corpus"
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "All models are trained with a maximum sequence length of 2048 tokens.",
+      "where": "Sec. 2.1 Model Architecture"
+     }
+    }
+   ],
+   "primary_config": "111M",
+   "flavours": {
+    "norm": {
+     "value": "layernorm",
+     "status": "stated",
+     "quote": "# Layer norms: 7 FLOPs/activation, 2 LNs per decoder block",
+     "where": "Table code:flops_count"
+    },
+    "norm_placement": {
+     "value": "pre",
+     "status": "inherited",
+     "quote": "OPT and Cerebras-GPT models use the standard GPT-2 transformer block, which orders attention sequentially before the feed forward layers.",
+     "where": "Appendix: Differences Between Cerebras-GPT and Other Models"
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "activation": {
+     "value": "gelu",
+     "status": "stated",
+     "quote": "# GeLU: estimate 20 FLOPs/activation, applied in FFN with 4x hidden dim",
+     "where": "Table code:flops_count"
+    },
+    "positional": {
+     "value": "learned",
+     "status": "stated",
+     "quote": "Cerebras-GPT uses standard trainable positional embeddings.",
+     "where": "Appendix: Differences Between Cerebras-GPT and Other Models"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_theta": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "residual": {
+     "value": "residual",
+     "status": "stated",
+     "quote": "for the last layer inside each residual network, following the GPT-2 initialization",
+     "where": "Sec. 2.4 Standard (SP) and Maximal Update Parameterization"
+    },
+    "parallel_block": {
+     "value": "false",
+     "status": "stated",
+     "quote": "OPT and Cerebras-GPT models use the standard GPT-2 transformer block, which orders attention sequentially before the feed forward layers.",
+     "where": "Appendix: Differences Between Cerebras-GPT and Other Models"
+    },
+    "attention": {
+     "value": "exact",
+     "status": "stated",
+     "quote": "we use dense attention in all decoder blocks.",
+     "where": "Sec. 2.1 Model Architecture"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "qkv_bias": {
+     "value": "true",
+     "status": "stated",
+     "quote": "attn = 4 * (d_model**2 + d_model)",
+     "where": "Table code:params_count"
+    },
+    "mlp_bias": {
+     "value": "true",
+     "status": "stated",
+     "quote": "ffn = 8 * d_model**2 + 5 * d_model",
+     "where": "Table code:params_count"
+    },
+    "tied_embeddings": {
+     "value": "true",
+     "status": "stated",
+     "quote": "n_params = embedding + encoder + final_ln",
+     "where": "Table code:params_count"
+    },
+    "moe": {
+     "value": "false",
+     "status": "stated",
+     "quote": "ffn = 8 * d_model**2 + 5 * d_model",
+     "where": "Table code:params_count"
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    }
+   },
+   "block_ops": [
+    {
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "tok",
+     "attributes": [
+      {
+       "name": "vocab",
+       "value": "50257",
+       "status": "stated",
+       "quote": "We tokenize the corpora with byte-pair encoding and the GPT-2 vocabulary of size 50257",
+       "where": "Sec. 2.2 Pre-training Corpus"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "embed",
+     "op": "pos_embedding",
+     "role": "learned absolute position embedding",
+     "inputs": [
+      "tok",
+      "pos"
+     ],
+     "output": "pe",
+     "attributes": [
+      {
+       "name": "max_positions",
+       "value": "2048",
+       "status": "stated",
+       "quote": "embedding = vocab_size * d_model + d_model * seq_length",
+       "where": "Table code:params_count"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "embed",
+     "op": "add",
+     "role": "token + position embedding sum",
+     "inputs": [
+      "tok",
+      "pe"
+     ],
+     "output": "x",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "layernorm",
+     "role": "ln1 before attention",
+     "inputs": [
+      "x"
+     ],
+     "output": "h",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "fused qkv projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "qkv",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "3*d_model",
+       "status": "stated",
+       "quote": "kqv_proj = num_layers * 2 * 3 * seq_len * d_model * (key_size * num_heads)",
+       "where": "Table code:flops_count"
+      },
+      {
+       "name": "bias",
+       "value": "true",
+       "status": "stated",
+       "quote": "attn = 4 * (d_model**2 + d_model)",
+       "where": "Table code:params_count"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "split",
+     "role": "split into q, k, v",
+     "inputs": [
+      "qkv"
+     ],
+     "output": "q,k,v",
+     "attributes": [
+      {
+       "name": "sizes",
+       "value": "d_model,d_model,d_model",
+       "status": "stated",
+       "quote": "kqv_proj = num_layers * 2 * 3 * seq_len * d_model * (key_size * num_heads)",
+       "where": "Table code:flops_count"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "attention",
+     "role": "dense causal multi-head self-attention",
+     "inputs": [
+      "q",
+      "k",
+      "v"
+     ],
+     "output": "a",
+     "attributes": [
+      {
+       "name": "heads",
+       "value": "d_model/head_dim",
+       "status": "stated",
+       "quote": "num_heads = d_model // key_size",
+       "where": "Table code:flops_count"
+      },
+      {
+       "name": "kv_heads",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "head_dim",
+       "value": "64",
+       "status": "stated",
+       "quote": "111M       & 768      & 10        & 64      & 3072",
+       "where": "Table table:model_details"
+      },
+      {
+       "name": "scale",
+       "value": "1/sqrt(head_dim)",
+       "status": "stated",
+       "quote": "$\\text{softmax}\\left(\\frac{Q^TK}{\\sqrt{d_{\\text{head}}}}\\right)V$",
+       "where": "Table table:mup-implementation"
+      },
+      {
+       "name": "causal",
+       "value": "true",
+       "status": "stated",
+       "quote": "Cerebras-GPT models have a GPT-3-like architecture, an autoregressive transformer decoder model",
+       "where": "Sec. 2.1 Model Architecture"
+      },
+      {
+       "name": "window",
+       "value": "0",
+       "status": "stated",
+       "quote": "we use dense attention in all decoder blocks.",
+       "where": "Sec. 2.1 Model Architecture"
+      },
+      {
+       "name": "sinks",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "o",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "d_model",
+       "status": "stated",
+       "quote": "final_linear = num_layers * 2 * seq_len * (key_size * num_heads) * d_model",
+       "where": "Table code:flops_count"
+      },
+      {
+       "name": "bias",
+       "value": "true",
+       "status": "stated",
+       "quote": "attn = 4 * (d_model**2 + d_model)",
+       "where": "Table code:params_count"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual",
+     "inputs": [
+      "x",
+      "o"
+     ],
+     "output": "x1",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "layernorm",
+     "role": "ln2 before FFN",
+     "inputs": [
+      "x1"
+     ],
+     "output": "h2",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "ffn1 up projection",
+     "inputs": [
+      "h2"
+     ],
+     "output": "u",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "3072",
+       "status": "stated",
+       "quote": "111M       & 768      & 10        & 64      & 3072",
+       "where": "Table table:model_details"
+      },
+      {
+       "name": "bias",
+       "value": "true",
+       "status": "stated",
+       "quote": "ffn = 8 * d_model**2 + 5 * d_model",
+       "where": "Table code:params_count"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "gelu",
+     "role": "FFN activation",
+     "inputs": [
+      "u"
+     ],
+     "output": "g",
+     "attributes": [
+      {
+       "name": "approx",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "ffn2 down projection",
+     "inputs": [
+      "g"
+     ],
+     "output": "f",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "d_model",
+       "status": "stated",
+       "quote": "ffn = 8 * d_model**2 + 5 * d_model",
+       "where": "Table code:params_count"
+      },
+      {
+       "name": "bias",
+       "value": "true",
+       "status": "stated",
+       "quote": "ffn = 8 * d_model**2 + 5 * d_model",
+       "where": "Table code:params_count"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual",
+     "inputs": [
+      "x1",
+      "f"
+     ],
+     "output": "x",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "layernorm",
+     "role": "final layernorm",
+     "inputs": [
+      "x"
+     ],
+     "output": "hf",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "linear",
+     "role": "output logits (tied to token embedding)",
+     "inputs": [
+      "hf"
+     ],
+     "output": "logits",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "50257",
+       "status": "stated",
+       "quote": "We tokenize the corpora with byte-pair encoding and the GPT-2 vocabulary of size 50257",
+       "where": "Sec. 2.2 Pre-training Corpus"
+      },
+      {
+       "name": "tied_to",
+       "value": "token_embd",
+       "status": "stated",
+       "quote": "n_params = embedding + encoder + final_ln",
+       "where": "Table code:params_count"
+      },
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "stated",
+       "quote": "n_params = embedding + encoder + final_ln",
+       "where": "Table code:params_count"
+      }
+     ],
+     "new_op": ""
+    }
+   ],
+   "new_ops": [],
+   "mechanisms_outside_ir": [],
+   "notes": "I describe the standard-parameterization (SP) Cerebras-GPT models (the released family, 111M-13B); block_ops attributes are filled for 111M. The muP variants (111M-2.7B) share these dimensions but change three things: they multiply the embedding output by m_emb=10, scale attention by 1/d_head, and divide the logits by m_width. Pre-norm placement is inherited from the stated 'standard GPT-2 transformer block'. The gelu exact-vs-tanh form is not stated; the GeLU flavour is 'gelu' only because the paper names GeLU. n_heads is left not_stated per config; it follows d_model/d_head via 'num_heads = d_model // key_size'. Tied embeddings and the absence of a head bias are inferred from the parameter-count formula, which has no separate output matrix. Norm eps is not stated."
+  },
+  "verification": {
+   "errors": [],
+   "warnings": [],
+   "inherits": {
+    "ancestor": "GPT-2 transformer block (GPT-3-like architecture)",
+    "resolved": "gpt-2",
+    "quote": "OPT and Cerebras-GPT models use the standard GPT-2 transformer block, which orders attention sequentially before the feed forward layers.",
+    "where": "Appendix: Differences Between Cerebras-GPT and Other Models",
+    "quote_found": true
+   },
+   "family": {
+    "value": "decoder_only",
+    "status": "stated",
+    "quote": "Cerebras-GPT models have a GPT-3-like architecture, an autoregressive transformer decoder model",
+    "where": "Sec. 2.1 Model Architecture",
+    "reasons": [],
+    "check": "quote_only"
+   },
+   "configs": [
+    {
+     "name": "111M",
+     "d_model": {
+      "value": "768",
+      "status": "stated",
+      "quote": "111M       & 768      & 10        & 64      & 3072",
+      "where": "Table table:model_details",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "10",
+      "status": "stated",
+      "quote": "111M       & 768      & 10        & 64      & 3072",
+      "where": "Table table:model_details",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "64",
+      "status": "stated",
+      "quote": "111M       & 768      & 10        & 64      & 3072",
+      "where": "Table table:model_details",
+      "reasons": [],
+      "check": "verified"
+     },
+     "d_ff": {
+      "value": "3072",
+      "status": "stated",
+      "quote": "111M       & 768      & 10        & 64      & 3072",
+      "where": "Table table:model_details",
+      "reasons": [],
+      "check": "verified"
+     },
+     "vocab_size": {
+      "value": "50257",
+      "status": "stated",
+      "quote": "We tokenize the corpora with byte-pair encoding and the GPT-2 vocabulary of size 50257",
+      "where": "Sec. 2.2 Pre-training Corpus",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "All models are trained with a maximum sequence length of 2048 tokens.",
+      "where": "Sec. 2.1 Model Architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": []
+    },
+    {
+     "name": "256M",
+     "d_model": {
+      "value": "1088",
+      "status": "stated",
+      "quote": "256M       & 1088     & 14        & 64      & 4352",
+      "where": "Table table:model_details",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "14",
+      "status": "stated",
+      "quote": "256M       & 1088     & 14        & 64      & 4352",
+      "where": "Table table:model_details",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "64",
+      "status": "stated",
+      "quote": "256M       & 1088     & 14        & 64      & 4352",
+      "where": "Table table:model_details",
+      "reasons": [],
+      "check": "verified"
+     },
+     "d_ff": {
+      "value": "4352",
+      "status": "stated",
+      "quote": "256M       & 1088     & 14        & 64      & 4352",
+      "where": "Table table:model_details",
+      "reasons": [],
+      "check": "verified"
+     },
+     "vocab_size": {
+      "value": "50257",
+      "status": "stated",
+      "quote": "We tokenize the corpora with byte-pair encoding and the GPT-2 vocabulary of size 50257",
+      "where": "Sec. 2.2 Pre-training Corpus",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "All models are trained with a maximum sequence length of 2048 tokens.",
+      "where": "Sec. 2.1 Model Architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": []
+    },
+    {
+     "name": "590M",
+     "d_model": {
+      "value": "1536",
+      "status": "stated",
+      "quote": "590M       & 1536     & 18        & 128     & 6144",
+      "where": "Table table:model_details",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "18",
+      "status": "stated",
+      "quote": "590M       & 1536     & 18        & 128     & 6144",
+      "where": "Table table:model_details",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "128",
+      "status": "stated",
+      "quote": "590M       & 1536     & 18        & 128     & 6144",
+      "where": "Table table:model_details",
+      "reasons": [],
+      "check": "verified"
+     },
+     "d_ff": {
+      "value": "6144",
+      "status": "stated",
+      "quote": "590M       & 1536     & 18        & 128     & 6144",
+      "where": "Table table:model_details",
+      "reasons": [],
+      "check": "verified"
+     },
+     "vocab_size": {
+      "value": "50257",
+      "status": "stated",
+      "quote": "We tokenize the corpora with byte-pair encoding and the GPT-2 vocabulary of size 50257",
+      "where": "Sec. 2.2 Pre-training Corpus",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "All models are trained with a maximum sequence length of 2048 tokens.",
+      "where": "Sec. 2.1 Model Architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": []
+    },
+    {
+     "name": "1.3B",
+     "d_model": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "1.3B       & 2048     & 24        & 128     & 8192",
+      "where": "Table table:model_details",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "24",
+      "status": "stated",
+      "quote": "1.3B       & 2048     & 24        & 128     & 8192",
+      "where": "Table table:model_details",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "128",
+      "status": "stated",
+      "quote": "1.3B       & 2048     & 24        & 128     & 8192",
+      "where": "Table table:model_details",
+      "reasons": [],
+      "check": "verified"
+     },
+     "d_ff": {
+      "value": "8192",
+      "status": "stated",
+      "quote": "1.3B       & 2048     & 24        & 128     & 8192",
+      "where": "Table table:model_details",
+      "reasons": [],
+      "check": "verified"
+     },
+     "vocab_size": {
+      "value": "50257",
+      "status": "stated",
+      "quote": "We tokenize the corpora with byte-pair encoding and the GPT-2 vocabulary of size 50257",
+      "where": "Sec. 2.2 Pre-training Corpus",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "All models are trained with a maximum sequence length of 2048 tokens.",
+      "where": "Sec. 2.1 Model Architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": []
+    },
+    {
+     "name": "2.7B",
+     "d_model": {
+      "value": "2560",
+      "status": "stated",
+      "quote": "2.7B       & 2560     & 32        & 80      & 10240",
+      "where": "Table table:model_details",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "32",
+      "status": "stated",
+      "quote": "2.7B       & 2560     & 32        & 80      & 10240",
+      "where": "Table table:model_details",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "80",
+      "status": "stated",
+      "quote": "2.7B       & 2560     & 32        & 80      & 10240",
+      "where": "Table table:model_details",
+      "reasons": [],
+      "check": "verified"
+     },
+     "d_ff": {
+      "value": "10240",
+      "status": "stated",
+      "quote": "2.7B       & 2560     & 32        & 80      & 10240",
+      "where": "Table table:model_details",
+      "reasons": [],
+      "check": "verified"
+     },
+     "vocab_size": {
+      "value": "50257",
+      "status": "stated",
+      "quote": "We tokenize the corpora with byte-pair encoding and the GPT-2 vocabulary of size 50257",
+      "where": "Sec. 2.2 Pre-training Corpus",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "All models are trained with a maximum sequence length of 2048 tokens.",
+      "where": "Sec. 2.1 Model Architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": []
+    },
+    {
+     "name": "6.7B",
+     "d_model": {
+      "value": "4096",
+      "status": "stated",
+      "quote": "6.7B       & 4096     & 32        & 128     & 16384",
+      "where": "Table table:model_details",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "32",
+      "status": "stated",
+      "quote": "6.7B       & 4096     & 32        & 128     & 16384",
+      "where": "Table table:model_details",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "128",
+      "status": "stated",
+      "quote": "6.7B       & 4096     & 32        & 128     & 16384",
+      "where": "Table table:model_details",
+      "reasons": [],
+      "check": "verified"
+     },
+     "d_ff": {
+      "value": "16384",
+      "status": "stated",
+      "quote": "6.7B       & 4096     & 32        & 128     & 16384",
+      "where": "Table table:model_details",
+      "reasons": [],
+      "check": "verified"
+     },
+     "vocab_size": {
+      "value": "50257",
+      "status": "stated",
+      "quote": "We tokenize the corpora with byte-pair encoding and the GPT-2 vocabulary of size 50257",
+      "where": "Sec. 2.2 Pre-training Corpus",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "All models are trained with a maximum sequence length of 2048 tokens.",
+      "where": "Sec. 2.1 Model Architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": []
+    },
+    {
+     "name": "13B",
+     "d_model": {
+      "value": "5120",
+      "status": "stated",
+      "quote": "13B        & 5120     & 40        & 128     & 20480",
+      "where": "Table table:model_details",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "40",
+      "status": "stated",
+      "quote": "13B        & 5120     & 40        & 128     & 20480",
+      "where": "Table table:model_details",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "128",
+      "status": "stated",
+      "quote": "13B        & 5120     & 40        & 128     & 20480",
+      "where": "Table table:model_details",
+      "reasons": [],
+      "check": "verified"
+     },
+     "d_ff": {
+      "value": "20480",
+      "status": "stated",
+      "quote": "13B        & 5120     & 40        & 128     & 20480",
+      "where": "Table table:model_details",
+      "reasons": [],
+      "check": "verified"
+     },
+     "vocab_size": {
+      "value": "50257",
+      "status": "stated",
+      "quote": "We tokenize the corpora with byte-pair encoding and the GPT-2 vocabulary of size 50257",
+      "where": "Sec. 2.2 Pre-training Corpus",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "All models are trained with a maximum sequence length of 2048 tokens.",
+      "where": "Sec. 2.1 Model Architecture",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": []
+    }
+   ],
+   "primary_config": "111M",
+   "flavours": {
+    "norm": {
+     "value": "layernorm",
+     "status": "stated",
+     "quote": "# Layer norms: 7 FLOPs/activation, 2 LNs per decoder block",
+     "where": "Table code:flops_count",
+     "reasons": [],
+     "check": "verified"
+    },
+    "norm_placement": {
+     "value": "pre",
+     "status": "inherited",
+     "quote": "OPT and Cerebras-GPT models use the standard GPT-2 transformer block, which orders attention sequentially before the feed forward layers.",
+     "where": "Appendix: Differences Between Cerebras-GPT and Other Models",
+     "reasons": [
+      "inherited from gpt-2, whose curated entry has no norm_placement"
+     ],
+     "check": "unverified"
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "activation": {
+     "value": "gelu",
+     "status": "stated",
+     "quote": "# GeLU: estimate 20 FLOPs/activation, applied in FFN with 4x hidden dim",
+     "where": "Table code:flops_count",
+     "reasons": [],
+     "check": "verified"
+    },
+    "positional": {
+     "value": "learned",
+     "status": "stated",
+     "quote": "Cerebras-GPT uses standard trainable positional embeddings.",
+     "where": "Appendix: Differences Between Cerebras-GPT and Other Models",
+     "reasons": [],
+     "check": "verified"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_theta": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "residual": {
+     "value": "residual",
+     "status": "stated",
+     "quote": "for the last layer inside each residual network, following the GPT-2 initialization",
+     "where": "Sec. 2.4 Standard (SP) and Maximal Update Parameterization",
+     "reasons": [],
+     "check": "verified"
+    },
+    "parallel_block": {
+     "value": "false",
+     "status": "stated",
+     "quote": "OPT and Cerebras-GPT models use the standard GPT-2 transformer block, which orders attention sequentially before the feed forward layers.",
+     "where": "Appendix: Differences Between Cerebras-GPT and Other Models",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "attention": {
+     "value": "exact",
+     "status": "stated",
+     "quote": "we use dense attention in all decoder blocks.",
+     "where": "Sec. 2.1 Model Architecture",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "qkv_bias": {
+     "value": "true",
+     "status": "stated",
+     "quote": "attn = 4 * (d_model**2 + d_model)",
+     "where": "Table code:params_count",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "mlp_bias": {
+     "value": "true",
+     "status": "stated",
+     "quote": "ffn = 8 * d_model**2 + 5 * d_model",
+     "where": "Table code:params_count",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "tied_embeddings": {
+     "value": "true",
+     "status": "stated",
+     "quote": "n_params = embedding + encoder + final_ln",
+     "where": "Table code:params_count",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "moe": {
+     "value": "false",
+     "status": "stated",
+     "quote": "ffn = 8 * d_model**2 + 5 * d_model",
+     "where": "Table code:params_count",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    }
+   },
+   "new_ops": [],
+   "block_ops": [
+    {
+     "i": 0,
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "tok",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "50257",
+       "status": "stated",
+       "quote": "We tokenize the corpora with byte-pair encoding and the GPT-2 vocabulary of size 50257",
+       "where": "Sec. 2.2 Pre-training Corpus",
+       "reasons": [],
+       "check": "verified",
+       "name": "vocab"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 1,
+     "subgraph": "embed",
+     "op": "pos_embedding",
+     "role": "learned absolute position embedding",
+     "inputs": [
+      "tok",
+      "pos"
+     ],
+     "output": "pe",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "2048",
+       "status": "stated",
+       "quote": "embedding = vocab_size * d_model + d_model * seq_length",
+       "where": "Table code:params_count",
+       "reasons": [
+        "2048 does not occur in its quote"
+       ],
+       "check": "unverified",
+       "name": "max_positions"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 2,
+     "subgraph": "embed",
+     "op": "add",
+     "role": "token + position embedding sum",
+     "inputs": [
+      "tok",
+      "pe"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 3,
+     "subgraph": "block",
+     "op": "layernorm",
+     "role": "ln1 before attention",
+     "inputs": [
+      "x"
+     ],
+     "output": "h",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 4,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "fused qkv projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "qkv",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "3*d_model",
+       "status": "stated",
+       "quote": "kqv_proj = num_layers * 2 * 3 * seq_len * d_model * (key_size * num_heads)",
+       "where": "Table code:flops_count",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "true",
+       "status": "stated",
+       "quote": "attn = 4 * (d_model**2 + d_model)",
+       "where": "Table code:params_count",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 5,
+     "subgraph": "block",
+     "op": "split",
+     "role": "split into q, k, v",
+     "inputs": [
+      "qkv"
+     ],
+     "output": "q,k,v",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "d_model,d_model,d_model",
+       "status": "stated",
+       "quote": "kqv_proj = num_layers * 2 * 3 * seq_len * d_model * (key_size * num_heads)",
+       "where": "Table code:flops_count",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "sizes"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 6,
+     "subgraph": "block",
+     "op": "attention",
+     "role": "dense causal multi-head self-attention",
+     "inputs": [
+      "q",
+      "k",
+      "v"
+     ],
+     "output": "a",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "d_model/head_dim",
+       "status": "stated",
+       "quote": "num_heads = d_model // key_size",
+       "where": "Table code:flops_count",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "heads"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "kv_heads"
+      },
+      {
+       "value": "64",
+       "status": "stated",
+       "quote": "111M       & 768      & 10        & 64      & 3072",
+       "where": "Table table:model_details",
+       "reasons": [],
+       "check": "verified",
+       "name": "head_dim"
+      },
+      {
+       "value": "1/sqrt(head_dim)",
+       "status": "stated",
+       "quote": "$\\text{softmax}\\left(\\frac{Q^TK}{\\sqrt{d_{\\text{head}}}}\\right)V$",
+       "where": "Table table:mup-implementation",
+       "reasons": [
+        "1/sqrt(head_dim) does not occur in its quote"
+       ],
+       "check": "unverified",
+       "name": "scale"
+      },
+      {
+       "value": "true",
+       "status": "stated",
+       "quote": "Cerebras-GPT models have a GPT-3-like architecture, an autoregressive transformer decoder model",
+       "where": "Sec. 2.1 Model Architecture",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "causal"
+      },
+      {
+       "value": "0",
+       "status": "stated",
+       "quote": "we use dense attention in all decoder blocks.",
+       "where": "Sec. 2.1 Model Architecture",
+       "reasons": [
+        "0 does not occur in its quote"
+       ],
+       "check": "unverified",
+       "name": "window"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "sinks"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 7,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "o",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "d_model",
+       "status": "stated",
+       "quote": "final_linear = num_layers * 2 * seq_len * (key_size * num_heads) * d_model",
+       "where": "Table code:flops_count",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "out"
+      },
+      {
+       "value": "true",
+       "status": "stated",
+       "quote": "attn = 4 * (d_model**2 + d_model)",
+       "where": "Table code:params_count",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 8,
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual",
+     "inputs": [
+      "x",
+      "o"
+     ],
+     "output": "x1",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 9,
+     "subgraph": "block",
+     "op": "layernorm",
+     "role": "ln2 before FFN",
+     "inputs": [
+      "x1"
+     ],
+     "output": "h2",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 10,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "ffn1 up projection",
+     "inputs": [
+      "h2"
+     ],
+     "output": "u",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "3072",
+       "status": "stated",
+       "quote": "111M       & 768      & 10        & 64      & 3072",
+       "where": "Table table:model_details",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "true",
+       "status": "stated",
+       "quote": "ffn = 8 * d_model**2 + 5 * d_model",
+       "where": "Table code:params_count",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 11,
+     "subgraph": "block",
+     "op": "gelu",
+     "role": "FFN activation",
+     "inputs": [
+      "u"
+     ],
+     "output": "g",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "approx"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 12,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "ffn2 down projection",
+     "inputs": [
+      "g"
+     ],
+     "output": "f",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "d_model",
+       "status": "stated",
+       "quote": "ffn = 8 * d_model**2 + 5 * d_model",
+       "where": "Table code:params_count",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "out"
+      },
+      {
+       "value": "true",
+       "status": "stated",
+       "quote": "ffn = 8 * d_model**2 + 5 * d_model",
+       "where": "Table code:params_count",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 13,
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual",
+     "inputs": [
+      "x1",
+      "f"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 14,
+     "subgraph": "head",
+     "op": "layernorm",
+     "role": "final layernorm",
+     "inputs": [
+      "x"
+     ],
+     "output": "hf",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 15,
+     "subgraph": "head",
+     "op": "linear",
+     "role": "output logits (tied to token embedding)",
+     "inputs": [
+      "hf"
+     ],
+     "output": "logits",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "50257",
+       "status": "stated",
+       "quote": "We tokenize the corpora with byte-pair encoding and the GPT-2 vocabulary of size 50257",
+       "where": "Sec. 2.2 Pre-training Corpus",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "token_embd",
+       "status": "stated",
+       "quote": "n_params = embedding + encoder + final_ln",
+       "where": "Table code:params_count",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "tied_to"
+      },
+      {
+       "value": "false",
+       "status": "stated",
+       "quote": "n_params = embedding + encoder + final_ln",
+       "where": "Table code:params_count",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    }
+   ],
+   "mechanisms_outside_ir": [],
+   "summary": {
+    "counts": {
+     "verified": 51,
+     "quote_only": 18,
+     "unverified": 4,
+     "not_stated": 29
+    },
+    "unverified": [
+     {
+      "field": "flavours.norm_placement",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no norm_placement"
+      ]
+     },
+     {
+      "field": "block_ops[1].max_positions",
+      "reasons": [
+       "2048 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[6].scale",
+      "reasons": [
+       "1/sqrt(head_dim) does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[6].window",
+      "reasons": [
+       "0 does not occur in its quote"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 16
+   }
+  }
+ }
+}

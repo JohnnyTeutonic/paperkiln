@@ -1,0 +1,1845 @@
+{
+ "arxiv_id": "2401.02385",
+ "title": "TinyLlama: An Open-Source Small Language Model",
+ "fields": {
+  "d_model": {
+   "value": 2048,
+   "evidence": "2,048 & 5,632 & 2,048 & 32 & 22 & 32,000 [Table 1 (tab:model)]",
+   "verdict": "used"
+  },
+  "n_layers": {
+   "value": 22,
+   "evidence": "2,048 & 5,632 & 2,048 & 32 & 22 & 32,000 [Table 1 (tab:model)]",
+   "verdict": "used"
+  },
+  "n_heads": {
+   "value": 32,
+   "evidence": "We have 32 heads for query attention and use 4 groups of key-value heads. [Sec. 2.2 Grouped-query Attention]",
+   "verdict": "used"
+  },
+  "n_kv_heads": {
+   "value": 4,
+   "evidence": "We have 32 heads for query attention and use 4 groups of key-value heads. [Sec. 2.2 Grouped-query Attention]",
+   "verdict": "used"
+  },
+  "d_ff": {
+   "value": 5632,
+   "evidence": "2,048 & 5,632 & 2,048 & 32 & 22 & 32,000 [Table 1 (tab:model)]",
+   "verdict": "used"
+  },
+  "vocab_size": {
+   "value": 32000,
+   "evidence": "2,048 & 5,632 & 2,048 & 32 & 22 & 32,000 [Table 1 (tab:model)]",
+   "verdict": "used"
+  },
+  "context_length": {
+   "value": 2048,
+   "evidence": "2,048 & 5,632 & 2,048 & 32 & 22 & 32,000 [Table 1 (tab:model)]",
+   "verdict": "used"
+  },
+  "norm": {
+   "value": "rmsnorm",
+   "evidence": "the RMSNorm~\\citep{DBLP:conf/nips/ZhangS19a} normalization function is applied to improve the training efficiency. [Sec. 2.2 Pre-norm and RMSNorm]",
+   "verdict": "used"
+  },
+  "activation": {
+   "value": "swiglu",
+   "evidence": "we follow Llama~\\citep{touvron2023llama,touvron2023llama2} and adopt SwiGLU~\\citep{DBLP:journals/corr/abs-2002-05202}, [Sec. 2.2 SwiGLU]",
+   "verdict": "used"
+  },
+  "positional": {
+   "value": "rope",
+   "evidence": "We use Rotary Positional Embedding (RoPE)~\\citep{su2021roformer} to inject positional information into our model. [Sec. 2.2 Positional embedding]",
+   "verdict": "used"
+  },
+  "residual": {
+   "value": "residual",
+   "evidence": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama. [Sec. 1 Introduction]",
+   "verdict": "unverified",
+   "reasons": [
+    "inherited from llama, whose curated entry has no residual"
+   ]
+  },
+  "attention": {
+   "value": "exact",
+   "evidence": "To reduce memory bandwidth overhead and speed up inference, we use grouped-query attention~\\citep{DBLP:journals/corr/abs-2305-13245} in our model. [Sec. 2.2 Grouped-query Attention]",
+   "verdict": "used"
+  }
+ },
+ "unresolved": [],
+ "unverified": [
+  {
+   "field": "residual",
+   "reasons": [
+    "inherited from llama, whose curated entry has no residual"
+   ]
+  }
+ ],
+ "mentions": {},
+ "inherits": {
+  "ancestor": "llama",
+  "evidence": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+  "section": "Sec. 1 Introduction"
+ },
+ "variants": [
+  {
+   "d_model": 2048,
+   "n_layers": 22,
+   "n_heads": 32,
+   "n_kv_heads": 4,
+   "d_ff": 5632,
+   "vocab_size": 32000,
+   "context_length": 2048
+  }
+ ],
+ "mechanism_scan": [
+  {
+   "mechanism": "grouped or multi-query attention",
+   "where": "llm extraction, verified quote, Sec. 2.2 Grouped-query Attention",
+   "blocking": true,
+   "evidence": "We have 32 heads for query attention and use 4 groups of key-value heads."
+  }
+ ],
+ "source": {
+  "tex_sha256": "1c9d46fdd7b2e1e8e859649b9e0257211c46ba2daa851a55c3c43bd54684727c",
+  "sent_sha256": "bbd6c53a3c4bc43f1837a59ee34b892408f70f0a3f9c3a288112e875f3ecbaa5",
+  "from": "https://arxiv.org/e-print/2401.02385",
+  "extractor": "papers/llm_extract.py",
+  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "model": "claude-opus-5-5",
+  "effort": "high",
+  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "n_calls": 1,
+  "cost_usd": 0.0,
+  "request_ids": [
+   "req_011CgFcyeNqEqGagM15UNVGr"
+  ]
+ },
+ "llm": {
+  "output": {
+   "title": "TinyLlama: An Open-Source Small Language Model",
+   "model_name": "TinyLlama (1.1B)",
+   "family": {
+    "value": "decoder_only",
+    "status": "stated",
+    "quote": "our model is based on the decoder-only Transformer~\\citep{vaswani2017transformer}.",
+    "where": "Sec. 2.2 Architecture"
+   },
+   "inherits": {
+    "ancestor": "Llama 2",
+    "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+    "where": "Sec. 1 Introduction"
+   },
+   "configs": [
+    {
+     "name": "TinyLlama-1.1B",
+     "d_model": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "2,048      & 5,632  & 2,048       & 32    & 22  & 32,000",
+      "where": "Table 1 (tab:model)"
+     },
+     "n_layers": {
+      "value": "22",
+      "status": "stated",
+      "quote": "2,048      & 5,632  & 2,048       & 32    & 22  & 32,000",
+      "where": "Table 1 (tab:model)"
+     },
+     "n_heads": {
+      "value": "32",
+      "status": "stated",
+      "quote": "We have 32 heads for query attention and use 4 groups of key-value heads.",
+      "where": "Sec. 2.2 Grouped-query Attention"
+     },
+     "n_kv_heads": {
+      "value": "4",
+      "status": "stated",
+      "quote": "We have 32 heads for query attention and use 4 groups of key-value heads.",
+      "where": "Sec. 2.2 Grouped-query Attention"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "5632",
+      "status": "stated",
+      "quote": "2,048      & 5,632  & 2,048       & 32    & 22  & 32,000",
+      "where": "Table 1 (tab:model)"
+     },
+     "vocab_size": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "2,048      & 5,632  & 2,048       & 32    & 22  & 32,000",
+      "where": "Table 1 (tab:model)"
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "2,048      & 5,632  & 2,048       & 32    & 22  & 32,000",
+      "where": "Table 1 (tab:model)"
+     }
+    }
+   ],
+   "primary_config": "TinyLlama-1.1B",
+   "flavours": {
+    "norm": {
+     "value": "rmsnorm",
+     "status": "stated",
+     "quote": "the RMSNorm~\\citep{DBLP:conf/nips/ZhangS19a} normalization function is applied to improve the training efficiency.",
+     "where": "Sec. 2.2 Pre-norm and RMSNorm"
+    },
+    "norm_placement": {
+     "value": "pre",
+     "status": "stated",
+     "quote": "we adopt pre-norm, i.e., normalize the inputs of each sub-layer in Transformer,",
+     "where": "Sec. 2.2 Pre-norm and RMSNorm"
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "activation": {
+     "value": "swiglu",
+     "status": "stated",
+     "quote": "we follow Llama~\\citep{touvron2023llama,touvron2023llama2} and adopt SwiGLU~\\citep{DBLP:journals/corr/abs-2002-05202},",
+     "where": "Sec. 2.2 SwiGLU"
+    },
+    "positional": {
+     "value": "rope",
+     "status": "stated",
+     "quote": "We use Rotary Positional Embedding (RoPE)~\\citep{su2021roformer} to inject positional information into our model.",
+     "where": "Sec. 2.2 Positional embedding"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_theta": {
+     "value": "10000",
+     "status": "inherited",
+     "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+     "where": "Sec. 1 Introduction"
+    },
+    "rope_fraction": {
+     "value": "1",
+     "status": "inherited",
+     "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+     "where": "Sec. 1 Introduction"
+    },
+    "residual": {
+     "value": "residual",
+     "status": "inherited",
+     "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+     "where": "Sec. 1 Introduction"
+    },
+    "parallel_block": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+     "where": "Sec. 1 Introduction"
+    },
+    "attention": {
+     "value": "exact",
+     "status": "stated",
+     "quote": "To reduce memory bandwidth overhead and speed up inference, we use grouped-query attention~\\citep{DBLP:journals/corr/abs-2305-13245} in our model.",
+     "where": "Sec. 2.2 Grouped-query Attention"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "qkv_bias": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+     "where": "Sec. 1 Introduction"
+    },
+    "mlp_bias": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+     "where": "Sec. 1 Introduction"
+    },
+    "tied_embeddings": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+     "where": "Sec. 1 Introduction"
+    },
+    "moe": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+     "where": "Sec. 1 Introduction"
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    }
+   },
+   "block_ops": [
+    {
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "x",
+     "attributes": [
+      {
+       "name": "vocab",
+       "value": "32000",
+       "status": "stated",
+       "quote": "2,048      & 5,632  & 2,048       & 32    & 22  & 32,000",
+       "where": "Table 1 (tab:model)"
+      },
+      {
+       "name": "d",
+       "value": "2048",
+       "status": "stated",
+       "quote": "2,048      & 5,632  & 2,048       & 32    & 22  & 32,000",
+       "where": "Table 1 (tab:model)"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "attention pre-norm",
+     "inputs": [
+      "x"
+     ],
+     "output": "h",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "query projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "q",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "2048",
+       "status": "stated",
+       "quote": "2,048      & 5,632  & 2,048       & 32    & 22  & 32,000",
+       "where": "Table 1 (tab:model)"
+      },
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "inherited",
+       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+       "where": "Sec. 1 Introduction"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "key projection (4 KV heads)",
+     "inputs": [
+      "h"
+     ],
+     "output": "k",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "inherited",
+       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+       "where": "Sec. 1 Introduction"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "value projection (4 KV heads)",
+     "inputs": [
+      "h"
+     ],
+     "output": "v",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "inherited",
+       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+       "where": "Sec. 1 Introduction"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary embedding on queries",
+     "inputs": [
+      "q",
+      "pos"
+     ],
+     "output": "q_r",
+     "attributes": [
+      {
+       "name": "rope_heads",
+       "value": "all",
+       "status": "stated",
+       "quote": "We use Rotary Positional Embedding (RoPE)~\\citep{su2021roformer} to inject positional information into our model.",
+       "where": "Sec. 2.2 Positional embedding"
+      },
+      {
+       "name": "pairing",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "n_rot",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "theta",
+       "value": "10000",
+       "status": "inherited",
+       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+       "where": "Sec. 1 Introduction"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary embedding on keys",
+     "inputs": [
+      "k",
+      "pos"
+     ],
+     "output": "k_r",
+     "attributes": [
+      {
+       "name": "rope_heads",
+       "value": "all",
+       "status": "stated",
+       "quote": "We use Rotary Positional Embedding (RoPE)~\\citep{su2021roformer} to inject positional information into our model.",
+       "where": "Sec. 2.2 Positional embedding"
+      },
+      {
+       "name": "pairing",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "n_rot",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "theta",
+       "value": "10000",
+       "status": "inherited",
+       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+       "where": "Sec. 1 Introduction"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "attention",
+     "role": "grouped-query causal self-attention",
+     "inputs": [
+      "q_r",
+      "k_r",
+      "v"
+     ],
+     "output": "a",
+     "attributes": [
+      {
+       "name": "heads",
+       "value": "32",
+       "status": "stated",
+       "quote": "We have 32 heads for query attention and use 4 groups of key-value heads.",
+       "where": "Sec. 2.2 Grouped-query Attention"
+      },
+      {
+       "name": "kv_heads",
+       "value": "4",
+       "status": "stated",
+       "quote": "We have 32 heads for query attention and use 4 groups of key-value heads.",
+       "where": "Sec. 2.2 Grouped-query Attention"
+      },
+      {
+       "name": "head_dim",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "scale",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "causal",
+       "value": "true",
+       "status": "stated",
+       "quote": "we employ an autoregressive language modeling objective during the pretraining phase.",
+       "where": "Sec. 2.4 Training"
+      },
+      {
+       "name": "window",
+       "value": "0",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "sinks",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "o",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "2048",
+       "status": "stated",
+       "quote": "2,048      & 5,632  & 2,048       & 32    & 22  & 32,000",
+       "where": "Table 1 (tab:model)"
+      },
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "inherited",
+       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+       "where": "Sec. 1 Introduction"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual add",
+     "inputs": [
+      "x",
+      "o"
+     ],
+     "output": "x1",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "FFN pre-norm",
+     "inputs": [
+      "x1"
+     ],
+     "output": "h2",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "SwiGLU gate projection",
+     "inputs": [
+      "h2"
+     ],
+     "output": "g",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "5632",
+       "status": "stated",
+       "quote": "2,048      & 5,632  & 2,048       & 32    & 22  & 32,000",
+       "where": "Table 1 (tab:model)"
+      },
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "inherited",
+       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+       "where": "Sec. 1 Introduction"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "SwiGLU up projection",
+     "inputs": [
+      "h2"
+     ],
+     "output": "u",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "5632",
+       "status": "stated",
+       "quote": "2,048      & 5,632  & 2,048       & 32    & 22  & 32,000",
+       "where": "Table 1 (tab:model)"
+      },
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "inherited",
+       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+       "where": "Sec. 1 Introduction"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "silu",
+     "role": "Swish on gate",
+     "inputs": [
+      "g"
+     ],
+     "output": "gs",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "mul",
+     "role": "GLU gating",
+     "inputs": [
+      "gs",
+      "u"
+     ],
+     "output": "m",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "SwiGLU down projection",
+     "inputs": [
+      "m"
+     ],
+     "output": "f",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "2048",
+       "status": "stated",
+       "quote": "2,048      & 5,632  & 2,048       & 32    & 22  & 32,000",
+       "where": "Table 1 (tab:model)"
+      },
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "inherited",
+       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+       "where": "Sec. 1 Introduction"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual add",
+     "inputs": [
+      "x1",
+      "f"
+     ],
+     "output": "x",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "rmsnorm",
+     "role": "final norm",
+     "inputs": [
+      "x"
+     ],
+     "output": "hn",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "linear",
+     "role": "LM head (untied)",
+     "inputs": [
+      "hn"
+     ],
+     "output": "logits",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "32000",
+       "status": "stated",
+       "quote": "2,048      & 5,632  & 2,048       & 32    & 22  & 32,000",
+       "where": "Table 1 (tab:model)"
+      },
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "inherited",
+       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+       "where": "Sec. 1 Introduction"
+      },
+      {
+       "name": "tied_to",
+       "value": "",
+       "status": "inherited",
+       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+       "where": "Sec. 1 Introduction"
+      }
+     ],
+     "new_op": ""
+    }
+   ],
+   "new_ops": [],
+   "mechanisms_outside_ir": [],
+   "notes": "Describes the single TinyLlama 1.1B architecture, which v1.0 and v1.1 (and the v1.1 Math&Code and Chinese variants) share; they differ only in training data and schedule. The paper explicitly inherits from Llama 2. On that basis I filled these values as inherited: no biases, untied head, no MoE, sequential residual block, full rotary with theta 10000, and the final RMSNorm. Deliberately left not_stated: head_dim, the K/V projection widths, the attention scale, RoPE pairing and norm eps. head_dim is implied as 2048/32 = 64, and the K/V widths as 4*64 = 256, but the paper states neither. Llama 2's own paper does not give RoPE pairing or eps either."
+  },
+  "verification": {
+   "errors": [],
+   "warnings": [],
+   "inherits": {
+    "ancestor": "Llama 2",
+    "resolved": "llama",
+    "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+    "where": "Sec. 1 Introduction",
+    "quote_found": true
+   },
+   "family": {
+    "value": "decoder_only",
+    "status": "stated",
+    "quote": "our model is based on the decoder-only Transformer~\\citep{vaswani2017transformer}.",
+    "where": "Sec. 2.2 Architecture",
+    "reasons": [],
+    "check": "quote_only"
+   },
+   "configs": [
+    {
+     "name": "TinyLlama-1.1B",
+     "d_model": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "2,048      & 5,632  & 2,048       & 32    & 22  & 32,000",
+      "where": "Table 1 (tab:model)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "22",
+      "status": "stated",
+      "quote": "2,048      & 5,632  & 2,048       & 32    & 22  & 32,000",
+      "where": "Table 1 (tab:model)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "32",
+      "status": "stated",
+      "quote": "We have 32 heads for query attention and use 4 groups of key-value heads.",
+      "where": "Sec. 2.2 Grouped-query Attention",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "4",
+      "status": "stated",
+      "quote": "We have 32 heads for query attention and use 4 groups of key-value heads.",
+      "where": "Sec. 2.2 Grouped-query Attention",
+      "reasons": [],
+      "check": "verified"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "5632",
+      "status": "stated",
+      "quote": "2,048      & 5,632  & 2,048       & 32    & 22  & 32,000",
+      "where": "Table 1 (tab:model)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "vocab_size": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "2,048      & 5,632  & 2,048       & 32    & 22  & 32,000",
+      "where": "Table 1 (tab:model)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "2,048      & 5,632  & 2,048       & 32    & 22  & 32,000",
+      "where": "Table 1 (tab:model)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      },
+      {
+       "check": "n_kv_heads divides n_heads",
+       "ok": true
+      },
+      {
+       "check": "n_kv_heads <= n_heads",
+       "ok": true
+      }
+     ]
+    }
+   ],
+   "primary_config": "TinyLlama-1.1B",
+   "flavours": {
+    "norm": {
+     "value": "rmsnorm",
+     "status": "stated",
+     "quote": "the RMSNorm~\\citep{DBLP:conf/nips/ZhangS19a} normalization function is applied to improve the training efficiency.",
+     "where": "Sec. 2.2 Pre-norm and RMSNorm",
+     "reasons": [],
+     "check": "verified"
+    },
+    "norm_placement": {
+     "value": "pre",
+     "status": "stated",
+     "quote": "we adopt pre-norm, i.e., normalize the inputs of each sub-layer in Transformer,",
+     "where": "Sec. 2.2 Pre-norm and RMSNorm",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "activation": {
+     "value": "swiglu",
+     "status": "stated",
+     "quote": "we follow Llama~\\citep{touvron2023llama,touvron2023llama2} and adopt SwiGLU~\\citep{DBLP:journals/corr/abs-2002-05202},",
+     "where": "Sec. 2.2 SwiGLU",
+     "reasons": [],
+     "check": "verified"
+    },
+    "positional": {
+     "value": "rope",
+     "status": "stated",
+     "quote": "We use Rotary Positional Embedding (RoPE)~\\citep{su2021roformer} to inject positional information into our model.",
+     "where": "Sec. 2.2 Positional embedding",
+     "reasons": [],
+     "check": "verified"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_theta": {
+     "value": "10000",
+     "status": "inherited",
+     "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+     "where": "Sec. 1 Introduction",
+     "reasons": [
+      "inherited from llama, whose curated entry has no rope_theta"
+     ],
+     "check": "unverified"
+    },
+    "rope_fraction": {
+     "value": "1",
+     "status": "inherited",
+     "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+     "where": "Sec. 1 Introduction",
+     "reasons": [
+      "inherited from llama, whose curated entry has no rope_fraction"
+     ],
+     "check": "unverified"
+    },
+    "residual": {
+     "value": "residual",
+     "status": "inherited",
+     "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+     "where": "Sec. 1 Introduction",
+     "reasons": [
+      "inherited from llama, whose curated entry has no residual"
+     ],
+     "check": "unverified"
+    },
+    "parallel_block": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+     "where": "Sec. 1 Introduction",
+     "reasons": [
+      "inherited from llama, whose curated entry has no parallel_block"
+     ],
+     "check": "unverified"
+    },
+    "attention": {
+     "value": "exact",
+     "status": "stated",
+     "quote": "To reduce memory bandwidth overhead and speed up inference, we use grouped-query attention~\\citep{DBLP:journals/corr/abs-2305-13245} in our model.",
+     "where": "Sec. 2.2 Grouped-query Attention",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "qkv_bias": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+     "where": "Sec. 1 Introduction",
+     "reasons": [
+      "inherited from llama, whose curated entry has no qkv_bias"
+     ],
+     "check": "unverified"
+    },
+    "mlp_bias": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+     "where": "Sec. 1 Introduction",
+     "reasons": [
+      "inherited from llama, whose curated entry has no mlp_bias"
+     ],
+     "check": "unverified"
+    },
+    "tied_embeddings": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+     "where": "Sec. 1 Introduction",
+     "reasons": [
+      "inherited from llama, whose curated entry has no tied_embeddings"
+     ],
+     "check": "unverified"
+    },
+    "moe": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+     "where": "Sec. 1 Introduction",
+     "reasons": [
+      "inherited from llama, whose curated entry has no moe"
+     ],
+     "check": "unverified"
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    }
+   },
+   "new_ops": [],
+   "block_ops": [
+    {
+     "i": 0,
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "32000",
+       "status": "stated",
+       "quote": "2,048      & 5,632  & 2,048       & 32    & 22  & 32,000",
+       "where": "Table 1 (tab:model)",
+       "reasons": [],
+       "check": "verified",
+       "name": "vocab"
+      },
+      {
+       "value": "2048",
+       "status": "stated",
+       "quote": "2,048      & 5,632  & 2,048       & 32    & 22  & 32,000",
+       "where": "Table 1 (tab:model)",
+       "reasons": [],
+       "check": "verified",
+       "name": "d"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 1,
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "attention pre-norm",
+     "inputs": [
+      "x"
+     ],
+     "output": "h",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 2,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "query projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "q",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "2048",
+       "status": "stated",
+       "quote": "2,048      & 5,632  & 2,048       & 32    & 22  & 32,000",
+       "where": "Table 1 (tab:model)",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "false",
+       "status": "inherited",
+       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+       "where": "Sec. 1 Introduction",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 3,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "key projection (4 KV heads)",
+     "inputs": [
+      "h"
+     ],
+     "output": "k",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
+      {
+       "value": "false",
+       "status": "inherited",
+       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+       "where": "Sec. 1 Introduction",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 4,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "value projection (4 KV heads)",
+     "inputs": [
+      "h"
+     ],
+     "output": "v",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
+      {
+       "value": "false",
+       "status": "inherited",
+       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+       "where": "Sec. 1 Introduction",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 5,
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary embedding on queries",
+     "inputs": [
+      "q",
+      "pos"
+     ],
+     "output": "q_r",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "all",
+       "status": "stated",
+       "quote": "We use Rotary Positional Embedding (RoPE)~\\citep{su2021roformer} to inject positional information into our model.",
+       "where": "Sec. 2.2 Positional embedding",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "rope_heads"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "pairing"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "n_rot"
+      },
+      {
+       "value": "10000",
+       "status": "inherited",
+       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+       "where": "Sec. 1 Introduction",
+       "reasons": [
+        "inherited from llama, whose curated entry has no theta"
+       ],
+       "check": "unverified",
+       "name": "theta"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 6,
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary embedding on keys",
+     "inputs": [
+      "k",
+      "pos"
+     ],
+     "output": "k_r",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "all",
+       "status": "stated",
+       "quote": "We use Rotary Positional Embedding (RoPE)~\\citep{su2021roformer} to inject positional information into our model.",
+       "where": "Sec. 2.2 Positional embedding",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "rope_heads"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "pairing"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "n_rot"
+      },
+      {
+       "value": "10000",
+       "status": "inherited",
+       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+       "where": "Sec. 1 Introduction",
+       "reasons": [
+        "inherited from llama, whose curated entry has no theta"
+       ],
+       "check": "unverified",
+       "name": "theta"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 7,
+     "subgraph": "block",
+     "op": "attention",
+     "role": "grouped-query causal self-attention",
+     "inputs": [
+      "q_r",
+      "k_r",
+      "v"
+     ],
+     "output": "a",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "32",
+       "status": "stated",
+       "quote": "We have 32 heads for query attention and use 4 groups of key-value heads.",
+       "where": "Sec. 2.2 Grouped-query Attention",
+       "reasons": [],
+       "check": "verified",
+       "name": "heads"
+      },
+      {
+       "value": "4",
+       "status": "stated",
+       "quote": "We have 32 heads for query attention and use 4 groups of key-value heads.",
+       "where": "Sec. 2.2 Grouped-query Attention",
+       "reasons": [],
+       "check": "verified",
+       "name": "kv_heads"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "head_dim"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "scale"
+      },
+      {
+       "value": "true",
+       "status": "stated",
+       "quote": "we employ an autoregressive language modeling objective during the pretraining phase.",
+       "where": "Sec. 2.4 Training",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "causal"
+      },
+      {
+       "value": "0",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [
+        "not_stated carries a value or quote (ignored)"
+       ],
+       "check": "not_stated",
+       "name": "window"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "sinks"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 8,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "o",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "2048",
+       "status": "stated",
+       "quote": "2,048      & 5,632  & 2,048       & 32    & 22  & 32,000",
+       "where": "Table 1 (tab:model)",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "false",
+       "status": "inherited",
+       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+       "where": "Sec. 1 Introduction",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 9,
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual add",
+     "inputs": [
+      "x",
+      "o"
+     ],
+     "output": "x1",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 10,
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "FFN pre-norm",
+     "inputs": [
+      "x1"
+     ],
+     "output": "h2",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 11,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "SwiGLU gate projection",
+     "inputs": [
+      "h2"
+     ],
+     "output": "g",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "5632",
+       "status": "stated",
+       "quote": "2,048      & 5,632  & 2,048       & 32    & 22  & 32,000",
+       "where": "Table 1 (tab:model)",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "false",
+       "status": "inherited",
+       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+       "where": "Sec. 1 Introduction",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 12,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "SwiGLU up projection",
+     "inputs": [
+      "h2"
+     ],
+     "output": "u",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "5632",
+       "status": "stated",
+       "quote": "2,048      & 5,632  & 2,048       & 32    & 22  & 32,000",
+       "where": "Table 1 (tab:model)",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "false",
+       "status": "inherited",
+       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+       "where": "Sec. 1 Introduction",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 13,
+     "subgraph": "block",
+     "op": "silu",
+     "role": "Swish on gate",
+     "inputs": [
+      "g"
+     ],
+     "output": "gs",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 14,
+     "subgraph": "block",
+     "op": "mul",
+     "role": "GLU gating",
+     "inputs": [
+      "gs",
+      "u"
+     ],
+     "output": "m",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 15,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "SwiGLU down projection",
+     "inputs": [
+      "m"
+     ],
+     "output": "f",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "2048",
+       "status": "stated",
+       "quote": "2,048      & 5,632  & 2,048       & 32    & 22  & 32,000",
+       "where": "Table 1 (tab:model)",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "false",
+       "status": "inherited",
+       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+       "where": "Sec. 1 Introduction",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 16,
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual add",
+     "inputs": [
+      "x1",
+      "f"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 17,
+     "subgraph": "head",
+     "op": "rmsnorm",
+     "role": "final norm",
+     "inputs": [
+      "x"
+     ],
+     "output": "hn",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 18,
+     "subgraph": "head",
+     "op": "linear",
+     "role": "LM head (untied)",
+     "inputs": [
+      "hn"
+     ],
+     "output": "logits",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "32000",
+       "status": "stated",
+       "quote": "2,048      & 5,632  & 2,048       & 32    & 22  & 32,000",
+       "where": "Table 1 (tab:model)",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "false",
+       "status": "inherited",
+       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+       "where": "Sec. 1 Introduction",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      },
+      {
+       "value": "",
+       "status": "inherited",
+       "quote": "Following the same architecture and tokenizer as Llama 2~\\citep{touvron2023llama2}, we name our model TinyLlama.",
+       "where": "Sec. 1 Introduction",
+       "reasons": [
+        "status inherited with an empty value"
+       ],
+       "check": "unverified",
+       "name": "tied_to"
+      }
+     ],
+     "errors": []
+    }
+   ],
+   "mechanisms_outside_ir": [],
+   "summary": {
+    "counts": {
+     "verified": 20,
+     "quote_only": 6,
+     "unverified": 19,
+     "not_stated": 21
+    },
+    "unverified": [
+     {
+      "field": "flavours.rope_theta",
+      "reasons": [
+       "inherited from llama, whose curated entry has no rope_theta"
+      ]
+     },
+     {
+      "field": "flavours.rope_fraction",
+      "reasons": [
+       "inherited from llama, whose curated entry has no rope_fraction"
+      ]
+     },
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "inherited from llama, whose curated entry has no residual"
+      ]
+     },
+     {
+      "field": "flavours.parallel_block",
+      "reasons": [
+       "inherited from llama, whose curated entry has no parallel_block"
+      ]
+     },
+     {
+      "field": "flavours.qkv_bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no qkv_bias"
+      ]
+     },
+     {
+      "field": "flavours.mlp_bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no mlp_bias"
+      ]
+     },
+     {
+      "field": "flavours.tied_embeddings",
+      "reasons": [
+       "inherited from llama, whose curated entry has no tied_embeddings"
+      ]
+     },
+     {
+      "field": "flavours.moe",
+      "reasons": [
+       "inherited from llama, whose curated entry has no moe"
+      ]
+     },
+     {
+      "field": "block_ops[2].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[3].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[4].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[5].theta",
+      "reasons": [
+       "inherited from llama, whose curated entry has no theta"
+      ]
+     },
+     {
+      "field": "block_ops[6].theta",
+      "reasons": [
+       "inherited from llama, whose curated entry has no theta"
+      ]
+     },
+     {
+      "field": "block_ops[8].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[11].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[12].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[15].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[18].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[18].tied_to",
+      "reasons": [
+       "status inherited with an empty value"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 19
+   }
+  }
+ }
+}
