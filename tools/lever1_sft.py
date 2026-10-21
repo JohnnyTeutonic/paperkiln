@@ -2,7 +2,7 @@
 """Lever 1 (LOCAL_LLM_STACK.md section 7): the large dialogue SFT set, built
 end to end from pinned sources so it can run as a Colab data job.
 
-    python3 tools/lever1_sft.py --out-dir DIR [--vocab GGUF] [--T 256] [--jobs 6]
+    python3 tools/lever1_sft.py --out-dir DIR [--vocab GGUF] [--T 256] [--jobs N]
 
 1. Fetch the sources at their pinned revisions (each fetcher verifies its
    files against corpus/hashes): smol-smoltalk qa_v1 (train split only; its
@@ -73,7 +73,7 @@ def main(argv=None):
     ap.add_argument("--out-dir", required=True)
     ap.add_argument("--vocab", default=VOCAB)
     ap.add_argument("--T", type=int, default=256)
-    ap.add_argument("--jobs", type=int, default=6, help="tokenising processes for chat_data.py sft")
+    ap.add_argument("--jobs", type=int, default=1, help="tokenising processes for chat_data.py sft (needs its --jobs)")
     ap.add_argument("--seed", type=int, default=1)
     a = ap.parse_args(argv)
     out = os.path.abspath(a.out_dir)
@@ -88,8 +88,9 @@ def main(argv=None):
         report = os.path.join(out, f"decontam_{name}.json")
         run(ledger, ["corpus/decontam.py", src, clean, report], [clean, report])
         sft = os.path.join(out, f"sft_{name}.jsonl")
-        run(ledger, ["tools/chat_data.py", "sft", clean, "--vocab", a.vocab, "--T", str(a.T), "--jobs", str(a.jobs),
-                     "--out", sft], [sft])
+        par = ["--jobs", str(a.jobs)] if a.jobs > 1 else []
+        run(ledger, ["tools/chat_data.py", "sft", clean, "--vocab", a.vocab, "--T", str(a.T), *par, "--out", sft],
+            [sft])
         os.remove(clean)  # the report lists every drop; the kept rows are recoverable from the source
         parts.append(sft)
     final = os.path.join(out, "lever1_sft_v1.jsonl")

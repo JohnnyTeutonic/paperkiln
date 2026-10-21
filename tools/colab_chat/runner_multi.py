@@ -198,8 +198,10 @@ def fetch_outputs(st, name, outputs):
     os.makedirs(art, exist_ok=True)
     ok = True
     for f in [*outputs, f"../{name}_train.log"]:
-        rc, _ = colab("download", "-s", NAME, f"/content/chat/{name}/{f}", os.path.join(art, os.path.basename(f)),
-                      timeout=1800)
+        # Outputs keep their relative paths (several sources write report.json).
+        dst = os.path.join(art, os.path.basename(f) if f.startswith("../") else f)
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        rc, _ = colab("download", "-s", NAME, f"/content/chat/{name}/{f}", dst, timeout=1800)
         ok = ok and rc == 0
     if ok:
         st.job(name)["home"] = True
