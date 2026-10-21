@@ -1,0 +1,14 @@
+{
+ "family": "mistral_swa",
+ "gguf_arch": "llama",
+ "sequences": 8,
+ "len": 48,
+ "worst_rel_all_positions": 2.3981219783308916e-06,
+ "top1_same": 384,
+ "positions": 384,
+ "greedy_same": 8,
+ "max_new": 16,
+ "seed": 0,
+ "window": 8,
+ "window_off_rel": 0.9524441957473755
+}

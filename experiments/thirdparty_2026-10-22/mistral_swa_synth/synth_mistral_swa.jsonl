@@ -1,0 +1,8 @@
+{"i": 0, "len": 48, "max_rel_all_positions": 1.7986163811656297e-06, "top1_same": 48, "positions": 48, "greedy_same": true, "first_diff": null, "variant": "gguf"}
+{"i": 1, "len": 48, "max_rel_all_positions": 1.9424999209149973e-06, "top1_same": 48, "positions": 48, "greedy_same": true, "first_diff": null, "variant": "gguf"}
+{"i": 2, "len": 48, "max_rel_all_positions": 2.3981219783308916e-06, "top1_same": 48, "positions": 48, "greedy_same": true, "first_diff": null, "variant": "gguf"}
+{"i": 3, "len": 48, "max_rel_all_positions": 1.198897962240153e-06, "top1_same": 48, "positions": 48, "greedy_same": true, "first_diff": null, "variant": "gguf"}
+{"i": 4, "len": 48, "max_rel_all_positions": 1.4259346698963782e-06, "top1_same": 48, "positions": 48, "greedy_same": true, "first_diff": null, "variant": "gguf"}
+{"i": 5, "len": 48, "max_rel_all_positions": 1.424656488779874e-06, "top1_same": 48, "positions": 48, "greedy_same": true, "first_diff": null, "variant": "gguf"}
+{"i": 6, "len": 48, "max_rel_all_positions": 1.502411919318547e-06, "top1_same": 48, "positions": 48, "greedy_same": true, "first_diff": null, "variant": "gguf"}
+{"i": 7, "len": 48, "max_rel_all_positions": 1.5504475641137105e-06, "top1_same": 48, "positions": 48, "greedy_same": true, "first_diff": null, "variant": "gguf"}

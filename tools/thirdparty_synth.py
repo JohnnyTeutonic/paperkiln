@@ -81,6 +81,9 @@ def convert(model, family, llamacpp, work):
 
     cls = conv.ModelBase.from_model_architecture(model.config.architectures[0])
     cls.set_vocab = placeholder_vocab
+    # Gemma3's modify_tensors trims token_embd to the SentencePiece vocabulary: the placeholder's size.
+    cls._create_vocab_sentencepiece = lambda self: ([f"<t{i}>".encode() for i in range(VOCAB)], [0.0] * VOCAB,
+                                                    [gguf.TokenType.NORMAL] * VOCAB)
     if family == "mistral_swa":
         # llama.cpp's convert drops Mistral's sliding_window; write it as <arch>.attention.sliding_window.
         base = cls.set_gguf_parameters

@@ -1,0 +1,27 @@
+{
+ "family": "gemma3",
+ "gguf_arch": "gemma3",
+ "sequences": 8,
+ "len": 48,
+ "worst_rel_all_positions": 8.156513331414317e-07,
+ "top1_same": 384,
+ "positions": 384,
+ "greedy_same": 8,
+ "max_new": 16,
+ "seed": 0,
+ "window": {
+  "per_layer": [
+   8,
+   8,
+   8,
+   8,
+   8,
+   0,
+   8,
+   8
+  ]
+ },
+ "window_off_rel": 0.7352938652038574,
+ "weight_offset_rel": 5.87718830047379e-07,
+ "weight_offset_greedy_same": 2
+}
