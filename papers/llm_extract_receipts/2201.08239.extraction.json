@@ -4,17 +4,17 @@
  "fields": {
   "d_model": {
    "value": 2560,
-   "evidence": "2B & 10 & 2560 & 40 [Table: Hyper-parameters for pre-training 2B, 8B and 137B models]",
+   "evidence": "2B & 10 & 2560 & 40 & 501k & 64 & 1.5 & 16 & 3 [Table tab:hyper-params]",
    "verdict": "used"
   },
   "n_layers": {
    "value": 10,
-   "evidence": "2B & 10 & 2560 & 40 [Table: Hyper-parameters for pre-training 2B, 8B and 137B models]",
+   "evidence": "2B & 10 & 2560 & 40 & 501k & 64 & 1.5 & 16 & 3 [Table tab:hyper-params]",
    "verdict": "used"
   },
   "n_heads": {
    "value": 40,
-   "evidence": "2B & 10 & 2560 & 40 [Table: Hyper-parameters for pre-training 2B, 8B and 137B models]",
+   "evidence": "2B & 10 & 2560 & 40 & 501k & 64 & 1.5 & 16 & 3 [Table tab:hyper-params]",
    "verdict": "used"
   },
   "vocab_size": {
@@ -31,11 +31,6 @@
    "value": "relative",
    "evidence": "relative attention as described in T5~\\cite{t5} [Sec. 3 LaMDA pre-training]",
    "verdict": "used"
-  },
-  "attention": {
-   "value": "exact",
-   "evidence": "We use a decoder-only Transformer~\\cite{Vaswani2017AttentionIA} language model as the model architecture for LaMDA. [Sec. 3 LaMDA pre-training]",
-   "verdict": "used"
   }
  },
  "unresolved": [
@@ -43,7 +38,8 @@
   "d_ff",
   "context_length",
   "norm",
-  "residual"
+  "residual",
+  "attention"
  ],
  "unverified": [],
  "mentions": {},
@@ -71,7 +67,7 @@
  ],
  "mechanism_scan": [
   {
-   "mechanism": "new op t5_relative_attention_bias (needs a new primitive: T5 relative attention adds a learned scalar bias per head, indexed by a bucketed relative distance (key position minus q)",
+   "mechanism": "T5-style relative attention (learned relative position bias added to attention logits); the IR attention op has no relative-position bias attribute",
    "where": "llm extraction, verified quote, Sec. 3 LaMDA pre-training",
    "blocking": true,
    "evidence": "relative attention as described in T5~\\cite{t5}"
@@ -82,14 +78,14 @@
   "sent_sha256": "ebcb0d038261841bcdbb016dbea964055c50a32fddc62862052e2717760555ea",
   "from": "https://arxiv.org/e-print/2201.08239",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
   "n_calls": 1,
-  "cost_usd": 0.0,
+  "cost_usd": 0.35612,
   "request_ids": [
-   "req_011CgFbxtpLddaHWbEvBSwZh"
+   "req_011CgFhCJ81Zs9rXV5CborbW"
   ]
  },
  "llm": {
@@ -113,20 +109,20 @@
      "d_model": {
       "value": "2560",
       "status": "stated",
-      "quote": "2B &   10 & 2560 & 40",
-      "where": "Table: Hyper-parameters for pre-training 2B, 8B and 137B models"
+      "quote": "2B &   10 & 2560 & 40 & 501k & 64 & 1.5 & 16 & 3",
+      "where": "Table tab:hyper-params"
      },
      "n_layers": {
       "value": "10",
       "status": "stated",
-      "quote": "2B &   10 & 2560 & 40",
-      "where": "Table: Hyper-parameters for pre-training 2B, 8B and 137B models"
+      "quote": "2B &   10 & 2560 & 40 & 501k & 64 & 1.5 & 16 & 3",
+      "where": "Table tab:hyper-params"
      },
      "n_heads": {
       "value": "40",
       "status": "stated",
-      "quote": "2B &   10 & 2560 & 40",
-      "where": "Table: Hyper-parameters for pre-training 2B, 8B and 137B models"
+      "quote": "2B &   10 & 2560 & 40 & 501k & 64 & 1.5 & 16 & 3",
+      "where": "Table tab:hyper-params"
      },
      "n_kv_heads": {
       "value": "",
@@ -164,20 +160,20 @@
      "d_model": {
       "value": "4096",
       "status": "stated",
-      "quote": "8B &  16 & 4096 & 64",
-      "where": "Table: Hyper-parameters for pre-training 2B, 8B and 137B models"
+      "quote": "8B &  16 & 4096 & 64 & 521k & 64 &  23 & 16 & 6",
+      "where": "Table tab:hyper-params"
      },
      "n_layers": {
       "value": "16",
       "status": "stated",
-      "quote": "8B &  16 & 4096 & 64",
-      "where": "Table: Hyper-parameters for pre-training 2B, 8B and 137B models"
+      "quote": "8B &  16 & 4096 & 64 & 521k & 64 &  23 & 16 & 6",
+      "where": "Table tab:hyper-params"
      },
      "n_heads": {
       "value": "64",
       "status": "stated",
-      "quote": "8B &  16 & 4096 & 64",
-      "where": "Table: Hyper-parameters for pre-training 2B, 8B and 137B models"
+      "quote": "8B &  16 & 4096 & 64 & 521k & 64 &  23 & 16 & 6",
+      "where": "Table tab:hyper-params"
      },
      "n_kv_heads": {
       "value": "",
@@ -221,13 +217,13 @@
      "n_layers": {
       "value": "64",
       "status": "stated",
-      "quote": "The Transformer has 64 layers, $d_{model}=8192$",
+      "quote": "The Transformer has 64 layers, $d_{model}=8192$, $d_{ff}=65536$, $h=128$, $d_k=d_v=128$",
       "where": "Sec. 3 LaMDA pre-training"
      },
      "n_heads": {
       "value": "128",
       "status": "stated",
-      "quote": "$d_{ff}=65536$, $h=128$, $d_k=d_v=128$",
+      "quote": "The Transformer has 64 layers, $d_{model}=8192$, $d_{ff}=65536$, $h=128$, $d_k=d_v=128$",
       "where": "Sec. 3 LaMDA pre-training"
      },
      "n_kv_heads": {
@@ -239,13 +235,13 @@
      "head_dim": {
       "value": "128",
       "status": "stated",
-      "quote": "$h=128$, $d_k=d_v=128$",
+      "quote": "The Transformer has 64 layers, $d_{model}=8192$, $d_{ff}=65536$, $h=128$, $d_k=d_v=128$",
       "where": "Sec. 3 LaMDA pre-training"
      },
      "d_ff": {
       "value": "65536",
       "status": "stated",
-      "quote": "$d_{model}=8192$, $d_{ff}=65536$",
+      "quote": "The Transformer has 64 layers, $d_{model}=8192$, $d_{ff}=65536$, $h=128$, $d_k=d_v=128$",
       "where": "Sec. 3 LaMDA pre-training"
      },
      "vocab_size": {
@@ -325,10 +321,10 @@
      "where": ""
     },
     "attention": {
-     "value": "exact",
-     "status": "stated",
-     "quote": "We use a decoder-only Transformer~\\cite{Vaswani2017AttentionIA} language model as the model architecture for LaMDA.",
-     "where": "Sec. 3 LaMDA pre-training"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "window_size": {
      "value": "",
@@ -415,6 +411,13 @@
      "output": "q",
      "attributes": [
       {
+       "name": "out",
+       "value": "16384",
+       "status": "stated",
+       "quote": "$h=128$, $d_k=d_v=128$",
+       "where": "Sec. 3 LaMDA pre-training"
+      },
+      {
        "name": "bias",
        "value": "",
        "status": "not_stated",
@@ -433,6 +436,13 @@
      ],
      "output": "k",
      "attributes": [
+      {
+       "name": "out",
+       "value": "16384",
+       "status": "stated",
+       "quote": "$h=128$, $d_k=d_v=128$",
+       "where": "Sec. 3 LaMDA pre-training"
+      },
       {
        "name": "bias",
        "value": "",
@@ -453,6 +463,13 @@
      "output": "v",
      "attributes": [
       {
+       "name": "out",
+       "value": "16384",
+       "status": "stated",
+       "quote": "$h=128$, $d_k=d_v=128$",
+       "where": "Sec. 3 LaMDA pre-training"
+      },
+      {
        "name": "bias",
        "value": "",
        "status": "not_stated",
@@ -464,34 +481,21 @@
     },
     {
      "subgraph": "block",
-     "op": "unsupported",
-     "role": "T5-style relative position bias added to attention logits",
-     "inputs": [
-      "q",
-      "k"
-     ],
-     "output": "pos_bias",
-     "attributes": [],
-     "new_op": "t5_relative_attention_bias"
-    },
-    {
-     "subgraph": "block",
      "op": "attention",
-     "role": "causal multi-head self-attention with relative position bias",
+     "role": "causal self-attention with T5 relative position bias",
      "inputs": [
       "q",
       "k",
-      "v",
-      "pos_bias"
+      "v"
      ],
-     "output": "attn",
+     "output": "a",
      "attributes": [
       {
        "name": "heads",
        "value": "128",
        "status": "stated",
-       "quote": "$d_{ff}=65536$, $h=128$, $d_k=d_v=128$",
-       "where": "Sec. 3 LaMDA pre-training (137B)"
+       "quote": "The Transformer has 64 layers, $d_{model}=8192$, $d_{ff}=65536$, $h=128$, $d_k=d_v=128$",
+       "where": "Sec. 3 LaMDA pre-training"
       },
       {
        "name": "kv_heads",
@@ -505,7 +509,7 @@
        "value": "128",
        "status": "stated",
        "quote": "$h=128$, $d_k=d_v=128$",
-       "where": "Sec. 3 LaMDA pre-training (137B)"
+       "where": "Sec. 3 LaMDA pre-training"
       },
       {
        "name": "scale",
@@ -518,11 +522,18 @@
        "name": "causal",
        "value": "true",
        "status": "stated",
-       "quote": "We use a decoder-only Transformer~\\cite{Vaswani2017AttentionIA} language model as the model architecture for LaMDA.",
+       "quote": "LaMDA was pre-trained to predict the next token in a text corpus.",
        "where": "Sec. 3 LaMDA pre-training"
       },
       {
        "name": "window",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "sinks",
        "value": "",
        "status": "not_stated",
        "quote": "",
@@ -536,10 +547,17 @@
      "op": "linear",
      "role": "attention output projection",
      "inputs": [
-      "attn"
+      "a"
      ],
      "output": "o",
      "attributes": [
+      {
+       "name": "out",
+       "value": "8192",
+       "status": "stated",
+       "quote": "$d_{model}=8192$",
+       "where": "Sec. 3 LaMDA pre-training"
+      },
       {
        "name": "bias",
        "value": "",
@@ -575,8 +593,8 @@
        "name": "out",
        "value": "65536",
        "status": "stated",
-       "quote": "$d_{model}=8192$, $d_{ff}=65536$",
-       "where": "Sec. 3 LaMDA pre-training (137B)"
+       "quote": "$d_{ff}=65536$",
+       "where": "Sec. 3 LaMDA pre-training"
       },
       {
        "name": "bias",
@@ -601,8 +619,8 @@
        "name": "out",
        "value": "65536",
        "status": "stated",
-       "quote": "$d_{model}=8192$, $d_{ff}=65536$",
-       "where": "Sec. 3 LaMDA pre-training (137B)"
+       "quote": "$d_{ff}=65536$",
+       "where": "Sec. 3 LaMDA pre-training"
       },
       {
        "name": "bias",
@@ -617,7 +635,7 @@
     {
      "subgraph": "block",
      "op": "gelu",
-     "role": "gated-GELU gate activation",
+     "role": "gated-GELU activation on gate",
      "inputs": [
       "g"
      ],
@@ -636,12 +654,12 @@
     {
      "subgraph": "block",
      "op": "mul",
-     "role": "GeGLU gating",
+     "role": "gating",
      "inputs": [
       "ga",
       "u"
      ],
-     "output": "gu",
+     "output": "m",
      "attributes": [],
      "new_op": ""
     },
@@ -650,7 +668,7 @@
      "op": "linear",
      "role": "FFN down projection",
      "inputs": [
-      "gu"
+      "m"
      ],
      "output": "f",
      "attributes": [
@@ -658,8 +676,8 @@
        "name": "out",
        "value": "8192",
        "status": "stated",
-       "quote": "The Transformer has 64 layers, $d_{model}=8192$",
-       "where": "Sec. 3 LaMDA pre-training (137B)"
+       "quote": "$d_{model}=8192$",
+       "where": "Sec. 3 LaMDA pre-training"
       },
       {
        "name": "bias",
@@ -686,7 +704,7 @@
     {
      "subgraph": "head",
      "op": "linear",
-     "role": "LM output head",
+     "role": "output logits",
      "inputs": [
       "x"
      ],
@@ -700,14 +718,14 @@
        "where": "Sec. 3 LaMDA pre-training"
       },
       {
-       "name": "tied_to",
+       "name": "bias",
        "value": "",
        "status": "not_stated",
        "quote": "",
        "where": ""
       },
       {
-       "name": "bias",
+       "name": "tied_to",
        "value": "",
        "status": "not_stated",
        "quote": "",
@@ -717,29 +735,15 @@
      "new_op": ""
     }
    ],
-   "new_ops": [
+   "new_ops": [],
+   "mechanisms_outside_ir": [
     {
-     "name": "t5_relative_attention_bias",
-     "kind": "needs_new_primitive",
-     "expr": "",
-     "inputs": [
-      {
-       "name": "x",
-       "meaning": "query positions"
-      },
-      {
-       "name": "a",
-       "meaning": "key positions"
-      }
-     ],
-     "replaces": "positional encoding",
-     "reason": "T5 relative attention adds a learned scalar bias per head, indexed by a bucketed relative distance (key position minus query position), to the [heads, T, T] attention logits; this mixes positions and needs a bucketing-plus-lookup primitive producing a [heads, T, T] bias tensor. Bucket count and max distance are not stated in the paper.",
+     "mechanism": "T5-style relative attention (learned relative position bias added to attention logits); the IR attention op has no relative-position bias attribute",
      "quote": "relative attention as described in T5~\\cite{t5}",
      "where": "Sec. 3 LaMDA pre-training"
     }
    ],
-   "mechanisms_outside_ir": [],
-   "notes": "Main-text architecture details (d_ff, head_dim) are given only for the 137B model; 2B and 8B give only layers, units and heads in the hyper-parameter table, so their d_ff and head_dim are not_stated. For 137B, h*d_k = 16384 differs from d_model = 8192, so the q/k/v projection widths are left unstated. The paper does not state the norm type, its placement or eps, the residual form, biases, embedding tying, context length or the GELU approximation; norm ops are therefore omitted from block_ops and residual adds follow the standard Transformer structure without a quote. Vocabulary is given as \"32K\": 32000 is my reading, and it could be 32768. Attention is marked exact and causal on the basis of the 'decoder-only Transformer' statement. The block_ops sizes are those of the 137B configuration."
+   "notes": "The block ops are written for the 137B headline model, the only configuration whose d_ff and d_k are stated. The 2B and 8B configs come from the hyper-parameter table; their d_ff and head_dim are not stated. Vocabulary is given as '32K' (it could be 32000 or 32768); 32000 was chosen, so treat this value as uncertain. The paper does not state normalization type, placement or eps, so no norm ops are included in the block. The residual adds are a standard-Transformer assumption: the paper never states them, which is why the residual flavour is not_stated. Biases, tying, context length, kv heads and GELU approximation are also not_stated. Causality is inferred from next-token prediction in a decoder-only model."
   },
   "verification": {
    "errors": [],
@@ -759,24 +763,24 @@
      "d_model": {
       "value": "2560",
       "status": "stated",
-      "quote": "2B &   10 & 2560 & 40",
-      "where": "Table: Hyper-parameters for pre-training 2B, 8B and 137B models",
+      "quote": "2B &   10 & 2560 & 40 & 501k & 64 & 1.5 & 16 & 3",
+      "where": "Table tab:hyper-params",
       "reasons": [],
       "check": "verified"
      },
      "n_layers": {
       "value": "10",
       "status": "stated",
-      "quote": "2B &   10 & 2560 & 40",
-      "where": "Table: Hyper-parameters for pre-training 2B, 8B and 137B models",
+      "quote": "2B &   10 & 2560 & 40 & 501k & 64 & 1.5 & 16 & 3",
+      "where": "Table tab:hyper-params",
       "reasons": [],
       "check": "verified"
      },
      "n_heads": {
       "value": "40",
       "status": "stated",
-      "quote": "2B &   10 & 2560 & 40",
-      "where": "Table: Hyper-parameters for pre-training 2B, 8B and 137B models",
+      "quote": "2B &   10 & 2560 & 40 & 501k & 64 & 1.5 & 16 & 3",
+      "where": "Table tab:hyper-params",
       "reasons": [],
       "check": "verified"
      },
@@ -832,24 +836,24 @@
      "d_model": {
       "value": "4096",
       "status": "stated",
-      "quote": "8B &  16 & 4096 & 64",
-      "where": "Table: Hyper-parameters for pre-training 2B, 8B and 137B models",
+      "quote": "8B &  16 & 4096 & 64 & 521k & 64 &  23 & 16 & 6",
+      "where": "Table tab:hyper-params",
       "reasons": [],
       "check": "verified"
      },
      "n_layers": {
       "value": "16",
       "status": "stated",
-      "quote": "8B &  16 & 4096 & 64",
-      "where": "Table: Hyper-parameters for pre-training 2B, 8B and 137B models",
+      "quote": "8B &  16 & 4096 & 64 & 521k & 64 &  23 & 16 & 6",
+      "where": "Table tab:hyper-params",
       "reasons": [],
       "check": "verified"
      },
      "n_heads": {
       "value": "64",
       "status": "stated",
-      "quote": "8B &  16 & 4096 & 64",
-      "where": "Table: Hyper-parameters for pre-training 2B, 8B and 137B models",
+      "quote": "8B &  16 & 4096 & 64 & 521k & 64 &  23 & 16 & 6",
+      "where": "Table tab:hyper-params",
       "reasons": [],
       "check": "verified"
      },
@@ -913,7 +917,7 @@
      "n_layers": {
       "value": "64",
       "status": "stated",
-      "quote": "The Transformer has 64 layers, $d_{model}=8192$",
+      "quote": "The Transformer has 64 layers, $d_{model}=8192$, $d_{ff}=65536$, $h=128$, $d_k=d_v=128$",
       "where": "Sec. 3 LaMDA pre-training",
       "reasons": [],
       "check": "verified"
@@ -921,7 +925,7 @@
      "n_heads": {
       "value": "128",
       "status": "stated",
-      "quote": "$d_{ff}=65536$, $h=128$, $d_k=d_v=128$",
+      "quote": "The Transformer has 64 layers, $d_{model}=8192$, $d_{ff}=65536$, $h=128$, $d_k=d_v=128$",
       "where": "Sec. 3 LaMDA pre-training",
       "reasons": [],
       "check": "verified"
@@ -937,7 +941,7 @@
      "head_dim": {
       "value": "128",
       "status": "stated",
-      "quote": "$h=128$, $d_k=d_v=128$",
+      "quote": "The Transformer has 64 layers, $d_{model}=8192$, $d_{ff}=65536$, $h=128$, $d_k=d_v=128$",
       "where": "Sec. 3 LaMDA pre-training",
       "reasons": [],
       "check": "verified"
@@ -945,7 +949,7 @@
      "d_ff": {
       "value": "65536",
       "status": "stated",
-      "quote": "$d_{model}=8192$, $d_{ff}=65536$",
+      "quote": "The Transformer has 64 layers, $d_{model}=8192$, $d_{ff}=65536$, $h=128$, $d_k=d_v=128$",
       "where": "Sec. 3 LaMDA pre-training",
       "reasons": [],
       "check": "verified"
@@ -1061,12 +1065,12 @@
      "check": "not_stated"
     },
     "attention": {
-     "value": "exact",
-     "status": "stated",
-     "quote": "We use a decoder-only Transformer~\\cite{Vaswani2017AttentionIA} language model as the model architecture for LaMDA.",
-     "where": "Sec. 3 LaMDA pre-training",
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
      "reasons": [],
-     "check": "quote_only"
+     "check": "not_stated"
     },
     "window_size": {
      "value": "",
@@ -1141,29 +1145,7 @@
      "check": "not_stated"
     }
    },
-   "new_ops": [
-    {
-     "name": "t5_relative_attention_bias",
-     "kind": "needs_new_primitive",
-     "replaces": "positional encoding",
-     "reason": "T5 relative attention adds a learned scalar bias per head, indexed by a bucketed relative distance (key position minus query position), to the [heads, T, T] attention logits; this mixes positions and needs a bucketing-plus-lookup primitive producing a [heads, T, T] bias tensor. Bucket count and max distance are not stated in the paper.",
-     "quote": "relative attention as described in T5~\\cite{t5}",
-     "where": "Sec. 3 LaMDA pre-training",
-     "inputs": [
-      {
-       "name": "x",
-       "meaning": "query positions"
-      },
-      {
-       "name": "a",
-       "meaning": "key positions"
-      }
-     ],
-     "errors": [],
-     "quote_found": true,
-     "check": "verified"
-    }
-   ],
+   "new_ops": [],
    "block_ops": [
     {
      "i": 0,
@@ -1200,6 +1182,17 @@
      "new_op": "",
      "attributes": [
       {
+       "value": "16384",
+       "status": "stated",
+       "quote": "$h=128$, $d_k=d_v=128$",
+       "where": "Sec. 3 LaMDA pre-training",
+       "reasons": [
+        "16384 does not occur in its quote"
+       ],
+       "check": "unverified",
+       "name": "out"
+      },
+      {
        "value": "",
        "status": "not_stated",
        "quote": "",
@@ -1222,6 +1215,17 @@
      "output": "k",
      "new_op": "",
      "attributes": [
+      {
+       "value": "16384",
+       "status": "stated",
+       "quote": "$h=128$, $d_k=d_v=128$",
+       "where": "Sec. 3 LaMDA pre-training",
+       "reasons": [
+        "16384 does not occur in its quote"
+       ],
+       "check": "unverified",
+       "name": "out"
+      },
       {
        "value": "",
        "status": "not_stated",
@@ -1246,6 +1250,17 @@
      "new_op": "",
      "attributes": [
       {
+       "value": "16384",
+       "status": "stated",
+       "quote": "$h=128$, $d_k=d_v=128$",
+       "where": "Sec. 3 LaMDA pre-training",
+       "reasons": [
+        "16384 does not occur in its quote"
+       ],
+       "check": "unverified",
+       "name": "out"
+      },
+      {
        "value": "",
        "status": "not_stated",
        "quote": "",
@@ -1260,36 +1275,21 @@
     {
      "i": 4,
      "subgraph": "block",
-     "op": "unsupported",
-     "role": "T5-style relative position bias added to attention logits",
-     "inputs": [
-      "q",
-      "k"
-     ],
-     "output": "pos_bias",
-     "new_op": "t5_relative_attention_bias",
-     "attributes": [],
-     "errors": []
-    },
-    {
-     "i": 5,
-     "subgraph": "block",
      "op": "attention",
-     "role": "causal multi-head self-attention with relative position bias",
+     "role": "causal self-attention with T5 relative position bias",
      "inputs": [
       "q",
       "k",
-      "v",
-      "pos_bias"
+      "v"
      ],
-     "output": "attn",
+     "output": "a",
      "new_op": "",
      "attributes": [
       {
        "value": "128",
        "status": "stated",
-       "quote": "$d_{ff}=65536$, $h=128$, $d_k=d_v=128$",
-       "where": "Sec. 3 LaMDA pre-training (137B)",
+       "quote": "The Transformer has 64 layers, $d_{model}=8192$, $d_{ff}=65536$, $h=128$, $d_k=d_v=128$",
+       "where": "Sec. 3 LaMDA pre-training",
        "reasons": [],
        "check": "verified",
        "name": "heads"
@@ -1307,7 +1307,7 @@
        "value": "128",
        "status": "stated",
        "quote": "$h=128$, $d_k=d_v=128$",
-       "where": "Sec. 3 LaMDA pre-training (137B)",
+       "where": "Sec. 3 LaMDA pre-training",
        "reasons": [],
        "check": "verified",
        "name": "head_dim"
@@ -1324,7 +1324,7 @@
       {
        "value": "true",
        "status": "stated",
-       "quote": "We use a decoder-only Transformer~\\cite{Vaswani2017AttentionIA} language model as the model architecture for LaMDA.",
+       "quote": "LaMDA was pre-trained to predict the next token in a text corpus.",
        "where": "Sec. 3 LaMDA pre-training",
        "reasons": [],
        "check": "quote_only",
@@ -1338,21 +1338,39 @@
        "reasons": [],
        "check": "not_stated",
        "name": "window"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "sinks"
       }
      ],
      "errors": []
     },
     {
-     "i": 6,
+     "i": 5,
      "subgraph": "block",
      "op": "linear",
      "role": "attention output projection",
      "inputs": [
-      "attn"
+      "a"
      ],
      "output": "o",
      "new_op": "",
      "attributes": [
+      {
+       "value": "8192",
+       "status": "stated",
+       "quote": "$d_{model}=8192$",
+       "where": "Sec. 3 LaMDA pre-training",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
       {
        "value": "",
        "status": "not_stated",
@@ -1366,7 +1384,7 @@
      "errors": []
     },
     {
-     "i": 7,
+     "i": 6,
      "subgraph": "block",
      "op": "add",
      "role": "attention residual",
@@ -1380,7 +1398,7 @@
      "errors": []
     },
     {
-     "i": 8,
+     "i": 7,
      "subgraph": "block",
      "op": "linear",
      "role": "FFN gate projection",
@@ -1393,8 +1411,40 @@
       {
        "value": "65536",
        "status": "stated",
-       "quote": "$d_{model}=8192$, $d_{ff}=65536$",
-       "where": "Sec. 3 LaMDA pre-training (137B)",
+       "quote": "$d_{ff}=65536$",
+       "where": "Sec. 3 LaMDA pre-training",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 8,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN up projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "u",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "65536",
+       "status": "stated",
+       "quote": "$d_{ff}=65536$",
+       "where": "Sec. 3 LaMDA pre-training",
        "reasons": [],
        "check": "verified",
        "name": "out"
@@ -1414,40 +1464,8 @@
     {
      "i": 9,
      "subgraph": "block",
-     "op": "linear",
-     "role": "FFN up projection",
-     "inputs": [
-      "h"
-     ],
-     "output": "u",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "65536",
-       "status": "stated",
-       "quote": "$d_{model}=8192$, $d_{ff}=65536$",
-       "where": "Sec. 3 LaMDA pre-training (137B)",
-       "reasons": [],
-       "check": "verified",
-       "name": "out"
-      },
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "bias"
-      }
-     ],
-     "errors": []
-    },
-    {
-     "i": 10,
-     "subgraph": "block",
      "op": "gelu",
-     "role": "gated-GELU gate activation",
+     "role": "gated-GELU activation on gate",
      "inputs": [
       "g"
      ],
@@ -1467,26 +1485,26 @@
      "errors": []
     },
     {
-     "i": 11,
+     "i": 10,
      "subgraph": "block",
      "op": "mul",
-     "role": "GeGLU gating",
+     "role": "gating",
      "inputs": [
       "ga",
       "u"
      ],
-     "output": "gu",
+     "output": "m",
      "new_op": "",
      "attributes": [],
      "errors": []
     },
     {
-     "i": 12,
+     "i": 11,
      "subgraph": "block",
      "op": "linear",
      "role": "FFN down projection",
      "inputs": [
-      "gu"
+      "m"
      ],
      "output": "f",
      "new_op": "",
@@ -1494,8 +1512,8 @@
       {
        "value": "8192",
        "status": "stated",
-       "quote": "The Transformer has 64 layers, $d_{model}=8192$",
-       "where": "Sec. 3 LaMDA pre-training (137B)",
+       "quote": "$d_{model}=8192$",
+       "where": "Sec. 3 LaMDA pre-training",
        "reasons": [],
        "check": "verified",
        "name": "out"
@@ -1513,7 +1531,7 @@
      "errors": []
     },
     {
-     "i": 13,
+     "i": 12,
      "subgraph": "block",
      "op": "add",
      "role": "FFN residual",
@@ -1527,10 +1545,10 @@
      "errors": []
     },
     {
-     "i": 14,
+     "i": 13,
      "subgraph": "head",
      "op": "linear",
-     "role": "LM output head",
+     "role": "output logits",
      "inputs": [
       "x"
      ],
@@ -1553,7 +1571,7 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
-       "name": "tied_to"
+       "name": "bias"
       },
       {
        "value": "",
@@ -1562,25 +1580,51 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
-       "name": "bias"
+       "name": "tied_to"
       }
      ],
      "errors": []
     }
    ],
-   "mechanisms_outside_ir": [],
+   "mechanisms_outside_ir": [
+    {
+     "mechanism": "T5-style relative attention (learned relative position bias added to attention logits); the IR attention op has no relative-position bias attribute",
+     "quote": "relative attention as described in T5~\\cite{t5}",
+     "where": "Sec. 3 LaMDA pre-training",
+     "check": "verified"
+    }
+   ],
    "summary": {
     "counts": {
-     "verified": 23,
-     "quote_only": 3,
-     "unverified": 0,
-     "not_stated": 40
+     "verified": 24,
+     "quote_only": 2,
+     "unverified": 3,
+     "not_stated": 42
     },
-    "unverified": [],
+    "unverified": [
+     {
+      "field": "block_ops[1].out",
+      "reasons": [
+       "16384 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[2].out",
+      "reasons": [
+       "16384 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[3].out",
+      "reasons": [
+       "16384 does not occur in its quote"
+      ]
+     }
+    ],
     "new_op_errors": [],
     "node_errors": [],
-    "n_new_ops": 1,
-    "n_block_ops": 15
+    "n_new_ops": 0,
+    "n_block_ops": 14
    }
   }
  }

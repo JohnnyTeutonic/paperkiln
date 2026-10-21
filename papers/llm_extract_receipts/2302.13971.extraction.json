@@ -19,17 +19,17 @@
   },
   "norm": {
    "value": "rmsnorm",
-   "evidence": "We use the RMSNorm normalizing function, introduced by \\citet{zhang2019root}. [Sec. 2.2 Architecture, Pre-normalization]",
+   "evidence": "We use the RMSNorm normalizing function, introduced by \\citet{zhang2019root}. [Sec. 2.2 Architecture]",
    "verdict": "used"
   },
   "activation": {
    "value": "swiglu",
-   "evidence": "We replace the ReLU non-linearity by the SwiGLU activation function, introduced by \\citet{shazeer2020glu} to improve the performance. [Sec. 2.2 Architecture, SwiGLU activation function]",
+   "evidence": "We replace the ReLU non-linearity by the SwiGLU activation function, introduced by \\citet{shazeer2020glu} to improve the performance. [Sec. 2.2 Architecture]",
    "verdict": "used"
   },
   "positional": {
    "value": "rope",
-   "evidence": "We remove the absolute positional embeddings, and instead, add rotary positional embeddings (RoPE), introduced by \\citet{su2021roformer}, at each layer of the network. [Sec. 2.2 Architecture, Rotary Embeddings]",
+   "evidence": "We remove the absolute positional embeddings, and instead, add rotary positional embeddings (RoPE), introduced by \\citet{su2021roformer}, at each layer of the network. [Sec. 2.2 Architecture]",
    "verdict": "used"
   },
   "residual": {
@@ -63,7 +63,7 @@
  "mentions": {},
  "inherits": {
   "ancestor": "transformer",
-  "evidence": "Following recent work on large language models, our network is based on the transformer architecture~\\cite{vaswaniAttention2017}.",
+  "evidence": "Here are the main difference with the original architecture, and where we were found the inspiration for this change (in bracket):",
   "section": "Sec. 2.2 Architecture"
  },
  "variants": [
@@ -94,14 +94,14 @@
   "sent_sha256": "493c54ab7deec283765072da40fe998edaaa05205cd98173444957b4b3e8aba9",
   "from": "https://arxiv.org/e-print/2302.13971",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
   "n_calls": 1,
-  "cost_usd": 0.0,
+  "cost_usd": 0.323516,
   "request_ids": [
-   "req_011CgFcShVVjWjFE5gXJijN3"
+   "req_011CgFhohNiNrp7BxqjFmRPs"
   ]
  },
  "llm": {
@@ -111,17 +111,17 @@
    "family": {
     "value": "decoder_only",
     "status": "stated",
-    "quote": "This is achieved by not storing the attention weights and not computing the key/query scores that are masked due to the causal nature of the language modeling task.",
+    "quote": "First, we use an efficient implementation of the causal multi-head attention to reduce memory usage and runtime.",
     "where": "Sec. 2.4 Efficient implementation"
    },
    "inherits": {
     "ancestor": "Transformer (Vaswani et al., 2017)",
-    "quote": "Following recent work on large language models, our network is based on the transformer architecture~\\cite{vaswaniAttention2017}.",
+    "quote": "Here are the main difference with the original architecture, and where we were found the inspiration for this change (in bracket):",
     "where": "Sec. 2.2 Architecture"
    },
    "configs": [
     {
-     "name": "LLaMA-7B (6.7B)",
+     "name": "LLaMA-7B",
      "d_model": {
       "value": "4096",
       "status": "stated",
@@ -172,7 +172,7 @@
      }
     },
     {
-     "name": "LLaMA-13B (13.0B)",
+     "name": "LLaMA-13B",
      "d_model": {
       "value": "5120",
       "status": "stated",
@@ -223,7 +223,7 @@
      }
     },
     {
-     "name": "LLaMA-33B (32.5B)",
+     "name": "LLaMA-33B",
      "d_model": {
       "value": "6656",
       "status": "stated",
@@ -274,7 +274,7 @@
      }
     },
     {
-     "name": "LLaMA-65B (65.2B)",
+     "name": "LLaMA-65B",
      "d_model": {
       "value": "8192",
       "status": "stated",
@@ -325,19 +325,19 @@
      }
     }
    ],
-   "primary_config": "LLaMA-7B (6.7B)",
+   "primary_config": "LLaMA-7B",
    "flavours": {
     "norm": {
      "value": "rmsnorm",
      "status": "stated",
      "quote": "We use the RMSNorm normalizing function, introduced by \\citet{zhang2019root}.",
-     "where": "Sec. 2.2 Architecture, Pre-normalization"
+     "where": "Sec. 2.2 Architecture"
     },
     "norm_placement": {
      "value": "pre",
      "status": "stated",
      "quote": "To improve the training stability, we normalize the input of each transformer sub-layer, instead of normalizing the output.",
-     "where": "Sec. 2.2 Architecture, Pre-normalization"
+     "where": "Sec. 2.2 Architecture"
     },
     "norm_eps": {
      "value": "",
@@ -349,13 +349,13 @@
      "value": "swiglu",
      "status": "stated",
      "quote": "We replace the ReLU non-linearity by the SwiGLU activation function, introduced by \\citet{shazeer2020glu} to improve the performance.",
-     "where": "Sec. 2.2 Architecture, SwiGLU activation function"
+     "where": "Sec. 2.2 Architecture"
     },
     "positional": {
      "value": "rope",
      "status": "stated",
      "quote": "We remove the absolute positional embeddings, and instead, add rotary positional embeddings (RoPE), introduced by \\citet{su2021roformer}, at each layer of the network.",
-     "where": "Sec. 2.2 Architecture, Rotary Embeddings"
+     "where": "Sec. 2.2 Architecture"
     },
     "rope_pairing": {
      "value": "",
@@ -424,10 +424,10 @@
      "where": ""
     },
     "moe": {
-     "value": "false",
-     "status": "inherited",
-     "quote": "Following recent work on large language models, our network is based on the transformer architecture~\\cite{vaswaniAttention2017}.",
-     "where": "Sec. 2.2 Architecture"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "n_experts": {
      "value": "",
@@ -452,7 +452,7 @@
     {
      "subgraph": "embed",
      "op": "embedding",
-     "role": "token embedding (token_embd)",
+     "role": "token embedding",
      "inputs": [
       "tokens"
      ],
@@ -505,10 +505,10 @@
      "attributes": [
       {
        "name": "out",
-       "value": "4096",
-       "status": "stated",
-       "quote": "6.7B  & 4096 & 32 & 32 & $3.0e^{-4}$ & 4M & 1.0T",
-       "where": "Table 2 (tab:architecture)"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       },
       {
        "name": "bias",
@@ -583,10 +583,10 @@
      "attributes": [
       {
        "name": "rope_heads",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "all",
+       "status": "stated",
+       "quote": "add rotary positional embeddings (RoPE), introduced by \\citet{su2021roformer}, at each layer of the network.",
+       "where": "Sec. 2.2 Architecture"
       },
       {
        "name": "pairing",
@@ -623,10 +623,10 @@
      "attributes": [
       {
        "name": "rope_heads",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "all",
+       "status": "stated",
+       "quote": "add rotary positional embeddings (RoPE), introduced by \\citet{su2021roformer}, at each layer of the network.",
+       "where": "Sec. 2.2 Architecture"
       },
       {
        "name": "pairing",
@@ -749,7 +749,7 @@
       "x",
       "o"
      ],
-     "output": "x1",
+     "output": "x2",
      "attributes": [],
      "new_op": ""
     },
@@ -758,7 +758,7 @@
      "op": "rmsnorm",
      "role": "pre-FFN RMSNorm",
      "inputs": [
-      "x1"
+      "x2"
      ],
      "output": "h2",
      "attributes": [
@@ -878,7 +878,7 @@
      "op": "add",
      "role": "FFN residual add",
      "inputs": [
-      "x1",
+      "x2",
       "f"
      ],
      "output": "x",
@@ -887,29 +887,10 @@
     },
     {
      "subgraph": "head",
-     "op": "rmsnorm",
-     "role": "final RMSNorm (not described in the paper)",
-     "inputs": [
-      "x"
-     ],
-     "output": "hf",
-     "attributes": [
-      {
-       "name": "eps",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      }
-     ],
-     "new_op": ""
-    },
-    {
-     "subgraph": "head",
      "op": "linear",
      "role": "output projection to vocabulary logits",
      "inputs": [
-      "hf"
+      "x"
      ],
      "output": "logits",
      "attributes": [
@@ -940,7 +921,7 @@
    ],
    "new_ops": [],
    "mechanisms_outside_ir": [],
-   "notes": "I described LLaMA-7B (6.7B), the smallest configuration in Table 2; all four sizes are listed.\n\nThe paper states the FFN width only as a formula (\"$\\frac23 4d$ instead of $4d$\"), with no integer per config, so d_ff and the gate/up widths are left not_stated.\n\nThe following are not stated: vocab size, context length, kv heads, head_dim, norm eps, RoPE pairing/theta/fraction, biases and embedding tying.\n\nThe tokenizer is SentencePiece BPE, with no vocab size given.\n\nresidual, parallel_block=false and moe=false are inherited from the base Transformer sentence. Biases and tying were deliberately not inherited from Vaswani et al.: the paper lists only norm, activation and positional changes, and inheriting those values would be unreliable.\n\nThe final RMSNorm in the head is not mentioned in the paper. It is included as a structural placeholder with eps not_stated.\n\nCausal multi-head attention is stated, but no GQA/MQA is mentioned; kv_heads is left not_stated."
+   "notes": "Describes the LLaMA family (7B/13B/33B/65B from Table 2); the block ops use the 7B values. The FFN hidden size is given only as a formula (\"$\\frac23 4d$ instead of $4d$\"), with no integer per model, so d_ff and the gate/up widths are left not_stated. The paper states none of these, so they are not_stated: head_dim, n_kv_heads, vocab size (BPE/SentencePiece is mentioned with no size), context length, norm eps, rope theta and pairing, biases, embedding tying, and a final norm before the head. No final norm op is emitted because the paper does not mention one. Residual and sequential (non-parallel) sublayers are marked inherited from the original Transformer, based on the paper's statement that it lists only the differences from that architecture. Bias and tying values are deliberately not inherited from the original Transformer."
   },
   "verification": {
    "errors": [],
@@ -948,21 +929,21 @@
    "inherits": {
     "ancestor": "Transformer (Vaswani et al., 2017)",
     "resolved": "transformer",
-    "quote": "Following recent work on large language models, our network is based on the transformer architecture~\\cite{vaswaniAttention2017}.",
+    "quote": "Here are the main difference with the original architecture, and where we were found the inspiration for this change (in bracket):",
     "where": "Sec. 2.2 Architecture",
     "quote_found": true
    },
    "family": {
     "value": "decoder_only",
     "status": "stated",
-    "quote": "This is achieved by not storing the attention weights and not computing the key/query scores that are masked due to the causal nature of the language modeling task.",
+    "quote": "First, we use an efficient implementation of the causal multi-head attention to reduce memory usage and runtime.",
     "where": "Sec. 2.4 Efficient implementation",
     "reasons": [],
     "check": "quote_only"
    },
    "configs": [
     {
-     "name": "LLaMA-7B (6.7B)",
+     "name": "LLaMA-7B",
      "d_model": {
       "value": "4096",
       "status": "stated",
@@ -1035,7 +1016,7 @@
      ]
     },
     {
-     "name": "LLaMA-13B (13.0B)",
+     "name": "LLaMA-13B",
      "d_model": {
       "value": "5120",
       "status": "stated",
@@ -1108,7 +1089,7 @@
      ]
     },
     {
-     "name": "LLaMA-33B (32.5B)",
+     "name": "LLaMA-33B",
      "d_model": {
       "value": "6656",
       "status": "stated",
@@ -1181,7 +1162,7 @@
      ]
     },
     {
-     "name": "LLaMA-65B (65.2B)",
+     "name": "LLaMA-65B",
      "d_model": {
       "value": "8192",
       "status": "stated",
@@ -1254,13 +1235,13 @@
      ]
     }
    ],
-   "primary_config": "LLaMA-7B (6.7B)",
+   "primary_config": "LLaMA-7B",
    "flavours": {
     "norm": {
      "value": "rmsnorm",
      "status": "stated",
      "quote": "We use the RMSNorm normalizing function, introduced by \\citet{zhang2019root}.",
-     "where": "Sec. 2.2 Architecture, Pre-normalization",
+     "where": "Sec. 2.2 Architecture",
      "reasons": [],
      "check": "verified"
     },
@@ -1268,7 +1249,7 @@
      "value": "pre",
      "status": "stated",
      "quote": "To improve the training stability, we normalize the input of each transformer sub-layer, instead of normalizing the output.",
-     "where": "Sec. 2.2 Architecture, Pre-normalization",
+     "where": "Sec. 2.2 Architecture",
      "reasons": [],
      "check": "quote_only"
     },
@@ -1284,7 +1265,7 @@
      "value": "swiglu",
      "status": "stated",
      "quote": "We replace the ReLU non-linearity by the SwiGLU activation function, introduced by \\citet{shazeer2020glu} to improve the performance.",
-     "where": "Sec. 2.2 Architecture, SwiGLU activation function",
+     "where": "Sec. 2.2 Architecture",
      "reasons": [],
      "check": "verified"
     },
@@ -1292,7 +1273,7 @@
      "value": "rope",
      "status": "stated",
      "quote": "We remove the absolute positional embeddings, and instead, add rotary positional embeddings (RoPE), introduced by \\citet{su2021roformer}, at each layer of the network.",
-     "where": "Sec. 2.2 Architecture, Rotary Embeddings",
+     "where": "Sec. 2.2 Architecture",
      "reasons": [],
      "check": "verified"
     },
@@ -1389,14 +1370,12 @@
      "check": "not_stated"
     },
     "moe": {
-     "value": "false",
-     "status": "inherited",
-     "quote": "Following recent work on large language models, our network is based on the transformer architecture~\\cite{vaswaniAttention2017}.",
-     "where": "Sec. 2.2 Architecture",
-     "reasons": [
-      "inherited from transformer, whose curated entry has no moe"
-     ],
-     "check": "unverified"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "n_experts": {
      "value": "",
@@ -1429,7 +1408,7 @@
      "i": 0,
      "subgraph": "embed",
      "op": "embedding",
-     "role": "token embedding (token_embd)",
+     "role": "token embedding",
      "inputs": [
       "tokens"
      ],
@@ -1492,12 +1471,12 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "4096",
-       "status": "stated",
-       "quote": "6.7B  & 4096 & 32 & 32 & $3.0e^{-4}$ & 4M & 1.0T",
-       "where": "Table 2 (tab:architecture)",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
        "reasons": [],
-       "check": "verified",
+       "check": "not_stated",
        "name": "out"
       },
       {
@@ -1588,12 +1567,12 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
+       "value": "all",
+       "status": "stated",
+       "quote": "add rotary positional embeddings (RoPE), introduced by \\citet{su2021roformer}, at each layer of the network.",
+       "where": "Sec. 2.2 Architecture",
        "reasons": [],
-       "check": "not_stated",
+       "check": "quote_only",
        "name": "rope_heads"
       },
       {
@@ -1638,12 +1617,12 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
+       "value": "all",
+       "status": "stated",
+       "quote": "add rotary positional embeddings (RoPE), introduced by \\citet{su2021roformer}, at each layer of the network.",
+       "where": "Sec. 2.2 Architecture",
        "reasons": [],
-       "check": "not_stated",
+       "check": "quote_only",
        "name": "rope_heads"
       },
       {
@@ -1796,7 +1775,7 @@
       "x",
       "o"
      ],
-     "output": "x1",
+     "output": "x2",
      "new_op": "",
      "attributes": [],
      "errors": []
@@ -1807,7 +1786,7 @@
      "op": "rmsnorm",
      "role": "pre-FFN RMSNorm",
      "inputs": [
-      "x1"
+      "x2"
      ],
      "output": "h2",
      "new_op": "",
@@ -1953,7 +1932,7 @@
      "op": "add",
      "role": "FFN residual add",
      "inputs": [
-      "x1",
+      "x2",
       "f"
      ],
      "output": "x",
@@ -1964,33 +1943,10 @@
     {
      "i": 17,
      "subgraph": "head",
-     "op": "rmsnorm",
-     "role": "final RMSNorm (not described in the paper)",
-     "inputs": [
-      "x"
-     ],
-     "output": "hf",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "eps"
-      }
-     ],
-     "errors": []
-    },
-    {
-     "i": 18,
-     "subgraph": "head",
      "op": "linear",
      "role": "output projection to vocabulary logits",
      "inputs": [
-      "hf"
+      "x"
      ],
      "output": "logits",
      "new_op": "",
@@ -2029,10 +1985,10 @@
    "mechanisms_outside_ir": [],
    "summary": {
     "counts": {
-     "verified": 20,
-     "quote_only": 4,
-     "unverified": 3,
-     "not_stated": 63
+     "verified": 19,
+     "quote_only": 6,
+     "unverified": 2,
+     "not_stated": 62
     },
     "unverified": [
      {
@@ -2046,18 +2002,12 @@
       "reasons": [
        "inherited from transformer, whose curated entry has no parallel_block"
       ]
-     },
-     {
-      "field": "flavours.moe",
-      "reasons": [
-       "inherited from transformer, whose curated entry has no moe"
-      ]
      }
     ],
     "new_op_errors": [],
     "node_errors": [],
     "n_new_ops": 0,
-    "n_block_ops": 19
+    "n_block_ops": 18
    }
   }
  }

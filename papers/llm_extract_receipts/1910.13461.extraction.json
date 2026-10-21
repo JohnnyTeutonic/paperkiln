@@ -3,23 +3,23 @@
  "title": "BART: Denoising Sequence-to-Sequence Pre-training for Natural Language Generation, Translation, and Comprehension",
  "fields": {
   "d_model": {
-   "value": 768,
-   "evidence": "We compare a range of options using base-size models (6 encoder and 6 decoder layers, with a hidden size of 768) [Sec. 4 Comparing Pre-training Objectives]",
+   "value": 1024,
+   "evidence": "We pre-train a large model with 12 layers in each of the encoder and decoder, and a hidden size of 1024. [Sec. 5.1 Experimental Setup]",
    "verdict": "used"
   },
   "n_layers": {
-   "value": 6,
-   "evidence": "For our base model, we use 6 layers in the encoder and decoder [Sec. 2.1 Architecture]",
+   "value": 12,
+   "evidence": "We pre-train a large model with 12 layers in each of the encoder and decoder, and a hidden size of 1024. [Sec. 5.1 Experimental Setup]",
    "verdict": "used"
   },
   "norm": {
    "value": "layernorm",
-   "evidence": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017} [Sec. 2.1 Architecture]",
+   "evidence": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}, except, following GPT, that we modify ReLU activation functions to GeLUs \\citep{gelu} and initialise parameters from $\\mathcal{N}(0, 0.02)$. [Sec. 2.1 Architecture]",
    "verdict": "inherited"
   },
   "activation": {
    "value": "gelu",
-   "evidence": "we modify ReLU activation functions to GeLUs \\citep{gelu} [Sec. 2.1 Architecture]",
+   "evidence": "except, following GPT, that we modify ReLU activation functions to GeLUs \\citep{gelu} [Sec. 2.1 Architecture]",
    "verdict": "used"
   },
   "positional": {
@@ -32,7 +32,7 @@
   },
   "residual": {
    "value": "residual",
-   "evidence": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017} [Sec. 2.1 Architecture]",
+   "evidence": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}, except, following GPT, that we modify ReLU activation functions to GeLUs \\citep{gelu} and initialise parameters from $\\mathcal{N}(0, 0.02)$. [Sec. 2.1 Architecture]",
    "verdict": "unverified",
    "reasons": [
     "inherited from transformer, whose curated entry has no residual"
@@ -40,7 +40,7 @@
   },
   "attention": {
    "value": "exact",
-   "evidence": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017} [Sec. 2.1 Architecture]",
+   "evidence": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}, except, following GPT, that we modify ReLU activation functions to GeLUs \\citep{gelu} and initialise parameters from $\\mathcal{N}(0, 0.02)$. [Sec. 2.1 Architecture]",
    "verdict": "unverified",
    "reasons": [
     "inherited from transformer, whose curated entry has no attention"
@@ -98,13 +98,13 @@
    "evidence": "It is implemented as a sequence-to-sequence model with a bidirectional encoder over corrupted text and a left-to-right autoregressive decoder."
   },
   {
-   "mechanism": "new op cross_attention (needs a new primitive: Requires non-causal multi-head attention whose queries come from the decoder stream [T, d] and keys/values from a second)",
+   "mechanism": "new op cross_attention (needs a new primitive: Requires attention whose queries come from the decoder stream [T_dec, d] and keys/values from a separate encoder output )",
    "where": "llm extraction, verified quote, Sec. 2.1 Architecture",
    "blocking": true,
    "evidence": "each layer of the decoder additionally performs cross-attention over the final hidden layer of the encoder (as in the transformer sequence-to-sequence model)"
   },
   {
-   "mechanism": "Separate bidirectional (non-causal) Transformer encoder stack with the same number of layers as the decoder, whose final hidden states feed decoder cross-attention",
+   "mechanism": "Separate bidirectional (non-causal) Transformer encoder stack over the corrupted input, same layer count as the decoder, whose final hidden states feed decoder cross-attention",
    "where": "llm extraction, verified quote, Sec. 2.1 Architecture",
    "blocking": true,
    "evidence": "For our base model, we use 6 layers in the encoder and decoder, and for our large model we use 12 layers in each."
@@ -121,14 +121,14 @@
   "sent_sha256": "9dcf4202b2381751f4d017c511a7a594b9930f6929d1d77a80b0ec6ada97e629",
   "from": "https://arxiv.org/e-print/1910.13461",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
   "n_calls": 1,
-  "cost_usd": 0.0,
+  "cost_usd": 0.288276,
   "request_ids": [
-   "req_011CgFbHjqWKuUDgTbiUXW9n"
+   "req_011CgFgPBsfDyzCPdKP2qbSd"
   ]
  },
  "llm": {
@@ -158,7 +158,7 @@
      "n_layers": {
       "value": "6",
       "status": "stated",
-      "quote": "For our base model, we use 6 layers in the encoder and decoder",
+      "quote": "For our base model, we use 6 layers in the encoder and decoder, and for our large model we use 12 layers in each.",
       "where": "Sec. 2.1 Architecture"
      },
      "n_heads": {
@@ -250,18 +250,18 @@
      }
     }
    ],
-   "primary_config": "base",
+   "primary_config": "large",
    "flavours": {
     "norm": {
      "value": "layernorm",
      "status": "inherited",
-     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}",
+     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}, except, following GPT, that we modify ReLU activation functions to GeLUs \\citep{gelu} and initialise parameters from $\\mathcal{N}(0, 0.02)$.",
      "where": "Sec. 2.1 Architecture"
     },
     "norm_placement": {
      "value": "post",
      "status": "inherited",
-     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}",
+     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}, except, following GPT, that we modify ReLU activation functions to GeLUs \\citep{gelu} and initialise parameters from $\\mathcal{N}(0, 0.02)$.",
      "where": "Sec. 2.1 Architecture"
     },
     "norm_eps": {
@@ -273,7 +273,7 @@
     "activation": {
      "value": "gelu",
      "status": "stated",
-     "quote": "we modify ReLU activation functions to GeLUs \\citep{gelu}",
+     "quote": "except, following GPT, that we modify ReLU activation functions to GeLUs \\citep{gelu}",
      "where": "Sec. 2.1 Architecture"
     },
     "positional": {
@@ -303,19 +303,19 @@
     "residual": {
      "value": "residual",
      "status": "inherited",
-     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}",
+     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}, except, following GPT, that we modify ReLU activation functions to GeLUs \\citep{gelu} and initialise parameters from $\\mathcal{N}(0, 0.02)$.",
      "where": "Sec. 2.1 Architecture"
     },
     "parallel_block": {
      "value": "false",
      "status": "inherited",
-     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}",
+     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}, except, following GPT, that we modify ReLU activation functions to GeLUs \\citep{gelu} and initialise parameters from $\\mathcal{N}(0, 0.02)$.",
      "where": "Sec. 2.1 Architecture"
     },
     "attention": {
      "value": "exact",
      "status": "inherited",
-     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}",
+     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}, except, following GPT, that we modify ReLU activation functions to GeLUs \\citep{gelu} and initialise parameters from $\\mathcal{N}(0, 0.02)$.",
      "where": "Sec. 2.1 Architecture"
     },
     "window_size": {
@@ -343,15 +343,15 @@
      "where": ""
     },
     "tied_embeddings": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": ""
+     "value": "true",
+     "status": "inherited",
+     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}, except, following GPT, that we modify ReLU activation functions to GeLUs \\citep{gelu} and initialise parameters from $\\mathcal{N}(0, 0.02)$.",
+     "where": "Sec. 2.1 Architecture"
     },
     "moe": {
      "value": "false",
      "status": "inherited",
-     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}",
+     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}, except, following GPT, that we modify ReLU activation functions to GeLUs \\citep{gelu} and initialise parameters from $\\mathcal{N}(0, 0.02)$.",
      "where": "Sec. 2.1 Architecture"
     },
     "n_experts": {
@@ -388,40 +388,25 @@
     {
      "subgraph": "embed",
      "op": "pos_embedding",
-     "role": "learned absolute positional embedding added to token embedding",
+     "role": "learned absolute positional embedding",
      "inputs": [
       "e",
       "pos"
      ],
      "output": "x",
-     "attributes": [
-      {
-       "name": "learned",
-       "value": "true",
-       "status": "stated",
-       "quote": "we freeze most of BART parameters and only update the randomly initialized source encoder, the BART positional embeddings, and the self-attention input projection matrix of BART's encoder first layer.",
-       "where": "Sec. 3.4 Machine Translation"
-      }
-     ],
+     "attributes": [],
      "new_op": ""
     },
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "query projection (decoder self-attention)",
+     "role": "self-attention query projection",
      "inputs": [
       "x"
      ],
      "output": "q",
      "attributes": [
       {
-       "name": "out",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      },
-      {
        "name": "bias",
        "value": "",
        "status": "not_stated",
@@ -434,20 +419,13 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "key projection",
+     "role": "self-attention key projection",
      "inputs": [
       "x"
      ],
      "output": "k",
      "attributes": [
       {
-       "name": "out",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      },
-      {
        "name": "bias",
        "value": "",
        "status": "not_stated",
@@ -460,19 +438,12 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "value projection",
+     "role": "self-attention value projection",
      "inputs": [
       "x"
      ],
      "output": "v",
      "attributes": [
-      {
-       "name": "out",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      },
       {
        "name": "bias",
        "value": "",
@@ -486,7 +457,7 @@
     {
      "subgraph": "block",
      "op": "attention",
-     "role": "causal multi-head self-attention of the decoder",
+     "role": "decoder causal self-attention",
      "inputs": [
       "q",
       "k",
@@ -516,13 +487,6 @@
        "where": ""
       },
       {
-       "name": "scale",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      },
-      {
        "name": "causal",
        "value": "true",
        "status": "stated",
@@ -531,17 +495,10 @@
       },
       {
        "name": "window",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      },
-      {
-       "name": "sinks",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "0",
+       "status": "inherited",
+       "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}",
+       "where": "Sec. 2.1 Architecture"
       }
      ],
      "new_op": ""
@@ -549,19 +506,12 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "attention output projection",
+     "role": "self-attention output projection",
      "inputs": [
       "a"
      ],
      "output": "ao",
      "attributes": [
-      {
-       "name": "out",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      },
       {
        "name": "bias",
        "value": "",
@@ -575,7 +525,7 @@
     {
      "subgraph": "block",
      "op": "add",
-     "role": "residual add after self-attention",
+     "role": "residual add (self-attention)",
      "inputs": [
       "x",
       "ao"
@@ -618,7 +568,7 @@
     {
      "subgraph": "block",
      "op": "add",
-     "role": "residual add after cross-attention",
+     "role": "residual add (cross-attention)",
      "inputs": [
       "h1",
       "c"
@@ -701,13 +651,6 @@
      "output": "f",
      "attributes": [
       {
-       "name": "out",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      },
-      {
        "name": "bias",
        "value": "",
        "status": "not_stated",
@@ -720,7 +663,7 @@
     {
      "subgraph": "block",
      "op": "add",
-     "role": "residual add after FFN",
+     "role": "residual add (FFN)",
      "inputs": [
       "h2",
       "f"
@@ -758,25 +701,11 @@
      "output": "logits",
      "attributes": [
       {
-       "name": "no_extra_ffn",
-       "value": "true",
-       "status": "stated",
-       "quote": "BERT uses an additional feed-forward network before word-prediction, which BART does not.",
-       "where": "Sec. 2.1 Architecture"
-      },
-      {
-       "name": "bias",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      },
-      {
        "name": "tied_to",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "token_embd",
+       "status": "inherited",
+       "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}",
+       "where": "Sec. 2.1 Architecture"
       }
      ],
      "new_op": ""
@@ -790,22 +719,22 @@
      "inputs": [
       {
        "name": "x",
-       "meaning": "decoder hidden states [T, d] (queries)"
+       "meaning": "decoder hidden states [T_dec, d]"
       },
       {
        "name": "a",
-       "meaning": "final encoder hidden states [S, d] (keys/values)"
+       "meaning": "final encoder hidden states [T_enc, d]"
       }
      ],
-     "replaces": "encoder-decoder attention sublayer in each decoder layer",
-     "reason": "Requires non-causal multi-head attention whose queries come from the decoder stream [T, d] and keys/values from a second sequence (encoder output, [S, d], S != T); the IR attention op only attends within one sequence.",
+     "replaces": "decoder cross-attention sublayer",
+     "reason": "Requires attention whose queries come from the decoder stream [T_dec, d] and keys/values from a separate encoder output [T_enc, d]; the IR attention op only attends within one sequence.",
      "quote": "each layer of the decoder additionally performs cross-attention over the final hidden layer of the encoder (as in the transformer sequence-to-sequence model)",
      "where": "Sec. 2.1 Architecture"
     }
    ],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "Separate bidirectional (non-causal) Transformer encoder stack with the same number of layers as the decoder, whose final hidden states feed decoder cross-attention",
+     "mechanism": "Separate bidirectional (non-causal) Transformer encoder stack over the corrupted input, same layer count as the decoder, whose final hidden states feed decoder cross-attention",
      "quote": "For our base model, we use 6 layers in the encoder and decoder, and for our large model we use 12 layers in each.",
      "where": "Sec. 2.1 Architecture"
     },
@@ -815,7 +744,7 @@
      "where": "Sec. 2.1 Architecture"
     }
    ],
-   "notes": "Described the decoder block; the encoder block is the same without cross-attention and with non-causal self-attention. Base (6+6 layers, d=768) is the smallest configuration; large (12+12, d=1024) is the main pre-trained model. The paper declares the Vaswani et al. Transformer as its ancestor, so post-LayerNorm, residual connections and dense exact attention are marked inherited. Positional embeddings are marked learned because the paper says they are updated during MT fine-tuning, which differs from the ancestor's sinusoidal encoding. These are not stated: heads, d_ff, vocab size (only 'same BPE as GPT-2'), context length, eps, biases, embedding tying, and the GeLU form (exact or tanh). The machine-translation source encoder and the classification heads are fine-tuning additions and are not included."
+   "notes": "Block shown is one decoder layer. Post-LayerNorm, residuals and tied embeddings are marked inherited from the Vaswani et al. Transformer, because the paper explicitly says it uses that architecture. Learned positional embeddings are inferred from the statement that the BART positional embeddings are updated during MT fine-tuning. The paper does not say whether its GeLU is the exact or the tanh form; the activation flavour is recorded as 'gelu' and the block attribute approx is left not_stated. Heads, d_ff, vocab size (only described as the GPT-2 BPE), context length and eps are not stated. Primary config is large because the paper's headline results use it; base is the ablation size. The ablation section mentions changes to layer-norm usage, but these apply to the comparison objectives, not the final model."
   },
   "verification": {
    "errors": [],
@@ -849,7 +778,7 @@
      "n_layers": {
       "value": "6",
       "status": "stated",
-      "quote": "For our base model, we use 6 layers in the encoder and decoder",
+      "quote": "For our base model, we use 6 layers in the encoder and decoder, and for our large model we use 12 layers in each.",
       "where": "Sec. 2.1 Architecture",
       "reasons": [],
       "check": "verified"
@@ -973,12 +902,12 @@
      "consistency": []
     }
    ],
-   "primary_config": "base",
+   "primary_config": "large",
    "flavours": {
     "norm": {
      "value": "layernorm",
      "status": "inherited",
-     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}",
+     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}, except, following GPT, that we modify ReLU activation functions to GeLUs \\citep{gelu} and initialise parameters from $\\mathcal{N}(0, 0.02)$.",
      "where": "Sec. 2.1 Architecture",
      "reasons": [],
      "check": "verified"
@@ -986,7 +915,7 @@
     "norm_placement": {
      "value": "post",
      "status": "inherited",
-     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}",
+     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}, except, following GPT, that we modify ReLU activation functions to GeLUs \\citep{gelu} and initialise parameters from $\\mathcal{N}(0, 0.02)$.",
      "where": "Sec. 2.1 Architecture",
      "reasons": [
       "inherited from transformer, whose curated entry has no norm_placement"
@@ -1004,7 +933,7 @@
     "activation": {
      "value": "gelu",
      "status": "stated",
-     "quote": "we modify ReLU activation functions to GeLUs \\citep{gelu}",
+     "quote": "except, following GPT, that we modify ReLU activation functions to GeLUs \\citep{gelu}",
      "where": "Sec. 2.1 Architecture",
      "reasons": [],
      "check": "verified"
@@ -1046,7 +975,7 @@
     "residual": {
      "value": "residual",
      "status": "inherited",
-     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}",
+     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}, except, following GPT, that we modify ReLU activation functions to GeLUs \\citep{gelu} and initialise parameters from $\\mathcal{N}(0, 0.02)$.",
      "where": "Sec. 2.1 Architecture",
      "reasons": [
       "inherited from transformer, whose curated entry has no residual"
@@ -1056,7 +985,7 @@
     "parallel_block": {
      "value": "false",
      "status": "inherited",
-     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}",
+     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}, except, following GPT, that we modify ReLU activation functions to GeLUs \\citep{gelu} and initialise parameters from $\\mathcal{N}(0, 0.02)$.",
      "where": "Sec. 2.1 Architecture",
      "reasons": [
       "inherited from transformer, whose curated entry has no parallel_block"
@@ -1066,7 +995,7 @@
     "attention": {
      "value": "exact",
      "status": "inherited",
-     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}",
+     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}, except, following GPT, that we modify ReLU activation functions to GeLUs \\citep{gelu} and initialise parameters from $\\mathcal{N}(0, 0.02)$.",
      "where": "Sec. 2.1 Architecture",
      "reasons": [
       "inherited from transformer, whose curated entry has no attention"
@@ -1106,17 +1035,19 @@
      "check": "not_stated"
     },
     "tied_embeddings": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": "",
-     "reasons": [],
-     "check": "not_stated"
+     "value": "true",
+     "status": "inherited",
+     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}, except, following GPT, that we modify ReLU activation functions to GeLUs \\citep{gelu} and initialise parameters from $\\mathcal{N}(0, 0.02)$.",
+     "where": "Sec. 2.1 Architecture",
+     "reasons": [
+      "inherited from transformer, whose curated entry has no tied_embeddings"
+     ],
+     "check": "unverified"
     },
     "moe": {
      "value": "false",
      "status": "inherited",
-     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}",
+     "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}, except, following GPT, that we modify ReLU activation functions to GeLUs \\citep{gelu} and initialise parameters from $\\mathcal{N}(0, 0.02)$.",
      "where": "Sec. 2.1 Architecture",
      "reasons": [
       "inherited from transformer, whose curated entry has no moe"
@@ -1152,18 +1083,18 @@
     {
      "name": "cross_attention",
      "kind": "needs_new_primitive",
-     "replaces": "encoder-decoder attention sublayer in each decoder layer",
-     "reason": "Requires non-causal multi-head attention whose queries come from the decoder stream [T, d] and keys/values from a second sequence (encoder output, [S, d], S != T); the IR attention op only attends within one sequence.",
+     "replaces": "decoder cross-attention sublayer",
+     "reason": "Requires attention whose queries come from the decoder stream [T_dec, d] and keys/values from a separate encoder output [T_enc, d]; the IR attention op only attends within one sequence.",
      "quote": "each layer of the decoder additionally performs cross-attention over the final hidden layer of the encoder (as in the transformer sequence-to-sequence model)",
      "where": "Sec. 2.1 Architecture",
      "inputs": [
       {
        "name": "x",
-       "meaning": "decoder hidden states [T, d] (queries)"
+       "meaning": "decoder hidden states [T_dec, d]"
       },
       {
        "name": "a",
-       "meaning": "final encoder hidden states [S, d] (keys/values)"
+       "meaning": "final encoder hidden states [T_enc, d]"
       }
      ],
      "errors": [],
@@ -1189,46 +1120,27 @@
      "i": 1,
      "subgraph": "embed",
      "op": "pos_embedding",
-     "role": "learned absolute positional embedding added to token embedding",
+     "role": "learned absolute positional embedding",
      "inputs": [
       "e",
       "pos"
      ],
      "output": "x",
      "new_op": "",
-     "attributes": [
-      {
-       "value": "true",
-       "status": "stated",
-       "quote": "we freeze most of BART parameters and only update the randomly initialized source encoder, the BART positional embeddings, and the self-attention input projection matrix of BART's encoder first layer.",
-       "where": "Sec. 3.4 Machine Translation",
-       "reasons": [],
-       "check": "quote_only",
-       "name": "learned"
-      }
-     ],
+     "attributes": [],
      "errors": []
     },
     {
      "i": 2,
      "subgraph": "block",
      "op": "linear",
-     "role": "query projection (decoder self-attention)",
+     "role": "self-attention query projection",
      "inputs": [
       "x"
      ],
      "output": "q",
      "new_op": "",
      "attributes": [
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "out"
-      },
       {
        "value": "",
        "status": "not_stated",
@@ -1245,22 +1157,13 @@
      "i": 3,
      "subgraph": "block",
      "op": "linear",
-     "role": "key projection",
+     "role": "self-attention key projection",
      "inputs": [
       "x"
      ],
      "output": "k",
      "new_op": "",
      "attributes": [
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "out"
-      },
       {
        "value": "",
        "status": "not_stated",
@@ -1277,22 +1180,13 @@
      "i": 4,
      "subgraph": "block",
      "op": "linear",
-     "role": "value projection",
+     "role": "self-attention value projection",
      "inputs": [
       "x"
      ],
      "output": "v",
      "new_op": "",
      "attributes": [
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "out"
-      },
       {
        "value": "",
        "status": "not_stated",
@@ -1309,7 +1203,7 @@
      "i": 5,
      "subgraph": "block",
      "op": "attention",
-     "role": "causal multi-head self-attention of the decoder",
+     "role": "decoder causal self-attention",
      "inputs": [
       "q",
       "k",
@@ -1346,15 +1240,6 @@
        "name": "head_dim"
       },
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "scale"
-      },
-      {
        "value": "true",
        "status": "stated",
        "quote": "a left-to-right autoregressive decoder",
@@ -1364,22 +1249,15 @@
        "name": "causal"
       },
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
+       "value": "0",
+       "status": "inherited",
+       "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}",
+       "where": "Sec. 2.1 Architecture",
+       "reasons": [
+        "inherited from transformer, whose curated entry has no window"
+       ],
+       "check": "unverified",
        "name": "window"
-      },
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "sinks"
       }
      ],
      "errors": []
@@ -1388,22 +1266,13 @@
      "i": 6,
      "subgraph": "block",
      "op": "linear",
-     "role": "attention output projection",
+     "role": "self-attention output projection",
      "inputs": [
       "a"
      ],
      "output": "ao",
      "new_op": "",
      "attributes": [
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "out"
-      },
       {
        "value": "",
        "status": "not_stated",
@@ -1420,7 +1289,7 @@
      "i": 7,
      "subgraph": "block",
      "op": "add",
-     "role": "residual add after self-attention",
+     "role": "residual add (self-attention)",
      "inputs": [
       "x",
       "ao"
@@ -1471,7 +1340,7 @@
      "i": 10,
      "subgraph": "block",
      "op": "add",
-     "role": "residual add after cross-attention",
+     "role": "residual add (cross-attention)",
      "inputs": [
       "h1",
       "c"
@@ -1577,15 +1446,6 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
-       "name": "out"
-      },
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
        "name": "bias"
       }
      ],
@@ -1595,7 +1455,7 @@
      "i": 15,
      "subgraph": "block",
      "op": "add",
-     "role": "residual add after FFN",
+     "role": "residual add (FFN)",
      "inputs": [
       "h2",
       "f"
@@ -1640,30 +1500,14 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "true",
-       "status": "stated",
-       "quote": "BERT uses an additional feed-forward network before word-prediction, which BART does not.",
+       "value": "token_embd",
+       "status": "inherited",
+       "quote": "BART uses the standard sequence-to-sequence Transformer architecture from \\cite{vaswani:2017}",
        "where": "Sec. 2.1 Architecture",
-       "reasons": [],
-       "check": "quote_only",
-       "name": "no_extra_ffn"
-      },
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "bias"
-      },
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
+       "reasons": [
+        "inherited from transformer, whose curated entry has no tied_to"
+       ],
+       "check": "unverified",
        "name": "tied_to"
       }
      ],
@@ -1672,7 +1516,7 @@
    ],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "Separate bidirectional (non-causal) Transformer encoder stack with the same number of layers as the decoder, whose final hidden states feed decoder cross-attention",
+     "mechanism": "Separate bidirectional (non-causal) Transformer encoder stack over the corrupted input, same layer count as the decoder, whose final hidden states feed decoder cross-attention",
      "quote": "For our base model, we use 6 layers in the encoder and decoder, and for our large model we use 12 layers in each.",
      "where": "Sec. 2.1 Architecture",
      "check": "verified"
@@ -1687,9 +1531,9 @@
    "summary": {
     "counts": {
      "verified": 7,
-     "quote_only": 3,
-     "unverified": 6,
-     "not_stated": 48
+     "quote_only": 1,
+     "unverified": 9,
+     "not_stated": 37
     },
     "unverified": [
      {
@@ -1723,9 +1567,27 @@
       ]
      },
      {
+      "field": "flavours.tied_embeddings",
+      "reasons": [
+       "inherited from transformer, whose curated entry has no tied_embeddings"
+      ]
+     },
+     {
       "field": "flavours.moe",
       "reasons": [
        "inherited from transformer, whose curated entry has no moe"
+      ]
+     },
+     {
+      "field": "block_ops[5].window",
+      "reasons": [
+       "inherited from transformer, whose curated entry has no window"
+      ]
+     },
+     {
+      "field": "block_ops[17].tied_to",
+      "reasons": [
+       "inherited from transformer, whose curated entry has no tied_to"
       ]
      }
     ],

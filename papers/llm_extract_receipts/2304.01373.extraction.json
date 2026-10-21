@@ -19,7 +19,7 @@
   },
   "context_length": {
    "value": 2048,
-   "evidence": "seq-length & 2048 [Table tab:config]",
+   "evidence": "we use a batch size of 1024 samples with a sequence length of 2048 (2,097,152 tokens) for all models [Sec. 2.4 Training]",
    "verdict": "used"
   },
   "norm": {
@@ -28,13 +28,13 @@
    "verdict": "used"
   },
   "activation": {
-   "value": "gelu",
+   "value": "other:gelu (exact vs tanh form not stated)",
    "evidence": "bias-gelu-fusion & True [Table tab:config]",
    "verdict": "used"
   },
   "positional": {
    "value": "rope",
-   "evidence": "We use rotary embeddings introduced by \\citet{su2021roformer} and now in widespread use \\citep{black2022gpt,chowdhery2022palm,zeng2022glm} as our positional embedding type of choice. [Sec. 2.3 Architecture]",
+   "evidence": "We use rotary embeddings introduced by \\citet{su2021roformer} and now in widespread use [Sec. 2.3 Architecture]",
    "verdict": "used"
   },
   "residual": {
@@ -44,7 +44,7 @@
   },
   "attention": {
    "value": "exact",
-   "evidence": "while we follow all subsequent work and use fully dense layers for our models [Sec. 2.3 Architecture]",
+   "evidence": "while we follow all subsequent work and use fully dense layers for our models. [Sec. 2.3 Architecture]",
    "verdict": "used"
   }
  },
@@ -65,7 +65,7 @@
  "mentions": {},
  "inherits": {
   "ancestor": "gpt-3",
-  "evidence": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}, with a few notable deviations",
+  "evidence": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}, with a few notable deviations based on recent advances in best practices for large scale language modeling",
   "section": "Sec. 2.3 Architecture"
  },
  "variants": [
@@ -131,14 +131,14 @@
   "sent_sha256": "cd0a9d25fd29be5da38eeaafe3727046bf668c11b328baf3bea4815ae83c37a8",
   "from": "https://arxiv.org/e-print/2304.01373",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
   "n_calls": 1,
-  "cost_usd": 0.0,
+  "cost_usd": 0.444964,
   "request_ids": [
-   "req_011CgFcXCRPnLKdvNfd4zm3g"
+   "req_011CgFhtW9gAWiqbFzNhtXDJ"
   ]
  },
  "llm": {
@@ -148,12 +148,12 @@
    "family": {
     "value": "decoder_only",
     "status": "stated",
-    "quote": "In this paper we introduce \\textit{Pythia}, a suite of decoder-only autoregressive language models ranging from 70M to 12B parameters",
+    "quote": "In this paper we introduce \\textit{Pythia}, a suite of decoder-only autoregressive language models ranging from 70M to 12B parameters designed specifically to facilitate such scientific research.",
     "where": "Sec. 1 Introduction"
    },
    "inherits": {
-    "ancestor": "GPT-3 (brown2020language)",
-    "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}, with a few notable deviations",
+    "ancestor": "GPT-3 (Brown et al. 2020)",
+    "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}, with a few notable deviations based on recent advances in best practices for large scale language modeling",
     "where": "Sec. 2.3 Architecture"
    },
    "configs": [
@@ -192,7 +192,7 @@
      "d_ff": {
       "value": "2048",
       "status": "inherited",
-      "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}, with a few notable deviations",
+      "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}",
       "where": "Sec. 2.3 Architecture"
      },
      "vocab_size": {
@@ -204,8 +204,8 @@
      "context_length": {
       "value": "2048",
       "status": "stated",
-      "quote": "seq-length & 2048",
-      "where": "Table tab:config"
+      "quote": "we use a batch size of 1024 samples with a sequence length of 2048 (2,097,152 tokens) for all models",
+      "where": "Sec. 2.4 Training"
      }
     },
     {
@@ -243,7 +243,7 @@
      "d_ff": {
       "value": "3072",
       "status": "inherited",
-      "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}, with a few notable deviations",
+      "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}",
       "where": "Sec. 2.3 Architecture"
      },
      "vocab_size": {
@@ -255,8 +255,8 @@
      "context_length": {
       "value": "2048",
       "status": "stated",
-      "quote": "seq-length & 2048",
-      "where": "Table tab:config"
+      "quote": "we use a batch size of 1024 samples with a sequence length of 2048 (2,097,152 tokens) for all models",
+      "where": "Sec. 2.4 Training"
      }
     },
     {
@@ -294,7 +294,7 @@
      "d_ff": {
       "value": "4096",
       "status": "inherited",
-      "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}, with a few notable deviations",
+      "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}",
       "where": "Sec. 2.3 Architecture"
      },
      "vocab_size": {
@@ -306,8 +306,8 @@
      "context_length": {
       "value": "2048",
       "status": "stated",
-      "quote": "seq-length & 2048",
-      "where": "Table tab:config"
+      "quote": "we use a batch size of 1024 samples with a sequence length of 2048 (2,097,152 tokens) for all models",
+      "where": "Sec. 2.4 Training"
      }
     },
     {
@@ -345,7 +345,7 @@
      "d_ff": {
       "value": "8192",
       "status": "inherited",
-      "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}, with a few notable deviations",
+      "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}",
       "where": "Sec. 2.3 Architecture"
      },
      "vocab_size": {
@@ -357,8 +357,8 @@
      "context_length": {
       "value": "2048",
       "status": "stated",
-      "quote": "seq-length & 2048",
-      "where": "Table tab:config"
+      "quote": "we use a batch size of 1024 samples with a sequence length of 2048 (2,097,152 tokens) for all models",
+      "where": "Sec. 2.4 Training"
      }
     },
     {
@@ -396,7 +396,7 @@
      "d_ff": {
       "value": "8192",
       "status": "inherited",
-      "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}, with a few notable deviations",
+      "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}",
       "where": "Sec. 2.3 Architecture"
      },
      "vocab_size": {
@@ -408,8 +408,8 @@
      "context_length": {
       "value": "2048",
       "status": "stated",
-      "quote": "seq-length & 2048",
-      "where": "Table tab:config"
+      "quote": "we use a batch size of 1024 samples with a sequence length of 2048 (2,097,152 tokens) for all models",
+      "where": "Sec. 2.4 Training"
      }
     },
     {
@@ -447,7 +447,7 @@
      "d_ff": {
       "value": "10240",
       "status": "inherited",
-      "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}, with a few notable deviations",
+      "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}",
       "where": "Sec. 2.3 Architecture"
      },
      "vocab_size": {
@@ -459,8 +459,8 @@
      "context_length": {
       "value": "2048",
       "status": "stated",
-      "quote": "seq-length & 2048",
-      "where": "Table tab:config"
+      "quote": "we use a batch size of 1024 samples with a sequence length of 2048 (2,097,152 tokens) for all models",
+      "where": "Sec. 2.4 Training"
      }
     },
     {
@@ -498,7 +498,7 @@
      "d_ff": {
       "value": "16384",
       "status": "inherited",
-      "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}, with a few notable deviations",
+      "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}",
       "where": "Sec. 2.3 Architecture"
      },
      "vocab_size": {
@@ -510,8 +510,8 @@
      "context_length": {
       "value": "2048",
       "status": "stated",
-      "quote": "seq-length & 2048",
-      "where": "Table tab:config"
+      "quote": "we use a batch size of 1024 samples with a sequence length of 2048 (2,097,152 tokens) for all models",
+      "where": "Sec. 2.4 Training"
      }
     },
     {
@@ -549,7 +549,7 @@
      "d_ff": {
       "value": "20480",
       "status": "inherited",
-      "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}, with a few notable deviations",
+      "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}",
       "where": "Sec. 2.3 Architecture"
      },
      "vocab_size": {
@@ -561,8 +561,8 @@
      "context_length": {
       "value": "2048",
       "status": "stated",
-      "quote": "seq-length & 2048",
-      "where": "Table tab:config"
+      "quote": "we use a batch size of 1024 samples with a sequence length of 2048 (2,097,152 tokens) for all models",
+      "where": "Sec. 2.4 Training"
      }
     }
    ],
@@ -577,7 +577,7 @@
     "norm_placement": {
      "value": "pre",
      "status": "inherited",
-     "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}, with a few notable deviations",
+     "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}",
      "where": "Sec. 2.3 Architecture"
     },
     "norm_eps": {
@@ -587,7 +587,7 @@
      "where": ""
     },
     "activation": {
-     "value": "gelu",
+     "value": "other:gelu (exact vs tanh form not stated)",
      "status": "stated",
      "quote": "bias-gelu-fusion & True",
      "where": "Table tab:config"
@@ -595,7 +595,7 @@
     "positional": {
      "value": "rope",
      "status": "stated",
-     "quote": "We use rotary embeddings introduced by \\citet{su2021roformer} and now in widespread use \\citep{black2022gpt,chowdhery2022palm,zeng2022glm} as our positional embedding type of choice.",
+     "quote": "We use rotary embeddings introduced by \\citet{su2021roformer} and now in widespread use",
      "where": "Sec. 2.3 Architecture"
     },
     "rope_pairing": {
@@ -631,7 +631,7 @@
     "attention": {
      "value": "exact",
      "status": "stated",
-     "quote": "while we follow all subsequent work and use fully dense layers for our models",
+     "quote": "while we follow all subsequent work and use fully dense layers for our models.",
      "where": "Sec. 2.3 Architecture"
     },
     "window_size": {
@@ -693,12 +693,27 @@
     {
      "subgraph": "embed",
      "op": "embedding",
-     "role": "token embedding (untied from output head)",
+     "role": "token embedding (untied)",
      "inputs": [
       "tokens"
      ],
      "output": "x",
-     "attributes": [],
+     "attributes": [
+      {
+       "name": "vocab",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "d",
+       "value": "512",
+       "status": "stated",
+       "quote": "70 M  &     18,915,328   &  6     &  512      &  8",
+       "where": "Table 1 (table:interp)"
+      }
+     ],
      "new_op": ""
     },
     {
@@ -708,7 +723,7 @@
      "inputs": [
       "x"
      ],
-     "output": "h1",
+     "output": "h_attn",
      "attributes": [
       {
        "name": "eps",
@@ -725,10 +740,17 @@
      "op": "linear",
      "role": "query projection",
      "inputs": [
-      "h1"
+      "h_attn"
      ],
      "output": "q",
      "attributes": [
+      {
+       "name": "out",
+       "value": "512",
+       "status": "stated",
+       "quote": "70 M  &     18,915,328   &  6     &  512      &  8",
+       "where": "Table 1 (table:interp)"
+      },
       {
        "name": "bias",
        "value": "",
@@ -744,10 +766,17 @@
      "op": "linear",
      "role": "key projection",
      "inputs": [
-      "h1"
+      "h_attn"
      ],
      "output": "k",
      "attributes": [
+      {
+       "name": "out",
+       "value": "512",
+       "status": "stated",
+       "quote": "70 M  &     18,915,328   &  6     &  512      &  8",
+       "where": "Table 1 (table:interp)"
+      },
       {
        "name": "bias",
        "value": "",
@@ -763,10 +792,17 @@
      "op": "linear",
      "role": "value projection",
      "inputs": [
-      "h1"
+      "h_attn"
      ],
      "output": "v",
      "attributes": [
+      {
+       "name": "out",
+       "value": "512",
+       "status": "stated",
+       "quote": "70 M  &     18,915,328   &  6     &  512      &  8",
+       "where": "Table 1 (table:interp)"
+      },
       {
        "name": "bias",
        "value": "",
@@ -795,10 +831,10 @@
       },
       {
        "name": "n_rot",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "0.25*head_dim",
+       "status": "stated",
+       "quote": "rotary-pct & 0.25",
+       "where": "Table tab:config"
       },
       {
        "name": "pairing",
@@ -835,10 +871,10 @@
       },
       {
        "name": "n_rot",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "0.25*head_dim",
+       "status": "stated",
+       "quote": "rotary-pct & 0.25",
+       "where": "Table tab:config"
       },
       {
        "name": "pairing",
@@ -860,13 +896,13 @@
     {
      "subgraph": "block",
      "op": "attention",
-     "role": "dense causal multi-head self-attention",
+     "role": "dense causal self-attention",
      "inputs": [
       "q_r",
       "k_r",
       "v"
      ],
-     "output": "a",
+     "output": "att",
      "attributes": [
       {
        "name": "heads",
@@ -907,7 +943,7 @@
        "name": "window",
        "value": "0",
        "status": "stated",
-       "quote": "while we follow all subsequent work and use fully dense layers for our models",
+       "quote": "while we follow all subsequent work and use fully dense layers for our models.",
        "where": "Sec. 2.3 Architecture"
       },
       {
@@ -925,10 +961,17 @@
      "op": "linear",
      "role": "attention output projection",
      "inputs": [
-      "a"
+      "att"
      ],
      "output": "attn_out",
      "attributes": [
+      {
+       "name": "out",
+       "value": "512",
+       "status": "stated",
+       "quote": "70 M  &     18,915,328   &  6     &  512      &  8",
+       "where": "Table 1 (table:interp)"
+      },
       {
        "name": "bias",
        "value": "",
@@ -942,11 +985,11 @@
     {
      "subgraph": "block",
      "op": "layernorm",
-     "role": "FFN-branch input norm (parallel branch reads block input x)",
+     "role": "MLP-branch input norm (reads same x as attention: parallel block)",
      "inputs": [
       "x"
      ],
-     "output": "h2",
+     "output": "h_mlp",
      "attributes": [
       {
        "name": "eps",
@@ -961,12 +1004,19 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "FFN up projection",
+     "role": "MLP up projection",
      "inputs": [
-      "h2"
+      "h_mlp"
      ],
-     "output": "u",
+     "output": "up",
      "attributes": [
+      {
+       "name": "out",
+       "value": "2048",
+       "status": "inherited",
+       "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}",
+       "where": "Sec. 2.3 Architecture"
+      },
       {
        "name": "bias",
        "value": "true",
@@ -980,11 +1030,11 @@
     {
      "subgraph": "block",
      "op": "gelu",
-     "role": "FFN activation",
+     "role": "MLP activation",
      "inputs": [
-      "u"
+      "up"
      ],
-     "output": "g",
+     "output": "act",
      "attributes": [
       {
        "name": "approx",
@@ -999,12 +1049,19 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "FFN down projection",
+     "role": "MLP down projection",
      "inputs": [
-      "g"
+      "act"
      ],
      "output": "mlp_out",
      "attributes": [
+      {
+       "name": "out",
+       "value": "512",
+       "status": "stated",
+       "quote": "70 M  &     18,915,328   &  6     &  512      &  8",
+       "where": "Table 1 (table:interp)"
+      },
       {
        "name": "bias",
        "value": "",
@@ -1018,21 +1075,21 @@
     {
      "subgraph": "block",
      "op": "add",
-     "role": "parallel residual: x + attention",
+     "role": "parallel residual: x + attention branch",
      "inputs": [
       "x",
       "attn_out"
      ],
-     "output": "r1",
+     "output": "x1",
      "attributes": [],
      "new_op": ""
     },
     {
      "subgraph": "block",
      "op": "add",
-     "role": "parallel residual: + FFN",
+     "role": "parallel residual: + MLP branch",
      "inputs": [
-      "r1",
+      "x1",
       "mlp_out"
      ],
      "output": "x",
@@ -1061,12 +1118,19 @@
     {
      "subgraph": "head",
      "op": "linear",
-     "role": "untied unembedding to vocabulary logits",
+     "role": "untied unembedding / LM head",
      "inputs": [
       "hf"
      ],
      "output": "logits",
      "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
       {
        "name": "bias",
        "value": "",
@@ -1087,22 +1151,22 @@
    ],
    "new_ops": [],
    "mechanisms_outside_ir": [],
-   "notes": "All 8 sizes of the standard Pythia suite (the deduplicated suite uses identical architectures). Primary config is 70M. head_dim (d_model/heads, e.g. 64 for 70M), vocab size, rope theta and pairing, norm eps, GELU form and qkv bias are not stated, so they are left not_stated. Rotary fraction 0.25 is stated, but n_rot is not given as a number. d_ff and pre-norm placement are marked inherited from GPT-3 via the 'largely follow' sentence; they are not restated in this paper. The paper states the parallel attention+FFN (GPT-J) residual. Whether it uses one shared layernorm or two separate ones is not stated; two are drawn. The final layernorm in the head is assumed from the GPT-3 lineage and is not stated here. Flash Attention is an implementation detail only."
+   "notes": "Describes the Pythia suite; the standard and deduplicated suites share identical architectures. Block ops use the 70M config's sizes. The block is a GPT-J-style parallel block: attention and MLP both read x and are added to it. The paper does not say whether the two branches use separate or shared LayerNorms; two are shown. The final LayerNorm and pre-norm placement are taken from the declared GPT-3 inheritance, not stated directly. d_ff is inherited from GPT-3's 4*d_model convention. head_dim is not stated; it equals d_model/n_heads if MHA is assumed, and n_kv_heads is also not stated. The config key bias-gelu-fusion implies a GELU MLP with bias, but whether GELU is exact or tanh-approximated is not stated. Not stated: vocab size (only the GPT-NeoX-20B tokenizer is named), LayerNorm eps (the 1e-08 is Adam's eps), rope pairing and theta, and qkv bias. rotary-pct 0.25 means a quarter of each head's dims are rotated."
   },
   "verification": {
    "errors": [],
    "warnings": [],
    "inherits": {
-    "ancestor": "GPT-3 (brown2020language)",
+    "ancestor": "GPT-3 (Brown et al. 2020)",
     "resolved": "gpt-3",
-    "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}, with a few notable deviations",
+    "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}, with a few notable deviations based on recent advances in best practices for large scale language modeling",
     "where": "Sec. 2.3 Architecture",
     "quote_found": true
    },
    "family": {
     "value": "decoder_only",
     "status": "stated",
-    "quote": "In this paper we introduce \\textit{Pythia}, a suite of decoder-only autoregressive language models ranging from 70M to 12B parameters",
+    "quote": "In this paper we introduce \\textit{Pythia}, a suite of decoder-only autoregressive language models ranging from 70M to 12B parameters designed specifically to facilitate such scientific research.",
     "where": "Sec. 1 Introduction",
     "reasons": [],
     "check": "quote_only"
@@ -1153,7 +1217,7 @@
      "d_ff": {
       "value": "2048",
       "status": "inherited",
-      "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}, with a few notable deviations",
+      "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}",
       "where": "Sec. 2.3 Architecture",
       "reasons": [
        "inherited from gpt-3, whose curated entry has no d_ff",
@@ -1172,8 +1236,8 @@
      "context_length": {
       "value": "2048",
       "status": "stated",
-      "quote": "seq-length & 2048",
-      "where": "Table tab:config",
+      "quote": "we use a batch size of 1024 samples with a sequence length of 2048 (2,097,152 tokens) for all models",
+      "where": "Sec. 2.4 Training",
       "reasons": [],
       "check": "verified"
      },
@@ -1229,7 +1293,7 @@
      "d_ff": {
       "value": "3072",
       "status": "inherited",
-      "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}, with a few notable deviations",
+      "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}",
       "where": "Sec. 2.3 Architecture",
       "reasons": [
        "inherited from gpt-3, whose curated entry has no d_ff",
@@ -1248,8 +1312,8 @@
      "context_length": {
       "value": "2048",
       "status": "stated",
-      "quote": "seq-length & 2048",
-      "where": "Table tab:config",
+      "quote": "we use a batch size of 1024 samples with a sequence length of 2048 (2,097,152 tokens) for all models",
+      "where": "Sec. 2.4 Training",
       "reasons": [],
       "check": "verified"
      },
@@ -1305,7 +1369,7 @@
      "d_ff": {
       "value": "4096",
       "status": "inherited",
-      "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}, with a few notable deviations",
+      "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}",
       "where": "Sec. 2.3 Architecture",
       "reasons": [
        "inherited from gpt-3, whose curated entry has no d_ff",
@@ -1324,8 +1388,8 @@
      "context_length": {
       "value": "2048",
       "status": "stated",
-      "quote": "seq-length & 2048",
-      "where": "Table tab:config",
+      "quote": "we use a batch size of 1024 samples with a sequence length of 2048 (2,097,152 tokens) for all models",
+      "where": "Sec. 2.4 Training",
       "reasons": [],
       "check": "verified"
      },
@@ -1381,7 +1445,7 @@
      "d_ff": {
       "value": "8192",
       "status": "inherited",
-      "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}, with a few notable deviations",
+      "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}",
       "where": "Sec. 2.3 Architecture",
       "reasons": [
        "inherited from gpt-3, whose curated entry has no d_ff",
@@ -1400,8 +1464,8 @@
      "context_length": {
       "value": "2048",
       "status": "stated",
-      "quote": "seq-length & 2048",
-      "where": "Table tab:config",
+      "quote": "we use a batch size of 1024 samples with a sequence length of 2048 (2,097,152 tokens) for all models",
+      "where": "Sec. 2.4 Training",
       "reasons": [],
       "check": "verified"
      },
@@ -1457,7 +1521,7 @@
      "d_ff": {
       "value": "8192",
       "status": "inherited",
-      "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}, with a few notable deviations",
+      "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}",
       "where": "Sec. 2.3 Architecture",
       "reasons": [
        "inherited from gpt-3, whose curated entry has no d_ff",
@@ -1476,8 +1540,8 @@
      "context_length": {
       "value": "2048",
       "status": "stated",
-      "quote": "seq-length & 2048",
-      "where": "Table tab:config",
+      "quote": "we use a batch size of 1024 samples with a sequence length of 2048 (2,097,152 tokens) for all models",
+      "where": "Sec. 2.4 Training",
       "reasons": [],
       "check": "verified"
      },
@@ -1533,7 +1597,7 @@
      "d_ff": {
       "value": "10240",
       "status": "inherited",
-      "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}, with a few notable deviations",
+      "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}",
       "where": "Sec. 2.3 Architecture",
       "reasons": [
        "inherited from gpt-3, whose curated entry has no d_ff",
@@ -1552,8 +1616,8 @@
      "context_length": {
       "value": "2048",
       "status": "stated",
-      "quote": "seq-length & 2048",
-      "where": "Table tab:config",
+      "quote": "we use a batch size of 1024 samples with a sequence length of 2048 (2,097,152 tokens) for all models",
+      "where": "Sec. 2.4 Training",
       "reasons": [],
       "check": "verified"
      },
@@ -1609,7 +1673,7 @@
      "d_ff": {
       "value": "16384",
       "status": "inherited",
-      "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}, with a few notable deviations",
+      "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}",
       "where": "Sec. 2.3 Architecture",
       "reasons": [
        "inherited from gpt-3, whose curated entry has no d_ff",
@@ -1628,8 +1692,8 @@
      "context_length": {
       "value": "2048",
       "status": "stated",
-      "quote": "seq-length & 2048",
-      "where": "Table tab:config",
+      "quote": "we use a batch size of 1024 samples with a sequence length of 2048 (2,097,152 tokens) for all models",
+      "where": "Sec. 2.4 Training",
       "reasons": [],
       "check": "verified"
      },
@@ -1685,7 +1749,7 @@
      "d_ff": {
       "value": "20480",
       "status": "inherited",
-      "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}, with a few notable deviations",
+      "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}",
       "where": "Sec. 2.3 Architecture",
       "reasons": [
        "inherited from gpt-3, whose curated entry has no d_ff",
@@ -1704,8 +1768,8 @@
      "context_length": {
       "value": "2048",
       "status": "stated",
-      "quote": "seq-length & 2048",
-      "where": "Table tab:config",
+      "quote": "we use a batch size of 1024 samples with a sequence length of 2048 (2,097,152 tokens) for all models",
+      "where": "Sec. 2.4 Training",
       "reasons": [],
       "check": "verified"
      },
@@ -1730,7 +1794,7 @@
     "norm_placement": {
      "value": "pre",
      "status": "inherited",
-     "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}, with a few notable deviations",
+     "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}",
      "where": "Sec. 2.3 Architecture",
      "reasons": [
       "inherited from gpt-3, whose curated entry has no norm_placement",
@@ -1747,17 +1811,17 @@
      "check": "not_stated"
     },
     "activation": {
-     "value": "gelu",
+     "value": "other:gelu (exact vs tanh form not stated)",
      "status": "stated",
      "quote": "bias-gelu-fusion & True",
      "where": "Table tab:config",
      "reasons": [],
-     "check": "verified"
+     "check": "quote_only"
     },
     "positional": {
      "value": "rope",
      "status": "stated",
-     "quote": "We use rotary embeddings introduced by \\citet{su2021roformer} and now in widespread use \\citep{black2022gpt,chowdhery2022palm,zeng2022glm} as our positional embedding type of choice.",
+     "quote": "We use rotary embeddings introduced by \\citet{su2021roformer} and now in widespread use",
      "where": "Sec. 2.3 Architecture",
      "reasons": [],
      "check": "verified"
@@ -1805,7 +1869,7 @@
     "attention": {
      "value": "exact",
      "status": "stated",
-     "quote": "while we follow all subsequent work and use fully dense layers for our models",
+     "quote": "while we follow all subsequent work and use fully dense layers for our models.",
      "where": "Sec. 2.3 Architecture",
      "reasons": [],
      "check": "quote_only"
@@ -1889,13 +1953,32 @@
      "i": 0,
      "subgraph": "embed",
      "op": "embedding",
-     "role": "token embedding (untied from output head)",
+     "role": "token embedding (untied)",
      "inputs": [
       "tokens"
      ],
      "output": "x",
      "new_op": "",
-     "attributes": [],
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "vocab"
+      },
+      {
+       "value": "512",
+       "status": "stated",
+       "quote": "70 M  &     18,915,328   &  6     &  512      &  8",
+       "where": "Table 1 (table:interp)",
+       "reasons": [],
+       "check": "verified",
+       "name": "d"
+      }
+     ],
      "errors": []
     },
     {
@@ -1906,7 +1989,7 @@
      "inputs": [
       "x"
      ],
-     "output": "h1",
+     "output": "h_attn",
      "new_op": "",
      "attributes": [
       {
@@ -1927,11 +2010,20 @@
      "op": "linear",
      "role": "query projection",
      "inputs": [
-      "h1"
+      "h_attn"
      ],
      "output": "q",
      "new_op": "",
      "attributes": [
+      {
+       "value": "512",
+       "status": "stated",
+       "quote": "70 M  &     18,915,328   &  6     &  512      &  8",
+       "where": "Table 1 (table:interp)",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
       {
        "value": "",
        "status": "not_stated",
@@ -1950,11 +2042,20 @@
      "op": "linear",
      "role": "key projection",
      "inputs": [
-      "h1"
+      "h_attn"
      ],
      "output": "k",
      "new_op": "",
      "attributes": [
+      {
+       "value": "512",
+       "status": "stated",
+       "quote": "70 M  &     18,915,328   &  6     &  512      &  8",
+       "where": "Table 1 (table:interp)",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
       {
        "value": "",
        "status": "not_stated",
@@ -1973,11 +2074,20 @@
      "op": "linear",
      "role": "value projection",
      "inputs": [
-      "h1"
+      "h_attn"
      ],
      "output": "v",
      "new_op": "",
      "attributes": [
+      {
+       "value": "512",
+       "status": "stated",
+       "quote": "70 M  &     18,915,328   &  6     &  512      &  8",
+       "where": "Table 1 (table:interp)",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
       {
        "value": "",
        "status": "not_stated",
@@ -2011,12 +2121,12 @@
        "name": "rope_heads"
       },
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
+       "value": "0.25*head_dim",
+       "status": "stated",
+       "quote": "rotary-pct & 0.25",
+       "where": "Table tab:config",
        "reasons": [],
-       "check": "not_stated",
+       "check": "verified",
        "name": "n_rot"
       },
       {
@@ -2061,12 +2171,12 @@
        "name": "rope_heads"
       },
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
+       "value": "0.25*head_dim",
+       "status": "stated",
+       "quote": "rotary-pct & 0.25",
+       "where": "Table tab:config",
        "reasons": [],
-       "check": "not_stated",
+       "check": "verified",
        "name": "n_rot"
       },
       {
@@ -2094,13 +2204,13 @@
      "i": 7,
      "subgraph": "block",
      "op": "attention",
-     "role": "dense causal multi-head self-attention",
+     "role": "dense causal self-attention",
      "inputs": [
       "q_r",
       "k_r",
       "v"
      ],
-     "output": "a",
+     "output": "att",
      "new_op": "",
      "attributes": [
       {
@@ -2151,7 +2261,7 @@
       {
        "value": "0",
        "status": "stated",
-       "quote": "while we follow all subsequent work and use fully dense layers for our models",
+       "quote": "while we follow all subsequent work and use fully dense layers for our models.",
        "where": "Sec. 2.3 Architecture",
        "reasons": [
         "0 does not occur in its quote"
@@ -2177,11 +2287,20 @@
      "op": "linear",
      "role": "attention output projection",
      "inputs": [
-      "a"
+      "att"
      ],
      "output": "attn_out",
      "new_op": "",
      "attributes": [
+      {
+       "value": "512",
+       "status": "stated",
+       "quote": "70 M  &     18,915,328   &  6     &  512      &  8",
+       "where": "Table 1 (table:interp)",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
       {
        "value": "",
        "status": "not_stated",
@@ -2198,11 +2317,11 @@
      "i": 9,
      "subgraph": "block",
      "op": "layernorm",
-     "role": "FFN-branch input norm (parallel branch reads block input x)",
+     "role": "MLP-branch input norm (reads same x as attention: parallel block)",
      "inputs": [
       "x"
      ],
-     "output": "h2",
+     "output": "h_mlp",
      "new_op": "",
      "attributes": [
       {
@@ -2221,13 +2340,25 @@
      "i": 10,
      "subgraph": "block",
      "op": "linear",
-     "role": "FFN up projection",
+     "role": "MLP up projection",
      "inputs": [
-      "h2"
+      "h_mlp"
      ],
-     "output": "u",
+     "output": "up",
      "new_op": "",
      "attributes": [
+      {
+       "value": "2048",
+       "status": "inherited",
+       "quote": "Our model architecture and hyperparameters largely follow \\citet{brown2020language}",
+       "where": "Sec. 2.3 Architecture",
+       "reasons": [
+        "inherited from gpt-3, whose curated entry has no out",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "out"
+      },
       {
        "value": "true",
        "status": "stated",
@@ -2244,11 +2375,11 @@
      "i": 11,
      "subgraph": "block",
      "op": "gelu",
-     "role": "FFN activation",
+     "role": "MLP activation",
      "inputs": [
-      "u"
+      "up"
      ],
-     "output": "g",
+     "output": "act",
      "new_op": "",
      "attributes": [
       {
@@ -2267,13 +2398,22 @@
      "i": 12,
      "subgraph": "block",
      "op": "linear",
-     "role": "FFN down projection",
+     "role": "MLP down projection",
      "inputs": [
-      "g"
+      "act"
      ],
      "output": "mlp_out",
      "new_op": "",
      "attributes": [
+      {
+       "value": "512",
+       "status": "stated",
+       "quote": "70 M  &     18,915,328   &  6     &  512      &  8",
+       "where": "Table 1 (table:interp)",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
       {
        "value": "",
        "status": "not_stated",
@@ -2290,12 +2430,12 @@
      "i": 13,
      "subgraph": "block",
      "op": "add",
-     "role": "parallel residual: x + attention",
+     "role": "parallel residual: x + attention branch",
      "inputs": [
       "x",
       "attn_out"
      ],
-     "output": "r1",
+     "output": "x1",
      "new_op": "",
      "attributes": [],
      "errors": []
@@ -2304,9 +2444,9 @@
      "i": 14,
      "subgraph": "block",
      "op": "add",
-     "role": "parallel residual: + FFN",
+     "role": "parallel residual: + MLP branch",
      "inputs": [
-      "r1",
+      "x1",
       "mlp_out"
      ],
      "output": "x",
@@ -2341,13 +2481,22 @@
      "i": 16,
      "subgraph": "head",
      "op": "linear",
-     "role": "untied unembedding to vocabulary logits",
+     "role": "untied unembedding / LM head",
      "inputs": [
       "hf"
      ],
      "output": "logits",
      "new_op": "",
      "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
       {
        "value": "",
        "status": "not_stated",
@@ -2375,9 +2524,9 @@
    "mechanisms_outside_ir": [],
    "summary": {
     "counts": {
-     "verified": 38,
-     "quote_only": 9,
-     "unverified": 11,
+     "verified": 45,
+     "quote_only": 10,
+     "unverified": 12,
      "not_stated": 54
     },
     "unverified": [
@@ -2448,6 +2597,13 @@
       "field": "block_ops[7].window",
       "reasons": [
        "0 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[10].out",
+      "reasons": [
+       "inherited from gpt-3, whose curated entry has no out",
+       "the inheritance quote does not name the ancestor"
       ]
      },
      {

@@ -3,43 +3,18 @@
  "title": "RoFormer: Enhanced Transformer with Rotary Position Embedding",
  "fields": {
   "context_length": {
-   "value": 512,
-   "evidence": "We train both BERT and RoFormer with batch size 64 and maximum sequence length of 512 for 100k steps. [Sec. Pre-training Language Modeling / Implementation details]",
+   "value": 1536,
+   "evidence": "2 & 1536 & 256 & 12.5k & 1.61 & 66.8\\% \\\\ [Table tb:roformer-pretrain]",
    "verdict": "used"
-  },
-  "norm": {
-   "value": "layernorm",
-   "evidence": "Note that we use bert-base-uncased in our experiments. [Sec. Pre-training Language Modeling / Experimental Settings]",
-   "verdict": "unverified",
-   "reasons": [
-    "the inheritance quote does not name the ancestor"
-   ]
-  },
-  "activation": {
-   "value": "gelu",
-   "evidence": "Note that we use bert-base-uncased in our experiments. [Sec. Pre-training Language Modeling / Experimental Settings]",
-   "verdict": "unverified",
-   "reasons": [
-    "the inheritance quote does not name the ancestor"
-   ]
   },
   "positional": {
    "value": "rope",
-   "evidence": "For RoFormer, we replace the sinusoidal position encoding in the self-attention block of the baseline model with our proposed RoPE and realizes self-attention according to \\Cref{fn:rope-qk}. [Sec. Pre-training Language Modeling / Implementation details]",
+   "evidence": "In these experiments, we carried out some modifications on WoBERT \\cite{zhuiyipretrainedmodels} by replacing the absolute position embedding with our proposed RoPE. [Sec. Evaluation on Chinese Data / Implementation]",
    "verdict": "used"
-  },
-  "residual": {
-   "value": "residual",
-   "evidence": "Note that we use bert-base-uncased in our experiments. [Sec. Pre-training Language Modeling / Experimental Settings]",
-   "verdict": "unverified",
-   "reasons": [
-    "inherited from bert, whose curated entry has no residual",
-    "the inheritance quote does not name the ancestor"
-   ]
   },
   "attention": {
    "value": "exact",
-   "evidence": "For RoFormer, we replace the sinusoidal position encoding in the self-attention block of the baseline model with our proposed RoPE and realizes self-attention according to \\Cref{fn:rope-qk}. [Sec. Pre-training Language Modeling / Implementation details]",
+   "evidence": "we replace the sinusoidal position encoding in the self-attention block of the baseline model with our proposed RoPE and realizes self-attention according to \\Cref{fn:rope-qk} [Sec. Pre-training Language Modeling / Implementation details]",
    "verdict": "used"
   }
  },
@@ -49,94 +24,29 @@
   "n_heads",
   "n_kv_heads",
   "d_ff",
-  "vocab_size"
+  "vocab_size",
+  "norm",
+  "activation",
+  "residual"
  ],
- "unverified": [
-  {
-   "field": "d_model",
-   "reasons": [
-    "inherited from bert, whose curated entry has no d_model",
-    "the inheritance quote does not name the ancestor"
-   ]
-  },
-  {
-   "field": "n_layers",
-   "reasons": [
-    "inherited from bert, whose curated entry has no n_layers",
-    "the inheritance quote does not name the ancestor"
-   ]
-  },
-  {
-   "field": "n_heads",
-   "reasons": [
-    "inherited from bert, whose curated entry has no n_heads",
-    "the inheritance quote does not name the ancestor"
-   ]
-  },
-  {
-   "field": "n_kv_heads",
-   "reasons": [
-    "inherited from bert, whose curated entry has no n_kv_heads",
-    "the inheritance quote does not name the ancestor"
-   ]
-  },
-  {
-   "field": "d_ff",
-   "reasons": [
-    "inherited from bert, whose curated entry has no d_ff",
-    "the inheritance quote does not name the ancestor"
-   ]
-  },
-  {
-   "field": "vocab_size",
-   "reasons": [
-    "inherited from bert, whose curated entry has no vocab_size",
-    "the inheritance quote does not name the ancestor"
-   ]
-  },
-  {
-   "field": "norm",
-   "reasons": [
-    "the inheritance quote does not name the ancestor"
-   ]
-  },
-  {
-   "field": "activation",
-   "reasons": [
-    "the inheritance quote does not name the ancestor"
-   ]
-  },
-  {
-   "field": "residual",
-   "reasons": [
-    "inherited from bert, whose curated entry has no residual",
-    "the inheritance quote does not name the ancestor"
-   ]
-  }
- ],
+ "unverified": [],
  "mentions": {},
  "inherits": {
-  "ancestor": "bert",
-  "evidence": "we replace the original sinusoidal position encoding of BERT with our RoPE during the pre-training step.",
-  "section": "Sec. Pre-training Language Modeling"
+  "ancestor": "WoBERT (BERT-style encoder); the English pre-training variant is bert-base-uncased",
+  "evidence": "In these experiments, we carried out some modifications on WoBERT \\cite{zhuiyipretrainedmodels} by replacing the absolute position embedding with our proposed RoPE.",
+  "section": "Sec. Evaluation on Chinese Data / Implementation"
  },
  "variants": [
   {
-   "context_length": 512
+   "context_length": 1536
   }
  ],
  "mechanism_scan": [
   {
    "mechanism": "encoder-decoder or encoder-only model",
-   "where": "llm extraction, UNVERIFIED quote, Sec. Pre-training Language Modeling / Experimental Settings",
+   "where": "llm extraction, UNVERIFIED quote, Sec. Evaluation on Chinese Data / Implementation",
    "blocking": true,
-   "evidence": "Note that we use bert-base-uncased in our experiments."
-  },
-  {
-   "mechanism": "BERT token-type (segment) embeddings added to token embeddings in the embed subgraph (inherited from bert-base-uncased; not restated)",
-   "where": "llm extraction, verified quote, Sec. Pre-training Language Modeling / Experimental Settings",
-   "blocking": true,
-   "evidence": "Note that we use bert-base-uncased in our experiments."
+   "evidence": "In these experiments, we carried out some modifications on WoBERT \\cite{zhuiyipretrainedmodels} by replacing the absolute position embedding with our proposed RoPE."
   }
  ],
  "source": {
@@ -144,150 +54,150 @@
   "sent_sha256": "88bc607c59af65d9afa43426e16362ee17312aff460e9a68b4483c9ea2c014ec",
   "from": "https://arxiv.org/e-print/2104.09864",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
   "n_calls": 1,
-  "cost_usd": 0.0,
+  "cost_usd": 0.227348,
   "request_ids": [
-   "req_011CgFbfX5RLSeL4Pzg6ZGfJ"
+   "req_011CgFgphmwXQugXSSgFEZJU"
   ]
  },
  "llm": {
   "output": {
    "title": "RoFormer: Enhanced Transformer with Rotary Position Embedding",
-   "model_name": "RoFormer",
+   "model_name": "RoFormer (Chinese long-text model built on WoBERT with RoPE)",
    "family": {
     "value": "encoder_only",
     "status": "inherited",
-    "quote": "Note that we use bert-base-uncased in our experiments.",
-    "where": "Sec. Pre-training Language Modeling / Experimental Settings"
+    "quote": "In these experiments, we carried out some modifications on WoBERT \\cite{zhuiyipretrainedmodels} by replacing the absolute position embedding with our proposed RoPE.",
+    "where": "Sec. Evaluation on Chinese Data / Implementation"
    },
    "inherits": {
-    "ancestor": "BERT (bert-base-uncased)",
-    "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step.",
-    "where": "Sec. Pre-training Language Modeling"
+    "ancestor": "WoBERT (BERT-style encoder); the English pre-training variant is bert-base-uncased",
+    "quote": "In these experiments, we carried out some modifications on WoBERT \\cite{zhuiyipretrainedmodels} by replacing the absolute position embedding with our proposed RoPE.",
+    "where": "Sec. Evaluation on Chinese Data / Implementation"
    },
    "configs": [
     {
-     "name": "RoFormer (bert-base-uncased with RoPE)",
+     "name": "RoFormer (Chinese)",
      "d_model": {
-      "value": "768",
-      "status": "inherited",
-      "quote": "Note that we use bert-base-uncased in our experiments.",
-      "where": "Sec. Pre-training Language Modeling / Experimental Settings"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
      },
      "n_layers": {
-      "value": "12",
-      "status": "inherited",
-      "quote": "Note that we use bert-base-uncased in our experiments.",
-      "where": "Sec. Pre-training Language Modeling / Experimental Settings"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
      },
      "n_heads": {
-      "value": "12",
-      "status": "inherited",
-      "quote": "Note that we use bert-base-uncased in our experiments.",
-      "where": "Sec. Pre-training Language Modeling / Experimental Settings"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
      },
      "n_kv_heads": {
-      "value": "12",
-      "status": "inherited",
-      "quote": "Note that we use bert-base-uncased in our experiments.",
-      "where": "Sec. Pre-training Language Modeling / Experimental Settings"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
      },
      "head_dim": {
-      "value": "64",
-      "status": "inherited",
-      "quote": "Note that we use bert-base-uncased in our experiments.",
-      "where": "Sec. Pre-training Language Modeling / Experimental Settings"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
      },
      "d_ff": {
-      "value": "3072",
-      "status": "inherited",
-      "quote": "Note that we use bert-base-uncased in our experiments.",
-      "where": "Sec. Pre-training Language Modeling / Experimental Settings"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
      },
      "vocab_size": {
-      "value": "30522",
-      "status": "inherited",
-      "quote": "Note that we use bert-base-uncased in our experiments.",
-      "where": "Sec. Pre-training Language Modeling / Experimental Settings"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
      },
      "context_length": {
-      "value": "512",
+      "value": "1536",
       "status": "stated",
-      "quote": "We train both BERT and RoFormer with batch size 64 and maximum sequence length  of 512 for 100k steps.",
-      "where": "Sec. Pre-training Language Modeling / Implementation details"
+      "quote": "2 & 1536 & 256 & 12.5k & 1.61 & 66.8\\% \\\\",
+      "where": "Table tb:roformer-pretrain"
      }
     }
    ],
-   "primary_config": "RoFormer (bert-base-uncased with RoPE)",
+   "primary_config": "RoFormer (Chinese)",
    "flavours": {
     "norm": {
-     "value": "layernorm",
-     "status": "inherited",
-     "quote": "Note that we use bert-base-uncased in our experiments.",
-     "where": "Sec. Pre-training Language Modeling / Experimental Settings"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "norm_placement": {
-     "value": "post",
-     "status": "inherited",
-     "quote": "Note that we use bert-base-uncased in our experiments.",
-     "where": "Sec. Pre-training Language Modeling / Experimental Settings"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "norm_eps": {
-     "value": "1e-12",
-     "status": "inherited",
-     "quote": "Note that we use bert-base-uncased in our experiments.",
-     "where": "Sec. Pre-training Language Modeling / Experimental Settings"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "activation": {
-     "value": "gelu",
-     "status": "inherited",
-     "quote": "Note that we use bert-base-uncased in our experiments.",
-     "where": "Sec. Pre-training Language Modeling / Experimental Settings"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "positional": {
      "value": "rope",
      "status": "stated",
-     "quote": "For RoFormer, we replace the sinusoidal position encoding in the self-attention block of the baseline model with our proposed RoPE and realizes self-attention according to \\Cref{fn:rope-qk}.",
-     "where": "Sec. Pre-training Language Modeling / Implementation details"
+     "quote": "In these experiments, we carried out some modifications on WoBERT \\cite{zhuiyipretrainedmodels} by replacing the absolute position embedding with our proposed RoPE.",
+     "where": "Sec. Evaluation on Chinese Data / Implementation"
     },
     "rope_pairing": {
      "value": "interleaved",
      "status": "stated",
-     "quote": "where $\\q_{[2i:2i+1]}$ represents the $2i^{th}$ to $(2i+1)^{th}$ entries of $\\q$.",
-     "where": "Sec. Long-term decay of RoPE"
+     "quote": "\\cos{m\\theta_1}& -\\sin{m\\theta_1}&0&0&\\cdots&0&0\\\\",
+     "where": "eq fn:rope-RMat"
     },
     "rope_theta": {
      "value": "10000",
      "status": "stated",
-     "quote": "is the rotary matrix with pre-defined parameters $\\Theta = \\{\\theta_i=10000^{-2(i-1)/d}, i \\in [1, 2, ..., d/2]\\}$.",
-     "where": "Sec. General form (eq fn:rope-RMat)"
+     "quote": "is the rotary matrix with pre-defined parameters $\\Theta = \\{\\theta_i=10000^{-2(i-1)/d}, i \\in [1, 2, ..., d/2]\\}$",
+     "where": "Sec. General form"
     },
     "rope_fraction": {
-     "value": "1",
+     "value": "1.0",
      "status": "stated",
      "quote": "we divide the d-dimension space into $d/2$ sub-spaces and combine them in the merit of the linearity of the inner product",
      "where": "Sec. General form"
     },
     "residual": {
-     "value": "residual",
-     "status": "inherited",
-     "quote": "Note that we use bert-base-uncased in our experiments.",
-     "where": "Sec. Pre-training Language Modeling / Experimental Settings"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "parallel_block": {
-     "value": "false",
-     "status": "inherited",
-     "quote": "Note that we use bert-base-uncased in our experiments.",
-     "where": "Sec. Pre-training Language Modeling / Experimental Settings"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "attention": {
      "value": "exact",
      "status": "stated",
-     "quote": "For RoFormer, we replace the sinusoidal position encoding in the self-attention block of the baseline model with our proposed RoPE and realizes self-attention according to \\Cref{fn:rope-qk}.",
+     "quote": "we replace the sinusoidal position encoding in the self-attention block of the baseline model with our proposed RoPE and realizes self-attention according to \\Cref{fn:rope-qk}",
      "where": "Sec. Pre-training Language Modeling / Implementation details"
     },
     "window_size": {
@@ -303,28 +213,28 @@
      "where": ""
     },
     "qkv_bias": {
-     "value": "true",
-     "status": "inherited",
-     "quote": "Note that we use bert-base-uncased in our experiments.",
-     "where": "Sec. Pre-training Language Modeling / Experimental Settings"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "mlp_bias": {
-     "value": "true",
-     "status": "inherited",
-     "quote": "Note that we use bert-base-uncased in our experiments.",
-     "where": "Sec. Pre-training Language Modeling / Experimental Settings"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "tied_embeddings": {
-     "value": "true",
-     "status": "inherited",
-     "quote": "Note that we use bert-base-uncased in our experiments.",
-     "where": "Sec. Pre-training Language Modeling / Experimental Settings"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "moe": {
-     "value": "false",
-     "status": "inherited",
-     "quote": "Note that we use bert-base-uncased in our experiments.",
-     "where": "Sec. Pre-training Language Modeling / Experimental Settings"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "n_experts": {
      "value": "",
@@ -349,70 +259,29 @@
     {
      "subgraph": "embed",
      "op": "embedding",
-     "role": "token embedding",
+     "role": "token embedding (no absolute position embedding; replaced by RoPE)",
      "inputs": [
       "tokens"
      ],
-     "output": "e",
-     "attributes": [
-      {
-       "name": "vocab",
-       "value": "30522",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings"
-      },
-      {
-       "name": "d",
-       "value": "768",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings"
-      }
-     ],
-     "new_op": ""
-    },
-    {
-     "subgraph": "embed",
-     "op": "layernorm",
-     "role": "embedding layernorm",
-     "inputs": [
-      "e"
-     ],
      "output": "x",
-     "attributes": [
-      {
-       "name": "eps",
-       "value": "1e-12",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings"
-      }
-     ],
+     "attributes": [],
      "new_op": ""
     },
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "query projection",
+     "role": "query projection W_q",
      "inputs": [
       "x"
      ],
      "output": "q",
      "attributes": [
       {
-       "name": "out",
-       "value": "768",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings"
-      },
-      {
        "name": "bias",
-       "value": "true",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -420,25 +289,18 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "key projection",
+     "role": "key projection W_k",
      "inputs": [
       "x"
      ],
      "output": "k",
      "attributes": [
       {
-       "name": "out",
-       "value": "768",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings"
-      },
-      {
        "name": "bias",
-       "value": "true",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -446,25 +308,18 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "value projection",
+     "role": "value projection W_v",
      "inputs": [
       "x"
      ],
      "output": "v",
      "attributes": [
       {
-       "name": "out",
-       "value": "768",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings"
-      },
-      {
        "name": "bias",
-       "value": "true",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -476,35 +331,35 @@
      "inputs": [
       "q"
      ],
-     "output": "qr",
+     "output": "q_rot",
      "attributes": [
       {
        "name": "rope_heads",
        "value": "all",
        "status": "stated",
-       "quote": "For RoFormer, we replace the sinusoidal position encoding in the self-attention block of the baseline model with our proposed RoPE and realizes self-attention according to \\Cref{fn:rope-qk}.",
-       "where": "Sec. Pre-training Language Modeling / Implementation details"
+       "quote": "f_{\\{q, k\\}}(\\x_m, m) = \\R^d_{\\Theta, m}\\W_{\\{q, k\\}}\\x_m",
+       "where": "eq fn:rope-fqk"
       },
       {
        "name": "pairing",
        "value": "interleaved",
        "status": "stated",
-       "quote": "where $\\q_{[2i:2i+1]}$ represents the $2i^{th}$ to $(2i+1)^{th}$ entries of $\\q$.",
-       "where": "Sec. Long-term decay of RoPE"
+       "quote": "\\cos{m\\theta_1}& -\\sin{m\\theta_1}&0&0&\\cdots&0&0\\\\",
+       "where": "eq fn:rope-RMat"
       },
       {
        "name": "n_rot",
-       "value": "64",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       },
       {
        "name": "theta",
        "value": "10000",
        "status": "stated",
-       "quote": "is the rotary matrix with pre-defined parameters $\\Theta = \\{\\theta_i=10000^{-2(i-1)/d}, i \\in [1, 2, ..., d/2]\\}$.",
-       "where": "Sec. General form (eq fn:rope-RMat)"
+       "quote": "is the rotary matrix with pre-defined parameters $\\Theta = \\{\\theta_i=10000^{-2(i-1)/d}, i \\in [1, 2, ..., d/2]\\}$",
+       "where": "Sec. General form"
       }
      ],
      "new_op": ""
@@ -516,35 +371,35 @@
      "inputs": [
       "k"
      ],
-     "output": "kr",
+     "output": "k_rot",
      "attributes": [
       {
        "name": "rope_heads",
        "value": "all",
        "status": "stated",
-       "quote": "For RoFormer, we replace the sinusoidal position encoding in the self-attention block of the baseline model with our proposed RoPE and realizes self-attention according to \\Cref{fn:rope-qk}.",
-       "where": "Sec. Pre-training Language Modeling / Implementation details"
+       "quote": "f_{\\{q, k\\}}(\\x_m, m) = \\R^d_{\\Theta, m}\\W_{\\{q, k\\}}\\x_m",
+       "where": "eq fn:rope-fqk"
       },
       {
        "name": "pairing",
        "value": "interleaved",
        "status": "stated",
-       "quote": "where $\\q_{[2i:2i+1]}$ represents the $2i^{th}$ to $(2i+1)^{th}$ entries of $\\q$.",
-       "where": "Sec. Long-term decay of RoPE"
+       "quote": "\\cos{m\\theta_1}& -\\sin{m\\theta_1}&0&0&\\cdots&0&0\\\\",
+       "where": "eq fn:rope-RMat"
       },
       {
        "name": "n_rot",
-       "value": "64",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       },
       {
        "name": "theta",
        "value": "10000",
        "status": "stated",
-       "quote": "is the rotary matrix with pre-defined parameters $\\Theta = \\{\\theta_i=10000^{-2(i-1)/d}, i \\in [1, 2, ..., d/2]\\}$.",
-       "where": "Sec. General form (eq fn:rope-RMat)"
+       "quote": "is the rotary matrix with pre-defined parameters $\\Theta = \\{\\theta_i=10000^{-2(i-1)/d}, i \\in [1, 2, ..., d/2]\\}$",
+       "where": "Sec. General form"
       }
      ],
      "new_op": ""
@@ -552,55 +407,55 @@
     {
      "subgraph": "block",
      "op": "attention",
-     "role": "bidirectional multi-head self-attention",
+     "role": "softmax self-attention with rotated q/k",
      "inputs": [
-      "qr",
-      "kr",
+      "q_rot",
+      "k_rot",
       "v"
      ],
-     "output": "att",
+     "output": "o",
      "attributes": [
       {
        "name": "heads",
-       "value": "12",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       },
       {
        "name": "kv_heads",
-       "value": "12",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       },
       {
        "name": "head_dim",
-       "value": "64",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       },
       {
        "name": "scale",
-       "value": "0.125",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings"
+       "value": "1/sqrt(d)",
+       "status": "stated",
+       "quote": "a_{m,n}&=\\frac{\\exp(\\frac{\\q_m^{\\intercal}\\k_n}{\\sqrt{d}})}{\\sum_{j=1}^{N}\\exp(\\frac{\\q_m^{\\intercal}\\k_j}{\\sqrt{d}})}",
+       "where": "eq fn:attn"
       },
       {
        "name": "causal",
-       "value": "false",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       },
       {
        "name": "window",
-       "value": "0",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       },
       {
        "name": "sinks",
@@ -617,23 +472,16 @@
      "op": "linear",
      "role": "attention output projection",
      "inputs": [
-      "att"
+      "o"
      ],
-     "output": "ao",
+     "output": "attn_out",
      "attributes": [
       {
-       "name": "out",
-       "value": "768",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings"
-      },
-      {
        "name": "bias",
-       "value": "true",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -641,413 +489,157 @@
     {
      "subgraph": "block",
      "op": "add",
-     "role": "attention residual",
+     "role": "residual add around attention (assumed from Transformer encoder; placement and norms not stated)",
      "inputs": [
       "x",
-      "ao"
-     ],
-     "output": "r1",
-     "attributes": [],
-     "new_op": ""
-    },
-    {
-     "subgraph": "block",
-     "op": "layernorm",
-     "role": "post-attention layernorm",
-     "inputs": [
-      "r1"
+      "attn_out"
      ],
      "output": "h",
-     "attributes": [
-      {
-       "name": "eps",
-       "value": "1e-12",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings"
-      }
-     ],
-     "new_op": ""
-    },
-    {
-     "subgraph": "block",
-     "op": "linear",
-     "role": "FFN up projection",
-     "inputs": [
-      "h"
-     ],
-     "output": "u",
-     "attributes": [
-      {
-       "name": "out",
-       "value": "3072",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings"
-      },
-      {
-       "name": "bias",
-       "value": "true",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings"
-      }
-     ],
-     "new_op": ""
-    },
-    {
-     "subgraph": "block",
-     "op": "gelu",
-     "role": "FFN activation",
-     "inputs": [
-      "u"
-     ],
-     "output": "g",
-     "attributes": [
-      {
-       "name": "approx",
-       "value": "none",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings"
-      }
-     ],
-     "new_op": ""
-    },
-    {
-     "subgraph": "block",
-     "op": "linear",
-     "role": "FFN down projection",
-     "inputs": [
-      "g"
-     ],
-     "output": "f",
-     "attributes": [
-      {
-       "name": "out",
-       "value": "768",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings"
-      },
-      {
-       "name": "bias",
-       "value": "true",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings"
-      }
-     ],
-     "new_op": ""
-    },
-    {
-     "subgraph": "block",
-     "op": "add",
-     "role": "FFN residual",
-     "inputs": [
-      "h",
-      "f"
-     ],
-     "output": "r2",
      "attributes": [],
-     "new_op": ""
-    },
-    {
-     "subgraph": "block",
-     "op": "layernorm",
-     "role": "post-FFN layernorm (block output)",
-     "inputs": [
-      "r2"
-     ],
-     "output": "x",
-     "attributes": [
-      {
-       "name": "eps",
-       "value": "1e-12",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings"
-      }
-     ],
-     "new_op": ""
-    },
-    {
-     "subgraph": "head",
-     "op": "linear",
-     "role": "MLM transform dense",
-     "inputs": [
-      "x"
-     ],
-     "output": "t",
-     "attributes": [
-      {
-       "name": "out",
-       "value": "768",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings"
-      },
-      {
-       "name": "bias",
-       "value": "true",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings"
-      }
-     ],
-     "new_op": ""
-    },
-    {
-     "subgraph": "head",
-     "op": "gelu",
-     "role": "MLM transform activation",
-     "inputs": [
-      "t"
-     ],
-     "output": "tg",
-     "attributes": [
-      {
-       "name": "approx",
-       "value": "none",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings"
-      }
-     ],
-     "new_op": ""
-    },
-    {
-     "subgraph": "head",
-     "op": "layernorm",
-     "role": "MLM transform layernorm",
-     "inputs": [
-      "tg"
-     ],
-     "output": "tn",
-     "attributes": [
-      {
-       "name": "eps",
-       "value": "1e-12",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings"
-      }
-     ],
-     "new_op": ""
-    },
-    {
-     "subgraph": "head",
-     "op": "linear",
-     "role": "MLM output projection to vocabulary",
-     "inputs": [
-      "tn"
-     ],
-     "output": "logits",
-     "attributes": [
-      {
-       "name": "out",
-       "value": "30522",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings"
-      },
-      {
-       "name": "bias",
-       "value": "true",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings"
-      },
-      {
-       "name": "tied_to",
-       "value": "token_embd",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings"
-      }
-     ],
      "new_op": ""
     }
    ],
    "new_ops": [],
-   "mechanisms_outside_ir": [
-    {
-     "mechanism": "BERT token-type (segment) embeddings added to token embeddings in the embed subgraph (inherited from bert-base-uncased; not restated)",
-     "quote": "Note that we use bert-base-uncased in our experiments.",
-     "where": "Sec. Pre-training Language Modeling / Experimental Settings"
-    }
-   ],
-   "notes": "Described the English RoFormer used for pre-training and GLUE: bert-base-uncased with its position encoding replaced by RoPE applied to q and k. All size and flavour values except RoPE and the 512 context length are inherited from BERT-base; the paper itself does not restate them. The paper says it replaces BERT's 'sinusoidal' position encoding, but BERT actually uses learned absolute embeddings. I assumed the additive position table is removed, which matches the RoPE-only description. RoPE pairing is adjacent (interleaved), theta 10000, full head dimension rotated. Variants not described here: the MT model (Transformer-base encoder-decoder, 37k joint BPE vocab), Performer+RoPE (12 layers, 768 dim, 12 heads, linear attention, char level), and the Chinese WoBERT-based RoFormer (dims not stated)."
+   "mechanisms_outside_ir": [],
+   "notes": "The headline model is the Chinese RoFormer (WoBERT with its absolute position embedding replaced by RoPE). It is the model used for the long-text benchmark named in the abstract and the Huggingface release. Other settings are not described: the MT encoder-decoder on Transformer-base, the English BERT (bert-base-uncased) replacement, and Performer+RoPE on enwik8 with 12 layers, 768 dimensions and 12 heads. The paper states only the positional mechanism. RoPE uses interleaved adjacent pairs, theta base 10000, and rotates all dimensions. All size fields are left not_stated, as are norm, FFN and activation, biases and the MLM head, because the paper defers to WoBERT/BERT without restating them. The FFN, the norms and the head are therefore omitted from block_ops. context_length 1536 is the longest pre-training stage; stage 1 and the main downstream setting use 512, and a 1024 cut-off is also evaluated. The paper writes theta both as 10000^{-2(i-1)/d} and as 10000^{-2i/d}."
   },
   "verification": {
    "errors": [],
    "warnings": [],
    "inherits": {
-    "ancestor": "BERT (bert-base-uncased)",
-    "resolved": "bert",
-    "quote": "we replace  the original sinusoidal position encoding of BERT with our RoPE during the pre-training step.",
-    "where": "Sec. Pre-training Language Modeling",
+    "ancestor": "WoBERT (BERT-style encoder); the English pre-training variant is bert-base-uncased",
+    "resolved": null,
+    "quote": "In these experiments, we carried out some modifications on WoBERT \\cite{zhuiyipretrainedmodels} by replacing the absolute position embedding with our proposed RoPE.",
+    "where": "Sec. Evaluation on Chinese Data / Implementation",
     "quote_found": true
    },
    "family": {
     "value": "encoder_only",
     "status": "inherited",
-    "quote": "Note that we use bert-base-uncased in our experiments.",
-    "where": "Sec. Pre-training Language Modeling / Experimental Settings",
+    "quote": "In these experiments, we carried out some modifications on WoBERT \\cite{zhuiyipretrainedmodels} by replacing the absolute position embedding with our proposed RoPE.",
+    "where": "Sec. Evaluation on Chinese Data / Implementation",
     "reasons": [
-     "inherited from bert, whose curated entry has no family",
-     "the inheritance quote does not name the ancestor"
+     "inherited, but the ancestor is not in fetch.ANCESTORS (the curated table)"
     ],
     "check": "unverified"
    },
    "configs": [
     {
-     "name": "RoFormer (bert-base-uncased with RoPE)",
+     "name": "RoFormer (Chinese)",
      "d_model": {
-      "value": "768",
-      "status": "inherited",
-      "quote": "Note that we use bert-base-uncased in our experiments.",
-      "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-      "reasons": [
-       "inherited from bert, whose curated entry has no d_model",
-       "the inheritance quote does not name the ancestor"
-      ],
-      "check": "unverified"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
      },
      "n_layers": {
-      "value": "12",
-      "status": "inherited",
-      "quote": "Note that we use bert-base-uncased in our experiments.",
-      "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-      "reasons": [
-       "inherited from bert, whose curated entry has no n_layers",
-       "the inheritance quote does not name the ancestor"
-      ],
-      "check": "unverified"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
      },
      "n_heads": {
-      "value": "12",
-      "status": "inherited",
-      "quote": "Note that we use bert-base-uncased in our experiments.",
-      "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-      "reasons": [
-       "inherited from bert, whose curated entry has no n_heads",
-       "the inheritance quote does not name the ancestor"
-      ],
-      "check": "unverified"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
      },
      "n_kv_heads": {
-      "value": "12",
-      "status": "inherited",
-      "quote": "Note that we use bert-base-uncased in our experiments.",
-      "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-      "reasons": [
-       "inherited from bert, whose curated entry has no n_kv_heads",
-       "the inheritance quote does not name the ancestor"
-      ],
-      "check": "unverified"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
      },
      "head_dim": {
-      "value": "64",
-      "status": "inherited",
-      "quote": "Note that we use bert-base-uncased in our experiments.",
-      "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-      "reasons": [
-       "inherited from bert, whose curated entry has no head_dim",
-       "the inheritance quote does not name the ancestor"
-      ],
-      "check": "unverified"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
      },
      "d_ff": {
-      "value": "3072",
-      "status": "inherited",
-      "quote": "Note that we use bert-base-uncased in our experiments.",
-      "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-      "reasons": [
-       "inherited from bert, whose curated entry has no d_ff",
-       "the inheritance quote does not name the ancestor"
-      ],
-      "check": "unverified"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
      },
      "vocab_size": {
-      "value": "30522",
-      "status": "inherited",
-      "quote": "Note that we use bert-base-uncased in our experiments.",
-      "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-      "reasons": [
-       "inherited from bert, whose curated entry has no vocab_size",
-       "the inheritance quote does not name the ancestor"
-      ],
-      "check": "unverified"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
      },
      "context_length": {
-      "value": "512",
+      "value": "1536",
       "status": "stated",
-      "quote": "We train both BERT and RoFormer with batch size 64 and maximum sequence length  of 512 for 100k steps.",
-      "where": "Sec. Pre-training Language Modeling / Implementation details",
+      "quote": "2 & 1536 & 256 & 12.5k & 1.61 & 66.8\\% \\\\",
+      "where": "Table tb:roformer-pretrain",
       "reasons": [],
       "check": "verified"
      },
      "consistency": []
     }
    ],
-   "primary_config": "RoFormer (bert-base-uncased with RoPE)",
+   "primary_config": "RoFormer (Chinese)",
    "flavours": {
     "norm": {
-     "value": "layernorm",
-     "status": "inherited",
-     "quote": "Note that we use bert-base-uncased in our experiments.",
-     "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-     "reasons": [
-      "the inheritance quote does not name the ancestor"
-     ],
-     "check": "unverified"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "norm_placement": {
-     "value": "post",
-     "status": "inherited",
-     "quote": "Note that we use bert-base-uncased in our experiments.",
-     "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-     "reasons": [
-      "inherited from bert, whose curated entry has no norm_placement",
-      "the inheritance quote does not name the ancestor"
-     ],
-     "check": "unverified"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "norm_eps": {
-     "value": "1e-12",
-     "status": "inherited",
-     "quote": "Note that we use bert-base-uncased in our experiments.",
-     "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-     "reasons": [
-      "inherited from bert, whose curated entry has no norm_eps",
-      "the inheritance quote does not name the ancestor"
-     ],
-     "check": "unverified"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "activation": {
-     "value": "gelu",
-     "status": "inherited",
-     "quote": "Note that we use bert-base-uncased in our experiments.",
-     "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-     "reasons": [
-      "the inheritance quote does not name the ancestor"
-     ],
-     "check": "unverified"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "positional": {
      "value": "rope",
      "status": "stated",
-     "quote": "For RoFormer, we replace the sinusoidal position encoding in the self-attention block of the baseline model with our proposed RoPE and realizes self-attention according to \\Cref{fn:rope-qk}.",
-     "where": "Sec. Pre-training Language Modeling / Implementation details",
+     "quote": "In these experiments, we carried out some modifications on WoBERT \\cite{zhuiyipretrainedmodels} by replacing the absolute position embedding with our proposed RoPE.",
+     "where": "Sec. Evaluation on Chinese Data / Implementation",
      "reasons": [],
      "check": "verified"
     },
     "rope_pairing": {
      "value": "interleaved",
      "status": "stated",
-     "quote": "where $\\q_{[2i:2i+1]}$ represents the $2i^{th}$ to $(2i+1)^{th}$ entries of $\\q$.",
-     "where": "Sec. Long-term decay of RoPE",
+     "quote": "\\cos{m\\theta_1}& -\\sin{m\\theta_1}&0&0&\\cdots&0&0\\\\",
+     "where": "eq fn:rope-RMat",
      "reasons": [
       "the quote does not name interleaved (looked for /interleav|adjacent|pair/)"
      ],
@@ -1056,47 +648,41 @@
     "rope_theta": {
      "value": "10000",
      "status": "stated",
-     "quote": "is the rotary matrix with pre-defined parameters $\\Theta = \\{\\theta_i=10000^{-2(i-1)/d}, i \\in [1, 2, ..., d/2]\\}$.",
-     "where": "Sec. General form (eq fn:rope-RMat)",
+     "quote": "is the rotary matrix with pre-defined parameters $\\Theta = \\{\\theta_i=10000^{-2(i-1)/d}, i \\in [1, 2, ..., d/2]\\}$",
+     "where": "Sec. General form",
      "reasons": [],
      "check": "verified"
     },
     "rope_fraction": {
-     "value": "1",
+     "value": "1.0",
      "status": "stated",
      "quote": "we divide the d-dimension space into $d/2$ sub-spaces and combine them in the merit of the linearity of the inner product",
      "where": "Sec. General form",
      "reasons": [
-      "1 does not occur in its quote"
+      "1.0 does not occur in its quote"
      ],
      "check": "unverified"
     },
     "residual": {
-     "value": "residual",
-     "status": "inherited",
-     "quote": "Note that we use bert-base-uncased in our experiments.",
-     "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-     "reasons": [
-      "inherited from bert, whose curated entry has no residual",
-      "the inheritance quote does not name the ancestor"
-     ],
-     "check": "unverified"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "parallel_block": {
-     "value": "false",
-     "status": "inherited",
-     "quote": "Note that we use bert-base-uncased in our experiments.",
-     "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-     "reasons": [
-      "inherited from bert, whose curated entry has no parallel_block",
-      "the inheritance quote does not name the ancestor"
-     ],
-     "check": "unverified"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "attention": {
      "value": "exact",
      "status": "stated",
-     "quote": "For RoFormer, we replace the sinusoidal position encoding in the self-attention block of the baseline model with our proposed RoPE and realizes self-attention according to \\Cref{fn:rope-qk}.",
+     "quote": "we replace the sinusoidal position encoding in the self-attention block of the baseline model with our proposed RoPE and realizes self-attention according to \\Cref{fn:rope-qk}",
      "where": "Sec. Pre-training Language Modeling / Implementation details",
      "reasons": [],
      "check": "quote_only"
@@ -1118,48 +704,36 @@
      "check": "not_stated"
     },
     "qkv_bias": {
-     "value": "true",
-     "status": "inherited",
-     "quote": "Note that we use bert-base-uncased in our experiments.",
-     "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-     "reasons": [
-      "inherited from bert, whose curated entry has no qkv_bias",
-      "the inheritance quote does not name the ancestor"
-     ],
-     "check": "unverified"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "mlp_bias": {
-     "value": "true",
-     "status": "inherited",
-     "quote": "Note that we use bert-base-uncased in our experiments.",
-     "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-     "reasons": [
-      "inherited from bert, whose curated entry has no mlp_bias",
-      "the inheritance quote does not name the ancestor"
-     ],
-     "check": "unverified"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "tied_embeddings": {
-     "value": "true",
-     "status": "inherited",
-     "quote": "Note that we use bert-base-uncased in our experiments.",
-     "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-     "reasons": [
-      "inherited from bert, whose curated entry has no tied_embeddings",
-      "the inheritance quote does not name the ancestor"
-     ],
-     "check": "unverified"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "moe": {
-     "value": "false",
-     "status": "inherited",
-     "quote": "Note that we use bert-base-uncased in our experiments.",
-     "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-     "reasons": [
-      "inherited from bert, whose curated entry has no moe",
-      "the inheritance quote does not name the ancestor"
-     ],
-     "check": "unverified"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "n_experts": {
      "value": "",
@@ -1192,62 +766,34 @@
      "i": 0,
      "subgraph": "embed",
      "op": "embedding",
-     "role": "token embedding",
+     "role": "token embedding (no absolute position embedding; replaced by RoPE)",
      "inputs": [
       "tokens"
      ],
-     "output": "e",
+     "output": "x",
      "new_op": "",
-     "attributes": [
-      {
-       "value": "30522",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-       "reasons": [
-        "inherited from bert, whose curated entry has no vocab",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
-       "name": "vocab"
-      },
-      {
-       "value": "768",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-       "reasons": [
-        "inherited from bert, whose curated entry has no d",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
-       "name": "d"
-      }
-     ],
+     "attributes": [],
      "errors": []
     },
     {
      "i": 1,
-     "subgraph": "embed",
-     "op": "layernorm",
-     "role": "embedding layernorm",
+     "subgraph": "block",
+     "op": "linear",
+     "role": "query projection W_q",
      "inputs": [
-      "e"
+      "x"
      ],
-     "output": "x",
+     "output": "q",
      "new_op": "",
      "attributes": [
       {
-       "value": "1e-12",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-       "reasons": [
-        "inherited from bert, whose curated entry has no eps",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
-       "name": "eps"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
       }
      ],
      "errors": []
@@ -1256,35 +802,20 @@
      "i": 2,
      "subgraph": "block",
      "op": "linear",
-     "role": "query projection",
+     "role": "key projection W_k",
      "inputs": [
       "x"
      ],
-     "output": "q",
+     "output": "k",
      "new_op": "",
      "attributes": [
       {
-       "value": "768",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-       "reasons": [
-        "inherited from bert, whose curated entry has no out",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
-       "name": "out"
-      },
-      {
-       "value": "true",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-       "reasons": [
-        "inherited from bert, whose curated entry has no bias",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "bias"
       }
      ],
@@ -1294,35 +825,20 @@
      "i": 3,
      "subgraph": "block",
      "op": "linear",
-     "role": "key projection",
+     "role": "value projection W_v",
      "inputs": [
       "x"
      ],
-     "output": "k",
+     "output": "v",
      "new_op": "",
      "attributes": [
       {
-       "value": "768",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-       "reasons": [
-        "inherited from bert, whose curated entry has no out",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
-       "name": "out"
-      },
-      {
-       "value": "true",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-       "reasons": [
-        "inherited from bert, whose curated entry has no bias",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "bias"
       }
      ],
@@ -1331,37 +847,49 @@
     {
      "i": 4,
      "subgraph": "block",
-     "op": "linear",
-     "role": "value projection",
+     "op": "rope",
+     "role": "rotary position embedding on queries",
      "inputs": [
-      "x"
+      "q"
      ],
-     "output": "v",
+     "output": "q_rot",
      "new_op": "",
      "attributes": [
       {
-       "value": "768",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-       "reasons": [
-        "inherited from bert, whose curated entry has no out",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
-       "name": "out"
+       "value": "all",
+       "status": "stated",
+       "quote": "f_{\\{q, k\\}}(\\x_m, m) = \\R^d_{\\Theta, m}\\W_{\\{q, k\\}}\\x_m",
+       "where": "eq fn:rope-fqk",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "rope_heads"
       },
       {
-       "value": "true",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-       "reasons": [
-        "inherited from bert, whose curated entry has no bias",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
-       "name": "bias"
+       "value": "interleaved",
+       "status": "stated",
+       "quote": "\\cos{m\\theta_1}& -\\sin{m\\theta_1}&0&0&\\cdots&0&0\\\\",
+       "where": "eq fn:rope-RMat",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "pairing"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "n_rot"
+      },
+      {
+       "value": "10000",
+       "status": "stated",
+       "quote": "is the rotary matrix with pre-defined parameters $\\Theta = \\{\\theta_i=10000^{-2(i-1)/d}, i \\in [1, 2, ..., d/2]\\}$",
+       "where": "Sec. General form",
+       "reasons": [],
+       "check": "verified",
+       "name": "theta"
       }
      ],
      "errors": []
@@ -1370,18 +898,18 @@
      "i": 5,
      "subgraph": "block",
      "op": "rope",
-     "role": "rotary position embedding on queries",
+     "role": "rotary position embedding on keys",
      "inputs": [
-      "q"
+      "k"
      ],
-     "output": "qr",
+     "output": "k_rot",
      "new_op": "",
      "attributes": [
       {
        "value": "all",
        "status": "stated",
-       "quote": "For RoFormer, we replace the sinusoidal position encoding in the self-attention block of the baseline model with our proposed RoPE and realizes self-attention according to \\Cref{fn:rope-qk}.",
-       "where": "Sec. Pre-training Language Modeling / Implementation details",
+       "quote": "f_{\\{q, k\\}}(\\x_m, m) = \\R^d_{\\Theta, m}\\W_{\\{q, k\\}}\\x_m",
+       "where": "eq fn:rope-fqk",
        "reasons": [],
        "check": "quote_only",
        "name": "rope_heads"
@@ -1389,29 +917,26 @@
       {
        "value": "interleaved",
        "status": "stated",
-       "quote": "where $\\q_{[2i:2i+1]}$ represents the $2i^{th}$ to $(2i+1)^{th}$ entries of $\\q$.",
-       "where": "Sec. Long-term decay of RoPE",
+       "quote": "\\cos{m\\theta_1}& -\\sin{m\\theta_1}&0&0&\\cdots&0&0\\\\",
+       "where": "eq fn:rope-RMat",
        "reasons": [],
        "check": "quote_only",
        "name": "pairing"
       },
       {
-       "value": "64",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-       "reasons": [
-        "inherited from bert, whose curated entry has no n_rot",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "n_rot"
       },
       {
        "value": "10000",
        "status": "stated",
-       "quote": "is the rotary matrix with pre-defined parameters $\\Theta = \\{\\theta_i=10000^{-2(i-1)/d}, i \\in [1, 2, ..., d/2]\\}$.",
-       "where": "Sec. General form (eq fn:rope-RMat)",
+       "quote": "is the rotary matrix with pre-defined parameters $\\Theta = \\{\\theta_i=10000^{-2(i-1)/d}, i \\in [1, 2, ..., d/2]\\}$",
+       "where": "Sec. General form",
        "reasons": [],
        "check": "verified",
        "name": "theta"
@@ -1422,139 +947,68 @@
     {
      "i": 6,
      "subgraph": "block",
-     "op": "rope",
-     "role": "rotary position embedding on keys",
-     "inputs": [
-      "k"
-     ],
-     "output": "kr",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "all",
-       "status": "stated",
-       "quote": "For RoFormer, we replace the sinusoidal position encoding in the self-attention block of the baseline model with our proposed RoPE and realizes self-attention according to \\Cref{fn:rope-qk}.",
-       "where": "Sec. Pre-training Language Modeling / Implementation details",
-       "reasons": [],
-       "check": "quote_only",
-       "name": "rope_heads"
-      },
-      {
-       "value": "interleaved",
-       "status": "stated",
-       "quote": "where $\\q_{[2i:2i+1]}$ represents the $2i^{th}$ to $(2i+1)^{th}$ entries of $\\q$.",
-       "where": "Sec. Long-term decay of RoPE",
-       "reasons": [],
-       "check": "quote_only",
-       "name": "pairing"
-      },
-      {
-       "value": "64",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-       "reasons": [
-        "inherited from bert, whose curated entry has no n_rot",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
-       "name": "n_rot"
-      },
-      {
-       "value": "10000",
-       "status": "stated",
-       "quote": "is the rotary matrix with pre-defined parameters $\\Theta = \\{\\theta_i=10000^{-2(i-1)/d}, i \\in [1, 2, ..., d/2]\\}$.",
-       "where": "Sec. General form (eq fn:rope-RMat)",
-       "reasons": [],
-       "check": "verified",
-       "name": "theta"
-      }
-     ],
-     "errors": []
-    },
-    {
-     "i": 7,
-     "subgraph": "block",
      "op": "attention",
-     "role": "bidirectional multi-head self-attention",
+     "role": "softmax self-attention with rotated q/k",
      "inputs": [
-      "qr",
-      "kr",
+      "q_rot",
+      "k_rot",
       "v"
      ],
-     "output": "att",
+     "output": "o",
      "new_op": "",
      "attributes": [
       {
-       "value": "12",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-       "reasons": [
-        "inherited from bert, whose curated entry has no heads",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "heads"
       },
       {
-       "value": "12",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-       "reasons": [
-        "inherited from bert, whose curated entry has no kv_heads",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "kv_heads"
       },
       {
-       "value": "64",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-       "reasons": [
-        "inherited from bert, whose curated entry has no head_dim",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "head_dim"
       },
       {
-       "value": "0.125",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-       "reasons": [
-        "inherited from bert, whose curated entry has no scale",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
+       "value": "1/sqrt(d)",
+       "status": "stated",
+       "quote": "a_{m,n}&=\\frac{\\exp(\\frac{\\q_m^{\\intercal}\\k_n}{\\sqrt{d}})}{\\sum_{j=1}^{N}\\exp(\\frac{\\q_m^{\\intercal}\\k_j}{\\sqrt{d}})}",
+       "where": "eq fn:attn",
+       "reasons": [],
+       "check": "verified",
        "name": "scale"
       },
       {
-       "value": "false",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-       "reasons": [
-        "inherited from bert, whose curated entry has no causal",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "causal"
       },
       {
-       "value": "0",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-       "reasons": [
-        "inherited from bert, whose curated entry has no window",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "window"
       },
       {
@@ -1570,462 +1024,56 @@
      "errors": []
     },
     {
-     "i": 8,
+     "i": 7,
      "subgraph": "block",
      "op": "linear",
      "role": "attention output projection",
      "inputs": [
-      "att"
+      "o"
      ],
-     "output": "ao",
+     "output": "attn_out",
      "new_op": "",
      "attributes": [
       {
-       "value": "768",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-       "reasons": [
-        "inherited from bert, whose curated entry has no out",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
-       "name": "out"
-      },
-      {
-       "value": "true",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-       "reasons": [
-        "inherited from bert, whose curated entry has no bias",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "bias"
       }
      ],
      "errors": []
     },
     {
-     "i": 9,
+     "i": 8,
      "subgraph": "block",
      "op": "add",
-     "role": "attention residual",
+     "role": "residual add around attention (assumed from Transformer encoder; placement and norms not stated)",
      "inputs": [
       "x",
-      "ao"
-     ],
-     "output": "r1",
-     "new_op": "",
-     "attributes": [],
-     "errors": []
-    },
-    {
-     "i": 10,
-     "subgraph": "block",
-     "op": "layernorm",
-     "role": "post-attention layernorm",
-     "inputs": [
-      "r1"
+      "attn_out"
      ],
      "output": "h",
      "new_op": "",
-     "attributes": [
-      {
-       "value": "1e-12",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-       "reasons": [
-        "inherited from bert, whose curated entry has no eps",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
-       "name": "eps"
-      }
-     ],
-     "errors": []
-    },
-    {
-     "i": 11,
-     "subgraph": "block",
-     "op": "linear",
-     "role": "FFN up projection",
-     "inputs": [
-      "h"
-     ],
-     "output": "u",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "3072",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-       "reasons": [
-        "inherited from bert, whose curated entry has no out",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
-       "name": "out"
-      },
-      {
-       "value": "true",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-       "reasons": [
-        "inherited from bert, whose curated entry has no bias",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
-       "name": "bias"
-      }
-     ],
-     "errors": []
-    },
-    {
-     "i": 12,
-     "subgraph": "block",
-     "op": "gelu",
-     "role": "FFN activation",
-     "inputs": [
-      "u"
-     ],
-     "output": "g",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "none",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-       "reasons": [
-        "inherited from bert, whose curated entry has no approx",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
-       "name": "approx"
-      }
-     ],
-     "errors": []
-    },
-    {
-     "i": 13,
-     "subgraph": "block",
-     "op": "linear",
-     "role": "FFN down projection",
-     "inputs": [
-      "g"
-     ],
-     "output": "f",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "768",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-       "reasons": [
-        "inherited from bert, whose curated entry has no out",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
-       "name": "out"
-      },
-      {
-       "value": "true",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-       "reasons": [
-        "inherited from bert, whose curated entry has no bias",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
-       "name": "bias"
-      }
-     ],
-     "errors": []
-    },
-    {
-     "i": 14,
-     "subgraph": "block",
-     "op": "add",
-     "role": "FFN residual",
-     "inputs": [
-      "h",
-      "f"
-     ],
-     "output": "r2",
-     "new_op": "",
      "attributes": [],
      "errors": []
-    },
-    {
-     "i": 15,
-     "subgraph": "block",
-     "op": "layernorm",
-     "role": "post-FFN layernorm (block output)",
-     "inputs": [
-      "r2"
-     ],
-     "output": "x",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "1e-12",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-       "reasons": [
-        "inherited from bert, whose curated entry has no eps",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
-       "name": "eps"
-      }
-     ],
-     "errors": []
-    },
-    {
-     "i": 16,
-     "subgraph": "head",
-     "op": "linear",
-     "role": "MLM transform dense",
-     "inputs": [
-      "x"
-     ],
-     "output": "t",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "768",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-       "reasons": [
-        "inherited from bert, whose curated entry has no out",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
-       "name": "out"
-      },
-      {
-       "value": "true",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-       "reasons": [
-        "inherited from bert, whose curated entry has no bias",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
-       "name": "bias"
-      }
-     ],
-     "errors": []
-    },
-    {
-     "i": 17,
-     "subgraph": "head",
-     "op": "gelu",
-     "role": "MLM transform activation",
-     "inputs": [
-      "t"
-     ],
-     "output": "tg",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "none",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-       "reasons": [
-        "inherited from bert, whose curated entry has no approx",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
-       "name": "approx"
-      }
-     ],
-     "errors": []
-    },
-    {
-     "i": 18,
-     "subgraph": "head",
-     "op": "layernorm",
-     "role": "MLM transform layernorm",
-     "inputs": [
-      "tg"
-     ],
-     "output": "tn",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "1e-12",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-       "reasons": [
-        "inherited from bert, whose curated entry has no eps",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
-       "name": "eps"
-      }
-     ],
-     "errors": []
-    },
-    {
-     "i": 19,
-     "subgraph": "head",
-     "op": "linear",
-     "role": "MLM output projection to vocabulary",
-     "inputs": [
-      "tn"
-     ],
-     "output": "logits",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "30522",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-       "reasons": [
-        "inherited from bert, whose curated entry has no out",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
-       "name": "out"
-      },
-      {
-       "value": "true",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-       "reasons": [
-        "inherited from bert, whose curated entry has no bias",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
-       "name": "bias"
-      },
-      {
-       "value": "token_embd",
-       "status": "inherited",
-       "quote": "Note that we use bert-base-uncased in our experiments.",
-       "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-       "reasons": [
-        "inherited from bert, whose curated entry has no tied_to",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
-       "name": "tied_to"
-      }
-     ],
-     "errors": []
     }
    ],
-   "mechanisms_outside_ir": [
-    {
-     "mechanism": "BERT token-type (segment) embeddings added to token embeddings in the embed subgraph (inherited from bert-base-uncased; not restated)",
-     "quote": "Note that we use bert-base-uncased in our experiments.",
-     "where": "Sec. Pre-training Language Modeling / Experimental Settings",
-     "check": "verified"
-    }
-   ],
+   "mechanisms_outside_ir": [],
    "summary": {
     "counts": {
-     "verified": 5,
+     "verified": 6,
      "quote_only": 5,
-     "unverified": 53,
-     "not_stated": 6
+     "unverified": 3,
+     "not_stated": 34
     },
     "unverified": [
      {
       "field": "family",
       "reasons": [
-       "inherited from bert, whose curated entry has no family",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "configs[RoFormer (bert-base-uncased with RoPE)].d_model",
-      "reasons": [
-       "inherited from bert, whose curated entry has no d_model",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "configs[RoFormer (bert-base-uncased with RoPE)].n_layers",
-      "reasons": [
-       "inherited from bert, whose curated entry has no n_layers",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "configs[RoFormer (bert-base-uncased with RoPE)].n_heads",
-      "reasons": [
-       "inherited from bert, whose curated entry has no n_heads",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "configs[RoFormer (bert-base-uncased with RoPE)].n_kv_heads",
-      "reasons": [
-       "inherited from bert, whose curated entry has no n_kv_heads",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "configs[RoFormer (bert-base-uncased with RoPE)].head_dim",
-      "reasons": [
-       "inherited from bert, whose curated entry has no head_dim",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "configs[RoFormer (bert-base-uncased with RoPE)].d_ff",
-      "reasons": [
-       "inherited from bert, whose curated entry has no d_ff",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "configs[RoFormer (bert-base-uncased with RoPE)].vocab_size",
-      "reasons": [
-       "inherited from bert, whose curated entry has no vocab_size",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "flavours.norm",
-      "reasons": [
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "flavours.norm_placement",
-      "reasons": [
-       "inherited from bert, whose curated entry has no norm_placement",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "flavours.norm_eps",
-      "reasons": [
-       "inherited from bert, whose curated entry has no norm_eps",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "flavours.activation",
-      "reasons": [
-       "the inheritance quote does not name the ancestor"
+       "inherited, but the ancestor is not in fetch.ANCESTORS (the curated table)"
       ]
      },
      {
@@ -2037,287 +1085,14 @@
      {
       "field": "flavours.rope_fraction",
       "reasons": [
-       "1 does not occur in its quote"
-      ]
-     },
-     {
-      "field": "flavours.residual",
-      "reasons": [
-       "inherited from bert, whose curated entry has no residual",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "flavours.parallel_block",
-      "reasons": [
-       "inherited from bert, whose curated entry has no parallel_block",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "flavours.qkv_bias",
-      "reasons": [
-       "inherited from bert, whose curated entry has no qkv_bias",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "flavours.mlp_bias",
-      "reasons": [
-       "inherited from bert, whose curated entry has no mlp_bias",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "flavours.tied_embeddings",
-      "reasons": [
-       "inherited from bert, whose curated entry has no tied_embeddings",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "flavours.moe",
-      "reasons": [
-       "inherited from bert, whose curated entry has no moe",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[0].vocab",
-      "reasons": [
-       "inherited from bert, whose curated entry has no vocab",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[0].d",
-      "reasons": [
-       "inherited from bert, whose curated entry has no d",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[1].eps",
-      "reasons": [
-       "inherited from bert, whose curated entry has no eps",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[2].out",
-      "reasons": [
-       "inherited from bert, whose curated entry has no out",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[2].bias",
-      "reasons": [
-       "inherited from bert, whose curated entry has no bias",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[3].out",
-      "reasons": [
-       "inherited from bert, whose curated entry has no out",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[3].bias",
-      "reasons": [
-       "inherited from bert, whose curated entry has no bias",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[4].out",
-      "reasons": [
-       "inherited from bert, whose curated entry has no out",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[4].bias",
-      "reasons": [
-       "inherited from bert, whose curated entry has no bias",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[5].n_rot",
-      "reasons": [
-       "inherited from bert, whose curated entry has no n_rot",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[6].n_rot",
-      "reasons": [
-       "inherited from bert, whose curated entry has no n_rot",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[7].heads",
-      "reasons": [
-       "inherited from bert, whose curated entry has no heads",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[7].kv_heads",
-      "reasons": [
-       "inherited from bert, whose curated entry has no kv_heads",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[7].head_dim",
-      "reasons": [
-       "inherited from bert, whose curated entry has no head_dim",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[7].scale",
-      "reasons": [
-       "inherited from bert, whose curated entry has no scale",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[7].causal",
-      "reasons": [
-       "inherited from bert, whose curated entry has no causal",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[7].window",
-      "reasons": [
-       "inherited from bert, whose curated entry has no window",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[8].out",
-      "reasons": [
-       "inherited from bert, whose curated entry has no out",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[8].bias",
-      "reasons": [
-       "inherited from bert, whose curated entry has no bias",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[10].eps",
-      "reasons": [
-       "inherited from bert, whose curated entry has no eps",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[11].out",
-      "reasons": [
-       "inherited from bert, whose curated entry has no out",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[11].bias",
-      "reasons": [
-       "inherited from bert, whose curated entry has no bias",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[12].approx",
-      "reasons": [
-       "inherited from bert, whose curated entry has no approx",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[13].out",
-      "reasons": [
-       "inherited from bert, whose curated entry has no out",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[13].bias",
-      "reasons": [
-       "inherited from bert, whose curated entry has no bias",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[15].eps",
-      "reasons": [
-       "inherited from bert, whose curated entry has no eps",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[16].out",
-      "reasons": [
-       "inherited from bert, whose curated entry has no out",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[16].bias",
-      "reasons": [
-       "inherited from bert, whose curated entry has no bias",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[17].approx",
-      "reasons": [
-       "inherited from bert, whose curated entry has no approx",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[18].eps",
-      "reasons": [
-       "inherited from bert, whose curated entry has no eps",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[19].out",
-      "reasons": [
-       "inherited from bert, whose curated entry has no out",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[19].bias",
-      "reasons": [
-       "inherited from bert, whose curated entry has no bias",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[19].tied_to",
-      "reasons": [
-       "inherited from bert, whose curated entry has no tied_to",
-       "the inheritance quote does not name the ancestor"
+       "1.0 does not occur in its quote"
       ]
      }
     ],
     "new_op_errors": [],
     "node_errors": [],
     "n_new_ops": 0,
-    "n_block_ops": 20
+    "n_block_ops": 9
    }
   }
  }

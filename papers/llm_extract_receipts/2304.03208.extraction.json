@@ -4,17 +4,17 @@
  "fields": {
   "d_model": {
    "value": 768,
-   "evidence": "111M & 768 & 10 & 64 & 3072 [Table table:model_details]",
+   "evidence": "111M & 768 & 10 & 64 & 3072 [Table 1]",
    "verdict": "used"
   },
   "n_layers": {
    "value": 10,
-   "evidence": "111M & 768 & 10 & 64 & 3072 [Table table:model_details]",
+   "evidence": "111M & 768 & 10 & 64 & 3072 [Table 1]",
    "verdict": "used"
   },
   "d_ff": {
    "value": 3072,
-   "evidence": "111M & 768 & 10 & 64 & 3072 [Table table:model_details]",
+   "evidence": "111M & 768 & 10 & 64 & 3072 [Table 1]",
    "verdict": "used"
   },
   "vocab_size": {
@@ -29,12 +29,12 @@
   },
   "norm": {
    "value": "layernorm",
-   "evidence": "# Layer norms: 7 FLOPs/activation, 2 LNs per decoder block [Table code:flops_count]",
+   "evidence": "LN initializer & \\multicolumn{2}{c|}{$W_\\gamma \\sim 1, b_\\beta \\sim 0$} [Table: Cheat Sheet (mup-implementation)]",
    "verdict": "used"
   },
   "activation": {
    "value": "gelu",
-   "evidence": "# GeLU: estimate 20 FLOPs/activation, applied in FFN with 4x hidden dim [Table code:flops_count]",
+   "evidence": "# GeLU: estimate 20 FLOPs/activation, applied in FFN with 4x hidden dim [Table: FLOPs code (code:flops_count)]",
    "verdict": "used"
   },
   "positional": {
@@ -44,12 +44,12 @@
   },
   "residual": {
    "value": "residual",
-   "evidence": "for the last layer inside each residual network, following the GPT-2 initialization [Sec. 2.4 Standard (SP) and Maximal Update Parameterization]",
+   "evidence": "for the last layer inside each residual network, following the GPT-2 initialization [Sec. 2.4 Standard Parameterization]",
    "verdict": "used"
   },
   "attention": {
    "value": "exact",
-   "evidence": "we use dense attention in all decoder blocks. [Sec. 2.1 Model Architecture]",
+   "evidence": "we use dense attention in all decoder blocks [Sec. 2.1 Model Architecture]",
    "verdict": "used"
   }
  },
@@ -121,14 +121,14 @@
   "sent_sha256": "5ce3f90c5b16af35b5bba497057f2ba0993c13bce24ccb42a620b6ba052e5c1d",
   "from": "https://arxiv.org/e-print/2304.03208",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
   "n_calls": 1,
-  "cost_usd": 0.0,
+  "cost_usd": 0.441328,
   "request_ids": [
-   "req_011CgFZtC6Y354HxXkNSpEHM"
+   "req_011CgFi1C4SKRgQ28fiWSSYY"
   ]
  },
  "llm": {
@@ -142,7 +142,7 @@
     "where": "Sec. 2.1 Model Architecture"
    },
    "inherits": {
-    "ancestor": "GPT-2 transformer block (GPT-3-like architecture)",
+    "ancestor": "GPT-2",
     "quote": "OPT and Cerebras-GPT models use the standard GPT-2 transformer block, which orders attention sequentially before the feed forward layers.",
     "where": "Appendix: Differences Between Cerebras-GPT and Other Models"
    },
@@ -153,13 +153,13 @@
       "value": "768",
       "status": "stated",
       "quote": "111M       & 768      & 10        & 64      & 3072",
-      "where": "Table table:model_details"
+      "where": "Table 1"
      },
      "n_layers": {
       "value": "10",
       "status": "stated",
       "quote": "111M       & 768      & 10        & 64      & 3072",
-      "where": "Table table:model_details"
+      "where": "Table 1"
      },
      "n_heads": {
       "value": "",
@@ -177,13 +177,13 @@
       "value": "64",
       "status": "stated",
       "quote": "111M       & 768      & 10        & 64      & 3072",
-      "where": "Table table:model_details"
+      "where": "Table 1"
      },
      "d_ff": {
       "value": "3072",
       "status": "stated",
       "quote": "111M       & 768      & 10        & 64      & 3072",
-      "where": "Table table:model_details"
+      "where": "Table 1"
      },
      "vocab_size": {
       "value": "50257",
@@ -204,13 +204,13 @@
       "value": "1088",
       "status": "stated",
       "quote": "256M       & 1088     & 14        & 64      & 4352",
-      "where": "Table table:model_details"
+      "where": "Table 1"
      },
      "n_layers": {
       "value": "14",
       "status": "stated",
       "quote": "256M       & 1088     & 14        & 64      & 4352",
-      "where": "Table table:model_details"
+      "where": "Table 1"
      },
      "n_heads": {
       "value": "",
@@ -228,13 +228,13 @@
       "value": "64",
       "status": "stated",
       "quote": "256M       & 1088     & 14        & 64      & 4352",
-      "where": "Table table:model_details"
+      "where": "Table 1"
      },
      "d_ff": {
       "value": "4352",
       "status": "stated",
       "quote": "256M       & 1088     & 14        & 64      & 4352",
-      "where": "Table table:model_details"
+      "where": "Table 1"
      },
      "vocab_size": {
       "value": "50257",
@@ -255,13 +255,13 @@
       "value": "1536",
       "status": "stated",
       "quote": "590M       & 1536     & 18        & 128     & 6144",
-      "where": "Table table:model_details"
+      "where": "Table 1"
      },
      "n_layers": {
       "value": "18",
       "status": "stated",
       "quote": "590M       & 1536     & 18        & 128     & 6144",
-      "where": "Table table:model_details"
+      "where": "Table 1"
      },
      "n_heads": {
       "value": "",
@@ -279,13 +279,13 @@
       "value": "128",
       "status": "stated",
       "quote": "590M       & 1536     & 18        & 128     & 6144",
-      "where": "Table table:model_details"
+      "where": "Table 1"
      },
      "d_ff": {
       "value": "6144",
       "status": "stated",
       "quote": "590M       & 1536     & 18        & 128     & 6144",
-      "where": "Table table:model_details"
+      "where": "Table 1"
      },
      "vocab_size": {
       "value": "50257",
@@ -306,13 +306,13 @@
       "value": "2048",
       "status": "stated",
       "quote": "1.3B       & 2048     & 24        & 128     & 8192",
-      "where": "Table table:model_details"
+      "where": "Table 1"
      },
      "n_layers": {
       "value": "24",
       "status": "stated",
       "quote": "1.3B       & 2048     & 24        & 128     & 8192",
-      "where": "Table table:model_details"
+      "where": "Table 1"
      },
      "n_heads": {
       "value": "",
@@ -330,13 +330,13 @@
       "value": "128",
       "status": "stated",
       "quote": "1.3B       & 2048     & 24        & 128     & 8192",
-      "where": "Table table:model_details"
+      "where": "Table 1"
      },
      "d_ff": {
       "value": "8192",
       "status": "stated",
       "quote": "1.3B       & 2048     & 24        & 128     & 8192",
-      "where": "Table table:model_details"
+      "where": "Table 1"
      },
      "vocab_size": {
       "value": "50257",
@@ -357,13 +357,13 @@
       "value": "2560",
       "status": "stated",
       "quote": "2.7B       & 2560     & 32        & 80      & 10240",
-      "where": "Table table:model_details"
+      "where": "Table 1"
      },
      "n_layers": {
       "value": "32",
       "status": "stated",
       "quote": "2.7B       & 2560     & 32        & 80      & 10240",
-      "where": "Table table:model_details"
+      "where": "Table 1"
      },
      "n_heads": {
       "value": "",
@@ -381,13 +381,13 @@
       "value": "80",
       "status": "stated",
       "quote": "2.7B       & 2560     & 32        & 80      & 10240",
-      "where": "Table table:model_details"
+      "where": "Table 1"
      },
      "d_ff": {
       "value": "10240",
       "status": "stated",
       "quote": "2.7B       & 2560     & 32        & 80      & 10240",
-      "where": "Table table:model_details"
+      "where": "Table 1"
      },
      "vocab_size": {
       "value": "50257",
@@ -408,13 +408,13 @@
       "value": "4096",
       "status": "stated",
       "quote": "6.7B       & 4096     & 32        & 128     & 16384",
-      "where": "Table table:model_details"
+      "where": "Table 1"
      },
      "n_layers": {
       "value": "32",
       "status": "stated",
       "quote": "6.7B       & 4096     & 32        & 128     & 16384",
-      "where": "Table table:model_details"
+      "where": "Table 1"
      },
      "n_heads": {
       "value": "",
@@ -432,13 +432,13 @@
       "value": "128",
       "status": "stated",
       "quote": "6.7B       & 4096     & 32        & 128     & 16384",
-      "where": "Table table:model_details"
+      "where": "Table 1"
      },
      "d_ff": {
       "value": "16384",
       "status": "stated",
       "quote": "6.7B       & 4096     & 32        & 128     & 16384",
-      "where": "Table table:model_details"
+      "where": "Table 1"
      },
      "vocab_size": {
       "value": "50257",
@@ -459,13 +459,13 @@
       "value": "5120",
       "status": "stated",
       "quote": "13B        & 5120     & 40        & 128     & 20480",
-      "where": "Table table:model_details"
+      "where": "Table 1"
      },
      "n_layers": {
       "value": "40",
       "status": "stated",
       "quote": "13B        & 5120     & 40        & 128     & 20480",
-      "where": "Table table:model_details"
+      "where": "Table 1"
      },
      "n_heads": {
       "value": "",
@@ -483,13 +483,13 @@
       "value": "128",
       "status": "stated",
       "quote": "13B        & 5120     & 40        & 128     & 20480",
-      "where": "Table table:model_details"
+      "where": "Table 1"
      },
      "d_ff": {
       "value": "20480",
       "status": "stated",
       "quote": "13B        & 5120     & 40        & 128     & 20480",
-      "where": "Table table:model_details"
+      "where": "Table 1"
      },
      "vocab_size": {
       "value": "50257",
@@ -510,8 +510,8 @@
     "norm": {
      "value": "layernorm",
      "status": "stated",
-     "quote": "# Layer norms: 7 FLOPs/activation, 2 LNs per decoder block",
-     "where": "Table code:flops_count"
+     "quote": "LN initializer          & \\multicolumn{2}{c|}{$W_\\gamma \\sim 1, b_\\beta \\sim 0$}",
+     "where": "Table: Cheat Sheet (mup-implementation)"
     },
     "norm_placement": {
      "value": "pre",
@@ -529,7 +529,7 @@
      "value": "gelu",
      "status": "stated",
      "quote": "# GeLU: estimate 20 FLOPs/activation, applied in FFN with 4x hidden dim",
-     "where": "Table code:flops_count"
+     "where": "Table: FLOPs code (code:flops_count)"
     },
     "positional": {
      "value": "learned",
@@ -559,7 +559,7 @@
      "value": "residual",
      "status": "stated",
      "quote": "for the last layer inside each residual network, following the GPT-2 initialization",
-     "where": "Sec. 2.4 Standard (SP) and Maximal Update Parameterization"
+     "where": "Sec. 2.4 Standard Parameterization"
     },
     "parallel_block": {
      "value": "false",
@@ -570,7 +570,7 @@
     "attention": {
      "value": "exact",
      "status": "stated",
-     "quote": "we use dense attention in all decoder blocks.",
+     "quote": "we use dense attention in all decoder blocks",
      "where": "Sec. 2.1 Model Architecture"
     },
     "window_size": {
@@ -588,26 +588,26 @@
     "qkv_bias": {
      "value": "true",
      "status": "stated",
-     "quote": "attn = 4 * (d_model**2 + d_model)",
-     "where": "Table code:params_count"
+     "quote": "In the attention layers, the bias weights of the keys projection, specifically, have expected value close to zero early in training.",
+     "where": "Appendix: Ensuring Stable Training"
     },
     "mlp_bias": {
      "value": "true",
      "status": "stated",
      "quote": "ffn = 8 * d_model**2 + 5 * d_model",
-     "where": "Table code:params_count"
+     "where": "Table: parameter count code (code:params_count)"
     },
     "tied_embeddings": {
      "value": "true",
      "status": "stated",
-     "quote": "n_params = embedding + encoder + final_ln",
-     "where": "Table code:params_count"
+     "quote": "embedding = vocab_size * d_model + d_model * seq_length",
+     "where": "Table: parameter count code (code:params_count)"
     },
     "moe": {
      "value": "false",
      "status": "stated",
-     "quote": "ffn = 8 * d_model**2 + 5 * d_model",
-     "where": "Table code:params_count"
+     "quote": "# GeLU: estimate 20 FLOPs/activation, applied in FFN with 4x hidden dim",
+     "where": "Table: FLOPs code (code:flops_count)"
     },
     "n_experts": {
      "value": "",
@@ -636,47 +636,19 @@
      "inputs": [
       "tokens"
      ],
-     "output": "tok",
-     "attributes": [
-      {
-       "name": "vocab",
-       "value": "50257",
-       "status": "stated",
-       "quote": "We tokenize the corpora with byte-pair encoding and the GPT-2 vocabulary of size 50257",
-       "where": "Sec. 2.2 Pre-training Corpus"
-      }
-     ],
+     "output": "x",
+     "attributes": [],
      "new_op": ""
     },
     {
      "subgraph": "embed",
      "op": "pos_embedding",
-     "role": "learned absolute position embedding",
+     "role": "learned absolute position embedding added to token embedding",
      "inputs": [
-      "tok",
+      "x",
       "pos"
      ],
-     "output": "pe",
-     "attributes": [
-      {
-       "name": "max_positions",
-       "value": "2048",
-       "status": "stated",
-       "quote": "embedding = vocab_size * d_model + d_model * seq_length",
-       "where": "Table code:params_count"
-      }
-     ],
-     "new_op": ""
-    },
-    {
-     "subgraph": "embed",
-     "op": "add",
-     "role": "token + position embedding sum",
-     "inputs": [
-      "tok",
-      "pe"
-     ],
-     "output": "x",
+     "output": "h",
      "attributes": [],
      "new_op": ""
     },
@@ -685,9 +657,9 @@
      "op": "layernorm",
      "role": "ln1 before attention",
      "inputs": [
-      "x"
+      "h"
      ],
-     "output": "h",
+     "output": "a_in",
      "attributes": [
       {
        "name": "eps",
@@ -702,44 +674,56 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "fused qkv projection",
+     "role": "query projection",
      "inputs": [
-      "h"
+      "a_in"
      ],
-     "output": "qkv",
+     "output": "q",
      "attributes": [
-      {
-       "name": "out",
-       "value": "3*d_model",
-       "status": "stated",
-       "quote": "kqv_proj = num_layers * 2 * 3 * seq_len * d_model * (key_size * num_heads)",
-       "where": "Table code:flops_count"
-      },
       {
        "name": "bias",
        "value": "true",
        "status": "stated",
        "quote": "attn = 4 * (d_model**2 + d_model)",
-       "where": "Table code:params_count"
+       "where": "Table: parameter count code"
       }
      ],
      "new_op": ""
     },
     {
      "subgraph": "block",
-     "op": "split",
-     "role": "split into q, k, v",
+     "op": "linear",
+     "role": "key projection",
      "inputs": [
-      "qkv"
+      "a_in"
      ],
-     "output": "q,k,v",
+     "output": "k",
      "attributes": [
       {
-       "name": "sizes",
-       "value": "d_model,d_model,d_model",
+       "name": "bias",
+       "value": "true",
        "status": "stated",
-       "quote": "kqv_proj = num_layers * 2 * 3 * seq_len * d_model * (key_size * num_heads)",
-       "where": "Table code:flops_count"
+       "quote": "In the attention layers, the bias weights of the keys projection, specifically, have expected value close to zero early in training.",
+       "where": "Appendix: Ensuring Stable Training"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "value projection",
+     "inputs": [
+      "a_in"
+     ],
+     "output": "v",
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "true",
+       "status": "stated",
+       "quote": "attn = 4 * (d_model**2 + d_model)",
+       "where": "Table: parameter count code"
       }
      ],
      "new_op": ""
@@ -753,14 +737,14 @@
       "k",
       "v"
      ],
-     "output": "a",
+     "output": "att",
      "attributes": [
       {
        "name": "heads",
-       "value": "d_model/head_dim",
-       "status": "stated",
-       "quote": "num_heads = d_model // key_size",
-       "where": "Table code:flops_count"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       },
       {
        "name": "kv_heads",
@@ -774,27 +758,27 @@
        "value": "64",
        "status": "stated",
        "quote": "111M       & 768      & 10        & 64      & 3072",
-       "where": "Table table:model_details"
+       "where": "Table 1"
       },
       {
        "name": "scale",
-       "value": "1/sqrt(head_dim)",
+       "value": "0.125",
        "status": "stated",
-       "quote": "$\\text{softmax}\\left(\\frac{Q^TK}{\\sqrt{d_{\\text{head}}}}\\right)V$",
-       "where": "Table table:mup-implementation"
+       "quote": "MHA equation            & $\\text{softmax}\\left(\\frac{Q^TK}{\\sqrt{d_{\\text{head}}}}\\right)V$",
+       "where": "Table: Cheat Sheet (mup-implementation), SP column"
       },
       {
        "name": "causal",
        "value": "true",
        "status": "stated",
-       "quote": "Cerebras-GPT models have a GPT-3-like architecture, an autoregressive transformer decoder model",
+       "quote": "an autoregressive transformer decoder model",
        "where": "Sec. 2.1 Model Architecture"
       },
       {
        "name": "window",
        "value": "0",
        "status": "stated",
-       "quote": "we use dense attention in all decoder blocks.",
+       "quote": "we use dense attention in all decoder blocks",
        "where": "Sec. 2.1 Model Architecture"
       },
       {
@@ -812,23 +796,16 @@
      "op": "linear",
      "role": "attention output projection",
      "inputs": [
-      "a"
+      "att"
      ],
-     "output": "o",
+     "output": "att_o",
      "attributes": [
-      {
-       "name": "out",
-       "value": "d_model",
-       "status": "stated",
-       "quote": "final_linear = num_layers * 2 * seq_len * (key_size * num_heads) * d_model",
-       "where": "Table code:flops_count"
-      },
       {
        "name": "bias",
        "value": "true",
        "status": "stated",
        "quote": "attn = 4 * (d_model**2 + d_model)",
-       "where": "Table code:params_count"
+       "where": "Table: parameter count code"
       }
      ],
      "new_op": ""
@@ -836,12 +813,12 @@
     {
      "subgraph": "block",
      "op": "add",
-     "role": "attention residual",
+     "role": "attention residual add",
      "inputs": [
-      "x",
-      "o"
+      "h",
+      "att_o"
      ],
-     "output": "x1",
+     "output": "h2",
      "attributes": [],
      "new_op": ""
     },
@@ -850,9 +827,9 @@
      "op": "layernorm",
      "role": "ln2 before FFN",
      "inputs": [
-      "x1"
+      "h2"
      ],
-     "output": "h2",
+     "output": "f_in",
      "attributes": [
       {
        "name": "eps",
@@ -869,23 +846,23 @@
      "op": "linear",
      "role": "ffn1 up projection",
      "inputs": [
-      "h2"
+      "f_in"
      ],
-     "output": "u",
+     "output": "f_up",
      "attributes": [
       {
        "name": "out",
        "value": "3072",
        "status": "stated",
        "quote": "111M       & 768      & 10        & 64      & 3072",
-       "where": "Table table:model_details"
+       "where": "Table 1"
       },
       {
        "name": "bias",
        "value": "true",
        "status": "stated",
        "quote": "ffn = 8 * d_model**2 + 5 * d_model",
-       "where": "Table code:params_count"
+       "where": "Table: parameter count code"
       }
      ],
      "new_op": ""
@@ -895,9 +872,9 @@
      "op": "gelu",
      "role": "FFN activation",
      "inputs": [
-      "u"
+      "f_up"
      ],
-     "output": "g",
+     "output": "f_act",
      "attributes": [
       {
        "name": "approx",
@@ -914,23 +891,23 @@
      "op": "linear",
      "role": "ffn2 down projection",
      "inputs": [
-      "g"
+      "f_act"
      ],
-     "output": "f",
+     "output": "f_out",
      "attributes": [
       {
        "name": "out",
-       "value": "d_model",
+       "value": "768",
        "status": "stated",
-       "quote": "ffn = 8 * d_model**2 + 5 * d_model",
-       "where": "Table code:params_count"
+       "quote": "111M       & 768      & 10        & 64      & 3072",
+       "where": "Table 1"
       },
       {
        "name": "bias",
        "value": "true",
        "status": "stated",
        "quote": "ffn = 8 * d_model**2 + 5 * d_model",
-       "where": "Table code:params_count"
+       "where": "Table: parameter count code"
       }
      ],
      "new_op": ""
@@ -938,21 +915,21 @@
     {
      "subgraph": "block",
      "op": "add",
-     "role": "FFN residual",
+     "role": "FFN residual add",
      "inputs": [
-      "x1",
-      "f"
+      "h2",
+      "f_out"
      ],
-     "output": "x",
+     "output": "h_out",
      "attributes": [],
      "new_op": ""
     },
     {
      "subgraph": "head",
      "op": "layernorm",
-     "role": "final layernorm",
+     "role": "final layer norm",
      "inputs": [
-      "x"
+      "h_out"
      ],
      "output": "hf",
      "attributes": [
@@ -976,25 +953,18 @@
      "output": "logits",
      "attributes": [
       {
-       "name": "out",
-       "value": "50257",
-       "status": "stated",
-       "quote": "We tokenize the corpora with byte-pair encoding and the GPT-2 vocabulary of size 50257",
-       "where": "Sec. 2.2 Pre-training Corpus"
-      },
-      {
        "name": "tied_to",
        "value": "token_embd",
        "status": "stated",
-       "quote": "n_params = embedding + encoder + final_ln",
-       "where": "Table code:params_count"
+       "quote": "embedding = vocab_size * d_model + d_model * seq_length",
+       "where": "Table: parameter count code"
       },
       {
        "name": "bias",
        "value": "false",
        "status": "stated",
        "quote": "n_params = embedding + encoder + final_ln",
-       "where": "Table code:params_count"
+       "where": "Table: parameter count code"
       }
      ],
      "new_op": ""
@@ -1002,13 +972,13 @@
    ],
    "new_ops": [],
    "mechanisms_outside_ir": [],
-   "notes": "I describe the standard-parameterization (SP) Cerebras-GPT models (the released family, 111M-13B); block_ops attributes are filled for 111M. The muP variants (111M-2.7B) share these dimensions but change three things: they multiply the embedding output by m_emb=10, scale attention by 1/d_head, and divide the logits by m_width. Pre-norm placement is inherited from the stated 'standard GPT-2 transformer block'. The gelu exact-vs-tanh form is not stated; the GeLU flavour is 'gelu' only because the paper names GeLU. n_heads is left not_stated per config; it follows d_model/d_head via 'num_heads = d_model // key_size'. Tied embeddings and the absence of a head bias are inferred from the parameter-count formula, which has no separate output matrix. Norm eps is not stated."
+   "notes": "Described the standard-parameterization (SP) Cerebras-GPT models, which are the released family (111M-13B); muP variants (embedding multiplier 10, 1/d_head attention scale, logits /m_width) are a secondary set and not described. n_heads not stated directly; it is derivable as d_model/d_head (the FLOPs code uses num_heads = d_model // key_size), but it is left not_stated. Pre-LN placement is inherited via the explicit 'standard GPT-2 transformer block' sentence. GeLU is named, but the paper does not say whether it is the exact or tanh form. Tied embeddings and the bias-free output head are inferred from the parameter-count formula, which has no separate output-layer term. Block attribute values (head_dim 64, FFN 3072, scale 0.125 = 1/sqrt(64)) are for the primary 111M config. Norm eps is not stated."
   },
   "verification": {
    "errors": [],
    "warnings": [],
    "inherits": {
-    "ancestor": "GPT-2 transformer block (GPT-3-like architecture)",
+    "ancestor": "GPT-2",
     "resolved": "gpt-2",
     "quote": "OPT and Cerebras-GPT models use the standard GPT-2 transformer block, which orders attention sequentially before the feed forward layers.",
     "where": "Appendix: Differences Between Cerebras-GPT and Other Models",
@@ -1029,7 +999,7 @@
       "value": "768",
       "status": "stated",
       "quote": "111M       & 768      & 10        & 64      & 3072",
-      "where": "Table table:model_details",
+      "where": "Table 1",
       "reasons": [],
       "check": "verified"
      },
@@ -1037,7 +1007,7 @@
       "value": "10",
       "status": "stated",
       "quote": "111M       & 768      & 10        & 64      & 3072",
-      "where": "Table table:model_details",
+      "where": "Table 1",
       "reasons": [],
       "check": "verified"
      },
@@ -1061,7 +1031,7 @@
       "value": "64",
       "status": "stated",
       "quote": "111M       & 768      & 10        & 64      & 3072",
-      "where": "Table table:model_details",
+      "where": "Table 1",
       "reasons": [],
       "check": "verified"
      },
@@ -1069,7 +1039,7 @@
       "value": "3072",
       "status": "stated",
       "quote": "111M       & 768      & 10        & 64      & 3072",
-      "where": "Table table:model_details",
+      "where": "Table 1",
       "reasons": [],
       "check": "verified"
      },
@@ -1097,7 +1067,7 @@
       "value": "1088",
       "status": "stated",
       "quote": "256M       & 1088     & 14        & 64      & 4352",
-      "where": "Table table:model_details",
+      "where": "Table 1",
       "reasons": [],
       "check": "verified"
      },
@@ -1105,7 +1075,7 @@
       "value": "14",
       "status": "stated",
       "quote": "256M       & 1088     & 14        & 64      & 4352",
-      "where": "Table table:model_details",
+      "where": "Table 1",
       "reasons": [],
       "check": "verified"
      },
@@ -1129,7 +1099,7 @@
       "value": "64",
       "status": "stated",
       "quote": "256M       & 1088     & 14        & 64      & 4352",
-      "where": "Table table:model_details",
+      "where": "Table 1",
       "reasons": [],
       "check": "verified"
      },
@@ -1137,7 +1107,7 @@
       "value": "4352",
       "status": "stated",
       "quote": "256M       & 1088     & 14        & 64      & 4352",
-      "where": "Table table:model_details",
+      "where": "Table 1",
       "reasons": [],
       "check": "verified"
      },
@@ -1165,7 +1135,7 @@
       "value": "1536",
       "status": "stated",
       "quote": "590M       & 1536     & 18        & 128     & 6144",
-      "where": "Table table:model_details",
+      "where": "Table 1",
       "reasons": [],
       "check": "verified"
      },
@@ -1173,7 +1143,7 @@
       "value": "18",
       "status": "stated",
       "quote": "590M       & 1536     & 18        & 128     & 6144",
-      "where": "Table table:model_details",
+      "where": "Table 1",
       "reasons": [],
       "check": "verified"
      },
@@ -1197,7 +1167,7 @@
       "value": "128",
       "status": "stated",
       "quote": "590M       & 1536     & 18        & 128     & 6144",
-      "where": "Table table:model_details",
+      "where": "Table 1",
       "reasons": [],
       "check": "verified"
      },
@@ -1205,7 +1175,7 @@
       "value": "6144",
       "status": "stated",
       "quote": "590M       & 1536     & 18        & 128     & 6144",
-      "where": "Table table:model_details",
+      "where": "Table 1",
       "reasons": [],
       "check": "verified"
      },
@@ -1233,7 +1203,7 @@
       "value": "2048",
       "status": "stated",
       "quote": "1.3B       & 2048     & 24        & 128     & 8192",
-      "where": "Table table:model_details",
+      "where": "Table 1",
       "reasons": [],
       "check": "verified"
      },
@@ -1241,7 +1211,7 @@
       "value": "24",
       "status": "stated",
       "quote": "1.3B       & 2048     & 24        & 128     & 8192",
-      "where": "Table table:model_details",
+      "where": "Table 1",
       "reasons": [],
       "check": "verified"
      },
@@ -1265,7 +1235,7 @@
       "value": "128",
       "status": "stated",
       "quote": "1.3B       & 2048     & 24        & 128     & 8192",
-      "where": "Table table:model_details",
+      "where": "Table 1",
       "reasons": [],
       "check": "verified"
      },
@@ -1273,7 +1243,7 @@
       "value": "8192",
       "status": "stated",
       "quote": "1.3B       & 2048     & 24        & 128     & 8192",
-      "where": "Table table:model_details",
+      "where": "Table 1",
       "reasons": [],
       "check": "verified"
      },
@@ -1301,7 +1271,7 @@
       "value": "2560",
       "status": "stated",
       "quote": "2.7B       & 2560     & 32        & 80      & 10240",
-      "where": "Table table:model_details",
+      "where": "Table 1",
       "reasons": [],
       "check": "verified"
      },
@@ -1309,7 +1279,7 @@
       "value": "32",
       "status": "stated",
       "quote": "2.7B       & 2560     & 32        & 80      & 10240",
-      "where": "Table table:model_details",
+      "where": "Table 1",
       "reasons": [],
       "check": "verified"
      },
@@ -1333,7 +1303,7 @@
       "value": "80",
       "status": "stated",
       "quote": "2.7B       & 2560     & 32        & 80      & 10240",
-      "where": "Table table:model_details",
+      "where": "Table 1",
       "reasons": [],
       "check": "verified"
      },
@@ -1341,7 +1311,7 @@
       "value": "10240",
       "status": "stated",
       "quote": "2.7B       & 2560     & 32        & 80      & 10240",
-      "where": "Table table:model_details",
+      "where": "Table 1",
       "reasons": [],
       "check": "verified"
      },
@@ -1369,7 +1339,7 @@
       "value": "4096",
       "status": "stated",
       "quote": "6.7B       & 4096     & 32        & 128     & 16384",
-      "where": "Table table:model_details",
+      "where": "Table 1",
       "reasons": [],
       "check": "verified"
      },
@@ -1377,7 +1347,7 @@
       "value": "32",
       "status": "stated",
       "quote": "6.7B       & 4096     & 32        & 128     & 16384",
-      "where": "Table table:model_details",
+      "where": "Table 1",
       "reasons": [],
       "check": "verified"
      },
@@ -1401,7 +1371,7 @@
       "value": "128",
       "status": "stated",
       "quote": "6.7B       & 4096     & 32        & 128     & 16384",
-      "where": "Table table:model_details",
+      "where": "Table 1",
       "reasons": [],
       "check": "verified"
      },
@@ -1409,7 +1379,7 @@
       "value": "16384",
       "status": "stated",
       "quote": "6.7B       & 4096     & 32        & 128     & 16384",
-      "where": "Table table:model_details",
+      "where": "Table 1",
       "reasons": [],
       "check": "verified"
      },
@@ -1437,7 +1407,7 @@
       "value": "5120",
       "status": "stated",
       "quote": "13B        & 5120     & 40        & 128     & 20480",
-      "where": "Table table:model_details",
+      "where": "Table 1",
       "reasons": [],
       "check": "verified"
      },
@@ -1445,7 +1415,7 @@
       "value": "40",
       "status": "stated",
       "quote": "13B        & 5120     & 40        & 128     & 20480",
-      "where": "Table table:model_details",
+      "where": "Table 1",
       "reasons": [],
       "check": "verified"
      },
@@ -1469,7 +1439,7 @@
       "value": "128",
       "status": "stated",
       "quote": "13B        & 5120     & 40        & 128     & 20480",
-      "where": "Table table:model_details",
+      "where": "Table 1",
       "reasons": [],
       "check": "verified"
      },
@@ -1477,7 +1447,7 @@
       "value": "20480",
       "status": "stated",
       "quote": "13B        & 5120     & 40        & 128     & 20480",
-      "where": "Table table:model_details",
+      "where": "Table 1",
       "reasons": [],
       "check": "verified"
      },
@@ -1505,8 +1475,8 @@
     "norm": {
      "value": "layernorm",
      "status": "stated",
-     "quote": "# Layer norms: 7 FLOPs/activation, 2 LNs per decoder block",
-     "where": "Table code:flops_count",
+     "quote": "LN initializer          & \\multicolumn{2}{c|}{$W_\\gamma \\sim 1, b_\\beta \\sim 0$}",
+     "where": "Table: Cheat Sheet (mup-implementation)",
      "reasons": [],
      "check": "verified"
     },
@@ -1532,7 +1502,7 @@
      "value": "gelu",
      "status": "stated",
      "quote": "# GeLU: estimate 20 FLOPs/activation, applied in FFN with 4x hidden dim",
-     "where": "Table code:flops_count",
+     "where": "Table: FLOPs code (code:flops_count)",
      "reasons": [],
      "check": "verified"
     },
@@ -1572,7 +1542,7 @@
      "value": "residual",
      "status": "stated",
      "quote": "for the last layer inside each residual network, following the GPT-2 initialization",
-     "where": "Sec. 2.4 Standard (SP) and Maximal Update Parameterization",
+     "where": "Sec. 2.4 Standard Parameterization",
      "reasons": [],
      "check": "verified"
     },
@@ -1587,7 +1557,7 @@
     "attention": {
      "value": "exact",
      "status": "stated",
-     "quote": "we use dense attention in all decoder blocks.",
+     "quote": "we use dense attention in all decoder blocks",
      "where": "Sec. 2.1 Model Architecture",
      "reasons": [],
      "check": "quote_only"
@@ -1611,8 +1581,8 @@
     "qkv_bias": {
      "value": "true",
      "status": "stated",
-     "quote": "attn = 4 * (d_model**2 + d_model)",
-     "where": "Table code:params_count",
+     "quote": "In the attention layers, the bias weights of the keys projection, specifically, have expected value close to zero early in training.",
+     "where": "Appendix: Ensuring Stable Training",
      "reasons": [],
      "check": "quote_only"
     },
@@ -1620,23 +1590,23 @@
      "value": "true",
      "status": "stated",
      "quote": "ffn = 8 * d_model**2 + 5 * d_model",
-     "where": "Table code:params_count",
+     "where": "Table: parameter count code (code:params_count)",
      "reasons": [],
      "check": "quote_only"
     },
     "tied_embeddings": {
      "value": "true",
      "status": "stated",
-     "quote": "n_params = embedding + encoder + final_ln",
-     "where": "Table code:params_count",
+     "quote": "embedding = vocab_size * d_model + d_model * seq_length",
+     "where": "Table: parameter count code (code:params_count)",
      "reasons": [],
      "check": "quote_only"
     },
     "moe": {
      "value": "false",
      "status": "stated",
-     "quote": "ffn = 8 * d_model**2 + 5 * d_model",
-     "where": "Table code:params_count",
+     "quote": "# GeLU: estimate 20 FLOPs/activation, applied in FFN with 4x hidden dim",
+     "where": "Table: FLOPs code (code:flops_count)",
      "reasons": [],
      "check": "quote_only"
     },
@@ -1675,70 +1645,34 @@
      "inputs": [
       "tokens"
      ],
-     "output": "tok",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "50257",
-       "status": "stated",
-       "quote": "We tokenize the corpora with byte-pair encoding and the GPT-2 vocabulary of size 50257",
-       "where": "Sec. 2.2 Pre-training Corpus",
-       "reasons": [],
-       "check": "verified",
-       "name": "vocab"
-      }
-     ],
-     "errors": []
-    },
-    {
-     "i": 1,
-     "subgraph": "embed",
-     "op": "pos_embedding",
-     "role": "learned absolute position embedding",
-     "inputs": [
-      "tok",
-      "pos"
-     ],
-     "output": "pe",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "2048",
-       "status": "stated",
-       "quote": "embedding = vocab_size * d_model + d_model * seq_length",
-       "where": "Table code:params_count",
-       "reasons": [
-        "2048 does not occur in its quote"
-       ],
-       "check": "unverified",
-       "name": "max_positions"
-      }
-     ],
-     "errors": []
-    },
-    {
-     "i": 2,
-     "subgraph": "embed",
-     "op": "add",
-     "role": "token + position embedding sum",
-     "inputs": [
-      "tok",
-      "pe"
-     ],
      "output": "x",
      "new_op": "",
      "attributes": [],
      "errors": []
     },
     {
-     "i": 3,
+     "i": 1,
+     "subgraph": "embed",
+     "op": "pos_embedding",
+     "role": "learned absolute position embedding added to token embedding",
+     "inputs": [
+      "x",
+      "pos"
+     ],
+     "output": "h",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 2,
      "subgraph": "block",
      "op": "layernorm",
      "role": "ln1 before attention",
      "inputs": [
-      "x"
+      "h"
      ],
-     "output": "h",
+     "output": "a_in",
      "new_op": "",
      "attributes": [
       {
@@ -1754,30 +1688,44 @@
      "errors": []
     },
     {
-     "i": 4,
+     "i": 3,
      "subgraph": "block",
      "op": "linear",
-     "role": "fused qkv projection",
+     "role": "query projection",
      "inputs": [
-      "h"
+      "a_in"
      ],
-     "output": "qkv",
+     "output": "q",
      "new_op": "",
      "attributes": [
-      {
-       "value": "3*d_model",
-       "status": "stated",
-       "quote": "kqv_proj = num_layers * 2 * 3 * seq_len * d_model * (key_size * num_heads)",
-       "where": "Table code:flops_count",
-       "reasons": [],
-       "check": "verified",
-       "name": "out"
-      },
       {
        "value": "true",
        "status": "stated",
        "quote": "attn = 4 * (d_model**2 + d_model)",
-       "where": "Table code:params_count",
+       "where": "Table: parameter count code",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 4,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "key projection",
+     "inputs": [
+      "a_in"
+     ],
+     "output": "k",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "true",
+       "status": "stated",
+       "quote": "In the attention layers, the bias weights of the keys projection, specifically, have expected value close to zero early in training.",
+       "where": "Appendix: Ensuring Stable Training",
        "reasons": [],
        "check": "quote_only",
        "name": "bias"
@@ -1788,22 +1736,22 @@
     {
      "i": 5,
      "subgraph": "block",
-     "op": "split",
-     "role": "split into q, k, v",
+     "op": "linear",
+     "role": "value projection",
      "inputs": [
-      "qkv"
+      "a_in"
      ],
-     "output": "q,k,v",
+     "output": "v",
      "new_op": "",
      "attributes": [
       {
-       "value": "d_model,d_model,d_model",
+       "value": "true",
        "status": "stated",
-       "quote": "kqv_proj = num_layers * 2 * 3 * seq_len * d_model * (key_size * num_heads)",
-       "where": "Table code:flops_count",
+       "quote": "attn = 4 * (d_model**2 + d_model)",
+       "where": "Table: parameter count code",
        "reasons": [],
        "check": "quote_only",
-       "name": "sizes"
+       "name": "bias"
       }
      ],
      "errors": []
@@ -1818,16 +1766,16 @@
       "k",
       "v"
      ],
-     "output": "a",
+     "output": "att",
      "new_op": "",
      "attributes": [
       {
-       "value": "d_model/head_dim",
-       "status": "stated",
-       "quote": "num_heads = d_model // key_size",
-       "where": "Table code:flops_count",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
        "reasons": [],
-       "check": "quote_only",
+       "check": "not_stated",
        "name": "heads"
       },
       {
@@ -1843,18 +1791,18 @@
        "value": "64",
        "status": "stated",
        "quote": "111M       & 768      & 10        & 64      & 3072",
-       "where": "Table table:model_details",
+       "where": "Table 1",
        "reasons": [],
        "check": "verified",
        "name": "head_dim"
       },
       {
-       "value": "1/sqrt(head_dim)",
+       "value": "0.125",
        "status": "stated",
-       "quote": "$\\text{softmax}\\left(\\frac{Q^TK}{\\sqrt{d_{\\text{head}}}}\\right)V$",
-       "where": "Table table:mup-implementation",
+       "quote": "MHA equation            & $\\text{softmax}\\left(\\frac{Q^TK}{\\sqrt{d_{\\text{head}}}}\\right)V$",
+       "where": "Table: Cheat Sheet (mup-implementation), SP column",
        "reasons": [
-        "1/sqrt(head_dim) does not occur in its quote"
+        "0.125 does not occur in its quote"
        ],
        "check": "unverified",
        "name": "scale"
@@ -1862,7 +1810,7 @@
       {
        "value": "true",
        "status": "stated",
-       "quote": "Cerebras-GPT models have a GPT-3-like architecture, an autoregressive transformer decoder model",
+       "quote": "an autoregressive transformer decoder model",
        "where": "Sec. 2.1 Model Architecture",
        "reasons": [],
        "check": "quote_only",
@@ -1871,7 +1819,7 @@
       {
        "value": "0",
        "status": "stated",
-       "quote": "we use dense attention in all decoder blocks.",
+       "quote": "we use dense attention in all decoder blocks",
        "where": "Sec. 2.1 Model Architecture",
        "reasons": [
         "0 does not occur in its quote"
@@ -1897,25 +1845,16 @@
      "op": "linear",
      "role": "attention output projection",
      "inputs": [
-      "a"
+      "att"
      ],
-     "output": "o",
+     "output": "att_o",
      "new_op": "",
      "attributes": [
-      {
-       "value": "d_model",
-       "status": "stated",
-       "quote": "final_linear = num_layers * 2 * seq_len * (key_size * num_heads) * d_model",
-       "where": "Table code:flops_count",
-       "reasons": [],
-       "check": "quote_only",
-       "name": "out"
-      },
       {
        "value": "true",
        "status": "stated",
        "quote": "attn = 4 * (d_model**2 + d_model)",
-       "where": "Table code:params_count",
+       "where": "Table: parameter count code",
        "reasons": [],
        "check": "quote_only",
        "name": "bias"
@@ -1927,12 +1866,12 @@
      "i": 8,
      "subgraph": "block",
      "op": "add",
-     "role": "attention residual",
+     "role": "attention residual add",
      "inputs": [
-      "x",
-      "o"
+      "h",
+      "att_o"
      ],
-     "output": "x1",
+     "output": "h2",
      "new_op": "",
      "attributes": [],
      "errors": []
@@ -1943,9 +1882,9 @@
      "op": "layernorm",
      "role": "ln2 before FFN",
      "inputs": [
-      "x1"
+      "h2"
      ],
-     "output": "h2",
+     "output": "f_in",
      "new_op": "",
      "attributes": [
       {
@@ -1966,16 +1905,16 @@
      "op": "linear",
      "role": "ffn1 up projection",
      "inputs": [
-      "h2"
+      "f_in"
      ],
-     "output": "u",
+     "output": "f_up",
      "new_op": "",
      "attributes": [
       {
        "value": "3072",
        "status": "stated",
        "quote": "111M       & 768      & 10        & 64      & 3072",
-       "where": "Table table:model_details",
+       "where": "Table 1",
        "reasons": [],
        "check": "verified",
        "name": "out"
@@ -1984,7 +1923,7 @@
        "value": "true",
        "status": "stated",
        "quote": "ffn = 8 * d_model**2 + 5 * d_model",
-       "where": "Table code:params_count",
+       "where": "Table: parameter count code",
        "reasons": [],
        "check": "quote_only",
        "name": "bias"
@@ -1998,9 +1937,9 @@
      "op": "gelu",
      "role": "FFN activation",
      "inputs": [
-      "u"
+      "f_up"
      ],
-     "output": "g",
+     "output": "f_act",
      "new_op": "",
      "attributes": [
       {
@@ -2021,25 +1960,25 @@
      "op": "linear",
      "role": "ffn2 down projection",
      "inputs": [
-      "g"
+      "f_act"
      ],
-     "output": "f",
+     "output": "f_out",
      "new_op": "",
      "attributes": [
       {
-       "value": "d_model",
+       "value": "768",
        "status": "stated",
-       "quote": "ffn = 8 * d_model**2 + 5 * d_model",
-       "where": "Table code:params_count",
+       "quote": "111M       & 768      & 10        & 64      & 3072",
+       "where": "Table 1",
        "reasons": [],
-       "check": "quote_only",
+       "check": "verified",
        "name": "out"
       },
       {
        "value": "true",
        "status": "stated",
        "quote": "ffn = 8 * d_model**2 + 5 * d_model",
-       "where": "Table code:params_count",
+       "where": "Table: parameter count code",
        "reasons": [],
        "check": "quote_only",
        "name": "bias"
@@ -2051,12 +1990,12 @@
      "i": 13,
      "subgraph": "block",
      "op": "add",
-     "role": "FFN residual",
+     "role": "FFN residual add",
      "inputs": [
-      "x1",
-      "f"
+      "h2",
+      "f_out"
      ],
-     "output": "x",
+     "output": "h_out",
      "new_op": "",
      "attributes": [],
      "errors": []
@@ -2065,9 +2004,9 @@
      "i": 14,
      "subgraph": "head",
      "op": "layernorm",
-     "role": "final layernorm",
+     "role": "final layer norm",
      "inputs": [
-      "x"
+      "h_out"
      ],
      "output": "hf",
      "new_op": "",
@@ -2096,19 +2035,10 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "50257",
-       "status": "stated",
-       "quote": "We tokenize the corpora with byte-pair encoding and the GPT-2 vocabulary of size 50257",
-       "where": "Sec. 2.2 Pre-training Corpus",
-       "reasons": [],
-       "check": "verified",
-       "name": "out"
-      },
-      {
        "value": "token_embd",
        "status": "stated",
-       "quote": "n_params = embedding + encoder + final_ln",
-       "where": "Table code:params_count",
+       "quote": "embedding = vocab_size * d_model + d_model * seq_length",
+       "where": "Table: parameter count code",
        "reasons": [],
        "check": "quote_only",
        "name": "tied_to"
@@ -2117,7 +2047,7 @@
        "value": "false",
        "status": "stated",
        "quote": "n_params = embedding + encoder + final_ln",
-       "where": "Table code:params_count",
+       "where": "Table: parameter count code",
        "reasons": [],
        "check": "quote_only",
        "name": "bias"
@@ -2129,10 +2059,10 @@
    "mechanisms_outside_ir": [],
    "summary": {
     "counts": {
-     "verified": 51,
-     "quote_only": 18,
-     "unverified": 4,
-     "not_stated": 29
+     "verified": 49,
+     "quote_only": 16,
+     "unverified": 3,
+     "not_stated": 30
     },
     "unverified": [
      {
@@ -2142,15 +2072,9 @@
       ]
      },
      {
-      "field": "block_ops[1].max_positions",
-      "reasons": [
-       "2048 does not occur in its quote"
-      ]
-     },
-     {
       "field": "block_ops[6].scale",
       "reasons": [
-       "1/sqrt(head_dim) does not occur in its quote"
+       "0.125 does not occur in its quote"
       ]
      },
      {

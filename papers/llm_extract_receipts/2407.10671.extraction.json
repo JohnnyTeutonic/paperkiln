@@ -4,32 +4,32 @@
  "fields": {
   "d_model": {
    "value": 896,
-   "evidence": "Hidden Size & 896 & 1,536 & 3,584 & 8,192 & 3,584 \\\\ [Table tab:to_sota]",
+   "evidence": "Hidden Size & 896 & 1,536 & 3,584 & 8,192 & 3,584 [Table tab:to_sota]",
    "verdict": "used"
   },
   "n_layers": {
    "value": 24,
-   "evidence": "\\# Layers & 24 & 28 & 28 & 80 & 28 \\\\ [Table tab:to_sota]",
+   "evidence": "\\# Layers & 24 & 28 & 28 & 80 & 28 [Table tab:to_sota]",
    "verdict": "used"
   },
   "n_heads": {
    "value": 14,
-   "evidence": "\\# Query Heads & 14 & 12 & 28 & 64 & 28 \\\\ [Table tab:to_sota]",
+   "evidence": "\\# Query Heads & 14 & 12 & 28 & 64 & 28 [Table tab:to_sota]",
    "verdict": "used"
   },
   "n_kv_heads": {
    "value": 2,
-   "evidence": "\\# KV Heads & 2 & 2 & 4 & 8 & 4 \\\\ [Table tab:to_sota]",
+   "evidence": "\\# KV Heads & 2 & 2 & 4 & 8 & 4 [Table tab:to_sota]",
    "verdict": "used"
   },
   "d_ff": {
    "value": 4864,
-   "evidence": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560\\\\ [Table tab:to_sota]",
+   "evidence": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560 [Table tab:to_sota]",
    "verdict": "used"
   },
   "vocab_size": {
    "value": 151646,
-   "evidence": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646 \\\\ [Table tab:to_sota]",
+   "evidence": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646 [Table tab:to_sota]",
    "verdict": "used"
   },
   "context_length": {
@@ -39,7 +39,7 @@
   },
   "norm": {
    "value": "rmsnorm",
-   "evidence": "RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability. [Sec. Qwen2 Dense Model]",
+   "evidence": "RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability [Sec. Qwen2 Dense Model]",
    "verdict": "used"
   },
   "activation": {
@@ -52,20 +52,33 @@
    "evidence": "Rotary Positional Embeddings (RoPE, \\citealp{rope}) for positional embedding [Sec. Qwen2 Dense Model]",
    "verdict": "used"
   },
+  "residual": {
+   "value": "residual",
+   "evidence": "RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability [Sec. Qwen2 Dense Model]",
+   "verdict": "unverified",
+   "reasons": [
+    "the quote does not name residual (looked for /residual|skip/)"
+   ]
+  },
   "attention": {
    "value": "exact",
-   "evidence": "If the input can be handled in a chunk, DCA produces the same result as the original attention. [Sec. Dual Chunk Attention with YARN]",
+   "evidence": "The Qwen2 series fundamentally constitute large language models based on the Transformer architecture, featuring self-attention with causal masks~\\citep{transformer}. [Sec. Model Architecture]",
    "verdict": "used"
   }
  },
- "unresolved": [
-  "residual"
+ "unresolved": [],
+ "unverified": [
+  {
+   "field": "residual",
+   "reasons": [
+    "the quote does not name residual (looked for /residual|skip/)"
+   ]
+  }
  ],
- "unverified": [],
  "mentions": {},
  "inherits": {
   "ancestor": "Qwen",
-  "evidence": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation, Rotary Positional Embeddings (RoPE, \\citealp{rope}) for positional embedding, QKV bias~\\citep{qkv_bias} for attention, RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability.",
+  "evidence": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation",
   "section": "Sec. Qwen2 Dense Model"
  },
  "variants": [
@@ -120,34 +133,28 @@
    "mechanism": "grouped or multi-query attention",
    "where": "llm extraction, verified quote, Table tab:to_sota",
    "blocking": true,
-   "evidence": "\\# KV Heads & 2 & 2 & 4 & 8 & 4 \\\\"
+   "evidence": "\\# KV Heads & 2 & 2 & 4 & 8 & 4"
   },
   {
-   "mechanism": "Dual Chunk Attention for long sequences (chunked attention with relative positions within and across chunks), used beyond the trained context",
-   "where": "llm extraction, verified quote, Sec. Dual Chunk Attention with YARN",
+   "mechanism": "Dual Chunk Attention (DCA) for long-context extension; identical to standard attention within one chunk",
+   "where": "llm extraction, verified quote, Sec. Qwen2 Dense Model",
    "blocking": true,
    "evidence": "To expand the context window of Qwen2, we implement Dual Chunk Attention (DCA, \\citealp{chunkllama}), which segments long sequences into chunks of manageable lengths."
   },
   {
-   "mechanism": "YARN rescaling of attention for length extrapolation (applied for contexts over 32K)",
-   "where": "llm extraction, verified quote, Sec. Dual Chunk Attention with YARN",
+   "mechanism": "YARN rescaling of attention for length extrapolation (used beyond 32K, up to 131072 tokens)",
+   "where": "llm extraction, verified quote, Sec. Qwen2 Dense Model",
    "blocking": true,
    "evidence": "Moreover, we also employ YARN~\\citep{yarn} to rescale the attention weights for better length extrapolation."
   },
   {
-   "mechanism": "MoE variant Qwen2-57B-A14B: fine-grained experts with 64 routed experts, 8 activated per token, plus 8 shared experts; softmax gate over all experts, then top-k weighted sum",
-   "where": "llm extraction, verified quote, Table tab:to_sota",
+   "mechanism": "MoE variant Qwen2-57B-A14B: fine-grained experts, 64 routed experts with 8 activated plus 8 shared experts, gate p = softmax(G(x)), y = sum over top-k of p_i E_i(x) (raw full-softmax weights); shared experts not representable in moe_ffn",
+   "where": "llm extraction, verified quote, Sec. Qwen2 Mixture-of-experts Model",
    "blocking": true,
-   "evidence": "\\# Routed Experts & - & -&- & -& 64\\\\"
+   "evidence": "Each token is directed to a specific expert $E_i$ for computation based on probabilities assigned by a gated network $G$:"
   },
   {
-   "mechanism": "MoE shared experts alongside routed experts (not representable by moe_ffn)",
-   "where": "llm extraction, verified quote, Sec. Expert Routing",
-   "blocking": true,
-   "evidence": "Recently, there has been a notable trend towards integrating both shared and routing-specific experts within MoE layers \\citep{deepspeedmoe, deepseekmoe}."
-  },
-  {
-   "mechanism": "Embedding matrix padded beyond the vocabulary size for distributed training",
+   "mechanism": "Embedding matrix padded beyond the vocabulary for distributed training; padded size not stated",
    "where": "llm extraction, verified quote, Sec. Tokenizer",
    "blocking": true,
    "evidence": "It should be noted that, owing to considerations in distributed training, the effective size for the embeddings is larger."
@@ -158,20 +165,20 @@
   "sent_sha256": "77e5c569cec1724dc1a3792c0e76576ae8aeca821c11a09b9172aae6db0ff677",
   "from": "https://arxiv.org/e-print/2407.10671",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
   "n_calls": 1,
-  "cost_usd": 0.392676,
+  "cost_usd": 0.41436,
   "request_ids": [
-   "req_011CgFeHhYh2Qfo1WS7eyMTB"
+   "req_011CgFjB62CBVJ7gaAeiNpPH"
   ]
  },
  "llm": {
   "output": {
    "title": "Qwen2 Technical Report",
-   "model_name": "Qwen2 (dense; primary config Qwen2-0.5B)",
+   "model_name": "Qwen2",
    "family": {
     "value": "decoder_only",
     "status": "stated",
@@ -180,52 +187,52 @@
    },
    "inherits": {
     "ancestor": "Qwen",
-    "quote": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation, Rotary Positional Embeddings (RoPE, \\citealp{rope}) for positional embedding, QKV bias~\\citep{qkv_bias} for attention, RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability.",
+    "quote": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation",
     "where": "Sec. Qwen2 Dense Model"
    },
    "configs": [
     {
-     "name": "Qwen2-0.5B",
+     "name": "0.5B",
      "d_model": {
       "value": "896",
       "status": "stated",
-      "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584 \\\\",
+      "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584",
       "where": "Table tab:to_sota"
      },
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "\\# Layers & 24 & 28 & 28  & 80 & 28 \\\\",
+      "quote": "\\# Layers & 24 & 28 & 28  & 80 & 28",
       "where": "Table tab:to_sota"
      },
      "n_heads": {
       "value": "14",
       "status": "stated",
-      "quote": "\\# Query Heads & 14 & 12 & 28  & 64 & 28 \\\\",
+      "quote": "\\# Query Heads & 14 & 12 & 28  & 64 & 28",
       "where": "Table tab:to_sota"
      },
      "n_kv_heads": {
       "value": "2",
       "status": "stated",
-      "quote": "\\# KV Heads  & 2 & 2 & 4 & 8  & 4 \\\\",
+      "quote": "\\# KV Heads  & 2 & 2 & 4 & 8  & 4",
       "where": "Table tab:to_sota"
      },
      "head_dim": {
       "value": "64",
       "status": "stated",
-      "quote": "Head Size & 64 & 128 & 128 & 128 & 128 \\\\",
+      "quote": "Head Size & 64 & 128 & 128 & 128 & 128",
       "where": "Table tab:to_sota"
      },
      "d_ff": {
       "value": "4864",
       "status": "stated",
-      "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560\\\\",
+      "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560",
       "where": "Table tab:to_sota"
      },
      "vocab_size": {
       "value": "151646",
       "status": "stated",
-      "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646 \\\\",
+      "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646",
       "where": "Table tab:to_sota"
      },
      "context_length": {
@@ -236,47 +243,47 @@
      }
     },
     {
-     "name": "Qwen2-1.5B",
+     "name": "1.5B",
      "d_model": {
       "value": "1536",
       "status": "stated",
-      "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584 \\\\",
+      "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584",
       "where": "Table tab:to_sota"
      },
      "n_layers": {
       "value": "28",
       "status": "stated",
-      "quote": "\\# Layers & 24 & 28 & 28  & 80 & 28 \\\\",
+      "quote": "\\# Layers & 24 & 28 & 28  & 80 & 28",
       "where": "Table tab:to_sota"
      },
      "n_heads": {
       "value": "12",
       "status": "stated",
-      "quote": "\\# Query Heads & 14 & 12 & 28  & 64 & 28 \\\\",
+      "quote": "\\# Query Heads & 14 & 12 & 28  & 64 & 28",
       "where": "Table tab:to_sota"
      },
      "n_kv_heads": {
       "value": "2",
       "status": "stated",
-      "quote": "\\# KV Heads  & 2 & 2 & 4 & 8  & 4 \\\\",
+      "quote": "\\# KV Heads  & 2 & 2 & 4 & 8  & 4",
       "where": "Table tab:to_sota"
      },
      "head_dim": {
       "value": "128",
       "status": "stated",
-      "quote": "Head Size & 64 & 128 & 128 & 128 & 128 \\\\",
+      "quote": "Head Size & 64 & 128 & 128 & 128 & 128",
       "where": "Table tab:to_sota"
      },
      "d_ff": {
       "value": "8960",
       "status": "stated",
-      "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560\\\\",
+      "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560",
       "where": "Table tab:to_sota"
      },
      "vocab_size": {
       "value": "151646",
       "status": "stated",
-      "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646 \\\\",
+      "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646",
       "where": "Table tab:to_sota"
      },
      "context_length": {
@@ -287,47 +294,47 @@
      }
     },
     {
-     "name": "Qwen2-7B",
+     "name": "7B",
      "d_model": {
       "value": "3584",
       "status": "stated",
-      "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584 \\\\",
+      "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584",
       "where": "Table tab:to_sota"
      },
      "n_layers": {
       "value": "28",
       "status": "stated",
-      "quote": "\\# Layers & 24 & 28 & 28  & 80 & 28 \\\\",
+      "quote": "\\# Layers & 24 & 28 & 28  & 80 & 28",
       "where": "Table tab:to_sota"
      },
      "n_heads": {
       "value": "28",
       "status": "stated",
-      "quote": "\\# Query Heads & 14 & 12 & 28  & 64 & 28 \\\\",
+      "quote": "\\# Query Heads & 14 & 12 & 28  & 64 & 28",
       "where": "Table tab:to_sota"
      },
      "n_kv_heads": {
       "value": "4",
       "status": "stated",
-      "quote": "\\# KV Heads  & 2 & 2 & 4 & 8  & 4 \\\\",
+      "quote": "\\# KV Heads  & 2 & 2 & 4 & 8  & 4",
       "where": "Table tab:to_sota"
      },
      "head_dim": {
       "value": "128",
       "status": "stated",
-      "quote": "Head Size & 64 & 128 & 128 & 128 & 128 \\\\",
+      "quote": "Head Size & 64 & 128 & 128 & 128 & 128",
       "where": "Table tab:to_sota"
      },
      "d_ff": {
       "value": "18944",
       "status": "stated",
-      "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560\\\\",
+      "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560",
       "where": "Table tab:to_sota"
      },
      "vocab_size": {
       "value": "151646",
       "status": "stated",
-      "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646 \\\\",
+      "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646",
       "where": "Table tab:to_sota"
      },
      "context_length": {
@@ -338,47 +345,47 @@
      }
     },
     {
-     "name": "Qwen2-72B",
+     "name": "72B",
      "d_model": {
       "value": "8192",
       "status": "stated",
-      "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584 \\\\",
+      "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584",
       "where": "Table tab:to_sota"
      },
      "n_layers": {
       "value": "80",
       "status": "stated",
-      "quote": "\\# Layers & 24 & 28 & 28  & 80 & 28 \\\\",
+      "quote": "\\# Layers & 24 & 28 & 28  & 80 & 28",
       "where": "Table tab:to_sota"
      },
      "n_heads": {
       "value": "64",
       "status": "stated",
-      "quote": "\\# Query Heads & 14 & 12 & 28  & 64 & 28 \\\\",
+      "quote": "\\# Query Heads & 14 & 12 & 28  & 64 & 28",
       "where": "Table tab:to_sota"
      },
      "n_kv_heads": {
       "value": "8",
       "status": "stated",
-      "quote": "\\# KV Heads  & 2 & 2 & 4 & 8  & 4 \\\\",
+      "quote": "\\# KV Heads  & 2 & 2 & 4 & 8  & 4",
       "where": "Table tab:to_sota"
      },
      "head_dim": {
       "value": "128",
       "status": "stated",
-      "quote": "Head Size & 64 & 128 & 128 & 128 & 128 \\\\",
+      "quote": "Head Size & 64 & 128 & 128 & 128 & 128",
       "where": "Table tab:to_sota"
      },
      "d_ff": {
       "value": "29568",
       "status": "stated",
-      "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560\\\\",
+      "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560",
       "where": "Table tab:to_sota"
      },
      "vocab_size": {
       "value": "151646",
       "status": "stated",
-      "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646 \\\\",
+      "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646",
       "where": "Table tab:to_sota"
      },
      "context_length": {
@@ -389,47 +396,47 @@
      }
     },
     {
-     "name": "Qwen2-57B-A14B (MoE)",
+     "name": "57B-A14B",
      "d_model": {
       "value": "3584",
       "status": "stated",
-      "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584 \\\\",
+      "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584",
       "where": "Table tab:to_sota"
      },
      "n_layers": {
       "value": "28",
       "status": "stated",
-      "quote": "\\# Layers & 24 & 28 & 28  & 80 & 28 \\\\",
+      "quote": "\\# Layers & 24 & 28 & 28  & 80 & 28",
       "where": "Table tab:to_sota"
      },
      "n_heads": {
       "value": "28",
       "status": "stated",
-      "quote": "\\# Query Heads & 14 & 12 & 28  & 64 & 28 \\\\",
+      "quote": "\\# Query Heads & 14 & 12 & 28  & 64 & 28",
       "where": "Table tab:to_sota"
      },
      "n_kv_heads": {
       "value": "4",
       "status": "stated",
-      "quote": "\\# KV Heads  & 2 & 2 & 4 & 8  & 4 \\\\",
+      "quote": "\\# KV Heads  & 2 & 2 & 4 & 8  & 4",
       "where": "Table tab:to_sota"
      },
      "head_dim": {
       "value": "128",
       "status": "stated",
-      "quote": "Head Size & 64 & 128 & 128 & 128 & 128 \\\\",
+      "quote": "Head Size & 64 & 128 & 128 & 128 & 128",
       "where": "Table tab:to_sota"
      },
      "d_ff": {
       "value": "2560",
       "status": "stated",
-      "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560\\\\",
+      "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560",
       "where": "Table tab:to_sota"
      },
      "vocab_size": {
       "value": "151646",
       "status": "stated",
-      "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646 \\\\",
+      "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646",
       "where": "Table tab:to_sota"
      },
      "context_length": {
@@ -440,18 +447,18 @@
      }
     }
    ],
-   "primary_config": "Qwen2-0.5B",
+   "primary_config": "0.5B",
    "flavours": {
     "norm": {
      "value": "rmsnorm",
      "status": "stated",
-     "quote": "RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability.",
+     "quote": "RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability",
      "where": "Sec. Qwen2 Dense Model"
     },
     "norm_placement": {
      "value": "pre",
      "status": "stated",
-     "quote": "RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability.",
+     "quote": "RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability",
      "where": "Sec. Qwen2 Dense Model"
     },
     "norm_eps": {
@@ -491,10 +498,10 @@
      "where": ""
     },
     "residual": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": ""
+     "value": "residual",
+     "status": "stated",
+     "quote": "RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability",
+     "where": "Sec. Qwen2 Dense Model"
     },
     "parallel_block": {
      "value": "",
@@ -505,8 +512,8 @@
     "attention": {
      "value": "exact",
      "status": "stated",
-     "quote": "If the input can be handled in a chunk, DCA produces the same result as the original attention.",
-     "where": "Sec. Dual Chunk Attention with YARN"
+     "quote": "The Qwen2 series fundamentally constitute large language models based on the Transformer architecture, featuring self-attention with causal masks~\\citep{transformer}.",
+     "where": "Sec. Model Architecture"
     },
     "window_size": {
      "value": "",
@@ -535,14 +542,14 @@
     "tied_embeddings": {
      "value": "true",
      "status": "stated",
-     "quote": "Embedding Tying  & True &  True  & False & False & False \\\\",
+     "quote": "Embedding Tying  & True &  True  & False & False & False",
      "where": "Table tab:to_sota"
     },
     "moe": {
      "value": "false",
      "status": "stated",
-     "quote": "Specifically, this series encompasses dense language models of 4 scales and a Mixture-of-Experts (MoE) model.",
-     "where": "Sec. Model Architecture"
+     "quote": "The architecture of the Qwen2 dense models comprises multiple Transformer layers, each equipped with causal attention mechanisms and feed-forward neural networks (FFNs).",
+     "where": "Sec. Qwen2 Dense Model"
     },
     "n_experts": {
      "value": "",
@@ -567,27 +574,12 @@
     {
      "subgraph": "embed",
      "op": "embedding",
-     "role": "token embedding",
+     "role": "token embedding (token_embd)",
      "inputs": [
       "tokens"
      ],
      "output": "x",
-     "attributes": [
-      {
-       "name": "vocab",
-       "value": "151646",
-       "status": "stated",
-       "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646 \\\\",
-       "where": "Table tab:to_sota"
-      },
-      {
-       "name": "d",
-       "value": "896",
-       "status": "stated",
-       "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584 \\\\",
-       "where": "Table tab:to_sota"
-      }
-     ],
+     "attributes": [],
      "new_op": ""
     },
     {
@@ -612,20 +604,13 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "q projection",
+     "role": "query projection",
      "inputs": [
       "h"
      ],
      "output": "q",
      "attributes": [
       {
-       "name": "out",
-       "value": "896",
-       "status": "stated",
-       "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584 \\\\",
-       "where": "Table tab:to_sota"
-      },
-      {
        "name": "bias",
        "value": "true",
        "status": "stated",
@@ -638,20 +623,13 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "k projection",
+     "role": "key projection",
      "inputs": [
       "h"
      ],
      "output": "k",
      "attributes": [
       {
-       "name": "out",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      },
-      {
        "name": "bias",
        "value": "true",
        "status": "stated",
@@ -664,19 +642,12 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "v projection",
+     "role": "value projection",
      "inputs": [
       "h"
      ],
      "output": "v",
      "attributes": [
-      {
-       "name": "out",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      },
       {
        "name": "bias",
        "value": "true",
@@ -690,19 +661,19 @@
     {
      "subgraph": "block",
      "op": "rope",
-     "role": "rotary embedding on q and k",
+     "role": "rotary embedding on q",
      "inputs": [
       "q",
-      "k"
+      "pos"
      ],
-     "output": "qk_rot",
+     "output": "q_r",
      "attributes": [
       {
-       "name": "rope_heads",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "name": "theta",
+       "value": "1000000",
+       "status": "stated",
+       "quote": "we modified the base frequency of RoPE from 10,000 to 1,000,000 to optimize performance in long-context scenarios",
+       "where": "Sec. Long-context Training"
       },
       {
        "name": "pairing",
@@ -717,13 +688,40 @@
        "status": "not_stated",
        "quote": "",
        "where": ""
-      },
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary embedding on k",
+     "inputs": [
+      "k",
+      "pos"
+     ],
+     "output": "k_r",
+     "attributes": [
       {
        "name": "theta",
        "value": "1000000",
        "status": "stated",
        "quote": "we modified the base frequency of RoPE from 10,000 to 1,000,000 to optimize performance in long-context scenarios",
        "where": "Sec. Long-context Training"
+      },
+      {
+       "name": "pairing",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "n_rot",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -733,7 +731,8 @@
      "op": "attention",
      "role": "causal grouped-query self-attention",
      "inputs": [
-      "qk_rot",
+      "q_r",
+      "k_r",
       "v"
      ],
      "output": "a",
@@ -742,29 +741,22 @@
        "name": "heads",
        "value": "14",
        "status": "stated",
-       "quote": "\\# Query Heads & 14 & 12 & 28  & 64 & 28 \\\\",
+       "quote": "\\# Query Heads & 14 & 12 & 28  & 64 & 28",
        "where": "Table tab:to_sota"
       },
       {
        "name": "kv_heads",
        "value": "2",
        "status": "stated",
-       "quote": "\\# KV Heads  & 2 & 2 & 4 & 8  & 4 \\\\",
+       "quote": "\\# KV Heads  & 2 & 2 & 4 & 8  & 4",
        "where": "Table tab:to_sota"
       },
       {
        "name": "head_dim",
        "value": "64",
        "status": "stated",
-       "quote": "Head Size & 64 & 128 & 128 & 128 & 128 \\\\",
+       "quote": "Head Size & 64 & 128 & 128 & 128 & 128",
        "where": "Table tab:to_sota"
-      },
-      {
-       "name": "scale",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
       },
       {
        "name": "causal",
@@ -774,14 +766,14 @@
        "where": "Sec. Model Architecture"
       },
       {
-       "name": "window",
+       "name": "scale",
        "value": "",
        "status": "not_stated",
        "quote": "",
        "where": ""
       },
       {
-       "name": "sinks",
+       "name": "window",
        "value": "",
        "status": "not_stated",
        "quote": "",
@@ -799,13 +791,6 @@
      ],
      "output": "o",
      "attributes": [
-      {
-       "name": "out",
-       "value": "896",
-       "status": "stated",
-       "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584 \\\\",
-       "where": "Table tab:to_sota"
-      },
       {
        "name": "bias",
        "value": "",
@@ -860,7 +845,7 @@
        "name": "out",
        "value": "4864",
        "status": "stated",
-       "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560\\\\",
+       "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560",
        "where": "Table tab:to_sota"
       },
       {
@@ -886,7 +871,7 @@
        "name": "out",
        "value": "4864",
        "status": "stated",
-       "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560\\\\",
+       "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560",
        "where": "Table tab:to_sota"
       },
       {
@@ -935,7 +920,7 @@
        "name": "out",
        "value": "896",
        "status": "stated",
-       "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584 \\\\",
+       "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584",
        "where": "Table tab:to_sota"
       },
       {
@@ -962,29 +947,10 @@
     },
     {
      "subgraph": "head",
-     "op": "rmsnorm",
-     "role": "final norm (assumed with pre-norm; not explicitly stated)",
-     "inputs": [
-      "x"
-     ],
-     "output": "hn",
-     "attributes": [
-      {
-       "name": "eps",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      }
-     ],
-     "new_op": ""
-    },
-    {
-     "subgraph": "head",
      "op": "linear",
      "role": "LM head (tied to token embedding for 0.5B)",
      "inputs": [
-      "hn"
+      "x"
      ],
      "output": "logits",
      "attributes": [
@@ -992,7 +958,14 @@
        "name": "out",
        "value": "151646",
        "status": "stated",
-       "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646 \\\\",
+       "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646",
+       "where": "Table tab:to_sota"
+      },
+      {
+       "name": "tied_to",
+       "value": "token_embd",
+       "status": "stated",
+       "quote": "Embedding Tying  & True &  True  & False & False & False",
        "where": "Table tab:to_sota"
       },
       {
@@ -1001,13 +974,6 @@
        "status": "not_stated",
        "quote": "",
        "where": ""
-      },
-      {
-       "name": "tied_to",
-       "value": "token_embd",
-       "status": "stated",
-       "quote": "Embedding Tying  & True &  True  & False & False & False \\\\",
-       "where": "Table tab:to_sota"
       }
      ],
      "new_op": ""
@@ -1016,32 +982,27 @@
    "new_ops": [],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "Dual Chunk Attention for long sequences (chunked attention with relative positions within and across chunks), used beyond the trained context",
+     "mechanism": "Dual Chunk Attention (DCA) for long-context extension; identical to standard attention within one chunk",
      "quote": "To expand the context window of Qwen2, we implement Dual Chunk Attention (DCA, \\citealp{chunkllama}), which segments long sequences into chunks of manageable lengths.",
-     "where": "Sec. Dual Chunk Attention with YARN"
+     "where": "Sec. Qwen2 Dense Model"
     },
     {
-     "mechanism": "YARN rescaling of attention for length extrapolation (applied for contexts over 32K)",
+     "mechanism": "YARN rescaling of attention for length extrapolation (used beyond 32K, up to 131072 tokens)",
      "quote": "Moreover, we also employ YARN~\\citep{yarn} to rescale the attention weights for better length extrapolation.",
-     "where": "Sec. Dual Chunk Attention with YARN"
+     "where": "Sec. Qwen2 Dense Model"
     },
     {
-     "mechanism": "MoE variant Qwen2-57B-A14B: fine-grained experts with 64 routed experts, 8 activated per token, plus 8 shared experts; softmax gate over all experts, then top-k weighted sum",
-     "quote": "\\# Routed Experts & - & -&- & -& 64\\\\",
-     "where": "Table tab:to_sota"
+     "mechanism": "MoE variant Qwen2-57B-A14B: fine-grained experts, 64 routed experts with 8 activated plus 8 shared experts, gate p = softmax(G(x)), y = sum over top-k of p_i E_i(x) (raw full-softmax weights); shared experts not representable in moe_ffn",
+     "quote": "Each token is directed to a specific expert $E_i$ for computation based on probabilities assigned by a gated network $G$:",
+     "where": "Sec. Qwen2 Mixture-of-experts Model"
     },
     {
-     "mechanism": "MoE shared experts alongside routed experts (not representable by moe_ffn)",
-     "quote": "Recently, there has been a notable trend towards integrating both shared and routing-specific experts within MoE layers \\citep{deepspeedmoe, deepseekmoe}.",
-     "where": "Sec. Expert Routing"
-    },
-    {
-     "mechanism": "Embedding matrix padded beyond the vocabulary size for distributed training",
+     "mechanism": "Embedding matrix padded beyond the vocabulary for distributed training; padded size not stated",
      "quote": "It should be noted that, owing to considerations in distributed training, the effective size for the embeddings is larger.",
      "where": "Sec. Tokenizer"
     }
    ],
-   "notes": "Described the dense Qwen2-0.5B (smallest config) as the primary model; the other dense sizes differ only in the table values, and 7B and 72B do not tie embeddings. The 57B-A14B MoE variant is listed in configs (d_ff is the per-expert size). Its 64 routed / 8 activated / 8 shared experts are recorded under mechanisms. moe_gate_norm is left not_stated: the equation is a full softmax followed by a top-k sum, which suggests 'raw', but it is not named. The following are not_stated: residual form, norm eps, RoPE pairing and fraction, attention scale, MLP and output-projection bias, and the presence of a final norm (included as an assumption). The k/v projection widths equal kv_heads*head_dim (2*64) but are not written explicitly. The context length 32768 is the length at the end of pre-training; YARN+DCA extends it to 131072. The vocab is 151646 (151643 regular + 3 control tokens), and the embedding is padded larger."
+   "notes": "Described the dense Qwen2 architecture with block_ops instantiated for the smallest config (0.5B). Embedding tying is per config: true for 0.5B and 1.5B, false for 7B, 72B and 57B-A14B. For 57B-A14B, d_ff is the per-expert intermediate size; its MoE structure is listed under mechanisms. Context length 32768 is the final pre-training length; YARN+DCA extend it to 131072. RoPE theta 1000000 is the final value; it was 10000 before long-context training. Left not_stated: norm eps, RoPE pairing and fraction, the o-projection and MLP biases, attention scale, and the q/k/v output widths (only derivable as heads x head_dim). The paper does not mention a final norm before the LM head, so none is included."
   },
   "verification": {
    "errors": [],
@@ -1049,7 +1010,7 @@
    "inherits": {
     "ancestor": "Qwen",
     "resolved": null,
-    "quote": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation, Rotary Positional Embeddings (RoPE, \\citealp{rope}) for positional embedding, QKV bias~\\citep{qkv_bias} for attention, RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability.",
+    "quote": "Moreover, we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation",
     "where": "Sec. Qwen2 Dense Model",
     "quote_found": true
    },
@@ -1063,11 +1024,11 @@
    },
    "configs": [
     {
-     "name": "Qwen2-0.5B",
+     "name": "0.5B",
      "d_model": {
       "value": "896",
       "status": "stated",
-      "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584 \\\\",
+      "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1075,7 +1036,7 @@
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "\\# Layers & 24 & 28 & 28  & 80 & 28 \\\\",
+      "quote": "\\# Layers & 24 & 28 & 28  & 80 & 28",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1083,7 +1044,7 @@
      "n_heads": {
       "value": "14",
       "status": "stated",
-      "quote": "\\# Query Heads & 14 & 12 & 28  & 64 & 28 \\\\",
+      "quote": "\\# Query Heads & 14 & 12 & 28  & 64 & 28",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1091,7 +1052,7 @@
      "n_kv_heads": {
       "value": "2",
       "status": "stated",
-      "quote": "\\# KV Heads  & 2 & 2 & 4 & 8  & 4 \\\\",
+      "quote": "\\# KV Heads  & 2 & 2 & 4 & 8  & 4",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1099,7 +1060,7 @@
      "head_dim": {
       "value": "64",
       "status": "stated",
-      "quote": "Head Size & 64 & 128 & 128 & 128 & 128 \\\\",
+      "quote": "Head Size & 64 & 128 & 128 & 128 & 128",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1107,7 +1068,7 @@
      "d_ff": {
       "value": "4864",
       "status": "stated",
-      "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560\\\\",
+      "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1115,7 +1076,7 @@
      "vocab_size": {
       "value": "151646",
       "status": "stated",
-      "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646 \\\\",
+      "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1148,11 +1109,11 @@
      ]
     },
     {
-     "name": "Qwen2-1.5B",
+     "name": "1.5B",
      "d_model": {
       "value": "1536",
       "status": "stated",
-      "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584 \\\\",
+      "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1160,7 +1121,7 @@
      "n_layers": {
       "value": "28",
       "status": "stated",
-      "quote": "\\# Layers & 24 & 28 & 28  & 80 & 28 \\\\",
+      "quote": "\\# Layers & 24 & 28 & 28  & 80 & 28",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1168,7 +1129,7 @@
      "n_heads": {
       "value": "12",
       "status": "stated",
-      "quote": "\\# Query Heads & 14 & 12 & 28  & 64 & 28 \\\\",
+      "quote": "\\# Query Heads & 14 & 12 & 28  & 64 & 28",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1176,7 +1137,7 @@
      "n_kv_heads": {
       "value": "2",
       "status": "stated",
-      "quote": "\\# KV Heads  & 2 & 2 & 4 & 8  & 4 \\\\",
+      "quote": "\\# KV Heads  & 2 & 2 & 4 & 8  & 4",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1184,7 +1145,7 @@
      "head_dim": {
       "value": "128",
       "status": "stated",
-      "quote": "Head Size & 64 & 128 & 128 & 128 & 128 \\\\",
+      "quote": "Head Size & 64 & 128 & 128 & 128 & 128",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1192,7 +1153,7 @@
      "d_ff": {
       "value": "8960",
       "status": "stated",
-      "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560\\\\",
+      "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1200,7 +1161,7 @@
      "vocab_size": {
       "value": "151646",
       "status": "stated",
-      "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646 \\\\",
+      "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1233,11 +1194,11 @@
      ]
     },
     {
-     "name": "Qwen2-7B",
+     "name": "7B",
      "d_model": {
       "value": "3584",
       "status": "stated",
-      "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584 \\\\",
+      "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1245,7 +1206,7 @@
      "n_layers": {
       "value": "28",
       "status": "stated",
-      "quote": "\\# Layers & 24 & 28 & 28  & 80 & 28 \\\\",
+      "quote": "\\# Layers & 24 & 28 & 28  & 80 & 28",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1253,7 +1214,7 @@
      "n_heads": {
       "value": "28",
       "status": "stated",
-      "quote": "\\# Query Heads & 14 & 12 & 28  & 64 & 28 \\\\",
+      "quote": "\\# Query Heads & 14 & 12 & 28  & 64 & 28",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1261,7 +1222,7 @@
      "n_kv_heads": {
       "value": "4",
       "status": "stated",
-      "quote": "\\# KV Heads  & 2 & 2 & 4 & 8  & 4 \\\\",
+      "quote": "\\# KV Heads  & 2 & 2 & 4 & 8  & 4",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1269,7 +1230,7 @@
      "head_dim": {
       "value": "128",
       "status": "stated",
-      "quote": "Head Size & 64 & 128 & 128 & 128 & 128 \\\\",
+      "quote": "Head Size & 64 & 128 & 128 & 128 & 128",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1277,7 +1238,7 @@
      "d_ff": {
       "value": "18944",
       "status": "stated",
-      "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560\\\\",
+      "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1285,7 +1246,7 @@
      "vocab_size": {
       "value": "151646",
       "status": "stated",
-      "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646 \\\\",
+      "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1318,11 +1279,11 @@
      ]
     },
     {
-     "name": "Qwen2-72B",
+     "name": "72B",
      "d_model": {
       "value": "8192",
       "status": "stated",
-      "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584 \\\\",
+      "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1330,7 +1291,7 @@
      "n_layers": {
       "value": "80",
       "status": "stated",
-      "quote": "\\# Layers & 24 & 28 & 28  & 80 & 28 \\\\",
+      "quote": "\\# Layers & 24 & 28 & 28  & 80 & 28",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1338,7 +1299,7 @@
      "n_heads": {
       "value": "64",
       "status": "stated",
-      "quote": "\\# Query Heads & 14 & 12 & 28  & 64 & 28 \\\\",
+      "quote": "\\# Query Heads & 14 & 12 & 28  & 64 & 28",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1346,7 +1307,7 @@
      "n_kv_heads": {
       "value": "8",
       "status": "stated",
-      "quote": "\\# KV Heads  & 2 & 2 & 4 & 8  & 4 \\\\",
+      "quote": "\\# KV Heads  & 2 & 2 & 4 & 8  & 4",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1354,7 +1315,7 @@
      "head_dim": {
       "value": "128",
       "status": "stated",
-      "quote": "Head Size & 64 & 128 & 128 & 128 & 128 \\\\",
+      "quote": "Head Size & 64 & 128 & 128 & 128 & 128",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1362,7 +1323,7 @@
      "d_ff": {
       "value": "29568",
       "status": "stated",
-      "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560\\\\",
+      "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1370,7 +1331,7 @@
      "vocab_size": {
       "value": "151646",
       "status": "stated",
-      "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646 \\\\",
+      "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1403,11 +1364,11 @@
      ]
     },
     {
-     "name": "Qwen2-57B-A14B (MoE)",
+     "name": "57B-A14B",
      "d_model": {
       "value": "3584",
       "status": "stated",
-      "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584 \\\\",
+      "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1415,7 +1376,7 @@
      "n_layers": {
       "value": "28",
       "status": "stated",
-      "quote": "\\# Layers & 24 & 28 & 28  & 80 & 28 \\\\",
+      "quote": "\\# Layers & 24 & 28 & 28  & 80 & 28",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1423,7 +1384,7 @@
      "n_heads": {
       "value": "28",
       "status": "stated",
-      "quote": "\\# Query Heads & 14 & 12 & 28  & 64 & 28 \\\\",
+      "quote": "\\# Query Heads & 14 & 12 & 28  & 64 & 28",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1431,7 +1392,7 @@
      "n_kv_heads": {
       "value": "4",
       "status": "stated",
-      "quote": "\\# KV Heads  & 2 & 2 & 4 & 8  & 4 \\\\",
+      "quote": "\\# KV Heads  & 2 & 2 & 4 & 8  & 4",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1439,7 +1400,7 @@
      "head_dim": {
       "value": "128",
       "status": "stated",
-      "quote": "Head Size & 64 & 128 & 128 & 128 & 128 \\\\",
+      "quote": "Head Size & 64 & 128 & 128 & 128 & 128",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1447,7 +1408,7 @@
      "d_ff": {
       "value": "2560",
       "status": "stated",
-      "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560\\\\",
+      "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1455,7 +1416,7 @@
      "vocab_size": {
       "value": "151646",
       "status": "stated",
-      "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646 \\\\",
+      "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646",
       "where": "Table tab:to_sota",
       "reasons": [],
       "check": "verified"
@@ -1488,12 +1449,12 @@
      ]
     }
    ],
-   "primary_config": "Qwen2-0.5B",
+   "primary_config": "0.5B",
    "flavours": {
     "norm": {
      "value": "rmsnorm",
      "status": "stated",
-     "quote": "RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability.",
+     "quote": "RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability",
      "where": "Sec. Qwen2 Dense Model",
      "reasons": [],
      "check": "verified"
@@ -1501,7 +1462,7 @@
     "norm_placement": {
      "value": "pre",
      "status": "stated",
-     "quote": "RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability.",
+     "quote": "RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability",
      "where": "Sec. Qwen2 Dense Model",
      "reasons": [],
      "check": "quote_only"
@@ -1555,12 +1516,14 @@
      "check": "not_stated"
     },
     "residual": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": "",
-     "reasons": [],
-     "check": "not_stated"
+     "value": "residual",
+     "status": "stated",
+     "quote": "RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability",
+     "where": "Sec. Qwen2 Dense Model",
+     "reasons": [
+      "the quote does not name residual (looked for /residual|skip/)"
+     ],
+     "check": "unverified"
     },
     "parallel_block": {
      "value": "",
@@ -1573,8 +1536,8 @@
     "attention": {
      "value": "exact",
      "status": "stated",
-     "quote": "If the input can be handled in a chunk, DCA produces the same result as the original attention.",
-     "where": "Sec. Dual Chunk Attention with YARN",
+     "quote": "The Qwen2 series fundamentally constitute large language models based on the Transformer architecture, featuring self-attention with causal masks~\\citep{transformer}.",
+     "where": "Sec. Model Architecture",
      "reasons": [],
      "check": "quote_only"
     },
@@ -1613,7 +1576,7 @@
     "tied_embeddings": {
      "value": "true",
      "status": "stated",
-     "quote": "Embedding Tying  & True &  True  & False & False & False \\\\",
+     "quote": "Embedding Tying  & True &  True  & False & False & False",
      "where": "Table tab:to_sota",
      "reasons": [],
      "check": "quote_only"
@@ -1621,8 +1584,8 @@
     "moe": {
      "value": "false",
      "status": "stated",
-     "quote": "Specifically, this series encompasses dense language models of 4 scales and a Mixture-of-Experts (MoE) model.",
-     "where": "Sec. Model Architecture",
+     "quote": "The architecture of the Qwen2 dense models comprises multiple Transformer layers, each equipped with causal attention mechanisms and feed-forward neural networks (FFNs).",
+     "where": "Sec. Qwen2 Dense Model",
      "reasons": [],
      "check": "quote_only"
     },
@@ -1657,32 +1620,13 @@
      "i": 0,
      "subgraph": "embed",
      "op": "embedding",
-     "role": "token embedding",
+     "role": "token embedding (token_embd)",
      "inputs": [
       "tokens"
      ],
      "output": "x",
      "new_op": "",
-     "attributes": [
-      {
-       "value": "151646",
-       "status": "stated",
-       "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646 \\\\",
-       "where": "Table tab:to_sota",
-       "reasons": [],
-       "check": "verified",
-       "name": "vocab"
-      },
-      {
-       "value": "896",
-       "status": "stated",
-       "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584 \\\\",
-       "where": "Table tab:to_sota",
-       "reasons": [],
-       "check": "verified",
-       "name": "d"
-      }
-     ],
+     "attributes": [],
      "errors": []
     },
     {
@@ -1712,22 +1656,13 @@
      "i": 2,
      "subgraph": "block",
      "op": "linear",
-     "role": "q projection",
+     "role": "query projection",
      "inputs": [
       "h"
      ],
      "output": "q",
      "new_op": "",
      "attributes": [
-      {
-       "value": "896",
-       "status": "stated",
-       "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584 \\\\",
-       "where": "Table tab:to_sota",
-       "reasons": [],
-       "check": "verified",
-       "name": "out"
-      },
       {
        "value": "true",
        "status": "stated",
@@ -1744,22 +1679,13 @@
      "i": 3,
      "subgraph": "block",
      "op": "linear",
-     "role": "k projection",
+     "role": "key projection",
      "inputs": [
       "h"
      ],
      "output": "k",
      "new_op": "",
      "attributes": [
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "out"
-      },
       {
        "value": "true",
        "status": "stated",
@@ -1776,22 +1702,13 @@
      "i": 4,
      "subgraph": "block",
      "op": "linear",
-     "role": "v projection",
+     "role": "value projection",
      "inputs": [
       "h"
      ],
      "output": "v",
      "new_op": "",
      "attributes": [
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "out"
-      },
       {
        "value": "true",
        "status": "stated",
@@ -1808,22 +1725,22 @@
      "i": 5,
      "subgraph": "block",
      "op": "rope",
-     "role": "rotary embedding on q and k",
+     "role": "rotary embedding on q",
      "inputs": [
       "q",
-      "k"
+      "pos"
      ],
-     "output": "qk_rot",
+     "output": "q_r",
      "new_op": "",
      "attributes": [
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
+       "value": "1000000",
+       "status": "stated",
+       "quote": "we modified the base frequency of RoPE from 10,000 to 1,000,000 to optimize performance in long-context scenarios",
+       "where": "Sec. Long-context Training",
        "reasons": [],
-       "check": "not_stated",
-       "name": "rope_heads"
+       "check": "verified",
+       "name": "theta"
       },
       {
        "value": "",
@@ -1842,7 +1759,22 @@
        "reasons": [],
        "check": "not_stated",
        "name": "n_rot"
-      },
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 6,
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary embedding on k",
+     "inputs": [
+      "k",
+      "pos"
+     ],
+     "output": "k_r",
+     "new_op": "",
+     "attributes": [
       {
        "value": "1000000",
        "status": "stated",
@@ -1851,48 +1783,6 @@
        "reasons": [],
        "check": "verified",
        "name": "theta"
-      }
-     ],
-     "errors": []
-    },
-    {
-     "i": 6,
-     "subgraph": "block",
-     "op": "attention",
-     "role": "causal grouped-query self-attention",
-     "inputs": [
-      "qk_rot",
-      "v"
-     ],
-     "output": "a",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "14",
-       "status": "stated",
-       "quote": "\\# Query Heads & 14 & 12 & 28  & 64 & 28 \\\\",
-       "where": "Table tab:to_sota",
-       "reasons": [],
-       "check": "verified",
-       "name": "heads"
-      },
-      {
-       "value": "2",
-       "status": "stated",
-       "quote": "\\# KV Heads  & 2 & 2 & 4 & 8  & 4 \\\\",
-       "where": "Table tab:to_sota",
-       "reasons": [],
-       "check": "verified",
-       "name": "kv_heads"
-      },
-      {
-       "value": "64",
-       "status": "stated",
-       "quote": "Head Size & 64 & 128 & 128 & 128 & 128 \\\\",
-       "where": "Table tab:to_sota",
-       "reasons": [],
-       "check": "verified",
-       "name": "head_dim"
       },
       {
        "value": "",
@@ -1901,7 +1791,59 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
-       "name": "scale"
+       "name": "pairing"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "n_rot"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 7,
+     "subgraph": "block",
+     "op": "attention",
+     "role": "causal grouped-query self-attention",
+     "inputs": [
+      "q_r",
+      "k_r",
+      "v"
+     ],
+     "output": "a",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "14",
+       "status": "stated",
+       "quote": "\\# Query Heads & 14 & 12 & 28  & 64 & 28",
+       "where": "Table tab:to_sota",
+       "reasons": [],
+       "check": "verified",
+       "name": "heads"
+      },
+      {
+       "value": "2",
+       "status": "stated",
+       "quote": "\\# KV Heads  & 2 & 2 & 4 & 8  & 4",
+       "where": "Table tab:to_sota",
+       "reasons": [],
+       "check": "verified",
+       "name": "kv_heads"
+      },
+      {
+       "value": "64",
+       "status": "stated",
+       "quote": "Head Size & 64 & 128 & 128 & 128 & 128",
+       "where": "Table tab:to_sota",
+       "reasons": [],
+       "check": "verified",
+       "name": "head_dim"
       },
       {
        "value": "true",
@@ -1919,7 +1861,7 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
-       "name": "window"
+       "name": "scale"
       },
       {
        "value": "",
@@ -1928,13 +1870,13 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
-       "name": "sinks"
+       "name": "window"
       }
      ],
      "errors": []
     },
     {
-     "i": 7,
+     "i": 8,
      "subgraph": "block",
      "op": "linear",
      "role": "attention output projection",
@@ -1944,15 +1886,6 @@
      "output": "o",
      "new_op": "",
      "attributes": [
-      {
-       "value": "896",
-       "status": "stated",
-       "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584 \\\\",
-       "where": "Table tab:to_sota",
-       "reasons": [],
-       "check": "verified",
-       "name": "out"
-      },
       {
        "value": "",
        "status": "not_stated",
@@ -1966,7 +1899,7 @@
      "errors": []
     },
     {
-     "i": 8,
+     "i": 9,
      "subgraph": "block",
      "op": "add",
      "role": "attention residual",
@@ -1980,7 +1913,7 @@
      "errors": []
     },
     {
-     "i": 9,
+     "i": 10,
      "subgraph": "block",
      "op": "rmsnorm",
      "role": "pre-FFN norm",
@@ -2003,7 +1936,7 @@
      "errors": []
     },
     {
-     "i": 10,
+     "i": 11,
      "subgraph": "block",
      "op": "linear",
      "role": "FFN gate projection",
@@ -2016,39 +1949,7 @@
       {
        "value": "4864",
        "status": "stated",
-       "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560\\\\",
-       "where": "Table tab:to_sota",
-       "reasons": [],
-       "check": "verified",
-       "name": "out"
-      },
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "bias"
-      }
-     ],
-     "errors": []
-    },
-    {
-     "i": 11,
-     "subgraph": "block",
-     "op": "linear",
-     "role": "FFN up projection",
-     "inputs": [
-      "h2"
-     ],
-     "output": "u",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "4864",
-       "status": "stated",
-       "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560\\\\",
+       "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560",
        "where": "Table tab:to_sota",
        "reasons": [],
        "check": "verified",
@@ -2069,6 +1970,38 @@
     {
      "i": 12,
      "subgraph": "block",
+     "op": "linear",
+     "role": "FFN up projection",
+     "inputs": [
+      "h2"
+     ],
+     "output": "u",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "4864",
+       "status": "stated",
+       "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560",
+       "where": "Table tab:to_sota",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 13,
+     "subgraph": "block",
      "op": "silu",
      "role": "SwiGLU gate activation",
      "inputs": [
@@ -2080,7 +2013,7 @@
      "errors": []
     },
     {
-     "i": 13,
+     "i": 14,
      "subgraph": "block",
      "op": "mul",
      "role": "SwiGLU gating",
@@ -2094,7 +2027,7 @@
      "errors": []
     },
     {
-     "i": 14,
+     "i": 15,
      "subgraph": "block",
      "op": "linear",
      "role": "FFN down projection",
@@ -2107,7 +2040,7 @@
       {
        "value": "896",
        "status": "stated",
-       "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584 \\\\",
+       "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584",
        "where": "Table tab:to_sota",
        "reasons": [],
        "check": "verified",
@@ -2126,7 +2059,7 @@
      "errors": []
     },
     {
-     "i": 15,
+     "i": 16,
      "subgraph": "block",
      "op": "add",
      "role": "FFN residual",
@@ -2140,35 +2073,12 @@
      "errors": []
     },
     {
-     "i": 16,
-     "subgraph": "head",
-     "op": "rmsnorm",
-     "role": "final norm (assumed with pre-norm; not explicitly stated)",
-     "inputs": [
-      "x"
-     ],
-     "output": "hn",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "eps"
-      }
-     ],
-     "errors": []
-    },
-    {
      "i": 17,
      "subgraph": "head",
      "op": "linear",
      "role": "LM head (tied to token embedding for 0.5B)",
      "inputs": [
-      "hn"
+      "x"
      ],
      "output": "logits",
      "new_op": "",
@@ -2176,11 +2086,20 @@
       {
        "value": "151646",
        "status": "stated",
-       "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646 \\\\",
+       "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646",
        "where": "Table tab:to_sota",
        "reasons": [],
        "check": "verified",
        "name": "out"
+      },
+      {
+       "value": "token_embd",
+       "status": "stated",
+       "quote": "Embedding Tying  & True &  True  & False & False & False",
+       "where": "Table tab:to_sota",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "tied_to"
       },
       {
        "value": "",
@@ -2190,15 +2109,6 @@
        "reasons": [],
        "check": "not_stated",
        "name": "bias"
-      },
-      {
-       "value": "token_embd",
-       "status": "stated",
-       "quote": "Embedding Tying  & True &  True  & False & False & False \\\\",
-       "where": "Table tab:to_sota",
-       "reasons": [],
-       "check": "quote_only",
-       "name": "tied_to"
       }
      ],
      "errors": []
@@ -2206,31 +2116,25 @@
    ],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "Dual Chunk Attention for long sequences (chunked attention with relative positions within and across chunks), used beyond the trained context",
+     "mechanism": "Dual Chunk Attention (DCA) for long-context extension; identical to standard attention within one chunk",
      "quote": "To expand the context window of Qwen2, we implement Dual Chunk Attention (DCA, \\citealp{chunkllama}), which segments long sequences into chunks of manageable lengths.",
-     "where": "Sec. Dual Chunk Attention with YARN",
+     "where": "Sec. Qwen2 Dense Model",
      "check": "verified"
     },
     {
-     "mechanism": "YARN rescaling of attention for length extrapolation (applied for contexts over 32K)",
+     "mechanism": "YARN rescaling of attention for length extrapolation (used beyond 32K, up to 131072 tokens)",
      "quote": "Moreover, we also employ YARN~\\citep{yarn} to rescale the attention weights for better length extrapolation.",
-     "where": "Sec. Dual Chunk Attention with YARN",
+     "where": "Sec. Qwen2 Dense Model",
      "check": "verified"
     },
     {
-     "mechanism": "MoE variant Qwen2-57B-A14B: fine-grained experts with 64 routed experts, 8 activated per token, plus 8 shared experts; softmax gate over all experts, then top-k weighted sum",
-     "quote": "\\# Routed Experts & - & -&- & -& 64\\\\",
-     "where": "Table tab:to_sota",
+     "mechanism": "MoE variant Qwen2-57B-A14B: fine-grained experts, 64 routed experts with 8 activated plus 8 shared experts, gate p = softmax(G(x)), y = sum over top-k of p_i E_i(x) (raw full-softmax weights); shared experts not representable in moe_ffn",
+     "quote": "Each token is directed to a specific expert $E_i$ for computation based on probabilities assigned by a gated network $G$:",
+     "where": "Sec. Qwen2 Mixture-of-experts Model",
      "check": "verified"
     },
     {
-     "mechanism": "MoE shared experts alongside routed experts (not representable by moe_ffn)",
-     "quote": "Recently, there has been a notable trend towards integrating both shared and routing-specific experts within MoE layers \\citep{deepspeedmoe, deepseekmoe}.",
-     "where": "Sec. Expert Routing",
-     "check": "verified"
-    },
-    {
-     "mechanism": "Embedding matrix padded beyond the vocabulary size for distributed training",
+     "mechanism": "Embedding matrix padded beyond the vocabulary for distributed training; padded size not stated",
      "quote": "It should be noted that, owing to considerations in distributed training, the effective size for the embeddings is larger.",
      "where": "Sec. Tokenizer",
      "check": "verified"
@@ -2238,12 +2142,19 @@
    ],
    "summary": {
     "counts": {
-     "verified": 56,
+     "verified": 53,
      "quote_only": 11,
-     "unverified": 0,
-     "not_stated": 27
+     "unverified": 1,
+     "not_stated": 23
     },
-    "unverified": [],
+    "unverified": [
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "the quote does not name residual (looked for /residual|skip/)"
+      ]
+     }
+    ],
     "new_op_errors": [],
     "node_errors": [],
     "n_new_ops": 0,

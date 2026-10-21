@@ -39,7 +39,7 @@
   },
   "activation": {
    "value": "swiglu",
-   "evidence": "We use SwiGLU~\\citep{swiglu} as Yi's post-attention layer, reducing its activation size from $4h$ to $8/3h$ ($h$ denotes hidden size) [Sec. Model Architecture, Activation Function]",
+   "evidence": "We use SwiGLU~\\citep{swiglu} as Yi's post-attention layer, reducing its activation size from $4h$ to $8/3h$ ($h$ denotes hidden size) to be consistent with the normal post-attention layer. [Sec. Model Architecture, Activation Function]",
    "verdict": "used"
   },
   "positional": {
@@ -102,18 +102,6 @@
    "where": "llm extraction, verified quote, Table tab:model_config",
    "blocking": true,
    "evidence": "6B& 4096& 32& 4& 32& 4096&"
-  },
-  {
-   "mechanism": "Yi-VL extension: CLIP ViT-H/14 vision encoder plus a two-layer MLP projection with layer norms feeding the LLM (separate variant, not the base model)",
-   "where": "llm extraction, verified quote, Sec. Vision-Language",
-   "blocking": true,
-   "evidence": "The Vision Transformer (ViT), used for image encoding, is initialized with CLIP ViT-H/14 model~\\citep{ilharco_gabriel_2021_5143773}. A Projection Module, designed to align image features with text feature spcae, consists of a two-layer Mult"
-  },
-  {
-   "mechanism": "Yi-9B depth upscaling: Yi-6B's 32 layers expanded to 48 by duplicating middle layers 12-28, then continued pretraining (separate variant)",
-   "where": "llm extraction, verified quote, Sec. Depth Upscaling",
-   "blocking": true,
-   "evidence": "our goal is to upscale our Yi-6B base model, which has 32 layers, to a 9B model named the Yi-9B base model, featuring 48 layers, by duplicating the original 16 middle layers 12-28."
   }
  ],
  "source": {
@@ -121,20 +109,20 @@
   "sent_sha256": "29136c9324f4d8f66ae169d451f88f1006be3ec68e5794f073c44b9db912729b",
   "from": "https://arxiv.org/e-print/2403.04652",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
   "n_calls": 1,
-  "cost_usd": 0.0,
+  "cost_usd": 0.3039,
   "request_ids": [
-   "req_011CgFdG342tYpRYk7U1JknB"
+   "req_011CgFioKG43aRmBhP4tpzAn"
   ]
  },
  "llm": {
   "output": {
    "title": "Yi: Open Foundation Models by 01.AI",
-   "model_name": "Yi (Yi-6B / Yi-34B base)",
+   "model_name": "Yi (base language models, Yi-6B / Yi-34B)",
    "family": {
     "value": "decoder_only",
     "status": "stated",
@@ -142,13 +130,13 @@
     "where": "Sec. Model Architecture"
    },
    "inherits": {
-    "ancestor": "LLaMA (LLaMA 2)",
+    "ancestor": "LLaMA 2",
     "quote": "Yi uses a modified version of the classical decoder-only Transformer architecture~\\citep{Vaswani:2017aa} where the code is based on LLaMA's~\\citep{llama2} implementation.",
     "where": "Sec. Model Architecture"
    },
    "configs": [
     {
-     "name": "Yi-6B",
+     "name": "6B",
      "d_model": {
       "value": "4096",
       "status": "stated",
@@ -199,7 +187,7 @@
      }
     },
     {
-     "name": "Yi-34B",
+     "name": "34B",
      "d_model": {
       "value": "7168",
       "status": "stated",
@@ -250,7 +238,7 @@
      }
     }
    ],
-   "primary_config": "Yi-6B",
+   "primary_config": "6B",
    "flavours": {
     "norm": {
      "value": "rmsnorm",
@@ -273,7 +261,7 @@
     "activation": {
      "value": "swiglu",
      "status": "stated",
-     "quote": "We use SwiGLU~\\citep{swiglu} as Yi's post-attention layer, reducing its activation size from $4h$ to $8/3h$ ($h$ denotes hidden size)",
+     "quote": "We use SwiGLU~\\citep{swiglu} as Yi's post-attention layer, reducing its activation size from $4h$ to $8/3h$ ($h$ denotes hidden size) to be consistent with the normal post-attention layer.",
      "where": "Sec. Model Architecture, Activation Function"
     },
     "positional": {
@@ -307,10 +295,10 @@
      "where": "Sec. Model Architecture"
     },
     "parallel_block": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": ""
+     "value": "false",
+     "status": "inherited",
+     "quote": "Yi uses a modified version of the classical decoder-only Transformer architecture~\\citep{Vaswani:2017aa} where the code is based on LLaMA's~\\citep{llama2} implementation.",
+     "where": "Sec. Model Architecture"
     },
     "attention": {
      "value": "exact",
@@ -331,22 +319,22 @@
      "where": ""
     },
     "qkv_bias": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": ""
+     "value": "false",
+     "status": "inherited",
+     "quote": "Yi uses a modified version of the classical decoder-only Transformer architecture~\\citep{Vaswani:2017aa} where the code is based on LLaMA's~\\citep{llama2} implementation.",
+     "where": "Sec. Model Architecture"
     },
     "mlp_bias": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": ""
+     "value": "false",
+     "status": "inherited",
+     "quote": "Yi uses a modified version of the classical decoder-only Transformer architecture~\\citep{Vaswani:2017aa} where the code is based on LLaMA's~\\citep{llama2} implementation.",
+     "where": "Sec. Model Architecture"
     },
     "tied_embeddings": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": ""
+     "value": "false",
+     "status": "inherited",
+     "quote": "Yi uses a modified version of the classical decoder-only Transformer architecture~\\citep{Vaswani:2017aa} where the code is based on LLaMA's~\\citep{llama2} implementation.",
+     "where": "Sec. Model Architecture"
     },
     "moe": {
      "value": "false",
@@ -389,6 +377,13 @@
        "status": "stated",
        "quote": "The vocabulary size of Yi is set to 64,000 to balance computational efficiency and word comprehension.",
        "where": "Sec. Tokenization"
+      },
+      {
+       "name": "d",
+       "value": "4096",
+       "status": "stated",
+       "quote": "6B&  4096&  32&  4&  32&  4096&",
+       "where": "Table tab:model_config"
       }
      ],
      "new_op": ""
@@ -415,7 +410,7 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "q projection",
+     "role": "query projection",
      "inputs": [
       "h"
      ],
@@ -423,10 +418,10 @@
      "attributes": [
       {
        "name": "bias",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "false",
+       "status": "inherited",
+       "quote": "Yi uses a modified version of the classical decoder-only Transformer architecture~\\citep{Vaswani:2017aa} where the code is based on LLaMA's~\\citep{llama2} implementation.",
+       "where": "Sec. Model Architecture"
       }
      ],
      "new_op": ""
@@ -434,7 +429,7 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "k projection",
+     "role": "key projection (GQA, kv_heads heads)",
      "inputs": [
       "h"
      ],
@@ -442,10 +437,10 @@
      "attributes": [
       {
        "name": "bias",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "false",
+       "status": "inherited",
+       "quote": "Yi uses a modified version of the classical decoder-only Transformer architecture~\\citep{Vaswani:2017aa} where the code is based on LLaMA's~\\citep{llama2} implementation.",
+       "where": "Sec. Model Architecture"
       }
      ],
      "new_op": ""
@@ -453,7 +448,7 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "v projection",
+     "role": "value projection (GQA, kv_heads heads)",
      "inputs": [
       "h"
      ],
@@ -461,10 +456,10 @@
      "attributes": [
       {
        "name": "bias",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "false",
+       "status": "inherited",
+       "quote": "Yi uses a modified version of the classical decoder-only Transformer architecture~\\citep{Vaswani:2017aa} where the code is based on LLaMA's~\\citep{llama2} implementation.",
+       "where": "Sec. Model Architecture"
       }
      ],
      "new_op": ""
@@ -472,7 +467,7 @@
     {
      "subgraph": "block",
      "op": "rope",
-     "role": "rotary on q",
+     "role": "rotary embedding on q",
      "inputs": [
       "q"
      ],
@@ -481,19 +476,12 @@
       {
        "name": "rope_heads",
        "value": "all",
-       "status": "stated",
-       "quote": "We use Rotary Position Embedding\n (RoPE)~\\citep{su2021roformer} following the standard implementation.",
-       "where": "Sec. Model Architecture"
-      },
-      {
-       "name": "pairing",
-       "value": "",
        "status": "not_stated",
        "quote": "",
        "where": ""
       },
       {
-       "name": "n_rot",
+       "name": "pairing",
        "value": "",
        "status": "not_stated",
        "quote": "",
@@ -512,7 +500,7 @@
     {
      "subgraph": "block",
      "op": "rope",
-     "role": "rotary on k",
+     "role": "rotary embedding on k",
      "inputs": [
       "k"
      ],
@@ -521,19 +509,12 @@
       {
        "name": "rope_heads",
        "value": "all",
-       "status": "stated",
-       "quote": "We use Rotary Position Embedding\n (RoPE)~\\citep{su2021roformer} following the standard implementation.",
-       "where": "Sec. Model Architecture"
-      },
-      {
-       "name": "pairing",
-       "value": "",
        "status": "not_stated",
        "quote": "",
        "where": ""
       },
       {
-       "name": "n_rot",
+       "name": "pairing",
        "value": "",
        "status": "not_stated",
        "quote": "",
@@ -552,7 +533,7 @@
     {
      "subgraph": "block",
      "op": "attention",
-     "role": "grouped-query causal self-attention",
+     "role": "causal grouped-query self-attention",
      "inputs": [
       "q_r",
       "k_r",
@@ -592,7 +573,7 @@
        "name": "causal",
        "value": "true",
        "status": "stated",
-       "quote": "Yi uses a modified version of the classical decoder-only Transformer architecture~\\citep{Vaswani:2017aa}",
+       "quote": "Yi uses a modified version of the classical decoder-only Transformer architecture",
        "where": "Sec. Model Architecture"
       },
       {
@@ -601,13 +582,6 @@
        "status": "stated",
        "quote": "we do not modify the model architecture like sparse, local, or sliding window attention -- the model remains using the full attention even the input is 200K.",
        "where": "Sec. Infrastructure, Long-context Window Support"
-      },
-      {
-       "name": "sinks",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
       }
      ],
      "new_op": ""
@@ -623,10 +597,10 @@
      "attributes": [
       {
        "name": "bias",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "false",
+       "status": "inherited",
+       "quote": "Yi uses a modified version of the classical decoder-only Transformer architecture~\\citep{Vaswani:2017aa} where the code is based on LLaMA's~\\citep{llama2} implementation.",
+       "where": "Sec. Model Architecture"
       }
      ],
      "new_op": ""
@@ -665,7 +639,7 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "FFN gate",
+     "role": "SwiGLU gate projection",
      "inputs": [
       "h2"
      ],
@@ -680,10 +654,10 @@
       },
       {
        "name": "bias",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "false",
+       "status": "inherited",
+       "quote": "Yi uses a modified version of the classical decoder-only Transformer architecture~\\citep{Vaswani:2017aa} where the code is based on LLaMA's~\\citep{llama2} implementation.",
+       "where": "Sec. Model Architecture"
       }
      ],
      "new_op": ""
@@ -691,7 +665,7 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "FFN up",
+     "role": "SwiGLU up projection",
      "inputs": [
       "h2"
      ],
@@ -706,10 +680,10 @@
       },
       {
        "name": "bias",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "false",
+       "status": "inherited",
+       "quote": "Yi uses a modified version of the classical decoder-only Transformer architecture~\\citep{Vaswani:2017aa} where the code is based on LLaMA's~\\citep{llama2} implementation.",
+       "where": "Sec. Model Architecture"
       }
      ],
      "new_op": ""
@@ -717,7 +691,7 @@
     {
      "subgraph": "block",
      "op": "silu",
-     "role": "SwiGLU activation",
+     "role": "SwiGLU gate activation",
      "inputs": [
       "g"
      ],
@@ -740,18 +714,25 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "FFN down",
+     "role": "SwiGLU down projection",
      "inputs": [
       "m"
      ],
      "output": "f",
      "attributes": [
       {
+       "name": "out",
+       "value": "4096",
+       "status": "stated",
+       "quote": "6B&  4096&  32&  4&  32&  4096&",
+       "where": "Table tab:model_config"
+      },
+      {
        "name": "bias",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "false",
+       "status": "inherited",
+       "quote": "Yi uses a modified version of the classical decoder-only Transformer architecture~\\citep{Vaswani:2017aa} where the code is based on LLaMA's~\\citep{llama2} implementation.",
+       "where": "Sec. Model Architecture"
       }
      ],
      "new_op": ""
@@ -790,7 +771,7 @@
     {
      "subgraph": "head",
      "op": "linear",
-     "role": "LM head",
+     "role": "untied LM head",
      "inputs": [
       "hf"
      ],
@@ -805,42 +786,24 @@
       },
       {
        "name": "bias",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      },
-      {
-       "name": "tied_to",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "false",
+       "status": "inherited",
+       "quote": "Yi uses a modified version of the classical decoder-only Transformer architecture~\\citep{Vaswani:2017aa} where the code is based on LLaMA's~\\citep{llama2} implementation.",
+       "where": "Sec. Model Architecture"
       }
      ],
      "new_op": ""
     }
    ],
    "new_ops": [],
-   "mechanisms_outside_ir": [
-    {
-     "mechanism": "Yi-VL extension: CLIP ViT-H/14 vision encoder plus a two-layer MLP projection with layer norms feeding the LLM (separate variant, not the base model)",
-     "quote": "The Vision Transformer (ViT), used for image encoding, is initialized with CLIP ViT-H/14 model~\\citep{ilharco_gabriel_2021_5143773}. A Projection Module, designed to align image features with text feature spcae, consists of a two-layer Multilayer Perceptron (MLP) with layer normalizations.",
-     "where": "Sec. Vision-Language"
-    },
-    {
-     "mechanism": "Yi-9B depth upscaling: Yi-6B's 32 layers expanded to 48 by duplicating middle layers 12-28, then continued pretraining (separate variant)",
-     "quote": "our goal is to upscale our Yi-6B base model, which has 32 layers, to a 9B model named the Yi-9B base model, featuring 48 layers, by duplicating the original 16 middle layers 12-28.",
-     "where": "Sec. Depth Upscaling"
-    }
-   ],
-   "notes": "I describe the base Yi-6B and Yi-34B pretrained models, with Yi-6B as the primary config; block_ops attribute values are for Yi-6B. The paper says the code is based on LLaMA's implementation. On that basis I marked RMSNorm, pre-norm placement and the residual connections as inherited from LLaMA; the paper never names them itself. Values left not_stated: head_dim, d_ff, norm eps, rope pairing and rope theta, biases, and weight tying. For d_ff the paper only gives the ratio 8/3h, not a number. For rope theta it says the base frequency is adjusted (RoPE ABF) but gives no value. The 200K-context, chat, VL and 9B models are extensions of this base model and are not described here."
+   "mechanisms_outside_ir": [],
+   "notes": "This describes the base Yi language models, with 6B as the primary configuration and 34B also listed. LLaMA-style details are marked inherited from the paper's statement that its code is based on LLaMA's implementation: RMSNorm with pre-norm, no biases and an untied head.\n\nValues left not_stated:\n- RoPE theta: the base frequency is adjusted via ABF, but no value is given.\n- RoPE pairing: the paper only says \"standard implementation\".\n- d_ff: the paper says only \"8/3h\", which is not an integer for 4096, so the actual size is not stated.\n- head_dim.\n- norm eps.\n\nExtensions not described here: Yi-9B (depth-upscaled to 48 layers by duplicating layers 12-28), the 200K-context variants (continued pretraining with the same full attention), and Yi-VL (a CLIP ViT-H/14 encoder plus a 2-layer MLP projector)."
   },
   "verification": {
    "errors": [],
    "warnings": [],
    "inherits": {
-    "ancestor": "LLaMA (LLaMA 2)",
+    "ancestor": "LLaMA 2",
     "resolved": "llama",
     "quote": "Yi uses a modified version of the classical decoder-only Transformer architecture~\\citep{Vaswani:2017aa} where the code is based on LLaMA's~\\citep{llama2} implementation.",
     "where": "Sec. Model Architecture",
@@ -856,7 +819,7 @@
    },
    "configs": [
     {
-     "name": "Yi-6B",
+     "name": "6B",
      "d_model": {
       "value": "4096",
       "status": "stated",
@@ -937,7 +900,7 @@
      ]
     },
     {
-     "name": "Yi-34B",
+     "name": "34B",
      "d_model": {
       "value": "7168",
       "status": "stated",
@@ -1018,7 +981,7 @@
      ]
     }
    ],
-   "primary_config": "Yi-6B",
+   "primary_config": "6B",
    "flavours": {
     "norm": {
      "value": "rmsnorm",
@@ -1049,7 +1012,7 @@
     "activation": {
      "value": "swiglu",
      "status": "stated",
-     "quote": "We use SwiGLU~\\citep{swiglu} as Yi's post-attention layer, reducing its activation size from $4h$ to $8/3h$ ($h$ denotes hidden size)",
+     "quote": "We use SwiGLU~\\citep{swiglu} as Yi's post-attention layer, reducing its activation size from $4h$ to $8/3h$ ($h$ denotes hidden size) to be consistent with the normal post-attention layer.",
      "where": "Sec. Model Architecture, Activation Function",
      "reasons": [],
      "check": "verified"
@@ -1097,12 +1060,14 @@
      "check": "unverified"
     },
     "parallel_block": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": "",
-     "reasons": [],
-     "check": "not_stated"
+     "value": "false",
+     "status": "inherited",
+     "quote": "Yi uses a modified version of the classical decoder-only Transformer architecture~\\citep{Vaswani:2017aa} where the code is based on LLaMA's~\\citep{llama2} implementation.",
+     "where": "Sec. Model Architecture",
+     "reasons": [
+      "inherited from llama, whose curated entry has no parallel_block"
+     ],
+     "check": "unverified"
     },
     "attention": {
      "value": "exact",
@@ -1129,28 +1094,34 @@
      "check": "not_stated"
     },
     "qkv_bias": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": "",
-     "reasons": [],
-     "check": "not_stated"
+     "value": "false",
+     "status": "inherited",
+     "quote": "Yi uses a modified version of the classical decoder-only Transformer architecture~\\citep{Vaswani:2017aa} where the code is based on LLaMA's~\\citep{llama2} implementation.",
+     "where": "Sec. Model Architecture",
+     "reasons": [
+      "inherited from llama, whose curated entry has no qkv_bias"
+     ],
+     "check": "unverified"
     },
     "mlp_bias": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": "",
-     "reasons": [],
-     "check": "not_stated"
+     "value": "false",
+     "status": "inherited",
+     "quote": "Yi uses a modified version of the classical decoder-only Transformer architecture~\\citep{Vaswani:2017aa} where the code is based on LLaMA's~\\citep{llama2} implementation.",
+     "where": "Sec. Model Architecture",
+     "reasons": [
+      "inherited from llama, whose curated entry has no mlp_bias"
+     ],
+     "check": "unverified"
     },
     "tied_embeddings": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": "",
-     "reasons": [],
-     "check": "not_stated"
+     "value": "false",
+     "status": "inherited",
+     "quote": "Yi uses a modified version of the classical decoder-only Transformer architecture~\\citep{Vaswani:2017aa} where the code is based on LLaMA's~\\citep{llama2} implementation.",
+     "where": "Sec. Model Architecture",
+     "reasons": [
+      "inherited from llama, whose curated entry has no tied_embeddings"
+     ],
+     "check": "unverified"
     },
     "moe": {
      "value": "false",
@@ -1206,6 +1177,15 @@
        "reasons": [],
        "check": "verified",
        "name": "vocab"
+      },
+      {
+       "value": "4096",
+       "status": "stated",
+       "quote": "6B&  4096&  32&  4&  32&  4096&",
+       "where": "Table tab:model_config",
+       "reasons": [],
+       "check": "verified",
+       "name": "d"
       }
      ],
      "errors": []
@@ -1237,7 +1217,7 @@
      "i": 2,
      "subgraph": "block",
      "op": "linear",
-     "role": "q projection",
+     "role": "query projection",
      "inputs": [
       "h"
      ],
@@ -1245,12 +1225,14 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
+       "value": "false",
+       "status": "inherited",
+       "quote": "Yi uses a modified version of the classical decoder-only Transformer architecture~\\citep{Vaswani:2017aa} where the code is based on LLaMA's~\\citep{llama2} implementation.",
+       "where": "Sec. Model Architecture",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias"
+       ],
+       "check": "unverified",
        "name": "bias"
       }
      ],
@@ -1260,7 +1242,7 @@
      "i": 3,
      "subgraph": "block",
      "op": "linear",
-     "role": "k projection",
+     "role": "key projection (GQA, kv_heads heads)",
      "inputs": [
       "h"
      ],
@@ -1268,12 +1250,14 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
+       "value": "false",
+       "status": "inherited",
+       "quote": "Yi uses a modified version of the classical decoder-only Transformer architecture~\\citep{Vaswani:2017aa} where the code is based on LLaMA's~\\citep{llama2} implementation.",
+       "where": "Sec. Model Architecture",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias"
+       ],
+       "check": "unverified",
        "name": "bias"
       }
      ],
@@ -1283,7 +1267,7 @@
      "i": 4,
      "subgraph": "block",
      "op": "linear",
-     "role": "v projection",
+     "role": "value projection (GQA, kv_heads heads)",
      "inputs": [
       "h"
      ],
@@ -1291,12 +1275,14 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
+       "value": "false",
+       "status": "inherited",
+       "quote": "Yi uses a modified version of the classical decoder-only Transformer architecture~\\citep{Vaswani:2017aa} where the code is based on LLaMA's~\\citep{llama2} implementation.",
+       "where": "Sec. Model Architecture",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias"
+       ],
+       "check": "unverified",
        "name": "bias"
       }
      ],
@@ -1306,7 +1292,7 @@
      "i": 5,
      "subgraph": "block",
      "op": "rope",
-     "role": "rotary on q",
+     "role": "rotary embedding on q",
      "inputs": [
       "q"
      ],
@@ -1315,11 +1301,13 @@
      "attributes": [
       {
        "value": "all",
-       "status": "stated",
-       "quote": "We use Rotary Position Embedding\n (RoPE)~\\citep{su2021roformer} following the standard implementation.",
-       "where": "Sec. Model Architecture",
-       "reasons": [],
-       "check": "quote_only",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [
+        "not_stated carries a value or quote (ignored)"
+       ],
+       "check": "not_stated",
        "name": "rope_heads"
       },
       {
@@ -1330,15 +1318,6 @@
        "reasons": [],
        "check": "not_stated",
        "name": "pairing"
-      },
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "n_rot"
       },
       {
        "value": "",
@@ -1356,7 +1335,7 @@
      "i": 6,
      "subgraph": "block",
      "op": "rope",
-     "role": "rotary on k",
+     "role": "rotary embedding on k",
      "inputs": [
       "k"
      ],
@@ -1365,11 +1344,13 @@
      "attributes": [
       {
        "value": "all",
-       "status": "stated",
-       "quote": "We use Rotary Position Embedding\n (RoPE)~\\citep{su2021roformer} following the standard implementation.",
-       "where": "Sec. Model Architecture",
-       "reasons": [],
-       "check": "quote_only",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [
+        "not_stated carries a value or quote (ignored)"
+       ],
+       "check": "not_stated",
        "name": "rope_heads"
       },
       {
@@ -1388,15 +1369,6 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
-       "name": "n_rot"
-      },
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
        "name": "theta"
       }
      ],
@@ -1406,7 +1378,7 @@
      "i": 7,
      "subgraph": "block",
      "op": "attention",
-     "role": "grouped-query causal self-attention",
+     "role": "causal grouped-query self-attention",
      "inputs": [
       "q_r",
       "k_r",
@@ -1454,7 +1426,7 @@
       {
        "value": "true",
        "status": "stated",
-       "quote": "Yi uses a modified version of the classical decoder-only Transformer architecture~\\citep{Vaswani:2017aa}",
+       "quote": "Yi uses a modified version of the classical decoder-only Transformer architecture",
        "where": "Sec. Model Architecture",
        "reasons": [],
        "check": "quote_only",
@@ -1470,15 +1442,6 @@
        ],
        "check": "unverified",
        "name": "window"
-      },
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "sinks"
       }
      ],
      "errors": []
@@ -1495,12 +1458,14 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
+       "value": "false",
+       "status": "inherited",
+       "quote": "Yi uses a modified version of the classical decoder-only Transformer architecture~\\citep{Vaswani:2017aa} where the code is based on LLaMA's~\\citep{llama2} implementation.",
+       "where": "Sec. Model Architecture",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias"
+       ],
+       "check": "unverified",
        "name": "bias"
       }
      ],
@@ -1547,7 +1512,7 @@
      "i": 11,
      "subgraph": "block",
      "op": "linear",
-     "role": "FFN gate",
+     "role": "SwiGLU gate projection",
      "inputs": [
       "h2"
      ],
@@ -1564,12 +1529,14 @@
        "name": "out"
       },
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
+       "value": "false",
+       "status": "inherited",
+       "quote": "Yi uses a modified version of the classical decoder-only Transformer architecture~\\citep{Vaswani:2017aa} where the code is based on LLaMA's~\\citep{llama2} implementation.",
+       "where": "Sec. Model Architecture",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias"
+       ],
+       "check": "unverified",
        "name": "bias"
       }
      ],
@@ -1579,7 +1546,7 @@
      "i": 12,
      "subgraph": "block",
      "op": "linear",
-     "role": "FFN up",
+     "role": "SwiGLU up projection",
      "inputs": [
       "h2"
      ],
@@ -1596,12 +1563,14 @@
        "name": "out"
       },
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
+       "value": "false",
+       "status": "inherited",
+       "quote": "Yi uses a modified version of the classical decoder-only Transformer architecture~\\citep{Vaswani:2017aa} where the code is based on LLaMA's~\\citep{llama2} implementation.",
+       "where": "Sec. Model Architecture",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias"
+       ],
+       "check": "unverified",
        "name": "bias"
       }
      ],
@@ -1611,7 +1580,7 @@
      "i": 13,
      "subgraph": "block",
      "op": "silu",
-     "role": "SwiGLU activation",
+     "role": "SwiGLU gate activation",
      "inputs": [
       "g"
      ],
@@ -1638,7 +1607,7 @@
      "i": 15,
      "subgraph": "block",
      "op": "linear",
-     "role": "FFN down",
+     "role": "SwiGLU down projection",
      "inputs": [
       "m"
      ],
@@ -1646,12 +1615,23 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
+       "value": "4096",
+       "status": "stated",
+       "quote": "6B&  4096&  32&  4&  32&  4096&",
+       "where": "Table tab:model_config",
        "reasons": [],
-       "check": "not_stated",
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "false",
+       "status": "inherited",
+       "quote": "Yi uses a modified version of the classical decoder-only Transformer architecture~\\citep{Vaswani:2017aa} where the code is based on LLaMA's~\\citep{llama2} implementation.",
+       "where": "Sec. Model Architecture",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias"
+       ],
+       "check": "unverified",
        "name": "bias"
       }
      ],
@@ -1698,7 +1678,7 @@
      "i": 18,
      "subgraph": "head",
      "op": "linear",
-     "role": "LM head",
+     "role": "untied LM head",
      "inputs": [
       "hf"
      ],
@@ -1715,47 +1695,27 @@
        "name": "out"
       },
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
+       "value": "false",
+       "status": "inherited",
+       "quote": "Yi uses a modified version of the classical decoder-only Transformer architecture~\\citep{Vaswani:2017aa} where the code is based on LLaMA's~\\citep{llama2} implementation.",
+       "where": "Sec. Model Architecture",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias"
+       ],
+       "check": "unverified",
        "name": "bias"
-      },
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "tied_to"
       }
      ],
      "errors": []
     }
    ],
-   "mechanisms_outside_ir": [
-    {
-     "mechanism": "Yi-VL extension: CLIP ViT-H/14 vision encoder plus a two-layer MLP projection with layer norms feeding the LLM (separate variant, not the base model)",
-     "quote": "The Vision Transformer (ViT), used for image encoding, is initialized with CLIP ViT-H/14 model~\\citep{ilharco_gabriel_2021_5143773}. A Projection Module, designed to align image features with text feature spcae, consists of a two-layer Multilayer Perceptron (MLP) with layer normalizations.",
-     "where": "Sec. Vision-Language",
-     "check": "verified"
-    },
-    {
-     "mechanism": "Yi-9B depth upscaling: Yi-6B's 32 layers expanded to 48 by duplicating middle layers 12-28, then continued pretraining (separate variant)",
-     "quote": "our goal is to upscale our Yi-6B base model, which has 32 layers, to a 9B model named the Yi-9B base model, featuring 48 layers, by duplicating the original 16 middle layers 12-28.",
-     "where": "Sec. Depth Upscaling",
-     "check": "verified"
-    }
-   ],
+   "mechanisms_outside_ir": [],
    "summary": {
     "counts": {
-     "verified": 19,
-     "quote_only": 6,
-     "unverified": 3,
-     "not_stated": 40
+     "verified": 21,
+     "quote_only": 4,
+     "unverified": 15,
+     "not_stated": 26
     },
     "unverified": [
      {
@@ -1771,9 +1731,81 @@
       ]
      },
      {
+      "field": "flavours.parallel_block",
+      "reasons": [
+       "inherited from llama, whose curated entry has no parallel_block"
+      ]
+     },
+     {
+      "field": "flavours.qkv_bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no qkv_bias"
+      ]
+     },
+     {
+      "field": "flavours.mlp_bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no mlp_bias"
+      ]
+     },
+     {
+      "field": "flavours.tied_embeddings",
+      "reasons": [
+       "inherited from llama, whose curated entry has no tied_embeddings"
+      ]
+     },
+     {
+      "field": "block_ops[2].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[3].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[4].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
       "field": "block_ops[7].window",
       "reasons": [
        "0 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[8].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[11].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[12].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[15].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[18].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias"
       ]
      }
     ],

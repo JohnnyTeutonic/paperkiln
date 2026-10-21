@@ -3,22 +3,22 @@
  "title": "The Falcon Series of Open Language Models",
  "fields": {
   "d_model": {
-   "value": 4544,
+   "value": 14848,
    "evidence": "$d_\\text{model}$ & 4,544 & 8,192 & 14,848 [Table tab:hyperparams]",
    "verdict": "used"
   },
   "n_layers": {
-   "value": 32,
+   "value": 80,
    "evidence": "$n_\\text{layer}$ & 32 & 60 & 80 [Table tab:hyperparams]",
    "verdict": "used"
   },
   "n_heads": {
-   "value": 71,
+   "value": 232,
    "evidence": "$n_\\text{q}$ & 71 & 128 & 232 [Table tab:hyperparams]",
    "verdict": "used"
   },
   "n_kv_heads": {
-   "value": 1,
+   "value": 8,
    "evidence": "$n_\\text{kv}$ & 1 & 8 & 8 [Table tab:hyperparams]",
    "verdict": "used"
   },
@@ -34,44 +34,34 @@
   },
   "norm": {
    "value": "layernorm",
-   "evidence": "it is possible to merge the two layer norms back into one, by multiplying in the weights and biases of the layer norm into the subsequent linear layer [Sec. Architectural nitpicks (Layer norms)]",
+   "evidence": "Furthermore, after training, it is possible to merge the two layer norms back into one, by multiplying in the weights and biases of the layer norm into the subsequent linear layer. [Sec. Architectural nitpicks: separate layer norms, tied embeddings, and scaling-up]",
    "verdict": "used"
   },
   "activation": {
    "value": "gelu",
-   "evidence": "we do not use GLU \\citep{shazeer2020glu} because of the increased memory footprint, and use vanilla GeLU instead [Sec. The Falcon architecture and recipe]",
+   "evidence": "we do not use GLU \\citep{shazeer2020glu} because of the increased memory footprint, and use vanilla GeLU instead [Sec. The Falcon architecture and recipe for efficient inference and (stable) training]",
    "verdict": "used"
   },
   "positional": {
    "value": "rope",
-   "evidence": "we use rotary embeddings \\citep{su2021roformer} [Sec. The Falcon architecture and recipe]",
+   "evidence": "we use rotary embeddings \\citep{su2021roformer} [Sec. The Falcon architecture and recipe for efficient inference and (stable) training]",
    "verdict": "used"
   },
   "residual": {
    "value": "residual",
-   "evidence": "we use parallel attention and MLP blocks \\citep{gpt-j} [Sec. The Falcon architecture and recipe]",
-   "verdict": "unverified",
-   "reasons": [
-    "the quote does not name residual (looked for /residual|skip/)"
-   ]
+   "evidence": "it's possible to shard the activations on the residual stream across the tensor parallel workers where these activations are otherwise replicated [Sec. Combining 3D parallelism for fine-grained control, and ZeRO for scalability]",
+   "verdict": "used"
   },
   "attention": {
    "value": "exact",
-   "evidence": "We use multigroup attention (\\cref{sec:multiquery_abl}) to improve the scalability of inference, an extension of multiquery \\citep{multiquery} [Sec. The Falcon architecture and recipe]",
+   "evidence": "the Falcon series implement multigroup with KV=TP for all models (respectively 1/8/8 for Falcon-7/40/180B) [Sec. Extending multiquery into multigroup]",
    "verdict": "used"
   }
  },
  "unresolved": [
   "d_ff"
  ],
- "unverified": [
-  {
-   "field": "residual",
-   "reasons": [
-    "the quote does not name residual (looked for /residual|skip/)"
-   ]
-  }
- ],
+ "unverified": [],
  "mentions": {},
  "inherits": {
   "ancestor": "palm",
@@ -107,9 +97,9 @@
  "mechanism_scan": [
   {
    "mechanism": "parallel attention and FFN sublayers",
-   "where": "llm extraction, verified quote, Sec. Small tweaks help scalability (Recipe decision)",
+   "where": "llm extraction, verified quote, Sec. The Falcon architecture and recipe for efficient inference and (stable) training",
    "blocking": true,
-   "evidence": "We adopt parallel attention and MLP, and remove biases from linear layers."
+   "evidence": "we use parallel attention and MLP blocks \\citep{gpt-j} and remove biases from linear layers \\citep{palm}"
   },
   {
    "mechanism": "grouped or multi-query attention",
@@ -118,16 +108,10 @@
    "evidence": "$n_\\text{kv}$ & 1 & 8 & 8"
   },
   {
-   "mechanism": "Tree-structured attention masking for conversation data (and inter-document masking), with positions given by tree depth, used during pretraining",
-   "where": "llm extraction, verified quote, Sec. micro_data (Conversation trees and attention masking)",
+   "mechanism": "Tree-structured attention masking for conversation data and document masking during pretraining, with positions given by tree depth",
+   "where": "llm extraction, verified quote, Sec. The Microdata curated corpora and conversational masking",
    "blocking": true,
    "evidence": "Instead, we find that we can use the attention mask to encode a tree-like structure, allowing later comments to only attend to comments from their trajectory, ignoring \"side\" comments."
-  },
-  {
-   "mechanism": "Falcon-40B/180B use two separate layer norms (one for attention, one for MLP) in the parallel block instead of the single shared norm of Falcon-7B",
-   "where": "llm extraction, verified quote, Sec. Architectural nitpicks (Layer norms)",
-   "blocking": true,
-   "evidence": "This leads us to stay close to the vanilla architecture, and to use two separate layer norms"
   }
  ],
  "source": {
@@ -135,20 +119,20 @@
   "sent_sha256": "849ae3507f7175ac444ef7b918604b7316d39bd41a31ded2df83b8884d959493",
   "from": "https://arxiv.org/e-print/2311.16867",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
   "n_calls": 1,
-  "cost_usd": 0.0,
+  "cost_usd": 0.607068,
   "request_ids": [
-   "req_011CgFctAPhfDRyN9hAVxsWd"
+   "req_011CgFiMNmAoj9hV7zpFPeRB"
   ]
  },
  "llm": {
   "output": {
    "title": "The Falcon Series of Open Language Models",
-   "model_name": "Falcon (7B / 40B / 180B)",
+   "model_name": "Falcon-180B (Falcon series: Falcon-7B / 40B / 180B)",
    "family": {
     "value": "decoder_only",
     "status": "stated",
@@ -166,31 +150,31 @@
      "d_model": {
       "value": "4544",
       "status": "stated",
-      "quote": "$d_\\text{model}$ & 4,544 & 8,192 & 14,848",
+      "quote": "$d_\\text{model}$     & 4,544              & 8,192                 & 14,848",
       "where": "Table tab:hyperparams"
      },
      "n_layers": {
       "value": "32",
       "status": "stated",
-      "quote": "$n_\\text{layer}$ & 32 & 60 & 80",
+      "quote": "$n_\\text{layer}$     & 32                 & 60                    & 80",
       "where": "Table tab:hyperparams"
      },
      "n_heads": {
       "value": "71",
       "status": "stated",
-      "quote": "$n_\\text{q}$ & 71 & 128 & 232",
+      "quote": "$n_\\text{q}$         & 71                 & 128                   & 232",
       "where": "Table tab:hyperparams"
      },
      "n_kv_heads": {
       "value": "1",
       "status": "stated",
-      "quote": "$n_\\text{kv}$ & 1 & 8 & 8",
+      "quote": "$n_\\text{kv}$        & 1                  & 8                     & 8",
       "where": "Table tab:hyperparams"
      },
      "head_dim": {
       "value": "64",
       "status": "stated",
-      "quote": "$d_\\text{head}$ & \\multicolumn{3}{c}{64}",
+      "quote": "$d_\\text{head}$      & \\multicolumn{3}{c}{64}",
       "where": "Table tab:hyperparams"
      },
      "d_ff": {
@@ -202,13 +186,13 @@
      "vocab_size": {
       "value": "65024",
       "status": "stated",
-      "quote": "$d_\\text{vocab}$ & \\multicolumn{3}{c}{65,024}",
+      "quote": "$d_\\text{vocab}$     & \\multicolumn{3}{c}{65,024}",
       "where": "Table tab:hyperparams"
      },
      "context_length": {
       "value": "2048",
       "status": "stated",
-      "quote": "$n_\\text{tokens}$ & \\multicolumn{3}{c}{2,048}",
+      "quote": "$n_\\text{tokens}$        & \\multicolumn{3}{c}{2,048}",
       "where": "Table tab:hyperparams"
      }
     },
@@ -217,31 +201,31 @@
      "d_model": {
       "value": "8192",
       "status": "stated",
-      "quote": "$d_\\text{model}$ & 4,544 & 8,192 & 14,848",
+      "quote": "$d_\\text{model}$     & 4,544              & 8,192                 & 14,848",
       "where": "Table tab:hyperparams"
      },
      "n_layers": {
       "value": "60",
       "status": "stated",
-      "quote": "$n_\\text{layer}$ & 32 & 60 & 80",
+      "quote": "$n_\\text{layer}$     & 32                 & 60                    & 80",
       "where": "Table tab:hyperparams"
      },
      "n_heads": {
       "value": "128",
       "status": "stated",
-      "quote": "$n_\\text{q}$ & 71 & 128 & 232",
+      "quote": "$n_\\text{q}$         & 71                 & 128                   & 232",
       "where": "Table tab:hyperparams"
      },
      "n_kv_heads": {
       "value": "8",
       "status": "stated",
-      "quote": "$n_\\text{kv}$ & 1 & 8 & 8",
+      "quote": "$n_\\text{kv}$        & 1                  & 8                     & 8",
       "where": "Table tab:hyperparams"
      },
      "head_dim": {
       "value": "64",
       "status": "stated",
-      "quote": "$d_\\text{head}$ & \\multicolumn{3}{c}{64}",
+      "quote": "$d_\\text{head}$      & \\multicolumn{3}{c}{64}",
       "where": "Table tab:hyperparams"
      },
      "d_ff": {
@@ -253,13 +237,13 @@
      "vocab_size": {
       "value": "65024",
       "status": "stated",
-      "quote": "$d_\\text{vocab}$ & \\multicolumn{3}{c}{65,024}",
+      "quote": "$d_\\text{vocab}$     & \\multicolumn{3}{c}{65,024}",
       "where": "Table tab:hyperparams"
      },
      "context_length": {
       "value": "2048",
       "status": "stated",
-      "quote": "$n_\\text{tokens}$ & \\multicolumn{3}{c}{2,048}",
+      "quote": "$n_\\text{tokens}$        & \\multicolumn{3}{c}{2,048}",
       "where": "Table tab:hyperparams"
      }
     },
@@ -268,31 +252,31 @@
      "d_model": {
       "value": "14848",
       "status": "stated",
-      "quote": "$d_\\text{model}$ & 4,544 & 8,192 & 14,848",
+      "quote": "$d_\\text{model}$     & 4,544              & 8,192                 & 14,848",
       "where": "Table tab:hyperparams"
      },
      "n_layers": {
       "value": "80",
       "status": "stated",
-      "quote": "$n_\\text{layer}$ & 32 & 60 & 80",
+      "quote": "$n_\\text{layer}$     & 32                 & 60                    & 80",
       "where": "Table tab:hyperparams"
      },
      "n_heads": {
       "value": "232",
       "status": "stated",
-      "quote": "$n_\\text{q}$ & 71 & 128 & 232",
+      "quote": "$n_\\text{q}$         & 71                 & 128                   & 232",
       "where": "Table tab:hyperparams"
      },
      "n_kv_heads": {
       "value": "8",
       "status": "stated",
-      "quote": "$n_\\text{kv}$ & 1 & 8 & 8",
+      "quote": "$n_\\text{kv}$        & 1                  & 8                     & 8",
       "where": "Table tab:hyperparams"
      },
      "head_dim": {
       "value": "64",
       "status": "stated",
-      "quote": "$d_\\text{head}$ & \\multicolumn{3}{c}{64}",
+      "quote": "$d_\\text{head}$      & \\multicolumn{3}{c}{64}",
       "where": "Table tab:hyperparams"
      },
      "d_ff": {
@@ -304,30 +288,30 @@
      "vocab_size": {
       "value": "65024",
       "status": "stated",
-      "quote": "$d_\\text{vocab}$ & \\multicolumn{3}{c}{65,024}",
+      "quote": "$d_\\text{vocab}$     & \\multicolumn{3}{c}{65,024}",
       "where": "Table tab:hyperparams"
      },
      "context_length": {
       "value": "2048",
       "status": "stated",
-      "quote": "$n_\\text{tokens}$ & \\multicolumn{3}{c}{2,048}",
+      "quote": "$n_\\text{tokens}$        & \\multicolumn{3}{c}{2,048}",
       "where": "Table tab:hyperparams"
      }
     }
    ],
-   "primary_config": "Falcon-7B",
+   "primary_config": "Falcon-180B",
    "flavours": {
     "norm": {
      "value": "layernorm",
      "status": "stated",
-     "quote": "it is possible to merge the two layer norms back into one, by multiplying in the weights and biases of the layer norm into the subsequent linear layer",
-     "where": "Sec. Architectural nitpicks (Layer norms)"
+     "quote": "Furthermore, after training, it is possible to merge the two layer norms back into one, by multiplying in the weights and biases of the layer norm into the subsequent linear layer.",
+     "where": "Sec. Architectural nitpicks: separate layer norms, tied embeddings, and scaling-up"
     },
     "norm_placement": {
      "value": "pre",
      "status": "stated",
-     "quote": "it is possible to merge the two layer norms back into one, by multiplying in the weights and biases of the layer norm into the subsequent linear layer",
-     "where": "Sec. Architectural nitpicks (Layer norms)"
+     "quote": "Furthermore, after training, it is possible to merge the two layer norms back into one, by multiplying in the weights and biases of the layer norm into the subsequent linear layer.",
+     "where": "Sec. Architectural nitpicks: separate layer norms, tied embeddings, and scaling-up"
     },
     "norm_eps": {
      "value": "",
@@ -339,13 +323,13 @@
      "value": "gelu",
      "status": "stated",
      "quote": "we do not use GLU \\citep{shazeer2020glu} because of the increased memory footprint, and use vanilla GeLU instead",
-     "where": "Sec. The Falcon architecture and recipe"
+     "where": "Sec. The Falcon architecture and recipe for efficient inference and (stable) training"
     },
     "positional": {
      "value": "rope",
      "status": "stated",
      "quote": "we use rotary embeddings \\citep{su2021roformer}",
-     "where": "Sec. The Falcon architecture and recipe"
+     "where": "Sec. The Falcon architecture and recipe for efficient inference and (stable) training"
     },
     "rope_pairing": {
      "value": "",
@@ -368,20 +352,20 @@
     "residual": {
      "value": "residual",
      "status": "stated",
-     "quote": "we use parallel attention and MLP blocks \\citep{gpt-j}",
-     "where": "Sec. The Falcon architecture and recipe"
+     "quote": "it's possible to shard the activations on the residual stream across the tensor parallel workers where these activations are otherwise replicated",
+     "where": "Sec. Combining 3D parallelism for fine-grained control, and ZeRO for scalability"
     },
     "parallel_block": {
      "value": "true",
      "status": "stated",
-     "quote": "We adopt parallel attention and MLP, and remove biases from linear layers.",
-     "where": "Sec. Small tweaks help scalability (Recipe decision)"
+     "quote": "we use parallel attention and MLP blocks \\citep{gpt-j} and remove biases from linear layers \\citep{palm}",
+     "where": "Sec. The Falcon architecture and recipe for efficient inference and (stable) training"
     },
     "attention": {
      "value": "exact",
      "status": "stated",
-     "quote": "We use multigroup attention (\\cref{sec:multiquery_abl}) to improve the scalability of inference, an extension of multiquery \\citep{multiquery}",
-     "where": "Sec. The Falcon architecture and recipe"
+     "quote": "the Falcon series implement multigroup with KV=TP for all models (respectively 1/8/8 for Falcon-7/40/180B)",
+     "where": "Sec. Extending multiquery into multigroup"
     },
     "window_size": {
      "value": "",
@@ -399,25 +383,25 @@
      "value": "false",
      "status": "stated",
      "quote": "Accordingly, we remove biases from the linear layers in the Falcon series.",
-     "where": "Sec. Small tweaks help scalability (No biases)"
+     "where": "Sec. Small tweaks help scalability: parallel layers and no biases in linear layers"
     },
     "mlp_bias": {
      "value": "false",
      "status": "stated",
      "quote": "Accordingly, we remove biases from the linear layers in the Falcon series.",
-     "where": "Sec. Small tweaks help scalability (No biases)"
+     "where": "Sec. Small tweaks help scalability: parallel layers and no biases in linear layers"
     },
     "tied_embeddings": {
      "value": "true",
      "status": "stated",
      "quote": "Still, in the interest of not adding additional risks to the training of the Falcon series, we keep our embeddings tied.",
-     "where": "Sec. Architectural nitpicks (Tied embeddings)"
+     "where": "Sec. Architectural nitpicks: separate layer norms, tied embeddings, and scaling-up"
     },
     "moe": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": ""
+     "value": "false",
+     "status": "stated",
+     "quote": "We also see promise in enabling training and inference compute decoupling through architecture interventions such as layerwise mixture of experts (MoE), also known as routed language models",
+     "where": "Sec. Limitations of the Falcon models"
     },
     "n_experts": {
      "value": "",
@@ -442,7 +426,7 @@
     {
      "subgraph": "embed",
      "op": "embedding",
-     "role": "token embedding (token_embd)",
+     "role": "token embedding (token_embd), tied with output head",
      "inputs": [
       "tokens"
      ],
@@ -453,7 +437,14 @@
        "value": "65024",
        "status": "stated",
        "quote": "We train our tokenizer on a vocabulary size of 65,024",
-       "where": "Sec. Architectural nitpicks (Vocabulary size)"
+       "where": "Sec. Architectural nitpicks: separate layer norms, tied embeddings, and scaling-up"
+      },
+      {
+       "name": "d",
+       "value": "14848",
+       "status": "stated",
+       "quote": "$d_\\text{model}$     & 4,544              & 8,192                 & 14,848",
+       "where": "Table tab:hyperparams"
       }
      ],
      "new_op": ""
@@ -461,11 +452,11 @@
     {
      "subgraph": "block",
      "op": "layernorm",
-     "role": "single shared input layer norm (Falcon-7B)",
+     "role": "separate layer norm for the attention branch",
      "inputs": [
       "x"
      ],
-     "output": "h",
+     "output": "ha",
      "attributes": [
       {
        "name": "eps",
@@ -473,13 +464,25 @@
        "status": "not_stated",
        "quote": "",
        "where": ""
-      },
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "layernorm",
+     "role": "separate layer norm for the MLP branch",
+     "inputs": [
+      "x"
+     ],
+     "output": "hm",
+     "attributes": [
       {
-       "name": "variant",
-       "value": "single",
-       "status": "stated",
-       "quote": "For Falcon-7B (later trained), we switched to a single layer norm.",
-       "where": "Sec. Architectural nitpicks (Layer norms)"
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -489,7 +492,7 @@
      "op": "linear",
      "role": "query projection",
      "inputs": [
-      "h"
+      "ha"
      ],
      "output": "q",
      "attributes": [
@@ -513,9 +516,9 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "key projection (shared kv group)",
+     "role": "key projection (n_kv heads)",
      "inputs": [
-      "h"
+      "ha"
      ],
      "output": "k",
      "attributes": [
@@ -539,9 +542,9 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "value projection (shared kv group)",
+     "role": "value projection (n_kv heads)",
      "inputs": [
-      "h"
+      "ha"
      ],
      "output": "v",
      "attributes": [
@@ -567,17 +570,11 @@
      "op": "rope",
      "role": "rotary embedding on queries",
      "inputs": [
-      "q"
+      "q",
+      "pos"
      ],
      "output": "q_r",
      "attributes": [
-      {
-       "name": "rope_heads",
-       "value": "all",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      },
       {
        "name": "pairing",
        "value": "",
@@ -607,17 +604,11 @@
      "op": "rope",
      "role": "rotary embedding on keys",
      "inputs": [
-      "k"
+      "k",
+      "pos"
      ],
      "output": "k_r",
      "attributes": [
-      {
-       "name": "rope_heads",
-       "value": "all",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      },
       {
        "name": "pairing",
        "value": "",
@@ -645,34 +636,34 @@
     {
      "subgraph": "block",
      "op": "attention",
-     "role": "causal multigroup (multiquery for 7B) attention",
+     "role": "causal multigroup (grouped-query) attention",
      "inputs": [
       "q_r",
       "k_r",
       "v"
      ],
-     "output": "a",
+     "output": "att",
      "attributes": [
       {
        "name": "heads",
-       "value": "71",
+       "value": "232",
        "status": "stated",
-       "quote": "$n_\\text{q}$ & 71 & 128 & 232",
+       "quote": "$n_\\text{q}$         & 71                 & 128                   & 232",
        "where": "Table tab:hyperparams"
       },
       {
        "name": "kv_heads",
-       "value": "1",
+       "value": "8",
        "status": "stated",
-       "quote": "the Falcon series implement multigroup with KV=TP for all models (respectively 1/8/8 for Falcon-7/40/180B).",
-       "where": "Sec. multiquery_abl (Recipe decision)"
+       "quote": "$n_\\text{kv}$        & 1                  & 8                     & 8",
+       "where": "Table tab:hyperparams"
       },
       {
        "name": "head_dim",
        "value": "64",
        "status": "stated",
        "quote": "uses a fixed attention head size of 64 to optimize for performance with FlashAttention",
-       "where": "Sec. Architectural nitpicks (Model scaling)"
+       "where": "Sec. Architectural nitpicks: separate layer norms, tied embeddings, and scaling-up"
       },
       {
        "name": "scale",
@@ -685,12 +676,12 @@
        "name": "causal",
        "value": "true",
        "status": "stated",
-       "quote": "Falcon are autoregressive Transformer models trained with a causal language modeling objective.",
-       "where": "Table tab:model_card"
+       "quote": "We introduce the Falcon series: 7B, 40B, and 180B parameters causal decoder-only models",
+       "where": "Abstract"
       },
       {
        "name": "window",
-       "value": "0",
+       "value": "",
        "status": "not_stated",
        "quote": "",
        "where": ""
@@ -710,15 +701,15 @@
      "op": "linear",
      "role": "attention output projection",
      "inputs": [
-      "a"
+      "att"
      ],
-     "output": "attn_out",
+     "output": "att_out",
      "attributes": [
       {
        "name": "out",
-       "value": "4544",
+       "value": "14848",
        "status": "stated",
-       "quote": "$d_\\text{model}$ & 4,544 & 8,192 & 14,848",
+       "quote": "$d_\\text{model}$     & 4,544              & 8,192                 & 14,848",
        "where": "Table tab:hyperparams"
       },
       {
@@ -734,9 +725,9 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "MLP up projection (parallel branch, reads same normed input)",
+     "role": "MLP up projection",
      "inputs": [
-      "h"
+      "hm"
      ],
      "output": "u",
      "attributes": [
@@ -760,7 +751,7 @@
     {
      "subgraph": "block",
      "op": "gelu",
-     "role": "MLP activation",
+     "role": "MLP activation (vanilla GeLU)",
      "inputs": [
       "u"
      ],
@@ -787,9 +778,9 @@
      "attributes": [
       {
        "name": "out",
-       "value": "4544",
+       "value": "14848",
        "status": "stated",
-       "quote": "$d_\\text{model}$ & 4,544 & 8,192 & 14,848",
+       "quote": "$d_\\text{model}$     & 4,544              & 8,192                 & 14,848",
        "where": "Table tab:hyperparams"
       },
       {
@@ -805,10 +796,10 @@
     {
      "subgraph": "block",
      "op": "add",
-     "role": "residual add of attention branch",
+     "role": "parallel block: add attention branch to residual",
      "inputs": [
       "x",
-      "attn_out"
+      "att_out"
      ],
      "output": "x1",
      "attributes": [],
@@ -817,7 +808,7 @@
     {
      "subgraph": "block",
      "op": "add",
-     "role": "residual add of parallel MLP branch",
+     "role": "parallel block: add MLP branch to residual",
      "inputs": [
       "x1",
       "mlp_out"
@@ -829,7 +820,7 @@
     {
      "subgraph": "head",
      "op": "linear",
-     "role": "tied output head (logits)",
+     "role": "output logits, tied to token embedding",
      "inputs": [
       "x"
      ],
@@ -839,8 +830,8 @@
        "name": "tied_to",
        "value": "token_embd",
        "status": "stated",
-       "quote": "the embedding weights converting the tokens $x$ into $z^0=xW$ are the same that converts the embedding back into the predicted logits $p=z^n W^T$",
-       "where": "Sec. Architectural nitpicks (Tied embeddings)"
+       "quote": "Still, in the interest of not adding additional risks to the training of the Falcon series, we keep our embeddings tied.",
+       "where": "Sec. Architectural nitpicks"
       },
       {
        "name": "bias",
@@ -856,17 +847,12 @@
    "new_ops": [],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "Tree-structured attention masking for conversation data (and inter-document masking), with positions given by tree depth, used during pretraining",
+     "mechanism": "Tree-structured attention masking for conversation data and document masking during pretraining, with positions given by tree depth",
      "quote": "Instead, we find that we can use the attention mask to encode a tree-like structure, allowing later comments to only attend to comments from their trajectory, ignoring \"side\" comments.",
-     "where": "Sec. micro_data (Conversation trees and attention masking)"
-    },
-    {
-     "mechanism": "Falcon-40B/180B use two separate layer norms (one for attention, one for MLP) in the parallel block instead of the single shared norm of Falcon-7B",
-     "quote": "This leads us to stay close to the vanilla architecture, and to use two separate layer norms",
-     "where": "Sec. Architectural nitpicks (Layer norms)"
+     "where": "Sec. The Microdata curated corpora and conversational masking"
     }
    ],
-   "notes": "The block shown is for Falcon-7B (primary, smallest): a single shared LayerNorm feeds parallel attention and GeLU MLP, multiquery (kv=1), head_dim 64, no biases, RoPE, and tied embeddings. Falcon-40B and 180B instead use two separate LayerNorms and 8 KV heads. Not stated in the paper: d_ff, layernorm eps, RoPE theta, pairing and fraction, GeLU exact vs tanh, attention scale, whether there is a final norm before the head (so none is included), and MoE (the model is presumably dense, but this is not stated). The q/k/v output widths are left not_stated; they would follow as n_heads*64 and n_kv*64, but the paper does not state them. Pre-norm placement is inferred from the sentence about folding the layer norm weights into the subsequent linear layer. PaLM ancestry is only declared as 'based on', so no values are marked inherited. The text gives the 180B learning rate as 1.15e-4 while the table gives 1.25e-4; this is a training hyperparameter and does not affect the architecture."
+   "notes": "Described the headline Falcon-180B (primary_config), whose block has two separate layer norms (attention and MLP branches) feeding parallel attention/MLP. Falcon-40B uses the same block. Falcon-7B uses a single shared layer norm ('For Falcon-7B (later trained), we switched to a single layer norm.') and multiquery (n_kv=1). Several values are left not_stated: MLP hidden width d_ff, layer norm eps, the GeLU form (exact vs tanh), the RoPE pairing, theta and fraction, the attention scale, and any final layer norm before the head. The final norm is therefore omitted from the head. Pre-norm placement is inferred from the statement that the layer norm weights merge into the subsequent linear layer. Multigroup attention uses n_kv=TP. z-loss is a training loss, not an architectural element. Ablation baselines (ALiBi, SwiGLU, GPT-3-like) are not the model."
   },
   "verification": {
    "errors": [],
@@ -892,7 +878,7 @@
      "d_model": {
       "value": "4544",
       "status": "stated",
-      "quote": "$d_\\text{model}$ & 4,544 & 8,192 & 14,848",
+      "quote": "$d_\\text{model}$     & 4,544              & 8,192                 & 14,848",
       "where": "Table tab:hyperparams",
       "reasons": [],
       "check": "verified"
@@ -900,7 +886,7 @@
      "n_layers": {
       "value": "32",
       "status": "stated",
-      "quote": "$n_\\text{layer}$ & 32 & 60 & 80",
+      "quote": "$n_\\text{layer}$     & 32                 & 60                    & 80",
       "where": "Table tab:hyperparams",
       "reasons": [],
       "check": "verified"
@@ -908,7 +894,7 @@
      "n_heads": {
       "value": "71",
       "status": "stated",
-      "quote": "$n_\\text{q}$ & 71 & 128 & 232",
+      "quote": "$n_\\text{q}$         & 71                 & 128                   & 232",
       "where": "Table tab:hyperparams",
       "reasons": [],
       "check": "verified"
@@ -916,7 +902,7 @@
      "n_kv_heads": {
       "value": "1",
       "status": "stated",
-      "quote": "$n_\\text{kv}$ & 1 & 8 & 8",
+      "quote": "$n_\\text{kv}$        & 1                  & 8                     & 8",
       "where": "Table tab:hyperparams",
       "reasons": [],
       "check": "verified"
@@ -924,7 +910,7 @@
      "head_dim": {
       "value": "64",
       "status": "stated",
-      "quote": "$d_\\text{head}$ & \\multicolumn{3}{c}{64}",
+      "quote": "$d_\\text{head}$      & \\multicolumn{3}{c}{64}",
       "where": "Table tab:hyperparams",
       "reasons": [],
       "check": "verified"
@@ -940,7 +926,7 @@
      "vocab_size": {
       "value": "65024",
       "status": "stated",
-      "quote": "$d_\\text{vocab}$ & \\multicolumn{3}{c}{65,024}",
+      "quote": "$d_\\text{vocab}$     & \\multicolumn{3}{c}{65,024}",
       "where": "Table tab:hyperparams",
       "reasons": [],
       "check": "verified"
@@ -948,7 +934,7 @@
      "context_length": {
       "value": "2048",
       "status": "stated",
-      "quote": "$n_\\text{tokens}$ & \\multicolumn{3}{c}{2,048}",
+      "quote": "$n_\\text{tokens}$        & \\multicolumn{3}{c}{2,048}",
       "where": "Table tab:hyperparams",
       "reasons": [],
       "check": "verified"
@@ -977,7 +963,7 @@
      "d_model": {
       "value": "8192",
       "status": "stated",
-      "quote": "$d_\\text{model}$ & 4,544 & 8,192 & 14,848",
+      "quote": "$d_\\text{model}$     & 4,544              & 8,192                 & 14,848",
       "where": "Table tab:hyperparams",
       "reasons": [],
       "check": "verified"
@@ -985,7 +971,7 @@
      "n_layers": {
       "value": "60",
       "status": "stated",
-      "quote": "$n_\\text{layer}$ & 32 & 60 & 80",
+      "quote": "$n_\\text{layer}$     & 32                 & 60                    & 80",
       "where": "Table tab:hyperparams",
       "reasons": [],
       "check": "verified"
@@ -993,7 +979,7 @@
      "n_heads": {
       "value": "128",
       "status": "stated",
-      "quote": "$n_\\text{q}$ & 71 & 128 & 232",
+      "quote": "$n_\\text{q}$         & 71                 & 128                   & 232",
       "where": "Table tab:hyperparams",
       "reasons": [],
       "check": "verified"
@@ -1001,7 +987,7 @@
      "n_kv_heads": {
       "value": "8",
       "status": "stated",
-      "quote": "$n_\\text{kv}$ & 1 & 8 & 8",
+      "quote": "$n_\\text{kv}$        & 1                  & 8                     & 8",
       "where": "Table tab:hyperparams",
       "reasons": [],
       "check": "verified"
@@ -1009,7 +995,7 @@
      "head_dim": {
       "value": "64",
       "status": "stated",
-      "quote": "$d_\\text{head}$ & \\multicolumn{3}{c}{64}",
+      "quote": "$d_\\text{head}$      & \\multicolumn{3}{c}{64}",
       "where": "Table tab:hyperparams",
       "reasons": [],
       "check": "verified"
@@ -1025,7 +1011,7 @@
      "vocab_size": {
       "value": "65024",
       "status": "stated",
-      "quote": "$d_\\text{vocab}$ & \\multicolumn{3}{c}{65,024}",
+      "quote": "$d_\\text{vocab}$     & \\multicolumn{3}{c}{65,024}",
       "where": "Table tab:hyperparams",
       "reasons": [],
       "check": "verified"
@@ -1033,7 +1019,7 @@
      "context_length": {
       "value": "2048",
       "status": "stated",
-      "quote": "$n_\\text{tokens}$ & \\multicolumn{3}{c}{2,048}",
+      "quote": "$n_\\text{tokens}$        & \\multicolumn{3}{c}{2,048}",
       "where": "Table tab:hyperparams",
       "reasons": [],
       "check": "verified"
@@ -1062,7 +1048,7 @@
      "d_model": {
       "value": "14848",
       "status": "stated",
-      "quote": "$d_\\text{model}$ & 4,544 & 8,192 & 14,848",
+      "quote": "$d_\\text{model}$     & 4,544              & 8,192                 & 14,848",
       "where": "Table tab:hyperparams",
       "reasons": [],
       "check": "verified"
@@ -1070,7 +1056,7 @@
      "n_layers": {
       "value": "80",
       "status": "stated",
-      "quote": "$n_\\text{layer}$ & 32 & 60 & 80",
+      "quote": "$n_\\text{layer}$     & 32                 & 60                    & 80",
       "where": "Table tab:hyperparams",
       "reasons": [],
       "check": "verified"
@@ -1078,7 +1064,7 @@
      "n_heads": {
       "value": "232",
       "status": "stated",
-      "quote": "$n_\\text{q}$ & 71 & 128 & 232",
+      "quote": "$n_\\text{q}$         & 71                 & 128                   & 232",
       "where": "Table tab:hyperparams",
       "reasons": [],
       "check": "verified"
@@ -1086,7 +1072,7 @@
      "n_kv_heads": {
       "value": "8",
       "status": "stated",
-      "quote": "$n_\\text{kv}$ & 1 & 8 & 8",
+      "quote": "$n_\\text{kv}$        & 1                  & 8                     & 8",
       "where": "Table tab:hyperparams",
       "reasons": [],
       "check": "verified"
@@ -1094,7 +1080,7 @@
      "head_dim": {
       "value": "64",
       "status": "stated",
-      "quote": "$d_\\text{head}$ & \\multicolumn{3}{c}{64}",
+      "quote": "$d_\\text{head}$      & \\multicolumn{3}{c}{64}",
       "where": "Table tab:hyperparams",
       "reasons": [],
       "check": "verified"
@@ -1110,7 +1096,7 @@
      "vocab_size": {
       "value": "65024",
       "status": "stated",
-      "quote": "$d_\\text{vocab}$ & \\multicolumn{3}{c}{65,024}",
+      "quote": "$d_\\text{vocab}$     & \\multicolumn{3}{c}{65,024}",
       "where": "Table tab:hyperparams",
       "reasons": [],
       "check": "verified"
@@ -1118,7 +1104,7 @@
      "context_length": {
       "value": "2048",
       "status": "stated",
-      "quote": "$n_\\text{tokens}$ & \\multicolumn{3}{c}{2,048}",
+      "quote": "$n_\\text{tokens}$        & \\multicolumn{3}{c}{2,048}",
       "where": "Table tab:hyperparams",
       "reasons": [],
       "check": "verified"
@@ -1143,21 +1129,21 @@
      ]
     }
    ],
-   "primary_config": "Falcon-7B",
+   "primary_config": "Falcon-180B",
    "flavours": {
     "norm": {
      "value": "layernorm",
      "status": "stated",
-     "quote": "it is possible to merge the two layer norms back into one, by multiplying in the weights and biases of the layer norm into the subsequent linear layer",
-     "where": "Sec. Architectural nitpicks (Layer norms)",
+     "quote": "Furthermore, after training, it is possible to merge the two layer norms back into one, by multiplying in the weights and biases of the layer norm into the subsequent linear layer.",
+     "where": "Sec. Architectural nitpicks: separate layer norms, tied embeddings, and scaling-up",
      "reasons": [],
      "check": "verified"
     },
     "norm_placement": {
      "value": "pre",
      "status": "stated",
-     "quote": "it is possible to merge the two layer norms back into one, by multiplying in the weights and biases of the layer norm into the subsequent linear layer",
-     "where": "Sec. Architectural nitpicks (Layer norms)",
+     "quote": "Furthermore, after training, it is possible to merge the two layer norms back into one, by multiplying in the weights and biases of the layer norm into the subsequent linear layer.",
+     "where": "Sec. Architectural nitpicks: separate layer norms, tied embeddings, and scaling-up",
      "reasons": [],
      "check": "quote_only"
     },
@@ -1173,7 +1159,7 @@
      "value": "gelu",
      "status": "stated",
      "quote": "we do not use GLU \\citep{shazeer2020glu} because of the increased memory footprint, and use vanilla GeLU instead",
-     "where": "Sec. The Falcon architecture and recipe",
+     "where": "Sec. The Falcon architecture and recipe for efficient inference and (stable) training",
      "reasons": [],
      "check": "verified"
     },
@@ -1181,7 +1167,7 @@
      "value": "rope",
      "status": "stated",
      "quote": "we use rotary embeddings \\citep{su2021roformer}",
-     "where": "Sec. The Falcon architecture and recipe",
+     "where": "Sec. The Falcon architecture and recipe for efficient inference and (stable) training",
      "reasons": [],
      "check": "verified"
     },
@@ -1212,26 +1198,24 @@
     "residual": {
      "value": "residual",
      "status": "stated",
-     "quote": "we use parallel attention and MLP blocks \\citep{gpt-j}",
-     "where": "Sec. The Falcon architecture and recipe",
-     "reasons": [
-      "the quote does not name residual (looked for /residual|skip/)"
-     ],
-     "check": "unverified"
+     "quote": "it's possible to shard the activations on the residual stream across the tensor parallel workers where these activations are otherwise replicated",
+     "where": "Sec. Combining 3D parallelism for fine-grained control, and ZeRO for scalability",
+     "reasons": [],
+     "check": "verified"
     },
     "parallel_block": {
      "value": "true",
      "status": "stated",
-     "quote": "We adopt parallel attention and MLP, and remove biases from linear layers.",
-     "where": "Sec. Small tweaks help scalability (Recipe decision)",
+     "quote": "we use parallel attention and MLP blocks \\citep{gpt-j} and remove biases from linear layers \\citep{palm}",
+     "where": "Sec. The Falcon architecture and recipe for efficient inference and (stable) training",
      "reasons": [],
      "check": "quote_only"
     },
     "attention": {
      "value": "exact",
      "status": "stated",
-     "quote": "We use multigroup attention (\\cref{sec:multiquery_abl}) to improve the scalability of inference, an extension of multiquery \\citep{multiquery}",
-     "where": "Sec. The Falcon architecture and recipe",
+     "quote": "the Falcon series implement multigroup with KV=TP for all models (respectively 1/8/8 for Falcon-7/40/180B)",
+     "where": "Sec. Extending multiquery into multigroup",
      "reasons": [],
      "check": "quote_only"
     },
@@ -1255,7 +1239,7 @@
      "value": "false",
      "status": "stated",
      "quote": "Accordingly, we remove biases from the linear layers in the Falcon series.",
-     "where": "Sec. Small tweaks help scalability (No biases)",
+     "where": "Sec. Small tweaks help scalability: parallel layers and no biases in linear layers",
      "reasons": [],
      "check": "quote_only"
     },
@@ -1263,7 +1247,7 @@
      "value": "false",
      "status": "stated",
      "quote": "Accordingly, we remove biases from the linear layers in the Falcon series.",
-     "where": "Sec. Small tweaks help scalability (No biases)",
+     "where": "Sec. Small tweaks help scalability: parallel layers and no biases in linear layers",
      "reasons": [],
      "check": "quote_only"
     },
@@ -1271,17 +1255,17 @@
      "value": "true",
      "status": "stated",
      "quote": "Still, in the interest of not adding additional risks to the training of the Falcon series, we keep our embeddings tied.",
-     "where": "Sec. Architectural nitpicks (Tied embeddings)",
+     "where": "Sec. Architectural nitpicks: separate layer norms, tied embeddings, and scaling-up",
      "reasons": [],
      "check": "quote_only"
     },
     "moe": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": "",
+     "value": "false",
+     "status": "stated",
+     "quote": "We also see promise in enabling training and inference compute decoupling through architecture interventions such as layerwise mixture of experts (MoE), also known as routed language models",
+     "where": "Sec. Limitations of the Falcon models",
      "reasons": [],
-     "check": "not_stated"
+     "check": "quote_only"
     },
     "n_experts": {
      "value": "",
@@ -1314,7 +1298,7 @@
      "i": 0,
      "subgraph": "embed",
      "op": "embedding",
-     "role": "token embedding (token_embd)",
+     "role": "token embedding (token_embd), tied with output head",
      "inputs": [
       "tokens"
      ],
@@ -1325,10 +1309,19 @@
        "value": "65024",
        "status": "stated",
        "quote": "We train our tokenizer on a vocabulary size of 65,024",
-       "where": "Sec. Architectural nitpicks (Vocabulary size)",
+       "where": "Sec. Architectural nitpicks: separate layer norms, tied embeddings, and scaling-up",
        "reasons": [],
        "check": "verified",
        "name": "vocab"
+      },
+      {
+       "value": "14848",
+       "status": "stated",
+       "quote": "$d_\\text{model}$     & 4,544              & 8,192                 & 14,848",
+       "where": "Table tab:hyperparams",
+       "reasons": [],
+       "check": "verified",
+       "name": "d"
       }
      ],
      "errors": []
@@ -1337,11 +1330,11 @@
      "i": 1,
      "subgraph": "block",
      "op": "layernorm",
-     "role": "single shared input layer norm (Falcon-7B)",
+     "role": "separate layer norm for the attention branch",
      "inputs": [
       "x"
      ],
-     "output": "h",
+     "output": "ha",
      "new_op": "",
      "attributes": [
       {
@@ -1352,15 +1345,6 @@
        "reasons": [],
        "check": "not_stated",
        "name": "eps"
-      },
-      {
-       "value": "single",
-       "status": "stated",
-       "quote": "For Falcon-7B (later trained), we switched to a single layer norm.",
-       "where": "Sec. Architectural nitpicks (Layer norms)",
-       "reasons": [],
-       "check": "quote_only",
-       "name": "variant"
       }
      ],
      "errors": []
@@ -1368,12 +1352,12 @@
     {
      "i": 2,
      "subgraph": "block",
-     "op": "linear",
-     "role": "query projection",
+     "op": "layernorm",
+     "role": "separate layer norm for the MLP branch",
      "inputs": [
-      "h"
+      "x"
      ],
-     "output": "q",
+     "output": "hm",
      "new_op": "",
      "attributes": [
       {
@@ -1383,16 +1367,7 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
-       "name": "out"
-      },
-      {
-       "value": "false",
-       "status": "stated",
-       "quote": "Accordingly, we remove biases from the linear layers in the Falcon series.",
-       "where": "Sec. Small tweaks help scalability",
-       "reasons": [],
-       "check": "quote_only",
-       "name": "bias"
+       "name": "eps"
       }
      ],
      "errors": []
@@ -1401,11 +1376,11 @@
      "i": 3,
      "subgraph": "block",
      "op": "linear",
-     "role": "key projection (shared kv group)",
+     "role": "query projection",
      "inputs": [
-      "h"
+      "ha"
      ],
-     "output": "k",
+     "output": "q",
      "new_op": "",
      "attributes": [
       {
@@ -1433,11 +1408,11 @@
      "i": 4,
      "subgraph": "block",
      "op": "linear",
-     "role": "value projection (shared kv group)",
+     "role": "key projection (n_kv heads)",
      "inputs": [
-      "h"
+      "ha"
      ],
-     "output": "v",
+     "output": "k",
      "new_op": "",
      "attributes": [
       {
@@ -1464,51 +1439,31 @@
     {
      "i": 5,
      "subgraph": "block",
-     "op": "rope",
-     "role": "rotary embedding on queries",
+     "op": "linear",
+     "role": "value projection (n_kv heads)",
      "inputs": [
-      "q"
+      "ha"
      ],
-     "output": "q_r",
+     "output": "v",
      "new_op": "",
      "attributes": [
       {
-       "value": "all",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [
-        "not_stated carries a value or quote (ignored)"
-       ],
-       "check": "not_stated",
-       "name": "rope_heads"
-      },
-      {
        "value": "",
        "status": "not_stated",
        "quote": "",
        "where": "",
        "reasons": [],
        "check": "not_stated",
-       "name": "pairing"
+       "name": "out"
       },
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
+       "value": "false",
+       "status": "stated",
+       "quote": "Accordingly, we remove biases from the linear layers in the Falcon series.",
+       "where": "Sec. Small tweaks help scalability",
        "reasons": [],
-       "check": "not_stated",
-       "name": "n_rot"
-      },
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "theta"
+       "check": "quote_only",
+       "name": "bias"
       }
      ],
      "errors": []
@@ -1517,24 +1472,14 @@
      "i": 6,
      "subgraph": "block",
      "op": "rope",
-     "role": "rotary embedding on keys",
+     "role": "rotary embedding on queries",
      "inputs": [
-      "k"
+      "q",
+      "pos"
      ],
-     "output": "k_r",
+     "output": "q_r",
      "new_op": "",
      "attributes": [
-      {
-       "value": "all",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [
-        "not_stated carries a value or quote (ignored)"
-       ],
-       "check": "not_stated",
-       "name": "rope_heads"
-      },
       {
        "value": "",
        "status": "not_stated",
@@ -1568,30 +1513,72 @@
     {
      "i": 7,
      "subgraph": "block",
+     "op": "rope",
+     "role": "rotary embedding on keys",
+     "inputs": [
+      "k",
+      "pos"
+     ],
+     "output": "k_r",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "pairing"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "n_rot"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "theta"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 8,
+     "subgraph": "block",
      "op": "attention",
-     "role": "causal multigroup (multiquery for 7B) attention",
+     "role": "causal multigroup (grouped-query) attention",
      "inputs": [
       "q_r",
       "k_r",
       "v"
      ],
-     "output": "a",
+     "output": "att",
      "new_op": "",
      "attributes": [
       {
-       "value": "71",
+       "value": "232",
        "status": "stated",
-       "quote": "$n_\\text{q}$ & 71 & 128 & 232",
+       "quote": "$n_\\text{q}$         & 71                 & 128                   & 232",
        "where": "Table tab:hyperparams",
        "reasons": [],
        "check": "verified",
        "name": "heads"
       },
       {
-       "value": "1",
+       "value": "8",
        "status": "stated",
-       "quote": "the Falcon series implement multigroup with KV=TP for all models (respectively 1/8/8 for Falcon-7/40/180B).",
-       "where": "Sec. multiquery_abl (Recipe decision)",
+       "quote": "$n_\\text{kv}$        & 1                  & 8                     & 8",
+       "where": "Table tab:hyperparams",
        "reasons": [],
        "check": "verified",
        "name": "kv_heads"
@@ -1600,7 +1587,7 @@
        "value": "64",
        "status": "stated",
        "quote": "uses a fixed attention head size of 64 to optimize for performance with FlashAttention",
-       "where": "Sec. Architectural nitpicks (Model scaling)",
+       "where": "Sec. Architectural nitpicks: separate layer norms, tied embeddings, and scaling-up",
        "reasons": [],
        "check": "verified",
        "name": "head_dim"
@@ -1617,20 +1604,18 @@
       {
        "value": "true",
        "status": "stated",
-       "quote": "Falcon are autoregressive Transformer models trained with a causal language modeling objective.",
-       "where": "Table tab:model_card",
+       "quote": "We introduce the Falcon series: 7B, 40B, and 180B parameters causal decoder-only models",
+       "where": "Abstract",
        "reasons": [],
        "check": "quote_only",
        "name": "causal"
       },
       {
-       "value": "0",
+       "value": "",
        "status": "not_stated",
        "quote": "",
        "where": "",
-       "reasons": [
-        "not_stated carries a value or quote (ignored)"
-       ],
+       "reasons": [],
        "check": "not_stated",
        "name": "window"
       },
@@ -1647,20 +1632,20 @@
      "errors": []
     },
     {
-     "i": 8,
+     "i": 9,
      "subgraph": "block",
      "op": "linear",
      "role": "attention output projection",
      "inputs": [
-      "a"
+      "att"
      ],
-     "output": "attn_out",
+     "output": "att_out",
      "new_op": "",
      "attributes": [
       {
-       "value": "4544",
+       "value": "14848",
        "status": "stated",
-       "quote": "$d_\\text{model}$ & 4,544 & 8,192 & 14,848",
+       "quote": "$d_\\text{model}$     & 4,544              & 8,192                 & 14,848",
        "where": "Table tab:hyperparams",
        "reasons": [],
        "check": "verified",
@@ -1679,12 +1664,12 @@
      "errors": []
     },
     {
-     "i": 9,
+     "i": 10,
      "subgraph": "block",
      "op": "linear",
-     "role": "MLP up projection (parallel branch, reads same normed input)",
+     "role": "MLP up projection",
      "inputs": [
-      "h"
+      "hm"
      ],
      "output": "u",
      "new_op": "",
@@ -1711,10 +1696,10 @@
      "errors": []
     },
     {
-     "i": 10,
+     "i": 11,
      "subgraph": "block",
      "op": "gelu",
-     "role": "MLP activation",
+     "role": "MLP activation (vanilla GeLU)",
      "inputs": [
       "u"
      ],
@@ -1734,7 +1719,7 @@
      "errors": []
     },
     {
-     "i": 11,
+     "i": 12,
      "subgraph": "block",
      "op": "linear",
      "role": "MLP down projection",
@@ -1745,9 +1730,9 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "4544",
+       "value": "14848",
        "status": "stated",
-       "quote": "$d_\\text{model}$ & 4,544 & 8,192 & 14,848",
+       "quote": "$d_\\text{model}$     & 4,544              & 8,192                 & 14,848",
        "where": "Table tab:hyperparams",
        "reasons": [],
        "check": "verified",
@@ -1766,13 +1751,13 @@
      "errors": []
     },
     {
-     "i": 12,
+     "i": 13,
      "subgraph": "block",
      "op": "add",
-     "role": "residual add of attention branch",
+     "role": "parallel block: add attention branch to residual",
      "inputs": [
       "x",
-      "attn_out"
+      "att_out"
      ],
      "output": "x1",
      "new_op": "",
@@ -1780,10 +1765,10 @@
      "errors": []
     },
     {
-     "i": 13,
+     "i": 14,
      "subgraph": "block",
      "op": "add",
-     "role": "residual add of parallel MLP branch",
+     "role": "parallel block: add MLP branch to residual",
      "inputs": [
       "x1",
       "mlp_out"
@@ -1794,10 +1779,10 @@
      "errors": []
     },
     {
-     "i": 14,
+     "i": 15,
      "subgraph": "head",
      "op": "linear",
-     "role": "tied output head (logits)",
+     "role": "output logits, tied to token embedding",
      "inputs": [
       "x"
      ],
@@ -1807,8 +1792,8 @@
       {
        "value": "token_embd",
        "status": "stated",
-       "quote": "the embedding weights converting the tokens $x$ into $z^0=xW$ are the same that converts the embedding back into the predicted logits $p=z^n W^T$",
-       "where": "Sec. Architectural nitpicks (Tied embeddings)",
+       "quote": "Still, in the interest of not adding additional risks to the training of the Falcon series, we keep our embeddings tied.",
+       "where": "Sec. Architectural nitpicks",
        "reasons": [],
        "check": "quote_only",
        "name": "tied_to"
@@ -1828,37 +1813,24 @@
    ],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "Tree-structured attention masking for conversation data (and inter-document masking), with positions given by tree depth, used during pretraining",
+     "mechanism": "Tree-structured attention masking for conversation data and document masking during pretraining, with positions given by tree depth",
      "quote": "Instead, we find that we can use the attention mask to encode a tree-like structure, allowing later comments to only attend to comments from their trajectory, ignoring \"side\" comments.",
-     "where": "Sec. micro_data (Conversation trees and attention masking)",
-     "check": "verified"
-    },
-    {
-     "mechanism": "Falcon-40B/180B use two separate layer norms (one for attention, one for MLP) in the parallel block instead of the single shared norm of Falcon-7B",
-     "quote": "This leads us to stay close to the vanilla architecture, and to use two separate layer norms",
-     "where": "Sec. Architectural nitpicks (Layer norms)",
+     "where": "Sec. The Microdata curated corpora and conversational masking",
      "check": "verified"
     }
    ],
    "summary": {
     "counts": {
-     "verified": 30,
+     "verified": 32,
      "quote_only": 17,
-     "unverified": 1,
-     "not_stated": 30
+     "unverified": 0,
+     "not_stated": 28
     },
-    "unverified": [
-     {
-      "field": "flavours.residual",
-      "reasons": [
-       "the quote does not name residual (looked for /residual|skip/)"
-      ]
-     }
-    ],
+    "unverified": [],
     "new_op_errors": [],
     "node_errors": [],
     "n_new_ops": 0,
-    "n_block_ops": 15
+    "n_block_ops": 16
    }
   }
  }

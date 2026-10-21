@@ -4,22 +4,22 @@
  "fields": {
   "d_model": {
    "value": 1024,
-   "evidence": "355M & 24 & 1024 & 16 & 64 & 64 & 0.86 [Table: Model configurations used for GPT-2]",
+   "evidence": "355M & 24 & 1024 & 16 & 64 [Table: Model configurations used for GPT-2 (tab:model_size)]",
    "verdict": "used"
   },
   "n_layers": {
    "value": 24,
-   "evidence": "355M & 24 & 1024 & 16 & 64 & 64 & 0.86 [Table: Model configurations used for GPT-2]",
+   "evidence": "355M & 24 & 1024 & 16 & 64 [Table: Model configurations used for GPT-2 (tab:model_size)]",
    "verdict": "used"
   },
   "n_heads": {
    "value": 16,
-   "evidence": "355M & 24 & 1024 & 16 & 64 & 64 & 0.86 [Table: Model configurations used for GPT-2]",
+   "evidence": "355M & 24 & 1024 & 16 & 64 [Table: Model configurations used for GPT-2 (tab:model_size)]",
    "verdict": "used"
   },
   "vocab_size": {
    "value": 51200,
-   "evidence": "resulting in a padded vocabulary size of 51,200 [Sec. Scaling Analysis]",
+   "evidence": "we pad the vocabulary such that it is divisible by $128\\times 8=1024$, resulting in a padded vocabulary size of 51,200 [Sec. Scaling Analysis]",
    "verdict": "used"
   },
   "context_length": {
@@ -34,7 +34,7 @@
   },
   "activation": {
    "value": "gelu",
-   "evidence": "The first part of the block is a GEMM followed by a GeLU nonlinearity: [Sec. Model Parallel Transformers (eq:mlp-firstgemm)]",
+   "evidence": "Y = \\textrm{GeLU}(XA) [eq:mlp-firstgemm]",
    "verdict": "used"
   },
   "residual": {
@@ -44,7 +44,7 @@
   },
   "attention": {
    "value": "exact",
-   "evidence": "In this work we focus on GPT-2 \\cite{Radford2019GPT2}, a left-to-right generative transformer based language model [Sec. Setup]",
+   "evidence": "for the self attention block we exploit inherent parallelism in the multihead attention operation [Sec. Model Parallel Transformers]",
    "verdict": "used"
   }
  },
@@ -57,8 +57,8 @@
  "mentions": {},
  "inherits": {
   "ancestor": "gpt-2",
-  "evidence": "We explain our configurations for these models in the following section and refer to the original papers for more details.",
-  "section": "Sec. Setup"
+  "evidence": "we train an 8.3 billion parameter transformer language model similar to GPT-2",
+  "section": "Abstract"
  },
  "variants": [
   {
@@ -83,33 +83,26 @@
    "context_length": 1024
   }
  ],
- "mechanism_scan": [
-  {
-   "mechanism": "Dropout of 0.1 throughout, including before residual connections (training-time only)",
-   "where": "llm extraction, verified quote, Sec. Training Optimization and Hyperparameters",
-   "blocking": true,
-   "evidence": "In all cases, a dropout of 0.1 is used."
-  }
- ],
+ "mechanism_scan": [],
  "source": {
   "tex_sha256": "f7f8fb079f268748efdfd8aaaff0c1e02359be319cf7d4e1e960a6da17f7ea2c",
   "sent_sha256": "ce9e348e1cbbe1699278f0986d0ae1c3df880e83312f981e96b660e48e93473c",
   "from": "https://arxiv.org/e-print/1909.08053",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
   "n_calls": 1,
-  "cost_usd": 0.0,
+  "cost_usd": 0.264796,
   "request_ids": [
-   "req_011CgFah7wKafQXVg4aeedk9"
+   "req_011CgFg73XR7ke6Th5hqbJw3"
   ]
  },
  "llm": {
   "output": {
    "title": "Megatron-LM: Training Multi-Billion Parameter Language Models Using Model Parallelism",
-   "model_name": "Megatron-LM (GPT-2 style)",
+   "model_name": "Megatron-LM GPT-2 (8.3B headline; 355M / 2.5B / 8.3B configurations)",
    "family": {
     "value": "decoder_only",
     "status": "stated",
@@ -118,8 +111,8 @@
    },
    "inherits": {
     "ancestor": "GPT-2",
-    "quote": "We explain our configurations for these models in the following section and refer to the original papers for more details.",
-    "where": "Sec. Setup"
+    "quote": "we train an 8.3 billion parameter transformer language model similar to GPT-2",
+    "where": "Abstract"
    },
    "configs": [
     {
@@ -127,20 +120,20 @@
      "d_model": {
       "value": "1024",
       "status": "stated",
-      "quote": "355M & 24 &  1024 & 16 & 64  &  64  & 0.86",
-      "where": "Table: Model configurations used for GPT-2"
+      "quote": "355M & 24 &  1024 & 16 & 64",
+      "where": "Table: Model configurations used for GPT-2 (tab:model_size)"
      },
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "355M & 24 &  1024 & 16 & 64  &  64  & 0.86",
-      "where": "Table: Model configurations used for GPT-2"
+      "quote": "355M & 24 &  1024 & 16 & 64",
+      "where": "Table: Model configurations used for GPT-2 (tab:model_size)"
      },
      "n_heads": {
       "value": "16",
       "status": "stated",
-      "quote": "355M & 24 &  1024 & 16 & 64  &  64  & 0.86",
-      "where": "Table: Model configurations used for GPT-2"
+      "quote": "355M & 24 &  1024 & 16 & 64",
+      "where": "Table: Model configurations used for GPT-2 (tab:model_size)"
      },
      "n_kv_heads": {
       "value": "",
@@ -151,8 +144,8 @@
      "head_dim": {
       "value": "64",
       "status": "stated",
-      "quote": "355M & 24 &  1024 & 16 & 64  &  64  & 0.86",
-      "where": "Table: Model configurations used for GPT-2"
+      "quote": "355M & 24 &  1024 & 16 & 64",
+      "where": "Table: Model configurations used for GPT-2 (tab:model_size)"
      },
      "d_ff": {
       "value": "",
@@ -163,7 +156,7 @@
      "vocab_size": {
       "value": "51200",
       "status": "stated",
-      "quote": "resulting in a padded vocabulary size of 51,200",
+      "quote": "we pad the vocabulary such that it is divisible by $128\\times 8=1024$, resulting in a padded vocabulary size of 51,200",
       "where": "Sec. Scaling Analysis"
      },
      "context_length": {
@@ -178,20 +171,20 @@
      "d_model": {
       "value": "1920",
       "status": "stated",
-      "quote": "2.5B &  54 & 1920 & 20 & 96  &  128 & 2.27",
-      "where": "Table: Model configurations used for GPT-2"
+      "quote": "2.5B &  54 & 1920 & 20 & 96",
+      "where": "Table: Model configurations used for GPT-2 (tab:model_size)"
      },
      "n_layers": {
       "value": "54",
       "status": "stated",
-      "quote": "2.5B &  54 & 1920 & 20 & 96  &  128 & 2.27",
-      "where": "Table: Model configurations used for GPT-2"
+      "quote": "2.5B &  54 & 1920 & 20 & 96",
+      "where": "Table: Model configurations used for GPT-2 (tab:model_size)"
      },
      "n_heads": {
       "value": "20",
       "status": "stated",
-      "quote": "2.5B &  54 & 1920 & 20 & 96  &  128 & 2.27",
-      "where": "Table: Model configurations used for GPT-2"
+      "quote": "2.5B &  54 & 1920 & 20 & 96",
+      "where": "Table: Model configurations used for GPT-2 (tab:model_size)"
      },
      "n_kv_heads": {
       "value": "",
@@ -202,8 +195,8 @@
      "head_dim": {
       "value": "96",
       "status": "stated",
-      "quote": "2.5B &  54 & 1920 & 20 & 96  &  128 & 2.27",
-      "where": "Table: Model configurations used for GPT-2"
+      "quote": "2.5B &  54 & 1920 & 20 & 96",
+      "where": "Table: Model configurations used for GPT-2 (tab:model_size)"
      },
      "d_ff": {
       "value": "",
@@ -214,7 +207,7 @@
      "vocab_size": {
       "value": "51200",
       "status": "stated",
-      "quote": "resulting in a padded vocabulary size of 51,200",
+      "quote": "we pad the vocabulary such that it is divisible by $128\\times 8=1024$, resulting in a padded vocabulary size of 51,200",
       "where": "Sec. Scaling Analysis"
      },
      "context_length": {
@@ -229,20 +222,20 @@
      "d_model": {
       "value": "3072",
       "status": "stated",
-      "quote": "8.3B & 72 & 3072 &  24 &  128 & 512 & 2.10",
-      "where": "Table: Model configurations used for GPT-2"
+      "quote": "8.3B & 72 & 3072 &  24 &  128",
+      "where": "Table: Model configurations used for GPT-2 (tab:model_size)"
      },
      "n_layers": {
       "value": "72",
       "status": "stated",
-      "quote": "8.3B & 72 & 3072 &  24 &  128 & 512 & 2.10",
-      "where": "Table: Model configurations used for GPT-2"
+      "quote": "8.3B & 72 & 3072 &  24 &  128",
+      "where": "Table: Model configurations used for GPT-2 (tab:model_size)"
      },
      "n_heads": {
       "value": "24",
       "status": "stated",
-      "quote": "8.3B & 72 & 3072 &  24 &  128 & 512 & 2.10",
-      "where": "Table: Model configurations used for GPT-2"
+      "quote": "8.3B & 72 & 3072 &  24 &  128",
+      "where": "Table: Model configurations used for GPT-2 (tab:model_size)"
      },
      "n_kv_heads": {
       "value": "",
@@ -253,8 +246,8 @@
      "head_dim": {
       "value": "128",
       "status": "stated",
-      "quote": "8.3B & 72 & 3072 &  24 &  128 & 512 & 2.10",
-      "where": "Table: Model configurations used for GPT-2"
+      "quote": "8.3B & 72 & 3072 &  24 &  128",
+      "where": "Table: Model configurations used for GPT-2 (tab:model_size)"
      },
      "d_ff": {
       "value": "",
@@ -265,7 +258,7 @@
      "vocab_size": {
       "value": "51200",
       "status": "stated",
-      "quote": "resulting in a padded vocabulary size of 51,200",
+      "quote": "we pad the vocabulary such that it is divisible by $128\\times 8=1024$, resulting in a padded vocabulary size of 51,200",
       "where": "Sec. Scaling Analysis"
      },
      "context_length": {
@@ -299,8 +292,8 @@
     "activation": {
      "value": "gelu",
      "status": "stated",
-     "quote": "The first part of the block is a GEMM followed by a GeLU nonlinearity:",
-     "where": "Sec. Model Parallel Transformers (eq:mlp-firstgemm)"
+     "quote": "Y = \\textrm{GeLU}(XA)",
+     "where": "eq:mlp-firstgemm"
     },
     "positional": {
      "value": "",
@@ -341,8 +334,8 @@
     "attention": {
      "value": "exact",
      "status": "stated",
-     "quote": "In this work we focus on GPT-2 \\cite{Radford2019GPT2}, a left-to-right generative transformer based language model",
-     "where": "Sec. Setup"
+     "quote": "for the self attention block we exploit inherent parallelism in the multihead attention operation",
+     "where": "Sec. Model Parallel Transformers"
     },
     "window_size": {
      "value": "",
@@ -403,32 +396,27 @@
     {
      "subgraph": "embed",
      "op": "embedding",
-     "role": "token embedding (token_embd), tied with output head",
+     "role": "token embedding (token_embd), shared with output head",
      "inputs": [
       "tokens"
      ],
      "output": "x",
      "attributes": [
       {
-       "name": "tied",
-       "value": "true",
+       "name": "vocab",
+       "value": "51200",
        "status": "stated",
-       "quote": "in transformer language models, the output embedding layer shares weights with the input embedding, requiring modifications to both",
-       "where": "Sec. Model Parallel Transformers"
+       "quote": "resulting in a padded vocabulary size of 51,200",
+       "where": "Sec. Scaling Analysis"
+      },
+      {
+       "name": "d",
+       "value": "1024",
+       "status": "stated",
+       "quote": "355M & 24 &  1024 & 16 & 64",
+       "where": "Table tab:model_size"
       }
      ],
-     "new_op": ""
-    },
-    {
-     "subgraph": "embed",
-     "op": "pos_embedding",
-     "role": "positional embedding (type not stated in paper; GPT-2 lineage)",
-     "inputs": [
-      "x",
-      "pos"
-     ],
-     "output": "x",
-     "attributes": [],
      "new_op": ""
     },
     {
@@ -438,7 +426,7 @@
      "inputs": [
       "x"
      ],
-     "output": "h",
+     "output": "h1",
      "attributes": [
       {
        "name": "eps",
@@ -453,18 +441,18 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "Q, K, V projections (column parallel)",
+     "role": "query projection",
      "inputs": [
-      "h"
+      "h1"
      ],
-     "output": "qkv",
+     "output": "q",
      "attributes": [
       {
        "name": "out",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "1024",
+       "status": "stated",
+       "quote": "355M & 24 &  1024 & 16 & 64",
+       "where": "Table tab:model_size"
       },
       {
        "name": "bias",
@@ -478,15 +466,48 @@
     },
     {
      "subgraph": "block",
-     "op": "split",
-     "role": "split into q, k, v",
+     "op": "linear",
+     "role": "key projection",
      "inputs": [
-      "qkv"
+      "h1"
      ],
-     "output": "q,k,v",
+     "output": "k",
      "attributes": [
       {
-       "name": "sizes",
+       "name": "out",
+       "value": "1024",
+       "status": "stated",
+       "quote": "355M & 24 &  1024 & 16 & 64",
+       "where": "Table tab:model_size"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "value projection",
+     "inputs": [
+      "h1"
+     ],
+     "output": "v",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "1024",
+       "status": "stated",
+       "quote": "355M & 24 &  1024 & 16 & 64",
+       "where": "Table tab:model_size"
+      },
+      {
+       "name": "bias",
        "value": "",
        "status": "not_stated",
        "quote": "",
@@ -498,7 +519,7 @@
     {
      "subgraph": "block",
      "op": "attention",
-     "role": "causal multi-head self attention",
+     "role": "causal multi-head self-attention",
      "inputs": [
       "q",
       "k",
@@ -510,8 +531,8 @@
        "name": "heads",
        "value": "16",
        "status": "stated",
-       "quote": "355M & 24 &  1024 & 16 & 64  &  64  & 0.86",
-       "where": "Table: Model configurations used for GPT-2"
+       "quote": "355M & 24 &  1024 & 16 & 64",
+       "where": "Table tab:model_size"
       },
       {
        "name": "kv_heads",
@@ -524,8 +545,8 @@
        "name": "head_dim",
        "value": "64",
        "status": "stated",
-       "quote": "355M & 24 &  1024 & 16 & 64  &  64  & 0.86",
-       "where": "Table: Model configurations used for GPT-2"
+       "quote": "355M & 24 &  1024 & 16 & 64",
+       "where": "Table tab:model_size"
       },
       {
        "name": "scale",
@@ -538,7 +559,7 @@
        "name": "causal",
        "value": "true",
        "status": "stated",
-       "quote": "a left-to-right generative transformer based language model",
+       "quote": "In this work we focus on GPT-2 \\cite{Radford2019GPT2}, a left-to-right generative transformer based language model",
        "where": "Sec. Setup"
       },
       {
@@ -561,7 +582,7 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "attention output projection (row parallel)",
+     "role": "attention output projection",
      "inputs": [
       "a"
      ],
@@ -571,8 +592,8 @@
        "name": "out",
        "value": "1024",
        "status": "stated",
-       "quote": "355M & 24 &  1024 & 16 & 64  &  64  & 0.86",
-       "where": "Table: Model configurations used for GPT-2"
+       "quote": "355M & 24 &  1024 & 16 & 64",
+       "where": "Table tab:model_size"
       },
       {
        "name": "bias",
@@ -592,7 +613,7 @@
       "x",
       "o"
      ],
-     "output": "x",
+     "output": "x2",
      "attributes": [],
      "new_op": ""
     },
@@ -601,7 +622,7 @@
      "op": "layernorm",
      "role": "pre-MLP layer norm",
      "inputs": [
-      "x"
+      "x2"
      ],
      "output": "h2",
      "attributes": [
@@ -618,7 +639,7 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "MLP first GEMM (column parallel)",
+     "role": "MLP first GEMM (up)",
      "inputs": [
       "h2"
      ],
@@ -663,7 +684,7 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "MLP second GEMM (row parallel)",
+     "role": "MLP second GEMM (down)",
      "inputs": [
       "g"
      ],
@@ -673,8 +694,8 @@
        "name": "out",
        "value": "1024",
        "status": "stated",
-       "quote": "355M & 24 &  1024 & 16 & 64  &  64  & 0.86",
-       "where": "Table: Model configurations used for GPT-2"
+       "quote": "355M & 24 &  1024 & 16 & 64",
+       "where": "Table tab:model_size"
       },
       {
        "name": "bias",
@@ -691,7 +712,7 @@
      "op": "add",
      "role": "MLP residual add",
      "inputs": [
-      "x",
+      "x2",
       "m"
      ],
      "output": "x",
@@ -701,39 +722,40 @@
     {
      "subgraph": "head",
      "op": "linear",
-     "role": "output embedding / logits, tied to input embedding",
+     "role": "output embedding / logits (tied)",
      "inputs": [
       "x"
      ],
      "output": "logits",
      "attributes": [
       {
-       "name": "tied_to",
-       "value": "token_embd",
-       "status": "stated",
-       "quote": "in transformer language models, the output embedding layer shares weights with the input embedding, requiring modifications to both",
-       "where": "Sec. Model Parallel Transformers"
-      },
-      {
        "name": "out",
        "value": "51200",
        "status": "stated",
        "quote": "resulting in a padded vocabulary size of 51,200",
        "where": "Sec. Scaling Analysis"
+      },
+      {
+       "name": "tied_to",
+       "value": "token_embd",
+       "status": "stated",
+       "quote": "the output embedding layer shares weights with the input embedding",
+       "where": "Sec. Model Parallel Transformers"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
     }
    ],
    "new_ops": [],
-   "mechanisms_outside_ir": [
-    {
-     "mechanism": "Dropout of 0.1 throughout, including before residual connections (training-time only)",
-     "quote": "In all cases, a dropout of 0.1 is used.",
-     "where": "Sec. Training Optimization and Hyperparameters"
-    }
-   ],
-   "notes": "Described the GPT-2-style decoder models (Table: Model configurations used for GPT-2). Primary config is the smallest, 355M. The 8.3B model is the headline model. The paper also trains BERT-style encoders with rearranged layer norm (336M/1.3B/3.9B, vocab 30522); these are not described here. The scaling-study table (1.2B-8.3B, head dim 96) is a throughput study; its 8.3B uses 32 heads versus 24 in the trained 8.3B. The paper defers the remaining details to GPT-2 ('refer to the original papers'), but it never restates them. Positional embedding type, layernorm eps, biases, d_ff, kv heads, attention scale and the GeLU approximation form are therefore left not_stated, and no ancestor values are filled in. Whether a final layernorm precedes the head is not stated, so it is omitted. Activation is recorded as 'gelu' because the paper says GeLU and cites the GeLU paper. Whether the exact or tanh form is used is not stated. The vocab of 51200 is the padded size given in the scaling section (original 50257)."
+   "mechanisms_outside_ir": [],
+   "notes": "Described the GPT-2-style decoder (headline 8.3B model; configs from Table 'Model configurations used for GPT-2'). The BERT models (336M/1.3B/3.9B, vocab 30522, rearranged LN) are a separate setting and are not described. The scaling-study table uses different head counts (e.g. 32 heads for 8.3B), but that table is not the trained LM. The vocab size of 51200 is from the scaling section's padding description. The paper only says GPT-2-like ('similar to GPT-2'), so no values are marked inherited. Left not_stated: positional embedding type (so no pos_embedding op is included), d_ff, kv heads, biases, LayerNorm eps, GeLU form and the final layer norm before the head (omitted from block_ops because the paper does not state it). Pre-LN placement comes from the paper's description of GPT-2."
   },
   "verification": {
    "errors": [],
@@ -741,8 +763,8 @@
    "inherits": {
     "ancestor": "GPT-2",
     "resolved": "gpt-2",
-    "quote": "We explain our configurations for these models in the following section and refer to the original papers for more details.",
-    "where": "Sec. Setup",
+    "quote": "we train an 8.3 billion parameter transformer language model similar to GPT-2",
+    "where": "Abstract",
     "quote_found": true
    },
    "family": {
@@ -759,24 +781,24 @@
      "d_model": {
       "value": "1024",
       "status": "stated",
-      "quote": "355M & 24 &  1024 & 16 & 64  &  64  & 0.86",
-      "where": "Table: Model configurations used for GPT-2",
+      "quote": "355M & 24 &  1024 & 16 & 64",
+      "where": "Table: Model configurations used for GPT-2 (tab:model_size)",
       "reasons": [],
       "check": "verified"
      },
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "355M & 24 &  1024 & 16 & 64  &  64  & 0.86",
-      "where": "Table: Model configurations used for GPT-2",
+      "quote": "355M & 24 &  1024 & 16 & 64",
+      "where": "Table: Model configurations used for GPT-2 (tab:model_size)",
       "reasons": [],
       "check": "verified"
      },
      "n_heads": {
       "value": "16",
       "status": "stated",
-      "quote": "355M & 24 &  1024 & 16 & 64  &  64  & 0.86",
-      "where": "Table: Model configurations used for GPT-2",
+      "quote": "355M & 24 &  1024 & 16 & 64",
+      "where": "Table: Model configurations used for GPT-2 (tab:model_size)",
       "reasons": [],
       "check": "verified"
      },
@@ -791,8 +813,8 @@
      "head_dim": {
       "value": "64",
       "status": "stated",
-      "quote": "355M & 24 &  1024 & 16 & 64  &  64  & 0.86",
-      "where": "Table: Model configurations used for GPT-2",
+      "quote": "355M & 24 &  1024 & 16 & 64",
+      "where": "Table: Model configurations used for GPT-2 (tab:model_size)",
       "reasons": [],
       "check": "verified"
      },
@@ -807,7 +829,7 @@
      "vocab_size": {
       "value": "51200",
       "status": "stated",
-      "quote": "resulting in a padded vocabulary size of 51,200",
+      "quote": "we pad the vocabulary such that it is divisible by $128\\times 8=1024$, resulting in a padded vocabulary size of 51,200",
       "where": "Sec. Scaling Analysis",
       "reasons": [],
       "check": "verified"
@@ -836,24 +858,24 @@
      "d_model": {
       "value": "1920",
       "status": "stated",
-      "quote": "2.5B &  54 & 1920 & 20 & 96  &  128 & 2.27",
-      "where": "Table: Model configurations used for GPT-2",
+      "quote": "2.5B &  54 & 1920 & 20 & 96",
+      "where": "Table: Model configurations used for GPT-2 (tab:model_size)",
       "reasons": [],
       "check": "verified"
      },
      "n_layers": {
       "value": "54",
       "status": "stated",
-      "quote": "2.5B &  54 & 1920 & 20 & 96  &  128 & 2.27",
-      "where": "Table: Model configurations used for GPT-2",
+      "quote": "2.5B &  54 & 1920 & 20 & 96",
+      "where": "Table: Model configurations used for GPT-2 (tab:model_size)",
       "reasons": [],
       "check": "verified"
      },
      "n_heads": {
       "value": "20",
       "status": "stated",
-      "quote": "2.5B &  54 & 1920 & 20 & 96  &  128 & 2.27",
-      "where": "Table: Model configurations used for GPT-2",
+      "quote": "2.5B &  54 & 1920 & 20 & 96",
+      "where": "Table: Model configurations used for GPT-2 (tab:model_size)",
       "reasons": [],
       "check": "verified"
      },
@@ -868,8 +890,8 @@
      "head_dim": {
       "value": "96",
       "status": "stated",
-      "quote": "2.5B &  54 & 1920 & 20 & 96  &  128 & 2.27",
-      "where": "Table: Model configurations used for GPT-2",
+      "quote": "2.5B &  54 & 1920 & 20 & 96",
+      "where": "Table: Model configurations used for GPT-2 (tab:model_size)",
       "reasons": [],
       "check": "verified"
      },
@@ -884,7 +906,7 @@
      "vocab_size": {
       "value": "51200",
       "status": "stated",
-      "quote": "resulting in a padded vocabulary size of 51,200",
+      "quote": "we pad the vocabulary such that it is divisible by $128\\times 8=1024$, resulting in a padded vocabulary size of 51,200",
       "where": "Sec. Scaling Analysis",
       "reasons": [],
       "check": "verified"
@@ -913,24 +935,24 @@
      "d_model": {
       "value": "3072",
       "status": "stated",
-      "quote": "8.3B & 72 & 3072 &  24 &  128 & 512 & 2.10",
-      "where": "Table: Model configurations used for GPT-2",
+      "quote": "8.3B & 72 & 3072 &  24 &  128",
+      "where": "Table: Model configurations used for GPT-2 (tab:model_size)",
       "reasons": [],
       "check": "verified"
      },
      "n_layers": {
       "value": "72",
       "status": "stated",
-      "quote": "8.3B & 72 & 3072 &  24 &  128 & 512 & 2.10",
-      "where": "Table: Model configurations used for GPT-2",
+      "quote": "8.3B & 72 & 3072 &  24 &  128",
+      "where": "Table: Model configurations used for GPT-2 (tab:model_size)",
       "reasons": [],
       "check": "verified"
      },
      "n_heads": {
       "value": "24",
       "status": "stated",
-      "quote": "8.3B & 72 & 3072 &  24 &  128 & 512 & 2.10",
-      "where": "Table: Model configurations used for GPT-2",
+      "quote": "8.3B & 72 & 3072 &  24 &  128",
+      "where": "Table: Model configurations used for GPT-2 (tab:model_size)",
       "reasons": [],
       "check": "verified"
      },
@@ -945,8 +967,8 @@
      "head_dim": {
       "value": "128",
       "status": "stated",
-      "quote": "8.3B & 72 & 3072 &  24 &  128 & 512 & 2.10",
-      "where": "Table: Model configurations used for GPT-2",
+      "quote": "8.3B & 72 & 3072 &  24 &  128",
+      "where": "Table: Model configurations used for GPT-2 (tab:model_size)",
       "reasons": [],
       "check": "verified"
      },
@@ -961,7 +983,7 @@
      "vocab_size": {
       "value": "51200",
       "status": "stated",
-      "quote": "resulting in a padded vocabulary size of 51,200",
+      "quote": "we pad the vocabulary such that it is divisible by $128\\times 8=1024$, resulting in a padded vocabulary size of 51,200",
       "where": "Sec. Scaling Analysis",
       "reasons": [],
       "check": "verified"
@@ -1015,8 +1037,8 @@
     "activation": {
      "value": "gelu",
      "status": "stated",
-     "quote": "The first part of the block is a GEMM followed by a GeLU nonlinearity:",
-     "where": "Sec. Model Parallel Transformers (eq:mlp-firstgemm)",
+     "quote": "Y = \\textrm{GeLU}(XA)",
+     "where": "eq:mlp-firstgemm",
      "reasons": [],
      "check": "verified"
     },
@@ -1071,8 +1093,8 @@
     "attention": {
      "value": "exact",
      "status": "stated",
-     "quote": "In this work we focus on GPT-2 \\cite{Radford2019GPT2}, a left-to-right generative transformer based language model",
-     "where": "Sec. Setup",
+     "quote": "for the self attention block we exploit inherent parallelism in the multihead attention operation",
+     "where": "Sec. Model Parallel Transformers",
      "reasons": [],
      "check": "quote_only"
     },
@@ -1155,7 +1177,7 @@
      "i": 0,
      "subgraph": "embed",
      "op": "embedding",
-     "role": "token embedding (token_embd), tied with output head",
+     "role": "token embedding (token_embd), shared with output head",
      "inputs": [
       "tokens"
      ],
@@ -1163,40 +1185,35 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "true",
+       "value": "51200",
        "status": "stated",
-       "quote": "in transformer language models, the output embedding layer shares weights with the input embedding, requiring modifications to both",
-       "where": "Sec. Model Parallel Transformers",
+       "quote": "resulting in a padded vocabulary size of 51,200",
+       "where": "Sec. Scaling Analysis",
        "reasons": [],
-       "check": "quote_only",
-       "name": "tied"
+       "check": "verified",
+       "name": "vocab"
+      },
+      {
+       "value": "1024",
+       "status": "stated",
+       "quote": "355M & 24 &  1024 & 16 & 64",
+       "where": "Table tab:model_size",
+       "reasons": [],
+       "check": "verified",
+       "name": "d"
       }
      ],
      "errors": []
     },
     {
      "i": 1,
-     "subgraph": "embed",
-     "op": "pos_embedding",
-     "role": "positional embedding (type not stated in paper; GPT-2 lineage)",
-     "inputs": [
-      "x",
-      "pos"
-     ],
-     "output": "x",
-     "new_op": "",
-     "attributes": [],
-     "errors": []
-    },
-    {
-     "i": 2,
      "subgraph": "block",
      "op": "layernorm",
      "role": "pre-attention layer norm",
      "inputs": [
       "x"
      ],
-     "output": "h",
+     "output": "h1",
      "new_op": "",
      "attributes": [
       {
@@ -1212,16 +1229,25 @@
      "errors": []
     },
     {
-     "i": 3,
+     "i": 2,
      "subgraph": "block",
      "op": "linear",
-     "role": "Q, K, V projections (column parallel)",
+     "role": "query projection",
      "inputs": [
-      "h"
+      "h1"
      ],
-     "output": "qkv",
+     "output": "q",
      "new_op": "",
      "attributes": [
+      {
+       "value": "1024",
+       "status": "stated",
+       "quote": "355M & 24 &  1024 & 16 & 64",
+       "where": "Table tab:model_size",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
       {
        "value": "",
        "status": "not_stated",
@@ -1229,6 +1255,29 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 3,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "key projection",
+     "inputs": [
+      "h1"
+     ],
+     "output": "k",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "1024",
+       "status": "stated",
+       "quote": "355M & 24 &  1024 & 16 & 64",
+       "where": "Table tab:model_size",
+       "reasons": [],
+       "check": "verified",
        "name": "out"
       },
       {
@@ -1246,14 +1295,23 @@
     {
      "i": 4,
      "subgraph": "block",
-     "op": "split",
-     "role": "split into q, k, v",
+     "op": "linear",
+     "role": "value projection",
      "inputs": [
-      "qkv"
+      "h1"
      ],
-     "output": "q,k,v",
+     "output": "v",
      "new_op": "",
      "attributes": [
+      {
+       "value": "1024",
+       "status": "stated",
+       "quote": "355M & 24 &  1024 & 16 & 64",
+       "where": "Table tab:model_size",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
       {
        "value": "",
        "status": "not_stated",
@@ -1261,7 +1319,7 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
-       "name": "sizes"
+       "name": "bias"
       }
      ],
      "errors": []
@@ -1270,7 +1328,7 @@
      "i": 5,
      "subgraph": "block",
      "op": "attention",
-     "role": "causal multi-head self attention",
+     "role": "causal multi-head self-attention",
      "inputs": [
       "q",
       "k",
@@ -1282,8 +1340,8 @@
       {
        "value": "16",
        "status": "stated",
-       "quote": "355M & 24 &  1024 & 16 & 64  &  64  & 0.86",
-       "where": "Table: Model configurations used for GPT-2",
+       "quote": "355M & 24 &  1024 & 16 & 64",
+       "where": "Table tab:model_size",
        "reasons": [],
        "check": "verified",
        "name": "heads"
@@ -1300,8 +1358,8 @@
       {
        "value": "64",
        "status": "stated",
-       "quote": "355M & 24 &  1024 & 16 & 64  &  64  & 0.86",
-       "where": "Table: Model configurations used for GPT-2",
+       "quote": "355M & 24 &  1024 & 16 & 64",
+       "where": "Table tab:model_size",
        "reasons": [],
        "check": "verified",
        "name": "head_dim"
@@ -1318,7 +1376,7 @@
       {
        "value": "true",
        "status": "stated",
-       "quote": "a left-to-right generative transformer based language model",
+       "quote": "In this work we focus on GPT-2 \\cite{Radford2019GPT2}, a left-to-right generative transformer based language model",
        "where": "Sec. Setup",
        "reasons": [],
        "check": "quote_only",
@@ -1349,7 +1407,7 @@
      "i": 6,
      "subgraph": "block",
      "op": "linear",
-     "role": "attention output projection (row parallel)",
+     "role": "attention output projection",
      "inputs": [
       "a"
      ],
@@ -1359,8 +1417,8 @@
       {
        "value": "1024",
        "status": "stated",
-       "quote": "355M & 24 &  1024 & 16 & 64  &  64  & 0.86",
-       "where": "Table: Model configurations used for GPT-2",
+       "quote": "355M & 24 &  1024 & 16 & 64",
+       "where": "Table tab:model_size",
        "reasons": [],
        "check": "verified",
        "name": "out"
@@ -1386,7 +1444,7 @@
       "x",
       "o"
      ],
-     "output": "x",
+     "output": "x2",
      "new_op": "",
      "attributes": [],
      "errors": []
@@ -1397,7 +1455,7 @@
      "op": "layernorm",
      "role": "pre-MLP layer norm",
      "inputs": [
-      "x"
+      "x2"
      ],
      "output": "h2",
      "new_op": "",
@@ -1418,7 +1476,7 @@
      "i": 9,
      "subgraph": "block",
      "op": "linear",
-     "role": "MLP first GEMM (column parallel)",
+     "role": "MLP first GEMM (up)",
      "inputs": [
       "h2"
      ],
@@ -1473,7 +1531,7 @@
      "i": 11,
      "subgraph": "block",
      "op": "linear",
-     "role": "MLP second GEMM (row parallel)",
+     "role": "MLP second GEMM (down)",
      "inputs": [
       "g"
      ],
@@ -1483,8 +1541,8 @@
       {
        "value": "1024",
        "status": "stated",
-       "quote": "355M & 24 &  1024 & 16 & 64  &  64  & 0.86",
-       "where": "Table: Model configurations used for GPT-2",
+       "quote": "355M & 24 &  1024 & 16 & 64",
+       "where": "Table tab:model_size",
        "reasons": [],
        "check": "verified",
        "name": "out"
@@ -1507,7 +1565,7 @@
      "op": "add",
      "role": "MLP residual add",
      "inputs": [
-      "x",
+      "x2",
       "m"
      ],
      "output": "x",
@@ -1519,22 +1577,13 @@
      "i": 13,
      "subgraph": "head",
      "op": "linear",
-     "role": "output embedding / logits, tied to input embedding",
+     "role": "output embedding / logits (tied)",
      "inputs": [
       "x"
      ],
      "output": "logits",
      "new_op": "",
      "attributes": [
-      {
-       "value": "token_embd",
-       "status": "stated",
-       "quote": "in transformer language models, the output embedding layer shares weights with the input embedding, requiring modifications to both",
-       "where": "Sec. Model Parallel Transformers",
-       "reasons": [],
-       "check": "quote_only",
-       "name": "tied_to"
-      },
       {
        "value": "51200",
        "status": "stated",
@@ -1543,25 +1592,36 @@
        "reasons": [],
        "check": "verified",
        "name": "out"
+      },
+      {
+       "value": "token_embd",
+       "status": "stated",
+       "quote": "the output embedding layer shares weights with the input embedding",
+       "where": "Sec. Model Parallel Transformers",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "tied_to"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
       }
      ],
      "errors": []
     }
    ],
-   "mechanisms_outside_ir": [
-    {
-     "mechanism": "Dropout of 0.1 throughout, including before residual connections (training-time only)",
-     "quote": "In all cases, a dropout of 0.1 is used.",
-     "where": "Sec. Training Optimization and Hyperparameters",
-     "check": "verified"
-    }
-   ],
+   "mechanisms_outside_ir": [],
    "summary": {
     "counts": {
-     "verified": 26,
-     "quote_only": 9,
+     "verified": 31,
+     "quote_only": 8,
      "unverified": 0,
-     "not_stated": 32
+     "not_stated": 33
     },
     "unverified": [],
     "new_op_errors": [],

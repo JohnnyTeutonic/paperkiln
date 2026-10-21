@@ -4,32 +4,37 @@
  "fields": {
   "d_model": {
    "value": 4096,
-   "evidence": "&xxlarge &235M &12 & 4096 & 128 & True [Table table:model_architecture]",
+   "evidence": "&xxlarge &235M &12 & 4096 & 128 & True [Table model_architecture]",
    "verdict": "used"
   },
   "n_layers": {
    "value": 12,
-   "evidence": "Note that for ALBERT-xxlarge, we mainly report results on a 12-layer network because a 24-layer network (with the same configuration) obtains similar results but is computationally more expensive. [Sec. Model setup]",
+   "evidence": "&xxlarge &235M &12 & 4096 & 128 & True [Table model_architecture]",
    "verdict": "used"
   },
   "n_heads": {
    "value": 64,
-   "evidence": "&xxlarge &233M &12 & 4096 & 64 & 128 & True [Table table:model_architecture (Sec. ALBERT, Model architectures)]",
+   "evidence": "&xxlarge &233M &12 & 4096 & 64 & 128 & True [Table model_architecture (ALBERT section)]",
    "verdict": "used"
   },
   "vocab_size": {
    "value": 30000,
-   "evidence": "Like \\bert, we use a vocabulary size of 30,000, tokenized using SentencePiece [Sec. Experimental Setup]",
+   "evidence": "Like \\bert, we use a vocabulary size of 30,000 [Sec. Experimental Setup]",
    "verdict": "used"
   },
   "context_length": {
    "value": 512,
-   "evidence": "We always limit the maximum input length to 512, and randomly generate input sequences shorter than 512 with a probability of 10\\%. [Sec. Experimental Setup]",
+   "evidence": "We always limit the maximum input length to 512 [Sec. Experimental Setup]",
    "verdict": "used"
   },
   "activation": {
    "value": "gelu",
-   "evidence": "it uses a transformer encoder~\\citep{vaswani2017attention} with GELU nonlinearities~\\citep{hendrycks2016gelus}. [Sec. Model architecture choices]",
+   "evidence": "it uses a transformer encoder~\\citep{vaswani2017attention} with GELU nonlinearities~\\citep{hendrycks2016gelus} [Sec. Model architecture choices]",
+   "verdict": "used"
+  },
+  "attention": {
+   "value": "other:bidirectional full softmax self-attention (transformer encoder)",
+   "evidence": "it uses a transformer encoder~\\citep{vaswani2017attention} [Sec. Model architecture choices]",
    "verdict": "used"
   }
  },
@@ -38,8 +43,7 @@
   "d_ff",
   "norm",
   "positional",
-  "residual",
-  "attention"
+  "residual"
  ],
  "unverified": [
   {
@@ -88,27 +92,21 @@
  "mechanism_scan": [
   {
    "mechanism": "encoder-decoder or encoder-only model",
-   "where": "llm extraction, verified quote, Sec. The Elements of ALBERT / Model architecture choices",
+   "where": "llm extraction, verified quote, Sec. Model architecture choices",
    "blocking": true,
    "evidence": "The backbone of the ALBERT architecture is similar to BERT in that it uses a transformer encoder~\\citep{vaswani2017attention} with GELU nonlinearities~\\citep{hendrycks2016gelus}."
   },
   {
-   "mechanism": "Cross-layer parameter sharing: all block parameters are shared across the L layers.",
+   "mechanism": "All parameters shared across layers (one block's weights reused for all L layers)",
    "where": "llm extraction, verified quote, Sec. Cross-layer parameter sharing",
    "blocking": true,
    "evidence": "The default decision for ALBERT is to share all parameters across layers. All our experiments use this default decision unless otherwise specified."
   },
   {
-   "mechanism": "Sentence-order prediction (SOP) classification head/loss alongside MLM.",
+   "mechanism": "Sentence-order prediction (SOP) classification head/loss alongside MLM",
    "where": "llm extraction, verified quote, Sec. Inter-sentence coherence loss",
    "blocking": true,
    "evidence": "That is, for ALBERT, we use a sentence-order prediction (SOP) loss, which avoids topic prediction and instead focuses on modeling inter-sentence coherence."
-  },
-  {
-   "mechanism": "Final model trained without dropout.",
-   "where": "llm extraction, verified quote, Sec. Current State-of-the-art on NLU Tasks",
-   "blocking": true,
-   "evidence": "an ALBERT-xxlarge configuration (Table~\\ref{table:model_architecture}) using combined MLM and SOP losses, and no dropout."
   }
  ],
  "source": {
@@ -116,14 +114,14 @@
   "sent_sha256": "58cbc45304cc80569a93c668a47ffcdeece76531913a942d917786398031a6a1",
   "from": "https://arxiv.org/e-print/1909.11942",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
   "n_calls": 1,
-  "cost_usd": 0.0,
+  "cost_usd": 0.300748,
   "request_ids": [
-   "req_011CgFb4cvv9VxuCWLuRxYEv"
+   "req_011CgFgBMfvjpYnncwFvupPh"
   ]
  },
  "llm": {
@@ -134,7 +132,7 @@
     "value": "encoder_only",
     "status": "stated",
     "quote": "The backbone of the ALBERT architecture is similar to BERT in that it uses a transformer encoder~\\citep{vaswani2017attention} with GELU nonlinearities~\\citep{hendrycks2016gelus}.",
-    "where": "Sec. The Elements of ALBERT / Model architecture choices"
+    "where": "Sec. Model architecture choices"
    },
    "inherits": {
     "ancestor": "BERT",
@@ -143,24 +141,24 @@
    },
    "configs": [
     {
-     "name": "ALBERT-base",
+     "name": "base",
      "d_model": {
       "value": "768",
       "status": "stated",
-      "quote": "&base &12M &12 & 768 & 128 & True",
-      "where": "Table table:model_architecture"
+      "quote": "&base\t    &12M     &12 & 768  & 128  & True",
+      "where": "Table model_architecture"
      },
      "n_layers": {
       "value": "12",
       "status": "stated",
-      "quote": "&base &12M &12 & 768 & 128 & True",
-      "where": "Table table:model_architecture"
+      "quote": "&base\t    &12M     &12 & 768  & 128  & True",
+      "where": "Table model_architecture"
      },
      "n_heads": {
       "value": "12",
       "status": "stated",
-      "quote": "&base &12M &12 & 768 & 12 & 128 & True",
-      "where": "Table table:model_architecture (Sec. ALBERT, Model architectures)"
+      "quote": "&base\t        &12M     &12 & 768  & 12 & 128 & True",
+      "where": "Table model_architecture (ALBERT section)"
      },
      "n_kv_heads": {
       "value": "",
@@ -171,47 +169,47 @@
      "head_dim": {
       "value": "64",
       "status": "stated",
-      "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$.",
+      "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$",
       "where": "Sec. Model architecture choices"
      },
      "d_ff": {
       "value": "3072",
       "status": "stated",
-      "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$.",
+      "quote": "we set the feed-forward/filter size to be $4H$",
       "where": "Sec. Model architecture choices"
      },
      "vocab_size": {
       "value": "30000",
       "status": "stated",
-      "quote": "Like \\bert, we use a vocabulary size of 30,000, tokenized using SentencePiece",
+      "quote": "Like \\bert, we use a vocabulary size of 30,000",
       "where": "Sec. Experimental Setup"
      },
      "context_length": {
       "value": "512",
       "status": "stated",
-      "quote": "We always limit the maximum input length to 512, and randomly generate input sequences shorter than 512 with a probability of 10\\%.",
+      "quote": "We always limit the maximum input length to 512",
       "where": "Sec. Experimental Setup"
      }
     },
     {
-     "name": "ALBERT-large",
+     "name": "large",
      "d_model": {
       "value": "1024",
       "status": "stated",
-      "quote": "&large &18M &24 & 1024 & 128 & True",
-      "where": "Table table:model_architecture"
+      "quote": "&large\t    &18M\t &24 & 1024 & 128  & True",
+      "where": "Table model_architecture"
      },
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "&large &18M &24 & 1024 & 128 & True",
-      "where": "Table table:model_architecture"
+      "quote": "&large\t    &18M\t &24 & 1024 & 128  & True",
+      "where": "Table model_architecture"
      },
      "n_heads": {
       "value": "16",
       "status": "stated",
-      "quote": "&large &18M &24 & 1024 & 16 & 128 & True",
-      "where": "Table table:model_architecture (Sec. ALBERT, Model architectures)"
+      "quote": "&large\t        &18M\t &24 & 1024 & 16 & 128 & True",
+      "where": "Table model_architecture (ALBERT section)"
      },
      "n_kv_heads": {
       "value": "",
@@ -222,47 +220,47 @@
      "head_dim": {
       "value": "64",
       "status": "stated",
-      "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$.",
+      "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$",
       "where": "Sec. Model architecture choices"
      },
      "d_ff": {
       "value": "4096",
       "status": "stated",
-      "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$.",
+      "quote": "we set the feed-forward/filter size to be $4H$",
       "where": "Sec. Model architecture choices"
      },
      "vocab_size": {
       "value": "30000",
       "status": "stated",
-      "quote": "Like \\bert, we use a vocabulary size of 30,000, tokenized using SentencePiece",
+      "quote": "Like \\bert, we use a vocabulary size of 30,000",
       "where": "Sec. Experimental Setup"
      },
      "context_length": {
       "value": "512",
       "status": "stated",
-      "quote": "We always limit the maximum input length to 512, and randomly generate input sequences shorter than 512 with a probability of 10\\%.",
+      "quote": "We always limit the maximum input length to 512",
       "where": "Sec. Experimental Setup"
      }
     },
     {
-     "name": "ALBERT-xlarge",
+     "name": "xlarge",
      "d_model": {
       "value": "2048",
       "status": "stated",
-      "quote": "&xlarge &60M &24 & 2048 & 128 & True",
-      "where": "Table table:model_architecture"
+      "quote": "&xlarge\t&60M\t &24 & 2048 & 128  & True",
+      "where": "Table model_architecture"
      },
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "&xlarge &60M &24 & 2048 & 128 & True",
-      "where": "Table table:model_architecture"
+      "quote": "&xlarge\t&60M\t &24 & 2048 & 128  & True",
+      "where": "Table model_architecture"
      },
      "n_heads": {
       "value": "32",
       "status": "stated",
-      "quote": "&xlarge &59M &24 & 2048 & 32 & 128 & True",
-      "where": "Table table:model_architecture (Sec. ALBERT, Model architectures)"
+      "quote": "&xlarge\t&59M\t &24 & 2048 & 32 & 128 & True",
+      "where": "Table model_architecture (ALBERT section)"
      },
      "n_kv_heads": {
       "value": "",
@@ -273,47 +271,47 @@
      "head_dim": {
       "value": "64",
       "status": "stated",
-      "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$.",
+      "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$",
       "where": "Sec. Model architecture choices"
      },
      "d_ff": {
       "value": "8192",
       "status": "stated",
-      "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$.",
+      "quote": "we set the feed-forward/filter size to be $4H$",
       "where": "Sec. Model architecture choices"
      },
      "vocab_size": {
       "value": "30000",
       "status": "stated",
-      "quote": "Like \\bert, we use a vocabulary size of 30,000, tokenized using SentencePiece",
+      "quote": "Like \\bert, we use a vocabulary size of 30,000",
       "where": "Sec. Experimental Setup"
      },
      "context_length": {
       "value": "512",
       "status": "stated",
-      "quote": "We always limit the maximum input length to 512, and randomly generate input sequences shorter than 512 with a probability of 10\\%.",
+      "quote": "We always limit the maximum input length to 512",
       "where": "Sec. Experimental Setup"
      }
     },
     {
-     "name": "ALBERT-xxlarge",
+     "name": "xxlarge",
      "d_model": {
       "value": "4096",
       "status": "stated",
-      "quote": "&xxlarge &235M &12 & 4096 & 128 & True",
-      "where": "Table table:model_architecture"
+      "quote": "&xxlarge\t&235M\t &12 & 4096 & 128  & True",
+      "where": "Table model_architecture"
      },
      "n_layers": {
       "value": "12",
       "status": "stated",
-      "quote": "Note that for ALBERT-xxlarge, we mainly report results on a 12-layer network because a 24-layer network (with the same configuration) obtains similar results but is computationally more expensive.",
-      "where": "Sec. Model setup"
+      "quote": "&xxlarge\t&235M\t &12 & 4096 & 128  & True",
+      "where": "Table model_architecture"
      },
      "n_heads": {
       "value": "64",
       "status": "stated",
-      "quote": "&xxlarge &233M &12 & 4096 & 64 & 128 & True",
-      "where": "Table table:model_architecture (Sec. ALBERT, Model architectures)"
+      "quote": "&xxlarge\t&233M\t &12 & 4096 & 64 & 128 & True",
+      "where": "Table model_architecture (ALBERT section)"
      },
      "n_kv_heads": {
       "value": "",
@@ -324,30 +322,30 @@
      "head_dim": {
       "value": "64",
       "status": "stated",
-      "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$.",
+      "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$",
       "where": "Sec. Model architecture choices"
      },
      "d_ff": {
       "value": "16384",
       "status": "stated",
-      "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$.",
+      "quote": "we set the feed-forward/filter size to be $4H$",
       "where": "Sec. Model architecture choices"
      },
      "vocab_size": {
       "value": "30000",
       "status": "stated",
-      "quote": "Like \\bert, we use a vocabulary size of 30,000, tokenized using SentencePiece",
+      "quote": "Like \\bert, we use a vocabulary size of 30,000",
       "where": "Sec. Experimental Setup"
      },
      "context_length": {
       "value": "512",
       "status": "stated",
-      "quote": "We always limit the maximum input length to 512, and randomly generate input sequences shorter than 512 with a probability of 10\\%.",
+      "quote": "We always limit the maximum input length to 512",
       "where": "Sec. Experimental Setup"
      }
     }
    ],
-   "primary_config": "ALBERT-xxlarge",
+   "primary_config": "xxlarge",
    "flavours": {
     "norm": {
      "value": "",
@@ -370,7 +368,7 @@
     "activation": {
      "value": "gelu",
      "status": "stated",
-     "quote": "it uses a transformer encoder~\\citep{vaswani2017attention} with GELU nonlinearities~\\citep{hendrycks2016gelus}.",
+     "quote": "it uses a transformer encoder~\\citep{vaswani2017attention} with GELU nonlinearities~\\citep{hendrycks2016gelus}",
      "where": "Sec. Model architecture choices"
     },
     "positional": {
@@ -410,10 +408,10 @@
      "where": ""
     },
     "attention": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": ""
+     "value": "other:bidirectional full softmax self-attention (transformer encoder)",
+     "status": "stated",
+     "quote": "it uses a transformer encoder~\\citep{vaswani2017attention}",
+     "where": "Sec. Model architecture choices"
     },
     "window_size": {
      "value": "",
@@ -474,7 +472,7 @@
     {
      "subgraph": "embed",
      "op": "embedding",
-     "role": "factorized token embedding V x E",
+     "role": "factorized token embedding of size E",
      "inputs": [
       "tokens"
      ],
@@ -484,7 +482,7 @@
        "name": "dim",
        "value": "128",
        "status": "stated",
-       "quote": "Based on these results, we use an embedding size $E=128$ in all future settings, as a necessary step to do further scaling.",
+       "quote": "Based on these results, we use an embedding size $E=128$ in all future settings",
        "where": "Sec. Factorized Embedding Parameterization"
       }
      ],
@@ -503,8 +501,8 @@
        "name": "out",
        "value": "4096",
        "status": "stated",
-       "quote": "Instead of projecting the one-hot vectors directly into the hidden space of size $H$, we first project them into a lower dimensional embedding space of size $E$, and then project it to the hidden space.",
-       "where": "Sec. Factorized embedding parameterization"
+       "quote": "we first project them into a lower dimensional embedding space of size $E$, and then project it to the hidden space",
+       "where": "Sec. Model architecture choices"
       },
       {
        "name": "bias",
@@ -527,7 +525,7 @@
      "attributes": [
       {
        "name": "out",
-       "value": "",
+       "value": "4096",
        "status": "not_stated",
        "quote": "",
        "where": ""
@@ -609,15 +607,8 @@
        "name": "heads",
        "value": "64",
        "status": "stated",
-       "quote": "&xxlarge &233M &12 & 4096 & 64 & 128 & True",
-       "where": "Table table:model_architecture (Sec. ALBERT)"
-      },
-      {
-       "name": "kv_heads",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "quote": "&xxlarge\t&233M\t &12 & 4096 & 64 & 128 & True",
+       "where": "Table model_architecture (ALBERT section)"
       },
       {
        "name": "head_dim",
@@ -625,6 +616,13 @@
        "status": "stated",
        "quote": "the number of attention heads to be $H/64$",
        "where": "Sec. Model architecture choices"
+      },
+      {
+       "name": "kv_heads",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       },
       {
        "name": "scale",
@@ -635,10 +633,10 @@
       },
       {
        "name": "causal",
-       "value": "false",
-       "status": "stated",
-       "quote": "it uses a transformer encoder~\\citep{vaswani2017attention}",
-       "where": "Sec. Model architecture choices"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       },
       {
        "name": "window",
@@ -784,18 +782,18 @@
        "name": "out",
        "value": "30000",
        "status": "stated",
-       "quote": "Like \\bert, we use a vocabulary size of 30,000, tokenized using SentencePiece",
+       "quote": "Like \\bert, we use a vocabulary size of 30,000",
        "where": "Sec. Experimental Setup"
       },
       {
-       "name": "bias",
+       "name": "tied_to",
        "value": "",
        "status": "not_stated",
        "quote": "",
        "where": ""
       },
       {
-       "name": "tied_to",
+       "name": "bias",
        "value": "",
        "status": "not_stated",
        "quote": "",
@@ -808,22 +806,17 @@
    "new_ops": [],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "Cross-layer parameter sharing: all block parameters are shared across the L layers.",
+     "mechanism": "All parameters shared across layers (one block's weights reused for all L layers)",
      "quote": "The default decision for ALBERT is to share all parameters across layers. All our experiments use this default decision unless otherwise specified.",
      "where": "Sec. Cross-layer parameter sharing"
     },
     {
-     "mechanism": "Sentence-order prediction (SOP) classification head/loss alongside MLM.",
+     "mechanism": "Sentence-order prediction (SOP) classification head/loss alongside MLM",
      "quote": "That is, for ALBERT, we use a sentence-order prediction (SOP) loss, which avoids topic prediction and instead focuses on modeling inter-sentence coherence.",
      "where": "Sec. Inter-sentence coherence loss"
-    },
-    {
-     "mechanism": "Final model trained without dropout.",
-     "quote": "an ALBERT-xxlarge configuration (Table~\\ref{table:model_architecture}) using combined MLM and SOP losses, and no dropout.",
-     "where": "Sec. Current State-of-the-art on NLU Tasks"
     }
    ],
-   "notes": "Described the final single-model configuration, ALBERT-xxlarge (12 layers, H=4096, E=128, all parameters shared, no dropout). The block_ops attributes use the xxlarge sizes. The source contains two versions of Table model_architecture. The models_experiments version has no heads column; head counts are taken from the other version (an older draft section), which also gives slightly different parameter counts (59M vs 60M, 233M vs 235M). d_ff is derived from the stated formula 4H, so the quoted text contains 4H rather than the number. head_dim 64 is derived from heads = H/64. The paper does not state the following, and they are left not_stated: norm type and placement, eps, positional encoding, biases, embedding tying, kv heads and the residual form (the residual adds in block_ops are assumed from the standard transformer encoder). The GELU form (erf or tanh) is not specified. Norm ops are omitted from block_ops because the paper never describes them; the model is said only to be similar to BERT, not an explicit restatement of it."
+   "notes": "Described the headline single model ALBERT-xxlarge (12 layers, H=4096, 64 heads, E=128, all-shared, no dropout); all four ALBERT configs listed. Two tables share the label table:model_architecture (xxlarge 235M vs 233M, xlarge 60M vs 59M); heads taken from the table that lists them. d_ff and head_dim derive from the stated 4H and H/64 rules. Layer norm type and placement, positional embeddings, segment embeddings, biases, MLM head structure and tying, and attention causality are not stated in the paper; norm ops are omitted from block_ops for that reason, although BERT-style blocks have them. Residual adds follow the generic transformer encoder but are not explicitly described."
   },
   "verification": {
    "errors": [],
@@ -839,34 +832,34 @@
     "value": "encoder_only",
     "status": "stated",
     "quote": "The backbone of the ALBERT architecture is similar to BERT in that it uses a transformer encoder~\\citep{vaswani2017attention} with GELU nonlinearities~\\citep{hendrycks2016gelus}.",
-    "where": "Sec. The Elements of ALBERT / Model architecture choices",
+    "where": "Sec. Model architecture choices",
     "reasons": [],
     "check": "verified"
    },
    "configs": [
     {
-     "name": "ALBERT-base",
+     "name": "base",
      "d_model": {
       "value": "768",
       "status": "stated",
-      "quote": "&base &12M &12 & 768 & 128 & True",
-      "where": "Table table:model_architecture",
+      "quote": "&base\t    &12M     &12 & 768  & 128  & True",
+      "where": "Table model_architecture",
       "reasons": [],
       "check": "verified"
      },
      "n_layers": {
       "value": "12",
       "status": "stated",
-      "quote": "&base &12M &12 & 768 & 128 & True",
-      "where": "Table table:model_architecture",
+      "quote": "&base\t    &12M     &12 & 768  & 128  & True",
+      "where": "Table model_architecture",
       "reasons": [],
       "check": "verified"
      },
      "n_heads": {
       "value": "12",
       "status": "stated",
-      "quote": "&base &12M &12 & 768 & 12 & 128 & True",
-      "where": "Table table:model_architecture (Sec. ALBERT, Model architectures)",
+      "quote": "&base\t        &12M     &12 & 768  & 12 & 128 & True",
+      "where": "Table model_architecture (ALBERT section)",
       "reasons": [],
       "check": "verified"
      },
@@ -881,7 +874,7 @@
      "head_dim": {
       "value": "64",
       "status": "stated",
-      "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$.",
+      "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$",
       "where": "Sec. Model architecture choices",
       "reasons": [],
       "check": "verified"
@@ -889,7 +882,7 @@
      "d_ff": {
       "value": "3072",
       "status": "stated",
-      "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$.",
+      "quote": "we set the feed-forward/filter size to be $4H$",
       "where": "Sec. Model architecture choices",
       "reasons": [
        "3072 does not occur in its quote"
@@ -899,7 +892,7 @@
      "vocab_size": {
       "value": "30000",
       "status": "stated",
-      "quote": "Like \\bert, we use a vocabulary size of 30,000, tokenized using SentencePiece",
+      "quote": "Like \\bert, we use a vocabulary size of 30,000",
       "where": "Sec. Experimental Setup",
       "reasons": [],
       "check": "verified"
@@ -907,7 +900,7 @@
      "context_length": {
       "value": "512",
       "status": "stated",
-      "quote": "We always limit the maximum input length to 512, and randomly generate input sequences shorter than 512 with a probability of 10\\%.",
+      "quote": "We always limit the maximum input length to 512",
       "where": "Sec. Experimental Setup",
       "reasons": [],
       "check": "verified"
@@ -924,28 +917,28 @@
      ]
     },
     {
-     "name": "ALBERT-large",
+     "name": "large",
      "d_model": {
       "value": "1024",
       "status": "stated",
-      "quote": "&large &18M &24 & 1024 & 128 & True",
-      "where": "Table table:model_architecture",
+      "quote": "&large\t    &18M\t &24 & 1024 & 128  & True",
+      "where": "Table model_architecture",
       "reasons": [],
       "check": "verified"
      },
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "&large &18M &24 & 1024 & 128 & True",
-      "where": "Table table:model_architecture",
+      "quote": "&large\t    &18M\t &24 & 1024 & 128  & True",
+      "where": "Table model_architecture",
       "reasons": [],
       "check": "verified"
      },
      "n_heads": {
       "value": "16",
       "status": "stated",
-      "quote": "&large &18M &24 & 1024 & 16 & 128 & True",
-      "where": "Table table:model_architecture (Sec. ALBERT, Model architectures)",
+      "quote": "&large\t        &18M\t &24 & 1024 & 16 & 128 & True",
+      "where": "Table model_architecture (ALBERT section)",
       "reasons": [],
       "check": "verified"
      },
@@ -960,7 +953,7 @@
      "head_dim": {
       "value": "64",
       "status": "stated",
-      "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$.",
+      "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$",
       "where": "Sec. Model architecture choices",
       "reasons": [],
       "check": "verified"
@@ -968,7 +961,7 @@
      "d_ff": {
       "value": "4096",
       "status": "stated",
-      "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$.",
+      "quote": "we set the feed-forward/filter size to be $4H$",
       "where": "Sec. Model architecture choices",
       "reasons": [
        "4096 does not occur in its quote"
@@ -978,7 +971,7 @@
      "vocab_size": {
       "value": "30000",
       "status": "stated",
-      "quote": "Like \\bert, we use a vocabulary size of 30,000, tokenized using SentencePiece",
+      "quote": "Like \\bert, we use a vocabulary size of 30,000",
       "where": "Sec. Experimental Setup",
       "reasons": [],
       "check": "verified"
@@ -986,7 +979,7 @@
      "context_length": {
       "value": "512",
       "status": "stated",
-      "quote": "We always limit the maximum input length to 512, and randomly generate input sequences shorter than 512 with a probability of 10\\%.",
+      "quote": "We always limit the maximum input length to 512",
       "where": "Sec. Experimental Setup",
       "reasons": [],
       "check": "verified"
@@ -1003,28 +996,28 @@
      ]
     },
     {
-     "name": "ALBERT-xlarge",
+     "name": "xlarge",
      "d_model": {
       "value": "2048",
       "status": "stated",
-      "quote": "&xlarge &60M &24 & 2048 & 128 & True",
-      "where": "Table table:model_architecture",
+      "quote": "&xlarge\t&60M\t &24 & 2048 & 128  & True",
+      "where": "Table model_architecture",
       "reasons": [],
       "check": "verified"
      },
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "&xlarge &60M &24 & 2048 & 128 & True",
-      "where": "Table table:model_architecture",
+      "quote": "&xlarge\t&60M\t &24 & 2048 & 128  & True",
+      "where": "Table model_architecture",
       "reasons": [],
       "check": "verified"
      },
      "n_heads": {
       "value": "32",
       "status": "stated",
-      "quote": "&xlarge &59M &24 & 2048 & 32 & 128 & True",
-      "where": "Table table:model_architecture (Sec. ALBERT, Model architectures)",
+      "quote": "&xlarge\t&59M\t &24 & 2048 & 32 & 128 & True",
+      "where": "Table model_architecture (ALBERT section)",
       "reasons": [],
       "check": "verified"
      },
@@ -1039,7 +1032,7 @@
      "head_dim": {
       "value": "64",
       "status": "stated",
-      "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$.",
+      "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$",
       "where": "Sec. Model architecture choices",
       "reasons": [],
       "check": "verified"
@@ -1047,7 +1040,7 @@
      "d_ff": {
       "value": "8192",
       "status": "stated",
-      "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$.",
+      "quote": "we set the feed-forward/filter size to be $4H$",
       "where": "Sec. Model architecture choices",
       "reasons": [
        "8192 does not occur in its quote"
@@ -1057,7 +1050,7 @@
      "vocab_size": {
       "value": "30000",
       "status": "stated",
-      "quote": "Like \\bert, we use a vocabulary size of 30,000, tokenized using SentencePiece",
+      "quote": "Like \\bert, we use a vocabulary size of 30,000",
       "where": "Sec. Experimental Setup",
       "reasons": [],
       "check": "verified"
@@ -1065,7 +1058,7 @@
      "context_length": {
       "value": "512",
       "status": "stated",
-      "quote": "We always limit the maximum input length to 512, and randomly generate input sequences shorter than 512 with a probability of 10\\%.",
+      "quote": "We always limit the maximum input length to 512",
       "where": "Sec. Experimental Setup",
       "reasons": [],
       "check": "verified"
@@ -1082,28 +1075,28 @@
      ]
     },
     {
-     "name": "ALBERT-xxlarge",
+     "name": "xxlarge",
      "d_model": {
       "value": "4096",
       "status": "stated",
-      "quote": "&xxlarge &235M &12 & 4096 & 128 & True",
-      "where": "Table table:model_architecture",
+      "quote": "&xxlarge\t&235M\t &12 & 4096 & 128  & True",
+      "where": "Table model_architecture",
       "reasons": [],
       "check": "verified"
      },
      "n_layers": {
       "value": "12",
       "status": "stated",
-      "quote": "Note that for ALBERT-xxlarge, we mainly report results on a 12-layer network because a 24-layer network (with the same configuration) obtains similar results but is computationally more expensive.",
-      "where": "Sec. Model setup",
+      "quote": "&xxlarge\t&235M\t &12 & 4096 & 128  & True",
+      "where": "Table model_architecture",
       "reasons": [],
       "check": "verified"
      },
      "n_heads": {
       "value": "64",
       "status": "stated",
-      "quote": "&xxlarge &233M &12 & 4096 & 64 & 128 & True",
-      "where": "Table table:model_architecture (Sec. ALBERT, Model architectures)",
+      "quote": "&xxlarge\t&233M\t &12 & 4096 & 64 & 128 & True",
+      "where": "Table model_architecture (ALBERT section)",
       "reasons": [],
       "check": "verified"
      },
@@ -1118,7 +1111,7 @@
      "head_dim": {
       "value": "64",
       "status": "stated",
-      "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$.",
+      "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$",
       "where": "Sec. Model architecture choices",
       "reasons": [],
       "check": "verified"
@@ -1126,7 +1119,7 @@
      "d_ff": {
       "value": "16384",
       "status": "stated",
-      "quote": "we set the feed-forward/filter size to be $4H$ and the number of attention heads to be $H/64$.",
+      "quote": "we set the feed-forward/filter size to be $4H$",
       "where": "Sec. Model architecture choices",
       "reasons": [
        "16384 does not occur in its quote"
@@ -1136,7 +1129,7 @@
      "vocab_size": {
       "value": "30000",
       "status": "stated",
-      "quote": "Like \\bert, we use a vocabulary size of 30,000, tokenized using SentencePiece",
+      "quote": "Like \\bert, we use a vocabulary size of 30,000",
       "where": "Sec. Experimental Setup",
       "reasons": [],
       "check": "verified"
@@ -1144,7 +1137,7 @@
      "context_length": {
       "value": "512",
       "status": "stated",
-      "quote": "We always limit the maximum input length to 512, and randomly generate input sequences shorter than 512 with a probability of 10\\%.",
+      "quote": "We always limit the maximum input length to 512",
       "where": "Sec. Experimental Setup",
       "reasons": [],
       "check": "verified"
@@ -1161,7 +1154,7 @@
      ]
     }
    ],
-   "primary_config": "ALBERT-xxlarge",
+   "primary_config": "xxlarge",
    "flavours": {
     "norm": {
      "value": "",
@@ -1190,7 +1183,7 @@
     "activation": {
      "value": "gelu",
      "status": "stated",
-     "quote": "it uses a transformer encoder~\\citep{vaswani2017attention} with GELU nonlinearities~\\citep{hendrycks2016gelus}.",
+     "quote": "it uses a transformer encoder~\\citep{vaswani2017attention} with GELU nonlinearities~\\citep{hendrycks2016gelus}",
      "where": "Sec. Model architecture choices",
      "reasons": [],
      "check": "verified"
@@ -1244,12 +1237,12 @@
      "check": "not_stated"
     },
     "attention": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": "",
+     "value": "other:bidirectional full softmax self-attention (transformer encoder)",
+     "status": "stated",
+     "quote": "it uses a transformer encoder~\\citep{vaswani2017attention}",
+     "where": "Sec. Model architecture choices",
      "reasons": [],
-     "check": "not_stated"
+     "check": "quote_only"
     },
     "window_size": {
      "value": "",
@@ -1330,7 +1323,7 @@
      "i": 0,
      "subgraph": "embed",
      "op": "embedding",
-     "role": "factorized token embedding V x E",
+     "role": "factorized token embedding of size E",
      "inputs": [
       "tokens"
      ],
@@ -1340,7 +1333,7 @@
       {
        "value": "128",
        "status": "stated",
-       "quote": "Based on these results, we use an embedding size $E=128$ in all future settings, as a necessary step to do further scaling.",
+       "quote": "Based on these results, we use an embedding size $E=128$ in all future settings",
        "where": "Sec. Factorized Embedding Parameterization",
        "reasons": [],
        "check": "verified",
@@ -1363,8 +1356,8 @@
       {
        "value": "4096",
        "status": "stated",
-       "quote": "Instead of projecting the one-hot vectors directly into the hidden space of size $H$, we first project them into a lower dimensional embedding space of size $E$, and then project it to the hidden space.",
-       "where": "Sec. Factorized embedding parameterization",
+       "quote": "we first project them into a lower dimensional embedding space of size $E$, and then project it to the hidden space",
+       "where": "Sec. Model architecture choices",
        "reasons": [
         "4096 does not occur in its quote"
        ],
@@ -1395,11 +1388,13 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "",
+       "value": "4096",
        "status": "not_stated",
        "quote": "",
        "where": "",
-       "reasons": [],
+       "reasons": [
+        "not_stated carries a value or quote (ignored)"
+       ],
        "check": "not_stated",
        "name": "out"
       },
@@ -1495,20 +1490,11 @@
       {
        "value": "64",
        "status": "stated",
-       "quote": "&xxlarge &233M &12 & 4096 & 64 & 128 & True",
-       "where": "Table table:model_architecture (Sec. ALBERT)",
+       "quote": "&xxlarge\t&233M\t &12 & 4096 & 64 & 128 & True",
+       "where": "Table model_architecture (ALBERT section)",
        "reasons": [],
        "check": "verified",
        "name": "heads"
-      },
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "kv_heads"
       },
       {
        "value": "64",
@@ -1526,15 +1512,24 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
+       "name": "kv_heads"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "scale"
       },
       {
-       "value": "false",
-       "status": "stated",
-       "quote": "it uses a transformer encoder~\\citep{vaswani2017attention}",
-       "where": "Sec. Model architecture choices",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
        "reasons": [],
-       "check": "quote_only",
+       "check": "not_stated",
        "name": "causal"
       },
       {
@@ -1712,7 +1707,7 @@
       {
        "value": "30000",
        "status": "stated",
-       "quote": "Like \\bert, we use a vocabulary size of 30,000, tokenized using SentencePiece",
+       "quote": "Like \\bert, we use a vocabulary size of 30,000",
        "where": "Sec. Experimental Setup",
        "reasons": [],
        "check": "verified",
@@ -1725,7 +1720,7 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
-       "name": "bias"
+       "name": "tied_to"
       },
       {
        "value": "",
@@ -1734,7 +1729,7 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
-       "name": "tied_to"
+       "name": "bias"
       }
      ],
      "errors": []
@@ -1742,21 +1737,15 @@
    ],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "Cross-layer parameter sharing: all block parameters are shared across the L layers.",
+     "mechanism": "All parameters shared across layers (one block's weights reused for all L layers)",
      "quote": "The default decision for ALBERT is to share all parameters across layers. All our experiments use this default decision unless otherwise specified.",
      "where": "Sec. Cross-layer parameter sharing",
      "check": "verified"
     },
     {
-     "mechanism": "Sentence-order prediction (SOP) classification head/loss alongside MLM.",
+     "mechanism": "Sentence-order prediction (SOP) classification head/loss alongside MLM",
      "quote": "That is, for ALBERT, we use a sentence-order prediction (SOP) loss, which avoids topic prediction and instead focuses on modeling inter-sentence coherence.",
      "where": "Sec. Inter-sentence coherence loss",
-     "check": "verified"
-    },
-    {
-     "mechanism": "Final model trained without dropout.",
-     "quote": "an ALBERT-xxlarge configuration (Table~\\ref{table:model_architecture}) using combined MLM and SOP losses, and no dropout.",
-     "where": "Sec. Current State-of-the-art on NLU Tasks",
      "check": "verified"
     }
    ],
@@ -1769,25 +1758,25 @@
     },
     "unverified": [
      {
-      "field": "configs[ALBERT-base].d_ff",
+      "field": "configs[base].d_ff",
       "reasons": [
        "3072 does not occur in its quote"
       ]
      },
      {
-      "field": "configs[ALBERT-large].d_ff",
+      "field": "configs[large].d_ff",
       "reasons": [
        "4096 does not occur in its quote"
       ]
      },
      {
-      "field": "configs[ALBERT-xlarge].d_ff",
+      "field": "configs[xlarge].d_ff",
       "reasons": [
        "8192 does not occur in its quote"
       ]
      },
      {
-      "field": "configs[ALBERT-xxlarge].d_ff",
+      "field": "configs[xxlarge].d_ff",
       "reasons": [
        "16384 does not occur in its quote"
       ]

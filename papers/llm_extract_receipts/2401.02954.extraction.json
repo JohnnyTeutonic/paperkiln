@@ -57,11 +57,8 @@
   },
   "attention": {
    "value": "exact",
-   "evidence": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2} [Sec. 2.2 Architecture]",
-   "verdict": "unverified",
-   "reasons": [
-    "inherited from llama, whose curated entry has no attention"
-   ]
+   "evidence": "the 67B model uses Grouped-Query Attention (GQA) \\citep{ainslie2023gqa} instead of the traditional Multi-Head Attention (MHA) [Sec. 2.2 Architecture]",
+   "verdict": "used"
   }
  },
  "unresolved": [
@@ -72,12 +69,6 @@
    "field": "residual",
    "reasons": [
     "inherited from llama, whose curated entry has no residual"
-   ]
-  },
-  {
-   "field": "attention",
-   "reasons": [
-    "inherited from llama, whose curated entry has no attention"
    ]
   }
  ],
@@ -111,14 +102,14 @@
   "sent_sha256": "cf64bbcfac8b3a620d2f5cbbc530723f22df0fcbf5dba87b20b584a2eefad2b9",
   "from": "https://arxiv.org/e-print/2401.02954",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
   "n_calls": 1,
-  "cost_usd": 0.0,
+  "cost_usd": 0.365852,
   "request_ids": [
-   "req_011CgFd3njjZ29YqWviYFqj4"
+   "req_011CgFiXTEay8v5eeVFo7ohK"
   ]
  },
  "llm": {
@@ -132,7 +123,7 @@
     "where": "Sec. 2.2 Architecture"
    },
    "inherits": {
-    "ancestor": "LLaMA / LLaMA-2",
+    "ancestor": "LLaMA",
     "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
     "where": "Sec. 2.2 Architecture"
    },
@@ -279,10 +270,10 @@
      "where": ""
     },
     "rope_theta": {
-     "value": "10000",
-     "status": "inherited",
-     "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-     "where": "Sec. 2.2 Architecture"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "rope_fraction": {
      "value": "",
@@ -297,15 +288,15 @@
      "where": "Sec. 2.2 Architecture"
     },
     "parallel_block": {
-     "value": "false",
-     "status": "inherited",
-     "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-     "where": "Sec. 2.2 Architecture"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "attention": {
      "value": "exact",
-     "status": "inherited",
-     "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
+     "status": "stated",
+     "quote": "the 67B model uses Grouped-Query Attention (GQA) \\citep{ainslie2023gqa} instead of the traditional Multi-Head Attention (MHA)",
      "where": "Sec. 2.2 Architecture"
     },
     "window_size": {
@@ -321,22 +312,22 @@
      "where": ""
     },
     "qkv_bias": {
-     "value": "false",
-     "status": "inherited",
-     "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-     "where": "Sec. 2.2 Architecture"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "mlp_bias": {
-     "value": "false",
-     "status": "inherited",
-     "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-     "where": "Sec. 2.2 Architecture"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "tied_embeddings": {
-     "value": "false",
-     "status": "inherited",
-     "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-     "where": "Sec. 2.2 Architecture"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "moe": {
      "value": "false",
@@ -419,18 +410,11 @@
      "output": "q",
      "attributes": [
       {
-       "name": "out",
-       "value": "4096",
-       "status": "stated",
-       "quote": "7B  & 30 & 4096 & 32 & 32 & 4096",
-       "where": "Table tab:architecture"
-      },
-      {
        "name": "bias",
-       "value": "false",
-       "status": "inherited",
-       "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-       "where": "Sec. 2.2 Architecture"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -445,18 +429,11 @@
      "output": "k",
      "attributes": [
       {
-       "name": "out",
-       "value": "4096",
-       "status": "stated",
-       "quote": "7B  & 30 & 4096 & 32 & 32 & 4096",
-       "where": "Table tab:architecture"
-      },
-      {
        "name": "bias",
-       "value": "false",
-       "status": "inherited",
-       "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-       "where": "Sec. 2.2 Architecture"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -471,18 +448,11 @@
      "output": "v",
      "attributes": [
       {
-       "name": "out",
-       "value": "4096",
-       "status": "stated",
-       "quote": "7B  & 30 & 4096 & 32 & 32 & 4096",
-       "where": "Table tab:architecture"
-      },
-      {
        "name": "bias",
-       "value": "false",
-       "status": "inherited",
-       "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-       "where": "Sec. 2.2 Architecture"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -492,18 +462,10 @@
      "op": "rope",
      "role": "rotary on q",
      "inputs": [
-      "q",
-      "pos"
+      "q"
      ],
      "output": "q_r",
      "attributes": [
-      {
-       "name": "rope_heads",
-       "value": "all",
-       "status": "stated",
-       "quote": "It also incorporates Rotary Embedding \\citep{su2024roformer} for positional encoding.",
-       "where": "Sec. 2.2 Architecture"
-      },
       {
        "name": "pairing",
        "value": "",
@@ -512,18 +474,11 @@
        "where": ""
       },
       {
-       "name": "n_rot",
+       "name": "theta",
        "value": "",
        "status": "not_stated",
        "quote": "",
        "where": ""
-      },
-      {
-       "name": "theta",
-       "value": "10000",
-       "status": "inherited",
-       "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-       "where": "Sec. 2.2 Architecture"
       }
      ],
      "new_op": ""
@@ -533,18 +488,10 @@
      "op": "rope",
      "role": "rotary on k",
      "inputs": [
-      "k",
-      "pos"
+      "k"
      ],
      "output": "k_r",
      "attributes": [
-      {
-       "name": "rope_heads",
-       "value": "all",
-       "status": "stated",
-       "quote": "It also incorporates Rotary Embedding \\citep{su2024roformer} for positional encoding.",
-       "where": "Sec. 2.2 Architecture"
-      },
       {
        "name": "pairing",
        "value": "",
@@ -553,18 +500,11 @@
        "where": ""
       },
       {
-       "name": "n_rot",
+       "name": "theta",
        "value": "",
        "status": "not_stated",
        "quote": "",
        "where": ""
-      },
-      {
-       "name": "theta",
-       "value": "10000",
-       "status": "inherited",
-       "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-       "where": "Sec. 2.2 Architecture"
       }
      ],
      "new_op": ""
@@ -572,7 +512,7 @@
     {
      "subgraph": "block",
      "op": "attention",
-     "role": "causal self-attention (MHA in 7B)",
+     "role": "causal self-attention (MHA for 7B, GQA for 67B)",
      "inputs": [
       "q_r",
       "k_r",
@@ -602,28 +542,7 @@
        "where": ""
       },
       {
-       "name": "scale",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      },
-      {
        "name": "causal",
-       "value": "true",
-       "status": "inherited",
-       "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-       "where": "Sec. 2.2 Architecture"
-      },
-      {
-       "name": "window",
-       "value": "0",
-       "status": "inherited",
-       "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-       "where": "Sec. 2.2 Architecture"
-      },
-      {
-       "name": "sinks",
        "value": "",
        "status": "not_stated",
        "quote": "",
@@ -642,18 +561,11 @@
      "output": "o",
      "attributes": [
       {
-       "name": "out",
-       "value": "4096",
-       "status": "stated",
-       "quote": "7B  & 30 & 4096 & 32 & 32 & 4096",
-       "where": "Table tab:architecture"
-      },
-      {
        "name": "bias",
-       "value": "false",
-       "status": "inherited",
-       "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-       "where": "Sec. 2.2 Architecture"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       }
      ],
      "new_op": ""
@@ -692,7 +604,7 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "FFN gate projection",
+     "role": "FFN gate",
      "inputs": [
       "h2"
      ],
@@ -704,13 +616,6 @@
        "status": "not_stated",
        "quote": "",
        "where": ""
-      },
-      {
-       "name": "bias",
-       "value": "false",
-       "status": "inherited",
-       "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-       "where": "Sec. 2.2 Architecture"
       }
      ],
      "new_op": ""
@@ -718,7 +623,7 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "FFN up projection",
+     "role": "FFN up",
      "inputs": [
       "h2"
      ],
@@ -730,13 +635,6 @@
        "status": "not_stated",
        "quote": "",
        "where": ""
-      },
-      {
-       "name": "bias",
-       "value": "false",
-       "status": "inherited",
-       "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-       "where": "Sec. 2.2 Architecture"
       }
      ],
      "new_op": ""
@@ -744,7 +642,7 @@
     {
      "subgraph": "block",
      "op": "silu",
-     "role": "SwiGLU gate activation",
+     "role": "SwiGLU activation",
      "inputs": [
       "g"
      ],
@@ -755,7 +653,7 @@
     {
      "subgraph": "block",
      "op": "mul",
-     "role": "SwiGLU gating",
+     "role": "gating",
      "inputs": [
       "gs",
       "u"
@@ -767,7 +665,7 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "FFN down projection",
+     "role": "FFN down",
      "inputs": [
       "m"
      ],
@@ -779,13 +677,6 @@
        "status": "stated",
        "quote": "7B  & 30 & 4096 & 32 & 32 & 4096",
        "where": "Table tab:architecture"
-      },
-      {
-       "name": "bias",
-       "value": "false",
-       "status": "inherited",
-       "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-       "where": "Sec. 2.2 Architecture"
       }
      ],
      "new_op": ""
@@ -824,7 +715,7 @@
     {
      "subgraph": "head",
      "op": "linear",
-     "role": "LM head (untied)",
+     "role": "LM head",
      "inputs": [
       "hf"
      ],
@@ -836,13 +727,6 @@
        "status": "stated",
        "quote": "we configured the model's vocabulary size to 102400 for training",
        "where": "Sec. 2.1 Data"
-      },
-      {
-       "name": "bias",
-       "value": "false",
-       "status": "inherited",
-       "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-       "where": "Sec. 2.2 Architecture"
       },
       {
        "name": "tied_to",
@@ -857,13 +741,13 @@
    ],
    "new_ops": [],
    "mechanisms_outside_ir": [],
-   "notes": "Block ops are written for the 7B configuration, which uses MHA. The 67B uses GQA: 64 heads and 8 KV heads, with K and V projections of reduced width; quote: \"the 67B model uses Grouped-Query Attention (GQA)\". d_ff is given only as the formula \"$\\frac{8}{3}d_{model}$\". That evaluates to a non-integer for d_model = 4096 and the paper gives no rounding, so d_ff and the FFN widths are not_stated. head_dim (presumably 4096/32 = 128) is not stated explicitly. norm eps and rope pairing are left not_stated because they are not given and the cited ancestors LLaMA and LLaMA-2 differ on eps. Biases, untied head, rope_theta 10000 and sequential block are inherited from LLaMA through the sentence \"largely follows the design of LLaMA\"."
+   "notes": "Both the 7B and 67B base models are described; the block attributes use the 7B values (primary config). The 67B model uses GQA with 8 KV heads. The FFN width is given only as the formula $\\frac{8}{3}d_{model}$ (10922.67 for 7B), which is not an integer. The actual integer width is not stated, so d_ff is left not_stated. head_dim is not stated explicitly (it would be d_model/n_heads = 128 if derived). RoPE theta and pairing, norm eps, biases and embedding tying are not stated; they are left not_stated rather than inherited, because the LLaMA inheritance sentence is generic and LLaMA-1 and LLaMA-2 differ on some of these values. Final-norm placement follows the pre-norm convention and is not explicit."
   },
   "verification": {
    "errors": [],
    "warnings": [],
    "inherits": {
-    "ancestor": "LLaMA / LLaMA-2",
+    "ancestor": "LLaMA",
     "resolved": "llama",
     "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
     "where": "Sec. 2.2 Architecture",
@@ -1094,14 +978,12 @@
      "check": "not_stated"
     },
     "rope_theta": {
-     "value": "10000",
-     "status": "inherited",
-     "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-     "where": "Sec. 2.2 Architecture",
-     "reasons": [
-      "inherited from llama, whose curated entry has no rope_theta"
-     ],
-     "check": "unverified"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "rope_fraction": {
      "value": "",
@@ -1122,24 +1004,20 @@
      "check": "unverified"
     },
     "parallel_block": {
-     "value": "false",
-     "status": "inherited",
-     "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-     "where": "Sec. 2.2 Architecture",
-     "reasons": [
-      "inherited from llama, whose curated entry has no parallel_block"
-     ],
-     "check": "unverified"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "attention": {
      "value": "exact",
-     "status": "inherited",
-     "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
+     "status": "stated",
+     "quote": "the 67B model uses Grouped-Query Attention (GQA) \\citep{ainslie2023gqa} instead of the traditional Multi-Head Attention (MHA)",
      "where": "Sec. 2.2 Architecture",
-     "reasons": [
-      "inherited from llama, whose curated entry has no attention"
-     ],
-     "check": "unverified"
+     "reasons": [],
+     "check": "quote_only"
     },
     "window_size": {
      "value": "",
@@ -1158,34 +1036,28 @@
      "check": "not_stated"
     },
     "qkv_bias": {
-     "value": "false",
-     "status": "inherited",
-     "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-     "where": "Sec. 2.2 Architecture",
-     "reasons": [
-      "inherited from llama, whose curated entry has no qkv_bias"
-     ],
-     "check": "unverified"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "mlp_bias": {
-     "value": "false",
-     "status": "inherited",
-     "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-     "where": "Sec. 2.2 Architecture",
-     "reasons": [
-      "inherited from llama, whose curated entry has no mlp_bias"
-     ],
-     "check": "unverified"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "tied_embeddings": {
-     "value": "false",
-     "status": "inherited",
-     "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-     "where": "Sec. 2.2 Architecture",
-     "reasons": [
-      "inherited from llama, whose curated entry has no tied_embeddings"
-     ],
-     "check": "unverified"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
     },
     "moe": {
      "value": "false",
@@ -1291,23 +1163,12 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "4096",
-       "status": "stated",
-       "quote": "7B  & 30 & 4096 & 32 & 32 & 4096",
-       "where": "Table tab:architecture",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
        "reasons": [],
-       "check": "verified",
-       "name": "out"
-      },
-      {
-       "value": "false",
-       "status": "inherited",
-       "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-       "where": "Sec. 2.2 Architecture",
-       "reasons": [
-        "inherited from llama, whose curated entry has no bias"
-       ],
-       "check": "unverified",
+       "check": "not_stated",
        "name": "bias"
       }
      ],
@@ -1325,23 +1186,12 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "4096",
-       "status": "stated",
-       "quote": "7B  & 30 & 4096 & 32 & 32 & 4096",
-       "where": "Table tab:architecture",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
        "reasons": [],
-       "check": "verified",
-       "name": "out"
-      },
-      {
-       "value": "false",
-       "status": "inherited",
-       "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-       "where": "Sec. 2.2 Architecture",
-       "reasons": [
-        "inherited from llama, whose curated entry has no bias"
-       ],
-       "check": "unverified",
+       "check": "not_stated",
        "name": "bias"
       }
      ],
@@ -1359,23 +1209,12 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "4096",
-       "status": "stated",
-       "quote": "7B  & 30 & 4096 & 32 & 32 & 4096",
-       "where": "Table tab:architecture",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
        "reasons": [],
-       "check": "verified",
-       "name": "out"
-      },
-      {
-       "value": "false",
-       "status": "inherited",
-       "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-       "where": "Sec. 2.2 Architecture",
-       "reasons": [
-        "inherited from llama, whose curated entry has no bias"
-       ],
-       "check": "unverified",
+       "check": "not_stated",
        "name": "bias"
       }
      ],
@@ -1387,21 +1226,11 @@
      "op": "rope",
      "role": "rotary on q",
      "inputs": [
-      "q",
-      "pos"
+      "q"
      ],
      "output": "q_r",
      "new_op": "",
      "attributes": [
-      {
-       "value": "all",
-       "status": "stated",
-       "quote": "It also incorporates Rotary Embedding \\citep{su2024roformer} for positional encoding.",
-       "where": "Sec. 2.2 Architecture",
-       "reasons": [],
-       "check": "quote_only",
-       "name": "rope_heads"
-      },
       {
        "value": "",
        "status": "not_stated",
@@ -1418,17 +1247,6 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
-       "name": "n_rot"
-      },
-      {
-       "value": "10000",
-       "status": "inherited",
-       "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-       "where": "Sec. 2.2 Architecture",
-       "reasons": [
-        "inherited from llama, whose curated entry has no theta"
-       ],
-       "check": "unverified",
        "name": "theta"
       }
      ],
@@ -1440,21 +1258,11 @@
      "op": "rope",
      "role": "rotary on k",
      "inputs": [
-      "k",
-      "pos"
+      "k"
      ],
      "output": "k_r",
      "new_op": "",
      "attributes": [
-      {
-       "value": "all",
-       "status": "stated",
-       "quote": "It also incorporates Rotary Embedding \\citep{su2024roformer} for positional encoding.",
-       "where": "Sec. 2.2 Architecture",
-       "reasons": [],
-       "check": "quote_only",
-       "name": "rope_heads"
-      },
       {
        "value": "",
        "status": "not_stated",
@@ -1471,17 +1279,6 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
-       "name": "n_rot"
-      },
-      {
-       "value": "10000",
-       "status": "inherited",
-       "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-       "where": "Sec. 2.2 Architecture",
-       "reasons": [
-        "inherited from llama, whose curated entry has no theta"
-       ],
-       "check": "unverified",
        "name": "theta"
       }
      ],
@@ -1491,7 +1288,7 @@
      "i": 7,
      "subgraph": "block",
      "op": "attention",
-     "role": "causal self-attention (MHA in 7B)",
+     "role": "causal self-attention (MHA for 7B, GQA for 67B)",
      "inputs": [
       "q_r",
       "k_r",
@@ -1534,38 +1331,7 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
-       "name": "scale"
-      },
-      {
-       "value": "true",
-       "status": "inherited",
-       "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-       "where": "Sec. 2.2 Architecture",
-       "reasons": [
-        "inherited from llama, whose curated entry has no causal"
-       ],
-       "check": "unverified",
        "name": "causal"
-      },
-      {
-       "value": "0",
-       "status": "inherited",
-       "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-       "where": "Sec. 2.2 Architecture",
-       "reasons": [
-        "inherited from llama, whose curated entry has no window"
-       ],
-       "check": "unverified",
-       "name": "window"
-      },
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "sinks"
       }
      ],
      "errors": []
@@ -1582,23 +1348,12 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "4096",
-       "status": "stated",
-       "quote": "7B  & 30 & 4096 & 32 & 32 & 4096",
-       "where": "Table tab:architecture",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
        "reasons": [],
-       "check": "verified",
-       "name": "out"
-      },
-      {
-       "value": "false",
-       "status": "inherited",
-       "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-       "where": "Sec. 2.2 Architecture",
-       "reasons": [
-        "inherited from llama, whose curated entry has no bias"
-       ],
-       "check": "unverified",
+       "check": "not_stated",
        "name": "bias"
       }
      ],
@@ -1645,7 +1400,7 @@
      "i": 11,
      "subgraph": "block",
      "op": "linear",
-     "role": "FFN gate projection",
+     "role": "FFN gate",
      "inputs": [
       "h2"
      ],
@@ -1660,17 +1415,6 @@
        "reasons": [],
        "check": "not_stated",
        "name": "out"
-      },
-      {
-       "value": "false",
-       "status": "inherited",
-       "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-       "where": "Sec. 2.2 Architecture",
-       "reasons": [
-        "inherited from llama, whose curated entry has no bias"
-       ],
-       "check": "unverified",
-       "name": "bias"
       }
      ],
      "errors": []
@@ -1679,7 +1423,7 @@
      "i": 12,
      "subgraph": "block",
      "op": "linear",
-     "role": "FFN up projection",
+     "role": "FFN up",
      "inputs": [
       "h2"
      ],
@@ -1694,17 +1438,6 @@
        "reasons": [],
        "check": "not_stated",
        "name": "out"
-      },
-      {
-       "value": "false",
-       "status": "inherited",
-       "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-       "where": "Sec. 2.2 Architecture",
-       "reasons": [
-        "inherited from llama, whose curated entry has no bias"
-       ],
-       "check": "unverified",
-       "name": "bias"
       }
      ],
      "errors": []
@@ -1713,7 +1446,7 @@
      "i": 13,
      "subgraph": "block",
      "op": "silu",
-     "role": "SwiGLU gate activation",
+     "role": "SwiGLU activation",
      "inputs": [
       "g"
      ],
@@ -1726,7 +1459,7 @@
      "i": 14,
      "subgraph": "block",
      "op": "mul",
-     "role": "SwiGLU gating",
+     "role": "gating",
      "inputs": [
       "gs",
       "u"
@@ -1740,7 +1473,7 @@
      "i": 15,
      "subgraph": "block",
      "op": "linear",
-     "role": "FFN down projection",
+     "role": "FFN down",
      "inputs": [
       "m"
      ],
@@ -1755,17 +1488,6 @@
        "reasons": [],
        "check": "verified",
        "name": "out"
-      },
-      {
-       "value": "false",
-       "status": "inherited",
-       "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-       "where": "Sec. 2.2 Architecture",
-       "reasons": [
-        "inherited from llama, whose curated entry has no bias"
-       ],
-       "check": "unverified",
-       "name": "bias"
       }
      ],
      "errors": []
@@ -1811,7 +1533,7 @@
      "i": 18,
      "subgraph": "head",
      "op": "linear",
-     "role": "LM head (untied)",
+     "role": "LM head",
      "inputs": [
       "hf"
      ],
@@ -1826,17 +1548,6 @@
        "reasons": [],
        "check": "verified",
        "name": "out"
-      },
-      {
-       "value": "false",
-       "status": "inherited",
-       "quote": "The micro design of DeepSeek LLM largely follows the design of LLaMA~\\citep{llama, llama2}",
-       "where": "Sec. 2.2 Architecture",
-       "reasons": [
-        "inherited from llama, whose curated entry has no bias"
-       ],
-       "check": "unverified",
-       "name": "bias"
       },
       {
        "value": "",
@@ -1854,10 +1565,10 @@
    "mechanisms_outside_ir": [],
    "summary": {
     "counts": {
-     "verified": 25,
-     "quote_only": 3,
-     "unverified": 21,
-     "not_stated": 25
+     "verified": 21,
+     "quote_only": 2,
+     "unverified": 3,
+     "not_stated": 33
     },
     "unverified": [
      {
@@ -1867,123 +1578,15 @@
       ]
      },
      {
-      "field": "flavours.rope_theta",
-      "reasons": [
-       "inherited from llama, whose curated entry has no rope_theta"
-      ]
-     },
-     {
       "field": "flavours.residual",
       "reasons": [
        "inherited from llama, whose curated entry has no residual"
       ]
      },
      {
-      "field": "flavours.parallel_block",
-      "reasons": [
-       "inherited from llama, whose curated entry has no parallel_block"
-      ]
-     },
-     {
-      "field": "flavours.attention",
-      "reasons": [
-       "inherited from llama, whose curated entry has no attention"
-      ]
-     },
-     {
-      "field": "flavours.qkv_bias",
-      "reasons": [
-       "inherited from llama, whose curated entry has no qkv_bias"
-      ]
-     },
-     {
-      "field": "flavours.mlp_bias",
-      "reasons": [
-       "inherited from llama, whose curated entry has no mlp_bias"
-      ]
-     },
-     {
-      "field": "flavours.tied_embeddings",
-      "reasons": [
-       "inherited from llama, whose curated entry has no tied_embeddings"
-      ]
-     },
-     {
       "field": "flavours.moe",
       "reasons": [
        "inherited from llama, whose curated entry has no moe"
-      ]
-     },
-     {
-      "field": "block_ops[2].bias",
-      "reasons": [
-       "inherited from llama, whose curated entry has no bias"
-      ]
-     },
-     {
-      "field": "block_ops[3].bias",
-      "reasons": [
-       "inherited from llama, whose curated entry has no bias"
-      ]
-     },
-     {
-      "field": "block_ops[4].bias",
-      "reasons": [
-       "inherited from llama, whose curated entry has no bias"
-      ]
-     },
-     {
-      "field": "block_ops[5].theta",
-      "reasons": [
-       "inherited from llama, whose curated entry has no theta"
-      ]
-     },
-     {
-      "field": "block_ops[6].theta",
-      "reasons": [
-       "inherited from llama, whose curated entry has no theta"
-      ]
-     },
-     {
-      "field": "block_ops[7].causal",
-      "reasons": [
-       "inherited from llama, whose curated entry has no causal"
-      ]
-     },
-     {
-      "field": "block_ops[7].window",
-      "reasons": [
-       "inherited from llama, whose curated entry has no window"
-      ]
-     },
-     {
-      "field": "block_ops[8].bias",
-      "reasons": [
-       "inherited from llama, whose curated entry has no bias"
-      ]
-     },
-     {
-      "field": "block_ops[11].bias",
-      "reasons": [
-       "inherited from llama, whose curated entry has no bias"
-      ]
-     },
-     {
-      "field": "block_ops[12].bias",
-      "reasons": [
-       "inherited from llama, whose curated entry has no bias"
-      ]
-     },
-     {
-      "field": "block_ops[15].bias",
-      "reasons": [
-       "inherited from llama, whose curated entry has no bias"
-      ]
-     },
-     {
-      "field": "block_ops[18].bias",
-      "reasons": [
-       "inherited from llama, whose curated entry has no bias"
       ]
      }
     ],

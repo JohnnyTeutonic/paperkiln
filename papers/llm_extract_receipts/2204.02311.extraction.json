@@ -19,7 +19,7 @@
   },
   "n_kv_heads": {
    "value": 1,
-   "evidence": "``key'' and ``value'' are projected to $[1, h]$, but ``query'' is still projected to shape $[k, h]$ [Sec. 2 Multi-Query Attention]",
+   "evidence": "Here, the key/value projections are shared for each head, i.e. ``key'' and ``value'' are projected to $[1, h]$ [Sec. 2 Multi-Query Attention]",
    "verdict": "used"
   },
   "vocab_size": {
@@ -49,7 +49,7 @@
   },
   "residual": {
    "value": "residual",
-   "evidence": "y = x + \\textrm{MLP}(\\textrm{LayerNorm}(x)) + \\textrm{Attention}(\\textrm{LayerNorm}(x)) [Sec. 2 Parallel Layers]",
+   "evidence": "\\[y = x + \\textrm{MLP}(\\textrm{LayerNorm}(x)) + \\textrm{Attention}(\\textrm{LayerNorm}(x))\\] [Sec. 2 Parallel Layers]",
    "verdict": "unverified",
    "reasons": [
     "the quote does not name residual (looked for /residual|skip/)"
@@ -79,7 +79,11 @@
   }
  ],
  "mentions": {},
- "inherits": null,
+ "inherits": {
+  "ancestor": "transformer",
+  "evidence": "uses a standard Transformer model architecture \\citep{vaswani2017} in a decoder-only setup",
+  "section": "Sec. 2 Model Architecture"
+ },
  "variants": [
   {
    "d_model": 4096,
@@ -117,7 +121,7 @@
    "mechanism": "grouped or multi-query attention",
    "where": "llm extraction, verified quote, Sec. 2 Multi-Query Attention",
    "blocking": true,
-   "evidence": "``key'' and ``value'' are projected to $[1, h]$, but ``query'' is still projected to shape $[k, h]$"
+   "evidence": "Here, the key/value projections are shared for each head, i.e. ``key'' and ``value'' are projected to $[1, h]$"
   }
  ],
  "source": {
@@ -125,14 +129,14 @@
   "sent_sha256": "5e925d61ff24025b899be5b49becd2042a437d6da57996c616e870d563df79bf",
   "from": "https://arxiv.org/e-print/2204.02311",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
   "n_calls": 1,
-  "cost_usd": 0.0,
+  "cost_usd": 0.658812,
   "request_ids": [
-   "req_011CgFc2ntGRbVWfqxehTH72"
+   "req_011CgFhFVp3UwjzgsbHnbEGU"
   ]
  },
  "llm": {
@@ -146,9 +150,9 @@
     "where": "Sec. 2 Model Architecture"
    },
    "inherits": {
-    "ancestor": "",
-    "quote": "",
-    "where": ""
+    "ancestor": "Transformer (Vaswani et al., 2017)",
+    "quote": "uses a standard Transformer model architecture \\citep{vaswani2017} in a decoder-only setup",
+    "where": "Sec. 2 Model Architecture"
    },
    "configs": [
     {
@@ -174,7 +178,7 @@
      "n_kv_heads": {
       "value": "1",
       "status": "stated",
-      "quote": "``key'' and ``value'' are projected to $[1, h]$, but ``query'' is still projected to shape $[k, h]$",
+      "quote": "Here, the key/value projections are shared for each head, i.e. ``key'' and ``value'' are projected to $[1, h]$",
       "where": "Sec. 2 Multi-Query Attention"
      },
      "head_dim": {
@@ -225,7 +229,7 @@
      "n_kv_heads": {
       "value": "1",
       "status": "stated",
-      "quote": "``key'' and ``value'' are projected to $[1, h]$, but ``query'' is still projected to shape $[k, h]$",
+      "quote": "Here, the key/value projections are shared for each head, i.e. ``key'' and ``value'' are projected to $[1, h]$",
       "where": "Sec. 2 Multi-Query Attention"
      },
      "head_dim": {
@@ -276,7 +280,7 @@
      "n_kv_heads": {
       "value": "1",
       "status": "stated",
-      "quote": "``key'' and ``value'' are projected to $[1, h]$, but ``query'' is still projected to shape $[k, h]$",
+      "quote": "Here, the key/value projections are shared for each head, i.e. ``key'' and ``value'' are projected to $[1, h]$",
       "where": "Sec. 2 Multi-Query Attention"
      },
      "head_dim": {
@@ -316,7 +320,7 @@
     "norm_placement": {
      "value": "pre",
      "status": "stated",
-     "quote": "y = x + \\textrm{MLP}(\\textrm{LayerNorm}(x)) + \\textrm{Attention}(\\textrm{LayerNorm}(x))",
+     "quote": "\\[y = x + \\textrm{MLP}(\\textrm{LayerNorm}(x)) + \\textrm{Attention}(\\textrm{LayerNorm}(x))\\]",
      "where": "Sec. 2 Parallel Layers"
     },
     "norm_eps": {
@@ -358,7 +362,7 @@
     "residual": {
      "value": "residual",
      "status": "stated",
-     "quote": "y = x + \\textrm{MLP}(\\textrm{LayerNorm}(x)) + \\textrm{Attention}(\\textrm{LayerNorm}(x))",
+     "quote": "\\[y = x + \\textrm{MLP}(\\textrm{LayerNorm}(x)) + \\textrm{Attention}(\\textrm{LayerNorm}(x))\\]",
      "where": "Sec. 2 Parallel Layers"
     },
     "parallel_block": {
@@ -432,26 +436,18 @@
     {
      "subgraph": "embed",
      "op": "embedding",
-     "role": "token embedding (shared with output head)",
+     "role": "token embedding (shared with output head, no norm/scale on embeddings)",
      "inputs": [
       "tokens"
      ],
      "output": "x",
-     "attributes": [
-      {
-       "name": "tied_to",
-       "value": "token_embd",
-       "status": "stated",
-       "quote": "We share the input and output embedding matrices",
-       "where": "Sec. 2 Shared Input-Output Embeddings"
-      }
-     ],
+     "attributes": [],
      "new_op": ""
     },
     {
      "subgraph": "block",
      "op": "layernorm",
-     "role": "shared pre-norm for parallel attention and MLP (scale only, no bias)",
+     "role": "single pre-norm shared by attention and MLP branches (scale only, no bias)",
      "inputs": [
       "x"
      ],
@@ -477,7 +473,7 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "query projection",
+     "role": "query projection (n_heads x head_dim)",
      "inputs": [
       "h"
      ],
@@ -487,8 +483,8 @@
        "name": "out",
        "value": "4096",
        "status": "stated",
-       "quote": "``query'' is still projected to shape $[k, h]$",
-       "where": "Sec. 2 Multi-Query Attention"
+       "quote": "\\ournameshort{}~8B & $32$ & $16$  & $4096$",
+       "where": "Table model-hyperparams"
       },
       {
        "name": "bias",
@@ -503,7 +499,7 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "shared key projection (multi-query)",
+     "role": "shared key projection (multi-query, one head)",
      "inputs": [
       "h"
      ],
@@ -513,8 +509,8 @@
        "name": "out",
        "value": "256",
        "status": "stated",
-       "quote": "``key'' and ``value'' are projected to $[1, h]$",
-       "where": "Sec. 2 Multi-Query Attention"
+       "quote": "attention head size is always 256",
+       "where": "Table model-hyperparams caption"
       },
       {
        "name": "bias",
@@ -529,7 +525,7 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "shared value projection (multi-query)",
+     "role": "shared value projection (multi-query, one head)",
      "inputs": [
       "h"
      ],
@@ -539,8 +535,8 @@
        "name": "out",
        "value": "256",
        "status": "stated",
-       "quote": "``key'' and ``value'' are projected to $[1, h]$",
-       "where": "Sec. 2 Multi-Query Attention"
+       "quote": "attention head size is always 256",
+       "where": "Table model-hyperparams caption"
       },
       {
        "name": "bias",
@@ -635,7 +631,7 @@
     {
      "subgraph": "block",
      "op": "attention",
-     "role": "causal multi-query self-attention",
+     "role": "causal multi-query attention",
      "inputs": [
       "q_r",
       "k_r",
@@ -654,7 +650,7 @@
        "name": "kv_heads",
        "value": "1",
        "status": "stated",
-       "quote": "``key'' and ``value'' are projected to $[1, h]$",
+       "quote": "Here, the key/value projections are shared for each head, i.e. ``key'' and ``value'' are projected to $[1, h]$",
        "where": "Sec. 2 Multi-Query Attention"
       },
       {
@@ -675,7 +671,7 @@
        "name": "causal",
        "value": "true",
        "status": "stated",
-       "quote": "each timestep can only attend to itself and past timesteps",
+       "quote": "in a decoder-only setup (i.e., each timestep can only attend to itself and past timesteps)",
        "where": "Sec. 2 Model Architecture"
       },
       {
@@ -724,7 +720,7 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "SwiGLU gate projection (xW)",
+     "role": "SwiGLU gate projection xW",
      "inputs": [
       "h"
      ],
@@ -750,7 +746,7 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "SwiGLU up projection (xV)",
+     "role": "SwiGLU up projection xV",
      "inputs": [
       "h"
      ],
@@ -787,7 +783,7 @@
     {
      "subgraph": "block",
      "op": "mul",
-     "role": "gating product",
+     "role": "gate times up",
      "inputs": [
       "g_act",
       "u"
@@ -849,7 +845,7 @@
     {
      "subgraph": "head",
      "op": "linear",
-     "role": "tied output projection to vocabulary",
+     "role": "output logits with tied embedding",
      "inputs": [
       "x"
      ],
@@ -875,7 +871,7 @@
     {
      "subgraph": "head",
      "op": "affine",
-     "role": "scale pre-softmax logits by 1/sqrt(embedding size)",
+     "role": "scale pre-softmax logits by 1/sqrt(d_model)",
      "inputs": [
       "logits_raw"
      ],
@@ -883,7 +879,7 @@
      "attributes": [
       {
        "name": "scale",
-       "value": "0.015625",
+       "value": "1/sqrt(n)",
        "status": "stated",
        "quote": "Because the input and output embedding layers are shared, we scale the pre-softmax output logits by $1/\\sqrt{n}$, where $n$ is the embedding size.",
        "where": "Sec. 5 Weight initialization"
@@ -901,12 +897,18 @@
    ],
    "new_ops": [],
    "mechanisms_outside_ir": [],
-   "notes": "Described PaLM 8B as primary; 62B and 540B differ only in sizes. Layer norms have a learned scale but no bias, so norm is given as other:. The parallel formula applies LayerNorm(x) to both branches; it is modelled as one shared norm, though the paper does not say whether the two norms share parameters. d_ff is derived from the caption rule d_ff = 4*d_model. q out = 16*256 = 4096 for 8B. The head scale 0.015625 = 1/sqrt(4096) is derived from the stated rule 1/sqrt(n). The paper does not state a final norm before the head, so none is included. Layernorm eps, RoPE pairing, theta and fraction, and the attention scale are not stated. Vocab '256k' is read as 256000."
+   "notes": "Paper's own model family PaLM 8B/62B/540B (headline 540B); block_ops attribute sizes use 8B. d_ff values derived from the stated rule d_ff = 4 x d_model (number not written literally). Vocab '256k' given as 256000; exact count not stated. Norm is LayerNorm without bias (scale only), mapped to other:. A single shared pre-LayerNorm is implied by the parallel formula LayerNorm(x) feeding both branches. A final LayerNorm before the head is not stated and is omitted. RoPE theta, pairing and fraction, attention scale and norm eps are not stated. For 540B, n_heads x head_dim (12288) differs from d_model (18432), as the table states head size is always 256."
   },
   "verification": {
    "errors": [],
    "warnings": [],
-   "inherits": null,
+   "inherits": {
+    "ancestor": "Transformer (Vaswani et al., 2017)",
+    "resolved": "transformer",
+    "quote": "uses a standard Transformer model architecture \\citep{vaswani2017} in a decoder-only setup",
+    "where": "Sec. 2 Model Architecture",
+    "quote_found": true
+   },
    "family": {
     "value": "decoder_only",
     "status": "stated",
@@ -945,7 +947,7 @@
      "n_kv_heads": {
       "value": "1",
       "status": "stated",
-      "quote": "``key'' and ``value'' are projected to $[1, h]$, but ``query'' is still projected to shape $[k, h]$",
+      "quote": "Here, the key/value projections are shared for each head, i.e. ``key'' and ``value'' are projected to $[1, h]$",
       "where": "Sec. 2 Multi-Query Attention",
       "reasons": [],
       "check": "verified"
@@ -1032,7 +1034,7 @@
      "n_kv_heads": {
       "value": "1",
       "status": "stated",
-      "quote": "``key'' and ``value'' are projected to $[1, h]$, but ``query'' is still projected to shape $[k, h]$",
+      "quote": "Here, the key/value projections are shared for each head, i.e. ``key'' and ``value'' are projected to $[1, h]$",
       "where": "Sec. 2 Multi-Query Attention",
       "reasons": [],
       "check": "verified"
@@ -1119,7 +1121,7 @@
      "n_kv_heads": {
       "value": "1",
       "status": "stated",
-      "quote": "``key'' and ``value'' are projected to $[1, h]$, but ``query'' is still projected to shape $[k, h]$",
+      "quote": "Here, the key/value projections are shared for each head, i.e. ``key'' and ``value'' are projected to $[1, h]$",
       "where": "Sec. 2 Multi-Query Attention",
       "reasons": [],
       "check": "verified"
@@ -1191,7 +1193,7 @@
     "norm_placement": {
      "value": "pre",
      "status": "stated",
-     "quote": "y = x + \\textrm{MLP}(\\textrm{LayerNorm}(x)) + \\textrm{Attention}(\\textrm{LayerNorm}(x))",
+     "quote": "\\[y = x + \\textrm{MLP}(\\textrm{LayerNorm}(x)) + \\textrm{Attention}(\\textrm{LayerNorm}(x))\\]",
      "where": "Sec. 2 Parallel Layers",
      "reasons": [],
      "check": "quote_only"
@@ -1247,7 +1249,7 @@
     "residual": {
      "value": "residual",
      "status": "stated",
-     "quote": "y = x + \\textrm{MLP}(\\textrm{LayerNorm}(x)) + \\textrm{Attention}(\\textrm{LayerNorm}(x))",
+     "quote": "\\[y = x + \\textrm{MLP}(\\textrm{LayerNorm}(x)) + \\textrm{Attention}(\\textrm{LayerNorm}(x))\\]",
      "where": "Sec. 2 Parallel Layers",
      "reasons": [
       "the quote does not name residual (looked for /residual|skip/)"
@@ -1349,30 +1351,20 @@
      "i": 0,
      "subgraph": "embed",
      "op": "embedding",
-     "role": "token embedding (shared with output head)",
+     "role": "token embedding (shared with output head, no norm/scale on embeddings)",
      "inputs": [
       "tokens"
      ],
      "output": "x",
      "new_op": "",
-     "attributes": [
-      {
-       "value": "token_embd",
-       "status": "stated",
-       "quote": "We share the input and output embedding matrices",
-       "where": "Sec. 2 Shared Input-Output Embeddings",
-       "reasons": [],
-       "check": "quote_only",
-       "name": "tied_to"
-      }
-     ],
+     "attributes": [],
      "errors": []
     },
     {
      "i": 1,
      "subgraph": "block",
      "op": "layernorm",
-     "role": "shared pre-norm for parallel attention and MLP (scale only, no bias)",
+     "role": "single pre-norm shared by attention and MLP branches (scale only, no bias)",
      "inputs": [
       "x"
      ],
@@ -1404,7 +1396,7 @@
      "i": 2,
      "subgraph": "block",
      "op": "linear",
-     "role": "query projection",
+     "role": "query projection (n_heads x head_dim)",
      "inputs": [
       "h"
      ],
@@ -1414,12 +1406,10 @@
       {
        "value": "4096",
        "status": "stated",
-       "quote": "``query'' is still projected to shape $[k, h]$",
-       "where": "Sec. 2 Multi-Query Attention",
-       "reasons": [
-        "4096 does not occur in its quote"
-       ],
-       "check": "unverified",
+       "quote": "\\ournameshort{}~8B & $32$ & $16$  & $4096$",
+       "where": "Table model-hyperparams",
+       "reasons": [],
+       "check": "verified",
        "name": "out"
       },
       {
@@ -1438,7 +1428,7 @@
      "i": 3,
      "subgraph": "block",
      "op": "linear",
-     "role": "shared key projection (multi-query)",
+     "role": "shared key projection (multi-query, one head)",
      "inputs": [
       "h"
      ],
@@ -1448,12 +1438,10 @@
       {
        "value": "256",
        "status": "stated",
-       "quote": "``key'' and ``value'' are projected to $[1, h]$",
-       "where": "Sec. 2 Multi-Query Attention",
-       "reasons": [
-        "256 does not occur in its quote"
-       ],
-       "check": "unverified",
+       "quote": "attention head size is always 256",
+       "where": "Table model-hyperparams caption",
+       "reasons": [],
+       "check": "verified",
        "name": "out"
       },
       {
@@ -1472,7 +1460,7 @@
      "i": 4,
      "subgraph": "block",
      "op": "linear",
-     "role": "shared value projection (multi-query)",
+     "role": "shared value projection (multi-query, one head)",
      "inputs": [
       "h"
      ],
@@ -1482,12 +1470,10 @@
       {
        "value": "256",
        "status": "stated",
-       "quote": "``key'' and ``value'' are projected to $[1, h]$",
-       "where": "Sec. 2 Multi-Query Attention",
-       "reasons": [
-        "256 does not occur in its quote"
-       ],
-       "check": "unverified",
+       "quote": "attention head size is always 256",
+       "where": "Table model-hyperparams caption",
+       "reasons": [],
+       "check": "verified",
        "name": "out"
       },
       {
@@ -1610,7 +1596,7 @@
      "i": 7,
      "subgraph": "block",
      "op": "attention",
-     "role": "causal multi-query self-attention",
+     "role": "causal multi-query attention",
      "inputs": [
       "q_r",
       "k_r",
@@ -1631,7 +1617,7 @@
       {
        "value": "1",
        "status": "stated",
-       "quote": "``key'' and ``value'' are projected to $[1, h]$",
+       "quote": "Here, the key/value projections are shared for each head, i.e. ``key'' and ``value'' are projected to $[1, h]$",
        "where": "Sec. 2 Multi-Query Attention",
        "reasons": [],
        "check": "verified",
@@ -1658,7 +1644,7 @@
       {
        "value": "true",
        "status": "stated",
-       "quote": "each timestep can only attend to itself and past timesteps",
+       "quote": "in a decoder-only setup (i.e., each timestep can only attend to itself and past timesteps)",
        "where": "Sec. 2 Model Architecture",
        "reasons": [],
        "check": "quote_only",
@@ -1723,7 +1709,7 @@
      "i": 9,
      "subgraph": "block",
      "op": "linear",
-     "role": "SwiGLU gate projection (xW)",
+     "role": "SwiGLU gate projection xW",
      "inputs": [
       "h"
      ],
@@ -1757,7 +1743,7 @@
      "i": 10,
      "subgraph": "block",
      "op": "linear",
-     "role": "SwiGLU up projection (xV)",
+     "role": "SwiGLU up projection xV",
      "inputs": [
       "h"
      ],
@@ -1804,7 +1790,7 @@
      "i": 12,
      "subgraph": "block",
      "op": "mul",
-     "role": "gating product",
+     "role": "gate times up",
      "inputs": [
       "g_act",
       "u"
@@ -1878,7 +1864,7 @@
      "i": 16,
      "subgraph": "head",
      "op": "linear",
-     "role": "tied output projection to vocabulary",
+     "role": "output logits with tied embedding",
      "inputs": [
       "x"
      ],
@@ -1910,7 +1896,7 @@
      "i": 17,
      "subgraph": "head",
      "op": "affine",
-     "role": "scale pre-softmax logits by 1/sqrt(embedding size)",
+     "role": "scale pre-softmax logits by 1/sqrt(d_model)",
      "inputs": [
       "logits_raw"
      ],
@@ -1918,14 +1904,12 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "0.015625",
+       "value": "1/sqrt(n)",
        "status": "stated",
        "quote": "Because the input and output embedding layers are shared, we scale the pre-softmax output logits by $1/\\sqrt{n}$, where $n$ is the embedding size.",
        "where": "Sec. 5 Weight initialization",
-       "reasons": [
-        "0.015625 does not occur in its quote"
-       ],
-       "check": "unverified",
+       "reasons": [],
+       "check": "verified",
        "name": "scale"
       },
       {
@@ -1946,9 +1930,9 @@
    "mechanisms_outside_ir": [],
    "summary": {
     "counts": {
-     "verified": 28,
-     "quote_only": 21,
-     "unverified": 11,
+     "verified": 32,
+     "quote_only": 20,
+     "unverified": 7,
      "not_stated": 21
     },
     "unverified": [
@@ -1977,24 +1961,6 @@
       ]
      },
      {
-      "field": "block_ops[2].out",
-      "reasons": [
-       "4096 does not occur in its quote"
-      ]
-     },
-     {
-      "field": "block_ops[3].out",
-      "reasons": [
-       "256 does not occur in its quote"
-      ]
-     },
-     {
-      "field": "block_ops[4].out",
-      "reasons": [
-       "256 does not occur in its quote"
-      ]
-     },
-     {
       "field": "block_ops[7].window",
       "reasons": [
        "0 does not occur in its quote"
@@ -2010,12 +1976,6 @@
       "field": "block_ops[10].out",
       "reasons": [
        "16384 does not occur in its quote"
-      ]
-     },
-     {
-      "field": "block_ops[17].scale",
-      "reasons": [
-       "0.015625 does not occur in its quote"
       ]
      }
     ],

@@ -92,28 +92,22 @@
  ],
  "mechanism_scan": [
   {
-   "mechanism": "Inference-only context extension via dynamic NTK-aware interpolation (adjusts RoPE base by chunks)",
+   "mechanism": "Inference-only context extension: dynamic NTK-aware interpolation of the RoPE base (training-free)",
    "where": "llm extraction, verified quote, Sec. Context Length Extension",
    "blocking": true,
-   "evidence": "To further improve performance, we have also implemented a trivial extension called dynamic NTK-aware interpolation, which is later formally discussed in~\\citep{yarn}."
+   "evidence": "In this work, we have implemented simple training-free techniques that are solely applied during inference to extend the context length of the model. One of the key techniques we have used is NTK-aware interpolation~\\citep{ntk}."
   },
   {
-   "mechanism": "Inference-only LogN-Scaling of attention logits by context/training length ratio",
+   "mechanism": "Inference-only LogN-Scaling of attention logits and layer-wise window attention with different window sizes per layer",
    "where": "llm extraction, verified quote, Sec. Context Length Extension",
    "blocking": true,
-   "evidence": "LogN-Scaling rescales the dot product of the query and value by a factor that depends on the ratio of the context length to the training length"
+   "evidence": "To leverage this observation, we assign different window sizes to each layer, using shorter windows for lower layers and longer windows for higher layers."
   },
   {
-   "mechanism": "Inference-only layer-wise window attention (shorter windows in lower layers), sizes not given",
-   "where": "llm extraction, verified quote, Sec. Context Length Extension",
-   "blocking": true,
-   "evidence": "we assign different window sizes to each layer, using shorter windows for lower layers and longer windows for higher layers."
-  },
-  {
-   "mechanism": "RoPE inverse frequencies kept in FP32",
+   "mechanism": "FP32 inverse frequency matrix for RoPE (numerical precision detail)",
    "where": "llm extraction, verified quote, Sec. Architecture",
    "blocking": true,
-   "evidence": "we have opted to use FP32 precision for the inverse frequency matrix, rather than BF16 or FP16"
+   "evidence": "In particular, we have opted to use FP32 precision for the inverse frequency matrix, rather than BF16 or FP16, in order to prioritize model performance and achieve higher accuracy."
   }
  ],
  "source": {
@@ -121,24 +115,24 @@
   "sent_sha256": "596a69edc440a12f4b6fe1a24cb8c5da375c9599798c80f5259de27636e5e61a",
   "from": "https://arxiv.org/e-print/2309.16609",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
   "n_calls": 1,
-  "cost_usd": 0.0,
+  "cost_usd": 0.471724,
   "request_ids": [
-   "req_011CgFcogSpBUqNCg2kokJzk"
+   "req_011CgFiGyUbNpwg77oUHcpGo"
   ]
  },
  "llm": {
   "output": {
    "title": "Qwen Technical Report",
-   "model_name": "Qwen (base pretrained language models)",
+   "model_name": "Qwen (base pretrained LM; 1.8B / 7B / 14B)",
    "family": {
     "value": "decoder_only",
     "status": "stated",
-    "quote": "To train \\qwen{}, we follow the standard approach of autoregressive language modeling, as described in~\\citet{gpt}.",
+    "quote": "To train \\qwen{}, we follow the standard approach of autoregressive language modeling, as described in~\\citet{gpt}. This involves training the model to predict the next token based on the context provided by the previous tokens.",
     "where": "Sec. Training"
    },
    "inherits": {
@@ -312,7 +306,7 @@
     "norm_placement": {
      "value": "pre",
      "status": "stated",
-     "quote": "\\textbf{Pre-Norm \\& RMSNorm}. In modern Transformer models, pre-normalization is the most widely used approach",
+     "quote": "In modern Transformer models, pre-normalization is the most widely used approach, which has been shown to improve training stability compared to post-normalization.",
      "where": "Sec. Architecture"
     },
     "norm_eps": {
@@ -358,10 +352,10 @@
      "where": "Sec. Architecture"
     },
     "parallel_block": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": ""
+     "value": "false",
+     "status": "inherited",
+     "quote": "Specifically, we have adopted the recent open-source approach of training large language models, LLaMA~\\citep{llama}, which is widely regarded as the top open-source LLM.",
+     "where": "Sec. Architecture"
     },
     "attention": {
      "value": "exact",
@@ -390,20 +384,20 @@
     "mlp_bias": {
      "value": "false",
      "status": "stated",
-     "quote": "For most layers, we remove biases following \\citet{palm}",
+     "quote": "For most layers, we remove biases following \\citet{palm}, but we add biases in the QKV layer of attention",
      "where": "Sec. Architecture"
     },
     "tied_embeddings": {
      "value": "false",
      "status": "stated",
-     "quote": "we have opted for the untied embedding approach instead of tying the weights of input embedding and output projection",
+     "quote": "Based on preliminary experimental findings, we have opted for the untied embedding approach instead of tying the weights of input embedding and output projection.",
      "where": "Sec. Architecture"
     },
     "moe": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": ""
+     "value": "false",
+     "status": "inherited",
+     "quote": "Specifically, we have adopted the recent open-source approach of training large language models, LLaMA~\\citep{llama}, which is widely regarded as the top open-source LLM.",
+     "where": "Sec. Architecture"
     },
     "n_experts": {
      "value": "",
@@ -443,7 +437,7 @@
      "inputs": [
       "x"
      ],
-     "output": "h",
+     "output": "h1",
      "attributes": [
       {
        "name": "eps",
@@ -460,7 +454,7 @@
      "op": "linear",
      "role": "fused QKV projection with bias",
      "inputs": [
-      "h"
+      "h1"
      ],
      "output": "qkv",
      "attributes": [
@@ -503,51 +497,12 @@
     {
      "subgraph": "block",
      "op": "rope",
-     "role": "rotary embedding on q",
+     "role": "rotary position embedding on q and k",
      "inputs": [
-      "q"
-     ],
-     "output": "q_r",
-     "attributes": [
-      {
-       "name": "rope_heads",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      },
-      {
-       "name": "pairing",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      },
-      {
-       "name": "n_rot",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      },
-      {
-       "name": "theta",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      }
-     ],
-     "new_op": ""
-    },
-    {
-     "subgraph": "block",
-     "op": "rope",
-     "role": "rotary embedding on k",
-     "inputs": [
+      "q",
       "k"
      ],
-     "output": "k_r",
+     "output": "q_r,k_r",
      "attributes": [
       {
        "name": "rope_heads",
@@ -583,7 +538,7 @@
     {
      "subgraph": "block",
      "op": "attention",
-     "role": "causal multi-head self-attention",
+     "role": "causal self-attention",
      "inputs": [
       "q_r",
       "k_r",
@@ -646,7 +601,7 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "attention output projection",
+     "role": "attention output projection (no bias)",
      "inputs": [
       "a"
      ],
@@ -658,13 +613,6 @@
        "status": "stated",
        "quote": "For most layers, we remove biases following \\citet{palm}",
        "where": "Sec. Architecture"
-      },
-      {
-       "name": "out",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
       }
      ],
      "new_op": ""
@@ -677,7 +625,7 @@
       "x",
       "o"
      ],
-     "output": "x1",
+     "output": "x2",
      "attributes": [],
      "new_op": ""
     },
@@ -686,7 +634,7 @@
      "op": "rmsnorm",
      "role": "pre-FFN norm",
      "inputs": [
-      "x1"
+      "x2"
      ],
      "output": "h2",
      "attributes": [
@@ -790,13 +738,6 @@
        "status": "stated",
        "quote": "For most layers, we remove biases following \\citet{palm}",
        "where": "Sec. Architecture"
-      },
-      {
-       "name": "out",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
       }
      ],
      "new_op": ""
@@ -806,7 +747,7 @@
      "op": "add",
      "role": "FFN residual",
      "inputs": [
-      "x1",
+      "x2",
       "f"
      ],
      "output": "x",
@@ -816,7 +757,7 @@
     {
      "subgraph": "head",
      "op": "rmsnorm",
-     "role": "final norm (assumed for pre-norm stack; not explicitly stated)",
+     "role": "final norm (not explicitly described in the paper)",
      "inputs": [
       "x"
      ],
@@ -842,17 +783,17 @@
      "output": "logits",
      "attributes": [
       {
-       "name": "tied_to",
-       "value": "",
-       "status": "stated",
-       "quote": "we have opted for the untied embedding approach instead of tying the weights of input embedding and output projection",
-       "where": "Sec. Architecture"
-      },
-      {
        "name": "bias",
        "value": "false",
        "status": "stated",
        "quote": "For most layers, we remove biases following \\citet{palm}",
+       "where": "Sec. Architecture"
+      },
+      {
+       "name": "tied_to",
+       "value": "none",
+       "status": "stated",
+       "quote": "we have opted for the untied embedding approach instead of tying the weights of input embedding and output projection.",
        "where": "Sec. Architecture"
       }
      ],
@@ -862,27 +803,22 @@
    "new_ops": [],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "Inference-only context extension via dynamic NTK-aware interpolation (adjusts RoPE base by chunks)",
-     "quote": "To further improve performance, we have also implemented a trivial extension called dynamic NTK-aware interpolation, which is later formally discussed in~\\citep{yarn}.",
+     "mechanism": "Inference-only context extension: dynamic NTK-aware interpolation of the RoPE base (training-free)",
+     "quote": "In this work, we have implemented simple training-free techniques that are solely applied during inference to extend the context length of the model. One of the key techniques we have used is NTK-aware interpolation~\\citep{ntk}.",
      "where": "Sec. Context Length Extension"
     },
     {
-     "mechanism": "Inference-only LogN-Scaling of attention logits by context/training length ratio",
-     "quote": "LogN-Scaling rescales the dot product of the query and value by a factor that depends on the ratio of the context length to the training length",
+     "mechanism": "Inference-only LogN-Scaling of attention logits and layer-wise window attention with different window sizes per layer",
+     "quote": "To leverage this observation, we assign different window sizes to each layer, using shorter windows for lower layers and longer windows for higher layers.",
      "where": "Sec. Context Length Extension"
     },
     {
-     "mechanism": "Inference-only layer-wise window attention (shorter windows in lower layers), sizes not given",
-     "quote": "we assign different window sizes to each layer, using shorter windows for lower layers and longer windows for higher layers.",
-     "where": "Sec. Context Length Extension"
-    },
-    {
-     "mechanism": "RoPE inverse frequencies kept in FP32",
-     "quote": "we have opted to use FP32 precision for the inverse frequency matrix, rather than BF16 or FP16",
+     "mechanism": "FP32 inverse frequency matrix for RoPE (numerical precision detail)",
+     "quote": "In particular, we have opted to use FP32 precision for the inverse frequency matrix, rather than BF16 or FP16, in order to prioritize model performance and achieve higher accuracy.",
      "where": "Sec. Architecture"
     }
    ],
-   "notes": "Described the base Qwen pretrained LM; three sizes (1.8B, 7B, 14B) from Table tab:model-size, primary = 1.8B. Paper says it follows LLaMA but restates/modifies components; no values were filled by inheritance. d_ff left not_stated: paper only says FFN reduced to 8/3 of hidden size (8/3*2048 is not an integer, exact size not given). Vocab is only 'approximately 152K', so left not_stated. KV heads, head_dim, norm eps, RoPE theta/pairing not given. QKV described as a single 'QKV layer', modelled as fused linear + split. Final norm before head is not explicitly mentioned. Window attention, LogN and NTK scaling are inference-time only, so training attention is full causal."
+   "notes": "Described the base pretrained Qwen model (Table tab:model-size lists 1.8B, 7B, 14B; 1.8B taken as primary). Training uses full causal attention; window attention, LogN scaling and dynamic NTK are inference-only extensions and are listed outside the IR. d_ff is given only as a ratio ('8/3 of the hidden size'), not as an exact number, so it is not_stated. Vocabulary is 'approximately 152K', so no exact value is given. n_kv_heads, head_dim, norm eps, RoPE theta and pairing are not stated. parallel_block=false and moe=false are inherited from the LLaMA adoption sentence. The final norm in the head follows the LLaMA convention but is not described in the paper. Attention heads in block_ops use the 1.8B values."
   },
   "verification": {
    "errors": [],
@@ -897,7 +833,7 @@
    "family": {
     "value": "decoder_only",
     "status": "stated",
-    "quote": "To train \\qwen{}, we follow the standard approach of autoregressive language modeling, as described in~\\citet{gpt}.",
+    "quote": "To train \\qwen{}, we follow the standard approach of autoregressive language modeling, as described in~\\citet{gpt}. This involves training the model to predict the next token based on the context provided by the previous tokens.",
     "where": "Sec. Training",
     "reasons": [],
     "check": "quote_only"
@@ -1136,7 +1072,7 @@
     "norm_placement": {
      "value": "pre",
      "status": "stated",
-     "quote": "\\textbf{Pre-Norm \\& RMSNorm}. In modern Transformer models, pre-normalization is the most widely used approach",
+     "quote": "In modern Transformer models, pre-normalization is the most widely used approach, which has been shown to improve training stability compared to post-normalization.",
      "where": "Sec. Architecture",
      "reasons": [],
      "check": "quote_only"
@@ -1200,12 +1136,14 @@
      "check": "unverified"
     },
     "parallel_block": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": "",
-     "reasons": [],
-     "check": "not_stated"
+     "value": "false",
+     "status": "inherited",
+     "quote": "Specifically, we have adopted the recent open-source approach of training large language models, LLaMA~\\citep{llama}, which is widely regarded as the top open-source LLM.",
+     "where": "Sec. Architecture",
+     "reasons": [
+      "inherited from llama, whose curated entry has no parallel_block"
+     ],
+     "check": "unverified"
     },
     "attention": {
      "value": "exact",
@@ -1242,7 +1180,7 @@
     "mlp_bias": {
      "value": "false",
      "status": "stated",
-     "quote": "For most layers, we remove biases following \\citet{palm}",
+     "quote": "For most layers, we remove biases following \\citet{palm}, but we add biases in the QKV layer of attention",
      "where": "Sec. Architecture",
      "reasons": [],
      "check": "quote_only"
@@ -1250,18 +1188,20 @@
     "tied_embeddings": {
      "value": "false",
      "status": "stated",
-     "quote": "we have opted for the untied embedding approach instead of tying the weights of input embedding and output projection",
+     "quote": "Based on preliminary experimental findings, we have opted for the untied embedding approach instead of tying the weights of input embedding and output projection.",
      "where": "Sec. Architecture",
      "reasons": [],
      "check": "quote_only"
     },
     "moe": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": "",
-     "reasons": [],
-     "check": "not_stated"
+     "value": "false",
+     "status": "inherited",
+     "quote": "Specifically, we have adopted the recent open-source approach of training large language models, LLaMA~\\citep{llama}, which is widely regarded as the top open-source LLM.",
+     "where": "Sec. Architecture",
+     "reasons": [
+      "inherited from llama, whose curated entry has no moe"
+     ],
+     "check": "unverified"
     },
     "n_experts": {
      "value": "",
@@ -1311,7 +1251,7 @@
      "inputs": [
       "x"
      ],
-     "output": "h",
+     "output": "h1",
      "new_op": "",
      "attributes": [
       {
@@ -1332,7 +1272,7 @@
      "op": "linear",
      "role": "fused QKV projection with bias",
      "inputs": [
-      "h"
+      "h1"
      ],
      "output": "qkv",
      "new_op": "",
@@ -1385,11 +1325,12 @@
      "i": 4,
      "subgraph": "block",
      "op": "rope",
-     "role": "rotary embedding on q",
+     "role": "rotary position embedding on q and k",
      "inputs": [
-      "q"
+      "q",
+      "k"
      ],
-     "output": "q_r",
+     "output": "q_r,k_r",
      "new_op": "",
      "attributes": [
       {
@@ -1434,58 +1375,8 @@
     {
      "i": 5,
      "subgraph": "block",
-     "op": "rope",
-     "role": "rotary embedding on k",
-     "inputs": [
-      "k"
-     ],
-     "output": "k_r",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "rope_heads"
-      },
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "pairing"
-      },
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "n_rot"
-      },
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "theta"
-      }
-     ],
-     "errors": []
-    },
-    {
-     "i": 6,
-     "subgraph": "block",
      "op": "attention",
-     "role": "causal multi-head self-attention",
+     "role": "causal self-attention",
      "inputs": [
       "q_r",
       "k_r",
@@ -1561,10 +1452,10 @@
      "errors": []
     },
     {
-     "i": 7,
+     "i": 6,
      "subgraph": "block",
      "op": "linear",
-     "role": "attention output projection",
+     "role": "attention output projection (no bias)",
      "inputs": [
       "a"
      ],
@@ -1579,21 +1470,12 @@
        "reasons": [],
        "check": "quote_only",
        "name": "bias"
-      },
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "out"
       }
      ],
      "errors": []
     },
     {
-     "i": 8,
+     "i": 7,
      "subgraph": "block",
      "op": "add",
      "role": "attention residual",
@@ -1601,18 +1483,18 @@
       "x",
       "o"
      ],
-     "output": "x1",
+     "output": "x2",
      "new_op": "",
      "attributes": [],
      "errors": []
     },
     {
-     "i": 9,
+     "i": 8,
      "subgraph": "block",
      "op": "rmsnorm",
      "role": "pre-FFN norm",
      "inputs": [
-      "x1"
+      "x2"
      ],
      "output": "h2",
      "new_op": "",
@@ -1630,7 +1512,7 @@
      "errors": []
     },
     {
-     "i": 10,
+     "i": 9,
      "subgraph": "block",
      "op": "linear",
      "role": "FFN gate projection",
@@ -1662,7 +1544,7 @@
      "errors": []
     },
     {
-     "i": 11,
+     "i": 10,
      "subgraph": "block",
      "op": "linear",
      "role": "FFN up projection",
@@ -1694,7 +1576,7 @@
      "errors": []
     },
     {
-     "i": 12,
+     "i": 11,
      "subgraph": "block",
      "op": "silu",
      "role": "Swish on gate",
@@ -1707,7 +1589,7 @@
      "errors": []
     },
     {
-     "i": 13,
+     "i": 12,
      "subgraph": "block",
      "op": "mul",
      "role": "GLU gating",
@@ -1721,7 +1603,7 @@
      "errors": []
     },
     {
-     "i": 14,
+     "i": 13,
      "subgraph": "block",
      "op": "linear",
      "role": "FFN down projection",
@@ -1739,26 +1621,17 @@
        "reasons": [],
        "check": "quote_only",
        "name": "bias"
-      },
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "out"
       }
      ],
      "errors": []
     },
     {
-     "i": 15,
+     "i": 14,
      "subgraph": "block",
      "op": "add",
      "role": "FFN residual",
      "inputs": [
-      "x1",
+      "x2",
       "f"
      ],
      "output": "x",
@@ -1767,10 +1640,10 @@
      "errors": []
     },
     {
-     "i": 16,
+     "i": 15,
      "subgraph": "head",
      "op": "rmsnorm",
-     "role": "final norm (assumed for pre-norm stack; not explicitly stated)",
+     "role": "final norm (not explicitly described in the paper)",
      "inputs": [
       "x"
      ],
@@ -1790,7 +1663,7 @@
      "errors": []
     },
     {
-     "i": 17,
+     "i": 16,
      "subgraph": "head",
      "op": "linear",
      "role": "untied output projection to vocabulary",
@@ -1801,17 +1674,6 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "",
-       "status": "stated",
-       "quote": "we have opted for the untied embedding approach instead of tying the weights of input embedding and output projection",
-       "where": "Sec. Architecture",
-       "reasons": [
-        "status stated with an empty value"
-       ],
-       "check": "unverified",
-       "name": "tied_to"
-      },
-      {
        "value": "false",
        "status": "stated",
        "quote": "For most layers, we remove biases following \\citet{palm}",
@@ -1819,6 +1681,15 @@
        "reasons": [],
        "check": "quote_only",
        "name": "bias"
+      },
+      {
+       "value": "none",
+       "status": "stated",
+       "quote": "we have opted for the untied embedding approach instead of tying the weights of input embedding and output projection.",
+       "where": "Sec. Architecture",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "tied_to"
       }
      ],
      "errors": []
@@ -1826,26 +1697,20 @@
    ],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "Inference-only context extension via dynamic NTK-aware interpolation (adjusts RoPE base by chunks)",
-     "quote": "To further improve performance, we have also implemented a trivial extension called dynamic NTK-aware interpolation, which is later formally discussed in~\\citep{yarn}.",
+     "mechanism": "Inference-only context extension: dynamic NTK-aware interpolation of the RoPE base (training-free)",
+     "quote": "In this work, we have implemented simple training-free techniques that are solely applied during inference to extend the context length of the model. One of the key techniques we have used is NTK-aware interpolation~\\citep{ntk}.",
      "where": "Sec. Context Length Extension",
      "check": "verified"
     },
     {
-     "mechanism": "Inference-only LogN-Scaling of attention logits by context/training length ratio",
-     "quote": "LogN-Scaling rescales the dot product of the query and value by a factor that depends on the ratio of the context length to the training length",
+     "mechanism": "Inference-only LogN-Scaling of attention logits and layer-wise window attention with different window sizes per layer",
+     "quote": "To leverage this observation, we assign different window sizes to each layer, using shorter windows for lower layers and longer windows for higher layers.",
      "where": "Sec. Context Length Extension",
      "check": "verified"
     },
     {
-     "mechanism": "Inference-only layer-wise window attention (shorter windows in lower layers), sizes not given",
-     "quote": "we assign different window sizes to each layer, using shorter windows for lower layers and longer windows for higher layers.",
-     "where": "Sec. Context Length Extension",
-     "check": "verified"
-    },
-    {
-     "mechanism": "RoPE inverse frequencies kept in FP32",
-     "quote": "we have opted to use FP32 precision for the inverse frequency matrix, rather than BF16 or FP16",
+     "mechanism": "FP32 inverse frequency matrix for RoPE (numerical precision detail)",
+     "quote": "In particular, we have opted to use FP32 precision for the inverse frequency matrix, rather than BF16 or FP16, in order to prioritize model performance and achieve higher accuracy.",
      "where": "Sec. Architecture",
      "check": "verified"
     }
@@ -1853,9 +1718,9 @@
    "summary": {
     "counts": {
      "verified": 16,
-     "quote_only": 13,
-     "unverified": 2,
-     "not_stated": 45
+     "quote_only": 14,
+     "unverified": 3,
+     "not_stated": 37
     },
     "unverified": [
      {
@@ -1865,16 +1730,22 @@
       ]
      },
      {
-      "field": "block_ops[17].tied_to",
+      "field": "flavours.parallel_block",
       "reasons": [
-       "status stated with an empty value"
+       "inherited from llama, whose curated entry has no parallel_block"
+      ]
+     },
+     {
+      "field": "flavours.moe",
+      "reasons": [
+       "inherited from llama, whose curated entry has no moe"
       ]
      }
     ],
     "new_op_errors": [],
     "node_errors": [],
     "n_new_ops": 0,
-    "n_block_ops": 18
+    "n_block_ops": 17
    }
   }
  }

@@ -4,27 +4,27 @@
  "fields": {
   "d_model": {
    "value": 576,
-   "evidence": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M [Table tab:larger_architecture]",
+   "evidence": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 [Table tab:larger_architecture]",
    "verdict": "used"
   },
   "n_layers": {
    "value": 30,
-   "evidence": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M [Table tab:larger_architecture]",
+   "evidence": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 [Table tab:larger_architecture]",
    "verdict": "used"
   },
   "n_heads": {
    "value": 9,
-   "evidence": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M [Table tab:larger_architecture]",
+   "evidence": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 [Table tab:larger_architecture]",
    "verdict": "used"
   },
   "n_kv_heads": {
    "value": 3,
-   "evidence": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M [Table tab:larger_architecture]",
+   "evidence": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 [Table tab:larger_architecture]",
    "verdict": "used"
   },
   "d_ff": {
    "value": 1536,
-   "evidence": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M [Table tab:larger_architecture]",
+   "evidence": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 [Table tab:larger_architecture]",
    "verdict": "used"
   },
   "activation": {
@@ -34,7 +34,7 @@
   },
   "attention": {
    "value": "exact",
-   "evidence": "In contrast, our primary goal is to optimize model size without introducing new attention computation or efficient hardware implementation methods. [Sec. 4 Related Work]",
+   "evidence": "our primary goal is to optimize model size without introducing new attention computation or efficient hardware implementation methods [Sec. 4 Related Work]",
    "verdict": "used"
   }
  },
@@ -90,10 +90,10 @@
    "mechanism": "grouped or multi-query attention",
    "where": "llm extraction, verified quote, Table tab:larger_architecture",
    "blocking": true,
-   "evidence": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M"
+   "evidence": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536"
   },
   {
-   "mechanism": "MobileLLM-LS variant: immediate block-wise layer sharing, each block's weights computed twice in a row (2x30 layers for 125M)",
+   "mechanism": "Immediate block-wise layer sharing (MobileLLM-LS variant only): each transformer block is executed twice in a row with the same weights, doubling effective depth",
    "where": "llm extraction, verified quote, Appendix: Layer-Sharing Number Ablation",
    "blocking": true,
    "evidence": "Consequently, in our experiments, we adopt a configuration where every two blocks share weights, effectively doubling the total number of layers."
@@ -104,14 +104,14 @@
   "sent_sha256": "82cddd023d37a319413a70a1dd992416df3564959118a3f9ba4982836fa22261",
   "from": "https://arxiv.org/e-print/2402.14905",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
   "n_calls": 1,
-  "cost_usd": 0.0,
+  "cost_usd": 0.346676,
   "request_ids": [
-   "req_011CgFdBibfVnRhwDAsdMira"
+   "req_011CgFijRzkb9vsN7L52mn4N"
   ]
  },
  "llm": {
@@ -135,25 +135,25 @@
      "d_model": {
       "value": "576",
       "status": "stated",
-      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536",
       "where": "Table tab:larger_architecture"
      },
      "n_layers": {
       "value": "30",
       "status": "stated",
-      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536",
       "where": "Table tab:larger_architecture"
      },
      "n_heads": {
       "value": "9",
       "status": "stated",
-      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536",
       "where": "Table tab:larger_architecture"
      },
      "n_kv_heads": {
       "value": "3",
       "status": "stated",
-      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536",
       "where": "Table tab:larger_architecture"
      },
      "head_dim": {
@@ -165,7 +165,7 @@
      "d_ff": {
       "value": "1536",
       "status": "stated",
-      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536",
       "where": "Table tab:larger_architecture"
      },
      "vocab_size": {
@@ -186,25 +186,25 @@
      "d_model": {
       "value": "960",
       "status": "stated",
-      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560 & 345.3M",
+      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560",
       "where": "Table tab:larger_architecture"
      },
      "n_layers": {
       "value": "32",
       "status": "stated",
-      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560 & 345.3M",
+      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560",
       "where": "Table tab:larger_architecture"
      },
      "n_heads": {
       "value": "15",
       "status": "stated",
-      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560 & 345.3M",
+      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560",
       "where": "Table tab:larger_architecture"
      },
      "n_kv_heads": {
       "value": "5",
       "status": "stated",
-      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560 & 345.3M",
+      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560",
       "where": "Table tab:larger_architecture"
      },
      "head_dim": {
@@ -216,7 +216,7 @@
      "d_ff": {
       "value": "2560",
       "status": "stated",
-      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560 & 345.3M",
+      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560",
       "where": "Table tab:larger_architecture"
      },
      "vocab_size": {
@@ -237,37 +237,37 @@
      "d_model": {
       "value": "1152",
       "status": "stated",
-      "quote": "$\\ours{}$-600M & 40 & 18 & 6 & 1152 & 3072 & 603.1M",
+      "quote": "$\\ours{}$-600M & 40 & 18 & 6 & 1152 & 3072",
       "where": "Table tab:larger_architecture"
      },
      "n_layers": {
       "value": "40",
       "status": "stated",
-      "quote": "$\\ours{}$-600M & 40 & 18 & 6 & 1152 & 3072 & 603.1M",
+      "quote": "$\\ours{}$-600M & 40 & 18 & 6 & 1152 & 3072",
       "where": "Table tab:larger_architecture"
      },
      "n_heads": {
       "value": "18",
       "status": "stated",
-      "quote": "$\\ours{}$-600M & 40 & 18 & 6 & 1152 & 3072 & 603.1M",
+      "quote": "$\\ours{}$-600M & 40 & 18 & 6 & 1152 & 3072",
       "where": "Table tab:larger_architecture"
      },
      "n_kv_heads": {
       "value": "6",
       "status": "stated",
-      "quote": "$\\ours{}$-600M & 40 & 18 & 6 & 1152 & 3072 & 603.1M",
+      "quote": "$\\ours{}$-600M & 40 & 18 & 6 & 1152 & 3072",
       "where": "Table tab:larger_architecture"
      },
      "head_dim": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": ""
+      "value": "64",
+      "status": "stated",
+      "quote": "we incorporate grouped query attention with a head dimension equal to 64",
+      "where": "Appendix: Impact of Each Design Choice"
      },
      "d_ff": {
       "value": "3072",
       "status": "stated",
-      "quote": "$\\ours{}$-600M & 40 & 18 & 6 & 1152 & 3072 & 603.1M",
+      "quote": "$\\ours{}$-600M & 40 & 18 & 6 & 1152 & 3072",
       "where": "Table tab:larger_architecture"
      },
      "vocab_size": {
@@ -288,37 +288,37 @@
      "d_model": {
       "value": "1280",
       "status": "stated",
-      "quote": "$\\ours{}$-1B & 54 & 20 & 5 & 1280 & 3584 & 1.0B",
+      "quote": "$\\ours{}$-1B & 54 & 20 & 5 & 1280 & 3584",
       "where": "Table tab:larger_architecture"
      },
      "n_layers": {
       "value": "54",
       "status": "stated",
-      "quote": "$\\ours{}$-1B & 54 & 20 & 5 & 1280 & 3584 & 1.0B",
+      "quote": "$\\ours{}$-1B & 54 & 20 & 5 & 1280 & 3584",
       "where": "Table tab:larger_architecture"
      },
      "n_heads": {
       "value": "20",
       "status": "stated",
-      "quote": "$\\ours{}$-1B & 54 & 20 & 5 & 1280 & 3584 & 1.0B",
+      "quote": "$\\ours{}$-1B & 54 & 20 & 5 & 1280 & 3584",
       "where": "Table tab:larger_architecture"
      },
      "n_kv_heads": {
       "value": "5",
       "status": "stated",
-      "quote": "$\\ours{}$-1B & 54 & 20 & 5 & 1280 & 3584 & 1.0B",
+      "quote": "$\\ours{}$-1B & 54 & 20 & 5 & 1280 & 3584",
       "where": "Table tab:larger_architecture"
      },
      "head_dim": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": ""
+      "value": "64",
+      "status": "stated",
+      "quote": "we incorporate grouped query attention with a head dimension equal to 64",
+      "where": "Appendix: Impact of Each Design Choice"
      },
      "d_ff": {
       "value": "3584",
       "status": "stated",
-      "quote": "$\\ours{}$-1B & 54 & 20 & 5 & 1280 & 3584 & 1.0B",
+      "quote": "$\\ours{}$-1B & 54 & 20 & 5 & 1280 & 3584",
       "where": "Table tab:larger_architecture"
      },
      "vocab_size": {
@@ -339,37 +339,37 @@
      "d_model": {
       "value": "1600",
       "status": "stated",
-      "quote": "$\\ours{}$-1.5B & 54 & 25 & 5 & 1600 & 4352 & 1.5B",
+      "quote": "$\\ours{}$-1.5B & 54 & 25 & 5 & 1600 & 4352",
       "where": "Table tab:larger_architecture"
      },
      "n_layers": {
       "value": "54",
       "status": "stated",
-      "quote": "$\\ours{}$-1.5B & 54 & 25 & 5 & 1600 & 4352 & 1.5B",
+      "quote": "$\\ours{}$-1.5B & 54 & 25 & 5 & 1600 & 4352",
       "where": "Table tab:larger_architecture"
      },
      "n_heads": {
       "value": "25",
       "status": "stated",
-      "quote": "$\\ours{}$-1.5B & 54 & 25 & 5 & 1600 & 4352 & 1.5B",
+      "quote": "$\\ours{}$-1.5B & 54 & 25 & 5 & 1600 & 4352",
       "where": "Table tab:larger_architecture"
      },
      "n_kv_heads": {
       "value": "5",
       "status": "stated",
-      "quote": "$\\ours{}$-1.5B & 54 & 25 & 5 & 1600 & 4352 & 1.5B",
+      "quote": "$\\ours{}$-1.5B & 54 & 25 & 5 & 1600 & 4352",
       "where": "Table tab:larger_architecture"
      },
      "head_dim": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": ""
+      "value": "64",
+      "status": "stated",
+      "quote": "we incorporate grouped query attention with a head dimension equal to 64",
+      "where": "Appendix: Impact of Each Design Choice"
      },
      "d_ff": {
       "value": "4352",
       "status": "stated",
-      "quote": "$\\ours{}$-1.5B & 54 & 25 & 5 & 1600 & 4352 & 1.5B",
+      "quote": "$\\ours{}$-1.5B & 54 & 25 & 5 & 1600 & 4352",
       "where": "Table tab:larger_architecture"
      },
      "vocab_size": {
@@ -451,7 +451,7 @@
     "attention": {
      "value": "exact",
      "status": "stated",
-     "quote": "In contrast, our primary goal is to optimize model size without introducing new attention computation or efficient hardware implementation methods.",
+     "quote": "our primary goal is to optimize model size without introducing new attention computation or efficient hardware implementation methods",
      "where": "Sec. 4 Related Work"
     },
     "window_size": {
@@ -518,22 +518,7 @@
       "tokens"
      ],
      "output": "x",
-     "attributes": [
-      {
-       "name": "d",
-       "value": "576",
-       "status": "stated",
-       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
-       "where": "Table tab:larger_architecture"
-      },
-      {
-       "name": "vocab",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      }
-     ],
+     "attributes": [],
      "new_op": ""
     },
     {
@@ -546,13 +531,6 @@
      "output": "q",
      "attributes": [
       {
-       "name": "out",
-       "value": "576",
-       "status": "stated",
-       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
-       "where": "Table tab:larger_architecture"
-      },
-      {
        "name": "bias",
        "value": "",
        "status": "not_stated",
@@ -565,20 +543,13 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "key projection (3 kv heads x 64)",
+     "role": "key projection",
      "inputs": [
       "x"
      ],
      "output": "k",
      "attributes": [
       {
-       "name": "out",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      },
-      {
        "name": "bias",
        "value": "",
        "status": "not_stated",
@@ -591,19 +562,12 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "value projection (3 kv heads x 64)",
+     "role": "value projection",
      "inputs": [
       "x"
      ],
      "output": "v",
      "attributes": [
-      {
-       "name": "out",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      },
       {
        "name": "bias",
        "value": "",
@@ -629,14 +593,14 @@
        "name": "heads",
        "value": "9",
        "status": "stated",
-       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536",
        "where": "Table tab:larger_architecture"
       },
       {
        "name": "kv_heads",
        "value": "3",
        "status": "stated",
-       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536",
        "where": "Table tab:larger_architecture"
       },
       {
@@ -655,10 +619,10 @@
       },
       {
        "name": "causal",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "true",
+       "status": "stated",
+       "quote": "resulting in improved overall execution speed for auto-regressive inference",
+       "where": "Sec. 2.3 Layer Sharing"
       },
       {
        "name": "window",
@@ -687,13 +651,6 @@
      "output": "o",
      "attributes": [
       {
-       "name": "out",
-       "value": "576",
-       "status": "stated",
-       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
-       "where": "Table tab:larger_architecture"
-      },
-      {
        "name": "bias",
        "value": "",
        "status": "not_stated",
@@ -706,7 +663,7 @@
     {
      "subgraph": "block",
      "op": "add",
-     "role": "attention residual add (assumed; not stated)",
+     "role": "attention residual (not explicitly stated)",
      "inputs": [
       "x",
       "o"
@@ -728,7 +685,7 @@
        "name": "out",
        "value": "1536",
        "status": "stated",
-       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536",
        "where": "Table tab:larger_architecture"
       },
       {
@@ -754,7 +711,7 @@
        "name": "out",
        "value": "1536",
        "status": "stated",
-       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536",
        "where": "Table tab:larger_architecture"
       },
       {
@@ -770,7 +727,7 @@
     {
      "subgraph": "block",
      "op": "silu",
-     "role": "SwiGLU gate activation",
+     "role": "SwiGLU activation",
      "inputs": [
       "g"
      ],
@@ -793,7 +750,7 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "SwiGLU down projection",
+     "role": "FFN down projection",
      "inputs": [
       "m"
      ],
@@ -803,7 +760,7 @@
        "name": "out",
        "value": "576",
        "status": "stated",
-       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536",
        "where": "Table tab:larger_architecture"
       },
       {
@@ -819,7 +776,7 @@
     {
      "subgraph": "block",
      "op": "add",
-     "role": "FFN residual add (assumed; not stated)",
+     "role": "FFN residual (not explicitly stated)",
      "inputs": [
       "h",
       "f"
@@ -858,12 +815,12 @@
    "new_ops": [],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "MobileLLM-LS variant: immediate block-wise layer sharing, each block's weights computed twice in a row (2x30 layers for 125M)",
+     "mechanism": "Immediate block-wise layer sharing (MobileLLM-LS variant only): each transformer block is executed twice in a row with the same weights, doubling effective depth",
      "quote": "Consequently, in our experiments, we adopt a configuration where every two blocks share weights, effectively doubling the total number of layers.",
      "where": "Appendix: Layer-Sharing Number Ablation"
     }
    ],
-   "notes": "Described the MobileLLM baseline (no layer sharing), 125M as primary; block_ops attributes use 125M sizes. The layer-sharing MobileLLM-LS variant is listed under mechanisms_outside_ir. Normalization type and placement, positional encoding, biases, residual form, causal masking, vocab size and context length are never stated. The embedding-sharing section mentions a \"vocabulary size of 32k\", but only as an illustrative example, so vocab_size is left not_stated. The residual adds are included structurally but are not stated in the paper, and no norm ops are listed because none are described. head_dim 64 is stated only for the 125M/350M design (576/9 and 960/15). The larger configs also give 64 by division, but that is not stated, so it is left not_stated for them."
+   "notes": "Described MobileLLM, the baseline without layer sharing, for which Table tab:larger_architecture gives all sizes. MobileLLM-LS is the same architecture with immediate block-wise weight sharing, listed under mechanisms. The paper does not state normalization (type, placement or eps), positional encoding, biases, residual form or context length, so the norm ops are omitted from the block and the residual adds are assumed. The text mentions 'a vocabulary size of 32k' only as an illustrative example in the embedding-sharing discussion; it is not tied to the final config, so vocab_size is left not_stated. Family decoder_only and causal attention are inferred from the 'auto-regressive inference' wording."
   },
   "verification": {
    "errors": [],
@@ -883,7 +840,7 @@
      "d_model": {
       "value": "576",
       "status": "stated",
-      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536",
       "where": "Table tab:larger_architecture",
       "reasons": [],
       "check": "verified"
@@ -891,7 +848,7 @@
      "n_layers": {
       "value": "30",
       "status": "stated",
-      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536",
       "where": "Table tab:larger_architecture",
       "reasons": [],
       "check": "verified"
@@ -899,7 +856,7 @@
      "n_heads": {
       "value": "9",
       "status": "stated",
-      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536",
       "where": "Table tab:larger_architecture",
       "reasons": [],
       "check": "verified"
@@ -907,7 +864,7 @@
      "n_kv_heads": {
       "value": "3",
       "status": "stated",
-      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536",
       "where": "Table tab:larger_architecture",
       "reasons": [],
       "check": "verified"
@@ -923,7 +880,7 @@
      "d_ff": {
       "value": "1536",
       "status": "stated",
-      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536",
       "where": "Table tab:larger_architecture",
       "reasons": [],
       "check": "verified"
@@ -968,7 +925,7 @@
      "d_model": {
       "value": "960",
       "status": "stated",
-      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560 & 345.3M",
+      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560",
       "where": "Table tab:larger_architecture",
       "reasons": [],
       "check": "verified"
@@ -976,7 +933,7 @@
      "n_layers": {
       "value": "32",
       "status": "stated",
-      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560 & 345.3M",
+      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560",
       "where": "Table tab:larger_architecture",
       "reasons": [],
       "check": "verified"
@@ -984,7 +941,7 @@
      "n_heads": {
       "value": "15",
       "status": "stated",
-      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560 & 345.3M",
+      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560",
       "where": "Table tab:larger_architecture",
       "reasons": [],
       "check": "verified"
@@ -992,7 +949,7 @@
      "n_kv_heads": {
       "value": "5",
       "status": "stated",
-      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560 & 345.3M",
+      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560",
       "where": "Table tab:larger_architecture",
       "reasons": [],
       "check": "verified"
@@ -1008,7 +965,7 @@
      "d_ff": {
       "value": "2560",
       "status": "stated",
-      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560 & 345.3M",
+      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560",
       "where": "Table tab:larger_architecture",
       "reasons": [],
       "check": "verified"
@@ -1053,7 +1010,7 @@
      "d_model": {
       "value": "1152",
       "status": "stated",
-      "quote": "$\\ours{}$-600M & 40 & 18 & 6 & 1152 & 3072 & 603.1M",
+      "quote": "$\\ours{}$-600M & 40 & 18 & 6 & 1152 & 3072",
       "where": "Table tab:larger_architecture",
       "reasons": [],
       "check": "verified"
@@ -1061,7 +1018,7 @@
      "n_layers": {
       "value": "40",
       "status": "stated",
-      "quote": "$\\ours{}$-600M & 40 & 18 & 6 & 1152 & 3072 & 603.1M",
+      "quote": "$\\ours{}$-600M & 40 & 18 & 6 & 1152 & 3072",
       "where": "Table tab:larger_architecture",
       "reasons": [],
       "check": "verified"
@@ -1069,7 +1026,7 @@
      "n_heads": {
       "value": "18",
       "status": "stated",
-      "quote": "$\\ours{}$-600M & 40 & 18 & 6 & 1152 & 3072 & 603.1M",
+      "quote": "$\\ours{}$-600M & 40 & 18 & 6 & 1152 & 3072",
       "where": "Table tab:larger_architecture",
       "reasons": [],
       "check": "verified"
@@ -1077,23 +1034,23 @@
      "n_kv_heads": {
       "value": "6",
       "status": "stated",
-      "quote": "$\\ours{}$-600M & 40 & 18 & 6 & 1152 & 3072 & 603.1M",
+      "quote": "$\\ours{}$-600M & 40 & 18 & 6 & 1152 & 3072",
       "where": "Table tab:larger_architecture",
       "reasons": [],
       "check": "verified"
      },
      "head_dim": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": "",
+      "value": "64",
+      "status": "stated",
+      "quote": "we incorporate grouped query attention with a head dimension equal to 64",
+      "where": "Appendix: Impact of Each Design Choice",
       "reasons": [],
-      "check": "not_stated"
+      "check": "verified"
      },
      "d_ff": {
       "value": "3072",
       "status": "stated",
-      "quote": "$\\ours{}$-600M & 40 & 18 & 6 & 1152 & 3072 & 603.1M",
+      "quote": "$\\ours{}$-600M & 40 & 18 & 6 & 1152 & 3072",
       "where": "Table tab:larger_architecture",
       "reasons": [],
       "check": "verified"
@@ -1125,6 +1082,10 @@
       },
       {
        "check": "n_kv_heads <= n_heads",
+       "ok": true
+      },
+      {
+       "check": "head_dim * n_heads == d_model",
        "ok": true
       }
      ]
@@ -1134,7 +1095,7 @@
      "d_model": {
       "value": "1280",
       "status": "stated",
-      "quote": "$\\ours{}$-1B & 54 & 20 & 5 & 1280 & 3584 & 1.0B",
+      "quote": "$\\ours{}$-1B & 54 & 20 & 5 & 1280 & 3584",
       "where": "Table tab:larger_architecture",
       "reasons": [],
       "check": "verified"
@@ -1142,7 +1103,7 @@
      "n_layers": {
       "value": "54",
       "status": "stated",
-      "quote": "$\\ours{}$-1B & 54 & 20 & 5 & 1280 & 3584 & 1.0B",
+      "quote": "$\\ours{}$-1B & 54 & 20 & 5 & 1280 & 3584",
       "where": "Table tab:larger_architecture",
       "reasons": [],
       "check": "verified"
@@ -1150,7 +1111,7 @@
      "n_heads": {
       "value": "20",
       "status": "stated",
-      "quote": "$\\ours{}$-1B & 54 & 20 & 5 & 1280 & 3584 & 1.0B",
+      "quote": "$\\ours{}$-1B & 54 & 20 & 5 & 1280 & 3584",
       "where": "Table tab:larger_architecture",
       "reasons": [],
       "check": "verified"
@@ -1158,23 +1119,23 @@
      "n_kv_heads": {
       "value": "5",
       "status": "stated",
-      "quote": "$\\ours{}$-1B & 54 & 20 & 5 & 1280 & 3584 & 1.0B",
+      "quote": "$\\ours{}$-1B & 54 & 20 & 5 & 1280 & 3584",
       "where": "Table tab:larger_architecture",
       "reasons": [],
       "check": "verified"
      },
      "head_dim": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": "",
+      "value": "64",
+      "status": "stated",
+      "quote": "we incorporate grouped query attention with a head dimension equal to 64",
+      "where": "Appendix: Impact of Each Design Choice",
       "reasons": [],
-      "check": "not_stated"
+      "check": "verified"
      },
      "d_ff": {
       "value": "3584",
       "status": "stated",
-      "quote": "$\\ours{}$-1B & 54 & 20 & 5 & 1280 & 3584 & 1.0B",
+      "quote": "$\\ours{}$-1B & 54 & 20 & 5 & 1280 & 3584",
       "where": "Table tab:larger_architecture",
       "reasons": [],
       "check": "verified"
@@ -1206,6 +1167,10 @@
       },
       {
        "check": "n_kv_heads <= n_heads",
+       "ok": true
+      },
+      {
+       "check": "head_dim * n_heads == d_model",
        "ok": true
       }
      ]
@@ -1215,7 +1180,7 @@
      "d_model": {
       "value": "1600",
       "status": "stated",
-      "quote": "$\\ours{}$-1.5B & 54 & 25 & 5 & 1600 & 4352 & 1.5B",
+      "quote": "$\\ours{}$-1.5B & 54 & 25 & 5 & 1600 & 4352",
       "where": "Table tab:larger_architecture",
       "reasons": [],
       "check": "verified"
@@ -1223,7 +1188,7 @@
      "n_layers": {
       "value": "54",
       "status": "stated",
-      "quote": "$\\ours{}$-1.5B & 54 & 25 & 5 & 1600 & 4352 & 1.5B",
+      "quote": "$\\ours{}$-1.5B & 54 & 25 & 5 & 1600 & 4352",
       "where": "Table tab:larger_architecture",
       "reasons": [],
       "check": "verified"
@@ -1231,7 +1196,7 @@
      "n_heads": {
       "value": "25",
       "status": "stated",
-      "quote": "$\\ours{}$-1.5B & 54 & 25 & 5 & 1600 & 4352 & 1.5B",
+      "quote": "$\\ours{}$-1.5B & 54 & 25 & 5 & 1600 & 4352",
       "where": "Table tab:larger_architecture",
       "reasons": [],
       "check": "verified"
@@ -1239,23 +1204,23 @@
      "n_kv_heads": {
       "value": "5",
       "status": "stated",
-      "quote": "$\\ours{}$-1.5B & 54 & 25 & 5 & 1600 & 4352 & 1.5B",
+      "quote": "$\\ours{}$-1.5B & 54 & 25 & 5 & 1600 & 4352",
       "where": "Table tab:larger_architecture",
       "reasons": [],
       "check": "verified"
      },
      "head_dim": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": "",
+      "value": "64",
+      "status": "stated",
+      "quote": "we incorporate grouped query attention with a head dimension equal to 64",
+      "where": "Appendix: Impact of Each Design Choice",
       "reasons": [],
-      "check": "not_stated"
+      "check": "verified"
      },
      "d_ff": {
       "value": "4352",
       "status": "stated",
-      "quote": "$\\ours{}$-1.5B & 54 & 25 & 5 & 1600 & 4352 & 1.5B",
+      "quote": "$\\ours{}$-1.5B & 54 & 25 & 5 & 1600 & 4352",
       "where": "Table tab:larger_architecture",
       "reasons": [],
       "check": "verified"
@@ -1287,6 +1252,10 @@
       },
       {
        "check": "n_kv_heads <= n_heads",
+       "ok": true
+      },
+      {
+       "check": "head_dim * n_heads == d_model",
        "ok": true
       }
      ]
@@ -1377,7 +1346,7 @@
     "attention": {
      "value": "exact",
      "status": "stated",
-     "quote": "In contrast, our primary goal is to optimize model size without introducing new attention computation or efficient hardware implementation methods.",
+     "quote": "our primary goal is to optimize model size without introducing new attention computation or efficient hardware implementation methods",
      "where": "Sec. 4 Related Work",
      "reasons": [],
      "check": "quote_only"
@@ -1467,26 +1436,7 @@
      ],
      "output": "x",
      "new_op": "",
-     "attributes": [
-      {
-       "value": "576",
-       "status": "stated",
-       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
-       "where": "Table tab:larger_architecture",
-       "reasons": [],
-       "check": "verified",
-       "name": "d"
-      },
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "vocab"
-      }
-     ],
+     "attributes": [],
      "errors": []
     },
     {
@@ -1500,15 +1450,6 @@
      "output": "q",
      "new_op": "",
      "attributes": [
-      {
-       "value": "576",
-       "status": "stated",
-       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
-       "where": "Table tab:larger_architecture",
-       "reasons": [],
-       "check": "verified",
-       "name": "out"
-      },
       {
        "value": "",
        "status": "not_stated",
@@ -1525,22 +1466,13 @@
      "i": 2,
      "subgraph": "block",
      "op": "linear",
-     "role": "key projection (3 kv heads x 64)",
+     "role": "key projection",
      "inputs": [
       "x"
      ],
      "output": "k",
      "new_op": "",
      "attributes": [
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "out"
-      },
       {
        "value": "",
        "status": "not_stated",
@@ -1557,22 +1489,13 @@
      "i": 3,
      "subgraph": "block",
      "op": "linear",
-     "role": "value projection (3 kv heads x 64)",
+     "role": "value projection",
      "inputs": [
       "x"
      ],
      "output": "v",
      "new_op": "",
      "attributes": [
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "out"
-      },
       {
        "value": "",
        "status": "not_stated",
@@ -1601,7 +1524,7 @@
       {
        "value": "9",
        "status": "stated",
-       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536",
        "where": "Table tab:larger_architecture",
        "reasons": [],
        "check": "verified",
@@ -1610,7 +1533,7 @@
       {
        "value": "3",
        "status": "stated",
-       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536",
        "where": "Table tab:larger_architecture",
        "reasons": [],
        "check": "verified",
@@ -1635,12 +1558,12 @@
        "name": "scale"
       },
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
+       "value": "true",
+       "status": "stated",
+       "quote": "resulting in improved overall execution speed for auto-regressive inference",
+       "where": "Sec. 2.3 Layer Sharing",
        "reasons": [],
-       "check": "not_stated",
+       "check": "quote_only",
        "name": "causal"
       },
       {
@@ -1676,15 +1599,6 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "576",
-       "status": "stated",
-       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
-       "where": "Table tab:larger_architecture",
-       "reasons": [],
-       "check": "verified",
-       "name": "out"
-      },
-      {
        "value": "",
        "status": "not_stated",
        "quote": "",
@@ -1700,7 +1614,7 @@
      "i": 6,
      "subgraph": "block",
      "op": "add",
-     "role": "attention residual add (assumed; not stated)",
+     "role": "attention residual (not explicitly stated)",
      "inputs": [
       "x",
       "o"
@@ -1724,7 +1638,7 @@
       {
        "value": "1536",
        "status": "stated",
-       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536",
        "where": "Table tab:larger_architecture",
        "reasons": [],
        "check": "verified",
@@ -1756,7 +1670,7 @@
       {
        "value": "1536",
        "status": "stated",
-       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536",
        "where": "Table tab:larger_architecture",
        "reasons": [],
        "check": "verified",
@@ -1778,7 +1692,7 @@
      "i": 9,
      "subgraph": "block",
      "op": "silu",
-     "role": "SwiGLU gate activation",
+     "role": "SwiGLU activation",
      "inputs": [
       "g"
      ],
@@ -1805,7 +1719,7 @@
      "i": 11,
      "subgraph": "block",
      "op": "linear",
-     "role": "SwiGLU down projection",
+     "role": "FFN down projection",
      "inputs": [
       "m"
      ],
@@ -1815,7 +1729,7 @@
       {
        "value": "576",
        "status": "stated",
-       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M",
+       "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536",
        "where": "Table tab:larger_architecture",
        "reasons": [],
        "check": "verified",
@@ -1837,7 +1751,7 @@
      "i": 12,
      "subgraph": "block",
      "op": "add",
-     "role": "FFN residual add (assumed; not stated)",
+     "role": "FFN residual (not explicitly stated)",
      "inputs": [
       "h",
       "f"
@@ -1882,7 +1796,7 @@
    ],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "MobileLLM-LS variant: immediate block-wise layer sharing, each block's weights computed twice in a row (2x30 layers for 125M)",
+     "mechanism": "Immediate block-wise layer sharing (MobileLLM-LS variant only): each transformer block is executed twice in a row with the same weights, doubling effective depth",
      "quote": "Consequently, in our experiments, we adopt a configuration where every two blocks share weights, effectively doubling the total number of layers.",
      "where": "Appendix: Layer-Sharing Number Ablation",
      "check": "verified"
@@ -1891,9 +1805,9 @@
    "summary": {
     "counts": {
      "verified": 37,
-     "quote_only": 4,
+     "quote_only": 5,
      "unverified": 0,
-     "not_stated": 45
+     "not_stated": 38
     },
     "unverified": [],
     "new_op_errors": [],

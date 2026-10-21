@@ -4,27 +4,32 @@
  "fields": {
   "d_model": {
    "value": 5120,
-   "evidence": "We set the number of Transformer layers to 60 and the hidden dimension to 5120. [Sec. Hyper-Parameters]",
+   "evidence": "We set the number of Transformer layers to 60 and the hidden dimension to 5120. [Sec. 3.1.2 Hyper-Parameters]",
    "verdict": "used"
   },
   "n_layers": {
    "value": 60,
-   "evidence": "We set the number of Transformer layers to 60 and the hidden dimension to 5120. [Sec. Hyper-Parameters]",
+   "evidence": "We set the number of Transformer layers to 60 and the hidden dimension to 5120. [Sec. 3.1.2 Hyper-Parameters]",
    "verdict": "used"
   },
   "n_heads": {
    "value": 128,
-   "evidence": "In \\dsattn{}, we set the number of attention heads $n_h$ to 128 and the per-head dimension $d_h$ to 128. [Sec. Hyper-Parameters]",
+   "evidence": "In \\dsattn{}, we set the number of attention heads $n_h$ to 128 and the per-head dimension $d_h$ to 128. [Sec. 3.1.2 Hyper-Parameters]",
    "verdict": "used"
   },
   "d_ff": {
    "value": 1536,
-   "evidence": "Each MoE layer consists of 2 shared experts and 160 routed experts, where the intermediate hidden dimension of each expert is 1536. [Sec. Hyper-Parameters]",
+   "evidence": "Each MoE layer consists of 2 shared experts and 160 routed experts, where the intermediate hidden dimension of each expert is 1536. [Sec. 3.1.2 Hyper-Parameters]",
+   "verdict": "used"
+  },
+  "vocab_size": {
+   "value": 100000,
+   "evidence": "We adopt the same tokenizer as used in \\dsvi{}, which is built based on the Byte-level Byte-Pair Encoding~(BBPE) algorithm and has a vocabulary size of 100K. [Sec. 3.1.1 Data Construction]",
    "verdict": "used"
   },
   "context_length": {
    "value": 4096,
-   "evidence": "We set the maximum sequence length to 4K, and train \\dsvii{} on 8.1T tokens. [Sec. Hyper-Parameters]",
+   "evidence": "We set the maximum sequence length to 4K, and train \\dsvii{} on 8.1T tokens. [Sec. 3.1.2 Hyper-Parameters]",
    "verdict": "used"
   },
   "norm": {
@@ -45,12 +50,12 @@
   },
   "positional": {
    "value": "rope",
-   "evidence": "Following \\dsvi{}~\\citep{deepseek1}, we intend to use the Rotary Position Embedding~(RoPE)~\\citep{su2024roformer} for \\dsvii{}. [Sec. Decoupled Rotary Position Embedding]",
+   "evidence": "Following \\dsvi{}~\\citep{deepseek1}, we intend to use the Rotary Position Embedding~(RoPE)~\\citep{su2024roformer} for \\dsvii{}. [Sec. 2.1.3 Decoupled Rotary Position Embedding]",
    "verdict": "used"
   },
   "residual": {
    "value": "residual",
-   "evidence": "\\mathbf{h}_{t}^{\\prime} & = \\mathbf{u}_{t} + \\sum_{i=1}^{N_{s}} {\\operatorname{FFN}^{(s)}_{i}\\left( \\mathbf{u}_{t} \\right)} [Sec. DeepSeekMoE Basic Architecture]",
+   "evidence": "\\mathbf{h}_{t}^{\\prime} & = \\mathbf{u}_{t} + \\sum_{i=1}^{N_{s}} {\\operatorname{FFN}^{(s)}_{i}\\left( \\mathbf{u}_{t} \\right)} + \\sum_{i=1}^{N_r} {g_{i,t} \\operatorname{FFN}^{(r)}_{i}\\left( \\mathbf{u}_{t} \\right)}, \\\\ [Sec. 2.2.1 Basic Architecture]",
    "verdict": "unverified",
    "reasons": [
     "the quote does not name residual (looked for /residual|skip/)"
@@ -58,13 +63,12 @@
   },
   "attention": {
    "value": "new_primitive:mla_attention",
-   "evidence": "For \\dsvii{}, we design an innovative attention mechanism called Multi-head Latent Attention (\\dsattn{}). [Sec. Multi-Head Latent Attention]",
+   "evidence": "\\mathbf{o}_{t, i} &= \\sum_{j=1}^{t} \\operatorname{Softmax}_j(\\frac{\\mathbf{q}_{t, i}^T \\mathbf{k}_{j, i}}{\\sqrt{d_{h} + d_{h}^{R}}}) \\mathbf{v}_{j, i}^{C}, \\\\ [Sec. 2.1.3 Decoupled Rotary Position Embedding]",
    "verdict": "used"
   }
  },
  "unresolved": [
-  "n_kv_heads",
-  "vocab_size"
+  "n_kv_heads"
  ],
  "unverified": [
   {
@@ -88,7 +92,7 @@
  ],
  "mentions": {},
  "inherits": {
-  "ancestor": "DeepSeek 67B",
+  "ancestor": "DeepSeek 67B (DeepSeek LLM)",
   "evidence": "For other tiny details (e.g., layer normalization and the activation function in FFNs), unless specifically stated, \\dsvii{} follows the settings of \\dsvi{}~\\citep{deepseek1}.",
   "section": "Sec. 2 Architecture"
  },
@@ -98,6 +102,7 @@
    "n_layers": 60,
    "n_heads": 128,
    "d_ff": 1536,
+   "vocab_size": 100000,
    "context_length": 4096
   },
   {
@@ -111,45 +116,39 @@
  "mechanism_scan": [
   {
    "mechanism": "mixture of experts",
-   "where": "llm extraction, verified quote, Sec. Hyper-Parameters",
+   "where": "llm extraction, verified quote, Sec. 3.1.2 Hyper-Parameters",
    "blocking": true,
    "evidence": "Following \\citet{deepseekmoe}, we substitute all FFNs except for the first layer with MoE layers."
   },
   {
-   "mechanism": "new op mla_attention (needs a new primitive: Causal softmax attention whose per-head query is concat(q^C_i, q^R_i) and per-head key is concat(k^C_i, k^R) with k^R sh)",
-   "where": "llm extraction, verified quote, Sec. Decoupled Rotary Position Embedding",
+   "mechanism": "new op mla_attention (needs a new primitive: Needs an attention primitive whose per-head query/key are concatenations [q_c,i; q_r,i] and [k_c,i; k_r] (k_r broadcast )",
+   "where": "llm extraction, verified quote, Sec. 2.1.3 Decoupled Rotary Position Embedding",
    "blocking": true,
-   "evidence": "\\mathbf{k}_{t, i} &= [\\mathbf{k}_{t, i}^{C}; \\mathbf{k}_{t}^{R}],"
+   "evidence": "\\mathbf{k}_{t, i} &= [\\mathbf{k}_{t, i}^{C}; \\mathbf{k}_{t}^{R}], \\\\"
   },
   {
-   "mechanism": "First layer uses a dense FFN instead of MoE (its intermediate width is not stated)",
-   "where": "llm extraction, verified quote, Sec. Hyper-Parameters",
+   "mechanism": "First layer uses a dense FFN instead of MoE (its width is not stated)",
+   "where": "llm extraction, verified quote, Sec. 3.1.2 Hyper-Parameters",
    "blocking": true,
    "evidence": "Following \\citet{deepseekmoe}, we substitute all FFNs except for the first layer with MoE layers."
   },
   {
-   "mechanism": "Additional scaling factors at width bottlenecks (latent vectors, routed-expert intermediate states); values not stated",
-   "where": "llm extraction, verified quote, Sec. Hyper-Parameters",
+   "mechanism": "Additional scaling factors at width bottlenecks (latents and routed expert intermediates); values not stated",
+   "where": "llm extraction, verified quote, Sec. 3.1.2 Hyper-Parameters",
    "blocking": true,
    "evidence": "Therefore, in practice, we employ additional RMS Norm layers after the compressed latent vectors, and multiply additional scaling factors at the width bottlenecks (i.e., the compressed latent vectors and the intermediate hidden states of ro"
   },
   {
-   "mechanism": "Device-limited routing: top-K restricted to experts on at most M=3 devices",
-   "where": "llm extraction, verified quote, Sec. Hyper-Parameters",
+   "mechanism": "Device-limited routing: experts selected only from top M=3 devices (D=8)",
+   "where": "llm extraction, verified quote, Sec. 2.2.2 Device-Limited Routing",
    "blocking": true,
-   "evidence": "As for the device-limited routing, each token will be sent to at most 3 devices ($M=3$)."
+   "evidence": "For \\dsvii{}, beyond the naive top-K selection of routed experts, we additionally ensure that the target experts of each token will be distributed on at most $M$ devices."
   },
   {
-   "mechanism": "Device-level token dropping during training (capacity factor 1.0); no dropping at evaluation",
-   "where": "llm extraction, verified quote, Sec. Hyper-Parameters",
+   "mechanism": "YaRN context extension applied to the decoupled key (s=40, alpha=1, beta=32), with modified attention scaling sqrt(t)=0.0707 ln s + 1",
+   "where": "llm extraction, verified quote, Sec. 3.1.4 Long Context Extension",
    "blocking": true,
-   "evidence": "We employ the token-dropping strategy during training for acceleration, but do not drop any tokens for evaluation."
-  },
-  {
-   "mechanism": "YaRN context extension on the decoupled key (s=40, alpha=1, beta=32) with a modified attention length-scaling factor",
-   "where": "llm extraction, verified quote, Sec. Long Context Extension",
-   "blocking": true,
-   "evidence": "For YaRN, we set the scale $s$ to 40, $\\alpha$ to 1, $\\beta$ to 32, and the target maximum context length to 160K."
+   "evidence": "After the initial pre-training of \\dsvii{}, we employ YaRN~\\citep{peng2023yarn} to extend the default context window length from 4K to 128K."
   }
  ],
  "source": {
@@ -157,14 +156,14 @@
   "sent_sha256": "f015ad7cc8864067f6746a6b34adca62de8e98ee2d7c58b78533e1e0cf942b09",
   "from": "https://arxiv.org/e-print/2405.04434",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
   "n_calls": 1,
-  "cost_usd": 0.599016,
+  "cost_usd": 0.59436,
   "request_ids": [
-   "req_011CgFe8GkSrFFrXWZUUPVDZ"
+   "req_011CgFj1kWS2Yj7CA7V9R4SC"
   ]
  },
  "llm": {
@@ -174,11 +173,11 @@
    "family": {
     "value": "decoder_only",
     "status": "stated",
-    "quote": "\\mathbf{o}_{t, i} &= \\sum_{j=1}^{t} \\operatorname{Softmax}_j(\\frac{\\mathbf{q}_{t, i}^T \\mathbf{k}_{j, i}}{\\sqrt{d_{h} + d_{h}^{R}}}) \\mathbf{v}_{j, i}^{C},",
-    "where": "Sec. Decoupled Rotary Position Embedding"
+    "quote": "We present \\dsvii{}, a strong Mixture-of-Experts~(MoE) language model characterized by economical training and efficient inference.",
+    "where": "Abstract"
    },
    "inherits": {
-    "ancestor": "DeepSeek 67B",
+    "ancestor": "DeepSeek 67B (DeepSeek LLM)",
     "quote": "For other tiny details (e.g., layer normalization and the activation function in FFNs), unless specifically stated, \\dsvii{} follows the settings of \\dsvi{}~\\citep{deepseek1}.",
     "where": "Sec. 2 Architecture"
    },
@@ -189,19 +188,19 @@
       "value": "5120",
       "status": "stated",
       "quote": "We set the number of Transformer layers to 60 and the hidden dimension to 5120.",
-      "where": "Sec. Hyper-Parameters"
+      "where": "Sec. 3.1.2 Hyper-Parameters"
      },
      "n_layers": {
       "value": "60",
       "status": "stated",
       "quote": "We set the number of Transformer layers to 60 and the hidden dimension to 5120.",
-      "where": "Sec. Hyper-Parameters"
+      "where": "Sec. 3.1.2 Hyper-Parameters"
      },
      "n_heads": {
       "value": "128",
       "status": "stated",
       "quote": "In \\dsattn{}, we set the number of attention heads $n_h$ to 128 and the per-head dimension $d_h$ to 128.",
-      "where": "Sec. Hyper-Parameters"
+      "where": "Sec. 3.1.2 Hyper-Parameters"
      },
      "n_kv_heads": {
       "value": "",
@@ -213,25 +212,25 @@
       "value": "128",
       "status": "stated",
       "quote": "In \\dsattn{}, we set the number of attention heads $n_h$ to 128 and the per-head dimension $d_h$ to 128.",
-      "where": "Sec. Hyper-Parameters"
+      "where": "Sec. 3.1.2 Hyper-Parameters"
      },
      "d_ff": {
       "value": "1536",
       "status": "stated",
       "quote": "Each MoE layer consists of 2 shared experts and 160 routed experts, where the intermediate hidden dimension of each expert is 1536.",
-      "where": "Sec. Hyper-Parameters"
+      "where": "Sec. 3.1.2 Hyper-Parameters"
      },
      "vocab_size": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": ""
+      "value": "100000",
+      "status": "stated",
+      "quote": "We adopt the same tokenizer as used in \\dsvi{}, which is built based on the Byte-level Byte-Pair Encoding~(BBPE) algorithm and has a vocabulary size of 100K.",
+      "where": "Sec. 3.1.1 Data Construction"
      },
      "context_length": {
       "value": "4096",
       "status": "stated",
       "quote": "We set the maximum sequence length to 4K, and train \\dsvii{} on 8.1T tokens.",
-      "where": "Sec. Hyper-Parameters"
+      "where": "Sec. 3.1.2 Hyper-Parameters"
      }
     },
     {
@@ -240,19 +239,19 @@
       "value": "2048",
       "status": "stated",
       "quote": "\\dsviilite{} has 27 layers and a hidden dimension of 2048.",
-      "where": "App. DeepSeek-V2-Lite, Architectures"
+      "where": "App. B.1 Model Description"
      },
      "n_layers": {
       "value": "27",
       "status": "stated",
       "quote": "\\dsviilite{} has 27 layers and a hidden dimension of 2048.",
-      "where": "App. DeepSeek-V2-Lite, Architectures"
+      "where": "App. B.1 Model Description"
      },
      "n_heads": {
       "value": "16",
       "status": "stated",
       "quote": "It also employs MLA and has 16 attention heads, where each head has a dimension of 128.",
-      "where": "App. DeepSeek-V2-Lite, Architectures"
+      "where": "App. B.1 Model Description"
      },
      "n_kv_heads": {
       "value": "",
@@ -264,13 +263,13 @@
       "value": "128",
       "status": "stated",
       "quote": "It also employs MLA and has 16 attention heads, where each head has a dimension of 128.",
-      "where": "App. DeepSeek-V2-Lite, Architectures"
+      "where": "App. B.1 Model Description"
      },
      "d_ff": {
       "value": "1408",
       "status": "stated",
       "quote": "Each MoE layer consists of 2 shared experts and 64 routed experts, where the intermediate hidden dimension of each expert is 1408.",
-      "where": "App. DeepSeek-V2-Lite, Architectures"
+      "where": "App. B.1 Model Description"
      },
      "vocab_size": {
       "value": "",
@@ -282,7 +281,7 @@
       "value": "4096",
       "status": "stated",
       "quote": "During pre-training, we set the maximum sequence length to 4K, and train \\dsviilite{} on 5.7T tokens.",
-      "where": "App. DeepSeek-V2-Lite, Training Details"
+      "where": "App. B.1 Training Details"
      }
     }
    ],
@@ -316,7 +315,7 @@
      "value": "rope",
      "status": "stated",
      "quote": "Following \\dsvi{}~\\citep{deepseek1}, we intend to use the Rotary Position Embedding~(RoPE)~\\citep{su2024roformer} for \\dsvii{}.",
-     "where": "Sec. Decoupled Rotary Position Embedding"
+     "where": "Sec. 2.1.3 Decoupled Rotary Position Embedding"
     },
     "rope_pairing": {
      "value": "",
@@ -339,20 +338,20 @@
     "residual": {
      "value": "residual",
      "status": "stated",
-     "quote": "\\mathbf{h}_{t}^{\\prime} & = \\mathbf{u}_{t} + \\sum_{i=1}^{N_{s}} {\\operatorname{FFN}^{(s)}_{i}\\left( \\mathbf{u}_{t} \\right)}",
-     "where": "Sec. DeepSeekMoE Basic Architecture"
+     "quote": "\\mathbf{h}_{t}^{\\prime} & = \\mathbf{u}_{t} + \\sum_{i=1}^{N_{s}} {\\operatorname{FFN}^{(s)}_{i}\\left( \\mathbf{u}_{t} \\right)} + \\sum_{i=1}^{N_r} {g_{i,t} \\operatorname{FFN}^{(r)}_{i}\\left( \\mathbf{u}_{t} \\right)}, \\\\",
+     "where": "Sec. 2.2.1 Basic Architecture"
     },
     "parallel_block": {
-     "value": "false",
-     "status": "stated",
-     "quote": "Let $\\mathbf{u}_{t}$ be the FFN input of the $t$-th token, we compute the FFN output $\\mathbf{h}_{t}^{\\prime}$ as follows:",
-     "where": "Sec. DeepSeekMoE Basic Architecture"
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
     },
     "attention": {
      "value": "new_op:mla_attention",
      "status": "stated",
-     "quote": "For \\dsvii{}, we design an innovative attention mechanism called Multi-head Latent Attention (\\dsattn{}).",
-     "where": "Sec. Multi-Head Latent Attention"
+     "quote": "\\mathbf{o}_{t, i} &= \\sum_{j=1}^{t} \\operatorname{Softmax}_j(\\frac{\\mathbf{q}_{t, i}^T \\mathbf{k}_{j, i}}{\\sqrt{d_{h} + d_{h}^{R}}}) \\mathbf{v}_{j, i}^{C}, \\\\",
+     "where": "Sec. 2.1.3 Decoupled Rotary Position Embedding"
     },
     "window_size": {
      "value": "",
@@ -388,25 +387,25 @@
      "value": "true",
      "status": "stated",
      "quote": "Following \\citet{deepseekmoe}, we substitute all FFNs except for the first layer with MoE layers.",
-     "where": "Sec. Hyper-Parameters"
+     "where": "Sec. 3.1.2 Hyper-Parameters"
     },
     "n_experts": {
      "value": "160",
      "status": "stated",
      "quote": "Each MoE layer consists of 2 shared experts and 160 routed experts, where the intermediate hidden dimension of each expert is 1536.",
-     "where": "Sec. Hyper-Parameters"
+     "where": "Sec. 3.1.2 Hyper-Parameters"
     },
     "top_k": {
      "value": "6",
      "status": "stated",
      "quote": "Among the routed experts, 6 experts will be activated for each token.",
-     "where": "Sec. Hyper-Parameters"
+     "where": "Sec. 3.1.2 Hyper-Parameters"
     },
     "moe_gate_norm": {
      "value": "raw",
      "status": "stated",
-     "quote": "s_{i,t} & = \\operatorname{Softmax}_i \\left( {\\mathbf{u}_{t}}^{T} \\mathbf{e}_{i} \\right),",
-     "where": "Sec. DeepSeekMoE Basic Architecture"
+     "quote": "s_{i,t}, & s_{i,t} \\in \\operatorname{Topk} (\\{ s_{j, t} | 1 \\leq j \\leq N_r \\}, K_{r}), \\\\",
+     "where": "Sec. 2.2.1 Basic Architecture"
     }
    },
    "block_ops": [
@@ -418,22 +417,7 @@
       "tokens"
      ],
      "output": "x",
-     "attributes": [
-      {
-       "name": "vocab",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      },
-      {
-       "name": "d",
-       "value": "5120",
-       "status": "stated",
-       "quote": "We set the number of Transformer layers to 60 and the hidden dimension to 5120.",
-       "where": "Sec. Hyper-Parameters"
-      }
-     ],
+     "attributes": [],
      "new_op": ""
     },
     {
@@ -462,14 +446,14 @@
      "inputs": [
       "h"
      ],
-     "output": "cq",
+     "output": "cq_raw",
      "attributes": [
       {
        "name": "out",
        "value": "1536",
        "status": "stated",
        "quote": "The KV compression dimension $d_c$ is set to 512, and the query compression dimension $d_c^{\\prime}$ is set to 1536.",
-       "where": "Sec. Hyper-Parameters"
+       "where": "Sec. 3.1.2 Hyper-Parameters"
       },
       {
        "name": "bias",
@@ -484,11 +468,11 @@
     {
      "subgraph": "block",
      "op": "rmsnorm",
-     "role": "RMSNorm after compressed query latent",
+     "role": "RMS Norm after compressed query latent",
      "inputs": [
-      "cq"
+      "cq_raw"
      ],
-     "output": "cqn",
+     "output": "cq",
      "attributes": [
       {
        "name": "eps",
@@ -496,13 +480,6 @@
        "status": "not_stated",
        "quote": "",
        "where": ""
-      },
-      {
-       "name": "present",
-       "value": "true",
-       "status": "stated",
-       "quote": "Therefore, in practice, we employ additional RMS Norm layers after the compressed latent vectors, and multiply additional scaling factors at the width bottlenecks",
-       "where": "Sec. Hyper-Parameters"
       }
      ],
      "new_op": ""
@@ -510,18 +487,18 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "query up-projection W^UQ (content queries, n_h*d_h wide)",
+     "role": "query up-projection W^UQ (content part, n_h*d_h)",
      "inputs": [
-      "cqn"
+      "cq"
      ],
-     "output": "qc",
+     "output": "q_c",
      "attributes": [
       {
        "name": "out",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "16384",
+       "status": "stated",
+       "quote": "In \\dsattn{}, we set the number of attention heads $n_h$ to 128 and the per-head dimension $d_h$ to 128.",
+       "where": "Sec. 3.1.2 Hyper-Parameters"
       },
       {
        "name": "bias",
@@ -536,18 +513,18 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "decoupled RoPE query projection W^QR (n_h*d_h^R wide)",
+     "role": "decoupled RoPE query projection W^QR (n_h*d_h^R)",
      "inputs": [
-      "cqn"
+      "cq"
      ],
-     "output": "qr_pre",
+     "output": "q_r_pre",
      "attributes": [
       {
        "name": "out",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "8192",
+       "status": "stated",
+       "quote": "For the decoupled queries and key, we set the per-head dimension $d_h^R$ to 64.",
+       "where": "Sec. 3.1.2 Hyper-Parameters"
       },
       {
        "name": "bias",
@@ -564,23 +541,23 @@
      "op": "rope",
      "role": "RoPE on decoupled queries",
      "inputs": [
-      "qr_pre"
+      "q_r_pre"
      ],
-     "output": "qr",
+     "output": "q_r",
      "attributes": [
       {
        "name": "rope_heads",
        "value": "all",
        "status": "stated",
-       "quote": "[\\mathbf{q}_{t, 1}^{R};\\mathbf{q}_{t, 2}^{R};...;\\mathbf{q}_{t, n_{h}}^{R}] = \\mathbf{q}_{t}^{R} &= \\operatorname{RoPE}({W^{QR}} \\mathbf{c}_{t}^{Q}),",
-       "where": "Sec. Decoupled Rotary Position Embedding"
+       "quote": "[\\mathbf{q}_{t, 1}^{R};\\mathbf{q}_{t, 2}^{R};...;\\mathbf{q}_{t, n_{h}}^{R}] = \\mathbf{q}_{t}^{R} &= \\operatorname{RoPE}({W^{QR}} \\mathbf{c}_{t}^{Q}), \\\\",
+       "where": "Sec. 2.1.3"
       },
       {
        "name": "n_rot",
        "value": "64",
        "status": "stated",
        "quote": "For the decoupled queries and key, we set the per-head dimension $d_h^R$ to 64.",
-       "where": "Sec. Hyper-Parameters"
+       "where": "Sec. 3.1.2 Hyper-Parameters"
       },
       {
        "name": "pairing",
@@ -606,14 +583,14 @@
      "inputs": [
       "h"
      ],
-     "output": "ckv",
+     "output": "ckv_raw",
      "attributes": [
       {
        "name": "out",
        "value": "512",
        "status": "stated",
        "quote": "The KV compression dimension $d_c$ is set to 512, and the query compression dimension $d_c^{\\prime}$ is set to 1536.",
-       "where": "Sec. Hyper-Parameters"
+       "where": "Sec. 3.1.2 Hyper-Parameters"
       },
       {
        "name": "bias",
@@ -628,11 +605,11 @@
     {
      "subgraph": "block",
      "op": "rmsnorm",
-     "role": "RMSNorm after compressed KV latent",
+     "role": "RMS Norm after compressed KV latent",
      "inputs": [
-      "ckv"
+      "ckv_raw"
      ],
-     "output": "ckvn",
+     "output": "ckv",
      "attributes": [
       {
        "name": "eps",
@@ -647,18 +624,18 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "key up-projection W^UK (n_h*d_h wide)",
+     "role": "key up-projection W^UK",
      "inputs": [
-      "ckvn"
+      "ckv"
      ],
-     "output": "kc",
+     "output": "k_c",
      "attributes": [
       {
        "name": "out",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "16384",
+       "status": "stated",
+       "quote": "In \\dsattn{}, we set the number of attention heads $n_h$ to 128 and the per-head dimension $d_h$ to 128.",
+       "where": "Sec. 3.1.2 Hyper-Parameters"
       },
       {
        "name": "bias",
@@ -673,18 +650,18 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "value up-projection W^UV (n_h*d_h wide)",
+     "role": "value up-projection W^UV",
      "inputs": [
-      "ckvn"
+      "ckv"
      ],
-     "output": "vc",
+     "output": "v_c",
      "attributes": [
       {
        "name": "out",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "16384",
+       "status": "stated",
+       "quote": "In \\dsattn{}, we set the number of attention heads $n_h$ to 128 and the per-head dimension $d_h$ to 128.",
+       "where": "Sec. 3.1.2 Hyper-Parameters"
       },
       {
        "name": "bias",
@@ -699,18 +676,18 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "shared decoupled RoPE key projection W^KR",
+     "role": "decoupled shared RoPE key projection W^KR",
      "inputs": [
       "h"
      ],
-     "output": "kr_pre",
+     "output": "k_r_pre",
      "attributes": [
       {
        "name": "out",
        "value": "64",
        "status": "stated",
        "quote": "For the decoupled queries and key, we set the per-head dimension $d_h^R$ to 64.",
-       "where": "Sec. Hyper-Parameters"
+       "where": "Sec. 3.1.2 Hyper-Parameters"
       },
       {
        "name": "bias",
@@ -727,23 +704,23 @@
      "op": "rope",
      "role": "RoPE on shared decoupled key",
      "inputs": [
-      "kr_pre"
+      "k_r_pre"
      ],
-     "output": "kr",
+     "output": "k_r",
      "attributes": [
       {
        "name": "rope_heads",
        "value": "all",
        "status": "stated",
-       "quote": "\\mathbf{k}_{t}^{R} &= \\operatorname{RoPE}({W^{KR}} \\mathbf{h}_{t}),",
-       "where": "Sec. Decoupled Rotary Position Embedding"
+       "quote": "\\mathbf{k}_{t}^{R} &= \\operatorname{RoPE}({W^{KR}} \\mathbf{h}_{t}), \\\\",
+       "where": "Sec. 2.1.3"
       },
       {
        "name": "n_rot",
        "value": "64",
        "status": "stated",
        "quote": "For the decoupled queries and key, we set the per-head dimension $d_h^R$ to 64.",
-       "where": "Sec. Hyper-Parameters"
+       "where": "Sec. 3.1.2 Hyper-Parameters"
       },
       {
        "name": "pairing",
@@ -765,13 +742,13 @@
     {
      "subgraph": "block",
      "op": "unsupported",
-     "role": "MLA attention core: per-head concat of content and RoPE parts, shared RoPE key, causal softmax",
+     "role": "MLA attention: per-head concat of content and RoPE parts, causal softmax, values of width d_h",
      "inputs": [
-      "qc",
-      "qr",
-      "kc",
-      "kr",
-      "vc"
+      "q_c",
+      "q_r",
+      "k_c",
+      "k_r",
+      "v_c"
      ],
      "output": "o",
      "attributes": [
@@ -780,28 +757,21 @@
        "value": "128",
        "status": "stated",
        "quote": "In \\dsattn{}, we set the number of attention heads $n_h$ to 128 and the per-head dimension $d_h$ to 128.",
-       "where": "Sec. Hyper-Parameters"
-      },
-      {
-       "name": "head_dim",
-       "value": "128",
-       "status": "stated",
-       "quote": "In \\dsattn{}, we set the number of attention heads $n_h$ to 128 and the per-head dimension $d_h$ to 128.",
-       "where": "Sec. Hyper-Parameters"
+       "where": "Sec. 3.1.2 Hyper-Parameters"
       },
       {
        "name": "scale",
-       "value": "1/sqrt(192)",
+       "value": "0.0721688",
        "status": "stated",
-       "quote": "\\mathbf{o}_{t, i} &= \\sum_{j=1}^{t} \\operatorname{Softmax}_j(\\frac{\\mathbf{q}_{t, i}^T \\mathbf{k}_{j, i}}{\\sqrt{d_{h} + d_{h}^{R}}}) \\mathbf{v}_{j, i}^{C},",
-       "where": "Sec. Decoupled Rotary Position Embedding"
+       "quote": "\\mathbf{o}_{t, i} &= \\sum_{j=1}^{t} \\operatorname{Softmax}_j(\\frac{\\mathbf{q}_{t, i}^T \\mathbf{k}_{j, i}}{\\sqrt{d_{h} + d_{h}^{R}}}) \\mathbf{v}_{j, i}^{C}, \\\\",
+       "where": "Sec. 2.1.3"
       },
       {
        "name": "causal",
        "value": "true",
        "status": "stated",
-       "quote": "\\mathbf{o}_{t, i} &= \\sum_{j=1}^{t} \\operatorname{Softmax}_j(\\frac{\\mathbf{q}_{t, i}^T \\mathbf{k}_{j, i}}{\\sqrt{d_{h} + d_{h}^{R}}}) \\mathbf{v}_{j, i}^{C},",
-       "where": "Sec. Decoupled Rotary Position Embedding"
+       "quote": "\\mathbf{o}_{t, i} &= \\sum_{j=1}^{t} \\operatorname{Softmax}_j(\\frac{\\mathbf{q}_{t, i}^T \\mathbf{k}_{j, i}}{\\sqrt{d_{h} + d_{h}^{R}}}) \\mathbf{v}_{j, i}^{C}, \\\\",
+       "where": "Sec. 2.1.3"
       }
      ],
      "new_op": "mla_attention"
@@ -820,7 +790,7 @@
        "value": "5120",
        "status": "stated",
        "quote": "We set the number of Transformer layers to 60 and the hidden dimension to 5120.",
-       "where": "Sec. Hyper-Parameters"
+       "where": "Sec. 3.1.2 Hyper-Parameters"
       },
       {
        "name": "bias",
@@ -840,7 +810,7 @@
       "x",
       "attn_out"
      ],
-     "output": "u",
+     "output": "x1",
      "attributes": [],
      "new_op": ""
     },
@@ -849,9 +819,9 @@
      "op": "rmsnorm",
      "role": "pre-FFN norm",
      "inputs": [
-      "u"
+      "x1"
      ],
-     "output": "un",
+     "output": "u",
      "attributes": [
       {
        "name": "eps",
@@ -865,66 +835,19 @@
     },
     {
      "subgraph": "block",
-     "op": "moe_ffn",
-     "role": "routed experts (DeepSeekMoE)",
-     "inputs": [
-      "un"
-     ],
-     "output": "r",
-     "attributes": [
-      {
-       "name": "n_experts",
-       "value": "160",
-       "status": "stated",
-       "quote": "Each MoE layer consists of 2 shared experts and 160 routed experts, where the intermediate hidden dimension of each expert is 1536.",
-       "where": "Sec. Hyper-Parameters"
-      },
-      {
-       "name": "top_k",
-       "value": "6",
-       "status": "stated",
-       "quote": "Among the routed experts, 6 experts will be activated for each token.",
-       "where": "Sec. Hyper-Parameters"
-      },
-      {
-       "name": "gate_norm",
-       "value": "raw",
-       "status": "stated",
-       "quote": "s_{i,t} & = \\operatorname{Softmax}_i \\left( {\\mathbf{u}_{t}}^{T} \\mathbf{e}_{i} \\right),",
-       "where": "Sec. DeepSeekMoE Basic Architecture"
-      },
-      {
-       "name": "activation",
-       "value": "swiglu",
-       "status": "inherited",
-       "quote": "For other tiny details (e.g., layer normalization and the activation function in FFNs), unless specifically stated, \\dsvii{} follows the settings of \\dsvi{}~\\citep{deepseek1}.",
-       "where": "Sec. 2 Architecture"
-      },
-      {
-       "name": "expert_d_ff",
-       "value": "1536",
-       "status": "stated",
-       "quote": "Each MoE layer consists of 2 shared experts and 160 routed experts, where the intermediate hidden dimension of each expert is 1536.",
-       "where": "Sec. Hyper-Parameters"
-      }
-     ],
-     "new_op": ""
-    },
-    {
-     "subgraph": "block",
      "op": "linear",
      "role": "shared expert 1 gate",
      "inputs": [
-      "un"
+      "u"
      ],
-     "output": "s1g",
+     "output": "s1_g",
      "attributes": [
       {
        "name": "out",
        "value": "1536",
        "status": "stated",
        "quote": "Each MoE layer consists of 2 shared experts and 160 routed experts, where the intermediate hidden dimension of each expert is 1536.",
-       "where": "Sec. Hyper-Parameters"
+       "where": "Sec. 3.1.2 Hyper-Parameters"
       },
       {
        "name": "bias",
@@ -941,16 +864,16 @@
      "op": "linear",
      "role": "shared expert 1 up",
      "inputs": [
-      "un"
+      "u"
      ],
-     "output": "s1u",
+     "output": "s1_u",
      "attributes": [
       {
        "name": "out",
        "value": "1536",
        "status": "stated",
        "quote": "Each MoE layer consists of 2 shared experts and 160 routed experts, where the intermediate hidden dimension of each expert is 1536.",
-       "where": "Sec. Hyper-Parameters"
+       "where": "Sec. 3.1.2 Hyper-Parameters"
       },
       {
        "name": "bias",
@@ -965,11 +888,11 @@
     {
      "subgraph": "block",
      "op": "silu",
-     "role": "shared expert 1 activation (SwiGLU, inherited)",
+     "role": "shared expert 1 activation (SwiGLU inherited)",
      "inputs": [
-      "s1g"
+      "s1_g"
      ],
-     "output": "s1a",
+     "output": "s1_a",
      "attributes": [],
      "new_op": ""
     },
@@ -978,10 +901,10 @@
      "op": "mul",
      "role": "shared expert 1 gating",
      "inputs": [
-      "s1a",
-      "s1u"
+      "s1_a",
+      "s1_u"
      ],
-     "output": "s1m",
+     "output": "s1_m",
      "attributes": [],
      "new_op": ""
     },
@@ -990,7 +913,7 @@
      "op": "linear",
      "role": "shared expert 1 down",
      "inputs": [
-      "s1m"
+      "s1_m"
      ],
      "output": "s1",
      "attributes": [
@@ -999,7 +922,7 @@
        "value": "5120",
        "status": "stated",
        "quote": "We set the number of Transformer layers to 60 and the hidden dimension to 5120.",
-       "where": "Sec. Hyper-Parameters"
+       "where": "Sec. 3.1.2 Hyper-Parameters"
       },
       {
        "name": "bias",
@@ -1016,16 +939,16 @@
      "op": "linear",
      "role": "shared expert 2 gate",
      "inputs": [
-      "un"
+      "u"
      ],
-     "output": "s2g",
+     "output": "s2_g",
      "attributes": [
       {
        "name": "out",
        "value": "1536",
        "status": "stated",
        "quote": "Each MoE layer consists of 2 shared experts and 160 routed experts, where the intermediate hidden dimension of each expert is 1536.",
-       "where": "Sec. Hyper-Parameters"
+       "where": "Sec. 3.1.2 Hyper-Parameters"
       },
       {
        "name": "bias",
@@ -1042,16 +965,16 @@
      "op": "linear",
      "role": "shared expert 2 up",
      "inputs": [
-      "un"
+      "u"
      ],
-     "output": "s2u",
+     "output": "s2_u",
      "attributes": [
       {
        "name": "out",
        "value": "1536",
        "status": "stated",
        "quote": "Each MoE layer consists of 2 shared experts and 160 routed experts, where the intermediate hidden dimension of each expert is 1536.",
-       "where": "Sec. Hyper-Parameters"
+       "where": "Sec. 3.1.2 Hyper-Parameters"
       },
       {
        "name": "bias",
@@ -1066,11 +989,11 @@
     {
      "subgraph": "block",
      "op": "silu",
-     "role": "shared expert 2 activation (SwiGLU, inherited)",
+     "role": "shared expert 2 activation (SwiGLU inherited)",
      "inputs": [
-      "s2g"
+      "s2_g"
      ],
-     "output": "s2a",
+     "output": "s2_a",
      "attributes": [],
      "new_op": ""
     },
@@ -1079,10 +1002,10 @@
      "op": "mul",
      "role": "shared expert 2 gating",
      "inputs": [
-      "s2a",
-      "s2u"
+      "s2_a",
+      "s2_u"
      ],
-     "output": "s2m",
+     "output": "s2_m",
      "attributes": [],
      "new_op": ""
     },
@@ -1091,7 +1014,7 @@
      "op": "linear",
      "role": "shared expert 2 down",
      "inputs": [
-      "s2m"
+      "s2_m"
      ],
      "output": "s2",
      "attributes": [
@@ -1100,7 +1023,7 @@
        "value": "5120",
        "status": "stated",
        "quote": "We set the number of Transformer layers to 60 and the hidden dimension to 5120.",
-       "where": "Sec. Hyper-Parameters"
+       "where": "Sec. 3.1.2 Hyper-Parameters"
       },
       {
        "name": "bias",
@@ -1114,25 +1037,65 @@
     },
     {
      "subgraph": "block",
+     "op": "moe_ffn",
+     "role": "routed experts (softmax affinity, top-k, unnormalised gates)",
+     "inputs": [
+      "u"
+     ],
+     "output": "routed",
+     "attributes": [
+      {
+       "name": "n_experts",
+       "value": "160",
+       "status": "stated",
+       "quote": "Each MoE layer consists of 2 shared experts and 160 routed experts, where the intermediate hidden dimension of each expert is 1536.",
+       "where": "Sec. 3.1.2 Hyper-Parameters"
+      },
+      {
+       "name": "top_k",
+       "value": "6",
+       "status": "stated",
+       "quote": "Among the routed experts, 6 experts will be activated for each token.",
+       "where": "Sec. 3.1.2 Hyper-Parameters"
+      },
+      {
+       "name": "gate_norm",
+       "value": "raw",
+       "status": "stated",
+       "quote": "s_{i,t}, & s_{i,t} \\in \\operatorname{Topk} (\\{ s_{j, t} | 1 \\leq j \\leq N_r \\}, K_{r}), \\\\",
+       "where": "Sec. 2.2.1 Basic Architecture"
+      },
+      {
+       "name": "activation",
+       "value": "swiglu",
+       "status": "inherited",
+       "quote": "For other tiny details (e.g., layer normalization and the activation function in FFNs), unless specifically stated, \\dsvii{} follows the settings of \\dsvi{}~\\citep{deepseek1}.",
+       "where": "Sec. 2 Architecture"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
      "op": "add",
      "role": "sum shared experts",
      "inputs": [
       "s1",
       "s2"
      ],
-     "output": "s",
+     "output": "shared",
      "attributes": [],
      "new_op": ""
     },
     {
      "subgraph": "block",
      "op": "add",
-     "role": "shared + routed expert outputs",
+     "role": "combine shared and routed",
      "inputs": [
-      "s",
-      "r"
+      "shared",
+      "routed"
      ],
-     "output": "f",
+     "output": "ffn_out",
      "attributes": [],
      "new_op": ""
     },
@@ -1141,21 +1104,21 @@
      "op": "add",
      "role": "FFN residual",
      "inputs": [
-      "u",
-      "f"
+      "x1",
+      "ffn_out"
      ],
-     "output": "x",
+     "output": "x_out",
      "attributes": [],
      "new_op": ""
     },
     {
      "subgraph": "head",
      "op": "rmsnorm",
-     "role": "final norm (inherited from DeepSeek 67B)",
+     "role": "final norm (inherited)",
      "inputs": [
-      "x"
+      "x_out"
      ],
-     "output": "xf",
+     "output": "hf",
      "attributes": [
       {
        "name": "eps",
@@ -1172,16 +1135,16 @@
      "op": "linear",
      "role": "LM head",
      "inputs": [
-      "xf"
+      "hf"
      ],
      "output": "logits",
      "attributes": [
       {
        "name": "out",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "100000",
+       "status": "stated",
+       "quote": "We adopt the same tokenizer as used in \\dsvi{}, which is built based on the Byte-level Byte-Pair Encoding~(BBPE) algorithm and has a vocabulary size of 100K.",
+       "where": "Sec. 3.1.1 Data Construction"
       },
       {
        "name": "bias",
@@ -1209,65 +1172,60 @@
      "inputs": [
       {
        "name": "x",
-       "meaning": "content queries q^C, n_h heads of d_h"
+       "meaning": "q_c: per-head content queries [T, n_h*d_h]"
       },
       {
        "name": "a",
-       "meaning": "RoPE'd decoupled queries q^R, n_h heads of d_h^R"
+       "meaning": "q_r: per-head RoPE'd decoupled queries [T, n_h*d_h^R]"
       },
       {
        "name": "b",
-       "meaning": "content keys k^C, n_h heads of d_h"
+       "meaning": "k_c: per-head content keys [T, n_h*d_h]"
       },
       {
        "name": "c",
-       "meaning": "RoPE'd shared decoupled key k^R, one head of d_h^R broadcast to all heads"
+       "meaning": "k_r: single RoPE'd decoupled key shared by all heads [T, d_h^R]"
       },
       {
        "name": "d",
-       "meaning": "values v^C, n_h heads of d_h"
+       "meaning": "v_c: per-head values [T, n_h*d_h]"
       }
      ],
-     "replaces": "attention",
-     "reason": "Causal softmax attention whose per-head query is concat(q^C_i, q^R_i) and per-head key is concat(k^C_i, k^R) with k^R shared across all heads; query/key head width d_h+d_h^R (192) differs from value head width d_h (128); scale 1/sqrt(d_h+d_h^R). The IR attention op has no per-head concat with a broadcast shared key nor distinct qk/v head widths.",
-     "quote": "\\mathbf{k}_{t, i} &= [\\mathbf{k}_{t, i}^{C}; \\mathbf{k}_{t}^{R}],",
-     "where": "Sec. Decoupled Rotary Position Embedding"
+     "replaces": "multi-head attention",
+     "reason": "Needs an attention primitive whose per-head query/key are concatenations [q_c,i; q_r,i] and [k_c,i; k_r] (k_r broadcast across all heads), giving qk width d_h+d_h^R (192) while values have width d_h (128), with causal softmax scaled by 1/sqrt(d_h+d_h^R); the IR's attention op has equal q/k/v head_dim and no concatenation/broadcast of a shared rope key.",
+     "quote": "\\mathbf{k}_{t, i} &= [\\mathbf{k}_{t, i}^{C}; \\mathbf{k}_{t}^{R}], \\\\",
+     "where": "Sec. 2.1.3 Decoupled Rotary Position Embedding"
     }
    ],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "First layer uses a dense FFN instead of MoE (its intermediate width is not stated)",
+     "mechanism": "First layer uses a dense FFN instead of MoE (its width is not stated)",
      "quote": "Following \\citet{deepseekmoe}, we substitute all FFNs except for the first layer with MoE layers.",
-     "where": "Sec. Hyper-Parameters"
+     "where": "Sec. 3.1.2 Hyper-Parameters"
     },
     {
-     "mechanism": "Additional scaling factors at width bottlenecks (latent vectors, routed-expert intermediate states); values not stated",
+     "mechanism": "Additional scaling factors at width bottlenecks (latents and routed expert intermediates); values not stated",
      "quote": "Therefore, in practice, we employ additional RMS Norm layers after the compressed latent vectors, and multiply additional scaling factors at the width bottlenecks (i.e., the compressed latent vectors and the intermediate hidden states of routed experts) to ensure stable training.",
-     "where": "Sec. Hyper-Parameters"
+     "where": "Sec. 3.1.2 Hyper-Parameters"
     },
     {
-     "mechanism": "Device-limited routing: top-K restricted to experts on at most M=3 devices",
-     "quote": "As for the device-limited routing, each token will be sent to at most 3 devices ($M=3$).",
-     "where": "Sec. Hyper-Parameters"
+     "mechanism": "Device-limited routing: experts selected only from top M=3 devices (D=8)",
+     "quote": "For \\dsvii{}, beyond the naive top-K selection of routed experts, we additionally ensure that the target experts of each token will be distributed on at most $M$ devices.",
+     "where": "Sec. 2.2.2 Device-Limited Routing"
     },
     {
-     "mechanism": "Device-level token dropping during training (capacity factor 1.0); no dropping at evaluation",
-     "quote": "We employ the token-dropping strategy during training for acceleration, but do not drop any tokens for evaluation.",
-     "where": "Sec. Hyper-Parameters"
-    },
-    {
-     "mechanism": "YaRN context extension on the decoupled key (s=40, alpha=1, beta=32) with a modified attention length-scaling factor",
-     "quote": "For YaRN, we set the scale $s$ to 40, $\\alpha$ to 1, $\\beta$ to 32, and the target maximum context length to 160K.",
-     "where": "Sec. Long Context Extension"
+     "mechanism": "YaRN context extension applied to the decoupled key (s=40, alpha=1, beta=32), with modified attention scaling sqrt(t)=0.0707 ln s + 1",
+     "quote": "After the initial pre-training of \\dsvii{}, we employ YaRN~\\citep{peng2023yarn} to extend the default context window length from 4K to 128K.",
+     "where": "Sec. 3.1.4 Long Context Extension"
     }
    ],
-   "notes": "Described DeepSeek-V2 (236B total, 21B active) as primary. DeepSeek-V2-Lite is also given; it does not compress queries, so W^DQ/W^UQ become a single query projection, and it has 64 routed experts. RMSNorm, pre-norm placement and SwiGLU are inherited from DeepSeek 67B through the paper's 'tiny details' sentence. Vocab is left not_stated because the paper gives only an approximate '100K'. Context length is the 4K pretraining length; the model is later extended to 128K with YaRN. The widths of the up-projections (n_h*d_h=16384; W^QR n_h*d_h^R=8192) are derivable from the dimensions but are not written as numbers, so they are not_stated. Rotary pairing, theta, eps, biases and embedding tying are not stated. d_ff reports the per-expert intermediate width."
+   "notes": "Described DeepSeek-V2 (236B total, 21B active) as the headline model; DeepSeek-V2-Lite listed as second config (it does not compress queries, so W^DQ/W^UQ become a plain W^Q; 64 routed experts). Norm type/placement and SwiGLU activation are inherited from DeepSeek 67B via the explicit 'follows the settings' sentence; eps, rope theta/pairing, biases, tying left not_stated. n_kv_heads not_stated because MLA uses per-head keys from a shared 512-dim latent rather than a KV-head count. Vocab '100K' is written approximately in the paper. Context 4096 is the pretraining length; extended to 128K via YaRN (Lite chat 32K). d_ff is the per-expert intermediate size. Projection widths 16384/8192 are n_h*d_h and n_h*d_h^R computed from stated values."
   },
   "verification": {
    "errors": [],
    "warnings": [],
    "inherits": {
-    "ancestor": "DeepSeek 67B",
+    "ancestor": "DeepSeek 67B (DeepSeek LLM)",
     "resolved": null,
     "quote": "For other tiny details (e.g., layer normalization and the activation function in FFNs), unless specifically stated, \\dsvii{} follows the settings of \\dsvi{}~\\citep{deepseek1}.",
     "where": "Sec. 2 Architecture",
@@ -1276,8 +1234,8 @@
    "family": {
     "value": "decoder_only",
     "status": "stated",
-    "quote": "\\mathbf{o}_{t, i} &= \\sum_{j=1}^{t} \\operatorname{Softmax}_j(\\frac{\\mathbf{q}_{t, i}^T \\mathbf{k}_{j, i}}{\\sqrt{d_{h} + d_{h}^{R}}}) \\mathbf{v}_{j, i}^{C},",
-    "where": "Sec. Decoupled Rotary Position Embedding",
+    "quote": "We present \\dsvii{}, a strong Mixture-of-Experts~(MoE) language model characterized by economical training and efficient inference.",
+    "where": "Abstract",
     "reasons": [],
     "check": "quote_only"
    },
@@ -1288,7 +1246,7 @@
       "value": "5120",
       "status": "stated",
       "quote": "We set the number of Transformer layers to 60 and the hidden dimension to 5120.",
-      "where": "Sec. Hyper-Parameters",
+      "where": "Sec. 3.1.2 Hyper-Parameters",
       "reasons": [],
       "check": "verified"
      },
@@ -1296,7 +1254,7 @@
       "value": "60",
       "status": "stated",
       "quote": "We set the number of Transformer layers to 60 and the hidden dimension to 5120.",
-      "where": "Sec. Hyper-Parameters",
+      "where": "Sec. 3.1.2 Hyper-Parameters",
       "reasons": [],
       "check": "verified"
      },
@@ -1304,7 +1262,7 @@
       "value": "128",
       "status": "stated",
       "quote": "In \\dsattn{}, we set the number of attention heads $n_h$ to 128 and the per-head dimension $d_h$ to 128.",
-      "where": "Sec. Hyper-Parameters",
+      "where": "Sec. 3.1.2 Hyper-Parameters",
       "reasons": [],
       "check": "verified"
      },
@@ -1320,7 +1278,7 @@
       "value": "128",
       "status": "stated",
       "quote": "In \\dsattn{}, we set the number of attention heads $n_h$ to 128 and the per-head dimension $d_h$ to 128.",
-      "where": "Sec. Hyper-Parameters",
+      "where": "Sec. 3.1.2 Hyper-Parameters",
       "reasons": [],
       "check": "verified"
      },
@@ -1328,23 +1286,23 @@
       "value": "1536",
       "status": "stated",
       "quote": "Each MoE layer consists of 2 shared experts and 160 routed experts, where the intermediate hidden dimension of each expert is 1536.",
-      "where": "Sec. Hyper-Parameters",
+      "where": "Sec. 3.1.2 Hyper-Parameters",
       "reasons": [],
       "check": "verified"
      },
      "vocab_size": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": "",
+      "value": "100000",
+      "status": "stated",
+      "quote": "We adopt the same tokenizer as used in \\dsvi{}, which is built based on the Byte-level Byte-Pair Encoding~(BBPE) algorithm and has a vocabulary size of 100K.",
+      "where": "Sec. 3.1.1 Data Construction",
       "reasons": [],
-      "check": "not_stated"
+      "check": "verified"
      },
      "context_length": {
       "value": "4096",
       "status": "stated",
       "quote": "We set the maximum sequence length to 4K, and train \\dsvii{} on 8.1T tokens.",
-      "where": "Sec. Hyper-Parameters",
+      "where": "Sec. 3.1.2 Hyper-Parameters",
       "reasons": [],
       "check": "verified"
      },
@@ -1365,7 +1323,7 @@
       "value": "2048",
       "status": "stated",
       "quote": "\\dsviilite{} has 27 layers and a hidden dimension of 2048.",
-      "where": "App. DeepSeek-V2-Lite, Architectures",
+      "where": "App. B.1 Model Description",
       "reasons": [],
       "check": "verified"
      },
@@ -1373,7 +1331,7 @@
       "value": "27",
       "status": "stated",
       "quote": "\\dsviilite{} has 27 layers and a hidden dimension of 2048.",
-      "where": "App. DeepSeek-V2-Lite, Architectures",
+      "where": "App. B.1 Model Description",
       "reasons": [],
       "check": "verified"
      },
@@ -1381,7 +1339,7 @@
       "value": "16",
       "status": "stated",
       "quote": "It also employs MLA and has 16 attention heads, where each head has a dimension of 128.",
-      "where": "App. DeepSeek-V2-Lite, Architectures",
+      "where": "App. B.1 Model Description",
       "reasons": [],
       "check": "verified"
      },
@@ -1397,7 +1355,7 @@
       "value": "128",
       "status": "stated",
       "quote": "It also employs MLA and has 16 attention heads, where each head has a dimension of 128.",
-      "where": "App. DeepSeek-V2-Lite, Architectures",
+      "where": "App. B.1 Model Description",
       "reasons": [],
       "check": "verified"
      },
@@ -1405,7 +1363,7 @@
       "value": "1408",
       "status": "stated",
       "quote": "Each MoE layer consists of 2 shared experts and 64 routed experts, where the intermediate hidden dimension of each expert is 1408.",
-      "where": "App. DeepSeek-V2-Lite, Architectures",
+      "where": "App. B.1 Model Description",
       "reasons": [],
       "check": "verified"
      },
@@ -1421,7 +1379,7 @@
       "value": "4096",
       "status": "stated",
       "quote": "During pre-training, we set the maximum sequence length to 4K, and train \\dsviilite{} on 5.7T tokens.",
-      "where": "App. DeepSeek-V2-Lite, Training Details",
+      "where": "App. B.1 Training Details",
       "reasons": [],
       "check": "verified"
      },
@@ -1481,7 +1439,7 @@
      "value": "rope",
      "status": "stated",
      "quote": "Following \\dsvi{}~\\citep{deepseek1}, we intend to use the Rotary Position Embedding~(RoPE)~\\citep{su2024roformer} for \\dsvii{}.",
-     "where": "Sec. Decoupled Rotary Position Embedding",
+     "where": "Sec. 2.1.3 Decoupled Rotary Position Embedding",
      "reasons": [],
      "check": "verified"
     },
@@ -1512,26 +1470,26 @@
     "residual": {
      "value": "residual",
      "status": "stated",
-     "quote": "\\mathbf{h}_{t}^{\\prime} & = \\mathbf{u}_{t} + \\sum_{i=1}^{N_{s}} {\\operatorname{FFN}^{(s)}_{i}\\left( \\mathbf{u}_{t} \\right)}",
-     "where": "Sec. DeepSeekMoE Basic Architecture",
+     "quote": "\\mathbf{h}_{t}^{\\prime} & = \\mathbf{u}_{t} + \\sum_{i=1}^{N_{s}} {\\operatorname{FFN}^{(s)}_{i}\\left( \\mathbf{u}_{t} \\right)} + \\sum_{i=1}^{N_r} {g_{i,t} \\operatorname{FFN}^{(r)}_{i}\\left( \\mathbf{u}_{t} \\right)}, \\\\",
+     "where": "Sec. 2.2.1 Basic Architecture",
      "reasons": [
       "the quote does not name residual (looked for /residual|skip/)"
      ],
      "check": "unverified"
     },
     "parallel_block": {
-     "value": "false",
-     "status": "stated",
-     "quote": "Let $\\mathbf{u}_{t}$ be the FFN input of the $t$-th token, we compute the FFN output $\\mathbf{h}_{t}^{\\prime}$ as follows:",
-     "where": "Sec. DeepSeekMoE Basic Architecture",
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
      "reasons": [],
-     "check": "quote_only"
+     "check": "not_stated"
     },
     "attention": {
      "value": "new_op:mla_attention",
      "status": "stated",
-     "quote": "For \\dsvii{}, we design an innovative attention mechanism called Multi-head Latent Attention (\\dsattn{}).",
-     "where": "Sec. Multi-Head Latent Attention",
+     "quote": "\\mathbf{o}_{t, i} &= \\sum_{j=1}^{t} \\operatorname{Softmax}_j(\\frac{\\mathbf{q}_{t, i}^T \\mathbf{k}_{j, i}}{\\sqrt{d_{h} + d_{h}^{R}}}) \\mathbf{v}_{j, i}^{C}, \\\\",
+     "where": "Sec. 2.1.3 Decoupled Rotary Position Embedding",
      "reasons": [],
      "check": "quote_only"
     },
@@ -1579,7 +1537,7 @@
      "value": "true",
      "status": "stated",
      "quote": "Following \\citet{deepseekmoe}, we substitute all FFNs except for the first layer with MoE layers.",
-     "where": "Sec. Hyper-Parameters",
+     "where": "Sec. 3.1.2 Hyper-Parameters",
      "reasons": [],
      "check": "quote_only"
     },
@@ -1587,7 +1545,7 @@
      "value": "160",
      "status": "stated",
      "quote": "Each MoE layer consists of 2 shared experts and 160 routed experts, where the intermediate hidden dimension of each expert is 1536.",
-     "where": "Sec. Hyper-Parameters",
+     "where": "Sec. 3.1.2 Hyper-Parameters",
      "reasons": [],
      "check": "verified"
     },
@@ -1595,47 +1553,49 @@
      "value": "6",
      "status": "stated",
      "quote": "Among the routed experts, 6 experts will be activated for each token.",
-     "where": "Sec. Hyper-Parameters",
+     "where": "Sec. 3.1.2 Hyper-Parameters",
      "reasons": [],
      "check": "verified"
     },
     "moe_gate_norm": {
      "value": "raw",
      "status": "stated",
-     "quote": "s_{i,t} & = \\operatorname{Softmax}_i \\left( {\\mathbf{u}_{t}}^{T} \\mathbf{e}_{i} \\right),",
-     "where": "Sec. DeepSeekMoE Basic Architecture",
-     "reasons": [],
-     "check": "verified"
+     "quote": "s_{i,t}, & s_{i,t} \\in \\operatorname{Topk} (\\{ s_{j, t} | 1 \\leq j \\leq N_r \\}, K_{r}), \\\\",
+     "where": "Sec. 2.2.1 Basic Architecture",
+     "reasons": [
+      "the quote does not name raw (looked for /softmax/)"
+     ],
+     "check": "unverified"
     }
    },
    "new_ops": [
     {
      "name": "mla_attention",
      "kind": "needs_new_primitive",
-     "replaces": "attention",
-     "reason": "Causal softmax attention whose per-head query is concat(q^C_i, q^R_i) and per-head key is concat(k^C_i, k^R) with k^R shared across all heads; query/key head width d_h+d_h^R (192) differs from value head width d_h (128); scale 1/sqrt(d_h+d_h^R). The IR attention op has no per-head concat with a broadcast shared key nor distinct qk/v head widths.",
-     "quote": "\\mathbf{k}_{t, i} &= [\\mathbf{k}_{t, i}^{C}; \\mathbf{k}_{t}^{R}],",
-     "where": "Sec. Decoupled Rotary Position Embedding",
+     "replaces": "multi-head attention",
+     "reason": "Needs an attention primitive whose per-head query/key are concatenations [q_c,i; q_r,i] and [k_c,i; k_r] (k_r broadcast across all heads), giving qk width d_h+d_h^R (192) while values have width d_h (128), with causal softmax scaled by 1/sqrt(d_h+d_h^R); the IR's attention op has equal q/k/v head_dim and no concatenation/broadcast of a shared rope key.",
+     "quote": "\\mathbf{k}_{t, i} &= [\\mathbf{k}_{t, i}^{C}; \\mathbf{k}_{t}^{R}], \\\\",
+     "where": "Sec. 2.1.3 Decoupled Rotary Position Embedding",
      "inputs": [
       {
        "name": "x",
-       "meaning": "content queries q^C, n_h heads of d_h"
+       "meaning": "q_c: per-head content queries [T, n_h*d_h]"
       },
       {
        "name": "a",
-       "meaning": "RoPE'd decoupled queries q^R, n_h heads of d_h^R"
+       "meaning": "q_r: per-head RoPE'd decoupled queries [T, n_h*d_h^R]"
       },
       {
        "name": "b",
-       "meaning": "content keys k^C, n_h heads of d_h"
+       "meaning": "k_c: per-head content keys [T, n_h*d_h]"
       },
       {
        "name": "c",
-       "meaning": "RoPE'd shared decoupled key k^R, one head of d_h^R broadcast to all heads"
+       "meaning": "k_r: single RoPE'd decoupled key shared by all heads [T, d_h^R]"
       },
       {
        "name": "d",
-       "meaning": "values v^C, n_h heads of d_h"
+       "meaning": "v_c: per-head values [T, n_h*d_h]"
       }
      ],
      "errors": [],
@@ -1654,26 +1614,7 @@
      ],
      "output": "x",
      "new_op": "",
-     "attributes": [
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "vocab"
-      },
-      {
-       "value": "5120",
-       "status": "stated",
-       "quote": "We set the number of Transformer layers to 60 and the hidden dimension to 5120.",
-       "where": "Sec. Hyper-Parameters",
-       "reasons": [],
-       "check": "verified",
-       "name": "d"
-      }
-     ],
+     "attributes": [],
      "errors": []
     },
     {
@@ -1707,14 +1648,14 @@
      "inputs": [
       "h"
      ],
-     "output": "cq",
+     "output": "cq_raw",
      "new_op": "",
      "attributes": [
       {
        "value": "1536",
        "status": "stated",
        "quote": "The KV compression dimension $d_c$ is set to 512, and the query compression dimension $d_c^{\\prime}$ is set to 1536.",
-       "where": "Sec. Hyper-Parameters",
+       "where": "Sec. 3.1.2 Hyper-Parameters",
        "reasons": [],
        "check": "verified",
        "name": "out"
@@ -1735,11 +1676,11 @@
      "i": 3,
      "subgraph": "block",
      "op": "rmsnorm",
-     "role": "RMSNorm after compressed query latent",
+     "role": "RMS Norm after compressed query latent",
      "inputs": [
-      "cq"
+      "cq_raw"
      ],
-     "output": "cqn",
+     "output": "cq",
      "new_op": "",
      "attributes": [
       {
@@ -1750,15 +1691,6 @@
        "reasons": [],
        "check": "not_stated",
        "name": "eps"
-      },
-      {
-       "value": "true",
-       "status": "stated",
-       "quote": "Therefore, in practice, we employ additional RMS Norm layers after the compressed latent vectors, and multiply additional scaling factors at the width bottlenecks",
-       "where": "Sec. Hyper-Parameters",
-       "reasons": [],
-       "check": "quote_only",
-       "name": "present"
       }
      ],
      "errors": []
@@ -1767,20 +1699,22 @@
      "i": 4,
      "subgraph": "block",
      "op": "linear",
-     "role": "query up-projection W^UQ (content queries, n_h*d_h wide)",
+     "role": "query up-projection W^UQ (content part, n_h*d_h)",
      "inputs": [
-      "cqn"
+      "cq"
      ],
-     "output": "qc",
+     "output": "q_c",
      "new_op": "",
      "attributes": [
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
+       "value": "16384",
+       "status": "stated",
+       "quote": "In \\dsattn{}, we set the number of attention heads $n_h$ to 128 and the per-head dimension $d_h$ to 128.",
+       "where": "Sec. 3.1.2 Hyper-Parameters",
+       "reasons": [
+        "16384 does not occur in its quote"
+       ],
+       "check": "unverified",
        "name": "out"
       },
       {
@@ -1799,20 +1733,22 @@
      "i": 5,
      "subgraph": "block",
      "op": "linear",
-     "role": "decoupled RoPE query projection W^QR (n_h*d_h^R wide)",
+     "role": "decoupled RoPE query projection W^QR (n_h*d_h^R)",
      "inputs": [
-      "cqn"
+      "cq"
      ],
-     "output": "qr_pre",
+     "output": "q_r_pre",
      "new_op": "",
      "attributes": [
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
+       "value": "8192",
+       "status": "stated",
+       "quote": "For the decoupled queries and key, we set the per-head dimension $d_h^R$ to 64.",
+       "where": "Sec. 3.1.2 Hyper-Parameters",
+       "reasons": [
+        "8192 does not occur in its quote"
+       ],
+       "check": "unverified",
        "name": "out"
       },
       {
@@ -1833,16 +1769,16 @@
      "op": "rope",
      "role": "RoPE on decoupled queries",
      "inputs": [
-      "qr_pre"
+      "q_r_pre"
      ],
-     "output": "qr",
+     "output": "q_r",
      "new_op": "",
      "attributes": [
       {
        "value": "all",
        "status": "stated",
-       "quote": "[\\mathbf{q}_{t, 1}^{R};\\mathbf{q}_{t, 2}^{R};...;\\mathbf{q}_{t, n_{h}}^{R}] = \\mathbf{q}_{t}^{R} &= \\operatorname{RoPE}({W^{QR}} \\mathbf{c}_{t}^{Q}),",
-       "where": "Sec. Decoupled Rotary Position Embedding",
+       "quote": "[\\mathbf{q}_{t, 1}^{R};\\mathbf{q}_{t, 2}^{R};...;\\mathbf{q}_{t, n_{h}}^{R}] = \\mathbf{q}_{t}^{R} &= \\operatorname{RoPE}({W^{QR}} \\mathbf{c}_{t}^{Q}), \\\\",
+       "where": "Sec. 2.1.3",
        "reasons": [],
        "check": "quote_only",
        "name": "rope_heads"
@@ -1851,7 +1787,7 @@
        "value": "64",
        "status": "stated",
        "quote": "For the decoupled queries and key, we set the per-head dimension $d_h^R$ to 64.",
-       "where": "Sec. Hyper-Parameters",
+       "where": "Sec. 3.1.2 Hyper-Parameters",
        "reasons": [],
        "check": "verified",
        "name": "n_rot"
@@ -1885,14 +1821,14 @@
      "inputs": [
       "h"
      ],
-     "output": "ckv",
+     "output": "ckv_raw",
      "new_op": "",
      "attributes": [
       {
        "value": "512",
        "status": "stated",
        "quote": "The KV compression dimension $d_c$ is set to 512, and the query compression dimension $d_c^{\\prime}$ is set to 1536.",
-       "where": "Sec. Hyper-Parameters",
+       "where": "Sec. 3.1.2 Hyper-Parameters",
        "reasons": [],
        "check": "verified",
        "name": "out"
@@ -1913,11 +1849,11 @@
      "i": 8,
      "subgraph": "block",
      "op": "rmsnorm",
-     "role": "RMSNorm after compressed KV latent",
+     "role": "RMS Norm after compressed KV latent",
      "inputs": [
-      "ckv"
+      "ckv_raw"
      ],
-     "output": "ckvn",
+     "output": "ckv",
      "new_op": "",
      "attributes": [
       {
@@ -1936,20 +1872,22 @@
      "i": 9,
      "subgraph": "block",
      "op": "linear",
-     "role": "key up-projection W^UK (n_h*d_h wide)",
+     "role": "key up-projection W^UK",
      "inputs": [
-      "ckvn"
+      "ckv"
      ],
-     "output": "kc",
+     "output": "k_c",
      "new_op": "",
      "attributes": [
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
+       "value": "16384",
+       "status": "stated",
+       "quote": "In \\dsattn{}, we set the number of attention heads $n_h$ to 128 and the per-head dimension $d_h$ to 128.",
+       "where": "Sec. 3.1.2 Hyper-Parameters",
+       "reasons": [
+        "16384 does not occur in its quote"
+       ],
+       "check": "unverified",
        "name": "out"
       },
       {
@@ -1968,20 +1906,22 @@
      "i": 10,
      "subgraph": "block",
      "op": "linear",
-     "role": "value up-projection W^UV (n_h*d_h wide)",
+     "role": "value up-projection W^UV",
      "inputs": [
-      "ckvn"
+      "ckv"
      ],
-     "output": "vc",
+     "output": "v_c",
      "new_op": "",
      "attributes": [
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
+       "value": "16384",
+       "status": "stated",
+       "quote": "In \\dsattn{}, we set the number of attention heads $n_h$ to 128 and the per-head dimension $d_h$ to 128.",
+       "where": "Sec. 3.1.2 Hyper-Parameters",
+       "reasons": [
+        "16384 does not occur in its quote"
+       ],
+       "check": "unverified",
        "name": "out"
       },
       {
@@ -2000,18 +1940,18 @@
      "i": 11,
      "subgraph": "block",
      "op": "linear",
-     "role": "shared decoupled RoPE key projection W^KR",
+     "role": "decoupled shared RoPE key projection W^KR",
      "inputs": [
       "h"
      ],
-     "output": "kr_pre",
+     "output": "k_r_pre",
      "new_op": "",
      "attributes": [
       {
        "value": "64",
        "status": "stated",
        "quote": "For the decoupled queries and key, we set the per-head dimension $d_h^R$ to 64.",
-       "where": "Sec. Hyper-Parameters",
+       "where": "Sec. 3.1.2 Hyper-Parameters",
        "reasons": [],
        "check": "verified",
        "name": "out"
@@ -2034,16 +1974,16 @@
      "op": "rope",
      "role": "RoPE on shared decoupled key",
      "inputs": [
-      "kr_pre"
+      "k_r_pre"
      ],
-     "output": "kr",
+     "output": "k_r",
      "new_op": "",
      "attributes": [
       {
        "value": "all",
        "status": "stated",
-       "quote": "\\mathbf{k}_{t}^{R} &= \\operatorname{RoPE}({W^{KR}} \\mathbf{h}_{t}),",
-       "where": "Sec. Decoupled Rotary Position Embedding",
+       "quote": "\\mathbf{k}_{t}^{R} &= \\operatorname{RoPE}({W^{KR}} \\mathbf{h}_{t}), \\\\",
+       "where": "Sec. 2.1.3",
        "reasons": [],
        "check": "quote_only",
        "name": "rope_heads"
@@ -2052,7 +1992,7 @@
        "value": "64",
        "status": "stated",
        "quote": "For the decoupled queries and key, we set the per-head dimension $d_h^R$ to 64.",
-       "where": "Sec. Hyper-Parameters",
+       "where": "Sec. 3.1.2 Hyper-Parameters",
        "reasons": [],
        "check": "verified",
        "name": "n_rot"
@@ -2082,13 +2022,13 @@
      "i": 13,
      "subgraph": "block",
      "op": "unsupported",
-     "role": "MLA attention core: per-head concat of content and RoPE parts, shared RoPE key, causal softmax",
+     "role": "MLA attention: per-head concat of content and RoPE parts, causal softmax, values of width d_h",
      "inputs": [
-      "qc",
-      "qr",
-      "kc",
-      "kr",
-      "vc"
+      "q_c",
+      "q_r",
+      "k_c",
+      "k_r",
+      "v_c"
      ],
      "output": "o",
      "new_op": "mla_attention",
@@ -2097,34 +2037,27 @@
        "value": "128",
        "status": "stated",
        "quote": "In \\dsattn{}, we set the number of attention heads $n_h$ to 128 and the per-head dimension $d_h$ to 128.",
-       "where": "Sec. Hyper-Parameters",
+       "where": "Sec. 3.1.2 Hyper-Parameters",
        "reasons": [],
        "check": "verified",
        "name": "heads"
       },
       {
-       "value": "128",
+       "value": "0.0721688",
        "status": "stated",
-       "quote": "In \\dsattn{}, we set the number of attention heads $n_h$ to 128 and the per-head dimension $d_h$ to 128.",
-       "where": "Sec. Hyper-Parameters",
-       "reasons": [],
-       "check": "verified",
-       "name": "head_dim"
-      },
-      {
-       "value": "1/sqrt(192)",
-       "status": "stated",
-       "quote": "\\mathbf{o}_{t, i} &= \\sum_{j=1}^{t} \\operatorname{Softmax}_j(\\frac{\\mathbf{q}_{t, i}^T \\mathbf{k}_{j, i}}{\\sqrt{d_{h} + d_{h}^{R}}}) \\mathbf{v}_{j, i}^{C},",
-       "where": "Sec. Decoupled Rotary Position Embedding",
-       "reasons": [],
-       "check": "quote_only",
+       "quote": "\\mathbf{o}_{t, i} &= \\sum_{j=1}^{t} \\operatorname{Softmax}_j(\\frac{\\mathbf{q}_{t, i}^T \\mathbf{k}_{j, i}}{\\sqrt{d_{h} + d_{h}^{R}}}) \\mathbf{v}_{j, i}^{C}, \\\\",
+       "where": "Sec. 2.1.3",
+       "reasons": [
+        "0.0721688 does not occur in its quote"
+       ],
+       "check": "unverified",
        "name": "scale"
       },
       {
        "value": "true",
        "status": "stated",
-       "quote": "\\mathbf{o}_{t, i} &= \\sum_{j=1}^{t} \\operatorname{Softmax}_j(\\frac{\\mathbf{q}_{t, i}^T \\mathbf{k}_{j, i}}{\\sqrt{d_{h} + d_{h}^{R}}}) \\mathbf{v}_{j, i}^{C},",
-       "where": "Sec. Decoupled Rotary Position Embedding",
+       "quote": "\\mathbf{o}_{t, i} &= \\sum_{j=1}^{t} \\operatorname{Softmax}_j(\\frac{\\mathbf{q}_{t, i}^T \\mathbf{k}_{j, i}}{\\sqrt{d_{h} + d_{h}^{R}}}) \\mathbf{v}_{j, i}^{C}, \\\\",
+       "where": "Sec. 2.1.3",
        "reasons": [],
        "check": "quote_only",
        "name": "causal"
@@ -2147,7 +2080,7 @@
        "value": "5120",
        "status": "stated",
        "quote": "We set the number of Transformer layers to 60 and the hidden dimension to 5120.",
-       "where": "Sec. Hyper-Parameters",
+       "where": "Sec. 3.1.2 Hyper-Parameters",
        "reasons": [],
        "check": "verified",
        "name": "out"
@@ -2173,7 +2106,7 @@
       "x",
       "attn_out"
      ],
-     "output": "u",
+     "output": "x1",
      "new_op": "",
      "attributes": [],
      "errors": []
@@ -2184,9 +2117,9 @@
      "op": "rmsnorm",
      "role": "pre-FFN norm",
      "inputs": [
-      "u"
+      "x1"
      ],
-     "output": "un",
+     "output": "u",
      "new_op": "",
      "attributes": [
       {
@@ -2204,60 +2137,31 @@
     {
      "i": 17,
      "subgraph": "block",
-     "op": "moe_ffn",
-     "role": "routed experts (DeepSeekMoE)",
+     "op": "linear",
+     "role": "shared expert 1 gate",
      "inputs": [
-      "un"
+      "u"
      ],
-     "output": "r",
+     "output": "s1_g",
      "new_op": "",
      "attributes": [
-      {
-       "value": "160",
-       "status": "stated",
-       "quote": "Each MoE layer consists of 2 shared experts and 160 routed experts, where the intermediate hidden dimension of each expert is 1536.",
-       "where": "Sec. Hyper-Parameters",
-       "reasons": [],
-       "check": "verified",
-       "name": "n_experts"
-      },
-      {
-       "value": "6",
-       "status": "stated",
-       "quote": "Among the routed experts, 6 experts will be activated for each token.",
-       "where": "Sec. Hyper-Parameters",
-       "reasons": [],
-       "check": "verified",
-       "name": "top_k"
-      },
-      {
-       "value": "raw",
-       "status": "stated",
-       "quote": "s_{i,t} & = \\operatorname{Softmax}_i \\left( {\\mathbf{u}_{t}}^{T} \\mathbf{e}_{i} \\right),",
-       "where": "Sec. DeepSeekMoE Basic Architecture",
-       "reasons": [],
-       "check": "quote_only",
-       "name": "gate_norm"
-      },
-      {
-       "value": "swiglu",
-       "status": "inherited",
-       "quote": "For other tiny details (e.g., layer normalization and the activation function in FFNs), unless specifically stated, \\dsvii{} follows the settings of \\dsvi{}~\\citep{deepseek1}.",
-       "where": "Sec. 2 Architecture",
-       "reasons": [
-        "inherited, but the ancestor is not in fetch.ANCESTORS (the curated table)"
-       ],
-       "check": "unverified",
-       "name": "activation"
-      },
       {
        "value": "1536",
        "status": "stated",
        "quote": "Each MoE layer consists of 2 shared experts and 160 routed experts, where the intermediate hidden dimension of each expert is 1536.",
-       "where": "Sec. Hyper-Parameters",
+       "where": "Sec. 3.1.2 Hyper-Parameters",
        "reasons": [],
        "check": "verified",
-       "name": "expert_d_ff"
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
       }
      ],
      "errors": []
@@ -2266,18 +2170,18 @@
      "i": 18,
      "subgraph": "block",
      "op": "linear",
-     "role": "shared expert 1 gate",
+     "role": "shared expert 1 up",
      "inputs": [
-      "un"
+      "u"
      ],
-     "output": "s1g",
+     "output": "s1_u",
      "new_op": "",
      "attributes": [
       {
        "value": "1536",
        "status": "stated",
        "quote": "Each MoE layer consists of 2 shared experts and 160 routed experts, where the intermediate hidden dimension of each expert is 1536.",
-       "where": "Sec. Hyper-Parameters",
+       "where": "Sec. 3.1.2 Hyper-Parameters",
        "reasons": [],
        "check": "verified",
        "name": "out"
@@ -2297,19 +2201,46 @@
     {
      "i": 19,
      "subgraph": "block",
-     "op": "linear",
-     "role": "shared expert 1 up",
+     "op": "silu",
+     "role": "shared expert 1 activation (SwiGLU inherited)",
      "inputs": [
-      "un"
+      "s1_g"
      ],
-     "output": "s1u",
+     "output": "s1_a",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 20,
+     "subgraph": "block",
+     "op": "mul",
+     "role": "shared expert 1 gating",
+     "inputs": [
+      "s1_a",
+      "s1_u"
+     ],
+     "output": "s1_m",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 21,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "shared expert 1 down",
+     "inputs": [
+      "s1_m"
+     ],
+     "output": "s1",
      "new_op": "",
      "attributes": [
       {
-       "value": "1536",
+       "value": "5120",
        "status": "stated",
-       "quote": "Each MoE layer consists of 2 shared experts and 160 routed experts, where the intermediate hidden dimension of each expert is 1536.",
-       "where": "Sec. Hyper-Parameters",
+       "quote": "We set the number of Transformer layers to 60 and the hidden dimension to 5120.",
+       "where": "Sec. 3.1.2 Hyper-Parameters",
        "reasons": [],
        "check": "verified",
        "name": "out"
@@ -2327,48 +2258,21 @@
      "errors": []
     },
     {
-     "i": 20,
-     "subgraph": "block",
-     "op": "silu",
-     "role": "shared expert 1 activation (SwiGLU, inherited)",
-     "inputs": [
-      "s1g"
-     ],
-     "output": "s1a",
-     "new_op": "",
-     "attributes": [],
-     "errors": []
-    },
-    {
-     "i": 21,
-     "subgraph": "block",
-     "op": "mul",
-     "role": "shared expert 1 gating",
-     "inputs": [
-      "s1a",
-      "s1u"
-     ],
-     "output": "s1m",
-     "new_op": "",
-     "attributes": [],
-     "errors": []
-    },
-    {
      "i": 22,
      "subgraph": "block",
      "op": "linear",
-     "role": "shared expert 1 down",
+     "role": "shared expert 2 gate",
      "inputs": [
-      "s1m"
+      "u"
      ],
-     "output": "s1",
+     "output": "s2_g",
      "new_op": "",
      "attributes": [
       {
-       "value": "5120",
+       "value": "1536",
        "status": "stated",
-       "quote": "We set the number of Transformer layers to 60 and the hidden dimension to 5120.",
-       "where": "Sec. Hyper-Parameters",
+       "quote": "Each MoE layer consists of 2 shared experts and 160 routed experts, where the intermediate hidden dimension of each expert is 1536.",
+       "where": "Sec. 3.1.2 Hyper-Parameters",
        "reasons": [],
        "check": "verified",
        "name": "out"
@@ -2389,18 +2293,18 @@
      "i": 23,
      "subgraph": "block",
      "op": "linear",
-     "role": "shared expert 2 gate",
+     "role": "shared expert 2 up",
      "inputs": [
-      "un"
+      "u"
      ],
-     "output": "s2g",
+     "output": "s2_u",
      "new_op": "",
      "attributes": [
       {
        "value": "1536",
        "status": "stated",
        "quote": "Each MoE layer consists of 2 shared experts and 160 routed experts, where the intermediate hidden dimension of each expert is 1536.",
-       "where": "Sec. Hyper-Parameters",
+       "where": "Sec. 3.1.2 Hyper-Parameters",
        "reasons": [],
        "check": "verified",
        "name": "out"
@@ -2420,19 +2324,46 @@
     {
      "i": 24,
      "subgraph": "block",
-     "op": "linear",
-     "role": "shared expert 2 up",
+     "op": "silu",
+     "role": "shared expert 2 activation (SwiGLU inherited)",
      "inputs": [
-      "un"
+      "s2_g"
      ],
-     "output": "s2u",
+     "output": "s2_a",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 25,
+     "subgraph": "block",
+     "op": "mul",
+     "role": "shared expert 2 gating",
+     "inputs": [
+      "s2_a",
+      "s2_u"
+     ],
+     "output": "s2_m",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 26,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "shared expert 2 down",
+     "inputs": [
+      "s2_m"
+     ],
+     "output": "s2",
      "new_op": "",
      "attributes": [
       {
-       "value": "1536",
+       "value": "5120",
        "status": "stated",
-       "quote": "Each MoE layer consists of 2 shared experts and 160 routed experts, where the intermediate hidden dimension of each expert is 1536.",
-       "where": "Sec. Hyper-Parameters",
+       "quote": "We set the number of Transformer layers to 60 and the hidden dimension to 5120.",
+       "where": "Sec. 3.1.2 Hyper-Parameters",
        "reasons": [],
        "check": "verified",
        "name": "out"
@@ -2450,60 +2381,53 @@
      "errors": []
     },
     {
-     "i": 25,
-     "subgraph": "block",
-     "op": "silu",
-     "role": "shared expert 2 activation (SwiGLU, inherited)",
-     "inputs": [
-      "s2g"
-     ],
-     "output": "s2a",
-     "new_op": "",
-     "attributes": [],
-     "errors": []
-    },
-    {
-     "i": 26,
-     "subgraph": "block",
-     "op": "mul",
-     "role": "shared expert 2 gating",
-     "inputs": [
-      "s2a",
-      "s2u"
-     ],
-     "output": "s2m",
-     "new_op": "",
-     "attributes": [],
-     "errors": []
-    },
-    {
      "i": 27,
      "subgraph": "block",
-     "op": "linear",
-     "role": "shared expert 2 down",
+     "op": "moe_ffn",
+     "role": "routed experts (softmax affinity, top-k, unnormalised gates)",
      "inputs": [
-      "s2m"
+      "u"
      ],
-     "output": "s2",
+     "output": "routed",
      "new_op": "",
      "attributes": [
       {
-       "value": "5120",
+       "value": "160",
        "status": "stated",
-       "quote": "We set the number of Transformer layers to 60 and the hidden dimension to 5120.",
-       "where": "Sec. Hyper-Parameters",
+       "quote": "Each MoE layer consists of 2 shared experts and 160 routed experts, where the intermediate hidden dimension of each expert is 1536.",
+       "where": "Sec. 3.1.2 Hyper-Parameters",
        "reasons": [],
        "check": "verified",
-       "name": "out"
+       "name": "n_experts"
       },
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
+       "value": "6",
+       "status": "stated",
+       "quote": "Among the routed experts, 6 experts will be activated for each token.",
+       "where": "Sec. 3.1.2 Hyper-Parameters",
        "reasons": [],
-       "check": "not_stated",
-       "name": "bias"
+       "check": "verified",
+       "name": "top_k"
+      },
+      {
+       "value": "raw",
+       "status": "stated",
+       "quote": "s_{i,t}, & s_{i,t} \\in \\operatorname{Topk} (\\{ s_{j, t} | 1 \\leq j \\leq N_r \\}, K_{r}), \\\\",
+       "where": "Sec. 2.2.1 Basic Architecture",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "gate_norm"
+      },
+      {
+       "value": "swiglu",
+       "status": "inherited",
+       "quote": "For other tiny details (e.g., layer normalization and the activation function in FFNs), unless specifically stated, \\dsvii{} follows the settings of \\dsvi{}~\\citep{deepseek1}.",
+       "where": "Sec. 2 Architecture",
+       "reasons": [
+        "inherited, but the ancestor is not in fetch.ANCESTORS (the curated table)"
+       ],
+       "check": "unverified",
+       "name": "activation"
       }
      ],
      "errors": []
@@ -2517,7 +2441,7 @@
       "s1",
       "s2"
      ],
-     "output": "s",
+     "output": "shared",
      "new_op": "",
      "attributes": [],
      "errors": []
@@ -2526,12 +2450,12 @@
      "i": 29,
      "subgraph": "block",
      "op": "add",
-     "role": "shared + routed expert outputs",
+     "role": "combine shared and routed",
      "inputs": [
-      "s",
-      "r"
+      "shared",
+      "routed"
      ],
-     "output": "f",
+     "output": "ffn_out",
      "new_op": "",
      "attributes": [],
      "errors": []
@@ -2542,10 +2466,10 @@
      "op": "add",
      "role": "FFN residual",
      "inputs": [
-      "u",
-      "f"
+      "x1",
+      "ffn_out"
      ],
-     "output": "x",
+     "output": "x_out",
      "new_op": "",
      "attributes": [],
      "errors": []
@@ -2554,11 +2478,11 @@
      "i": 31,
      "subgraph": "head",
      "op": "rmsnorm",
-     "role": "final norm (inherited from DeepSeek 67B)",
+     "role": "final norm (inherited)",
      "inputs": [
-      "x"
+      "x_out"
      ],
-     "output": "xf",
+     "output": "hf",
      "new_op": "",
      "attributes": [
       {
@@ -2579,18 +2503,18 @@
      "op": "linear",
      "role": "LM head",
      "inputs": [
-      "xf"
+      "hf"
      ],
      "output": "logits",
      "new_op": "",
      "attributes": [
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
+       "value": "100000",
+       "status": "stated",
+       "quote": "We adopt the same tokenizer as used in \\dsvi{}, which is built based on the Byte-level Byte-Pair Encoding~(BBPE) algorithm and has a vocabulary size of 100K.",
+       "where": "Sec. 3.1.1 Data Construction",
        "reasons": [],
-       "check": "not_stated",
+       "check": "verified",
        "name": "out"
       },
       {
@@ -2617,42 +2541,36 @@
    ],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "First layer uses a dense FFN instead of MoE (its intermediate width is not stated)",
+     "mechanism": "First layer uses a dense FFN instead of MoE (its width is not stated)",
      "quote": "Following \\citet{deepseekmoe}, we substitute all FFNs except for the first layer with MoE layers.",
-     "where": "Sec. Hyper-Parameters",
+     "where": "Sec. 3.1.2 Hyper-Parameters",
      "check": "verified"
     },
     {
-     "mechanism": "Additional scaling factors at width bottlenecks (latent vectors, routed-expert intermediate states); values not stated",
+     "mechanism": "Additional scaling factors at width bottlenecks (latents and routed expert intermediates); values not stated",
      "quote": "Therefore, in practice, we employ additional RMS Norm layers after the compressed latent vectors, and multiply additional scaling factors at the width bottlenecks (i.e., the compressed latent vectors and the intermediate hidden states of routed experts) to ensure stable training.",
-     "where": "Sec. Hyper-Parameters",
+     "where": "Sec. 3.1.2 Hyper-Parameters",
      "check": "verified"
     },
     {
-     "mechanism": "Device-limited routing: top-K restricted to experts on at most M=3 devices",
-     "quote": "As for the device-limited routing, each token will be sent to at most 3 devices ($M=3$).",
-     "where": "Sec. Hyper-Parameters",
+     "mechanism": "Device-limited routing: experts selected only from top M=3 devices (D=8)",
+     "quote": "For \\dsvii{}, beyond the naive top-K selection of routed experts, we additionally ensure that the target experts of each token will be distributed on at most $M$ devices.",
+     "where": "Sec. 2.2.2 Device-Limited Routing",
      "check": "verified"
     },
     {
-     "mechanism": "Device-level token dropping during training (capacity factor 1.0); no dropping at evaluation",
-     "quote": "We employ the token-dropping strategy during training for acceleration, but do not drop any tokens for evaluation.",
-     "where": "Sec. Hyper-Parameters",
-     "check": "verified"
-    },
-    {
-     "mechanism": "YaRN context extension on the decoupled key (s=40, alpha=1, beta=32) with a modified attention length-scaling factor",
-     "quote": "For YaRN, we set the scale $s$ to 40, $\\alpha$ to 1, $\\beta$ to 32, and the target maximum context length to 160K.",
-     "where": "Sec. Long Context Extension",
+     "mechanism": "YaRN context extension applied to the decoupled key (s=40, alpha=1, beta=32), with modified attention scaling sqrt(t)=0.0707 ln s + 1",
+     "quote": "After the initial pre-training of \\dsvii{}, we employ YaRN~\\citep{peng2023yarn} to extend the default context window length from 4K to 128K.",
+     "where": "Sec. 3.1.4 Long Context Extension",
      "check": "verified"
     }
    ],
    "summary": {
     "counts": {
-     "verified": 34,
-     "quote_only": 10,
-     "unverified": 5,
-     "not_stated": 44
+     "verified": 32,
+     "quote_only": 7,
+     "unverified": 11,
+     "not_stated": 38
     },
     "unverified": [
      {
@@ -2680,7 +2598,43 @@
       ]
      },
      {
-      "field": "block_ops[17].activation",
+      "field": "flavours.moe_gate_norm",
+      "reasons": [
+       "the quote does not name raw (looked for /softmax/)"
+      ]
+     },
+     {
+      "field": "block_ops[4].out",
+      "reasons": [
+       "16384 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[5].out",
+      "reasons": [
+       "8192 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[9].out",
+      "reasons": [
+       "16384 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[10].out",
+      "reasons": [
+       "16384 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[13].scale",
+      "reasons": [
+       "0.0721688 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[27].activation",
       "reasons": [
        "inherited, but the ancestor is not in fetch.ANCESTORS (the curated table)"
       ]

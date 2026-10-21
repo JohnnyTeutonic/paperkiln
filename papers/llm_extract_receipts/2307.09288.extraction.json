@@ -37,7 +37,7 @@
   },
   "attention": {
    "value": "exact",
-   "evidence": "using an optimized auto-regressive transformer [Sec. 2 Pretraining]",
+   "evidence": "used grouped-query attention (GQA) to improve inference scalability for our larger models [Sec. 2 Pretraining]",
    "verdict": "used"
   }
  },
@@ -49,34 +49,6 @@
   "d_ff"
  ],
  "unverified": [
-  {
-   "field": "d_model",
-   "reasons": [
-    "inherited from llama, whose curated entry has no d_model",
-    "the inheritance quote does not name the ancestor"
-   ]
-  },
-  {
-   "field": "n_layers",
-   "reasons": [
-    "inherited from llama, whose curated entry has no n_layers",
-    "the inheritance quote does not name the ancestor"
-   ]
-  },
-  {
-   "field": "n_heads",
-   "reasons": [
-    "inherited from llama, whose curated entry has no n_heads",
-    "the inheritance quote does not name the ancestor"
-   ]
-  },
-  {
-   "field": "n_kv_heads",
-   "reasons": [
-    "inherited from llama, whose curated entry has no n_kv_heads",
-    "the inheritance quote does not name the ancestor"
-   ]
-  },
   {
    "field": "residual",
    "reasons": [
@@ -100,12 +72,10 @@
    "context_length": 4096
   },
   {
-   "n_kv_heads": 8,
    "vocab_size": 32000,
    "context_length": 4096
   },
   {
-   "n_kv_heads": 8,
    "vocab_size": 32000,
    "context_length": 4096
   }
@@ -116,14 +86,14 @@
   "sent_sha256": "c81a9e7b0215409404b4c0285bee966a2777bb35c9e63db28037f145af18fa16",
   "from": "https://arxiv.org/e-print/2307.09288",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
   "n_calls": 1,
-  "cost_usd": 0.0,
+  "cost_usd": 0.606376,
   "request_ids": [
-   "req_011CgFccsY1RMp153eaveqT2"
+   "req_011CgFi73My8H4BpePjFTNAf"
   ]
  },
  "llm": {
@@ -145,34 +115,34 @@
     {
      "name": "7B",
      "d_model": {
-      "value": "4096",
-      "status": "inherited",
-      "quote": "We adopt most of the pretraining setting and model architecture from \\anise.",
-      "where": "Sec. 2.2 Training Details"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
      },
      "n_layers": {
-      "value": "32",
-      "status": "inherited",
-      "quote": "We adopt most of the pretraining setting and model architecture from \\anise.",
-      "where": "Sec. 2.2 Training Details"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
      },
      "n_heads": {
-      "value": "32",
-      "status": "inherited",
-      "quote": "We adopt most of the pretraining setting and model architecture from \\anise.",
-      "where": "Sec. 2.2 Training Details"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
      },
      "n_kv_heads": {
-      "value": "32",
-      "status": "inherited",
-      "quote": "We adopt most of the pretraining setting and model architecture from \\anise.",
-      "where": "Sec. 2.2 Training Details"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
      },
      "head_dim": {
-      "value": "128",
-      "status": "inherited",
-      "quote": "We adopt most of the pretraining setting and model architecture from \\anise.",
-      "where": "Sec. 2.2 Training Details"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
      },
      "d_ff": {
       "value": "",
@@ -196,34 +166,34 @@
     {
      "name": "13B",
      "d_model": {
-      "value": "5120",
-      "status": "inherited",
-      "quote": "We adopt most of the pretraining setting and model architecture from \\anise.",
-      "where": "Sec. 2.2 Training Details"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
      },
      "n_layers": {
-      "value": "40",
-      "status": "inherited",
-      "quote": "We adopt most of the pretraining setting and model architecture from \\anise.",
-      "where": "Sec. 2.2 Training Details"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
      },
      "n_heads": {
-      "value": "40",
-      "status": "inherited",
-      "quote": "We adopt most of the pretraining setting and model architecture from \\anise.",
-      "where": "Sec. 2.2 Training Details"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
      },
      "n_kv_heads": {
-      "value": "40",
-      "status": "inherited",
-      "quote": "We adopt most of the pretraining setting and model architecture from \\anise.",
-      "where": "Sec. 2.2 Training Details"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
      },
      "head_dim": {
-      "value": "128",
-      "status": "inherited",
-      "quote": "We adopt most of the pretraining setting and model architecture from \\anise.",
-      "where": "Sec. 2.2 Training Details"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
      },
      "d_ff": {
       "value": "",
@@ -265,10 +235,10 @@
       "where": ""
      },
      "n_kv_heads": {
-      "value": "8",
-      "status": "stated",
-      "quote": "a grouped-query attention variant with 8 KV projections",
-      "where": "Appendix A.2.1 Grouped-Query Attention"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
      },
      "head_dim": {
       "value": "",
@@ -316,10 +286,10 @@
       "where": ""
      },
      "n_kv_heads": {
-      "value": "8",
-      "status": "stated",
-      "quote": "a grouped-query attention variant with 8 KV projections",
-      "where": "Appendix A.2.1 Grouped-Query Attention"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
      },
      "head_dim": {
       "value": "",
@@ -412,7 +382,7 @@
     "attention": {
      "value": "exact",
      "status": "stated",
-     "quote": "using an optimized auto-regressive transformer",
+     "quote": "used grouped-query attention (GQA) to improve inference scalability for our larger models",
      "where": "Sec. 2 Pretraining"
     },
     "window_size": {
@@ -512,7 +482,7 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "q projection",
+     "role": "query projection",
      "inputs": [
       "h"
      ],
@@ -531,7 +501,7 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "k projection",
+     "role": "key projection (shared across head groups under GQA for 34B/70B)",
      "inputs": [
       "h"
      ],
@@ -550,7 +520,7 @@
     {
      "subgraph": "block",
      "op": "linear",
-     "role": "v projection",
+     "role": "value projection (shared across head groups under GQA for 34B/70B)",
      "inputs": [
       "h"
      ],
@@ -569,12 +539,19 @@
     {
      "subgraph": "block",
      "op": "rope",
-     "role": "rotary embedding on q",
+     "role": "rotary embedding on queries",
      "inputs": [
       "q"
      ],
      "output": "q_r",
      "attributes": [
+      {
+       "name": "rope_heads",
+       "value": "all",
+       "status": "stated",
+       "quote": "rotary positional embeddings (RoPE, \\citealt{su2022roformer})",
+       "where": "Sec. 2.2 Training Details"
+      },
       {
        "name": "pairing",
        "value": "",
@@ -583,14 +560,14 @@
        "where": ""
       },
       {
-       "name": "theta",
+       "name": "n_rot",
        "value": "",
        "status": "not_stated",
        "quote": "",
        "where": ""
       },
       {
-       "name": "n_rot",
+       "name": "theta",
        "value": "",
        "status": "not_stated",
        "quote": "",
@@ -602,12 +579,19 @@
     {
      "subgraph": "block",
      "op": "rope",
-     "role": "rotary embedding on k",
+     "role": "rotary embedding on keys",
      "inputs": [
       "k"
      ],
      "output": "k_r",
      "attributes": [
+      {
+       "name": "rope_heads",
+       "value": "all",
+       "status": "stated",
+       "quote": "rotary positional embeddings (RoPE, \\citealt{su2022roformer})",
+       "where": "Sec. 2.2 Training Details"
+      },
       {
        "name": "pairing",
        "value": "",
@@ -616,14 +600,14 @@
        "where": ""
       },
       {
-       "name": "theta",
+       "name": "n_rot",
        "value": "",
        "status": "not_stated",
        "quote": "",
        "where": ""
       },
       {
-       "name": "n_rot",
+       "name": "theta",
        "value": "",
        "status": "not_stated",
        "quote": "",
@@ -645,31 +629,24 @@
      "attributes": [
       {
        "name": "heads",
-       "value": "32",
-       "status": "inherited",
-       "quote": "We adopt most of the pretraining setting and model architecture from \\anise.",
-       "where": "Sec. 2.2 Training Details"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       },
       {
        "name": "kv_heads",
-       "value": "32",
-       "status": "inherited",
-       "quote": "We adopt most of the pretraining setting and model architecture from \\anise.",
-       "where": "Sec. 2.2 Training Details"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       },
       {
        "name": "head_dim",
-       "value": "128",
-       "status": "inherited",
-       "quote": "We adopt most of the pretraining setting and model architecture from \\anise.",
-       "where": "Sec. 2.2 Training Details"
-      },
-      {
-       "name": "causal",
-       "value": "true",
-       "status": "stated",
-       "quote": "using an optimized auto-regressive transformer",
-       "where": "Sec. 2 Pretraining"
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
       },
       {
        "name": "scale",
@@ -677,6 +654,13 @@
        "status": "not_stated",
        "quote": "",
        "where": ""
+      },
+      {
+       "name": "causal",
+       "value": "true",
+       "status": "stated",
+       "quote": "\\cinnamon is an auto-regressive language model that uses an optimized transformer architecture.",
+       "where": "Table: Model card for Llama 2"
       },
       {
        "name": "window",
@@ -853,29 +837,10 @@
     },
     {
      "subgraph": "head",
-     "op": "rmsnorm",
-     "role": "final norm (not explicitly stated in paper)",
+     "op": "linear",
+     "role": "next-token prediction head",
      "inputs": [
       "x"
-     ],
-     "output": "hf",
-     "attributes": [
-      {
-       "name": "eps",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      }
-     ],
-     "new_op": ""
-    },
-    {
-     "subgraph": "head",
-     "op": "linear",
-     "role": "LM head (next-token prediction)",
-     "inputs": [
-      "hf"
      ],
      "output": "logits",
      "attributes": [
@@ -906,7 +871,7 @@
    ],
    "new_ops": [],
    "mechanisms_outside_ir": [],
-   "notes": "Described the pretrained Llama 2 base model. The 7B config is primary. The 7B/13B widths, depths and head counts are given as inherited from Llama 1, based on the paper's explicit sentence 'We adopt most of the pretraining setting and model architecture from Llama 1'. Its stated differences are only the context length (4096) and GQA. 34B and 70B are new sizes with no Llama 1 counterpart, so their sizes are not_stated except kv_heads=8. That value comes from the GQA variant 'with 8 KV projections', which the paper chose for 34B/70B. d_ff is not stated anywhere (only ablation FFN multipliers 1.3/1.33 are given). Norm eps, RoPE pairing/theta, biases and tied embeddings are not stated; the eps=1e-5 in the paper is AdamW's. The final RMSNorm in the head is not stated in the text. The reward model (same architecture with a regression head) and Ghost Attention (a data/fine-tuning technique) are not architectural changes to the network."
+   "notes": "Described the pretrained Llama 2 base model, which Llama 2-Chat fine-tunes without architectural change. Configs are 7B/13B/34B/70B; 34B is reported but not released. The paper gives no d_model, n_layers, n_heads, head_dim or d_ff for any size, so these are not_stated. The paper inherits the architecture from Llama 1 but does not restate those values, and the sizes differ from Llama 1 (34B/70B are new), so no size values are given as inherited. GQA is used only for 34B and 70B; 7B/13B use MHA. The ablation mentions 'a grouped-query attention variant with 8 KV projections', but this is in an ablation on a 30B model, so kv_heads is left not_stated. RMSNorm eps, RoPE theta/pairing, biases and tied embeddings are not stated. A final norm before the head is not described in the paper and is omitted from the IR; a builder should check it against the released code. The reward model replaces the LM head with a scalar regression head; that is not the headline model."
   },
   "verification": {
    "errors": [],
@@ -930,59 +895,44 @@
     {
      "name": "7B",
      "d_model": {
-      "value": "4096",
-      "status": "inherited",
-      "quote": "We adopt most of the pretraining setting and model architecture from \\anise.",
-      "where": "Sec. 2.2 Training Details",
-      "reasons": [
-       "inherited from llama, whose curated entry has no d_model",
-       "the inheritance quote does not name the ancestor"
-      ],
-      "check": "unverified"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
      },
      "n_layers": {
-      "value": "32",
-      "status": "inherited",
-      "quote": "We adopt most of the pretraining setting and model architecture from \\anise.",
-      "where": "Sec. 2.2 Training Details",
-      "reasons": [
-       "inherited from llama, whose curated entry has no n_layers",
-       "the inheritance quote does not name the ancestor"
-      ],
-      "check": "unverified"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
      },
      "n_heads": {
-      "value": "32",
-      "status": "inherited",
-      "quote": "We adopt most of the pretraining setting and model architecture from \\anise.",
-      "where": "Sec. 2.2 Training Details",
-      "reasons": [
-       "inherited from llama, whose curated entry has no n_heads",
-       "the inheritance quote does not name the ancestor"
-      ],
-      "check": "unverified"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
      },
      "n_kv_heads": {
-      "value": "32",
-      "status": "inherited",
-      "quote": "We adopt most of the pretraining setting and model architecture from \\anise.",
-      "where": "Sec. 2.2 Training Details",
-      "reasons": [
-       "inherited from llama, whose curated entry has no n_kv_heads",
-       "the inheritance quote does not name the ancestor"
-      ],
-      "check": "unverified"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
      },
      "head_dim": {
-      "value": "128",
-      "status": "inherited",
-      "quote": "We adopt most of the pretraining setting and model architecture from \\anise.",
-      "where": "Sec. 2.2 Training Details",
-      "reasons": [
-       "inherited from llama, whose curated entry has no head_dim",
-       "the inheritance quote does not name the ancestor"
-      ],
-      "check": "unverified"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
      },
      "d_ff": {
       "value": "",
@@ -1013,59 +963,44 @@
     {
      "name": "13B",
      "d_model": {
-      "value": "5120",
-      "status": "inherited",
-      "quote": "We adopt most of the pretraining setting and model architecture from \\anise.",
-      "where": "Sec. 2.2 Training Details",
-      "reasons": [
-       "inherited from llama, whose curated entry has no d_model",
-       "the inheritance quote does not name the ancestor"
-      ],
-      "check": "unverified"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
      },
      "n_layers": {
-      "value": "40",
-      "status": "inherited",
-      "quote": "We adopt most of the pretraining setting and model architecture from \\anise.",
-      "where": "Sec. 2.2 Training Details",
-      "reasons": [
-       "inherited from llama, whose curated entry has no n_layers",
-       "the inheritance quote does not name the ancestor"
-      ],
-      "check": "unverified"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
      },
      "n_heads": {
-      "value": "40",
-      "status": "inherited",
-      "quote": "We adopt most of the pretraining setting and model architecture from \\anise.",
-      "where": "Sec. 2.2 Training Details",
-      "reasons": [
-       "inherited from llama, whose curated entry has no n_heads",
-       "the inheritance quote does not name the ancestor"
-      ],
-      "check": "unverified"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
      },
      "n_kv_heads": {
-      "value": "40",
-      "status": "inherited",
-      "quote": "We adopt most of the pretraining setting and model architecture from \\anise.",
-      "where": "Sec. 2.2 Training Details",
-      "reasons": [
-       "inherited from llama, whose curated entry has no n_kv_heads",
-       "the inheritance quote does not name the ancestor"
-      ],
-      "check": "unverified"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
      },
      "head_dim": {
-      "value": "128",
-      "status": "inherited",
-      "quote": "We adopt most of the pretraining setting and model architecture from \\anise.",
-      "where": "Sec. 2.2 Training Details",
-      "reasons": [
-       "inherited from llama, whose curated entry has no head_dim",
-       "the inheritance quote does not name the ancestor"
-      ],
-      "check": "unverified"
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
      },
      "d_ff": {
       "value": "",
@@ -1120,12 +1055,12 @@
       "check": "not_stated"
      },
      "n_kv_heads": {
-      "value": "8",
-      "status": "stated",
-      "quote": "a grouped-query attention variant with 8 KV projections",
-      "where": "Appendix A.2.1 Grouped-Query Attention",
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
       "reasons": [],
-      "check": "verified"
+      "check": "not_stated"
      },
      "head_dim": {
       "value": "",
@@ -1188,12 +1123,12 @@
       "check": "not_stated"
      },
      "n_kv_heads": {
-      "value": "8",
-      "status": "stated",
-      "quote": "a grouped-query attention variant with 8 KV projections",
-      "where": "Appendix A.2.1 Grouped-Query Attention",
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
       "reasons": [],
-      "check": "verified"
+      "check": "not_stated"
      },
      "head_dim": {
       "value": "",
@@ -1317,7 +1252,7 @@
     "attention": {
      "value": "exact",
      "status": "stated",
-     "quote": "using an optimized auto-regressive transformer",
+     "quote": "used grouped-query attention (GQA) to improve inference scalability for our larger models",
      "where": "Sec. 2 Pretraining",
      "reasons": [],
      "check": "quote_only"
@@ -1447,7 +1382,7 @@
      "i": 2,
      "subgraph": "block",
      "op": "linear",
-     "role": "q projection",
+     "role": "query projection",
      "inputs": [
       "h"
      ],
@@ -1470,7 +1405,7 @@
      "i": 3,
      "subgraph": "block",
      "op": "linear",
-     "role": "k projection",
+     "role": "key projection (shared across head groups under GQA for 34B/70B)",
      "inputs": [
       "h"
      ],
@@ -1493,7 +1428,7 @@
      "i": 4,
      "subgraph": "block",
      "op": "linear",
-     "role": "v projection",
+     "role": "value projection (shared across head groups under GQA for 34B/70B)",
      "inputs": [
       "h"
      ],
@@ -1516,13 +1451,22 @@
      "i": 5,
      "subgraph": "block",
      "op": "rope",
-     "role": "rotary embedding on q",
+     "role": "rotary embedding on queries",
      "inputs": [
       "q"
      ],
      "output": "q_r",
      "new_op": "",
      "attributes": [
+      {
+       "value": "all",
+       "status": "stated",
+       "quote": "rotary positional embeddings (RoPE, \\citealt{su2022roformer})",
+       "where": "Sec. 2.2 Training Details",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "rope_heads"
+      },
       {
        "value": "",
        "status": "not_stated",
@@ -1539,7 +1483,7 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
-       "name": "theta"
+       "name": "n_rot"
       },
       {
        "value": "",
@@ -1548,7 +1492,7 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
-       "name": "n_rot"
+       "name": "theta"
       }
      ],
      "errors": []
@@ -1557,13 +1501,22 @@
      "i": 6,
      "subgraph": "block",
      "op": "rope",
-     "role": "rotary embedding on k",
+     "role": "rotary embedding on keys",
      "inputs": [
       "k"
      ],
      "output": "k_r",
      "new_op": "",
      "attributes": [
+      {
+       "value": "all",
+       "status": "stated",
+       "quote": "rotary positional embeddings (RoPE, \\citealt{su2022roformer})",
+       "where": "Sec. 2.2 Training Details",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "rope_heads"
+      },
       {
        "value": "",
        "status": "not_stated",
@@ -1580,7 +1533,7 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
-       "name": "theta"
+       "name": "n_rot"
       },
       {
        "value": "",
@@ -1589,7 +1542,7 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
-       "name": "n_rot"
+       "name": "theta"
       }
      ],
      "errors": []
@@ -1608,49 +1561,31 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "32",
-       "status": "inherited",
-       "quote": "We adopt most of the pretraining setting and model architecture from \\anise.",
-       "where": "Sec. 2.2 Training Details",
-       "reasons": [
-        "inherited from llama, whose curated entry has no heads",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "heads"
       },
       {
-       "value": "32",
-       "status": "inherited",
-       "quote": "We adopt most of the pretraining setting and model architecture from \\anise.",
-       "where": "Sec. 2.2 Training Details",
-       "reasons": [
-        "inherited from llama, whose curated entry has no kv_heads",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
        "name": "kv_heads"
       },
       {
-       "value": "128",
-       "status": "inherited",
-       "quote": "We adopt most of the pretraining setting and model architecture from \\anise.",
-       "where": "Sec. 2.2 Training Details",
-       "reasons": [
-        "inherited from llama, whose curated entry has no head_dim",
-        "the inheritance quote does not name the ancestor"
-       ],
-       "check": "unverified",
-       "name": "head_dim"
-      },
-      {
-       "value": "true",
-       "status": "stated",
-       "quote": "using an optimized auto-regressive transformer",
-       "where": "Sec. 2 Pretraining",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
        "reasons": [],
-       "check": "quote_only",
-       "name": "causal"
+       "check": "not_stated",
+       "name": "head_dim"
       },
       {
        "value": "",
@@ -1660,6 +1595,15 @@
        "reasons": [],
        "check": "not_stated",
        "name": "scale"
+      },
+      {
+       "value": "true",
+       "status": "stated",
+       "quote": "\\cinnamon is an auto-regressive language model that uses an optimized transformer architecture.",
+       "where": "Table: Model card for Llama 2",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "causal"
       },
       {
        "value": "",
@@ -1873,33 +1817,10 @@
     {
      "i": 17,
      "subgraph": "head",
-     "op": "rmsnorm",
-     "role": "final norm (not explicitly stated in paper)",
+     "op": "linear",
+     "role": "next-token prediction head",
      "inputs": [
       "x"
-     ],
-     "output": "hf",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "eps"
-      }
-     ],
-     "errors": []
-    },
-    {
-     "i": 18,
-     "subgraph": "head",
-     "op": "linear",
-     "role": "LM head (next-token prediction)",
-     "inputs": [
-      "hf"
      ],
      "output": "logits",
      "new_op": "",
@@ -1938,114 +1859,23 @@
    "mechanisms_outside_ir": [],
    "summary": {
     "counts": {
-     "verified": 15,
-     "quote_only": 4,
-     "unverified": 14,
-     "not_stated": 49
+     "verified": 13,
+     "quote_only": 6,
+     "unverified": 1,
+     "not_stated": 63
     },
     "unverified": [
-     {
-      "field": "configs[7B].d_model",
-      "reasons": [
-       "inherited from llama, whose curated entry has no d_model",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "configs[7B].n_layers",
-      "reasons": [
-       "inherited from llama, whose curated entry has no n_layers",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "configs[7B].n_heads",
-      "reasons": [
-       "inherited from llama, whose curated entry has no n_heads",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "configs[7B].n_kv_heads",
-      "reasons": [
-       "inherited from llama, whose curated entry has no n_kv_heads",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "configs[7B].head_dim",
-      "reasons": [
-       "inherited from llama, whose curated entry has no head_dim",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "configs[13B].d_model",
-      "reasons": [
-       "inherited from llama, whose curated entry has no d_model",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "configs[13B].n_layers",
-      "reasons": [
-       "inherited from llama, whose curated entry has no n_layers",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "configs[13B].n_heads",
-      "reasons": [
-       "inherited from llama, whose curated entry has no n_heads",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "configs[13B].n_kv_heads",
-      "reasons": [
-       "inherited from llama, whose curated entry has no n_kv_heads",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "configs[13B].head_dim",
-      "reasons": [
-       "inherited from llama, whose curated entry has no head_dim",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
      {
       "field": "flavours.residual",
       "reasons": [
        "the quote does not name residual (looked for /residual|skip/)"
-      ]
-     },
-     {
-      "field": "block_ops[7].heads",
-      "reasons": [
-       "inherited from llama, whose curated entry has no heads",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[7].kv_heads",
-      "reasons": [
-       "inherited from llama, whose curated entry has no kv_heads",
-       "the inheritance quote does not name the ancestor"
-      ]
-     },
-     {
-      "field": "block_ops[7].head_dim",
-      "reasons": [
-       "inherited from llama, whose curated entry has no head_dim",
-       "the inheritance quote does not name the ancestor"
       ]
      }
     ],
     "new_op_errors": [],
     "node_errors": [],
     "n_new_ops": 0,
-    "n_block_ops": 19
+    "n_block_ops": 18
    }
   }
  }

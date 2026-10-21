@@ -4,17 +4,17 @@
  "fields": {
   "d_model": {
    "value": 12288,
-   "evidence": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128 [Table 2.1 (table:param)]",
+   "evidence": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128 & 3.2M & $0.6 \\times 10^{-4}$ [Table 2.1 (table:param)]",
    "verdict": "used"
   },
   "n_layers": {
    "value": 96,
-   "evidence": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128 [Table 2.1 (table:param)]",
+   "evidence": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128 & 3.2M & $0.6 \\times 10^{-4}$ [Table 2.1 (table:param)]",
    "verdict": "used"
   },
   "n_heads": {
    "value": 96,
-   "evidence": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128 [Table 2.1 (table:param)]",
+   "evidence": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128 & 3.2M & $0.6 \\times 10^{-4}$ [Table 2.1 (table:param)]",
    "verdict": "used"
   },
   "context_length": {
@@ -57,6 +57,12 @@
   "vocab_size"
  ],
  "unverified": [
+  {
+   "field": "n_kv_heads",
+   "reasons": [
+    "inherited from gpt-2, whose curated entry has no n_kv_heads"
+   ]
+  },
   {
    "field": "d_ff",
    "reasons": [
@@ -140,13 +146,13 @@
    "evidence": "with the exception that we use alternating dense and locally banded sparse attention patterns in the layers of the transformer, similar to the Sparse Transformer \\cite{child2019generating}"
   },
   {
-   "mechanism": "Layer-alternating attention patterns: dense attention in some layers and locally banded sparse attention (Sparse Transformer style) in others. Band width and the alternation schedule are not given, so a single repeated block cannot represent this.",
+   "mechanism": "Layers alternate between dense causal attention and locally banded sparse attention (Sparse Transformer style); band width and alternation pattern not specified, so a single repeated block cannot represent it exactly.",
    "where": "llm extraction, verified quote, Sec. 2.1 Model and Architectures",
    "blocking": true,
    "evidence": "with the exception that we use alternating dense and locally banded sparse attention patterns in the layers of the transformer, similar to the Sparse Transformer \\cite{child2019generating}"
   },
   {
-   "mechanism": "GPT-2 modified initialization (a training-time detail, not part of the forward graph).",
+   "mechanism": "GPT-2's modified (residual-scaled) initialization is inherited.",
    "where": "llm extraction, verified quote, Sec. 2.1 Model and Architectures",
    "blocking": true,
    "evidence": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein"
@@ -157,20 +163,20 @@
   "sent_sha256": "51b2643752e344e1320bbe73c53b3a84995169aad1719f97b084e4cb42982683",
   "from": "https://arxiv.org/e-print/2005.14165",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
   "n_calls": 1,
-  "cost_usd": 0.0,
+  "cost_usd": 0.75262,
   "request_ids": [
-   "req_011CgFbTT4jSgBm5ETcdAScQ"
+   "req_011CgFgaX4Ng1wS4GzDuPmLL"
   ]
  },
  "llm": {
   "output": {
    "title": "Language Models are Few-Shot Learners",
-   "model_name": "GPT-3",
+   "model_name": "GPT-3 (175B)",
    "family": {
     "value": "decoder_only",
     "status": "stated",
@@ -188,31 +194,31 @@
      "d_model": {
       "value": "768",
       "status": "stated",
-      "quote": "GPT-3 Small & 125M & 12 & 768 & 12 & 64",
+      "quote": "GPT-3 Small & 125M & 12 & 768 & 12 & 64 & 0.5M & $6.0 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)"
      },
      "n_layers": {
       "value": "12",
       "status": "stated",
-      "quote": "GPT-3 Small & 125M & 12 & 768 & 12 & 64",
+      "quote": "GPT-3 Small & 125M & 12 & 768 & 12 & 64 & 0.5M & $6.0 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)"
      },
      "n_heads": {
       "value": "12",
       "status": "stated",
-      "quote": "GPT-3 Small & 125M & 12 & 768 & 12 & 64",
+      "quote": "GPT-3 Small & 125M & 12 & 768 & 12 & 64 & 0.5M & $6.0 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)"
      },
      "n_kv_heads": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": ""
+      "value": "12",
+      "status": "inherited",
+      "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
+      "where": "Sec. 2.1 Model and Architectures"
      },
      "head_dim": {
       "value": "64",
       "status": "stated",
-      "quote": "GPT-3 Small & 125M & 12 & 768 & 12 & 64",
+      "quote": "GPT-3 Small & 125M & 12 & 768 & 12 & 64 & 0.5M & $6.0 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)"
      },
      "d_ff": {
@@ -224,7 +230,7 @@
      "vocab_size": {
       "value": "50257",
       "status": "inherited",
-      "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2",
+      "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2 which was developed for an almost entirely English training dataset.",
       "where": "Sec. 3.3 Translation"
      },
      "context_length": {
@@ -239,31 +245,31 @@
      "d_model": {
       "value": "1024",
       "status": "stated",
-      "quote": "GPT-3 Medium & 350M & 24 & 1024 & 16 & 64",
+      "quote": "GPT-3 Medium & 350M & 24 & 1024 & 16 & 64 & 0.5M & $3.0 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)"
      },
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "GPT-3 Medium & 350M & 24 & 1024 & 16 & 64",
+      "quote": "GPT-3 Medium & 350M & 24 & 1024 & 16 & 64 & 0.5M & $3.0 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)"
      },
      "n_heads": {
       "value": "16",
       "status": "stated",
-      "quote": "GPT-3 Medium & 350M & 24 & 1024 & 16 & 64",
+      "quote": "GPT-3 Medium & 350M & 24 & 1024 & 16 & 64 & 0.5M & $3.0 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)"
      },
      "n_kv_heads": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": ""
+      "value": "16",
+      "status": "inherited",
+      "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
+      "where": "Sec. 2.1 Model and Architectures"
      },
      "head_dim": {
       "value": "64",
       "status": "stated",
-      "quote": "GPT-3 Medium & 350M & 24 & 1024 & 16 & 64",
+      "quote": "GPT-3 Medium & 350M & 24 & 1024 & 16 & 64 & 0.5M & $3.0 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)"
      },
      "d_ff": {
@@ -275,7 +281,7 @@
      "vocab_size": {
       "value": "50257",
       "status": "inherited",
-      "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2",
+      "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2 which was developed for an almost entirely English training dataset.",
       "where": "Sec. 3.3 Translation"
      },
      "context_length": {
@@ -290,31 +296,31 @@
      "d_model": {
       "value": "1536",
       "status": "stated",
-      "quote": "GPT-3 Large & 760M & 24 & 1536 & 16 & 96",
+      "quote": "GPT-3 Large & 760M & 24 & 1536 & 16 & 96 & 0.5M & $2.5 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)"
      },
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "GPT-3 Large & 760M & 24 & 1536 & 16 & 96",
+      "quote": "GPT-3 Large & 760M & 24 & 1536 & 16 & 96 & 0.5M & $2.5 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)"
      },
      "n_heads": {
       "value": "16",
       "status": "stated",
-      "quote": "GPT-3 Large & 760M & 24 & 1536 & 16 & 96",
+      "quote": "GPT-3 Large & 760M & 24 & 1536 & 16 & 96 & 0.5M & $2.5 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)"
      },
      "n_kv_heads": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": ""
+      "value": "16",
+      "status": "inherited",
+      "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
+      "where": "Sec. 2.1 Model and Architectures"
      },
      "head_dim": {
       "value": "96",
       "status": "stated",
-      "quote": "GPT-3 Large & 760M & 24 & 1536 & 16 & 96",
+      "quote": "GPT-3 Large & 760M & 24 & 1536 & 16 & 96 & 0.5M & $2.5 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)"
      },
      "d_ff": {
@@ -326,7 +332,7 @@
      "vocab_size": {
       "value": "50257",
       "status": "inherited",
-      "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2",
+      "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2 which was developed for an almost entirely English training dataset.",
       "where": "Sec. 3.3 Translation"
      },
      "context_length": {
@@ -341,31 +347,31 @@
      "d_model": {
       "value": "2048",
       "status": "stated",
-      "quote": "GPT-3 XL & 1.3B & 24 & 2048 & 24 & 128",
+      "quote": "GPT-3 XL & 1.3B & 24 & 2048 & 24 & 128 & 1M & $2.0 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)"
      },
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "GPT-3 XL & 1.3B & 24 & 2048 & 24 & 128",
+      "quote": "GPT-3 XL & 1.3B & 24 & 2048 & 24 & 128 & 1M & $2.0 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)"
      },
      "n_heads": {
       "value": "24",
       "status": "stated",
-      "quote": "GPT-3 XL & 1.3B & 24 & 2048 & 24 & 128",
+      "quote": "GPT-3 XL & 1.3B & 24 & 2048 & 24 & 128 & 1M & $2.0 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)"
      },
      "n_kv_heads": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": ""
+      "value": "24",
+      "status": "inherited",
+      "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
+      "where": "Sec. 2.1 Model and Architectures"
      },
      "head_dim": {
       "value": "128",
       "status": "stated",
-      "quote": "GPT-3 XL & 1.3B & 24 & 2048 & 24 & 128",
+      "quote": "GPT-3 XL & 1.3B & 24 & 2048 & 24 & 128 & 1M & $2.0 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)"
      },
      "d_ff": {
@@ -377,7 +383,7 @@
      "vocab_size": {
       "value": "50257",
       "status": "inherited",
-      "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2",
+      "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2 which was developed for an almost entirely English training dataset.",
       "where": "Sec. 3.3 Translation"
      },
      "context_length": {
@@ -392,31 +398,31 @@
      "d_model": {
       "value": "2560",
       "status": "stated",
-      "quote": "GPT-3 2.7B   & 2.7B & 32 & 2560 & 32 & 80",
+      "quote": "GPT-3 2.7B   & 2.7B & 32 & 2560 & 32 & 80 & 1M & $1.6 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)"
      },
      "n_layers": {
       "value": "32",
       "status": "stated",
-      "quote": "GPT-3 2.7B   & 2.7B & 32 & 2560 & 32 & 80",
+      "quote": "GPT-3 2.7B   & 2.7B & 32 & 2560 & 32 & 80 & 1M & $1.6 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)"
      },
      "n_heads": {
       "value": "32",
       "status": "stated",
-      "quote": "GPT-3 2.7B   & 2.7B & 32 & 2560 & 32 & 80",
+      "quote": "GPT-3 2.7B   & 2.7B & 32 & 2560 & 32 & 80 & 1M & $1.6 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)"
      },
      "n_kv_heads": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": ""
+      "value": "32",
+      "status": "inherited",
+      "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
+      "where": "Sec. 2.1 Model and Architectures"
      },
      "head_dim": {
       "value": "80",
       "status": "stated",
-      "quote": "GPT-3 2.7B   & 2.7B & 32 & 2560 & 32 & 80",
+      "quote": "GPT-3 2.7B   & 2.7B & 32 & 2560 & 32 & 80 & 1M & $1.6 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)"
      },
      "d_ff": {
@@ -428,7 +434,7 @@
      "vocab_size": {
       "value": "50257",
       "status": "inherited",
-      "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2",
+      "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2 which was developed for an almost entirely English training dataset.",
       "where": "Sec. 3.3 Translation"
      },
      "context_length": {
@@ -443,31 +449,31 @@
      "d_model": {
       "value": "4096",
       "status": "stated",
-      "quote": "GPT-3 6.7B   & 6.7B & 32 & 4096 & 32 & 128",
+      "quote": "GPT-3 6.7B   & 6.7B & 32 & 4096 & 32 & 128 & 2M & $1.2 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)"
      },
      "n_layers": {
       "value": "32",
       "status": "stated",
-      "quote": "GPT-3 6.7B   & 6.7B & 32 & 4096 & 32 & 128",
+      "quote": "GPT-3 6.7B   & 6.7B & 32 & 4096 & 32 & 128 & 2M & $1.2 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)"
      },
      "n_heads": {
       "value": "32",
       "status": "stated",
-      "quote": "GPT-3 6.7B   & 6.7B & 32 & 4096 & 32 & 128",
+      "quote": "GPT-3 6.7B   & 6.7B & 32 & 4096 & 32 & 128 & 2M & $1.2 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)"
      },
      "n_kv_heads": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": ""
+      "value": "32",
+      "status": "inherited",
+      "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
+      "where": "Sec. 2.1 Model and Architectures"
      },
      "head_dim": {
       "value": "128",
       "status": "stated",
-      "quote": "GPT-3 6.7B   & 6.7B & 32 & 4096 & 32 & 128",
+      "quote": "GPT-3 6.7B   & 6.7B & 32 & 4096 & 32 & 128 & 2M & $1.2 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)"
      },
      "d_ff": {
@@ -479,7 +485,7 @@
      "vocab_size": {
       "value": "50257",
       "status": "inherited",
-      "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2",
+      "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2 which was developed for an almost entirely English training dataset.",
       "where": "Sec. 3.3 Translation"
      },
      "context_length": {
@@ -494,31 +500,31 @@
      "d_model": {
       "value": "5140",
       "status": "stated",
-      "quote": "GPT-3 13B  & 13.0B & 40 & 5140 & 40 & 128",
+      "quote": "GPT-3 13B  & 13.0B & 40 & 5140 & 40 & 128 & 2M & $1.0 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)"
      },
      "n_layers": {
       "value": "40",
       "status": "stated",
-      "quote": "GPT-3 13B  & 13.0B & 40 & 5140 & 40 & 128",
+      "quote": "GPT-3 13B  & 13.0B & 40 & 5140 & 40 & 128 & 2M & $1.0 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)"
      },
      "n_heads": {
       "value": "40",
       "status": "stated",
-      "quote": "GPT-3 13B  & 13.0B & 40 & 5140 & 40 & 128",
+      "quote": "GPT-3 13B  & 13.0B & 40 & 5140 & 40 & 128 & 2M & $1.0 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)"
      },
      "n_kv_heads": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": ""
+      "value": "40",
+      "status": "inherited",
+      "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
+      "where": "Sec. 2.1 Model and Architectures"
      },
      "head_dim": {
       "value": "128",
       "status": "stated",
-      "quote": "GPT-3 13B  & 13.0B & 40 & 5140 & 40 & 128",
+      "quote": "GPT-3 13B  & 13.0B & 40 & 5140 & 40 & 128 & 2M & $1.0 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)"
      },
      "d_ff": {
@@ -530,7 +536,7 @@
      "vocab_size": {
       "value": "50257",
       "status": "inherited",
-      "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2",
+      "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2 which was developed for an almost entirely English training dataset.",
       "where": "Sec. 3.3 Translation"
      },
      "context_length": {
@@ -545,31 +551,31 @@
      "d_model": {
       "value": "12288",
       "status": "stated",
-      "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128",
+      "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128 & 3.2M & $0.6 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)"
      },
      "n_layers": {
       "value": "96",
       "status": "stated",
-      "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128",
+      "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128 & 3.2M & $0.6 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)"
      },
      "n_heads": {
       "value": "96",
       "status": "stated",
-      "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128",
+      "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128 & 3.2M & $0.6 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)"
      },
      "n_kv_heads": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": ""
+      "value": "96",
+      "status": "inherited",
+      "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
+      "where": "Sec. 2.1 Model and Architectures"
      },
      "head_dim": {
       "value": "128",
       "status": "stated",
-      "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128",
+      "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128 & 3.2M & $0.6 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)"
      },
      "d_ff": {
@@ -581,7 +587,7 @@
      "vocab_size": {
       "value": "50257",
       "status": "inherited",
-      "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2",
+      "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2 which was developed for an almost entirely English training dataset.",
       "where": "Sec. 3.3 Translation"
      },
      "context_length": {
@@ -607,10 +613,10 @@
      "where": "Sec. 2.1 Model and Architectures"
     },
     "norm_eps": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": ""
+     "value": "1e-5",
+     "status": "inherited",
+     "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
+     "where": "Sec. 2.1 Model and Architectures"
     },
     "activation": {
      "value": "gelu_tanh",
@@ -693,8 +699,8 @@
     "moe": {
      "value": "false",
      "status": "stated",
-     "quote": "Our work focuses on the first approach (scaling compute and parameters together, by straightforwardly making the neural net larger)",
-     "where": "Sec. 7 Related Work"
+     "quote": "Specifically, we train GPT-3, an autoregressive language model with 175 billion parameters, 10x more than any previous non-sparse language model",
+     "where": "Abstract"
     },
     "n_experts": {
      "value": "",
@@ -719,41 +725,49 @@
     {
      "subgraph": "embed",
      "op": "embedding",
-     "role": "token embedding",
+     "role": "token embedding (token_embd)",
      "inputs": [
       "tokens"
-     ],
-     "output": "tok",
-     "attributes": [],
-     "new_op": ""
-    },
-    {
-     "subgraph": "embed",
-     "op": "pos_embedding",
-     "role": "learned absolute position embedding (inherited from GPT-2)",
-     "inputs": [
-      "tok",
-      "pos"
      ],
      "output": "x",
      "attributes": [],
      "new_op": ""
     },
     {
+     "subgraph": "embed",
+     "op": "pos_embedding",
+     "role": "learned absolute position embedding added to token embedding",
+     "inputs": [
+      "x",
+      "pos"
+     ],
+     "output": "h",
+     "attributes": [
+      {
+       "name": "positional",
+       "value": "learned",
+       "status": "inherited",
+       "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
+       "where": "Sec. 2.1 Model and Architectures"
+      }
+     ],
+     "new_op": ""
+    },
+    {
      "subgraph": "block",
      "op": "layernorm",
-     "role": "pre-attention norm",
+     "role": "pre-attention layer norm",
      "inputs": [
-      "x"
+      "h"
      ],
-     "output": "h1",
+     "output": "a_in",
      "attributes": [
       {
        "name": "eps",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "1e-5",
+       "status": "inherited",
+       "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
+       "where": "Sec. 2.1 Model and Architectures"
       }
      ],
      "new_op": ""
@@ -763,16 +777,16 @@
      "op": "linear",
      "role": "fused qkv projection",
      "inputs": [
-      "h1"
+      "a_in"
      ],
      "output": "qkv",
      "attributes": [
       {
        "name": "out",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "36864",
+       "status": "stated",
+       "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128 & 3.2M & $0.6 \\times 10^{-4}$",
+       "where": "Table 2.1 (table:param)"
       },
       {
        "name": "bias",
@@ -792,36 +806,51 @@
       "qkv"
      ],
      "output": "q,k,v",
-     "attributes": [],
+     "attributes": [
+      {
+       "name": "sizes",
+       "value": "12288,12288,12288",
+       "status": "stated",
+       "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128 & 3.2M & $0.6 \\times 10^{-4}$",
+       "where": "Table 2.1 (table:param)"
+      }
+     ],
      "new_op": ""
     },
     {
      "subgraph": "block",
      "op": "attention",
-     "role": "causal self-attention (dense or locally banded sparse in alternating layers)",
+     "role": "causal self-attention (dense in some layers, locally banded sparse in alternating layers)",
      "inputs": [
       "q",
       "k",
       "v"
      ],
-     "output": "a",
+     "output": "att",
      "attributes": [
       {
        "name": "heads",
        "value": "96",
        "status": "stated",
-       "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128",
+       "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128 & 3.2M & $0.6 \\times 10^{-4}$",
        "where": "Table 2.1 (table:param)"
+      },
+      {
+       "name": "kv_heads",
+       "value": "96",
+       "status": "inherited",
+       "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
+       "where": "Sec. 2.1 Model and Architectures"
       },
       {
        "name": "head_dim",
        "value": "128",
        "status": "stated",
-       "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128",
+       "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128 & 3.2M & $0.6 \\times 10^{-4}$",
        "where": "Table 2.1 (table:param)"
       },
       {
-       "name": "kv_heads",
+       "name": "scale",
        "value": "",
        "status": "not_stated",
        "quote": "",
@@ -840,52 +869,9 @@
        "status": "not_stated",
        "quote": "",
        "where": ""
-      }
-     ],
-     "new_op": ""
-    },
-    {
-     "subgraph": "block",
-     "op": "linear",
-     "role": "attention output projection",
-     "inputs": [
-      "a"
-     ],
-     "output": "ao",
-     "attributes": [
+      },
       {
-       "name": "out",
-       "value": "12288",
-       "status": "stated",
-       "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128",
-       "where": "Table 2.1 (table:param)"
-      }
-     ],
-     "new_op": ""
-    },
-    {
-     "subgraph": "block",
-     "op": "add",
-     "role": "attention residual",
-     "inputs": [
-      "x",
-      "ao"
-     ],
-     "output": "x2",
-     "attributes": [],
-     "new_op": ""
-    },
-    {
-     "subgraph": "block",
-     "op": "layernorm",
-     "role": "pre-FFN norm",
-     "inputs": [
-      "x2"
-     ],
-     "output": "h2",
-     "attributes": [
-      {
-       "name": "eps",
+       "name": "sinks",
        "value": "",
        "status": "not_stated",
        "quote": "",
@@ -897,11 +883,68 @@
     {
      "subgraph": "block",
      "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "att"
+     ],
+     "output": "att_o",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "12288",
+       "status": "stated",
+       "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128 & 3.2M & $0.6 \\times 10^{-4}$",
+       "where": "Table 2.1 (table:param)"
+      },
+      {
+       "name": "bias",
+       "value": "true",
+       "status": "inherited",
+       "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
+       "where": "Sec. 2.1 Model and Architectures"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual",
+     "inputs": [
+      "h",
+      "att_o"
+     ],
+     "output": "h1",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "layernorm",
+     "role": "pre-FFN layer norm",
+     "inputs": [
+      "h1"
+     ],
+     "output": "f_in",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "1e-5",
+       "status": "inherited",
+       "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
+       "where": "Sec. 2.1 Model and Architectures"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
      "role": "FFN up projection",
      "inputs": [
-      "h2"
+      "f_in"
      ],
-     "output": "u",
+     "output": "up",
      "attributes": [
       {
        "name": "out",
@@ -923,11 +966,11 @@
     {
      "subgraph": "block",
      "op": "gelu",
-     "role": "FFN activation (inherited from GPT-2)",
+     "role": "FFN activation",
      "inputs": [
-      "u"
+      "up"
      ],
-     "output": "g",
+     "output": "act",
      "attributes": [
       {
        "name": "approx",
@@ -944,15 +987,15 @@
      "op": "linear",
      "role": "FFN down projection",
      "inputs": [
-      "g"
+      "act"
      ],
-     "output": "f",
+     "output": "down",
      "attributes": [
       {
        "name": "out",
        "value": "12288",
        "status": "stated",
-       "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128",
+       "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128 & 3.2M & $0.6 \\times 10^{-4}$",
        "where": "Table 2.1 (table:param)"
       },
       {
@@ -970,28 +1013,28 @@
      "op": "add",
      "role": "FFN residual",
      "inputs": [
-      "x2",
-      "f"
+      "h1",
+      "down"
      ],
-     "output": "x",
+     "output": "h",
      "attributes": [],
      "new_op": ""
     },
     {
      "subgraph": "head",
      "op": "layernorm",
-     "role": "final norm (GPT-2 style)",
+     "role": "final layer norm",
      "inputs": [
-      "x"
+      "h"
      ],
      "output": "hf",
      "attributes": [
       {
        "name": "eps",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "value": "1e-5",
+       "status": "inherited",
+       "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
+       "where": "Sec. 2.1 Model and Architectures"
       }
      ],
      "new_op": ""
@@ -999,22 +1042,29 @@
     {
      "subgraph": "head",
      "op": "linear",
-     "role": "tied LM head",
+     "role": "tied output head to vocabulary logits",
      "inputs": [
       "hf"
      ],
      "output": "logits",
      "attributes": [
       {
-       "name": "tied_to",
-       "value": "token_embd",
+       "name": "out",
+       "value": "50257",
+       "status": "inherited",
+       "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2 which was developed for an almost entirely English training dataset.",
+       "where": "Sec. 3.3 Translation"
+      },
+      {
+       "name": "bias",
+       "value": "false",
        "status": "inherited",
        "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
        "where": "Sec. 2.1 Model and Architectures"
       },
       {
-       "name": "bias",
-       "value": "false",
+       "name": "tied_to",
+       "value": "token_embd",
        "status": "inherited",
        "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
        "where": "Sec. 2.1 Model and Architectures"
@@ -1026,17 +1076,17 @@
    "new_ops": [],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "Layer-alternating attention patterns: dense attention in some layers and locally banded sparse attention (Sparse Transformer style) in others. Band width and the alternation schedule are not given, so a single repeated block cannot represent this.",
+     "mechanism": "Layers alternate between dense causal attention and locally banded sparse attention (Sparse Transformer style); band width and alternation pattern not specified, so a single repeated block cannot represent it exactly.",
      "quote": "with the exception that we use alternating dense and locally banded sparse attention patterns in the layers of the transformer, similar to the Sparse Transformer \\cite{child2019generating}",
      "where": "Sec. 2.1 Model and Architectures"
     },
     {
-     "mechanism": "GPT-2 modified initialization (a training-time detail, not part of the forward graph).",
+     "mechanism": "GPT-2's modified (residual-scaled) initialization is inherited.",
      "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
      "where": "Sec. 2.1 Model and Architectures"
     }
    ],
-   "notes": "Described GPT-3 (175B, the model the paper calls GPT-3) as primary; all 8 sizes from Table 2.1 are listed. d_ff is derived from the stated rule d_ff = 4*d_model, so the numbers do not appear verbatim in the paper. The 13B row gives d_model 5140; it is reported as written, although 5140 is not divisible by 40 heads (40 x 128 = 5120), so it is likely a typo. The paper explicitly inherits the GPT-2 architecture. Norm type, learned positions, GELU (tanh form), biases, weight tying and the final layernorm are filled from GPT-2 as inherited values; the vocabulary of 50257 is inherited via the reused GPT-2 BPE tokenizer. n_kv_heads, layernorm eps, sparse band width and the dense/sparse alternation schedule are not stated, so the attention window is not_stated. The MoE quote implies but does not literally say dense FFNs."
+   "notes": "Described GPT-3 175B, the headline model the paper calls GPT-3; all eight sizes from Table 2.1 are listed. Norm type, eps, GELU form, learned positions, biases, tied embeddings, vocab 50257 and MHA (kv_heads = heads) are taken as inherited from GPT-2 through the explicit inheritance sentence; the paper itself does not restate them. The tanh GELU and 1e-5 eps come from GPT-2's released implementation. d_ff values are derived from the stated rule d_ff = 4*d_model. The table is internally inconsistent: XL has 24 heads x 128 = 3072 but d_model 2048, and 13B has 40 x 128 = 5120 but d_model 5140. Table values are reported as written. The sparse band width, the dense/sparse alternation order and the attention scale are not stated."
   },
   "verification": {
    "errors": [],
@@ -1062,7 +1112,7 @@
      "d_model": {
       "value": "768",
       "status": "stated",
-      "quote": "GPT-3 Small & 125M & 12 & 768 & 12 & 64",
+      "quote": "GPT-3 Small & 125M & 12 & 768 & 12 & 64 & 0.5M & $6.0 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)",
       "reasons": [],
       "check": "verified"
@@ -1070,7 +1120,7 @@
      "n_layers": {
       "value": "12",
       "status": "stated",
-      "quote": "GPT-3 Small & 125M & 12 & 768 & 12 & 64",
+      "quote": "GPT-3 Small & 125M & 12 & 768 & 12 & 64 & 0.5M & $6.0 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)",
       "reasons": [],
       "check": "verified"
@@ -1078,23 +1128,25 @@
      "n_heads": {
       "value": "12",
       "status": "stated",
-      "quote": "GPT-3 Small & 125M & 12 & 768 & 12 & 64",
+      "quote": "GPT-3 Small & 125M & 12 & 768 & 12 & 64 & 0.5M & $6.0 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)",
       "reasons": [],
       "check": "verified"
      },
      "n_kv_heads": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": "",
-      "reasons": [],
-      "check": "not_stated"
+      "value": "12",
+      "status": "inherited",
+      "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
+      "where": "Sec. 2.1 Model and Architectures",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no n_kv_heads"
+      ],
+      "check": "unverified"
      },
      "head_dim": {
       "value": "64",
       "status": "stated",
-      "quote": "GPT-3 Small & 125M & 12 & 768 & 12 & 64",
+      "quote": "GPT-3 Small & 125M & 12 & 768 & 12 & 64 & 0.5M & $6.0 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)",
       "reasons": [],
       "check": "verified"
@@ -1112,7 +1164,7 @@
      "vocab_size": {
       "value": "50257",
       "status": "inherited",
-      "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2",
+      "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2 which was developed for an almost entirely English training dataset.",
       "where": "Sec. 3.3 Translation",
       "reasons": [
        "inherited from gpt-2, whose curated entry has no vocab_size"
@@ -1143,7 +1195,7 @@
      "d_model": {
       "value": "1024",
       "status": "stated",
-      "quote": "GPT-3 Medium & 350M & 24 & 1024 & 16 & 64",
+      "quote": "GPT-3 Medium & 350M & 24 & 1024 & 16 & 64 & 0.5M & $3.0 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)",
       "reasons": [],
       "check": "verified"
@@ -1151,7 +1203,7 @@
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "GPT-3 Medium & 350M & 24 & 1024 & 16 & 64",
+      "quote": "GPT-3 Medium & 350M & 24 & 1024 & 16 & 64 & 0.5M & $3.0 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)",
       "reasons": [],
       "check": "verified"
@@ -1159,23 +1211,25 @@
      "n_heads": {
       "value": "16",
       "status": "stated",
-      "quote": "GPT-3 Medium & 350M & 24 & 1024 & 16 & 64",
+      "quote": "GPT-3 Medium & 350M & 24 & 1024 & 16 & 64 & 0.5M & $3.0 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)",
       "reasons": [],
       "check": "verified"
      },
      "n_kv_heads": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": "",
-      "reasons": [],
-      "check": "not_stated"
+      "value": "16",
+      "status": "inherited",
+      "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
+      "where": "Sec. 2.1 Model and Architectures",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no n_kv_heads"
+      ],
+      "check": "unverified"
      },
      "head_dim": {
       "value": "64",
       "status": "stated",
-      "quote": "GPT-3 Medium & 350M & 24 & 1024 & 16 & 64",
+      "quote": "GPT-3 Medium & 350M & 24 & 1024 & 16 & 64 & 0.5M & $3.0 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)",
       "reasons": [],
       "check": "verified"
@@ -1193,7 +1247,7 @@
      "vocab_size": {
       "value": "50257",
       "status": "inherited",
-      "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2",
+      "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2 which was developed for an almost entirely English training dataset.",
       "where": "Sec. 3.3 Translation",
       "reasons": [
        "inherited from gpt-2, whose curated entry has no vocab_size"
@@ -1224,7 +1278,7 @@
      "d_model": {
       "value": "1536",
       "status": "stated",
-      "quote": "GPT-3 Large & 760M & 24 & 1536 & 16 & 96",
+      "quote": "GPT-3 Large & 760M & 24 & 1536 & 16 & 96 & 0.5M & $2.5 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)",
       "reasons": [],
       "check": "verified"
@@ -1232,7 +1286,7 @@
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "GPT-3 Large & 760M & 24 & 1536 & 16 & 96",
+      "quote": "GPT-3 Large & 760M & 24 & 1536 & 16 & 96 & 0.5M & $2.5 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)",
       "reasons": [],
       "check": "verified"
@@ -1240,23 +1294,25 @@
      "n_heads": {
       "value": "16",
       "status": "stated",
-      "quote": "GPT-3 Large & 760M & 24 & 1536 & 16 & 96",
+      "quote": "GPT-3 Large & 760M & 24 & 1536 & 16 & 96 & 0.5M & $2.5 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)",
       "reasons": [],
       "check": "verified"
      },
      "n_kv_heads": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": "",
-      "reasons": [],
-      "check": "not_stated"
+      "value": "16",
+      "status": "inherited",
+      "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
+      "where": "Sec. 2.1 Model and Architectures",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no n_kv_heads"
+      ],
+      "check": "unverified"
      },
      "head_dim": {
       "value": "96",
       "status": "stated",
-      "quote": "GPT-3 Large & 760M & 24 & 1536 & 16 & 96",
+      "quote": "GPT-3 Large & 760M & 24 & 1536 & 16 & 96 & 0.5M & $2.5 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)",
       "reasons": [],
       "check": "verified"
@@ -1274,7 +1330,7 @@
      "vocab_size": {
       "value": "50257",
       "status": "inherited",
-      "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2",
+      "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2 which was developed for an almost entirely English training dataset.",
       "where": "Sec. 3.3 Translation",
       "reasons": [
        "inherited from gpt-2, whose curated entry has no vocab_size"
@@ -1305,7 +1361,7 @@
      "d_model": {
       "value": "2048",
       "status": "stated",
-      "quote": "GPT-3 XL & 1.3B & 24 & 2048 & 24 & 128",
+      "quote": "GPT-3 XL & 1.3B & 24 & 2048 & 24 & 128 & 1M & $2.0 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)",
       "reasons": [],
       "check": "verified"
@@ -1313,7 +1369,7 @@
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "GPT-3 XL & 1.3B & 24 & 2048 & 24 & 128",
+      "quote": "GPT-3 XL & 1.3B & 24 & 2048 & 24 & 128 & 1M & $2.0 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)",
       "reasons": [],
       "check": "verified"
@@ -1321,23 +1377,25 @@
      "n_heads": {
       "value": "24",
       "status": "stated",
-      "quote": "GPT-3 XL & 1.3B & 24 & 2048 & 24 & 128",
+      "quote": "GPT-3 XL & 1.3B & 24 & 2048 & 24 & 128 & 1M & $2.0 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)",
       "reasons": [],
       "check": "verified"
      },
      "n_kv_heads": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": "",
-      "reasons": [],
-      "check": "not_stated"
+      "value": "24",
+      "status": "inherited",
+      "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
+      "where": "Sec. 2.1 Model and Architectures",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no n_kv_heads"
+      ],
+      "check": "unverified"
      },
      "head_dim": {
       "value": "128",
       "status": "stated",
-      "quote": "GPT-3 XL & 1.3B & 24 & 2048 & 24 & 128",
+      "quote": "GPT-3 XL & 1.3B & 24 & 2048 & 24 & 128 & 1M & $2.0 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)",
       "reasons": [],
       "check": "verified"
@@ -1355,7 +1413,7 @@
      "vocab_size": {
       "value": "50257",
       "status": "inherited",
-      "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2",
+      "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2 which was developed for an almost entirely English training dataset.",
       "where": "Sec. 3.3 Translation",
       "reasons": [
        "inherited from gpt-2, whose curated entry has no vocab_size"
@@ -1386,7 +1444,7 @@
      "d_model": {
       "value": "2560",
       "status": "stated",
-      "quote": "GPT-3 2.7B   & 2.7B & 32 & 2560 & 32 & 80",
+      "quote": "GPT-3 2.7B   & 2.7B & 32 & 2560 & 32 & 80 & 1M & $1.6 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)",
       "reasons": [],
       "check": "verified"
@@ -1394,7 +1452,7 @@
      "n_layers": {
       "value": "32",
       "status": "stated",
-      "quote": "GPT-3 2.7B   & 2.7B & 32 & 2560 & 32 & 80",
+      "quote": "GPT-3 2.7B   & 2.7B & 32 & 2560 & 32 & 80 & 1M & $1.6 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)",
       "reasons": [],
       "check": "verified"
@@ -1402,23 +1460,25 @@
      "n_heads": {
       "value": "32",
       "status": "stated",
-      "quote": "GPT-3 2.7B   & 2.7B & 32 & 2560 & 32 & 80",
+      "quote": "GPT-3 2.7B   & 2.7B & 32 & 2560 & 32 & 80 & 1M & $1.6 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)",
       "reasons": [],
       "check": "verified"
      },
      "n_kv_heads": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": "",
-      "reasons": [],
-      "check": "not_stated"
+      "value": "32",
+      "status": "inherited",
+      "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
+      "where": "Sec. 2.1 Model and Architectures",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no n_kv_heads"
+      ],
+      "check": "unverified"
      },
      "head_dim": {
       "value": "80",
       "status": "stated",
-      "quote": "GPT-3 2.7B   & 2.7B & 32 & 2560 & 32 & 80",
+      "quote": "GPT-3 2.7B   & 2.7B & 32 & 2560 & 32 & 80 & 1M & $1.6 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)",
       "reasons": [],
       "check": "verified"
@@ -1436,7 +1496,7 @@
      "vocab_size": {
       "value": "50257",
       "status": "inherited",
-      "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2",
+      "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2 which was developed for an almost entirely English training dataset.",
       "where": "Sec. 3.3 Translation",
       "reasons": [
        "inherited from gpt-2, whose curated entry has no vocab_size"
@@ -1467,7 +1527,7 @@
      "d_model": {
       "value": "4096",
       "status": "stated",
-      "quote": "GPT-3 6.7B   & 6.7B & 32 & 4096 & 32 & 128",
+      "quote": "GPT-3 6.7B   & 6.7B & 32 & 4096 & 32 & 128 & 2M & $1.2 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)",
       "reasons": [],
       "check": "verified"
@@ -1475,7 +1535,7 @@
      "n_layers": {
       "value": "32",
       "status": "stated",
-      "quote": "GPT-3 6.7B   & 6.7B & 32 & 4096 & 32 & 128",
+      "quote": "GPT-3 6.7B   & 6.7B & 32 & 4096 & 32 & 128 & 2M & $1.2 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)",
       "reasons": [],
       "check": "verified"
@@ -1483,23 +1543,25 @@
      "n_heads": {
       "value": "32",
       "status": "stated",
-      "quote": "GPT-3 6.7B   & 6.7B & 32 & 4096 & 32 & 128",
+      "quote": "GPT-3 6.7B   & 6.7B & 32 & 4096 & 32 & 128 & 2M & $1.2 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)",
       "reasons": [],
       "check": "verified"
      },
      "n_kv_heads": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": "",
-      "reasons": [],
-      "check": "not_stated"
+      "value": "32",
+      "status": "inherited",
+      "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
+      "where": "Sec. 2.1 Model and Architectures",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no n_kv_heads"
+      ],
+      "check": "unverified"
      },
      "head_dim": {
       "value": "128",
       "status": "stated",
-      "quote": "GPT-3 6.7B   & 6.7B & 32 & 4096 & 32 & 128",
+      "quote": "GPT-3 6.7B   & 6.7B & 32 & 4096 & 32 & 128 & 2M & $1.2 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)",
       "reasons": [],
       "check": "verified"
@@ -1517,7 +1579,7 @@
      "vocab_size": {
       "value": "50257",
       "status": "inherited",
-      "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2",
+      "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2 which was developed for an almost entirely English training dataset.",
       "where": "Sec. 3.3 Translation",
       "reasons": [
        "inherited from gpt-2, whose curated entry has no vocab_size"
@@ -1548,7 +1610,7 @@
      "d_model": {
       "value": "5140",
       "status": "stated",
-      "quote": "GPT-3 13B  & 13.0B & 40 & 5140 & 40 & 128",
+      "quote": "GPT-3 13B  & 13.0B & 40 & 5140 & 40 & 128 & 2M & $1.0 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)",
       "reasons": [],
       "check": "verified"
@@ -1556,7 +1618,7 @@
      "n_layers": {
       "value": "40",
       "status": "stated",
-      "quote": "GPT-3 13B  & 13.0B & 40 & 5140 & 40 & 128",
+      "quote": "GPT-3 13B  & 13.0B & 40 & 5140 & 40 & 128 & 2M & $1.0 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)",
       "reasons": [],
       "check": "verified"
@@ -1564,23 +1626,25 @@
      "n_heads": {
       "value": "40",
       "status": "stated",
-      "quote": "GPT-3 13B  & 13.0B & 40 & 5140 & 40 & 128",
+      "quote": "GPT-3 13B  & 13.0B & 40 & 5140 & 40 & 128 & 2M & $1.0 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)",
       "reasons": [],
       "check": "verified"
      },
      "n_kv_heads": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": "",
-      "reasons": [],
-      "check": "not_stated"
+      "value": "40",
+      "status": "inherited",
+      "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
+      "where": "Sec. 2.1 Model and Architectures",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no n_kv_heads"
+      ],
+      "check": "unverified"
      },
      "head_dim": {
       "value": "128",
       "status": "stated",
-      "quote": "GPT-3 13B  & 13.0B & 40 & 5140 & 40 & 128",
+      "quote": "GPT-3 13B  & 13.0B & 40 & 5140 & 40 & 128 & 2M & $1.0 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)",
       "reasons": [],
       "check": "verified"
@@ -1598,7 +1662,7 @@
      "vocab_size": {
       "value": "50257",
       "status": "inherited",
-      "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2",
+      "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2 which was developed for an almost entirely English training dataset.",
       "where": "Sec. 3.3 Translation",
       "reasons": [
        "inherited from gpt-2, whose curated entry has no vocab_size"
@@ -1629,7 +1693,7 @@
      "d_model": {
       "value": "12288",
       "status": "stated",
-      "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128",
+      "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128 & 3.2M & $0.6 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)",
       "reasons": [],
       "check": "verified"
@@ -1637,7 +1701,7 @@
      "n_layers": {
       "value": "96",
       "status": "stated",
-      "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128",
+      "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128 & 3.2M & $0.6 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)",
       "reasons": [],
       "check": "verified"
@@ -1645,23 +1709,25 @@
      "n_heads": {
       "value": "96",
       "status": "stated",
-      "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128",
+      "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128 & 3.2M & $0.6 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)",
       "reasons": [],
       "check": "verified"
      },
      "n_kv_heads": {
-      "value": "",
-      "status": "not_stated",
-      "quote": "",
-      "where": "",
-      "reasons": [],
-      "check": "not_stated"
+      "value": "96",
+      "status": "inherited",
+      "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
+      "where": "Sec. 2.1 Model and Architectures",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no n_kv_heads"
+      ],
+      "check": "unverified"
      },
      "head_dim": {
       "value": "128",
       "status": "stated",
-      "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128",
+      "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128 & 3.2M & $0.6 \\times 10^{-4}$",
       "where": "Table 2.1 (table:param)",
       "reasons": [],
       "check": "verified"
@@ -1679,7 +1745,7 @@
      "vocab_size": {
       "value": "50257",
       "status": "inherited",
-      "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2",
+      "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2 which was developed for an almost entirely English training dataset.",
       "where": "Sec. 3.3 Translation",
       "reasons": [
        "inherited from gpt-2, whose curated entry has no vocab_size"
@@ -1725,12 +1791,14 @@
      "check": "quote_only"
     },
     "norm_eps": {
-     "value": "",
-     "status": "not_stated",
-     "quote": "",
-     "where": "",
-     "reasons": [],
-     "check": "not_stated"
+     "value": "1e-5",
+     "status": "inherited",
+     "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
+     "where": "Sec. 2.1 Model and Architectures",
+     "reasons": [
+      "inherited from gpt-2, whose curated entry has no norm_eps"
+     ],
+     "check": "unverified"
     },
     "activation": {
      "value": "gelu_tanh",
@@ -1849,8 +1917,8 @@
     "moe": {
      "value": "false",
      "status": "stated",
-     "quote": "Our work focuses on the first approach (scaling compute and parameters together, by straightforwardly making the neural net larger)",
-     "where": "Sec. 7 Related Work",
+     "quote": "Specifically, we train GPT-3, an autoregressive language model with 175 billion parameters, 10x more than any previous non-sparse language model",
+     "where": "Abstract",
      "reasons": [],
      "check": "quote_only"
     },
@@ -1885,11 +1953,11 @@
      "i": 0,
      "subgraph": "embed",
      "op": "embedding",
-     "role": "token embedding",
+     "role": "token embedding (token_embd)",
      "inputs": [
       "tokens"
      ],
-     "output": "tok",
+     "output": "x",
      "new_op": "",
      "attributes": [],
      "errors": []
@@ -1898,34 +1966,46 @@
      "i": 1,
      "subgraph": "embed",
      "op": "pos_embedding",
-     "role": "learned absolute position embedding (inherited from GPT-2)",
+     "role": "learned absolute position embedding added to token embedding",
      "inputs": [
-      "tok",
+      "x",
       "pos"
      ],
-     "output": "x",
+     "output": "h",
      "new_op": "",
-     "attributes": [],
+     "attributes": [
+      {
+       "value": "learned",
+       "status": "inherited",
+       "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
+       "where": "Sec. 2.1 Model and Architectures",
+       "reasons": [],
+       "check": "verified",
+       "name": "positional"
+      }
+     ],
      "errors": []
     },
     {
      "i": 2,
      "subgraph": "block",
      "op": "layernorm",
-     "role": "pre-attention norm",
+     "role": "pre-attention layer norm",
      "inputs": [
-      "x"
+      "h"
      ],
-     "output": "h1",
+     "output": "a_in",
      "new_op": "",
      "attributes": [
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
+       "value": "1e-5",
+       "status": "inherited",
+       "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
+       "where": "Sec. 2.1 Model and Architectures",
+       "reasons": [
+        "inherited from gpt-2, whose curated entry has no eps"
+       ],
+       "check": "unverified",
        "name": "eps"
       }
      ],
@@ -1937,18 +2017,20 @@
      "op": "linear",
      "role": "fused qkv projection",
      "inputs": [
-      "h1"
+      "a_in"
      ],
      "output": "qkv",
      "new_op": "",
      "attributes": [
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
+       "value": "36864",
+       "status": "stated",
+       "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128 & 3.2M & $0.6 \\times 10^{-4}$",
+       "where": "Table 2.1 (table:param)",
+       "reasons": [
+        "36864 does not occur in its quote"
+       ],
+       "check": "unverified",
        "name": "out"
       },
       {
@@ -1975,35 +2057,58 @@
      ],
      "output": "q,k,v",
      "new_op": "",
-     "attributes": [],
+     "attributes": [
+      {
+       "value": "12288,12288,12288",
+       "status": "stated",
+       "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128 & 3.2M & $0.6 \\times 10^{-4}$",
+       "where": "Table 2.1 (table:param)",
+       "reasons": [
+        "12288,12288,12288 does not occur in its quote"
+       ],
+       "check": "unverified",
+       "name": "sizes"
+      }
+     ],
      "errors": []
     },
     {
      "i": 5,
      "subgraph": "block",
      "op": "attention",
-     "role": "causal self-attention (dense or locally banded sparse in alternating layers)",
+     "role": "causal self-attention (dense in some layers, locally banded sparse in alternating layers)",
      "inputs": [
       "q",
       "k",
       "v"
      ],
-     "output": "a",
+     "output": "att",
      "new_op": "",
      "attributes": [
       {
        "value": "96",
        "status": "stated",
-       "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128",
+       "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128 & 3.2M & $0.6 \\times 10^{-4}$",
        "where": "Table 2.1 (table:param)",
        "reasons": [],
        "check": "verified",
        "name": "heads"
       },
       {
+       "value": "96",
+       "status": "inherited",
+       "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
+       "where": "Sec. 2.1 Model and Architectures",
+       "reasons": [
+        "inherited from gpt-2, whose curated entry has no kv_heads"
+       ],
+       "check": "unverified",
+       "name": "kv_heads"
+      },
+      {
        "value": "128",
        "status": "stated",
-       "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128",
+       "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128 & 3.2M & $0.6 \\times 10^{-4}$",
        "where": "Table 2.1 (table:param)",
        "reasons": [],
        "check": "verified",
@@ -2016,7 +2121,7 @@
        "where": "",
        "reasons": [],
        "check": "not_stated",
-       "name": "kv_heads"
+       "name": "scale"
       },
       {
        "value": "true",
@@ -2035,6 +2140,15 @@
        "reasons": [],
        "check": "not_stated",
        "name": "window"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "sinks"
       }
      ],
      "errors": []
@@ -2045,19 +2159,30 @@
      "op": "linear",
      "role": "attention output projection",
      "inputs": [
-      "a"
+      "att"
      ],
-     "output": "ao",
+     "output": "att_o",
      "new_op": "",
      "attributes": [
       {
        "value": "12288",
        "status": "stated",
-       "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128",
+       "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128 & 3.2M & $0.6 \\times 10^{-4}$",
        "where": "Table 2.1 (table:param)",
        "reasons": [],
        "check": "verified",
        "name": "out"
+      },
+      {
+       "value": "true",
+       "status": "inherited",
+       "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
+       "where": "Sec. 2.1 Model and Architectures",
+       "reasons": [
+        "inherited from gpt-2, whose curated entry has no bias"
+       ],
+       "check": "unverified",
+       "name": "bias"
       }
      ],
      "errors": []
@@ -2068,10 +2193,10 @@
      "op": "add",
      "role": "attention residual",
      "inputs": [
-      "x",
-      "ao"
+      "h",
+      "att_o"
      ],
-     "output": "x2",
+     "output": "h1",
      "new_op": "",
      "attributes": [],
      "errors": []
@@ -2080,20 +2205,22 @@
      "i": 8,
      "subgraph": "block",
      "op": "layernorm",
-     "role": "pre-FFN norm",
+     "role": "pre-FFN layer norm",
      "inputs": [
-      "x2"
+      "h1"
      ],
-     "output": "h2",
+     "output": "f_in",
      "new_op": "",
      "attributes": [
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
+       "value": "1e-5",
+       "status": "inherited",
+       "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
+       "where": "Sec. 2.1 Model and Architectures",
+       "reasons": [
+        "inherited from gpt-2, whose curated entry has no eps"
+       ],
+       "check": "unverified",
        "name": "eps"
       }
      ],
@@ -2105,9 +2232,9 @@
      "op": "linear",
      "role": "FFN up projection",
      "inputs": [
-      "h2"
+      "f_in"
      ],
-     "output": "u",
+     "output": "up",
      "new_op": "",
      "attributes": [
       {
@@ -2139,11 +2266,11 @@
      "i": 10,
      "subgraph": "block",
      "op": "gelu",
-     "role": "FFN activation (inherited from GPT-2)",
+     "role": "FFN activation",
      "inputs": [
-      "u"
+      "up"
      ],
-     "output": "g",
+     "output": "act",
      "new_op": "",
      "attributes": [
       {
@@ -2166,15 +2293,15 @@
      "op": "linear",
      "role": "FFN down projection",
      "inputs": [
-      "g"
+      "act"
      ],
-     "output": "f",
+     "output": "down",
      "new_op": "",
      "attributes": [
       {
        "value": "12288",
        "status": "stated",
-       "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128",
+       "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128 & 3.2M & $0.6 \\times 10^{-4}$",
        "where": "Table 2.1 (table:param)",
        "reasons": [],
        "check": "verified",
@@ -2200,10 +2327,10 @@
      "op": "add",
      "role": "FFN residual",
      "inputs": [
-      "x2",
-      "f"
+      "h1",
+      "down"
      ],
-     "output": "x",
+     "output": "h",
      "new_op": "",
      "attributes": [],
      "errors": []
@@ -2212,20 +2339,22 @@
      "i": 13,
      "subgraph": "head",
      "op": "layernorm",
-     "role": "final norm (GPT-2 style)",
+     "role": "final layer norm",
      "inputs": [
-      "x"
+      "h"
      ],
      "output": "hf",
      "new_op": "",
      "attributes": [
       {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
+       "value": "1e-5",
+       "status": "inherited",
+       "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
+       "where": "Sec. 2.1 Model and Architectures",
+       "reasons": [
+        "inherited from gpt-2, whose curated entry has no eps"
+       ],
+       "check": "unverified",
        "name": "eps"
       }
      ],
@@ -2235,7 +2364,7 @@
      "i": 14,
      "subgraph": "head",
      "op": "linear",
-     "role": "tied LM head",
+     "role": "tied output head to vocabulary logits",
      "inputs": [
       "hf"
      ],
@@ -2243,15 +2372,15 @@
      "new_op": "",
      "attributes": [
       {
-       "value": "token_embd",
+       "value": "50257",
        "status": "inherited",
-       "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
-       "where": "Sec. 2.1 Model and Architectures",
+       "quote": "This could be a weakness due to reusing the byte-level BPE tokenizer of GPT-2 which was developed for an almost entirely English training dataset.",
+       "where": "Sec. 3.3 Translation",
        "reasons": [
-        "inherited from gpt-2, whose curated entry has no tied_to"
+        "inherited from gpt-2, whose curated entry has no out"
        ],
        "check": "unverified",
-       "name": "tied_to"
+       "name": "out"
       },
       {
        "value": "false",
@@ -2263,6 +2392,17 @@
        ],
        "check": "unverified",
        "name": "bias"
+      },
+      {
+       "value": "token_embd",
+       "status": "inherited",
+       "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
+       "where": "Sec. 2.1 Model and Architectures",
+       "reasons": [
+        "inherited from gpt-2, whose curated entry has no tied_to"
+       ],
+       "check": "unverified",
+       "name": "tied_to"
       }
      ],
      "errors": []
@@ -2270,13 +2410,13 @@
    ],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "Layer-alternating attention patterns: dense attention in some layers and locally banded sparse attention (Sparse Transformer style) in others. Band width and the alternation schedule are not given, so a single repeated block cannot represent this.",
+     "mechanism": "Layers alternate between dense causal attention and locally banded sparse attention (Sparse Transformer style); band width and alternation pattern not specified, so a single repeated block cannot represent it exactly.",
      "quote": "with the exception that we use alternating dense and locally banded sparse attention patterns in the layers of the transformer, similar to the Sparse Transformer \\cite{child2019generating}",
      "where": "Sec. 2.1 Model and Architectures",
      "check": "verified"
     },
     {
-     "mechanism": "GPT-2 modified initialization (a training-time detail, not part of the forward graph).",
+     "mechanism": "GPT-2's modified (residual-scaled) initialization is inherited.",
      "quote": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein",
      "where": "Sec. 2.1 Model and Architectures",
      "check": "verified"
@@ -2284,12 +2424,18 @@
    ],
    "summary": {
     "counts": {
-     "verified": 48,
+     "verified": 49,
      "quote_only": 4,
-     "unverified": 28,
-     "not_stated": 23
+     "unverified": 45,
+     "not_stated": 11
     },
     "unverified": [
+     {
+      "field": "configs[GPT-3 Small].n_kv_heads",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no n_kv_heads"
+      ]
+     },
      {
       "field": "configs[GPT-3 Small].d_ff",
       "reasons": [
@@ -2300,6 +2446,12 @@
       "field": "configs[GPT-3 Small].vocab_size",
       "reasons": [
        "inherited from gpt-2, whose curated entry has no vocab_size"
+      ]
+     },
+     {
+      "field": "configs[GPT-3 Medium].n_kv_heads",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no n_kv_heads"
       ]
      },
      {
@@ -2315,6 +2467,12 @@
       ]
      },
      {
+      "field": "configs[GPT-3 Large].n_kv_heads",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no n_kv_heads"
+      ]
+     },
+     {
       "field": "configs[GPT-3 Large].d_ff",
       "reasons": [
        "6144 does not occur in its quote"
@@ -2324,6 +2482,12 @@
       "field": "configs[GPT-3 Large].vocab_size",
       "reasons": [
        "inherited from gpt-2, whose curated entry has no vocab_size"
+      ]
+     },
+     {
+      "field": "configs[GPT-3 XL].n_kv_heads",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no n_kv_heads"
       ]
      },
      {
@@ -2339,6 +2503,12 @@
       ]
      },
      {
+      "field": "configs[GPT-3 2.7B].n_kv_heads",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no n_kv_heads"
+      ]
+     },
+     {
       "field": "configs[GPT-3 2.7B].d_ff",
       "reasons": [
        "10240 does not occur in its quote"
@@ -2348,6 +2518,12 @@
       "field": "configs[GPT-3 2.7B].vocab_size",
       "reasons": [
        "inherited from gpt-2, whose curated entry has no vocab_size"
+      ]
+     },
+     {
+      "field": "configs[GPT-3 6.7B].n_kv_heads",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no n_kv_heads"
       ]
      },
      {
@@ -2363,6 +2539,12 @@
       ]
      },
      {
+      "field": "configs[GPT-3 13B].n_kv_heads",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no n_kv_heads"
+      ]
+     },
+     {
       "field": "configs[GPT-3 13B].d_ff",
       "reasons": [
        "20560 does not occur in its quote"
@@ -2375,6 +2557,12 @@
       ]
      },
      {
+      "field": "configs[GPT-3 175B].n_kv_heads",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no n_kv_heads"
+      ]
+     },
+     {
       "field": "configs[GPT-3 175B].d_ff",
       "reasons": [
        "49152 does not occur in its quote"
@@ -2384,6 +2572,12 @@
       "field": "configs[GPT-3 175B].vocab_size",
       "reasons": [
        "inherited from gpt-2, whose curated entry has no vocab_size"
+      ]
+     },
+     {
+      "field": "flavours.norm_eps",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no norm_eps"
       ]
      },
      {
@@ -2417,9 +2611,45 @@
       ]
      },
      {
+      "field": "block_ops[2].eps",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no eps"
+      ]
+     },
+     {
+      "field": "block_ops[3].out",
+      "reasons": [
+       "36864 does not occur in its quote"
+      ]
+     },
+     {
       "field": "block_ops[3].bias",
       "reasons": [
        "inherited from gpt-2, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[4].sizes",
+      "reasons": [
+       "12288,12288,12288 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[5].kv_heads",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no kv_heads"
+      ]
+     },
+     {
+      "field": "block_ops[6].bias",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[8].eps",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no eps"
       ]
      },
      {
@@ -2447,15 +2677,27 @@
       ]
      },
      {
-      "field": "block_ops[14].tied_to",
+      "field": "block_ops[13].eps",
       "reasons": [
-       "inherited from gpt-2, whose curated entry has no tied_to"
+       "inherited from gpt-2, whose curated entry has no eps"
+      ]
+     },
+     {
+      "field": "block_ops[14].out",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no out"
       ]
      },
      {
       "field": "block_ops[14].bias",
       "reasons": [
        "inherited from gpt-2, whose curated entry has no bias"
+      ]
+     },
+     {
+      "field": "block_ops[14].tied_to",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no tied_to"
       ]
      }
     ],

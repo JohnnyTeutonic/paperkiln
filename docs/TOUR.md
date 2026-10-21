@@ -431,7 +431,7 @@ can consume a run.
 | **Run studio** | ✅ | Declarative spec → train/eval/export/serve; `plan` dry-run; resume |
 | **Live dashboard** | ✅ | Loss + val + gate chart, per-module gradient glow, spec builder, SVG architecture diagram, in-page chat |
 | **Flex family (paper-faithful)** | ✅ | Any depth; d_ff, LayerNorm/RMSNorm, GELU/ReLU/SwiGLU, learned/sinusoidal all spec-real; bitwise equivalence pin at defaults (`test_flex`, 6 receipts) |
-| **LLM extractor** | ✅ | `papers/llm_extract.py`: one Claude call per paper, IR op graph + `expr` for new ops + a verified quote per value; 40-paper bench 80 correct / 11 abstain / 1 wrong (rule-based: 72 / 20 / 0); feeds `tools/arxiv_to_chat.py` (paper → trained model → chat) |
+| **LLM extractor** | ✅ | `papers/llm_extract.py`: one Claude call per paper, IR op graph + `expr` for new ops + a verified quote per value; 40-paper bench 82 correct / 9 abstain / 1 wrong (rule-based: 72 / 20 / 0); feeds `tools/arxiv_to_chat.py` (paper → trained model → chat) |
 | **From-paper flow** | ✅ | Drag an arXiv link → scored extraction (rule-based: grouped AUROC 0.905, no wrong assertion in 92 verdicts on the 40-paper bench) → editable spec → ▶ train → artifact downloads → chat |
 | **Atlas experiment engine** | ✅ | `mtsweep` (grid/PB12/fold-over PB12f, linked factors, aliasing advisories, resumable, OMP-aware) + `atlas_analyze` (main effects + two-way interactions, seed-based SEs); Stages 2–3 findings published |
 | **Atlas viewer** | ✅ | `studio/atlas.html` (+ `/atlas` in serve mode): in-page effects, clickable interaction heatmap, seed spreads — client math pinned to the Python analyser on real Stage 3 rows |
@@ -648,12 +648,14 @@ the build by name, so `tools/arxiv_to_chat.py` refuses rather than approximates.
 tokens, cost and request id go to `papers/llm_extract_receipts/ledger.jsonl`, and `--budget-usd`
 refuses a call before it is sent if its worst case would pass the cap.
 
-**Measured** on the same 40-paper truth set as the rule-based scorer (22 Oct 2026, about $15 for
-the 40): 80 correct, 11 abstain, 1 wrong, against 72 / 20 / 0. The wrong verdict is Longformer,
-which trains two models: the extractor described the character-level language model's relative
-positions, where the truth is the pretrained model's learned ones. The prompt now asks for the
-headline model when a paper trains models for different settings. Receipts:
-`papers/llm_extract_receipts/`.
+**Measured** on the same 40-paper truth set as the rule-based scorer (22 Oct 2026, $18 for the
+40): 82 correct, 9 abstain, 1 wrong, against 72 / 20 / 0. The prompt asks for the headline model
+when a paper trains models for different settings (Longformer's pretrained model, not its
+character-level language model). The wrong verdict is Primer's norm: the paper says Primer "uses
+a modified version of layer normalization that uses $x(x - \mu)$ instead of $(x-\mu)^2$, but we
+find this is not always effective", and the extractor quoted it and wrote it as an `expr`, where
+the truth set records the RMSNorm of the T5 baseline Primer was searched from. A new op blocks the
+build, so no wrong model trains from it. Receipts: `papers/llm_extract_receipts/`.
 
 ## Paper-to-architecture: the rule-based arXiv fetcher (no API key)
 

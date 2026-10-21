@@ -3,18 +3,18 @@
  "title": "OPT: Open Pre-trained Transformer Language Models",
  "fields": {
   "d_model": {
-   "value": 768,
-   "evidence": "125M & 12 & 12 & 768 & $6.0e{-4}$ & 0.5M [Table tab:model_sizes]",
+   "value": 12288,
+   "evidence": "175B & 96 & 96 & 12288 & $1.2e{-4}$ & 2M [Table: Model architecture details]",
    "verdict": "used"
   },
   "n_layers": {
-   "value": 12,
-   "evidence": "125M & 12 & 12 & 768 & $6.0e{-4}$ & 0.5M [Table tab:model_sizes]",
+   "value": 96,
+   "evidence": "175B & 96 & 96 & 12288 & $1.2e{-4}$ & 2M [Table: Model architecture details]",
    "verdict": "used"
   },
   "n_heads": {
-   "value": 12,
-   "evidence": "125M & 12 & 12 & 768 & $6.0e{-4}$ & 0.5M [Table tab:model_sizes]",
+   "value": 96,
+   "evidence": "175B & 96 & 96 & 12288 & $1.2e{-4}$ & 2M [Table: Model architecture details]",
    "verdict": "used"
   },
   "context_length": {
@@ -106,14 +106,14 @@
   "sent_sha256": "abba6e0e2165c606e620ea0e2b07d216e522854c106b7a7dc75146560d437cd2",
   "from": "https://arxiv.org/e-print/2205.01068",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
   "n_calls": 1,
-  "cost_usd": 0.0,
+  "cost_usd": 0.276336,
   "request_ids": [
-   "req_011CgFcCR3PrKHpaFUYrvecx"
+   "req_011CgFhTHdeRaVZUBuXc8bzS"
   ]
  },
  "llm": {
@@ -127,7 +127,7 @@
     "where": "Abstract"
    },
    "inherits": {
-    "ancestor": "GPT-3",
+    "ancestor": "GPT-3 (brown2020gpt3)",
     "quote": "our models and hyperparameters largely follow \\citet{brown2020gpt3}, with variations in batch size mostly to obtain increased computational efficiency.",
     "where": "Sec. Models"
    },
@@ -138,19 +138,19 @@
       "value": "768",
       "status": "stated",
       "quote": "125M    & 12 & 12 & 768   & $6.0e{-4}$ & 0.5M",
-      "where": "Table tab:model_sizes"
+      "where": "Table: Model architecture details"
      },
      "n_layers": {
       "value": "12",
       "status": "stated",
       "quote": "125M    & 12 & 12 & 768   & $6.0e{-4}$ & 0.5M",
-      "where": "Table tab:model_sizes"
+      "where": "Table: Model architecture details"
      },
      "n_heads": {
       "value": "12",
       "status": "stated",
       "quote": "125M    & 12 & 12 & 768   & $6.0e{-4}$ & 0.5M",
-      "where": "Table tab:model_sizes"
+      "where": "Table: Model architecture details"
      },
      "n_kv_heads": {
       "value": "",
@@ -189,19 +189,19 @@
       "value": "1024",
       "status": "stated",
       "quote": "350M    & 24 & 16 & 1024  & $3.0e{-4}$ & 0.5M",
-      "where": "Table tab:model_sizes"
+      "where": "Table: Model architecture details"
      },
      "n_layers": {
       "value": "24",
       "status": "stated",
       "quote": "350M    & 24 & 16 & 1024  & $3.0e{-4}$ & 0.5M",
-      "where": "Table tab:model_sizes"
+      "where": "Table: Model architecture details"
      },
      "n_heads": {
       "value": "16",
       "status": "stated",
       "quote": "350M    & 24 & 16 & 1024  & $3.0e{-4}$ & 0.5M",
-      "where": "Table tab:model_sizes"
+      "where": "Table: Model architecture details"
      },
      "n_kv_heads": {
       "value": "",
@@ -240,19 +240,19 @@
       "value": "2048",
       "status": "stated",
       "quote": "1.3B    & 24 & 32 & 2048  & $2.0e{-4}$ & 1M",
-      "where": "Table tab:model_sizes"
+      "where": "Table: Model architecture details"
      },
      "n_layers": {
       "value": "24",
       "status": "stated",
       "quote": "1.3B    & 24 & 32 & 2048  & $2.0e{-4}$ & 1M",
-      "where": "Table tab:model_sizes"
+      "where": "Table: Model architecture details"
      },
      "n_heads": {
       "value": "32",
       "status": "stated",
       "quote": "1.3B    & 24 & 32 & 2048  & $2.0e{-4}$ & 1M",
-      "where": "Table tab:model_sizes"
+      "where": "Table: Model architecture details"
      },
      "n_kv_heads": {
       "value": "",
@@ -291,19 +291,19 @@
       "value": "2560",
       "status": "stated",
       "quote": "2.7B    & 32 & 32 & 2560  & $1.6e{-4}$ & 1M",
-      "where": "Table tab:model_sizes"
+      "where": "Table: Model architecture details"
      },
      "n_layers": {
       "value": "32",
       "status": "stated",
       "quote": "2.7B    & 32 & 32 & 2560  & $1.6e{-4}$ & 1M",
-      "where": "Table tab:model_sizes"
+      "where": "Table: Model architecture details"
      },
      "n_heads": {
       "value": "32",
       "status": "stated",
       "quote": "2.7B    & 32 & 32 & 2560  & $1.6e{-4}$ & 1M",
-      "where": "Table tab:model_sizes"
+      "where": "Table: Model architecture details"
      },
      "n_kv_heads": {
       "value": "",
@@ -342,19 +342,19 @@
       "value": "4096",
       "status": "stated",
       "quote": "6.7B    & 32 & 32 & 4096  & $1.2e{-4}$ & 2M",
-      "where": "Table tab:model_sizes"
+      "where": "Table: Model architecture details"
      },
      "n_layers": {
       "value": "32",
       "status": "stated",
       "quote": "6.7B    & 32 & 32 & 4096  & $1.2e{-4}$ & 2M",
-      "where": "Table tab:model_sizes"
+      "where": "Table: Model architecture details"
      },
      "n_heads": {
       "value": "32",
       "status": "stated",
       "quote": "6.7B    & 32 & 32 & 4096  & $1.2e{-4}$ & 2M",
-      "where": "Table tab:model_sizes"
+      "where": "Table: Model architecture details"
      },
      "n_kv_heads": {
       "value": "",
@@ -393,19 +393,19 @@
       "value": "5120",
       "status": "stated",
       "quote": "13B     & 40 & 40 & 5120  & $1.0e{-4}$ & 4M",
-      "where": "Table tab:model_sizes"
+      "where": "Table: Model architecture details"
      },
      "n_layers": {
       "value": "40",
       "status": "stated",
       "quote": "13B     & 40 & 40 & 5120  & $1.0e{-4}$ & 4M",
-      "where": "Table tab:model_sizes"
+      "where": "Table: Model architecture details"
      },
      "n_heads": {
       "value": "40",
       "status": "stated",
       "quote": "13B     & 40 & 40 & 5120  & $1.0e{-4}$ & 4M",
-      "where": "Table tab:model_sizes"
+      "where": "Table: Model architecture details"
      },
      "n_kv_heads": {
       "value": "",
@@ -444,19 +444,19 @@
       "value": "7168",
       "status": "stated",
       "quote": "30B     & 48 & 56 & 7168  & $1.0e{-4}$ & 4M",
-      "where": "Table tab:model_sizes"
+      "where": "Table: Model architecture details"
      },
      "n_layers": {
       "value": "48",
       "status": "stated",
       "quote": "30B     & 48 & 56 & 7168  & $1.0e{-4}$ & 4M",
-      "where": "Table tab:model_sizes"
+      "where": "Table: Model architecture details"
      },
      "n_heads": {
       "value": "56",
       "status": "stated",
       "quote": "30B     & 48 & 56 & 7168  & $1.0e{-4}$ & 4M",
-      "where": "Table tab:model_sizes"
+      "where": "Table: Model architecture details"
      },
      "n_kv_heads": {
       "value": "",
@@ -495,19 +495,19 @@
       "value": "9216",
       "status": "stated",
       "quote": "66B     & 64 & 72 & 9216  & $0.8e{-4}$ & 2M",
-      "where": "Table tab:model_sizes"
+      "where": "Table: Model architecture details"
      },
      "n_layers": {
       "value": "64",
       "status": "stated",
       "quote": "66B     & 64 & 72 & 9216  & $0.8e{-4}$ & 2M",
-      "where": "Table tab:model_sizes"
+      "where": "Table: Model architecture details"
      },
      "n_heads": {
       "value": "72",
       "status": "stated",
       "quote": "66B     & 64 & 72 & 9216  & $0.8e{-4}$ & 2M",
-      "where": "Table tab:model_sizes"
+      "where": "Table: Model architecture details"
      },
      "n_kv_heads": {
       "value": "",
@@ -546,19 +546,19 @@
       "value": "12288",
       "status": "stated",
       "quote": "175B    & 96 & 96 & 12288 & $1.2e{-4}$ & 2M",
-      "where": "Table tab:model_sizes"
+      "where": "Table: Model architecture details"
      },
      "n_layers": {
       "value": "96",
       "status": "stated",
       "quote": "175B    & 96 & 96 & 12288 & $1.2e{-4}$ & 2M",
-      "where": "Table tab:model_sizes"
+      "where": "Table: Model architecture details"
      },
      "n_heads": {
       "value": "96",
       "status": "stated",
       "quote": "175B    & 96 & 96 & 12288 & $1.2e{-4}$ & 2M",
-      "where": "Table tab:model_sizes"
+      "where": "Table: Model architecture details"
      },
      "n_kv_heads": {
       "value": "",
@@ -592,7 +592,7 @@
      }
     }
    ],
-   "primary_config": "125M",
+   "primary_config": "175B",
    "flavours": {
     "norm": {
      "value": "",
@@ -724,62 +724,20 @@
       "tokens"
      ],
      "output": "x",
-     "attributes": [],
-     "new_op": ""
-    },
-    {
-     "subgraph": "block",
-     "op": "linear",
-     "role": "query projection",
-     "inputs": [
-      "x"
-     ],
-     "output": "q",
      "attributes": [
       {
-       "name": "bias",
+       "name": "vocab",
        "value": "",
        "status": "not_stated",
        "quote": "",
        "where": ""
-      }
-     ],
-     "new_op": ""
-    },
-    {
-     "subgraph": "block",
-     "op": "linear",
-     "role": "key projection",
-     "inputs": [
-      "x"
-     ],
-     "output": "k",
-     "attributes": [
+      },
       {
-       "name": "bias",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      }
-     ],
-     "new_op": ""
-    },
-    {
-     "subgraph": "block",
-     "op": "linear",
-     "role": "value projection",
-     "inputs": [
-      "x"
-     ],
-     "output": "v",
-     "attributes": [
-      {
-       "name": "bias",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
+       "name": "d",
+       "value": "12288",
+       "status": "stated",
+       "quote": "175B    & 96 & 96 & 12288 & $1.2e{-4}$ & 2M",
+       "where": "Table: Model architecture details"
       }
      ],
      "new_op": ""
@@ -787,20 +745,18 @@
     {
      "subgraph": "block",
      "op": "attention",
-     "role": "self-attention",
+     "role": "causal multi-head self-attention",
      "inputs": [
-      "q",
-      "k",
-      "v"
+      "x"
      ],
      "output": "a",
      "attributes": [
       {
        "name": "heads",
-       "value": "12",
+       "value": "96",
        "status": "stated",
-       "quote": "125M    & 12 & 12 & 768   & $6.0e{-4}$ & 0.5M",
-       "where": "Table tab:model_sizes"
+       "quote": "175B    & 96 & 96 & 12288 & $1.2e{-4}$ & 2M",
+       "where": "Table: Model architecture details"
       },
       {
        "name": "kv_heads",
@@ -849,30 +805,11 @@
     },
     {
      "subgraph": "block",
-     "op": "linear",
-     "role": "attention output projection",
-     "inputs": [
-      "a"
-     ],
-     "output": "o",
-     "attributes": [
-      {
-       "name": "bias",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      }
-     ],
-     "new_op": ""
-    },
-    {
-     "subgraph": "block",
      "op": "add",
-     "role": "attention residual add",
+     "role": "attention residual",
      "inputs": [
       "x",
-      "o"
+      "a"
      ],
      "output": "h",
      "attributes": [],
@@ -925,6 +862,13 @@
      "output": "f",
      "attributes": [
       {
+       "name": "out",
+       "value": "12288",
+       "status": "stated",
+       "quote": "175B    & 96 & 96 & 12288 & $1.2e{-4}$ & 2M",
+       "where": "Table: Model architecture details"
+      },
+      {
        "name": "bias",
        "value": "",
        "status": "not_stated",
@@ -937,7 +881,7 @@
     {
      "subgraph": "block",
      "op": "add",
-     "role": "FFN residual add",
+     "role": "FFN residual",
      "inputs": [
       "h",
       "f"
@@ -949,12 +893,19 @@
     {
      "subgraph": "head",
      "op": "linear",
-     "role": "LM output head",
+     "role": "output projection to vocabulary",
      "inputs": [
       "x"
      ],
      "output": "logits",
      "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
       {
        "name": "bias",
        "value": "",
@@ -975,13 +926,13 @@
    ],
    "new_ops": [],
    "mechanisms_outside_ir": [],
-   "notes": "All nine sizes in Table tab:model_sizes are listed, although the text says 'eight'. 125M is primary as the smallest. The paper only says it 'largely follows' GPT-3 and never names the values it inherits, so I did not fill any values from GPT-3. These are left not_stated: normalization type and placement, positional encoding, d_ff, head_dim, vocab size, KV heads, bias placement and embedding tying. The text says 'All bias terms are initialized as 0', which implies biases exist but does not say which layers have them. The tokenizer is the GPT-2 BPE, but its vocabulary size is not stated. Norm ops are omitted from block_ops because the paper never describes them; the block as written is incomplete without them."
+   "notes": "Headline model OPT-175B is chosen as primary_config, since the paper singles it out; all nine sizes in Table 'Model architecture details' are listed. The text says 'eight Transformer language models', but the table lists nine rows.\n\nThe paper only says the models 'largely follow' GPT-3. That is too vague to inherit specific values, partly because GPT-3 used alternating sparse attention, so no values are marked inherited. The following are left not_stated and should not be filled in from memory:\n- norm type, placement and eps\n- positional encoding\n- d_ff, head_dim and vocab size; the GPT-2 BPE tokenizer is named but its size is not given\n- weight tying\n- which linears carry biases\n\nThe paper says 'All bias terms are initialized as 0', which implies biases exist, but it does not say where. Normalisation ops are omitted from block_ops because the paper never describes them, and the residual adds are shown in their basic form. The metaseq code is cited as the source of truth for details the paper omits."
   },
   "verification": {
    "errors": [],
    "warnings": [],
    "inherits": {
-    "ancestor": "GPT-3",
+    "ancestor": "GPT-3 (brown2020gpt3)",
     "resolved": "gpt-3",
     "quote": "our models and hyperparameters largely follow \\citet{brown2020gpt3}, with variations in batch size mostly to obtain increased computational efficiency.",
     "where": "Sec. Models",
@@ -1002,7 +953,7 @@
       "value": "768",
       "status": "stated",
       "quote": "125M    & 12 & 12 & 768   & $6.0e{-4}$ & 0.5M",
-      "where": "Table tab:model_sizes",
+      "where": "Table: Model architecture details",
       "reasons": [],
       "check": "verified"
      },
@@ -1010,7 +961,7 @@
       "value": "12",
       "status": "stated",
       "quote": "125M    & 12 & 12 & 768   & $6.0e{-4}$ & 0.5M",
-      "where": "Table tab:model_sizes",
+      "where": "Table: Model architecture details",
       "reasons": [],
       "check": "verified"
      },
@@ -1018,7 +969,7 @@
       "value": "12",
       "status": "stated",
       "quote": "125M    & 12 & 12 & 768   & $6.0e{-4}$ & 0.5M",
-      "where": "Table tab:model_sizes",
+      "where": "Table: Model architecture details",
       "reasons": [],
       "check": "verified"
      },
@@ -1075,7 +1026,7 @@
       "value": "1024",
       "status": "stated",
       "quote": "350M    & 24 & 16 & 1024  & $3.0e{-4}$ & 0.5M",
-      "where": "Table tab:model_sizes",
+      "where": "Table: Model architecture details",
       "reasons": [],
       "check": "verified"
      },
@@ -1083,7 +1034,7 @@
       "value": "24",
       "status": "stated",
       "quote": "350M    & 24 & 16 & 1024  & $3.0e{-4}$ & 0.5M",
-      "where": "Table tab:model_sizes",
+      "where": "Table: Model architecture details",
       "reasons": [],
       "check": "verified"
      },
@@ -1091,7 +1042,7 @@
       "value": "16",
       "status": "stated",
       "quote": "350M    & 24 & 16 & 1024  & $3.0e{-4}$ & 0.5M",
-      "where": "Table tab:model_sizes",
+      "where": "Table: Model architecture details",
       "reasons": [],
       "check": "verified"
      },
@@ -1148,7 +1099,7 @@
       "value": "2048",
       "status": "stated",
       "quote": "1.3B    & 24 & 32 & 2048  & $2.0e{-4}$ & 1M",
-      "where": "Table tab:model_sizes",
+      "where": "Table: Model architecture details",
       "reasons": [],
       "check": "verified"
      },
@@ -1156,7 +1107,7 @@
       "value": "24",
       "status": "stated",
       "quote": "1.3B    & 24 & 32 & 2048  & $2.0e{-4}$ & 1M",
-      "where": "Table tab:model_sizes",
+      "where": "Table: Model architecture details",
       "reasons": [],
       "check": "verified"
      },
@@ -1164,7 +1115,7 @@
       "value": "32",
       "status": "stated",
       "quote": "1.3B    & 24 & 32 & 2048  & $2.0e{-4}$ & 1M",
-      "where": "Table tab:model_sizes",
+      "where": "Table: Model architecture details",
       "reasons": [],
       "check": "verified"
      },
@@ -1221,7 +1172,7 @@
       "value": "2560",
       "status": "stated",
       "quote": "2.7B    & 32 & 32 & 2560  & $1.6e{-4}$ & 1M",
-      "where": "Table tab:model_sizes",
+      "where": "Table: Model architecture details",
       "reasons": [],
       "check": "verified"
      },
@@ -1229,7 +1180,7 @@
       "value": "32",
       "status": "stated",
       "quote": "2.7B    & 32 & 32 & 2560  & $1.6e{-4}$ & 1M",
-      "where": "Table tab:model_sizes",
+      "where": "Table: Model architecture details",
       "reasons": [],
       "check": "verified"
      },
@@ -1237,7 +1188,7 @@
       "value": "32",
       "status": "stated",
       "quote": "2.7B    & 32 & 32 & 2560  & $1.6e{-4}$ & 1M",
-      "where": "Table tab:model_sizes",
+      "where": "Table: Model architecture details",
       "reasons": [],
       "check": "verified"
      },
@@ -1294,7 +1245,7 @@
       "value": "4096",
       "status": "stated",
       "quote": "6.7B    & 32 & 32 & 4096  & $1.2e{-4}$ & 2M",
-      "where": "Table tab:model_sizes",
+      "where": "Table: Model architecture details",
       "reasons": [],
       "check": "verified"
      },
@@ -1302,7 +1253,7 @@
       "value": "32",
       "status": "stated",
       "quote": "6.7B    & 32 & 32 & 4096  & $1.2e{-4}$ & 2M",
-      "where": "Table tab:model_sizes",
+      "where": "Table: Model architecture details",
       "reasons": [],
       "check": "verified"
      },
@@ -1310,7 +1261,7 @@
       "value": "32",
       "status": "stated",
       "quote": "6.7B    & 32 & 32 & 4096  & $1.2e{-4}$ & 2M",
-      "where": "Table tab:model_sizes",
+      "where": "Table: Model architecture details",
       "reasons": [],
       "check": "verified"
      },
@@ -1367,7 +1318,7 @@
       "value": "5120",
       "status": "stated",
       "quote": "13B     & 40 & 40 & 5120  & $1.0e{-4}$ & 4M",
-      "where": "Table tab:model_sizes",
+      "where": "Table: Model architecture details",
       "reasons": [],
       "check": "verified"
      },
@@ -1375,7 +1326,7 @@
       "value": "40",
       "status": "stated",
       "quote": "13B     & 40 & 40 & 5120  & $1.0e{-4}$ & 4M",
-      "where": "Table tab:model_sizes",
+      "where": "Table: Model architecture details",
       "reasons": [],
       "check": "verified"
      },
@@ -1383,7 +1334,7 @@
       "value": "40",
       "status": "stated",
       "quote": "13B     & 40 & 40 & 5120  & $1.0e{-4}$ & 4M",
-      "where": "Table tab:model_sizes",
+      "where": "Table: Model architecture details",
       "reasons": [],
       "check": "verified"
      },
@@ -1440,7 +1391,7 @@
       "value": "7168",
       "status": "stated",
       "quote": "30B     & 48 & 56 & 7168  & $1.0e{-4}$ & 4M",
-      "where": "Table tab:model_sizes",
+      "where": "Table: Model architecture details",
       "reasons": [],
       "check": "verified"
      },
@@ -1448,7 +1399,7 @@
       "value": "48",
       "status": "stated",
       "quote": "30B     & 48 & 56 & 7168  & $1.0e{-4}$ & 4M",
-      "where": "Table tab:model_sizes",
+      "where": "Table: Model architecture details",
       "reasons": [],
       "check": "verified"
      },
@@ -1456,7 +1407,7 @@
       "value": "56",
       "status": "stated",
       "quote": "30B     & 48 & 56 & 7168  & $1.0e{-4}$ & 4M",
-      "where": "Table tab:model_sizes",
+      "where": "Table: Model architecture details",
       "reasons": [],
       "check": "verified"
      },
@@ -1513,7 +1464,7 @@
       "value": "9216",
       "status": "stated",
       "quote": "66B     & 64 & 72 & 9216  & $0.8e{-4}$ & 2M",
-      "where": "Table tab:model_sizes",
+      "where": "Table: Model architecture details",
       "reasons": [],
       "check": "verified"
      },
@@ -1521,7 +1472,7 @@
       "value": "64",
       "status": "stated",
       "quote": "66B     & 64 & 72 & 9216  & $0.8e{-4}$ & 2M",
-      "where": "Table tab:model_sizes",
+      "where": "Table: Model architecture details",
       "reasons": [],
       "check": "verified"
      },
@@ -1529,7 +1480,7 @@
       "value": "72",
       "status": "stated",
       "quote": "66B     & 64 & 72 & 9216  & $0.8e{-4}$ & 2M",
-      "where": "Table tab:model_sizes",
+      "where": "Table: Model architecture details",
       "reasons": [],
       "check": "verified"
      },
@@ -1586,7 +1537,7 @@
       "value": "12288",
       "status": "stated",
       "quote": "175B    & 96 & 96 & 12288 & $1.2e{-4}$ & 2M",
-      "where": "Table tab:model_sizes",
+      "where": "Table: Model architecture details",
       "reasons": [],
       "check": "verified"
      },
@@ -1594,7 +1545,7 @@
       "value": "96",
       "status": "stated",
       "quote": "175B    & 96 & 96 & 12288 & $1.2e{-4}$ & 2M",
-      "where": "Table tab:model_sizes",
+      "where": "Table: Model architecture details",
       "reasons": [],
       "check": "verified"
      },
@@ -1602,7 +1553,7 @@
       "value": "96",
       "status": "stated",
       "quote": "175B    & 96 & 96 & 12288 & $1.2e{-4}$ & 2M",
-      "where": "Table tab:model_sizes",
+      "where": "Table: Model architecture details",
       "reasons": [],
       "check": "verified"
      },
@@ -1654,7 +1605,7 @@
      ]
     }
    ],
-   "primary_config": "125M",
+   "primary_config": "175B",
    "flavours": {
     "norm": {
      "value": "",
@@ -1829,96 +1780,44 @@
      ],
      "output": "x",
      "new_op": "",
-     "attributes": [],
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "vocab"
+      },
+      {
+       "value": "12288",
+       "status": "stated",
+       "quote": "175B    & 96 & 96 & 12288 & $1.2e{-4}$ & 2M",
+       "where": "Table: Model architecture details",
+       "reasons": [],
+       "check": "verified",
+       "name": "d"
+      }
+     ],
      "errors": []
     },
     {
      "i": 1,
      "subgraph": "block",
-     "op": "linear",
-     "role": "query projection",
-     "inputs": [
-      "x"
-     ],
-     "output": "q",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "bias"
-      }
-     ],
-     "errors": []
-    },
-    {
-     "i": 2,
-     "subgraph": "block",
-     "op": "linear",
-     "role": "key projection",
-     "inputs": [
-      "x"
-     ],
-     "output": "k",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "bias"
-      }
-     ],
-     "errors": []
-    },
-    {
-     "i": 3,
-     "subgraph": "block",
-     "op": "linear",
-     "role": "value projection",
-     "inputs": [
-      "x"
-     ],
-     "output": "v",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "bias"
-      }
-     ],
-     "errors": []
-    },
-    {
-     "i": 4,
-     "subgraph": "block",
      "op": "attention",
-     "role": "self-attention",
+     "role": "causal multi-head self-attention",
      "inputs": [
-      "q",
-      "k",
-      "v"
+      "x"
      ],
      "output": "a",
      "new_op": "",
      "attributes": [
       {
-       "value": "12",
+       "value": "96",
        "status": "stated",
-       "quote": "125M    & 12 & 12 & 768   & $6.0e{-4}$ & 0.5M",
-       "where": "Table tab:model_sizes",
+       "quote": "175B    & 96 & 96 & 12288 & $1.2e{-4}$ & 2M",
+       "where": "Table: Model architecture details",
        "reasons": [],
        "check": "verified",
        "name": "heads"
@@ -1981,36 +1880,13 @@
      "errors": []
     },
     {
-     "i": 5,
-     "subgraph": "block",
-     "op": "linear",
-     "role": "attention output projection",
-     "inputs": [
-      "a"
-     ],
-     "output": "o",
-     "new_op": "",
-     "attributes": [
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "bias"
-      }
-     ],
-     "errors": []
-    },
-    {
-     "i": 6,
+     "i": 2,
      "subgraph": "block",
      "op": "add",
-     "role": "attention residual add",
+     "role": "attention residual",
      "inputs": [
       "x",
-      "o"
+      "a"
      ],
      "output": "h",
      "new_op": "",
@@ -2018,7 +1894,7 @@
      "errors": []
     },
     {
-     "i": 7,
+     "i": 3,
      "subgraph": "block",
      "op": "linear",
      "role": "FFN up projection",
@@ -2050,7 +1926,7 @@
      "errors": []
     },
     {
-     "i": 8,
+     "i": 4,
      "subgraph": "block",
      "op": "relu",
      "role": "FFN activation",
@@ -2063,7 +1939,7 @@
      "errors": []
     },
     {
-     "i": 9,
+     "i": 5,
      "subgraph": "block",
      "op": "linear",
      "role": "FFN down projection",
@@ -2073,6 +1949,15 @@
      "output": "f",
      "new_op": "",
      "attributes": [
+      {
+       "value": "12288",
+       "status": "stated",
+       "quote": "175B    & 96 & 96 & 12288 & $1.2e{-4}$ & 2M",
+       "where": "Table: Model architecture details",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
       {
        "value": "",
        "status": "not_stated",
@@ -2086,10 +1971,10 @@
      "errors": []
     },
     {
-     "i": 10,
+     "i": 6,
      "subgraph": "block",
      "op": "add",
-     "role": "FFN residual add",
+     "role": "FFN residual",
      "inputs": [
       "h",
       "f"
@@ -2100,16 +1985,25 @@
      "errors": []
     },
     {
-     "i": 11,
+     "i": 7,
      "subgraph": "head",
      "op": "linear",
-     "role": "LM output head",
+     "role": "output projection to vocabulary",
      "inputs": [
       "x"
      ],
      "output": "logits",
      "new_op": "",
      "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      },
       {
        "value": "",
        "status": "not_stated",
@@ -2135,16 +2029,16 @@
    "mechanisms_outside_ir": [],
    "summary": {
     "counts": {
-     "verified": 38,
+     "verified": 40,
      "quote_only": 2,
      "unverified": 0,
-     "not_stated": 69
+     "not_stated": 67
     },
     "unverified": [],
     "new_op_errors": [],
     "node_errors": [],
     "n_new_ops": 0,
-    "n_block_ops": 12
+    "n_block_ops": 8
    }
   }
  }

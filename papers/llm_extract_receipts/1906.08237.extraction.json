@@ -4,55 +4,55 @@
  "fields": {
   "d_model": {
    "value": 1024,
-   "evidence": "Hidden size & 1024 [Table tab:hp-pretrain]",
+   "evidence": "Hidden size & 1024 \\\\ [Table tab:hp-pretrain]",
    "verdict": "used"
   },
   "n_layers": {
    "value": 24,
-   "evidence": "Number of layers & 24 [Table tab:hp-pretrain]",
+   "evidence": "Number of layers & 24 \\\\ [Table tab:hp-pretrain]",
    "verdict": "used"
   },
   "n_heads": {
    "value": 16,
-   "evidence": "Number of attention heads & 16 [Table tab:hp-pretrain]",
+   "evidence": "Number of attention heads & 16 \\\\ [Table tab:hp-pretrain]",
    "verdict": "used"
   },
   "d_ff": {
    "value": 4096,
-   "evidence": "FFN inner hidden size & 4096 [Table tab:hp-pretrain]",
+   "evidence": "FFN inner hidden size & 4096 \\\\ [Table tab:hp-pretrain]",
    "verdict": "used"
   },
   "context_length": {
    "value": 512,
-   "evidence": "During pretraining, we always use a full sequence length of 512. [Sec. 3.1 Pretraining and Implementation]",
+   "evidence": "Max sequence length & 512 \\\\ [Table tab:hp-pretrain]",
    "verdict": "used"
   },
   "norm": {
    "value": "layernorm",
-   "evidence": "h_{z_t}^{(m)} &= \\text{LayerNorm}\\rbr{ \\hat{h}_{z_t}^{(m)} + [App. A.2 Two-Stream Attention]",
+   "evidence": "h_{z_t}^{(m)} &= \\text{LayerNorm}\\rbr{ \\hat{h}_{z_t}^{(m)} + [Appendix Two-Stream Attention]",
    "verdict": "used"
   },
   "activation": {
-   "value": "other:GeLU (erf vs tanh form not specified)",
-   "evidence": "GeLU Dropout & 0.0 [Table tab:hp-pretrain]",
+   "value": "gelu",
+   "evidence": "GeLU Dropout & 0.0 \\\\ [Table tab:hp-pretrain]",
    "verdict": "used"
   },
   "positional": {
    "value": "relative",
-   "evidence": "We integrate two important techniques in Transformer-XL, namely the relative positional encoding scheme and the segment recurrence mechanism. [Sec. 2.4 Incorporating Ideas from Transformer-XL]",
+   "evidence": "We integrate two important techniques in Transformer-XL, namely the relative positional encoding scheme and the segment recurrence mechanism. [Sec. Incorporating Ideas from Transformer-XL]",
    "verdict": "used"
   },
   "residual": {
    "value": "residual",
-   "evidence": "h_{z_t}^{(m)} &= \\text{LayerNorm}\\rbr{ \\hat{h}_{z_t}^{(m)} + [App. A.2 Two-Stream Attention]",
+   "evidence": "h_{z_t}^{(m)} &= \\text{LayerNorm}\\rbr{ \\hat{h}_{z_t}^{(m)} + [Appendix Two-Stream Attention]",
    "verdict": "unverified",
    "reasons": [
     "the quote does not name residual (looked for /residual|skip/)"
    ]
   },
   "attention": {
-   "value": "new_primitive:two_stream_rel_attn",
-   "evidence": "For the Transformer-XL layer $m = 1, \\cdots, M$, attention with relative positional encoding and position-wise feed-forward are consecutively employed [App. A.2 Two-Stream Attention]",
+   "value": "new_primitive:xl_relative_attention",
+   "evidence": "attention with relative positional encoding and position-wise feed-forward are consecutively employed to update the represetntations [Appendix Two-Stream Attention]",
    "verdict": "used"
   }
  },
@@ -70,9 +70,9 @@
  ],
  "mentions": {},
  "inherits": {
-  "ancestor": "transformer",
-  "evidence": "we incorporate the state-of-the-art AR language model, Transformer-XL~\\cite{dai2019transformer}, into our pretraining framework, and name our method after it.",
-  "section": "Sec. 2.4 Incorporating Ideas from Transformer-XL"
+  "ancestor": "bert",
+  "evidence": "Our largest model XLNet-Large has the same architecture hyperparameters as BERT-Large, which results in a similar model size.",
+  "section": "Sec. Pretraining and Implementation"
  },
  "variants": [
   {
@@ -85,32 +85,32 @@
  ],
  "mechanism_scan": [
   {
-   "mechanism": "new op two_stream_rel_attn (needs a new primitive: Needs a Transformer-XL relative-position attention primitive (relative positional encodings plus per-head relative segme)",
-   "where": "llm extraction, verified quote, Sec. 2.3 Two-Stream Self-Attention",
+   "mechanism": "new op xl_relative_attention (needs a new primitive: Needs Transformer-XL relative-position attention with cached previous-segment memory concatenated to keys/values, per-he)",
+   "where": "llm extraction, verified quote, Appendix Two-Stream Attention",
    "blocking": true,
-   "evidence": "g_{z_t}^{(m)} &\\leftarrow \\text{Attention}(\n\t\t\\text{Q} = g_{z_t}^{(m-1)}, \\text{KV}= \\rvh_{\\magenta{\\rvz_{<t}}}^{(m-1)}; \\theta),"
+   "evidence": "attention with relative positional encoding and position-wise feed-forward are consecutively employed to update the represetntations"
   },
   {
-   "mechanism": "Query stream initialised with a trainable vector w, run alongside the content stream through every layer with shared parameters; dropped at finetuning",
-   "where": "llm extraction, verified quote, Sec. 2.3",
+   "mechanism": "Two-stream self-attention: a query stream g initialised with a trainable vector w, sharing parameters with the content stream, cannot see its own content; used for prediction during pretraining and dropped at finetuning",
+   "where": "llm extraction, verified quote, Sec. Two-Stream Self-Attention",
    "blocking": true,
    "evidence": "Computationally, the first layer query stream is initialized with a trainable vector, i.e. $g_i^{(0)} = w$, while the content stream is set to the corresponding word embedding, i.e. $h_i^{(0)} = e(x_i)$."
   },
   {
-   "mechanism": "Segment recurrence memory: cached per-layer content representations from the previous segment are concatenated into keys/values",
-   "where": "llm extraction, verified quote, Sec. 2.4",
+   "mechanism": "Segment recurrence: cached per-layer content representations of the previous segment used as extra keys/values",
+   "where": "llm extraction, verified quote, Sec. Incorporating Ideas from Transformer-XL",
    "blocking": true,
    "evidence": "Then, based on the permutation $\\tilde{\\rvz}$, we process the first segment, and then cache the obtained content representations $\\tilde{\\rvh}^{(m)}$ for each layer $m$."
   },
   {
-   "mechanism": "Relative segment encodings: learned per-head s_+ / s_- and bias b added to attention scores",
-   "where": "llm extraction, verified quote, Sec. 2.5 Relative Segment Encodings",
+   "mechanism": "Relative segment encodings added to attention scores",
+   "where": "llm extraction, verified quote, Sec. Modeling Multiple Segments",
    "blocking": true,
    "evidence": "When $i$ attends to $j$, the segment encoding $\\mathbf{s}_{ij}$ is used to compute an attention weight $a_{ij} = (\\mb{q}_i + \\mb{b})^\\top \\mb{s}_{ij}$, where $\\mb{q}_i$ is the query vector as in a standard attention operation and $\\mb{b}$ i"
   },
   {
-   "mechanism": "Permutation of factorization order realised through attention masks, with positional encodings kept on the original order",
-   "where": "llm extraction, verified quote, Sec. 2.2 Remark on Permutation",
+   "mechanism": "Permutation of factorization order via attention masks (positional encodings follow original order)",
+   "where": "llm extraction, verified quote, Sec. Objective: Permutation Language Modeling",
    "blocking": true,
    "evidence": "In other words, we keep the original sequence order, use the positional encodings corresponding to the original sequence, and rely on a proper attention mask in Transformers to achieve permutation of the factorization order."
   }
@@ -120,14 +120,14 @@
   "sent_sha256": "a817119e9f45ac248f1daa6ccd08d8c049a75b0e782d6bf00ad868ca1afbcd20",
   "from": "https://arxiv.org/e-print/1906.08237",
   "extractor": "papers/llm_extract.py",
-  "extractor_sha256": "5b24516de2cd895b68e28ce76a997c3c5f50bc18d3d4b9dd2a204075fc0d65f4",
+  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
   "model": "claude-opus-5-5",
   "effort": "high",
-  "prompt_sha256": "0addeb8af07e5ad6c1438661b53960e77d4444762676f885097a44c2cc4466af",
+  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
   "n_calls": 1,
-  "cost_usd": 0.0,
+  "cost_usd": 0.281112,
   "request_ids": [
-   "req_011CgFaYsj5trq4fLjtiDwRY"
+   "req_011CgFfxRxmtiPi7EknF65hr"
   ]
  },
  "llm": {
@@ -135,15 +135,15 @@
    "title": "XLNet: Generalized Autoregressive Pretraining for Language Understanding",
    "model_name": "XLNet-Large",
    "family": {
-    "value": "other:permutation-LM Transformer-XL backbone with two-stream self-attention",
+    "value": "other:generalized autoregressive (permutation LM) Transformer-XL with two-stream attention",
     "status": "stated",
-    "quote": "Here, we provide the implementation details of the two-stream attention with a Transformer-XL backbone.",
-    "where": "App. A.2 Two-Stream Attention"
+    "quote": "we propose XLNet, a generalized autoregressive pretraining method that (1) enables learning bidirectional contexts by maximizing the expected likelihood over all permutations of the factorization order",
+    "where": "Abstract"
    },
    "inherits": {
-    "ancestor": "Transformer-XL",
-    "quote": "we incorporate the state-of-the-art AR language model, Transformer-XL~\\cite{dai2019transformer}, into our pretraining framework, and name our method after it.",
-    "where": "Sec. 2.4 Incorporating Ideas from Transformer-XL"
+    "ancestor": "BERT-Large (sizes); Transformer-XL (backbone)",
+    "quote": "Our largest model XLNet-Large has the same architecture hyperparameters as BERT-Large, which results in a similar model size.",
+    "where": "Sec. Pretraining and Implementation"
    },
    "configs": [
     {
@@ -151,19 +151,19 @@
      "d_model": {
       "value": "1024",
       "status": "stated",
-      "quote": "Hidden size & 1024",
+      "quote": "Hidden size & 1024 \\\\",
       "where": "Table tab:hp-pretrain"
      },
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "Number of layers & 24",
+      "quote": "Number of layers & 24 \\\\",
       "where": "Table tab:hp-pretrain"
      },
      "n_heads": {
       "value": "16",
       "status": "stated",
-      "quote": "Number of attention heads & 16",
+      "quote": "Number of attention heads & 16 \\\\",
       "where": "Table tab:hp-pretrain"
      },
      "n_kv_heads": {
@@ -175,13 +175,13 @@
      "head_dim": {
       "value": "64",
       "status": "stated",
-      "quote": "Attention head size & 64",
+      "quote": "Attention head size & 64 \\\\",
       "where": "Table tab:hp-pretrain"
      },
      "d_ff": {
       "value": "4096",
       "status": "stated",
-      "quote": "FFN inner hidden size & 4096",
+      "quote": "FFN inner hidden size & 4096 \\\\",
       "where": "Table tab:hp-pretrain"
      },
      "vocab_size": {
@@ -193,8 +193,8 @@
      "context_length": {
       "value": "512",
       "status": "stated",
-      "quote": "During pretraining, we always use a full sequence length of 512.",
-      "where": "Sec. 3.1 Pretraining and Implementation"
+      "quote": "Max sequence length & 512 \\\\",
+      "where": "Table tab:hp-pretrain"
      }
     }
    ],
@@ -204,13 +204,13 @@
      "value": "layernorm",
      "status": "stated",
      "quote": "h_{z_t}^{(m)} &= \\text{LayerNorm}\\rbr{ \\hat{h}_{z_t}^{(m)} +",
-     "where": "App. A.2 Two-Stream Attention"
+     "where": "Appendix Two-Stream Attention"
     },
     "norm_placement": {
      "value": "post",
      "status": "stated",
-     "quote": "\\hat{h}_{z_t}^{(m)} &= \\text{LayerNorm}\\rbr{ h_{z_t}^{(m-1)} +",
-     "where": "App. A.2 Two-Stream Attention"
+     "quote": "h_{z_t}^{(m)} &= \\text{LayerNorm}\\rbr{ \\hat{h}_{z_t}^{(m)} +",
+     "where": "Appendix Two-Stream Attention"
     },
     "norm_eps": {
      "value": "",
@@ -219,16 +219,16 @@
      "where": ""
     },
     "activation": {
-     "value": "other:GeLU (erf vs tanh form not specified)",
+     "value": "gelu",
      "status": "stated",
-     "quote": "GeLU Dropout & 0.0",
+     "quote": "GeLU Dropout & 0.0 \\\\",
      "where": "Table tab:hp-pretrain"
     },
     "positional": {
      "value": "relative",
      "status": "stated",
      "quote": "We integrate two important techniques in Transformer-XL, namely the relative positional encoding scheme and the segment recurrence mechanism.",
-     "where": "Sec. 2.4 Incorporating Ideas from Transformer-XL"
+     "where": "Sec. Incorporating Ideas from Transformer-XL"
     },
     "rope_pairing": {
      "value": "",
@@ -252,19 +252,19 @@
      "value": "residual",
      "status": "stated",
      "quote": "h_{z_t}^{(m)} &= \\text{LayerNorm}\\rbr{ \\hat{h}_{z_t}^{(m)} +",
-     "where": "App. A.2 Two-Stream Attention"
+     "where": "Appendix Two-Stream Attention"
     },
     "parallel_block": {
      "value": "false",
      "status": "stated",
      "quote": "attention with relative positional encoding and position-wise feed-forward are consecutively employed to update the represetntations",
-     "where": "App. A.2 Two-Stream Attention"
+     "where": "Appendix Two-Stream Attention"
     },
     "attention": {
-     "value": "new_op:two_stream_rel_attn",
+     "value": "new_op:xl_relative_attention",
      "status": "stated",
-     "quote": "For the Transformer-XL layer $m = 1, \\cdots, M$, attention with relative positional encoding and position-wise feed-forward are consecutively employed",
-     "where": "App. A.2 Two-Stream Attention"
+     "quote": "attention with relative positional encoding and position-wise feed-forward are consecutively employed to update the represetntations",
+     "where": "Appendix Two-Stream Attention"
     },
     "window_size": {
      "value": "",
@@ -325,33 +325,18 @@
     {
      "subgraph": "embed",
      "op": "embedding",
-     "role": "token embedding (content stream init h = e(x))",
+     "role": "token embedding e(x) initialises the content stream",
      "inputs": [
       "tokens"
      ],
      "output": "x",
-     "attributes": [
-      {
-       "name": "vocab",
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": ""
-      },
-      {
-       "name": "d",
-       "value": "1024",
-       "status": "stated",
-       "quote": "Hidden size & 1024",
-       "where": "Table tab:hp-pretrain"
-      }
-     ],
+     "attributes": [],
      "new_op": ""
     },
     {
      "subgraph": "block",
      "op": "unsupported",
-     "role": "two-stream relative multi-head attention with memory and permutation mask",
+     "role": "relative multi-head attention (Transformer-XL) over memory and content stream with permutation mask and relative segment encodings",
      "inputs": [
       "x"
      ],
@@ -361,18 +346,18 @@
        "name": "heads",
        "value": "16",
        "status": "stated",
-       "quote": "Number of attention heads & 16",
+       "quote": "Number of attention heads & 16 \\\\",
        "where": "Table tab:hp-pretrain"
       },
       {
        "name": "head_dim",
        "value": "64",
        "status": "stated",
-       "quote": "Attention head size & 64",
+       "quote": "Attention head size & 64 \\\\",
        "where": "Table tab:hp-pretrain"
       }
      ],
-     "new_op": "two_stream_rel_attn"
+     "new_op": "xl_relative_attention"
     },
     {
      "subgraph": "block",
@@ -418,7 +403,7 @@
        "name": "out",
        "value": "4096",
        "status": "stated",
-       "quote": "FFN inner hidden size & 4096",
+       "quote": "FFN inner hidden size & 4096 \\\\",
        "where": "Table tab:hp-pretrain"
       },
       {
@@ -463,7 +448,7 @@
        "name": "out",
        "value": "1024",
        "status": "stated",
-       "quote": "Hidden size & 1024",
+       "quote": "Hidden size & 1024 \\\\",
        "where": "Table tab:hp-pretrain"
       },
       {
@@ -510,7 +495,7 @@
     {
      "subgraph": "head",
      "op": "linear",
-     "role": "output softmax logits using tied embedding e(x) on last-layer query stream",
+     "role": "output softmax projection tied to word embedding e(x) (applied to query stream g during pretraining)",
      "inputs": [
       "x"
      ],
@@ -520,8 +505,8 @@
        "name": "tied_to",
        "value": "token_embd",
        "status": "stated",
-       "quote": "p_\\theta(X_{z_t} = x \\mid \\rvx_{z_{<t}})\n\t&= \\frac{\\expo{ e(x)^\\top g_{z_t}^{(M)} }}{\\sum_{x'} \\expo{ e(x')^\\top g_{z_t}^{(M)} }},",
-       "where": "App. A.2 Two-Stream Attention"
+       "quote": "where $h_\\theta(\\rvx_{1:t-1})$ is a context representation produced by neural models, such as RNNs or Transformers, and $e(x)$ denotes the embedding of $x$.",
+       "where": "Sec. Background"
       },
       {
        "name": "bias",
@@ -536,60 +521,60 @@
    ],
    "new_ops": [
     {
-     "name": "two_stream_rel_attn",
+     "name": "xl_relative_attention",
      "kind": "needs_new_primitive",
      "expr": "",
      "inputs": [
       {
        "name": "x",
-       "meaning": "content stream h^(m-1) (query stream g^(m-1) processed with shared parameters)"
+       "meaning": "content-stream hidden states of the current segment"
       }
      ],
      "replaces": "self-attention",
-     "reason": "Needs a Transformer-XL relative-position attention primitive (relative positional encodings plus per-head relative segment bias a_ij=(q_i+b)^T s_ij), with keys/values over [cached memory, current segment], a permutation-order attention mask (content stream sees z_<=t, query stream sees z_<t), and two streams g and h sharing parameters. None of this is expressible with the exact causal attention op.",
-     "quote": "g_{z_t}^{(m)} &\\leftarrow \\text{Attention}(\n\t\t\\text{Q} = g_{z_t}^{(m-1)}, \\text{KV}= \\rvh_{\\magenta{\\rvz_{<t}}}^{(m-1)}; \\theta),",
-     "where": "Sec. 2.3 Two-Stream Self-Attention"
+     "reason": "Needs Transformer-XL relative-position attention with cached previous-segment memory concatenated to keys/values, per-head relative segment encodings (s_+/s_- with head bias b) added to attention scores, and an arbitrary permutation-derived attention mask; also two-stream (query stream) variant. No IR attention primitive supports relative position/segment score terms, memory, or permutation masks.",
+     "quote": "attention with relative positional encoding and position-wise feed-forward are consecutively employed to update the represetntations",
+     "where": "Appendix Two-Stream Attention"
     }
    ],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "Query stream initialised with a trainable vector w, run alongside the content stream through every layer with shared parameters; dropped at finetuning",
+     "mechanism": "Two-stream self-attention: a query stream g initialised with a trainable vector w, sharing parameters with the content stream, cannot see its own content; used for prediction during pretraining and dropped at finetuning",
      "quote": "Computationally, the first layer query stream is initialized with a trainable vector, i.e. $g_i^{(0)} = w$, while the content stream is set to the corresponding word embedding, i.e. $h_i^{(0)} = e(x_i)$.",
-     "where": "Sec. 2.3"
+     "where": "Sec. Two-Stream Self-Attention"
     },
     {
-     "mechanism": "Segment recurrence memory: cached per-layer content representations from the previous segment are concatenated into keys/values",
+     "mechanism": "Segment recurrence: cached per-layer content representations of the previous segment used as extra keys/values",
      "quote": "Then, based on the permutation $\\tilde{\\rvz}$, we process the first segment, and then cache the obtained content representations $\\tilde{\\rvh}^{(m)}$ for each layer $m$.",
-     "where": "Sec. 2.4"
+     "where": "Sec. Incorporating Ideas from Transformer-XL"
     },
     {
-     "mechanism": "Relative segment encodings: learned per-head s_+ / s_- and bias b added to attention scores",
+     "mechanism": "Relative segment encodings added to attention scores",
      "quote": "When $i$ attends to $j$, the segment encoding $\\mathbf{s}_{ij}$ is used to compute an attention weight $a_{ij} = (\\mb{q}_i + \\mb{b})^\\top \\mb{s}_{ij}$, where $\\mb{q}_i$ is the query vector as in a standard attention operation and $\\mb{b}$ is a learnable head-specific bias vector.",
-     "where": "Sec. 2.5 Relative Segment Encodings"
+     "where": "Sec. Modeling Multiple Segments"
     },
     {
-     "mechanism": "Permutation of factorization order realised through attention masks, with positional encodings kept on the original order",
+     "mechanism": "Permutation of factorization order via attention masks (positional encodings follow original order)",
      "quote": "In other words, we keep the original sequence order, use the positional encodings corresponding to the original sequence, and rely on a proper attention mask in Transformers to achieve permutation of the factorization order.",
-     "where": "Sec. 2.2 Remark on Permutation"
+     "where": "Sec. Objective: Permutation Language Modeling"
     }
    ],
-   "notes": "Described XLNet-Large, the only configuration whose sizes are stated (Table tab:hp-pretrain). XLNet-Base (ablations) is said to use the same hyperparameters as BERT-Base, but no values are restated, so it is omitted. The paper says only 'GeLU', so the erf/tanh form is left unspecified. Vocab size, LayerNorm eps, biases, the relative-position encoding details (inherited from Transformer-XL but not restated) and memory length are not stated. The FFN structure (up/GeLU/down) is assumed from 'PosFF' and the 'FFN inner hidden size' entry. The attention output projection is folded into the unsupported attention op."
+   "notes": "Described XLNet-Large (headline model). XLNet-Base (12-layer, BERT-Base hyperparameters) is only used for ablations and is omitted from configs. Block shown is the content stream (Transformer-XL post-LN layer). n_kv_heads, vocab size, LayerNorm eps, biases, and GELU approximation form are not stated; activation 'gelu' inferred only from the 'GeLU Dropout' hyperparameter row."
   },
   "verification": {
    "errors": [],
    "warnings": [],
    "inherits": {
-    "ancestor": "Transformer-XL",
-    "resolved": "transformer",
-    "quote": "we incorporate the state-of-the-art AR language model, Transformer-XL~\\cite{dai2019transformer}, into our pretraining framework, and name our method after it.",
-    "where": "Sec. 2.4 Incorporating Ideas from Transformer-XL",
+    "ancestor": "BERT-Large (sizes); Transformer-XL (backbone)",
+    "resolved": "bert",
+    "quote": "Our largest model XLNet-Large has the same architecture hyperparameters as BERT-Large, which results in a similar model size.",
+    "where": "Sec. Pretraining and Implementation",
     "quote_found": true
    },
    "family": {
-    "value": "other:permutation-LM Transformer-XL backbone with two-stream self-attention",
+    "value": "other:generalized autoregressive (permutation LM) Transformer-XL with two-stream attention",
     "status": "stated",
-    "quote": "Here, we provide the implementation details of the two-stream attention with a Transformer-XL backbone.",
-    "where": "App. A.2 Two-Stream Attention",
+    "quote": "we propose XLNet, a generalized autoregressive pretraining method that (1) enables learning bidirectional contexts by maximizing the expected likelihood over all permutations of the factorization order",
+    "where": "Abstract",
     "reasons": [],
     "check": "quote_only"
    },
@@ -599,7 +584,7 @@
      "d_model": {
       "value": "1024",
       "status": "stated",
-      "quote": "Hidden size & 1024",
+      "quote": "Hidden size & 1024 \\\\",
       "where": "Table tab:hp-pretrain",
       "reasons": [],
       "check": "verified"
@@ -607,7 +592,7 @@
      "n_layers": {
       "value": "24",
       "status": "stated",
-      "quote": "Number of layers & 24",
+      "quote": "Number of layers & 24 \\\\",
       "where": "Table tab:hp-pretrain",
       "reasons": [],
       "check": "verified"
@@ -615,7 +600,7 @@
      "n_heads": {
       "value": "16",
       "status": "stated",
-      "quote": "Number of attention heads & 16",
+      "quote": "Number of attention heads & 16 \\\\",
       "where": "Table tab:hp-pretrain",
       "reasons": [],
       "check": "verified"
@@ -631,7 +616,7 @@
      "head_dim": {
       "value": "64",
       "status": "stated",
-      "quote": "Attention head size & 64",
+      "quote": "Attention head size & 64 \\\\",
       "where": "Table tab:hp-pretrain",
       "reasons": [],
       "check": "verified"
@@ -639,7 +624,7 @@
      "d_ff": {
       "value": "4096",
       "status": "stated",
-      "quote": "FFN inner hidden size & 4096",
+      "quote": "FFN inner hidden size & 4096 \\\\",
       "where": "Table tab:hp-pretrain",
       "reasons": [],
       "check": "verified"
@@ -655,8 +640,8 @@
      "context_length": {
       "value": "512",
       "status": "stated",
-      "quote": "During pretraining, we always use a full sequence length of 512.",
-      "where": "Sec. 3.1 Pretraining and Implementation",
+      "quote": "Max sequence length & 512 \\\\",
+      "where": "Table tab:hp-pretrain",
       "reasons": [],
       "check": "verified"
      },
@@ -678,15 +663,15 @@
      "value": "layernorm",
      "status": "stated",
      "quote": "h_{z_t}^{(m)} &= \\text{LayerNorm}\\rbr{ \\hat{h}_{z_t}^{(m)} +",
-     "where": "App. A.2 Two-Stream Attention",
+     "where": "Appendix Two-Stream Attention",
      "reasons": [],
      "check": "verified"
     },
     "norm_placement": {
      "value": "post",
      "status": "stated",
-     "quote": "\\hat{h}_{z_t}^{(m)} &= \\text{LayerNorm}\\rbr{ h_{z_t}^{(m-1)} +",
-     "where": "App. A.2 Two-Stream Attention",
+     "quote": "h_{z_t}^{(m)} &= \\text{LayerNorm}\\rbr{ \\hat{h}_{z_t}^{(m)} +",
+     "where": "Appendix Two-Stream Attention",
      "reasons": [],
      "check": "quote_only"
     },
@@ -699,18 +684,18 @@
      "check": "not_stated"
     },
     "activation": {
-     "value": "other:GeLU (erf vs tanh form not specified)",
+     "value": "gelu",
      "status": "stated",
-     "quote": "GeLU Dropout & 0.0",
+     "quote": "GeLU Dropout & 0.0 \\\\",
      "where": "Table tab:hp-pretrain",
      "reasons": [],
-     "check": "quote_only"
+     "check": "verified"
     },
     "positional": {
      "value": "relative",
      "status": "stated",
      "quote": "We integrate two important techniques in Transformer-XL, namely the relative positional encoding scheme and the segment recurrence mechanism.",
-     "where": "Sec. 2.4 Incorporating Ideas from Transformer-XL",
+     "where": "Sec. Incorporating Ideas from Transformer-XL",
      "reasons": [],
      "check": "verified"
     },
@@ -742,7 +727,7 @@
      "value": "residual",
      "status": "stated",
      "quote": "h_{z_t}^{(m)} &= \\text{LayerNorm}\\rbr{ \\hat{h}_{z_t}^{(m)} +",
-     "where": "App. A.2 Two-Stream Attention",
+     "where": "Appendix Two-Stream Attention",
      "reasons": [
       "the quote does not name residual (looked for /residual|skip/)"
      ],
@@ -752,15 +737,15 @@
      "value": "false",
      "status": "stated",
      "quote": "attention with relative positional encoding and position-wise feed-forward are consecutively employed to update the represetntations",
-     "where": "App. A.2 Two-Stream Attention",
+     "where": "Appendix Two-Stream Attention",
      "reasons": [],
      "check": "quote_only"
     },
     "attention": {
-     "value": "new_op:two_stream_rel_attn",
+     "value": "new_op:xl_relative_attention",
      "status": "stated",
-     "quote": "For the Transformer-XL layer $m = 1, \\cdots, M$, attention with relative positional encoding and position-wise feed-forward are consecutively employed",
-     "where": "App. A.2 Two-Stream Attention",
+     "quote": "attention with relative positional encoding and position-wise feed-forward are consecutively employed to update the represetntations",
+     "where": "Appendix Two-Stream Attention",
      "reasons": [],
      "check": "quote_only"
     },
@@ -839,16 +824,16 @@
    },
    "new_ops": [
     {
-     "name": "two_stream_rel_attn",
+     "name": "xl_relative_attention",
      "kind": "needs_new_primitive",
      "replaces": "self-attention",
-     "reason": "Needs a Transformer-XL relative-position attention primitive (relative positional encodings plus per-head relative segment bias a_ij=(q_i+b)^T s_ij), with keys/values over [cached memory, current segment], a permutation-order attention mask (content stream sees z_<=t, query stream sees z_<t), and two streams g and h sharing parameters. None of this is expressible with the exact causal attention op.",
-     "quote": "g_{z_t}^{(m)} &\\leftarrow \\text{Attention}(\n\t\t\\text{Q} = g_{z_t}^{(m-1)}, \\text{KV}= \\rvh_{\\magenta{\\rvz_{<t}}}^{(m-1)}; \\theta),",
-     "where": "Sec. 2.3 Two-Stream Self-Attention",
+     "reason": "Needs Transformer-XL relative-position attention with cached previous-segment memory concatenated to keys/values, per-head relative segment encodings (s_+/s_- with head bias b) added to attention scores, and an arbitrary permutation-derived attention mask; also two-stream (query stream) variant. No IR attention primitive supports relative position/segment score terms, memory, or permutation masks.",
+     "quote": "attention with relative positional encoding and position-wise feed-forward are consecutively employed to update the represetntations",
+     "where": "Appendix Two-Stream Attention",
      "inputs": [
       {
        "name": "x",
-       "meaning": "content stream h^(m-1) (query stream g^(m-1) processed with shared parameters)"
+       "meaning": "content-stream hidden states of the current segment"
       }
      ],
      "errors": [],
@@ -861,49 +846,30 @@
      "i": 0,
      "subgraph": "embed",
      "op": "embedding",
-     "role": "token embedding (content stream init h = e(x))",
+     "role": "token embedding e(x) initialises the content stream",
      "inputs": [
       "tokens"
      ],
      "output": "x",
      "new_op": "",
-     "attributes": [
-      {
-       "value": "",
-       "status": "not_stated",
-       "quote": "",
-       "where": "",
-       "reasons": [],
-       "check": "not_stated",
-       "name": "vocab"
-      },
-      {
-       "value": "1024",
-       "status": "stated",
-       "quote": "Hidden size & 1024",
-       "where": "Table tab:hp-pretrain",
-       "reasons": [],
-       "check": "verified",
-       "name": "d"
-      }
-     ],
+     "attributes": [],
      "errors": []
     },
     {
      "i": 1,
      "subgraph": "block",
      "op": "unsupported",
-     "role": "two-stream relative multi-head attention with memory and permutation mask",
+     "role": "relative multi-head attention (Transformer-XL) over memory and content stream with permutation mask and relative segment encodings",
      "inputs": [
       "x"
      ],
      "output": "a",
-     "new_op": "two_stream_rel_attn",
+     "new_op": "xl_relative_attention",
      "attributes": [
       {
        "value": "16",
        "status": "stated",
-       "quote": "Number of attention heads & 16",
+       "quote": "Number of attention heads & 16 \\\\",
        "where": "Table tab:hp-pretrain",
        "reasons": [],
        "check": "verified",
@@ -912,7 +878,7 @@
       {
        "value": "64",
        "status": "stated",
-       "quote": "Attention head size & 64",
+       "quote": "Attention head size & 64 \\\\",
        "where": "Table tab:hp-pretrain",
        "reasons": [],
        "check": "verified",
@@ -972,7 +938,7 @@
       {
        "value": "4096",
        "status": "stated",
-       "quote": "FFN inner hidden size & 4096",
+       "quote": "FFN inner hidden size & 4096 \\\\",
        "where": "Table tab:hp-pretrain",
        "reasons": [],
        "check": "verified",
@@ -1027,7 +993,7 @@
       {
        "value": "1024",
        "status": "stated",
-       "quote": "Hidden size & 1024",
+       "quote": "Hidden size & 1024 \\\\",
        "where": "Table tab:hp-pretrain",
        "reasons": [],
        "check": "verified",
@@ -1086,7 +1052,7 @@
      "i": 9,
      "subgraph": "head",
      "op": "linear",
-     "role": "output softmax logits using tied embedding e(x) on last-layer query stream",
+     "role": "output softmax projection tied to word embedding e(x) (applied to query stream g during pretraining)",
      "inputs": [
       "x"
      ],
@@ -1096,8 +1062,8 @@
       {
        "value": "token_embd",
        "status": "stated",
-       "quote": "p_\\theta(X_{z_t} = x \\mid \\rvx_{z_{<t}})\n\t&= \\frac{\\expo{ e(x)^\\top g_{z_t}^{(M)} }}{\\sum_{x'} \\expo{ e(x')^\\top g_{z_t}^{(M)} }},",
-       "where": "App. A.2 Two-Stream Attention",
+       "quote": "where $h_\\theta(\\rvx_{1:t-1})$ is a context representation produced by neural models, such as RNNs or Transformers, and $e(x)$ denotes the embedding of $x$.",
+       "where": "Sec. Background",
        "reasons": [],
        "check": "quote_only",
        "name": "tied_to"
@@ -1117,36 +1083,36 @@
    ],
    "mechanisms_outside_ir": [
     {
-     "mechanism": "Query stream initialised with a trainable vector w, run alongside the content stream through every layer with shared parameters; dropped at finetuning",
+     "mechanism": "Two-stream self-attention: a query stream g initialised with a trainable vector w, sharing parameters with the content stream, cannot see its own content; used for prediction during pretraining and dropped at finetuning",
      "quote": "Computationally, the first layer query stream is initialized with a trainable vector, i.e. $g_i^{(0)} = w$, while the content stream is set to the corresponding word embedding, i.e. $h_i^{(0)} = e(x_i)$.",
-     "where": "Sec. 2.3",
+     "where": "Sec. Two-Stream Self-Attention",
      "check": "verified"
     },
     {
-     "mechanism": "Segment recurrence memory: cached per-layer content representations from the previous segment are concatenated into keys/values",
+     "mechanism": "Segment recurrence: cached per-layer content representations of the previous segment used as extra keys/values",
      "quote": "Then, based on the permutation $\\tilde{\\rvz}$, we process the first segment, and then cache the obtained content representations $\\tilde{\\rvh}^{(m)}$ for each layer $m$.",
-     "where": "Sec. 2.4",
+     "where": "Sec. Incorporating Ideas from Transformer-XL",
      "check": "verified"
     },
     {
-     "mechanism": "Relative segment encodings: learned per-head s_+ / s_- and bias b added to attention scores",
+     "mechanism": "Relative segment encodings added to attention scores",
      "quote": "When $i$ attends to $j$, the segment encoding $\\mathbf{s}_{ij}$ is used to compute an attention weight $a_{ij} = (\\mb{q}_i + \\mb{b})^\\top \\mb{s}_{ij}$, where $\\mb{q}_i$ is the query vector as in a standard attention operation and $\\mb{b}$ is a learnable head-specific bias vector.",
-     "where": "Sec. 2.5 Relative Segment Encodings",
+     "where": "Sec. Modeling Multiple Segments",
      "check": "verified"
     },
     {
-     "mechanism": "Permutation of factorization order realised through attention masks, with positional encodings kept on the original order",
+     "mechanism": "Permutation of factorization order via attention masks (positional encodings follow original order)",
      "quote": "In other words, we keep the original sequence order, use the positional encodings corresponding to the original sequence, and rely on a proper attention mask in Transformers to achieve permutation of the factorization order.",
-     "where": "Sec. 2.2 Remark on Permutation",
+     "where": "Sec. Objective: Permutation Language Modeling",
      "check": "verified"
     }
    ],
    "summary": {
     "counts": {
      "verified": 13,
-     "quote_only": 7,
+     "quote_only": 6,
      "unverified": 1,
-     "not_stated": 21
+     "not_stated": 20
     },
     "unverified": [
      {
