@@ -1,0 +1,12 @@
+{
+ "family": "gptneox",
+ "gguf": "pythia-160m-f32.gguf",
+ "prompts": 40,
+ "top1_same": 40,
+ "greedy_same": 40,
+ "worst_first_rel": 1.406312358850649e-06,
+ "max_new": 32,
+ "raw": true,
+ "hf_weights": "native",
+ "hf_greedy": "argmax of HF's forward with its KV cache (no generate)"
+}
