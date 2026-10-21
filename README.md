@@ -39,18 +39,22 @@ ops, layers, Llama family, quantisation, GGUF) is about 5,100 lines, and the who
 | **Tokenisers** | paperkiln's byte-level BPE, and a llama.cpp-compatible vocabulary in the Llama 3 scheme: a trainer (`corpus/fetchers/vocab_llama3_bpe.py`) whose check compares ids with llama.cpp's own tokeniser, and an exact C++ encoder ported from llama.cpp (`include/microtorch/llama3_tokenizer.hpp`) |
 | **Export** | safetensors (HF round trip), Hugging Face `from_pretrained` folders, GGUF with the tokeniser embedded, **Q8_0 and 4-bit (Q4_0, Q4_K_M, Q4_K_S) GGUFs** (byte-identical to the reference quantisers), and the **model graph as IR** in every GGUF, so [ember.cpp](https://github.com/JohnnyTeutonic/ember.cpp) runs every family |
 | **Studio** | one JSON spec runs train → eval → export → serve; a zero-dependency dashboard with live loss, gradient glow, spec builder, architecture diagram, from-paper flow and chat |
-| **From papers** | `papers/fetch.py` / `pip install paperkiln-fetch`: architecture extraction from LaTeX with an evidence snippet per value, benchmarked on 40 papers (grouped AUROC 0.905, no wrong assertion in 92 verdicts) |
+| **From papers** | **LLM extractor** (`papers/llm_extract.py`): one Claude call reads the paper's LaTeX and returns the architecture as an IR op graph, new operations as runtime-defined `expr` ops, and a verbatim quote for every value; a deterministic verifier checks each quote against the source before anything trains. On the 40-paper benchmark: 80 correct, 11 abstain, 1 wrong, against the rule-based extractor's 72 / 20 / 0. The rule-based extractor (`papers/fetch.py` / `pip install paperkiln-fetch`, no API key) stays as the offline path |
 | **Research tooling** | the Architecture Atlas (designed experiments, multi-seed cells, a findings registry with retractions), falsifiers built into the modules, one-command replication |
 
 ## What makes it different
 
-1. **Papers in, running models out, with provenance.** Every extracted value carries the
-   sentence or table cell it came from. Unresolved fields are reported, never guessed.
+1. **Papers in, running models out, with provenance.** An LLM reads the paper; every value it
+   returns carries the sentence, equation or table cell it came from, and a deterministic check
+   confirms that quote is in the LaTeX before the value is used. Unresolved fields are reported,
+   never guessed, and a new operation the paper proposes comes back as an `expr` op both
+   engines run without recompiling.
 2. **The paper's architecture is what trains.** Depth, d_ff, norm, activation and positions
    are constructor-real. *Attention Is All You Need* trains as 512/6/8/2048 with LayerNorm,
    ReLU and sinusoidal positions.
 3. **The extraction is measured.** A 40-paper benchmark with ground truth, CIs and a growth
-   protocol. Every wrong assertion it found is registered with its cause and fixed.
+   protocol scores both extractors side by side, with every call's tokens and cost receipted.
+   Every wrong assertion it found is registered with its cause and fixed.
 4. **Falsifiers ship inside the modules,** and failed claims are
    [published](docs/SPARSE_ATTENTION.md).
 5. **The loop closes across two engines.** Models export to GGUF and run in ember.cpp, a
@@ -101,6 +105,18 @@ flowchart LR
 ## Quick start: from an arXiv paper
 
 ```bash
+export ANTHROPIC_API_KEY=...                                        # the LLM extractor's only credential
+python papers/llm_extract.py extract 2302.13971 --out llama.extraction.json
+python tools/arxiv_to_chat.py 2302.13971 --extraction llama.extraction.json --run-dir runs/llama \
+    --chat "Hello, how are you?"                                     # paper -> trained model -> chat
+```
+
+`llm_extract.py` sends the LaTeX in one call (about $0.3-0.5 a paper with Claude Opus), verifies
+every quote, and writes the `extraction.json` that `tools/arxiv_to_chat.py` trains from; anything
+unverified or outside the IR makes the chain refuse rather than approximate. Without an API key,
+the rule-based extractor does the same job more conservatively:
+
+```bash
 pip install paperkiln-fetch
 paperfetch 1706.03762                       # evidence-carrying architecture summary
 paperfetch 2302.13971 --emit-hf cfg.json    # a Hugging Face config, citations inside
@@ -108,7 +124,8 @@ paperfetch 2302.13971 --emit-hf cfg.json    # a Hugging Face config, citations i
 
 In the studio (`./build/mtstudio serve <out_dir> 8080`, then open the page), drag an arXiv link
 onto the page. The extracted architecture fills the spec builder, the diagram redraws, and
-▶ train runs in the same tab. Details: [the fetcher](docs/TOUR.md#paper-to-architecture-the-arxiv-fetcher).
+▶ train runs in the same tab. Details: [the LLM extractor](docs/TOUR.md#paper-to-architecture-the-llm-extractor)
+and [the rule-based fetcher](docs/TOUR.md#paper-to-architecture-the-rule-based-arxiv-fetcher-no-api-key).
 
 ## Quick start: export and serve anywhere
 

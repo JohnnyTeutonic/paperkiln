@@ -46,7 +46,13 @@ C++ stack, with the paper's actual hyperparameters.
 
 ## The full loop lives upstream
 
-This package is the extractor, standalone, zero build step. The mother
+This package is the rule-based extractor, standalone, zero build step and
+no API key. The mother repo also has an LLM extractor
+(`papers/llm_extract.py`): one Claude call per paper returns the
+architecture as an op graph, new operations as formulas the engines run,
+and a verbatim quote for every value, each quote checked against the
+LaTeX before use. On the same 40-paper benchmark it scores 80 correct,
+11 abstentions and 1 wrong, against this package's 72 / 20 / 0. The mother
 repo adds: constructor-real training of the extracted architecture
 (`--emit-cpp`, mtsweep specs), GGUF export, in-browser chat with the
 model you just trained, and the Architecture Atlas — a pre-registered

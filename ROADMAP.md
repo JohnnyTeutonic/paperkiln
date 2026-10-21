@@ -174,6 +174,12 @@ advisory steps that cannot fail the build.
 
 ## 5. Extractor
 
+- **The LLM extractor is the main path** (`papers/llm_extract.py`; 40-paper bench 80 correct /
+  11 abstain / 1 wrong vs the rule-based 72 / 20 / 0). Open: the re-run with the headline-model
+  prompt line (fixes the Longformer class); score the op graphs and sizes, not only the flavours
+  (the bench's truth covers norm, activation and positions); wire the `expr` check to
+  `tools/ir_expr.py` once it lands; a studio button that runs it instead of `fetch.py` when a key
+  is configured; prompt optimisation later.
 - **Two lexical gaps found while fixing the wrong assertions:** the GELU
   pattern does not match the spelling "GeLU" (Megatron, BART), and a
   vetoed runner-up still marks a field as contested.
