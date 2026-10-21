@@ -1,5 +1,27 @@
-# microtorch — design & feasibility
-*(working name; foundational C++ nn-API library + a diffusion repo built on it)*
+# paperkiln — design
+
+## paperkiln today (22 Oct 2026)
+
+| Layer | What it is | Where |
+|---|---|---|
+| Tape | reverse-mode autograd over `Matrix`, hand-derived backwards, every op finite-difference checked; CPU and a CUDA device op set with a device-resident step | `src/autograd.cpp`, `src/ops.cpp`, `src/cuda_ops.cu` |
+| Runtime-defined ops | `expr`: a closed elementwise grammar with row reductions, parsed at runtime into tape primitives, so a paper's new activation trains without recompiling | `include/microtorch/expr.hpp`, `src/expr.cpp` |
+| Modules and families | `Module`/`Parameter`/`state_dict`; llama, gpt2, flex, sliding window with sinks, Kimi linear, Mamba-style SSM, SRD, attnres, highway, MoE | `include/microtorch/nn.hpp`, `llama.hpp`, `mamba.hpp` ... |
+| Studio | one JSON spec runs train, eval, export, serve (`mtstudio`); `.ids` corpora, annealing tail, KV-cached chat | `tools/mtstudio.cpp` |
+| Export | safetensors, HF folders, GGUF (f32, Q8_0, 4-bit) with the tokeniser and the model's graph as IR (`paperkiln.ir`) | `src/gguf.cpp`, `src/ir.cpp`, `include/microtorch/ir.hpp` |
+| Reference tools | numpy IR interpreter, the arch-to-IR builder for third-party GGUFs, the `expr` reference, gates against HF | `tools/ir_numpy.py`, `tools/gguf_ir.py`, `tools/ir_expr.py`, `tools/thirdparty_parity.py` |
+| Papers | the LLM extractor (one Claude call, verified quotes, new ops as `expr` or `needs_new_primitive`) and the rule-based fetcher; paper to trained model to chat | `papers/llm_extract.py`, `papers/fetch.py`, `tools/arxiv_to_chat.py` |
+| Inference | ember.cpp runs every family from the IR (CPU, CUDA, WebAssembly) | sibling repo |
+
+The design across both engines (the IR, its ops and parity classes, the redesign for any paper
+and any architecture, the roadmap) is in `LOCAL_LLM_STACK.md` at the workspace root. The rest of
+this file is the original design record (July 2026), kept as written.
+
+---
+
+## The original design (July 2026)
+
+*(working name `microtorch`; foundational C++ nn-API library + a diffusion repo built on it)*
 
 Two repos, one dependency chain:
 1. **`microtorch`** — a small "torch-lite": autograd tape + `nn`-style Module API,
@@ -165,4 +187,7 @@ Priority order, per discussion:
    papers), extract the architecture table (d_model, layers, heads/GQA, norm,
    activation, rope theta), map onto a composable block DSL, instantiate.
    Constrained config-delta extraction over a Llama-style skeleton — not
-   free-form code generation.
+   free-form code generation. (Built as `papers/fetch.py`; since 22 Oct 2026
+   the main path is the LLM extractor, `papers/llm_extract.py`, whose output
+   is the architecture as an IR op graph with every value's quote verified
+   against the LaTeX.)

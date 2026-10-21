@@ -33,6 +33,8 @@ ops, layers, Llama family, quantisation, GGUF) is about 5,100 lines, and the who
 | Area | What you get |
 |---|---|
 | **Model families** | Llama (RMSNorm, RoPE, SwiGLU), GPT-2, flex (any depth, norm, activation, positions; paper-faithful), sliding-window attention with sinks, Kimi linear attention, Mamba-style state space, SRD, AttnRes, highway, **mixture of experts** (top-k, load-balance + z-loss, sparse upcycling) |
+| **Runtime-defined ops** | a paper's new activation, gate or norm variant written as an `expr` (`"activation": "expr:max(x, 0)^2"`): parsed at runtime into differentiable primitives, gradient-checked, trained and exported as an IR node without recompiling; ember.cpp runs the same grammar. C++ vs the numpy reference within 1.2e-7 |
+| **Any architecture, both directions** | every family exports its graph as IR; and standard llama.cpp GGUFs of Qwen2/Qwen3, Gemma 3, GPT-2, GPT-NeoX (Pythia), Mistral (sliding window) and Mamba-1 get an IR built from their metadata (`tools/gguf_ir.py`), run by a numpy reference interpreter (`tools/ir_numpy.py`) and gated against Hugging Face transformers (`tools/thirdparty_parity.py`: GPT-2 124M and Pythia-160m 40/40 greedy); ember.cpp runs them, Qwen2.5 and Qwen3 40/40 vs HF |
 | **Training** | AdamW, SGD, **Muon**; warmup + cosine; mini-batching, gradient accumulation, checkpointing, fused attention; LoRA and QLoRA (int8); **CUDA** device-resident step (L4: 0.109 s/step at d384, from 6.4) |
 | **Post-training** | masked SFT, rejection SFT, GRPO, DPO + RPO; AI-judged preference data: candidate replies sampled through ember (`tools/posttrain/sample_candidates.py`), a Claude judge ranking both orders under a hard cost cap, and a 200-prompt pilot (`experiments/chat_general/judge_pilot.sh`) |
 | **Data** | pinned corpora with ledgers and hashes: FineWeb-Edu (shard 0; shards 1-3 are pinned on their first fetch), dialogue for pretraining (SODA, OpenAssistant, UltraChat, everyday-conversations; `corpus/fetchers/dialogue_pt.py`), a large SFT set from smol-smoltalk (`tools/lever1_sft.py`); the dialogue and SFT sources checked against the frozen eval sets (`corpus/decontam.py`); a two-part mixer with an annealing tail (`corpus/mix_pretrain.py`); pre-tokenised `.ids` corpora (`tools/corpus_ids.py`) |
@@ -202,28 +204,25 @@ the arXiv-to-chat chain tested properly. The data is the lever: the current base
 facts from expository prose but saw dialogue only in a small fine-tune, so they answer like a
 textbook and loop.
 
-**Landing in the next day:**
-- **Models finishing on Colab:** a 70M mixture-of-experts fine-tune, and a d768 L12 base with
-  its fine-tune. Each is evaluated on the frozen chat prompts and the simple-QA probe against
-  the live model.
-- **Data for the next base:**
-  - the conversational pretraining corpora (built: 1.35M dialogues);
-  - the 16,384-token Llama 3 scheme vocabulary, trained and checked id for id against
-    llama.cpp's own tokeniser;
-- **mtstudio features, built and tested, landing on master:** reading pre-tokenised `.ids`
-  corpora, an annealing tail (`data.anneal`), the Llama 3 encoder, the `/chat` repetition
-  penalty shared with ember, a KV cache for `mtstudio chat`, and batched SFT evaluation.
-- **The first Claude-judged preference pilot:** 200 prompts, candidates sampled through ember
-  from whichever Colab model the evaluation ranks first.
-- **Once the next-base launch starts:** the large SFT set rebuilt for the new vocabulary, and a
-  gate model on it, so ember's 40/40 parity gate runs before the big base finishes.
+**Done for the chat model:** the conversational pretraining corpora (1.35M dialogues) and the
+large SFT set, both checked against the frozen eval sets; the 16,384-token Llama 3 scheme
+vocabulary, checked id for id against llama.cpp's own tokeniser; mtstudio's `.ids` corpora,
+annealing tail (`data.anneal`), Llama 3 encoder, `/chat` repetition penalty shared with ember,
+KV cache (`mtstudio chat --kv-cache`) and batched SFT evaluation; a 70M mixture-of-experts
+fine-tune.
 
-**Longer:**
+**Landing next:**
+- **Evaluations:** the MoE fine-tune and the dense control against the live model on the frozen
+  chat prompts and the simple-QA probe; the d768 L12 base (finishing on Colab) and its fine-tune.
 - **The next base:** `pk_base_v1`, d768 L12 T512 for 120,000 steps on a 4.2 GB mix (27%
-  dialogue, 47% in the annealing tail). Then its SFT and DPO on the judged pairs.
+  dialogue, 47% in the annealing tail), with a gate model on the new vocabulary for ember's
+  40/40 parity gate. Then its SFT and DPO on Claude-judged pairs (pilot: 200 prompts).
 - **arXiv paper to conversation:** `tools/arxiv_to_chat.py` takes a paper id through
   extraction, training, export and a chat served by ember. Its first two runs (LLaMA and
   Cerebras-GPT architectures, d384 L6) ride in the next-base launch.
+- **Third-party families on the GPU:** ember's CUDA kernels for the ops the new families
+  brought (NEOX rotary, per-head norms, `expr`, Mamba's convolution and selective scan), and the
+  official Gemma-3-270m and Mamba-130m gates.
 
 [ROADMAP.md](ROADMAP.md) has the full list.
 

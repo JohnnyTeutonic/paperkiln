@@ -430,7 +430,9 @@ can consume a run.
 | Python bindings | ✅ | pybind11, numpy interop: `pip install paperkiln` (Linux x86-64 wheels for Python 3.10–3.12; `import microtorch`), or build with `-DMICROTORCH_BUILD_PYTHON=ON` |
 | **Run studio** | ✅ | Declarative spec → train/eval/export/serve; `plan` dry-run; resume |
 | **Live dashboard** | ✅ | Loss + val + gate chart, per-module gradient glow, spec builder, SVG architecture diagram, in-page chat |
-| **Flex family (paper-faithful)** | ✅ | Any depth; d_ff, LayerNorm/RMSNorm, GELU/ReLU/SwiGLU, learned/sinusoidal all spec-real; bitwise equivalence pin at defaults (`test_flex`, 6 receipts) |
+| **Flex family (paper-faithful)** | ✅ | Any depth; d_ff, LayerNorm/RMSNorm, GELU/ReLU/SwiGLU or any `expr:<e>` activation, learned/sinusoidal all spec-real; bitwise equivalence pin at defaults (`test_flex`, 6 receipts) |
+| **Runtime-defined ops (`expr`)** | ✅ | A closed elementwise grammar with row reductions, parsed at runtime into differentiable primitives (`include/microtorch/expr.hpp`); finite-difference gradcheck per expression; exported as an IR `expr` node that ember.cpp runs; C++ vs the numpy reference (`tools/ir_expr.py`) within 1.19e-7 ([below](#the-ir-one-graph-any-architecture)) |
+| **Third-party GGUFs → IR** | ✅ | `tools/gguf_ir.py` builds the IR for llama.cpp GGUFs of qwen2, qwen3, gemma3, gpt2, gptneox, mamba and windowed llama/mistral; `tools/ir_numpy.py` runs it; gated against HF transformers (GPT-2 124M, Pythia-160m 40/40 greedy; Gemma 3 and Mistral sliding window on random tiny models); ember.cpp builds the same IR in C++ |
 | **LLM extractor** | ✅ | `papers/llm_extract.py`: one Claude call per paper, IR op graph + `expr` for new ops + a verified quote per value; 40-paper bench 82 correct / 9 abstain / 1 wrong (rule-based: 72 / 20 / 0); feeds `tools/arxiv_to_chat.py` (paper → trained model → chat) |
 | **From-paper flow** | ✅ | Drag an arXiv link → scored extraction (rule-based: grouped AUROC 0.905, no wrong assertion in 92 verdicts on the 40-paper bench) → editable spec → ▶ train → artifact downloads → chat |
 | **Atlas experiment engine** | ✅ | `mtsweep` (grid/PB12/fold-over PB12f, linked factors, aliasing advisories, resumable, OMP-aware) + `atlas_analyze` (main effects + two-way interactions, seed-based SEs); Stages 2–3 findings published |
@@ -751,6 +753,64 @@ The GGUF writer is the alignment-audited implementation from `transformer_core`
 (the tensor-data section starts at `align_up(header_end, 32)` — the exact detail
 that once turned a working model into word salad, now regression-tested in
 `test_gguf_export`).
+
+## The IR: one graph, any architecture
+
+Every mtstudio export writes the model's graph into the GGUF as `paperkiln.ir` (schema and op
+semantics in [`include/microtorch/ir.hpp`](../include/microtorch/ir.hpp)): an embed subgraph, a
+block repeated L times, a head, with declared state slots (KV, recurrent) and per-layer
+attribute overrides. ember.cpp runs any graph from that IR alone, so a new architecture needs no
+new code in the engine as long as its ops are in the table. Design and status:
+`LOCAL_LLM_STACK.md` sections 4 and 5 at the workspace root.
+
+A paper's operations fall into three tiers:
+
+1. **An op in the table** (embedding, linear, the norms, RoPE, attention with windows and
+   grouped heads, MoE, recurrent scans ...): the extractor names it and the chain builds it.
+2. **A new elementwise or row-wise operation: `expr`.** The IR node
+   `{"op": "expr", "in": ["h"], "expr": "max(x, 0)^2", "out": "a"}` carries a closed grammar:
+   numbers, the inputs (`x`, then `a`, `b`, `c` ...), `+ - * / ^` (right-associative, tighter
+   than unary minus), `exp log sqrt tanh sigmoid erf abs relu max min`, `where(c, a, b)` (a where
+   c > 0), the row reductions `rowsum rowmean rowmax`, and `pi`. paperkiln parses it at runtime
+   into differentiable primitives, so the backward comes from autograd and every step rounds to
+   f32; ember vendors the same parser. Gates: 44 expressions bit-exact to hand-computed f32,
+   `relu(x)` and `sigmoid(x)` bit-identical to the built-in ops, finite-difference gradients on 14
+   expressions, `expr:relu(x)` bit-identical to `relu` in the flex family, a squared-ReLU model
+   that trains (3.455 → 0.688 in 30 steps), C++ vs numpy within 1.19e-7 on 80 random cases, and
+   ember 46/46 on the same tests.
+
+   ```jsonc
+   "arch": { "preset": "gpt2-nano", "custom": { "activation": "expr:max(x, 0)^2" } }   // flex: Primer's squared ReLU
+   ```
+3. **A new structural primitive** (a new recurrence, a new attention form): the extractor
+   reports `needs_new_primitive` and the chain refuses. The op is then specified once in `ir.hpp`,
+   given a numpy reference, and written once in each engine, as `conv1d_causal` and
+   `selective_scan` were for Mamba-1.
+
+**Third-party models.** A llama.cpp GGUF with no `paperkiln.ir` gets its graph built from
+`general.architecture` and the metadata: `tools/gguf_ir.py` is the reference builder (qwen2,
+qwen3, gemma3, gpt2, gptneox, mamba, windowed llama/mistral), `tools/ir_numpy.py` the reference
+interpreter, and ember.cpp's C++ builder must produce the same IR field by field.
+
+```bash
+python tools/thirdparty_parity.py --gguf pythia-160m/pythia-160m-f32.gguf --hf-dir pythia-160m \
+    --raw --hf-weights native --n 40 --out runs/pythia_gate.jsonl          # numpy IR vs HF, resumable
+python tools/thirdparty_synth.py --family gemma3 --llamacpp ~/llama.cpp --work runs/g3 \
+    --out runs/gemma3_synth.jsonl            # tiny random HF model -> llama.cpp's convert -> gate
+```
+
+The gate per family: first-token logits within ROUNDING of HF transformers over the logit range,
+greedy continuations identical on 40 prompts, with HF's greedy taken as the argmax of its own
+forward (its `generate` applies the checkpoint's generation config, such as a repetition
+penalty). Results (receipts in `experiments/thirdparty_2026-10-22/`):
+
+| family | numpy IR vs HF |
+|---|---|
+| GPT-2 124M | greedy 40/40, top-1 40/40, worst 1.16e-5 of the logit range |
+| Pythia-160m (GPT-NeoX: parallel residual, partial rotary, exact GELU) | greedy 40/40, top-1 40/40, worst 1.41e-6 |
+| Gemma 3 (random tiny model: sandwich norms, GeGLU, q/k norm, per-layer window and RoPE base) | 384/384 positions top-1, worst 8.2e-7 |
+| Mistral sliding window (random tiny model) | 384/384 positions top-1, worst 2.4e-6 |
+| Qwen2.5-0.5B-Instruct, Qwen3-0.6B | via ember.cpp: greedy 40/40 vs HF on the CPU |
 
 ## Fine-tuning on a budget: LoRA / QLoRA
 

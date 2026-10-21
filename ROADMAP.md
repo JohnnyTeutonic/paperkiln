@@ -1,57 +1,39 @@
 # paperkiln roadmap
 
-*The one list of what is left to do, as at 21 October 2026. Finished work
+*The one list of what is left to do, as at 22 October 2026. Finished work
 moves to [`CHANGELOG.md`](CHANGELOG.md) and comes out of here. Everything
 else under `docs/` and `atlas/` is reference (design, records, results);
 where one of those documents carries a plan, this file wins.*
 
 ## 1. Now
 
-0. **The chat model (LOCAL_LLM_STACK.md section 7: levers 1-3, then judged
+0. **The chat model (LOCAL_LLM_STACK.md sections 8 and 11: data levers, then judged
    preference training).**
-   - Capacity session on the L4 (`tools/colab_chat/capacity_v5_vocab.json`,
-     launch 4 from 21 Oct 12:20): big (d768 L12) to 60,000 steps, moe_sft,
-     big_sft, and three data jobs on the VM's CPUs: lever 1's SFT set
-     (`tools/lever1_sft.py`), lever 2's dialogue corpora and the llama3-scheme
-     16k vocabulary checked against llama.cpp's own tokeniser.
-   - Next base, launched when capacity ends: `tools/colab_chat/make_next_base.py`
-     writes its jobs file from lever 2's real sizes (mix + `.ids` on the VM,
-     a gate model for ember's parity gate, the base with `data.anneal`, lever 1
-     rebuilt for the new vocabulary). Commits must be pushed before a VM boots
-     (`boot_jobs.sh` clones from GitHub).
-   - Written, awaiting their build turn: the KV cache (`chat --kv-cache`,
-     `tests/test_kv_cache.cpp`), the vocabulary-driven tokeniser and llama3
-     exports in mtstudio, `.ids` corpora, `data.anneal`, the repetition
-     penalty, and SFT evaluation on a subset in batches (`train.eval_examples`,
-     `train.eval_batch`).
+   - Evaluate moe_sft and ctrl_sft against the live model (chat_eval on the frozen
+     prompts, chat_prompts_v1 per source, the simple-QA probe), on the GPU once the
+     current CUDA mtstudio build is checked against the CPU build (the old build could
+     not load MoE weights).
+   - big (d768 L12) finishes 60,000 steps on the L4 (Colab pk-cap, under the Windows
+     watchdog), then big_sft and its evals.
+   - The next base, pk_base_v1: `tools/colab_chat/next_base_v1.json` (lever 2's mix and
+     its `.ids` built on the VM, a gate model on the 16k Llama 3 vocabulary for ember's
+     parity gate, the base with `data.anneal`, lever 1 rebuilt for the new vocabulary,
+     and the two arXiv runs). Watchdog entry `pk-base` in the root
+     `scripts/colab_driver.json`, disabled until Jonathan's go on its ~15-25 L4 hours.
+     Commits must be pushed before a VM boots (`boot_jobs.sh` clones from GitHub).
    - After SFT: the Claude-judge pilot (`experiments/chat_general/judge_pilot.sh`,
      200 prompts, $100 cap), then DPO; device-side SFT evaluation in the step
-     window; real k-quants.
-1. **The transfer paper is under submission at *Machine Learning*
-   (Springer), submitted 9 Oct 2026.** Nothing to do until the editor
-   replies.
-   - **Study 3, width x rate crossed: done (11 Oct 2026). Reading MIXED.**
-     H-POS supported at 5e-4 (S5 vs M5) but not at 2.5e-4 (S25 vs M25,
-     0.967 through t4); H-RATE supported at width 256, not at 512.
-     Descriptively, every declining pair includes M5 (d512 at 5e-4): the
-     paper's "decay along the loss curve" account does not hold at a
-     shared 2.5e-4. Results in `experiments/transfer_s3/RESULTS.md`;
-     registry row T3-rate-specific-disagreement. Goes into any MLJ
-     revision.
-2. **Atlas Stages 2–3 with `rope_heads=all`: done (10 Oct 2026).** The
-   two designs re-run with every head rotated (84 runs,
-   `experiments/atlas_stage{2,3}_rope_all/`). None of the nine affected
-   findings is overturned: the six machine checks replicate and the other
-   three match on main effects. Registry notes record the numbers; statuses
-   unchanged ([`docs/ROPE_HEADS.md`](docs/ROPE_HEADS.md)).
-3. **sparse_s1_longbudget: done (10 Oct 2026).** All 20 runs banked; the
-   frozen analysis returned "not supported / not supported": no second
-   crossing through 12000 steps, the overfit-order condition fails (2/10),
-   and the undetermined zone closes at b=4000. Results in
-   `experiments/sparse_s1_longbudget/RESULTS.md`; registry row
-   S1f-longbudget-monotone.
-
-4. **Colab runner: a re-provisioned driver pushes stale checkpoints over
+     window; real k-quants (the next base's d768 qualifies).
+1. **The redesign (LOCAL_LLM_STACK.md section 5): any paper, any architecture.**
+   - Official Mamba-130m and Gemma-3-270m reference gates (`tools/thirdparty_parity.py`;
+     GPT-2 124M and Pythia-160m pass 40/40).
+   - The extractor's `expr` check through `tools/ir_expr.py` (see section 5).
+   - Training-side support for the third-party ops paperkiln only references in numpy
+     today (grouped-query attention, NEOX rotary, per-head RMSNorm, Mamba-1's
+     conv1d_causal and selective_scan), so an extracted paper using them can train
+     here, not only run in ember.
+2. **Push paperkiln** (master is ahead of origin) before the next VM boot.
+3. **Colab runner: a re-provisioned driver pushes stale checkpoints over
    finished runs** (`tools/colab_transfer_runner.py`). In Study 3 it
    overwrote four M25 event logs at step ~2900; the runs were re-run
    (execution clarification 1). Fix: never relay a checkpoint into a run
@@ -59,7 +41,10 @@ where one of those documents carries a plan, this file wins.*
 
 ## 2. Decisions waiting on Jonathan
 
-None open. Settled on 16 Oct 2026: the post-training and corpus charter
+- The next base's launch: ~15-25 L4 hours for pk_base_v1 and the two arXiv runs (section 1).
+
+Settled on 22 Oct 2026: up to four Colab sessions at once, one named session per job, each
+driver under the Windows watchdog. Settled on 16 Oct 2026: the post-training and corpus charter
 ([`docs/decisions/0001-posttrain-charter.md`](docs/decisions/0001-posttrain-charter.md))
 is approved, with the open calls delegated and recorded in its §12.
 
@@ -74,12 +59,19 @@ Settled on 10 Oct 2026:
   code and plans are committed.
 - The mechanism freeze is lifted; every new mechanism ships with a
   pre-registered falsifier (decision D10).
-- No separate methodology paper: its argument is in the transfer paper
-  at Machine Learning. `atlas/PAPER_PLAN.md` stays as reference.
+- No separate methodology paper: its argument was in the transfer paper,
+  retired on 20 Oct 2026 after the Machine Learning desk rejection.
+  `atlas/PAPER_PLAN.md` stays as reference.
 
 ## 3. Broken now
 
-Nothing known. CI is green on all three workflows (Code Quality, the test
+- A fresh configure from the workspace checkout picks up the sibling `coalfire.cpp`
+  before the vendored `third_party/transformer_cpp`, and fails in `src/gguf.cpp`
+  (`GGUFWriter::write_metadata_int32_array` is only in the vendored copy). Workaround:
+  `-DMICROTORCH_TCPP_DIR=<paperkiln>/third_party/transformer_cpp`. Fix: prefer the
+  vendored copy, or add the method to coalfire.cpp.
+
+Otherwise nothing known. CI is green on all three workflows (Code Quality, the test
 suite with its Python suites and the fetcher drift check, and the wheel
 build with its smoke test), and the chat-v1 release serves the quickstart's
 ready-made model. One open choice: cppcheck and Valgrind still run as
@@ -178,8 +170,8 @@ advisory steps that cannot fail the build.
   9 abstain / 1 wrong vs the rule-based 72 / 20 / 0; the wrong one is Primer's modified layer
   norm, quoted from the paper, against a truth set that records the T5 baseline's RMSNorm: settle
   which Primer the truth means). Open: score the op graphs and sizes, not only the flavours
-  (the bench's truth covers norm, activation and positions); wire the `expr` check to
-  `tools/ir_expr.py` once it lands; a studio button that runs it instead of `fetch.py` when a key
+  (the bench's truth covers norm, activation and positions); check every `expr` with
+  `tools/ir_expr.py` (the parser both engines use; landed in 1159d63e); a studio button that runs it instead of `fetch.py` when a key
   is configured; prompt optimisation later.
 - **Two lexical gaps found while fixing the wrong assertions:** the GELU
   pattern does not match the spelling "GeLU" (Megatron, BART), and a
@@ -241,8 +233,10 @@ advisory steps that cannot fail the build.
     probes).
 - **Browser chat** for SWA, Kimi, SRD and attnres models. It supports
   exact attention only.
-- **Serve open-weight HF models on our own engine**, and benchmark them
-  against `transformers` for parity and speed.
+- **Open-weight models on our own engines: speed.** Parity is done through the IR
+  (Qwen2.5 and Qwen3 40/40 vs HF in ember on the CPU; GPT-2 and Pythia 40/40 in the
+  numpy reference); benchmark ember against `transformers` for speed once its CUDA
+  kernels for the new ops land.
 - **WebGPU backend,** after CUDA, through the same dispatch seam.
 - **Windows testing of the quickstart** (parked).
 

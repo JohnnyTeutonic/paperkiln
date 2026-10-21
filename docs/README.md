@@ -41,7 +41,7 @@ results the methodology rests on.
 
 | file | subject |
 |---|---|
-| [`DESIGN.md`](DESIGN.md) | the tape, ops, module system — core architecture |
+| [`DESIGN.md`](DESIGN.md) | paperkiln today in one table (tape, `expr`, families, studio, export with IR, reference tools, papers), then the original design record |
 | [`EVENTS_SPEC.md`](EVENTS_SPEC.md) | the `events.jsonl` contract. **The most portable thing here** — any trainer that emits it joins the toolchain |
 | [`CUDA_PHASE_B.md`](CUDA_PHASE_B.md) | Phase B1: device residency (complete) |
 | [`CUDA_PHASE_B2.md`](CUDA_PHASE_B2.md) | Phase B2: training-step residency (complete, T4-validated, adoption gate passed), with the CUDA defect records |

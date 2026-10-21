@@ -7,6 +7,40 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Runtime-defined ops** (22 Oct, `1159d63e`): the `expr` op, a closed elementwise grammar
+  with row reductions parsed at runtime into differentiable primitives (new tape ops exp, log,
+  sqrt, tanh, erf, abs, div, pow, maximum, minimum, where, rowsum, rowmax, broadcast_cols);
+  flex `activation: "expr:<e>"` with an IR `expr` node; `tools/ir_expr.py` numpy reference;
+  `tools/expr_eval`; `tests/test_expr.cpp` and `tests/test_ir_expr.py`. C++ vs numpy within
+  1.19e-7; ember.cpp vendors the parser.
+- **Third-party architectures, reference side** (22 Oct, `daab3e1d`, `a5cddee1`, `09943ab4`,
+  `93a9037e`): `tools/gguf_ir.py` builds the IR from llama.cpp metadata (qwen2, qwen3, gemma3,
+  gpt2, gptneox, mamba, windowed llama/mistral); `tools/ir_numpy.py` gains grouped-query
+  attention, NEOX and partial RoPE, per-head RMSNorm, per-layer attributes, weight_offset,
+  freq_scale, conv1d_causal and selective_scan; `tools/thirdparty_parity.py`,
+  `tools/thirdparty_synth.py`, `tools/thirdparty_hfcheck.py`. GPT-2 124M and Pythia-160m 40/40
+  greedy vs HF; Gemma 3 and Mistral sliding window on random tiny models. `tools/ir_run.py`
+  runs on `ir_numpy`'s kernels (`d2b6d402`).
+- **LLM-based arXiv extractor** (21-22 Oct, `dd772abe` onwards): `papers/llm_extract.py`, one
+  Claude call per paper, a deterministic verifier, receipts and a cost cap; 82 / 9 / 1 on the
+  40-paper benchmark against the rule-based 72 / 20 / 0. The docs present it as the main path.
+- **Qwen pre-tokeniser** (22 Oct, `a8510d93`): `llama3_tokenizer.hpp` `max_digits` for
+  llama.cpp's qwen2 regex.
+- **Chat-model data and mtstudio features** (20-21 Oct): lever 1's SFT set
+  (`tools/lever1_sft.py`), lever 2's dialogue corpora (`corpus/fetchers/dialogue_pt.py`,
+  `corpus/decontam.py`, `corpus/mix_pretrain.py`), the 16k Llama 3 scheme vocabulary and its
+  exact C++ encoder, `.ids` corpora, `data.anneal`, the `/chat` repetition penalty, the KV cache
+  (`chat --kv-cache`), batched SFT evaluation (`1f1f906b`); the next-base launch
+  (`tools/colab_chat/make_next_base.py`); Colab data jobs, resumable uploads and weights-only
+  resume (`runner_multi.py`, `jobs_vm.py`).
+- **Atlas Stages 2-3 with `rope_heads=all`** (10 Oct): 84 runs; none of the nine affected
+  findings overturned (`docs/ROPE_HEADS.md`).
+- **sparse_s1_longbudget** (10 Oct): 20 runs, "not supported / not supported"; registry row
+  S1f-longbudget-monotone.
+- **The transfer paper** (submitted to Machine Learning 9 Oct; Study 3 done 11 Oct, reading
+  mixed; registry row T3-rate-specific-disagreement) was retired on 20 Oct after the desk
+  rejection.
+
 - **Fixed: llama-family RoPE rotated only the first head** (6 Oct,
   `cb135a1`). `arch.rope_heads` selects `all` (the default for new runs) or
   `first` (every earlier llama run, which replays as recorded); exports and
