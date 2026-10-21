@@ -243,9 +243,29 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
     if "DIRS_OK" not in out:
         log(f"prepare: upload dirs not created: {out.strip()[-120:]}")
         return False
+    # Jobs already home are finished on this VM too: jobs_vm.py runs every job not FINISHED, so a
+    # fresh VM would otherwise redo them (22 Oct 2026: lever1 rebuilt after it was home).
+    home = [j["name"] for j in jobs if st.job(j["name"])["home"]]
+    rc, out = exec_py(f"for n in {home!r}: open('/content/chat/STATUS_' + n, 'w').write('FINISHED\\n')\n"
+                      "print('HOME_OK')\n")
+    if "HOME_OK" not in out:
+        log(f"prepare: home jobs not marked: {out.strip()[-120:]}")
+        return False
+    # An unfinished job that starts from a home job's final weights (init_job) needs them on the
+    # fresh VM: uploaded as a whole-file input and moved into the parent's out_dir below.
+    finals = []
+    for j in jobs:
+        parent = next((p for p in jobs if p["name"] == j.get("init_job")), None)
+        if parent and not st.job(j["name"])["home"] and st.job(parent["name"])["home"]:
+            model = parent.get("model_name", parent["name"])
+            finals.append((f"{parent['name']}__final.safetensors", os.path.join(ART, parent["name"], model + ".safetensors"),
+                           f"/content/chat/{parent['name']}/{model}.safetensors"))
     try:
         for key, src in uploads:
             upload_file(src, f"/content/chat/upload/{key}")
+        for key, src, _ in finals:
+            upload_file(src, f"/content/chat/upload/{key}")
+            log(f"{key}: uploaded for a dependent job")
         # Job checkpoints relayed earlier (unfinished jobs only; jobs_vm.py restores them).
         for j in jobs:
             art = os.path.join(ART, j["name"])
@@ -259,23 +279,30 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
     except RuntimeError as e:
         log(str(e))
         return False
-    # Reassemble the whole-file inputs.
-    names = [k for k, _ in uploads]
+    # Reassemble the whole-file inputs; a home parent's final weights then move into its out_dir.
+    names = [k for k, _ in uploads] + [k for k, _, _ in finals]
+    moves = [(k, dst) for k, _, dst in finals]
     rc, out = exec_py(
         "import os, shutil\n"
         f"for k in {names!r}:\n"
         "    d = '/content/chat/upload'\n"
         "    parts = sorted(p for p in os.listdir(d) if p.startswith(k + '.part'))\n"
+        "    if not parts: continue  # reassembled on an earlier try\n"
         "    with open(os.path.join(d, k), 'wb') as dst:\n"
         "        for p in parts:\n"
         "            shutil.copyfileobj(open(os.path.join(d, p), 'rb'), dst)\n"
         "    for p in parts: os.remove(os.path.join(d, p))\n"
         "    print(k, os.path.getsize(os.path.join(d, k)))\n"
+        f"for k, dst in {moves!r}:\n"
+        "    src = os.path.join('/content/chat/upload', k)\n"
+        "    if os.path.exists(src):  # moved on an earlier try otherwise\n"
+        "        os.makedirs(os.path.dirname(dst), exist_ok=True)\n"
+        "        os.replace(src, dst)\n"
         "print('INPUTS_OK')\n")
     if "INPUTS_OK" not in out:
         log(f"input reassembly failed: {out.strip()[-160:]}")
         return False
-    log("inputs: " + " ".join(l for l in out.splitlines() if l and not l.startswith("[")))
+    log("inputs: " + " ".join(ln for ln in out.splitlines() if ln and not ln.startswith("[")))
     url = f"https://raw.githubusercontent.com/JohnnyTeutonic/paperkiln/{commit}/tools/colab_chat/boot_jobs.sh"
     rc, out = exec_py(
         "import subprocess, urllib.request\n"
