@@ -109,7 +109,31 @@ def ref_bpb(mtstudio, spec_path, prompts, work, tag):
     ck = os.path.join(spec["out_dir"], spec["name"] + ".safetensors")
     vocab = spec["data"]["vocab"]
     tok = bpe.read_gguf(vocab)
-    ex = [{"prompt": f"<|user|>{p['prompt']}<|assistant|>", "completion": p["reference"]} for p in prompts]
+    # mtstudio refuses an example longer than data.T + 1 tokens (prompt +
+    # reference + end-of-text). Long references (chat_prompts_v1's UltraChat
+    # half) are cut to the longest token prefix that fits and still decodes to
+    # whole characters; a prompt that alone leaves no room is left out. The
+    # summary counts both.
+    room = spec["data"]["T"] + 1
+    ex, cut = [], 0
+    for p in prompts:
+        pr = f"<|user|>{p['prompt']}<|assistant|>"
+        ref = p["reference"]
+        n = room - len(tok.encode(pr)) - 1
+        if n < 1:
+            continue
+        ids = tok.encode(ref)
+        if len(ids) > n:
+            cut += 1
+            while n > 0:
+                ref = tok.decode(ids[:n]).rstrip("�")
+                if ref and len(tok.encode(ref)) <= room - len(tok.encode(pr)) - 1:
+                    break
+                n -= 1
+            if not ref:
+                continue
+        ex.append({"prompt": pr, "completion": ref})
+    ref_bpb.last = {"truncated": cut, "dropped": len(prompts) - len(ex)}
     # 19 copies of the first example per real one, then the real ones: the
     # held-out tail mtstudio scores (1/20 of the file) is exactly the real set.
     path = os.path.join(work, f"{tag}_ref.jsonl")
@@ -165,7 +189,10 @@ def sample_ember(ember_bin, port, spec_path, prompts, n, temp, max_new, out, gre
         sys.exit(f"port {port} already answers /health: another server is there; pick a free --port")
     except OSError:
         pass
-    srv = subprocess.Popen([ember_bin, gguf, str(port), "127.0.0.1", www, "-1"], stdout=subprocess.DEVNULL,
+    # ember's last argument is the GPU layer count: -1 (all) for a CUDA build, 0 for a CPU-only
+    # build, which otherwise refuses to generate and returns an empty reply (22 Oct 2026).
+    srv = subprocess.Popen([ember_bin, gguf, str(port), "127.0.0.1", www, os.environ.get("EMBER_GPU_LAYERS", "-1")],
+                           stdout=subprocess.DEVNULL,
                            stderr=subprocess.DEVNULL)
     try:
         health = None
@@ -249,7 +276,8 @@ def main(argv=None):
         clean = [r["stop"] == "eos" and not any(t in r["completion"] for t in ("<|user|>", "<|assistant|>"))
                  for r in recs]
         bpb, nref = ref_bpb(a.mtstudio, spec, prompts, a.out, tag)
-        summary[tag] = {**reply_metrics(recs, clean, prompts), "ref_bpb": bpb, "ref_examples": nref}
+        summary[tag] = {**reply_metrics(recs, clean, prompts), "ref_bpb": bpb, "ref_examples": nref,
+                        "ref_truncated": ref_bpb.last["truncated"], "ref_dropped": ref_bpb.last["dropped"]}
         # Per source: chat_prompts_v1's everyday half is greetings whose
         # reference reply ("Hello! How can I help you today?") is in the
         # everyday training data thousands of times, below decontam's
@@ -262,7 +290,9 @@ def main(argv=None):
                 keep = [k for k, r in enumerate(recs) if prompts[r["prompt_index"]].get("source", "") == src]
                 sb, sn = ref_bpb(a.mtstudio, spec, [prompts[i] for i in idx], a.out, f"{tag}_{src}")
                 summary[tag]["by_source"][src] = {**reply_metrics([recs[k] for k in keep], [clean[k] for k in keep],
-                                                                  prompts), "ref_bpb": sb, "ref_examples": sn}
+                                                                  prompts), "ref_bpb": sb, "ref_examples": sn,
+                                                 "ref_truncated": ref_bpb.last["truncated"],
+                                                 "ref_dropped": ref_bpb.last["dropped"]}
         replies[tag] = {}
         for r in recs:
             replies[tag].setdefault(r["prompt_index"], r["completion"])
