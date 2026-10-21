@@ -70,6 +70,9 @@ def main(argv=None):
     ap.add_argument("--heads", type=int, default=12)
     ap.add_argument("--d-ff", type=int, default=2048)
     ap.add_argument("--vocab-size", type=int, default=16384)
+    ap.add_argument("--extra-jobs", action="append", default=[],
+                    help="a jobs file whose jobs ride in this launch (e.g. arxiv_to_chat.py --emit-jobs with "
+                         "--vm-after data --vm-sft-after lever1)")
     ap.add_argument("--out", required=True)
     a = ap.parse_args(argv)
     for v in (a.d, a.d_ff):
@@ -123,6 +126,15 @@ def main(argv=None):
                         f"source use: " + ", ".join(f"{s} {u:.0%}" for s, u in sorted(use.items())) +
                         f". Upload {VOCAB_KEY} with the runner's --upload."),
            "max_parallel": 5 + len(fetch), "jobs": [lever2_job(), *fetch, data, gate, base, sft_data]}
+    for path in a.extra_jobs:
+        with open(path, encoding="utf-8") as f:
+            extra = json.load(f)["jobs"]
+        names = {j["name"] for j in doc["jobs"]}
+        clash = [j["name"] for j in extra if j["name"] in names]
+        if clash:
+            raise SystemExit(f"{path}: job names already in the launch: {clash}")
+        doc["jobs"] += extra
+        doc["_comment"] += f" Extra jobs from {os.path.basename(path)}: " + ", ".join(j["name"] for j in extra) + "."
     with open(a.out, "w", encoding="utf-8", newline="\n") as f:
         json.dump(doc, f, indent=1)
     print(doc["_comment"])
