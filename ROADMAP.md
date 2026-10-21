@@ -1,12 +1,32 @@
 # paperkiln roadmap
 
-*The one list of what is left to do, as at 9 October 2026. Finished work
+*The one list of what is left to do, as at 21 October 2026. Finished work
 moves to [`CHANGELOG.md`](CHANGELOG.md) and comes out of here. Everything
 else under `docs/` and `atlas/` is reference (design, records, results);
 where one of those documents carries a plan, this file wins.*
 
 ## 1. Now
 
+0. **The chat model (LOCAL_LLM_STACK.md section 7: levers 1-3, then judged
+   preference training).**
+   - Capacity session on the L4 (`tools/colab_chat/capacity_v5_vocab.json`,
+     launch 4 from 21 Oct 12:20): big (d768 L12) to 60,000 steps, moe_sft,
+     big_sft, and three data jobs on the VM's CPUs: lever 1's SFT set
+     (`tools/lever1_sft.py`), lever 2's dialogue corpora and the llama3-scheme
+     16k vocabulary checked against llama.cpp's own tokeniser.
+   - Next base, launched when capacity ends: `tools/colab_chat/make_next_base.py`
+     writes its jobs file from lever 2's real sizes (mix + `.ids` on the VM,
+     a gate model for ember's parity gate, the base with `data.anneal`, lever 1
+     rebuilt for the new vocabulary). Commits must be pushed before a VM boots
+     (`boot_jobs.sh` clones from GitHub).
+   - Written, awaiting their build turn: the KV cache (`chat --kv-cache`,
+     `tests/test_kv_cache.cpp`), the vocabulary-driven tokeniser and llama3
+     exports in mtstudio, `.ids` corpora, `data.anneal`, the repetition
+     penalty, and SFT evaluation on a subset in batches (`train.eval_examples`,
+     `train.eval_batch`).
+   - After SFT: the Claude-judge pilot (`experiments/chat_general/judge_pilot.sh`,
+     200 prompts, $100 cap), then DPO; device-side SFT evaluation in the step
+     window; real k-quants.
 1. **The transfer paper is under submission at *Machine Learning*
    (Springer), submitted 9 Oct 2026.** Nothing to do until the editor
    replies.
