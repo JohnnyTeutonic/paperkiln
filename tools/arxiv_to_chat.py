@@ -1,0 +1,818 @@
+#!/usr/bin/env python3
+"""arXiv paper -> extracted architecture -> trained model -> chat, as one command.
+
+    python3 tools/arxiv_to_chat.py 2302.13971 --run-dir runs/arxiv/llama \\
+        --mtstudio build/mtstudio --ember-bin ~/ember_bin/338b24a/cpu/tinyllama_server \\
+        --ember-www ~/ember_bin/338b24a/www --chat "Hello, how are you?"
+
+The chain (LOCAL_LLM_STACK.md section 7, "arXiv extractor -> model ->
+conversation"); every stage writes into the run directory and is skipped
+when its output already exists, so a run restarts where it stopped:
+
+  extract   papers/fetch.py on the paper's LaTeX (fetched, or --tex, or a
+            cached --extraction file: works offline), plus a scan of the
+            source for mechanisms the extractor's lattice cannot express
+            -> extraction.json
+  spec      extraction -> mtstudio specs (pretrain + SFT). REFUSES, with
+            the reason, when the architecture maps onto no family mtstudio
+            trains and ember serves, or when a flavour the family needs is
+            unresolved or contested: never an engine default in place of
+            something the paper did not say. Size (d, layers, heads, T) is
+            the run's choice, reported beside the paper's values; the
+            mechanism is the paper's. -> spec_report.json, *_spec.json
+            (exit 2 and refusal.json on a refusal)
+  pretrain  mtstudio run, objective lm on --corpus -> pretrain/
+  sft       mtstudio run, objective sft on --sft-examples (a --sft-limit
+            slice), init_from the pretrained weights -> sft/
+  export    mtstudio export --formats gguf: GGUF with the IR embedded
+            (rope_heads stated explicitly for llama) -> export/
+  chat      ember serves the GGUF (an IR-only load for every non-llama
+            family) next to `mtstudio chat`; greedy parity over --parity-n
+            frozen prompts (/chat contract: reply, token count, stop
+            reason), then the --chat turns through ember's /chat with
+            history -> parity.jsonl, chat.jsonl
+  --engine numpy instead runs the GGUF's IR in tools/ir_run.py (paperkiln's
+  reference interpreter, single-turn) as the stand-in engine.
+
+manifest.json records the paper id, extraction hash, the specs, corpus and
+SFT hashes, the GGUF sha256, the engine binary hash and the parity result.
+Exit codes: 0 done, 2 refused, 1 any other failure.
+
+--emit-jobs FILE writes the pretrain + SFT pair as jobs for
+tools/colab_chat/jobs_vm.py (Colab trains; this command then resumes from
+the downloaded run with --import-sft DIR, which re-points the run's spec at
+local data and continues from export).
+"""
+from __future__ import annotations
+
+import argparse
+import gzip
+import hashlib
+import json
+import os
+import re
+import shutil
+import signal
+import subprocess
+import sys
+import time
+import urllib.error
+import urllib.request
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
+sys.path.insert(0, os.path.join(ROOT, "papers"))
+sys.path.insert(0, HERE)
+
+EXIT_REFUSED = 2
+STAGES = ("extract", "spec", "pretrain", "sft", "export", "chat")
+
+# Mechanisms papers/fetch.py has no field for. Seen in the title or abstract
+# (where a paper states its contribution), or in a first-person sentence of
+# the body ("we use ..."), they make the architecture something the
+# extracted flavours alone would silently mis-describe, so the spec refuses.
+# Elsewhere in the body (related work, "unlike X ...") they are reported.
+MECHANISM_CUES = {
+    "state-space model": r"state[- ]spaces?\b|\bSSMs?\b|\bMamba\b|\bS4\b",
+    "linear or recurrent attention": r"linear[- ]attention|linear transformers?|\bRWKV\b|retentive network|\bRetNet\b",
+    "mixture of experts": r"mixture[- ]of[- ]experts|\bMoE\b|sparsely[- ]gated",
+    "grouped or multi-query attention": r"grouped[- ]query attention|\bGQA\b|multi[- ]query attention|\bMQA\b",
+    "sparse or banded attention": r"sparse attention|banded (?:sparse )?attention|sparse[- ]banded|"
+                                  r"dilated (?:sliding )?window|block[- ]sparse",
+    "encoder-decoder or encoder-only model": r"encoder[- ]decoder|masked language model",
+}
+FIRST_PERSON = re.compile(r"\bwe (?:also |instead |then )?(?:use|adopt|employ|apply|leverage|introduce|propose|"
+                          r"replace|follow|build|train)|\bour (?:model|architecture|design|network)s?\b",
+                          re.IGNORECASE)
+CONTRAST = re.compile(r"\bunlike\b|instead of|rather than|future work|\bnot\b|n't\b|\bwithout\b|"
+                      r"compared? (?:to|with)|\bbaselines?\b|\bprior\b|\bprevious(?:ly)?\b|\bexisting\b",
+                      re.IGNORECASE)
+
+# The families this chain builds: mtstudio trains them, the exporter writes
+# GGUF + IR for them, ember (338b24a) runs them from the IR.
+LEGAL = {
+    "norm": {"layernorm", "rmsnorm"},
+    "activation": {"gelu", "relu", "swiglu"},
+    "positional": {"rope", "learned", "sinusoidal"},
+    "residual": {"residual", "highway", "plain"},
+    "attention": {"exact", "swa"},
+}
+SPEC_KEY = {"norm": "norm", "activation": "activation", "positional": "position",
+            "residual": "residual", "attention": "attention"}
+
+
+class Refused(Exception):
+    pass
+
+
+def sha256(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def log(msg):
+    print(f"[arxiv_to_chat] {msg}", flush=True)
+
+
+def write_json(path, obj):
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(obj, f, indent=1)
+        f.write("\n")
+    os.replace(tmp, path)
+
+
+def read_json(path):
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+# --------------------------------------------------------------------------
+# extract
+
+def abstract_of(tex):
+    m = re.search(r"\\begin\{abstract\}(.*?)\\end\{abstract\}", tex, re.S)
+    if not m:
+        m = re.search(r"\\abstract\s*\{(.*?)\}\s*\n", tex, re.S)
+    return m.group(1) if m else ""
+
+
+def mechanism_scan(tex, title):
+    """Cues for mechanisms outside the extractor's lattice, by place found."""
+    import fetch
+
+    head = fetch.detex((title or "") + "\n" + abstract_of(tex))
+    body = fetch.detex(tex)
+    sentences = re.split(r"(?<=[.!?])\s+", body)
+    hits = []
+    for mech, pat in MECHANISM_CUES.items():
+        rx = re.compile(pat, re.IGNORECASE)
+        m = rx.search(head)
+        if m:
+            hits.append({"mechanism": mech, "where": "title/abstract", "blocking": True,
+                         "evidence": " ".join(head[max(0, m.start() - 80):m.end() + 60].split())})
+            continue
+        adopted, mentioned = None, 0
+        for s in sentences:
+            if rx.search(s):
+                mentioned += 1
+                if adopted is None and FIRST_PERSON.search(s) and not CONTRAST.search(s):
+                    adopted = " ".join(s.split())[:240]
+        if adopted:
+            hits.append({"mechanism": mech, "where": "first-person sentence", "blocking": True,
+                         "evidence": adopted})
+        elif mentioned:
+            hits.append({"mechanism": mech, "where": f"{mentioned} other sentence(s)", "blocking": False,
+                         "evidence": "mentioned, not adopted (related work, contrast or negation)"})
+    return hits
+
+
+def stage_extract(a, run):
+    out = os.path.join(run, "extraction.json")
+    if os.path.exists(out):
+        return read_json(out)
+    if a.extraction:
+        ext = read_json(a.extraction)
+        if ext.get("arxiv_id") != a.arxiv_id:
+            raise SystemExit(f"--extraction is for arXiv:{ext.get('arxiv_id')}, not {a.arxiv_id}")
+        ext.setdefault("source", {})["cached_from"] = os.path.abspath(a.extraction)
+        write_json(out, ext)
+        return ext
+    import fetch
+
+    src = os.path.join(run, "source.tex.gz")
+    if a.tex:
+        tex = open(a.tex, encoding="utf-8", errors="replace").read()
+    elif os.path.exists(src):
+        tex = gzip.open(src, "rt", encoding="utf-8").read()
+    else:
+        log(f"fetching arXiv:{a.arxiv_id} source")
+        tex = fetch.fetch_source(a.arxiv_id)
+    with gzip.open(src, "wt", encoding="utf-8") as f:
+        f.write(tex)
+    arch = fetch.extract(a.arxiv_id, tex)
+    ext = fetch.to_json(arch)
+    ext["mechanism_scan"] = mechanism_scan(tex, arch.title)
+    ext["source"] = {"tex_sha256": hashlib.sha256(tex.encode("utf-8")).hexdigest(),
+                     "from": a.tex or f"https://arxiv.org/e-print/{a.arxiv_id}",
+                     "extractor": "papers/fetch.py", "extractor_sha256": sha256(fetch.__file__)}
+    write_json(out, ext)
+    return ext
+
+
+# --------------------------------------------------------------------------
+# spec
+
+def parse_asserts(items):
+    out = {}
+    for it in items or []:
+        k, sep, v = it.partition("=")
+        if not sep or k not in LEGAL:
+            raise SystemExit(f"--assert wants FIELD=VALUE with FIELD in {sorted(LEGAL)}, got {it!r}")
+        out[k] = v
+    return out
+
+
+def build_spec(ext, size, asserts=None, skip_scan=False):
+    """Extraction -> (arch dict for an mtstudio spec, report). Raises Refused
+    with every reason found. size: d, layers, heads, d_ff, T."""
+    asserts = asserts or {}
+    report, refusals = [], []
+    fields = ext.get("fields", {})
+
+    scan = ext.get("mechanism_scan")
+    if scan is None:
+        if skip_scan:
+            report.append(("UNCHECKED", "mechanism scan skipped (--skip-mechanism-scan): the extraction "
+                                        "carries no scan of the source"))
+        else:
+            refusals.append("the extraction carries no mechanism scan (a cached file made without the "
+                            "source); re-extract from the LaTeX (--tex or a fetch), or pass "
+                            "--skip-mechanism-scan to accept that explicitly")
+    for h in scan or []:
+        if h["blocking"]:
+            refusals.append(f"mechanism outside the extractor's lattice: {h['mechanism']} ({h['where']}: "
+                            f"\u201c{h['evidence']}\u201d); no family here builds it, and training the "
+                            "extracted flavours alone would silently approximate the paper")
+        else:
+            report.append(("NOTED", f"{h['mechanism']}: {h['where']}, {h['evidence']}"))
+
+    flav = {}
+    for k in ("norm", "activation", "positional", "residual", "attention"):
+        f = fields.get(k)
+        if k in asserts:
+            flav[k] = asserts[k]
+            report.append(("ASSERTED", f"{k} = {asserts[k]} (by the operator, --assert; paper: "
+                                       f"{f['value'] if f else 'unresolved'})"))
+            continue
+        if f is None:
+            if k == "residual":
+                flav[k] = "residual"
+                report.append(("DEFAULT", "residual = residual: the extractor's only positive signature is "
+                                          "a highway/gated stream, and the paper shows none"))
+            elif k == "attention":
+                flav[k] = "exact"
+                report.append(("DEFAULT", "attention = exact: no sliding-window signature in the paper "
+                                          "(the extractor is one-sided by design)"))
+            else:
+                refusals.append(f"{k} is unresolved: the paper does not state it and names no ancestor "
+                                f"that does (mentions: {ext.get('mentions', {}).get(k) or 'none'}); "
+                                f"assert it with --assert {k}=VALUE if you know it")
+            continue
+        v, verdict = str(f["value"]), f.get("verdict")
+        if verdict not in ("used", "inherited"):
+            ru = f.get("runner_up") or {}
+            refusals.append(f"{k} = {v} has verdict {verdict!r}"
+                            + (f" (runner-up {ru.get('value')})" if ru else "")
+                            + f": not asserted by the extractor; settle it with --assert {k}=VALUE")
+            continue
+        flav[k] = v
+        report.append(("MATCHED", f"{k} = {v} ({verdict}: \u201c{f['evidence'][:120]}\u201d)"))
+
+    for k, v in flav.items():
+        if v not in LEGAL[k]:
+            refusals.append(f"{k} = {v} has no engine support (mtstudio takes {sorted(LEGAL[k])})")
+
+    nkv, nh = fields.get("n_kv_heads"), fields.get("n_heads")
+    if nkv and (nh is None or nkv["value"] != nh["value"]):
+        refusals.append(f"n_kv_heads = {nkv['value']} (grouped/multi-query attention): mtstudio's "
+                        "attention has one key/value head per query head")
+
+    family, custom = None, {}
+    if not refusals:
+        if flav["positional"] == "rope":
+            bad = [f"{k}={flav[k]}" for k, want in (("norm", "rmsnorm"), ("activation", "swiglu"),
+                                                     ("residual", "residual"), ("attention", "exact"))
+                   if flav[k] != want]
+            if bad:
+                refusals.append("positional = rope is the llama family (rmsnorm, swiglu, plain residual "
+                                "stream, exact attention); this paper has " + ", ".join(bad) +
+                                ", which no family here builds (mtstudio would silently drop or "
+                                "reject it)")
+            else:
+                family = "llama"
+                custom["position"] = "rope"
+        else:
+            family = "flex"
+            for k in ("norm", "activation", "positional", "residual", "attention"):
+                custom[SPEC_KEY[k]] = flav[k]
+    if refusals:
+        raise Refused(refusals)
+
+    T = size["T"]
+    custom.update({"d": size["d"], "layers": size["layers"], "heads": size["heads"]})
+    if size.get("d_ff"):
+        custom["d_ff"] = size["d_ff"]
+    paper = {k: fields[k]["value"] for k in ("d_model", "n_layers", "n_heads", "d_ff", "context_length")
+             if k in fields}
+    report.append(("SIZED", f"d={size['d']} layers={size['layers']} heads={size['heads']} T={T}"
+                            f"{' d_ff=' + str(size['d_ff']) if size.get('d_ff') else ''} chosen for this run "
+                            f"(paper: {paper or 'no dims extracted'}); the mechanism is the paper's"))
+    if size["d"] % size["heads"]:
+        raise Refused([f"d={size['d']} is not divisible by heads={size['heads']}"])
+
+    if family == "flex" and custom["attention"] == "swa":
+        wf = fields.get("window_size")
+        if wf is None:
+            raise Refused(["attention = swa but the paper's window size is unresolved"])
+        w = int(wf["value"])
+        if w >= T:
+            scaled = max(4, T // 4)
+            report.append(("SCALED", f"window {w} -> {scaled}: window >= T={T} would make the attention "
+                                     "exact and un-test the mechanism"))
+            w = scaled
+        custom["window"] = w
+        sf = fields.get("n_sinks")
+        custom["sinks"] = int(sf["value"]) if sf else 0
+        report.append(("MATCHED" if sf else "DEFAULT",
+                       f"sinks = {custom['sinks']}" + ("" if sf else " (the paper names no sink tokens; "
+                                                                     "mtstudio's own default is 1)")))
+    arch = {"custom": custom}
+    if family == "llama":
+        arch["rope_heads"] = "all"
+        report.append(("MATCHED", "rope_heads = all (GGUF engines rotate every head; contract point 2)"))
+    return family, arch, report
+
+
+def make_specs(a, run, family, arch):
+    name = "arxiv_" + re.sub(r"[^0-9A-Za-z]+", "_", a.arxiv_id)
+    common_data = {"vocab": os.path.abspath(a.vocab), "vocab_cap": a.vocab_cap, "T": a.T}
+    pre = {
+        "name": name + "_base",
+        "arch": arch,
+        "data": {**common_data, "corpus": os.path.abspath(a.corpus), "max_tokens": a.max_tokens},
+        "train": {"steps": a.pretrain_steps, "lr": a.lr, "batch": a.batch,
+                  "eval_every": max(1, a.pretrain_steps // 4), "checkpoint_every": max(1, a.pretrain_steps),
+                  "gradmap_every": 0, "seed": a.seed, "optimizer": "adamw"},
+        "export": {"formats": ["safetensors"]},
+        "out_dir": os.path.join(run, "pretrain"),
+    }
+    sft = {
+        "name": name,
+        "arch": arch,
+        "data": {**common_data, "sft_examples": os.path.join(run, "sft_examples.jsonl")},
+        "train": {"steps": a.sft_steps, "lr": a.sft_lr, "batch": a.batch,
+                  "eval_every": max(1, a.sft_steps // 2), "checkpoint_every": max(1, a.sft_steps),
+                  "gradmap_every": 0, "seed": a.seed, "optimizer": "adamw", "objective": "sft",
+                  "init_from": os.path.join(run, "pretrain", name + "_base.safetensors")},
+        "export": {"formats": ["safetensors"]},
+        "out_dir": os.path.join(run, "sft"),
+    }
+    for s, warm in ((pre, a.lr_warmup), (sft, a.sft_lr_warmup)):
+        if a.lr_decay != "none" or warm:
+            s["train"]["lr_schedule"] = {"warmup_steps": warm, "decay": a.lr_decay, "min_lr_frac": 0.1}
+    return name, pre, sft
+
+
+def stage_spec(a, run, ext, manifest):
+    rep_path = os.path.join(run, "spec_report.json")
+    if os.path.exists(rep_path) and os.path.exists(os.path.join(run, "sft_spec.json")):
+        rep = read_json(rep_path)
+        return rep["name"], rep["family"]
+    size = {"d": a.d, "layers": a.layers, "heads": a.heads, "d_ff": a.d_ff, "T": a.T}
+    try:
+        family, arch, report = build_spec(ext, size, parse_asserts(a.assert_), a.skip_mechanism_scan)
+    except Refused as r:
+        reasons = r.args[0]
+        write_json(os.path.join(run, "refusal.json"), {"arxiv_id": a.arxiv_id, "title": ext.get("title"),
+                                                       "reasons": reasons})
+        manifest["refused"] = reasons
+        print(f"\nREFUSED arXiv:{a.arxiv_id} ({ext.get('title') or 'untitled'}): no spec, nothing trained.")
+        for x in reasons:
+            print("  - " + x)
+        return None, None
+    name, pre, sft = make_specs(a, run, family, arch)
+    write_json(os.path.join(run, "pretrain_spec.json"), pre)
+    write_json(os.path.join(run, "sft_spec.json"), sft)
+    write_json(rep_path, {"name": name, "family": family, "report": report})
+    print(f"\nspec for arXiv:{a.arxiv_id} ({ext.get('title') or 'untitled'}): family {family}")
+    for b, d in report:
+        print(f"  [{b}] {d}")
+    return name, family
+
+
+# --------------------------------------------------------------------------
+# train / export
+
+def mtstudio(a, args, log_path):
+    env = {**os.environ, "OMP_NUM_THREADS": str(a.threads)}
+    with open(log_path, "a", encoding="utf-8") as lf:
+        p = subprocess.run([a.mtstudio, *args], stdout=lf, stderr=subprocess.STDOUT, env=env)
+    if p.returncode:
+        tail = open(log_path, encoding="utf-8", errors="replace").read()[-1500:]
+        raise SystemExit(f"mtstudio {args[0]} failed ({p.returncode}); {log_path} ends:\n{tail}")
+
+
+def stage_train(a, run, which, name):
+    spec = os.path.join(run, f"{which}_spec.json")
+    out = os.path.join(run, which)
+    stem = name + ("_base" if which == "pretrain" else "")
+    weights = os.path.join(out, stem + ".safetensors")
+    if os.path.exists(os.path.join(out, "result.json")) and os.path.exists(weights):
+        return weights
+    if which == "sft":
+        dst = os.path.join(run, "sft_examples.jsonl")
+        if not os.path.exists(dst):
+            n = 0
+            with open(a.sft_examples, encoding="utf-8") as src, open(dst + ".tmp", "w", encoding="utf-8") as f:
+                for line in src:
+                    if line.strip():
+                        f.write(line)
+                        n += 1
+                        if a.sft_limit and n >= a.sft_limit:
+                            break
+            os.replace(dst + ".tmp", dst)
+    log(f"{which}: mtstudio run ({read_json(spec)['train']['steps']} steps)")
+    t0 = time.time()
+    mtstudio(a, ["run", spec], os.path.join(run, f"{which}.log"))
+    log(f"{which}: done in {time.time() - t0:.0f} s")
+    if not os.path.exists(weights):
+        raise SystemExit(f"{which}: mtstudio finished without {weights}")
+    return weights
+
+
+def stage_export(a, run, name):
+    out = os.path.join(run, "export")
+    gguf = os.path.join(out, name + ".gguf")
+    if os.path.exists(gguf):
+        return gguf
+    os.makedirs(out, exist_ok=True)
+    log("export: mtstudio export --formats gguf")
+    mtstudio(a, ["export", os.path.join(run, "sft", "spec.json"), "--from",
+                 os.path.join(run, "sft", name + ".safetensors"), "--formats", "gguf", "--out-dir", out],
+             os.path.join(run, "export.log"))
+    if not os.path.exists(gguf):
+        raise SystemExit(f"export wrote no {gguf}; see {run}/export.log")
+    return gguf
+
+
+def import_sft(a, run, name):
+    """A run trained elsewhere (Colab, jobs_vm.py): copy its out_dir in as
+    sft/ and point its spec at this machine's vocabulary."""
+    dst = os.path.join(run, "sft")
+    if os.path.exists(os.path.join(dst, "result.json")):
+        return
+    shutil.copytree(a.import_sft, dst, dirs_exist_ok=True)
+    sp = os.path.join(dst, "spec.json")
+    s = read_json(sp if os.path.exists(sp) else os.path.join(run, "sft_spec.json"))
+    s["data"]["vocab"] = os.path.abspath(a.vocab)
+    s["out_dir"] = dst
+    write_json(sp, s)
+    if not os.path.exists(os.path.join(dst, name + ".safetensors")):
+        raise SystemExit(f"--import-sft {a.import_sft} has no {name}.safetensors")
+
+
+# --------------------------------------------------------------------------
+# serve + chat
+
+def listeners(port):
+    out = subprocess.run(["ss", "-ltnpH"], capture_output=True, text=True).stdout
+    return [ln for ln in out.splitlines() if re.search(rf":{port}\s", ln)]
+
+
+def get(url, timeout=5):
+    with urllib.request.urlopen(url, timeout=timeout) as r:
+        return r.read().decode("utf-8", errors="replace")
+
+
+def post(url, body, timeout=600):
+    req = urllib.request.Request(url, data=json.dumps(body).encode(), headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.load(r)
+
+
+class Server:
+    """A server this command starts, owns and stops (by its own pid only)."""
+
+    def __init__(self, label, argv, port, expect, log_path, env=None):
+        if listeners(port):
+            raise SystemExit(f"port {port} is already in use: {listeners(port)}")
+        self.label, self.port = label, port
+        self.log = open(log_path, "w", encoding="utf-8")
+        self.p = subprocess.Popen(argv, stdout=self.log, stderr=subprocess.STDOUT, env=env,
+                                  start_new_session=True)
+        deadline = time.time() + 300
+        while True:
+            if self.p.poll() is not None:
+                raise SystemExit(f"{label} exited ({self.p.returncode}); see {log_path}")
+            try:
+                self.health = get(f"http://127.0.0.1:{port}/health")
+                break
+            except (urllib.error.URLError, ConnectionError, OSError):
+                if time.time() > deadline:
+                    self.stop()
+                    raise SystemExit(f"{label} did not answer /health on port {port}")
+                time.sleep(1)
+        ls = listeners(port)
+        if len(ls) != 1 or f"pid={self.p.pid}," not in ls[0]:
+            self.stop()
+            raise SystemExit(f"port {port}: expected only {label} (pid {self.p.pid}) listening, got {ls}")
+        if expect not in self.health:
+            self.stop()
+            raise SystemExit(f"{label} /health does not name {expect}: {self.health}")
+        log(f"{label} up on {port} (pid {self.p.pid}): {self.health[:160]}")
+
+    def chat(self, body):
+        return post(f"http://127.0.0.1:{self.port}/chat", body)
+
+    def stop(self):
+        if self.p.poll() is None:
+            self.p.send_signal(signal.SIGTERM)
+            try:
+                self.p.wait(15)
+            except subprocess.TimeoutExpired:
+                self.p.kill()
+                self.p.wait()
+        self.log.close()
+
+
+def greedy_body(prompt, max_new, history=None):
+    # The /chat contract (point 4); repetition penalty left out = off, since
+    # mtstudio's /chat does not take it yet.
+    b = {"user_input": prompt, "max_new_tokens": max_new, "temperature": 1.0, "top_k": 1, "top_p": 1.0,
+         "seed": 0}
+    if history:
+        b["history"] = history
+    return b
+
+
+def stage_chat(a, run, name, gguf, manifest):
+    import bpe
+
+    prompts = [json.loads(x)["prompt"] for x in open(a.prompts, encoding="utf-8") if x.strip()][:a.parity_n]
+    tok = bpe.read_gguf(gguf)
+    mts = Server("mtstudio chat", [a.mtstudio, "chat", os.path.join(run, "sft"), "--port", str(a.port_mts),
+                                   "--host", "127.0.0.1"], a.port_mts, f'"model":"{name}"',
+                 os.path.join(run, "mtstudio_chat.log"), env={**os.environ, "OMP_NUM_THREADS": str(a.threads)})
+    try:
+        ref = [mts.chat(greedy_body(p, a.max_new)) for p in prompts]
+        if a.engine == "numpy":
+            ref += [mts.chat(greedy_body(u, a.max_new)) for u in a.chat]
+    finally:
+        mts.stop()
+
+    if a.engine == "numpy":
+        return chat_numpy(a, run, gguf, prompts, ref, manifest)
+
+    eng = Server("ember", [a.ember_bin, gguf, str(a.port_engine), "127.0.0.1", a.ember_www, "0"],
+                 a.port_engine, f'"model":"{gguf}"',  # ember's /health names the GGUF it loaded
+                 os.path.join(run, "ember.log"), env={**os.environ, "OMP_NUM_THREADS": str(a.threads)})
+    rows, same = [], {"reply": 0, "tokens": 0, "stop": 0, "prompt_tokens": 0}
+    try:
+        for i, (p, m) in enumerate(zip(prompts, ref)):
+            e = eng.chat(greedy_body(p, a.max_new))
+            py_n = len(tok.encode("<|user|>" + p + "<|assistant|>"))
+            r = {"i": i, "prompt": p, "ember": e["reply"], "mtstudio": m["reply"],
+                 "ember_tokens": e["tokens"], "mts_tokens": m["tokens"],
+                 "ember_stop": e["stop_reason"], "mts_stop": m["stop_reason"],
+                 "ember_prompt_tokens": e.get("prompt_tokens"), "bpe_py_prompt_tokens": py_n}
+            rows.append(r)
+            same["reply"] += e["reply"] == m["reply"]
+            same["tokens"] += e["tokens"] == m["tokens"]
+            same["stop"] += e["stop_reason"] == m["stop_reason"]
+            same["prompt_tokens"] += e.get("prompt_tokens") == py_n
+        history, turns = [], []
+        for u in a.chat:
+            e = eng.chat(greedy_body(u, a.max_new, history) if a.chat_greedy else
+                         {"user_input": u, "max_new_tokens": a.max_new, "temperature": 0.7, "top_k": 40,
+                          "top_p": 0.9, "seed": 1, "history": history})
+            turns.append({"user": u, "reply": e["reply"], "stop_reason": e["stop_reason"],
+                          "tokens": e["tokens"], "history_turns_used": e.get("history_turns_used")})
+            history.append({"user": u, "assistant": e["reply"]})
+    finally:
+        eng.stop()
+    with open(os.path.join(run, "parity.jsonl"), "w", encoding="utf-8") as f:
+        for r in rows:
+            f.write(json.dumps(r) + "\n")
+    with open(os.path.join(run, "chat.jsonl"), "w", encoding="utf-8") as f:
+        for t in turns:
+            f.write(json.dumps(t) + "\n")
+    n = len(rows)
+    parity = {"engine": "ember", "n": n, "identical_replies": same["reply"], "same_token_count": same["tokens"],
+              "same_stop_reason": same["stop"], "prompt_tokens_match_bpe_py": same["prompt_tokens"],
+              "pass": same["reply"] == n and same["tokens"] == n and same["stop"] == n,
+              "settings": greedy_body("", a.max_new) | {"user_input": None},
+              "prompts": os.path.relpath(a.prompts, ROOT) if a.prompts.startswith(ROOT) else a.prompts,
+              "prompts_sha256": sha256(a.prompts), "ember_health": eng.health, "mtstudio_health": mts.health}
+    print(f"\nparity (greedy, ember vs mtstudio /chat): {same['reply']}/{n} identical replies, "
+          f"{same['tokens']}/{n} token counts, {same['stop']}/{n} stop reasons, "
+          f"{same['prompt_tokens']}/{n} prompt token counts == bpe.py")
+    for r in rows:
+        if r["ember"] != r["mtstudio"]:
+            print(f"  DIFF [{r['i']}] ember {r['ember'][:70]!r} | mtstudio {r['mtstudio'][:70]!r}")
+    print_chat(turns)
+    return parity, turns
+
+
+def chat_numpy(a, run, gguf, prompts, ref, manifest):
+    """tools/ir_run.py as the engine: it reruns the IR from position 0 each
+    step, single-turn only, so the chat turns are separate prompts."""
+    receipt = os.path.join(run, "mtstudio_greedy.jsonl")
+    allp = prompts + list(a.chat)
+    with open(receipt, "w", encoding="utf-8") as f:
+        for i, (p, m) in enumerate(zip(allp, ref)):
+            f.write(json.dumps({"i": i, "prompt": p, "mtstudio": m["reply"]}) + "\n")
+    out = os.path.join(run, "parity.jsonl")
+    p = subprocess.run([sys.executable, os.path.join(HERE, "ir_run.py"), gguf, receipt, HERE, out,
+                        "--max-new", str(a.max_new)], capture_output=True, text=True)
+    print(p.stdout)
+    if p.returncode:
+        raise SystemExit(f"ir_run.py failed: {p.stderr[-1500:]}")
+    rows = [json.loads(x) for x in open(out, encoding="utf-8")]
+    n = len(prompts)
+    same = sum(r["same"] for r in rows[:n])
+    turns = [{"user": u, "reply": r["ir_numpy"], "tokens": r["tokens"]} for u, r in zip(a.chat, rows[n:])]
+    with open(os.path.join(run, "chat.jsonl"), "w", encoding="utf-8") as f:
+        for t in turns:
+            f.write(json.dumps(t) + "\n")
+    print_chat(turns)
+    return {"engine": "numpy (tools/ir_run.py)", "n": n, "identical_replies": same, "pass": same == n,
+            "settings": greedy_body("", a.max_new) | {"user_input": None},
+            "prompts_sha256": sha256(a.prompts)}, turns
+
+
+def print_chat(turns):
+    if turns:
+        print("\nchat:")
+    for t in turns:
+        print(f"  user:      {t['user']}\n  assistant: {t['reply']}")
+
+
+# --------------------------------------------------------------------------
+# Colab jobs
+
+def emit_jobs(a, run, name, path):
+    """The pretrain + SFT pair as jobs_vm.py jobs, data paths on the VM."""
+    pre, sft = read_json(os.path.join(run, "pretrain_spec.json")), read_json(os.path.join(run, "sft_spec.json"))
+
+    def vm(p, base):  # absolute VM paths as given; relative ones under base
+        return p if p.startswith("/") else base + p
+    vm_vocab = vm(a.vm_vocab, "/content/pk/")
+    jobs = []
+    for s in (pre, sft):
+        s = json.loads(json.dumps(s))
+        s.pop("out_dir", None)
+        s.pop("name", None)
+        s["data"]["vocab"] = vm_vocab
+        s["export"] = {"formats": ["safetensors", "gguf"]}
+        # A reclaimed VM resumes from the last checkpoint the runner relayed.
+        s["train"]["checkpoint_every"] = min(500, s["train"]["steps"])
+        if "corpus" in s["data"]:
+            s["data"]["corpus"] = vm(a.vm_corpus, "/content/pk/")
+            if s["data"]["corpus"].endswith(".ids"):
+                s["data"]["max_tokens"] = 0  # an .ids corpus is read whole (pretrain steps set the tokens seen)
+        else:
+            s["data"]["sft_examples"] = vm(a.vm_sft_upload, "/content/chat/upload/")
+            s["train"].pop("init_from", None)
+        jobs.append(s)
+    short = re.sub(r"[^0-9A-Za-z]+", "_", a.arxiv_id)
+    doc = read_json(path) if os.path.exists(path) else {"_comment": "", "max_parallel": 2, "jobs": []}
+    doc["jobs"] = [j for j in doc["jobs"] if j["name"] not in (f"base_{short}", f"sft_{short}")]
+    extra = [x for x in a.vm_after.split(",") if x] if a.vm_after else []
+    sft_extra = [x for x in a.vm_sft_after.split(",") if x] if a.vm_sft_after else []
+    new = [{"name": f"base_{short}", "model_name": name + "_base", "spec": jobs[0], "relay_every_steps": 2000},
+           {"name": f"sft_{short}", "model_name": name, "after": [f"base_{short}", *sft_extra],
+            "init_job": f"base_{short}", "spec": jobs[1]}]
+    if extra:
+        new[0]["after"] = extra
+    if read_json(os.path.join(run, "spec_report.json"))["family"] != "llama":
+        for j in new:  # gpt2/flex on CUDA: deferred downloads corrupt them (capacity_v2.json)
+            j["env"] = {"MICROTORCH_DEFER_DOWNLOADS": 0}
+    doc["jobs"] += new
+    write_json(path, doc)
+    log(f"jobs for arXiv:{a.arxiv_id} written to {path}")
+
+
+# --------------------------------------------------------------------------
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0],
+                                 formatter_class=argparse.RawDescriptionHelpFormatter, epilog=__doc__)
+    ap.add_argument("arxiv_id")
+    ap.add_argument("--run-dir", required=True)
+    src = ap.add_argument_group("extraction source (default: fetch from arXiv)")
+    src.add_argument("--extraction", help="cached extraction.json (offline)")
+    src.add_argument("--tex", help="local LaTeX source")
+    sp = ap.add_argument_group("spec")
+    sp.add_argument("--assert", dest="assert_", action="append", metavar="FIELD=VALUE",
+                    help="operator assertion of a flavour the paper leaves unresolved (recorded)")
+    sp.add_argument("--skip-mechanism-scan", action="store_true")
+    sp.add_argument("--d", type=int, default=128)
+    sp.add_argument("--layers", type=int, default=2)
+    sp.add_argument("--heads", type=int, default=4)
+    sp.add_argument("--d-ff", type=int, default=0, help="0 = family default (3d llama, 4d flex)")
+    sp.add_argument("--T", type=int, default=128)
+    tr = ap.add_argument_group("training")
+    tr.add_argument("--mtstudio", default=os.path.join(ROOT, "build", "mtstudio"))
+    tr.add_argument("--corpus", default=os.path.join(ROOT, "corpus/data/tinychat_hf_sample_v1/pretrain_train.txt"))
+    tr.add_argument("--vocab", default=os.path.join(
+        ROOT, "corpus/data/vocab_fineweb_tinychat_bpe8k_v1/fineweb_tinychat_bpe8k.gguf"))
+    tr.add_argument("--vocab-cap", type=int, default=8192)
+    tr.add_argument("--max-tokens", type=int, default=400000)
+    tr.add_argument("--sft-examples", default=os.path.expanduser("~/pkchat/fwsft/sft_mix.jsonl"))
+    tr.add_argument("--sft-limit", type=int, default=2000, help="first N SFT examples (0 = all)")
+    tr.add_argument("--pretrain-steps", type=int, default=300)
+    tr.add_argument("--sft-steps", type=int, default=150)
+    tr.add_argument("--batch", type=int, default=4)
+    tr.add_argument("--lr", type=float, default=3e-3)
+    tr.add_argument("--sft-lr", type=float, default=1e-3)
+    tr.add_argument("--lr-warmup", type=int, default=0, help="pretrain warmup steps")
+    tr.add_argument("--sft-lr-warmup", type=int, default=0)
+    tr.add_argument("--lr-decay", choices=("none", "cosine"), default="none", help="both stages")
+    tr.add_argument("--seed", type=int, default=1)
+    tr.add_argument("--threads", type=int, default=2)
+    tr.add_argument("--import-sft", help="a trained SFT out_dir from elsewhere (Colab): skip pretrain + sft")
+    ch = ap.add_argument_group("serve and chat")
+    ch.add_argument("--engine", choices=("ember", "numpy"), default="ember")
+    ch.add_argument("--ember-bin", default=os.path.expanduser("~/ember_bin/338b24a/cpu/tinyllama_server"))
+    ch.add_argument("--ember-www", default=os.path.expanduser("~/ember_bin/338b24a/www"))
+    ch.add_argument("--port-mts", type=int, default=8121)
+    ch.add_argument("--port-engine", type=int, default=8122)
+    ch.add_argument("--prompts", default=os.path.join(ROOT, "corpus/eval/tinychat_hf_prompts_v1.jsonl"))
+    ch.add_argument("--parity-n", type=int, default=10)
+    ch.add_argument("--max-new", type=int, default=40)
+    ch.add_argument("--chat", action="append", default=[], help="a user turn (repeatable; one conversation)")
+    ch.add_argument("--chat-greedy", action="store_true", help="greedy chat turns (default: t 0.7, top-k 40)")
+    ap.add_argument("--stop-after", choices=STAGES)
+    ap.add_argument("--emit-jobs", help="append this paper's pretrain + SFT jobs to a jobs_vm.py JSON")
+    ap.add_argument("--vm-corpus", default="corpus/data/fineweb_edu_sample_v1/pretrain_train.txt")
+    ap.add_argument("--vm-vocab", default="corpus/data/vocab_fineweb_tinychat_bpe8k_v1/fineweb_tinychat_bpe8k.gguf")
+    ap.add_argument("--vm-sft-upload", default="sft_dialogue_v1.jsonl",
+                    help="an uploaded file's name, or an absolute VM path (a data job's output)")
+    ap.add_argument("--vm-after", default="", help="jobs the pretrain job waits for (comma list), e.g. the mix")
+    ap.add_argument("--vm-sft-after", default="", help="more jobs the SFT job waits for, e.g. the SFT set's builder")
+    a = ap.parse_args(argv)
+
+    run = os.path.abspath(a.run_dir)
+    os.makedirs(run, exist_ok=True)
+    mpath = os.path.join(run, "manifest.json")
+    manifest = read_json(mpath) if os.path.exists(mpath) else {"arxiv_id": a.arxiv_id, "stages": {}}
+    manifest.pop("refused", None)
+
+    def done(stage, **kv):
+        manifest["stages"][stage] = {"at": time.strftime("%Y-%m-%dT%H:%M:%S"), **kv}
+        write_json(mpath, manifest)
+
+    ext = stage_extract(a, run)
+    manifest["title"] = ext.get("title")
+    done("extract", extraction_sha256=sha256(os.path.join(run, "extraction.json")),
+         source=ext.get("source"), mechanism_scan=ext.get("mechanism_scan"))
+    if a.stop_after == "extract":
+        return 0
+
+    name, family = stage_spec(a, run, ext, manifest)
+    if name is None:
+        done("spec", refused=True)
+        return EXIT_REFUSED
+    rep = read_json(os.path.join(run, "spec_report.json"))
+    done("spec", family=family, name=name, report=rep["report"],
+         pretrain_spec=read_json(os.path.join(run, "pretrain_spec.json")),
+         sft_spec=read_json(os.path.join(run, "sft_spec.json")))
+    if a.emit_jobs:
+        emit_jobs(a, run, name, a.emit_jobs)
+    if a.stop_after == "spec":
+        return 0
+
+    if a.import_sft:
+        import_sft(a, run, name)
+        done("sft", imported_from=os.path.abspath(a.import_sft),
+             weights_sha256=sha256(os.path.join(run, "sft", name + ".safetensors")))
+    else:
+        w = stage_train(a, run, "pretrain", name)
+        done("pretrain", corpus=a.corpus, corpus_sha256=sha256(a.corpus), max_tokens=a.max_tokens,
+             vocab_sha256=sha256(a.vocab), weights_sha256=sha256(w),
+             result=read_json(os.path.join(run, "pretrain", "result.json")))
+        if a.stop_after == "pretrain":
+            return 0
+        w = stage_train(a, run, "sft", name)
+        done("sft", sft_source=a.sft_examples, sft_limit=a.sft_limit,
+             sft_slice_sha256=sha256(os.path.join(run, "sft_examples.jsonl")), weights_sha256=sha256(w),
+             result=read_json(os.path.join(run, "sft", "result.json")))
+    if a.stop_after == "sft":
+        return 0
+
+    gguf = stage_export(a, run, name)
+    irp = os.path.join(run, "export", name + ".ir.json")
+    ir = read_json(irp) if os.path.exists(irp) else {}
+    rope = [n.get("rope_heads") for n in ir.get("block", {}).get("nodes", []) if n.get("op") == "rope"]
+    done("export", gguf=gguf, gguf_sha256=sha256(gguf), ir_sha256=sha256(irp) if ir else None,
+         family_hint=ir.get("family_hint"), rope_heads=rope[0] if rope else None)
+    if a.stop_after == "export":
+        return 0
+
+    parity, turns = stage_chat(a, run, name, gguf, manifest)
+    if a.engine == "ember":
+        parity["ember_bin"] = a.ember_bin
+        parity["ember_bin_sha256"] = sha256(a.ember_bin)
+    done("chat", parity=parity, chat=turns)
+    manifest["parity_pass"] = parity["pass"]
+    write_json(mpath, manifest)
+    log(f"run directory: {run}")
+    return 0 if parity["pass"] else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

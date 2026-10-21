@@ -1,0 +1,116 @@
+{
+ "arxiv_id": "2312.00752",
+ "title": "Mamba: Linear-Time Sequence Modeling with Selective State Spaces",
+ "fields": {
+  "d_model": {
+   "value": 64,
+   "evidence": "dings) and SSM variants. We use a model dimension D of 64 for Mamba and 128 f"
+  },
+  "n_layers": {
+   "value": 6,
+   "evidence": "2^{20}=1048576. We fix a model size of 6 layers by width 128 (about"
+  },
+  "context_length": {
+   "value": 8000,
+   "evidence": "th grows. (We note that full results on context length 8k are missing for the"
+  },
+  "norm": {
+   "value": "layernorm",
+   "evidence": "ormalization layer (we choose LayerNorm \\citep{ba2016layer}), motivat",
+   "verdict": "used",
+   "score": 6.0
+  },
+  "activation": {
+   "value": "gated-glu",
+   "evidence": "\\iftoggle{arxiv}{ We use the SiLU / Swish activation function \\",
+   "verdict": "family",
+   "score": 6.0,
+   "runner_up": {
+    "value": "swiglu",
+    "score": 5.0,
+    "evidence": "as taking a Transformer with SwiGLU MLPs (i.e.\\ what we call Tran"
+   }
+  },
+  "positional": {
+   "value": "rope",
+   "evidence": "ark & \\xmark & \\xmark \\\\ MHA-RoPE & 137K & \\cmark & \\cmark & 10",
+   "verdict": "used",
+   "score": 3.5
+  },
+  "residual": {
+   "value": "residual",
+   "evidence": "th standard normalization and residual connections, to form the Mamba architectu",
+   "verdict": "used",
+   "score": 1.5
+  }
+ },
+ "unresolved": [
+  "n_heads",
+  "n_kv_heads",
+  "d_ff",
+  "vocab_size",
+  "attention"
+ ],
+ "mentions": {
+  "norm": [
+   {
+    "value": "layernorm",
+    "score": 6.0
+   },
+   {
+    "value": "rmsnorm",
+    "score": -1.5
+   }
+  ],
+  "activation": [
+   {
+    "value": "silu",
+    "score": 6.0
+   },
+   {
+    "value": "swiglu",
+    "score": 5.0
+   }
+  ],
+  "positional": [
+   {
+    "value": "rope",
+    "score": 3.5
+   }
+  ],
+  "residual": [
+   {
+    "value": "residual",
+    "score": 1.5
+   }
+  ]
+ },
+ "inherits": null,
+ "variants": [],
+ "mechanism_scan": [
+  {
+   "mechanism": "state-space model",
+   "where": "title/abstract",
+   "blocking": true,
+   "evidence": "Mamba: Linear-Time Sequence Modeling with Selective State Spaces"
+  },
+  {
+   "mechanism": "linear or recurrent attention",
+   "where": "title/abstract",
+   "blocking": true,
+   "evidence": "e and its core attention module. Many subquadratic-time architectures such as linear attention, gated convolution and recurrent models, and structured sta"
+  },
+  {
+   "mechanism": "sparse or banded attention",
+   "where": "1 other sentence(s)",
+   "blocking": false,
+   "evidence": "mentioned, not adopted (related work, contrast or negation)"
+  }
+ ],
+ "source": {
+  "tex_sha256": "181cd6e1ff70bfc62596bfe3c1da8bba3c62c6fff32725de2a00d0c109027743",
+  "from": "/home/jonat/arxivwork/cache/2312.00752.tex",
+  "extractor": "papers/fetch.py",
+  "extractor_sha256": "39d3819136af8bc31d9be96b5ee89aaf8f135765f8f6842eb094d686bd4f3454"
+ }
+}

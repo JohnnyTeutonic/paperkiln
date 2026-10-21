@@ -1,0 +1,85 @@
+{
+ "arxiv_id": "2304.03208",
+ "title": "Cerebras-GPT: Open Compute-Optimal Language Models Trained on the Cerebras Wafer-Scale Cluster",
+ "fields": {
+  "d_model": {
+   "value": 2048,
+   "evidence": "ls larger than roughly 1.3B parameters (hidden size 2048), loss scaling alon"
+  },
+  "context_length": {
+   "value": 2048,
+   "evidence": ". All models are trained with a maximum sequence length of 2048 tokens. Table \\ref{"
+  },
+  "norm": {
+   "value": "layernorm",
+   "evidence": "en * d_model * vocab_size # Layer norms: 7 FLOPs/activation, 2 LNs p",
+   "verdict": "used",
+   "score": 1.5
+  },
+  "activation": {
+   "value": "gelu",
+   "evidence": "inherited from gpt-3: \u201crchitecture} Cerebras-GPT models have a GPT-3-like architecture, an autoregressive transformer decoder\u201d",
+   "verdict": "inherited",
+   "score": null
+  },
+  "positional": {
+   "value": "learned",
+   "evidence": "inherited from gpt-3: \u201crchitecture} Cerebras-GPT models have a GPT-3-like architecture, an autoregressive transformer decoder\u201d",
+   "verdict": "inherited",
+   "score": null
+  }
+ },
+ "unresolved": [
+  "n_layers",
+  "n_heads",
+  "n_kv_heads",
+  "d_ff",
+  "vocab_size",
+  "residual",
+  "attention"
+ ],
+ "mentions": {
+  "norm": [
+   {
+    "value": "layernorm",
+    "score": 1.5
+   }
+  ],
+  "activation": [
+   {
+    "value": "swiglu",
+    "score": -4.5
+   }
+  ],
+  "positional": [
+   {
+    "value": "rope",
+    "score": 2.0
+   },
+   {
+    "value": "alibi",
+    "score": -7.0
+   }
+  ]
+ },
+ "inherits": {
+  "ancestor": "gpt-3",
+  "evidence": "rchitecture} Cerebras-GPT models have a GPT-3-like architecture, an autoregressive transformer decoder",
+  "section": "method"
+ },
+ "variants": [],
+ "mechanism_scan": [
+  {
+   "mechanism": "sparse or banded attention",
+   "where": "1 other sentence(s)",
+   "blocking": false,
+   "evidence": "mentioned, not adopted (related work, contrast or negation)"
+  }
+ ],
+ "source": {
+  "tex_sha256": "925521900d9c8c9f4c09fa21f2f3ebe34aa162161f9fcc7f7a8ac1a00cd33484",
+  "from": "/home/jonat/arxivwork/cache/2304.03208.tex",
+  "extractor": "papers/fetch.py",
+  "extractor_sha256": "39d3819136af8bc31d9be96b5ee89aaf8f135765f8f6842eb094d686bd4f3454"
+ }
+}

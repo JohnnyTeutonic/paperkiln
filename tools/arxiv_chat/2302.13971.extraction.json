@@ -1,0 +1,102 @@
+{
+ "arxiv_id": "2302.13971",
+ "title": ": Open and Efficient Foundation Language Models",
+ "fields": {
+  "norm": {
+   "value": "rmsnorm",
+   "evidence": "lizing the output. We use the RMSNorm normalizing function, introdu",
+   "verdict": "used",
+   "score": 4.5
+  },
+  "activation": {
+   "value": "swiglu",
+   "evidence": "t{zhang2019root}. \\paragraph{SwiGLU activation function [PaLM].}",
+   "verdict": "used",
+   "score": 5.0
+  },
+  "positional": {
+   "value": "rope",
+   "evidence": "embeddings, and instead, add rotary positional embeddings (RoPE), introduc",
+   "verdict": "used",
+   "score": 4.0
+  },
+  "d_model": {
+   "value": 4096,
+   "evidence": "model-size table row 1 of 4"
+  },
+  "n_heads": {
+   "value": 32,
+   "evidence": "model-size table row 1 of 4"
+  },
+  "n_layers": {
+   "value": 32,
+   "evidence": "model-size table row 1 of 4"
+  }
+ },
+ "unresolved": [
+  "n_kv_heads",
+  "d_ff",
+  "vocab_size",
+  "context_length",
+  "residual",
+  "attention"
+ ],
+ "mentions": {
+  "norm": [
+   {
+    "value": "rmsnorm",
+    "score": 4.5
+   }
+  ],
+  "activation": [
+   {
+    "value": "swiglu",
+    "score": 5.0
+   },
+   {
+    "value": "relu",
+    "score": -2.5
+   }
+  ],
+  "positional": [
+   {
+    "value": "rope",
+    "score": 4.0
+   }
+  ]
+ },
+ "inherits": {
+  "ancestor": "transformer",
+  "evidence": "n large language models, our network is based on the transformer architecture \\cite{vaswaniAttention2017}. We leverag",
+  "section": "method"
+ },
+ "variants": [
+  {
+   "d_model": 4096,
+   "n_heads": 32,
+   "n_layers": 32
+  },
+  {
+   "d_model": 5120,
+   "n_heads": 40,
+   "n_layers": 40
+  },
+  {
+   "d_model": 6656,
+   "n_heads": 52,
+   "n_layers": 60
+  },
+  {
+   "d_model": 8192,
+   "n_heads": 64,
+   "n_layers": 80
+  }
+ ],
+ "mechanism_scan": [],
+ "source": {
+  "tex_sha256": "72a52317cda0bed5ccf08b30b870048097862b276e592b485db91448e7e90fad",
+  "from": "/home/jonat/arxivwork/cache/2302.13971.tex",
+  "extractor": "papers/fetch.py",
+  "extractor_sha256": "39d3819136af8bc31d9be96b5ee89aaf8f135765f8f6842eb094d686bd4f3454"
+ }
+}

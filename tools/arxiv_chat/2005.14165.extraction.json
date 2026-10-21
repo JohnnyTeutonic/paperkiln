@@ -1,0 +1,80 @@
+{
+ "arxiv_id": "2005.14165",
+ "title": "Language Models are Few-Shot Learners",
+ "fields": {
+  "d_model": {
+   "value": 213,
+   "evidence": "in this vein has successively increased model size: 213 million parameters"
+  },
+  "context_length": {
+   "value": 2048,
+   "evidence": "train on sequences of the full n_{ctx}=2048 token context window, packing mul"
+  },
+  "norm": {
+   "value": "layernorm",
+   "evidence": "inherited from gpt-2: \u201csults for everything else. We use the same model and architecture as GPT-2 \\cite{radford2019language}, including t\u201d",
+   "verdict": "inherited",
+   "score": null
+  },
+  "activation": {
+   "value": "gelu",
+   "evidence": "inherited from gpt-2: \u201csults for everything else. We use the same model and architecture as GPT-2 \\cite{radford2019language}, including t\u201d",
+   "verdict": "inherited",
+   "score": null
+  },
+  "positional": {
+   "value": "learned",
+   "evidence": "inherited from gpt-2: \u201csults for everything else. We use the same model and architecture as GPT-2 \\cite{radford2019language}, including t\u201d",
+   "verdict": "inherited",
+   "score": null
+  }
+ },
+ "unresolved": [
+  "n_layers",
+  "n_heads",
+  "n_kv_heads",
+  "d_ff",
+  "vocab_size",
+  "residual",
+  "attention"
+ ],
+ "mentions": {},
+ "inherits": {
+  "ancestor": "gpt-2",
+  "evidence": "sults for everything else. We use the same model and architecture as GPT-2 \\cite{radford2019language}, including t",
+  "section": "abstract"
+ },
+ "variants": [],
+ "mechanism_scan": [
+  {
+   "mechanism": "state-space model",
+   "where": "3 other sentence(s)",
+   "blocking": false,
+   "evidence": "mentioned, not adopted (related work, contrast or negation)"
+  },
+  {
+   "mechanism": "mixture of experts",
+   "where": "1 other sentence(s)",
+   "blocking": false,
+   "evidence": "mentioned, not adopted (related work, contrast or negation)"
+  },
+  {
+   "mechanism": "sparse or banded attention",
+   "where": "first-person sentence",
+   "blocking": true,
+   "evidence": "We use the same model and architecture as GPT-2 \\cite{radford2019language}, including the modified initialization, pre-normalization, and reversible tokenization described therein, with the exception that we use alternating dense and locall"
+  },
+  {
+   "mechanism": "encoder-decoder or encoder-only model",
+   "where": "2 other sentence(s)",
+   "blocking": false,
+   "evidence": "mentioned, not adopted (related work, contrast or negation)"
+  }
+ ],
+ "source": {
+  "tex_sha256": "00f8b608e3bf3fee06cd310d351aa8eb04f1fcb75b284d69af673c5ee558a25b",
+  "from": "/home/jonat/arxivwork/cache/2005.14165.tex",
+  "extractor": "papers/fetch.py",
+  "extractor_sha256": "39d3819136af8bc31d9be96b5ee89aaf8f135765f8f6842eb094d686bd4f3454"
+ }
+}
