@@ -11,22 +11,25 @@ special tokens glued to words):
 llama.cpp's own llama-tokenize is the third leg, in the vocab trainer's
 check (corpus/fetchers). Skipped without the binary or the Python packages.
 """
+import json
 import os
 from pathlib import Path
 import random
 import struct
 import subprocess
+import sys
 
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "tools"))
 LLAMA3 = (r"(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}{1,3}| ?[^\s\p{L}\p{N}]+[\r\n]*|"
           r"\s*[\r\n]+|\s+(?!\S)|\s+")
 SPECIALS = ["<unk>", "<|endoftext|>", "<|user|>", "<|assistant|>"]
 PIECES = ["a", "Z", "ab", " ", "  ", "   ", "9", "12345", "3.14", "'", "'s", "'S", "'LL", "'re", "'Ve", "'d",
-          "!!", "...", "$", "é", "é", "ß", "中文", "텍스트", "Ελλάδα", "١٢٣", "½", "😀", "✓", "\t", "\r",
-          "\n", "\r\n", "\n\n", " \n ", " ", "　", " ", "<|", "|>", "<|user|>", "<|endoftext|>",
-          "x<|assistant|>y", "don't", "WE'VE", "I'm", "naïve", "x̀́", "​", "\x0b"]
+          "!!", "...", "$", "é", "e\u0301", "ß", "中文", "텍스트", "Ελλάδα", "١٢٣", "½", "😀", "✓", "\t", "\r",
+          "\n", "\r\n", "\n\n", " \n ", "\u00a0", "\u3000", "\u2028", "<|", "|>", "<|user|>", "<|endoftext|>",
+          "x<|assistant|>y", "don't", "WE'VE", "I'm", "naïve", "x\u0300\u0301", "\u200b", "\x0b"]
 TEXT = ("Once upon a time, there was a little girl named Lily. She loved to play outside!\n"
         "\"Can I have 12 apples?\" asked Tom. 'Yes,' said Mom. It's 2026; we'll see 1,000,000 of them.\n"
         "<|user|> what is 3 plus 4 ?<|assistant|> the answer is 7 .<|endoftext|>\n"
@@ -54,9 +57,10 @@ def _run(arg, recs):
     return out
 
 
-pytestmark = pytest.mark.skipif(_binary() is None, reason="set LLAMA3_ENCODE_BIN to the built llama3_encode")
+needs_bin = pytest.mark.skipif(_binary() is None, reason="set LLAMA3_ENCODE_BIN to the built llama3_encode")
 
 
+@needs_bin
 def test_pre_tokeniser_matches_the_llama3_regex():
     regex = pytest.importorskip("regex")
     recs = _records(1, 2000)
@@ -80,7 +84,9 @@ def _write_gguf(path, tokens, merges, types):
             f.write(s(k) + struct.pack("<I", t) + v)
 
 
-def test_ids_match_hf_tokenizers(tmp_path):
+@pytest.fixture(scope="module")
+def hf(tmp_path_factory):
+    """An HF ByteLevel BPE trained as the vocabulary trainer does, and its GGUF."""
     tk = pytest.importorskip("tokenizers")
     from tokenizers import Regex, decoders, models, pre_tokenizers, trainers
     tok = tk.Tokenizer(models.BPE(ignore_merges=True))
@@ -94,12 +100,67 @@ def test_ids_match_hf_tokenizers(tmp_path):
     vocab = tok.get_vocab()
     tokens = [t for t, _ in sorted(vocab.items(), key=lambda kv: kv[1])]
     assert [vocab[t] for t in tokens] == list(range(len(tokens))) and tokens[:4] == SPECIALS
-    import json
     merges = [" ".join(m) if isinstance(m, list) else m for m in json.loads(tok.to_str())["model"]["merges"]]
-    types = [2] + [3] * 3 + [1] * (len(tokens) - 4)
-    p = tmp_path / "v.gguf"
-    _write_gguf(p, tokens, merges, types)
+    p = tmp_path_factory.mktemp("v") / "v.gguf"
+    _write_gguf(p, tokens, merges, [2] + [3] * 3 + [1] * (len(tokens) - 4))
+    return tok, p
+
+
+@needs_bin
+def test_ids_match_hf_tokenizers(hf):
+    tok, p = hf
     recs = _records(2, 2000)
     for rec, line in zip(recs, _run(str(p), recs)):
-        cpp = list(map(int, line.split()))
-        assert cpp == tok.encode(rec, add_special_tokens=False).ids, repr(rec)
+        assert list(map(int, line.split())) == tok.encode(rec, add_special_tokens=False).ids, repr(rec)
+
+
+def test_from_gguf_rebuilds_the_trained_tokenizer(hf):
+    import llama3_bpe
+    tok, p = hf
+    again = llama3_bpe.from_gguf(str(p))
+    for rec in _records(4, 1000):
+        assert again.encode(rec, add_special_tokens=False).ids == tok.encode(rec, add_special_tokens=False).ids
+
+
+def _read_ids(path):
+    b = open(path, "rb").read()
+    assert b[:8] == b"PKIDS001"
+    width, nv, n = struct.unpack_from("<IIQ", b, 8)
+    return nv, list(struct.unpack_from(f"<{n}{'H' if width == 2 else 'I'}", b, 24))
+
+
+def _corpus():
+    rng = random.Random(5)
+    docs = ["".join(rng.choice(PIECES) for _ in range(rng.randrange(1, 60))) for _ in range(300)]
+    return "<|endoftext|>\n".join(docs) + "<|user|>hi<|assistant|>hello<|endoftext|>"
+
+
+def test_corpus_ids_equal_whole_text_encoding(hf, tmp_path, monkeypatch):
+    import corpus_ids
+    import llama3_bpe
+    tok, p = hf
+    text = _corpus()
+    src = tmp_path / "c.txt"
+    src.write_bytes(text.encode("utf-8"))
+    orig = corpus_ids.chunks
+    monkeypatch.setattr(corpus_ids, "chunks", lambda path: orig(path, size=97))  # specials straddle blocks
+    out = tmp_path / "c.ids"
+    assert corpus_ids.main([str(src), str(p), str(out)]) == 0
+    nv, ids = _read_ids(out)
+    assert nv == tok.get_vocab_size() and ids == llama3_bpe.from_gguf(str(p)).encode(text, add_special_tokens=False).ids
+
+
+def test_corpus_ids_with_a_paperkiln_bpe_vocab(tmp_path, monkeypatch):
+    import bpe
+    import corpus_ids
+    text = _corpus()
+    tok = bpe.train(text, 400)
+    v = tmp_path / "v.gguf"
+    bpe.write_gguf(str(v), tok)
+    src = tmp_path / "c.txt"
+    src.write_bytes(text.encode("utf-8"))
+    orig = corpus_ids.chunks
+    monkeypatch.setattr(corpus_ids, "chunks", lambda path: orig(path, size=97))
+    out = tmp_path / "c.ids"
+    assert corpus_ids.main([str(src), str(v), str(out)]) == 0
+    assert _read_ids(out) == (len(tok.tokens), tok.encode(text))
