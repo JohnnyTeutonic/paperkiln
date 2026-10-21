@@ -29,9 +29,20 @@ and is cross-checked against it (`experiments/corpus_c0/`).
 `fetchers/dialogue_pt.py` builds SODA, OpenAssistant, UltraChat-200k and
 everyday-conversations as separate corpora, each checked against the eval sets by
 `decontam.py`. `mix_pretrain.py` then mixes them with FineWeb-Edu into a main part and an
-annealing tail. Per-source counts by reason (kept, non-alternating, system instruction,
-markers, duplicate, decontaminated) are in each corpus's `report.json`; they are filled in
-here once the corpora are built.
+annealing tail. Per-source counts by reason are in each corpus's `report.json`. As built on
+21 Oct 2026 (Colab data job; ledger `dialogue_pt_v1.ledger.json`):
+
+| Source | Rows in | Kept | Dropped (reason: count) | Text | Answer flags |
+|---|---:|---:|---|---:|---:|
+| SODA | 1,191,582 | 1,139,202 | non-alternating 39,280; empty turn 12,988; duplicate 58; decontaminated 54 | 834 MB | 2,537 |
+| UltraChat-200k | 207,865 | 203,783 | decontaminated 4,051; empty turn 31 | 1,185 MB | 5,575 |
+| OpenAssistant (oasst2 + oasst1) | 13,854 trees | 5,388 | not English or not ready 8,453; decontaminated 8; too short 5 | 10.6 MB | 126 |
+| everyday-conversations | 2,260 | 2,256 | decontaminated 4 | 1.9 MB | 49 |
+
+No source has a system turn, so none was stripped or dropped for one. UltraChat's
+decontamination share (2%) is the highest because `chat_prompts_v1` takes half its prompts from
+UltraChat's own test split. Answer flags mark a simple-QA fact or science answer near its
+question's words; they are reported, not dropped.
 SODA is CC-BY-4.0: Kim et al., 2023, "SODA: Million-scale Dialogue Distillation with Social
 Commonsense Contextualization" (allenai/soda).
 
