@@ -193,13 +193,13 @@ textbook and loop.
   - the conversational pretraining corpora (built: 1.35M dialogues);
   - the 16,384-token Llama 3 scheme vocabulary, trained and checked id for id against
     llama.cpp's own tokeniser;
-  - the large SFT set rebuilt for that vocabulary.
-- **mtstudio features, written and landing with their build:** reading pre-tokenised `.ids`
+- **mtstudio features, built and tested, landing on master:** reading pre-tokenised `.ids`
   corpora, an annealing tail (`data.anneal`), the Llama 3 encoder, the `/chat` repetition
   penalty shared with ember, a KV cache for `mtstudio chat`, and batched SFT evaluation.
-- **A gate model** on the new vocabulary, so ember's 40/40 parity gate runs before the big base
-  finishes.
-- **The first Claude-judged preference pilot:** 200 prompts, candidates sampled through ember.
+- **The first Claude-judged preference pilot:** 200 prompts, candidates sampled through ember
+  from whichever Colab model the evaluation ranks first.
+- **Once the next-base launch starts:** the large SFT set rebuilt for the new vocabulary, and a
+  gate model on it, so ember's 40/40 parity gate runs before the big base finishes.
 
 **Longer:**
 - **The next base:** `pk_base_v1`, d768 L12 T512 for 120,000 steps on a 4.2 GB mix (27%
