@@ -4,10 +4,13 @@ text for the chat model's base (experiments/chat_general/PLAN.md; registry
 fineweb_edu_v1, licence odc-by).
 
     python corpus/fetchers/fineweb_edu.py shard0_v1 [--pin]   # one 2.15 GB shard, ~750M GPT-2 tokens
+    python corpus/fetchers/fineweb_edu.py shard1_v1 [--pin]   # the next shards (lever 3), shard1-3
     python corpus/fetchers/fineweb_edu.py sample_v1 [--pin]   # the first 50 MB of shard0's train text
 
-One pinned parquet shard (sample/10BT/000_00000.parquet at revision REV)
-covers far more tokens than a night of training uses. Each document goes
+One pinned parquet shard (sample/10BT/00N_00000.parquet at revision REV)
+covers far more tokens than a night of training uses; shardN_v1 is shard N
+(0-3; 1-3 are lever 3's more pretraining tokens, pinned on their first
+fetch, on a VM, with the hashes file brought home). Each document goes
 to train or val by a hash of its id (99.5 / 0.5), independent of order.
 Outputs in corpus/data/<id>/:
   pretrain_train.txt   train documents, <|endoftext|> between them
@@ -27,7 +30,7 @@ import _common as C  # noqa: E402
 
 REPO = "HuggingFaceFW/fineweb-edu"
 REV = "87f09149ef4734204d70ed1d046ddc9ca3f2b8f9"
-SHARD = "sample/10BT/000_00000.parquet"
+SHARDS = {f"shard{n}_v1": f"sample/10BT/{n:03d}_00000.parquet" for n in range(4)}  # 14 shards at REV
 SAMPLE_BYTES = 50 * 1024 * 1024
 EOT = "<|endoftext|>"
 
@@ -37,11 +40,11 @@ def split_of(doc_id):
     return "val" if h < 5 else "train"
 
 
-def documents():
+def documents(shard):
     """(id, text) in shard order."""
     import pyarrow.parquet as pq
     from huggingface_hub import hf_hub_download
-    path = hf_hub_download(REPO, SHARD, repo_type="dataset", revision=REV)
+    path = hf_hub_download(REPO, shard, repo_type="dataset", revision=REV)
     f = pq.ParquetFile(path)
     for batch in f.iter_batches(batch_size=2048, columns=["id", "text"]):
         d = batch.to_pydict()
@@ -51,7 +54,7 @@ def documents():
             yield i, t.replace(EOT, "")
 
 
-def build(cid, sample, pin):
+def build(cid, shard, sample, pin):
     names = ["pretrain_train.txt"] if sample else ["pretrain_train.txt", "val.txt"]
     if C.already_done(cid, names):
         print(f"{cid}: present and verified")
@@ -60,7 +63,7 @@ def build(cid, sample, pin):
     va = None if sample else open(C.out_path(cid, "val.txt"), "w", encoding="utf-8", newline="\n")
     counts = {"train": 0, "val": 0}
     written = 0
-    for doc_id, text in documents():
+    for doc_id, text in documents(shard):
         text = text.strip()
         if not text:
             continue
@@ -81,17 +84,17 @@ def build(cid, sample, pin):
         va.close()
     print(f"{cid}: {counts}")
     C.finish(cid, [C.out_path(cid, n) for n in names],
-             f"{REPO}@{REV} {SHARD}{' first 50 MB of train' if sample else ''}, split 99.5/0.5 by sha256(id)",
+             f"{REPO}@{REV} {shard}{' first 50 MB of train' if sample else ''}, split 99.5/0.5 by sha256(id)",
              pin=pin)
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Fetch one pinned FineWeb-Edu shard.")
-    ap.add_argument("target", choices=["shard0_v1", "sample_v1"])
+    ap.add_argument("target", choices=[*SHARDS, "sample_v1"])
     ap.add_argument("--pin", action="store_true")
     a = ap.parse_args(argv)
     try:
-        build(f"fineweb_edu_{a.target}", a.target == "sample_v1", a.pin)
+        build(f"fineweb_edu_{a.target}", SHARDS.get(a.target, SHARDS["shard0_v1"]), a.target == "sample_v1", a.pin)
     except C.HashMismatch as e:
         C.die(str(e))
     return 0
