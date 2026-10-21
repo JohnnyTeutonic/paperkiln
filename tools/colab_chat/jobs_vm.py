@@ -9,8 +9,8 @@ whose argv runs from the repo root with "{out}" = /content/chat/<name> and
 "{upload}" = /content/chat/upload (finished when it exits 0; no checkpoints).
 A training job runs `mtstudio run` in /content/chat/<name>/ (its
 out_dir), writes /content/chat/STATUS_<name> (WAITING, RUNNING, FINISHED,
-FAILED) and logs to /content/chat/<name>_train.log. A job with "after" waits
-until that job is FINISHED; "init_job" points train.init_from (or
+FAILED) and logs to /content/chat/<name>_train.log. A job with "after" (a
+name or a list) waits until those jobs are FINISHED; "init_job" points train.init_from (or
 train.upcycle_from with "init_key": "upcycle_from") at that job's final
 weights, and "init_file" at a file the runner uploaded. Checkpoints the runner
 relayed home come back in /content/chat/upload/<name>/ on a relaunch and are
@@ -171,12 +171,13 @@ def main():
             # so big corpora are not tokenised at once (host RAM is shared).
             if time.time() - t0 < jobs[name].get("delay_s", 0):
                 continue
-            after = jobs[name].get("after")
-            if after and status(after) == "FAILED":
+            after = jobs[name].get("after") or []
+            after = [after] if isinstance(after, str) else after  # one job or a list
+            if any(status(x) == "FAILED" for x in after):
                 set_status(name, "FAILED")
                 print(f"{name}: skipped, {after} failed", flush=True)
                 continue
-            if after and status(after) != "FINISHED":
+            if any(status(x) != "FINISHED" for x in after):
                 continue
             log = open(f"{C}/{name}_train.log", "a")
             # A job's "env" overrides the fast defaults (e.g. gpt2-family runs
