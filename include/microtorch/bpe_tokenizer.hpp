@@ -201,8 +201,12 @@ inline GgufTokenizer read_gguf_tokenizer(const std::string& path) {
         } else if (k == "tokenizer.ggml.token_type" && t == 9) {
             const uint32_t et = u32();
             const uint64_t n = u64();
-            if (et != 5) throw std::runtime_error(path + ": " + k + " is not an int32 array");
-            for (uint64_t j = 0; j < n; ++j) token_type.push_back(static_cast<int32_t>(u32()));
+            for (uint64_t j = 0; j < n; ++j) {  // another element type is skipped, not an error
+                if (et == 5)
+                    token_type.push_back(static_cast<int32_t>(u32()));
+                else
+                    skip(et);
+            }
         } else if (k == "tokenizer.ggml.model" && t == 8) {
             model = str();
         } else if (k == "tokenizer.ggml.pre" && t == 8) {
