@@ -80,18 +80,40 @@ class State:
         json.dump(self.d, open(os.path.join(HOME, "state.json"), "w"), indent=1)
 
 
+def remote_sizes(d):
+    """{file name: size} in a VM directory, or {} when it cannot be read."""
+    rc, out = exec_py("import os, json\n"
+                      f"d = {d!r}\n"
+                      "print('SIZES', json.dumps({f: os.path.getsize(os.path.join(d, f)) for f in os.listdir(d)}"
+                      " if os.path.isdir(d) else {}))\n")
+    m = re.search(r"^SIZES (.*)$", out, re.M)
+    return json.loads(m.group(1)) if m else {}
+
+
 def upload_file(src, dst):
     """Upload in 45 MB parts named dst.partNN (jobs_vm.py reassembles job
-    checkpoints; whole input files are reassembled by the exec below)."""
+    checkpoints; whole input files are reassembled by the exec below). Parts
+    already on the VM at full size are skipped, so a failed upload resumes
+    instead of starting over (at ~0.6 MB/s a restart cost 20 minutes), and a
+    failed part is retried before the upload gives up."""
+    have = remote_sizes(os.path.dirname(dst))
     with open(src, "rb") as fh:
         i = 0
         while True:
             buf = fh.read(CHUNK)
             if not buf:
                 break
+            name = f"{os.path.basename(dst)}.part{i:02d}"
+            if have.get(name) == len(buf):
+                i += 1
+                continue
             part = os.path.join(HOME, f"up.part{i:02d}")
             open(part, "wb").write(buf)
-            rc, _ = colab("upload", "-s", NAME, part, f"{dst}.part{i:02d}", timeout=1500)
+            for _ in range(3):
+                rc, _ = colab("upload", "-s", NAME, part, f"{dst}.part{i:02d}", timeout=1500)
+                if rc == 0:
+                    break
+                log(f"upload of {src} part {i} failed; retrying")
             os.remove(part)
             if rc != 0:
                 raise RuntimeError(f"upload of {src} part {i} failed")
