@@ -64,17 +64,64 @@ def write_jsonl(p, rows):
             g.write(json.dumps(r, ensure_ascii=False) + "\n")
 
 
+_TOK = None
+
+
+class _Llama3:
+    """tools/llama3_bpe's tokenizer behind bpe.BPE's encode(text) -> ids."""
+
+    def __init__(self, vocab):
+        import llama3_bpe
+        self.tok = llama3_bpe.from_gguf(vocab)
+
+    def encode(self, text):
+        return self.tok.encode(text, add_special_tokens=False).ids
+
+
+def _init_tok(vocab):
+    """The vocabulary's own encoder: paperkiln "bpe" (tools/bpe.py) or the
+    llama.cpp form "gpt2" / "llama-bpe" (tools/llama3_bpe.py). Both split at
+    the special tokens first, which _sized relies on."""
+    global _TOK
+    import llama3_bpe
+    model = llama3_bpe.read_gguf_kv(vocab, {"tokenizer.ggml.model"}).get("tokenizer.ggml.model")
+    _TOK = _Llama3(vocab) if model == "gpt2" else bpe.read_gguf(vocab)
+
+
+def _sized(line):
+    """One dialogue's examples with their token counts, or None if it carries
+    an [INST] marker. Each message is encoded once: the special tokens are
+    pre-tokeniser chunk boundaries, so a prompt's length is the sum of its
+    pieces' lengths, and re-encoding the growing history for every turn (the
+    old cost, quadratic in turns) gives the same numbers."""
+    d = json.loads(line)
+    if any(MARKER.search(m["content"]) for m in d["messages"]):
+        return d, None
+    ms = d["messages"]
+    out, hist = [], 0
+    for k, ex in enumerate(examples(ms)):
+        nu = len(_TOK.encode(ms[2 * k]["content"]))
+        na = len(_TOK.encode(ms[2 * k + 1]["content"]))
+        out.append((ex, hist + 2 + nu + na + 1))  # <|user|> u <|assistant|> + a + <|endoftext|>
+        hist += 3 + nu + na  # turn(u, a)
+    return d, out
+
+
 def cmd_sft(a):
-    tok = bpe.read_gguf(a.vocab)
     kept = dropped = marked = skipped = 0
     with open(a.dialogues, encoding="utf-8") as f, open(a.out, "w", encoding="utf-8", newline="\n") as g:
-        for line in f:
-            d = json.loads(line)
-            if any(MARKER.search(m["content"]) for m in d["messages"]):
+        if a.jobs > 1:
+            import multiprocessing as mp
+            pool = mp.Pool(a.jobs, initializer=_init_tok, initargs=(a.vocab,))
+            sized = pool.imap(_sized, f, chunksize=256)  # imap keeps the file's order
+        else:
+            _init_tok(a.vocab)
+            pool, sized = None, map(_sized, f)
+        for d, exs in sized:
+            if exs is None:
                 marked += 1
                 continue
-            for ex in examples(d["messages"]):
-                n = len(tok.encode(ex["prompt"])) + len(tok.encode(ex["completion"])) + 1
+            for ex, n in exs:
                 if n > a.T + 1:
                     dropped += 1
                     continue
@@ -88,6 +135,8 @@ def cmd_sft(a):
                     break
             if a.max and kept >= a.max:
                 break
+        if pool is not None:
+            pool.terminate()
     return {"kept": kept, "skipped": skipped, "dropped_over_T": dropped, "dropped_dialogues_with_markers": marked,
             "out": a.out}
 
@@ -99,7 +148,8 @@ def cmd_prompts(a):
 
 
 def cmd_pairs(a):
-    tok = bpe.read_gguf(a.vocab)
+    _init_tok(a.vocab)
+    tok = _TOK
     ex = read_jsonl(a.examples)
     pairs, same, over = [], 0, 0
     for s in read_jsonl(a.samples):
@@ -152,6 +202,7 @@ def main(argv=None):
     s.add_argument("--T", type=int, default=256)
     s.add_argument("--out", required=True)
     s.add_argument("--max", type=int, default=0, help="stop after this many examples (0 = all)")
+    s.add_argument("--jobs", type=int, default=1, help="tokenising processes (output is identical for any value)")
     s.add_argument("--skip", type=int, default=0, help="skip the first N examples that would be kept")
     p = sub.add_parser("prompts")
     p.add_argument("examples")

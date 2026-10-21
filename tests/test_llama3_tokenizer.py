@@ -164,3 +164,41 @@ def test_corpus_ids_with_a_paperkiln_bpe_vocab(tmp_path, monkeypatch):
     out = tmp_path / "c.ids"
     assert corpus_ids.main([str(src), str(v), str(out)]) == 0
     assert _read_ids(out) == (len(tok.tokens), tok.encode(text))
+
+
+def test_chat_data_sizes_with_a_llama3_vocab(hf):
+    import chat_data
+    import llama3_bpe
+    _, p = hf
+    full = llama3_bpe.from_gguf(str(p))
+    rng = random.Random(6)
+    chat_data._init_tok(str(p))
+    for _ in range(200):
+        msgs = []
+        for k in range(2 * rng.randrange(1, 4)):
+            msgs.append({"role": "user" if k % 2 == 0 else "assistant",
+                         "content": "".join(rng.choice(PIECES[:40]) for _ in range(rng.randrange(1, 12)))})
+        d, out = chat_data._sized(json.dumps({"messages": msgs}))
+        if out is None:
+            continue
+        for ex, n in out:
+            text = ex["prompt"] + ex["completion"] + "<|endoftext|>"
+            assert n == len(full.encode(text, add_special_tokens=False).ids), repr(text)
+
+
+def test_chat_data_sizes_with_a_paperkiln_bpe_vocab(tmp_path):
+    import bpe
+    import chat_data
+    tok = bpe.train(TEXT, 400)
+    v = tmp_path / "v.gguf"
+    bpe.write_gguf(str(v), tok)
+    chat_data._init_tok(str(v))
+    rng = random.Random(7)
+    for _ in range(200):
+        msgs = [{"role": "user" if k % 2 == 0 else "assistant",
+                 "content": "".join(rng.choice(PIECES[:40]) for _ in range(rng.randrange(1, 12)))}
+                for k in range(2 * rng.randrange(1, 4))]
+        d, out = chat_data._sized(json.dumps({"messages": msgs}))
+        for ex, n in out or []:
+            text = ex["prompt"] + ex["completion"] + "<|endoftext|>"
+            assert n == len(tok.encode(text)), repr(text)
