@@ -340,6 +340,8 @@ FLEX = [  # (custom, arch, hint, extra tensors per block or None)
     ({"layers": 3, "norm": "rmsnorm", "activation": "swiglu", "position": "sinusoidal"}, "paperkiln", "flex", None),
     ({"layers": 2, "activation": "relu", "residual": "highway", "attention": "swa", "window": 4, "sinks": 2},
      "paperkiln", "flex_highway", ("highway_attn", "highway_ffn")),
+    # A runtime-defined activation (squared ReLU): relu's tensors, an expr node in place of relu.
+    ({"layers": 2, "activation": "expr:max(x, 0)^2"}, "paperkiln", "flex", None),
 ]
 
 
@@ -376,6 +378,11 @@ def test_flex_flavours_export(tmp_path, custom, arch, hint, extra):
                 assert abs(table[p_ * d + i] - want) < 1e-6
     if custom.get("activation") == "relu":
         assert "relu" in ops
+    if custom.get("activation", "").startswith("expr:"):
+        assert "relu" not in ops and ops.count("expr") == 1
+        node = nodes[ops.index("expr")]
+        assert node == {"op": "expr", "in": ["u"], "expr": custom["activation"][5:], "out": "u"}
+        assert nodes[ops.index("expr") - 1]["weight"] == "blk.{i}.ffn_up.weight"
     if custom.get("attention") == "swa":
         att = [n for n in nodes if n["op"] == "attention"][0]
         assert (att["window"], att["sinks"]) == (4, 2)

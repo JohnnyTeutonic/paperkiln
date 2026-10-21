@@ -134,6 +134,10 @@ json append(const std::string& list, const std::string& x, const std::string& ou
     return {{"op", "append"}, {"in", json::array({list, x})}, {"out", out}};
 }
 
+json expr(const std::vector<std::string>& ins, const std::string& text, const std::string& out) {
+    return {{"op", "expr"}, {"in", ins}, {"expr", text}, {"out", out}};
+}
+
 json ssm_scan(const std::string& in, const std::string& state, const std::string& prefix, size_t n,
               const std::string& out) {
     return {{"op", "ssm_scan"},       {"in", json::array({in})},  {"state", state},

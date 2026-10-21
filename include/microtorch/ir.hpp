@@ -156,6 +156,52 @@
 //               s [n], f32, initial 0. Prefill is the sequential scan.
 //               ROUNDING.
 //
+// Runtime-defined ops (a new activation or gate from a paper, added to a
+// model without recompiling either runtime; ops::expr, microtorch/expr.hpp;
+// numpy reference tools/ir_expr.py):
+//   expr        in [v0, v1, ...], every input [T, w] with one w; out [T, w].
+//               Attribute "expr", a string in this closed grammar (nothing
+//               else is accepted; spaces and tabs are ignored):
+//                 expr    := term (('+' | '-') term)*
+//                 term    := unary (('*' | '/') unary)*
+//                 unary   := '-' unary | power
+//                 power   := primary ('^' unary)?
+//                 primary := number | name | pi | '(' expr ')'
+//                            | fn '(' expr (',' expr)* ')'
+//               so ^ binds tightest and is right-associative (2^3^2 =
+//               2^(3^2), -x^2 = -(x^2), x^-1 is allowed). A number is
+//               decimal or scientific (1, 0.5, .5, 2., 1e-5, 1.5E+3), read
+//               as the nearest float (strtof), and must be finite; pi is
+//               the nearest float to pi. Names are positional, not the IR
+//               values': the inputs in the order of "in" are x, then a, b,
+//               c, ... (x the first, a the second; at most 23 inputs, x
+//               and a .. v). Functions,
+//               each over the expression's [T, w] values:
+//                 exp log sqrt tanh erf abs   elementwise (f32 libm)
+//                 sigmoid(e)       1 / (1 + exp(-e)), as the sigmoid op
+//                 relu(e)          max(0, e), as the relu op
+//                 max(a, b)        a where a >= b, else b
+//                 min(a, b)        a where a <= b, else b
+//                 where(c, a, b)   a where c > 0, else b
+//                 rowsum(e)        the sum of the row's w entries, added in
+//                                  ascending column order from 0
+//                 rowmean(e)       rowsum(e) / w
+//                 rowmax(e)        the row's largest entry
+//               the row reductions broadcast back to [T, w]. + - * / are
+//               elementwise and ^ is pow (powf). Every primitive is
+//               computed in f32 and rounded to f32 after it, with no fused
+//               multiply-add; a subexpression without inputs is folded in
+//               f32 with the same operations (where(c, ...) on constants
+//               included), and a result without inputs fills [T, w]. The
+//               rows are independent, so decode (T = 1) is prefill's last
+//               row. The training gradients come from the primitives
+//               (max, min and where pass it to the chosen operand, none to
+//               where's condition; rowmax to the row's first largest
+//               entry; abs and relu 0 at 0); an engine needs only the
+//               forward. An engine that cannot run an expression fails at
+//               load naming the function. ROUNDING (libm transcendentals
+//               differ by an ulp between platforms).
+//
 // Every op has the same prefill (T tokens) and decode (T = 1) semantics;
 // attention additionally reads and appends to its kv state in decode, and
 // a recurrent op reads and replaces its recurrent state.
@@ -288,7 +334,9 @@
 //   flex, flex_highway, flex_plain  the flex decoder (residual, highway,
 //               plain): pre-norm layernorm or rmsnorm (attn_norm / ffn_norm /
 //               output_norm, no bias under rmsnorm), FFN gelu (ffn_up, ffn_down
-//               biased), relu (the same with relu) or swiglu (ffn_gate,
+//               biased), relu (the same with relu), a runtime-defined
+//               activation "expr:<e>" (the same with an expr node over one
+//               input) or swiglu (ffn_gate,
 //               ffn_up, ffn_down, no biases: down(silu(gate h) * up h)),
 //               positions learned or sinusoidal (position_embd holds the
 //               fixed table, rounded to f32), attention exact or windowed.
@@ -362,6 +410,8 @@ json append(const std::string& list, const std::string& x, const std::string& ou
 json ssm_scan(const std::string& in, const std::string& state, const std::string& prefix, size_t n,
               const std::string& out);
 json ssm_state(const std::string& name, size_t n);
+// A runtime-defined op: text in the grammar of microtorch/expr.hpp.
+json expr(const std::vector<std::string>& ins, const std::string& text, const std::string& out);
 
 }  // namespace ir
 }  // namespace microtorch

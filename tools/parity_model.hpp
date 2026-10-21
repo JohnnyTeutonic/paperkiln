@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include "microtorch/expr.hpp"
 #include "microtorch/gguf.hpp"
 #include "microtorch/ir.hpp"
 #include "microtorch/mamba.hpp"
@@ -471,7 +472,8 @@ private:
 
 // The FLEX family: the paper-faithful decoder. Everything papers/fetch.py
 // extracts becomes constructor-real here — depth, d_ff, norm flavor
-// (LayerNorm|RMSNorm), FFN activation (GELU|ReLU|SwiGLU), and position
+// (LayerNorm|RMSNorm), FFN activation (GELU|ReLU|SwiGLU, or one defined at
+// runtime: "expr:<e>", microtorch/expr.hpp), and position
 // encoding (learned|sinusoidal). Pre-norm wiring throughout (post-norm is
 // not yet a knob; fetch.py does not extract it either). RoPE routes to
 // the llama family instead — its block already owns that composition.
@@ -482,7 +484,7 @@ private:
 struct FlexConfig {
     size_t vocab = 0, d = 128, n_layers = 2, n_heads = 4, d_ff = 512, n_ctx = 128;
     std::string norm = "layernorm";  // layernorm | rmsnorm
-    std::string act = "gelu";        // gelu | relu | swiglu
+    std::string act = "gelu";        // gelu | relu | swiglu | expr:<e> (e over x)
     std::string pos = "learned";     // learned | sinusoidal
     // Registry #0001 (Highway Networks, arXiv 1505.00387): how each
     // sublayer's output combines with its input stream.
@@ -532,7 +534,9 @@ public:
             down = mod<nn::Linear>("mlp.down_proj", c.d_ff, c.d, false, s + 3 + 19);
         } else if (act_ == "gelu") {
             mlp = mod<nn::MLP>("mlp", c.d, c.d_ff, s + 3);  // ParityLM's exact layout
-        } else {  // relu: nn::MLP's Linears (same seeds), relu in between
+        } else {  // relu or expr: nn::MLP's Linears (same seeds), the activation in between
+            if (act_.rfind("expr:", 0) == 0)
+                act_expr = std::make_shared<const Expr>(Expr::parse(act_.substr(5), 1));
             fc = mod<nn::Linear>("mlp.c_fc", c.d, c.d_ff, true, s + 3 + 17);
             proj = mod<nn::Linear>("mlp.c_proj", c.d_ff, c.d, true, s + 3 + 19);
         }
@@ -563,7 +567,8 @@ public:
         } else if (gate) {
             f = down->forward(ops::mul(ops::silu(gate->forward(n)), up->forward(n)));
         } else {
-            f = proj->forward(ops::relu(fc->forward(n)));
+            const Var u = fc->forward(n);
+            f = proj->forward(act_expr ? ops::expr({u}, *act_expr) : ops::relu(u));
         }
         return combine(h, f, gate_m);
     }
@@ -576,6 +581,7 @@ public:
     std::shared_ptr<nn::MLP> mlp;
     std::shared_ptr<nn::Linear> gate, up, down, fc, proj;
     std::shared_ptr<nn::Linear> gate_a, gate_m;  // highway only
+    std::shared_ptr<const Expr> act_expr;        // act "expr:<e>", parsed once
 };
 
 class FlexLM : public nn::Module {
@@ -687,9 +693,10 @@ public:
             n.push_back(b0.up->export_ir("h2", "u", p + "ffn_up.weight"));
             n.push_back(ir::binary("mul", "g", "u", "g"));
             n.push_back(b0.down->export_ir("g", f, p + "ffn_down.weight"));
-        } else {  // relu
+        } else {  // relu, or the runtime-defined activation
             n.push_back(b0.fc->export_ir("h2", "u", p + "ffn_up.weight"));
-            n.push_back(ir::unary("relu", "u", "u"));
+            n.push_back(b0.act_expr ? ir::expr({"u"}, b0.act_expr->text(), "u")
+                                    : ir::unary("relu", "u", "u"));
             n.push_back(b0.proj->export_ir("u", f, p + "ffn_down.weight"));
         }
         combine(f, b0.gate_m, "highway_ffn");

@@ -250,5 +250,28 @@ Var kimi_attention(const Var& q, const Var& k, const Var& v, bool causal,
                                          // every block boundary (the verified
                                          // kernel runs per block)
 
+// ---- runtime-defined ops' primitives (ops::expr, microtorch/expr.hpp) ----
+// Host ops, f32, one rounding per element (no fused multiply-add). The
+// binary ones take operands of one shape. FD-checked in tests/test_expr.cpp.
+Var exp(const Var& x);   // dx = dy .* y
+Var log(const Var& x);   // dx = dy ./ x
+Var sqrt(const Var& x);  // dx = dy .* 0.5 / y
+Var tanh(const Var& x);  // dx = dy .* (1 - y^2)
+Var erf(const Var& x);   // dx = dy .* 2/sqrt(pi) exp(-x^2)
+Var abs(const Var& x);   // dx = dy .* sign(x), 0 at 0
+Var div(const Var& a, const Var& b);  // a ./ b;  da = dy ./ b, db = -dy .* y ./ b
+Var pow(const Var& a, const Var& b);  // powf;  da = dy .* b a^(b-1) (0 where b = 0),
+                                      // db = dy .* y log(a) (0 where y = 0)
+Var maximum(const Var& a, const Var& b);  // a where a >= b, else b; the gradient
+Var minimum(const Var& a, const Var& b);  // follows the chosen operand (min: a <= b)
+Var where(const Var& c, const Var& a, const Var& b);  // a where c > 0, else b;
+                                                      // nothing reaches c
+Var rowsum(const Var& x);  // [T, w] -> [T, 1], ascending column order;
+                           // dx = dy broadcast along the row
+Var rowmax(const Var& x);  // [T, w] -> [T, 1]; the gradient goes to the
+                           // first largest entry of the row
+Var broadcast_cols(const Var& c, size_t n);  // [T, 1] -> [T, n] copies;
+                                             // dc = rowsum(dy)
+
 }  // namespace ops
 }  // namespace microtorch

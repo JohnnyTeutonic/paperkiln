@@ -55,6 +55,7 @@ add_subdirectory(${MICROTORCH_TCPP_DIR}
 add_library(microtorch STATIC
     src/autograd.cpp
     src/ops.cpp
+    src/expr.cpp
     src/nn.cpp
     src/device.cpp
     src/device_cache.cpp
@@ -204,6 +205,15 @@ add_test(NAME inplace COMMAND test_inplace)
 add_executable(test_flex tests/test_flex.cpp)
 target_link_libraries(test_flex PRIVATE microtorch)
 add_test(NAME flex COMMAND test_flex)
+
+# Runtime-defined ops (the IR's expr op): parser, primitives, gradients, a
+# flex run with an expr activation. expr_eval is the CLI tests/test_ir_expr.py
+# compares against the numpy reference (tools/ir_expr.py).
+add_executable(test_expr tests/test_expr.cpp)
+target_link_libraries(test_expr PRIVATE microtorch)
+add_test(NAME expr COMMAND test_expr)
+add_executable(expr_eval tools/expr_eval.cpp)
+target_link_libraries(expr_eval PRIVATE microtorch nlohmann_json::nlohmann_json)
 
 add_executable(test_swa tests/test_swa.cpp)
 target_link_libraries(test_swa PRIVATE microtorch)

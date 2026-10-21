@@ -1328,7 +1328,9 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         fc.sinks = s.sinks;
         if (fc.norm != "layernorm" && fc.norm != "rmsnorm")
             throw std::runtime_error("unknown norm " + fc.norm);
-        if (fc.act != "gelu" && fc.act != "relu" && fc.act != "swiglu")
+        if (fc.act.rfind("expr:", 0) == 0)
+            Expr::parse(fc.act.substr(5), 1);  // a runtime-defined activation; throws naming the column
+        else if (fc.act != "gelu" && fc.act != "relu" && fc.act != "swiglu")
             throw std::runtime_error("unknown activation " + fc.act);
         if (fc.pos != "learned" && fc.pos != "sinusoidal")
             throw std::runtime_error("unknown position " + fc.pos + " (rope = llama family)");

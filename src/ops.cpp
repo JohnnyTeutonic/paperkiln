@@ -1905,5 +1905,216 @@ float clip_grad_norm(const std::vector<Var>& params, float max_norm) {
     return total;
 }
 
+// ---- runtime-defined ops' primitives (ops::expr) ----
+// Host loops: the forward is one f32 operation per element, the backward
+// reads the input (x) and the output (y) of each element.
+namespace {
+
+template <class F, class D>
+Var unary_host(const Var& x, F f, D dydx) {
+    device::materialize(x->data);
+    Matrix out(x->data.rows(), x->data.cols());
+    for (size_t i = 0; i < out.rows(); ++i)
+        for (size_t j = 0; j < out.cols(); ++j) out(i, j) = f(x->data(i, j));
+    return record(std::move(out), {x}, [dydx](Variable* self) {
+        const Var& x = self->parents[0];
+        if (!x->requires_grad) return;
+        device::materialize(self->grad);  // B2.3c: host-read below
+        Matrix dx(x->data.rows(), x->data.cols());
+        for (size_t i = 0; i < dx.rows(); ++i)
+            for (size_t j = 0; j < dx.cols(); ++j)
+                dx(i, j) = self->grad(i, j) * dydx(x->data(i, j), self->data(i, j));
+        x->accumulate(std::move(dx));
+    });
+}
+
+void same_shape(const char* op, const Matrix& a, const Matrix& b) {
+    if (a.rows() != b.rows() || a.cols() != b.cols())
+        throw std::runtime_error(std::string(op) + ": operands must have one shape");
+}
+
+// f(a, b) per element; da(a, b, y) and db(a, b, y) are the partial
+// derivatives, each multiplied into the upstream gradient.
+template <class F, class DA, class DB>
+Var binary_host(const char* op, const Var& a, const Var& b, F f, DA da, DB db) {
+    same_shape(op, a->data, b->data);
+    device::materialize(a->data);
+    device::materialize(b->data);
+    Matrix out(a->data.rows(), a->data.cols());
+    for (size_t i = 0; i < out.rows(); ++i)
+        for (size_t j = 0; j < out.cols(); ++j) out(i, j) = f(a->data(i, j), b->data(i, j));
+    return record(std::move(out), {a, b}, [da, db](Variable* self) {
+        const Var& a = self->parents[0];
+        const Var& b = self->parents[1];
+        device::materialize(self->grad);  // B2.3c: host-read below
+        const size_t R = self->data.rows(), C = self->data.cols();
+        if (a->requires_grad) {
+            Matrix g(R, C);
+            for (size_t i = 0; i < R; ++i)
+                for (size_t j = 0; j < C; ++j)
+                    g(i, j) = self->grad(i, j) * da(a->data(i, j), b->data(i, j), self->data(i, j));
+            a->accumulate(std::move(g));
+        }
+        if (b->requires_grad) {
+            Matrix g(R, C);
+            for (size_t i = 0; i < R; ++i)
+                for (size_t j = 0; j < C; ++j)
+                    g(i, j) = self->grad(i, j) * db(a->data(i, j), b->data(i, j), self->data(i, j));
+            b->accumulate(std::move(g));
+        }
+    });
+}
+
+}  // namespace
+
+Var exp(const Var& x) {
+    return unary_host(x, [](float v) { return std::exp(v); }, [](float, float y) { return y; });
+}
+
+Var log(const Var& x) {
+    return unary_host(x, [](float v) { return std::log(v); }, [](float v, float) { return 1.0f / v; });
+}
+
+Var sqrt(const Var& x) {
+    return unary_host(x, [](float v) { return std::sqrt(v); }, [](float, float y) { return 0.5f / y; });
+}
+
+Var tanh(const Var& x) {
+    return unary_host(x, [](float v) { return std::tanh(v); }, [](float, float y) { return 1.0f - y * y; });
+}
+
+Var erf(const Var& x) {
+    return unary_host(x, [](float v) { return std::erf(v); },
+                      [](float v, float) { return 1.1283791670955126f * std::exp(-v * v); });  // 2/sqrt(pi)
+}
+
+Var abs(const Var& x) {
+    return unary_host(x, [](float v) { return std::fabs(v); },
+                      [](float v, float) { return v > 0.0f ? 1.0f : (v < 0.0f ? -1.0f : 0.0f); });
+}
+
+Var div(const Var& a, const Var& b) {
+    return binary_host(
+        "div", a, b, [](float p, float q) { return p / q; }, [](float, float q, float) { return 1.0f / q; },
+        [](float, float q, float y) { return -y / q; });
+}
+
+Var pow(const Var& a, const Var& b) {
+    return binary_host(
+        "pow", a, b, [](float p, float q) { return std::pow(p, q); },
+        [](float p, float q, float) { return q == 0.0f ? 0.0f : q * std::pow(p, q - 1.0f); },
+        [](float p, float, float y) { return y == 0.0f ? 0.0f : y * std::log(p); });
+}
+
+Var maximum(const Var& a, const Var& b) {
+    return binary_host(
+        "maximum", a, b, [](float p, float q) { return p >= q ? p : q; },
+        [](float p, float q, float) { return p >= q ? 1.0f : 0.0f; },
+        [](float p, float q, float) { return p >= q ? 0.0f : 1.0f; });
+}
+
+Var minimum(const Var& a, const Var& b) {
+    return binary_host(
+        "minimum", a, b, [](float p, float q) { return p <= q ? p : q; },
+        [](float p, float q, float) { return p <= q ? 1.0f : 0.0f; },
+        [](float p, float q, float) { return p <= q ? 0.0f : 1.0f; });
+}
+
+Var where(const Var& c, const Var& a, const Var& b) {
+    same_shape("where", c->data, a->data);
+    same_shape("where", a->data, b->data);
+    device::materialize(c->data);
+    device::materialize(a->data);
+    device::materialize(b->data);
+    const size_t R = a->data.rows(), C = a->data.cols();
+    Matrix out(R, C);
+    for (size_t i = 0; i < R; ++i)
+        for (size_t j = 0; j < C; ++j) out(i, j) = c->data(i, j) > 0.0f ? a->data(i, j) : b->data(i, j);
+    // The condition is a parent (it must outlive the closure) but takes no
+    // gradient: selection is not differentiable.
+    return record(std::move(out), {a, b, c}, [](Variable* self) {
+        const Var& a = self->parents[0];
+        const Var& b = self->parents[1];
+        const Var& c = self->parents[2];
+        device::materialize(self->grad);  // B2.3c: host-read below
+        const size_t R = self->data.rows(), C = self->data.cols();
+        for (int side = 0; side < 2; ++side) {
+            const Var& p = side == 0 ? a : b;
+            if (!p->requires_grad) continue;
+            Matrix g(R, C);
+            for (size_t i = 0; i < R; ++i)
+                for (size_t j = 0; j < C; ++j)
+                    if ((c->data(i, j) > 0.0f) == (side == 0)) g(i, j) = self->grad(i, j);
+            p->accumulate(std::move(g));
+        }
+    });
+}
+
+Var rowsum(const Var& x) {
+    device::materialize(x->data);
+    const size_t R = x->data.rows(), C = x->data.cols();
+    Matrix out(R, 1);
+    for (size_t i = 0; i < R; ++i) {
+        float s = 0.0f;
+        for (size_t j = 0; j < C; ++j) s += x->data(i, j);
+        out(i, 0) = s;
+    }
+    return record(std::move(out), {x}, [](Variable* self) {
+        const Var& x = self->parents[0];
+        if (!x->requires_grad) return;
+        device::materialize(self->grad);  // B2.3c: host-read below
+        Matrix dx(x->data.rows(), x->data.cols());
+        for (size_t i = 0; i < dx.rows(); ++i)
+            for (size_t j = 0; j < dx.cols(); ++j) dx(i, j) = self->grad(i, 0);
+        x->accumulate(std::move(dx));
+    });
+}
+
+Var rowmax(const Var& x) {
+    device::materialize(x->data);
+    const size_t R = x->data.rows(), C = x->data.cols();
+    if (C == 0) throw std::runtime_error("rowmax: no columns");
+    Matrix out(R, 1);
+    std::vector<size_t> arg(R, 0);
+    for (size_t i = 0; i < R; ++i) {
+        float m = x->data(i, 0);
+        for (size_t j = 1; j < C; ++j)
+            if (x->data(i, j) > m) {
+                m = x->data(i, j);
+                arg[i] = j;
+            }
+        out(i, 0) = m;
+    }
+    return record(std::move(out), {x}, [arg](Variable* self) {
+        const Var& x = self->parents[0];
+        if (!x->requires_grad) return;
+        device::materialize(self->grad);  // B2.3c: host-read below
+        Matrix dx(x->data.rows(), x->data.cols());
+        for (size_t i = 0; i < dx.rows(); ++i) dx(i, arg[i]) = self->grad(i, 0);
+        x->accumulate(std::move(dx));
+    });
+}
+
+Var broadcast_cols(const Var& c, size_t n) {
+    if (c->data.cols() != 1) throw std::runtime_error("broadcast_cols: c must be [rows, 1]");
+    device::materialize(c->data);
+    const size_t R = c->data.rows();
+    Matrix out(R, n);
+    for (size_t i = 0; i < R; ++i)
+        for (size_t j = 0; j < n; ++j) out(i, j) = c->data(i, 0);
+    return record(std::move(out), {c}, [](Variable* self) {
+        const Var& c = self->parents[0];
+        if (!c->requires_grad) return;
+        device::materialize(self->grad);  // B2.3c: host-read below
+        Matrix dc(self->grad.rows(), 1);
+        for (size_t i = 0; i < dc.rows(); ++i) {
+            float s = 0.0f;
+            for (size_t j = 0; j < self->grad.cols(); ++j) s += self->grad(i, j);
+            dc(i, 0) = s;
+        }
+        c->accumulate(std::move(dc));
+    });
+}
+
 }  // namespace ops
 }  // namespace microtorch
