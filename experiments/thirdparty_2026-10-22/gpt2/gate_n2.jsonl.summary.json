@@ -1,0 +1,11 @@
+{
+ "family": "gpt2",
+ "gguf": "gpt2-124m-f32.gguf",
+ "prompts": 2,
+ "top1_same": 2,
+ "greedy_same": 2,
+ "worst_first_rel": 1.0658109389061626e-05,
+ "max_new": 32,
+ "raw": true,
+ "hf_weights": "gguf"
+}
