@@ -602,3 +602,14 @@ def test_validate_schema_rejects_malformed_replies():
     assert any("unexpected 'extra'" in e for e in errs)
     assert L.validate_schema({"title": "t"}, L.SCHEMA)  # most properties missing
     assert L.parse_reply('Here it is:\n```json\n{"a": 1}\n```') == {"a": 1}
+
+
+def test_repair_schema_fixes_structure_only():
+    op = {"subgraph": "block", "op": "linear", "role": "q", "inputs": ["h"], "output": "q", "extra": 1}
+    s = L.SCHEMA["properties"]["block_ops"]["items"]
+    notes = L.repair_schema(op, s, defs=L.SCHEMA["$defs"])
+    assert op["attributes"] == [] and op["new_op"] == "" and "extra" not in op and len(notes) == 3
+    assert L.validate_schema(op, s, defs=L.SCHEMA["$defs"]) == []
+    ev = {"value": "x", "quote": "q", "where": "w"}  # a missing status is not invented
+    L.repair_schema(ev, {"$ref": "#/$defs/ev"}, defs=L.SCHEMA["$defs"])
+    assert "status" not in ev and L.validate_schema(ev, {"$ref": "#/$defs/ev"}, defs=L.SCHEMA["$defs"])

@@ -565,6 +565,34 @@ def validate_schema(v, s: dict, path: str = "$", defs: dict | None = None) -> li
     return errs
 
 
+def repair_schema(v, s: dict, path: str = "$", defs: dict | None = None, notes: list | None = None):
+    """Structural slips only (a 29-op reply missing one op's empty attributes list; an extra key):
+    a missing string becomes "", a missing array [], an unexpected key is dropped. Each repair is
+    noted for the receipt. Values are never invented: a missing or bad status still fails
+    validate_schema, and every value still faces the verifier."""
+    defs = defs if defs is not None else s.get("$defs", {})
+    notes = notes if notes is not None else []
+    if "$ref" in s:
+        return repair_schema(v, defs[s["$ref"].split("/")[-1]], path, defs, notes)
+    if s.get("type") == "object" and isinstance(v, dict):
+        props = s.get("properties", {})
+        if s.get("additionalProperties") is False:
+            for k in [k for k in v if k not in props]:
+                del v[k]
+                notes.append(f"{path}: dropped unexpected {k!r}")
+        for k in s.get("required", []):
+            if k not in v and props.get(k, {}).get("type") in ("string", "array") and "enum" not in props[k]:
+                v[k] = "" if props[k]["type"] == "string" else []
+                notes.append(f"{path}: filled missing {k!r}")
+        for k, x in v.items():
+            if k in props:
+                repair_schema(x, props[k], f"{path}.{k}", defs, notes)
+    elif s.get("type") == "array" and isinstance(v, list):
+        for i, x in enumerate(v):
+            repair_schema(x, s.get("items", {}), f"{path}[{i}]", defs, notes)
+    return notes
+
+
 def parse_reply(text: str):
     """The JSON object in a reply (a stray code fence or prose around it is dropped)."""
     a, b = text.find("{"), text.rfind("}")
@@ -737,6 +765,9 @@ def call_llm(client, params: dict, arxiv_id: str, tag: str, budget_usd: float | 
         except json.JSONDecodeError as e:
             row["error"] = f"reply is not JSON: {e}"
         else:
+            fixed = repair_schema(output, SCHEMA)
+            if fixed:
+                row["schema_repairs"] = fixed
             errs = validate_schema(output, SCHEMA)
             if errs:
                 row["error"] = f"reply does not match the schema ({len(errs)}): " + "; ".join(errs[:5])
@@ -1302,9 +1333,15 @@ def compare(arxiv_id: str, tex: str, rep: dict) -> dict:
     rows = []
     for k, t in truth.items():
         ra, la = rule_applied(arch, k), llm_applied(rep, k)
+        raw = rep["flavours"][k]["value"]
+        ls = score(la, t)
+        # "other:<...>" is outside the lattice and never built (the chain refuses it), so it is an
+        # abstention, not a wrong model; "new_op:<...>" is built through expr and is scored as given.
+        if la == OUT and t is not None and str(raw).startswith("other:"):
+            ls = "abstain"
         rows.append({"field": k, "truth": t,
                      "rule": ra[1] if isinstance(ra, tuple) else ra, "rule_score": score(ra, t),
-                     "llm": la if la != OUT else rep["flavours"][k]["value"], "llm_score": score(la, t),
+                     "llm": la if la != OUT else raw, "llm_score": ls,
                      "llm_check": rep["flavours"][k]["check"]})
     return {"arxiv_id": arxiv_id, "rows": rows}
 
