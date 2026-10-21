@@ -120,8 +120,9 @@ onto the page. The extracted architecture fills the spec builder, the diagram re
 checkpoint. Every GGUF carries its tokeniser and the model's graph (`paperkiln.ir`).
 
 - [ember.cpp](https://github.com/JohnnyTeutonic/ember.cpp) runs every family (CPU, CUDA,
-  WebAssembly).
-- llama.cpp runs the llama, MoE and gpt2 exports, given token ids.
+  WebAssembly), and llama-family and MoE models on the visitor's GPU in the browser (WebGPU).
+- llama.cpp runs the llama, MoE and gpt2 exports, given token ids. Models on the new Llama 3
+  scheme vocabulary tokenise in llama.cpp, Ollama and LM Studio too.
 - `python tools/hf_export.py <run> --hf-dir <dir>` turns a llama-family run into a folder that
   `transformers.from_pretrained` opens.
 
@@ -179,17 +180,33 @@ python tools/reproduce.py S3-lrxopt --run             # re-run a finding: REPLIC
 
 ## In progress
 
-The goal is a basic question-answering chat model trained from scratch.
-- **Training on Colab:** a d768 L12 base and its fine-tune, and a 70M mixture-of-experts
-  fine-tune.
-- **Next base model:** trained on FineWeb-Edu plus conversational text, with the
-  llama.cpp-compatible vocabulary.
-- **Written, landing with their build:** mtstudio reading `.ids` corpora and an annealing tail
-  (`data.anneal`), the Llama 3 encoder inside mtstudio, the `/chat` repetition penalty
-  shared with ember, a KV cache for `mtstudio chat`, and SFT evaluation on a held-out subset
-  in batches.
+The goal is a basic question-answering chat model trained from scratch, then features, then
+the arXiv-to-chat chain tested properly. The data is the lever: the current base models learnt
+facts from expository prose but saw dialogue only in a small fine-tune, so they answer like a
+textbook and loop.
+
+**Landing in the next day:**
+- **Models finishing on Colab:** a 70M mixture-of-experts fine-tune, and a d768 L12 base with
+  its fine-tune. Each is evaluated on the frozen chat prompts and the simple-QA probe against
+  the live model.
+- **Data for the next base:**
+  - the conversational pretraining corpora (built: 1.35M dialogues);
+  - the 16,384-token Llama 3 scheme vocabulary, trained and checked id for id against
+    llama.cpp's own tokeniser;
+  - the large SFT set rebuilt for that vocabulary.
+- **mtstudio features, written and landing with their build:** reading pre-tokenised `.ids`
+  corpora, an annealing tail (`data.anneal`), the Llama 3 encoder, the `/chat` repetition
+  penalty shared with ember, a KV cache for `mtstudio chat`, and batched SFT evaluation.
+- **A gate model** on the new vocabulary, so ember's 40/40 parity gate runs before the big base
+  finishes.
+- **The first Claude-judged preference pilot:** 200 prompts, candidates sampled through ember.
+
+**Longer:**
+- **The next base:** `pk_base_v1`, d768 L12 T512 for 120,000 steps on a 4.2 GB mix (27%
+  dialogue, 47% in the annealing tail). Then its SFT and DPO on the judged pairs.
 - **arXiv paper to conversation:** `tools/arxiv_to_chat.py` takes a paper id through
-  extraction, training, export and a chat served by ember; not yet run end to end.
+  extraction, training, export and a chat served by ember. Its first two runs (LLaMA and
+  Cerebras-GPT architectures, d384 L6) ride in the next-base launch.
 
 [ROADMAP.md](ROADMAP.md) has the full list.
 
@@ -201,7 +218,7 @@ The goal is a basic question-answering chat model trained from scratch.
 | Map of every document | [docs/README.md](docs/README.md) |
 | Chatting with an exported model | [docs/CHAT_WITH_A_PAPERKILN_MODEL.md](docs/CHAT_WITH_A_PAPERKILN_MODEL.md) |
 | What is left to do | [ROADMAP.md](ROADMAP.md) |
-| API reference | `doxygen docs/Doxyfile` → `docs/html/`, published by the docs workflow |
+| API reference | [johnnyteutonic.github.io/paperkiln](https://johnnyteutonic.github.io/paperkiln/) (`doxygen docs/Doxyfile` builds it locally) |
 
 ## License
 
