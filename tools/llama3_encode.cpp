@@ -1,4 +1,5 @@
 // llama3_encode --split < records       ->  per record, its pre-tokeniser words as hex, space-separated
+// llama3_encode --split-qwen2 < records ->  the same with the qwen2 regex (single digits)
 // llama3_encode VOCAB.gguf < records    ->  per record, its token ids, space-separated
 // Records are separated by NUL bytes, so they can hold any newlines. The C++
 // half of tests/test_llama3_tokenizer.py (parity with the llama3 regex and
@@ -11,12 +12,13 @@
 
 int main(int argc, char** argv) {
     if (argc != 2) {
-        std::cerr << "usage: llama3_encode --split|VOCAB.gguf < NUL-separated records\n";
+        std::cerr << "usage: llama3_encode --split|--split-qwen2|VOCAB.gguf < NUL-separated records\n";
         return 2;
     }
     try {
         const std::string in((std::istreambuf_iterator<char>(std::cin)), std::istreambuf_iterator<char>());
-        const bool split = std::string(argv[1]) == "--split";
+        const bool qwen2 = std::string(argv[1]) == "--split-qwen2";
+        const bool split = std::string(argv[1]) == "--split" || qwen2;
         microtorch::llama3::Tokenizer tok({}, {}, {});
         if (!split) tok = microtorch::llama3::load_gguf(argv[1]);
         size_t at = 0;
@@ -25,7 +27,7 @@ int main(int argc, char** argv) {
             if (end == std::string::npos) end = in.size();
             const std::string rec = in.substr(at, end - at);
             if (split) {
-                const auto words = microtorch::llama3::split_words(rec);
+                const auto words = microtorch::llama3::split_words(rec, qwen2 ? 1 : 3);
                 for (size_t i = 0; i < words.size(); ++i) {
                     if (i) std::cout << ' ';
                     for (unsigned char c : words[i]) std::cout << "0123456789abcdef"[c >> 4] << "0123456789abcdef"[c & 15];

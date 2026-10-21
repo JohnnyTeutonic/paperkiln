@@ -4,7 +4,8 @@ The C++ encoder (LLAMA3_ENCODE_BIN, or build/llama3_encode) must agree with
 two independent references on adversarial text (digits, contractions in
 both cases, newline and whitespace runs, non-ASCII letters, marks, emoji,
 special tokens glued to words):
-- its pre-tokeniser with the llama3 regex as published (Python `regex`);
+- its pre-tokeniser with the llama3 regex as published (Python `regex`), and
+  with Qwen2's (llama.cpp b6000's LLAMA_VOCAB_PRE_TYPE_QWEN2: single digits);
 - its ids with HF tokenizers' ByteLevel BPE (llama3 Split, ignore_merges)
   trained here and written to a vocab GGUF of the llama.cpp form (model
   "gpt2", pre "llama-bpe", string merges, token types).
@@ -25,6 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 LLAMA3 = (r"(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}{1,3}| ?[^\s\p{L}\p{N}]+[\r\n]*|"
           r"\s*[\r\n]+|\s+(?!\S)|\s+")
+QWEN2 = LLAMA3.replace(r"\p{N}{1,3}", r"\p{N}")
 SPECIALS = ["<unk>", "<|endoftext|>", "<|user|>", "<|assistant|>"]
 PIECES = ["a", "Z", "ab", " ", "  ", "   ", "9", "12345", "3.14", "'", "'s", "'S", "'LL", "'re", "'Ve", "'d",
           "!!", "...", "$", "é", "e\u0301", "ß", "中文", "텍스트", "Ελλάδα", "١٢٣", "½", "😀", "✓", "\t", "\r",
@@ -67,6 +69,16 @@ def test_pre_tokeniser_matches_the_llama3_regex():
     for rec, line in zip(recs, _run("--split", recs)):
         cpp = [bytes.fromhex(w).decode("utf-8") for w in line.split()]
         assert cpp == regex.findall(LLAMA3, rec), repr(rec)
+
+
+@needs_bin
+def test_pre_tokeniser_matches_the_qwen2_regex():
+    regex = pytest.importorskip("regex")
+    assert QWEN2 != LLAMA3
+    recs = _records(1, 2000)
+    for rec, line in zip(recs, _run("--split-qwen2", recs)):
+        cpp = [bytes.fromhex(w).decode("utf-8") for w in line.split()]
+        assert cpp == regex.findall(QWEN2, rec), repr(rec)
 
 
 def _write_gguf(path, tokens, merges, types):
