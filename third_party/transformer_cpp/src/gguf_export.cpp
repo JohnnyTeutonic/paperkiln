@@ -258,7 +258,29 @@ void GGUFWriter::write_metadata_float_array(const std::string& key, const std::v
         data.insert(data.end(), reinterpret_cast<uint8_t*>(&val),
                     reinterpret_cast<uint8_t*>(&val) + sizeof(val));
     }
-    
+
+    metadata_.push_back({key, data});
+}
+
+void GGUFWriter::write_metadata_int32_array(const std::string& key, const std::vector<int32_t>& values) {
+    std::vector<uint8_t> data;
+    uint64_t key_len = key.size();
+    data.insert(data.end(), reinterpret_cast<uint8_t*>(&key_len),
+                reinterpret_cast<uint8_t*>(&key_len) + sizeof(key_len));
+    data.insert(data.end(), key.begin(), key.end());
+    GGUFValueType type = GGUFValueType::ARRAY;
+    data.insert(data.end(), reinterpret_cast<uint8_t*>(&type),
+                reinterpret_cast<uint8_t*>(&type) + sizeof(type));
+    GGUFValueType elem_type = GGUFValueType::INT32;
+    data.insert(data.end(), reinterpret_cast<uint8_t*>(&elem_type),
+                reinterpret_cast<uint8_t*>(&elem_type) + sizeof(elem_type));
+    uint64_t arr_len = values.size();
+    data.insert(data.end(), reinterpret_cast<uint8_t*>(&arr_len),
+                reinterpret_cast<uint8_t*>(&arr_len) + sizeof(arr_len));
+    for (int32_t val : values) {
+        data.insert(data.end(), reinterpret_cast<uint8_t*>(&val),
+                    reinterpret_cast<uint8_t*>(&val) + sizeof(val));
+    }
     metadata_.push_back({key, data});
 }
 

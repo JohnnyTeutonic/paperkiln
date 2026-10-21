@@ -361,6 +361,10 @@ yourself and pick the attention mechanism.
     "vocab_cap": 4096,                // truncate to the top-N tokens
     "max_tokens": 400000,             // corpus read cap in tokens (0 = whole
                                       // file); raise it for bigger corpora
+    "anneal": {"corpus": "data/tail.txt", "from_fraction": 0.85},
+                                      // optional: after 85% of the steps,
+                                      // windows come from tail.txt instead
+                                      // (validation stays on corpus)
     "T":         256                  // context length
   },
   "train": {
@@ -373,6 +377,8 @@ yourself and pick the attention mechanism.
                                       // backward (llama family; bit-identical
                                       // grads, ~95% fewer live tape nodes)
     "eval_every": 100,
+    "eval_examples": 0,               // SFT: first N held-out examples (0 = all)
+    "eval_batch": 1,                  // SFT: held-out examples per forward
     "checkpoint_every": 100,          // resume picks up from here
     "gradmap_every": 10,              // per-module grad-norm event cadence
     "early_stopping": { "patience": 8, "min_delta": 0.003 }

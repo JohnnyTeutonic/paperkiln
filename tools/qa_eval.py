@@ -47,6 +47,8 @@ def main(argv=None):
     ap.add_argument("--out", required=True)
     ap.add_argument("--port", type=int, default=8091)
     ap.add_argument("--max-new", type=int, default=48)
+    ap.add_argument("--repeat-penalty", type=float, default=1.0, help="contract repetition penalty (1.0 = off)")
+    ap.add_argument("--repeat-last-n", type=int, default=64)
     a = ap.parse_args(argv)
     os.makedirs(a.out, exist_ok=True)
     qs = chat_eval.read_jsonl(a.qa)
@@ -56,7 +58,8 @@ def main(argv=None):
         tag, spec = m.split("=", 1)
         chat_eval.check_rope_heads(spec)
         recs = chat_eval.sample_ember(a.ember_bin, a.port, spec, prompts, 1, 1.0, a.max_new,
-                                      os.path.join(a.out, f"{tag}_qa.jsonl"), greedy=True)
+                                      os.path.join(a.out, f"{tag}_qa.jsonl"), greedy=True,
+                                      repeat=(a.repeat_penalty, a.repeat_last_n))
         got = {r["prompt_index"]: r["completion"] for r in recs}
         by = {}
         for i, q in enumerate(qs):

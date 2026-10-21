@@ -248,8 +248,16 @@ template <class Cfg>
 void write_tokenizer(GGUFWriter& writer, const Cfg& cfg) {
     if (cfg.tokens.empty()) return;
     writer.write_metadata_string("tokenizer.ggml.model", cfg.tokenizer_model);
+    if (!cfg.tokenizer_pre.empty()) writer.write_metadata_string("tokenizer.ggml.pre", cfg.tokenizer_pre);
     writer.write_metadata_string_array("tokenizer.ggml.tokens", cfg.tokens);
+    if (!cfg.token_type.empty()) writer.write_metadata_int32_array("tokenizer.ggml.token_type", cfg.token_type);
     if (!cfg.merges.empty()) writer.write_metadata_string_array("tokenizer.ggml.merges", cfg.merges);
+    if (!cfg.tokenizer_pre.empty()) {
+        // llama.cpp turns add_bos on for pre "llama-bpe" unless these keys say
+        // otherwise, and paperkiln models have no BOS.
+        writer.write_metadata_bool("tokenizer.ggml.add_bos_token", false);
+        writer.write_metadata_bool("tokenizer.ggml.add_eos_token", false);
+    }
     writer.write_metadata_float_array("tokenizer.ggml.scores", std::vector<float>(cfg.tokens.size(), 0.0f));
     writer.write_metadata_uint32("tokenizer.ggml.bos_token_id", cfg.bos_token_id);
     writer.write_metadata_uint32("tokenizer.ggml.eos_token_id", cfg.eos_token_id);

@@ -15,20 +15,27 @@ and gpt2_tiny (20 Oct 2026), and swa_tiny with replies up to 200 tokens.
 receipt.jsonl rows need "i", "prompt" and "mtstudio" (the recorded reply).
 --max-new: the generation cap mtstudio was asked for (default 60).
 --no-window: run every attention node with window 0 (dense causal), the
-control that shows the window changes replies."""
+control that shows the window changes replies.
+--repeat-penalty P [--repeat-last-n N]: the contract repetition penalty
+(LOCAL_LLM_STACK.md section 3 point 4; default N 64), applied before the
+<unk> ban, so a receipt recorded with it can be checked here."""
 import json
 import math
 import sys
 
 import numpy as np
 
-argv, MAX_NEW, NO_WINDOW = [], 60, False
+argv, MAX_NEW, NO_WINDOW, REP_P, REP_N = [], 60, False, 1.0, 64
 _it = iter(sys.argv[1:])
 for _a in _it:
     if _a == "--max-new":
         MAX_NEW = int(next(_it))
     elif _a == "--no-window":
         NO_WINDOW = True
+    elif _a == "--repeat-penalty":
+        REP_P = float(next(_it))
+    elif _a == "--repeat-last-n":
+        REP_N = int(next(_it))
     else:
         argv.append(_a)
 
@@ -227,6 +234,12 @@ for r in rows:
         lg = forward(ids[-ctx:])[-1].copy()
         if step == 0:
             first.append(lg.copy())
+        if REP_P != 1.0 and REP_N > 0:
+            # Each distinct id among the last REP_N conditioning ids, stop set
+            # exempt: l > 0 ? l / p : l * p, one float32 operation.
+            p32 = np.float32(REP_P)
+            for t_id in set(ids[-ctx:][-REP_N:]) - stops:
+                lg[t_id] = lg[t_id] / p32 if lg[t_id] > 0 else lg[t_id] * p32
         if unk is not None:
             lg[unk] = -np.inf  # mtstudio bans <unk> from generation
         t = int(lg.argmax())

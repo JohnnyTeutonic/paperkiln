@@ -28,6 +28,21 @@ struct LlamaConfig {
     MoEConfig moe;
 };
 
+// Keys and values of every layer for the tokens decoded so far (inference
+// only): k[l], v[l] are [len, d] after RoPE, rows at absolute positions
+// 0..len-1. truncate() drops a suffix, so a chat turn that re-sends its
+// history reuses the shared prefix.
+struct LlamaKV {
+    std::vector<std::vector<float>> k, v;  // per layer, row-major [len, d]
+    size_t len = 0, d = 0;
+    void truncate(size_t n) {
+        if (n >= len) return;
+        for (auto& m : k) m.resize(n * d);
+        for (auto& m : v) m.resize(n * d);
+        len = n;
+    }
+};
+
 class LlamaBlock : public Module {
 public:
     LlamaBlock(const LlamaConfig& cfg, unsigned seed);
@@ -36,6 +51,12 @@ public:
     // aux: MoE blocks append their routing record (ignored when dense).
     Var forward(const Var& x, const std::vector<int>& positions, size_t seq_len = 0,
                 MoEAux* aux = nullptr) const;
+    // Inference with a cache: x holds the rows of positions pos0.. (pos0 =
+    // the cache length); their keys and values are appended to (k, v) and
+    // each row attends to every cached row up to its own position. The
+    // same arithmetic as forward() except the attention's summation order,
+    // so logits agree to rounding, not bit for bit. Call under NoGrad.
+    Var forward_cached(const Var& x, size_t pos0, std::vector<float>& k, std::vector<float>& v) const;
     // The IR block (microtorch/ir.hpp): {"state": [kv], "nodes": [...]},
     // GGUF names templated on "{i}". Reads x and pos, writes x.
     ir::json export_ir() const;
@@ -57,6 +78,10 @@ public:
     // aux (MoE models): collects every block's routing record and auxiliary
     // losses for this forward. Not supported under checkpoint_blocks.
     Var forward(const std::vector<int>& ids, size_t seq_len = 0, MoEAux* aux = nullptr) const;
+    // Logits for `ids`, the tokens after the kv.len already cached (one
+    // sequence, positions kv.len..), extending kv. kv.len + ids.size() must
+    // not exceed cfg.n_ctx. Call under NoGrad.
+    Var forward_cached(const std::vector<int>& ids, LlamaKV& kv) const;
     // The whole model as a paperkiln IR document (microtorch/ir.hpp) over
     // the tensor names export_gguf_llama writes: embed -> block x n_layers
     // -> head. Everything but "tokenizer", which the vocabulary owns and

@@ -56,6 +56,10 @@ struct LlamaExportConfig {
     // (tinyllama.cpp can still load tensors; generation needs a vocab).
     std::vector<std::string> tokens;
     std::string tokenizer_model = "word";
+    // A llama.cpp-form vocabulary (model "gpt2"): tokenizer.ggml.pre and the
+    // token types; both empty for the other vocabularies (nothing written).
+    std::string tokenizer_pre;
+    std::vector<int32_t> token_type;
     // BPE merges ("a b" token-id pairs in rank order, tools/bpe.py); written
     // as tokenizer.ggml.merges when non-empty, so a BPE export carries its
     // own tokenizer.
@@ -166,6 +170,10 @@ struct Gpt2ExportConfig {
     float layer_norm_eps = 1e-5f;      // nn::LayerNorm's default
     std::vector<std::string> tokens;
     std::string tokenizer_model = "word";
+    // A llama.cpp-form vocabulary (model "gpt2"): tokenizer.ggml.pre and the
+    // token types; both empty for the other vocabularies (nothing written).
+    std::string tokenizer_pre;
+    std::vector<int32_t> token_type;
     std::vector<std::string> merges;
     uint32_t bos_token_id = 1, eos_token_id = 1;
     uint32_t unk_token_id = 0, pad_token_id = 0;
@@ -205,6 +213,10 @@ struct PaperkilnExportConfig {
     uint32_t head_count = 0, feed_forward_length = 0;
     std::vector<std::string> tokens;
     std::string tokenizer_model = "word";
+    // A llama.cpp-form vocabulary (model "gpt2"): tokenizer.ggml.pre and the
+    // token types; both empty for the other vocabularies (nothing written).
+    std::string tokenizer_pre;
+    std::vector<int32_t> token_type;
     std::vector<std::string> merges;
     uint32_t bos_token_id = 1, eos_token_id = 1;
     uint32_t unk_token_id = 0, pad_token_id = 0;

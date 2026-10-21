@@ -92,7 +92,8 @@ public:
     void write_metadata_bool(const std::string& key, bool value);
     void write_metadata_string_array(const std::string& key, const std::vector<std::string>& values);
     void write_metadata_float_array(const std::string& key, const std::vector<float>& values);
-    
+    void write_metadata_int32_array(const std::string& key, const std::vector<int32_t>& values);
+
     // Tensor writing
     void add_tensor(const TensorExportInfo& tensor);
     

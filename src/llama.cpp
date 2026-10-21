@@ -1,7 +1,9 @@
 #include "microtorch/llama.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <stdexcept>
+#include <vector>
 
 #include "microtorch/device_cache.hpp"
 #include "microtorch/ir.hpp"
@@ -77,6 +79,55 @@ Var LlamaBlock::forward(const Var& x, const std::vector<int>& pos, size_t seq_le
     return out;
 }
 
+Var LlamaBlock::forward_cached(const Var& x, size_t pos0, std::vector<float>& kc, std::vector<float>& vc) const {
+    const size_t n = x->data.rows(), d = x->data.cols();
+    if (pos0 + n > n_ctx) throw std::runtime_error("llama: kv cache past the context length");
+    Var h = ops::rmsnorm(x, ln1_w);
+    Var qkv_in = ops::concat_cols({q_proj->forward(h), k_proj->forward(h), v_proj->forward(h)});
+    std::vector<int> pos(n);
+    for (size_t i = 0; i < n; ++i) pos[i] = static_cast<int>(pos0 + i);
+    Var qkv = ops::apply_rope(qkv_in, pos, rope_theta_, dk, rope_all_heads_);
+    device::materialize(qkv->data);
+    const Matrix& m = qkv->data;  // [n, 3d]: q | k | v
+    for (size_t i = 0; i < n; ++i)
+        for (size_t c = 0; c < d; ++c) {
+            kc.push_back(m(i, d + c));
+            vc.push_back(m(i, 2 * d + c));
+        }
+    // fused_attention's host reference, row by row over the cache: scaled
+    // scores, max-subtracted exp, normalised, then the weighted values.
+    const float sc = 1.0f / std::sqrt(static_cast<float>(dk));
+    Matrix att(n, d);
+    std::vector<float> a;
+    for (size_t i = 0; i < n; ++i) {
+        const size_t hi = pos0 + i + 1;  // causal: keys 0..own position
+        a.resize(hi);
+        for (size_t hd = 0; hd < H; ++hd) {
+            const size_t o = hd * dk;
+            float mx = -1e30f;
+            for (size_t j = 0; j < hi; ++j) {
+                float s = 0.0f;
+                for (size_t c = 0; c < dk; ++c) s += m(i, o + c) * kc[j * d + o + c];
+                a[j] = s * sc;
+                mx = std::max(mx, a[j]);
+            }
+            float z = 0.0f;
+            for (size_t j = 0; j < hi; ++j) z += (a[j] = std::exp(a[j] - mx));
+            for (size_t j = 0; j < hi; ++j) a[j] /= z;
+            for (size_t c = 0; c < dk; ++c) {
+                float acc = 0.0f;
+                for (size_t j = 0; j < hi; ++j) acc += a[j] * vc[j * d + o + c];
+                att(i, o + c) = acc;
+            }
+        }
+    }
+    Var x1 = ops::add(x, o_proj->forward(make_var(std::move(att))));
+    Var h2 = ops::rmsnorm(x1, ln2_w);
+    Var ffn = moe ? moe->forward(h2, nullptr)
+                  : down_proj->forward(ops::swiglu(gate_proj->forward(h2), up_proj->forward(h2)));
+    return ops::add(x1, ffn);
+}
+
 ir::json LlamaBlock::export_ir() const {
     // forward() above, node for node. The scale is the float it computes.
     const float sc = 1.0f / std::sqrt(static_cast<float>(dk));
@@ -133,6 +184,22 @@ Var Llama::forward(const std::vector<int>& ids, size_t seq_len, MoEAux* aux) con
     h = ops::rmsnorm(h, norm_w);
     // Tied head: logits = h @ E^T (gradients flow into the embedding both
     // through the gather and through the head matmul).
+    if (lm_head) return lm_head->forward(h);
+    return ops::matmul(h, ops::transpose(embed_tokens->weight));
+}
+
+Var Llama::forward_cached(const std::vector<int>& ids, LlamaKV& kv) const {
+    if (ids.empty()) throw std::runtime_error("llama: forward_cached needs at least one new token");
+    if (kv.k.empty()) {
+        kv.k.assign(blocks.size(), {});
+        kv.v.assign(blocks.size(), {});
+        kv.d = cfg.d;
+        kv.len = 0;
+    }
+    Var h = embed_tokens->forward(ids);
+    for (size_t l = 0; l < blocks.size(); ++l) h = blocks[l]->forward_cached(h, kv.len, kv.k[l], kv.v[l]);
+    kv.len += ids.size();
+    h = ops::rmsnorm(h, norm_w);
     if (lm_head) return lm_head->forward(h);
     return ops::matmul(h, ops::transpose(embed_tokens->weight));
 }

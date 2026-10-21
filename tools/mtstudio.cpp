@@ -45,6 +45,7 @@
 #include "microtorch/posttrain/grpo.hpp"
 #include "microtorch/posttrain/verifier.hpp"
 #include "microtorch/bpe_tokenizer.hpp"
+#include "microtorch/llama3_tokenizer.hpp"
 #include "microtorch/word_tokenizer.hpp"
 #include "parity_model.hpp"
 
@@ -80,6 +81,12 @@ struct Spec {
     std::string corpus, vocab_gguf;
     size_t vocab_cap = 4096;
     size_t max_tokens = 400000;  // corpus read cap (0 = whole file)
+    // data.anneal {"corpus", "from_fraction"}: training windows come from this
+    // second corpus (read whole) once step > from_fraction * steps. Windows
+    // are drawn at random positions, so a tail inside data.corpus would just be
+    // mixed in. Validation stays on data.corpus's held-out 5%.
+    std::string anneal_corpus;
+    double anneal_from = 0.0;
     // post-training (docs/decisions/0001-posttrain-charter.md, Phase 3):
     // objective "lm" streams data.corpus; "sft" trains on data.sft_examples
     // ({prompt, completion} JSONL) with the prompt masked out of the loss;
@@ -119,6 +126,12 @@ struct Spec {
     int steps = 500;
     float lr = 3e-3f, clip = 1.0f, lambda_gate = 0.05f;
     int eval_every = 50, ckpt_every = 100;
+    // SFT evaluation: the first eval_examples held-out examples (0 = all;
+    // the held-out tail of a mixed file is already a random sample), eval_batch
+    // of them per forward (1 = the original one-by-one pass; the masked
+    // mean is the same up to float summation order).
+    size_t eval_examples = 0;
+    int eval_batch = 1;
     int batch = 1;                    // sequences per FORWARD (stacked rows, one graph)
     int accum = 1;                    // batches accumulated per optimizer step
     bool ckpt_act = false;            // activation checkpointing per block
@@ -285,12 +298,22 @@ Spec parse_spec(const std::string& path) {
     s.grpo_prompts = data.value("grpo_prompts", "");
     s.grpo_eval = data.value("grpo_eval", "");
     s.pref_pairs = data.value("pref_pairs", "");
+    if (data.contains("anneal")) {
+        const json an = data["anneal"];
+        s.anneal_corpus = an.value("corpus", "");
+        s.anneal_from = an.value("from_fraction", 0.0);
+        if (s.anneal_corpus.empty() || !(s.anneal_from > 0.0 && s.anneal_from < 1.0))
+            throw std::runtime_error("data.anneal needs a corpus and from_fraction in (0, 1)");
+    }
 
     const json tr = j.value("train", json::object());
     s.steps = tr.value("steps", s.steps);
     s.lr = tr.value("lr", s.lr);
     s.clip = tr.value("clip", s.clip);
     s.eval_every = tr.value("eval_every", s.eval_every);
+    s.eval_examples = tr.value("eval_examples", s.eval_examples);
+    s.eval_batch = tr.value("eval_batch", s.eval_batch);
+    if (s.eval_batch < 1) throw std::runtime_error("train.eval_batch must be >= 1");
     s.ckpt_every = tr.value("checkpoint_every", s.ckpt_every);
     s.batch = tr.value("batch", s.batch);
     s.accum = tr.value("accum", s.accum);
@@ -472,13 +495,23 @@ std::string resolve_rope_heads(const Spec& s, bool existing) {
 
 // GGUF vocab reader + word tokenizer (the srd_parity path).
 std::vector<std::string> read_gguf_vocab(const std::string& path);
-// Set by read_gguf_vocab when the vocabulary GGUF says tokenizer.ggml.model
-// = "bpe" (tools/bpe.py). Null for word-level vocabularies, whose code
-// paths are unchanged.
-std::shared_ptr<bpe::Tokenizer> g_bpe;
+// A BPE vocabulary's text tokenizer: paperkiln's own (tokenizer.ggml.model
+// "bpe", tools/bpe.py) or the llama.cpp form (model "gpt2", pre "llama-bpe",
+// microtorch/llama3_tokenizer.hpp), with what an export must carry.
+struct TextBpe {
+    std::string model, pre;
+    std::vector<int32_t> token_type;
+    std::function<std::vector<int>(const std::string&)> encode;
+    std::function<std::string(const std::vector<int>&)> decode;
+};
+// Set by read_gguf_vocab for a BPE vocabulary. Null for word-level
+// vocabularies, whose code paths are unchanged.
+std::shared_ptr<TextBpe> g_bpe;
 std::string ids_to_text(const std::vector<int>& ids, const std::vector<std::string>& tokens);
 std::vector<int> tokenize(const std::string& text, const std::map<std::string, int>& vocab,
                           size_t max_tokens);
+std::vector<int> read_corpus(const std::string& path, const std::map<std::string, int>& vocab, size_t n_vocab,
+                             size_t max_tokens);
 
 parity::AttnKind attn_kind(const std::string& s) {
     if (s == "kimi") return parity::AttnKind::KIMI;
@@ -862,7 +895,8 @@ ir::json ir_tokenizer(const std::vector<std::string>& tokens, const std::map<std
         sp["unk"] = 0;
         if (const int e = wordtok::eos_id(vocab); e >= 0) sp["eot"] = e;
     }
-    return {{"type", g_bpe ? "bpe" : "word"}, {"source", "gguf"}, {"specials", sp}, {"bos", nullptr}};
+    const char* type = !g_bpe ? "word" : g_bpe->model == "gpt2" ? "llama3_bpe" : "bpe";
+    return {{"type", type}, {"source", "gguf"}, {"specials", sp}, {"bos", nullptr}};
 }
 
 // The vocabulary onto an export config (llama or gpt2): its tokens, a BPE
@@ -875,8 +909,12 @@ void set_export_tokenizer(Cfg& gc, const Spec& s, const std::vector<std::string>
     // A BPE vocabulary travels with the model: without its merges an
     // engine reading the export would split text into bytes only.
     if (g_bpe) {
-        gc.tokenizer_model = "bpe";
+        gc.tokenizer_model = g_bpe->model;
+        gc.tokenizer_pre = g_bpe->pre;
         gc.merges = bpe::read_gguf_tokenizer(s.vocab_gguf).merges;
+        // Token types travel only with the llama.cpp form (they mark the
+        // specials control tokens); old "bpe" exports stay byte-identical.
+        if (g_bpe->model == "gpt2") gc.token_type = g_bpe->token_type;
     }
     // End-of-text in the vocabulary -> the GGUF's eos id, so an
     // external engine stops where this one does (else keep the
@@ -1181,8 +1219,10 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     const bool sft = s.objective == "sft" || s.objective == "rejection_sft";
     const bool grpo = s.objective == "grpo";
     const bool po = s.objective == "provenance_po";
-    std::vector<int> ids;
+    std::vector<int> ids, anneal_ids;
     size_t val_start = 0;
+    if (!s.anneal_corpus.empty() && s.objective != "lm")
+        throw std::runtime_error("data.anneal is for objective lm only");
     SftSet sd;
     GrpoData gd;
     PrefData pd;
@@ -1229,16 +1269,21 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                  {"advantage", s.grpo_advantage},
                  {"reward_shift", s.grpo_reward_shift}});
     } else if (!sft) {
-        std::ifstream cf(s.corpus);
-        if (!cf) throw std::runtime_error("cannot open corpus " + s.corpus);
-        std::string text((std::istreambuf_iterator<char>(cf)), std::istreambuf_iterator<char>());
-        ids = tokenize(text, vocab, s.max_tokens ? s.max_tokens : text.size() + 1);
+        ids = read_corpus(s.corpus, vocab, tokens.size(), s.max_tokens);
         // Hold out the tail 5% for validation (early stopping's signal).
         val_start = ids.size() - ids.size() / 20;
         ev.emit({{"event", "data"},
                  {"tokens", ids.size()},
                  {"vocab", tokens.size()},
                  {"val_tokens", ids.size() - val_start}});
+        if (!s.anneal_corpus.empty()) {
+            anneal_ids = read_corpus(s.anneal_corpus, vocab, tokens.size(), 0);
+            if (anneal_ids.size() < static_cast<size_t>(s.T) + 2)
+                throw std::runtime_error("data.anneal corpus is shorter than one training window");
+            ev.emit({{"event", "anneal_data"},
+                     {"tokens", anneal_ids.size()},
+                     {"from_step", static_cast<int>(s.anneal_from * s.steps)}});
+        }
     } else {
         sd = load_sft(s, vocab);
         ev.emit({{"event", "data"},
@@ -1590,7 +1635,10 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         t_ms = json::object();
         live_mb = json::object();
         if (step_timing) device::pool_reset_peak();
-        const size_t lim = (sft || grpo || po) ? 0 : val_start - s.T - 1;
+        // The anneal corpus has no held-out part: all of it is training text.
+        const bool annealing = !anneal_ids.empty() && step > static_cast<int>(s.anneal_from * s.steps);
+        const std::vector<int>& src = annealing ? anneal_ids : ids;
+        const size_t lim = (sft || grpo || po) ? 0 : annealing ? anneal_ids.size() - s.T - 1 : val_start - s.T - 1;
         // Mini-batching + accumulation: each of s.accum micro-steps stacks
         // s.batch sequences into ONE forward ([batch*T, d] rows; positions
         // and the attention mask restart per sequence — receipts in
@@ -1775,8 +1823,8 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                     continue;
                 }
                 const size_t at = rng() % lim;
-                x.insert(x.end(), ids.begin() + at, ids.begin() + at + s.T);
-                y.insert(y.end(), ids.begin() + at + 1, ids.begin() + at + s.T + 1);
+                x.insert(x.end(), src.begin() + at, src.begin() + at + s.T);
+                y.insert(y.end(), src.begin() + at + 1, src.begin() + at + s.T + 1);
             }
             mark("data");
             nn::MoEAux maux;
@@ -1942,10 +1990,22 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                 // completion targets (each example weighted by its targets).
                 double sum = 0.0;
                 size_t kept = 0;
-                for (size_t e = sd.val_start; e < sd.x.size(); ++e) {
+                const size_t end = s.eval_examples ? std::min(sd.x.size(), sd.val_start + s.eval_examples) : sd.x.size();
+                for (size_t e0 = sd.val_start; e0 < end; e0 += static_cast<size_t>(s.eval_batch)) {
+                    const size_t e1 = std::min(end, e0 + static_cast<size_t>(s.eval_batch));
+                    std::vector<int> x, y;
+                    std::vector<uint8_t> m;
                     size_t k = 0;
-                    for (uint8_t v : sd.m[e]) k += v;
-                    sum += static_cast<double>(ops::cross_entropy_masked(fwd(sd.x[e]), sd.y[e], sd.m[e])->data(0, 0)) * k;
+                    for (size_t e = e0; e < e1; ++e) {
+                        x.insert(x.end(), sd.x[e].begin(), sd.x[e].end());
+                        y.insert(y.end(), sd.y[e].begin(), sd.y[e].end());
+                        m.insert(m.end(), sd.m[e].begin(), sd.m[e].end());
+                        for (uint8_t v : sd.m[e]) k += v;
+                    }
+                    if (k == 0) continue;
+                    // One example: the original call. Several: stacked as in training.
+                    Var lg = e1 - e0 == 1 ? fwd(x) : fwd(x, s.T);
+                    sum += static_cast<double>(ops::cross_entropy_masked(lg, y, m)->data(0, 0)) * k;
                     kept += k;
                 }
                 vl = sum / static_cast<double>(kept);
@@ -2072,46 +2132,50 @@ std::vector<std::string> read_gguf_vocab(const std::string& path) {
     const uint64_t n_meta = rd<uint64_t>(b, p);
     std::vector<std::string> tokens;
     std::string model;
+    // Byte sizes of the GGUF scalar types (0-7, 10-12; 8 string, 9 array): every
+    // one is skipped, so a llama.cpp-form vocabulary's token_type (int32 array)
+    // and add_bos_token (bool) read like any other key.
+    static const size_t kScalar[] = {1, 1, 2, 2, 4, 4, 4, 1, 0, 0, 8, 8, 8};
+    auto skip_scalar = [&](uint32_t t) {
+        if (t > 12 || t == 8 || t == 9) throw std::runtime_error("bad meta");
+        if (p + kScalar[t] > b.size()) throw std::runtime_error("truncated GGUF");
+        p += kScalar[t];
+    };
     for (uint64_t i = 0; i < n_meta; ++i) {
         const std::string key = rd_str(b, p);
         const uint32_t vt = rd<uint32_t>(b, p);
-        switch (vt) {
-            case 4:
-                rd<uint32_t>(b, p);
-                break;
-            case 5:
-                rd<int32_t>(b, p);
-                break;
-            case 6:
-                rd<float>(b, p);
-                break;
-            case 8: {
-                std::string v = rd_str(b, p);
-                if (key == "tokenizer.ggml.model") model = std::move(v);
-                break;
-            }
-            case 10:
-                rd<uint64_t>(b, p);
-                break;
-            case 9: {
-                const uint32_t et = rd<uint32_t>(b, p);
-                const uint64_t n = rd<uint64_t>(b, p);
-                for (uint64_t k = 0; k < n; ++k) {
-                    if (et == 8) {
-                        std::string t = rd_str(b, p);
-                        if (key == "tokenizer.ggml.tokens") tokens.push_back(std::move(t));
-                    } else if (et == 6)
-                        rd<float>(b, p);
-                    else
-                        throw std::runtime_error("bad array");
+        if (vt == 8) {
+            std::string v = rd_str(b, p);
+            if (key == "tokenizer.ggml.model") model = std::move(v);
+        } else if (vt == 9) {
+            const uint32_t et = rd<uint32_t>(b, p);
+            const uint64_t n = rd<uint64_t>(b, p);
+            for (uint64_t k = 0; k < n; ++k) {
+                if (et == 8) {
+                    std::string t = rd_str(b, p);
+                    if (key == "tokenizer.ggml.tokens") tokens.push_back(std::move(t));
+                } else {
+                    skip_scalar(et);
                 }
-                break;
             }
-            default:
-                throw std::runtime_error("bad meta");
+        } else {
+            skip_scalar(vt);
         }
     }
-    if (model == "bpe") g_bpe = std::make_shared<bpe::Tokenizer>(bpe::load_gguf(path));
+    g_bpe.reset();
+    const bpe::GgufTokenizer g =
+        model == "bpe" || model == "gpt2" ? bpe::read_gguf_tokenizer(path) : bpe::GgufTokenizer{};
+    if (model == "bpe") {
+        auto t = std::make_shared<bpe::Tokenizer>(bpe::load_gguf(path));
+        g_bpe = std::make_shared<TextBpe>(TextBpe{g.model, g.pre, g.token_type,
+                                                  [t](const std::string& s) { return t->encode(s); },
+                                                  [t](const std::vector<int>& v) { return t->decode(v); }});
+    } else if (model == "gpt2" && g.pre == "llama-bpe") {
+        auto t = std::make_shared<llama3::Tokenizer>(llama3::load_gguf(path));
+        g_bpe = std::make_shared<TextBpe>(TextBpe{g.model, g.pre, g.token_type,
+                                                  [t](const std::string& s) { return t->encode(s); },
+                                                  [t](const std::vector<int>& v) { return t->decode(v); }});
+    }
     return tokens;
 }
 // The tokenizer itself lives in microtorch/word_tokenizer.hpp (shared
@@ -2124,6 +2188,45 @@ std::vector<int> tokenize(const std::string& text, const std::map<std::string, i
         return ids;
     }
     return wordtok::tokenize(text, vocab, max_tokens);
+}
+// A training corpus: raw text, tokenised here, or a pre-tokenised ".ids"
+// file (tools/corpus_ids.py), read as is so a resume does not re-tokenise
+// gigabytes. .ids layout, little-endian: "PKIDS001", uint32 id width (2 or
+// 4 bytes), uint32 vocabulary size, uint64 count, then the ids. The
+// vocabulary size must equal the model's. max_tokens 0 = all.
+std::vector<int> read_corpus(const std::string& path, const std::map<std::string, int>& vocab, size_t n_vocab,
+                             size_t max_tokens) {
+    std::ifstream f(path, std::ios::binary);
+    if (!f) throw std::runtime_error("cannot open corpus " + path);
+    if (path.size() < 4 || path.compare(path.size() - 4, 4, ".ids") != 0) {
+        std::string text((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+        return tokenize(text, vocab, max_tokens ? max_tokens : text.size() + 1);
+    }
+    char magic[8];
+    uint32_t width = 0, nv = 0;
+    uint64_t count = 0;
+    f.read(magic, 8);
+    f.read(reinterpret_cast<char*>(&width), 4);
+    f.read(reinterpret_cast<char*>(&nv), 4);
+    f.read(reinterpret_cast<char*>(&count), 8);
+    if (!f || std::string(magic, 8) != "PKIDS001" || (width != 2 && width != 4))
+        throw std::runtime_error(path + ": not a PKIDS001 id file");
+    if (nv != n_vocab)
+        throw std::runtime_error(path + ": ids are for a " + std::to_string(nv) + "-token vocabulary, the model has " +
+                                 std::to_string(n_vocab));
+    const uint64_t n = max_tokens ? std::min<uint64_t>(count, max_tokens) : count;
+    std::vector<int> ids(n);
+    if (width == 4) {
+        f.read(reinterpret_cast<char*>(ids.data()), static_cast<std::streamsize>(n * 4));
+    } else {
+        std::vector<uint16_t> v(n);
+        f.read(reinterpret_cast<char*>(v.data()), static_cast<std::streamsize>(n * 2));
+        std::copy(v.begin(), v.end(), ids.begin());
+    }
+    if (!f) throw std::runtime_error(path + ": truncated id file");
+    for (int id : ids)
+        if (id < 0 || static_cast<size_t>(id) >= n_vocab) throw std::runtime_error(path + ": id out of range");
+    return ids;
 }
 // Ids back to text: BPE concatenates bytes; word-level joins with spaces
 // (the format every word-level receipt was written in).
@@ -2252,14 +2355,55 @@ struct LoadedLM {
     // nucleus (top_p < 1 keeps the smallest head of the top-k holding that
     // share of its mass). top_p >= 1 is the original quick-look sampler,
     // draw for draw. Call under NoGrad.
-    int next(const std::vector<int>& ids, float temp, int topk, float top_p, std::mt19937& gen) {
+    // Repetition penalty (LOCAL_LLM_STACK.md section 3 point 4): rep_p > 1
+    // and rep_n > 0 scale every distinct id among the last rep_n of `ids`,
+    // except `no_penalty` (the stop set), as l > 0 ? l / p : l * p, before
+    // the special-token ban and the temperature. Defaults leave it off.
+    // KV cache (llama only; chat --kv-cache): off by default, because the
+    // greedy references other engines are gated against come from the
+    // full recompute, and cached attention sums in another order (equal to
+    // rounding, tests/test_kv_cache.cpp). The cache holds kv_ids; a call
+    // reuses its longest common prefix with the new context.
+    bool kv_on = false;
+    nn::LlamaKV kv;
+    std::vector<int> kv_ids;
+    std::vector<float> last_logits(const std::vector<int>& ctx) {
+        Var logits;
+        if (kv_on && llama) {
+            size_t p = 0;
+            while (p < kv_ids.size() && p < ctx.size() && kv_ids[p] == ctx[p]) ++p;
+            if (p == ctx.size()) --p;  // the last token's logits are not cached
+            kv.truncate(p);
+            logits = llama->forward_cached(std::vector<int>(ctx.begin() + static_cast<long>(p), ctx.end()), kv);
+            kv_ids = ctx;
+        } else {
+            logits = forward(ctx);
+        }
+        const size_t last = logits->data.rows() - 1, V = logits->data.cols();
+        std::vector<float> l(V);
+        for (size_t j = 0; j < V; ++j) l[j] = logits->data(last, j);
+        return l;
+    }
+    int next(const std::vector<int>& ids, float temp, int topk, float top_p, std::mt19937& gen,
+             float rep_p = 1.0f, size_t rep_n = 0, const std::vector<int>& no_penalty = {}) {
         std::vector<int> ctx = ids;
         if (ctx.size() > s.T) ctx.assign(ids.end() - s.T, ids.end());
-        Var logits = forward(ctx);
-        const size_t last = logits->data.rows() - 1, V = logits->data.cols();
+        std::vector<float> l = last_logits(ctx);
+        const size_t V = l.size();
+        if (rep_p != 1.0f && rep_n > 0) {
+            std::vector<char> seen(V, 0);
+            for (int x : no_penalty)
+                if (x >= 0 && static_cast<size_t>(x) < V) seen[x] = 1;
+            const size_t from = ids.size() > rep_n ? ids.size() - rep_n : 0;
+            for (size_t i = from; i < ids.size(); ++i) {
+                const int t = ids[i];
+                if (t < 0 || static_cast<size_t>(t) >= V || seen[t]) continue;
+                seen[t] = 1;
+                l[t] = l[t] > 0.0f ? l[t] / rep_p : l[t] * rep_p;
+            }
+        }
         std::vector<std::pair<float, int>> scored(V);
-        for (size_t j = 0; j < V; ++j)
-            scored[j] = {logits->data(last, j) / std::max(temp, 1e-4f), static_cast<int>(j)};
+        for (size_t j = 0; j < V; ++j) scored[j] = {l[j] / std::max(temp, 1e-4f), static_cast<int>(j)};
         // Ban special tokens from generation (standard sampler hygiene;
         // a small-vocab model otherwise floods the output with <unk>).
         for (const char* sp : {"<unk>", "<s>", "</s>", "<pad>"}) {
@@ -2898,9 +3042,11 @@ std::string chat_prompt(const json& req) {
     return p + "user: " + req["user_input"].get<std::string>() + " assistant:";
 }
 
-int chat_cmd(const std::string& target, const std::string& host, int port) {
+int chat_cmd(const std::string& target, const std::string& host, int port, bool kv_cache) {
     const Spec s = resolve_chat_spec(target);
     LoadedLM lm(s);
+    if (kv_cache && !lm.llama) throw std::runtime_error("chat --kv-cache: only the llama family has a KV cache");
+    lm.kv_on = kv_cache;
     // The model's own token sequences for a new turn ("user :",
     // "assistant :"), unusable if a piece is out of vocabulary (it would
     // be <unk>, which the sampler never emits anyway).
@@ -2913,6 +3059,12 @@ int chat_cmd(const std::string& target, const std::string& host, int port) {
     // BPE chat models: a reply ends where the model would open a new turn.
     if (g_bpe)
         for (const char* m : {"<|user|>", "<|assistant|>"}) turn_markers.push_back(tokenize(m, lm.vocab, 4));
+    // The repetition penalty's exempt stop set: end-of-text and the
+    // single-token BPE turn markers (the ids generation stops on).
+    std::vector<int> stop_ids;
+    if (lm.eos >= 0) stop_ids.push_back(lm.eos);
+    for (const auto& m : turn_markers)
+        if (m.size() == 1) stop_ids.push_back(m[0]);
     std::mutex gen_mu;
     std::mt19937 seeder{std::random_device{}()};
 
@@ -2980,6 +3132,13 @@ int chat_cmd(const std::string& target, const std::string& host, int port) {
             const float temp = r.value("temperature", 0.1f);
             const int top_k = r.value("top_k", 40);
             const float top_p = r.value("top_p", 0.9f);
+            // Repetition penalty (section 3 point 4): p in [1, 2], n in [0, ctx].
+            const float rep_p = r.value("repeat_penalty", 1.0f);
+            const long rep_n = r.value("repeat_last_n", 64L);
+            if (!(rep_p >= 1.0f && rep_p <= 2.0f) || rep_n < 0 || rep_n > static_cast<long>(s.T)) {
+                fail(400, "repeat_penalty must be in [1, 2] and repeat_last_n in [0, " + std::to_string(s.T) + "]");
+                return;
+            }
             // The context contract (LOCAL_LLM_STACK.md section 3, shared with
             // ember's server): drop the OLDEST whole turn while prompt +
             // max_new_tokens exceeds the context; reject a prompt that still
@@ -3010,7 +3169,7 @@ int chat_cmd(const std::string& target, const std::string& host, int port) {
             std::string stop = "length";
             for (int t = 0; t < max_new; ++t) {
                 if (ids.size() > T) break;  // the context limit: "length"
-                const int pick = lm.next(ids, temp, top_k, top_p, gen);
+                const int pick = lm.next(ids, temp, top_k, top_p, gen, rep_p, static_cast<size_t>(rep_n), stop_ids);
                 if (pick == lm.eos) {
                     stop = "eos";
                     break;
@@ -3131,12 +3290,18 @@ int main(int argc, char** argv) {
         if (cmd == "chat" && argc >= 3) {
             std::string host = "127.0.0.1";
             int port = 8080;
-            for (int i = 3; i + 1 < argc; i += 2) {
-                const std::string k = argv[i], v = argv[i + 1];
-                if (k == "--port") port = std::atoi(v.c_str());
-                if (k == "--host") host = v;
+            bool kv_cache = false;
+            for (int i = 3; i < argc; ++i) {
+                const std::string k = argv[i];
+                if (k == "--kv-cache") {
+                    kv_cache = true;
+                } else if (i + 1 < argc && (k == "--port" || k == "--host")) {
+                    const std::string v = argv[++i];
+                    if (k == "--port") port = std::atoi(v.c_str());
+                    if (k == "--host") host = v;
+                }
             }
-            return chat_cmd(argv[2], host, port);
+            return chat_cmd(argv[2], host, port, kv_cache);
         }
     } catch (const std::exception& e) {
         std::fprintf(stderr, "mtstudio: %s\n", e.what());
@@ -3153,6 +3318,6 @@ int main(int argc, char** argv) {
                  "         [--out-dir DIR]\n"
                  "       mtstudio serve <out_dir> [port] [spec]   (MTSTUDIO_UI "
                  "overrides the index.html path)\n"
-                 "       mtstudio chat <out_dir|spec.json> [--port 8080] [--host 127.0.0.1]\n");
+                 "       mtstudio chat <out_dir|spec.json> [--port 8080] [--host 127.0.0.1] [--kv-cache]\n");
     return 2;
 }

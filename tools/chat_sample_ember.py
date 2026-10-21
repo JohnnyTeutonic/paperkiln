@@ -65,6 +65,8 @@ def main(argv=None):
     ap.add_argument("--greedy", action="store_true", help="top_k 1 (argmax) instead of pure temperature")
     ap.add_argument("--ember-commit", default="")
     ap.add_argument("--ctx", type=int, default=256, help="model context; longer prompt + max-new is skipped")
+    ap.add_argument("--repeat-penalty", type=float, default=1.0, help="contract repetition penalty (1.0 = off)")
+    ap.add_argument("--repeat-last-n", type=int, default=64)
     a = ap.parse_args(argv)
     tok = bpe.read_gguf(a.vocab)
     stops, skipped = {}, 0
@@ -80,6 +82,8 @@ def main(argv=None):
             top_k = 1 if a.greedy else 0
             body = {"user_input": user, "history": hist, "temperature": a.temp, "top_k": top_k, "top_p": 1.0,
                     "seed": a.seed + i, "max_new_tokens": a.max_new, "return_ids": True}
+            if a.repeat_penalty != 1.0:  # LOCAL_LLM_STACK.md section 3 point 4
+                body.update(repeat_penalty=a.repeat_penalty, repeat_last_n=a.repeat_last_n)
             r = post(a.url, body)
             if r["prompt_ids"] != tok.encode(e["prompt"]):
                 sys.exit(f"example {i}: ember's prompt ids differ from tools/bpe.py's encoding of the prompt")
