@@ -62,7 +62,24 @@ def restore(name):
     for f in ("state.txt", "events.jsonl"):
         if os.path.exists(f"{up}/{f}"):
             os.replace(f"{up}/{f}", f"{out}/{f}")
+    # Weights without optimiser state (the runner uploads only those): mtstudio resumes the
+    # optimiser cold, and its AdamW step count must restart too. Zero moments with a step count of
+    # 44,000 make bias correction a no-op and the first updates several times lr.
+    if not os.path.exists(f"{out}/optim.safetensors") and os.path.exists(f"{out}/state.txt"):
+        lines = open(f"{out}/state.txt").read().split("\n")
+        if len(lines) > 1 and lines[1].strip():
+            rec = json.loads(lines[1])
+            rec.pop("adamw_t", None)
+            lines[1] = json.dumps(rec)
+            open(f"{out}/state.txt", "w").write("\n".join(lines))
+        print(f"{name}: optimiser state not uploaded; cold resume, AdamW step count from 0", flush=True)
     print(f"{name}: restored checkpoint", flush=True)
+
+
+def awaiting_upload(name):
+    """The runner is still uploading this job's resume checkpoint (PENDING without READY)."""
+    up = f"{C}/upload/{name}"
+    return os.path.exists(f"{up}/PENDING") and not os.path.exists(f"{up}/READY")
 
 
 def spec_for(job, jobs):
@@ -143,6 +160,7 @@ def main():
     take_lock()
     t0 = time.time()
     running = {}
+    deferred = set()  # restored once the runner's upload of their checkpoint is READY
     for name in jobs:
         st = status(name)
         if st == "RUNNING":
@@ -152,7 +170,10 @@ def main():
                 print(f"{name}: adopted running pid {pid}", flush=True)
                 continue
         if st not in ("FINISHED", "FAILED"):
-            restore(name)
+            if awaiting_upload(name):
+                deferred.add(name)
+            else:
+                restore(name)
             set_status(name, "WAITING")
     while True:
         for name, p in list(running.items()):
@@ -179,6 +200,11 @@ def main():
                 continue
             if any(status(x) != "FINISHED" for x in after):
                 continue
+            if name in deferred:  # its checkpoint is still going up: hold it, then restore
+                if awaiting_upload(name):
+                    continue
+                restore(name)
+                deferred.discard(name)
             log = open(f"{C}/{name}_train.log", "a")
             # A job's "env" overrides the fast defaults (e.g. gpt2-family runs
             # need MICROTORCH_DEFER_DOWNLOADS=0: deferral corrupts them).

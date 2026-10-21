@@ -234,6 +234,34 @@ def launch(st, commit, jobs_rel, jobs, uploads):
     return prepare(st, commit, jobs_rel, jobs, uploads)
 
 
+def upload_checkpoint(st, name):
+    """One job's resume checkpoint (model.safetensors in parts, state.txt, events.jsonl), then its
+    READY marker; raises RuntimeError on a failed upload (resumed by part on the next try)."""
+    art = os.path.join(ART, name)
+    upload_file(os.path.join(art, "model.safetensors"), f"/content/chat/upload/{name}/model.safetensors")
+    for f in ("state.txt", "events.jsonl"):
+        rc, _ = colab("upload", "-s", NAME, os.path.join(art, f), f"/content/chat/upload/{name}/{f}", timeout=600)
+        if rc != 0:
+            raise RuntimeError(f"upload of {name}/{f} failed")
+    rc, out = exec_py(f"open('/content/chat/upload/{name}/READY', 'w').close()\nprint('READY_OK')\n")
+    if "READY_OK" not in out:
+        raise RuntimeError(f"{name}: READY marker not written")
+    st.d["pending_uploads"] = [n for n in st.d.get("pending_uploads", []) if n != name]
+    st.save()
+    log(f"{name}: checkpoint uploaded for resume (weights only; the optimiser resumes cold)")
+
+
+def upload_pending(st):
+    """After the boot: the next pending resume checkpoint, one job per tick."""
+    pend = st.d.get("pending_uploads") or []
+    if not pend:
+        return
+    try:
+        upload_checkpoint(st, pend[0])
+    except RuntimeError as e:
+        log(str(e))
+
+
 def prepare(st, commit, jobs_rel, jobs, uploads):
     """Inputs, relayed checkpoints and the boot onto a session that is up but
     not yet booted. Retried every tick until it succeeds (st.d["booted"]), so
@@ -266,16 +294,22 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
         for key, src, _ in finals:
             upload_file(src, f"/content/chat/upload/{key}")
             log(f"{key}: uploaded for a dependent job")
-        # Job checkpoints relayed earlier (unfinished jobs only; jobs_vm.py restores them).
-        for j in jobs:
-            art = os.path.join(ART, j["name"])
-            if st.job(j["name"])["home"] or not os.path.exists(os.path.join(art, "state.txt")):
-                continue
-            for f in ("model.safetensors", "optim.safetensors"):
-                upload_file(os.path.join(art, f), f"/content/chat/upload/{j['name']}/{f}")
-            for f in ("state.txt", "events.jsonl"):
-                colab("upload", "-s", NAME, os.path.join(art, f), f"/content/chat/upload/{j['name']}/{f}", timeout=600)
-            log(f"{j['name']}: checkpoint uploaded for resume")
+        # Resume checkpoints of unfinished jobs, smallest first. The first goes up before the boot;
+        # the rest one per tick while the VM trains (upload_pending), and jobs_vm.py holds each job
+        # until its READY marker. Weights, step and events only: no optimiser state (22 Oct 2026,
+        # VMs living 40-60 min against a 50-min 1.9 GB upload); jobs_vm.py resumes those cold.
+        pend = sorted((j["name"] for j in jobs if not st.job(j["name"])["home"]
+                       and os.path.exists(os.path.join(ART, j["name"], "state.txt"))),
+                      key=lambda n: os.path.getsize(os.path.join(ART, n, "model.safetensors")))
+        rc, out = exec_py(f"for n in {pend!r}: open('/content/chat/upload/' + n + '/PENDING', 'w').close()\n"
+                          "print('PENDING_OK')\n")
+        if "PENDING_OK" not in out:
+            log(f"prepare: pending markers not written: {out.strip()[-120:]}")
+            return False
+        st.d["pending_uploads"] = pend
+        st.save()
+        if pend:
+            upload_checkpoint(st, pend[0])
     except RuntimeError as e:
         log(str(e))
         return False
@@ -399,6 +433,7 @@ def main():
                 if not prepare(st, a.commit, a.jobs, jobs, uploads):
                     time.sleep(TICK)
                     continue
+            upload_pending(st)
             r = vm_status(jobs)
             if r is None:
                 log("vm status: no reply")
