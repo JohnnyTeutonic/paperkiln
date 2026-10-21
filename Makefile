@@ -14,4 +14,5 @@ corpus:
 	$(PYTHON) corpus/fetchers/eval_heldout.py
 
 corpus-test:
-	$(PYTHON) -m pytest -q tests/test_corpus_quality.py tests/test_tinyarith.py tests/test_eval_frozen.py
+	$(PYTHON) -m pytest -q tests/test_corpus_quality.py tests/test_tinyarith.py tests/test_eval_frozen.py tests/test_decontam.py \
+	    tests/test_dialogue_pt.py tests/test_mix_pretrain.py
