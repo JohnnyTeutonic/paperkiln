@@ -1,0 +1,12 @@
+{
+ "family": "mamba",
+ "gguf": "mamba-130m-f32.gguf",
+ "prompts": 2,
+ "top1_same": 2,
+ "greedy_same": 2,
+ "worst_first_rel": 3.575803822820351e-06,
+ "max_new": 32,
+ "raw": true,
+ "hf_weights": "gguf",
+ "hf_greedy": "argmax of HF's forward with its KV cache (no generate)"
+}
