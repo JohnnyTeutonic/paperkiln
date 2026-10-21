@@ -49,6 +49,29 @@ def test_mix_ratios_parts_and_no_reuse(tmp_path):
     assert json.load(open(tmp_path / "mix.ledger.json"))["seed"] == 3
 
 
+def test_max_total_with_documents_of_varying_size(tmp_path):
+    import random
+    rng = random.Random(0)
+    for seed in range(20):
+        fw, dl = tmp_path / f"fw{seed}.txt", tmp_path / f"dl{seed}.txt"
+        for p, n in ((fw, 400), (dl, 60)):
+            p.write_bytes("".join(f"{p.stem}-{i} " + "y" * rng.randint(20, 400) + EOT for i in range(n)).encode())
+        names = {"fw": str(fw), "dl": str(dl)}
+        led = M.mix(str(tmp_path / f"v{seed}"), names, M.parse_ratios("fw=0.7,dl=0.3", names),
+                    M.parse_ratios("fw=0.5,dl=0.5", names), 0.15, "max", seed=seed)
+        assert led["parts"]["tail"]["documents"] > 0
+
+
+def test_source_order_does_not_change_the_mix(tmp_path):
+    fw, dl = tmp_path / "fw.txt", tmp_path / "dl.txt"
+    _source(fw, "fw", 300, 30)
+    _source(dl, "dl", 300, 30)
+    r = {"fw": 0.6, "dl": 0.4}
+    a = M.mix(str(tmp_path / "a"), {"fw": str(fw), "dl": str(dl)}, r, r, 0.2, 10_000, seed=5)
+    b = M.mix(str(tmp_path / "b"), {"dl": str(dl), "fw": str(fw)}, r, r, 0.2, 10_000, seed=5)
+    assert a["parts"]["main"]["sha256"] == b["parts"]["main"]["sha256"] and a["source_order"] == ["dl", "fw"]
+
+
 def test_max_total_and_shortfall(tmp_path):
     fw, dl = tmp_path / "fw.txt", tmp_path / "dl.txt"
     _source(fw, "fw", 500, 40)

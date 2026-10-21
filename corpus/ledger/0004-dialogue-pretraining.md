@@ -66,7 +66,14 @@ any SFT.
 - No non-commercial or unclear licence is used.
 
 **7. Baseline to beat.** `ctrl_sft`: a FineWeb-only base (dense fw_base plus 10k steps of
-unseen FineWeb) with the QA+chat SFT. It scores simple-QA 0.12 and chat reference F1 0.123
-(the live model scores 0.162). A base of the same size and token count trained on the mix,
-with the same SFT, must beat both numbers. It must also beat ctrl_sft's base on bits per byte
-of the `chat_prompts_v1` reference replies.
+unseen FineWeb) with the QA+chat SFT. A base of the same size and token count trained on the
+mix, given the same SFT, must beat it on each of these sets:
+- `simple_qa_v1`: ctrl_sft scores 0.12 overall.
+- `tinychat_hf_prompts_v1` (100 TinyChat prompts): reference F1 0.123 for ctrl_sft (the live
+  model scores 0.162).
+- `chat_prompts_v1`, UltraChat half only: reference F1 and reference bits per byte from
+  `chat_eval.py`'s per-source report. ctrl_sft has no measurement on this set yet; 2e's eval
+  turn measures it, and the numbers are written here when they exist. The everyday half is
+  excluded from the gate: all 100 of its items are greetings whose reference, "Hello! How can I
+  help you today?", is an assistant turn 2,005 times in everyday-conversations' training data,
+  which both this corpus and the SFT read. On that half, F1 measures a memorised greeting.

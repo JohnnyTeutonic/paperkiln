@@ -76,10 +76,13 @@ def soda_dialogue(row):
 def best_branch(root_id, children, msgs):
     """One dialogue per oasst tree: from the root prompt, at each prompt the assistant reply
     with the lowest rank (rank 0 is the best; an unranked reply only when it is the sole
-    reply), at each assistant turn the earliest follow-up prompt that itself has a reply.
+    reply), at each assistant turn the earliest follow-up prompt that itself has a usable reply.
     Every message on the path must be English, not deleted, and not rejected in review."""
     def ok(m):
         return m["lang"] == "en" and not m["deleted"] and m["review_result"] is not False
+
+    def has_ok_reply(m):
+        return any(ok(msgs[c]) for c in children.get(m["message_id"], ()))
 
     path, node = [], msgs[root_id]
     while node is not None and ok(node):
@@ -90,7 +93,7 @@ def best_branch(root_id, children, msgs):
             node = min(ranked, key=lambda k: (k["rank"], k["message_id"])) if ranked else (
                 kids[0] if len(kids) == 1 else None)
         else:
-            follow = sorted((k for k in kids if children.get(k["message_id"])),
+            follow = sorted((k for k in kids if has_ok_reply(k)),
                             key=lambda k: (k["created_date"], k["message_id"]))
             node = follow[0] if follow else None
     return path

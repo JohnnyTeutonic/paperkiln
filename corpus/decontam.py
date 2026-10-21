@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Decontamination against the frozen eval sets, shared by every training corpus that could
-contain chat or question answering (lever 1's SFT, lever 2's dialogue pretraining text).
+"""Decontamination against the frozen eval sets, for training corpora that could contain chat or
+question answering (lever 2's corpus/fetchers/dialogue_pt.py; lever 1's SFT builder).
 
 Targets: corpus/eval/simple_qa_v1 (prompts; answers flag only), tinychat_hf_prompts_v1 and
 chat_prompts_v1 (prompts and reference replies). Text is normalised to words: lowercased,

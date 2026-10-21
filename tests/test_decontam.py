@@ -54,6 +54,17 @@ def test_span_drops_long_prompt_inside_a_turn(tmp_path):
     assert [x["rule"] for x in d] == ["span"]
 
 
+def test_span_boundary_is_eight_words(tmp_path):
+    qa, tc = tmp_path / "qa.jsonl", tmp_path / "tc.jsonl"
+    _write(qa, [])
+    _write(tc, [{"prompt": "one two three four five six seven"},
+                {"prompt": "alpha beta gamma delta epsilon zeta eta theta"}])
+    dc = decontam.Decontaminator(str(qa), [str(tc)])
+    assert dc.check(["x"], "so one two three four five six seven ok")[0] == []
+    d, _ = dc.check(["x"], "so alpha beta gamma delta epsilon zeta eta theta ok")
+    assert [x["rule"] for x in d] == ["span"]
+
+
 def test_answer_flag_needs_question_words_nearby(tmp_path):
     dc = _dc(tmp_path)
     d, f = dc.check(["tell me"], "The capital of France is Paris, a city on the Seine.")

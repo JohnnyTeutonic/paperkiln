@@ -97,7 +97,7 @@ def die(msg):
     sys.exit(1)
 
 
-# ---- dialogue corpora (chat_sft.py, dialogue_pt.py) ------------------------
+# ---- dialogue corpora (dialogue_pt.py) -------------------------------------
 # The chat template's markers; a source dialogue containing one would corrupt
 # the template it is rendered into, so it is dropped (reason "markers").
 MARKERS = ("<|user|>", "<|assistant|>", "<|endoftext|>")

@@ -81,6 +81,30 @@ def test_oasst_branch_stops_at_non_english_or_deleted():
     assert [p["content"] for p in D.best_branch("r", children, msgs)] == ["Q1", "A1"]
 
 
+def test_oasst_branch_skips_a_followup_whose_replies_are_unusable():
+    msgs = {m["message_id"]: m for m in [
+        _msg("r", None, "prompter", "Q1"), _msg("a0", "r", "assistant", "A1", rank=0),
+        _msg("p1", "a0", "prompter", "early, dead", date="2022"), _msg("x", "p1", "assistant", "gone", rank=0, deleted=True),
+        _msg("p2", "a0", "prompter", "later", date="2023"), _msg("b0", "p2", "assistant", "A2", rank=0)]}
+    children = {"r": ["a0"], "a0": ["p1", "p2"], "p1": ["x"], "p2": ["b0"]}
+    assert [p["content"] for p in D.best_branch("r", children, msgs)] == ["Q1", "A1", "later", "A2"]
+
+
+def test_oasst_trees_dedups_oasst1_and_filters(monkeypatch):
+    def rows(repo, rev, files, cols):
+        tree = "T1" if repo.endswith("oasst2") else None
+        base = [("T1", "r1", None, "prompter", "Q", None), ("T1", "a1", "r1", "assistant", "A", 0)]
+        extra = [("T2", "r2", None, "prompter", "Hola", None), ("T2", "a2", "r2", "assistant", "x", 0)]
+        for t, mid, parent, role, text, rank in base + ([] if tree else extra):
+            yield "uri", {"message_tree_id": t, "message_id": mid, "parent_id": parent, "role": role, "text": text,
+                          "rank": rank, "lang": "es" if t == "T2" else "en", "deleted": False, "review_result": True,
+                          "tree_state": "ready_for_export", "created_date": "2023"}
+    monkeypatch.setattr(D.C, "parquet_rows", rows)
+    out = list(D.oasst_trees())
+    assert out[0][0] == "oasst2:T1" and [m["content"] for m in out[0][1]] == ["Q", "A"]
+    assert out[1] == ("oasst1:T2", None, "not_english_or_not_ready") and len(out) == 2
+
+
 def test_build_counts_every_reason(tmp_path):
     qa, tc = tmp_path / "qa.jsonl", tmp_path / "tc.jsonl"
     qa.write_text(json.dumps({"prompt": "What is the capital of France?", "answers": ["paris"], "kind": "fact"}) + "\n")

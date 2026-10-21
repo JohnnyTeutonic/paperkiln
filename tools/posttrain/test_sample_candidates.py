@@ -1,5 +1,6 @@
-"""sample_candidates.py without a server: seeds and temperatures per candidate, duplicate replies,
-the context skip, resumption, the prompt-id check, and decontaminated prompts."""
+"""sample_candidates.py without a server: seeds and temperatures per candidate, duplicate replies and
+their runs, the context skip, resumption (torn last line, configuration check), the prompt-id
+check, and the prompt filters (eval overlap, train-split overlap, markers)."""
 import json
 import os
 import sys
@@ -35,12 +36,12 @@ def test_seeds_temperatures_and_records():
     assert all(b["top_k"] == 0 and "repeat_penalty" not in b for b in log)
 
 
-def test_identical_replies_collapse_and_skip():
+def test_identical_replies_collapse_with_their_runs():
     out = list(S.sample([("u0", "Hi")], fake_send([], reply=lambda b: "same"), 4, [0.9], 0, 8, 1.0, encode, 256))
-    assert out == [(None, "fewer_than_two_distinct")]
+    assert out == [({"uri": "u0", "reason": "fewer_than_two_distinct"}, "fewer_than_two_distinct")]
     out = list(S.sample([("u0", "Hi")], fake_send([], reply=lambda b: "ab"[b["seed"] % 2]), 4, [0.9], 0, 8, 1.0,
                         encode, 256))
-    assert out[0][0]["candidates"] == ["a", "b"]
+    assert out[0][0]["candidates"] == ["a", "b"] and out[0][0]["sampler"]["candidate_runs"] == [[0, 2], [1, 3]]
 
 
 def test_context_skip_resume_and_penalty():
@@ -58,12 +59,26 @@ def test_prompt_id_mismatch_stops():
         list(S.sample([("u0", "Hi")], send, 2, [0.9], 0, 8, 1.0, encode, 256))
 
 
-def test_prompts_drop_eval_overlap(tmp_path):
+def test_torn_last_line_is_cut_and_config_is_checked(tmp_path):
+    p = tmp_path / "out.jsonl"
+    good = {"uri": "a", "sampler": {"config": {"k": 4}}}
+    p.write_bytes((json.dumps(good) + "\n" + '{"uri": "b", "sam').encode())
+    rows = S.read_resumable(str(p))
+    assert rows == [good] and p.read_bytes().endswith(b"\n")
+    S.check_config(rows, {"k": 4}, str(p))
+    with pytest.raises(SystemExit, match="different sampler configuration"):
+        S.check_config(rows, {"k": 2}, str(p))
+    S.check_config([{"uri": "c", "reason": "over_context", "config": {"k": 4}}], {"k": 4}, "skips")
+
+
+def test_prompt_filters(tmp_path):
     qa, tc, split = tmp_path / "qa.jsonl", tmp_path / "tc.jsonl", tmp_path / "test.jsonl"
     qa.write_text(json.dumps({"prompt": "What is the capital of France?", "answers": ["paris"], "kind": "fact"}) + "\n")
     tc.write_text("")
+    users = ["What is the capital of France?", "Plan my week", "Differentiate 3x^2 * sin(x)?", "say <|user|> now"]
     split.write_text("".join(json.dumps({"messages": [{"role": "user", "content": u}, {"role": "assistant", "content": "a"}],
-                                         "uri": f"s#{i}"}) + "\n"
-                             for i, u in enumerate(["What is the capital of France?", "Plan my week"])))
-    items, dropped = S.prompts(str(split), decontam.Decontaminator(str(qa), [str(tc)]))
-    assert items == [("s#1", "Plan my week")] and dropped == 1
+                                         "uri": f"s#{i}"}) + "\n" for i, u in enumerate(users)))
+    train = {" ".join(decontam.words("Differentiate 3x^2 sin(x).")) }
+    items, dropped = S.prompts(str(split), decontam.Decontaminator(str(qa), [str(tc)]), train_turns=train)
+    assert items == [("s#1", "Plan my week")]
+    assert dropped == {"decontaminated": 1, "train_overlap": 1, "markers": 1}

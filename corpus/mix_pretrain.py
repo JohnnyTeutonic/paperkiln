@@ -87,22 +87,27 @@ def parse_ratios(text, names):
 
 
 def mix(out_prefix, sources, main, tail, tail_fraction, total_bytes, seed):
-    names = list(sources)
-    index = {s: index_documents(p) for s, p in sources.items()}
+    names = sorted(sources)      # the interleave depends on this order; sorted, it is part of the recipe
+    index = {s: index_documents(sources[s]) for s in names}
     avail = {s: sum(e - b for b, e in zip(*index[s])) for s in names}
     parts = {"main": (1.0 - tail_fraction, main), "tail": (tail_fraction, tail)}
     if total_bytes == "max":
+        # Each part's budget is met by whole documents, so it can overshoot by up to one
+        # document: keep back one largest document per part, or the binding source runs dry.
         need = {s: sum(frac * r[s] for frac, r in parts.values()) for s in names}
-        total_bytes = int(min(avail[s] / need[s] for s in names if need[s] > 0))
+        biggest = {s: max((e - b for b, e in zip(*index[s])), default=0) for s in names}
+        total_bytes = int(min((avail[s] - len(parts) * biggest[s]) / need[s] for s in names if need[s] > 0))
+        if total_bytes <= 0:
+            raise SystemExit("--total-bytes max: a source is too small for its ratios")
     order = {}
     for s in names:
         perm = list(range(len(index[s][0])))
         random.Random(f"{seed}:order:{s}").shuffle(perm)
         order[s] = perm
     cursor = {s: 0 for s in names}
-    files = {s: open(p, "rb") for s, p in sources.items()}
+    files = {s: open(sources[s], "rb") for s in names}
     ledger = {"seed": seed, "tail_fraction": tail_fraction, "total_bytes_target": total_bytes,
-              "unit": "bytes of document text", "sources": {}, "parts": {}}
+              "unit": "bytes of document text", "source_order": names, "sources": {}, "parts": {}}
     try:
         for part, (frac, ratios) in parts.items():
             picks, per = [], {}
@@ -132,7 +137,8 @@ def mix(out_prefix, sources, main, tail, tail_fraction, total_bytes, seed):
     finally:
         for f in files.values():
             f.close()
-    for s, p in sources.items():
+    for s in names:
+        p = sources[s]
         ledger["sources"][s] = {"path": p, "sha256": sha256_file(p), "documents": len(index[s][0]),
                                 "bytes": avail[s], "documents_used": cursor[s]}
     with open(f"{out_prefix}.ledger.json", "w", encoding="utf-8", newline="\n") as f:
