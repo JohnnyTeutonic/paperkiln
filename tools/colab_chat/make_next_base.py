@@ -78,7 +78,14 @@ def main(argv=None):
     for v in (a.d, a.d_ff):
         if v % 256:
             raise SystemExit(f"d and d_ff must be multiples of 256 (llama.cpp k-quant rows): {v}")
-    avail = {s: os.path.getsize(os.path.join(a.lever2, f"dialogue_{s}_v1", "text.txt")) for s in DIALOGUE}
+    # Sizes from lever 2's ledger (text.txt bytes per source), else the files themselves.
+    ledger = os.path.join(a.lever2, "dialogue_pt_v1.ledger.json")
+    if os.path.exists(ledger):
+        with open(ledger, encoding="utf-8") as f:
+            led = json.load(f)
+        avail = {s: int(led[s]["bytes"]) for s in DIALOGUE}
+    else:
+        avail = {s: os.path.getsize(os.path.join(a.lever2, f"dialogue_{s}_v1", "text.txt")) for s in DIALOGUE}
     main, tail, use = ratios(avail, a.fineweb_bytes, a.total_bytes, a.dialogue_main, a.dialogue_tail,
                              a.tail_fraction, a.max_use)
     vocab = f"{C}/upload/{VOCAB_KEY}"
