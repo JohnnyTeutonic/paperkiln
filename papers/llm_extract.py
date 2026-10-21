@@ -525,12 +525,60 @@ def user_content(text: str, arxiv_id: str, part: int = 0, n_parts: int = 1) -> s
             "quote for every stated value.")
 
 
+def system_prompt() -> str:
+    """The instructions plus the reply's JSON Schema. The schema travels in the prompt, not as a
+    constrained-decoding format: the API refused it as too large to compile (22 Oct 2026), and
+    every reply is validated against it here (validate_schema) and then by the verifier."""
+    return (SYSTEM_PROMPT + "\n\n# Reply format\nReply with ONE JSON object and nothing else (no prose, "
+            "no code fence) that conforms to this JSON Schema (every listed property present; no others):\n"
+            + json.dumps(SCHEMA, separators=(",", ":")))
+
+
+def validate_schema(v, s: dict, path: str = "$", defs: dict | None = None) -> list[str]:
+    """The JSON Schema subset SCHEMA uses ($ref into $defs, object with required properties and no
+    others, array items, string, enum): a list of errors, empty when v conforms."""
+    defs = defs if defs is not None else s.get("$defs", {})
+    if "$ref" in s:
+        return validate_schema(v, defs[s["$ref"].split("/")[-1]], path, defs)
+    t, errs = s.get("type"), []
+    if t == "object":
+        if not isinstance(v, dict):
+            return [f"{path}: not an object"]
+        for k in s.get("required", []):
+            if k not in v:
+                errs.append(f"{path}: missing {k!r}")
+        for k, x in v.items():
+            if k in s.get("properties", {}):
+                errs += validate_schema(x, s["properties"][k], f"{path}.{k}", defs)
+            elif s.get("additionalProperties") is False:
+                errs.append(f"{path}: unexpected {k!r}")
+    elif t == "array":
+        if not isinstance(v, list):
+            return [f"{path}: not an array"]
+        for i, x in enumerate(v):
+            errs += validate_schema(x, s.get("items", {}), f"{path}[{i}]", defs)
+    elif t == "string":
+        if not isinstance(v, str):
+            return [f"{path}: not a string"]
+        if "enum" in s and v not in s["enum"]:
+            errs.append(f"{path}: {v!r} not in {s['enum']}")
+    return errs
+
+
+def parse_reply(text: str):
+    """The JSON object in a reply (a stray code fence or prose around it is dropped)."""
+    a, b = text.find("{"), text.rfind("}")
+    if a < 0 or b < a:
+        raise json.JSONDecodeError("no JSON object", text, 0)
+    return json.loads(text[a:b + 1])
+
+
 def request_params(text: str, arxiv_id: str, part: int = 0, n_parts: int = 1, model: str = MODEL,
                    effort: str = EFFORT, max_tokens: int = MAX_TOKENS, fallback: bool = True) -> dict:
-    p = {"model": model, "max_tokens": max_tokens, "system": SYSTEM_PROMPT,
+    p = {"model": model, "max_tokens": max_tokens, "system": system_prompt(),
          "messages": [{"role": "user", "content": user_content(text, arxiv_id, part, n_parts)}],
          "thinking": {"type": "adaptive"},
-         "output_config": {"effort": effort, "format": {"type": "json_schema", "schema": SCHEMA}}}
+         "output_config": {"effort": effort}}
     if fallback:
         p["betas"] = [FALLBACK_BETA]
         p["fallbacks"] = [{"model": FALLBACK_MODEL}]
@@ -685,9 +733,14 @@ def call_llm(client, params: dict, arxiv_id: str, tag: str, budget_usd: float | 
     output = None
     if "error" not in row:
         try:
-            output = json.loads(text)
+            output = parse_reply(text)
         except json.JSONDecodeError as e:
             row["error"] = f"reply is not JSON: {e}"
+        else:
+            errs = validate_schema(output, SCHEMA)
+            if errs:
+                row["error"] = f"reply does not match the schema ({len(errs)}): " + "; ".join(errs[:5])
+                output = None
     ledger_append(row, ledger)
     if output is None:
         raise SystemExit(f"arXiv:{arxiv_id}: {row['error']} (receipt in {ledger})")

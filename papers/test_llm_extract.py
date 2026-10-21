@@ -459,7 +459,8 @@ def test_request_shape():
     p = L.request_params("TEX", "1234.5678")
     assert p["model"] == "claude-opus-5-5" and p["thinking"] == {"type": "adaptive"}
     assert p["output_config"]["effort"] == "high"
-    assert p["output_config"]["format"] == {"type": "json_schema", "schema": L.SCHEMA}
+    assert "format" not in p["output_config"]  # the schema is too large to compile: it rides in the prompt
+    assert json.dumps(L.SCHEMA, separators=(",", ":")) in p["system"]
     assert p["betas"] == [L.FALLBACK_BETA] and p["fallbacks"] == [{"model": L.FALLBACK_MODEL}]
     assert "temperature" not in p and "budget_tokens" not in json.dumps(p)
     assert '<paper_latex arxiv_id="1234.5678">\nTEX</paper_latex>' in p["messages"][0]["content"]
@@ -590,3 +591,14 @@ def test_compare_with_rule_based():
     assert rows["norm"]["llm_score"] == "abstain"
     assert L.score("gelu", "relu") == "WRONG" and L.score(L.OUT, "rope") == "WRONG"
     assert L.score(("family", "gated-glu"), "swiglu") == "correct"
+
+
+def test_validate_schema_rejects_malformed_replies():
+    assert L.validate_schema({"value": "x", "status": "stated", "quote": "q", "where": "w"},
+                             {"$ref": "#/$defs/ev"}, defs=L.SCHEMA["$defs"]) == []
+    bad = {"value": "x", "status": "guessed", "quote": "q", "extra": 1}
+    errs = L.validate_schema(bad, {"$ref": "#/$defs/ev"}, defs=L.SCHEMA["$defs"])
+    assert any("guessed" in e for e in errs) and any("missing 'where'" in e for e in errs)
+    assert any("unexpected 'extra'" in e for e in errs)
+    assert L.validate_schema({"title": "t"}, L.SCHEMA)  # most properties missing
+    assert L.parse_reply('Here it is:\n```json\n{"a": 1}\n```') == {"a": 1}
