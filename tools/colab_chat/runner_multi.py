@@ -191,20 +191,31 @@ def fetch_final(st, name, model_name):
         log(f"{name}: final outputs downloaded")
 
 
-def fetch_outputs(st, name, outputs):
+def fetch_outputs(st, name, outputs, best_effort=False):
     """A data job's declared outputs, paths relative to /content/chat/<name>/,
-    plus its log. All must arrive before the job counts as home."""
+    plus its log: ONE file per call (per tick), so a gigabyte of outputs never
+    holds up the checkpoint relays (21 Oct 2026: a 26-minute download blocked
+    them and a reclaim lost an hour of training). The job counts as home when
+    every file has arrived. best_effort (a failed job): all at once, misses ignored."""
     art = os.path.join(ART, name)
     os.makedirs(art, exist_ok=True)
-    ok = True
+    js = st.job(name)
+    got = set(js.get("fetched", []))
     for f in [*outputs, f"../{name}_train.log"]:
+        if f in got:
+            continue
         # Outputs keep their relative paths (several sources write report.json).
         dst = os.path.join(art, os.path.basename(f) if f.startswith("../") else f)
         os.makedirs(os.path.dirname(dst), exist_ok=True)
         rc, _ = colab("download", "-s", NAME, f"/content/chat/{name}/{f}", dst, timeout=1800)
-        ok = ok and rc == 0
-    if ok:
-        st.job(name)["home"] = True
+        if rc == 0:
+            js.setdefault("fetched", []).append(f)
+            st.save()
+            log(f"{name}: {f} downloaded")
+        if not best_effort:
+            return
+    if best_effort or len(js.get("fetched", [])) == len(outputs) + 1:
+        js["home"] = True
         st.save()
         log(f"{name}: outputs downloaded")
 
@@ -390,7 +401,7 @@ def main():
                 js["failed_seen"] = js.get("failed_seen", 0) + 1 if r[n] == "FAILED" else 0
                 if r[n] == "FAILED" and js["failed_seen"] >= 2 and not js["home"]:
                     if "cmd" in j:  # a failed data job's outputs are its diagnosis: whatever exists
-                        fetch_outputs(st, n, j.get("outputs", []))
+                        fetch_outputs(st, n, j.get("outputs", []), best_effort=True)
                     colab("download", "-s", NAME, f"/content/chat/{n}_train.log",
                           os.path.join(ART, n, f"{n}_train.log"), timeout=300)
                     js["home"] = True
