@@ -1,0 +1,2 @@
+{"i": 0, "prompt_tokens": 10, "first_max_dlogit": 0.00017547607421875, "logit_range": 79.03118896484375, "first_rel": 2.2203395459077406e-06, "top1_same": true, "greedy_same": true, "first_diff": null, "hf_tokens": 12, "hf_reply": "Hi there! How can I help you today?\n", "seconds": 28.9}
+{"i": 1, "prompt_tokens": 11, "first_max_dlogit": 0.00012969970703125, "logit_range": 78.25833892822266, "first_rel": 1.6573276254969912e-06, "top1_same": true, "greedy_same": true, "first_diff": null, "hf_tokens": 12, "hf_reply": "Hi there! How can I help you today?\n", "seconds": 24.9}
