@@ -1,0 +1,511 @@
+{
+ "_comment": "tiny-chat Stage 0 (20m; experiments/tiny_chat_2026-10/PREREGISTRATION.md): the 16% dialogue mix (E1 level; design.json) built on the VM, a 300-step throughput probe per shape alone on the GPU, then lr screens [0.0005, 0.001, 0.002] x 1500 steps per shape (seed 101), three at a time. Estimated 12.0 job-hours. Brings home one summary.json per job. Afterwards, at home: python tools/colab_chat/tiny_chat_run.py choose --art ART --out experiments/tiny_chat_2026-10/stage0/lr_choice.json, commit, rerun make_jobs.py. Upload vocab_llama3_bpe.gguf with the runner's --upload. Dialogue levels [0, 4, 8, 16]% (copies), E1 at 16% PROVISIONAL (design.json not final: the gate job refuses; rerun make_jobs.py --dialogue-pt-bytes once the whole default human set is measured).",
+ "max_parallel": 3,
+ "jobs": [
+  {
+   "name": "gate",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "gate",
+    "--out",
+    "{out}",
+    "--stage0",
+    "--jobs",
+    "tools/colab_chat/tiny_chat_s0.json",
+    "--design",
+    "experiments/tiny_chat_2026-10/design.json"
+   ],
+   "outputs": [
+    "gate.json"
+   ]
+  },
+  {
+   "name": "data",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_data.py",
+    "--out",
+    "{out}",
+    "--vocab",
+    "/content/chat/upload/vocab_llama3_bpe.gguf",
+    "--fineweb",
+    "corpus/data/fineweb_edu_shard0_v1",
+    "--shares",
+    "16",
+    "--mix-bytes",
+    "800000000",
+    "--max-epochs",
+    "4",
+    "--T",
+    "512",
+    "--seed",
+    "1"
+   ],
+   "outputs": [
+    "data.ledger.json"
+   ],
+   "after": "gate"
+  },
+  {
+   "name": "probe_20m_L2",
+   "after": "data",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "probe",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
+    "--corpus",
+    "/content/chat/data/mix_s16.ids",
+    "--steps",
+    "300"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "probe_20m_L4",
+   "after": "probe_20m_L2",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "probe",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L4.json",
+    "--corpus",
+    "/content/chat/data/mix_s16.ids",
+    "--steps",
+    "300"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "probe_20m_L8",
+   "after": "probe_20m_L4",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "probe",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L8.json",
+    "--corpus",
+    "/content/chat/data/mix_s16.ids",
+    "--steps",
+    "300"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "probe_20m_L16",
+   "after": "probe_20m_L8",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "probe",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L16.json",
+    "--corpus",
+    "/content/chat/data/mix_s16.ids",
+    "--steps",
+    "300"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "probe_20m_L32",
+   "after": "probe_20m_L16",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "probe",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L32.json",
+    "--corpus",
+    "/content/chat/data/mix_s16.ids",
+    "--steps",
+    "300"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "screen_20m_L32_lr0",
+   "after": "probe_20m_L32",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "screen",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L32.json",
+    "--corpus",
+    "/content/chat/data/mix_s16.ids",
+    "--lr",
+    "0.0005",
+    "--steps",
+    "1500",
+    "--seed",
+    "101"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "screen_20m_L32_lr1",
+   "after": "probe_20m_L32",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "screen",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L32.json",
+    "--corpus",
+    "/content/chat/data/mix_s16.ids",
+    "--lr",
+    "0.001",
+    "--steps",
+    "1500",
+    "--seed",
+    "101"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "screen_20m_L32_lr2",
+   "after": "probe_20m_L32",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "screen",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L32.json",
+    "--corpus",
+    "/content/chat/data/mix_s16.ids",
+    "--lr",
+    "0.002",
+    "--steps",
+    "1500",
+    "--seed",
+    "101"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "screen_20m_L16_lr0",
+   "after": "probe_20m_L32",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "screen",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L16.json",
+    "--corpus",
+    "/content/chat/data/mix_s16.ids",
+    "--lr",
+    "0.0005",
+    "--steps",
+    "1500",
+    "--seed",
+    "101"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "screen_20m_L16_lr1",
+   "after": "probe_20m_L32",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "screen",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L16.json",
+    "--corpus",
+    "/content/chat/data/mix_s16.ids",
+    "--lr",
+    "0.001",
+    "--steps",
+    "1500",
+    "--seed",
+    "101"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "screen_20m_L16_lr2",
+   "after": "probe_20m_L32",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "screen",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L16.json",
+    "--corpus",
+    "/content/chat/data/mix_s16.ids",
+    "--lr",
+    "0.002",
+    "--steps",
+    "1500",
+    "--seed",
+    "101"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "screen_20m_L8_lr0",
+   "after": "probe_20m_L32",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "screen",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L8.json",
+    "--corpus",
+    "/content/chat/data/mix_s16.ids",
+    "--lr",
+    "0.0005",
+    "--steps",
+    "1500",
+    "--seed",
+    "101"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "screen_20m_L8_lr1",
+   "after": "probe_20m_L32",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "screen",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L8.json",
+    "--corpus",
+    "/content/chat/data/mix_s16.ids",
+    "--lr",
+    "0.001",
+    "--steps",
+    "1500",
+    "--seed",
+    "101"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "screen_20m_L8_lr2",
+   "after": "probe_20m_L32",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "screen",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L8.json",
+    "--corpus",
+    "/content/chat/data/mix_s16.ids",
+    "--lr",
+    "0.002",
+    "--steps",
+    "1500",
+    "--seed",
+    "101"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "screen_20m_L4_lr0",
+   "after": "probe_20m_L32",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "screen",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L4.json",
+    "--corpus",
+    "/content/chat/data/mix_s16.ids",
+    "--lr",
+    "0.0005",
+    "--steps",
+    "1500",
+    "--seed",
+    "101"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "screen_20m_L4_lr1",
+   "after": "probe_20m_L32",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "screen",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L4.json",
+    "--corpus",
+    "/content/chat/data/mix_s16.ids",
+    "--lr",
+    "0.001",
+    "--steps",
+    "1500",
+    "--seed",
+    "101"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "screen_20m_L4_lr2",
+   "after": "probe_20m_L32",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "screen",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L4.json",
+    "--corpus",
+    "/content/chat/data/mix_s16.ids",
+    "--lr",
+    "0.002",
+    "--steps",
+    "1500",
+    "--seed",
+    "101"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "screen_20m_L2_lr0",
+   "after": "probe_20m_L32",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "screen",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
+    "--corpus",
+    "/content/chat/data/mix_s16.ids",
+    "--lr",
+    "0.0005",
+    "--steps",
+    "1500",
+    "--seed",
+    "101"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "screen_20m_L2_lr1",
+   "after": "probe_20m_L32",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "screen",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
+    "--corpus",
+    "/content/chat/data/mix_s16.ids",
+    "--lr",
+    "0.001",
+    "--steps",
+    "1500",
+    "--seed",
+    "101"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "screen_20m_L2_lr2",
+   "after": "probe_20m_L32",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "screen",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
+    "--corpus",
+    "/content/chat/data/mix_s16.ids",
+    "--lr",
+    "0.002",
+    "--steps",
+    "1500",
+    "--seed",
+    "101"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  }
+ ]
+}

@@ -2,7 +2,7 @@
 """Dialogues -> SFT examples and preference pairs in the chat template that
 `mtstudio chat` serves.
 
-    python tools/chat_data.py sft DIALOGUES.jsonl --vocab V.gguf --T 256 --out SFT.jsonl [--max N] [--skip N]
+    python tools/chat_data.py sft DIALOGUES.jsonl --vocab V.gguf --T 256 --out SFT.jsonl [--max N] [--skip N] [--all-turns]
     python tools/chat_data.py prompts SFT.jsonl --out PROMPTS.jsonl
     python tools/chat_data.py pairs SFT.jsonl SAMPLES.jsonl --vocab V.gguf --T 256 --out PAIRS.jsonl
     python tools/chat_data.py mix A.jsonl B.jsonl [...] --seed 1 --out MIX.jsonl
@@ -20,6 +20,10 @@ about 0.3% of TinyChat conversations separate turns with bare [/INST], so
 one "assistant turn" holds several (ledger 0003), and training on them
 would teach the model to print markers. --skip N starts after the first N
 kept examples, so a later stage can draw examples the SFT run never saw.
+--all-turns writes one example per dialogue instead, in mtstudio's
+"segments" form ({"segments": [{"text", "loss"}...]}: user turns with
+loss false, assistant turns with loss true), the longest prefix of whole
+turns that fits T + 1; the same targets as the per-turn form, one row.
 
 `prompts` writes the examples' prompts for `mtstudio sample-set`; `pairs`
 joins its samples back to the examples as SPIN-style preference pairs: the
@@ -107,7 +111,26 @@ def _sized(line):
     return d, out
 
 
+def all_turns(messages, sized, T):
+    """One whole-dialogue example (mtstudio's "segments" form: every assistant
+    turn trained in one row) from the longest prefix of whole turns that fits
+    T + 1 tokens, with how many turns it keeps; None when even the first turn
+    does not fit. A turn is never cut, for the reason above."""
+    k = 0
+    while k < len(sized) and sized[k][1] <= T + 1:
+        k += 1
+    if k == 0:
+        return None, 0
+    segs = []
+    for j in range(k):
+        segs.append({"text": f"<|user|>{messages[2 * j]['content']}<|assistant|>", "loss": False})
+        segs.append({"text": messages[2 * j + 1]["content"], "loss": True})
+    return {"segments": segs}, k
+
+
 def cmd_sft(a):
+    if a.all_turns:
+        return cmd_sft_all_turns(a)
     kept = dropped = marked = skipped = 0
     with open(a.dialogues, encoding="utf-8") as f, open(a.out, "w", encoding="utf-8", newline="\n") as g:
         if a.jobs > 1:
@@ -139,6 +162,35 @@ def cmd_sft(a):
             pool.terminate()
     return {"kept": kept, "skipped": skipped, "dropped_over_T": dropped, "dropped_dialogues_with_markers": marked,
             "out": a.out}
+
+
+def cmd_sft_all_turns(a):
+    """`sft --all-turns`: one example per dialogue (its turns in one row), so a
+    k-turn dialogue costs one row instead of k. Same marker filter and token
+    counts as the per-turn form; turns past T are dropped from the end."""
+    kept = dropped = marked = skipped = turns_kept = turns_cut = 0
+    _init_tok(a.vocab)
+    with open(a.dialogues, encoding="utf-8") as f, open(a.out, "w", encoding="utf-8", newline="\n") as g:
+        for d, exs in map(_sized, f):
+            if exs is None:
+                marked += 1
+                continue
+            ex, k = all_turns(d["messages"], exs, a.T)
+            if ex is None:
+                dropped += 1
+                continue
+            if skipped < a.skip:
+                skipped += 1
+                continue
+            ex["uri"] = d.get("uri", "")
+            g.write(json.dumps(ex, ensure_ascii=False) + "\n")
+            kept += 1
+            turns_kept += k
+            turns_cut += len(exs) - k
+            if a.max and kept >= a.max:
+                break
+    return {"kept": kept, "skipped": skipped, "turns_kept": turns_kept, "turns_cut_over_T": turns_cut,
+            "dropped_over_T": dropped, "dropped_dialogues_with_markers": marked, "out": a.out}
 
 
 def cmd_prompts(a):
@@ -204,6 +256,8 @@ def main(argv=None):
     s.add_argument("--max", type=int, default=0, help="stop after this many examples (0 = all)")
     s.add_argument("--jobs", type=int, default=1, help="tokenising processes (output is identical for any value)")
     s.add_argument("--skip", type=int, default=0, help="skip the first N examples that would be kept")
+    s.add_argument("--all-turns", action="store_true",
+                   help="one example per dialogue with every assistant turn trained (mtstudio segments)")
     p = sub.add_parser("prompts")
     p.add_argument("examples")
     p.add_argument("--out", required=True)

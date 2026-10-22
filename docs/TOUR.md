@@ -382,6 +382,7 @@ yourself and pick the attention mechanism.
                                       // grads, ~95% fewer live tape nodes)
     "eval_every": 100,
     "eval_examples": 0,               // SFT: first N held-out examples (0 = all)
+    "eval_windows": 8,                // LM: held-out windows of T per eval (fixed seed)
     "eval_batch": 1,                  // SFT: held-out examples per forward
     "checkpoint_every": 100,          // resume picks up from here
     "gradmap_every": 10,              // per-module grad-norm event cadence

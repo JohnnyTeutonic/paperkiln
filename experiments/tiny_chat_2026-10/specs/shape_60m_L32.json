@@ -1,0 +1,50 @@
+{
+ "name": "tc_60m_L32",
+ "arch": {
+  "preset": "llama-tiny",
+  "rope_heads": "all",
+  "custom": {
+   "d": 384,
+   "layers": 32,
+   "heads": 6,
+   "d_ff": 1120
+  }
+ },
+ "data": {
+  "corpus": "/content/chat/data/mix_s16.ids",
+  "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+  "vocab_cap": 16384,
+  "T": 512,
+  "max_tokens": 0
+ },
+ "train": {
+  "steps": 10000,
+  "lr": 0.001,
+  "batch": 16,
+  "accum": 2,
+  "clip": 1.0,
+  "eval_every": 1000,
+  "eval_windows": 32,
+  "checkpoint_every": 500,
+  "gradmap_every": 0,
+  "seed": 1,
+  "optimizer": "adamw",
+  "lr_schedule": {
+   "warmup_steps": 500,
+   "decay": "cosine",
+   "min_lr_frac": 0.1
+  }
+ },
+ "export": {
+  "formats": [
+   "safetensors",
+   "gguf"
+  ]
+ },
+ "_shape": {
+  "size": "60m",
+  "nonemb": 60187008,
+  "emb": 6291456,
+  "total": 66478464
+ }
+}

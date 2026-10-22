@@ -7,6 +7,19 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Tiny-chat experiments, pre-registered and prepared** (23 Oct): `experiments/tiny_chat_2026-10/`
+  (PREREGISTRATION.md, `make_jobs.py`, `analyze.py`, shape and SFT specs),
+  `tools/colab_chat/tiny_chat_run.py` and `tiny_chat_data.py`, jobs files
+  `tiny_chat_{s0,e5,e1,s0_60m,e1_60m}.json` (not launched; E5's dialogue levels follow a
+  registered rule from the measured human corpus, `design.json`, provisional until the default set
+  is home). mtstudio: SFT examples in a
+  `segments` form (a whole multi-turn dialogue per row, every assistant turn trained; a one-turn
+  record trains bit for bit like its `{prompt, completion}` twin), `train.eval_windows` (LM
+  validation windows, default 8 as before), and a clear refusal of a corpus whose training part or
+  held-out 5% is shorter than T + 2 tokens (the window draw used to wrap round and crash);
+  `tools/chat_data.py sft --all-turns` writes the segments form. Tests:
+  `tests/test_mtstudio_segments.py`, `test_tiny_chat_pipeline.py`, `test_tiny_chat_analyze.py`,
+  `test_chat_data.py`.
 - **Runtime-defined ops** (22 Oct, `1159d63e`): the `expr` op, a closed elementwise grammar
   with row reductions parsed at runtime into differentiable primitives (new tape ops exp, log,
   sqrt, tanh, erf, abs, div, pow, maximum, minimum, where, rowsum, rowmax, broadcast_cols);

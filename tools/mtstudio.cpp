@@ -89,7 +89,9 @@ struct Spec {
     double anneal_from = 0.0;
     // post-training (docs/decisions/0001-posttrain-charter.md, Phase 3):
     // objective "lm" streams data.corpus; "sft" trains on data.sft_examples
-    // ({prompt, completion} JSONL) with the prompt masked out of the loss;
+    // ({prompt, completion} JSONL) with the prompt masked out of the loss,
+    // or a whole multi-turn dialogue as {"segments": [{"text", "loss"}...]}
+    // with every loss segment (each assistant turn) trained at once;
     // "rejection_sft" reads rejection-sampler records and keeps accepted ones.
     std::string objective = "lm";
     std::string sft_examples;
@@ -132,6 +134,10 @@ struct Spec {
     // mean is the same up to float summation order).
     size_t eval_examples = 0;
     int eval_batch = 1;
+    // LM evaluation: held-out windows of T per eval (fixed seed, so every
+    // eval reads the same windows). 8 = the original cadence; comparisons
+    // between runs want more (8 x 512 tokens has an SE of a few hundredths).
+    int eval_windows = 8;
     int batch = 1;                    // sequences per FORWARD (stacked rows, one graph)
     int accum = 1;                    // batches accumulated per optimizer step
     bool ckpt_act = false;            // activation checkpointing per block
@@ -321,6 +327,8 @@ Spec parse_spec(const std::string& path) {
     s.eval_examples = tr.value("eval_examples", s.eval_examples);
     s.eval_batch = tr.value("eval_batch", s.eval_batch);
     if (s.eval_batch < 1) throw std::runtime_error("train.eval_batch must be >= 1");
+    s.eval_windows = tr.value("eval_windows", s.eval_windows);
+    if (s.eval_windows < 1) throw std::runtime_error("train.eval_windows must be >= 1");
     s.ckpt_every = tr.value("checkpoint_every", s.ckpt_every);
     s.batch = tr.value("batch", s.batch);
     s.accum = tr.value("accum", s.accum);
@@ -642,8 +650,51 @@ SftSet load_sft(const Spec& s, const std::map<std::string, int>& vocab) {
         ++n;
         if (line.find_first_not_of(" \t\r") == std::string::npos) continue;
         const json r = json::parse(line, nullptr, false);
+        if (!r.is_discarded() && !rej && r.contains("segments")) {
+            // A whole dialogue in one row: the segments' tokens in order, end-of-text
+            // appended after every loss segment (as after a completion), and a target
+            // trained exactly when it falls in a loss segment or on its end-of-text.
+            const json& segs = r["segments"];
+            if (!segs.is_array() || segs.empty())
+                throw std::runtime_error(s.sft_examples + ":" + std::to_string(n) + ": segments must be a non-empty array");
+            std::vector<int> seq;
+            std::vector<uint8_t> lt;  // lt[j] = 1: token j is a trained target
+            for (const auto& sg : segs) {
+                if (!sg.is_object() || !sg.contains("text") || !sg.contains("loss") || !sg["text"].is_string() ||
+                    !sg["loss"].is_boolean())
+                    throw std::runtime_error(s.sft_examples + ":" + std::to_string(n) +
+                                             ": each segment needs text (string) and loss (bool)");
+                auto t = tokenize(sg["text"].get<std::string>(), vocab, 100000);
+                const bool loss = sg["loss"].get<bool>();
+                if (t.empty()) throw std::runtime_error("example " + std::to_string(n) + " has an empty segment");
+                if (loss && eos >= 0) t.push_back(eos);
+                seq.insert(seq.end(), t.begin(), t.end());
+                lt.insert(lt.end(), t.size(), loss ? 1 : 0);
+            }
+            // Token 0 is never a target: a loss segment there would silently lose its first token.
+            if (lt[0]) throw std::runtime_error("example " + std::to_string(n) + ": the first segment cannot carry loss");
+            if (seq.size() > s.T + 1)
+                throw std::runtime_error("example at line " + std::to_string(n) + " has " + std::to_string(seq.size()) +
+                                         " tokens; data.T + 1 = " + std::to_string(s.T + 1));
+            std::vector<int> x(s.T, pad), y(s.T, pad);
+            std::vector<uint8_t> m(s.T, 0);
+            size_t trained = 0;
+            for (size_t i = 0; i + 1 < seq.size(); ++i) {
+                x[i] = seq[i];
+                y[i] = seq[i + 1];
+                m[i] = lt[i + 1];
+                trained += m[i];
+                if (m[i] && y[i] == 0) ++d.completion_unk;
+            }
+            if (!trained) throw std::runtime_error("example " + std::to_string(n) + " has no loss segment");
+            d.x.push_back(std::move(x));
+            d.y.push_back(std::move(y));
+            d.m.push_back(std::move(m));
+            continue;
+        }
         if (r.is_discarded() || !r.contains("prompt") || !r.contains("completion"))
-            throw std::runtime_error(s.sft_examples + ":" + std::to_string(n) + ": need prompt and completion");
+            throw std::runtime_error(s.sft_examples + ":" + std::to_string(n) +
+                                     ": need prompt and completion (or segments)");
         if (rej) {
             // A rejection-sampler record must carry its receipt (charter §6).
             for (const char* k : {"reward", "rationale", "evidence_kind", "evidence_uri", "accepted"})
@@ -1342,6 +1393,11 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         ids = read_corpus(s.corpus, vocab, tokens.size(), s.max_tokens);
         // Hold out the tail 5% for validation (early stopping's signal).
         val_start = ids.size() - ids.size() / 20;
+        // Both parts must hold a window of T + 1 targets: the window draws below are
+        // unsigned, and a shorter part wrapped round and read past the corpus.
+        if (val_start < s.T + 2 || ids.size() - val_start < s.T + 2)
+            throw std::runtime_error("data.corpus has " + std::to_string(ids.size()) + " tokens: its training part and "
+                                     "held-out 5% each need at least data.T + 2 = " + std::to_string(s.T + 2));
         ev.emit({{"event", "data"},
                  {"tokens", ids.size()},
                  {"vocab", tokens.size()},
@@ -2097,7 +2153,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                 }
                 vl = sum / static_cast<double>(kept);
             } else {
-                const int NV = 8;
+                const int NV = s.eval_windows;
                 std::mt19937 vrng(999);
                 for (int k = 0; k < NV; ++k) {
                     const size_t va = val_start + vrng() % (ids.size() - val_start - s.T - 1);

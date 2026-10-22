@@ -72,3 +72,34 @@ def test_mix_is_seeded_and_counts_sources(tmp_path):
     subprocess.run(tool + ["--out", str(o2)], capture_output=True, text=True, check=True)
     assert r["examples"] == 8 and r["by_source"] == {"a.jsonl": 5, "b.jsonl": 3}
     assert o1.read_text(encoding="utf-8") == o2.read_text(encoding="utf-8")  # same seed, same order
+
+
+def test_all_turns_one_row_per_dialogue_cut_at_whole_turns(tmp_path):
+    good = {"messages": [{"role": "user", "content": "Hi there"}, {"role": "assistant", "content": "Hello friend"},
+                         {"role": "user", "content": "How are you"}, {"role": "assistant", "content": "I am well"}],
+            "uri": "u1"}
+    src = tmp_path / "d.jsonl"
+    src.write_text(json.dumps(good) + "\n", encoding="utf-8")
+    tok = bpe.train("Hi there Hello friend How are you I am well " * 20, 300)
+    v = tmp_path / "v.gguf"
+    bpe.write_gguf(str(v), tok)
+    n = lambda s: len(tok.encode(s))
+    first = 3 + n("Hi there") + n("Hello friend")
+    both = first + 3 + n("How are you") + n("I am well")
+    tool = [sys.executable, str(ROOT / "tools" / "chat_data.py"), "sft", str(src), "--vocab", str(v), "--all-turns"]
+    for T, turns in ((both - 1, 2), (both - 2, 1), (first - 2, 0)):
+        out = tmp_path / f"sft{T}.jsonl"
+        rep = json.loads(subprocess.run(tool + ["--T", str(T), "--out", str(out)], capture_output=True, text=True,
+                                        check=True).stdout)
+        rows = [json.loads(x) for x in out.read_text(encoding="utf-8").splitlines()]
+        if turns == 0:
+            assert rows == [] and rep["dropped_over_T"] == 1
+            continue
+        assert rep["kept"] == 1 and rep["turns_kept"] == turns and rep["turns_cut_over_T"] == 2 - turns
+        segs = rows[0]["segments"]
+        assert rows[0]["uri"] == "u1" and len(segs) == 2 * turns
+        assert segs[0] == {"text": "<|user|>Hi there<|assistant|>", "loss": False}
+        assert segs[1] == {"text": "Hello friend", "loss": True}
+        if turns == 2:
+            assert segs[2] == {"text": "<|user|>How are you<|assistant|>", "loss": False}
+            assert segs[3] == {"text": "I am well", "loss": True}

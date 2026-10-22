@@ -1,0 +1,1215 @@
+{
+ "_comment": "tiny-chat E5, the data bar (experiments/tiny_chat_2026-10/PREREGISTRATION.md). 12 pretraining runs of 10000 steps x 16384 tokens (163.84M), each then SFT (1500 steps on human dialogues), two fixed text panels and Carry-5 (post job); one pick per cell. PROVISIONAL learning rates (1e-3): the gate job fails until stage0/lr_choice.json exists and matches; rerun make_jobs.py after Stage 0. Estimated 43 job-hours (17 L4 VM-hours at 2.5x per VM). Home: each PT job's weights (relays + final), each post's summary.json, each pick's best model. Upload vocab_llama3_bpe.gguf with the runner's --upload. Dialogue levels [0, 4, 8, 16]% (copies), E1 at 16% PROVISIONAL (design.json not final: the gate job refuses; rerun make_jobs.py --dialogue-pt-bytes once the whole default human set is measured).",
+ "max_parallel": 3,
+ "jobs": [
+  {
+   "name": "data",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_data.py",
+    "--out",
+    "{out}",
+    "--vocab",
+    "/content/chat/upload/vocab_llama3_bpe.gguf",
+    "--fineweb",
+    "corpus/data/fineweb_edu_shard0_v1",
+    "--shares",
+    "0,4,8,16",
+    "--mix-bytes",
+    "800000000",
+    "--max-epochs",
+    "4",
+    "--T",
+    "512",
+    "--seed",
+    "1"
+   ],
+   "outputs": [
+    "data.ledger.json"
+   ]
+  },
+  {
+   "name": "gate",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "gate",
+    "--out",
+    "{out}",
+    "--jobs",
+    "tools/colab_chat/tiny_chat_e5.json",
+    "--choice",
+    "experiments/tiny_chat_2026-10/stage0/lr_choice.json",
+    "--design",
+    "experiments/tiny_chat_2026-10/design.json"
+   ],
+   "outputs": [
+    "gate.json"
+   ]
+  },
+  {
+   "name": "post_e5_s0_r1",
+   "after": "pt_e5_s0_r1",
+   "init_job": "pt_e5_s0_r1",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "post",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L8.json",
+    "--pt-weights",
+    "/content/chat/pt_e5_s0_r1/tc_e5_s0_r1.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e5_s0_r1",
+    "--sft-template",
+    "experiments/tiny_chat_2026-10/specs/sft.json",
+    "--seed",
+    "1",
+    "--cell",
+    "s0",
+    "--share",
+    "0",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "post_e5_s4_r1",
+   "after": "pt_e5_s4_r1",
+   "init_job": "pt_e5_s4_r1",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "post",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L8.json",
+    "--pt-weights",
+    "/content/chat/pt_e5_s4_r1/tc_e5_s4_r1.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e5_s4_r1",
+    "--sft-template",
+    "experiments/tiny_chat_2026-10/specs/sft.json",
+    "--seed",
+    "1",
+    "--cell",
+    "s4",
+    "--share",
+    "4",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "post_e5_s8_r1",
+   "after": "pt_e5_s8_r1",
+   "init_job": "pt_e5_s8_r1",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "post",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L8.json",
+    "--pt-weights",
+    "/content/chat/pt_e5_s8_r1/tc_e5_s8_r1.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e5_s8_r1",
+    "--sft-template",
+    "experiments/tiny_chat_2026-10/specs/sft.json",
+    "--seed",
+    "1",
+    "--cell",
+    "s8",
+    "--share",
+    "8",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "post_e5_s16_r1",
+   "after": "pt_e5_s16_r1",
+   "init_job": "pt_e5_s16_r1",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "post",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L8.json",
+    "--pt-weights",
+    "/content/chat/pt_e5_s16_r1/tc_e5_s16_r1.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e5_s16_r1",
+    "--sft-template",
+    "experiments/tiny_chat_2026-10/specs/sft.json",
+    "--seed",
+    "1",
+    "--cell",
+    "s16",
+    "--share",
+    "16",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "post_e5_s0_r2",
+   "after": "pt_e5_s0_r2",
+   "init_job": "pt_e5_s0_r2",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "post",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L8.json",
+    "--pt-weights",
+    "/content/chat/pt_e5_s0_r2/tc_e5_s0_r2.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e5_s0_r2",
+    "--sft-template",
+    "experiments/tiny_chat_2026-10/specs/sft.json",
+    "--seed",
+    "2",
+    "--cell",
+    "s0",
+    "--share",
+    "0",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "post_e5_s4_r2",
+   "after": "pt_e5_s4_r2",
+   "init_job": "pt_e5_s4_r2",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "post",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L8.json",
+    "--pt-weights",
+    "/content/chat/pt_e5_s4_r2/tc_e5_s4_r2.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e5_s4_r2",
+    "--sft-template",
+    "experiments/tiny_chat_2026-10/specs/sft.json",
+    "--seed",
+    "2",
+    "--cell",
+    "s4",
+    "--share",
+    "4",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "post_e5_s8_r2",
+   "after": "pt_e5_s8_r2",
+   "init_job": "pt_e5_s8_r2",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "post",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L8.json",
+    "--pt-weights",
+    "/content/chat/pt_e5_s8_r2/tc_e5_s8_r2.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e5_s8_r2",
+    "--sft-template",
+    "experiments/tiny_chat_2026-10/specs/sft.json",
+    "--seed",
+    "2",
+    "--cell",
+    "s8",
+    "--share",
+    "8",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "post_e5_s16_r2",
+   "after": "pt_e5_s16_r2",
+   "init_job": "pt_e5_s16_r2",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "post",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L8.json",
+    "--pt-weights",
+    "/content/chat/pt_e5_s16_r2/tc_e5_s16_r2.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e5_s16_r2",
+    "--sft-template",
+    "experiments/tiny_chat_2026-10/specs/sft.json",
+    "--seed",
+    "2",
+    "--cell",
+    "s16",
+    "--share",
+    "16",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "post_e5_s0_r3",
+   "after": "pt_e5_s0_r3",
+   "init_job": "pt_e5_s0_r3",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "post",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L8.json",
+    "--pt-weights",
+    "/content/chat/pt_e5_s0_r3/tc_e5_s0_r3.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e5_s0_r3",
+    "--sft-template",
+    "experiments/tiny_chat_2026-10/specs/sft.json",
+    "--seed",
+    "3",
+    "--cell",
+    "s0",
+    "--share",
+    "0",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "post_e5_s4_r3",
+   "after": "pt_e5_s4_r3",
+   "init_job": "pt_e5_s4_r3",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "post",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L8.json",
+    "--pt-weights",
+    "/content/chat/pt_e5_s4_r3/tc_e5_s4_r3.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e5_s4_r3",
+    "--sft-template",
+    "experiments/tiny_chat_2026-10/specs/sft.json",
+    "--seed",
+    "3",
+    "--cell",
+    "s4",
+    "--share",
+    "4",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "post_e5_s8_r3",
+   "after": "pt_e5_s8_r3",
+   "init_job": "pt_e5_s8_r3",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "post",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L8.json",
+    "--pt-weights",
+    "/content/chat/pt_e5_s8_r3/tc_e5_s8_r3.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e5_s8_r3",
+    "--sft-template",
+    "experiments/tiny_chat_2026-10/specs/sft.json",
+    "--seed",
+    "3",
+    "--cell",
+    "s8",
+    "--share",
+    "8",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "post_e5_s16_r3",
+   "after": "pt_e5_s16_r3",
+   "init_job": "pt_e5_s16_r3",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "post",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L8.json",
+    "--pt-weights",
+    "/content/chat/pt_e5_s16_r3/tc_e5_s16_r3.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e5_s16_r3",
+    "--sft-template",
+    "experiments/tiny_chat_2026-10/specs/sft.json",
+    "--seed",
+    "3",
+    "--cell",
+    "s16",
+    "--share",
+    "16",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "pick_e5_s0",
+   "after": [
+    "post_e5_s0_r1",
+    "post_e5_s0_r2",
+    "post_e5_s0_r3"
+   ],
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "pick",
+    "--out",
+    "{out}",
+    "--run",
+    "/content/chat/post_e5_s0_r1",
+    "--run",
+    "/content/chat/post_e5_s0_r2",
+    "--run",
+    "/content/chat/post_e5_s0_r3"
+   ],
+   "outputs": [
+    "best.json",
+    "model.safetensors",
+    "model.gguf",
+    "spec.json"
+   ]
+  },
+  {
+   "name": "pick_e5_s4",
+   "after": [
+    "post_e5_s4_r1",
+    "post_e5_s4_r2",
+    "post_e5_s4_r3"
+   ],
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "pick",
+    "--out",
+    "{out}",
+    "--run",
+    "/content/chat/post_e5_s4_r1",
+    "--run",
+    "/content/chat/post_e5_s4_r2",
+    "--run",
+    "/content/chat/post_e5_s4_r3"
+   ],
+   "outputs": [
+    "best.json",
+    "model.safetensors",
+    "model.gguf",
+    "spec.json"
+   ]
+  },
+  {
+   "name": "pick_e5_s8",
+   "after": [
+    "post_e5_s8_r1",
+    "post_e5_s8_r2",
+    "post_e5_s8_r3"
+   ],
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "pick",
+    "--out",
+    "{out}",
+    "--run",
+    "/content/chat/post_e5_s8_r1",
+    "--run",
+    "/content/chat/post_e5_s8_r2",
+    "--run",
+    "/content/chat/post_e5_s8_r3"
+   ],
+   "outputs": [
+    "best.json",
+    "model.safetensors",
+    "model.gguf",
+    "spec.json"
+   ]
+  },
+  {
+   "name": "pick_e5_s16",
+   "after": [
+    "post_e5_s16_r1",
+    "post_e5_s16_r2",
+    "post_e5_s16_r3"
+   ],
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "pick",
+    "--out",
+    "{out}",
+    "--run",
+    "/content/chat/post_e5_s16_r1",
+    "--run",
+    "/content/chat/post_e5_s16_r2",
+    "--run",
+    "/content/chat/post_e5_s16_r3"
+   ],
+   "outputs": [
+    "best.json",
+    "model.safetensors",
+    "model.gguf",
+    "spec.json"
+   ]
+  },
+  {
+   "name": "pt_e5_s0_r1",
+   "model_name": "tc_e5_s0_r1",
+   "after": [
+    "data",
+    "gate"
+   ],
+   "relay_every_steps": 2500,
+   "spec": {
+    "name": "tc_20m_L8",
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 448,
+      "layers": 8,
+      "heads": 7,
+      "d_ff": 1248
+     }
+    },
+    "data": {
+     "corpus": "/content/chat/data/mix_s0.ids",
+     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+     "vocab_cap": 16384,
+     "T": 512,
+     "max_tokens": 0
+    },
+    "train": {
+     "steps": 10000,
+     "lr": 0.001,
+     "batch": 32,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 1000,
+     "eval_windows": 32,
+     "checkpoint_every": 500,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 500,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   }
+  },
+  {
+   "name": "pt_e5_s4_r1",
+   "model_name": "tc_e5_s4_r1",
+   "after": [
+    "data",
+    "gate"
+   ],
+   "relay_every_steps": 2500,
+   "spec": {
+    "name": "tc_20m_L8",
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 448,
+      "layers": 8,
+      "heads": 7,
+      "d_ff": 1248
+     }
+    },
+    "data": {
+     "corpus": "/content/chat/data/mix_s4.ids",
+     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+     "vocab_cap": 16384,
+     "T": 512,
+     "max_tokens": 0
+    },
+    "train": {
+     "steps": 10000,
+     "lr": 0.001,
+     "batch": 32,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 1000,
+     "eval_windows": 32,
+     "checkpoint_every": 500,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 500,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   }
+  },
+  {
+   "name": "pt_e5_s8_r1",
+   "model_name": "tc_e5_s8_r1",
+   "after": [
+    "data",
+    "gate"
+   ],
+   "relay_every_steps": 2500,
+   "spec": {
+    "name": "tc_20m_L8",
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 448,
+      "layers": 8,
+      "heads": 7,
+      "d_ff": 1248
+     }
+    },
+    "data": {
+     "corpus": "/content/chat/data/mix_s8.ids",
+     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+     "vocab_cap": 16384,
+     "T": 512,
+     "max_tokens": 0
+    },
+    "train": {
+     "steps": 10000,
+     "lr": 0.001,
+     "batch": 32,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 1000,
+     "eval_windows": 32,
+     "checkpoint_every": 500,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 500,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   }
+  },
+  {
+   "name": "pt_e5_s16_r1",
+   "model_name": "tc_e5_s16_r1",
+   "after": [
+    "data",
+    "gate"
+   ],
+   "relay_every_steps": 2500,
+   "spec": {
+    "name": "tc_20m_L8",
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 448,
+      "layers": 8,
+      "heads": 7,
+      "d_ff": 1248
+     }
+    },
+    "data": {
+     "corpus": "/content/chat/data/mix_s16.ids",
+     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+     "vocab_cap": 16384,
+     "T": 512,
+     "max_tokens": 0
+    },
+    "train": {
+     "steps": 10000,
+     "lr": 0.001,
+     "batch": 32,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 1000,
+     "eval_windows": 32,
+     "checkpoint_every": 500,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 500,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   }
+  },
+  {
+   "name": "pt_e5_s0_r2",
+   "model_name": "tc_e5_s0_r2",
+   "after": [
+    "data",
+    "gate"
+   ],
+   "relay_every_steps": 2500,
+   "spec": {
+    "name": "tc_20m_L8",
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 448,
+      "layers": 8,
+      "heads": 7,
+      "d_ff": 1248
+     }
+    },
+    "data": {
+     "corpus": "/content/chat/data/mix_s0.ids",
+     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+     "vocab_cap": 16384,
+     "T": 512,
+     "max_tokens": 0
+    },
+    "train": {
+     "steps": 10000,
+     "lr": 0.001,
+     "batch": 32,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 1000,
+     "eval_windows": 32,
+     "checkpoint_every": 500,
+     "gradmap_every": 0,
+     "seed": 2,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 500,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   }
+  },
+  {
+   "name": "pt_e5_s4_r2",
+   "model_name": "tc_e5_s4_r2",
+   "after": [
+    "data",
+    "gate"
+   ],
+   "relay_every_steps": 2500,
+   "spec": {
+    "name": "tc_20m_L8",
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 448,
+      "layers": 8,
+      "heads": 7,
+      "d_ff": 1248
+     }
+    },
+    "data": {
+     "corpus": "/content/chat/data/mix_s4.ids",
+     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+     "vocab_cap": 16384,
+     "T": 512,
+     "max_tokens": 0
+    },
+    "train": {
+     "steps": 10000,
+     "lr": 0.001,
+     "batch": 32,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 1000,
+     "eval_windows": 32,
+     "checkpoint_every": 500,
+     "gradmap_every": 0,
+     "seed": 2,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 500,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   }
+  },
+  {
+   "name": "pt_e5_s8_r2",
+   "model_name": "tc_e5_s8_r2",
+   "after": [
+    "data",
+    "gate"
+   ],
+   "relay_every_steps": 2500,
+   "spec": {
+    "name": "tc_20m_L8",
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 448,
+      "layers": 8,
+      "heads": 7,
+      "d_ff": 1248
+     }
+    },
+    "data": {
+     "corpus": "/content/chat/data/mix_s8.ids",
+     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+     "vocab_cap": 16384,
+     "T": 512,
+     "max_tokens": 0
+    },
+    "train": {
+     "steps": 10000,
+     "lr": 0.001,
+     "batch": 32,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 1000,
+     "eval_windows": 32,
+     "checkpoint_every": 500,
+     "gradmap_every": 0,
+     "seed": 2,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 500,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   }
+  },
+  {
+   "name": "pt_e5_s16_r2",
+   "model_name": "tc_e5_s16_r2",
+   "after": [
+    "data",
+    "gate"
+   ],
+   "relay_every_steps": 2500,
+   "spec": {
+    "name": "tc_20m_L8",
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 448,
+      "layers": 8,
+      "heads": 7,
+      "d_ff": 1248
+     }
+    },
+    "data": {
+     "corpus": "/content/chat/data/mix_s16.ids",
+     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+     "vocab_cap": 16384,
+     "T": 512,
+     "max_tokens": 0
+    },
+    "train": {
+     "steps": 10000,
+     "lr": 0.001,
+     "batch": 32,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 1000,
+     "eval_windows": 32,
+     "checkpoint_every": 500,
+     "gradmap_every": 0,
+     "seed": 2,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 500,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   }
+  },
+  {
+   "name": "pt_e5_s0_r3",
+   "model_name": "tc_e5_s0_r3",
+   "after": [
+    "data",
+    "gate"
+   ],
+   "relay_every_steps": 2500,
+   "spec": {
+    "name": "tc_20m_L8",
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 448,
+      "layers": 8,
+      "heads": 7,
+      "d_ff": 1248
+     }
+    },
+    "data": {
+     "corpus": "/content/chat/data/mix_s0.ids",
+     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+     "vocab_cap": 16384,
+     "T": 512,
+     "max_tokens": 0
+    },
+    "train": {
+     "steps": 10000,
+     "lr": 0.001,
+     "batch": 32,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 1000,
+     "eval_windows": 32,
+     "checkpoint_every": 500,
+     "gradmap_every": 0,
+     "seed": 3,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 500,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   }
+  },
+  {
+   "name": "pt_e5_s4_r3",
+   "model_name": "tc_e5_s4_r3",
+   "after": [
+    "data",
+    "gate"
+   ],
+   "relay_every_steps": 2500,
+   "spec": {
+    "name": "tc_20m_L8",
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 448,
+      "layers": 8,
+      "heads": 7,
+      "d_ff": 1248
+     }
+    },
+    "data": {
+     "corpus": "/content/chat/data/mix_s4.ids",
+     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+     "vocab_cap": 16384,
+     "T": 512,
+     "max_tokens": 0
+    },
+    "train": {
+     "steps": 10000,
+     "lr": 0.001,
+     "batch": 32,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 1000,
+     "eval_windows": 32,
+     "checkpoint_every": 500,
+     "gradmap_every": 0,
+     "seed": 3,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 500,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   }
+  },
+  {
+   "name": "pt_e5_s8_r3",
+   "model_name": "tc_e5_s8_r3",
+   "after": [
+    "data",
+    "gate"
+   ],
+   "relay_every_steps": 2500,
+   "spec": {
+    "name": "tc_20m_L8",
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 448,
+      "layers": 8,
+      "heads": 7,
+      "d_ff": 1248
+     }
+    },
+    "data": {
+     "corpus": "/content/chat/data/mix_s8.ids",
+     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+     "vocab_cap": 16384,
+     "T": 512,
+     "max_tokens": 0
+    },
+    "train": {
+     "steps": 10000,
+     "lr": 0.001,
+     "batch": 32,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 1000,
+     "eval_windows": 32,
+     "checkpoint_every": 500,
+     "gradmap_every": 0,
+     "seed": 3,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 500,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   }
+  },
+  {
+   "name": "pt_e5_s16_r3",
+   "model_name": "tc_e5_s16_r3",
+   "after": [
+    "data",
+    "gate"
+   ],
+   "relay_every_steps": 2500,
+   "spec": {
+    "name": "tc_20m_L8",
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 448,
+      "layers": 8,
+      "heads": 7,
+      "d_ff": 1248
+     }
+    },
+    "data": {
+     "corpus": "/content/chat/data/mix_s16.ids",
+     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+     "vocab_cap": 16384,
+     "T": 512,
+     "max_tokens": 0
+    },
+    "train": {
+     "steps": 10000,
+     "lr": 0.001,
+     "batch": 32,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 1000,
+     "eval_windows": 32,
+     "checkpoint_every": 500,
+     "gradmap_every": 0,
+     "seed": 3,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 500,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   }
+  }
+ ]
+}

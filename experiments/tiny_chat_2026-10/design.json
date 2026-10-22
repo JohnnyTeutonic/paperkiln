@@ -1,0 +1,19 @@
+{
+ "pt_bytes": 33974418,
+ "mode": "copies",
+ "levels": [
+  0,
+  4,
+  8,
+  16
+ ],
+ "e1_share": 16,
+ "source": "estimated from ['oasst', 'bst', 'self_dialogue']",
+ "missing_sources": [
+  "convai2",
+  "wow",
+  "taskmaster",
+  "multiwoz"
+ ],
+ "final": false
+}
