@@ -1,0 +1,108 @@
+{
+ "pretrain": {
+  "steps": 400,
+  "batch": 4,
+  "T": 64,
+  "params": 2493952,
+  "lr": 0.003000000026077032,
+  "wall_seconds": 392.7,
+  "tokens_per_second": 260.7,
+  "train_loss_first": 9.049,
+  "train_loss_last": 4.3966,
+  "train_loss_mean_last_50": 4.2057,
+  "val_loss": [
+   {
+    "step": 100,
+    "val_loss": 5.2312
+   },
+   {
+    "step": 200,
+    "val_loss": 4.7548
+   },
+   {
+    "step": 300,
+    "val_loss": 4.5291
+   },
+   {
+    "step": 400,
+    "val_loss": 4.3738
+   }
+  ],
+  "best_val": 4.3738,
+  "expr_gradcheck": [
+   {
+    "event": "expr_gradcheck",
+    "expr": "(x - rowmean(x)) / sqrt(abs(rowmean(x * (x - rowmean(x)))))",
+    "fd_h": 0.009999999776482582,
+    "fd_points": 32,
+    "fd_tol": 0.002,
+    "fd_worst_rel": 3.792485516017705e-05,
+    "pass": true,
+    "probe": "x in [-20, 20] step 0.25",
+    "probe_nonfinite": 0,
+    "slot": "norm"
+   },
+   {
+    "event": "expr_gradcheck",
+    "expr": "relu(x)^2",
+    "fd_h": 0.009999999776482582,
+    "fd_points": 32,
+    "fd_tol": 0.002,
+    "fd_worst_rel": 1.6140064658469962e-05,
+    "pass": true,
+    "probe": "x in [-20, 20] step 0.25",
+    "probe_nonfinite": 0,
+    "slot": "activation"
+   }
+  ]
+ },
+ "sft": {
+  "steps": 100,
+  "batch": 4,
+  "T": 64,
+  "params": 2493952,
+  "lr": 0.0010000000474974513,
+  "wall_seconds": 121.4,
+  "tokens_per_second": 210.9,
+  "train_loss_first": 4.7898,
+  "train_loss_last": 3.5511,
+  "train_loss_mean_last_50": 3.8422,
+  "val_loss": [
+   {
+    "step": 50,
+    "val_loss": 3.9639
+   },
+   {
+    "step": 100,
+    "val_loss": 3.9176
+   }
+  ],
+  "best_val": 3.9176,
+  "expr_gradcheck": [
+   {
+    "event": "expr_gradcheck",
+    "expr": "(x - rowmean(x)) / sqrt(abs(rowmean(x * (x - rowmean(x)))))",
+    "fd_h": 0.009999999776482582,
+    "fd_points": 32,
+    "fd_tol": 0.002,
+    "fd_worst_rel": 3.792485516017705e-05,
+    "pass": true,
+    "probe": "x in [-20, 20] step 0.25",
+    "probe_nonfinite": 0,
+    "slot": "norm"
+   },
+   {
+    "event": "expr_gradcheck",
+    "expr": "relu(x)^2",
+    "fd_h": 0.009999999776482582,
+    "fd_points": 32,
+    "fd_tol": 0.002,
+    "fd_worst_rel": 1.6140064658469962e-05,
+    "pass": true,
+    "probe": "x in [-20, 20] step 0.25",
+    "probe_nonfinite": 0,
+    "slot": "activation"
+   }
+  ]
+ }
+}

@@ -1,0 +1,110 @@
+{
+ "block_ops": [
+  "expr",
+  "linear",
+  "linear",
+  "split",
+  "rope",
+  "attention",
+  "linear",
+  "add",
+  "expr",
+  "linear",
+  "linear",
+  "expr",
+  "linear",
+  "add"
+ ],
+ "head_ops": [
+  "expr",
+  "linear",
+  "linear"
+ ],
+ "nodes": {
+  "embed": [],
+  "block": [
+   {
+    "op": "expr",
+    "in": [
+     "x"
+    ],
+    "expr": "(x - rowmean(x)) / sqrt(abs(rowmean(x * (x - rowmean(x)))))",
+    "out": "h"
+   },
+   {
+    "op": "linear",
+    "in": [
+     "h"
+    ],
+    "weight": "blk.{i}.attn_norm_gain.weight",
+    "bias": "blk.{i}.attn_norm_gain.bias",
+    "_note": "the expr norm's per-feature gain g and bias b: weight diag(g) [d, d]",
+    "out": "h"
+   },
+   {
+    "op": "rope",
+    "in": [
+     "q",
+     "k",
+     "pos"
+    ],
+    "heads": 4,
+    "head_dim": 32,
+    "theta": 10000.0,
+    "rope_heads": "all",
+    "pairing": "interleaved",
+    "_note": "adjacent pairs (x[2j], x[2j+1]) within each head, angle pos * theta^(-2j/head_dim); products rounded separately (no FMA)",
+    "out": [
+     "q",
+     "k"
+    ]
+   },
+   {
+    "op": "expr",
+    "in": [
+     "x"
+    ],
+    "expr": "(x - rowmean(x)) / sqrt(abs(rowmean(x * (x - rowmean(x)))))",
+    "out": "h2"
+   },
+   {
+    "op": "linear",
+    "in": [
+     "h2"
+    ],
+    "weight": "blk.{i}.ffn_norm_gain.weight",
+    "bias": "blk.{i}.ffn_norm_gain.bias",
+    "_note": "the expr norm's per-feature gain g and bias b: weight diag(g) [d, d]",
+    "out": "h2"
+   },
+   {
+    "op": "expr",
+    "in": [
+     "u"
+    ],
+    "expr": "relu(x)^2",
+    "out": "u"
+   }
+  ],
+  "head": [
+   {
+    "op": "expr",
+    "in": [
+     "x"
+    ],
+    "expr": "(x - rowmean(x)) / sqrt(abs(rowmean(x * (x - rowmean(x)))))",
+    "out": "h"
+   },
+   {
+    "op": "linear",
+    "in": [
+     "h"
+    ],
+    "weight": "output_norm_gain.weight",
+    "bias": "output_norm_gain.bias",
+    "_note": "the expr norm's per-feature gain g and bias b: weight diag(g) [d, d]",
+    "out": "h"
+   }
+  ]
+ }
+}

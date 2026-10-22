@@ -1,0 +1,43 @@
+{
+ "name": "arxiv_2402_03804_base",
+ "arch": {
+  "custom": {
+   "norm": "rmsnorm",
+   "activation": "expr:(relu(x)^2)",
+   "position": "rope",
+   "residual": "residual",
+   "attention": "exact",
+   "d": 128,
+   "layers": 2,
+   "heads": 4
+  }
+ },
+ "data": {
+  "vocab": "/home/jonat/arxiv_chain_runs/inputs/fineweb_tinychat_bpe8k.gguf",
+  "vocab_cap": 8192,
+  "T": 64,
+  "corpus": "/home/jonat/arxiv_chain_runs/inputs/pretrain_train.txt",
+  "max_tokens": 400000
+ },
+ "train": {
+  "steps": 600,
+  "lr": 0.003,
+  "batch": 4,
+  "eval_every": 150,
+  "checkpoint_every": 150,
+  "gradmap_every": 0,
+  "seed": 1,
+  "optimizer": "adamw",
+  "lr_schedule": {
+   "warmup_steps": 50,
+   "decay": "cosine",
+   "min_lr_frac": 0.1
+  }
+ },
+ "export": {
+  "formats": [
+   "safetensors"
+  ]
+ },
+ "out_dir": "/home/jonat/arxiv_chain_runs/relu2wins/pretrain"
+}

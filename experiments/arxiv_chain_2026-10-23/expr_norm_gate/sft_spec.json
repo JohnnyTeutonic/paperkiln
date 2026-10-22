@@ -1,0 +1,44 @@
+{
+ "name": "arxiv_expr_norm_gate",
+ "arch": {
+  "custom": {
+   "norm": "expr:(x - rowmean(x)) / sqrt(abs(rowmean(x * (x - rowmean(x)))))",
+   "activation": "expr:relu(x)^2",
+   "position": "rope",
+   "residual": "residual",
+   "attention": "exact",
+   "d": 128,
+   "layers": 2,
+   "heads": 4
+  }
+ },
+ "data": {
+  "vocab": "/home/jonat/arxiv_chain_runs/inputs/fineweb_tinychat_bpe8k.gguf",
+  "vocab_cap": 8192,
+  "T": 64,
+  "sft_examples": "/home/jonat/arxiv_chain_runs/expr_norm_gate/sft_examples.jsonl"
+ },
+ "train": {
+  "steps": 100,
+  "lr": 0.001,
+  "batch": 4,
+  "eval_every": 50,
+  "checkpoint_every": 100,
+  "gradmap_every": 0,
+  "seed": 1,
+  "optimizer": "adamw",
+  "objective": "sft",
+  "init_from": "/home/jonat/arxiv_chain_runs/expr_norm_gate/pretrain/arxiv_expr_norm_gate_base.safetensors",
+  "lr_schedule": {
+   "warmup_steps": 20,
+   "decay": "cosine",
+   "min_lr_frac": 0.1
+  }
+ },
+ "export": {
+  "formats": [
+   "safetensors"
+  ]
+ },
+ "out_dir": "/home/jonat/arxiv_chain_runs/expr_norm_gate/sft"
+}

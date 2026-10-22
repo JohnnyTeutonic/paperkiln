@@ -2,8 +2,8 @@
  "arxiv_id": "2109.08668",
  "title": "Primer: Searching for Efficient Transformers for Language Modeling",
  "reasons": [
-  "new op primer_norm = ((((x-rowmean(x))/sqrt(abs(rowmean((x*(x-rowmean(x)))))))+a)*b) (expr, replaces layer normalization) is used by norm: the flex family hosts an expr only as activation, so nothing here builds it",
   "new op causal_depthwise_conv3 needs a new primitive (Sec. Primer, MDHA): Requires a causal depthwise 1D convolution over the time axis with kernel width 3: per channel learned weights [3, width], output[t] = sum_{j=0..2} w[j] * x[t-j] (inputs shifted by kernel width - 1 so only past positions are seen). Mixes tokens, so not expressible as an elementwise/row expr.; no family here builds it and no expr can state it, so the chain refuses rather than approximates (paper: \u201cAnother effective modification is adding 3x1 depthwise convolutions after each of the multi-head projections for query $Q$, key $K$ and value $V$ in self-attention.\u201d)",
+  "norm placement = other:norm before self-attention (pre), and norm applied to the FFN output inside the residual branch (no norm before FFN) (Sec. Primer, Other Modifications): every family here is pre-norm, so training it would silently approximate the paper",
   "mechanism outside the extractor's lattice: T5/Lingvo relative attention position scheme (used for the headline T5 and one-shot runs); details not given (llm extraction, verified quote, Appendix Full Training Details: \u201cT2T uses positional embeddings and subword tokenization, while T5 and Lingvo use relative attention~\\cite{Shaw2018SelfAttentionWR} and SentencePieces~\\cite{Kudo2018SentencePieceAS}.\u201d); no family here builds it, and training the extracted flavours alone would silently approximate the paper",
   "positional = relative has no engine support (mtstudio takes ['learned', 'rope', 'sinusoidal'])"
  ]

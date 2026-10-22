@@ -1,0 +1,11 @@
+{
+ "source": "/home/jonat/pkchat/fwsft/sft_tinychat.jsonl",
+ "T": 64,
+ "limit": 2000,
+ "seen": 7697,
+ "kept": 2000,
+ "dropped_longer_than_T": 5697,
+ "longest_kept_tokens": 65,
+ "longest_dropped_tokens": 236,
+ "rule": "len(prompt) + len(completion) + 1 end token <= T + 1 (mtstudio load_sft), file order"
+}

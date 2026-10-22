@@ -1,0 +1,42 @@
+{
+ "name": "arxiv_2402_03804",
+ "family": "flex",
+ "report": [
+  [
+   "EXPR",
+   "activation = expr:(relu(x)^2) (new op relu2, replaces FFN activation; verified quote (App. A.3.1 Activation Function and Intermediate Hidden Size): \u201cFor ReLU and ReLU$^2$, we set the intermediate hidden size to 8192.\u201d); parses in the IR grammar (tools/ir_expr.py), finite in f32 on [-20, 20]; mtstudio checks its gradient against finite differences before training"
+  ],
+  [
+   "NOTED",
+   "qkv_bias = false (inherited, unverified): not a knob; flex's projections carry biases, the llama family's do not"
+  ],
+  [
+   "MATCHED",
+   "norm = rmsnorm (used: \u201capply pre-normalization using RMSNorm~\\cite{RMSNorm} [App. A.3.1 Multi-Head Attention]\u201d)"
+  ],
+  [
+   "MATCHED",
+   "activation = expr:(relu(x)^2) (used: \u201cFor ReLU and ReLU$^2$, we set the intermediate hidden size to 8192. [App. A.3.1 Activation Function and Intermediate Hid\u201d)"
+  ],
+  [
+   "MATCHED",
+   "positional = rope (used: \u201cRoPE~\\cite{su2024roformer} for Positional embedding [App. A.3.1 Multi-Head Attention]\u201d)"
+  ],
+  [
+   "DEFAULT",
+   "residual = residual: not stated by the paper (the extraction marks it inherited, unverified: inherited from llama, whose curated entry has no residual); a highway or plain stream would be a stated departure"
+  ],
+  [
+   "DEFAULT",
+   "attention = exact: not stated by the paper (the extraction marks it inherited, unverified: inherited from llama, whose curated entry has no attention; the inheritance quote does not name the ancestor); windowed, linear or sparse attention would be a stated departure"
+  ],
+  [
+   "MATCHED",
+   "position = rope on the flex family (the paper's other flavours are not the llama block's): every head rotated, interleaved pairs, theta 10000, as the llama block and the IR rope node"
+  ],
+  [
+   "SIZED",
+   "d=128 layers=2 heads=4 T=64 chosen for this run (paper: {'d_model': 2048, 'n_layers': 24, 'n_heads': 32, 'd_ff': 8192, 'context_length': 2048}); the mechanism is the paper's"
+  ]
+ ]
+}

@@ -1,0 +1,111 @@
+{
+ "model": "flex d128 L2 H4 T64: norm expr (Primer) * gain + bias, rope, squared ReLU",
+ "norm_expr": "(x - rowmean(x)) / sqrt(abs(rowmean(x * (x - rowmean(x)))))",
+ "gguf_sha256": "8c837a1d152b84f1a0339777de9d5c7144e017957ad6678fa812dfbe512bd2df",
+ "block_ops": [
+  "expr",
+  "linear",
+  "linear",
+  "split",
+  "rope",
+  "attention",
+  "linear",
+  "add",
+  "expr",
+  "linear",
+  "linear",
+  "expr",
+  "linear",
+  "add"
+ ],
+ "head_ops": [
+  "expr",
+  "linear",
+  "linear"
+ ],
+ "sft_fit": {
+  "source": "/home/jonat/pkchat/fwsft/sft_tinychat.jsonl",
+  "T": 64,
+  "limit": 2000,
+  "seen": 7697,
+  "kept": 2000,
+  "dropped_longer_than_T": 5697,
+  "longest_kept_tokens": 65,
+  "longest_dropped_tokens": 236,
+  "rule": "len(prompt) + len(completion) + 1 end token <= T + 1 (mtstudio load_sft), file order"
+ },
+ "pretrain": {
+  "T": 64,
+  "accum": 1,
+  "attention": "exact",
+  "batch": 4,
+  "best_val": 4.373848915100098,
+  "checkpoint_activations": false,
+  "d": 128,
+  "early_stopped": false,
+  "family": "flex",
+  "final_step": 400,
+  "heads": 4,
+  "layers": 2,
+  "lr": 0.003000000026077032,
+  "name": "arxiv_expr_norm_gate_base",
+  "params": 2493952,
+  "seed": 1,
+  "steps_requested": 400,
+  "tokens_per_second": 260.74000889912406,
+  "wall_seconds": 392.728375029
+ },
+ "sft": {
+  "T": 64,
+  "accum": 1,
+  "attention": "exact",
+  "batch": 4,
+  "best_val": 3.9175639152526855,
+  "checkpoint_activations": false,
+  "d": 128,
+  "early_stopped": false,
+  "family": "flex",
+  "final_step": 100,
+  "heads": 4,
+  "layers": 2,
+  "lr": 0.0010000000474974513,
+  "name": "arxiv_expr_norm_gate",
+  "params": 2493952,
+  "seed": 1,
+  "steps_requested": 100,
+  "tokens_per_second": 210.92112652624536,
+  "wall_seconds": 121.372384178
+ },
+ "parity": {
+  "engine": "ember",
+  "n": 40,
+  "identical_replies": 40,
+  "same_token_count": 40,
+  "same_stop_reason": 40,
+  "prompt_tokens_match_bpe_py": 40,
+  "pass": true,
+  "settings": {
+   "user_input": null,
+   "max_new_tokens": 40,
+   "temperature": 1.0,
+   "top_k": 1,
+   "top_p": 1.0,
+   "seed": 0
+  },
+  "prompts": "/home/jonat/arxiv_chain_runs/inputs/tinychat_hf_prompts_v1.jsonl",
+  "prompts_sha256": "a906b25aaf9f32848f83e8b87c8ad95e7eb8d5802129635f7e55fc62a68b3132",
+  "ember_health": "{\"context\":64,\"hidden_size\":128,\"layers\":2,\"model\":\"/home/jonat/arxiv_chain_runs/expr_norm_gate/export/arxiv_expr_norm_gate.gguf\",\"status\":\"ok\",\"tokenizer\":\"bpe\",\"vocab_size\":8192}",
+  "mtstudio_health": "{\"attention\":\"exact\",\"context\":64,\"eos\":true,\"family\":\"flex\",\"model\":\"arxiv_expr_norm_gate\",\"params\":2493952,\"rope_heads\":null,\"status\":\"ok\",\"vocab\":8192}",
+  "ember_bin": "/home/jonat/ember_ir_build/tinyllama_server",
+  "ember_bin_sha256": "fea592b03fb92963f24118d13d1c46f077f1bd80229d52767cc3919d13e28af7"
+ },
+ "chat": [
+  {
+   "user": "Hello! What is your name?",
+   "reply": "I understand how you feel that way, especially when it is surprising how you feel a bit sad.",
+   "stop_reason": "eos",
+   "tokens": 20,
+   "history_turns_used": 0
+  }
+ ]
+}

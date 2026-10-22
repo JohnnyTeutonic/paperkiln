@@ -1,0 +1,283 @@
+{
+ "arxiv_id": "2402.03804",
+ "stages": {
+  "extract": {
+   "at": "2026-10-23T02:16:13",
+   "extraction_sha256": "cd3f0dc23d765f2568ccaf008372952a2e072128419e9f6568c7e10bb285e64c",
+   "source": {
+    "tex_sha256": "66f7fc008d6dba3b7329f145259bf259021601daea7d108e4c718b5019ca8d0a",
+    "sent_sha256": "ef0b95f637e73a9fd15fb180c1853220a6a30a352b01fdd318e449f031cf2822",
+    "from": "https://arxiv.org/e-print/2402.03804",
+    "extractor": "papers/llm_extract.py",
+    "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
+    "model": "claude-opus-5-5",
+    "effort": "high",
+    "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
+    "n_calls": 1,
+    "cost_usd": 0.28152,
+    "request_ids": [
+     "req_011CgHRgpq8hbiY7iow2qrUQ"
+    ],
+    "cached_from": "/home/jonat/arxiv_chain_runs/inputs/2402.03804.extraction.json"
+   },
+   "mechanism_scan": [
+    {
+     "mechanism": "new op relu2 = (relu(x)^2) (expr)",
+     "where": "llm extraction, verified quote, App. A.3.1 Activation Function and Intermediate Hidden Size",
+     "blocking": true,
+     "evidence": "For ReLU and ReLU$^2$, we set the intermediate hidden size to 8192."
+    }
+   ]
+  },
+  "spec": {
+   "at": "2026-10-23T02:16:14",
+   "family": "flex",
+   "name": "arxiv_2402_03804",
+   "report": [
+    [
+     "EXPR",
+     "activation = expr:(relu(x)^2) (new op relu2, replaces FFN activation; verified quote (App. A.3.1 Activation Function and Intermediate Hidden Size): \u201cFor ReLU and ReLU$^2$, we set the intermediate hidden size to 8192.\u201d); parses in the IR grammar (tools/ir_expr.py), finite in f32 on [-20, 20]; mtstudio checks its gradient against finite differences before training"
+    ],
+    [
+     "NOTED",
+     "qkv_bias = false (inherited, unverified): not a knob; flex's projections carry biases, the llama family's do not"
+    ],
+    [
+     "MATCHED",
+     "norm = rmsnorm (used: \u201capply pre-normalization using RMSNorm~\\cite{RMSNorm} [App. A.3.1 Multi-Head Attention]\u201d)"
+    ],
+    [
+     "MATCHED",
+     "activation = expr:(relu(x)^2) (used: \u201cFor ReLU and ReLU$^2$, we set the intermediate hidden size to 8192. [App. A.3.1 Activation Function and Intermediate Hid\u201d)"
+    ],
+    [
+     "MATCHED",
+     "positional = rope (used: \u201cRoPE~\\cite{su2024roformer} for Positional embedding [App. A.3.1 Multi-Head Attention]\u201d)"
+    ],
+    [
+     "DEFAULT",
+     "residual = residual: not stated by the paper (the extraction marks it inherited, unverified: inherited from llama, whose curated entry has no residual); a highway or plain stream would be a stated departure"
+    ],
+    [
+     "DEFAULT",
+     "attention = exact: not stated by the paper (the extraction marks it inherited, unverified: inherited from llama, whose curated entry has no attention; the inheritance quote does not name the ancestor); windowed, linear or sparse attention would be a stated departure"
+    ],
+    [
+     "MATCHED",
+     "position = rope on the flex family (the paper's other flavours are not the llama block's): every head rotated, interleaved pairs, theta 10000, as the llama block and the IR rope node"
+    ],
+    [
+     "SIZED",
+     "d=128 layers=2 heads=4 T=64 chosen for this run (paper: {'d_model': 2048, 'n_layers': 24, 'n_heads': 32, 'd_ff': 8192, 'context_length': 2048}); the mechanism is the paper's"
+    ]
+   ],
+   "pretrain_spec": {
+    "name": "arxiv_2402_03804_base",
+    "arch": {
+     "custom": {
+      "norm": "rmsnorm",
+      "activation": "expr:(relu(x)^2)",
+      "position": "rope",
+      "residual": "residual",
+      "attention": "exact",
+      "d": 128,
+      "layers": 2,
+      "heads": 4
+     }
+    },
+    "data": {
+     "vocab": "/home/jonat/arxiv_chain_runs/inputs/fineweb_tinychat_bpe8k.gguf",
+     "vocab_cap": 8192,
+     "T": 64,
+     "corpus": "/home/jonat/arxiv_chain_runs/inputs/pretrain_train.txt",
+     "max_tokens": 400000
+    },
+    "train": {
+     "steps": 600,
+     "lr": 0.003,
+     "batch": 4,
+     "eval_every": 150,
+     "checkpoint_every": 150,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 50,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors"
+     ]
+    },
+    "out_dir": "/home/jonat/arxiv_chain_runs/relu2wins/pretrain"
+   },
+   "sft_spec": {
+    "name": "arxiv_2402_03804",
+    "arch": {
+     "custom": {
+      "norm": "rmsnorm",
+      "activation": "expr:(relu(x)^2)",
+      "position": "rope",
+      "residual": "residual",
+      "attention": "exact",
+      "d": 128,
+      "layers": 2,
+      "heads": 4
+     }
+    },
+    "data": {
+     "vocab": "/home/jonat/arxiv_chain_runs/inputs/fineweb_tinychat_bpe8k.gguf",
+     "vocab_cap": 8192,
+     "T": 64,
+     "sft_examples": "/home/jonat/arxiv_chain_runs/relu2wins/sft_examples.jsonl"
+    },
+    "train": {
+     "steps": 200,
+     "lr": 0.001,
+     "batch": 4,
+     "eval_every": 100,
+     "checkpoint_every": 150,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "objective": "sft",
+     "init_from": "/home/jonat/arxiv_chain_runs/relu2wins/pretrain/arxiv_2402_03804_base.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 20,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors"
+     ]
+    },
+    "out_dir": "/home/jonat/arxiv_chain_runs/relu2wins/sft"
+   }
+  },
+  "pretrain": {
+   "at": "2026-10-23T02:25:34",
+   "corpus": "/home/jonat/arxiv_chain_runs/inputs/pretrain_train.txt",
+   "corpus_sha256": "f6a7ccbaed0e5018f9ade0a1f0ce6a3027e046f176d2b8f7ff7f5efedfaedb76",
+   "max_tokens": 400000,
+   "vocab_sha256": "c79eec5b5ec2036b7f398061e9901c34014b54096db64f9dce6f030532e75b23",
+   "weights_sha256": "e796e2842a1ccf4216f44024d9e2c3aa9fee700414cd962f3effce0892f8bb83",
+   "result": {
+    "T": 64,
+    "accum": 1,
+    "attention": "exact",
+    "batch": 4,
+    "best_val": 4.152118682861328,
+    "checkpoint_activations": false,
+    "d": 128,
+    "early_stopped": false,
+    "family": "flex",
+    "final_step": 600,
+    "heads": 4,
+    "layers": 2,
+    "lr": 0.003000000026077032,
+    "name": "arxiv_2402_03804_base",
+    "params": 2493312,
+    "seed": 1,
+    "steps_requested": 600,
+    "tokens_per_second": 275.2138274169862,
+    "wall_seconds": 558.111492586
+   }
+  },
+  "sft": {
+   "at": "2026-10-23T02:30:05",
+   "sft_source": "/home/jonat/pkchat/fwsft/sft_tinychat.jsonl",
+   "sft_limit": 2000,
+   "sft_fit": {
+    "source": "/home/jonat/pkchat/fwsft/sft_tinychat.jsonl",
+    "T": 64,
+    "limit": 2000,
+    "seen": 7697,
+    "kept": 2000,
+    "dropped_longer_than_T": 5697,
+    "longest_kept_tokens": 65,
+    "longest_dropped_tokens": 236,
+    "rule": "len(prompt) + len(completion) + 1 end token <= T + 1 (mtstudio load_sft), file order"
+   },
+   "sft_slice_sha256": "51a39b04645742d095733120d169e2d7621ec3039a0e276ee825e21c23e6699d",
+   "weights_sha256": "1397311c98face2a64fe23ff00fa0bc2131883024eec73ac585325818ca82801",
+   "result": {
+    "T": 64,
+    "accum": 1,
+    "attention": "exact",
+    "batch": 4,
+    "best_val": 3.6957249641418457,
+    "checkpoint_activations": false,
+    "d": 128,
+    "early_stopped": false,
+    "family": "flex",
+    "final_step": 200,
+    "heads": 4,
+    "layers": 2,
+    "lr": 0.0010000000474974513,
+    "name": "arxiv_2402_03804",
+    "params": 2493312,
+    "seed": 1,
+    "steps_requested": 200,
+    "tokens_per_second": 191.71342388748775,
+    "wall_seconds": 267.065284015
+   }
+  },
+  "export": {
+   "at": "2026-10-23T02:30:05",
+   "gguf": "/home/jonat/arxiv_chain_runs/relu2wins/export/arxiv_2402_03804.gguf",
+   "gguf_sha256": "68e399e0414301e052274d3c907f72d153de8a715c3409a03fab210e3efd8c58",
+   "ir_sha256": "aaf0ef80efd5bdac435ae3681c265b218bc1a5ce5a5edf0ca0baad380d281701",
+   "family_hint": "flex",
+   "rope_heads": "all"
+  },
+  "chat": {
+   "at": "2026-10-23T02:30:59",
+   "parity": {
+    "engine": "ember",
+    "n": 40,
+    "identical_replies": 40,
+    "same_token_count": 40,
+    "same_stop_reason": 40,
+    "prompt_tokens_match_bpe_py": 40,
+    "pass": true,
+    "settings": {
+     "user_input": null,
+     "max_new_tokens": 40,
+     "temperature": 1.0,
+     "top_k": 1,
+     "top_p": 1.0,
+     "seed": 0
+    },
+    "prompts": "/home/jonat/arxiv_chain_runs/inputs/tinychat_hf_prompts_v1.jsonl",
+    "prompts_sha256": "a906b25aaf9f32848f83e8b87c8ad95e7eb8d5802129635f7e55fc62a68b3132",
+    "ember_health": "{\"context\":64,\"hidden_size\":128,\"layers\":2,\"model\":\"/home/jonat/arxiv_chain_runs/relu2wins/export/arxiv_2402_03804.gguf\",\"status\":\"ok\",\"tokenizer\":\"bpe\",\"vocab_size\":8192}",
+    "mtstudio_health": "{\"attention\":\"exact\",\"context\":64,\"eos\":true,\"family\":\"flex\",\"model\":\"arxiv_2402_03804\",\"params\":2493312,\"rope_heads\":null,\"status\":\"ok\",\"vocab\":8192}",
+    "ember_bin": "/home/jonat/ember_ir_build/tinyllama_server",
+    "ember_bin_sha256": "fea592b03fb92963f24118d13d1c46f077f1bd80229d52767cc3919d13e28af7"
+   },
+   "chat": [
+    {
+     "user": "Hello! What is your name?",
+     "reply": "I understand, I am feeling quite frustrating when they are not not not not not not not go.",
+     "stop_reason": "eos",
+     "tokens": 20,
+     "history_turns_used": 0
+    },
+    {
+     "user": "Can you tell me a short story about a cat?",
+     "reply": "I understand, I am surprised to see you too, it is a bit sad.",
+     "stop_reason": "eos",
+     "tokens": 17,
+     "history_turns_used": 0
+    }
+   ]
+  }
+ },
+ "title": "ReLU$^2$ Wins: Discovering Efficient Activation Functions for Sparse LLMs",
+ "parity_pass": true
+}
