@@ -1,0 +1,9 @@
+{
+ "arxiv_id": "2402.03804",
+ "title": "ReLU$^2$ Wins: Discovering Efficient Activation Functions for Sparse LLMs",
+ "reasons": [
+  "residual = residual has verdict 'unverified': not asserted by the extractor; settle it with --assert residual=VALUE",
+  "attention = exact has verdict 'unverified': not asserted by the extractor; settle it with --assert attention=VALUE",
+  "positional = rope is the llama family (rmsnorm, swiglu, plain residual stream, exact attention); this paper has activation=expr:(relu(x)^2), which no family here builds (mtstudio would silently drop or reject it); a runtime-defined (expr) activation is hosted by the flex family only, whose positions are learned or sinusoidal"
+ ]
+}

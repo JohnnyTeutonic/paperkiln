@@ -1,0 +1,118 @@
+{
+ "pretrain": {
+  "steps": 600,
+  "batch": 4,
+  "T": 64,
+  "params": 2502144,
+  "lr": 0.003000000026077032,
+  "wall_seconds": 707.9,
+  "tokens_per_second": 217.0,
+  "train_loss_first": 9.0463,
+  "train_loss_last": 4.2245,
+  "train_loss_mean_last_50": 4.1776,
+  "val_loss": [
+   {
+    "step": 150,
+    "val_loss": 5.0792
+   },
+   {
+    "step": 300,
+    "val_loss": 4.7201
+   },
+   {
+    "step": 450,
+    "val_loss": 4.4311
+   },
+   {
+    "step": 600,
+    "val_loss": 4.329
+   }
+  ],
+  "best_val": 4.329,
+  "expr_gradcheck": {
+   "event": "expr_gradcheck",
+   "expr": "(x*exp((-exp((-x)))))",
+   "fd_h": 0.009999999776482582,
+   "fd_points": 32,
+   "fd_tol": 0.002,
+   "fd_worst_rel": 2.637067005437704e-05,
+   "pass": true,
+   "probe": "x in [-20, 20] step 0.25",
+   "probe_nonfinite": 0
+  }
+ },
+ "sft": {
+  "steps": 200,
+  "batch": 4,
+  "T": 64,
+  "params": 2502144,
+  "lr": 0.0010000000474974513,
+  "wall_seconds": 196.3,
+  "tokens_per_second": 260.8,
+  "train_loss_first": 4.9886,
+  "train_loss_last": 3.2763,
+  "train_loss_mean_last_50": 3.552,
+  "val_loss": [
+   {
+    "step": 100,
+    "val_loss": 3.7138
+   },
+   {
+    "step": 200,
+    "val_loss": 3.6496
+   }
+  ],
+  "best_val": 3.6496,
+  "expr_gradcheck": {
+   "event": "expr_gradcheck",
+   "expr": "(x*exp((-exp((-x)))))",
+   "fd_h": 0.009999999776482582,
+   "fd_points": 32,
+   "fd_tol": 0.002,
+   "fd_worst_rel": 2.637067005437704e-05,
+   "pass": true,
+   "probe": "x in [-20, 20] step 0.25",
+   "probe_nonfinite": 0
+  }
+ },
+ "data": {
+  "pretrain_corpus": "corpus/data/tinychat_hf_sample_v1/pretrain_train.txt (copied to ext4)",
+  "pretrain_corpus_sha256": "f6a7ccbaed0e5018f9ade0a1f0ce6a3027e046f176d2b8f7ff7f5efedfaedb76",
+  "max_tokens": 400000,
+  "vocab_sha256": "c79eec5b5ec2036b7f398061e9901c34014b54096db64f9dce6f030532e75b23",
+  "sft": "the first 3,000 lines of ~/pkchat/fwsft/sft_tinychat.jsonl, kept where prompt + completion + end token <= 60 tokens (the run's T is 64): 712 examples, mean 35.8 tokens",
+  "sft_slice_sha256": "0cd780b5fc360997e004888b375f8e5972d9ab13b0e1d12ccd2ee54b41fbb8d3"
+ },
+ "machine": "CPU only: WSL2 (4 CPUs), mtstudio built -DMICROTORCH_CUDA=OFF in ~/expr_build, one thread in practice; through scripts/cpu_budget.py (2 slots)",
+ "export": {
+  "at": "2026-10-23T01:53:02",
+  "gguf": "/home/jonat/arxiv_chain_runs/golu/export/arxiv_2502_03654.gguf",
+  "gguf_sha256": "472db76fea20233a0b0578eae10b78c7e79ef93327fdf7fe1fb2868d6a2eb7e3",
+  "ir_sha256": "8bbecd273554fbf501ce5092fe2b252553f20be8e16fcd0f26770237c88c31ad",
+  "family_hint": "flex",
+  "rope_heads": null
+ },
+ "parity": {
+  "engine": "ember",
+  "n": 10,
+  "identical_replies": 10,
+  "same_token_count": 10,
+  "same_stop_reason": 10,
+  "prompt_tokens_match_bpe_py": 10,
+  "pass": true,
+  "settings": {
+   "user_input": null,
+   "max_new_tokens": 40,
+   "temperature": 1.0,
+   "top_k": 1,
+   "top_p": 1.0,
+   "seed": 0
+  },
+  "prompts": "/home/jonat/arxiv_chain_runs/inputs/tinychat_hf_prompts_v1.jsonl",
+  "prompts_sha256": "a906b25aaf9f32848f83e8b87c8ad95e7eb8d5802129635f7e55fc62a68b3132",
+  "ember_health": "{\"context\":64,\"hidden_size\":128,\"layers\":2,\"model\":\"/home/jonat/arxiv_chain_runs/golu/export/arxiv_2502_03654.gguf\",\"status\":\"ok\",\"tokenizer\":\"bpe\",\"vocab_size\":8192}",
+  "mtstudio_health": "{\"attention\":\"exact\",\"context\":64,\"eos\":true,\"family\":\"flex\",\"model\":\"arxiv_2502_03654\",\"params\":2502144,\"rope_heads\":null,\"status\":\"ok\",\"vocab\":8192}",
+  "ember_bin": "/home/jonat/ember_ir_build/tinyllama_server",
+  "ember_bin_sha256": "fea592b03fb92963f24118d13d1c46f077f1bd80229d52767cc3919d13e28af7"
+ }
+}

@@ -1,0 +1,1105 @@
+{
+ "arxiv_id": "2502.03654",
+ "title": "Gompertz Linear Units: Leveraging Asymmetry for Enhanced Learning Dynamics",
+ "fields": {
+  "d_model": {
+   "value": 384,
+   "evidence": "The babyGPT version of the GPT-2 series consists of 6 layers, 6 attention heads, and an embedding dimension of 384, with a feed-forward expansion dimension of 1536 output features. [App. Language modeling]",
+   "verdict": "used"
+  },
+  "n_layers": {
+   "value": 6,
+   "evidence": "The babyGPT version of the GPT-2 series consists of 6 layers, 6 attention heads, and an embedding dimension of 384 [App. Language modeling]",
+   "verdict": "used"
+  },
+  "n_heads": {
+   "value": 6,
+   "evidence": "The babyGPT version of the GPT-2 series consists of 6 layers, 6 attention heads, and an embedding dimension of 384 [App. Language modeling]",
+   "verdict": "used"
+  },
+  "d_ff": {
+   "value": 1536,
+   "evidence": "with a feed-forward expansion dimension of 1536 output features [App. Language modeling]",
+   "verdict": "used"
+  },
+  "vocab_size": {
+   "value": 50304,
+   "evidence": "Both babyGPT and nanoGPT have a vocabulary size of 50,304 and a maximum sequence length of 1024. [App. Language modeling]",
+   "verdict": "used"
+  },
+  "context_length": {
+   "value": 1024,
+   "evidence": "Both babyGPT and nanoGPT have a vocabulary size of 50,304 and a maximum sequence length of 1024. [App. Language modeling]",
+   "verdict": "used"
+  },
+  "activation": {
+   "value": "expr:(x*exp((-exp((-x)))))",
+   "evidence": "defined as $\\mathrm{GoLU}(x) = x \\, \\mathrm{Gompertz}(x)$, where $\\mathrm{Gompertz}(x) = e^{-e^{-x}}$ [Abstract]",
+   "verdict": "used"
+  }
+ },
+ "unresolved": [
+  "n_kv_heads",
+  "norm",
+  "positional",
+  "residual",
+  "attention"
+ ],
+ "unverified": [],
+ "mentions": {},
+ "inherits": {
+  "ancestor": "gpt-2",
+  "evidence": "We train babyGPT on the TinyStories (TS) \\citep{eldan2023tinystories} dataset and GPT2-S \\citep{radford2019language} on the OpenWebText (OWT) \\citep{Gokaslan2019OpenWeb} dataset, leveraging the nanoGPT repository \\citep{karpathy2023nanogpt}.",
+  "section": "Sec. 3.1 Overview of Experiments"
+ },
+ "variants": [
+  {
+   "d_model": 384,
+   "n_layers": 6,
+   "n_heads": 6,
+   "d_ff": 1536,
+   "vocab_size": 50304,
+   "context_length": 1024
+  },
+  {
+   "d_model": 768,
+   "n_layers": 12,
+   "n_heads": 12,
+   "vocab_size": 50304,
+   "context_length": 1024
+  }
+ ],
+ "mechanism_scan": [
+  {
+   "mechanism": "new op golu = (x*exp((-exp((-x))))) (expr)",
+   "where": "llm extraction, verified quote, Abstract / eq1, eq2",
+   "blocking": true,
+   "evidence": "defined as $\\mathrm{GoLU}(x) = x \\, \\mathrm{Gompertz}(x)$, where $\\mathrm{Gompertz}(x) = e^{-e^{-x}}$"
+  }
+ ],
+ "source": {
+  "tex_sha256": "7d57f8b0c19455bd1668ed1f70e629d0678eacf13d0130d0c60d48737d47a010",
+  "sent_sha256": "a5796862079e56a644aaea601aa603826a3367deec2511e24baeaa5794064746",
+  "from": "https://arxiv.org/e-print/2502.03654",
+  "extractor": "papers/llm_extract.py",
+  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
+  "model": "claude-opus-5-5",
+  "effort": "high",
+  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
+  "n_calls": 1,
+  "cost_usd": 0.261736,
+  "request_ids": [
+   "req_011CgHRdD2kZjPXYRE1sKMri"
+  ]
+ },
+ "llm": {
+  "output": {
+   "title": "Gompertz Linear Units: Leveraging Asymmetry for Enhanced Learning Dynamics",
+   "model_name": "GoLU activation in babyGPT / GPT2-S (nanoGPT GPT-2 series)",
+   "family": {
+    "value": "decoder_only",
+    "status": "inherited",
+    "quote": "The babyGPT version of the GPT-2 series consists of 6 layers, 6 attention heads, and an embedding dimension of 384, with a feed-forward expansion dimension of 1536 output features.",
+    "where": "App. Language modeling"
+   },
+   "inherits": {
+    "ancestor": "GPT-2 (via the nanoGPT repository)",
+    "quote": "We train babyGPT on the TinyStories (TS) \\citep{eldan2023tinystories} dataset and GPT2-S \\citep{radford2019language} on the OpenWebText (OWT) \\citep{Gokaslan2019OpenWeb} dataset, leveraging the nanoGPT repository \\citep{karpathy2023nanogpt}.",
+    "where": "Sec. 3.1 Overview of Experiments"
+   },
+   "configs": [
+    {
+     "name": "babyGPT",
+     "d_model": {
+      "value": "384",
+      "status": "stated",
+      "quote": "The babyGPT version of the GPT-2 series consists of 6 layers, 6 attention heads, and an embedding dimension of 384, with a feed-forward expansion dimension of 1536 output features.",
+      "where": "App. Language modeling"
+     },
+     "n_layers": {
+      "value": "6",
+      "status": "stated",
+      "quote": "The babyGPT version of the GPT-2 series consists of 6 layers, 6 attention heads, and an embedding dimension of 384",
+      "where": "App. Language modeling"
+     },
+     "n_heads": {
+      "value": "6",
+      "status": "stated",
+      "quote": "The babyGPT version of the GPT-2 series consists of 6 layers, 6 attention heads, and an embedding dimension of 384",
+      "where": "App. Language modeling"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "1536",
+      "status": "stated",
+      "quote": "with a feed-forward expansion dimension of 1536 output features",
+      "where": "App. Language modeling"
+     },
+     "vocab_size": {
+      "value": "50304",
+      "status": "stated",
+      "quote": "Both babyGPT and nanoGPT have a vocabulary size of 50,304 and a maximum sequence length of 1024.",
+      "where": "App. Language modeling"
+     },
+     "context_length": {
+      "value": "1024",
+      "status": "stated",
+      "quote": "Both babyGPT and nanoGPT have a vocabulary size of 50,304 and a maximum sequence length of 1024.",
+      "where": "App. Language modeling"
+     }
+    },
+    {
+     "name": "GPT2-S",
+     "d_model": {
+      "value": "768",
+      "status": "stated",
+      "quote": "the GPT2-S model consists of 12 layers, 12 attention heads, and an embedding dimension of 768.",
+      "where": "App. Language modeling"
+     },
+     "n_layers": {
+      "value": "12",
+      "status": "stated",
+      "quote": "the GPT2-S model consists of 12 layers, 12 attention heads, and an embedding dimension of 768.",
+      "where": "App. Language modeling"
+     },
+     "n_heads": {
+      "value": "12",
+      "status": "stated",
+      "quote": "the GPT2-S model consists of 12 layers, 12 attention heads, and an embedding dimension of 768.",
+      "where": "App. Language modeling"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "vocab_size": {
+      "value": "50304",
+      "status": "stated",
+      "quote": "Both babyGPT and nanoGPT have a vocabulary size of 50,304 and a maximum sequence length of 1024.",
+      "where": "App. Language modeling"
+     },
+     "context_length": {
+      "value": "1024",
+      "status": "stated",
+      "quote": "Both babyGPT and nanoGPT have a vocabulary size of 50,304 and a maximum sequence length of 1024.",
+      "where": "App. Language modeling"
+     }
+    }
+   ],
+   "primary_config": "babyGPT",
+   "flavours": {
+    "norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "activation": {
+     "value": "new_op:golu",
+     "status": "stated",
+     "quote": "defined as $\\mathrm{GoLU}(x) = x \\, \\mathrm{Gompertz}(x)$, where $\\mathrm{Gompertz}(x) = e^{-e^{-x}}$",
+     "where": "Abstract"
+    },
+    "positional": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_theta": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "residual": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "parallel_block": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "attention": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "qkv_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "tied_embeddings": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "moe": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    }
+   },
+   "block_ops": [
+    {
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "x",
+     "attributes": [
+      {
+       "name": "vocab",
+       "value": "50304",
+       "status": "stated",
+       "quote": "Both babyGPT and nanoGPT have a vocabulary size of 50,304 and a maximum sequence length of 1024.",
+       "where": "App. Language modeling"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "attention",
+     "role": "self-attention sublayer (internal norm/projection/residual layout not stated)",
+     "inputs": [
+      "x"
+     ],
+     "output": "a",
+     "attributes": [
+      {
+       "name": "heads",
+       "value": "6",
+       "status": "stated",
+       "quote": "The babyGPT version of the GPT-2 series consists of 6 layers, 6 attention heads, and an embedding dimension of 384",
+       "where": "App. Language modeling"
+      },
+      {
+       "name": "kv_heads",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "head_dim",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "causal",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN up projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "u",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "1536",
+       "status": "stated",
+       "quote": "with a feed-forward expansion dimension of 1536 output features",
+       "where": "App. Language modeling"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "expr",
+     "role": "GoLU activation",
+     "inputs": [
+      "u"
+     ],
+     "output": "g",
+     "attributes": [],
+     "new_op": "golu"
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN down projection",
+     "inputs": [
+      "g"
+     ],
+     "output": "f",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "384",
+       "status": "stated",
+       "quote": "The babyGPT version of the GPT-2 series consists of 6 layers, 6 attention heads, and an embedding dimension of 384",
+       "where": "App. Language modeling"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "linear",
+     "role": "LM head",
+     "inputs": [
+      "f"
+     ],
+     "output": "logits",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "50304",
+       "status": "stated",
+       "quote": "Both babyGPT and nanoGPT have a vocabulary size of 50,304 and a maximum sequence length of 1024.",
+       "where": "App. Language modeling"
+      },
+      {
+       "name": "tied_to",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    }
+   ],
+   "new_ops": [
+    {
+     "name": "golu",
+     "kind": "expr",
+     "expr": "x * exp(-exp(-x))",
+     "inputs": [
+      {
+       "name": "x",
+       "meaning": "the FFN pre-activation (up-projection output)"
+      }
+     ],
+     "replaces": "FFN activation (GELU in GPT-2)",
+     "reason": "",
+     "quote": "defined as $\\mathrm{GoLU}(x) = x \\, \\mathrm{Gompertz}(x)$, where $\\mathrm{Gompertz}(x) = e^{-e^{-x}}$",
+     "where": "Abstract / eq1, eq2"
+    }
+   ],
+   "mechanisms_outside_ir": [],
+   "notes": "The paper proposes an activation function (GoLU), not a new network; it swaps GoLU into many existing architectures (ResNets, ViTs, GPT-2, Transformer-Big, DDPM, etc.). I described the language-model instantiation (nanoGPT GPT-2 series: babyGPT and GPT2-S) because it is the paper's transformer setting with stated sizes. GPT2-S d_ff is not stated. head_dim and kv_heads are not stated (not derived). GPT-2 internals (norm type and placement, positional embeddings, biases, tying, causal masking, residual adds) are not restated, so they are left not_stated. Only family is marked inherited, from the 'GPT-2 series' wording. Because the norms and residual adds are unstated, the block_ops are intentionally incomplete: they show only the attention sublayer and the GoLU FFN, with no explicit norm or residual-add nodes. The block is therefore not buildable as listed. The vocab/context sentence names 'babyGPT and nanoGPT'; I took 'nanoGPT' to mean GPT2-S."
+  },
+  "verification": {
+   "errors": [],
+   "warnings": [],
+   "inherits": {
+    "ancestor": "GPT-2 (via the nanoGPT repository)",
+    "resolved": "gpt-2",
+    "quote": "We train babyGPT on the TinyStories (TS) \\citep{eldan2023tinystories} dataset and GPT2-S \\citep{radford2019language} on the OpenWebText (OWT) \\citep{Gokaslan2019OpenWeb} dataset, leveraging the nanoGPT repository \\citep{karpathy2023nanogpt}.",
+    "where": "Sec. 3.1 Overview of Experiments",
+    "quote_found": true
+   },
+   "family": {
+    "value": "decoder_only",
+    "status": "inherited",
+    "quote": "The babyGPT version of the GPT-2 series consists of 6 layers, 6 attention heads, and an embedding dimension of 384, with a feed-forward expansion dimension of 1536 output features.",
+    "where": "App. Language modeling",
+    "reasons": [
+     "inherited from gpt-2, whose curated entry has no family"
+    ],
+    "check": "unverified"
+   },
+   "configs": [
+    {
+     "name": "babyGPT",
+     "d_model": {
+      "value": "384",
+      "status": "stated",
+      "quote": "The babyGPT version of the GPT-2 series consists of 6 layers, 6 attention heads, and an embedding dimension of 384, with a feed-forward expansion dimension of 1536 output features.",
+      "where": "App. Language modeling",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "6",
+      "status": "stated",
+      "quote": "The babyGPT version of the GPT-2 series consists of 6 layers, 6 attention heads, and an embedding dimension of 384",
+      "where": "App. Language modeling",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "6",
+      "status": "stated",
+      "quote": "The babyGPT version of the GPT-2 series consists of 6 layers, 6 attention heads, and an embedding dimension of 384",
+      "where": "App. Language modeling",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "1536",
+      "status": "stated",
+      "quote": "with a feed-forward expansion dimension of 1536 output features",
+      "where": "App. Language modeling",
+      "reasons": [],
+      "check": "verified"
+     },
+     "vocab_size": {
+      "value": "50304",
+      "status": "stated",
+      "quote": "Both babyGPT and nanoGPT have a vocabulary size of 50,304 and a maximum sequence length of 1024.",
+      "where": "App. Language modeling",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "1024",
+      "status": "stated",
+      "quote": "Both babyGPT and nanoGPT have a vocabulary size of 50,304 and a maximum sequence length of 1024.",
+      "where": "App. Language modeling",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "name": "GPT2-S",
+     "d_model": {
+      "value": "768",
+      "status": "stated",
+      "quote": "the GPT2-S model consists of 12 layers, 12 attention heads, and an embedding dimension of 768.",
+      "where": "App. Language modeling",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "12",
+      "status": "stated",
+      "quote": "the GPT2-S model consists of 12 layers, 12 attention heads, and an embedding dimension of 768.",
+      "where": "App. Language modeling",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "12",
+      "status": "stated",
+      "quote": "the GPT2-S model consists of 12 layers, 12 attention heads, and an embedding dimension of 768.",
+      "where": "App. Language modeling",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "vocab_size": {
+      "value": "50304",
+      "status": "stated",
+      "quote": "Both babyGPT and nanoGPT have a vocabulary size of 50,304 and a maximum sequence length of 1024.",
+      "where": "App. Language modeling",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "1024",
+      "status": "stated",
+      "quote": "Both babyGPT and nanoGPT have a vocabulary size of 50,304 and a maximum sequence length of 1024.",
+      "where": "App. Language modeling",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      }
+     ]
+    }
+   ],
+   "primary_config": "babyGPT",
+   "flavours": {
+    "norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "activation": {
+     "value": "new_op:golu",
+     "status": "stated",
+     "quote": "defined as $\\mathrm{GoLU}(x) = x \\, \\mathrm{Gompertz}(x)$, where $\\mathrm{Gompertz}(x) = e^{-e^{-x}}$",
+     "where": "Abstract",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "positional": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_theta": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "residual": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "parallel_block": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "attention": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "qkv_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "tied_embeddings": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "moe": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    }
+   },
+   "new_ops": [
+    {
+     "name": "golu",
+     "kind": "expr",
+     "replaces": "FFN activation (GELU in GPT-2)",
+     "reason": "",
+     "quote": "defined as $\\mathrm{GoLU}(x) = x \\, \\mathrm{Gompertz}(x)$, where $\\mathrm{Gompertz}(x) = e^{-e^{-x}}$",
+     "where": "Abstract / eq1, eq2",
+     "inputs": [
+      {
+       "name": "x",
+       "meaning": "the FFN pre-activation (up-projection output)"
+      }
+     ],
+     "errors": [],
+     "quote_found": true,
+     "expr_check": {
+      "expr": "x * exp(-exp(-x))",
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "canonical": "(x*exp((-exp((-x)))))",
+      "samples": {
+       "inputs": {
+        "x": [
+         -2.0,
+         -0.5,
+         0.0,
+         0.5,
+         2.0
+        ]
+       },
+       "output": [
+        -0.0012359579786621869,
+        -0.09614782277398246,
+        0.0,
+        0.2726196059463025,
+        1.7468460369862333
+       ]
+      }
+     },
+     "check": "verified"
+    }
+   ],
+   "block_ops": [
+    {
+     "i": 0,
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "50304",
+       "status": "stated",
+       "quote": "Both babyGPT and nanoGPT have a vocabulary size of 50,304 and a maximum sequence length of 1024.",
+       "where": "App. Language modeling",
+       "reasons": [],
+       "check": "verified",
+       "name": "vocab"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 1,
+     "subgraph": "block",
+     "op": "attention",
+     "role": "self-attention sublayer (internal norm/projection/residual layout not stated)",
+     "inputs": [
+      "x"
+     ],
+     "output": "a",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "6",
+       "status": "stated",
+       "quote": "The babyGPT version of the GPT-2 series consists of 6 layers, 6 attention heads, and an embedding dimension of 384",
+       "where": "App. Language modeling",
+       "reasons": [],
+       "check": "verified",
+       "name": "heads"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "kv_heads"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "head_dim"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "causal"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 2,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN up projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "u",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "1536",
+       "status": "stated",
+       "quote": "with a feed-forward expansion dimension of 1536 output features",
+       "where": "App. Language modeling",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 3,
+     "subgraph": "block",
+     "op": "expr",
+     "role": "GoLU activation",
+     "inputs": [
+      "u"
+     ],
+     "output": "g",
+     "new_op": "golu",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 4,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN down projection",
+     "inputs": [
+      "g"
+     ],
+     "output": "f",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "384",
+       "status": "stated",
+       "quote": "The babyGPT version of the GPT-2 series consists of 6 layers, 6 attention heads, and an embedding dimension of 384",
+       "where": "App. Language modeling",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 5,
+     "subgraph": "head",
+     "op": "linear",
+     "role": "LM head",
+     "inputs": [
+      "f"
+     ],
+     "output": "logits",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "50304",
+       "status": "stated",
+       "quote": "Both babyGPT and nanoGPT have a vocabulary size of 50,304 and a maximum sequence length of 1024.",
+       "where": "App. Language modeling",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "tied_to"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    }
+   ],
+   "mechanisms_outside_ir": [],
+   "summary": {
+    "counts": {
+     "verified": 16,
+     "quote_only": 1,
+     "unverified": 1,
+     "not_stated": 31
+    },
+    "unverified": [
+     {
+      "field": "family",
+      "reasons": [
+       "inherited from gpt-2, whose curated entry has no family"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 1,
+    "n_block_ops": 6
+   }
+  }
+ }
+}

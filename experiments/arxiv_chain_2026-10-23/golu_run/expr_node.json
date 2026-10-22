@@ -1,0 +1,44 @@
+{
+ "family_hint": "flex",
+ "block_ops": [
+  "layernorm",
+  "linear",
+  "split",
+  "attention",
+  "linear",
+  "add",
+  "layernorm",
+  "linear",
+  "expr",
+  "linear",
+  "add"
+ ],
+ "expr_node": {
+  "op": "expr",
+  "in": [
+   "u"
+  ],
+  "expr": "(x*exp((-exp((-x)))))",
+  "out": "u"
+ },
+ "previous_node": {
+  "op": "linear",
+  "in": [
+   "h2"
+  ],
+  "weight": "blk.{i}.ffn_up.weight",
+  "bias": "blk.{i}.ffn_up.bias",
+  "out": "u"
+ },
+ "next_node": {
+  "op": "linear",
+  "in": [
+   "u"
+  ],
+  "weight": "blk.{i}.ffn_down.weight",
+  "bias": "blk.{i}.ffn_down.bias",
+  "out": "f"
+ },
+ "gguf_general_architecture": "paperkiln (ember has no builder for it: it runs the embedded paperkiln.ir on its interpreter)",
+ "gguf_sha256": "472db76fea20233a0b0578eae10b78c7e79ef93327fdf7fe1fb2868d6a2eb7e3"
+}

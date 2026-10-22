@@ -1,0 +1,2 @@
+{"user": "Hello! What is your name?", "reply": "I understand, I feel that feeling, sometimes, sometimes it is a bit sad today, sometimes days can be very frustrating when things feel heavy.", "stop_reason": "eos", "tokens": 29, "history_turns_used": 0}
+{"user": "Can you tell me a short story about a cat?", "reply": "I understand, I am feeling, sometimes it is a bit sad sometimes days can be very frustrating when the weather.", "stop_reason": "eos", "tokens": 23, "history_turns_used": 0}

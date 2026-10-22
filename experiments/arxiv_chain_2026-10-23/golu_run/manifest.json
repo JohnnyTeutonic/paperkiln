@@ -1,0 +1,264 @@
+{
+ "arxiv_id": "2502.03654",
+ "stages": {
+  "extract": {
+   "at": "2026-10-23T01:49:43",
+   "extraction_sha256": "5f857e7f8bc1d5cd43607f0c1640dcf0eb5f52a0179113479130f8ac2c239de5",
+   "source": {
+    "tex_sha256": "7d57f8b0c19455bd1668ed1f70e629d0678eacf13d0130d0c60d48737d47a010",
+    "sent_sha256": "a5796862079e56a644aaea601aa603826a3367deec2511e24baeaa5794064746",
+    "from": "https://arxiv.org/e-print/2502.03654",
+    "extractor": "papers/llm_extract.py",
+    "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
+    "model": "claude-opus-5-5",
+    "effort": "high",
+    "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
+    "n_calls": 1,
+    "cost_usd": 0.261736,
+    "request_ids": [
+     "req_011CgHRdD2kZjPXYRE1sKMri"
+    ],
+    "cached_from": "/home/jonat/arxiv_chain_runs/inputs/2502.03654.extraction.json"
+   },
+   "mechanism_scan": [
+    {
+     "mechanism": "new op golu = (x*exp((-exp((-x))))) (expr)",
+     "where": "llm extraction, verified quote, Abstract / eq1, eq2",
+     "blocking": true,
+     "evidence": "defined as $\\mathrm{GoLU}(x) = x \\, \\mathrm{Gompertz}(x)$, where $\\mathrm{Gompertz}(x) = e^{-e^{-x}}$"
+    }
+   ]
+  },
+  "spec": {
+   "at": "2026-10-23T01:49:43",
+   "family": "flex",
+   "name": "arxiv_2502_03654",
+   "report": [
+    [
+     "EXPR",
+     "activation = expr:(x*exp((-exp((-x))))) (new op golu, replaces FFN activation (GELU in GPT-2); verified quote (Abstract / eq1, eq2): \u201cdefined as $\\mathrm{GoLU}(x) = x \\, \\mathrm{Gompertz}(x)$, where $\\mathrm{Gompertz}(x) = e^{-e^{-x}}$\u201d); parses in the IR grammar (tools/ir_expr.py), finite in f32 on [-20, 20]; mtstudio checks its gradient against finite differences before training"
+    ],
+    [
+     "INHERITED",
+     "norm = layernorm: curated ancestor table: fetch.ANCESTORS['gpt-2']['norm'] = layernorm; the paper's model inherits from GPT-2 (via the nanoGPT repository) (verified quote, Sec. 3.1 Overview of Experiments: \u201cWe train babyGPT on the TinyStories (TS) \\citep{eldan2023tinystories} dataset and GPT2-S \\citep{radford2019language} on the OpenWebText (OWT) \\citep{Gokaslan201\u201d; the reply marks family inherited) and does not restate it"
+    ],
+    [
+     "MATCHED",
+     "activation = expr:(x*exp((-exp((-x))))) (used: \u201cdefined as $\\mathrm{GoLU}(x) = x \\, \\mathrm{Gompertz}(x)$, where $\\mathrm{Gompertz}(x) = e^{-e^{-x}}$ [Abstract]\u201d)"
+    ],
+    [
+     "INHERITED",
+     "positional = learned: curated ancestor table: fetch.ANCESTORS['gpt-2']['positional'] = learned; the paper's model inherits from GPT-2 (via the nanoGPT repository) (verified quote, Sec. 3.1 Overview of Experiments: \u201cWe train babyGPT on the TinyStories (TS) \\citep{eldan2023tinystories} dataset and GPT2-S \\citep{radford2019language} on the OpenWebText (OWT) \\citep{Gokaslan201\u201d; the reply marks family inherited) and does not restate it"
+    ],
+    [
+     "DEFAULT",
+     "residual = residual: the LLM extraction found no stated residual wiring (a highway or plain stream would be a stated departure)"
+    ],
+    [
+     "DEFAULT",
+     "attention = exact: the LLM extraction found no stated attention variant (windowed, linear or sparse attention would be a stated departure)"
+    ],
+    [
+     "SIZED",
+     "d=128 layers=2 heads=4 T=64 chosen for this run (paper: {'d_model': 384, 'n_layers': 6, 'n_heads': 6, 'd_ff': 1536, 'context_length': 1024}); the mechanism is the paper's"
+    ]
+   ],
+   "pretrain_spec": {
+    "name": "arxiv_2502_03654_base",
+    "arch": {
+     "custom": {
+      "norm": "layernorm",
+      "activation": "expr:(x*exp((-exp((-x)))))",
+      "position": "learned",
+      "residual": "residual",
+      "attention": "exact",
+      "d": 128,
+      "layers": 2,
+      "heads": 4
+     }
+    },
+    "data": {
+     "vocab": "/home/jonat/arxiv_chain_runs/inputs/fineweb_tinychat_bpe8k.gguf",
+     "vocab_cap": 8192,
+     "T": 64,
+     "corpus": "/home/jonat/arxiv_chain_runs/inputs/pretrain_train.txt",
+     "max_tokens": 400000
+    },
+    "train": {
+     "steps": 600,
+     "lr": 0.003,
+     "batch": 4,
+     "eval_every": 150,
+     "checkpoint_every": 150,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 50,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors"
+     ]
+    },
+    "out_dir": "/home/jonat/arxiv_chain_runs/golu/pretrain"
+   },
+   "sft_spec": {
+    "name": "arxiv_2502_03654",
+    "arch": {
+     "custom": {
+      "norm": "layernorm",
+      "activation": "expr:(x*exp((-exp((-x)))))",
+      "position": "learned",
+      "residual": "residual",
+      "attention": "exact",
+      "d": 128,
+      "layers": 2,
+      "heads": 4
+     }
+    },
+    "data": {
+     "vocab": "/home/jonat/arxiv_chain_runs/inputs/fineweb_tinychat_bpe8k.gguf",
+     "vocab_cap": 8192,
+     "T": 64,
+     "sft_examples": "/home/jonat/arxiv_chain_runs/golu/sft_examples.jsonl"
+    },
+    "train": {
+     "steps": 200,
+     "lr": 0.001,
+     "batch": 4,
+     "eval_every": 100,
+     "checkpoint_every": 150,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "objective": "sft",
+     "init_from": "/home/jonat/arxiv_chain_runs/golu/pretrain/arxiv_2502_03654_base.safetensors",
+     "lr_schedule": {
+      "warmup_steps": 20,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors"
+     ]
+    },
+    "out_dir": "/home/jonat/arxiv_chain_runs/golu/sft"
+   }
+  },
+  "pretrain": {
+   "at": "2026-10-23T01:49:43",
+   "corpus": "/home/jonat/arxiv_chain_runs/inputs/pretrain_train.txt",
+   "corpus_sha256": "f6a7ccbaed0e5018f9ade0a1f0ce6a3027e046f176d2b8f7ff7f5efedfaedb76",
+   "max_tokens": 400000,
+   "vocab_sha256": "c79eec5b5ec2036b7f398061e9901c34014b54096db64f9dce6f030532e75b23",
+   "weights_sha256": "bf6903c96383a54344e5484ec91463059411b0252b7aa3ef808c2e319e275fc0",
+   "result": {
+    "T": 64,
+    "accum": 1,
+    "attention": "exact",
+    "batch": 4,
+    "best_val": 4.329037189483643,
+    "checkpoint_activations": false,
+    "d": 128,
+    "early_stopped": false,
+    "family": "flex",
+    "final_step": 600,
+    "heads": 4,
+    "layers": 2,
+    "lr": 0.003000000026077032,
+    "name": "arxiv_2502_03654_base",
+    "params": 2502144,
+    "seed": 1,
+    "steps_requested": 600,
+    "tokens_per_second": 216.9720311845565,
+    "wall_seconds": 707.925344854
+   }
+  },
+  "sft": {
+   "at": "2026-10-23T01:53:02",
+   "sft_source": "/home/jonat/arxiv_chain_runs/inputs/sft_tinychat_fit64.jsonl",
+   "sft_limit": 2000,
+   "sft_slice_sha256": "0cd780b5fc360997e004888b375f8e5972d9ab13b0e1d12ccd2ee54b41fbb8d3",
+   "weights_sha256": "0bc155bba4d6bacef961277e4df37879f481b023e51c0975061800135b69e2b5",
+   "result": {
+    "T": 64,
+    "accum": 1,
+    "attention": "exact",
+    "batch": 4,
+    "best_val": 3.6495792865753174,
+    "checkpoint_activations": false,
+    "d": 128,
+    "early_stopped": false,
+    "family": "flex",
+    "final_step": 200,
+    "heads": 4,
+    "layers": 2,
+    "lr": 0.0010000000474974513,
+    "name": "arxiv_2502_03654",
+    "params": 2502144,
+    "seed": 1,
+    "steps_requested": 200,
+    "tokens_per_second": 260.8037097200446,
+    "wall_seconds": 196.316225927
+   }
+  },
+  "export": {
+   "at": "2026-10-23T01:53:02",
+   "gguf": "/home/jonat/arxiv_chain_runs/golu/export/arxiv_2502_03654.gguf",
+   "gguf_sha256": "472db76fea20233a0b0578eae10b78c7e79ef93327fdf7fe1fb2868d6a2eb7e3",
+   "ir_sha256": "8bbecd273554fbf501ce5092fe2b252553f20be8e16fcd0f26770237c88c31ad",
+   "family_hint": "flex",
+   "rope_heads": null
+  },
+  "chat": {
+   "at": "2026-10-23T01:53:17",
+   "parity": {
+    "engine": "ember",
+    "n": 10,
+    "identical_replies": 10,
+    "same_token_count": 10,
+    "same_stop_reason": 10,
+    "prompt_tokens_match_bpe_py": 10,
+    "pass": true,
+    "settings": {
+     "user_input": null,
+     "max_new_tokens": 40,
+     "temperature": 1.0,
+     "top_k": 1,
+     "top_p": 1.0,
+     "seed": 0
+    },
+    "prompts": "/home/jonat/arxiv_chain_runs/inputs/tinychat_hf_prompts_v1.jsonl",
+    "prompts_sha256": "a906b25aaf9f32848f83e8b87c8ad95e7eb8d5802129635f7e55fc62a68b3132",
+    "ember_health": "{\"context\":64,\"hidden_size\":128,\"layers\":2,\"model\":\"/home/jonat/arxiv_chain_runs/golu/export/arxiv_2502_03654.gguf\",\"status\":\"ok\",\"tokenizer\":\"bpe\",\"vocab_size\":8192}",
+    "mtstudio_health": "{\"attention\":\"exact\",\"context\":64,\"eos\":true,\"family\":\"flex\",\"model\":\"arxiv_2502_03654\",\"params\":2502144,\"rope_heads\":null,\"status\":\"ok\",\"vocab\":8192}",
+    "ember_bin": "/home/jonat/ember_ir_build/tinyllama_server",
+    "ember_bin_sha256": "fea592b03fb92963f24118d13d1c46f077f1bd80229d52767cc3919d13e28af7"
+   },
+   "chat": [
+    {
+     "user": "Hello! What is your name?",
+     "reply": "I understand, I feel that feeling, sometimes, sometimes it is a bit sad today, sometimes days can be very frustrating when things feel heavy.",
+     "stop_reason": "eos",
+     "tokens": 29,
+     "history_turns_used": 0
+    },
+    {
+     "user": "Can you tell me a short story about a cat?",
+     "reply": "I understand, I am feeling, sometimes it is a bit sad sometimes days can be very frustrating when the weather.",
+     "stop_reason": "eos",
+     "tokens": 23,
+     "history_turns_used": 0
+    }
+   ]
+  }
+ },
+ "title": "Gompertz Linear Units: Leveraging Asymmetry for Enhanced Learning Dynamics",
+ "parity_pass": true
+}

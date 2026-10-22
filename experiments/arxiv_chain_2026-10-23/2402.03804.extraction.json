@@ -1,0 +1,1754 @@
+{
+ "arxiv_id": "2402.03804",
+ "title": "ReLU$^2$ Wins: Discovering Efficient Activation Functions for Sparse LLMs",
+ "fields": {
+  "d_model": {
+   "value": 2048,
+   "evidence": "2,048 & 2,048 & 32 & 24 & 32,000 [Table: Details of model architecture (tab:model)]",
+   "verdict": "used"
+  },
+  "n_layers": {
+   "value": 24,
+   "evidence": "2,048 & 2,048 & 32 & 24 & 32,000 [Table: Details of model architecture (tab:model)]",
+   "verdict": "used"
+  },
+  "n_heads": {
+   "value": 32,
+   "evidence": "2,048 & 2,048 & 32 & 24 & 32,000 [Table: Details of model architecture (tab:model)]",
+   "verdict": "used"
+  },
+  "d_ff": {
+   "value": 8192,
+   "evidence": "For ReLU and ReLU$^2$, we set the intermediate hidden size to 8192. [App. A.3.1 Activation Function and Intermediate Hidden Size]",
+   "verdict": "used"
+  },
+  "vocab_size": {
+   "value": 32000,
+   "evidence": "2,048 & 2,048 & 32 & 24 & 32,000 [Table: Details of model architecture (tab:model)]",
+   "verdict": "used"
+  },
+  "context_length": {
+   "value": 2048,
+   "evidence": "2,048 & 2,048 & 32 & 24 & 32,000 [Table: Details of model architecture (tab:model)]",
+   "verdict": "used"
+  },
+  "norm": {
+   "value": "rmsnorm",
+   "evidence": "apply pre-normalization using RMSNorm~\\cite{RMSNorm} [App. A.3.1 Multi-Head Attention]",
+   "verdict": "used"
+  },
+  "activation": {
+   "value": "expr:(relu(x)^2)",
+   "evidence": "For ReLU and ReLU$^2$, we set the intermediate hidden size to 8192. [App. A.3.1 Activation Function and Intermediate Hidden Size]",
+   "verdict": "used"
+  },
+  "positional": {
+   "value": "rope",
+   "evidence": "RoPE~\\cite{su2024roformer} for Positional embedding [App. A.3.1 Multi-Head Attention]",
+   "verdict": "used"
+  },
+  "residual": {
+   "value": "residual",
+   "evidence": "We adopt a similar model architecture to LLaMA-2~\\cite{LLAMA2} with the following details: [App. A.3.1 Architecture]",
+   "verdict": "unverified",
+   "reasons": [
+    "inherited from llama, whose curated entry has no residual"
+   ]
+  },
+  "attention": {
+   "value": "exact",
+   "evidence": "For Attention block, we adopt the LLaMA2-7B's architecture [App. A.3.1 Multi-Head Attention]",
+   "verdict": "unverified",
+   "reasons": [
+    "inherited from llama, whose curated entry has no attention",
+    "the inheritance quote does not name the ancestor"
+   ]
+  }
+ },
+ "unresolved": [
+  "n_kv_heads"
+ ],
+ "unverified": [
+  {
+   "field": "n_kv_heads",
+   "reasons": [
+    "inherited from llama, whose curated entry has no n_kv_heads",
+    "the inheritance quote does not name the ancestor"
+   ]
+  },
+  {
+   "field": "residual",
+   "reasons": [
+    "inherited from llama, whose curated entry has no residual"
+   ]
+  },
+  {
+   "field": "attention",
+   "reasons": [
+    "inherited from llama, whose curated entry has no attention",
+    "the inheritance quote does not name the ancestor"
+   ]
+  }
+ ],
+ "mentions": {},
+ "inherits": {
+  "ancestor": "llama",
+  "evidence": "For Attention block, we adopt the LLaMA2-7B's architecture, apply pre-normalization using RMSNorm~\\cite{RMSNorm} and RoPE~\\cite{su2024roformer} for Positional embedding.",
+  "section": "App. A.3.1 Architecture, Multi-Head Attention"
+ },
+ "variants": [
+  {
+   "d_model": 2048,
+   "n_layers": 24,
+   "n_heads": 32,
+   "d_ff": 8192,
+   "vocab_size": 32000,
+   "context_length": 2048
+  }
+ ],
+ "mechanism_scan": [
+  {
+   "mechanism": "new op relu2 = (relu(x)^2) (expr)",
+   "where": "llm extraction, verified quote, App. A.3.1 Activation Function and Intermediate Hidden Size",
+   "blocking": true,
+   "evidence": "For ReLU and ReLU$^2$, we set the intermediate hidden size to 8192."
+  }
+ ],
+ "source": {
+  "tex_sha256": "66f7fc008d6dba3b7329f145259bf259021601daea7d108e4c718b5019ca8d0a",
+  "sent_sha256": "ef0b95f637e73a9fd15fb180c1853220a6a30a352b01fdd318e449f031cf2822",
+  "from": "https://arxiv.org/e-print/2402.03804",
+  "extractor": "papers/llm_extract.py",
+  "extractor_sha256": "ee17917056cde468620feeb9e9214f4e6e6ba6f739d5278315c499b9c97d0524",
+  "model": "claude-opus-5-5",
+  "effort": "high",
+  "prompt_sha256": "842f9c3aff3ddcd2e81476a7aa3d6d742e433fecda83b41bc6cd81c626190e78",
+  "n_calls": 1,
+  "cost_usd": 0.28152,
+  "request_ids": [
+   "req_011CgHRgpq8hbiY7iow2qrUQ"
+  ]
+ },
+ "llm": {
+  "output": {
+   "title": "ReLU$^2$ Wins: Discovering Efficient Activation Functions for Sparse LLMs",
+   "model_name": "1.3B (\"1B\") LLaMA-2-like model with ReLU^2 FFN activation",
+   "family": {
+    "value": "decoder_only",
+    "status": "inherited",
+    "quote": "We adopt a similar model architecture to LLaMA-2~\\cite{LLAMA2} with the following details:",
+    "where": "App. A.3.1 Architecture"
+   },
+   "inherits": {
+    "ancestor": "LLaMA-2 (attention block: LLaMA2-7B)",
+    "quote": "For Attention block, we adopt the LLaMA2-7B's architecture, apply pre-normalization using RMSNorm~\\cite{RMSNorm} and RoPE~\\cite{su2024roformer} for Positional embedding.",
+    "where": "App. A.3.1 Architecture, Multi-Head Attention"
+   },
+   "configs": [
+    {
+     "name": "1B-ReLU2",
+     "d_model": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "2,048       & 2,048       & 32    & 24  & 32,000",
+      "where": "Table: Details of model architecture (tab:model)"
+     },
+     "n_layers": {
+      "value": "24",
+      "status": "stated",
+      "quote": "2,048       & 2,048       & 32    & 24  & 32,000",
+      "where": "Table: Details of model architecture (tab:model)"
+     },
+     "n_heads": {
+      "value": "32",
+      "status": "stated",
+      "quote": "2,048       & 2,048       & 32    & 24  & 32,000",
+      "where": "Table: Details of model architecture (tab:model)"
+     },
+     "n_kv_heads": {
+      "value": "32",
+      "status": "inherited",
+      "quote": "For Attention block, we adopt the LLaMA2-7B's architecture",
+      "where": "App. A.3.1 Architecture, Multi-Head Attention"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "8192",
+      "status": "stated",
+      "quote": "For ReLU and ReLU$^2$, we set the intermediate hidden size to 8192.",
+      "where": "App. A.3.1 Activation Function and Intermediate Hidden Size"
+     },
+     "vocab_size": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "2,048       & 2,048       & 32    & 24  & 32,000",
+      "where": "Table: Details of model architecture (tab:model)"
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "2,048       & 2,048       & 32    & 24  & 32,000",
+      "where": "Table: Details of model architecture (tab:model)"
+     }
+    }
+   ],
+   "primary_config": "1B-ReLU2",
+   "flavours": {
+    "norm": {
+     "value": "rmsnorm",
+     "status": "stated",
+     "quote": "apply pre-normalization using RMSNorm~\\cite{RMSNorm}",
+     "where": "App. A.3.1 Multi-Head Attention"
+    },
+    "norm_placement": {
+     "value": "pre",
+     "status": "stated",
+     "quote": "apply pre-normalization using RMSNorm~\\cite{RMSNorm}",
+     "where": "App. A.3.1 Multi-Head Attention"
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "activation": {
+     "value": "new_op:relu2",
+     "status": "stated",
+     "quote": "For ReLU and ReLU$^2$, we set the intermediate hidden size to 8192.",
+     "where": "App. A.3.1 Activation Function and Intermediate Hidden Size"
+    },
+    "positional": {
+     "value": "rope",
+     "status": "stated",
+     "quote": "RoPE~\\cite{su2024roformer} for Positional embedding",
+     "where": "App. A.3.1 Multi-Head Attention"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_theta": {
+     "value": "10000",
+     "status": "inherited",
+     "quote": "For Attention block, we adopt the LLaMA2-7B's architecture",
+     "where": "App. A.3.1 Multi-Head Attention"
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "residual": {
+     "value": "residual",
+     "status": "inherited",
+     "quote": "We adopt a similar model architecture to LLaMA-2~\\cite{LLAMA2} with the following details:",
+     "where": "App. A.3.1 Architecture"
+    },
+    "parallel_block": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "We adopt a similar model architecture to LLaMA-2~\\cite{LLAMA2} with the following details:",
+     "where": "App. A.3.1 Architecture"
+    },
+    "attention": {
+     "value": "exact",
+     "status": "inherited",
+     "quote": "For Attention block, we adopt the LLaMA2-7B's architecture",
+     "where": "App. A.3.1 Multi-Head Attention"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "qkv_bias": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "For Attention block, we adopt the LLaMA2-7B's architecture",
+     "where": "App. A.3.1 Multi-Head Attention"
+    },
+    "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "tied_embeddings": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "moe": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "We adopt a similar model architecture to LLaMA-2~\\cite{LLAMA2} with the following details:",
+     "where": "App. A.3.1 Architecture"
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    }
+   },
+   "block_ops": [
+    {
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "x",
+     "attributes": [
+      {
+       "name": "vocab",
+       "value": "32000",
+       "status": "stated",
+       "quote": "2,048       & 2,048       & 32    & 24  & 32,000",
+       "where": "tab:model"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "pre-attention norm",
+     "inputs": [
+      "x"
+     ],
+     "output": "h",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "q projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "q",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "2048",
+       "status": "stated",
+       "quote": "2,048       & 2,048       & 32    & 24  & 32,000",
+       "where": "tab:model"
+      },
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "inherited",
+       "quote": "For Attention block, we adopt the LLaMA2-7B's architecture",
+       "where": "App. A.3.1 Multi-Head Attention"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "k projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "k",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "2048",
+       "status": "stated",
+       "quote": "2,048       & 2,048       & 32    & 24  & 32,000",
+       "where": "tab:model"
+      },
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "inherited",
+       "quote": "For Attention block, we adopt the LLaMA2-7B's architecture",
+       "where": "App. A.3.1 Multi-Head Attention"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "v projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "v",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "2048",
+       "status": "stated",
+       "quote": "2,048       & 2,048       & 32    & 24  & 32,000",
+       "where": "tab:model"
+      },
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "inherited",
+       "quote": "For Attention block, we adopt the LLaMA2-7B's architecture",
+       "where": "App. A.3.1 Multi-Head Attention"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary on q",
+     "inputs": [
+      "q",
+      "pos"
+     ],
+     "output": "q_r",
+     "attributes": [
+      {
+       "name": "rope_heads",
+       "value": "all",
+       "status": "stated",
+       "quote": "RoPE~\\cite{su2024roformer} for Positional embedding",
+       "where": "App. A.3.1 Multi-Head Attention"
+      },
+      {
+       "name": "pairing",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "theta",
+       "value": "10000",
+       "status": "inherited",
+       "quote": "For Attention block, we adopt the LLaMA2-7B's architecture",
+       "where": "App. A.3.1 Multi-Head Attention"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary on k",
+     "inputs": [
+      "k",
+      "pos"
+     ],
+     "output": "k_r",
+     "attributes": [
+      {
+       "name": "rope_heads",
+       "value": "all",
+       "status": "stated",
+       "quote": "RoPE~\\cite{su2024roformer} for Positional embedding",
+       "where": "App. A.3.1 Multi-Head Attention"
+      },
+      {
+       "name": "pairing",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "theta",
+       "value": "10000",
+       "status": "inherited",
+       "quote": "For Attention block, we adopt the LLaMA2-7B's architecture",
+       "where": "App. A.3.1 Multi-Head Attention"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "attention",
+     "role": "causal multi-head self-attention",
+     "inputs": [
+      "q_r",
+      "k_r",
+      "v"
+     ],
+     "output": "a",
+     "attributes": [
+      {
+       "name": "heads",
+       "value": "32",
+       "status": "stated",
+       "quote": "2,048       & 2,048       & 32    & 24  & 32,000",
+       "where": "tab:model"
+      },
+      {
+       "name": "kv_heads",
+       "value": "32",
+       "status": "inherited",
+       "quote": "For Attention block, we adopt the LLaMA2-7B's architecture",
+       "where": "App. A.3.1 Multi-Head Attention"
+      },
+      {
+       "name": "head_dim",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "causal",
+       "value": "true",
+       "status": "inherited",
+       "quote": "For Attention block, we adopt the LLaMA2-7B's architecture",
+       "where": "App. A.3.1 Multi-Head Attention"
+      },
+      {
+       "name": "window",
+       "value": "0",
+       "status": "inherited",
+       "quote": "For Attention block, we adopt the LLaMA2-7B's architecture",
+       "where": "App. A.3.1 Multi-Head Attention"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "o",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "2048",
+       "status": "stated",
+       "quote": "2,048       & 2,048       & 32    & 24  & 32,000",
+       "where": "tab:model"
+      },
+      {
+       "name": "bias",
+       "value": "false",
+       "status": "inherited",
+       "quote": "For Attention block, we adopt the LLaMA2-7B's architecture",
+       "where": "App. A.3.1 Multi-Head Attention"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual",
+     "inputs": [
+      "x",
+      "o"
+     ],
+     "output": "x1",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "pre-FFN norm",
+     "inputs": [
+      "x1"
+     ],
+     "output": "h2",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN up projection (W_in)",
+     "inputs": [
+      "h2"
+     ],
+     "output": "u",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "8192",
+       "status": "stated",
+       "quote": "For ReLU and ReLU$^2$, we set the intermediate hidden size to 8192.",
+       "where": "App. A.3.1 Activation Function and Intermediate Hidden Size"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "expr",
+     "role": "ReLU^2 activation",
+     "inputs": [
+      "u"
+     ],
+     "output": "g",
+     "attributes": [],
+     "new_op": "relu2"
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN down projection (W_out)",
+     "inputs": [
+      "g"
+     ],
+     "output": "f",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "2048",
+       "status": "stated",
+       "quote": "2,048       & 2,048       & 32    & 24  & 32,000",
+       "where": "tab:model"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual",
+     "inputs": [
+      "x1",
+      "f"
+     ],
+     "output": "x",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "rmsnorm",
+     "role": "final norm (assumed from LLaMA-2 likeness)",
+     "inputs": [
+      "x"
+     ],
+     "output": "hf",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "linear",
+     "role": "LM head",
+     "inputs": [
+      "hf"
+     ],
+     "output": "logits",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "32000",
+       "status": "stated",
+       "quote": "2,048       & 2,048       & 32    & 24  & 32,000",
+       "where": "tab:model"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "tied_to",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    }
+   ],
+   "new_ops": [
+    {
+     "name": "relu2",
+     "kind": "expr",
+     "expr": "relu(x)^2",
+     "inputs": [
+      {
+       "name": "x",
+       "meaning": "the FFN up-projection output"
+      }
+     ],
+     "replaces": "FFN activation",
+     "reason": "Squared ReLU (ReLU^2) is not among the listed activations.",
+     "quote": "For ReLU and ReLU$^2$, we set the intermediate hidden size to 8192.",
+     "where": "App. A.3.1 Activation Function and Intermediate Hidden Size"
+    }
+   ],
+   "mechanisms_outside_ir": [],
+   "notes": "Described the headline 1.3B ('1B') model with ReLU^2, which the title names. This is the non-gated FFN variant with d_ff 8192. The SwiGLU, ReGLU and ReLU variants, and the further-pretrained ReGLU LLaMA-2 7B/13B/70B models, are comparisons and are not described here. The paper calls the architecture 'similar' to LLaMA-2 and says the attention block adopts LLaMA2-7B's design. I used that as an inheritance for: MHA with kv_heads = heads, no qkv bias, rope theta 10000, exact causal attention, and a dense sequential residual block. The final RMSNorm in the head is an assumption from that same LLaMA-2 likeness; the paper does not describe it. Left not_stated: head_dim (2048/32 = 64 but not stated), norm eps, rope pairing, FFN bias and tied embeddings. The appendix FFN equation shows biases but explicitly omits them 'for simplicity', so it does not settle the bias question."
+  },
+  "verification": {
+   "errors": [],
+   "warnings": [],
+   "inherits": {
+    "ancestor": "LLaMA-2 (attention block: LLaMA2-7B)",
+    "resolved": "llama",
+    "quote": "For Attention block, we adopt the LLaMA2-7B's architecture, apply pre-normalization using RMSNorm~\\cite{RMSNorm} and RoPE~\\cite{su2024roformer} for Positional embedding.",
+    "where": "App. A.3.1 Architecture, Multi-Head Attention",
+    "quote_found": true
+   },
+   "family": {
+    "value": "decoder_only",
+    "status": "inherited",
+    "quote": "We adopt a similar model architecture to LLaMA-2~\\cite{LLAMA2} with the following details:",
+    "where": "App. A.3.1 Architecture",
+    "reasons": [
+     "inherited from llama, whose curated entry has no family"
+    ],
+    "check": "unverified"
+   },
+   "configs": [
+    {
+     "name": "1B-ReLU2",
+     "d_model": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "2,048       & 2,048       & 32    & 24  & 32,000",
+      "where": "Table: Details of model architecture (tab:model)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "24",
+      "status": "stated",
+      "quote": "2,048       & 2,048       & 32    & 24  & 32,000",
+      "where": "Table: Details of model architecture (tab:model)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "32",
+      "status": "stated",
+      "quote": "2,048       & 2,048       & 32    & 24  & 32,000",
+      "where": "Table: Details of model architecture (tab:model)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "32",
+      "status": "inherited",
+      "quote": "For Attention block, we adopt the LLaMA2-7B's architecture",
+      "where": "App. A.3.1 Architecture, Multi-Head Attention",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_kv_heads",
+       "the inheritance quote does not name the ancestor"
+      ],
+      "check": "unverified"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "8192",
+      "status": "stated",
+      "quote": "For ReLU and ReLU$^2$, we set the intermediate hidden size to 8192.",
+      "where": "App. A.3.1 Activation Function and Intermediate Hidden Size",
+      "reasons": [],
+      "check": "verified"
+     },
+     "vocab_size": {
+      "value": "32000",
+      "status": "stated",
+      "quote": "2,048       & 2,048       & 32    & 24  & 32,000",
+      "where": "Table: Details of model architecture (tab:model)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "2048",
+      "status": "stated",
+      "quote": "2,048       & 2,048       & 32    & 24  & 32,000",
+      "where": "Table: Details of model architecture (tab:model)",
+      "reasons": [],
+      "check": "verified"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      }
+     ]
+    }
+   ],
+   "primary_config": "1B-ReLU2",
+   "flavours": {
+    "norm": {
+     "value": "rmsnorm",
+     "status": "stated",
+     "quote": "apply pre-normalization using RMSNorm~\\cite{RMSNorm}",
+     "where": "App. A.3.1 Multi-Head Attention",
+     "reasons": [],
+     "check": "verified"
+    },
+    "norm_placement": {
+     "value": "pre",
+     "status": "stated",
+     "quote": "apply pre-normalization using RMSNorm~\\cite{RMSNorm}",
+     "where": "App. A.3.1 Multi-Head Attention",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "activation": {
+     "value": "new_op:relu2",
+     "status": "stated",
+     "quote": "For ReLU and ReLU$^2$, we set the intermediate hidden size to 8192.",
+     "where": "App. A.3.1 Activation Function and Intermediate Hidden Size",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "positional": {
+     "value": "rope",
+     "status": "stated",
+     "quote": "RoPE~\\cite{su2024roformer} for Positional embedding",
+     "where": "App. A.3.1 Multi-Head Attention",
+     "reasons": [],
+     "check": "verified"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_theta": {
+     "value": "10000",
+     "status": "inherited",
+     "quote": "For Attention block, we adopt the LLaMA2-7B's architecture",
+     "where": "App. A.3.1 Multi-Head Attention",
+     "reasons": [
+      "inherited from llama, whose curated entry has no rope_theta",
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "residual": {
+     "value": "residual",
+     "status": "inherited",
+     "quote": "We adopt a similar model architecture to LLaMA-2~\\cite{LLAMA2} with the following details:",
+     "where": "App. A.3.1 Architecture",
+     "reasons": [
+      "inherited from llama, whose curated entry has no residual"
+     ],
+     "check": "unverified"
+    },
+    "parallel_block": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "We adopt a similar model architecture to LLaMA-2~\\cite{LLAMA2} with the following details:",
+     "where": "App. A.3.1 Architecture",
+     "reasons": [
+      "inherited from llama, whose curated entry has no parallel_block"
+     ],
+     "check": "unverified"
+    },
+    "attention": {
+     "value": "exact",
+     "status": "inherited",
+     "quote": "For Attention block, we adopt the LLaMA2-7B's architecture",
+     "where": "App. A.3.1 Multi-Head Attention",
+     "reasons": [
+      "inherited from llama, whose curated entry has no attention",
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "qkv_bias": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "For Attention block, we adopt the LLaMA2-7B's architecture",
+     "where": "App. A.3.1 Multi-Head Attention",
+     "reasons": [
+      "inherited from llama, whose curated entry has no qkv_bias",
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
+    },
+    "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "tied_embeddings": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "moe": {
+     "value": "false",
+     "status": "inherited",
+     "quote": "We adopt a similar model architecture to LLaMA-2~\\cite{LLAMA2} with the following details:",
+     "where": "App. A.3.1 Architecture",
+     "reasons": [
+      "inherited from llama, whose curated entry has no moe"
+     ],
+     "check": "unverified"
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    }
+   },
+   "new_ops": [
+    {
+     "name": "relu2",
+     "kind": "expr",
+     "replaces": "FFN activation",
+     "reason": "Squared ReLU (ReLU^2) is not among the listed activations.",
+     "quote": "For ReLU and ReLU$^2$, we set the intermediate hidden size to 8192.",
+     "where": "App. A.3.1 Activation Function and Intermediate Hidden Size",
+     "inputs": [
+      {
+       "name": "x",
+       "meaning": "the FFN up-projection output"
+      }
+     ],
+     "errors": [],
+     "quote_found": true,
+     "expr_check": {
+      "expr": "relu(x)^2",
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "canonical": "(relu(x)^2)",
+      "samples": {
+       "inputs": {
+        "x": [
+         -2.0,
+         -0.5,
+         0.0,
+         0.5,
+         2.0
+        ]
+       },
+       "output": [
+        0.0,
+        0.0,
+        0.0,
+        0.25,
+        4.0
+       ]
+      }
+     },
+     "check": "verified"
+    }
+   ],
+   "block_ops": [
+    {
+     "i": 0,
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "32000",
+       "status": "stated",
+       "quote": "2,048       & 2,048       & 32    & 24  & 32,000",
+       "where": "tab:model",
+       "reasons": [],
+       "check": "verified",
+       "name": "vocab"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 1,
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "pre-attention norm",
+     "inputs": [
+      "x"
+     ],
+     "output": "h",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 2,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "q projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "q",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "2048",
+       "status": "stated",
+       "quote": "2,048       & 2,048       & 32    & 24  & 32,000",
+       "where": "tab:model",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "false",
+       "status": "inherited",
+       "quote": "For Attention block, we adopt the LLaMA2-7B's architecture",
+       "where": "App. A.3.1 Multi-Head Attention",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 3,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "k projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "k",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "2048",
+       "status": "stated",
+       "quote": "2,048       & 2,048       & 32    & 24  & 32,000",
+       "where": "tab:model",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "false",
+       "status": "inherited",
+       "quote": "For Attention block, we adopt the LLaMA2-7B's architecture",
+       "where": "App. A.3.1 Multi-Head Attention",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 4,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "v projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "v",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "2048",
+       "status": "stated",
+       "quote": "2,048       & 2,048       & 32    & 24  & 32,000",
+       "where": "tab:model",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "false",
+       "status": "inherited",
+       "quote": "For Attention block, we adopt the LLaMA2-7B's architecture",
+       "where": "App. A.3.1 Multi-Head Attention",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 5,
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary on q",
+     "inputs": [
+      "q",
+      "pos"
+     ],
+     "output": "q_r",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "all",
+       "status": "stated",
+       "quote": "RoPE~\\cite{su2024roformer} for Positional embedding",
+       "where": "App. A.3.1 Multi-Head Attention",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "rope_heads"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "pairing"
+      },
+      {
+       "value": "10000",
+       "status": "inherited",
+       "quote": "For Attention block, we adopt the LLaMA2-7B's architecture",
+       "where": "App. A.3.1 Multi-Head Attention",
+       "reasons": [
+        "inherited from llama, whose curated entry has no theta",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "theta"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 6,
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary on k",
+     "inputs": [
+      "k",
+      "pos"
+     ],
+     "output": "k_r",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "all",
+       "status": "stated",
+       "quote": "RoPE~\\cite{su2024roformer} for Positional embedding",
+       "where": "App. A.3.1 Multi-Head Attention",
+       "reasons": [],
+       "check": "quote_only",
+       "name": "rope_heads"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "pairing"
+      },
+      {
+       "value": "10000",
+       "status": "inherited",
+       "quote": "For Attention block, we adopt the LLaMA2-7B's architecture",
+       "where": "App. A.3.1 Multi-Head Attention",
+       "reasons": [
+        "inherited from llama, whose curated entry has no theta",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "theta"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 7,
+     "subgraph": "block",
+     "op": "attention",
+     "role": "causal multi-head self-attention",
+     "inputs": [
+      "q_r",
+      "k_r",
+      "v"
+     ],
+     "output": "a",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "32",
+       "status": "stated",
+       "quote": "2,048       & 2,048       & 32    & 24  & 32,000",
+       "where": "tab:model",
+       "reasons": [],
+       "check": "verified",
+       "name": "heads"
+      },
+      {
+       "value": "32",
+       "status": "inherited",
+       "quote": "For Attention block, we adopt the LLaMA2-7B's architecture",
+       "where": "App. A.3.1 Multi-Head Attention",
+       "reasons": [
+        "inherited from llama, whose curated entry has no kv_heads",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "kv_heads"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "head_dim"
+      },
+      {
+       "value": "true",
+       "status": "inherited",
+       "quote": "For Attention block, we adopt the LLaMA2-7B's architecture",
+       "where": "App. A.3.1 Multi-Head Attention",
+       "reasons": [
+        "inherited from llama, whose curated entry has no causal",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "causal"
+      },
+      {
+       "value": "0",
+       "status": "inherited",
+       "quote": "For Attention block, we adopt the LLaMA2-7B's architecture",
+       "where": "App. A.3.1 Multi-Head Attention",
+       "reasons": [
+        "inherited from llama, whose curated entry has no window",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "window"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 8,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "o",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "2048",
+       "status": "stated",
+       "quote": "2,048       & 2,048       & 32    & 24  & 32,000",
+       "where": "tab:model",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "false",
+       "status": "inherited",
+       "quote": "For Attention block, we adopt the LLaMA2-7B's architecture",
+       "where": "App. A.3.1 Multi-Head Attention",
+       "reasons": [
+        "inherited from llama, whose curated entry has no bias",
+        "the inheritance quote does not name the ancestor"
+       ],
+       "check": "unverified",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 9,
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual",
+     "inputs": [
+      "x",
+      "o"
+     ],
+     "output": "x1",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 10,
+     "subgraph": "block",
+     "op": "rmsnorm",
+     "role": "pre-FFN norm",
+     "inputs": [
+      "x1"
+     ],
+     "output": "h2",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 11,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN up projection (W_in)",
+     "inputs": [
+      "h2"
+     ],
+     "output": "u",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "8192",
+       "status": "stated",
+       "quote": "For ReLU and ReLU$^2$, we set the intermediate hidden size to 8192.",
+       "where": "App. A.3.1 Activation Function and Intermediate Hidden Size",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 12,
+     "subgraph": "block",
+     "op": "expr",
+     "role": "ReLU^2 activation",
+     "inputs": [
+      "u"
+     ],
+     "output": "g",
+     "new_op": "relu2",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 13,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN down projection (W_out)",
+     "inputs": [
+      "g"
+     ],
+     "output": "f",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "2048",
+       "status": "stated",
+       "quote": "2,048       & 2,048       & 32    & 24  & 32,000",
+       "where": "tab:model",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 14,
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual",
+     "inputs": [
+      "x1",
+      "f"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 15,
+     "subgraph": "head",
+     "op": "rmsnorm",
+     "role": "final norm (assumed from LLaMA-2 likeness)",
+     "inputs": [
+      "x"
+     ],
+     "output": "hf",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 16,
+     "subgraph": "head",
+     "op": "linear",
+     "role": "LM head",
+     "inputs": [
+      "hf"
+     ],
+     "output": "logits",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "32000",
+       "status": "stated",
+       "quote": "2,048       & 2,048       & 32    & 24  & 32,000",
+       "where": "tab:model",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "tied_to"
+      }
+     ],
+     "errors": []
+    }
+   ],
+   "mechanisms_outside_ir": [],
+   "summary": {
+    "counts": {
+     "verified": 17,
+     "quote_only": 4,
+     "unverified": 17,
+     "not_stated": 21
+    },
+    "unverified": [
+     {
+      "field": "family",
+      "reasons": [
+       "inherited from llama, whose curated entry has no family"
+      ]
+     },
+     {
+      "field": "configs[1B-ReLU2].n_kv_heads",
+      "reasons": [
+       "inherited from llama, whose curated entry has no n_kv_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.rope_theta",
+      "reasons": [
+       "inherited from llama, whose curated entry has no rope_theta",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "inherited from llama, whose curated entry has no residual"
+      ]
+     },
+     {
+      "field": "flavours.parallel_block",
+      "reasons": [
+       "inherited from llama, whose curated entry has no parallel_block"
+      ]
+     },
+     {
+      "field": "flavours.attention",
+      "reasons": [
+       "inherited from llama, whose curated entry has no attention",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.qkv_bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no qkv_bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.moe",
+      "reasons": [
+       "inherited from llama, whose curated entry has no moe"
+      ]
+     },
+     {
+      "field": "block_ops[2].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[3].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[4].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[5].theta",
+      "reasons": [
+       "inherited from llama, whose curated entry has no theta",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[6].theta",
+      "reasons": [
+       "inherited from llama, whose curated entry has no theta",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[7].kv_heads",
+      "reasons": [
+       "inherited from llama, whose curated entry has no kv_heads",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[7].causal",
+      "reasons": [
+       "inherited from llama, whose curated entry has no causal",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[7].window",
+      "reasons": [
+       "inherited from llama, whose curated entry has no window",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "block_ops[8].bias",
+      "reasons": [
+       "inherited from llama, whose curated entry has no bias",
+       "the inheritance quote does not name the ancestor"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 1,
+    "n_block_ops": 17
+   }
+  }
+ }
+}
