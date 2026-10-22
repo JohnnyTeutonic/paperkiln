@@ -99,3 +99,18 @@ tools/ir_run.py on the scale file matches mtstudio's recorded greedy replies 40/
 
 API: $0.543 of the $5 budget (`api_cost.json`; Primer was a cache hit at $0). The reruns made no
 API call.
+
+## Relevance gate (title + abstract, before extraction)
+
+`relevance_gate.json`: `python papers/llm_extract.py gate 2502.03654 2402.03804 1902.00249
+1907.00847 --env-file .env --budget-usd 1 --tag relevance_gate_2026-10-23`, one call each
+(claude-opus-5-5, effort low, max_tokens 3000; each evidence phrase found in its abstract):
+
+| arXiv | paper | verdict | kind | cost |
+|---|---|---|---|---|
+| 2502.03654 | GoLU | in_scope | activation function | $0.0069 |
+| 2402.03804 | ReLU^2 Wins | in_scope | FFN activation function | $0.0065 |
+| 1902.00249 | ProteinNet (protein-structure data set) | out_of_scope | none | $0.0067 |
+| 1907.00847 | Sensitivity Conjecture proof (combinatorics) | out_of_scope | none | $0.0057 |
+
+$0.0257 of the $1 budget; 824-1,114 input and 112-127 output tokens per call.

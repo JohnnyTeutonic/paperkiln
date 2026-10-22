@@ -9,6 +9,16 @@ The chain (LOCAL_LLM_STACK.md section 7, "arXiv extractor -> model ->
 conversation"); every stage writes into the run directory and is skipped
 when its output already exists, so a run restarts where it stopped:
 
+  gate      the relevance gate (papers/llm_extract.py run_gate): one Claude
+            call reads the paper's title and abstract (arXiv API) and
+            returns in_scope, out_of_scope or spurious with a reason and an
+            evidence phrase that must occur in the abstract. Anything but a
+            verified in_scope REFUSES before extraction (exit 2,
+            refusal.json with the reason and evidence; nothing extracted or
+            trained) -> relevance.json. Skipped only with
+            --skip-relevance-gate, which the manifest records. The key is
+            ANTHROPIC_API_KEY (or --env-file, that line only); a cached
+            verdict needs no key.
   extract   papers/fetch.py on the paper's LaTeX (fetched, or --tex, or a
             cached --extraction file: works offline), plus a scan of the
             source for mechanisms the extractor's lattice cannot express
@@ -80,7 +90,7 @@ sys.path.insert(0, os.path.join(ROOT, "papers"))
 sys.path.insert(0, HERE)
 
 EXIT_REFUSED = 2
-STAGES = ("extract", "spec", "pretrain", "sft", "export", "chat")
+STAGES = ("gate", "extract", "spec", "pretrain", "sft", "export", "chat")
 
 # Mechanisms papers/fetch.py has no field for. Seen in the title or abstract
 # (where a paper states its contribution), or in a first-person sentence of
@@ -197,6 +207,39 @@ def mechanism_scan(tex, title):
             hits.append({"mechanism": mech, "where": f"{mentioned} other sentence(s)", "blocking": False,
                          "evidence": "mentioned, not adopted (related work, contrast or negation)"})
     return hits
+
+
+def stage_gate(a, run, manifest):
+    """The relevance gate before extraction. Returns the gate record (with
+    "passes"), or {"skipped": ...} under --skip-relevance-gate. On a block,
+    writes refusal.json and the manifest's refused list."""
+    if a.skip_relevance_gate:
+        log("relevance gate SKIPPED (--skip-relevance-gate)")
+        return {"skipped": True, "flag": "--skip-relevance-gate", "passes": True}
+    import llm_extract
+
+    path = os.path.join(run, "relevance.json")
+    if os.path.exists(path) and read_json(path).get("arxiv_id") == a.arxiv_id:
+        g = read_json(path)
+    else:
+        if a.env_file:
+            llm_extract.load_env_key(a.env_file)
+        g = llm_extract.run_gate(a.arxiv_id, None, a.gate_tag, a.gate_budget_usd)
+        write_json(path, g)
+    if g["passes"]:
+        log(f"relevance gate: in_scope ({g['architecture_kind']}): {g['reason']}")
+        return g
+    reasons = llm_extract.gate_refusal_reasons(g)
+    write_json(os.path.join(run, "refusal.json"), {
+        "arxiv_id": a.arxiv_id, "title": g.get("title"), "stage": "relevance_gate", "verdict": g["verdict"],
+        "reason": g["reason"], "architecture_kind": g["architecture_kind"], "evidence": g["evidence"],
+        "evidence_found": g["evidence_found"], "reasons": reasons})
+    manifest["refused"] = reasons
+    print(f"\nREFUSED arXiv:{a.arxiv_id} ({g.get('title') or 'untitled'}) at the relevance gate: "
+          "nothing extracted, nothing trained.")
+    for x in reasons:
+        print("  - " + x)
+    return g
 
 
 def stage_extract(a, run):
@@ -1029,6 +1072,12 @@ def main(argv=None):
                                  formatter_class=argparse.RawDescriptionHelpFormatter, epilog=__doc__)
     ap.add_argument("arxiv_id")
     ap.add_argument("--run-dir", required=True)
+    gt = ap.add_argument_group("relevance gate (before extraction)")
+    gt.add_argument("--skip-relevance-gate", action="store_true",
+                    help="run without the gate (recorded in the manifest)")
+    gt.add_argument("--gate-tag", default="relevance_gate", help="ledger/budget tag for the gate call")
+    gt.add_argument("--gate-budget-usd", type=float, default=None, help="refuse the call past this spend")
+    gt.add_argument("--env-file", help="read ANTHROPIC_API_KEY (that line only) from this dotenv file")
     src = ap.add_argument_group("extraction source (default: fetch from arXiv)")
     src.add_argument("--extraction", help="cached extraction.json (offline)")
     src.add_argument("--tex", help="local LaTeX source")
@@ -1094,6 +1143,20 @@ def main(argv=None):
     def done(stage, **kv):
         manifest["stages"][stage] = {"at": time.strftime("%Y-%m-%dT%H:%M:%S"), **kv}
         write_json(mpath, manifest)
+
+    g = stage_gate(a, run, manifest)
+    if g.get("skipped"):
+        manifest["relevance_gate"] = "SKIPPED by --skip-relevance-gate"
+        done("gate", skipped=True, flag="--skip-relevance-gate")
+    else:
+        manifest["relevance_gate"] = g["verdict"] if g["passes"] else f"REFUSED ({g['verdict']})"
+        done("gate", verdict=g["verdict"], passes=g["passes"], reason=g["reason"],
+             architecture_kind=g["architecture_kind"], evidence=g["evidence"],
+             evidence_found=g["evidence_found"], gate=g["gate"], **({} if g["passes"] else {"refused": True}))
+        if not g["passes"]:
+            return EXIT_REFUSED
+    if a.stop_after == "gate":
+        return 0
 
     ext = stage_extract(a, run)
     manifest["title"] = ext.get("title")

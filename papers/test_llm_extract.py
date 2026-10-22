@@ -613,3 +613,133 @@ def test_repair_schema_fixes_structure_only():
     ev = {"value": "x", "quote": "q", "where": "w"}  # a missing status is not invented
     L.repair_schema(ev, {"$ref": "#/$defs/ev"}, defs=L.SCHEMA["$defs"])
     assert "status" not in ev and L.validate_schema(ev, {"$ref": "#/$defs/ev"}, defs=L.SCHEMA["$defs"])
+
+
+# --------------------------------------------------------------------------
+# relevance gate (title + abstract), mocked
+
+GATE_META = {"arxiv_id": "2502.03654", "title": "Gompertz Linear Units: Leveraging Asymmetry for Enhanced Learning",
+             "abstract": "Activation functions are fundamental elements of deep learning architectures. We "
+                         "introduce GoLU, a novel self-gated activation function defined as GoLU(x) = x Gompertz(x), "
+                         "where Gompertz(x) = e^{-e^{-x}}."}
+
+
+def gate_reply(verdict="in_scope", evidence="a novel self-gated activation function", **kw):
+    out = {"verdict": verdict, "reason": "it proposes an activation function", "architecture_kind":
+           "FFN activation function", "evidence": evidence, **kw}
+    return reply(out, usage={"input_tokens": 700, "output_tokens": 300})
+
+
+def test_gate_request_shape():
+    p = L.gate_params(GATE_META)
+    assert p["model"] == L.MODEL and p["output_config"] == {"effort": "low"} and p["max_tokens"] == 3000
+    assert p["thinking"] == {"type": "adaptive"} and p["system"] == L.GATE_PROMPT
+    assert p["betas"] == [L.FALLBACK_BETA] and p["fallbacks"] == [{"model": L.FALLBACK_MODEL}]
+    c = p["messages"][0]["content"]
+    assert GATE_META["title"] in c and GATE_META["abstract"] in c and "paper_latex" not in c
+    assert L.worst_case_usd(1000, p) == pytest.approx((1000 * 4 + 3000 * 20) / 1e6 + (1000 * 5 + 3000 * 25) / 1e6)
+
+
+def test_gate_in_scope_passes_receipted_and_cached(isolated):
+    client = fake_client([gate_reply()], n_tokens=700)
+    g = L.run_gate("2502.03654", client, "g", 1.0, meta=GATE_META, ledger=isolated)
+    assert g["verdict"] == "in_scope" and g["passes"] and g["evidence_found"] and g["errors"] == []
+    assert g["gate"]["cost_usd"] == pytest.approx((700 * 4 + 300 * 20) / 1e6)
+    assert g["gate"]["prompt_sha256"] == L.gate_prompt_sha256() != L.prompt_sha256()
+    row = json.loads(isolated.read_text().splitlines()[0])
+    assert row["kind"] == "gate" and row["tag"] == "g" and row["usage"]["output_tokens"] == 300
+    assert row["prompt_sha256"] == L.gate_prompt_sha256() and row["max_tokens"] == 3000
+    assert list(L.LLM_CACHE.glob("2502.03654.gate__*.json"))
+    # cached per arXiv id: no client needed, nothing sent, nothing spent
+    g2 = L.run_gate("2502.03654", None, "g", 1.0, meta=GATE_META, ledger=isolated)
+    assert g2["verdict"] == "in_scope" and g2["gate"]["cache_hit"] and g2["gate"]["cost_usd"] == 0.0
+    assert L.ledger_spent("g", isolated) == pytest.approx(g["gate"]["cost_usd"])
+
+
+@pytest.mark.parametrize("verdict,evidence", [
+    ("out_of_scope", "Activation functions are fundamental elements"),
+    ("spurious", "GoLU(x) = x Gompertz(x)"),
+])
+def test_gate_out_of_scope_and_spurious_refuse(isolated, verdict, evidence):
+    g = L.run_gate("2502.03654", fake_client([gate_reply(verdict, evidence)]), "g", None, meta=GATE_META,
+                   ledger=isolated)
+    assert g["verdict"] == verdict and g["evidence_found"] and not g["passes"]
+    reasons = L.gate_refusal_reasons(g)
+    assert len(reasons) == 1 and verdict in reasons[0] and evidence in reasons[0]
+
+
+def test_gate_evidence_not_in_abstract_does_not_pass(isolated):
+    g = L.run_gate("2502.03654", fake_client([gate_reply(evidence="a new attention mechanism for transformers")]),
+                   "g", None, meta=GATE_META, ledger=isolated)
+    assert g["verdict"] == "in_scope" and not g["evidence_found"] and not g["passes"]
+    assert any("evidence phrase not found" in r for r in L.gate_refusal_reasons(g))
+    short = L.check_gate({"verdict": "in_scope", "evidence": "GoLU"}, GATE_META["abstract"])
+    assert not short["passes"]  # too short to count as evidence
+    ws = L.check_gate({"verdict": "in_scope", "evidence": "a  novel\nself-gated activation"}, GATE_META["abstract"])
+    assert ws["passes"]  # whitespace differences tolerated
+
+
+@pytest.mark.parametrize("msg,err", [
+    (reply("not json"), "not JSON"),
+    (reply({"verdict": "maybe", "reason": "r", "architecture_kind": "k", "evidence": "e"}), "does not match"),
+    (reply({"verdict": "in_scope", "reason": "r", "evidence": "e"}), "missing 'architecture_kind'"),
+    (reply({"verdict": "in_scope", "reason": "r", "architecture_kind": "k", "evidence": "e", "x": 1}), "unexpected"),
+    (reply("{}", stop="refusal", details=SimpleNamespace(category="cyber", explanation="x")), "refusal"),
+])
+def test_gate_malformed_replies_fail_receipted_never_cached(isolated, msg, err):
+    with pytest.raises(SystemExit, match=err):
+        L.run_gate("2502.03654", fake_client([msg]), "g", None, meta=GATE_META, ledger=isolated)
+    row = json.loads(isolated.read_text().splitlines()[-1])
+    assert row["kind"] == "gate" and "error" in row
+    assert not list(L.LLM_CACHE.glob("*.json"))
+
+
+def test_gate_budget_refuses_before_sending(isolated):
+    L.ledger_append({"tag": "g", "cost_usd": 0.95}, isolated)
+    client = fake_client([gate_reply()], n_tokens=1000)
+    with pytest.raises(SystemExit, match="over the"):
+        L.run_gate("2502.03654", client, "g", 1.0, meta=GATE_META, ledger=isolated)
+    assert client.beta.messages.calls == []
+
+
+def test_gate_metadata_from_arxiv_api(tmp_path, monkeypatch):
+    atom = ('<?xml version="1.0" encoding="UTF-8"?><feed xmlns="http://www.w3.org/2005/Atom"><entry>'
+            '<id>http://arxiv.org/abs/2502.03654v2</id><title>Gompertz Linear\n  Units</title>'
+            '<summary>  We introduce GoLU,\n a novel activation.  </summary></entry></feed>').encode()
+
+    class Resp:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def read(self):
+            return atom
+
+    import urllib.request
+    seen = []
+    monkeypatch.setattr(urllib.request, "urlopen", lambda req, timeout: seen.append(req.full_url) or Resp())
+    monkeypatch.setattr(L, "CACHE", tmp_path)
+    m = L.arxiv_metadata("2502.03654")
+    assert m["title"] == "Gompertz Linear Units" and m["abstract"] == "We introduce GoLU, a novel activation."
+    assert "export.arxiv.org/api/query" in seen[0] and "2502.03654" in seen[0]
+    assert L.arxiv_metadata("2502.03654") == m and len(seen) == 1  # cached
+    with pytest.raises(SystemExit, match="not cached"):
+        L.arxiv_metadata("9999.99999", offline=True)
+
+
+def test_env_key_loaded_by_name_only(tmp_path, monkeypatch, capsys):
+    for k in ("ANTHROPIC_API_KEY", "OTHER_SECRET"):  # setenv first so teardown restores the original state
+        monkeypatch.setenv(k, "x")
+        monkeypatch.delenv(k)
+    f = tmp_path / ".env"
+    f.write_text('OTHER_SECRET=nope\n# comment\nexport ANTHROPIC_API_KEY="sk-test-123"\n')
+    L.load_env_key(f)
+    assert os.environ["ANTHROPIC_API_KEY"] == "sk-test-123" and "OTHER_SECRET" not in os.environ
+    assert capsys.readouterr().out == ""
+    g = tmp_path / "empty.env"
+    g.write_text("OTHER_SECRET=nope\n")
+    with pytest.raises(SystemExit, match="not found") as e:
+        L.load_env_key(g)
+    assert "nope" not in str(e.value)

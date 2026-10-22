@@ -23,7 +23,9 @@ def cached(pid):
 
 
 def run_cli(tmp_path, pid, *extra):
-    return A.main([pid, "--run-dir", str(tmp_path / pid), "--extraction", cached(pid), *extra])
+    # The spec/stage tests start from cached extractions; the relevance gate has its own tests below.
+    return A.main([pid, "--run-dir", str(tmp_path / pid), "--extraction", cached(pid),
+                   "--skip-relevance-gate", *extra])
 
 
 def test_llama_paper_maps_to_llama_family(tmp_path):
@@ -352,3 +354,114 @@ def test_ancestor_fill_needs_a_verified_inheritance_the_reply_uses():
     ext["llm"]["verification"]["inherits"] = dict(inh, quote_found=False)
     with pytest.raises(A.Refused, match="positional is unresolved"):
         A.build_spec(ext, SIZE)
+
+
+# --------------------------------------------------------------------------
+# the relevance gate before extraction (papers/llm_extract.py run_gate), client stubbed
+
+GOLU_META = {"arxiv_id": "2502.03654", "title": "Gompertz Linear Units",
+             "abstract": "We introduce GoLU, a novel self-gated activation function defined as GoLU(x) = x "
+                         "Gompertz(x). Across language modelling and image classification it outperforms GELU."}
+
+
+class _Stream:
+    def __init__(self, msg):
+        self.msg, self.request_id = msg, "req_gate"
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def get_final_message(self):
+        return self.msg
+
+
+def gate_client(text):
+    from types import SimpleNamespace as NS
+    sent = []
+
+    def stream(**kw):
+        sent.append(kw)
+        return _Stream(NS(content=[NS(type="text", text=text)], model="claude-opus-5-5", stop_reason="end_turn",
+                          stop_details=None, usage={"input_tokens": 600, "output_tokens": 200}))
+    msgs = NS(count_tokens=lambda **kw: NS(input_tokens=600), stream=stream, sent=sent)
+    return NS(beta=NS(messages=msgs))
+
+
+@pytest.fixture
+def gated(tmp_path, monkeypatch):
+    """The real gate with the API stubbed: metadata, client, cache and ledger in tmp_path."""
+    import llm_extract as L
+    monkeypatch.setattr(L, "LLM_CACHE", tmp_path / "llm")
+    monkeypatch.setattr(L, "LEDGER", tmp_path / "ledger.jsonl")
+    monkeypatch.setattr(L, "arxiv_metadata", lambda aid, offline=False: dict(GOLU_META, arxiv_id=aid))
+    state = {}
+
+    def use(verdict, evidence="a novel self-gated activation function", raw=None):
+        reply = raw if raw is not None else json.dumps({
+            "verdict": verdict, "reason": f"judged {verdict}", "architecture_kind": "FFN activation function",
+            "evidence": evidence})
+        state["client"] = gate_client(reply)
+        monkeypatch.setattr(L, "make_client", lambda: state["client"])
+        return state["client"]
+
+    def run(*extra):
+        return A.main(["2502.03654", "--run-dir", str(tmp_path / "run"), "--extraction",
+                       os.path.join(RECEIPTS, "2502.03654.extraction.json"), *extra])
+    return SimpleNamespace(use=use, run=run, run_dir=tmp_path / "run", ledger=tmp_path / "ledger.jsonl")
+
+
+from types import SimpleNamespace  # noqa: E402
+
+
+def test_gate_in_scope_lets_extraction_run(gated):
+    client = gated.use("in_scope")
+    assert gated.run("--stop-after", "spec") == 0
+    man = json.loads((gated.run_dir / "manifest.json").read_text())
+    g = man["stages"]["gate"]
+    assert g["verdict"] == "in_scope" and g["passes"] and g["evidence_found"]
+    assert g["gate"]["cost_usd"] == pytest.approx((600 * 4 + 200 * 20) / 1e6)
+    assert man["relevance_gate"] == "in_scope" and "spec" in man["stages"]
+    assert (gated.run_dir / "extraction.json").exists() and not (gated.run_dir / "refusal.json").exists()
+    assert len(client.beta.messages.sent) == 1
+    assert json.loads(gated.ledger.read_text().splitlines()[0])["kind"] == "gate"
+
+
+@pytest.mark.parametrize("verdict", ["out_of_scope", "spurious"])
+def test_gate_refuses_before_extraction(gated, verdict, capsys):
+    gated.use(verdict, evidence="Gompertz(x)")
+    assert gated.run() == A.EXIT_REFUSED
+    ref = json.loads((gated.run_dir / "refusal.json").read_text())
+    assert ref["stage"] == "relevance_gate" and ref["verdict"] == verdict
+    assert ref["reason"] == f"judged {verdict}" and ref["evidence"] == "Gompertz(x)" and ref["evidence_found"]
+    assert any(verdict in r for r in ref["reasons"])
+    assert not (gated.run_dir / "extraction.json").exists()  # nothing extracted, nothing trained
+    man = json.loads((gated.run_dir / "manifest.json").read_text())
+    assert man["stages"]["gate"]["refused"] and "extract" not in man["stages"] and man["refused"]
+    assert "REFUSED" in capsys.readouterr().out
+
+
+def test_gate_evidence_not_in_abstract_refuses(gated):
+    gated.use("in_scope", evidence="a sparse mixture of experts router")
+    assert gated.run() == A.EXIT_REFUSED
+    ref = json.loads((gated.run_dir / "refusal.json").read_text())
+    assert not ref["evidence_found"] and any("evidence phrase not found" in r for r in ref["reasons"])
+    assert not (gated.run_dir / "extraction.json").exists()
+
+
+def test_gate_malformed_reply_stops_the_chain(gated):
+    gated.use(None, raw="I think this paper is in scope.")
+    with pytest.raises(SystemExit, match="not JSON"):
+        gated.run()
+    assert not (gated.run_dir / "extraction.json").exists()
+    assert not (gated.run_dir / "relevance.json").exists()
+
+
+def test_gate_skip_is_explicit_and_recorded(gated):
+    client = gated.use("out_of_scope")
+    assert gated.run("--skip-relevance-gate", "--stop-after", "extract") == 0
+    man = json.loads((gated.run_dir / "manifest.json").read_text())
+    assert man["relevance_gate"].startswith("SKIPPED") and man["stages"]["gate"]["skipped"]
+    assert client.beta.messages.sent == []

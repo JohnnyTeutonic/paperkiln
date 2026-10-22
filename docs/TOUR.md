@@ -659,6 +659,21 @@ find this is not always effective", and the extractor quoted it and wrote it as 
 the truth set records the RMSNorm of the T5 baseline Primer was searched from. A new op blocks the
 build, so no wrong model trains from it. Receipts: `papers/llm_extract_receipts/`.
 
+**Relevance gate.** Before any extraction, `python papers/llm_extract.py gate <ids...>` (and the
+first stage of `tools/arxiv_to_chat.py`) makes one small Claude call on the paper's title and
+abstract from the arXiv API (same model and refusal fallback, effort low, max_tokens 3000). The
+reply is strict JSON: a verdict (`in_scope`: the paper proposes or specifies a trainable neural
+sequence-model architecture or a component a language model could be built from; `out_of_scope`:
+theory with nothing to build, datasets, benchmarks, applications, other fields; `spurious`:
+incoherent or generated nonsense), a reason, the architecture kind and an evidence phrase. The
+reply is validated here and the evidence must occur in the abstract; only a verified `in_scope`
+passes. Anything else stops the chain with exit 2 and a `refusal.json` carrying the reason and
+evidence, before anything is extracted or trained; `--skip-relevance-gate` bypasses it and the
+manifest records that. Verdicts are cached per arXiv id and receipted in the same ledger. On
+23 Oct 2026 GoLU and ReLU^2 Wins passed and a protein-structure dataset (ProteinNet) and a
+combinatorics proof (the Sensitivity Conjecture) were refused, for $0.026 in all
+(`experiments/arxiv_chain_2026-10-23/relevance_gate.json`).
+
 ## Paper-to-architecture: the rule-based arXiv fetcher (no API key)
 
 ```bash
