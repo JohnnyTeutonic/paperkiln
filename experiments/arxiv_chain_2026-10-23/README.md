@@ -66,8 +66,8 @@ Run: `chain_relu2.sh` through `scripts/cpu_budget.py` (2 slots), about 15 minute
 ## ember runs flex's expr norm (gate)
 
 flex now takes `norm: "expr:<e>"`: y = e(x) * g + b, e over the row (row reductions allowed), g and
-b learned per feature, exported as an expr node and a linear with weight diag(g) and bias b
-(ir.hpp, Families: flex). `expr_norm_gate.py` trains a tiny flex model with Primer's modified layer
+b learned per feature, exported as an expr node and a scale node with weight g and bias b, both [d]
+(ir.hpp, op scale and Families: flex). `expr_norm_gate.py` trains a tiny flex model with Primer's modified layer
 norm `(x - rowmean(x)) / sqrt(abs(rowmean(x * (x - rowmean(x)))))`, RoPE and squared ReLU (d 128,
 L 2, T 64; 400 + 100 steps, val 4.37 / 3.92), start-up gradient checks norm 3.8e-5, activation
 1.6e-5. IR block: `expr, linear, linear, split, rope, attention, linear, add, expr, linear, linear,
@@ -76,6 +76,17 @@ expr, linear, add`; head `expr, linear, linear`. ember (same binary) vs mtstudio
 in paperkiln's tests: test_flex 7-8 (layernorm written as an expr equals layernorm within 8.9e-8 on
 logits of range 0.35; whole-model gradient checks: rope 185 entries worst 3.7e-4, the layernorm expr
 447 entries 3.3e-4, Primer's norm with rope 441 entries 7.2e-4) and test_ir_export's flex cases.
+
+That ember run read the gate's first GGUF (sha256 8c837a1d...), whose gains were linears with
+weight diag(g) [d, d] (the `linear` after each `expr` in the op lists above). `scale_reexport/`
+holds the same safetensors (sha256 438dfaa5...) exported with scale nodes by `mtstudio export
+--from`, no retraining: GGUF sha256 148642cd9c83c079ec5d9e135e7237847871e037e36177d564771ddd7e10dfe8,
+325,120 bytes smaller; 23 of 28 tensors byte-identical and the 5 gains exactly the old diagonals
+(+0 elsewhere); the IR differs only in those 5 nodes (linear to scale). numpy IR logits
+(tools/ir_numpy.py) of the 40 frozen prompts with mtstudio's replies, 1,344 positions, are
+bit-identical between the two files (`scale_compare.json`, from `scale_compare.py`), and
+tools/ir_run.py on the scale file matches mtstudio's recorded greedy replies 40/40
+(`ir_run_scale.jsonl`, 40 new tokens).
 
 ## Negatives (refused, nothing trained)
 

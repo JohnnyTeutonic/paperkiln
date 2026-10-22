@@ -1,0 +1,87 @@
+{
+ "old": "/home/jonat/arxiv_chain_runs/expr_norm_gate/export/arxiv_expr_norm_gate.gguf",
+ "new": "/home/jonat/arxiv_chain_runs/expr_norm_gate/export_scale/arxiv_expr_norm_gate.gguf",
+ "old_sha256": "8c837a1d152b84f1a0339777de9d5c7144e017957ad6678fa812dfbe512bd2df",
+ "new_sha256": "148642cd9c83c079ec5d9e135e7237847871e037e36177d564771ddd7e10dfe8",
+ "tensors": 28,
+ "tensors_byte_identical": 23,
+ "gain_tensors": {
+  "blk.0.attn_norm_gain.weight": {
+   "old_ne": [
+    128,
+    128
+   ],
+   "new_ne": [
+    128
+   ]
+  },
+  "blk.0.ffn_norm_gain.weight": {
+   "old_ne": [
+    128,
+    128
+   ],
+   "new_ne": [
+    128
+   ]
+  },
+  "blk.1.attn_norm_gain.weight": {
+   "old_ne": [
+    128,
+    128
+   ],
+   "new_ne": [
+    128
+   ]
+  },
+  "blk.1.ffn_norm_gain.weight": {
+   "old_ne": [
+    128,
+    128
+   ],
+   "new_ne": [
+    128
+   ]
+  },
+  "output_norm_gain.weight": {
+   "old_ne": [
+    128,
+    128
+   ],
+   "new_ne": [
+    128
+   ]
+  }
+ },
+ "old_gain_is_diag_of_new_with_plus_zero_off_diagonal": true,
+ "bytes_saved": 325120,
+ "ir_scale_nodes": 3,
+ "block_ops": [
+  "expr",
+  "scale",
+  "linear",
+  "split",
+  "rope",
+  "attention",
+  "linear",
+  "add",
+  "expr",
+  "scale",
+  "linear",
+  "expr",
+  "linear",
+  "add"
+ ],
+ "head_ops": [
+  "expr",
+  "scale",
+  "linear"
+ ],
+ "ir_check_new": "OK",
+ "numpy_logits": {
+  "prompts": 40,
+  "bit_identical": 40,
+  "positions": 1344,
+  "max_abs_diff": 0.0,
+  "input": "chat-templated prompt + mtstudio's recorded reply tokens, cut to ctx"
+ }
+}
