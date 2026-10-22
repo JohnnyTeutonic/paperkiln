@@ -6,6 +6,7 @@ network, no servers). Runs in about a second.
 """
 import json
 import os
+import pathlib
 import sys
 
 import pytest
@@ -38,7 +39,7 @@ def test_llama_paper_maps_to_llama_family(tmp_path):
     assert pre["arch"]["rope_heads"] == "all"
     assert pre["arch"]["custom"] == {"position": "rope", "d": 64, "layers": 2, "heads": 2}
     assert sft["train"]["objective"] == "sft"
-    assert sft["train"]["init_from"].endswith("pretrain/arxiv_2302_13971_base.safetensors")
+    assert pathlib.Path(sft["train"]["init_from"]).parts[-2:] == ("pretrain", "arxiv_2302_13971_base.safetensors")
     buckets = {b for b, _ in rep["report"]}
     assert {"MATCHED", "DEFAULT", "SIZED"} <= buckets
     man = json.loads((run / "manifest.json").read_text())

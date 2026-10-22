@@ -381,7 +381,8 @@ def test_extraction_refuses_primer():
     with pytest.raises(A.Refused) as r:
         A.build_spec(ext, SIZE)
     reasons = " | ".join(r.value.args[0])
-    assert "mdha_dconv" in reasons and "no engine support" in reasons and "norm is unresolved" in reasons
+    # Squared ReLU is hostable since 80ffca45 (flex expr activation); the convolution still refuses.
+    assert "mdha_dconv" in reasons and "needs a new primitive" in reasons and "norm is unresolved" in reasons
 
 
 def test_unverified_flavour_is_refused_by_name():
