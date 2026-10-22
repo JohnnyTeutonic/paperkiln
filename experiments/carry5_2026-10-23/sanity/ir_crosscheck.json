@@ -1,0 +1,8 @@
+{
+ "item_modes": 592,
+ "same_choice_raw": 592,
+ "same_choice_norm": 592,
+ "max_abs_diff_sum_logprob": 4.6429407561277e-05,
+ "gate_a": "740/740",
+ "gate_b": "740/740"
+}

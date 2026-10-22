@@ -1,0 +1,288 @@
+{
+ "model": "live",
+ "scorer": "mtstudio",
+ "prompts": 40,
+ "argmax_identical": 40,
+ "rows": [
+  {
+   "id": "carry5_v1:recall:0001",
+   "reply": "My name is right to make a tasty vegetable soup.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:recall:0026",
+   "reply": "My dog has been unwell, and it has been quite playful.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:recall:0051",
+   "reply": "I have heard about it, and it is quite interesting to learn about.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:recall:0076",
+   "reply": "You can start with small steps each day? It is a great idea.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:recall:0101",
+   "reply": "I love bananas because they are sweet and are sweet too.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:recall:0126",
+   "reply": "My name is Assistant, and I am glad to hear you are!",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:recall:0151",
+   "reply": "You should start with small projects to help with your home.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:recall:0176",
+   "reply": "My job is doing well, and I am quite happy to help.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:recall:0201",
+   "reply": "I really like it. It is unique and unique.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:recall:0226",
+   "reply": "My name is Assistant, and I am glad to help with that.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:recall:0251",
+   "reply": "My favorite part is to cook with a little salt. It is a great choice.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:recall:0276",
+   "reply": "You can use a spade for digging in a garden or digging.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:recall:0301",
+   "reply": "Myth is full of vegetables, which makes it even better.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:recall:0326",
+   "reply": "My name is Assistant, and I loved one who shared herself.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:recall:0351",
+   "reply": "My name is Assistant. It has a lovely name that I love.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:recall:0376",
+   "reply": "I am not sure yet, but I hope they are very helpful.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:recall:0401",
+   "reply": "My brother has been feeling a bit unwell lately? It is a common problem.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:recall:0426",
+   "reply": "I love using different equipment for catching different types of exercise.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:correction:0019",
+   "reply": "My name is Assistant, and I am always curious about its name.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:correction:0044",
+   "reply": "You are welcome, I hope you find it soon. It is a lovely experience.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:correction:0069",
+   "reply": "My job is doing well, and I am quite happy to help.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:correction:0094",
+   "reply": "I like the color red because it has a lovely color and feels.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:correction:0119",
+   "reply": "My name is Assistant, and I am glad to hear you are Assistant.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:correction:0144",
+   "reply": "My dog has a lot of energy, which makes it even better.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:correction:0169",
+   "reply": "I am doing very well, thank you for the advice.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:correction:0194",
+   "reply": "I have not been hearing about it yet. It is a good chance to learn.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:instruction:0003",
+   "reply": "The color is bright and it looks very lovely.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:instruction:0028",
+   "reply": "Cows are very tasty, especially when they are fresh and healthy.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:instruction:0053",
+   "reply": "I usually wear my favorite clothes, but I still feel a bit uneasy.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:instruction:0078",
+   "reply": "She is writing a note to remember the fun times and the fun times.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:instruction:0103",
+   "reply": "I think they are very popular, but I find it hard to enjoy.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:instruction:0128",
+   "reply": "I think it is best to lock the door for any fun activities.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:topic:0009",
+   "reply": "You should go, it is a great chance to enjoy the experience.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:topic:0034",
+   "reply": "The book is called The Secret Garden, and it has a lovely story.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:topic:0059",
+   "reply": "That sounds like a great plan, and it will be a fun hobby.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:topic:0084",
+   "reply": "You can learn more about instruments, which ones, and their instruments.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:topic:0109",
+   "reply": "The cake is chocolate, it is chocolate, and it is quite popular.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:topic:0134",
+   "reply": "The book is called The Secret Garden, and it is quite fascinating.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:topic:0159",
+   "reply": "The best time, the party is always a lovely surprise for everyone.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  },
+  {
+   "id": "carry5_v1:knowledge:0004",
+   "reply": "I recommend visiting a veter or two, which always makes me happy.",
+   "stop": "eos",
+   "argmax_identical": true,
+   "first_diff": null
+  }
+ ]
+}

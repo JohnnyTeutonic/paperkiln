@@ -1,0 +1,14 @@
+{
+ "set": "corpus/eval/carry5_v1.jsonl",
+ "sha256": "de5f8b6803efd334990e7fa879571d9777509980baf28cd81f570c390abc41a5",
+ "items": 148,
+ "scorer": "mtstudio",
+ "gen": "ember",
+ "max_new": 24,
+ "models": [
+  "live=/home/jonat/pkchat/evalfw/live/spec.json"
+ ],
+ "families": "",
+ "limit": 0,
+ "every": 7
+}
