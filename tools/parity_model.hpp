@@ -488,10 +488,10 @@ private:
 //   norm "expr:<e>": y = e(x) * g + b row by row, e an expr over the one
 //     input x (the row reductions rowsum/rowmean/rowmax allowed), g and b
 //     learned [d] (init 1 and 0: layernorm's affine). Exported as an expr
-//     node, then a linear whose weight is diag(g) [d, d] and whose bias is
-//     b (blk.{i}.attn_norm_gain / ffn_norm_gain, output_norm_gain): every
-//     off-diagonal product is +-0, so the linear computes e(x) * g + b
-//     exactly as the training ops (mul_row, add_bias) do.
+//     node, then a scale node with weight g [d] and bias b [d]
+//     (blk.{i}.attn_norm_gain / ffn_norm_gain, output_norm_gain), which
+//     computes (e(x) * g) + b in the training ops' order (mul_row, then
+//     add_bias).
 //
 // Equivalence pin (tests/test_flex.cpp): with norm=layernorm, act=gelu,
 // pos=learned, n_layers=2, d_ff=4d, FlexLM reproduces ParityLM(EXACT)
@@ -520,13 +520,6 @@ struct FlexConfig {
 // The expr norm: e(x) * g + b (FlexConfig, norm "expr:<e>").
 inline Var flex_expr_norm(const Var& x, const Expr& e, const Var& g, const Var& b) {
     return ops::add_bias(ops::mul_row(ops::expr({x}, e), g), b);
-}
-
-// diag(g) as a linear weight [d, d] (the expr norm's gain in the GGUF).
-inline Matrix flex_diag(const Matrix& g) {
-    Matrix m(g.cols(), g.cols(), 0.0f);
-    for (size_t j = 0; j < g.cols(); ++j) m(j, j) = g(0, j);
-    return m;
 }
 
 class FlexBlock : public nn::Module {
@@ -736,16 +729,11 @@ public:
         const bool rope = c.pos == "rope";
         const size_t H = b0.attn ? b0.attn->H : b0.swa_attn->H, dk = c.d / H;
         ir::json n = ir::json::array();
-        // The expr norm: its expr node, then the gain and bias as a linear
-        // with weight diag(g) (FlexConfig; ir.hpp, Families: flex).
+        // The expr norm: its expr node, then the gain g and bias b [d] as a
+        // scale node (FlexConfig; ir.hpp, Families: flex).
         auto expr_norm = [&](ir::json& nodes, const std::string& in, const std::string& out, const std::string& name) {
             nodes.push_back(ir::expr({in}, norm_expr->text(), out));
-            nodes.push_back({{"op", "linear"},
-                             {"in", ir::json::array({out})},
-                             {"weight", name + "_gain.weight"},
-                             {"bias", name + "_gain.bias"},
-                             {"_note", "the expr norm's per-feature gain g and bias b: weight diag(g) [d, d]"},
-                             {"out", out}});
+            nodes.push_back(ir::scale(out, name + "_gain.weight", name + "_gain.bias", out));
         };
         auto norm = [&](const std::shared_ptr<nn::LayerNorm>& ln, const std::string& in, const std::string& out,
                         const std::string& name) {
@@ -831,7 +819,7 @@ public:
         if (!rope) put_tensor(fx.tensors, "position_embd.weight", wpe ? wpe->weight->data : sin_table, L::ROWS);
         fx.constants = wpe || rope ? 0 : 1;
         auto put_expr_norm = [&](const std::string& name, const Var& g, const Var& b) {
-            put_tensor(fx.tensors, name + "_gain.weight", flex_diag(g->data), L::PROJ);
+            put_tensor(fx.tensors, name + "_gain.weight", g->data, L::VEC);
             put_tensor(fx.tensors, name + "_gain.bias", b->data, L::VEC);
         };
         for (size_t b = 0; b < blocks.size(); ++b) {

@@ -34,7 +34,17 @@
 //   linear      x W^T (+ bias), weight [out, in], bias [out] (the bias is
 //               added once to the finished dot product); "tied_to" names
 //               the tensor to read instead when "weight" is absent. ROUNDING.
-//   split       in [x], sizes [s0, s1, ...] summing to x's width, out
+//   scale       per-feature gain and bias: {"op": "scale", "in": [x],
+//               "weight": w, "bias": b | null, "out": y}, w and b [d] tensors
+//               (blk.{i}. names in a block), d the width of x:
+//                 y[t][j] = (x[t][j] * w[j]) + b[j]   (x[t][j] * w[j] with no
+//                           bias)
+//               the product rounded to f32, then the sum, with no fused
+//               multiply-add. Row by row (the head may run it on the last
+//               row only). A weight (or bias) whose length is not x's width
+//               is refused at load, naming the tensor. EXACT (against the
+//               same order of operations).
+//   split     in [x], sizes [s0, s1, ...] summing to x's width, out
 //               [o0, o1, ...]: o_k = the s_k consecutive columns of x after
 //               the first s0 + ... + s_{k-1} (a fused qkv projection read as
 //               q, k, v). Copies. EXACT.
@@ -346,12 +356,10 @@
 //               "expr:<e>" (e over the one input x; the row reductions
 //               allowed) computes y = e(x) * g + b row by row, g and b
 //               learned [d] (initialised to 1 and 0, layernorm's affine):
-//               an expr node (in [x], out h), then a linear on h whose
-//               weight is diag(g) [d, d] and whose bias is b, named
-//               blk.{i}.attn_norm_gain / blk.{i}.ffn_norm_gain /
-//               output_norm_gain (.weight, .bias). Every off-diagonal
-//               product is +-0, so the linear yields (e(x) * g) + b exactly
-//               as paperkiln's mul_row then add_bias.
+//               an expr node (in [x], out h), then a scale node on h with
+//               weight g [d] and bias b [d], named blk.{i}.attn_norm_gain /
+//               blk.{i}.ffn_norm_gain / output_norm_gain (.weight, .bias):
+//               (e(x) * g) + b, as paperkiln's mul_row then add_bias.
 //               Each sublayer f combines with its input stream x as
 //               residual x + f, plain f, or highway x + sigmoid(W x + b) *
 //               (f - x) with W, b = blk.{i}.highway_attn / highway_ffn
@@ -406,6 +414,8 @@ json layernorm(const std::string& in, const std::string& weight, const std::stri
 json gelu(const std::string& in, const std::string& approx, const std::string& out);
 json split(const std::string& in, const std::vector<size_t>& sizes, const std::vector<std::string>& outs);
 json pos_embedding(const std::string& x, const std::string& pos, const std::string& weight, const std::string& out);
+// (x * weight[j]) + bias[j] per feature; bias "" = none (written as null).
+json scale(const std::string& in, const std::string& weight, const std::string& bias, const std::string& out);
 // (x * scale) + shift.
 json affine(const std::string& in, float scale, float shift, const std::string& out);
 json rms_row(const std::string& in, float eps, const std::string& out);

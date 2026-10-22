@@ -6,7 +6,12 @@ tools/gguf_ir.py builds from llama.cpp metadata.
     forward(doc, W, ids, last_only=False)               # logits [T, vocab] (or the last row only)
     load_weights(path)                                  # {name: f32 array [.., in]} from any GGUF type
 
-Every op computes in f32. Beyond the ops tools/ir_run.py documents, for third-party graphs:
+Every op computes in f32. Beyond the ops tools/ir_run.py documents:
+  scale       y = (x * w) + b per feature, w and b [d] (b may be null): the product rounded to f32,
+              then the sum, never fused; a weight or bias whose length is not x's width stops,
+              naming the tensor.
+  expr        a runtime-defined op, evaluated by tools/ir_expr.py.
+For third-party graphs:
   attention   kv_heads < heads (grouped-query): query head h reads kv head h // (heads // kv_heads).
   rope        pairing "neox": the pair (x[j], x[j + n_rot/2]) within a head (llama.cpp NEOX, HF
               rotate_half), "interleaved" the adjacent pair (x[2j], x[2j+1]); n_rot (default
@@ -99,6 +104,19 @@ def run_nodes(nodes, env, W, i=None, no_window=False):
             y = x @ wt.T
             if nd.get("bias"):
                 y = y + w(nd["bias"])
+        elif op == "scale":
+            wt = w(nd["weight"]).reshape(-1)
+            bias = w(nd["bias"]).reshape(-1) if nd.get("bias") else None
+            for tname, t in ((nd["weight"], wt), (nd.get("bias"), bias)):
+                if t is not None and t.shape[0] != x.shape[1]:
+                    raise SystemExit(f"ir_numpy: scale tensor {name(tname)} has length {t.shape[0]}, "
+                                     f"not the width {x.shape[1]} of {ins[0]}")
+            y = (x * wt).astype(np.float32)
+            if bias is not None:
+                y = (y + bias).astype(np.float32)
+        elif op == "expr":
+            import ir_expr
+            y = ir_expr.evaluate(nd["expr"], [env[n] for n in ins])
         elif op == "layernorm":
             mu = x.mean(axis=1, keepdims=True)
             var = ((x - mu) ** 2).mean(axis=1, keepdims=True)

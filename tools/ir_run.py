@@ -3,10 +3,10 @@ tensors only): an independent check that the exported IR alone reproduces
 mtstudio's greedy replies. Each step re-runs the last ctx tokens from
 position 0, as mtstudio does (recurrent ops therefore scan from a zero
 state every step). Ops: embedding, pos_embedding, linear, layernorm,
-rmsnorm, gelu, silu, relu, sigmoid, add, sub, mul, mul_col, affine,
+rmsnorm, gelu, silu, relu, sigmoid, add, sub, mul, mul_col, affine, scale,
 rms_row, split, rope, moe_ffn, attention (causal, or a sliding window with
-sinks), linear_attention, list, append, depth_attend, ssm_scan; any other
-op stops with its name. 40/40 vs mtstudio on chat_sftfinal_v3, moe_tiny_v3
+sinks), linear_attention, list, append, depth_attend, ssm_scan, expr
+(tools/ir_expr.py); any other op stops with its name. 40/40 vs mtstudio on chat_sftfinal_v3, moe_tiny_v3
 and gpt2_tiny (20 Oct 2026), and swa_tiny with replies up to 200 tokens.
 
     python tools/ir_run.py model.gguf receipt.jsonl tools/ [out.jsonl]

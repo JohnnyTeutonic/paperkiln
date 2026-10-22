@@ -136,6 +136,61 @@ def gguf_tensor(path, name):
     return dims, list(struct.unpack_from(f"<{count}f", raw, data_start + off))
 
 
+def gguf_weights(path):
+    """{name: f32 array, numpy order (reversed ne dims)} of an all-F32 GGUF, as tools/ir_run.py reads it."""
+    import numpy as np
+    meta, tensors, data_start, raw, _ = ir_check.read_gguf(path)
+    W = {}
+    for name, dims, typ, off in tensors:
+        assert typ == 0, name
+        n = 1
+        for x in dims:
+            n *= x
+        W[name] = np.frombuffer(raw, dtype=np.float32, count=n, offset=data_start + off).reshape(list(reversed(dims)))
+    return W
+
+
+def test_scale_kernel_rounds_the_product_then_the_sum():
+    """ir.hpp op scale: (x * w) + b, each rounded to f32, no fused multiply-add; no bias: x * w."""
+    import numpy as np
+    import ir_numpy
+    # x * w = 1 + 2^-11 + 2^-24 exactly: f32 rounds it to 1 + 2^-11 (a tie, to even), so with
+    # b = -1 the rounded order gives 2^-11 while a fused multiply-add gives 2^-11 + 2^-24.
+    x = np.array([[1 + 2.0 ** -12, 2.0, -3.0]], np.float32)
+    W = {"blk.0.g.weight": np.array([1 + 2.0 ** -12, 0.5, 2.0], np.float32),
+         "blk.0.g.bias": np.array([-1.0, 0.25, 0.0], np.float32)}
+    node = {"op": "scale", "in": ["x"], "weight": "blk.{i}.g.weight", "bias": "blk.{i}.g.bias", "out": "y"}
+    env = {"x": x}
+    ir_numpy.run_nodes([node], env, W, i=0)
+    assert env["y"].dtype == np.float32
+    assert env["y"].tolist() == [[2.0 ** -11, 1.25, -6.0]]
+    fused = np.float32(np.float64(x[0, 0]) * np.float64(W["blk.0.g.weight"][0]) - 1.0)
+    assert fused == 2.0 ** -11 + 2.0 ** -24
+    env = {"x": x}
+    ir_numpy.run_nodes([dict(node, bias=None)], env, W, i=0)
+    assert env["y"].tolist() == [[1 + 2.0 ** -11, 1.0, -6.0]]
+    # The last row alone is the full forward's last row (row-wise).
+    xx = np.array([[0.5, -1.5, 3.0], [7.0, 0.125, -2.0]], np.float32)
+    env_all, env_last = {"x": xx}, {"x": xx[-1:]}
+    ir_numpy.run_nodes([node], env_all, W, i=0)
+    ir_numpy.run_nodes([node], env_last, W, i=0)
+    assert np.array_equal(env_all["y"][-1:], env_last["y"])
+
+
+def test_scale_refuses_a_weight_of_the_wrong_width():
+    import numpy as np
+    import ir_numpy
+    W = {"blk.1.g.weight": np.ones(4, np.float32), "blk.1.g.bias": np.zeros(3, np.float32),
+         "blk.1.h.weight": np.ones(3, np.float32)}
+    x = np.ones((2, 3), np.float32)
+    with pytest.raises(SystemExit, match=r"blk\.1\.g\.weight has length 4, not the width 3"):
+        ir_numpy.run_nodes([{"op": "scale", "in": ["x"], "weight": "blk.{i}.g.weight", "bias": None, "out": "y"}],
+                           {"x": x}, W, i=1)
+    with pytest.raises(SystemExit, match=r"blk\.1\.g\.bias has length 3, not the width 2"):
+        ir_numpy.run_nodes([{"op": "scale", "in": ["x"], "weight": "blk.{i}.g.bias", "bias": "blk.{i}.g.bias",
+                             "out": "y"}], {"x": x[:, :2]}, W, i=1)
+
+
 GPT2_OPS = ["layernorm", "linear", "split", "attention", "linear", "add",
             "layernorm", "linear", "gelu", "linear", "add"]
 
@@ -345,7 +400,7 @@ FLEX = [  # (custom, arch, hint, extra tensors per block or None)
     # RoPE with a non-SwiGLU activation is flex (ReLU^2 Wins, arXiv 2402.03804): no position table,
     # a rope node between split and attention.
     ({"layers": 2, "norm": "rmsnorm", "activation": "expr:relu(x)^2", "position": "rope"}, "paperkiln", "flex", None),
-    # A runtime-defined norm (layer norm written as an expr): an expr node, then the gain as a diagonal linear.
+    # A runtime-defined norm (layer norm written as an expr): an expr node, then the gain and bias as a scale node.
     ({"layers": 2, "norm": "expr:(x - rowmean(x)) / sqrt(rowmean((x - rowmean(x))^2) + 1e-5)", "position": "rope"},
      "paperkiln", "flex", None),
 ]
@@ -382,20 +437,37 @@ def test_flex_flavours_export(tmp_path, custom, arch, hint, extra):
             2, 16, 10000.0, "all", "interleaved")
         assert any(x["name"] == "pos" for x in doc["inputs"])
     if custom.get("norm", "").startswith("expr:"):
-        # expr node, then the gain: a linear with weight diag(g) [d, d] and bias b, three times.
+        # expr node, then the gain g and bias b [d] as a scale node, three times.
         e = custom["norm"][5:]
         d = 32
         for where, name in ((nodes, "blk.{i}.attn_norm_gain"), (nodes, "blk.{i}.ffn_norm_gain"),
                             (doc["head"]["nodes"], "output_norm_gain")):
             k = next(j for j, n in enumerate(where) if n.get("weight") == name + ".weight")
             assert where[k - 1]["op"] == "expr" and [where[k - 1]["out"]] == where[k]["in"] == [where[k]["out"]]
-            assert where[k]["op"] == "linear" and where[k]["bias"] == name + ".bias"
+            assert where[k] == {"op": "scale", "in": where[k]["in"], "weight": name + ".weight",
+                                "bias": name + ".bias", "out": where[k]["out"]}
         assert [n["expr"] for n in nodes if n["op"] == "expr"] == [e, e]
         assert doc["head"]["nodes"][0] == {"op": "expr", "in": ["x"], "expr": e, "out": "h"}
-        assert "layernorm" not in ops and "rmsnorm" not in ops
-        assert dims["blk.0.attn_norm_gain.weight"] == [d, d] and dims["output_norm_gain.bias"] == [d]
-        _, g = gguf_tensor(path, "blk.1.ffn_norm_gain.weight")
-        assert all(g[r * d + c] == 0.0 for r in range(d) for c in range(d) if r != c)
+        assert "layernorm" not in ops and "rmsnorm" not in ops and ops.count("scale") == 2
+        # No [d, d] diagonal tensors: every gain and bias is [d].
+        gains = {k: v for k, v in dims.items() if "_norm_gain." in k}
+        assert len(gains) == 2 * (2 * custom["layers"] + 1) and all(v == [d] for v in gains.values())
+        # The numpy IR forward with scale equals the diag(g) linear the gain used to export as,
+        # bit for bit on the same weights (every off-diagonal product is +-0).
+        import numpy as np
+        import ir_numpy
+        W = gguf_weights(path)
+        diag_doc = copy.deepcopy(doc)
+        for sect in ("block", "head"):
+            for n in diag_doc[sect]["nodes"]:
+                if n["op"] == "scale":
+                    n["op"] = "linear"
+        W_diag = {k: (np.diag(v).astype(np.float32) if k.endswith("_norm_gain.weight") else v) for k, v in W.items()}
+        ids = [1, 4, 2, 7, 3, 9, 5, 11, 6, 2, 8, 10]
+        a = ir_numpy.forward(doc, W, ids)
+        b = ir_numpy.forward(diag_doc, W_diag, ids)
+        assert a.dtype == b.dtype == np.float32 and np.isfinite(a).all()
+        assert np.array_equal(a.view(np.uint32), b.view(np.uint32))
     if custom.get("norm") == "rmsnorm" and custom.get("activation") == "swiglu":
         assert ops.count("rmsnorm") == 2 and "blk.0.attn_norm.bias" not in dims
         assert ops[-6:] == ["linear", "silu", "linear", "mul", "linear", "add"]

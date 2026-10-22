@@ -87,6 +87,14 @@ json pos_embedding(const std::string& x, const std::string& pos, const std::stri
     return {{"op", "pos_embedding"}, {"in", json::array({x, pos})}, {"weight", weight}, {"out", out}};
 }
 
+json scale(const std::string& in, const std::string& weight, const std::string& bias, const std::string& out) {
+    return {{"op", "scale"},
+            {"in", json::array({in})},
+            {"weight", weight},
+            {"bias", bias.empty() ? json(nullptr) : json(bias)},
+            {"out", out}};
+}
+
 json affine(const std::string& in, float scale, float shift, const std::string& out) {
     return {{"op", "affine"}, {"in", json::array({in})}, {"scale", f32(scale)}, {"shift", f32(shift)}, {"out", out}};
 }
