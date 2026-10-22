@@ -155,7 +155,9 @@ def relay(st, name, every=0):
         return
     step = int(m.group(1))
     ok = True
-    for f in ("model.safetensors", "optim.safetensors", "events.jsonl", "state.txt"):
+    # Weights, events and step only (23 Oct 2026): a resume is weights-only (cold AdamW) anyway, and
+    # the 0.78 GB optimiser download failed on every relay from step 28,000 of pk_base_v1.
+    for f in ("model.safetensors", "events.jsonl", "state.txt"):
         dst = os.path.join(art, "state.txt.new" if f == "state.txt" else f + ".new")
         rc, _ = colab("download", "-s", NAME, f"{snap}/{f}", dst, timeout=2400)
         ok = ok and rc == 0
@@ -164,8 +166,11 @@ def relay(st, name, every=0):
     if not ok:
         log(f"{name}: relay download of the step-{step} snapshot failed; will retry")
         return
-    for f in ("model.safetensors", "optim.safetensors", "events.jsonl"):
+    for f in ("model.safetensors", "events.jsonl"):
         os.replace(os.path.join(art, f + ".new"), os.path.join(art, f))
+    stale = os.path.join(art, "optim.safetensors")  # older than these weights: never resume from it
+    if os.path.exists(stale):
+        os.remove(stale)
     os.replace(tmp, os.path.join(art, "state.txt"))  # last: state.txt names a complete set
     js["relayed_step"] = step
     st.save()
