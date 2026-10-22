@@ -226,23 +226,30 @@ Spec parse_spec(const std::string& path) {
         s.sinks = c.value("sinks", s.sinks);
         s.d_state = c.value("d_state", s.d_state);
     }
-    // Family resolution for the flavor knobs. RoPE lives inside the llama
-    // block (rmsnorm/swiglu come with it); every other flavor combination
-    // is the flex family — the paper-faithful decoder.
+    // Family resolution for the flavor knobs. RoPE with the llama block's
+    // flavours (rmsnorm, swiglu, residual stream, exact attention; each
+    // stated or left out) is the llama family; RoPE with any other flavour,
+    // and every other flavor combination, is the flex family — the
+    // paper-faithful decoder (rope on every head, as the llama block).
     if (s.family == "mamba" && (!s.norm.empty() || !s.activation.empty() || !s.position.empty() ||
                                 !s.residual.empty() || s.attention != "exact"))
         throw std::runtime_error("the mamba preset takes no flavor knobs or attention kind (d, layers, d_state)");
     if (s.family == "mamba") {
     } else if (s.position == "rope") {
-        if ((!s.norm.empty() && s.norm != "rmsnorm") ||
-            (!s.activation.empty() && s.activation != "swiglu") ||
-            (!s.residual.empty() && s.residual != "residual"))
-            throw std::runtime_error(
-                "position=rope currently implies the llama block "
-                "(rmsnorm + swiglu, plain residual stream); drop the "
-                "conflicting norm/activation/residual or pick "
-                "position=learned|sinusoidal for the flex family");
-        s.family = "llama";
+        const bool llama_block = (s.norm.empty() || s.norm == "rmsnorm") &&
+                                 (s.activation.empty() || s.activation == "swiglu") &&
+                                 (s.residual.empty() || s.residual == "residual") && s.attention == "exact";
+        if (llama_block) {
+            s.family = "llama";
+        } else {
+            if (s.attention != "exact" && s.attention != "swa")
+                throw std::runtime_error("position=rope with attention " + s.attention +
+                                         ": the flex family takes exact or swa attention");
+            if (s.rope_heads == "first")
+                throw std::runtime_error("arch.rope_heads=first is the legacy llama layout; the flex "
+                                         "family rotates every head");
+            s.family = "flex";
+        }
     } else if (!s.norm.empty() || !s.activation.empty() || !s.position.empty() ||
                !s.residual.empty()) {
         if (s.attention != "exact" && s.attention != "swa")
@@ -1141,7 +1148,7 @@ void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama, 
 // and gradient finite on x in [-20, 20] step 0.25. A failure throws: a
 // wrong or non-finite gradient would train silently. The event is the
 // receipt (worst error, the probe).
-json expr_gradcheck(const std::string& text) {
+json expr_gradcheck(const std::string& text, const std::string& slot = "activation") {
     const Expr e = Expr::parse(text, 1);
     const size_t T = 4, w = 8;
     std::mt19937 gen(20261023);
@@ -1187,10 +1194,10 @@ json expr_gradcheck(const std::string& text) {
                {"fd_worst_rel", worst}, {"fd_tol", 2e-3}, {"probe", "x in [-20, 20] step 0.25"},
                {"probe_nonfinite", bad.size()}, {"pass", worst <= 2e-3 && bad.empty()}};
     if (!(worst <= 2e-3))
-        throw std::runtime_error("expr activation \"" + text + "\": autograd gradient disagrees with finite "
+        throw std::runtime_error("expr " + slot + " \"" + text + "\": autograd gradient disagrees with finite "
                                  "differences (worst relative error " + std::to_string(worst) + " > 2e-3)");
     if (!bad.empty())
-        throw std::runtime_error("expr activation \"" + text + "\": value or gradient not finite at x = " +
+        throw std::runtime_error("expr " + slot + " \"" + text + "\": value or gradient not finite at x = " +
                                  std::to_string(bad[0]) + " (" + std::to_string(bad.size()) +
                                  " of 161 probe points in [-20, 20])");
     return ev;
@@ -1389,19 +1396,29 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         fc.attention = s.attention;
         fc.window = s.window;
         fc.sinks = s.sinks;
-        if (fc.norm != "layernorm" && fc.norm != "rmsnorm")
+        if (fc.norm.rfind("expr:", 0) == 0) {
+            // A runtime-defined norm (e(x) * g + b, parity_model.hpp
+            // FlexConfig): its expr gradient-checked before training, as an
+            // expr activation's is.
+            json gc = expr_gradcheck(fc.norm.substr(5), "norm");
+            gc["slot"] = "norm";
+            ev.emit(gc);
+            std::printf("expr norm %s: gradient vs finite differences worst rel %.2e, finite on [-20, 20]\n",
+                        fc.norm.substr(5).c_str(), gc["fd_worst_rel"].get<double>());
+        } else if (fc.norm != "layernorm" && fc.norm != "rmsnorm")
             throw std::runtime_error("unknown norm " + fc.norm);
         if (fc.act.rfind("expr:", 0) == 0) {
             // A runtime-defined activation: parse (throws naming the column),
             // then its gradient against finite differences before training.
-            const json gc = expr_gradcheck(fc.act.substr(5));
+            json gc = expr_gradcheck(fc.act.substr(5), "activation");
+            gc["slot"] = "activation";
             ev.emit(gc);
             std::printf("expr activation %s: gradient vs finite differences worst rel %.2e, finite on "
                         "[-20, 20]\n", fc.act.substr(5).c_str(), gc["fd_worst_rel"].get<double>());
         } else if (fc.act != "gelu" && fc.act != "relu" && fc.act != "swiglu")
             throw std::runtime_error("unknown activation " + fc.act);
-        if (fc.pos != "learned" && fc.pos != "sinusoidal")
-            throw std::runtime_error("unknown position " + fc.pos + " (rope = llama family)");
+        if (fc.pos != "learned" && fc.pos != "sinusoidal" && fc.pos != "rope")
+            throw std::runtime_error("unknown position " + fc.pos + " (learned | sinusoidal | rope)");
         if (fc.residual != "residual" && fc.residual != "highway" && fc.residual != "plain")
             throw std::runtime_error("unknown residual " + fc.residual +
                                      " (residual | highway | plain)");

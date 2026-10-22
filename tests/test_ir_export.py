@@ -342,6 +342,12 @@ FLEX = [  # (custom, arch, hint, extra tensors per block or None)
      "paperkiln", "flex_highway", ("highway_attn", "highway_ffn")),
     # A runtime-defined activation (squared ReLU): relu's tensors, an expr node in place of relu.
     ({"layers": 2, "activation": "expr:max(x, 0)^2"}, "paperkiln", "flex", None),
+    # RoPE with a non-SwiGLU activation is flex (ReLU^2 Wins, arXiv 2402.03804): no position table,
+    # a rope node between split and attention.
+    ({"layers": 2, "norm": "rmsnorm", "activation": "expr:relu(x)^2", "position": "rope"}, "paperkiln", "flex", None),
+    # A runtime-defined norm (layer norm written as an expr): an expr node, then the gain as a diagonal linear.
+    ({"layers": 2, "norm": "expr:(x - rowmean(x)) / sqrt(rowmean((x - rowmean(x))^2) + 1e-5)", "position": "rope"},
+     "paperkiln", "flex", None),
 ]
 
 
@@ -364,7 +370,33 @@ def test_flex_flavours_export(tmp_path, custom, arch, hint, extra):
     if custom.get("residual") == "plain":
         assert "add" not in ops
         assert [n["out"] for n in nodes if n["op"] == "linear"][1::2] == ["x", "x"]
-    if custom.get("norm") == "rmsnorm":
+    if custom.get("position") == "rope":
+        # No table; the llama block's rope node (all heads) between split and attention.
+        assert "position_embd.weight" not in dims
+        assert [n["op"] for n in doc["embed"]["nodes"]] == ["embedding"]
+        i = ops.index("rope")
+        assert ops[i - 1] == "split" and ops[i + 1] == "attention" and ops.count("rope") == 1
+        rope = nodes[i]
+        assert rope["in"] == ["q", "k", "pos"] and rope["out"] == ["q", "k"]
+        assert (rope["heads"], rope["head_dim"], rope["theta"], rope["rope_heads"], rope["pairing"]) == (
+            2, 16, 10000.0, "all", "interleaved")
+        assert any(x["name"] == "pos" for x in doc["inputs"])
+    if custom.get("norm", "").startswith("expr:"):
+        # expr node, then the gain: a linear with weight diag(g) [d, d] and bias b, three times.
+        e = custom["norm"][5:]
+        d = 32
+        for where, name in ((nodes, "blk.{i}.attn_norm_gain"), (nodes, "blk.{i}.ffn_norm_gain"),
+                            (doc["head"]["nodes"], "output_norm_gain")):
+            k = next(j for j, n in enumerate(where) if n.get("weight") == name + ".weight")
+            assert where[k - 1]["op"] == "expr" and [where[k - 1]["out"]] == where[k]["in"] == [where[k]["out"]]
+            assert where[k]["op"] == "linear" and where[k]["bias"] == name + ".bias"
+        assert [n["expr"] for n in nodes if n["op"] == "expr"] == [e, e]
+        assert doc["head"]["nodes"][0] == {"op": "expr", "in": ["x"], "expr": e, "out": "h"}
+        assert "layernorm" not in ops and "rmsnorm" not in ops
+        assert dims["blk.0.attn_norm_gain.weight"] == [d, d] and dims["output_norm_gain.bias"] == [d]
+        _, g = gguf_tensor(path, "blk.1.ffn_norm_gain.weight")
+        assert all(g[r * d + c] == 0.0 for r in range(d) for c in range(d) if r != c)
+    if custom.get("norm") == "rmsnorm" and custom.get("activation") == "swiglu":
         assert ops.count("rmsnorm") == 2 and "blk.0.attn_norm.bias" not in dims
         assert ops[-6:] == ["linear", "silu", "linear", "mul", "linear", "add"]
         # Sinusoidal positions: the fixed table, sin on even columns, cos on odd.

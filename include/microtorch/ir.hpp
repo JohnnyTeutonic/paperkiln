@@ -339,7 +339,19 @@
 //               input) or swiglu (ffn_gate,
 //               ffn_up, ffn_down, no biases: down(silu(gate h) * up h)),
 //               positions learned or sinusoidal (position_embd holds the
-//               fixed table, rounded to f32), attention exact or windowed.
+//               fixed table, rounded to f32) or rope (no position_embd; a
+//               rope node, all heads, interleaved pairs, theta 10000,
+//               between split and attention, as in the llama block),
+//               attention exact or windowed. A runtime-defined norm
+//               "expr:<e>" (e over the one input x; the row reductions
+//               allowed) computes y = e(x) * g + b row by row, g and b
+//               learned [d] (initialised to 1 and 0, layernorm's affine):
+//               an expr node (in [x], out h), then a linear on h whose
+//               weight is diag(g) [d, d] and whose bias is b, named
+//               blk.{i}.attn_norm_gain / blk.{i}.ffn_norm_gain /
+//               output_norm_gain (.weight, .bias). Every off-diagonal
+//               product is +-0, so the linear yields (e(x) * g) + b exactly
+//               as paperkiln's mul_row then add_bias.
 //               Each sublayer f combines with its input stream x as
 //               residual x + f, plain f, or highway x + sigmoid(W x + b) *
 //               (f - x) with W, b = blk.{i}.highway_attn / highway_ffn

@@ -87,8 +87,9 @@ def test_contested_and_unsupported_refused():
         A.build_spec(ext, SIZE)
     with pytest.raises(A.Refused, match="no engine support"):
         A.build_spec(ext_with(norm="rmsnorm", activation="geglu", positional="rope"), SIZE)
-    with pytest.raises(A.Refused, match="llama family"):
-        A.build_spec(ext_with(norm="layernorm", activation="gelu", positional="rope"), SIZE)
+    # RoPE with flavours the llama block lacks: flex with position rope.
+    fam, arch, _ = A.build_spec(ext_with(norm="layernorm", activation="gelu", positional="rope"), SIZE)
+    assert fam == "flex" and arch["custom"]["position"] == "rope" and "rope_heads" not in arch
     with pytest.raises(A.Refused, match="n_kv_heads"):
         A.build_spec(ext_with(norm="rmsnorm", activation="swiglu", positional="rope", n_heads=32,
                               n_kv_heads=8), SIZE)
@@ -130,7 +131,9 @@ def test_stages_with_mtstudio_mocked_and_restartable(tmp_path, monkeypatch):
         json.dump(spec, open(os.path.join(spec["out_dir"], "spec.json"), "w"))
 
     monkeypatch.setattr(A, "mtstudio", fake)
-    args = ["--corpus", str(corpus), "--vocab", str(corpus), "--sft-examples", str(sft_src), "--sft-limit", "3",
+    if not os.path.exists(VOCAB):
+        pytest.skip("the SFT slice is tokenised with the bpe8k vocabulary, not on disk")
+    args = ["--corpus", str(corpus), "--vocab", VOCAB, "--sft-examples", str(sft_src), "--sft-limit", "3",
             "--stop-after", "sft", "--emit-jobs", str(tmp_path / "jobs.json")]
     assert run_cli(tmp_path, "2302.13971", *args) == 0
     run = tmp_path / "2302.13971"
@@ -157,6 +160,35 @@ def test_stages_with_mtstudio_mocked_and_restartable(tmp_path, monkeypatch):
     assert j2[0]["spec"]["data"]["corpus"] == "/content/chat/data/mix.main.ids"
     assert j2[0]["spec"]["data"]["max_tokens"] == 0
     assert j2[1]["spec"]["data"]["sft_examples"] == "/content/chat/lever1/lever1_sft_v1.jsonl"
+
+
+VOCAB = os.path.join(os.path.dirname(HERE), "corpus", "data", "vocab_fineweb_tinychat_bpe8k_v1",
+                     "fineweb_tinychat_bpe8k.gguf")
+
+
+@pytest.mark.skipif(not os.path.exists(VOCAB), reason="the bpe8k vocabulary is not on disk")
+def test_sft_examples_longer_than_T_dropped_and_counted(tmp_path):
+    import bpe
+
+    tok = bpe.read_gguf(VOCAB)
+    rows = [{"prompt": "<|user|>hi<|assistant|>", "completion": "hello there"},
+            {"prompt": "<|user|>" + "tell me a long story " * 20 + "<|assistant|>", "completion": "no"},
+            {"prompt": "<|user|>ok<|assistant|>", "completion": "fine " * 30},
+            {"prompt": "<|user|>bye<|assistant|>", "completion": "goodbye"},
+            {"prompt": "<|user|>one more<|assistant|>", "completion": "sure"}]
+    src = tmp_path / "sft.jsonl"
+    src.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    T = 16
+    lens = [len(tok.encode(r["prompt"])) + len(tok.encode(r["completion"])) + 1 for r in rows]
+    fits = [n <= T + 1 for n in lens]
+    assert fits == [True, False, False, True, True], lens
+    fit = A.sft_fit(str(src), VOCAB, T, 2, str(tmp_path / "out.jsonl"))
+    kept = [json.loads(x) for x in (tmp_path / "out.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert kept == [rows[0], rows[3]]  # file order, up to the limit, the long ones skipped
+    assert (fit["seen"], fit["kept"], fit["dropped_longer_than_T"]) == (4, 2, 2)
+    assert fit["longest_kept_tokens"] <= T + 1 < fit["longest_dropped_tokens"]
+    fit = A.sft_fit(str(src), VOCAB, T, 0, str(tmp_path / "all.jsonl"))
+    assert (fit["seen"], fit["kept"], fit["dropped_longer_than_T"]) == (5, 3, 2)
 
 
 # --------------------------------------------------------------------------
@@ -216,13 +248,10 @@ def test_llm_expr_bad_expressions_refused():
     # A two-input (gated) form: flex's expr activation reads only the up-projection.
     with pytest.raises(A.Refused, match="reads 2 inputs"):
         A.build_spec(llm_ext("relu(a)*x", inputs=("x", "a")), SIZE)
-    # An expr standing in for the norm: no family here hosts it.
-    with pytest.raises(A.Refused, match="used by norm: the flex family hosts an expr only as activation"):
-        A.build_spec(llm_ext("x/sqrt(rowmean(x^2)+1e-5)", slot="norm",
+    # A norm expr whose extra inputs are not learned per-channel vectors (here "m").
+    with pytest.raises(A.Refused, match="not all learned per-channel vectors"):
+        A.build_spec(llm_ext("(x-rowmean(x))*a", slot="norm", inputs=("x", "a"),
                              stated={"activation": "gelu", "positional": "learned"}), SIZE)
-    # An expr activation on a rope paper: the llama family has swiglu only.
-    with pytest.raises(A.Refused, match="hosted by the flex family only"):
-        A.build_spec(llm_ext("relu(x)^2", stated={"norm": "rmsnorm", "positional": "rope"}), SIZE)
     # An expr value with no new-op record behind it (a hand-written extraction).
     ext = ext_with(norm="layernorm", activation="expr:(relu(x)^2)", positional="learned")
     with pytest.raises(A.Refused, match="no verified new-op record"):
@@ -234,15 +263,71 @@ def test_llm_needs_new_primitive_refused():
         A.build_spec(llm_ext(kind="needs_new_primitive"), SIZE)
 
 
+def test_llm_expr_norm_hosted_on_flex():
+    # One input: flex's e(x) * g + b over the row.
+    fam, arch, rep = A.build_spec(llm_ext("x/sqrt(rowmean(x^2)+1e-5)", slot="norm",
+                                          stated={"activation": "gelu", "positional": "learned"}), SIZE)
+    assert fam == "flex" and arch["custom"]["norm"] == "expr:(x/sqrt(rowmean(x^2)+1e-5))"
+    assert any(b == "NORM-AFFINE" for b, _ in rep)
+    # Primer's form: the row expression, then the paper's own learned per-channel shift a and gain b,
+    # (core + a) * b = core * b + a * b: flex's gain and bias, another parametrisation.
+    primer = "((x-rowmean(x))/sqrt(abs(rowmean(x*(x-rowmean(x)))))+a)*b"
+    ext = llm_ext(primer, slot="norm", inputs=("x", "a", "b"), stated={"activation": "gelu", "positional": "rope"})
+    for i in ext["llm"]["verification"]["new_ops"][0]["inputs"][1:]:
+        i["meaning"] = "learned per-channel vector"
+    fam, arch, rep = A.build_spec(ext, SIZE)
+    assert fam == "flex" and arch["custom"]["position"] == "rope"
+    assert arch["custom"]["norm"] == "expr:((x-rowmean(x))/sqrt(abs(rowmean((x*(x-rowmean(x)))))))"
+    assert any(b == "NORM-AFFINE" and "(core + a)*g" in d for b, d in rep)
+    # A learned vector inside the row expression is not a trailing affine.
+    ext = llm_ext("(x-rowmean(x)*a)*b", slot="norm", inputs=("x", "a", "b"), stated={"activation": "gelu",
+                                                                                    "positional": "learned"})
+    for i in ext["llm"]["verification"]["new_ops"][0]["inputs"][1:]:
+        i["meaning"] = "learned per-channel vector"
+    with pytest.raises(A.Refused, match="trailing"):
+        A.build_spec(ext, SIZE)
+
+
+def test_llm_expr_activation_with_rope_is_flex():
+    fam, arch, rep = A.build_spec(llm_ext("relu(x)^2", stated={"norm": "rmsnorm", "positional": "rope"}), SIZE)
+    assert fam == "flex" and arch["custom"] == {"norm": "rmsnorm", "activation": "expr:(relu(x)^2)",
+                                                "position": "rope", "residual": "residual",
+                                                "attention": "exact", "d": 64, "layers": 2, "heads": 2}
+    # A stated rope variant the families here do not rotate with refuses.
+    ext = llm_ext("relu(x)^2", stated={"norm": "rmsnorm", "positional": "rope"})
+    ext["llm"]["verification"]["flavours"]["rope_theta"] = {"value": "500000", "check": "verified",
+                                                           "status": "stated", "where": "Sec. 3"}
+    with pytest.raises(A.Refused, match="rope_theta = 500000"):
+        A.build_spec(ext, SIZE)
+    # So does a stated norm placement other than pre-norm.
+    ext = llm_ext("relu(x)^2", stated={"norm": "rmsnorm", "positional": "rope"})
+    ext["llm"]["verification"]["flavours"]["norm_placement"] = {"value": "post", "check": "quote_only",
+                                                               "status": "stated", "where": "Sec. 3"}
+    with pytest.raises(A.Refused, match="norm placement = post"):
+        A.build_spec(ext, SIZE)
+
+
+def test_relu2wins_receipt_builds_flex_rope():
+    fam, arch, rep = A.build_spec(receipt("2402.03804"), SIZE)
+    assert fam == "flex"
+    assert {k: arch["custom"][k] for k in ("norm", "activation", "position", "residual", "attention")} == {
+        "norm": "rmsnorm", "activation": "expr:(relu(x)^2)", "position": "rope", "residual": "residual",
+        "attention": "exact"}
+    # Residual and attention: inherited without a curated entry to check them, and the defaults.
+    assert sorted(d.split(" ")[0] for b, d in rep if b == "DEFAULT") == ["attention", "residual"]
+    assert any(b == "NOTED" and d.startswith("qkv_bias = false") for b, d in rep)
+
+
 def test_primer_receipt_refused_with_every_reason(tmp_path):
     ext = receipt("2109.08668")
     with pytest.raises(A.Refused) as r:
         A.build_spec(ext, SIZE)
     reasons = " | ".join(r.value.args[0])
     assert "causal_depthwise_conv3 needs a new primitive" in reasons
-    assert "primer_norm" in reasons and "used by norm" in reasons
-    assert "relative" in reasons
-    assert "squared_relu" not in reasons  # its expr is hostable; the paper is refused for the rest
+    assert "relative" in reasons  # T5's relative attention positions: no engine support
+    assert "norm placement" in reasons  # no norm before the FFN, the FFN output normalised
+    # Its norm and squared ReLU are hostable now; the paper is refused for the rest.
+    assert "primer_norm" not in reasons and "squared_relu" not in reasons
 
 
 def test_golu_receipt_builds_flex_with_inherited_flavours():

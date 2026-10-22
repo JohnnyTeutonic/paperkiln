@@ -23,15 +23,22 @@ when its output already exists, so a run restarts where it stopped:
             (exit 2 and refusal.json on a refusal)
             An LLM extraction (papers/llm_extract.py, --extraction) may
             carry the paper's new operation as an expr: a verified expr in
-            a slot the flex family hosts (the FFN activation, one input)
-            is parsed by tools/ir_expr.py, probed for finite f32 values and
-            written as custom.activation = "expr:<e>" (mtstudio checks its
-            gradient against finite differences before training; the GGUF's
-            IR carries the expr node ember runs). A needs_new_primitive op,
-            an unverified one, or an expr in any other slot refuses.
+            a slot the flex family hosts (the FFN activation over one
+            input; the norm over the row, e(x) * g + b with flex's learned
+            per-feature g and b, a paper's own per-channel affine tail
+            mapped onto them) is parsed by tools/ir_expr.py, probed for
+            finite f32 values and written as custom.activation / custom.norm
+            = "expr:<e>" (mtstudio checks its gradient against finite
+            differences before training; the GGUF's IR carries the expr
+            node ember runs). A needs_new_primitive op, an unverified one,
+            or an expr in any other slot refuses. RoPE with the llama
+            block's flavours is the llama family; RoPE with any other
+            flavour flex hosts is flex with position rope.
   pretrain  mtstudio run, objective lm on --corpus -> pretrain/
-  sft       mtstudio run, objective sft on --sft-examples (a --sft-limit
-            slice), init_from the pretrained weights -> sft/
+  sft       mtstudio run, objective sft on --sft-examples (the first
+            --sft-limit examples that fit T; longer ones are dropped and
+            counted in sft_fit.json and the manifest, never truncated),
+            init_from the pretrained weights -> sft/
   export    mtstudio export --formats gguf: GGUF with the IR embedded
             (rope_heads stated explicitly for llama) -> export/
   chat      ember serves the GGUF (an IR-only load for every non-llama
@@ -109,9 +116,15 @@ SPEC_KEY = {"norm": "norm", "activation": "activation", "positional": "position"
             "residual": "residual", "attention": "attention"}
 # A paper's new operation written as an expr (papers/llm_extract.py) can take
 # these flavour slots; the flex family hosts it as custom.<key> = "expr:<e>"
-# over this many inputs. Anything else an expr replaces (a norm, a gate with
-# learned parameters) is refused: no family here builds it.
-EXPR_SLOTS = {"activation": 1}
+# over this many inputs: the FFN activation over the up-projection, the norm
+# over the row (e(x) * g + b with a learned per-feature gain g and bias b,
+# tools/parity_model.hpp FlexConfig; a norm the paper writes with its own
+# per-channel parameters is hosted when they form only a trailing affine,
+# see norm_core). Anything else an expr replaces (a gate with learned
+# parameters, an attention score) is refused: no family here builds it.
+EXPR_SLOTS = {"activation": 1, "norm": 1}
+# The flex family is pre-norm only.
+FLEX_NORM_PLACEMENT = "pre"
 # Where a hosted expr is probed (tools/ir_expr.py, f32): every value finite.
 EXPR_PROBE = (-20.0, 20.0, 0.25)
 NEW_OP_CUE = re.compile(r"^new op (\S+) ")
@@ -254,15 +267,76 @@ def expr_host_check(expr, n_inputs):
     return expr, []
 
 
+LEARNED_PARAM = re.compile(r"\blearn(?:ed|able|t)\b|\bparameter\b|tf\.Variable|nn\.Parameter", re.IGNORECASE)
+PER_CHANNEL = re.compile(r"per[- ](?:channel|feature|dimension|element)|\bvector\b|\bchannel", re.IGNORECASE)
+
+
+def norm_core(expr, inputs):
+    """A norm expr over the row x and the paper's own learned per-channel
+    vectors (inputs after x), split into its row expression core(x) and a
+    trailing affine on those vectors: core*g, (core + a)*g, core*g + a, core
+    + a (either operand order). flex's expr norm is core(x) * g + b with g,
+    b learned per feature, the same family of functions ((core + a) * g =
+    core * g + a * g; core alone gains a scale/shift the paper's form may
+    lack, reported). Returns (core canonical, how) or (None, reason)."""
+    import llm_extract as lx
+
+    names = [i.get("name") for i in inputs]
+    params = names[1:]
+    bad = [f"{i.get('name')} = {i.get('meaning')}" for i in inputs[1:]
+           if not (LEARNED_PARAM.search(i.get("meaning") or "") and PER_CHANNEL.search(i.get("meaning") or ""))]
+    if bad:
+        return None, ("its inputs after the row are not all learned per-channel vectors (" + "; ".join(bad) +
+                      "), so it is not a norm over the row with a per-feature affine")
+    node = lx.parse_expr(expr)
+
+    def is_param(n):
+        return n[0] == "var" and n[1] in params
+
+    def split_add(n):  # core + a, a + core -> (core, a)
+        if n[0] == "bin" and n[1] == "+":
+            if is_param(n[3]):
+                return n[2], n[3][1]
+            if is_param(n[2]):
+                return n[3], n[2][1]
+        return n, None
+
+    def split_mul(n):  # core * g, g * core -> (core, g)
+        if n[0] == "bin" and n[1] == "*":
+            if is_param(n[3]):
+                return n[2], n[3][1]
+            if is_param(n[2]):
+                return n[3], n[2][1]
+        return n, None
+
+    core, shift = split_add(node)
+    core, gain = split_mul(core)
+    inside = False
+    if shift is None and gain is not None:
+        inner, pre = split_add(core)
+        if pre is not None:
+            core, shift, inside = inner, pre, True
+    form = ("(core + a)*g" if inside else "core*g + a") if gain and shift else \
+        "core*g" if gain else "core + a" if shift else "core"
+    used = [p for p in (gain, shift) if p]
+    if len(set(used)) != len(used) or sorted(used) != sorted(params):
+        return None, (f"its learned inputs {', '.join(params)} are not exactly one trailing per-channel gain and "
+                      "shift, so flex's e(x) * g + b does not state it")
+    if lx.expr_vars(core) - {"x"}:
+        return None, "its learned inputs enter inside the row expression, not only in a trailing affine"
+    return lx.expr_canonical(core), form
+
+
 def judge_new_ops(ext):
     """The new operations of an LLM extraction (papers/llm_extract.py), each
     hosted or refused. Returns (hosted {flavour: expr}, refusals, report,
-    names judged). A rule-based extraction has none."""
+    names judged, the extracted value each hosted expr replaces {flavour:
+    "expr:<canonical>"}). A rule-based extraction has none."""
     llm = ext.get("llm") or {}
     ver = llm.get("verification") or {}
     ops = ver.get("new_ops") or []
     flav = ver.get("flavours") or {}
-    hosted, refusals, report = {}, [], []
+    hosted, replaces, refusals, report = {}, {}, [], []
     for o in ops:
         name, kind = o.get("name", ""), o.get("kind")
         where = f" ({o['where']})" if o.get("where") else ""
@@ -289,26 +363,49 @@ def judge_new_ops(ext):
                             f"hosts an expr only as {' or '.join(sorted(EXPR_SLOTS))}, so nothing here builds it")
             continue
         k = slot[0]
-        n_in = len(o.get("inputs") or [])
-        if n_in != EXPR_SLOTS[k]:
-            meanings = "; ".join(f"{i.get('name')} = {i.get('meaning')}" for i in o.get("inputs") or [])
+        inputs = o.get("inputs") or []
+        n_in = len(inputs)
+        built, how = chk["canonical"], None
+        if k == "norm" and n_in > 1:
+            core, how = norm_core(chk["canonical"], inputs)
+            if core is None:
+                refusals.append(f"new op {name} = {chk['canonical']} (expr in the norm slot): {how}")
+                continue
+            built = core
+        elif n_in != EXPR_SLOTS[k]:
+            meanings = "; ".join(f"{i.get('name')} = {i.get('meaning')}" for i in inputs)
             refusals.append(f"new op {name} = {chk['canonical']} reads {n_in} inputs ({meanings}): the flex "
                             f"{k} hosts an expr over {EXPR_SLOTS[k]} (the FFN up-projection), so a gated or "
                             "parameterised form is not built")
             continue
         if flav[k].get("check") not in ("verified", "quote_only"):
             continue  # the flavour's own verdict refuses it, by name, below
-        expr, problems = expr_host_check(chk["canonical"], n_in)
+        expr, problems = expr_host_check(built, 1)
         if problems:
             refusals.append(f"new op {name} = {expr}: " + "; ".join(problems))
             continue
         hosted[k] = expr
+        replaces[k] = "expr:" + chk["canonical"]
         lo, hi, step = EXPR_PROBE
         report.append(("EXPR", f"{k} = expr:{expr} (new op {name}, replaces {o.get('replaces') or k}; verified "
                                f"quote{where}: “{quote[:120]}”); parses in the IR grammar "
                                f"(tools/ir_expr.py), finite in f32 on [{lo:g}, {hi:g}]; mtstudio checks its "
                                "gradient against finite differences before training"))
-    return hosted, refusals, report, {o.get("name", "") for o in ops}
+        if k == "norm":
+            pnames = [i.get("name") for i in inputs[1:]]
+            report.append(("NORM-AFFINE", (
+                f"norm: the paper's {chk['canonical']} is {how} over the row expression with its learned "
+                f"per-channel {', '.join(pnames)}; flex computes expr(x) * gain + bias, both learned per feature "
+                "(init 1, 0): " + {
+                    "(core + a)*g": "(core + a) * g = core * g + a * g (gain g, bias a * g), the same functions, another "
+                                    "parametrisation",
+                    "core*g + a": "the same form",
+                    "core*g": "the same form plus a per-feature bias b the paper's form does not have",
+                    "core + a": "the same form plus a per-feature gain g the paper's form does not have"}[how])
+                if how else
+                "norm: flex computes expr(x) * gain + bias, both learned per feature (init 1, 0), as layernorm's "
+                "affine; the paper's expr states the row expression only"))
+    return hosted, refusals, report, {o.get("name", "") for o in ops}, replaces
 
 
 def ancestor_fill(ext):
@@ -357,9 +454,25 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
 
     # New operations (LLM extraction): an expr in a slot the flex family
     # hosts is built; every other new op refuses with its reason.
-    hosted, op_refusals, op_report, op_names = judge_new_ops(ext)
+    hosted, op_refusals, op_report, op_names, op_replaces = judge_new_ops(ext)
     refusals += op_refusals
     report += op_report
+    llm_out = (ext.get("llm") or {}).get("output") or {}
+    llm_flav = llm_out.get("flavours") or {}
+    llm_ver = ((ext.get("llm") or {}).get("verification") or {}).get("flavours") or {}
+
+    # flex is pre-norm: a stated (verified or quoted) other placement would be
+    # trained as pre-norm, a silent approximation.
+    np_ = llm_ver.get("norm_placement") or {}
+    if np_.get("check") in ("verified", "quote_only") and (np_.get("value") or "") not in ("", FLEX_NORM_PLACEMENT):
+        refusals.append(f"norm placement = {np_['value']} ({np_.get('where') or 'no location'}): every family "
+                        f"here is {FLEX_NORM_PLACEMENT}-norm, so training it would silently approximate the paper")
+    # Projection biases are not a knob: flex's linears carry biases, llama's do not.
+    for k in ("qkv_bias", "mlp_bias"):
+        r = llm_ver.get(k) or {}
+        if (r.get("value") or "") in ("true", "false") and r.get("check") != "not_stated":
+            report.append(("NOTED", f"{k} = {r['value']} ({r.get('status')}, {r.get('check')}): not a knob; flex's "
+                                    "projections carry biases, the llama family's do not"))
 
     scan = ext.get("mechanism_scan")
     if scan is None:
@@ -410,6 +523,20 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
                                 f"assert it with --assert {k}=VALUE if you know it")
             continue
         v, verdict = str(f["value"]), f.get("verdict")
+        default = {"residual": "residual", "attention": "exact"}.get(k)
+        if verdict == "unverified" and default and v == default and \
+                (llm_flav.get(k) or {}).get("status") == "inherited":
+            # The paper does not state it (the reply marks it inherited, and
+            # the curated table has no entry to check it against): the
+            # default rule for an unstated residual / attention applies, as
+            # when the field is absent. A departure (highway, swa) inherited
+            # without a check still refuses below.
+            flav[k] = v
+            report.append(("DEFAULT", f"{k} = {v}: not stated by the paper (the extraction marks it inherited, "
+                                      f"unverified: {'; '.join(f.get('reasons') or [])}); "
+                                      + ("a highway or plain stream" if k == "residual" else
+                                         "windowed, linear or sparse attention") + " would be a stated departure"))
+            continue
         if verdict not in ("used", "inherited"):
             ru = f.get("runner_up") or {}
             refusals.append(f"{k} = {v} has verdict {verdict!r}"
@@ -428,7 +555,8 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
         elif v.startswith("new_primitive:"):
             continue  # its new op's refusal above says why
         elif v.startswith("expr:"):
-            if hosted.get(k) is not None and v == "expr:" + hosted[k]:
+            if hosted.get(k) is not None and v == op_replaces.get(k):
+                flav[k] = "expr:" + hosted[k]  # a norm's row expression, its affine tail flex's own
                 continue
             if not any(v[5:] in r for r in op_refusals):
                 refusals.append(f"{k} = {v}: an expr with no verified new-op record that the flex family "
@@ -443,28 +571,40 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
                         "attention has one key/value head per query head")
 
     family, custom = None, {}
-    # The family check runs even beside other refusals, so a refusal lists
-    # every reason (a rope paper whose FFN no rope family builds says so).
+    # RoPE with the llama block's flavours (rmsnorm, swiglu, residual stream,
+    # exact attention) is the llama family; RoPE with any other flavour the
+    # flex family hosts (an expr activation or norm, layernorm, gelu, relu,
+    # highway, swa) is flex with position rope, every head rotated as in
+    # the llama block (tools/parity_model.hpp FlexConfig).
+    llama_block = all(flav.get(k, want) == want for k, want in (
+        ("norm", "rmsnorm"), ("activation", "swiglu"), ("residual", "residual"), ("attention", "exact")))
     if flav.get("positional") == "rope":
-        bad = [f"{k}={flav[k]}" for k, want in (("norm", "rmsnorm"), ("activation", "swiglu"),
-                                                 ("residual", "residual"), ("attention", "exact"))
-               if k in flav and flav[k] != want]
-        if bad:
-            refusals.append("positional = rope is the llama family (rmsnorm, swiglu, plain residual "
-                            "stream, exact attention); this paper has " + ", ".join(bad) +
-                            ", which no family here builds (mtstudio would silently drop or "
-                            "reject it)" + ("; a runtime-defined (expr) activation is hosted by the flex "
-                                            "family only, whose positions are learned or sinusoidal"
-                                            if flav.get("activation", "").startswith("expr:") else ""))
-        elif not refusals:
-            family = "llama"
-            custom["position"] = "rope"
-    elif not refusals:
+        # Both rope families rotate every head, interleaved pairs, theta 10000.
+        for k, ok in (("rope_theta", lambda v: float(v) == 10000.0), ("rope_pairing", lambda v: v == "interleaved"),
+                      ("rope_fraction", lambda v: float(v) == 1.0)):
+            r = llm_ver.get(k) or {}
+            v = (r.get("value") or "").strip()
+            if v and r.get("check") in ("verified", "quote_only"):
+                try:
+                    good = ok(v)
+                except ValueError:
+                    good = False
+                if not good:
+                    refusals.append(f"{k} = {v} ({r.get('where') or 'no location'}): the rope families here rotate "
+                                    "every head with interleaved pairs and theta 10000")
+    if refusals:
+        raise Refused(refusals)
+    if flav.get("positional") == "rope" and llama_block:
+        family = "llama"
+        custom["position"] = "rope"
+    else:
         family = "flex"
         for k in ("norm", "activation", "positional", "residual", "attention"):
             custom[SPEC_KEY[k]] = flav[k]
-    if refusals:
-        raise Refused(refusals)
+        if flav.get("positional") == "rope":
+            report.append(("MATCHED", "position = rope on the flex family (the paper's other flavours are not the "
+                                      "llama block's): every head rotated, interleaved pairs, theta 10000, as "
+                                      "the llama block and the IR rope node"))
 
     T = size["T"]
     custom.update({"d": size["d"], "layers": size["layers"], "heads": size["heads"]})
@@ -572,6 +712,41 @@ def mtstudio(a, args, log_path):
         raise SystemExit(f"mtstudio {args[0]} failed ({p.returncode}); {log_path} ends:\n{tail}")
 
 
+def sft_fit(src, vocab, T, limit, dst):
+    """The SFT slice mtstudio trains on: examples in file order whose prompt
+    tokens + completion tokens + the end token fit T + 1 (load_sft's bound:
+    one row x = seq[0..T-1], y = seq[1..T]), up to `limit` (0 = all); longer
+    ones are dropped and counted, never truncated. Tokenised as load_sft
+    does (prompt and completion separately, tools/bpe.py = mtstudio's BPE).
+    Writes dst atomically; returns the counts."""
+    import bpe
+
+    tok = bpe.read_gguf(vocab)
+    seen = kept = dropped = 0
+    longest_kept = longest_dropped = 0
+    with open(src, encoding="utf-8") as f, open(dst + ".tmp", "w", encoding="utf-8") as g:
+        for line in f:
+            if not line.strip():
+                continue
+            seen += 1
+            ex = json.loads(line)
+            n = len(tok.encode(ex["prompt"])) + len(tok.encode(ex["completion"])) + 1
+            if n > T + 1:
+                dropped += 1
+                longest_dropped = max(longest_dropped, n)
+                continue
+            g.write(line if line.endswith("\n") else line + "\n")
+            kept += 1
+            longest_kept = max(longest_kept, n)
+            if limit and kept >= limit:
+                break
+    os.replace(dst + ".tmp", dst)
+    return {"source": os.path.abspath(src), "T": T, "limit": limit, "seen": seen, "kept": kept,
+            "dropped_longer_than_T": dropped, "longest_kept_tokens": longest_kept,
+            "longest_dropped_tokens": longest_dropped,
+            "rule": "len(prompt) + len(completion) + 1 end token <= T + 1 (mtstudio load_sft), file order"}
+
+
 def stage_train(a, run, which, name):
     spec = os.path.join(run, f"{which}_spec.json")
     out = os.path.join(run, which)
@@ -582,15 +757,10 @@ def stage_train(a, run, which, name):
     if which == "sft":
         dst = os.path.join(run, "sft_examples.jsonl")
         if not os.path.exists(dst):
-            n = 0
-            with open(a.sft_examples, encoding="utf-8") as src, open(dst + ".tmp", "w", encoding="utf-8") as f:
-                for line in src:
-                    if line.strip():
-                        f.write(line)
-                        n += 1
-                        if a.sft_limit and n >= a.sft_limit:
-                            break
-            os.replace(dst + ".tmp", dst)
+            fit = sft_fit(a.sft_examples, a.vocab, a.T, a.sft_limit, dst)
+            write_json(os.path.join(run, "sft_fit.json"), fit)
+            log(f"sft: {fit['kept']} examples kept (first {a.sft_limit or 'all'} that fit T={a.T}); "
+                f"{fit['dropped_longer_than_T']} of the {fit['seen']} read were longer and dropped")
     log(f"{which}: mtstudio run ({read_json(spec)['train']['steps']} steps)")
     t0 = time.time()
     mtstudio(a, ["run", spec], os.path.join(run, f"{which}.log"))
@@ -957,7 +1127,9 @@ def main(argv=None):
         if a.stop_after == "pretrain":
             return 0
         w = stage_train(a, run, "sft", name)
+        fit_path = os.path.join(run, "sft_fit.json")
         done("sft", sft_source=a.sft_examples, sft_limit=a.sft_limit,
+             sft_fit=read_json(fit_path) if os.path.exists(fit_path) else None,
              sft_slice_sha256=sha256(os.path.join(run, "sft_examples.jsonl")), weights_sha256=sha256(w),
              result=read_json(os.path.join(run, "sft", "result.json")))
     if a.stop_after == "sft":
