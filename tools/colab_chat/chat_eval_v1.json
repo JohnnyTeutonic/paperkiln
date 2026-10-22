@@ -1,0 +1,9 @@
+{
+  "_comment": "Turn (e) chat + QA evals on an L4 (22 Oct 2026; GPU work moved to Colab): the live model, ctrl_sft, moe_sft and big_sft through ember's CUDA server and the CUDA mtstudio. Uploads per model TAG.gguf / TAG.safetensors / TAG.spec.json, the two 8k vocabularies and ember_src.tar.gz (tools/colab_chat/chat_eval_vm.sh).",
+  "max_parallel": 1,
+  "jobs": [
+    {"name": "evals",
+     "cmd": ["bash", "tools/colab_chat/chat_eval_vm.sh", "{out}", "live", "ctrlsft", "moesft", "bigsft"],
+     "outputs": ["chat_eval_results.tar.gz"]}
+  ]
+}
