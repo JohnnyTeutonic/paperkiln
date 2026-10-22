@@ -1,0 +1,88 @@
+{
+ "_comment": "Human-written dialogue corpora (corpus/fetchers/human_dialogue.py; survey corpus/HUMAN_DIALOGUE_SURVEY.md), prepared 23 Oct 2026, NOT launched: the main session launches Colab work. Two CPU data jobs, no GPU work: hd_default builds the permissive set (oasst, convai2, wow, bst, taskmaster, multiwoz, self_dialogue; ~2.7 GB of downloads: Wizard of Wikipedia 0.97 GB, Taskmaster 1-3 0.99 GB, ConvAI2 0.43 GB; hd_optin ~0.4 GB), hd_optin the share-alike, non-commercial and LLM-risk sources (topical_chat, dolly, quac, simplewiki, empathetic, dailydialog, no_robots, aya_en) so their sizes are measured; building them is not using them. Both count tokens with the 16k Llama 3 scheme vocabulary (upload C:/ml_artifacts/capacity/vocab/vocab_llama3_bpe.gguf with the runner's --upload) and the 8k fineweb_tinychat vocabulary the boot fetches. Downloads are deleted after each source's build. At home: copy each human_<source>_v1/ into corpus/data/, then `python corpus/fetchers/human_dialogue.py pin SOURCE` for the sources not yet pinned (oasst, bst, self_dialogue, dolly, quac, empathetic, dailydialog, no_robots and aya_en were built and pinned on the laptop: their VM copies must match those pins), record the ParlAI archives' sha256 from report.json inputs in ARCHIVE_SHA256, and run tools/carry5_build.py decontam on the text.txt files once corpus/eval/carry5_v1.jsonl is frozen.",
+ "max_parallel": 2,
+ "jobs": [
+  {
+   "name": "hd_default",
+   "cmd": [
+    "python3",
+    "corpus/fetchers/human_dialogue.py",
+    "default",
+    "--out-dir",
+    "{out}",
+    "--count-vocab",
+    "/content/chat/upload/vocab_llama3_bpe.gguf",
+    "--count-vocab",
+    "/content/pk/corpus/data/vocab_fineweb_tinychat_bpe8k_v1/fineweb_tinychat_bpe8k.gguf"
+   ],
+   "outputs": [
+    "human_dialogue_v1.ledger.json",
+    "human_oasst_v1/report.json",
+    "human_oasst_v1/dialogues.jsonl",
+    "human_oasst_v1/text.txt",
+    "human_convai2_v1/report.json",
+    "human_convai2_v1/dialogues.jsonl",
+    "human_convai2_v1/text.txt",
+    "human_wow_v1/report.json",
+    "human_wow_v1/dialogues.jsonl",
+    "human_wow_v1/text.txt",
+    "human_bst_v1/report.json",
+    "human_bst_v1/dialogues.jsonl",
+    "human_bst_v1/text.txt",
+    "human_taskmaster_v1/report.json",
+    "human_taskmaster_v1/dialogues.jsonl",
+    "human_taskmaster_v1/text.txt",
+    "human_multiwoz_v1/report.json",
+    "human_multiwoz_v1/dialogues.jsonl",
+    "human_multiwoz_v1/text.txt",
+    "human_self_dialogue_v1/report.json",
+    "human_self_dialogue_v1/dialogues.jsonl",
+    "human_self_dialogue_v1/text.txt"
+   ]
+  },
+  {
+   "name": "hd_optin",
+   "cmd": [
+    "python3",
+    "corpus/fetchers/human_dialogue.py",
+    "optin",
+    "--allow-sa",
+    "--allow-nc",
+    "--allow-llm-risk",
+    "--out-dir",
+    "{out}",
+    "--count-vocab",
+    "/content/chat/upload/vocab_llama3_bpe.gguf",
+    "--count-vocab",
+    "/content/pk/corpus/data/vocab_fineweb_tinychat_bpe8k_v1/fineweb_tinychat_bpe8k.gguf"
+   ],
+   "outputs": [
+    "human_dialogue_v1.ledger.json",
+    "human_aya_en_v1/report.json",
+    "human_aya_en_v1/dialogues.jsonl",
+    "human_aya_en_v1/text.txt",
+    "human_topical_chat_v1/report.json",
+    "human_topical_chat_v1/dialogues.jsonl",
+    "human_topical_chat_v1/text.txt",
+    "human_dolly_v1/report.json",
+    "human_dolly_v1/dialogues.jsonl",
+    "human_dolly_v1/text.txt",
+    "human_quac_v1/report.json",
+    "human_quac_v1/dialogues.jsonl",
+    "human_quac_v1/text.txt",
+    "human_simplewiki_v1/report.json",
+    "human_simplewiki_v1/documents.jsonl",
+    "human_simplewiki_v1/text.txt",
+    "human_empathetic_v1/report.json",
+    "human_empathetic_v1/dialogues.jsonl",
+    "human_empathetic_v1/text.txt",
+    "human_dailydialog_v1/report.json",
+    "human_dailydialog_v1/dialogues.jsonl",
+    "human_dailydialog_v1/text.txt",
+    "human_no_robots_v1/report.json",
+    "human_no_robots_v1/dialogues.jsonl",
+    "human_no_robots_v1/text.txt"
+   ]
+  }
+ ]
+}

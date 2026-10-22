@@ -46,6 +46,13 @@ question's words; they are reported, not dropped.
 SODA is CC-BY-4.0: Kim et al., 2023, "SODA: Million-scale Dialogue Distillation with Social
 Commonsense Contextualization" (allenai/soda).
 
+**Human-written dialogue** (no distillation, [ledger 0005](ledger/0005-human-dialogue.md),
+survey [HUMAN_DIALOGUE_SURVEY.md](HUMAN_DIALOGUE_SURVEY.md)): `fetchers/human_dialogue.py` builds
+one corpus per source (`human_<source>_v1`) from dialogue written by people only, for the
+tiny-chat experiments. The default set has permissive licences; share-alike, non-commercial and
+LLM-risk sources are behind `--allow-sa`, `--allow-nc` and `--allow-llm-risk`. The large sources
+build on Colab (`tools/colab_chat/human_dialogue_v1.json`).
+
 **A new corpus** needs a ledger entry before it is trained on. The entry
 names at least three rejected alternatives and states, as a number, the
 baseline the corpus must beat. The corpus also needs a fetcher that pins its
