@@ -37,9 +37,13 @@ drop any dialogue holding a ChatGPT tell phrase (TELLS; reason llm_tell); oasst 
 flagged synthetic or carrying a model_name, and its branch choice skips replies with a tell.
 
 Every dialogue then goes through _common.normalise_dialogue, a within-source duplicate check
-(_common.dialogue_key), and corpus/decontam.py against the frozen eval sets plus
-corpus/eval/carry5_v1.jsonl when it exists (its user turns and gold replies; run
-`tools/carry5_build.py decontam` on the outputs for Carry-5's template and item-leak rules).
+(_common.dialogue_key), and corpus/decontam.py against the frozen eval sets. Carry-5
+(corpus/eval/carry5_v1.jsonl) joins the targets only with --carry5: the v1 corpora were built and
+pinned before Carry-5 was frozen, so a build that read it would no longer match its pin. Its rules
+are applied where the corpora become training data (tools/colab_chat/tiny_chat_data.py), and
+`tools/carry5_build.py decontam` scans the pinned outputs for its template and item-leak rules.
+
+    python corpus/fetchers/human_dialogue.py pin SOURCE ... [--out-dir DIR]   # files in DIR/human_<s>_v1/
 """
 from __future__ import annotations
 
@@ -100,7 +104,8 @@ TOPICAL = ("alexa/Topical-Chat", "7c939229cbcf6f55f6977b341a5a2f2fe982d53f")
 # ParlAI archives (no revision): pinned by sha256 (None until the first fetch records it).
 CONVAI2_URL = "https://dl.fbaipublicfiles.com/parlai/convai2/convai2_fix_723.tgz"
 WOW_URL = "https://dl.fbaipublicfiles.com/parlai/wizard_of_wikipedia/wizard_of_wikipedia.tgz"
-ARCHIVE_SHA256 = {CONVAI2_URL: None, WOW_URL: None}
+ARCHIVE_SHA256 = {CONVAI2_URL: "d0ae89defe2fd0b0a4221eaa642a457d7d40cef475f54798119c7f3b8dd9361d",
+                  WOW_URL: "2a549627a83fea745efa2076a41d1c0078ad002ab2b54eae6a4e3d3d66ae24b7"}  # pk-hd, 23 Oct 2026
 
 # Phrases that mark ChatGPT-style text: the OpenAssistant paper's own filters ("as a large language
 # model", "knowledge cutoff after September 2021"; 2304.07327 appendix D) and their near variants.
@@ -421,7 +426,9 @@ def raw_bst(ctx):
 def raw_taskmaster(ctx):
     """Taskmaster-1 (self-dialogs minus the dev/test ids, and the two-person WOz dialogs),
     Taskmaster-2 and Taskmaster-3. Taskmaster-4 (collected for a 2024 paper) is left out: crowd
-    text of the LLM era with no stated control (survey section 3)."""
+    text of the LLM era with no stated control (survey section 3). Taskmaster-3 labels its
+    speakers in lower case, which this v1 mapping does not read: its dialogues drop as
+    unknown_speaker, so human_taskmaster_v1 is TM-1 and TM-2 (survey section 6)."""
     files = {p: github_file(TASKMASTER, p, ctx["raw"]) for p in TM_FILES}
     held = set()
     for p in ("TM-1-2019/train-dev-test/dev.csv", "TM-1-2019/train-dev-test/test.csv"):
@@ -549,10 +556,10 @@ RAW = {"oasst": raw_oasst, "convai2": raw_convai2, "wow": raw_wow, "bst": raw_bs
 
 
 # ---- decontamination targets --------------------------------------------------
-def decontaminator():
-    """The frozen eval sets, plus Carry-5 when it exists: one row per item turn, the user turn as a
-    prompt and the gold reply as its reference."""
-    if not os.path.exists(CARRY5):
+def decontaminator(carry5=False):
+    """The frozen eval sets, plus Carry-5 when asked for (and present): one row per item turn, the
+    user turn as a prompt and the gold reply as its reference."""
+    if not carry5 or not os.path.exists(CARRY5):
         return decontam.Decontaminator(), None
     tmp = tempfile.NamedTemporaryFile("w", suffix=".jsonl", delete=False, encoding="utf-8")
     with tmp:
@@ -783,13 +790,15 @@ def main(argv=None):
     ap.add_argument("--out-dir", help="write here instead of corpus/data/ (a VM run; pin at home)")
     ap.add_argument("--count-vocab", action="append", default=[], help="GGUF vocabulary to count tokens with (repeat)")
     ap.add_argument("--keep-raw", action="store_true", help="keep downloaded archives and GitHub files")
+    ap.add_argument("--carry5", action="store_true",
+                    help="add corpus/eval/carry5_v1.jsonl to the decontamination targets (changes the v1 outputs)")
     a = ap.parse_args(argv)
     if a.what in ("pin", "tokens"):
         for s in a.sources:
             cid = f"human_{s}_v1"
-            if a.what == "pin":
-                C.finish(cid, [C.out_path(cid, n) for n in names_for(s)], f"{s}: human-written text (human_dialogue.py)",
-                         pin=True)
+            if a.what == "pin":  # files in corpus/data/<id>/, or DIR/<id>/ (a VM's outputs where they landed)
+                paths = [os.path.join(a.out_dir, cid, n) if a.out_dir else C.out_path(cid, n) for n in names_for(s)]
+                C.finish(cid, paths, f"{s}: human-written text (human_dialogue.py)", pin=True)
             else:
                 add_tokens(cid, a.count_vocab, a.out_dir)
         return 0
@@ -806,8 +815,8 @@ def main(argv=None):
                 C.die(f"unknown source {s!r}; one of {sorted(SOURCES)} (comma-separated) or default/optin/all/pin/tokens")
             if not gate_ok(s, a):
                 C.die(f"{s} is {SOURCES[s][0]} ({SOURCES[s][1]}); pass --allow-sa, --allow-nc or --allow-llm-risk")
-    dc, carry5_sha = decontaminator()
-    print(f"decontamination: frozen eval sets{' + carry5_v1' if carry5_sha else ' (carry5_v1 absent)'}")
+    dc, carry5_sha = decontaminator(a.carry5)
+    print(f"decontamination: frozen eval sets{' + carry5_v1' if carry5_sha else ' (carry5_v1 not used)'}")
     reports = {}
     for s in todo:
         try:

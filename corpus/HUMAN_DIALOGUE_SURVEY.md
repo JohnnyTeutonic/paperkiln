@@ -5,7 +5,11 @@ model enters training data: no distillation. Every claim below was read on 23 Oc
 primary page named in section 8 (dataset card, paper, licence file or terms page), not from memory.
 Fetcher: `corpus/fetchers/human_dialogue.py`; selection record: `ledger/0005-human-dialogue.md`.
 
-## 1. Recommended set
+## 1. The sets
+
+The tiny-chat programme trains on the default set and the six share-alike and non-commercial
+dialogue sources (Jonathan, 23 Oct 2026; PREREGISTRATION.md amendment 1): 13 sources, all built
+and pinned. Aya stays out; Simple English Wikipedia is built for the knowledge arm (E5w).
 
 On by default (permissive licence, human authorship documented):
 
@@ -14,20 +18,21 @@ On by default (permissive licence, human authorship documented):
 | OpenAssistant oasst2 + oasst1 | Volunteers, both roles | Apache-2.0 | laptop, pinned | 5,328 | 16,490 | 2,425,273 | 2,909,441 |
 | Blended Skill Talk | Paired crowd workers | CC BY 4.0 | laptop, pinned | 4,819 | 54,034 | 1,014,819 | 1,075,603 |
 | Self-dialogue Corpus | One crowd worker, both sides | BSD-3-Clause | laptop, pinned | 24,133 | 372,450 | 5,527,322 | 5,919,493 |
-| ConvAI2 / PersonaChat | Paired crowd workers | CC BY 4.0 | Colab | (10,907 dialogues, 162,064 utterances, all splits) | | | |
-| Wizard of Wikipedia | Crowd apprentice + wizard | CC BY 4.0 | Colab | (22k dialogues, 201k utterances, all splits) | | | |
-| Taskmaster-1, -2, -3 | Crowd users with call-centre operators; crowd self-dialogues | CC BY 4.0 | Colab | (54,293 dialogues) | | | |
-| MultiWOZ 2.2 | Crowd workers, both sides (Wizard-of-Oz) | MIT | Colab | (8,438 train dialogues) | | | |
-| **Built so far** | | | | **34,280** | **442,974** | **8,967,414** | **9,904,537** |
+| ConvAI2 / PersonaChat | Paired crowd workers | CC BY 4.0 | Colab, pinned | 8,951 | 131,530 | 1,883,518 | 1,999,124 |
+| Wizard of Wikipedia | Crowd apprentice + wizard | CC BY 4.0 | Colab, pinned | 18,428 | 148,166 | 3,466,236 | 3,750,181 |
+| Taskmaster-1, -2 (v1: TM-3 not read, section 6) | Crowd users with call-centre operators; crowd self-dialogues | CC BY 4.0 | Colab, pinned | 28,791 | 508,774 | 7,599,378 | 8,516,118 |
+| MultiWOZ 2.2 | Crowd workers, both sides (Wizard-of-Oz) | MIT | Colab, pinned | 8,292 | 111,676 | 2,209,246 | 2,449,865 |
+| **Default set** | | | | **98,742** | **1,343,120** | **24,125,792** | **26,619,825** |
 
-Off by default, for Jonathan's decision (section 7):
+Gated (`--allow-sa`, `--allow-nc`, `--allow-llm-risk`); the share-alike and non-commercial
+dialogue sources are in the tiny-chat pool, Aya is not:
 
 | Source | Gate | Written by | Licence | Built | Dialogues kept | Turns | 16k tokens | 8k tokens |
 |---|---|---|---|---|---:|---:|---:|---:|
-| Topical-Chat | share-alike | Paired crowd workers | CDLA-Sharing-1.0 | Colab | (8,628 train conversations, 188,378 utterances) | | | |
+| Topical-Chat | share-alike | Paired crowd workers | CDLA-Sharing-1.0 | Colab, pinned | 8,605 | 181,884 | 5,037,915 | 5,459,288 |
 | databricks-dolly-15k | share-alike | Databricks employees | CC BY-SA 3.0 | laptop, pinned | 14,945 | 29,890 | 2,921,410 | 3,372,933 |
 | QuAC | share-alike | Crowd student + teacher | CC BY-SA 4.0 | laptop, pinned | 11,567 | 138,218 | 2,571,107 | 2,920,693 |
-| Simple English Wikipedia | share-alike | Wikipedia editors | CC BY-SA, GFDL | Colab | (157 MB parquet) | documents | | |
+| Simple English Wikipedia | share-alike | Wikipedia editors | CC BY-SA, GFDL | Colab, pinned | 224,597 articles | documents | 79,523,627 | 96,655,832 |
 | EmpatheticDialogues | non-commercial | Paired crowd workers | CC BY-NC 4.0 | laptop, pinned | 17,780 | 73,258 | 1,361,911 | 1,432,972 |
 | DailyDialog | non-commercial | Human-written (card) | CC BY-NC-SA 4.0 | laptop, pinned | 10,235 | 76,770 | 1,273,731 | 1,347,962 |
 | No Robots | non-commercial | Skilled annotators (card) | CC BY-NC 4.0 | laptop, pinned | 8,698 | 17,396 | 2,765,925 | 3,164,023 |
@@ -36,8 +41,9 @@ Off by default, for Jonathan's decision (section 7):
 Token counts are of each corpus's `text.txt` in the stack's chat template (markers included):
 "16k" is `vocab_llama3_bpe.gguf` (Llama 3 scheme, 16,384 entries,
 C:/ml_artifacts/capacity/vocab/), "8k" is `fineweb_tinychat_bpe8k.gguf` (paperkiln BPE, 8,192).
-Rows marked "Colab" are prepared as `tools/colab_chat/human_dialogue_v1.json` and not launched;
-their sizes are the dataset's own counts until the job reports.
+Rows marked "Colab" were built by `tools/colab_chat/human_dialogue_v1.json` (session pk-hd, 23 Oct
+2026). The 13 tiny-chat sources hold 170,572 dialogues, 176.0 MB of rendered text and 40.1M tokens
+of the 16k vocabulary.
 
 ## 2. Candidates surveyed
 
@@ -125,17 +131,19 @@ The chat template (contract point 3) is `<|user|>U<|assistant|>A<|endoftext|>` p
 Per source, in order: reader (train split only where the source defines splits), role mapping, the
 licence and LLM-risk gate, `_common.normalise_dialogue` (template markers and instruction-bearing
 system turns drop the dialogue), the tell filter for LLM-era sources, within-source duplicate check
-(`_common.dialogue_key`), `corpus/decontam.py` against `simple_qa_v1`, `tinychat_hf_prompts_v1`,
-`chat_prompts_v1` and `carry5_v1` (its user turns and gold replies, read when the file exists).
+(`_common.dialogue_key`), `corpus/decontam.py` against `simple_qa_v1`, `tinychat_hf_prompts_v1` and
+`chat_prompts_v1`. Carry-5 (`carry5_v1`, its user turns and gold replies) joins only with
+`--carry5`, because the v1 corpora were pinned before it was frozen; the tiny-chat data job applies
+it where the corpora become training data.
 Every drop has a reason in `report.json`; a run of several sources writes
 `human_dialogue_v1.ledger.json` with exact duplicates across sources (counted, not removed).
 Downloads are deleted after a build (`--keep-raw` keeps them); Hugging Face files stay in the HF
 cache. Pins: `corpus/hashes/human_<source>_v1.sha256`.
 
-Carry-5 (`corpus/eval/carry5_v1.jsonl`) did not exist when the local corpora were built and pinned;
-when it is frozen, run `python tools/carry5_build.py decontam --out REPORT.json
-corpus/data/human_*_v1/text.txt` (its template-span and item-leak rules), and the Colab job reads it
-automatically if it is committed before launch.
+`tools/carry5_build.py decontam` over the 13 tiny-chat sources and Simple English Wikipedia
+(395,169 rows; `experiments/tiny_chat_2026-10/carry5_decontam_human_v1.json`): no item leaks, 44
+items' fact sentences somewhere (everyday sentences), 6 Carry-5 user turns as whole user turns in
+52 dialogues, which the tiny-chat data job drops (`tools/colab_chat/tiny_chat_data.py`).
 
 ## 6. Build status
 
@@ -163,20 +171,30 @@ empathetic 12. Short turns of two words or fewer: self_dialogue 19,085 of 372,45
 4,008, quac 4,662. Measured depth: self_dialogue 15.4 turns per dialogue, quac 11.9, dailydialog
 7.5, bst 11.2, empathetic 4.1, oasst 3.1; the instruction sets are one exchange.
 
-**Prepared for Colab, not launched:** `tools/colab_chat/human_dialogue_v1.json`, two CPU data jobs.
-`hd_default` builds the default set (~2.7 GB of downloads: Wizard of Wikipedia 0.97 GB, Taskmaster
-0.99 GB, ConvAI2 0.43 GB, MultiWOZ 0.17 GB); `hd_optin` builds the gated sources (~0.4 GB, Topical-Chat
-and Simple English Wikipedia new). Both count tokens with both vocabularies. The VM rebuilds the
-laptop's nine corpora too; their files must match the laptop's pins. At home: copy each
-`human_<source>_v1/` into `corpus/data/`, `python corpus/fetchers/human_dialogue.py pin SOURCE`
-for the new ones, and write the two ParlAI archives' sha256 (in `report.json` inputs) into
-`ARCHIVE_SHA256`. The readers for the Colab-only sources are tested on synthetic archives
-(`tests/test_human_dialogue.py`), not yet on the real files.
+**Built on Colab and pinned** (`tools/colab_chat/human_dialogue_v1.json`, session pk-hd, 23 Oct
+2026): ConvAI2, Wizard of Wikipedia, Taskmaster, MultiWOZ, Topical-Chat and Simple English
+Wikipedia. The VM's rebuilds of the laptop's corpora equal their pins byte for byte. The files stay
+where the runner put them, outside OneDrive (`C:/ml_artifacts/human_dialogue/hd_default` and
+`hd_optin`), pinned there with `human_dialogue.py pin SOURCE --out-dir DIR`; the two ParlAI archives
+are pinned by sha256 (`ARCHIVE_SHA256`). Drops: ConvAI2 8,908 perspective duplicates (each dialogue
+appears from both speakers) and 19 decontaminated; Wizard of Wikipedia 2 decontaminated; MultiWOZ
+132 decontaminated and 13 duplicates; Topical-Chat 23 decontaminated; Simple English Wikipedia
+17,173 articles under 20 words.
 
-The tiny-chat data job (`tools/colab_chat/tiny_chat_data.py`) calls `human_dialogue.py all --out-dir
-{human}`: with no `--allow-*` flag, `all` builds the default set only.
+**Taskmaster v1 holds Taskmaster-1 and -2 only.** Taskmaster-3 labels its speakers `user` and
+`assistant` in lower case and the reader maps `USER` and `ASSISTANT`, so all 23,757 TM-3 dialogues
+drop as `unknown_speaker`. TM-3's agent turns are filled from templates ("Auto template ..." in each
+record) with crowd-written customer turns, which is a reason to leave it out as well as a reason to
+read it; adding it is a new corpus id (`human_taskmaster_v2`) and a pre-registration amendment.
 
-## 7. Decisions for Jonathan
+The tiny-chat data job (`tools/colab_chat/tiny_chat_data.py`) builds the 13 sources on the VM with
+`--allow-sa --allow-nc` and refuses unless every file equals its pin (`--require-pinned`).
+
+## 7. Decisions (Jonathan, 23 Oct 2026)
+
+Share-alike and non-commercial sources are in; FineWeb-Edu counts as human-written; OpenAssistant
+counts as clean enough; Aya stays behind `--allow-llm-risk` and out of the tiny-chat pool; first
+speaker as user stands. The questions as they were put:
 
 1. **Share-alike.** Topical-Chat's CDLA-Sharing-1.0 puts no obligation on models (section 3.5); the
    share-alike binds only a republished copy of the data. Recommendation: switch it on; it is the
