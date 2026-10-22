@@ -21,6 +21,14 @@ when its output already exists, so a run restarts where it stopped:
             the run's choice, reported beside the paper's values; the
             mechanism is the paper's. -> spec_report.json, *_spec.json
             (exit 2 and refusal.json on a refusal)
+            An LLM extraction (papers/llm_extract.py, --extraction) may
+            carry the paper's new operation as an expr: a verified expr in
+            a slot the flex family hosts (the FFN activation, one input)
+            is parsed by tools/ir_expr.py, probed for finite f32 values and
+            written as custom.activation = "expr:<e>" (mtstudio checks its
+            gradient against finite differences before training; the GGUF's
+            IR carries the expr node ember runs). A needs_new_primitive op,
+            an unverified one, or an expr in any other slot refuses.
   pretrain  mtstudio run, objective lm on --corpus -> pretrain/
   sft       mtstudio run, objective sft on --sft-examples (a --sft-limit
             slice), init_from the pretrained weights -> sft/
@@ -99,6 +107,14 @@ LEGAL = {
 }
 SPEC_KEY = {"norm": "norm", "activation": "activation", "positional": "position",
             "residual": "residual", "attention": "attention"}
+# A paper's new operation written as an expr (papers/llm_extract.py) can take
+# these flavour slots; the flex family hosts it as custom.<key> = "expr:<e>"
+# over this many inputs. Anything else an expr replaces (a norm, a gate with
+# learned parameters) is refused: no family here builds it.
+EXPR_SLOTS = {"activation": 1}
+# Where a hosted expr is probed (tools/ir_expr.py, f32): every value finite.
+EXPR_PROBE = (-20.0, 20.0, 0.25)
+NEW_OP_CUE = re.compile(r"^new op (\S+) ")
 
 
 class Refused(Exception):
@@ -216,12 +232,134 @@ def parse_asserts(items):
     return out
 
 
+def expr_host_check(expr, n_inputs):
+    """An expr the flex family is to host: parsed by tools/ir_expr.py (the
+    grammar both engines implement) with n_inputs inputs, and finite in f32
+    over EXPR_PROBE. Returns (canonical text, list of problems)."""
+    import numpy as np
+    import ir_expr
+
+    try:
+        node = ir_expr.parse(expr, n_inputs)
+    except ir_expr.ExprError as e:
+        return expr, [f"does not parse in the IR grammar (tools/ir_expr.py): {e}"]
+    lo, hi, step = EXPR_PROBE
+    xs = np.arange(lo, hi + step / 2, step, dtype=np.float32).reshape(1, -1)
+    with np.errstate(all="ignore"):
+        y = ir_expr.evaluate(node, [xs] * n_inputs)
+    bad = xs[~np.isfinite(y)]
+    if bad.size:
+        return expr, [f"non-finite in f32 at x = {', '.join(f'{v:g}' for v in bad[:6])}"
+                      f"{' ...' if bad.size > 6 else ''} (probe [{lo:g}, {hi:g}] step {step:g})"]
+    return expr, []
+
+
+def judge_new_ops(ext):
+    """The new operations of an LLM extraction (papers/llm_extract.py), each
+    hosted or refused. Returns (hosted {flavour: expr}, refusals, report,
+    names judged). A rule-based extraction has none."""
+    llm = ext.get("llm") or {}
+    ver = llm.get("verification") or {}
+    ops = ver.get("new_ops") or []
+    flav = ver.get("flavours") or {}
+    hosted, refusals, report = {}, [], []
+    for o in ops:
+        name, kind = o.get("name", ""), o.get("kind")
+        where = f" ({o['where']})" if o.get("where") else ""
+        quote = " ".join((o.get("quote") or "").split())[:200]
+        if kind == "needs_new_primitive":
+            refusals.append(f"new op {name} needs a new primitive{where}: {o.get('reason') or 'no reason given'}; "
+                            f"no family here builds it and no expr can state it, so the chain refuses rather "
+                            f"than approximates (paper: “{quote}”)")
+            continue
+        if kind != "expr":
+            refusals.append(f"new op {name} has kind {kind!r} (expected expr or needs_new_primitive)")
+            continue
+        chk = o.get("expr_check") or {}
+        if o.get("check") != "verified" or o.get("errors") or not chk.get("ok"):
+            refusals.append(f"new op {name} = {chk.get('expr') or '?'} is unverified{where}: "
+                            + "; ".join(o.get("errors") or ["no passing expr check"]))
+            continue
+        users = sorted(k for k, r in flav.items() if (r.get("value") or "") == f"new_op:{name}")
+        slot = [k for k in users if k in EXPR_SLOTS]
+        if not users or users != slot or len(slot) != 1:
+            refusals.append(f"new op {name} = {chk['canonical']} (expr, replaces "
+                            f"{o.get('replaces') or 'unstated'}) is used by "
+                            f"{', '.join(users) if users else 'no flavour the chain places'}: the flex family "
+                            f"hosts an expr only as {' or '.join(sorted(EXPR_SLOTS))}, so nothing here builds it")
+            continue
+        k = slot[0]
+        n_in = len(o.get("inputs") or [])
+        if n_in != EXPR_SLOTS[k]:
+            meanings = "; ".join(f"{i.get('name')} = {i.get('meaning')}" for i in o.get("inputs") or [])
+            refusals.append(f"new op {name} = {chk['canonical']} reads {n_in} inputs ({meanings}): the flex "
+                            f"{k} hosts an expr over {EXPR_SLOTS[k]} (the FFN up-projection), so a gated or "
+                            "parameterised form is not built")
+            continue
+        if flav[k].get("check") not in ("verified", "quote_only"):
+            continue  # the flavour's own verdict refuses it, by name, below
+        expr, problems = expr_host_check(chk["canonical"], n_in)
+        if problems:
+            refusals.append(f"new op {name} = {expr}: " + "; ".join(problems))
+            continue
+        hosted[k] = expr
+        lo, hi, step = EXPR_PROBE
+        report.append(("EXPR", f"{k} = expr:{expr} (new op {name}, replaces {o.get('replaces') or k}; verified "
+                               f"quote{where}: “{quote[:120]}”); parses in the IR grammar "
+                               f"(tools/ir_expr.py), finite in f32 on [{lo:g}, {hi:g}]; mtstudio checks its "
+                               "gradient against finite differences before training"))
+    return hosted, refusals, report, {o.get("name", "") for o in ops}
+
+
+def ancestor_fill(ext):
+    """Flavours an LLM extraction leaves not stated, taken from its verified
+    inheritance: the curated ancestor table (papers/fetch.py ANCESTORS), the
+    lookup the rule-based path makes, never generation. Only when the reply
+    names an ancestor for the paper's own model (inherits, with its quote
+    found in the source and resolved to a curated entry) and itself marks a
+    value inherited from it; never over a stated or unverified value.
+    Returns {flavour: field entry with verdict "inherited"}."""
+    ver = (ext.get("llm") or {}).get("verification") or {}
+    out = (ext.get("llm") or {}).get("output") or {}
+    inh = ver.get("inherits") or {}
+    anc = inh.get("resolved")
+    if not anc or not inh.get("quote_found"):
+        return {}
+    import fetch
+
+    table = fetch.ANCESTORS.get(anc) or {}
+    marked = [k for k, r in (out.get("flavours") or {}).items() if r.get("status") == "inherited"]
+    marked += ["family"] if (out.get("family") or {}).get("status") == "inherited" else []
+    if not table or not marked:
+        return {}
+    fl = ver.get("flavours") or {}
+    filled = {}
+    for k in ("norm", "activation", "positional", "residual", "attention"):
+        if k in table and (fl.get(k) or {}).get("check", "not_stated") == "not_stated" \
+                and k not in ext.get("fields", {}):
+            filled[k] = {"value": table[k], "verdict": "inherited",
+                         "evidence": f"curated ancestor table: fetch.ANCESTORS[{anc!r}][{k!r}] = {table[k]}; the "
+                                     f"paper's model inherits from {inh.get('ancestor')} (verified quote, "
+                                     f"{inh.get('where') or 'no location'}: "
+                                     f"“{' '.join((inh.get('quote') or '').split())[:160]}”; the "
+                                     f"reply marks {', '.join(sorted(marked))} inherited) and does not restate it"}
+    return filled
+
+
 def build_spec(ext, size, asserts=None, skip_scan=False):
     """Extraction -> (arch dict for an mtstudio spec, report). Raises Refused
     with every reason found. size: d, layers, heads, d_ff, T."""
     asserts = asserts or {}
     report, refusals = [], []
-    fields = ext.get("fields", {})
+    fields = dict(ext.get("fields", {}))
+    inherited = ancestor_fill(ext)
+    fields.update(inherited)
+
+    # New operations (LLM extraction): an expr in a slot the flex family
+    # hosts is built; every other new op refuses with its reason.
+    hosted, op_refusals, op_report, op_names = judge_new_ops(ext)
+    refusals += op_refusals
+    report += op_report
 
     scan = ext.get("mechanism_scan")
     if scan is None:
@@ -233,6 +371,9 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
                             "source); re-extract from the LaTeX (--tex or a fetch), or pass "
                             "--skip-mechanism-scan to accept that explicitly")
     for h in scan or []:
+        m = NEW_OP_CUE.match(h.get("mechanism", ""))
+        if m and m.group(1) in op_names:
+            continue  # judged above from the extraction's verified new-op record
         if h["blocking"]:
             refusals.append(f"mechanism outside the extractor's lattice: {h['mechanism']} ({h['where']}: "
                             f"\u201c{h['evidence']}\u201d); no family here builds it, and training the "
@@ -249,14 +390,20 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
                                        f"{f['value'] if f else 'unresolved'})"))
             continue
         if f is None:
+            llm = bool(ext.get("llm"))
             if k == "residual":
                 flav[k] = "residual"
-                report.append(("DEFAULT", "residual = residual: the extractor's only positive signature is "
-                                          "a highway/gated stream, and the paper shows none"))
+                report.append(("DEFAULT", "residual = residual: " + (
+                    "the LLM extraction found no stated residual wiring (a highway or plain stream would be "
+                    "a stated departure)" if llm else
+                    "the extractor's only positive signature is a highway/gated stream, and the paper "
+                    "shows none")))
             elif k == "attention":
                 flav[k] = "exact"
-                report.append(("DEFAULT", "attention = exact: no sliding-window signature in the paper "
-                                          "(the extractor is one-sided by design)"))
+                report.append(("DEFAULT", "attention = exact: " + (
+                    "the LLM extraction found no stated attention variant (windowed, linear or sparse "
+                    "attention would be a stated departure)" if llm else
+                    "no sliding-window signature in the paper (the extractor is one-sided by design)")))
             else:
                 refusals.append(f"{k} is unresolved: the paper does not state it and names no ancestor "
                                 f"that does (mentions: {ext.get('mentions', {}).get(k) or 'none'}); "
@@ -270,9 +417,23 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
                             + f": not asserted by the extractor; settle it with --assert {k}=VALUE")
             continue
         flav[k] = v
-        report.append(("MATCHED", f"{k} = {v} ({verdict}: \u201c{f['evidence'][:120]}\u201d)"))
+        if k in inherited:
+            report.append(("INHERITED", f"{k} = {v}: {f['evidence']}"))
+        else:
+            report.append(("MATCHED", f"{k} = {v} ({verdict}: \u201c{f['evidence'][:120]}\u201d)"))
 
     for k, v in flav.items():
+        if k in asserts:
+            pass
+        elif v.startswith("new_primitive:"):
+            continue  # its new op's refusal above says why
+        elif v.startswith("expr:"):
+            if hosted.get(k) is not None and v == "expr:" + hosted[k]:
+                continue
+            if not any(v[5:] in r for r in op_refusals):
+                refusals.append(f"{k} = {v}: an expr with no verified new-op record that the flex family "
+                                "hosts (papers/llm_extract.py writes one); not built")
+            continue
         if v not in LEGAL[k]:
             refusals.append(f"{k} = {v} has no engine support (mtstudio takes {sorted(LEGAL[k])})")
 
@@ -282,23 +443,26 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
                         "attention has one key/value head per query head")
 
     family, custom = None, {}
-    if not refusals:
-        if flav["positional"] == "rope":
-            bad = [f"{k}={flav[k]}" for k, want in (("norm", "rmsnorm"), ("activation", "swiglu"),
-                                                     ("residual", "residual"), ("attention", "exact"))
-                   if flav[k] != want]
-            if bad:
-                refusals.append("positional = rope is the llama family (rmsnorm, swiglu, plain residual "
-                                "stream, exact attention); this paper has " + ", ".join(bad) +
-                                ", which no family here builds (mtstudio would silently drop or "
-                                "reject it)")
-            else:
-                family = "llama"
-                custom["position"] = "rope"
-        else:
-            family = "flex"
-            for k in ("norm", "activation", "positional", "residual", "attention"):
-                custom[SPEC_KEY[k]] = flav[k]
+    # The family check runs even beside other refusals, so a refusal lists
+    # every reason (a rope paper whose FFN no rope family builds says so).
+    if flav.get("positional") == "rope":
+        bad = [f"{k}={flav[k]}" for k, want in (("norm", "rmsnorm"), ("activation", "swiglu"),
+                                                 ("residual", "residual"), ("attention", "exact"))
+               if k in flav and flav[k] != want]
+        if bad:
+            refusals.append("positional = rope is the llama family (rmsnorm, swiglu, plain residual "
+                            "stream, exact attention); this paper has " + ", ".join(bad) +
+                            ", which no family here builds (mtstudio would silently drop or "
+                            "reject it)" + ("; a runtime-defined (expr) activation is hosted by the flex "
+                                            "family only, whose positions are learned or sinusoidal"
+                                            if flav.get("activation", "").startswith("expr:") else ""))
+        elif not refusals:
+            family = "llama"
+            custom["position"] = "rope"
+    elif not refusals:
+        family = "flex"
+        for k in ("norm", "activation", "positional", "residual", "attention"):
+            custom[SPEC_KEY[k]] = flav[k]
     if refusals:
         raise Refused(refusals)
 
@@ -345,7 +509,8 @@ def make_specs(a, run, family, arch):
         "arch": arch,
         "data": {**common_data, "corpus": os.path.abspath(a.corpus), "max_tokens": a.max_tokens},
         "train": {"steps": a.pretrain_steps, "lr": a.lr, "batch": a.batch,
-                  "eval_every": max(1, a.pretrain_steps // 4), "checkpoint_every": max(1, a.pretrain_steps),
+                  "eval_every": max(1, a.pretrain_steps // 4),
+                  "checkpoint_every": min(a.checkpoint_every or a.pretrain_steps, a.pretrain_steps) or 1,
                   "gradmap_every": 0, "seed": a.seed, "optimizer": "adamw"},
         "export": {"formats": ["safetensors"]},
         "out_dir": os.path.join(run, "pretrain"),
@@ -355,7 +520,8 @@ def make_specs(a, run, family, arch):
         "arch": arch,
         "data": {**common_data, "sft_examples": os.path.join(run, "sft_examples.jsonl")},
         "train": {"steps": a.sft_steps, "lr": a.sft_lr, "batch": a.batch,
-                  "eval_every": max(1, a.sft_steps // 2), "checkpoint_every": max(1, a.sft_steps),
+                  "eval_every": max(1, a.sft_steps // 2),
+                  "checkpoint_every": min(a.checkpoint_every or a.sft_steps, a.sft_steps) or 1,
                   "gradmap_every": 0, "seed": a.seed, "optimizer": "adamw", "objective": "sft",
                   "init_from": os.path.join(run, "pretrain", name + "_base.safetensors")},
         "export": {"formats": ["safetensors"]},
@@ -724,6 +890,9 @@ def main(argv=None):
     tr.add_argument("--lr-decay", choices=("none", "cosine"), default="none", help="both stages")
     tr.add_argument("--seed", type=int, default=1)
     tr.add_argument("--threads", type=int, default=2)
+    tr.add_argument("--checkpoint-every", type=int, default=0,
+                    help="steps between checkpoints (0 = at the end only); a stopped stage resumes "
+                         "from its last checkpoint when rerun")
     tr.add_argument("--import-sft", help="a trained SFT out_dir from elsewhere (Colab): skip pretrain + sft")
     ch = ap.add_argument_group("serve and chat")
     ch.add_argument("--engine", choices=("ember", "numpy"), default="ember")

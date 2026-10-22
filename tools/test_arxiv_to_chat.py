@@ -157,3 +157,113 @@ def test_stages_with_mtstudio_mocked_and_restartable(tmp_path, monkeypatch):
     assert j2[0]["spec"]["data"]["corpus"] == "/content/chat/data/mix.main.ids"
     assert j2[0]["spec"]["data"]["max_tokens"] == 0
     assert j2[1]["spec"]["data"]["sft_examples"] == "/content/chat/lever1/lever1_sft_v1.jsonl"
+
+
+# --------------------------------------------------------------------------
+# LLM extractions (papers/llm_extract.py): a paper's new op as an expr
+
+RECEIPTS = os.path.join(os.path.dirname(HERE), "experiments", "arxiv_chain_2026-10-23")
+
+
+def receipt(pid):
+    with open(os.path.join(RECEIPTS, f"{pid}.extraction.json"), encoding="utf-8") as f:
+        return json.load(f)
+
+
+def llm_ext(expr="relu(x)^2", kind="expr", slot="activation", inputs=("x",), ok=True, errors=(),
+            stated=None, inherits=None):
+    """An LLM extraction as to_extraction writes it: one new op in `slot`,
+    the other flavours stated (or as `stated` gives them)."""
+    stated = {"norm": "layernorm", "positional": "learned"} if stated is None else stated
+    canonical = expr if not ok else f"({expr})" if kind == "expr" else ""
+    v_flav = {k: {"value": v, "check": "verified", "status": "stated"} for k, v in stated.items()}
+    v_flav[slot] = {"value": "new_op:op1", "check": "verified", "status": "stated"}
+    fields = {k: {"value": v, "evidence": "q", "verdict": "used"} for k, v in stated.items()}
+    fields[slot] = {"value": ("expr:" + canonical) if kind == "expr" and ok else "new_primitive:op1",
+                    "evidence": "q", "verdict": "used"}
+    op = {"name": "op1", "kind": kind, "replaces": "FFN activation", "reason": "" if kind == "expr" else
+          "a causal convolution over time", "quote": "the paper's sentence", "where": "Sec. 2",
+          "inputs": [{"name": n, "meaning": "m"} for n in inputs], "errors": list(errors), "quote_found": True,
+          "check": "verified" if not errors else "unverified"}
+    if kind == "expr":
+        op["expr_check"] = {"expr": expr, "ok": ok, "errors": list(errors), "canonical": canonical}
+    out_flav = {k: {"status": "stated"} for k in v_flav}
+    return {"arxiv_id": "0000.00001", "fields": fields, "mentions": {},
+            "mechanism_scan": [{"mechanism": f"new op op1 = {canonical} (expr)" if kind == "expr" else
+                                "new op op1 (needs a new primitive: a causal convolution over time)",
+                                "where": "llm extraction, verified quote", "blocking": True, "evidence": "q"}],
+            "llm": {"output": {"flavours": out_flav, "family": {"status": "stated"}},
+                    "verification": {"new_ops": [op], "flavours": v_flav, "inherits": inherits}}}
+
+
+def test_llm_expr_activation_hosted_on_flex():
+    fam, arch, rep = A.build_spec(llm_ext("relu(x)^2"), SIZE)
+    assert fam == "flex" and arch["custom"]["activation"] == "expr:(relu(x)^2)"
+    assert (arch["custom"]["norm"], arch["custom"]["position"]) == ("layernorm", "learned")
+    assert any(b == "EXPR" and "finite in f32" in d for b, d in rep)
+    # The new op's blocking scan entry is judged from its record, not refused as a mechanism.
+    assert not any("outside the extractor's lattice" in d for _, d in rep)
+
+
+def test_llm_expr_bad_expressions_refused():
+    with pytest.raises(A.Refused, match="unverified.*does not parse"):
+        A.build_spec(llm_ext("x + * 2", ok=False, errors=["does not parse: unexpected '*'"]), SIZE)
+    # Verified by the extractor's sampler but not finite in f32 over the probe: never trained.
+    with pytest.raises(A.Refused, match="non-finite in f32 at x = -20"):
+        A.build_spec(llm_ext("sqrt(x)"), SIZE)
+    with pytest.raises(A.Refused, match="non-finite"):
+        A.build_spec(llm_ext("exp(x^2)"), SIZE)
+    # A two-input (gated) form: flex's expr activation reads only the up-projection.
+    with pytest.raises(A.Refused, match="reads 2 inputs"):
+        A.build_spec(llm_ext("relu(a)*x", inputs=("x", "a")), SIZE)
+    # An expr standing in for the norm: no family here hosts it.
+    with pytest.raises(A.Refused, match="used by norm: the flex family hosts an expr only as activation"):
+        A.build_spec(llm_ext("x/sqrt(rowmean(x^2)+1e-5)", slot="norm",
+                             stated={"activation": "gelu", "positional": "learned"}), SIZE)
+    # An expr activation on a rope paper: the llama family has swiglu only.
+    with pytest.raises(A.Refused, match="hosted by the flex family only"):
+        A.build_spec(llm_ext("relu(x)^2", stated={"norm": "rmsnorm", "positional": "rope"}), SIZE)
+    # An expr value with no new-op record behind it (a hand-written extraction).
+    ext = ext_with(norm="layernorm", activation="expr:(relu(x)^2)", positional="learned")
+    with pytest.raises(A.Refused, match="no verified new-op record"):
+        A.build_spec(ext, SIZE)
+
+
+def test_llm_needs_new_primitive_refused():
+    with pytest.raises(A.Refused, match="needs a new primitive.*causal convolution"):
+        A.build_spec(llm_ext(kind="needs_new_primitive"), SIZE)
+
+
+def test_primer_receipt_refused_with_every_reason(tmp_path):
+    ext = receipt("2109.08668")
+    with pytest.raises(A.Refused) as r:
+        A.build_spec(ext, SIZE)
+    reasons = " | ".join(r.value.args[0])
+    assert "causal_depthwise_conv3 needs a new primitive" in reasons
+    assert "primer_norm" in reasons and "used by norm" in reasons
+    assert "relative" in reasons
+    assert "squared_relu" not in reasons  # its expr is hostable; the paper is refused for the rest
+
+
+def test_golu_receipt_builds_flex_with_inherited_flavours():
+    fam, arch, rep = A.build_spec(receipt("2502.03654"), SIZE)
+    assert fam == "flex" and arch["custom"]["activation"] == "expr:(x*exp((-exp((-x)))))"
+    assert (arch["custom"]["norm"], arch["custom"]["position"]) == ("layernorm", "learned")
+    inh = [d for b, d in rep if b == "INHERITED"]
+    assert len(inh) == 2 and all("fetch.ANCESTORS['gpt-2']" in d for d in inh)
+
+
+def test_ancestor_fill_needs_a_verified_inheritance_the_reply_uses():
+    inh = {"ancestor": "GPT-2", "resolved": "gpt-2", "quote": "we train GPT-2 small", "where": "Sec. 3",
+           "quote_found": True}
+    ext = llm_ext("relu(x)^2", stated={}, inherits=inh)
+    # The reply names the ancestor but marks nothing inherited from it: no lookup.
+    with pytest.raises(A.Refused, match="norm is unresolved"):
+        A.build_spec(ext, SIZE)
+    ext["llm"]["output"]["family"]["status"] = "inherited"
+    fam, arch, _ = A.build_spec(ext, SIZE)
+    assert fam == "flex" and arch["custom"]["norm"] == "layernorm" and arch["custom"]["position"] == "learned"
+    # An inheritance quote not found in the source: no lookup.
+    ext["llm"]["verification"]["inherits"] = dict(inh, quote_found=False)
+    with pytest.raises(A.Refused, match="positional is unresolved"):
+        A.build_spec(ext, SIZE)

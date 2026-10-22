@@ -1133,6 +1133,69 @@ void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama, 
     }
 }
 
+// A runtime-defined activation ("expr:<e>"), checked before any training:
+// (1) its autograd backward (the primitives' own backwards, tape-composed)
+// against central finite differences, loss = sum(expr(x) .* R) on [4, 8]
+// random inputs kept 0.2 away from 0 (abs, relu, max and where kink there),
+// h = 1e-2 as tests/test_expr.cpp, failing above 2e-3 relative; (2) value
+// and gradient finite on x in [-20, 20] step 0.25. A failure throws: a
+// wrong or non-finite gradient would train silently. The event is the
+// receipt (worst error, the probe).
+json expr_gradcheck(const std::string& text) {
+    const Expr e = Expr::parse(text, 1);
+    const size_t T = 4, w = 8;
+    std::mt19937 gen(20261023);
+    std::normal_distribution<float> nd(0.0f, 1.0f);
+    Matrix X(T, w), R(T, w);
+    for (size_t i = 0; i < T; ++i)
+        for (size_t j = 0; j < w; ++j) {
+            const float v = nd(gen);
+            X(i, j) = (v < 0 ? -0.2f : 0.2f) + v;
+            R(i, j) = nd(gen);
+        }
+    const Var x = make_var(X, true);
+    const Var r = make_var(R);
+    auto loss_of = [&]() {
+        return ops::scale(ops::mean(ops::mul(ops::expr({x}, e), r)), static_cast<float>(T * w));
+    };
+    backward(loss_of());
+    const float h = 1e-2f;
+    double worst = 0;
+    for (size_t i = 0; i < T; ++i)
+        for (size_t j = 0; j < w; ++j) {
+            const float keep = x->data(i, j);
+            NoGrad ng;
+            x->data(i, j) = keep + h;
+            const double up = loss_of()->data(0, 0);
+            x->data(i, j) = keep - h;
+            const double dn = loss_of()->data(0, 0);
+            x->data(i, j) = keep;
+            const double fd = (up - dn) / (2.0 * h), a = x->grad(i, j);
+            const double rel = std::abs(a - fd) / (1.0 + std::max(std::abs(a), std::abs(fd)));
+            worst = std::isfinite(rel) ? std::max(worst, rel) : INFINITY;
+        }
+    const size_t n = 161;  // -20 .. 20 step 0.25
+    Matrix P(1, n);
+    for (size_t j = 0; j < n; ++j) P(0, j) = -20.0f + 0.25f * static_cast<float>(j);
+    const Var p = make_var(P, true);
+    const Var y = ops::expr({p}, e);
+    backward(ops::scale(ops::mean(y), static_cast<float>(n)));
+    std::vector<float> bad;
+    for (size_t j = 0; j < n; ++j)
+        if (!std::isfinite(y->data(0, j)) || !std::isfinite(p->grad(0, j))) bad.push_back(P(0, j));
+    json ev = {{"event", "expr_gradcheck"}, {"expr", text}, {"fd_points", T * w}, {"fd_h", h},
+               {"fd_worst_rel", worst}, {"fd_tol", 2e-3}, {"probe", "x in [-20, 20] step 0.25"},
+               {"probe_nonfinite", bad.size()}, {"pass", worst <= 2e-3 && bad.empty()}};
+    if (!(worst <= 2e-3))
+        throw std::runtime_error("expr activation \"" + text + "\": autograd gradient disagrees with finite "
+                                 "differences (worst relative error " + std::to_string(worst) + " > 2e-3)");
+    if (!bad.empty())
+        throw std::runtime_error("expr activation \"" + text + "\": value or gradient not finite at x = " +
+                                 std::to_string(bad[0]) + " (" + std::to_string(bad.size()) +
+                                 " of 161 probe points in [-20, 20])");
+    return ev;
+}
+
 int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     std::printf("== mtstudio: %s ==\n", s.name.c_str());
     std::printf("arch: %s d=%zu layers=%zu heads=%zu | T=%zu vocab_cap=%zu\n", s.attention.c_str(),
@@ -1328,9 +1391,14 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         fc.sinks = s.sinks;
         if (fc.norm != "layernorm" && fc.norm != "rmsnorm")
             throw std::runtime_error("unknown norm " + fc.norm);
-        if (fc.act.rfind("expr:", 0) == 0)
-            Expr::parse(fc.act.substr(5), 1);  // a runtime-defined activation; throws naming the column
-        else if (fc.act != "gelu" && fc.act != "relu" && fc.act != "swiglu")
+        if (fc.act.rfind("expr:", 0) == 0) {
+            // A runtime-defined activation: parse (throws naming the column),
+            // then its gradient against finite differences before training.
+            const json gc = expr_gradcheck(fc.act.substr(5));
+            ev.emit(gc);
+            std::printf("expr activation %s: gradient vs finite differences worst rel %.2e, finite on "
+                        "[-20, 20]\n", fc.act.substr(5).c_str(), gc["fd_worst_rel"].get<double>());
+        } else if (fc.act != "gelu" && fc.act != "relu" && fc.act != "swiglu")
             throw std::runtime_error("unknown activation " + fc.act);
         if (fc.pos != "learned" && fc.pos != "sinusoidal")
             throw std::runtime_error("unknown position " + fc.pos + " (rope = llama family)");
