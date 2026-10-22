@@ -199,7 +199,15 @@ def download_file(src, dst, timeout=1800):
         return 1
     if not meta["parts"]:
         rc, _ = colab("download", "-s", NAME, src, dst, timeout=timeout)
-        return rc
+        if rc == 0:
+            return 0
+        if not exec_fetch(src, meta["size"], dst + ".dltmp"):
+            return 1
+        with open(dst + ".dltmp", "rb") as f:
+            if hashlib.sha256(f.read()).hexdigest() != meta["sha256"]:
+                return 1
+        os.replace(dst + ".dltmp", dst)
+        return 0
     local = os.path.join(HOME, "dl")
     os.makedirs(local, exist_ok=True)
     for p, n in meta["parts"]:
