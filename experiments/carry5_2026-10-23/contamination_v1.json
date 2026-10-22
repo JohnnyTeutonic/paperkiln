@@ -1,0 +1,450 @@
+{
+ "summary": {
+  "items": 1032,
+  "corpora": 24,
+  "rows_scanned": 2031617,
+  "item_leaks": 0,
+  "items_with_fact_sentence_in_training": 52,
+  "eval_texts_hit": {
+   "sentence": 144,
+   "prompt": 5
+  },
+  "rules": "decontam.py ngram (13 words), prompt (user turn equal, 4+ words), span (8-12 word user turn); sentence: any 3+ word template sentence as a span; fact_sentence: an item's value-bearing fact sentence; item_leak: fact sentence and question in one row"
+ },
+ "per_corpus": {
+  "corpus/data/tinychat_hf_sample_v1/dialogues_train.jsonl": {
+   "rows": 27587,
+   "bytes": 29065140,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 2165,
+     "patterns": 16
+    }
+   }
+  },
+  "corpus/data/tinychat_hf_sample_v1/dialogues_val.jsonl": {
+   "rows": 248,
+   "bytes": 261164,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 17,
+     "patterns": 4
+    }
+   }
+  },
+  "corpus/data/tinychat_hf_sample_v1/pretrain_train.txt": {
+   "rows": 27587,
+   "bytes": 19131515,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 2165,
+     "patterns": 16
+    }
+   }
+  },
+  "corpus/data/tinychat_v1_1500/tinychat.txt": {
+   "rows": 1500,
+   "bytes": 369202,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 120,
+     "patterns": 1
+    }
+   }
+  },
+  "corpus/data/tinychat_v2_1500/tinychat.txt": {
+   "rows": 1500,
+   "bytes": 393560,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 177,
+     "patterns": 2
+    }
+   }
+  },
+  "corpus/data/tinychat_v2_4000/tinychat.txt": {
+   "rows": 4000,
+   "bytes": 1049149,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 448,
+     "patterns": 2
+    }
+   }
+  },
+  "corpus/data/everyday_v1/dialogues.jsonl": {
+   "rows": 2005,
+   "bytes": 2239239,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 2022,
+     "patterns": 3
+    }
+   }
+  },
+  "corpus/data/smol_smoltalk_qa_v1/dialogues_train.jsonl": {
+   "rows": 314280,
+   "bytes": 1494417940,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 4848,
+     "patterns": 102
+    },
+    "fact_sentence": {
+     "rows": 249,
+     "patterns": 29
+    }
+   }
+  },
+  "corpus/data/smol_smoltalk_qa_v1/dialogues_val.jsonl": {
+   "rows": 3141,
+   "bytes": 15241029,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 34,
+     "patterns": 10
+    },
+    "fact_sentence": {
+     "rows": 4,
+     "patterns": 1
+    }
+   }
+  },
+  "corpus/data/smol_smoltalk_qa_v1/dialogues_test.jsonl": {
+   "rows": 3161,
+   "bytes": 15218746,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 22,
+     "patterns": 12
+    },
+    "fact_sentence": {
+     "rows": 2,
+     "patterns": 2
+    }
+   }
+  },
+  "corpus/data/fineweb_edu_sample_v1/pretrain_train.txt": {
+   "rows": 11122,
+   "bytes": 52426369,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 27,
+     "patterns": 6
+    }
+   }
+  },
+  "C:/ml_artifacts/capacity/lever1/lever1_sft_v1.jsonl": {
+   "rows": 185430,
+   "bytes": 125603770,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 21367,
+     "patterns": 48
+    },
+    "fact_sentence": {
+     "rows": 2,
+     "patterns": 2
+    }
+   }
+  },
+  "C:/ml_artifacts/capacity/lever2/dialogue_oasst_v1/dialogues.jsonl": {
+   "rows": 5388,
+   "bytes": 11438008,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 72,
+     "patterns": 14
+    },
+    "fact_sentence": {
+     "rows": 2,
+     "patterns": 2
+    }
+   }
+  },
+  "C:/ml_artifacts/capacity/lever2/dialogue_soda_v1/dialogues.jsonl": {
+   "rows": 1139202,
+   "bytes": 1063508181,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 39064,
+     "patterns": 59
+    },
+    "prompt": {
+     "rows": 332,
+     "patterns": 5
+    },
+    "fact_sentence": {
+     "rows": 253,
+     "patterns": 24
+    }
+   }
+  },
+  "C:/ml_artifacts/capacity/lever2/dialogue_ultrachat_v1/dialogues.jsonl": {
+   "rows": 203783,
+   "bytes": 1243259488,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 4932,
+     "patterns": 35
+    },
+    "fact_sentence": {
+     "rows": 22,
+     "patterns": 9
+    }
+   }
+  },
+  "corpus/data/human_aya_en_v1/text.txt": {
+   "rows": 2103,
+   "bytes": 942750,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 2,
+     "patterns": 2
+    }
+   }
+  },
+  "corpus/data/human_bst_v1/text.txt": {
+   "rows": 4820,
+   "bytes": 4550380,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 128,
+     "patterns": 22
+    },
+    "fact_sentence": {
+     "rows": 15,
+     "patterns": 13
+    }
+   }
+  },
+  "corpus/data/human_dailydialog_v1/text.txt": {
+   "rows": 10235,
+   "bytes": 5791888,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 359,
+     "patterns": 20
+    },
+    "fact_sentence": {
+     "rows": 6,
+     "patterns": 4
+    }
+   }
+  },
+  "corpus/data/human_dolly_v1/text.txt": {
+   "rows": 14949,
+   "bytes": 12122377,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 9,
+     "patterns": 4
+    }
+   }
+  },
+  "corpus/data/human_empathetic_v1/text.txt": {
+   "rows": 17780,
+   "bytes": 6136536,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 45,
+     "patterns": 11
+    },
+    "fact_sentence": {
+     "rows": 2,
+     "patterns": 2
+    }
+   }
+  },
+  "corpus/data/human_no_robots_v1/text.txt": {
+   "rows": 8706,
+   "bytes": 11377481,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 17,
+     "patterns": 8
+    }
+   }
+  },
+  "corpus/data/human_oasst_v1/text.txt": {
+   "rows": 7390,
+   "bytes": 10457372,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 72,
+     "patterns": 14
+    },
+    "fact_sentence": {
+     "rows": 2,
+     "patterns": 2
+    }
+   }
+  },
+  "corpus/data/human_quac_v1/text.txt": {
+   "rows": 11567,
+   "bytes": 11475127,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 4,
+     "patterns": 1
+    }
+   }
+  },
+  "corpus/data/human_self_dialogue_v1/text.txt": {
+   "rows": 24133,
+   "bytes": 24962152,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 429,
+     "patterns": 16
+    },
+    "prompt": {
+     "rows": 1,
+     "patterns": 1
+    },
+    "fact_sentence": {
+     "rows": 1,
+     "patterns": 1
+    }
+   }
+  }
+ },
+ "item_leaks": {},
+ "top_sentences": {
+  "how can i help": 23781,
+  "nice to meet you": 15301,
+  "how are you today": 11868,
+  "yes of course": 7783,
+  "that sounds nice": 6943,
+  "that sounds lovely": 4374,
+  "you are welcome": 2583,
+  "what is it about": 1450,
+  "thanks for telling me": 1290,
+  "what would you like to talk about": 723,
+  "can you help me with this": 300,
+  "it was a pleasure": 281,
+  "lovely to meet you": 234,
+  "thanks for sharing that": 214,
+  "what is on your mind": 161,
+  "i work as an accountant": 157,
+  "i am 30 years old": 114,
+  "sorry i made a mistake": 105,
+  "have a lovely day": 96,
+  "i am well thank you": 78,
+  "that is good to know": 39,
+  "i am 25 years old": 35,
+  "where am i going": 33,
+  "you are 45 years old": 32,
+  "you are 55 years old": 28,
+  "you are 35 years old": 27,
+  "you are 30 years old": 25,
+  "i work as a teacher": 25,
+  "you are 25 years old": 22,
+  "i work as an engineer": 19,
+  "hello nice to meet you": 19,
+  "i work as a nurse": 17,
+  "oh that is nice": 16,
+  "i am 28 years old": 15,
+  "i am 35 years old": 14,
+  "we live on earth": 11,
+  "my name is kofi": 10,
+  "i am 18 years old": 10,
+  "i work as a mechanic": 10,
+  "i am 40 years old": 9,
+  "you are 60 years old": 9,
+  "you are 52 years old": 8,
+  "you are 40 years old": 8,
+  "you are 50 years old": 8,
+  "you are 38 years old": 8,
+  "you are 62 years old": 8,
+  "how old am i": 8,
+  "no problem thanks for letting me know": 8,
+  "can we chat for a bit": 8,
+  "your name is kofi": 7,
+  "you are 58 years old": 7,
+  "a dog barks": 6,
+  "you are 21 years old": 6,
+  "you are 32 years old": 6,
+  "you are 65 years old": 6,
+  "you work as an accountant": 6,
+  "i am 27 years old": 6,
+  "i am 26 years old": 6,
+  "you are 42 years old": 5,
+  "i work as a lawyer": 5
+ },
+ "drop_rule_examples": {
+  "prompt|carry5_v1:recall:0007:t1:user": {
+   "corpus": "C:/ml_artifacts/capacity/lever2/dialogue_soda_v1/dialogues.jsonl",
+   "examples": [
+    {
+     "row": 38,
+     "context": "Hi there! How are you today?"
+    },
+    {
+     "row": 5907,
+     "context": "Hi there! How are you today?"
+    }
+   ]
+  },
+  "prompt|carry5_v1:recall:0061:t2:user": {
+   "corpus": "C:/ml_artifacts/capacity/lever2/dialogue_soda_v1/dialogues.jsonl",
+   "examples": [
+    {
+     "row": 193493,
+     "context": "I work as an accountant."
+    }
+   ]
+  },
+  "prompt|carry5_v1:correction:0017:t2:user": {
+   "corpus": "C:/ml_artifacts/capacity/lever2/dialogue_soda_v1/dialogues.jsonl",
+   "examples": [
+    {
+     "row": 244900,
+     "context": "My name is Tomas."
+    }
+   ]
+  },
+  "prompt|carry5_v1:correction:0088:t2:user": {
+   "corpus": "C:/ml_artifacts/capacity/lever2/dialogue_soda_v1/dialogues.jsonl",
+   "examples": [
+    {
+     "row": 499532,
+     "context": "I am 18 years old."
+    }
+   ]
+  },
+  "prompt|carry5_v1:recall:0174:t2:user": {
+   "corpus": "C:/ml_artifacts/capacity/lever2/dialogue_soda_v1/dialogues.jsonl",
+   "examples": [
+    {
+     "row": 971826,
+     "context": "I work as an engineer."
+    }
+   ]
+  }
+ }
+}

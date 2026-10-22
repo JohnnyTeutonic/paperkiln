@@ -264,6 +264,38 @@ python3 tools/publish_hf.py runs/tinychat-quick --repo your-name/tinychat-quick
 
 The Hub page is the model card, with a "chat with it" section.
 
+## Evaluating a tiny chat model: Carry-5
+
+Can a 5M-150M model hold a five-turn conversation? Carry-5
+(`corpus/eval/carry5_v1.jsonl`, frozen, sha256 in `corpus/hashes/`) is 1,032
+scripted conversations: a fact about the user planted early and asked at turn
+4 or 5 (recall, 432), a fact corrected before it is asked (216), a standing
+instruction such as "answer in one word" (144), a return to a topic after a
+digression (180) and a little common knowledge (60). Every item carries its
+distance (turns between fact and question), 0-2 same-type distractor facts, a
+single-turn twin (fact and question in one turn) and the question alone. The
+items come from hand-written templates and value lists with a fixed seed
+(`tools/carry5_build.py`) and are checked against every local training corpus
+(`carry5_build.py decontam`: decontam.py's rules plus item leaks).
+
+```bash
+python3 tools/carry5_eval.py run --model live=runs/chat/spec.json --model chance=uniform \
+    --mtstudio build/mtstudio --ember-bin ~/ember/build/tinyllama_server --out runs/carry5
+```
+
+Two scorers. **Forced choice**: the four candidate replies ("Your dog is
+called Biscuit." and three same-type alternatives, distractors included) are
+scored by log-probability at the target turn (`mtstudio score`, or
+`--scorer ir` for the numpy IR interpreter on the GGUF), after the item's
+canned replies (gold history) or after the model's own greedy replies (self
+history); chance is 0.25. **Greedy generation** through ember's `/chat` (or
+`--gen mtstudio`), matched against the accepted answers as `qa_eval.py` does;
+the instruction family is checked by machine (one word, five words, yes/no, a
+number). The report (`summary.md`) gives each by family, distance, distractor
+count and mode, the twin-minus-multi-turn gap, and per-turn clean-stop and
+repetition rates; every self-history reply is re-scored, and the scorer's
+argmax must reproduce it token for token (the parity gate).
+
 ## The studio — spec in, chatting model out
 
 ![the terminal loop: paper → provenance-carrying extraction → train → Atlas row → chat](media/demo.gif)

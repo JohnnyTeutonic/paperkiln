@@ -3366,6 +3366,100 @@ int chat_cmd(const std::string& target, const std::string& host, int port, bool 
     svr.listen_after_bind();
     return 0;
 }
+
+// `mtstudio score`: the log-probability of given continuations under the
+// model (tools/carry5_eval.py's forced-choice scorer). Each input line holds
+// a templated "prompt" and a "continuation" (or "prompt_ids" /
+// "continuation_ids"); both are tokenised on their own with the model's
+// tokeniser, as `chat` tokenises a prompt, and concatenated. One full
+// forward pass (no KV cache, as `chat` without --kv-cache) over all ids but
+// the last gives, for every continuation token, its log-probability under
+// the softmax at temperature 1 (double precision) and the argmax with the
+// specials `chat` bans from generation (<unk>, <s>, </s>, <pad>) left out,
+// so a continuation equal to `chat`'s greedy reply plus its stop token has
+// argmax == continuation at every position (the parity gate in
+// carry5_eval.py). A sequence longer than T + 1 ids is reported over_ctx
+// and not scored: `chat` never attends past T positions.
+int score_cmd(const std::string& target, const std::string& in_path, const std::string& out_path) {
+    const Spec s = resolve_chat_spec(target);
+    LoadedLM lm(s);
+    std::ifstream in(in_path);
+    if (!in) throw std::runtime_error("cannot open " + in_path);
+    std::ofstream out(out_path, std::ios::trunc);
+    if (!out) throw std::runtime_error("cannot write " + out_path);
+    const size_t V = lm.tokens.size();
+    std::vector<char> banned(V, 0);
+    for (const char* sp : {"<unk>", "<s>", "</s>", "<pad>"}) {
+        auto it = lm.vocab.find(sp);
+        if (it != lm.vocab.end()) banned[static_cast<size_t>(it->second)] = 1;
+    }
+    auto ids_of = [&](const json& r, const char* ids_key, const char* text_key) {
+        if (r.contains(ids_key)) return r[ids_key].get<std::vector<int>>();
+        return tokenize(r.at(text_key).get<std::string>(), lm.vocab, 1u << 30);
+    };
+    NoGrad ng;
+    std::string line;
+    size_t n = 0, over = 0;
+    while (std::getline(in, line)) {
+        if (line.find_first_not_of(" \t\r") == std::string::npos) continue;
+        const json r = json::parse(line);
+        const std::vector<int> p = ids_of(r, "prompt_ids", "prompt");
+        const std::vector<int> c = ids_of(r, "continuation_ids", "continuation");
+        if (p.empty() || c.empty())
+            throw std::runtime_error("score: line " + std::to_string(n) + " has an empty prompt or continuation");
+        for (int t : p)
+            if (t < 0 || static_cast<size_t>(t) >= V) throw std::runtime_error("score: prompt id out of range");
+        for (int t : c)
+            if (t < 0 || static_cast<size_t>(t) >= V) throw std::runtime_error("score: continuation id out of range");
+        json rec = {{"i", n}, {"prompt_tokens", p.size()}, {"continuation_ids", c}};
+        if (r.contains("key")) rec["key"] = r["key"];
+        std::vector<int> ids = p;
+        ids.insert(ids.end(), c.begin(), c.end());
+        if (ids.size() > s.T + 1) {
+            rec["over_ctx"] = true;
+            out << rec.dump() << "\n";
+            ++n;
+            ++over;
+            continue;
+        }
+        const std::vector<int> ctx(ids.begin(), ids.end() - 1);
+        Var logits = lm.forward(ctx);
+        if (logits->data.rows() != ctx.size() || logits->data.cols() != V)
+            throw std::runtime_error("score: logits shape differs from the context");
+        std::vector<double> lp;
+        std::vector<int> am;
+        double sum = 0.0;
+        for (size_t j = 0; j < c.size(); ++j) {
+            const size_t row = p.size() - 1 + j;
+            double mx = -1e300;
+            int best = -1;
+            double best_v = -1e300;
+            for (size_t k = 0; k < V; ++k) {
+                const double x = logits->data(row, k);
+                mx = std::max(mx, x);
+                if (!banned[k] && (best < 0 || x > best_v)) {
+                    best = static_cast<int>(k);
+                    best_v = x;
+                }
+            }
+            double z = 0.0;
+            for (size_t k = 0; k < V; ++k) z += std::exp(static_cast<double>(logits->data(row, k)) - mx);
+            const double l = static_cast<double>(logits->data(row, static_cast<size_t>(c[j]))) - mx - std::log(z);
+            lp.push_back(l);
+            am.push_back(best);
+            sum += l;
+        }
+        rec["over_ctx"] = false;
+        rec["logprobs"] = lp;
+        rec["argmax"] = am;
+        rec["sum"] = sum;
+        out << rec.dump() << "\n";
+        ++n;
+    }
+    std::fprintf(stderr, "score: %zu continuations (%zu over the context of %zu) -> %s\n", n, over,
+                 static_cast<size_t>(s.T), out_path.c_str());
+    return 0;
+}
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -3446,6 +3540,17 @@ int main(int argc, char** argv) {
             }
             return chat_cmd(argv[2], host, port, kv_cache);
         }
+        if (cmd == "score" && argc >= 3) {
+            std::string in_path, out_path;
+            for (int i = 3; i + 1 < argc; i += 2) {
+                const std::string k = argv[i], v = argv[i + 1];
+                if (k == "--in") in_path = v;
+                else if (k == "--out") out_path = v;
+                else throw std::runtime_error("score: unknown option " + k);
+            }
+            if (in_path.empty() || out_path.empty()) throw std::runtime_error("score needs --in and --out");
+            return score_cmd(argv[2], in_path, out_path);
+        }
     } catch (const std::exception& e) {
         std::fprintf(stderr, "mtstudio: %s\n", e.what());
         return 1;
@@ -3461,6 +3566,8 @@ int main(int argc, char** argv) {
                  "         [--out-dir DIR]\n"
                  "       mtstudio serve <out_dir> [port] [spec]   (MTSTUDIO_UI "
                  "overrides the index.html path)\n"
-                 "       mtstudio chat <out_dir|spec.json> [--port 8080] [--host 127.0.0.1] [--kv-cache]\n");
+                 "       mtstudio chat <out_dir|spec.json> [--port 8080] [--host 127.0.0.1] [--kv-cache]\n"
+                 "       mtstudio score <out_dir|spec.json> --in REQ.jsonl --out RES.jsonl   "
+                 "(per-token log-probs of {prompt, continuation})\n");
     return 2;
 }
