@@ -69,3 +69,42 @@ def test_extension_rule(tmp_path):
     rc, res = run(tmp_path)
     h = res["E5"]["H5_primary_YE1_minus_Y0"]
     assert h["verdict"] == "NOT_RESOLVED" and h["extend_to_5_seeds"] is True and h["sign_agreement"] == "3/3"
+
+
+def test_early_ranking(tmp_path):
+    """Amendment 1: at each rung, Spearman's rho of the rung predictor against the final metric over
+    runs, its bootstrap interval, and whether the top third of cells by the predictor keeps the final
+    best cell. Here the 50% rung orders the runs exactly as their final Y; the 5% rung reverses them."""
+    import random
+    rng = random.Random(3)
+    final = {}
+    for r in (1, 2, 3):
+        for k, cell in enumerate(("s0", "s25", "s50", "s100")):
+            m = 0.60 + 0.03 * k + 0.002 * r
+            put(tmp_path, "e5", cell, r, m)
+            final[(cell, r)] = m - 0.80
+            p = tmp_path / "e5" / f"post_e5_{cell}_r{r}" / "summary.json"
+            s = json.loads(p.read_text())
+            s["final_rung"] = {"acc_gold": 0.5 + final[(cell, r)], "Y_base": final[(cell, r)]}
+            p.write_text(json.dumps(s))
+            for step, y in ((500, -final[(cell, r)]), (1000, rng.random()), (2500, rng.random()),
+                            (5000, final[(cell, r)])):
+                d = tmp_path / "e5" / f"rung_e5_{cell}_r{r}_s{step}"
+                d.mkdir(parents=True)
+                (d / "rung.json").write_text(json.dumps({
+                    "cell": cell, "seed": r, "step": step, "Y_base": y, "acc_gold": 0.5 + y,
+                    "panels": {"fineweb": 3.5 + 0.01 * k, "dialogue": 3.0}}))
+    rc, res = run(tmp_path)
+    assert rc == 0, res
+    er = res["early_ranking"]["E5"]
+    assert er["label"] == "REGISTERED"
+    assert er["rungs"]["50%"]["Y_base->Y"]["verdict"] == "PREDICTIVE" and er["rungs"]["50%"]["Y_base->Y"]["rho"] > 0.99
+    assert er["rungs"]["5%"]["Y_base->Y"]["verdict"] == "NOT_PREDICTIVE" and er["rungs"]["5%"]["Y_base->Y"]["rho"] < 0
+    assert er["rungs"]["100%"]["Y_base->Y"]["verdict"] == "PREDICTIVE"
+    assert er["earliest_predictive"]["Y_base->Y"] in ("10%", "25%", "50%")
+    # Missing rungs (a replaced VM): fewer than 80% of the runs makes that rung INCOMPLETE.
+    import shutil
+    for cell in ("s0", "s25", "s50"):
+        shutil.rmtree(tmp_path / "e5" / f"rung_e5_{cell}_r1_s5000")
+    rc, res = run(tmp_path)
+    assert res["early_ranking"]["E5"]["rungs"]["50%"]["Y_base->Y"]["verdict"] == "INCOMPLETE"

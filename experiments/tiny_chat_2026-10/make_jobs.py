@@ -11,7 +11,13 @@ Writes
   tools/colab_chat/tiny_chat_s0.json                    Stage 0 at 20M: data, throughput probes, lr screens
   tools/colab_chat/tiny_chat_e5.json                    E5: dialogue share 0/25/50/100 at 20m_L8, 3 seeds
   tools/colab_chat/tiny_chat_e1.json                    E1 at 20M: L2, L4, L16, L32 x 3 seeds (L8 is E5's 50% cell)
-  tools/colab_chat/tiny_chat_s0_60m.json, tiny_chat_e1_60m.json   the 60M stage (on Jonathan's go)
+  tools/colab_chat/tiny_chat_s0_60m.json, tiny_chat_e1_60m.json   the 60M stage (authorised 23 Oct 2026)
+  tools/colab_chat/tiny_chat_asha.json                  the exploratory successive-halving arm (amendment 1)
+  experiments/tiny_chat_2026-10/asha_plan.json          its sampled configurations, rounds and cost
+
+Every E pretraining job snapshots its weights at the rungs (5/10/25/50% of its steps; jobs_vm.py
+snapshot_steps) and a light rung job per snapshot scores them (tiny_chat_run.py rung): the
+early-ranking study of amendment 1. The runs themselves always go to full length.
 
 Learning rates come from experiments/tiny_chat_2026-10/stage0/lr_choice.json (written at home by
 `tiny_chat_run.py choose` from Stage 0's screens, by the registered rule). Until that file exists the
@@ -24,6 +30,7 @@ import argparse
 import json
 import math
 import os
+import random
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
@@ -46,6 +53,11 @@ MAX_COPIES = 4                     # passes over the pretraining dialogues (Muen
 MIX_BYTES = 800_000_000            # ~182M tokens at ~4.4 bytes/token: the 95% train part covers one budget
 PT_FRACTION = 0.85                 # tiny_chat_data.py's pretraining split of the human dialogues
 DEFAULT_SOURCES = ["oasst", "convai2", "wow", "bst", "taskmaster", "multiwoz", "self_dialogue"]
+# Amendment 1 (Jonathan, 23 Oct 2026): share-alike and non-commercial dialogue sources in; aya_en
+# (the one source with evidence of ChatGPT text) out; Simple English Wikipedia is not dialogue.
+OPTIN_SOURCES = ["topical_chat", "dolly", "quac", "empathetic", "dailydialog", "no_robots"]
+DIALOGUE_SOURCES = DEFAULT_SOURCES + OPTIN_SOURCES
+RUNG_FRACTIONS = [0.05, 0.10, 0.25, 0.50]   # amendment 1: the early-ranking rungs (100% is the post job)
 DESIGN = os.path.join(HERE, "design.json")
 SHARES, E1_SHARE = NOMINAL_SHARES, 50  # replaced from design.json in main()
 DESIGN_NOTE = ""
@@ -69,10 +81,11 @@ def dialogue_levels(pt_bytes):
 
 
 def estimate_pt_bytes(dirs):
-    """P from the built default-set corpora: PT_FRACTION of their rendered text.txt bytes."""
+    """P from the built corpora: PT_FRACTION of their rendered text.txt bytes (a provisional
+    estimate; the final P is measured by tiny_chat_data.py --measure-only)."""
     tot, seen = 0, []
     for d in dirs:
-        for s in DEFAULT_SOURCES:
+        for s in DIALOGUE_SOURCES:
             p = os.path.join(d, f"human_{s}_v1", "text.txt")
             if os.path.exists(p) and s not in seen:
                 tot += os.path.getsize(p)
@@ -149,16 +162,18 @@ def lr_table():
     return {}, True
 
 
-def pt_spec(sid, s, corpus, lr, seed, steps=STEPS):
+def pt_spec(sid, s, corpus, lr, seed, steps=STEPS, warmup=500):
+    # eval_every 500 (amendment 1): a validation loss at every rung. mtstudio's evaluation draws its
+    # windows from its own fixed generator, so the training data order is unchanged.
     b, a = batching(s["layers"])
     return {"name": f"tc_{sid}",
             "arch": {"preset": "llama-tiny", "rope_heads": "all",
                      "custom": {"d": s["d"], "layers": s["layers"], "heads": s["heads"], "d_ff": s["d_ff"]}},
             "data": {"corpus": corpus, "vocab": VOCAB, "vocab_cap": V, "T": T, "max_tokens": 0},
-            "train": {"steps": steps, "lr": lr, "batch": b, "accum": a, "clip": 1.0, "eval_every": 1000,
+            "train": {"steps": steps, "lr": lr, "batch": b, "accum": a, "clip": 1.0, "eval_every": 500,
                       "eval_windows": 32, "checkpoint_every": 500, "gradmap_every": 0, "seed": seed,
                       "optimizer": "adamw",
-                      "lr_schedule": {"warmup_steps": 500, "decay": "cosine", "min_lr_frac": 0.1}},
+                      "lr_schedule": {"warmup_steps": warmup, "decay": "cosine", "min_lr_frac": 0.1}},
             "export": {"formats": ["safetensors", "gguf"]}}
 
 
@@ -174,11 +189,24 @@ SFT = {"data": {"vocab": VOCAB, "vocab_cap": V, "T": T, "sft_examples": f"{C}/da
 
 
 def data_job(shares):
+    """The VM builds the 13 human dialogue sources (pinned; --require-pinned refuses any other
+    bytes), decontaminates them against the frozen sets and Carry-5, splits and mixes them."""
+    src = ",".join(DIALOGUE_SOURCES)
+    fetch = f"python3 corpus/fetchers/human_dialogue.py {src} --allow-sa --allow-nc --out-dir {{human}}"
     return {"name": "data",
             "cmd": ["python3", "tools/colab_chat/tiny_chat_data.py", "--out", "{out}", "--vocab", VOCAB,
                     "--fineweb", "corpus/data/fineweb_edu_shard0_v1", "--shares", ",".join(map(str, shares)),
-                    "--mix-bytes", str(MIX_BYTES), "--max-epochs", "4", "--T", str(T), "--seed", "1"],
+                    "--mix-bytes", str(MIX_BYTES), "--max-epochs", "4", "--T", str(T), "--seed", "1",
+                    "--human-fetch", fetch, "--sources", src, "--require-pinned"],
             "outputs": ["data.ledger.json"]}
+
+
+def rung_steps(steps=STEPS):
+    return [int(f * steps) for f in RUNG_FRACTIONS]
+
+
+PANELS = ["--panel", f"fineweb={C}/data/panel_fineweb.ids", "--panel", f"dialogue={C}/data/panel_dialogue.ids"]
+ITEMS = ["--carry5-items", "corpus/eval/carry5_v1.jsonl"]
 
 
 def corpus_of(share):
@@ -223,25 +251,31 @@ def stage0(sh, size):
 def run_jobs(tag, cells, sh, lrs, provisional):
     """cells: [(cell id, shape id, share)]. PT = training job (relayed, resumable across VMs); post = SFT,
     panels and Carry-5 as a data job (init_job brings the PT weights to a fresh VM); pick = the cell's
-    best SFT model by the primary metric."""
-    pts, posts, picks = [], [], []
+    best SFT model by the primary metric; rung = one light job per rung snapshot (amendment 1)."""
+    pts, posts, picks, rungs = [], [], [], []
     for seed in SEEDS:
         for cell, sid, share in cells:
             s = sh[sid]
             name = f"pt_{tag}_{cell}_r{seed}"
             lr = lrs.get(sid, PROVISIONAL_LR)
             pts.append({"name": name, "model_name": f"tc_{tag}_{cell}_r{seed}", "after": ["data", "gate"],
-                        "relay_every_steps": 2500,
+                        "relay_every_steps": 2500, "snapshot_steps": rung_steps(),
                         "spec": pt_spec(sid, s, corpus_of(share), lr, seed)})
             posts.append({"name": f"post_{tag}_{cell}_r{seed}", "after": name, "init_job": name,
                           "cmd": ["python3", RUN, "post", "--out", "{out}", "--spec", spec_path(sid),
                                   "--pt-weights", f"{C}/{name}/tc_{tag}_{cell}_r{seed}.safetensors",
                                   "--pt-dir", f"{C}/{name}", "--sft-template", f"{REL}/specs/sft.json",
-                                  "--seed", str(seed), "--cell", cell, "--share", str(share),
-                                  "--panel", f"fineweb={C}/data/panel_fineweb.ids",
-                                  "--panel", f"dialogue={C}/data/panel_dialogue.ids",
-                                  "--carry5-items", "corpus/eval/carry5_v1.jsonl"],
+                                  "--seed", str(seed), "--cell", cell, "--share", str(share), *PANELS, *ITEMS],
                           "outputs": ["summary.json"]})
+            for st in rung_steps():
+                rungs.append({"name": f"rung_{tag}_{cell}_r{seed}_s{st}", "after": "data", "light": True,
+                              "rung_of": {"job": name, "step": st},
+                              "cmd": ["python3", RUN, "rung", "--out", "{out}", "--spec", spec_path(sid),
+                                      "--weights", f"{C}/{name}/rung_{st}/model.safetensors", "--pt-dir",
+                                      f"{C}/{name}", "--step", str(st), "--drop-snapshot", "--job", name,
+                                      "--cell", cell,
+                                      "--seed", str(seed), "--share", str(share), *PANELS, *ITEMS],
+                              "outputs": ["rung.json"]})
     for cell, sid, share in cells:
         picks.append({"name": f"pick_{tag}_{cell}", "after": [f"post_{tag}_{cell}_r{r}" for r in SEEDS],
                       "cmd": ["python3", RUN, "pick", "--out", "{out}",
@@ -254,11 +288,11 @@ def run_jobs(tag, cells, sh, lrs, provisional):
                     "--choice", f"{REL}/stage0/lr_choice.json", "--design", f"{REL}/design.json"],
             "outputs": ["gate.json"]}
     est = sum(hours(sh[sid], STEPS) + hours(sh[sid], SFT_STEPS) for _, sid, _ in cells) * len(SEEDS)
-    return pts, posts, picks, gate, est
+    return pts, posts, picks, rungs, gate, est
 
 
 def e_doc(tag, cells, sh, lrs, provisional, shares, title):
-    pts, posts, picks, gate, est = run_jobs(tag, cells, sh, lrs, provisional)
+    pts, posts, picks, rungs, gate, est = run_jobs(tag, cells, sh, lrs, provisional)
     lr_note = ("PROVISIONAL learning rates (1e-3): the gate job fails until stage0/lr_choice.json exists and "
                "matches; rerun make_jobs.py after Stage 0" if provisional else
                "learning rates from stage0/lr_choice.json: " + ", ".join(f"{k} {lrs[k]:g}" for k in sorted(lrs)
@@ -267,11 +301,130 @@ def e_doc(tag, cells, sh, lrs, provisional, shares, title):
                        f"{TOKENS_PER_STEP} tokens ({STEPS * TOKENS_PER_STEP / 1e6:.2f}M), each then SFT ({SFT_STEPS} "
                        f"steps on human dialogues), two fixed text panels and Carry-5 (post job); one pick per cell. "
                        f"{lr_note}. Estimated {est:.0f} job-hours ({est / VM_SPEEDUP:.0f} L4 VM-hours at "
-                       f"{VM_SPEEDUP}x per VM). Home: each PT job's weights (relays + final), each post's summary.json, "
-                       f"each pick's best model. Upload vocab_llama3_bpe.gguf with the runner's --upload." + DESIGN_NOTE,
-           "max_parallel": 3 if tag == "e5" else 4,
-           "jobs": [data_job(shares), gate, *posts, *picks, *pts]}
+                       f"{VM_SPEEDUP}x per VM). Rungs (amendment 1): every PT job snapshots its weights at steps "
+                       f"{rung_steps()} and a light rung job scores each snapshot (panels, base-model Carry-5 "
+                       f"teacher-forced; rung.json home); runs are never stopped early. Home: each PT job's weights "
+                       f"(relays + final), each post's summary.json, each rung's rung.json, each pick's best model. "
+                       f"Upload vocab_llama3_bpe.gguf with the runner's --upload." + DESIGN_NOTE,
+           "max_parallel": 3 if tag == "e5" else 4, "max_parallel_light": 1,
+           "jobs": [data_job(shares), gate, *rungs, *posts, *picks, *pts]}
     return doc
+
+
+# ---------------------------------------------------------------- the exploratory ASHA arm (amendment 1)
+ASHA_SEED = 20261023
+ASHA_N = 27
+ASHA_DEPTHS = [2, 3, 4, 6, 8, 12, 16]   # 20M non-embedding; E1 covers L32, at 3-4x the cost per step
+ASHA_LR = (2.5e-4, 4e-3)                # peak lr, log-uniform
+ASHA_WARMUP = [0.02, 0.05, 0.10]         # warmup as a fraction of the budget
+ASHA_ROUNDS = [("r0", 1000, ASHA_N), ("r1", 3000, 9), ("r2", STEPS, 3)]  # (id, budget in steps, candidates)
+ASHA_CAP_VM_HOURS = 20                   # the session's --max-hours: one VM at a time, so a hard cap
+ASHA_SCORE_H = 0.08                      # assumed hours per scoring (panels + base Carry-5); measured in the run
+PLAN = os.path.join(HERE, "asha_plan.json")
+
+
+def asha_shapes():
+    out = {}
+    for L in ASHA_DEPTHS:
+        s = shape_for(SIZES["20m"][0], L)
+        n = nonemb(L, s["d"], s["d_ff"])
+        out[f"20m_L{L}"] = {**s, "size": "20m", "nonemb": n, "emb": V * s["d"], "total": n + V * s["d"]}
+    return out
+
+
+def asha_plan(levels):
+    """27 configurations drawn with a fixed seed; the rounds, the promotion rule and the cost."""
+    rng = random.Random(ASHA_SEED)
+    sh = asha_shapes()
+    cfgs = []
+    for i in range(ASHA_N):
+        L = rng.choice(ASHA_DEPTHS)
+        lr = float(f"{math.exp(rng.uniform(math.log(ASHA_LR[0]), math.log(ASHA_LR[1]))):.3g}")
+        cfgs.append({"id": f"c{i:02d}", "shape": f"20m_L{L}", "lr": lr, "warmup_frac": rng.choice(ASHA_WARMUP),
+                     "share": rng.choice(levels), "seed": 1000 + i})
+    per_step = sorted((hours(sh[c["shape"]], 1) for c in cfgs), reverse=True)
+    (_, b0, _), (_, b1, k1), (_, b2, k2) = ASHA_ROUNDS
+    r0 = sum(p * b0 + ASHA_SCORE_H for p in per_step)
+    r1 = sum(p * b1 + ASHA_SCORE_H for p in per_step[:k1])                      # worst case: the dearest 9
+    r2 = sum(p * (b2 + SFT_STEPS) + 2 * ASHA_SCORE_H for p in per_step[:k2])    # and the dearest 3
+    worst = (r0 + r1 + r2) / VM_SPEEDUP
+    if worst > ASHA_CAP_VM_HOURS:
+        raise SystemExit(f"ASHA worst case {worst:.1f} L4 VM-hours exceeds the cap {ASHA_CAP_VM_HOURS}")
+    return {"_comment": "Exploratory successive-halving arm of the tiny-chat programme (PREREGISTRATION.md amendment "
+                        "1). Not confirmatory. Written by make_jobs.py; deterministic from ASHA_SEED and the design's "
+                        "dialogue levels.",
+            "seed": ASHA_SEED,
+            "space": {"shape": [f"20m_L{L}" for L in ASHA_DEPTHS], "lr_log_uniform": list(ASHA_LR),
+                      "warmup_frac": ASHA_WARMUP, "share": list(levels), "seed": "1000 + index"},
+            "rounds": [{"id": r, "budget": b, "keep": k} for r, b, k in ASHA_ROUNDS],
+            "schedule": "each round trains from scratch: warmup = warmup_frac x budget, cosine to 0.1x at the budget",
+            "promotion": "into each round, the top `keep` of the previous round's candidates by base-model Carry-5 "
+                         "forced-choice accuracy with gold history (acc_gold), ties by lower dialogue panel loss, "
+                         "then config id; diverged or failed runs rank last and are never promoted",
+            "cap_vm_hours": ASHA_CAP_VM_HOURS,
+            "cost_job_hours": {"r0": round(r0, 1), "r1_worst": round(r1, 1), "r2_worst": round(r2, 1),
+                               "worst_vm_hours": round(worst, 1)},
+            "configs": cfgs}
+
+
+def asha_doc(plan, sh):
+    def chk(cid, rid):  # jobs_vm.py promoted_by: the VM's own decision, else the uploaded state file
+        return {"files": [f"{C}/asha_promote_{rid}/decisions.json", f"{C}/upload/asha_state.json"],
+                "round": rid, "key": cid}
+
+    def cost(c):  # dearest first, so the critical path starts at once
+        return -hours(sh[c["shape"]], 1)
+    cfg = {c["id"]: c for c in plan["configs"]}
+    gate = {"name": "gate", "cmd": ["python3", RUN, "gate", "--out", "{out}", "--stage0", "--need-carry5", "--jobs",
+                                    "tools/colab_chat/tiny_chat_asha.json", "--design", f"{REL}/design.json"],
+            "outputs": ["gate.json"]}
+    jobs = [gate, {**data_job(plan["space"]["share"]), "after": "gate"}]
+    names = {}
+    for k, rnd in enumerate(plan["rounds"]):
+        rid, budget = rnd["id"], rnd["budget"]
+        if k > 0:
+            jobs.append({"name": f"asha_promote_{rid}", "light": True, "after_terminal": True, "after": names[k - 1],
+                         "cmd": ["python3", RUN, "asha_promote", "--out", "{out}", "--plan", f"{REL}/asha_plan.json",
+                                 "--round", rid, "--state", "{upload}/asha_state.json"],
+                         "outputs": ["decisions.json"]})
+        names[k] = []
+        last = k == len(plan["rounds"]) - 1
+        for c in sorted(plan["configs"], key=cost):
+            cid, s = c["id"], sh[c["shape"]]
+            name = f"asha_{rid}_{cid}"
+            names[k].append(name)
+            gating = {"after": "data"} if k == 0 else {"after": f"asha_promote_{rid}", "promoted_by": chk(cid, rid)}
+            if not last:
+                jobs.append({"name": name, **gating,
+                             "cmd": ["python3", RUN, "asha_train", "--out", "{out}", "--spec", spec_path(c["shape"]),
+                                     "--corpus", corpus_of(c["share"]), "--budget", str(budget), "--lr", repr(c["lr"]),
+                                     "--warmup-frac", repr(c["warmup_frac"]), "--seed", str(c["seed"]), "--share",
+                                     str(c["share"]), "--config", cid, "--round", rid, *PANELS, *ITEMS],
+                             "outputs": ["rung.json", "run/events.jsonl"]})
+            else:  # the finalists: full pretraining runs (relayed, resumable), then the E cells' post job
+                jobs.append({"name": name, "model_name": f"tc_asha_{cid}", **gating, "relay_every_steps": 2500,
+                             "spec": pt_spec(c["shape"], s, corpus_of(c["share"]), c["lr"], c["seed"], steps=budget,
+                                             warmup=max(1, round(c["warmup_frac"] * budget)))})
+                jobs.append({"name": f"asha_post_{cid}", "after": name, "init_job": name,
+                             "cmd": ["python3", RUN, "post", "--out", "{out}", "--spec", spec_path(c["shape"]),
+                                     "--pt-weights", f"{C}/{name}/tc_asha_{cid}.safetensors", "--pt-dir", f"{C}/{name}",
+                                     "--sft-template", f"{REL}/specs/sft.json", "--seed", str(c["seed"]), "--cell",
+                                     f"asha_{cid}", "--share", str(c["share"]), "--pt-lr", repr(c["lr"]),
+                                     *PANELS, *ITEMS],
+                             "outputs": ["summary.json"]})
+    assert set(cfg) == {c["id"] for c in plan["configs"]}
+    cj = plan["cost_job_hours"]
+    return {"_comment": f"tiny-chat EXPLORATORY successive-halving arm ({REL}/PREREGISTRATION.md amendment 1; plan "
+                        f"{REL}/asha_plan.json). {ASHA_N} random configurations (shape, peak lr, warmup, dialogue share) "
+                        f"trained from scratch for {ASHA_ROUNDS[0][1]} steps; the top {ASHA_ROUNDS[1][2]} by base-model "
+                        f"Carry-5 acc_gold retrain for {ASHA_ROUNDS[1][1]}; the top {ASHA_ROUNDS[2][2]} for the full "
+                        f"{STEPS} steps, then SFT and Carry-5 as the E cells. Promotion runs on the VM "
+                        f"(asha_promote_*); candidates not promoted end FAILED with 'not promoted' in their log. Worst "
+                        f"case {cj['worst_vm_hours']} L4 VM-hours; cap {ASHA_CAP_VM_HOURS} (the runner's --max-hours). "
+                        f"Launch through tools/colab_chat/tiny_chat_asha.py drive, which keeps ART/asha_state.json (every "
+                        f"result and decision home so far) current for the runner's --upload asha_state.json=..., so a "
+                        f"replaced VM can still promote. Upload vocab_llama3_bpe.gguf too." + DESIGN_NOTE,
+            "max_parallel": 4, "max_parallel_light": 1, "jobs": jobs}
 
 
 def tables(sh):
@@ -318,6 +471,8 @@ def main(argv=None):
     ap.add_argument("--dialogue-pt-bytes", type=int, default=None,
                     help="P, rendered bytes of the pretraining split (data.ledger.json human_pt_bytes, or 0.85 x the "
                          "default set's text.txt bytes); fixes design.json")
+    ap.add_argument("--design-source", default="given (--dialogue-pt-bytes)",
+                    help="how P was measured, recorded in design.json")
     ap.add_argument("--human-dir", action="append", default=None,
                     help="where built human_<source>_v1/ corpora are (default corpus/data and "
                          "C:/ml_artifacts/human_dialogue) for the estimate when design.json is absent")
@@ -330,7 +485,8 @@ def main(argv=None):
         return 0
     global SHARES, E1_SHARE, DESIGN_NOTE
     if a.dialogue_pt_bytes is not None:
-        design = {**dialogue_levels(a.dialogue_pt_bytes), "source": "given (--dialogue-pt-bytes)", "final": True}
+        design = {**dialogue_levels(a.dialogue_pt_bytes), "source": a.design_source, "sources": DIALOGUE_SOURCES,
+                  "final": True}
         write(DESIGN, design)
     elif os.path.exists(DESIGN):
         with open(DESIGN, encoding="utf-8") as f:
@@ -338,7 +494,7 @@ def main(argv=None):
     else:
         dirs = a.human_dir or [os.path.join(ROOT, "corpus", "data"), "C:/ml_artifacts/human_dialogue"]
         p, seen = estimate_pt_bytes(dirs)
-        missing = [s for s in DEFAULT_SOURCES if s not in seen]
+        missing = [s for s in DIALOGUE_SOURCES if s not in seen]
         design = {**dialogue_levels(p), "source": f"estimated from {seen}", "missing_sources": missing,
                   "final": not missing}
         write(DESIGN, design)
@@ -365,9 +521,20 @@ def main(argv=None):
                                                           "E1 at 20M, the shape sweep"))
     e1b = [(sid.split("_")[1], sid, E1_SHARE) for sid in sh if sh[sid]["size"] == "60m"]
     write(os.path.join(COLAB, "tiny_chat_e1_60m.json"), e_doc("e1_60m", e1b, sh, lrs, provisional, [E1_SHARE],
-                                                              "E1 at 60M, the shape sweep (on Jonathan's go)"))
-    print("\nwrote specs/, tiny_chat_s0.json, tiny_chat_s0_60m.json, tiny_chat_e5.json, tiny_chat_e1.json, "
-          "tiny_chat_e1_60m.json" + (" (PROVISIONAL learning rates)" if provisional else ""))
+                                                              "E1 at 60M, the shape sweep (authorised 23 Oct 2026)"))
+    ash = asha_shapes()
+    for sid, s in ash.items():
+        if sid not in sh:  # the ASHA-only depths; lr and seed are set per configuration
+            spec = pt_spec(sid, s, corpus_of(E1_SHARE), PROVISIONAL_LR, SEEDS[0])
+            spec["_shape"] = {k: s[k] for k in ("size", "nonemb", "emb", "total")}
+            write(os.path.join(HERE, "specs", f"shape_{sid}.json"), spec)
+    plan = asha_plan(SHARES)
+    write(PLAN, plan)
+    write(os.path.join(COLAB, "tiny_chat_asha.json"), asha_doc(plan, ash))
+    print(f"ASHA arm: worst case {plan['cost_job_hours']['worst_vm_hours']} L4 VM-hours (cap {ASHA_CAP_VM_HOURS})")
+    print("\nwrote specs/, asha_plan.json, tiny_chat_s0.json, tiny_chat_s0_60m.json, tiny_chat_e5.json, "
+          "tiny_chat_e1.json, tiny_chat_e1_60m.json, tiny_chat_asha.json"
+          + (" (PROVISIONAL learning rates)" if provisional else ""))
     return 0
 
 

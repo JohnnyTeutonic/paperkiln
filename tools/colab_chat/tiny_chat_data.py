@@ -8,11 +8,15 @@ fixed text panels and the SFT set, all pre-tokenised with the llama3-scheme voca
         --mix-bytes 800000000 --max-epochs 4 --T 512 --seed 1
 
 1. Human dialogues: --human-fetch runs the corpus fetcher (corpus/fetchers/human_dialogue.py,
-   built by the corpus agent; expected to write dialogues.jsonl files of {"messages", "uri"} under
-   {human}); every dialogues.jsonl under --human-dir is read. Messages must alternate user and
-   assistant from a user turn; a trailing user turn is dropped, other dialogues are counted and
-   dropped.
-2. corpus/decontam.py over all of them (its frozen eval sets; Carry-5's once decontam.py knows it).
+   which writes human_<source>_v1/dialogues.jsonl of {"messages", "uri"} under {human}); the
+   dialogues.jsonl of the --sources (all found, without it) under the --human-dir(s) are read, in
+   source order. --require-pinned refuses unless each file and its text.txt match the source's
+   pin (corpus/hashes/human_<source>_v1.sha256), so every VM trains on the bytes measured at home.
+   Messages must alternate user and assistant from a user turn; a trailing user turn is dropped,
+   other dialogues are counted and dropped.
+2. corpus/decontam.py over all of them: its frozen eval sets plus Carry-5
+   (corpus/eval/carry5_v1.jsonl, required: its user turns as prompts, its gold replies as
+   references; PREREGISTRATION.md amendment 1).
 3. Split by sha256 of the dialogue's content key (_common.dialogue_key, so duplicates share a
    split): 5% val (the dialogue panel), 10% SFT, 85% pretraining.
 4. SFT set: chat_data.py sft --all-turns at T (one row per dialogue, every assistant turn
@@ -26,6 +30,10 @@ fixed text panels and the SFT set, all pre-tokenised with the llama3-scheme voca
 Outputs in --out: mix_s<share>.ids, panel_fineweb.ids, panel_dialogue.ids, sft_human.jsonl and
 data.ledger.json (counts, bytes, tokens, copies, sha256 of every output). Idempotent: a finished
 output is not rebuilt.
+
+--measure-only stops after step 3 and prints human_pt_bytes, the P of the registered level rule
+(make_jobs.py --dialogue-pt-bytes): the same files and code as the data job, so P equals what the
+VMs measure.
 """
 from __future__ import annotations
 
@@ -41,6 +49,9 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(ROOT, "corpus", "fetchers"))
 import _common as C  # noqa: E402
+
+sys.path.insert(0, os.path.join(ROOT, "corpus"))
+import decontam  # noqa: E402
 
 SPLIT = {"val": 5, "sft": 15}  # sha256 bucket < 5: val; < 15: sft; else pretraining
 
@@ -83,40 +94,81 @@ def alternate(msgs):
     return msgs
 
 
+def human_files(dirs, sources):
+    """[(source, dialogues.jsonl)] in source order: each source's human_<source>_v1 under the
+    first dir that has it (all sources found, when sources is None)."""
+    found = {}
+    for d in dirs:
+        for p in sorted(glob.glob(os.path.join(d, "**", "dialogues.jsonl"), recursive=True)):
+            cid = os.path.basename(os.path.dirname(p))
+            src = cid[len("human_"):-len("_v1")] if cid.startswith("human_") and cid.endswith("_v1") else cid
+            found.setdefault(src, p)
+    if sources is None:
+        return sorted(found.items())
+    missing = [s for s in sources if s not in found]
+    if missing:
+        raise SystemExit(f"human dialogue sources missing under {dirs}: {missing}")
+    return [(s, found[s]) for s in sorted(sources)]
+
+
+def check_pins(files):
+    """Every source file must equal its pin (corpus/hashes/human_<source>_v1.sha256)."""
+    bad = []
+    for src, p in files:
+        want = C.expected_hashes(f"human_{src}_v1")
+        for f in ("dialogues.jsonl", "text.txt"):
+            q = os.path.join(os.path.dirname(p), f)
+            if not want or not os.path.exists(q) or C.sha256_file(q) != want.get(f):
+                bad.append(f"human_{src}_v1/{f}")
+    if bad:
+        raise SystemExit(f"not the pinned bytes (or no pin): {bad}")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--out", required=True)
-    ap.add_argument("--vocab", required=True)
-    ap.add_argument("--fineweb", required=True, help="the FineWeb-Edu corpus dir (pretrain_train.txt, val.txt)")
-    ap.add_argument("--shares", required=True, help="dialogue shares in %%, e.g. 0,25,50,100")
-    ap.add_argument("--mix-bytes", type=int, required=True)
+    ap.add_argument("--vocab")
+    ap.add_argument("--fineweb", help="the FineWeb-Edu corpus dir (pretrain_train.txt, val.txt)")
+    ap.add_argument("--shares", help="dialogue shares in %%, e.g. 0,25,50,100")
+    ap.add_argument("--mix-bytes", type=int)
     ap.add_argument("--max-epochs", type=int, default=4)
     ap.add_argument("--T", type=int, default=512)
     ap.add_argument("--seed", type=int, default=1)
-    ap.add_argument("--human-dir", default=None, help="default OUT/human")
+    ap.add_argument("--human-dir", action="append", default=None,
+                    help="where human_<source>_v1/ are (repeat; default OUT/human, where --human-fetch writes)")
     ap.add_argument("--human-fetch", default="python3 corpus/fetchers/human_dialogue.py default --out-dir {human}")
+    ap.add_argument("--sources", default=None, help="comma-separated human dialogue sources (default: all found)")
+    ap.add_argument("--require-pinned", action="store_true", help="refuse unless every source file matches its pin")
+    ap.add_argument("--measure-only", action="store_true", help="stop after the split; print human_pt_bytes")
     a = ap.parse_args(argv)
+    if not a.measure_only and not all((a.vocab, a.fineweb, a.shares, a.mix_bytes)):
+        ap.error("--vocab, --fineweb, --shares and --mix-bytes are required unless --measure-only")
     out = os.path.abspath(a.out)
     os.makedirs(out, exist_ok=True)
-    human = os.path.abspath(a.human_dir or os.path.join(out, "human"))
+    dirs = [os.path.abspath(d) for d in (a.human_dir or [os.path.join(out, "human")])]
+    human = dirs[0]
+    sources = a.sources.split(",") if a.sources else None
     ledger_path = os.path.join(out, "data.ledger.json")
-    ledger = {"recipe": "tools/colab_chat/tiny_chat_data.py", "args": vars(a), "vocab_sha256": C.sha256_file(a.vocab)}
-    shares = [int(x) for x in a.shares.split(",")]
+    ledger = {"recipe": "tools/colab_chat/tiny_chat_data.py", "args": vars(a),
+              "vocab_sha256": C.sha256_file(a.vocab) if a.vocab else None}
+    shares = [int(x) for x in a.shares.split(",")] if a.shares else []
 
     # 1-3. Human dialogues: fetch, normalise, decontaminate, split.
     pt_txt, val_txt, sft_dl = (os.path.join(out, f) for f in ("human_pt.txt", "human_val.txt", "human_sft.jsonl"))
     if not all(os.path.exists(p) for p in (pt_txt, val_txt, sft_dl)):
-        files = sorted(glob.glob(os.path.join(human, "**", "dialogues.jsonl"), recursive=True))
-        if not files and a.human_fetch:
+        have = glob.glob(os.path.join(human, "**", "dialogues.jsonl"), recursive=True)
+        if not have and a.human_fetch:
             sh(a.human_fetch.format(human=human).split(), ledger, "human_fetch")
-            files = sorted(glob.glob(os.path.join(human, "**", "dialogues.jsonl"), recursive=True))
+        files = human_files(dirs, sources)
         if not files:
-            raise SystemExit(f"no dialogues.jsonl under {human}: the human dialogue corpus is missing")
+            raise SystemExit(f"no dialogues.jsonl under {dirs}: the human dialogue corpus is missing")
+        if a.require_pinned:
+            check_pins(files)
         allf = os.path.join(out, "human_all.jsonl")
         n_in = n_bad = 0
         with open(allf, "w", encoding="utf-8", newline="\n") as g:
-            for p in files:
-                src = os.path.relpath(p, human)
+            for name, p in files:
+                src = f"human_{name}_v1/dialogues.jsonl"
                 with open(p, encoding="utf-8") as f:
                     for line in f:
                         if not line.strip():
@@ -129,11 +181,17 @@ def main(argv=None):
                             continue
                         g.write(json.dumps({"messages": m, "uri": d.get("uri", ""), "source": src},
                                            ensure_ascii=False) + "\n")
-        ledger["human"] = {"files": {os.path.relpath(p, human): C.sha256_file(p) for p in files},
+        ledger["human"] = {"files": {f"human_{n}_v1/dialogues.jsonl": C.sha256_file(p) for n, p in files},
+                           "sources": [n for n, _ in files], "pins_checked": a.require_pinned,
                            "dialogues_in": n_in, "dropped_not_alternating": n_bad}
         clean = os.path.join(out, "human_clean.jsonl")
-        sh([sys.executable, "corpus/decontam.py", allf, clean, os.path.join(out, "human_decontam.json")], ledger,
-           "decontam")
+        import human_dialogue  # the fetcher's Decontaminator with Carry-5's turns added
+        dc, carry5_sha = human_dialogue.decontaminator(carry5=True)
+        if not carry5_sha:
+            raise SystemExit("corpus/eval/carry5_v1.jsonl is missing: the human dialogues cannot be decontaminated")
+        ledger.setdefault("steps", {})["decontam"] = decontam.run(allf, clean, os.path.join(out, "human_decontam.json"),
+                                                                  dc=dc)
+        ledger["human"]["carry5_v1_sha256"] = carry5_sha
         counts = {"val": 0, "sft": 0, "pt": 0}
         with open(clean, encoding="utf-8") as f, open(pt_txt, "w", encoding="utf-8", newline="\n") as fp, \
                 open(val_txt, "w", encoding="utf-8", newline="\n") as fv, \
@@ -152,6 +210,12 @@ def main(argv=None):
         os.remove(clean)
     H = os.path.getsize(pt_txt)
     ledger["human_pt_bytes"] = H
+    if a.measure_only:
+        with open(ledger_path + ".tmp", "w", encoding="utf-8", newline="\n") as f:
+            json.dump(ledger, f, indent=1)
+        os.replace(ledger_path + ".tmp", ledger_path)
+        print(json.dumps({"human_pt_bytes": H, "split": ledger.get("human", {}).get("split")}))
+        return 0
 
     # 4. SFT set: one row per dialogue, every assistant turn trained, shuffled.
     sft = os.path.join(out, "sft_human.jsonl")

@@ -1,0 +1,349 @@
+{
+ "summary": {
+  "items": 1032,
+  "corpora": 14,
+  "rows_scanned": 395169,
+  "item_leaks": 0,
+  "items_with_fact_sentence_in_training": 44,
+  "eval_texts_hit": {
+   "sentence": 78,
+   "prompt": 6
+  },
+  "rules": "decontam.py ngram (13 words), prompt (user turn equal, 4+ words), span (8-12 word user turn); sentence: any 3+ word template sentence as a span; fact_sentence: an item's value-bearing fact sentence; item_leak: fact sentence and question in one row"
+ },
+ "per_corpus": {
+  "C:/ml_artifacts/human_dialogue/hd_default/human_oasst_v1/dialogues.jsonl": {
+   "rows": 5328,
+   "bytes": 11241421,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 71,
+     "patterns": 14
+    },
+    "fact_sentence": {
+     "rows": 2,
+     "patterns": 2
+    }
+   }
+  },
+  "C:/ml_artifacts/human_dialogue/hd_default/human_convai2_v1/dialogues.jsonl": {
+   "rows": 8951,
+   "bytes": 11598030,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 1961,
+     "patterns": 47
+    },
+    "fact_sentence": {
+     "rows": 110,
+     "patterns": 31
+    },
+    "prompt": {
+     "rows": 42,
+     "patterns": 3
+    }
+   }
+  },
+  "C:/ml_artifacts/human_dialogue/hd_default/human_wow_v1/dialogues.jsonl": {
+   "rows": 18428,
+   "bytes": 19250269,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 203,
+     "patterns": 20
+    },
+    "fact_sentence": {
+     "rows": 15,
+     "patterns": 9
+    },
+    "prompt": {
+     "rows": 3,
+     "patterns": 1
+    }
+   }
+  },
+  "C:/ml_artifacts/human_dialogue/hd_default/human_bst_v1/dialogues.jsonl": {
+   "rows": 4819,
+   "bytes": 6021733,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 128,
+     "patterns": 22
+    },
+    "fact_sentence": {
+     "rows": 15,
+     "patterns": 13
+    }
+   }
+  },
+  "C:/ml_artifacts/human_dialogue/hd_default/human_taskmaster_v1/dialogues.jsonl": {
+   "rows": 28791,
+   "bytes": 45723989,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 4653,
+     "patterns": 21
+    },
+    "prompt": {
+     "rows": 3,
+     "patterns": 3
+    }
+   }
+  },
+  "C:/ml_artifacts/human_dialogue/hd_default/human_multiwoz_v1/dialogues.jsonl": {
+   "rows": 8292,
+   "bytes": 12454765,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 840,
+     "patterns": 11
+    },
+    "prompt": {
+     "rows": 1,
+     "patterns": 1
+    }
+   }
+  },
+  "C:/ml_artifacts/human_dialogue/hd_default/human_self_dialogue_v1/dialogues.jsonl": {
+   "rows": 24133,
+   "bytes": 34647146,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 429,
+     "patterns": 16
+    },
+    "prompt": {
+     "rows": 1,
+     "patterns": 1
+    },
+    "fact_sentence": {
+     "rows": 1,
+     "patterns": 1
+    }
+   }
+  },
+  "C:/ml_artifacts/human_dialogue/hd_optin/human_topical_chat_v1/dialogues.jsonl": {
+   "rows": 8605,
+   "bytes": 26162515,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 307,
+     "patterns": 19
+    },
+    "prompt": {
+     "rows": 2,
+     "patterns": 1
+    }
+   }
+  },
+  "C:/ml_artifacts/human_dialogue/hd_optin/human_dolly_v1/dialogues.jsonl": {
+   "rows": 14945,
+   "bytes": 13266351,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 9,
+     "patterns": 4
+    }
+   }
+  },
+  "C:/ml_artifacts/human_dialogue/hd_optin/human_quac_v1/dialogues.jsonl": {
+   "rows": 11567,
+   "bytes": 14990412,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 4,
+     "patterns": 1
+    }
+   }
+  },
+  "C:/ml_artifacts/human_dialogue/hd_optin/human_empathetic_v1/dialogues.jsonl": {
+   "rows": 17780,
+   "bytes": 8463964,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 45,
+     "patterns": 11
+    },
+    "fact_sentence": {
+     "rows": 2,
+     "patterns": 2
+    }
+   }
+  },
+  "C:/ml_artifacts/human_dialogue/hd_optin/human_dailydialog_v1/dialogues.jsonl": {
+   "rows": 10235,
+   "bytes": 8194793,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 359,
+     "patterns": 20
+    },
+    "fact_sentence": {
+     "rows": 6,
+     "patterns": 4
+    }
+   }
+  },
+  "C:/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/corpus/data/human_no_robots_v1/dialogues.jsonl": {
+   "rows": 8698,
+   "bytes": 12639989,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 17,
+     "patterns": 8
+    }
+   }
+  },
+  "C:/ml_artifacts/human_dialogue/hd_optin/human_simplewiki_v1/documents.jsonl": {
+   "rows": 224597,
+   "bytes": 300681910,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 12,
+     "patterns": 9
+    }
+   }
+  }
+ },
+ "item_leaks": {},
+ "top_sentences": {
+  "how can i help": 3719,
+  "how are you today": 1718,
+  "you are welcome": 1463,
+  "yes of course": 436,
+  "what is it about": 418,
+  "nice to meet you": 275,
+  "that sounds nice": 264,
+  "it was a pleasure": 133,
+  "have a lovely day": 129,
+  "that sounds lovely": 80,
+  "that is good to know": 61,
+  "thanks for telling me": 43,
+  "i am well thank you": 41,
+  "oh that is nice": 40,
+  "can you help me with this": 23,
+  "hello nice to meet you": 19,
+  "i work as an accountant": 16,
+  "i work as a nurse": 14,
+  "sorry my mistake": 11,
+  "i work as a paramedic": 7,
+  "i work as a chef": 7,
+  "sorry i made a mistake": 6,
+  "what would you like to talk about": 6,
+  "i work as a teacher": 6,
+  "thanks for sharing that": 6,
+  "thanks that is all for now": 6,
+  "what is on your mind": 5,
+  "my favourite colour is blue": 4,
+  "i work as a pharmacist": 4,
+  "i work as a mechanic": 4,
+  "i work as a vet": 4,
+  "i work as an engineer": 3,
+  "i work as a pilot": 3,
+  "i work as a lawyer": 3,
+  "where am i going": 3,
+  "how old am i": 2,
+  "i am 19 years old": 2,
+  "i am 30 years old": 2,
+  "i work as a welder": 2,
+  "i am 18 years old": 2,
+  "i work as a librarian": 2,
+  "my name is rosa": 2,
+  "i work as a translator": 2,
+  "okay i will remember that": 2,
+  "my favourite colour is purple": 2,
+  "thanks for correcting that": 2,
+  "we live on earth": 2,
+  "ketchup is made from tomatoes": 2,
+  "i am 26 years old": 2,
+  "i am 40 years old": 2,
+  "i am 58 years old": 1,
+  "i am 22 years old": 1,
+  "a dog barks": 1,
+  "i am 35 years old": 1,
+  "i am 75 years old": 1,
+  "i have a job as a mechanic": 1,
+  "i am 29 years old": 1,
+  "i am 33 years old": 1,
+  "you work as a nurse": 1,
+  "i am 39 years old": 1
+ },
+ "drop_rule_examples": {
+  "prompt|carry5_v1:recall:0007:t1:user": {
+   "corpus": "C:/ml_artifacts/human_dialogue/hd_default/human_convai2_v1/dialogues.jsonl",
+   "examples": [
+    {
+     "row": 191,
+     "context": "Hi there, how are you today?"
+    },
+    {
+     "row": 599,
+     "context": "Hi there how are you today?"
+    }
+   ]
+  },
+  "prompt|carry5_v1:recall:0068:t3:user": {
+   "corpus": "C:/ml_artifacts/human_dialogue/hd_default/human_convai2_v1/dialogues.jsonl",
+   "examples": [
+    {
+     "row": 321,
+     "context": "I work as a chef."
+    }
+   ]
+  },
+  "prompt|carry5_v1:recall:0061:t2:user": {
+   "corpus": "C:/ml_artifacts/human_dialogue/hd_default/human_convai2_v1/dialogues.jsonl",
+   "examples": [
+    {
+     "row": 2531,
+     "context": "I work as an accountant"
+    }
+   ]
+  },
+  "prompt|carry5_v1:recall:0091:t1:user": {
+   "corpus": "C:/ml_artifacts/human_dialogue/hd_default/human_wow_v1/dialogues.jsonl",
+   "examples": [
+    {
+     "row": 6243,
+     "context": "My favourite colour is blue! :)"
+    },
+    {
+     "row": 6466,
+     "context": "My favourite colour is blue."
+    }
+   ]
+  },
+  "prompt|carry5_v1:recall:0001:t5:user": {
+   "corpus": "C:/ml_artifacts/human_dialogue/hd_default/human_taskmaster_v1/dialogues.jsonl",
+   "examples": [
+    {
+     "row": 3446,
+     "context": "Thanks that is all for now."
+    }
+   ]
+  },
+  "prompt|carry5_v1:recall:0001:t4:user": {
+   "corpus": "C:/ml_artifacts/human_dialogue/hd_default/human_taskmaster_v1/dialogues.jsonl",
+   "examples": [
+    {
+     "row": 15325,
+     "context": "What is my name?"
+    }
+   ]
+  }
+ }
+}

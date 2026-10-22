@@ -45,7 +45,22 @@ def dialogues(d, n):
                                   {"role": "user", "content": f"and the {b}"},
                                   {"role": "assistant", "content": f"the {b} sat on a mat"}], "uri": f"toy/{i}"})
     rows.append({"messages": [{"role": "assistant", "content": "broken"}], "uri": "toy/bad"})
+    # A user turn equal to a Carry-5 item's (4+ words): the data job's decontamination drops it.
+    rows.append({"messages": [{"role": "user", "content": CARRY5_TURN},
+                              {"role": "assistant", "content": "the cat sat on a mat"}], "uri": "toy/carry5"})
     (d / "dialogues.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    (d / "text.txt").write_text("".join(json.dumps(r) + EOT + "\n" for r in rows), encoding="utf-8")
+
+
+def _carry5_turn():
+    with open(ROOT / "corpus" / "eval" / "carry5_v1.jsonl", encoding="utf-8") as f:
+        for line in f:
+            for t in json.loads(line)["turns"]:
+                if len(t["user"].split()) >= 6:
+                    return t["user"]
+
+
+CARRY5_TURN = _carry5_turn()
 
 
 def vocab(path):
@@ -76,6 +91,8 @@ def test_data_job_outputs_and_upsampling(built):
         assert (out / f).exists(), f
     assert led["human"]["dropped_not_alternating"] == 1
     assert sum(led["human"]["split"].values()) == 1000
+    # Carry-5 is a decontamination target (amendment 1): its user turn's dialogue is dropped.
+    assert led["steps"]["decontam"]["rows_dropped"] == 1 and led["human"]["carry5_v1_sha256"]
     m = led["mixes"]
     assert m["s0"]["dialogue_copies"] == 0 and m["s0"]["share_effective"] == 0
     # ~60 kB of pretraining dialogue for 75 kB (s50) and 150 kB (s100): copies cover the need, FineWeb unrepeated.
@@ -84,6 +101,69 @@ def test_data_job_outputs_and_upsampling(built):
     assert abs(src["dialogue"]["bytes"] / (src["dialogue"]["bytes"] + src["fineweb"]["bytes"]) - 0.5) < 0.05
     sft = [json.loads(x) for x in (out / "sft_human.jsonl").read_text().splitlines()]
     assert sft and all(r["segments"][0]["loss"] is False and r["segments"][1]["loss"] is True for r in sft)
+
+
+def test_measure_only_equals_the_data_job_and_pins_are_enforced(built, tmp_path):
+    """P measured at home (--measure-only) is the data job's human_pt_bytes; --sources picks the
+    sources; --require-pinned refuses bytes without a pin."""
+    t, out = built
+    led = json.loads((out / "data.ledger.json").read_text())
+    base = DATA + ["--human-dir", str(t / "human"), "--human-fetch", ""]
+    p = subprocess.run(base + ["--out", str(tmp_path / "m"), "--measure-only", "--sources", "toy"],
+                       capture_output=True, text=True, cwd=ROOT)
+    assert p.returncode == 0, p.stderr[-2000:]
+    assert json.loads(p.stdout.strip().splitlines()[-1])["human_pt_bytes"] == led["human_pt_bytes"]
+    p = subprocess.run(base + ["--out", str(tmp_path / "m2"), "--measure-only", "--sources", "toy,absent"],
+                       capture_output=True, text=True, cwd=ROOT)
+    assert p.returncode != 0 and "absent" in p.stderr
+    p = subprocess.run(base + ["--out", str(tmp_path / "m3"), "--measure-only", "--require-pinned"],
+                       capture_output=True, text=True, cwd=ROOT)
+    assert p.returncode != 0 and "not the pinned bytes" in p.stderr
+
+
+def test_asha_promotion_rule(tmp_path):
+    """asha_promote: the top `keep` by base-model acc_gold, ties by the dialogue panel; diverged and
+    failed runs never promoted; results from this VM or from the uploaded state file; a candidate
+    with no result anywhere stops the step; the next round reads the previous decisions."""
+    chat = tmp_path / "chat"
+    plan = {"configs": [{"id": f"c0{i}"} for i in range(5)],
+            "rounds": [{"id": "r0", "budget": 10, "keep": 5}, {"id": "r1", "budget": 30, "keep": 2},
+                       {"id": "r2", "budget": 100, "keep": 1}]}
+    (tmp_path / "plan.json").write_text(json.dumps(plan))
+    rows = {"c00": {"acc_gold": 0.50, "panels": {"dialogue": 3.0}},
+            "c01": {"acc_gold": 0.60, "panels": {"dialogue": 3.1}},
+            "c02": {"acc_gold": None, "diverged": True}}
+    for c, r in rows.items():
+        (chat / f"asha_r0_{c}").mkdir(parents=True)
+        (chat / f"asha_r0_{c}" / "rung.json").write_text(json.dumps({"config": c, **r}))
+    (chat / "STATUS_asha_r0_c04").write_text("FAILED\n")
+    state = tmp_path / "asha_state.json"
+    env = {**os.environ, "JOBS_CHAT_DIR": str(chat)}
+    cmd = RUN + ["asha_promote", "--plan", str(tmp_path / "plan.json"), "--state", str(state)]
+    r = subprocess.run(cmd + ["--out", str(chat / "asha_promote_r1"), "--round", "r1"], capture_output=True,
+                       text=True, env=env, cwd=ROOT)
+    assert r.returncode == 1 and "c03" in r.stderr  # c03's result is nowhere yet
+    # c03 came home before the VM was replaced: the state file carries it, tied with c01 on acc_gold.
+    state.write_text(json.dumps({"rungs": {"r0": {"c03": {"config": "c03", "acc_gold": 0.60,
+                                                         "panels": {"dialogue": 2.9}}}}}))
+    r = subprocess.run(cmd + ["--out", str(chat / "asha_promote_r1"), "--round", "r1"], capture_output=True,
+                       text=True, env=env, cwd=ROOT)
+    assert r.returncode == 0, r.stderr
+    d = json.loads((chat / "asha_promote_r1" / "decisions.json").read_text())
+    assert d["decisions"]["r1"] == {"c00": False, "c01": True, "c02": False, "c03": True, "c04": False}
+    assert [x["config"] for x in d["ranking"]][:2] == ["c03", "c01"]  # tie on acc_gold: lower dialogue loss first
+    # Round r2 on a fresh VM: the r1 decisions and results come from the state file only.
+    import shutil
+    shutil.rmtree(chat)
+    chat.mkdir()
+    state.write_text(json.dumps({"decisions": d["decisions"],
+                                 "rungs": {"r1": {"c01": {"config": "c01", "acc_gold": 0.7},
+                                                  "c03": {"config": "c03", "acc_gold": 0.65}}}}))
+    r = subprocess.run(cmd + ["--out", str(chat / "asha_promote_r2"), "--round", "r2"], capture_output=True,
+                       text=True, env=env, cwd=ROOT)
+    assert r.returncode == 0, r.stderr
+    d2 = json.loads((chat / "asha_promote_r2" / "decisions.json").read_text())
+    assert [c for c, v in d2["decisions"]["r2"].items() if v] == ["c01"]
 
 
 def test_short_dialogue_runs_at_the_largest_covered_share(tmp_path):
@@ -175,6 +255,37 @@ def test_probe_screen_post_pick(built, tmp_path):
     assert r.returncode == 0, r.stderr[-1000:]
     best = json.loads((tmp_path / "pick" / "best.json").read_text())
     assert best["best"]["seed"] == 2 and (tmp_path / "pick" / "model.gguf").exists()
+    s = json.loads((tmp_path / "post_r1" / "summary.json").read_text())
+    assert abs(s["final_rung"]["Y_base"] - (0.65 - 0.7)) < 1e-9 and s["final_rung"]["acc_gold"] == 0.65
+    # A rung: the checkpoint at step 10 kept aside (jobs_vm.py's snapshot), scored as the post job scores
+    # the base model, plus the run's validation loss at that step.
+    import shutil
+    snap = tmp_path / "pt" / "rung_10"
+    snap.mkdir()
+    shutil.copyfile(tmp_path / "pt" / "model.safetensors", snap / "model.safetensors")
+    (snap / "state.txt").write_text("10\n{}\n")
+    rung = RUN + ["rung", "--out", str(tmp_path / "rung"), "--spec", str(spec), "--weights",
+                  str(snap / "model.safetensors"), "--pt-dir", str(tmp_path / "pt"), "--job", "pt", "--cell", "s50",
+                  "--seed", "1", "--share", "50", "--panel", f"fineweb={out / 'panel_fineweb.ids'}",
+                  "--panel", f"dialogue={out / 'panel_dialogue.ids'}", "--carry5-items", str(items)]
+    r = subprocess.run(rung + ["--step", "10"], capture_output=True, text=True, env=env5, cwd=ROOT)
+    assert r.returncode == 0, r.stdout[-2000:] + r.stderr[-2000:]
+    g = json.loads((tmp_path / "rung" / "rung.json").read_text())
+    assert g["step"] == 10 and g["acc_gold"] == 0.65 and g["val_loss"] is not None
+    assert set(g["panels"]) == {"fineweb", "dialogue"} and g["carry5_base"]["meta"]["gen"] == "none"
+    r = subprocess.run(rung[:4] + [str(tmp_path / "rung2")] + rung[5:] + ["--step", "20"], capture_output=True,
+                       text=True, env=env5, cwd=ROOT)
+    assert r.returncode != 0 and "holds step 10" in r.stderr  # a snapshot of another step is refused
+    # A successive-halving candidate: trained from scratch to its budget, then the same rung metrics.
+    r = subprocess.run(RUN + ["asha_train", "--out", str(tmp_path / "asha"), "--spec", str(spec), "--corpus",
+                              str(out / "mix_s50.ids"), "--budget", "20", "--lr", "0.003", "--warmup-frac", "0.1",
+                              "--seed", "1001", "--share", "50", "--config", "c00", "--round", "r0",
+                              "--panel", f"dialogue={out / 'panel_dialogue.ids'}", "--carry5-items", str(items)],
+                       capture_output=True, text=True, env=env5, cwd=ROOT)
+    assert r.returncode == 0, r.stdout[-2000:] + r.stderr[-2000:]
+    a = json.loads((tmp_path / "asha" / "rung.json").read_text())
+    assert a["budget"] == 20 and not a["diverged"] and a["acc_gold"] == 0.65 and len(a["evals"]) >= 2
+    assert (tmp_path / "asha" / "run" / "events.jsonl").exists()
 
 
 def test_choose_rule_and_gate(tmp_path):

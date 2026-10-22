@@ -396,4 +396,184 @@ job checks both on the VM).
 
 ## Amendments
 
-None.
+### Amendment 1 (23 Oct 2026, before any run): the data, the 60M stage, and an early-stopping study
+
+Written after Jonathan's decisions of 23 Oct 2026 (`LOCAL_LLM_STACK.md` section 9) and before any
+Stage 0, E5, E1 or successive-halving job ran. Sections 0-12 stand except where this amendment
+says otherwise.
+
+**A1.1 Data.**
+- Human-written text only, as section 0. The dialogue pool of E5 and E1 (the pretraining
+  dialogue, the SFT set and the dialogue panel) is **13 sources**: the default set (oasst,
+  convai2, wow, bst, taskmaster, multiwoz, self_dialogue), the share-alike Topical-Chat, Dolly and
+  QuAC, and the non-commercial EmpatheticDialogues, DailyDialog and No Robots (Jonathan:
+  share-alike and non-commercial sources are in). OpenAssistant stays in (Jonathan: clean enough).
+- **Aya English stays out** (`aya_en`, behind `--allow-llm-risk`): it is the one source with
+  evidence of ChatGPT-written text (survey section 3), and the decision covered licences and
+  OpenAssistant, not the LLM-risk gate.
+- **FineWeb-Edu counts as human-written** (Jonathan): the general text of every run, no dump filter.
+- **Simple English Wikipedia** (`human_simplewiki_v1`, 224,597 articles, 79.5M tokens of the 16k
+  vocabulary) is not dialogue and enters no E5 or E1 mix. Its licence condition for E5w (section 2)
+  is met; E5w's other condition stands (E5's primary contrast resolved), and its jobs are made then.
+- **Taskmaster is Taskmaster-1 and -2.** The v1 reader maps the speaker labels `USER` and
+  `ASSISTANT`; Taskmaster-3 writes them in lower case, so its 23,757 dialogues drop
+  (`unknown_speaker`) and the pinned corpus holds 28,791 dialogues from TM-1 and TM-2. TM-3's agent
+  turns are filled from templates. Adding it would be a new corpus id and a further amendment
+  before Stage 0, with P and the levels measured again.
+- **Pins.** All 15 human corpora are pinned (`corpus/hashes/human_*_v1.sha256`; the ParlAI archives
+  by sha256 in `human_dialogue.py`). The VM data job rebuilds the 13 training sources and refuses
+  unless every file equals its pin (`tiny_chat_data.py --require-pinned`), so every session trains
+  on the bytes measured at home.
+- **Carry-5 decontamination.** `tools/carry5_build.py decontam` over the 13 sources and Simple
+  English Wikipedia (395,169 rows; `carry5_decontam_human_v1.json` in this folder): **no item
+  leaks** (an item's fact sentence and its question in one row); 44 items' fact sentences occur
+  somewhere (everyday sentences such as "I work as a chef."); 6 Carry-5 user turns occur as whole
+  user turns. The data job's decontamination now adds Carry-5 to the frozen sets (its user turns as
+  prompts, its gold replies as references; `corpus/decontam.py`'s rules) and drops those **52 of
+  170,572 dialogues** (convai2 42, wow 3, taskmaster 3, topical_chat 2, multiwoz 1, self_dialogue 1).
+  The corpus builds themselves keep the frozen sets only: their v1 pins predate Carry-5
+  (`human_dialogue.py --carry5` opts in for a new corpus id).
+
+**A1.2 Dialogue levels (section 5's rule, applied).**
+- **P = 149,473,532 bytes**, measured by `tiny_chat_data.py --measure-only --require-pinned` over
+  the 13 pinned sources with the data job's own normalisation, decontamination and split (170,520
+  dialogues: val 8,564, SFT 16,977, pretraining 144,979; `design_p.ledger.json`). Identical bytes
+  and code make it the data job's `human_pt_bytes`, so no level falls back to `share_effective`.
+- Four copies cover 71% of a mix, under 100%, so the levels are 0 and one, two and four passes:
+  **0 / 17 / 35 / 70%** (`design.json`, final).
+- **dE1 = 35%** (two passes). Section 5's operative rule is "the non-zero level nearest 50% (ties:
+  the smaller)": 35 is 15 points from 50, 70 is 20. Its parenthetical "the four-pass level
+  otherwise" described the small corpus measured then, where four passes was nearest 50%. E1 trains
+  on the 35% mix and its L8 cell is E5's 35% cell.
+- dtop = 70% differs from dE1, so **H5-saturation is tested** as registered (Y(70) - Y(35)).
+- The SFT set and the dialogue panel are the 10% and 5% splits of the same 13-source pool.
+
+**A1.3 The 60M stage** is authorised now (Jonathan: train now, the 60M stage included). Section 8
+rule 6 changes: Stage 0 at 60M may launch beside Stage 0 at 20M, and E1 at 60M after its own
+learning-rate choice, without waiting for the 20M results. The 60M sign prediction (section 6) is
+unchanged. Section 8 rule 5 (Jonathan decides before E1 if Stage 0 puts the core above 80 L4
+VM-hours) stands.
+
+**A1.4 The early-stopping study.** Jonathan asked whether an early-stopping mechanism can show
+whether fast learning happens. It has three parts; none changes a primary contrast.
+
+*(a) The registered cells run to full length.* No E5, E1 or 60M run is stopped, shortened or
+dropped for its early performance. Stopping slow starters would favour configurations that learn
+fast early, the very thing this study asks about, and would bias E1's depth slope in particular
+(deep, thin models take longer per step and may start slower). The only stops remain section 8's
+divergence and failure rules.
+
+*(b) Rung logging, every E5, E1 (20M) and E1 (60M) pretraining run.* Rungs at **5, 10, 25 and 50%**
+of the 10,000 steps (steps 500, 1,000, 2,500, 5,000); **100%** is the post job.
+- The VM keeps the weights at each rung (`jobs_vm.py` `snapshot_steps` copies that step's
+  checkpoint before the next save overwrites it) and a light rung job (its own slot, so it never
+  holds back a training job) scores them: the two zero-rate panels (S6: FineWeb-Edu and human
+  dialogue val, 512 windows) and **base-model Carry-5, teacher-forced** (forced choice with gold
+  history, twin and noctx; no generation). Each rung's `rung.json` comes home. The 100% point is the
+  post job's base-model Carry-5 and panels (`final_rung`).
+- Validation every 500 steps (was 1,000), so every rung has a validation loss. mtstudio draws its
+  evaluation windows from a fixed generator of their own: the training data order and every update
+  are unchanged.
+- **Rung predictors:** Y_base = acc_gold - acc_twin (the base model's gold-history analogue of the
+  primary metric), acc_gold, and the two panel losses.
+- A rung lost to a replaced VM (a snapshot lives only on the VM that ran that step) is recorded as
+  lost and never imputed.
+- **Registered analysis** (`analyze.py` `rung_analysis`). Blocks: E5 (12 runs), E1 at 20M (15,
+  with E5's 35% cell), E1 at 60M (12), and **pooled 20M** (E5 plus E1's other depths, 24 runs). At
+  each rung, for the pairs Y_base -> Y, acc_gold -> Y (Y = the primary metric: SFT model, self
+  history), FineWeb panel -> final FineWeb panel and dialogue panel -> final dialogue panel:
+  Spearman's rho across runs, its 90% percentile bootstrap interval (2,000 resamples of runs, seed
+  0), and the **top-third check**: keeping the ceil(cells / 3) best cells by the predictor's cell
+  means, is the cell with the best final mean kept?
+- **Threshold, fixed now:** early ranking is **PREDICTIVE** at a rung when rho >= 0.80, the
+  interval's lower end >= 0.50, and the top-third check keeps the final best cell; otherwise
+  NOT_PREDICTIVE; INCOMPLETE when fewer than max(8, 80% of the block's runs) have that rung. The
+  answer reported first is the **earliest predictive rung for Y_base -> Y, pooled 20M**.
+- Discipline: rung files are analysed with their block's final summaries (`--partial` labels the
+  output DESCRIPTIVE, PARTIAL). Interim reads remain failure monitoring.
+- **Predictions (descriptive, not tested):** the panel losses rank early (predictive by 25%);
+  Carry-5 ranks later than the losses, because carry-over forms late and SFT reorders models; the
+  deepest 20M shapes start slowest, so a stopping rule at 5-10% would have cut them.
+
+*(c) A successive-halving arm, EXPLORATORY, not confirmatory* (`tools/colab_chat/tiny_chat_asha.json`;
+configurations and costs in `asha_plan.json`).
+- **Space:** 27 configurations drawn with seed 20261023: 20M non-embedding shapes at depths 2, 3,
+  4, 6, 8, 12 and 16 (`shape_for`; E1 covers L32 at 3-4x the cost per step), peak lr log-uniform in
+  [2.5e-4, 4e-3], warmup 2, 5 or 10% of the budget, dialogue share one of E5's levels (0, 17, 35,
+  70%), seed 1000 + index. Everything else as section 1.
+- **Rounds** (synchronous successive halving, eta = 3): 27 configurations x 1,000 steps, the top 9
+  x 3,000, the top 3 x 10,000 (the full budget). Each round trains from scratch to its budget with
+  its own warmup and cosine to 0.1x, so the finalists are full runs comparable with the E cells and
+  a replaced VM never strands a promotion. The finalists get the E cells' post job (the same SFT,
+  Carry-5 with self history, the panels).
+- **Promotion rule, fixed now** (`tiny_chat_run.py` `promote_rank`): rank the previous round's
+  candidates by **base-model Carry-5 acc_gold** at the end of their budget (higher first), ties by
+  the dialogue panel loss (lower first), then config id; a diverged or failed run ranks last and is
+  never promoted; promote the top 9, then the top 3. Promotion runs on the VM; a candidate not
+  promoted ends as a FAILED job whose log says "not promoted".
+- **Kept:** every run's `rung.json` (final validation loss, a 10-point validation curve, panels,
+  base-model Carry-5) and its `events.jsonl` (the training curve) come home, killed or not. Killed
+  runs' weights are not kept.
+- **Budget cap: 20 L4 VM-hours** (about 96 compute units), enforced as the session's
+  `--max-hours 20` (one VM at a time). The throughput model's worst case is 19.5 VM-hours (the
+  dearest 9 and 3 promoted), about 13 expected. Whatever is unfinished at the cap is reported as such.
+- **Claims:** descriptive only. The arm can show which configurations learn fast at 1,000 and 3,000
+  steps and where the finalists' Y falls against the E cells; it tests no hypothesis (one seed per
+  configuration, selection on the metric, configurations that interact with budget). The promotion
+  metric favours dialogue-rich mixes by construction (base-model Carry-5 reads the chat template),
+  so a dialogue-heavy finalist is not evidence for H5.
+
+**A1.5 Interfaces, as changed before any run.** `tiny_chat_data.py`: `--sources`,
+`--require-pinned`, `--measure-only`, Carry-5 in the decontamination. `jobs_vm.py`:
+`snapshot_steps`, `rung_of`, light slots, `after_terminal`, `promoted_by`. `tiny_chat_run.py`:
+`rung`, `asha_train`, `asha_promote`; `post` records `final_rung`. `make_jobs.py`: validation every
+500 steps, the rung jobs, the 13 sources, `asha_plan.json` and `tiny_chat_asha.json`.
+`tools/colab_chat/tiny_chat_asha.py`: the home side of the arm (`drive` keeps
+`ART/asha_state.json`, every result and decision already home, current for the runner's upload, so
+a replaced VM can still promote). `analyze.py`: `rung_analysis`, `asha_summary`.
+
+**A1.6 Compute and launch** (section 12's commands with these files; the main session launches).
+
+| block | L4 VM-hours (throughput model) | session | depends on |
+|---|---|---|---|
+| Stage 0, 20M | 5 | `pk-tc-s0` | this commit |
+| Stage 0, 60M | 5 | `pk-tc-s0-60m` | this commit |
+| successive halving (exploratory) | 13 expected, cap 20 | `pk-tc-asha` | this commit |
+| E5 | 17 | `pk-tc-e5` | Stage 0 20M chosen, committed, pushed |
+| E1 20M | 30 | `pk-tc-e1` | the same |
+| E1 60M | 36 | `pk-tc-e1-60m` | Stage 0 60M chosen, committed, pushed |
+| **total** | **about 106-113** | | |
+
+Rung jobs add about 3 minutes of light-slot work per rung (144 rungs), beside the training jobs.
+At about 4.8 compute units an hour the total is about 510-540 units, most of a month's 600 beside
+the next base model's sessions; Stage 0's probes replace the model's numbers, and section 8 rule 5
+applies to them. With at most four Colab sessions at once: Stage 0 (both sizes) and the
+successive-halving arm first, beside `pk-base`; E5 and E1 when the two Stage 0 sessions end; E1 at
+60M when the next session ends.
+
+```
+U="--upload vocab_llama3_bpe.gguf=/mnt/c/ml_artifacts/capacity/vocab/vocab_llama3_bpe.gguf"
+R="python3 -u tools/colab_chat/runner_multi.py"
+# this commit (SHA1):
+$R --commit SHA1 --jobs tools/colab_chat/tiny_chat_s0.json --name pk-tc-s0 --art /mnt/c/ml_artifacts/tiny_chat/s0 \
+   --state-dir /home/jonat/pk_tc_s0_runner --max-hours 23.5 $U
+$R --commit SHA1 --jobs tools/colab_chat/tiny_chat_s0_60m.json --name pk-tc-s0-60m \
+   --art /mnt/c/ml_artifacts/tiny_chat/s0_60m --state-dir /home/jonat/pk_tc_s0_60m_runner --max-hours 23.5 $U
+python3 -u tools/colab_chat/tiny_chat_asha.py drive --art /mnt/c/ml_artifacts/tiny_chat/asha \
+   --state-dir /home/jonat/pk_tc_asha_runner -- $R --commit SHA1 --jobs tools/colab_chat/tiny_chat_asha.json \
+   --name pk-tc-asha --art /mnt/c/ml_artifacts/tiny_chat/asha --state-dir /home/jonat/pk_tc_asha_runner \
+   --max-hours 20 $U --upload asha_state.json=/mnt/c/ml_artifacts/tiny_chat/asha/asha_state.json
+# after each Stage 0, at home (60M adds its shapes to the same file):
+python3 tools/colab_chat/tiny_chat_run.py choose --art /mnt/c/ml_artifacts/tiny_chat/s0 \
+   --out experiments/tiny_chat_2026-10/stage0/lr_choice.json
+python3 tools/colab_chat/tiny_chat_run.py choose --art /mnt/c/ml_artifacts/tiny_chat/s0_60m \
+   --out experiments/tiny_chat_2026-10/stage0/lr_choice.json
+python3 experiments/tiny_chat_2026-10/make_jobs.py   # commit lr_choice.json and the jobs files, push: SHA2
+$R --commit SHA2 --jobs tools/colab_chat/tiny_chat_e5.json --name pk-tc-e5 --art /mnt/c/ml_artifacts/tiny_chat/e5 \
+   --state-dir /home/jonat/pk_tc_e5_runner --max-hours 23.5 $U
+$R --commit SHA2 --jobs tools/colab_chat/tiny_chat_e1.json --name pk-tc-e1 --art /mnt/c/ml_artifacts/tiny_chat/e1 \
+   --state-dir /home/jonat/pk_tc_e1_runner --max-hours 23.5 $U
+$R --commit SHA2 --jobs tools/colab_chat/tiny_chat_e1_60m.json --name pk-tc-e1-60m \
+   --art /mnt/c/ml_artifacts/tiny_chat/e1_60m --state-dir /home/jonat/pk_tc_e1_60m_runner --max-hours 23.5 $U
+python experiments/tiny_chat_2026-10/analyze.py --art C:/ml_artifacts/tiny_chat --out experiments/tiny_chat_2026-10/analysis.json
+```

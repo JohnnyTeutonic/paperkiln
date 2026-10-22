@@ -9,6 +9,17 @@ data-job commands that tiny_chat_*.json run through jobs_vm.py, plus `choose` at
     tiny_chat_run.py pick   --out D --run POST_DIR [--run ...]
     tiny_chat_run.py gate   --out D --jobs JOBS.json --choice LR_CHOICE.json
     tiny_chat_run.py choose --art ART_DIR --out LR_CHOICE.json          (at home, after Stage 0)
+    tiny_chat_run.py rung   --out D --spec SHAPE.json --weights SNAP/model.safetensors --pt-dir P --step N
+                            --job J --cell C --seed S --share N --panel NAME=IDS ... --carry5-items ITEMS
+    tiny_chat_run.py asha_train   --out D --spec SHAPE.json --corpus C.ids --budget N --lr X --warmup-frac F
+                                  --seed S --share N --config ID --round R --panel ... --carry5-items ITEMS
+    tiny_chat_run.py asha_promote --out D --plan PLAN.json --round R [--state STATE.json]
+
+rung, asha_train and asha_promote serve the early-stopping study (PREREGISTRATION.md amendment 1):
+rung scores a pretraining run's weights at a rung (5/10/25/50% of its steps; jobs_vm.py keeps the
+snapshot) with the zero-rate panels and base-model Carry-5 teacher-forced; asha_train trains one
+successive-halving candidate at one budget and scores it the same way; asha_promote applies the
+registered promotion rule (promote_rank) between rounds.
 
 probe: the shape alone on the GPU for a few hundred steps; steady tokens/s (timed between step 50
 and the last step from mtstudio's own step events) and peak GPU memory. screen: one lr of the
@@ -240,6 +251,54 @@ def cmd_screen(a):
     return 0 if rc == 0 else 1
 
 
+def zero_rate_panels(shape, weights, out, panel_kvs):
+    """{name: nats/token} for each NAME=IDS panel: 1 step at lr 0 from the weights, 512 held-out
+    windows (the weights stay byte-identical). Finished panels are not rerun."""
+    res = {}
+    for kv in panel_kvs:
+        name, path = kv.split("=", 1)
+        d = os.path.join(out, f"panel_{name}")
+        if not os.path.exists(os.path.join(d, "result.json")):
+            shutil.rmtree(d, ignore_errors=True)  # init_from applies to fresh runs only
+            spec = {"name": f"panel_{name}", "arch": shape["arch"],
+                    "data": {**shape["data"], "corpus": path, "max_tokens": 0},
+                    "train": {"steps": 1, "lr": 0.0, "batch": 1, "accum": 1, "eval_every": 1, "eval_windows": 512,
+                              "checkpoint_every": 10 ** 7, "gradmap_every": 0, "seed": 1, "optimizer": "adamw",
+                              "init_from": weights},
+                    "export": {"formats": []}}
+            rc, _ = run_mtstudio(spec, d, os.path.join(out, "mtstudio.log"))
+            if rc != 0:
+                raise SystemExit(f"panel {name} failed (rc {rc})")
+        res[name] = final_eval(d)
+    return res
+
+
+def carry5_base(shape, weights, items, out, required=False):
+    """Carry-5 on a base (pretrained, not SFT) model, teacher-forced: gold, twin and noctx forced
+    choice, no generation (--gen none). A failure is recorded, or raised when required."""
+    base_spec = os.path.join(out, "base_spec.json")
+    jsave(base_spec, {**shape, "name": os.path.splitext(os.path.basename(weights))[0],
+                      "out_dir": os.path.dirname(os.path.abspath(weights))})
+    c5b = os.path.join(out, "carry5_base")
+    pb = subprocess.run(carry5_argv(base_spec, items, c5b, "none", port_for(c5b)), capture_output=True, text=True)
+    open(os.path.join(out, "carry5_base.log"), "w", encoding="utf-8").write(pb.stdout[-20000:] + pb.stderr[-20000:])
+    if pb.returncode == 0 and os.path.exists(os.path.join(c5b, "summary.json")):
+        return carry5_read(c5b)
+    if required:
+        raise SystemExit(f"carry5_eval (base) failed (rc {pb.returncode}): {pb.stderr[-500:]}")
+    return {"error": pb.stderr[-500:]}
+
+
+def rung_metrics(c5b):
+    """The rung predictors (amendment 1): base-model forced-choice accuracy with gold history
+    (acc_gold) and Y_base = acc_gold - acc_twin, both teacher-forced."""
+    try:
+        g, t = float(c5b["acc"]["gold"]), float(c5b["acc"]["twin"])
+    except (KeyError, TypeError, ValueError):
+        return {"acc_gold": None, "Y_base": None}
+    return {"acc_gold": g, "Y_base": g - t}
+
+
 def preflight(items):
     missing = [p for p in (CARRY5_TOOL, items) if not os.path.exists(p)]
     if missing:
@@ -258,29 +317,15 @@ def cmd_post(a):
     if not os.path.exists(a.pt_weights):
         raise SystemExit(f"pretrained weights not found: {a.pt_weights}")
     s = {"mode": "post", "cell": a.cell, "share": a.share, "seed": a.seed, "spec": a.spec, "arch": custom,
-         "shape": jload(a.spec).get("_shape"), "pt_lr": shape["train"]["lr"], "pt_weights_sha256": sha256(a.pt_weights),
+         "shape": jload(a.spec).get("_shape"), "pt_lr": a.pt_lr if a.pt_lr is not None else shape["train"]["lr"],
+         "pt_weights_sha256": sha256(a.pt_weights),
          "gpu": gpu_name()}
     # Pretraining receipts, when this VM ran the job (on a fresh VM they are home already).
     if os.path.exists(os.path.join(a.pt_dir, "result.json")):
         s["pt_result"] = jload(os.path.join(a.pt_dir, "result.json"))
     s["pt_evals"] = [(e["step"], e["val_loss"]) for e in events(a.pt_dir) if e.get("event") == "eval"]
     # 1. Panels: the zero-rate pass (1 step at lr 0 from the weights) reads the panel's held-out windows.
-    s["panels"] = {}
-    for kv in a.panel:
-        name, path = kv.split("=", 1)
-        d = os.path.join(a.out, f"panel_{name}")
-        if not os.path.exists(os.path.join(d, "result.json")):
-            shutil.rmtree(d, ignore_errors=True)  # init_from applies to fresh runs only
-            spec = {"name": f"panel_{name}", "arch": shape["arch"],
-                    "data": {**shape["data"], "corpus": path, "max_tokens": 0},
-                    "train": {"steps": 1, "lr": 0.0, "batch": 1, "accum": 1, "eval_every": 1, "eval_windows": 512,
-                              "checkpoint_every": 10 ** 7, "gradmap_every": 0, "seed": 1, "optimizer": "adamw",
-                              "init_from": a.pt_weights},
-                    "export": {"formats": []}}
-            rc, _ = run_mtstudio(spec, d, os.path.join(a.out, "mtstudio.log"))
-            if rc != 0:
-                raise SystemExit(f"panel {name} failed (rc {rc})")
-        s["panels"][name] = final_eval(d)
+    s["panels"] = zero_rate_panels(shape, a.pt_weights, a.out, a.panel)
     # 2. SFT from the pretrained weights (resumes from its own checkpoint on this VM).
     sft = jload(a.sft_template)
     sft.pop("_comment", None)
@@ -311,14 +356,8 @@ def cmd_post(a):
         raise SystemExit(f"carry5_eval failed (rc {p.returncode}): {p.stderr[-500:]}")
     s["carry5"] = carry5_read(c5)
     s["primary"] = primary(s["carry5"])
-    base_spec = os.path.join(a.out, "base_spec.json")
-    jsave(base_spec, {**shape, "name": os.path.splitext(os.path.basename(a.pt_weights))[0],
-                      "out_dir": os.path.dirname(a.pt_weights)})
-    c5b = os.path.join(a.out, "carry5_base")
-    pb = subprocess.run(carry5_argv(base_spec, a.carry5_items, c5b, "none", port_for(c5b)), capture_output=True,
-                        text=True)
-    s["carry5_base"] = (carry5_read(c5b) if pb.returncode == 0 and os.path.exists(os.path.join(c5b, "summary.json"))
-                        else {"error": pb.stderr[-500:]})
+    s["carry5_base"] = carry5_base(shape, a.pt_weights, a.carry5_items, a.out)
+    s["final_rung"] = rung_metrics(s["carry5_base"])  # the 100% rung of the early-ranking analysis
     s["other_mtstudio_at_end"] = concurrent_mtstudio()
     jsave(os.path.join(a.out, "summary.json"), s)
     print(json.dumps({k: s[k] for k in ("cell", "seed", "primary", "panels")}))
@@ -354,6 +393,166 @@ def cmd_pick(a):
     return rc
 
 
+def ckpt_step(d):
+    try:
+        return int(open(os.path.join(d, "state.txt")).readline().strip() or 0)
+    except (OSError, ValueError):
+        return None
+
+
+def cmd_rung(a):
+    """A pretraining run's weights at a rung (jobs_vm.py's snapshot at that step): the zero-rate
+    panels and base-model Carry-5 (teacher-forced), plus the run's validation loss at that step."""
+    done = os.path.join(a.out, "rung.json")
+    if os.path.exists(done) and jload(done).get("acc_gold") is not None:
+        print(f"{done}: present")
+        return 0
+    preflight(a.carry5_items)
+    if not os.path.exists(a.weights):
+        raise SystemExit(f"rung snapshot not found: {a.weights}")
+    snap = ckpt_step(os.path.dirname(a.weights))
+    if snap != a.step:
+        raise SystemExit(f"{a.weights} holds step {snap}, not {a.step}")
+    shape = shape_spec(a.spec)
+    ev = events(a.pt_dir)
+    tl = [e["loss"] for e in ev if e.get("event") == "step" and a.step - 50 < e.get("step", -1) <= a.step]
+    s = {"mode": "rung", "job": a.job, "cell": a.cell, "seed": a.seed, "share": a.share, "step": a.step,
+         "spec": a.spec, "weights_sha256": sha256(a.weights),
+         "val_loss": next((e["val_loss"] for e in ev if e.get("event") == "eval" and e.get("step") == a.step), None),
+         "train_loss_last50": sum(tl) / len(tl) if tl else None}
+    s["panels"] = zero_rate_panels(shape, a.weights, a.out, a.panel)
+    s["carry5_base"] = carry5_base(shape, a.weights, a.carry5_items, a.out, required=True)
+    s.update(rung_metrics(s["carry5_base"]))
+    s["gpu"] = gpu_name()
+    jsave(done, s)
+    if a.drop_snapshot:  # scored and recorded: the VM's disk need not hold 4 copies of every run
+        os.remove(a.weights)
+    print(json.dumps({k: s[k] for k in ("job", "step", "acc_gold", "Y_base", "panels", "val_loss")}))
+    return 0
+
+
+def cmd_asha_train(a):
+    """One successive-halving candidate at one budget (amendment 1, exploratory arm): pretrain from
+    scratch for --budget steps (warmup a fraction of the budget, cosine to 0.1x at the budget), then
+    the rung metrics on the final weights. A diverged run is recorded (no metrics) and exits 0, so
+    the promotion step ranks it last; an mtstudio failure exits 1."""
+    done = os.path.join(a.out, "rung.json")
+    if os.path.exists(done):
+        d = jload(done)
+        if d.get("acc_gold") is not None or d.get("diverged"):
+            print(f"{done}: present")
+            return 0
+    preflight(a.carry5_items)
+    shape = shape_spec(a.spec)
+    spec = json.loads(json.dumps(shape))
+    spec["name"] = f"asha_{a.config}_{a.round}"
+    spec["data"]["corpus"] = a.corpus
+    every = max(1, a.budget // 10)
+    spec["train"].update({"steps": a.budget, "lr": a.lr, "seed": a.seed, "eval_every": every, "eval_windows": 32,
+                          "checkpoint_every": every,
+                          "lr_schedule": {"warmup_steps": max(1, round(a.warmup_frac * a.budget)), "decay": "cosine",
+                                          "min_lr_frac": 0.1}})
+    spec["export"] = {"formats": ["safetensors"]}
+    run_dir = os.path.join(a.out, "run")
+    rate = None
+    if not os.path.exists(os.path.join(run_dir, "result.json")):  # resumes from its own checkpoint on this VM
+        rc, rate = run_mtstudio(spec, run_dir, os.path.join(a.out, "mtstudio.log"), t_from=min(50, a.budget // 2))
+        if rc != 0:
+            raise SystemExit(f"mtstudio failed (rc {rc})")
+    ev = events(run_dir)
+    losses = [e["loss"] for e in ev if e.get("event") == "step"]
+    val = final_eval(run_dir)
+    diverged = val is None or not math.isfinite(val) or bool(losses and val > losses[0])
+    s = {"mode": "asha_train", "config": a.config, "round": a.round, "budget": a.budget, "spec": a.spec,
+         "arch": shape["arch"]["custom"], "lr": a.lr, "warmup_frac": a.warmup_frac, "share": a.share, "seed": a.seed,
+         "final_val": val, "diverged": diverged, "first_loss": losses[0] if losses else None,
+         "last_loss": losses[-1] if losses else None, "tok_per_s_steady": rate,
+         "evals": [(e["step"], e["val_loss"]) for e in ev if e.get("event") == "eval"], "gpu": gpu_name(),
+         "acc_gold": None, "Y_base": None}
+    if not diverged:
+        w = os.path.join(run_dir, spec["name"] + ".safetensors")
+        s["panels"] = zero_rate_panels(shape, w, a.out, a.panel)
+        s["carry5_base"] = carry5_base(shape, w, a.carry5_items, a.out, required=True)
+        s.update(rung_metrics(s["carry5_base"]))
+    jsave(done, s)
+    print(json.dumps({k: s[k] for k in ("config", "round", "budget", "final_val", "diverged", "acc_gold")}))
+    return 0
+
+
+def decisions_from(files, rnd):
+    """{config: bool} for round rnd from the first file that holds it (jobs_vm.promotion's format)."""
+    for f in files:
+        try:
+            d = jload(f)["decisions"][rnd]
+        except (OSError, ValueError, KeyError, TypeError):
+            continue
+        return d
+    return None
+
+
+def promote_rank(rows, keep):
+    """The registered promotion rule: candidates with metrics first, by base-model Carry-5 acc_gold
+    (higher first), then dialogue panel loss (lower first), then config id; a diverged or failed run
+    ranks last and is never promoted. The first `keep` with metrics go on."""
+    def key(r):
+        ok = r.get("acc_gold") is not None
+        dl = (r.get("panels") or {}).get("dialogue")
+        return (0 if ok else 1, -(r.get("acc_gold") or 0.0), dl if dl is not None else math.inf, r["config"])
+    ranked = sorted(rows, key=key)
+    return ranked, [r["config"] for r in ranked if r.get("acc_gold") is not None][:keep]
+
+
+def cmd_asha_promote(a):
+    """The promotion step into round --round: reads the previous round's candidates' rung.json
+    (on this VM, or from the uploaded state file the home driver keeps: tiny_chat_asha.py sync),
+    ranks them by promote_rank and writes decisions.json {"decisions": {round: {config: bool}}}.
+    Refuses (exit 1) while a candidate's result is neither here nor in the state file."""
+    plan = jload(a.plan)
+    ids = [c["id"] for c in plan["configs"]]
+    rounds = [r["id"] for r in plan["rounds"]]
+    k = rounds.index(a.round)
+    prev, keep = rounds[k - 1], plan["rounds"][k]["keep"]
+    state = jload(a.state) if a.state and os.path.exists(a.state) else {}
+    chat = os.environ.get("JOBS_CHAT_DIR", "/content/chat")
+    if k - 1 == 0:
+        cands = ids
+    else:
+        dec = decisions_from([os.path.join(chat, f"asha_promote_{prev}", "decisions.json"), a.state], prev)
+        if dec is None:
+            raise SystemExit(f"the {prev} decisions are neither on this VM nor in {a.state}")
+        cands = [c for c in ids if dec.get(c)]
+    rows, missing, where = [], [], {}
+    for c in cands:
+        job = f"asha_{prev}_{c}"
+        local = os.path.join(chat, job, "rung.json")
+        st_path = os.path.join(chat, f"STATUS_{job}")
+        status = open(st_path).read().strip() if os.path.exists(st_path) else None
+        if os.path.exists(local):
+            rows.append(jload(local))
+            where[c] = "vm"
+        elif c in state.get("rungs", {}).get(prev, {}):
+            rows.append(state["rungs"][prev][c])
+            where[c] = "state"
+        elif status == "FAILED" or c in state.get("failed", {}).get(prev, []):
+            rows.append({"config": c, "acc_gold": None, "failed": True})
+            where[c] = "failed"
+        else:
+            missing.append(c)
+    if missing:
+        raise SystemExit(f"{a.round}: no {prev} result for {missing} here or in {a.state}; run "
+                         "tools/colab_chat/tiny_chat_asha.py sync at home and relaunch")
+    ranked, promoted = promote_rank(rows, keep)
+    out = {"round": a.round, "from": prev, "keep": keep, "rule": " ".join(promote_rank.__doc__.split()),
+           "decisions": {a.round: {c: c in promoted for c in ids}},
+           "ranking": [{"config": r["config"], "acc_gold": r.get("acc_gold"), "Y_base": r.get("Y_base"),
+                        "dialogue_panel": (r.get("panels") or {}).get("dialogue"),
+                        "diverged": r.get("diverged"), "failed": r.get("failed", False), "from": where[r["config"]]}
+                       for r in ranked]}
+    jsave(os.path.join(a.out, "decisions.json"), out)
+    print(json.dumps({"round": a.round, "promoted": promoted}))
+    return 0
+
+
 def cmd_gate(a):
     problems = []
     design = jload(a.design) if os.path.exists(a.design) else {}
@@ -361,6 +560,9 @@ def cmd_gate(a):
         problems.append(f"{a.design} is missing or provisional: the dialogue levels need the whole default "
                         "human set measured (make_jobs.py --dialogue-pt-bytes)")
     if a.stage0:
+        if a.need_carry5:
+            problems += [f"{p} missing: the rung metrics cannot be computed" for p in (CARRY5_TOOL, a.carry5_items)
+                         if not os.path.exists(p)]
         os.makedirs(a.out, exist_ok=True)
         jsave(os.path.join(a.out, "gate.json"), {"ok": not problems, "problems": problems})
         print(json.dumps({"ok": not problems, "problems": problems}))
@@ -443,6 +645,7 @@ def main(argv=None):
     p.add_argument("--share", type=int, required=True)
     p.add_argument("--panel", action="append", default=[])
     p.add_argument("--carry5-items", required=True)
+    p.add_argument("--pt-lr", type=float, default=None, help="the pretraining lr to record (default: the spec's)")
     p = sub.add_parser("pick")
     p.add_argument("--out", required=True)
     p.add_argument("--run", action="append", required=True)
@@ -453,14 +656,47 @@ def main(argv=None):
     p.add_argument("--design", default="experiments/tiny_chat_2026-10/design.json")
     p.add_argument("--stage0", action="store_true", help="check the design only (before the screens)")
     p.add_argument("--carry5-items", default="corpus/eval/carry5_v1.jsonl")
+    p.add_argument("--need-carry5", action="store_true", help="with --stage0: also require Carry-5 (the ASHA arm)")
     p = sub.add_parser("choose")
     p.add_argument("--art", required=True)
     p.add_argument("--out", required=True)
+    p = sub.add_parser("rung")
+    p.add_argument("--out", required=True)
+    p.add_argument("--spec", required=True)
+    p.add_argument("--weights", required=True, help="the snapshot's model.safetensors (state.txt beside it)")
+    p.add_argument("--pt-dir", required=True)
+    p.add_argument("--step", type=int, required=True)
+    p.add_argument("--drop-snapshot", action="store_true", help="delete the snapshot's weights once rung.json is saved")
+    p.add_argument("--job", required=True)
+    p.add_argument("--cell", required=True)
+    p.add_argument("--seed", type=int, required=True)
+    p.add_argument("--share", type=int, required=True)
+    p.add_argument("--panel", action="append", default=[])
+    p.add_argument("--carry5-items", required=True)
+    p = sub.add_parser("asha_train")
+    p.add_argument("--out", required=True)
+    p.add_argument("--spec", required=True)
+    p.add_argument("--corpus", required=True)
+    p.add_argument("--budget", type=int, required=True)
+    p.add_argument("--lr", type=float, required=True)
+    p.add_argument("--warmup-frac", type=float, required=True)
+    p.add_argument("--seed", type=int, required=True)
+    p.add_argument("--share", type=int, required=True)
+    p.add_argument("--config", required=True)
+    p.add_argument("--round", required=True)
+    p.add_argument("--panel", action="append", default=[])
+    p.add_argument("--carry5-items", required=True)
+    p = sub.add_parser("asha_promote")
+    p.add_argument("--out", required=True)
+    p.add_argument("--plan", required=True)
+    p.add_argument("--round", required=True)
+    p.add_argument("--state", default="", help="the uploaded state file (tiny_chat_asha.py sync)")
     a = ap.parse_args(argv)
     if a.mode != "choose":
         os.makedirs(a.out, exist_ok=True)
     return {"probe": cmd_probe, "screen": cmd_screen, "post": cmd_post, "pick": cmd_pick, "gate": cmd_gate,
-            "choose": cmd_choose}[a.mode](a)
+            "choose": cmd_choose, "rung": cmd_rung, "asha_train": cmd_asha_train,
+            "asha_promote": cmd_asha_promote}[a.mode](a)
 
 
 if __name__ == "__main__":

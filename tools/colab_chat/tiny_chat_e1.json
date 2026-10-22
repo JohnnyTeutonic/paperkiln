@@ -1,6 +1,7 @@
 {
- "_comment": "tiny-chat E1 at 20M, the shape sweep (experiments/tiny_chat_2026-10/PREREGISTRATION.md). 12 pretraining runs of 10000 steps x 16384 tokens (163.84M), each then SFT (1500 steps on human dialogues), two fixed text panels and Carry-5 (post job); one pick per cell. PROVISIONAL learning rates (1e-3): the gate job fails until stage0/lr_choice.json exists and matches; rerun make_jobs.py after Stage 0. Estimated 75 job-hours (30 L4 VM-hours at 2.5x per VM). Home: each PT job's weights (relays + final), each post's summary.json, each pick's best model. Upload vocab_llama3_bpe.gguf with the runner's --upload. Dialogue levels [0, 4, 8, 16]% (copies), E1 at 16% PROVISIONAL (design.json not final: the gate job refuses; rerun make_jobs.py --dialogue-pt-bytes once the whole default human set is measured).",
+ "_comment": "tiny-chat E1 at 20M, the shape sweep (experiments/tiny_chat_2026-10/PREREGISTRATION.md). 12 pretraining runs of 10000 steps x 16384 tokens (163.84M), each then SFT (1500 steps on human dialogues), two fixed text panels and Carry-5 (post job); one pick per cell. PROVISIONAL learning rates (1e-3): the gate job fails until stage0/lr_choice.json exists and matches; rerun make_jobs.py after Stage 0. Estimated 75 job-hours (30 L4 VM-hours at 2.5x per VM). Rungs (amendment 1): every PT job snapshots its weights at steps [500, 1000, 2500, 5000] and a light rung job scores each snapshot (panels, base-model Carry-5 teacher-forced; rung.json home); runs are never stopped early. Home: each PT job's weights (relays + final), each post's summary.json, each rung's rung.json, each pick's best model. Upload vocab_llama3_bpe.gguf with the runner's --upload. Dialogue levels [0, 17, 35, 70]% (copies), E1 at 35% (design.json final).",
  "max_parallel": 4,
+ "max_parallel_light": 1,
  "jobs": [
   {
    "name": "data",
@@ -14,7 +15,7 @@
     "--fineweb",
     "corpus/data/fineweb_edu_shard0_v1",
     "--shares",
-    "16",
+    "35",
     "--mix-bytes",
     "800000000",
     "--max-epochs",
@@ -22,7 +23,12 @@
     "--T",
     "512",
     "--seed",
-    "1"
+    "1",
+    "--human-fetch",
+    "python3 corpus/fetchers/human_dialogue.py oasst,convai2,wow,bst,taskmaster,multiwoz,self_dialogue,topical_chat,dolly,quac,empathetic,dailydialog,no_robots --allow-sa --allow-nc --out-dir {human}",
+    "--sources",
+    "oasst,convai2,wow,bst,taskmaster,multiwoz,self_dialogue,topical_chat,dolly,quac,empathetic,dailydialog,no_robots",
+    "--require-pinned"
    ],
    "outputs": [
     "data.ledger.json"
@@ -48,6 +54,2022 @@
    ]
   },
   {
+   "name": "rung_e1_L2_r1_s500",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L2_r1",
+    "step": 500
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
+    "--weights",
+    "/content/chat/pt_e1_L2_r1/rung_500/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L2_r1",
+    "--step",
+    "500",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L2_r1",
+    "--cell",
+    "L2",
+    "--seed",
+    "1",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L2_r1_s1000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L2_r1",
+    "step": 1000
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
+    "--weights",
+    "/content/chat/pt_e1_L2_r1/rung_1000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L2_r1",
+    "--step",
+    "1000",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L2_r1",
+    "--cell",
+    "L2",
+    "--seed",
+    "1",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L2_r1_s2500",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L2_r1",
+    "step": 2500
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
+    "--weights",
+    "/content/chat/pt_e1_L2_r1/rung_2500/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L2_r1",
+    "--step",
+    "2500",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L2_r1",
+    "--cell",
+    "L2",
+    "--seed",
+    "1",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L2_r1_s5000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L2_r1",
+    "step": 5000
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
+    "--weights",
+    "/content/chat/pt_e1_L2_r1/rung_5000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L2_r1",
+    "--step",
+    "5000",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L2_r1",
+    "--cell",
+    "L2",
+    "--seed",
+    "1",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L4_r1_s500",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L4_r1",
+    "step": 500
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L4.json",
+    "--weights",
+    "/content/chat/pt_e1_L4_r1/rung_500/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L4_r1",
+    "--step",
+    "500",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L4_r1",
+    "--cell",
+    "L4",
+    "--seed",
+    "1",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L4_r1_s1000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L4_r1",
+    "step": 1000
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L4.json",
+    "--weights",
+    "/content/chat/pt_e1_L4_r1/rung_1000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L4_r1",
+    "--step",
+    "1000",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L4_r1",
+    "--cell",
+    "L4",
+    "--seed",
+    "1",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L4_r1_s2500",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L4_r1",
+    "step": 2500
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L4.json",
+    "--weights",
+    "/content/chat/pt_e1_L4_r1/rung_2500/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L4_r1",
+    "--step",
+    "2500",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L4_r1",
+    "--cell",
+    "L4",
+    "--seed",
+    "1",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L4_r1_s5000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L4_r1",
+    "step": 5000
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L4.json",
+    "--weights",
+    "/content/chat/pt_e1_L4_r1/rung_5000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L4_r1",
+    "--step",
+    "5000",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L4_r1",
+    "--cell",
+    "L4",
+    "--seed",
+    "1",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L16_r1_s500",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L16_r1",
+    "step": 500
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L16.json",
+    "--weights",
+    "/content/chat/pt_e1_L16_r1/rung_500/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L16_r1",
+    "--step",
+    "500",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L16_r1",
+    "--cell",
+    "L16",
+    "--seed",
+    "1",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L16_r1_s1000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L16_r1",
+    "step": 1000
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L16.json",
+    "--weights",
+    "/content/chat/pt_e1_L16_r1/rung_1000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L16_r1",
+    "--step",
+    "1000",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L16_r1",
+    "--cell",
+    "L16",
+    "--seed",
+    "1",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L16_r1_s2500",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L16_r1",
+    "step": 2500
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L16.json",
+    "--weights",
+    "/content/chat/pt_e1_L16_r1/rung_2500/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L16_r1",
+    "--step",
+    "2500",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L16_r1",
+    "--cell",
+    "L16",
+    "--seed",
+    "1",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L16_r1_s5000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L16_r1",
+    "step": 5000
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L16.json",
+    "--weights",
+    "/content/chat/pt_e1_L16_r1/rung_5000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L16_r1",
+    "--step",
+    "5000",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L16_r1",
+    "--cell",
+    "L16",
+    "--seed",
+    "1",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L32_r1_s500",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L32_r1",
+    "step": 500
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L32.json",
+    "--weights",
+    "/content/chat/pt_e1_L32_r1/rung_500/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L32_r1",
+    "--step",
+    "500",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L32_r1",
+    "--cell",
+    "L32",
+    "--seed",
+    "1",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L32_r1_s1000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L32_r1",
+    "step": 1000
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L32.json",
+    "--weights",
+    "/content/chat/pt_e1_L32_r1/rung_1000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L32_r1",
+    "--step",
+    "1000",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L32_r1",
+    "--cell",
+    "L32",
+    "--seed",
+    "1",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L32_r1_s2500",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L32_r1",
+    "step": 2500
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L32.json",
+    "--weights",
+    "/content/chat/pt_e1_L32_r1/rung_2500/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L32_r1",
+    "--step",
+    "2500",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L32_r1",
+    "--cell",
+    "L32",
+    "--seed",
+    "1",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L32_r1_s5000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L32_r1",
+    "step": 5000
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L32.json",
+    "--weights",
+    "/content/chat/pt_e1_L32_r1/rung_5000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L32_r1",
+    "--step",
+    "5000",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L32_r1",
+    "--cell",
+    "L32",
+    "--seed",
+    "1",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L2_r2_s500",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L2_r2",
+    "step": 500
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
+    "--weights",
+    "/content/chat/pt_e1_L2_r2/rung_500/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L2_r2",
+    "--step",
+    "500",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L2_r2",
+    "--cell",
+    "L2",
+    "--seed",
+    "2",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L2_r2_s1000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L2_r2",
+    "step": 1000
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
+    "--weights",
+    "/content/chat/pt_e1_L2_r2/rung_1000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L2_r2",
+    "--step",
+    "1000",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L2_r2",
+    "--cell",
+    "L2",
+    "--seed",
+    "2",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L2_r2_s2500",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L2_r2",
+    "step": 2500
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
+    "--weights",
+    "/content/chat/pt_e1_L2_r2/rung_2500/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L2_r2",
+    "--step",
+    "2500",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L2_r2",
+    "--cell",
+    "L2",
+    "--seed",
+    "2",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L2_r2_s5000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L2_r2",
+    "step": 5000
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
+    "--weights",
+    "/content/chat/pt_e1_L2_r2/rung_5000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L2_r2",
+    "--step",
+    "5000",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L2_r2",
+    "--cell",
+    "L2",
+    "--seed",
+    "2",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L4_r2_s500",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L4_r2",
+    "step": 500
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L4.json",
+    "--weights",
+    "/content/chat/pt_e1_L4_r2/rung_500/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L4_r2",
+    "--step",
+    "500",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L4_r2",
+    "--cell",
+    "L4",
+    "--seed",
+    "2",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L4_r2_s1000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L4_r2",
+    "step": 1000
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L4.json",
+    "--weights",
+    "/content/chat/pt_e1_L4_r2/rung_1000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L4_r2",
+    "--step",
+    "1000",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L4_r2",
+    "--cell",
+    "L4",
+    "--seed",
+    "2",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L4_r2_s2500",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L4_r2",
+    "step": 2500
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L4.json",
+    "--weights",
+    "/content/chat/pt_e1_L4_r2/rung_2500/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L4_r2",
+    "--step",
+    "2500",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L4_r2",
+    "--cell",
+    "L4",
+    "--seed",
+    "2",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L4_r2_s5000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L4_r2",
+    "step": 5000
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L4.json",
+    "--weights",
+    "/content/chat/pt_e1_L4_r2/rung_5000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L4_r2",
+    "--step",
+    "5000",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L4_r2",
+    "--cell",
+    "L4",
+    "--seed",
+    "2",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L16_r2_s500",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L16_r2",
+    "step": 500
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L16.json",
+    "--weights",
+    "/content/chat/pt_e1_L16_r2/rung_500/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L16_r2",
+    "--step",
+    "500",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L16_r2",
+    "--cell",
+    "L16",
+    "--seed",
+    "2",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L16_r2_s1000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L16_r2",
+    "step": 1000
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L16.json",
+    "--weights",
+    "/content/chat/pt_e1_L16_r2/rung_1000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L16_r2",
+    "--step",
+    "1000",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L16_r2",
+    "--cell",
+    "L16",
+    "--seed",
+    "2",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L16_r2_s2500",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L16_r2",
+    "step": 2500
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L16.json",
+    "--weights",
+    "/content/chat/pt_e1_L16_r2/rung_2500/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L16_r2",
+    "--step",
+    "2500",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L16_r2",
+    "--cell",
+    "L16",
+    "--seed",
+    "2",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L16_r2_s5000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L16_r2",
+    "step": 5000
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L16.json",
+    "--weights",
+    "/content/chat/pt_e1_L16_r2/rung_5000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L16_r2",
+    "--step",
+    "5000",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L16_r2",
+    "--cell",
+    "L16",
+    "--seed",
+    "2",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L32_r2_s500",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L32_r2",
+    "step": 500
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L32.json",
+    "--weights",
+    "/content/chat/pt_e1_L32_r2/rung_500/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L32_r2",
+    "--step",
+    "500",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L32_r2",
+    "--cell",
+    "L32",
+    "--seed",
+    "2",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L32_r2_s1000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L32_r2",
+    "step": 1000
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L32.json",
+    "--weights",
+    "/content/chat/pt_e1_L32_r2/rung_1000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L32_r2",
+    "--step",
+    "1000",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L32_r2",
+    "--cell",
+    "L32",
+    "--seed",
+    "2",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L32_r2_s2500",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L32_r2",
+    "step": 2500
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L32.json",
+    "--weights",
+    "/content/chat/pt_e1_L32_r2/rung_2500/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L32_r2",
+    "--step",
+    "2500",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L32_r2",
+    "--cell",
+    "L32",
+    "--seed",
+    "2",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L32_r2_s5000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L32_r2",
+    "step": 5000
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L32.json",
+    "--weights",
+    "/content/chat/pt_e1_L32_r2/rung_5000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L32_r2",
+    "--step",
+    "5000",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L32_r2",
+    "--cell",
+    "L32",
+    "--seed",
+    "2",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L2_r3_s500",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L2_r3",
+    "step": 500
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
+    "--weights",
+    "/content/chat/pt_e1_L2_r3/rung_500/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L2_r3",
+    "--step",
+    "500",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L2_r3",
+    "--cell",
+    "L2",
+    "--seed",
+    "3",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L2_r3_s1000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L2_r3",
+    "step": 1000
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
+    "--weights",
+    "/content/chat/pt_e1_L2_r3/rung_1000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L2_r3",
+    "--step",
+    "1000",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L2_r3",
+    "--cell",
+    "L2",
+    "--seed",
+    "3",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L2_r3_s2500",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L2_r3",
+    "step": 2500
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
+    "--weights",
+    "/content/chat/pt_e1_L2_r3/rung_2500/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L2_r3",
+    "--step",
+    "2500",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L2_r3",
+    "--cell",
+    "L2",
+    "--seed",
+    "3",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L2_r3_s5000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L2_r3",
+    "step": 5000
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
+    "--weights",
+    "/content/chat/pt_e1_L2_r3/rung_5000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L2_r3",
+    "--step",
+    "5000",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L2_r3",
+    "--cell",
+    "L2",
+    "--seed",
+    "3",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L4_r3_s500",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L4_r3",
+    "step": 500
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L4.json",
+    "--weights",
+    "/content/chat/pt_e1_L4_r3/rung_500/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L4_r3",
+    "--step",
+    "500",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L4_r3",
+    "--cell",
+    "L4",
+    "--seed",
+    "3",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L4_r3_s1000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L4_r3",
+    "step": 1000
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L4.json",
+    "--weights",
+    "/content/chat/pt_e1_L4_r3/rung_1000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L4_r3",
+    "--step",
+    "1000",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L4_r3",
+    "--cell",
+    "L4",
+    "--seed",
+    "3",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L4_r3_s2500",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L4_r3",
+    "step": 2500
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L4.json",
+    "--weights",
+    "/content/chat/pt_e1_L4_r3/rung_2500/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L4_r3",
+    "--step",
+    "2500",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L4_r3",
+    "--cell",
+    "L4",
+    "--seed",
+    "3",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L4_r3_s5000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L4_r3",
+    "step": 5000
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L4.json",
+    "--weights",
+    "/content/chat/pt_e1_L4_r3/rung_5000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L4_r3",
+    "--step",
+    "5000",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L4_r3",
+    "--cell",
+    "L4",
+    "--seed",
+    "3",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L16_r3_s500",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L16_r3",
+    "step": 500
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L16.json",
+    "--weights",
+    "/content/chat/pt_e1_L16_r3/rung_500/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L16_r3",
+    "--step",
+    "500",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L16_r3",
+    "--cell",
+    "L16",
+    "--seed",
+    "3",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L16_r3_s1000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L16_r3",
+    "step": 1000
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L16.json",
+    "--weights",
+    "/content/chat/pt_e1_L16_r3/rung_1000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L16_r3",
+    "--step",
+    "1000",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L16_r3",
+    "--cell",
+    "L16",
+    "--seed",
+    "3",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L16_r3_s2500",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L16_r3",
+    "step": 2500
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L16.json",
+    "--weights",
+    "/content/chat/pt_e1_L16_r3/rung_2500/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L16_r3",
+    "--step",
+    "2500",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L16_r3",
+    "--cell",
+    "L16",
+    "--seed",
+    "3",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L16_r3_s5000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L16_r3",
+    "step": 5000
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L16.json",
+    "--weights",
+    "/content/chat/pt_e1_L16_r3/rung_5000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L16_r3",
+    "--step",
+    "5000",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L16_r3",
+    "--cell",
+    "L16",
+    "--seed",
+    "3",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L32_r3_s500",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L32_r3",
+    "step": 500
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L32.json",
+    "--weights",
+    "/content/chat/pt_e1_L32_r3/rung_500/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L32_r3",
+    "--step",
+    "500",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L32_r3",
+    "--cell",
+    "L32",
+    "--seed",
+    "3",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L32_r3_s1000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L32_r3",
+    "step": 1000
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L32.json",
+    "--weights",
+    "/content/chat/pt_e1_L32_r3/rung_1000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L32_r3",
+    "--step",
+    "1000",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L32_r3",
+    "--cell",
+    "L32",
+    "--seed",
+    "3",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L32_r3_s2500",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L32_r3",
+    "step": 2500
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L32.json",
+    "--weights",
+    "/content/chat/pt_e1_L32_r3/rung_2500/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L32_r3",
+    "--step",
+    "2500",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L32_r3",
+    "--cell",
+    "L32",
+    "--seed",
+    "3",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_L32_r3_s5000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_L32_r3",
+    "step": 5000
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L32.json",
+    "--weights",
+    "/content/chat/pt_e1_L32_r3/rung_5000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_L32_r3",
+    "--step",
+    "5000",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_L32_r3",
+    "--cell",
+    "L32",
+    "--seed",
+    "3",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
    "name": "post_e1_L2_r1",
    "after": "pt_e1_L2_r1",
    "init_job": "pt_e1_L2_r1",
@@ -70,7 +2092,7 @@
     "--cell",
     "L2",
     "--share",
-    "16",
+    "35",
     "--panel",
     "fineweb=/content/chat/data/panel_fineweb.ids",
     "--panel",
@@ -105,7 +2127,7 @@
     "--cell",
     "L4",
     "--share",
-    "16",
+    "35",
     "--panel",
     "fineweb=/content/chat/data/panel_fineweb.ids",
     "--panel",
@@ -140,7 +2162,7 @@
     "--cell",
     "L16",
     "--share",
-    "16",
+    "35",
     "--panel",
     "fineweb=/content/chat/data/panel_fineweb.ids",
     "--panel",
@@ -175,7 +2197,7 @@
     "--cell",
     "L32",
     "--share",
-    "16",
+    "35",
     "--panel",
     "fineweb=/content/chat/data/panel_fineweb.ids",
     "--panel",
@@ -210,7 +2232,7 @@
     "--cell",
     "L2",
     "--share",
-    "16",
+    "35",
     "--panel",
     "fineweb=/content/chat/data/panel_fineweb.ids",
     "--panel",
@@ -245,7 +2267,7 @@
     "--cell",
     "L4",
     "--share",
-    "16",
+    "35",
     "--panel",
     "fineweb=/content/chat/data/panel_fineweb.ids",
     "--panel",
@@ -280,7 +2302,7 @@
     "--cell",
     "L16",
     "--share",
-    "16",
+    "35",
     "--panel",
     "fineweb=/content/chat/data/panel_fineweb.ids",
     "--panel",
@@ -315,7 +2337,7 @@
     "--cell",
     "L32",
     "--share",
-    "16",
+    "35",
     "--panel",
     "fineweb=/content/chat/data/panel_fineweb.ids",
     "--panel",
@@ -350,7 +2372,7 @@
     "--cell",
     "L2",
     "--share",
-    "16",
+    "35",
     "--panel",
     "fineweb=/content/chat/data/panel_fineweb.ids",
     "--panel",
@@ -385,7 +2407,7 @@
     "--cell",
     "L4",
     "--share",
-    "16",
+    "35",
     "--panel",
     "fineweb=/content/chat/data/panel_fineweb.ids",
     "--panel",
@@ -420,7 +2442,7 @@
     "--cell",
     "L16",
     "--share",
-    "16",
+    "35",
     "--panel",
     "fineweb=/content/chat/data/panel_fineweb.ids",
     "--panel",
@@ -455,7 +2477,7 @@
     "--cell",
     "L32",
     "--share",
-    "16",
+    "35",
     "--panel",
     "fineweb=/content/chat/data/panel_fineweb.ids",
     "--panel",
@@ -583,6 +2605,12 @@
     "gate"
    ],
    "relay_every_steps": 2500,
+   "snapshot_steps": [
+    500,
+    1000,
+    2500,
+    5000
+   ],
    "spec": {
     "name": "tc_20m_L32",
     "arch": {
@@ -596,7 +2624,7 @@
      }
     },
     "data": {
-     "corpus": "/content/chat/data/mix_s16.ids",
+     "corpus": "/content/chat/data/mix_s35.ids",
      "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
      "vocab_cap": 16384,
      "T": 512,
@@ -608,7 +2636,7 @@
      "batch": 16,
      "accum": 2,
      "clip": 1.0,
-     "eval_every": 1000,
+     "eval_every": 500,
      "eval_windows": 32,
      "checkpoint_every": 500,
      "gradmap_every": 0,
@@ -636,6 +2664,12 @@
     "gate"
    ],
    "relay_every_steps": 2500,
+   "snapshot_steps": [
+    500,
+    1000,
+    2500,
+    5000
+   ],
    "spec": {
     "name": "tc_20m_L32",
     "arch": {
@@ -649,7 +2683,7 @@
      }
     },
     "data": {
-     "corpus": "/content/chat/data/mix_s16.ids",
+     "corpus": "/content/chat/data/mix_s35.ids",
      "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
      "vocab_cap": 16384,
      "T": 512,
@@ -661,7 +2695,7 @@
      "batch": 16,
      "accum": 2,
      "clip": 1.0,
-     "eval_every": 1000,
+     "eval_every": 500,
      "eval_windows": 32,
      "checkpoint_every": 500,
      "gradmap_every": 0,
@@ -689,6 +2723,12 @@
     "gate"
    ],
    "relay_every_steps": 2500,
+   "snapshot_steps": [
+    500,
+    1000,
+    2500,
+    5000
+   ],
    "spec": {
     "name": "tc_20m_L32",
     "arch": {
@@ -702,7 +2742,7 @@
      }
     },
     "data": {
-     "corpus": "/content/chat/data/mix_s16.ids",
+     "corpus": "/content/chat/data/mix_s35.ids",
      "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
      "vocab_cap": 16384,
      "T": 512,
@@ -714,7 +2754,7 @@
      "batch": 16,
      "accum": 2,
      "clip": 1.0,
-     "eval_every": 1000,
+     "eval_every": 500,
      "eval_windows": 32,
      "checkpoint_every": 500,
      "gradmap_every": 0,
@@ -742,6 +2782,12 @@
     "gate"
    ],
    "relay_every_steps": 2500,
+   "snapshot_steps": [
+    500,
+    1000,
+    2500,
+    5000
+   ],
    "spec": {
     "name": "tc_20m_L16",
     "arch": {
@@ -755,7 +2801,7 @@
      }
     },
     "data": {
-     "corpus": "/content/chat/data/mix_s16.ids",
+     "corpus": "/content/chat/data/mix_s35.ids",
      "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
      "vocab_cap": 16384,
      "T": 512,
@@ -767,7 +2813,7 @@
      "batch": 16,
      "accum": 2,
      "clip": 1.0,
-     "eval_every": 1000,
+     "eval_every": 500,
      "eval_windows": 32,
      "checkpoint_every": 500,
      "gradmap_every": 0,
@@ -795,6 +2841,12 @@
     "gate"
    ],
    "relay_every_steps": 2500,
+   "snapshot_steps": [
+    500,
+    1000,
+    2500,
+    5000
+   ],
    "spec": {
     "name": "tc_20m_L16",
     "arch": {
@@ -808,7 +2860,7 @@
      }
     },
     "data": {
-     "corpus": "/content/chat/data/mix_s16.ids",
+     "corpus": "/content/chat/data/mix_s35.ids",
      "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
      "vocab_cap": 16384,
      "T": 512,
@@ -820,7 +2872,7 @@
      "batch": 16,
      "accum": 2,
      "clip": 1.0,
-     "eval_every": 1000,
+     "eval_every": 500,
      "eval_windows": 32,
      "checkpoint_every": 500,
      "gradmap_every": 0,
@@ -848,6 +2900,12 @@
     "gate"
    ],
    "relay_every_steps": 2500,
+   "snapshot_steps": [
+    500,
+    1000,
+    2500,
+    5000
+   ],
    "spec": {
     "name": "tc_20m_L16",
     "arch": {
@@ -861,7 +2919,7 @@
      }
     },
     "data": {
-     "corpus": "/content/chat/data/mix_s16.ids",
+     "corpus": "/content/chat/data/mix_s35.ids",
      "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
      "vocab_cap": 16384,
      "T": 512,
@@ -873,7 +2931,7 @@
      "batch": 16,
      "accum": 2,
      "clip": 1.0,
-     "eval_every": 1000,
+     "eval_every": 500,
      "eval_windows": 32,
      "checkpoint_every": 500,
      "gradmap_every": 0,
@@ -901,6 +2959,12 @@
     "gate"
    ],
    "relay_every_steps": 2500,
+   "snapshot_steps": [
+    500,
+    1000,
+    2500,
+    5000
+   ],
    "spec": {
     "name": "tc_20m_L4",
     "arch": {
@@ -914,7 +2978,7 @@
      }
     },
     "data": {
-     "corpus": "/content/chat/data/mix_s16.ids",
+     "corpus": "/content/chat/data/mix_s35.ids",
      "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
      "vocab_cap": 16384,
      "T": 512,
@@ -926,7 +2990,7 @@
      "batch": 32,
      "accum": 1,
      "clip": 1.0,
-     "eval_every": 1000,
+     "eval_every": 500,
      "eval_windows": 32,
      "checkpoint_every": 500,
      "gradmap_every": 0,
@@ -954,6 +3018,12 @@
     "gate"
    ],
    "relay_every_steps": 2500,
+   "snapshot_steps": [
+    500,
+    1000,
+    2500,
+    5000
+   ],
    "spec": {
     "name": "tc_20m_L4",
     "arch": {
@@ -967,7 +3037,7 @@
      }
     },
     "data": {
-     "corpus": "/content/chat/data/mix_s16.ids",
+     "corpus": "/content/chat/data/mix_s35.ids",
      "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
      "vocab_cap": 16384,
      "T": 512,
@@ -979,7 +3049,7 @@
      "batch": 32,
      "accum": 1,
      "clip": 1.0,
-     "eval_every": 1000,
+     "eval_every": 500,
      "eval_windows": 32,
      "checkpoint_every": 500,
      "gradmap_every": 0,
@@ -1007,6 +3077,12 @@
     "gate"
    ],
    "relay_every_steps": 2500,
+   "snapshot_steps": [
+    500,
+    1000,
+    2500,
+    5000
+   ],
    "spec": {
     "name": "tc_20m_L4",
     "arch": {
@@ -1020,7 +3096,7 @@
      }
     },
     "data": {
-     "corpus": "/content/chat/data/mix_s16.ids",
+     "corpus": "/content/chat/data/mix_s35.ids",
      "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
      "vocab_cap": 16384,
      "T": 512,
@@ -1032,7 +3108,7 @@
      "batch": 32,
      "accum": 1,
      "clip": 1.0,
-     "eval_every": 1000,
+     "eval_every": 500,
      "eval_windows": 32,
      "checkpoint_every": 500,
      "gradmap_every": 0,
@@ -1060,6 +3136,12 @@
     "gate"
    ],
    "relay_every_steps": 2500,
+   "snapshot_steps": [
+    500,
+    1000,
+    2500,
+    5000
+   ],
    "spec": {
     "name": "tc_20m_L2",
     "arch": {
@@ -1073,7 +3155,7 @@
      }
     },
     "data": {
-     "corpus": "/content/chat/data/mix_s16.ids",
+     "corpus": "/content/chat/data/mix_s35.ids",
      "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
      "vocab_cap": 16384,
      "T": 512,
@@ -1085,7 +3167,7 @@
      "batch": 32,
      "accum": 1,
      "clip": 1.0,
-     "eval_every": 1000,
+     "eval_every": 500,
      "eval_windows": 32,
      "checkpoint_every": 500,
      "gradmap_every": 0,
@@ -1113,6 +3195,12 @@
     "gate"
    ],
    "relay_every_steps": 2500,
+   "snapshot_steps": [
+    500,
+    1000,
+    2500,
+    5000
+   ],
    "spec": {
     "name": "tc_20m_L2",
     "arch": {
@@ -1126,7 +3214,7 @@
      }
     },
     "data": {
-     "corpus": "/content/chat/data/mix_s16.ids",
+     "corpus": "/content/chat/data/mix_s35.ids",
      "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
      "vocab_cap": 16384,
      "T": 512,
@@ -1138,7 +3226,7 @@
      "batch": 32,
      "accum": 1,
      "clip": 1.0,
-     "eval_every": 1000,
+     "eval_every": 500,
      "eval_windows": 32,
      "checkpoint_every": 500,
      "gradmap_every": 0,
@@ -1166,6 +3254,12 @@
     "gate"
    ],
    "relay_every_steps": 2500,
+   "snapshot_steps": [
+    500,
+    1000,
+    2500,
+    5000
+   ],
    "spec": {
     "name": "tc_20m_L2",
     "arch": {
@@ -1179,7 +3273,7 @@
      }
     },
     "data": {
-     "corpus": "/content/chat/data/mix_s16.ids",
+     "corpus": "/content/chat/data/mix_s35.ids",
      "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
      "vocab_cap": 16384,
      "T": 512,
@@ -1191,7 +3285,7 @@
      "batch": 32,
      "accum": 1,
      "clip": 1.0,
-     "eval_every": 1000,
+     "eval_every": 500,
      "eval_windows": 32,
      "checkpoint_every": 500,
      "gradmap_every": 0,

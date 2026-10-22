@@ -1,19 +1,28 @@
 {
- "pt_bytes": 33974418,
+ "pt_bytes": 149473532,
  "mode": "copies",
  "levels": [
   0,
-  4,
-  8,
-  16
+  17,
+  35,
+  70
  ],
- "e1_share": 16,
- "source": "estimated from ['oasst', 'bst', 'self_dialogue']",
- "missing_sources": [
+ "e1_share": 35,
+ "source": "measured 23 Oct 2026: tools/colab_chat/tiny_chat_data.py --measure-only --require-pinned over the 13 pinned sources (human_pt_bytes; ledger design_p.ledger.json)",
+ "sources": [
+  "oasst",
   "convai2",
   "wow",
+  "bst",
   "taskmaster",
-  "multiwoz"
+  "multiwoz",
+  "self_dialogue",
+  "topical_chat",
+  "dolly",
+  "quac",
+  "empathetic",
+  "dailydialog",
+  "no_robots"
  ],
- "final": false
+ "final": true
 }

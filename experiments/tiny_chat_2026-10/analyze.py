@@ -6,7 +6,9 @@ DESCRIPTIVE, PARTIAL and no verdict is printed).
     python experiments/tiny_chat_2026-10/analyze.py --art C:/ml_artifacts/tiny_chat [--out analysis.json] [--partial]
 
 ART holds the runners' artefact folders: ART/s0 (Stage 0), ART/e5, ART/e1, ART/e1_60m, each with
-<job>/summary.json per job. E1's L8 cell at 20M is E5's 50% cell (the same runs).
+<job>/summary.json per job. E1's L8 cell at 20M is E5's cell at E1's dialogue level (the same runs).
+Amendment 1 adds the early-ranking analysis (rung_<...>/rung.json per rung job; rung_analysis) and
+a descriptive summary of the exploratory successive-halving arm (ART/asha; asha_summary).
 """
 from __future__ import annotations
 
@@ -190,6 +192,139 @@ def e1(runs, depths, partial, tag):
     return res
 
 
+# ---------------------------------------------------------------- early ranking (amendment 1)
+RUNG_FRACTIONS = [0.05, 0.10, 0.25, 0.50]
+STEPS = 10_000
+RHO_MIN = 0.80        # registered threshold: Spearman rho at the rung ...
+RHO_LO_MIN = 0.50     # ... with the 90% bootstrap interval's lower end at least this
+BOOT = 2000
+# (rung predictor, final metric): Spearman is positive when early ranks predict final ranks.
+RUNG_PAIRS = [("Y_base", "Y"), ("acc_gold", "Y"), ("panel_fineweb", "panel_fineweb"),
+              ("panel_dialogue", "panel_dialogue")]
+HIGHER_BETTER = {"Y": True, "panel_fineweb": False, "panel_dialogue": False}
+
+
+def load_rungs(art, block):
+    """{(cell, seed, step): rung.json} for one block's rung jobs."""
+    out = {}
+    for p in glob.glob(os.path.join(art, block, "rung_*", "rung.json")):
+        s = json.load(open(p, encoding="utf-8"))
+        out[(s["cell"], s["seed"], s["step"])] = s
+    return out
+
+
+def rung_value(r, key):
+    return r.get("panels", {}).get(key[len("panel_"):]) if key.startswith("panel_") else r.get(key)
+
+
+def ranks(xs):
+    order = sorted(range(len(xs)), key=lambda i: xs[i])
+    r = [0.0] * len(xs)
+    i = 0
+    while i < len(order):
+        j = i
+        while j + 1 < len(order) and xs[order[j + 1]] == xs[order[i]]:
+            j += 1
+        for k in range(i, j + 1):
+            r[order[k]] = (i + j) / 2 + 1
+        i = j + 1
+    return r
+
+
+def spearman(x, y):
+    rx, ry = ranks(x), ranks(y)
+    mx, my = st.mean(rx), st.mean(ry)
+    sxy = sum((a - mx) * (b - my) for a, b in zip(rx, ry))
+    sxx, syy = sum((a - mx) ** 2 for a in rx), sum((b - my) ** 2 for b in ry)
+    return sxy / math.sqrt(sxx * syy) if sxx > 0 and syy > 0 else None
+
+
+def boot_ci(x, y, n=BOOT, seed=0):
+    """90% percentile interval of Spearman's rho, resampling runs (pairs) with replacement."""
+    import random
+    rng = random.Random(seed)
+    vals = []
+    for _ in range(n):
+        idx = [rng.randrange(len(x)) for _ in x]
+        v = spearman([x[i] for i in idx], [y[i] for i in idx])
+        if v is not None:
+            vals.append(v)
+    vals.sort()
+    if len(vals) < n // 2:
+        return None, None
+    return vals[int(0.05 * len(vals))], vals[int(0.95 * len(vals)) - 1]
+
+
+def rung_analysis(runs, rungs, label, steps=STEPS):
+    """The registered early-ranking analysis: at each rung, per (predictor, final) pair, Spearman's
+    rho across runs with its bootstrap interval, and whether keeping the top third of cells by the
+    predictor's cell means keeps the final best cell. PREDICTIVE needs rho >= RHO_MIN, the lower
+    end >= RHO_LO_MIN and the best cell kept; fewer than max(8, 80%) runs with the rung is
+    INCOMPLETE. 100% is the post job's base model (final_rung), for the Carry-5 pairs only."""
+    res = {"label": label, "runs": len(runs), "threshold": {"rho": RHO_MIN, "ci90_lower": RHO_LO_MIN,
+                                                            "top_third_keeps_best_cell": True}, "rungs": {}}
+    finals = {k: {"Y": s.get("primary"), "panel_fineweb": s.get("panels", {}).get("fineweb"),
+                  "panel_dialogue": s.get("panels", {}).get("dialogue")} for k, s in runs.items()}
+    fracs = RUNG_FRACTIONS + [1.0]
+    for f in fracs:
+        step = int(f * steps)
+        row = {}
+        for pred, fin in RUNG_PAIRS:
+            if f == 1.0 and pred.startswith("panel_"):
+                continue
+            pts = []
+            for (cell, seed), s in runs.items():
+                r = (s.get("final_rung") or {}) if f == 1.0 else rungs.get((cell, seed, step))
+                if r is None:
+                    continue
+                pv, fv = rung_value(r, pred), finals[(cell, seed)][fin]
+                if pv is not None and fv is not None:
+                    pts.append((pv, fv, cell))
+            if len(pts) < max(8, math.ceil(0.8 * len(runs))):
+                row[f"{pred}->{fin}"] = {"n": len(pts), "verdict": "INCOMPLETE"}
+                continue
+            x, y = [p[0] for p in pts], [p[1] for p in pts]
+            rho = spearman(x, y)
+            lo, hi = boot_ci(x, y)
+            cells = sorted({p[2] for p in pts})
+            cm = {c: (st.mean(p[0] for p in pts if p[2] == c), st.mean(p[1] for p in pts if p[2] == c)) for c in cells}
+            hb = HIGHER_BETTER[fin]
+            best_final = (max if hb else min)(cells, key=lambda c: cm[c][1])
+            keep = math.ceil(len(cells) / 3)
+            kept = sorted(cells, key=lambda c: -cm[c][0] if hb else cm[c][0])[:keep]
+            ok = rho is not None and lo is not None and rho >= RHO_MIN and lo >= RHO_LO_MIN and best_final in kept
+            row[f"{pred}->{fin}"] = {"n": len(pts), "rho": rho, "ci90": [lo, hi], "cells_kept": kept,
+                                     "best_final_cell": best_final, "best_kept": best_final in kept,
+                                     "verdict": "PREDICTIVE" if ok else "NOT_PREDICTIVE"}
+        res["rungs"][f"{round(100 * f)}%"] = row
+    res["earliest_predictive"] = {
+        f"{p}->{q}": next((k for k, row in res["rungs"].items() if row.get(f"{p}->{q}", {}).get("verdict") == "PREDICTIVE"),
+                          None) for p, q in RUNG_PAIRS}
+    return res
+
+
+def asha_summary(art):
+    """The exploratory arm, descriptively: each round's ranking and decisions, and the finalists'
+    primary metric beside the E cells'. No verdicts."""
+    plan_p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "asha_plan.json")
+    d = os.path.join(art, "asha")
+    if not os.path.isdir(d) or not os.path.exists(plan_p):
+        return None
+    plan = json.load(open(plan_p, encoding="utf-8"))
+    out = {"label": "EXPLORATORY (not confirmatory; amendment 1)", "rounds": {}, "finalists": {}}
+    for r in plan["rounds"]:
+        p = os.path.join(d, f"asha_promote_{r['id']}", "decisions.json")
+        if os.path.exists(p):
+            out["rounds"][r["id"]] = json.load(open(p, encoding="utf-8"))
+    for c in plan["configs"]:
+        p = os.path.join(d, f"asha_post_{c['id']}", "summary.json")
+        if os.path.exists(p):
+            s = json.load(open(p, encoding="utf-8"))
+            out["finalists"][c["id"]] = {**c, "Y": s.get("primary"), "panels": s.get("panels"),
+                                         "final_rung": s.get("final_rung")}
+    return out
+
+
 def throughput(art, size):
     out = {}
     for p in sorted(glob.glob(os.path.join(art, "s0" if size == "20m" else "s0_60m", "probe_*", "summary.json"))):
@@ -220,6 +355,23 @@ def main(argv=None):
     r60 = {(c.replace("60m_", ""), r): s for (c, r), s in load(a.art, "e1_60m").items()}
     if r60:
         res["E1_60m"] = e1(r60, DEPTHS_60, a.partial, "60m")
+    # Early ranking (amendment 1): read only for complete blocks unless --partial.
+    g5, g1, g60 = load_rungs(a.art, "e5"), load_rungs(a.art, "e1"), load_rungs(a.art, "e1_60m")
+    for (cell, seed, step), s in list(g5.items()):  # E1's L8 cell is E5's dE1 cell: the same runs
+        if cell == f"s{design['e1_share']}":
+            g1[("L8", seed, step)] = s
+    g60 = {(c.replace("60m_", ""), r, k): s for (c, r, k), s in g60.items()}
+    early = {}
+    lab = "DESCRIPTIVE, PARTIAL" if a.partial else "REGISTERED"  # without --partial, an incomplete block exited above
+    for name, runs, rungs in (("E5", r5, g5), ("E1_20m", r1, g1), ("E1_60m", r60, g60)):
+        if runs and (name != "E1_20m" or any(c != "L8" for c, _ in runs)):
+            early[name] = rung_analysis(runs, rungs, lab)
+    if r5 and any(c != "L8" for c, _ in r1):  # pooled 20M: E5's runs and E1's other depths (24 distinct runs)
+        pooled = {**r5, **{k: v for k, v in r1.items() if k[0] != "L8"}}
+        prungs = {**g5, **{k: v for k, v in g1.items() if k[0] != "L8"}}
+        early["pooled_20m"] = rung_analysis(pooled, prungs, lab)
+    res["early_ranking"] = early
+    res["asha"] = asha_summary(a.art)
     res["throughput_20m"] = throughput(a.art, "20m")
     res["throughput_60m"] = throughput(a.art, "60m")
     text = json.dumps(res, indent=1, default=str)

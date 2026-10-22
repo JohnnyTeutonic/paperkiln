@@ -11,7 +11,7 @@
   }
  },
  "data": {
-  "corpus": "/content/chat/data/mix_s16.ids",
+  "corpus": "/content/chat/data/mix_s35.ids",
   "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
   "vocab_cap": 16384,
   "T": 512,
@@ -23,7 +23,7 @@
   "batch": 16,
   "accum": 2,
   "clip": 1.0,
-  "eval_every": 1000,
+  "eval_every": 500,
   "eval_windows": 32,
   "checkpoint_every": 500,
   "gradmap_every": 0,

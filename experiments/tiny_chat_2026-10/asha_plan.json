@@ -1,0 +1,275 @@
+{
+ "_comment": "Exploratory successive-halving arm of the tiny-chat programme (PREREGISTRATION.md amendment 1). Not confirmatory. Written by make_jobs.py; deterministic from ASHA_SEED and the design's dialogue levels.",
+ "seed": 20261023,
+ "space": {
+  "shape": [
+   "20m_L2",
+   "20m_L3",
+   "20m_L4",
+   "20m_L6",
+   "20m_L8",
+   "20m_L12",
+   "20m_L16"
+  ],
+  "lr_log_uniform": [
+   0.00025,
+   0.004
+  ],
+  "warmup_frac": [
+   0.02,
+   0.05,
+   0.1
+  ],
+  "share": [
+   0,
+   17,
+   35,
+   70
+  ],
+  "seed": "1000 + index"
+ },
+ "rounds": [
+  {
+   "id": "r0",
+   "budget": 1000,
+   "keep": 27
+  },
+  {
+   "id": "r1",
+   "budget": 3000,
+   "keep": 9
+  },
+  {
+   "id": "r2",
+   "budget": 10000,
+   "keep": 3
+  }
+ ],
+ "schedule": "each round trains from scratch: warmup = warmup_frac x budget, cosine to 0.1x at the budget",
+ "promotion": "into each round, the top `keep` of the previous round's candidates by base-model Carry-5 forced-choice accuracy with gold history (acc_gold), ties by lower dialogue panel loss, then config id; diverged or failed runs rank last and are never promoted",
+ "cap_vm_hours": 20,
+ "cost_job_hours": {
+  "r0": 11.2,
+  "r1_worst": 15.7,
+  "r2_worst": 21.9,
+  "worst_vm_hours": 19.5
+ },
+ "configs": [
+  {
+   "id": "c00",
+   "shape": "20m_L4",
+   "lr": 0.00052,
+   "warmup_frac": 0.02,
+   "share": 35,
+   "seed": 1000
+  },
+  {
+   "id": "c01",
+   "shape": "20m_L3",
+   "lr": 0.00123,
+   "warmup_frac": 0.02,
+   "share": 70,
+   "seed": 1001
+  },
+  {
+   "id": "c02",
+   "shape": "20m_L2",
+   "lr": 0.00282,
+   "warmup_frac": 0.02,
+   "share": 35,
+   "seed": 1002
+  },
+  {
+   "id": "c03",
+   "shape": "20m_L4",
+   "lr": 0.000568,
+   "warmup_frac": 0.1,
+   "share": 35,
+   "seed": 1003
+  },
+  {
+   "id": "c04",
+   "shape": "20m_L8",
+   "lr": 0.00349,
+   "warmup_frac": 0.05,
+   "share": 0,
+   "seed": 1004
+  },
+  {
+   "id": "c05",
+   "shape": "20m_L8",
+   "lr": 0.000765,
+   "warmup_frac": 0.02,
+   "share": 70,
+   "seed": 1005
+  },
+  {
+   "id": "c06",
+   "shape": "20m_L16",
+   "lr": 0.00293,
+   "warmup_frac": 0.05,
+   "share": 17,
+   "seed": 1006
+  },
+  {
+   "id": "c07",
+   "shape": "20m_L4",
+   "lr": 0.00193,
+   "warmup_frac": 0.02,
+   "share": 35,
+   "seed": 1007
+  },
+  {
+   "id": "c08",
+   "shape": "20m_L3",
+   "lr": 0.00123,
+   "warmup_frac": 0.05,
+   "share": 35,
+   "seed": 1008
+  },
+  {
+   "id": "c09",
+   "shape": "20m_L12",
+   "lr": 0.000622,
+   "warmup_frac": 0.1,
+   "share": 0,
+   "seed": 1009
+  },
+  {
+   "id": "c10",
+   "shape": "20m_L12",
+   "lr": 0.00263,
+   "warmup_frac": 0.05,
+   "share": 35,
+   "seed": 1010
+  },
+  {
+   "id": "c11",
+   "shape": "20m_L16",
+   "lr": 0.00293,
+   "warmup_frac": 0.1,
+   "share": 17,
+   "seed": 1011
+  },
+  {
+   "id": "c12",
+   "shape": "20m_L12",
+   "lr": 0.00105,
+   "warmup_frac": 0.1,
+   "share": 17,
+   "seed": 1012
+  },
+  {
+   "id": "c13",
+   "shape": "20m_L4",
+   "lr": 0.00109,
+   "warmup_frac": 0.05,
+   "share": 35,
+   "seed": 1013
+  },
+  {
+   "id": "c14",
+   "shape": "20m_L16",
+   "lr": 0.00177,
+   "warmup_frac": 0.02,
+   "share": 35,
+   "seed": 1014
+  },
+  {
+   "id": "c15",
+   "shape": "20m_L16",
+   "lr": 0.00174,
+   "warmup_frac": 0.05,
+   "share": 17,
+   "seed": 1015
+  },
+  {
+   "id": "c16",
+   "shape": "20m_L3",
+   "lr": 0.000327,
+   "warmup_frac": 0.02,
+   "share": 35,
+   "seed": 1016
+  },
+  {
+   "id": "c17",
+   "shape": "20m_L16",
+   "lr": 0.00133,
+   "warmup_frac": 0.1,
+   "share": 17,
+   "seed": 1017
+  },
+  {
+   "id": "c18",
+   "shape": "20m_L12",
+   "lr": 0.00326,
+   "warmup_frac": 0.02,
+   "share": 17,
+   "seed": 1018
+  },
+  {
+   "id": "c19",
+   "shape": "20m_L2",
+   "lr": 0.00255,
+   "warmup_frac": 0.1,
+   "share": 0,
+   "seed": 1019
+  },
+  {
+   "id": "c20",
+   "shape": "20m_L12",
+   "lr": 0.000364,
+   "warmup_frac": 0.05,
+   "share": 35,
+   "seed": 1020
+  },
+  {
+   "id": "c21",
+   "shape": "20m_L2",
+   "lr": 0.000868,
+   "warmup_frac": 0.05,
+   "share": 70,
+   "seed": 1021
+  },
+  {
+   "id": "c22",
+   "shape": "20m_L8",
+   "lr": 0.000712,
+   "warmup_frac": 0.1,
+   "share": 17,
+   "seed": 1022
+  },
+  {
+   "id": "c23",
+   "shape": "20m_L12",
+   "lr": 0.0006,
+   "warmup_frac": 0.02,
+   "share": 70,
+   "seed": 1023
+  },
+  {
+   "id": "c24",
+   "shape": "20m_L4",
+   "lr": 0.000814,
+   "warmup_frac": 0.1,
+   "share": 70,
+   "seed": 1024
+  },
+  {
+   "id": "c25",
+   "shape": "20m_L2",
+   "lr": 0.00245,
+   "warmup_frac": 0.02,
+   "share": 0,
+   "seed": 1025
+  },
+  {
+   "id": "c26",
+   "shape": "20m_L8",
+   "lr": 0.000922,
+   "warmup_frac": 0.02,
+   "share": 35,
+   "seed": 1026
+  }
+ ]
+}
