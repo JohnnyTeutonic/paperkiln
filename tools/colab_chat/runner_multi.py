@@ -19,6 +19,7 @@ as an init checkpoint or SFT examples). Artifacts: ART/<job>/.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -120,6 +121,80 @@ def upload_file(src, dst):
             i += 1
 
 
+def download_file(src, dst, timeout=1800):
+    """Download a VM file; one above CHUNK comes in CHUNK-sized parts cut on the VM, each part
+    resumable across ticks, reassembled here and checked against the VM's sha256 (23 Oct 2026:
+    the Jupyter contents API returned HTTP 500 for every 390 MB relay of pk_base_v1). Returns
+    0 on success, as colab() does."""
+    key = re.sub(r"[^A-Za-z0-9_.-]", "_", src.strip("/"))
+    rc, out = exec_py(
+        "import hashlib, json, os\n"
+        f"src, key, chunk = {src!r}, {key!r}, {CHUNK}\n"
+        "if not os.path.exists(src):\n"
+        "    print('DLMETA', json.dumps(None))\n"
+        "else:\n"
+        "    size = os.path.getsize(src)\n"
+        "    h = hashlib.sha256()\n"
+        "    with open(src, 'rb') as f:\n"
+        "        for b in iter(lambda: f.read(1 << 22), b''):\n"
+        "            h.update(b)\n"
+        "    sha = h.hexdigest()\n"
+        "    key = key + '.' + sha[:16]  # parts of an older file at the same path are never reused\n"
+        "    parts = []\n"
+        "    if size > chunk:\n"
+        "        d = '/content/chat/dl'\n"
+        "        os.makedirs(d, exist_ok=True)\n"
+        "        with open(src, 'rb') as f:\n"
+        "            i = 0\n"
+        "            while True:\n"
+        "                buf = f.read(chunk)\n"
+        "                if not buf:\n"
+        "                    break\n"
+        "                p = f'{d}/{key}.part{i:02d}'\n"
+        "                if not (os.path.exists(p) and os.path.getsize(p) == len(buf)):\n"
+        "                    open(p + '.tmp', 'wb').write(buf)\n"
+        "                    os.replace(p + '.tmp', p)\n"
+        "                parts.append([p, len(buf)])\n"
+        "                i += 1\n"
+        "    print('DLMETA', json.dumps({'size': size, 'sha256': sha, 'parts': parts}))\n",
+        timeout=600)
+    m = re.search(r"^DLMETA (.*)$", out, re.M)
+    meta = json.loads(m.group(1)) if m else None
+    if not meta:
+        return 1
+    if not meta["parts"]:
+        rc, _ = colab("download", "-s", NAME, src, dst, timeout=timeout)
+        return rc
+    local = os.path.join(HOME, "dl")
+    os.makedirs(local, exist_ok=True)
+    for p, n in meta["parts"]:
+        lp = os.path.join(local, os.path.basename(p))
+        if os.path.exists(lp) and os.path.getsize(lp) == n:
+            continue
+        rc, _ = colab("download", "-s", NAME, p, lp + ".tmp", timeout=900)
+        if rc != 0 or not os.path.exists(lp + ".tmp") or os.path.getsize(lp + ".tmp") != n:
+            return 1
+        os.replace(lp + ".tmp", lp)
+    h = hashlib.sha256()
+    with open(dst + ".dltmp", "wb") as out_f:
+        for p, _ in meta["parts"]:
+            with open(os.path.join(local, os.path.basename(p)), "rb") as f:
+                buf = f.read()
+            h.update(buf)
+            out_f.write(buf)
+    if h.hexdigest() != meta["sha256"]:
+        os.remove(dst + ".dltmp")
+        for p, _ in meta["parts"]:
+            os.remove(os.path.join(local, os.path.basename(p)))
+        log(f"download of {src}: sha256 mismatch after reassembly; parts discarded")
+        return 1
+    os.replace(dst + ".dltmp", dst)
+    for p, _ in meta["parts"]:
+        os.remove(os.path.join(local, os.path.basename(p)))
+    exec_py(f"import os\nfor p in {[p for p, _ in meta['parts']]!r}:\n    os.path.exists(p) and os.remove(p)\n")
+    return 0
+
+
 def relay(st, name, every=0):
     """If the job's step advanced (by at least `every`), snapshot its
     checkpoint set on the VM and download the snapshot. Downloading the live
@@ -159,8 +234,7 @@ def relay(st, name, every=0):
     # the 0.78 GB optimiser download failed on every relay from step 28,000 of pk_base_v1.
     for f in ("model.safetensors", "events.jsonl", "state.txt"):
         dst = os.path.join(art, "state.txt.new" if f == "state.txt" else f + ".new")
-        rc, _ = colab("download", "-s", NAME, f"{snap}/{f}", dst, timeout=2400)
-        ok = ok and rc == 0
+        ok = ok and download_file(f"{snap}/{f}", dst, timeout=2400) == 0
     tmp = os.path.join(art, "state.txt.new")
     ok = ok and os.path.exists(tmp) and int(open(tmp).readline().strip() or 0) == step
     if not ok:
@@ -183,11 +257,9 @@ def fetch_final(st, name, model_name):
     ok = True
     for f in (f"{name}/{model_name}.safetensors", f"{name}/{model_name}.gguf", f"{name}/events.jsonl",
               f"{name}/result.json", f"{name}_spec.json", f"{name}_train.log"):
-        rc, _ = colab("download", "-s", NAME, f"/content/chat/{f}", os.path.join(art, os.path.basename(f)), timeout=1800)
-        ok = ok and rc == 0
+        ok = ok and download_file(f"/content/chat/{f}", os.path.join(art, os.path.basename(f))) == 0
     # Optional extra exports (e.g. q8_0_all) are fetched best-effort.
-    colab("download", "-s", NAME, f"/content/chat/{name}/{model_name}_q8_0_all.gguf",
-          os.path.join(art, f"{model_name}_q8_0_all.gguf"), timeout=1800)
+    download_file(f"/content/chat/{name}/{model_name}_q8_0_all.gguf", os.path.join(art, f"{model_name}_q8_0_all.gguf"))
     colab("download", "-s", NAME, f"/content/chat/{name}/{model_name}.ir.json",
           os.path.join(art, f"{model_name}.ir.json"), timeout=300)
     if ok:
@@ -212,7 +284,7 @@ def fetch_outputs(st, name, outputs, best_effort=False):
         # Outputs keep their relative paths (several sources write report.json).
         dst = os.path.join(art, os.path.basename(f) if f.startswith("../") else f)
         os.makedirs(os.path.dirname(dst), exist_ok=True)
-        rc, _ = colab("download", "-s", NAME, f"/content/chat/{name}/{f}", dst, timeout=1800)
+        rc = download_file(f"/content/chat/{name}/{f}", dst)
         if rc == 0:
             js.setdefault("fetched", []).append(f)
             st.save()
