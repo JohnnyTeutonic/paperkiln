@@ -16,9 +16,12 @@ U=/content/chat/upload
 E=/content/ember
 mkdir -p "$OUT"
 # A failure still brings the logs home (the runner fetches a FAILED job's outputs best-effort).
-trap 'tar -czf "$OUT/chat_eval_results.tar.gz" -C "$OUT" --exclude="*refeval*" --exclude=www \
-  --exclude="*_ref.jsonl" --exclude="*.tar.gz" . || true' ERR
+trap 'tar -czf /tmp/chat_eval_results.tar.gz -C "$OUT" --exclude="*refeval*" --exclude=www \
+  --exclude="*_ref.jsonl" --exclude="*.tar.gz" . && mv /tmp/chat_eval_results.tar.gz "$OUT/" || true' ERR
 if [ ! -x $E/build/tinyllama_server ]; then
+  # ember's CMake needs Boost.Regex, which the Colab image lacks (as in ember's tools/colab_device_gate_vm.sh).
+  apt-get update -qq > /dev/null 2>&1
+  apt-get install -y -q libboost-regex-dev > "$OUT/apt.log" 2>&1
   rm -rf $E && mkdir -p $E && tar -xzf $U/ember_src.tar.gz -C $E
   cmake -S $E -B $E/build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES=89 > "$OUT/ember_cmake.log" 2>&1
   make -C $E/build -j"$(nproc)" tinyllama_server > "$OUT/ember_make.log" 2>&1
