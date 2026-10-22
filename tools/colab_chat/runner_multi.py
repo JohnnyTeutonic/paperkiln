@@ -19,6 +19,7 @@ as an init checkpoint or SFT examples). Artifacts: ART/<job>/.
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -121,6 +122,40 @@ def upload_file(src, dst):
             i += 1
 
 
+SLICE = 4 * 1024 * 1024
+
+
+def exec_fetch(src, size, dst):
+    """Fallback for a VM whose Jupyter contents API fails on every file (HTTP 500, pk_base_v1's VM
+    from 22 Oct 2026, 18:00 UTC) while exec still works: the file comes through exec's stdout as
+    base64 in SLICE-sized pieces, each checked against its own sha256 (about 1 MB/s)."""
+    def piece(off):
+        for _ in range(4):  # an exec occasionally comes back empty under load; retry before giving up
+            rc, out = exec_py(
+                "import base64, hashlib\n"
+                f"with open({src!r}, 'rb') as f:\n"
+                f"    f.seek({off})\n"
+                f"    b = f.read({SLICE})\n"
+                "print('SLICESHA', hashlib.sha256(b).hexdigest())\n"
+                "print('SLICEB64', base64.b64encode(b).decode())\n")
+            sha = re.search(r"^SLICESHA ([0-9a-f]{64})$", out, re.M)
+            b64 = re.search(r"^SLICEB64 ([A-Za-z0-9+/=]+)$", out, re.M)
+            if sha and b64:
+                buf = base64.b64decode(b64.group(1))
+                if hashlib.sha256(buf).hexdigest() == sha.group(1):
+                    return buf
+        return None
+
+    with open(dst, "wb") as out_f:
+        for off in range(0, size, SLICE):
+            buf = piece(off)
+            if buf is None:
+                log(f"exec fetch of {src} failed at offset {off}")
+                return False
+            out_f.write(buf)
+    return os.path.getsize(dst) == size
+
+
 def download_file(src, dst, timeout=1800):
     """Download a VM file; one above CHUNK comes in CHUNK-sized parts cut on the VM, each part
     resumable across ticks, reassembled here and checked against the VM's sha256 (23 Oct 2026:
@@ -173,7 +208,8 @@ def download_file(src, dst, timeout=1800):
             continue
         rc, _ = colab("download", "-s", NAME, p, lp + ".tmp", timeout=900)
         if rc != 0 or not os.path.exists(lp + ".tmp") or os.path.getsize(lp + ".tmp") != n:
-            return 1
+            if not exec_fetch(p, n, lp + ".tmp"):
+                return 1
         os.replace(lp + ".tmp", lp)
     h = hashlib.sha256()
     with open(dst + ".dltmp", "wb") as out_f:
@@ -211,7 +247,12 @@ def relay(st, name, every=0):
         "    p = os.path.join(src, 'state.txt')\n"
         "    return int(open(p).readline().strip() or 0) if os.path.exists(p) else 0\n"
         "s0 = step()\n"
-        f"if s0 > {js['relayed_step']} and s0 - {js['relayed_step']} >= {every}:\n"
+        # A snapshot not yet home is kept until it is (a slow download must not restart each tick).
+        "sp = os.path.join(snap, 'state.txt')\n"
+        "s1 = int(open(sp).readline().strip() or 0) if os.path.exists(sp) else 0\n"
+        f"if s1 > {js['relayed_step']}:\n"
+        "    print('SNAP', s1)\n"
+        f"elif s0 > {js['relayed_step']} and s0 - {js['relayed_step']} >= {every}:\n"
         "    os.makedirs(snap + '.tmp', exist_ok=True)\n"
         "    for f in ('model.safetensors', 'optim.safetensors', 'events.jsonl', 'state.txt'):\n"
         "        shutil.copyfile(os.path.join(src, f), os.path.join(snap + '.tmp', f))\n"
