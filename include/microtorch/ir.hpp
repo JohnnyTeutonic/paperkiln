@@ -288,6 +288,26 @@
 //               sharing: application i reads, and never appends to, the kv
 //               rows application s_i wrote for every token; s_i = i
 //               default).
+//               Constraints agreed with ember (23 Oct 2026), binding on any
+//               implementation: (1) routing is CAUSAL token choice: a token's
+//               depth is a function of its own prefix only (a per-token
+//               threshold on its router score, or top-k over the token's own
+//               recursion choices; any capacity rule causal), never top-k
+//               across the sequence (expert choice), so prefill equals decode
+//               and a T = 1 step can decide. (2) Under "kv_rows": "active", a
+//               query at application i attends to exactly the rows written at
+//               application i, positions absolute and RoPE unchanged; a token
+//               that exits before application i writes no row there and never
+//               gets one later (engines keep a written-rows mask per
+//               application, truncated with the cache on prefix reuse or
+//               rewind). (3) "kv_from" requires s_i <= i and s_i among the
+//               applications every token passes through (the prelude or the
+//               first recursion step); s_i = i reads and appends as now.
+//               (4) The router weight names are written out in full by the
+//               exporter (rec.0.router.weight, rec.1.router.weight, ...): {k}
+//               is not a substitution rule. (5) The gate exports each prompt's
+//               per-token depth trace from mtstudio, so engines check routing
+//               decisions token by token as well as logits.
 //   attention   kv_heads < heads (grouped-query): query head h reads k/v
 //               head h / (heads / kv_heads); k and v are [T, kv_heads *
 //               head_dim]. heads % kv_heads == 0.
