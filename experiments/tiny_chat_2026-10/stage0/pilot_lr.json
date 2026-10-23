@@ -1,0 +1,128 @@
+{
+ "shape": "20m_L8",
+ "lr": 0.001,
+ "source": "registered",
+ "pilot_only": true,
+ "arts": [
+  "/mnt/c/ml_artifacts/tiny_chat/s0",
+  "/mnt/c/ml_artifacts/tiny_chat/s0_rerun"
+ ],
+ "rule": "The floor pilot's learning rate (amendment 3), for --shape (20m_L8). (0) When the shape's three screens are all FINISHED or DIVERGED, section 4's rule exactly as choose applies it (\"registered\"); if all three diverged, 2.5e-4, the first rate of section 4's downward extension (\"all_diverged\"). Otherwise the pilot waits for the rerun session; once it has ended (--session-ended), the registered fallback, first that applies: (F1) section 4's rule over the shape's FINISHED screens; (F2) the smaller of the rates the same rule gives the shape's neighbours in depth at its size (20m_L4 and 20m_L16 for 20m_L8), over their FINISHED screens; (F3) the smallest rate among the size's FINISHED screens. The rate is the pilot's only: it never enters lr_choice.json.",
+ "screens": {
+  "20m_L16": [
+   {
+    "lr": 0.0005,
+    "final_val": 4.555959979072213,
+    "status": "FINISHED",
+    "job": "screen_20m_L16_lr0",
+    "art": "/mnt/c/ml_artifacts/tiny_chat/s0_rerun"
+   },
+   {
+    "lr": 0.001,
+    "final_val": 4.241057379171252,
+    "status": "FINISHED",
+    "job": "screen_20m_L16_lr1",
+    "art": "/mnt/c/ml_artifacts/tiny_chat/s0"
+   },
+   {
+    "lr": 0.002,
+    "final_val": 4.475804453715682,
+    "status": "FINISHED",
+    "job": "screen_20m_L16_lr2",
+    "art": "/mnt/c/ml_artifacts/tiny_chat/s0"
+   }
+  ],
+  "20m_L2": [
+   {
+    "lr": 0.0005,
+    "final_val": 4.438600439578295,
+    "status": "FINISHED",
+    "job": "screen_20m_L2_lr0",
+    "art": "/mnt/c/ml_artifacts/tiny_chat/s0"
+   },
+   {
+    "lr": 0.001,
+    "final_val": null,
+    "status": "FAILED",
+    "job": "screen_20m_L2_lr1",
+    "art": "/mnt/c/ml_artifacts/tiny_chat/s0"
+   },
+   {
+    "lr": 0.002,
+    "final_val": null,
+    "status": "FAILED",
+    "job": "screen_20m_L2_lr2",
+    "art": "/mnt/c/ml_artifacts/tiny_chat/s0"
+   }
+  ],
+  "20m_L32": [
+   {
+    "lr": 0.0005,
+    "final_val": 4.903670858591795,
+    "status": "FINISHED",
+    "job": "screen_20m_L32_lr0",
+    "art": "/mnt/c/ml_artifacts/tiny_chat/s0_rerun"
+   },
+   {
+    "lr": 0.001,
+    "final_val": 4.568626519292593,
+    "status": "FINISHED",
+    "job": "screen_20m_L32_lr1",
+    "art": "/mnt/c/ml_artifacts/tiny_chat/s0_rerun"
+   },
+   {
+    "lr": 0.002,
+    "final_val": 4.28241054713726,
+    "status": "FINISHED",
+    "job": "screen_20m_L32_lr2",
+    "art": "/mnt/c/ml_artifacts/tiny_chat/s0"
+   }
+  ],
+  "20m_L4": [
+   {
+    "lr": 0.0005,
+    "final_val": 4.338489532470703,
+    "status": "FINISHED",
+    "job": "screen_20m_L4_lr0",
+    "art": "/mnt/c/ml_artifacts/tiny_chat/s0"
+   },
+   {
+    "lr": 0.001,
+    "final_val": null,
+    "status": "FAILED",
+    "job": "screen_20m_L4_lr1",
+    "art": "/mnt/c/ml_artifacts/tiny_chat/s0"
+   },
+   {
+    "lr": 0.002,
+    "final_val": null,
+    "status": "FAILED",
+    "job": "screen_20m_L4_lr2",
+    "art": "/mnt/c/ml_artifacts/tiny_chat/s0"
+   }
+  ],
+  "20m_L8": [
+   {
+    "lr": 0.0005,
+    "final_val": 4.453679932281375,
+    "status": "FINISHED",
+    "job": "screen_20m_L8_lr0",
+    "art": "/mnt/c/ml_artifacts/tiny_chat/s0_rerun"
+   },
+   {
+    "lr": 0.001,
+    "final_val": 4.216519379988313,
+    "status": "FINISHED",
+    "job": "screen_20m_L8_lr1",
+    "art": "/mnt/c/ml_artifacts/tiny_chat/s0_rerun"
+   },
+   {
+    "lr": 0.002,
+    "final_val": 4.4977837316691875,
+    "status": "FINISHED",
+    "job": "screen_20m_L8_lr2",
+    "art": "/mnt/c/ml_artifacts/tiny_chat/s0_rerun"
+   }
+  ]
+ }
+}
