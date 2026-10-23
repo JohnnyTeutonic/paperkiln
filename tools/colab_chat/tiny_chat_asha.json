@@ -1,5 +1,5 @@
 {
- "_comment": "tiny-chat EXPLORATORY successive-halving arm (experiments/tiny_chat_2026-10/PREREGISTRATION.md amendment 1, one GPU job at a time by amendment 2; plan experiments/tiny_chat_2026-10/asha_plan.json). 27 random configurations (shape, peak lr, warmup, dialogue share) trained from scratch for 1000 steps; the top 9 by base-model Carry-5 acc_gold retrain for 3000; the top 3 for the full 10000 steps, then SFT and Carry-5 as the E cells. Promotion runs on the VM (asha_promote_*); candidates not promoted end FAILED with 'not promoted' in their log. Worst case 19.0 L4 VM-hours; cap 20 (the runner's --max-hours). Launch through tools/colab_chat/tiny_chat_asha.py drive, which keeps ART/asha_state.json (every result and decision home so far) current for the runner's --upload asha_state.json=..., so a replaced VM can still promote. Upload vocab_llama3_bpe.gguf too. Dialogue levels [0, 17, 35, 70]% (copies), E1 at 35% (design.json final).",
+ "_comment": "tiny-chat EXPLORATORY successive-halving arm (experiments/tiny_chat_2026-10/PREREGISTRATION.md amendment 1, one GPU job at a time by amendment 2; plan experiments/tiny_chat_2026-10/asha_plan.json). 27 random configurations (shape, peak lr, warmup, dialogue share) trained from scratch for 1000 steps; the top 9 by base-model Carry-5 acc_gold retrain for 3000; the top 3 for the full 10000 steps, then SFT and Carry-5 as the E cells. Promotion runs on the VM (asha_promote_*); candidates not promoted end FAILED with 'not promoted' in their log. Worst case 19.0 L4 VM-hours; cap 20 (the runner's --max-hours). Launch through tools/colab_chat/tiny_chat_asha.py drive, which keeps ART/asha_state.json (every result and decision home so far) current for the runner's --upload asha_state.json=..., so a replaced VM can still promote. Upload vocab_llama3_bpe.gguf too. Carry-5 generation (24 Oct 2026, PREREGISTRATION.md implementation note): ember.cpp's CUDA server at cbdcb915d26a (cloned and built once per VM by the first post job, under a lock), on the SFT model's F32 GGUF; every post job first generates 40 fixed items with ember and with mtstudio chat and lets ember generate only on 40/40 identical replies, else mtstudio for the whole run (gen_flag in its summary.json). Forced-choice scoring stays with mtstudio score. Dialogue levels [0, 17, 35, 70]% (copies), E1 at 35% (design.json final).",
  "max_parallel": 1,
  "max_parallel_light": 1,
  "jobs": [
@@ -2565,7 +2565,9 @@
     "--panel",
     "dialogue=/content/chat/data/panel_dialogue.ids",
     "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
+    "corpus/eval/carry5_v1.jsonl",
+    "--gen",
+    "ember"
    ],
    "outputs": [
     "summary.json"
@@ -2660,7 +2662,9 @@
     "--panel",
     "dialogue=/content/chat/data/panel_dialogue.ids",
     "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
+    "corpus/eval/carry5_v1.jsonl",
+    "--gen",
+    "ember"
    ],
    "outputs": [
     "summary.json"
@@ -2755,7 +2759,9 @@
     "--panel",
     "dialogue=/content/chat/data/panel_dialogue.ids",
     "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
+    "corpus/eval/carry5_v1.jsonl",
+    "--gen",
+    "ember"
    ],
    "outputs": [
     "summary.json"
@@ -2850,7 +2856,9 @@
     "--panel",
     "dialogue=/content/chat/data/panel_dialogue.ids",
     "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
+    "corpus/eval/carry5_v1.jsonl",
+    "--gen",
+    "ember"
    ],
    "outputs": [
     "summary.json"
@@ -2945,7 +2953,9 @@
     "--panel",
     "dialogue=/content/chat/data/panel_dialogue.ids",
     "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
+    "corpus/eval/carry5_v1.jsonl",
+    "--gen",
+    "ember"
    ],
    "outputs": [
     "summary.json"
@@ -3040,7 +3050,9 @@
     "--panel",
     "dialogue=/content/chat/data/panel_dialogue.ids",
     "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
+    "corpus/eval/carry5_v1.jsonl",
+    "--gen",
+    "ember"
    ],
    "outputs": [
     "summary.json"
@@ -3135,7 +3147,9 @@
     "--panel",
     "dialogue=/content/chat/data/panel_dialogue.ids",
     "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
+    "corpus/eval/carry5_v1.jsonl",
+    "--gen",
+    "ember"
    ],
    "outputs": [
     "summary.json"
@@ -3230,7 +3244,9 @@
     "--panel",
     "dialogue=/content/chat/data/panel_dialogue.ids",
     "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
+    "corpus/eval/carry5_v1.jsonl",
+    "--gen",
+    "ember"
    ],
    "outputs": [
     "summary.json"
@@ -3325,7 +3341,9 @@
     "--panel",
     "dialogue=/content/chat/data/panel_dialogue.ids",
     "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
+    "corpus/eval/carry5_v1.jsonl",
+    "--gen",
+    "ember"
    ],
    "outputs": [
     "summary.json"
@@ -3420,7 +3438,9 @@
     "--panel",
     "dialogue=/content/chat/data/panel_dialogue.ids",
     "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
+    "corpus/eval/carry5_v1.jsonl",
+    "--gen",
+    "ember"
    ],
    "outputs": [
     "summary.json"
@@ -3515,7 +3535,9 @@
     "--panel",
     "dialogue=/content/chat/data/panel_dialogue.ids",
     "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
+    "corpus/eval/carry5_v1.jsonl",
+    "--gen",
+    "ember"
    ],
    "outputs": [
     "summary.json"
@@ -3610,7 +3632,9 @@
     "--panel",
     "dialogue=/content/chat/data/panel_dialogue.ids",
     "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
+    "corpus/eval/carry5_v1.jsonl",
+    "--gen",
+    "ember"
    ],
    "outputs": [
     "summary.json"
@@ -3705,7 +3729,9 @@
     "--panel",
     "dialogue=/content/chat/data/panel_dialogue.ids",
     "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
+    "corpus/eval/carry5_v1.jsonl",
+    "--gen",
+    "ember"
    ],
    "outputs": [
     "summary.json"
@@ -3800,7 +3826,9 @@
     "--panel",
     "dialogue=/content/chat/data/panel_dialogue.ids",
     "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
+    "corpus/eval/carry5_v1.jsonl",
+    "--gen",
+    "ember"
    ],
    "outputs": [
     "summary.json"
@@ -3895,7 +3923,9 @@
     "--panel",
     "dialogue=/content/chat/data/panel_dialogue.ids",
     "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
+    "corpus/eval/carry5_v1.jsonl",
+    "--gen",
+    "ember"
    ],
    "outputs": [
     "summary.json"
@@ -3990,7 +4020,9 @@
     "--panel",
     "dialogue=/content/chat/data/panel_dialogue.ids",
     "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
+    "corpus/eval/carry5_v1.jsonl",
+    "--gen",
+    "ember"
    ],
    "outputs": [
     "summary.json"
@@ -4085,7 +4117,9 @@
     "--panel",
     "dialogue=/content/chat/data/panel_dialogue.ids",
     "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
+    "corpus/eval/carry5_v1.jsonl",
+    "--gen",
+    "ember"
    ],
    "outputs": [
     "summary.json"
@@ -4180,7 +4214,9 @@
     "--panel",
     "dialogue=/content/chat/data/panel_dialogue.ids",
     "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
+    "corpus/eval/carry5_v1.jsonl",
+    "--gen",
+    "ember"
    ],
    "outputs": [
     "summary.json"
@@ -4275,7 +4311,9 @@
     "--panel",
     "dialogue=/content/chat/data/panel_dialogue.ids",
     "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
+    "corpus/eval/carry5_v1.jsonl",
+    "--gen",
+    "ember"
    ],
    "outputs": [
     "summary.json"
@@ -4370,7 +4408,9 @@
     "--panel",
     "dialogue=/content/chat/data/panel_dialogue.ids",
     "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
+    "corpus/eval/carry5_v1.jsonl",
+    "--gen",
+    "ember"
    ],
    "outputs": [
     "summary.json"
@@ -4465,7 +4505,9 @@
     "--panel",
     "dialogue=/content/chat/data/panel_dialogue.ids",
     "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
+    "corpus/eval/carry5_v1.jsonl",
+    "--gen",
+    "ember"
    ],
    "outputs": [
     "summary.json"
@@ -4560,7 +4602,9 @@
     "--panel",
     "dialogue=/content/chat/data/panel_dialogue.ids",
     "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
+    "corpus/eval/carry5_v1.jsonl",
+    "--gen",
+    "ember"
    ],
    "outputs": [
     "summary.json"
@@ -4655,7 +4699,9 @@
     "--panel",
     "dialogue=/content/chat/data/panel_dialogue.ids",
     "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
+    "corpus/eval/carry5_v1.jsonl",
+    "--gen",
+    "ember"
    ],
    "outputs": [
     "summary.json"
@@ -4750,7 +4796,9 @@
     "--panel",
     "dialogue=/content/chat/data/panel_dialogue.ids",
     "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
+    "corpus/eval/carry5_v1.jsonl",
+    "--gen",
+    "ember"
    ],
    "outputs": [
     "summary.json"
@@ -4845,7 +4893,9 @@
     "--panel",
     "dialogue=/content/chat/data/panel_dialogue.ids",
     "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
+    "corpus/eval/carry5_v1.jsonl",
+    "--gen",
+    "ember"
    ],
    "outputs": [
     "summary.json"
@@ -4940,7 +4990,9 @@
     "--panel",
     "dialogue=/content/chat/data/panel_dialogue.ids",
     "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
+    "corpus/eval/carry5_v1.jsonl",
+    "--gen",
+    "ember"
    ],
    "outputs": [
     "summary.json"
@@ -5035,7 +5087,9 @@
     "--panel",
     "dialogue=/content/chat/data/panel_dialogue.ids",
     "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
+    "corpus/eval/carry5_v1.jsonl",
+    "--gen",
+    "ember"
    ],
    "outputs": [
     "summary.json"

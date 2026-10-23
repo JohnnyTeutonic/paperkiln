@@ -75,6 +75,15 @@ RUNG_FRACTIONS = [0.05, 0.10, 0.25, 0.50]   # amendment 1: the early-ranking run
 DESIGN = os.path.join(HERE, "design.json")
 SHARES, E1_SHARE = NOMINAL_SHARES, 50  # replaced from design.json in main()
 DESIGN_NOTE = ""
+# Carry-5's generation in the post jobs (24 Oct 2026, PREREGISTRATION.md implementation note): ember.cpp's
+# CUDA server, built on the VM at tiny_chat_run.EMBER_COMMIT, with a per-run spot-check against mtstudio chat.
+# The floor pilot ran before it and its jobs file keeps mtstudio generation (gen=()).
+POST_GEN = ["--gen", "ember"]
+GEN_NOTE = (f" Carry-5 generation (24 Oct 2026, PREREGISTRATION.md implementation note): ember.cpp's CUDA server at "
+            f"{tcr.EMBER_COMMIT[:12]} (cloned and built once per VM by the first post job, under a lock), on the SFT "
+            f"model's F32 GGUF; every post job first generates {tcr.SPOT_N} fixed items with ember and with mtstudio "
+            f"chat and lets ember generate only on {tcr.SPOT_N}/{tcr.SPOT_N} identical replies, else mtstudio for the "
+            f"whole run (gen_flag in its summary.json). Forced-choice scoring stays with mtstudio score.")
 
 
 def dialogue_levels(pt_bytes):
@@ -385,7 +394,8 @@ def stage0_rerun(sh, size):
                   "max_parallel": GPU_JOBS_PER_VM, "jobs": jobs}
 
 
-def run_jobs(tag, cells, sh, lrs, provisional, seeds=SEEDS, gate_extra=(), choice=f"{REL}/stage0/lr_choice.json"):
+def run_jobs(tag, cells, sh, lrs, provisional, seeds=SEEDS, gate_extra=(), choice=f"{REL}/stage0/lr_choice.json",
+             gen=POST_GEN):
     """cells: [(cell id, shape id, share)]. PT = training job (relayed, resumable across VMs); post = SFT,
     panels and Carry-5 as a data job (init_job brings the PT weights to a fresh VM); pick = the cell's
     best SFT model by the primary metric; rung = one light job per rung snapshot (amendment 1)."""
@@ -402,7 +412,8 @@ def run_jobs(tag, cells, sh, lrs, provisional, seeds=SEEDS, gate_extra=(), choic
                           "cmd": ["python3", RUN, "post", "--out", "{out}", "--spec", spec_path(sid),
                                   "--pt-weights", f"{C}/{name}/tc_{tag}_{cell}_r{seed}.safetensors",
                                   "--pt-dir", f"{C}/{name}", "--sft-template", f"{REL}/specs/sft.json",
-                                  "--seed", str(seed), "--cell", cell, "--share", str(share), *PANELS, *ITEMS],
+                                  "--seed", str(seed), "--cell", cell, "--share", str(share), *PANELS, *ITEMS,
+                                  *gen],
                           "outputs": ["summary.json", *(MOR_POST_OUTPUTS if s.get("schedule") == "mor" else [])]})
             for st in rung_steps():
                 rungs.append({"name": f"rung_{tag}_{cell}_r{seed}_s{st}", "after": "data", "light": True,
@@ -435,8 +446,9 @@ def run_hours(s):
 
 
 def e_doc(tag, cells, sh, lrs, provisional, shares, title, seeds=SEEDS, gate_extra=(), note="", lr_note=None,
-          choice=f"{REL}/stage0/lr_choice.json"):
-    pts, posts, picks, rungs, gate, est = run_jobs(tag, cells, sh, lrs, provisional, seeds, gate_extra, choice)
+          choice=f"{REL}/stage0/lr_choice.json", gen=POST_GEN):
+    pts, posts, picks, rungs, gate, est = run_jobs(tag, cells, sh, lrs, provisional, seeds, gate_extra, choice, gen)
+    note = note + (GEN_NOTE if gen else "")
     base_note = ("PROVISIONAL learning rates (1e-3): the gate job fails until stage0/lr_choice.json exists and "
                "matches; rerun make_jobs.py after Stage 0" if provisional else
                "learning rates from stage0/lr_choice.json: " + ", ".join(f"{k} {lrs[k]:g}" for k in sorted(lrs)
@@ -559,7 +571,7 @@ def asha_doc(plan, sh):
                                      "--pt-weights", f"{C}/{name}/tc_asha_{cid}.safetensors", "--pt-dir", f"{C}/{name}",
                                      "--sft-template", f"{REL}/specs/sft.json", "--seed", str(c["seed"]), "--cell",
                                      f"asha_{cid}", "--share", str(c["share"]), "--pt-lr", repr(c["lr"]),
-                                     *PANELS, *ITEMS],
+                                     *PANELS, *ITEMS, *POST_GEN],
                              "outputs": ["summary.json"]})
     assert set(cfg) == {c["id"] for c in plan["configs"]}
     cj = plan["cost_job_hours"]
@@ -572,7 +584,7 @@ def asha_doc(plan, sh):
                         f"case {cj['worst_vm_hours']} L4 VM-hours; cap {ASHA_CAP_VM_HOURS} (the runner's --max-hours). "
                         f"Launch through tools/colab_chat/tiny_chat_asha.py drive, which keeps ART/asha_state.json (every "
                         f"result and decision home so far) current for the runner's --upload asha_state.json=..., so a "
-                        f"replaced VM can still promote. Upload vocab_llama3_bpe.gguf too." + DESIGN_NOTE,
+                        f"replaced VM can still promote. Upload vocab_llama3_bpe.gguf too." + GEN_NOTE + DESIGN_NOTE,
             "max_parallel": GPU_JOBS_PER_VM, "max_parallel_light": 1, "jobs": jobs}
 
 
@@ -605,7 +617,7 @@ def pilot_doc(sh, lrs):
                "stage0/pilot_lr.json exists; rerun make_jobs.py then" if prov else f"learning rate {lr:g} from {src}")
     return e_doc("pilot", [(f"s{E1_SHARE}", E5_SHAPE, E1_SHARE)], sh, {E5_SHAPE: lr}, prov, [E1_SHARE],
                  "floor pilot", seeds=[PILOT_SEED], gate_extra=["--pilot-lr", f"{REL}/stage0/pilot_lr.json"],
-                 note=note, lr_note=lr_note)
+                 note=note, lr_note=lr_note, gen=())
 
 
 def e5_60m_cells():

@@ -6,7 +6,8 @@ data-job commands that tiny_chat_*.json run through jobs_vm.py, plus `choose` at
     tiny_chat_run.py screen --out D --spec SHAPE.json --corpus C.ids --lr X --steps 1500 --seed 101
     tiny_chat_run.py post   --out D --spec SHAPE.json --pt-weights W --pt-dir P --sft-template SFT.json
                             --seed S --cell C --share N --panel NAME=IDS ... --carry5-items ITEMS
-    tiny_chat_run.py pick   --out D --run POST_DIR [--run ...]
+                            [--gen ember|mtstudio]
+    tiny_chat_run.py pick  --out D --run POST_DIR [--run ...]
     tiny_chat_run.py gate   --out D --jobs JOBS.json --choice LR_CHOICE.json
                             [--pilot-lr PILOT_LR.json] [--pilot-verdict VERDICT.json --need-pilot PASS|FAIL]
     tiny_chat_run.py choose --art ART_DIR [--art RERUN_DIR] --out LR_CHOICE.json   (at home, after Stage 0)
@@ -36,6 +37,16 @@ mean depth, from the step events' depth fractions) and runs H-MoR2's depth trace
 slope on fact distance, the depth fractions and their normalised entropy, the histograms; written to
 OUT/mor_depth/ and copied into summary.json). A failed trace is recorded and the job exits 1 after writing
 the summary; a rerun repeats only what is missing.
+
+Generation (24 Oct 2026; PREREGISTRATION.md, implementation note of that date): post --gen ember
+generates Carry-5's replies with ember.cpp's server (EMBER_COMMIT, built once per VM in EMBER_DIR under a
+lock, EMBER_GEMM_TF32=0, all layers on the GPU) on the SFT model's F32 GGUF. A spot-check first generates
+SPOT_N fixed items (every SPOT_EVERY-th) with ember and with `mtstudio chat --kv-cache` and compares every
+reply (text, stop reason, history used); only N/N lets ember generate the run, otherwise mtstudio
+generates all of it and summary.json carries gen_flag. For llama_recursive a failed spot-check on ember's
+CUDA interpreter is repeated with EMBER_IR_DEVICE=cpu (recorded and flagged when that one passes).
+OUT/gen_engine.json holds the decision, the build's commit and both spot-checks; forced-choice scoring
+stays with `mtstudio score`. post --gen mtstudio (the default) generates with mtstudio as before.
 
 rung, asha_train and asha_promote serve the early-stopping study (PREREGISTRATION.md amendment 1):
 rung scores a pretraining run's weights at a rung (5/10/25/50% of its steps; jobs_vm.py keeps the
@@ -82,15 +93,20 @@ CARRY5_MODES = ("gold", "self", "twin", "noctx")
 CARRY5_CHANCE = 0.25  # four candidates per item; carry5_eval's uniform scorer is exactly this
 
 
-def carry5_argv(spec, items, out_dir, gen, port):
+def carry5_argv(spec, items, out_dir, gen, port, ember=None, scorer="mtstudio", extra=()):
     """tools/carry5_eval.py (benchmark agent, 23 Oct 2026): `run` scores the model named by SPEC
-    (out_dir/name.safetensors) with `mtstudio score` and, with --gen mtstudio, plays the self
-    history through `mtstudio chat` on PORT (one port per job: post jobs share a VM). Writes
-    OUT_DIR/summary.json = {"meta", "models": {"m": {"fc": {"acc"|"acc_norm": {mode: {"all":
-    {"mean", "n", "ci95"}, "family", "distance", "interference", ...}}}, "gen", "decay", ...}}}.
-    Reconcile HERE if its flags change; only this function and carry5_read depend on them."""
-    return [sys.executable, CARRY5_TOOL, "run", "--model", f"m={spec}", "--out", out_dir, "--scorer", "mtstudio",
+    (out_dir/name.safetensors) with `mtstudio score` and plays the self history through a /chat
+    server on PORT (one port per job: post jobs share a VM): `mtstudio chat` with --gen mtstudio,
+    ember.cpp's server on the GGUF beside the safetensors with --gen ember (EMBER = {"bin",
+    "gpu_layers"}). Writes OUT_DIR/summary.json = {"meta", "models": {"m": {"fc": {"acc"|"acc_norm":
+    {mode: {"all": {"mean", "n", "ci95"}, "family", "distance", "interference", ...}}}, "gen",
+    "decay", ...}}} and OUT_DIR/m/gen.jsonl (the replies). Reconcile HERE if its flags change; only
+    this function and carry5_read depend on them."""
+    argv = [sys.executable, CARRY5_TOOL, "run", "--model", f"m={spec}", "--out", out_dir, "--scorer", scorer,
             "--mtstudio", BIN, "--gen", gen, "--set", items, "--port", str(port)]
+    if gen == "ember":
+        argv += ["--ember-bin", ember["bin"], "--gpu-layers", str(ember["gpu_layers"])]
+    return argv + list(extra)
 
 
 # Amendment 2 (PREREGISTRATION.md): the instruction family's forced choice is confounded by answer
@@ -172,6 +188,254 @@ def primary_all_items(c5):
 
 def port_for(path):
     return 8100 + int(hashlib.sha256(os.path.abspath(path).encode()).hexdigest()[:6], 16) % 800
+
+
+# ---------------------------------------------------------------- generation through ember.cpp (24 Oct 2026)
+# The post job's greedy generation (Carry-5's self history) runs on ember.cpp's CUDA server: `mtstudio
+# chat` decoded at ~0.1-0.2 s/token and the floor pilot's post job spent over 2 h there. Greedy generation
+# is engine-independent by the stack's parity contract (LOCAL_LLM_STACK.md: ember vs mtstudio greedy
+# 40/40 on every family); the spot-check below enforces it on every run, and a run whose spot-check is
+# not N/N generates with mtstudio throughout (the engines are never mixed within a run).
+EMBER_REPO = os.environ.get("TINY_CHAT_EMBER_REPO", "https://github.com/JohnnyTeutonic/ember.cpp.git")
+EMBER_COMMIT = "cbdcb915d26a66a276919328b8d808a450d51307"  # ember main, 24 Oct 2026: weight_index, MoR
+EMBER_DIR = os.environ.get("TINY_CHAT_EMBER_DIR", "/content/ember")  # one build per VM, shared by post jobs
+EMBER_CMAKE = os.environ.get("TINY_CHAT_EMBER_CMAKE", "-DCMAKE_CUDA_ARCHITECTURES=89").split()
+EMBER_GPU_LAYERS = os.environ.get("TINY_CHAT_EMBER_GPU_LAYERS", "-1")  # all layers on the GPU
+# The server's environment: TF32 GEMMs (ember's CUDA default) can flip greedy tokens against mtstudio's
+# f32, so they are off; flash-attention-2 stays on (parity-gated in ember).
+EMBER_ENV = {"EMBER_GEMM_TF32": "0"}
+SPOT_EVERY, SPOT_N = 26, 40  # the spot-check's fixed items: Carry-5 items 0, 26, ..., 1014 (all five families)
+SPOT_FIELDS = ("reply", "stop", "history_used")
+
+
+def ember_family(custom):
+    """ember's name for the model's family: llama_mor (ember serves MoR on its CPU path, also in CUDA
+    builds), llama_recursive (the IR interpreter; on CUDA in CUDA builds), else llama."""
+    if is_mor(custom):
+        return "llama_mor"
+    return "llama_recursive" if custom.get("recursion") else "llama"
+
+
+def ensure_ember(log_path):
+    """ember.cpp's server at EMBER_COMMIT, built once per VM in EMBER_DIR/build (cloned into
+    EMBER_DIR/src; Boost.Regex from apt when missing). An exclusive lock on EMBER_DIR/.lock makes post
+    jobs that start together wait for one build. Returns the build's record (EMBER_DIR/build/
+    ember_build.json: bin, commit, cuda, seconds) plus built_here, or {"error"} when it cannot be built."""
+    import fcntl  # POSIX: the VM, and WSL for the CPU test
+    src, build = os.path.join(EMBER_DIR, "src"), os.path.join(EMBER_DIR, "build")
+    marker = os.path.join(build, "ember_build.json")
+    binary = os.path.join(build, "tinyllama_server")
+    os.makedirs(EMBER_DIR, exist_ok=True)
+    with open(os.path.join(EMBER_DIR, ".lock"), "w") as lk:
+        fcntl.flock(lk, fcntl.LOCK_EX)
+        if os.path.exists(marker) and os.path.exists(binary):
+            m = jload(marker)
+            if m.get("commit") == EMBER_COMMIT:
+                return {**m, "built_here": False}
+        t0 = time.time()
+        log = open(log_path, "a", encoding="utf-8")
+
+        def sh(argv, **kw):
+            log.write(f"$ {' '.join(argv)}\n")
+            log.flush()
+            p = subprocess.run(argv, capture_output=True, text=True, **kw)
+            log.write(p.stdout[-20000:] + p.stderr[-20000:])
+            log.flush()
+            return p
+
+        try:
+            # The package, not the header: an image can carry Boost's headers without libboost_regex.
+            have = subprocess.run(["dpkg", "-s", "libboost-regex-dev"], capture_output=True).returncode == 0 \
+                if shutil.which("dpkg") else os.path.exists("/usr/include/boost/regex.hpp")
+            if not have and os.environ.get("TINY_CHAT_EMBER_APT", "1") != "0":
+                sh(["apt-get", "update", "-qq"])
+                p = sh(["apt-get", "install", "-y", "-q", "libboost-regex-dev"])
+                if p.returncode != 0:
+                    return {"error": f"apt-get install libboost-regex-dev failed (rc {p.returncode})"}
+            head = sh(["git", "-C", src, "rev-parse", "HEAD"]) if os.path.isdir(os.path.join(src, ".git")) else None
+            if not head or head.returncode != 0:
+                shutil.rmtree(src, ignore_errors=True)
+                p = sh(["git", "clone", "-q", "--filter=blob:none", "--no-checkout", EMBER_REPO, src])
+                if p.returncode != 0:
+                    return {"error": f"git clone {EMBER_REPO} failed (rc {p.returncode}): {p.stderr[-400:]}"}
+            p = sh(["git", "-C", src, "checkout", "-q", "--detach", EMBER_COMMIT])
+            got = sh(["git", "-C", src, "rev-parse", "HEAD"]).stdout.strip()
+            if p.returncode != 0 or got != EMBER_COMMIT:
+                return {"error": f"ember checkout of {EMBER_COMMIT} failed (HEAD {got!r}): {p.stderr[-400:]}"}
+            p = sh(["cmake", "-S", src, "-B", build, "-DCMAKE_BUILD_TYPE=Release", *EMBER_CMAKE])
+            if p.returncode != 0:
+                return {"error": f"ember cmake failed (rc {p.returncode}): {p.stderr[-400:]}"}
+            cuda = "CUDA toolkit and cuBLAS found" in p.stdout + p.stderr
+            jobs = os.environ.get("TINY_CHAT_EMBER_JOBS", str(os.cpu_count() or 4))
+            p = sh(["make", "-C", build, f"-j{jobs}", "tinyllama_server"])
+            if p.returncode != 0 or not os.path.exists(binary):
+                return {"error": f"ember build failed (rc {p.returncode}): {(p.stdout + p.stderr)[-600:]}"}
+            m = {"bin": binary, "commit": got, "repo": EMBER_REPO, "cuda": cuda, "cmake_args": EMBER_CMAKE,
+                 "seconds": round(time.time() - t0, 1)}
+            jsave(marker, m)
+            return {**m, "built_here": True}
+        except OSError as e:
+            return {"error": f"ember build: {type(e).__name__}: {e}"}
+        finally:
+            log.close()
+
+
+def gguf_f32(path):
+    """True when PATH is a GGUF whose tensors are all F32 (ggml type 0)."""
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    import ir_check
+    try:
+        _, tensors, *_ = ir_check.read_gguf(path)
+    except (OSError, ValueError):
+        return False
+    return bool(tensors) and all(t[2] == 0 for t in tensors)
+
+
+def ensure_f32_gguf(spec_path, weights, log_path):
+    """The SFT model's F32 GGUF beside its safetensors (the SFT spec exports it; re-exported with
+    `mtstudio export` when missing or not F32). Returns (path, sha256) or (None, why)."""
+    spec = jload(spec_path)
+    g = os.path.join(spec["out_dir"], spec["name"] + ".gguf")
+    if not gguf_f32(g):
+        with open(log_path, "a", encoding="utf-8") as log:
+            p = subprocess.run([BIN, "export", spec_path, "--from", weights, "--formats", "gguf"], stdout=log,
+                               stderr=subprocess.STDOUT, text=True)
+        if p.returncode != 0 or not gguf_f32(g):
+            return None, f"mtstudio export --formats gguf failed or not F32 (rc {p.returncode})"
+    return g, sha256(g)
+
+
+def gen_records(work):
+    p = os.path.join(work, "m", "gen.jsonl")
+    if not os.path.exists(p):
+        return {}
+    with open(p, encoding="utf-8") as f:
+        return {r["id"]: r for r in (json.loads(x) for x in f if x.strip())}
+
+
+def compare_gens(a_recs, b_recs, ids):
+    """Per item, every reply (five self-history turns, gold, twin, noctx) on SPOT_FIELDS."""
+    rows, same_items, same_replies, total = [], 0, 0, 0
+    for i in ids:
+        ra, rb = a_recs.get(i), b_recs.get(i)
+        if ra is None or rb is None:
+            rows.append({"id": i, "missing": [n for n, r in (("ember", ra), ("mtstudio", rb)) if r is None]})
+            total += 8
+            continue
+        pa = [(f"self{k + 1}", x) for k, x in enumerate(ra["self"])] + [(m, ra[m]) for m in ("gold", "twin", "noctx")]
+        pb = dict([(f"self{k + 1}", x) for k, x in enumerate(rb["self"])] + [(m, rb[m]) for m in ("gold", "twin", "noctx")])
+        diff = []
+        for name, x in pa:
+            y = pb.get(name)
+            total += 1
+            if y is not None and all(x.get(f) == y.get(f) for f in SPOT_FIELDS):
+                same_replies += 1
+            else:
+                diff.append({"reply": name, "ember": {f: x.get(f) for f in SPOT_FIELDS},
+                             "mtstudio": {f: (y or {}).get(f) for f in SPOT_FIELDS}})
+        same_items += not diff
+        if diff:
+            rows.append({"id": i, "diff": diff[:3]})
+    return {"items": len(ids), "items_identical": same_items, "replies": total, "replies_identical": same_replies,
+            "differing": rows[:10]}
+
+
+def spot_check(spec_path, items, work, ember, env, tag):
+    """Generate the fixed spot-check items with ember (into WORK/ember_TAG) and with `mtstudio chat
+    --kv-cache` (WORK/mtstudio, generated once), no scoring; compare every reply."""
+    sub = ["--every", str(SPOT_EVERY), "--limit", str(SPOT_N)]
+    res = {"every": SPOT_EVERY, "n": SPOT_N, "fields": list(SPOT_FIELDS), "env": {k: env.get(k) for k in
+                                                                                  ("EMBER_GEMM_TF32", "EMBER_IR_DEVICE")}}
+    out = {}
+    os.makedirs(work, exist_ok=True)
+    for eng, d in (("mtstudio", os.path.join(work, "mtstudio")), ("ember", os.path.join(work, f"ember_{tag}"))):
+        timing = os.path.join(work, f"{os.path.basename(d)}_timing.json")
+        if os.path.exists(timing):  # generated already (mtstudio's side serves every ember attempt)
+            t = jload(timing)
+        else:
+            t0 = time.time()
+            p = subprocess.run(carry5_argv(spec_path, items, d, eng, port_for(d), ember=ember, scorer="none", extra=sub),
+                               capture_output=True, text=True, env=env)
+            with open(os.path.join(work, f"{os.path.basename(d)}.log"), "w", encoding="utf-8") as f:
+                f.write(p.stdout[-20000:] + p.stderr[-20000:])
+            t = {"seconds": round(time.time() - t0, 1), "rc": p.returncode}
+            if p.returncode != 0:
+                t["error"] = p.stderr[-800:]
+            else:
+                jsave(timing, t)
+        res[f"{eng}_seconds"], res[f"{eng}_rc"] = t["seconds"], t["rc"]
+        if "error" in t:
+            res[f"{eng}_error"] = t["error"]
+        out[eng] = gen_records(d)
+    ids = [r["id"] for r in read_items(items)[::SPOT_EVERY][:SPOT_N]]
+    res.update(compare_gens(out["ember"], out["mtstudio"], ids))
+    res["identical"] = res["items_identical"]
+    res["n"] = len(ids)  # SPOT_N on Carry-5 itself (1,032 items); fewer only on a shorter items file (tests)
+    res["pass"] = bool(ids) and res["items_identical"] == len(ids) and res.get("ember_rc") == 0 \
+        and res.get("mtstudio_rc") == 0
+    return res
+
+
+def read_items(p):
+    with open(p, encoding="utf-8") as f:
+        return [json.loads(x) for x in f if x.strip()]
+
+
+def choose_engine(spec_path, weights, items, out, custom):
+    """OUT/gen_engine.json: the generation engine for this run's Carry-5 and why. ember when its build
+    works, the F32 GGUF exists and the spot-check is N/N (for llama_recursive a failed spot-check on
+    ember's CUDA interpreter is retried with EMBER_IR_DEVICE=cpu, recorded and flagged); otherwise
+    mtstudio for the whole run, flagged. Decided once per run: a rerun reads the file."""
+    os.makedirs(out, exist_ok=True)
+    path = os.path.join(out, "gen_engine.json")
+    if os.path.exists(path):
+        return jload(path)
+    fam = ember_family(custom)
+    d = {"engine": "mtstudio", "family": fam, "ember_commit_pinned": EMBER_COMMIT, "ember_env": dict(EMBER_ENV),
+         "flag": None, "ir_device": None}
+    t0 = time.time()
+    ember = ensure_ember(os.path.join(out, "ember_build.log"))
+    d["ember_build"] = ember
+    if "error" in ember:
+        d["flag"] = f"ember unavailable ({ember['error'][:300]}); generated with mtstudio"
+    else:
+        g, why = ensure_f32_gguf(spec_path, weights, os.path.join(out, "mtstudio.log"))
+        if g is None:
+            d["flag"] = f"no F32 GGUF ({why}); generated with mtstudio"
+        else:
+            d["gguf_sha256"] = why
+            eb = {"bin": ember["bin"], "gpu_layers": EMBER_GPU_LAYERS}
+            d["gpu_layers"] = EMBER_GPU_LAYERS
+            work = os.path.join(out, "spot")
+            env = {**os.environ, **EMBER_ENV}
+            env.pop("EMBER_IR_DEVICE", None)
+            spot = spot_check(spec_path, items, work, eb, env, "default")
+            d["spot"] = spot
+            if spot["pass"]:
+                d["engine"] = "ember"
+            elif fam == "llama_recursive" and ember.get("cuda"):
+                # ember's IR interpreter on CUDA is not yet gated for this family: this spot-check is its gate.
+                cpu = spot_check(spec_path, items, work, eb, {**env, "EMBER_IR_DEVICE": "cpu"}, "ir_cpu")
+                d["spot_ir_cpu"] = cpu
+                if cpu["pass"]:
+                    d.update(engine="ember", ir_device="cpu",
+                             flag=f"llama_recursive: ember's IR on CUDA failed the spot-check "
+                                  f"({spot['identical']}/{spot['n']}); EMBER_IR_DEVICE=cpu passed ({cpu['identical']}/"
+                                  f"{cpu['n']}) and generated the run")
+                    d["ember_env"]["EMBER_IR_DEVICE"] = "cpu"
+            if d["engine"] != "ember" and not d["flag"]:
+                d["flag"] = (f"ember spot-check {spot['identical']}/{spot['n']}"
+                             + (f", EMBER_IR_DEVICE=cpu {d['spot_ir_cpu']['identical']}/{d['spot_ir_cpu']['n']}"
+                                if "spot_ir_cpu" in d else "")
+                             + "; generated with mtstudio throughout")
+            if d["engine"] == "ember" and fam == "llama_recursive" and not d["ir_device"]:
+                d["ir_device"] = "gpu" if ember.get("cuda") and EMBER_GPU_LAYERS != "0" else "cpu"
+            if fam == "llama_mor":
+                d["ir_device"] = "cpu"  # ember serves MoR on its CPU path, also in CUDA builds
+            d["ember"] = eb
+    d["choose_seconds"] = round(time.time() - t0, 1)
+    jsave(path, d)
+    return d
 
 
 # ---------------------------------------------------------------- helpers
@@ -689,13 +953,35 @@ def cmd_post(a):
     s["sft_data_sha256"] = sha256(sft["data"]["sft_examples"])
     # 3. Carry-5: the SFT model with generated (self) history (required), then the base model
     #    teacher-forced only (descriptive; a failure is recorded, not fatal).
+    #    Generation: --gen ember picks the engine by choose_engine (ember's CUDA server when its spot-check
+    #    against mtstudio chat is N/N, else mtstudio for the whole run, flagged); --gen mtstudio as before.
     c5 = os.path.join(a.out, "carry5")
-    p = subprocess.run(carry5_argv(sd + "_spec.json", a.carry5_items, c5, "mtstudio", port_for(a.out)),
-                       capture_output=True, text=True)
+    env, ember = dict(os.environ), None
+    if a.gen == "ember":
+        eng = choose_engine(sd + "_spec.json", sw, a.carry5_items, a.out, custom)
+        s["gen_engine"] = eng
+        if eng["flag"]:
+            s["gen_flag"] = eng["flag"]
+            print(f"generation: {eng['flag']}", file=sys.stderr)
+        if eng["engine"] == "ember":
+            ember = eng["ember"]
+            env.update(eng["ember_env"])
+    else:
+        s["gen_engine"] = {"engine": "mtstudio", "requested": "mtstudio", "flag": None}
+    t0 = time.time()
+    p = subprocess.run(carry5_argv(sd + "_spec.json", a.carry5_items, c5, "ember" if ember else "mtstudio",
+                                   port_for(a.out), ember=ember), capture_output=True, text=True, env=env)
+    s["carry5_seconds"] = round(time.time() - t0, 1)
     open(os.path.join(a.out, "carry5.log"), "w", encoding="utf-8").write(p.stdout[-20000:] + p.stderr[-20000:])
     if p.returncode != 0 or not os.path.exists(os.path.join(c5, "summary.json")):
         raise SystemExit(f"carry5_eval failed (rc {p.returncode}): {p.stderr[-500:]}")
     s["carry5"] = carry5_read(c5)
+    if s["carry5"]["meta"].get("gen") != s["gen_engine"]["engine"]:
+        raise SystemExit(f"{c5} was generated with {s['carry5']['meta'].get('gen')}, this run chose "
+                         f"{s['gen_engine']['engine']}: engines are never mixed; remove {c5} and rerun")
+    # ember returns token ids, so every self-history reply is also scored by `mtstudio score` as a
+    # continuation (carry5_eval's parity gate): the whole run's argmax agreement, beside the spot-check.
+    s["gen_engine"]["full_gate"] = s["carry5"]["summary"].get("gate")
     s["primary"] = primary(s["carry5"])
     s["primary_all_items"] = primary_all_items(s["carry5"])  # section 3's frozen definition, reported beside it
     if mor:  # amendment 4: m_s from the pretraining events (when this VM ran it) and H-MoR2's depth trace
@@ -1130,6 +1416,9 @@ def main(argv=None):
     p.add_argument("--panel", action="append", default=[])
     p.add_argument("--carry5-items", required=True)
     p.add_argument("--pt-lr", type=float, default=None, help="the pretraining lr to record (default: the spec's)")
+    p.add_argument("--gen", choices=["ember", "mtstudio"], default="mtstudio",
+                   help="Carry-5's generation: ember = ember.cpp's server at EMBER_COMMIT when the per-run spot-check "
+                        "against mtstudio chat is N/N, else mtstudio for the whole run (flagged)")
     p = sub.add_parser("pick")
     p.add_argument("--out", required=True)
     p.add_argument("--run", action="append", required=True)

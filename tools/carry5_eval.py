@@ -169,11 +169,25 @@ class ChatServer:
             sys.exit(f"port {a.port} already answers /health: another server is there; pick a free --port")
         except OSError:
             pass
+        cwd, err = None, subprocess.DEVNULL
         if a.gen == "ember":
             www = os.path.join(a.out, "www")
             os.makedirs(www, exist_ok=True)
-            argv = [a.ember_bin, gguf, str(a.port), "127.0.0.1", www, str(a.gpu_layers)]
+            ebin = os.path.abspath(a.ember_bin) if os.path.exists(a.ember_bin) else a.ember_bin
+            argv = [ebin, os.path.abspath(gguf), str(a.port), "127.0.0.1", os.path.abspath(www), str(a.gpu_layers)]
             want = os.path.realpath(gguf)
+            # ember's server logs at INFO, several lines per layer per token, flushed line by line, to
+            # ./debugging.log: run it in its own folder with that file pointing at /dev/null (on a OneDrive
+            # mount the log alone cost ~0.1 s per token, 24 Oct 2026); its warnings and errors still reach
+            # stderr, kept in ember_stderr.log there.
+            cwd = os.path.join(a.out, "ember_cwd")
+            os.makedirs(cwd, exist_ok=True)
+            dl = os.path.join(cwd, "debugging.log")
+            if os.name == "posix" and not os.path.islink(dl):
+                if os.path.exists(dl):
+                    os.remove(dl)
+                os.symlink(os.devnull, dl)
+            err = open(os.path.join(cwd, "ember_stderr.log"), "a")
         else:
             argv = [a.mtstudio, "chat", spec_path, "--port", str(a.port)]
             # The KV cache (gated: logits within 2e-7 of the range vs recompute, greedy 40/40,
@@ -183,7 +197,7 @@ class ChatServer:
             if not getattr(a, "no_kv_cache", False) and spec.get("arch", {}).get("preset", "").startswith("llama"):
                 argv.append("--kv-cache")
             want = spec["name"]
-        self.proc = subprocess.Popen(argv, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        self.proc = subprocess.Popen(argv, stdout=subprocess.DEVNULL, stderr=err, cwd=cwd)
         health = None
         for _ in range(300):
             try:
