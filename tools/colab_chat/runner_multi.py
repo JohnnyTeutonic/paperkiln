@@ -397,23 +397,50 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
     if "DIRS_OK" not in out:
         log(f"prepare: upload dirs not created: {out.strip()[-120:]}")
         return False
-    # Jobs already home are finished on this VM too: jobs_vm.py runs every job not FINISHED, so a
-    # fresh VM would otherwise redo them (22 Oct 2026: lever1 rebuilt after it was home).
-    home = [j["name"] for j in jobs if st.job(j["name"])["home"]]
-    rc, out = exec_py(f"for n in {home!r}: open('/content/chat/STATUS_' + n, 'w').write('FINISHED\\n')\n"
+    # Jobs already home keep their outcome on this VM: jobs_vm.py runs every job not FINISHED or
+    # FAILED, so a fresh VM would otherwise redo them (22 Oct 2026: lever1 rebuilt after it was home).
+    # A home job that FAILED stays FAILED, so its dependants still follow it (23 Oct 2026: marking
+    # it FINISHED let a failed gate's dependants run). A home data job ("cmd") that an unfinished
+    # job still needs, directly or through others, runs again: its files live on the VM that made
+    # them, and a replacement VM has none (an unfinished pretraining job would find no corpus).
+    by = {j["name"]: j for j in jobs}
+
+    def needs(j):
+        after = j.get("after") or []
+        after = [after] if isinstance(after, str) else list(after)
+        return after + ([j["init_job"]] if j.get("init_job") else [])
+
+    needed, todo = set(), [n for j in jobs if not st.job(j["name"])["home"] for n in needs(j)]
+    while todo:
+        n = todo.pop()
+        if n in by and n not in needed:
+            needed.add(n)
+            # A home training job's needs are not: its final weights are uploaded instead. A job
+            # that runs here (not home, or a data job run again) needs its own inputs.
+            if not st.job(n)["home"] or "cmd" in by[n]:
+                todo.extend(needs(by[n]))
+    failed = [j["name"] for j in jobs if st.job(j["name"])["home"] and st.job(j["name"]).get("status") == "FAILED"]
+    rerun = [j["name"] for j in jobs if st.job(j["name"])["home"] and "cmd" in j and j["name"] in needed
+             and j["name"] not in failed]
+    finished = [j["name"] for j in jobs if st.job(j["name"])["home"] and j["name"] not in failed + rerun]
+    rc, out = exec_py(f"for n in {finished!r}: open('/content/chat/STATUS_' + n, 'w').write('FINISHED\\n')\n"
+                      f"for n in {failed!r}: open('/content/chat/STATUS_' + n, 'w').write('FAILED\\n')\n"
                       "print('HOME_OK')\n")
     if "HOME_OK" not in out:
         log(f"prepare: home jobs not marked: {out.strip()[-120:]}")
         return False
-    # An unfinished job that starts from a home job's final weights (init_job) needs them on the
-    # fresh VM: uploaded as a whole-file input and moved into the parent's out_dir below.
+    if rerun:
+        log(f"prepare: data jobs rerun on this VM for unfinished dependants: {rerun}")
+    # An unfinished job that starts from, or runs after, a home training job needs that job's final
+    # weights on the fresh VM: uploaded as a whole-file input and moved into its out_dir below.
     finals = []
-    for j in jobs:
-        parent = next((p for p in jobs if p["name"] == j.get("init_job")), None)
-        if parent and not st.job(j["name"])["home"] and st.job(parent["name"])["home"]:
-            model = parent.get("model_name", parent["name"])
-            finals.append((f"{parent['name']}__final.safetensors", os.path.join(ART, parent["name"], model + ".safetensors"),
-                           f"/content/chat/{parent['name']}/{model}.safetensors"))
+    for n in sorted(needed):
+        parent = by.get(n)
+        if parent and "cmd" not in parent and st.job(n)["home"] and n not in failed:
+            model = parent.get("model_name", n)
+            src = os.path.join(ART, n, model + ".safetensors")
+            if os.path.exists(src):
+                finals.append((f"{n}__final.safetensors", src, f"/content/chat/{n}/{model}.safetensors"))
     try:
         for key, src in uploads:
             upload_file(src, f"/content/chat/upload/{key}")
