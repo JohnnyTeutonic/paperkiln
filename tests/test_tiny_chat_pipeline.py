@@ -679,7 +679,12 @@ def test_fresh_vm_runs_the_cuda_gate_before_a_probe(tmp_path):
     s = json.loads((out / "summary.json").read_text())
     res = json.loads((g / "cuda_gate.json").read_text())
     assert r.returncode == 1 and "test_cuda_ops" in s["refused"] and not res["ok"]
-    assert len(res["legs"]) == 14 and res["legs"][-1]["production_kernels"]
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("tcr", ROOT / "tools" / "colab_chat" / "tiny_chat_run.py")
+    tcr = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(tcr)
+    legs = tcr.validate_plan(str(ROOT / "tools" / "colab_cuda_validate.sh"))[1]  # every leg of the script, ...
+    assert len(res["legs"]) == len(legs) + 1 and res["legs"][-1]["production_kernels"]  # ... then test_recursion
 
 
 @needs_bin
