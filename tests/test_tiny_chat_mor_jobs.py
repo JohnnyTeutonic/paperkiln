@@ -63,6 +63,11 @@ def test_e1_mor_file():
         assert j["snapshot_steps"] == [500, 1000, 2500, 5000]
         rec = j["spec"]["arch"]["custom"]["recursion"]
         assert rec["schedule"] == ("mor" if "MoR3" in j["name"] else "fixed")
+    posts = [j for j in doc["jobs"] if j["name"].startswith("post_")]
+    assert len(posts) == 9
+    for j in posts:  # H-MoR2's depth trace comes home from MoR3's post jobs only
+        want = ["summary.json"] + (["mor_depth/depth.json", "mor_depth/items.jsonl"] if "MoR3" in j["name"] else [])
+        assert j["outputs"] == want, j["name"]
     g = next(j for j in doc["jobs"] if j["name"] == "gate")["cmd"]
     assert g[g.index("--choice") + 1] == mj.MOR_CHOICE
     assert g[g.index("--need-cuda-gate") + 1] == mj.MOR_CUDA_GATE

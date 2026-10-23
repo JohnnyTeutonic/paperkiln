@@ -29,6 +29,14 @@ data job when a fresh VM lacks it). choose_rec is choose over A3.3's four-rate g
 screens all diverged is dropped and reported, not chosen. post batches by effective depth (prelude +
 block x repeats + coda).
 
+The MoR block (amendment 4, A4.5): for a spec whose arch.custom.recursion schedule is "mor", post also
+records the pretraining run's realised depth (pt_mor: m_s, the mean over its logged steps of each step's
+mean depth, from the step events' depth fractions) and runs H-MoR2's depth trace on the SFT model
+(tools/carry5_depth.py over Carry-5's context families, gold history teacher-forced; mor_depth: Delta, the
+slope on fact distance, the depth fractions and their normalised entropy, the histograms; written to
+OUT/mor_depth/ and copied into summary.json). A failed trace is recorded and the job exits 1 after writing
+the summary; a rerun repeats only what is missing.
+
 rung, asha_train and asha_promote serve the early-stopping study (PREREGISTRATION.md amendment 1):
 rung scores a pretraining run's weights at a rung (5/10/25/50% of its steps; jobs_vm.py keeps the
 snapshot) with the zero-rate panels and base-model Carry-5 teacher-forced; asha_train trains one
@@ -62,6 +70,7 @@ import time
 
 BIN = os.environ.get("JOBS_MTSTUDIO", "/content/pk/build_cuda/mtstudio")
 CARRY5_TOOL = os.environ.get("TINY_CHAT_CARRY5", "tools/carry5_eval.py")  # override: tests only
+MOR_DEPTH_TOOL = os.environ.get("TINY_CHAT_MOR_DEPTH", "tools/carry5_depth.py")  # amendment 4: H-MoR2's trace
 SCREEN_TIE = 0.01  # nats: screens closer than this to the best count as tied; the smaller lr wins
 SCREEN_LRS_EXPECTED = (5e-4, 1e-3, 2e-3)  # section 4's grid: a shape is chosen only with all three screens
 REC_SCREEN_LRS = (2.5e-4, 5e-4, 1e-3, 2e-3)  # A3.3: the recursion cells' grid (shared weights sum r gradients)
@@ -589,6 +598,44 @@ def rung_metrics(c5b):
     return out
 
 
+def is_mor(custom):
+    return (custom.get("recursion") or {}).get("schedule") == "mor"
+
+
+def realised_depth(evs):
+    """A4.5's m_s from a MoR pretraining run's events: the mean over its steps of each step's mean depth
+    (sum_i i f_i over the step's depth fractions, each step weighted equally). A step logged twice (a
+    relay resumed past it) counts once, its last record. Also the mean depth fractions and, from them,
+    the active fraction a_k at each recursion step k (the tokens whose depth exceeds k), which the
+    realised FLOPs per token use. None without depth fractions."""
+    by = {}
+    for e in evs:
+        if e.get("event") == "step" and e.get("mor_frac"):
+            by[e["step"]] = e["mor_frac"]
+    if not by:
+        return None
+    R = len(next(iter(by.values())))
+    steps = sorted(by)
+    m = sum(sum((i + 1) * f for i, f in enumerate(by[t])) for t in steps) / len(steps)
+    fm = [sum(by[t][i] for t in steps) / len(steps) for i in range(R)]
+    return {"m": m, "steps_logged": len(steps), "first_step": steps[0], "last_step": steps[-1],
+            "frac_mean": fm, "active": [sum(fm[k:]) for k in range(R)]}
+
+
+def mor_depth(spec_path, items, out_dir):
+    """H-MoR2's depth trace (tools/carry5_depth.py) on the SFT model; its depth.json, or {"error"}."""
+    argv = [sys.executable, MOR_DEPTH_TOOL, "run", "--model", spec_path, "--mtstudio", BIN, "--out", out_dir,
+            "--set", items, "--families", ",".join(CONTEXT_FAMILIES)]
+    p = subprocess.run(argv, capture_output=True, text=True)
+    os.makedirs(out_dir, exist_ok=True)
+    with open(os.path.join(out_dir, "depth.log"), "w", encoding="utf-8") as f:
+        f.write(p.stdout[-20000:] + p.stderr[-20000:])
+    dp = os.path.join(out_dir, "depth.json")
+    if p.returncode != 0 or not os.path.exists(dp):
+        return {"error": f"carry5_depth failed (rc {p.returncode}): {p.stderr[-800:]}"}
+    return jload(dp)
+
+
 def preflight(items):
     missing = [p for p in (CARRY5_TOOL, items) if not os.path.exists(p)]
     if missing:
@@ -597,12 +644,16 @@ def preflight(items):
 
 def cmd_post(a):
     done = os.path.join(a.out, "summary.json")
-    if os.path.exists(done) and jload(done).get("primary") is not None:
-        print(f"{done}: present")
-        return 0
-    preflight(a.carry5_items)
     shape = shape_spec(a.spec)
     custom = shape["arch"]["custom"]
+    mor = is_mor(custom)
+    if os.path.exists(done):
+        prev = jload(done)
+        depth_ok = not mor or (bool(prev.get("mor_depth")) and "error" not in prev["mor_depth"])
+        if prev.get("primary") is not None and depth_ok:
+            print(f"{done}: present")
+            return 0
+    preflight(a.carry5_items)
     b, acc = batching(effective_layers(custom))
     if not os.path.exists(a.pt_weights):
         raise SystemExit(f"pretrained weights not found: {a.pt_weights}")
@@ -647,11 +698,17 @@ def cmd_post(a):
     s["carry5"] = carry5_read(c5)
     s["primary"] = primary(s["carry5"])
     s["primary_all_items"] = primary_all_items(s["carry5"])  # section 3's frozen definition, reported beside it
+    if mor:  # amendment 4: m_s from the pretraining events (when this VM ran it) and H-MoR2's depth trace
+        s["pt_mor"] = realised_depth(events(a.pt_dir))
+        s["mor_depth"] = mor_depth(sd + "_spec.json", a.carry5_items, os.path.join(a.out, "mor_depth"))
     s["carry5_base"] = carry5_base(shape, a.pt_weights, a.carry5_items, a.out)
     s["final_rung"] = rung_metrics(s["carry5_base"])  # the 100% rung of the early-ranking analysis
     s["other_mtstudio_at_end"] = concurrent_mtstudio()
     jsave(os.path.join(a.out, "summary.json"), s)
     print(json.dumps({k: s[k] for k in ("cell", "seed", "primary", "panels")}))
+    if mor and "error" in s["mor_depth"]:
+        print(s["mor_depth"]["error"], file=sys.stderr)
+        return 1
     return 0
 
 

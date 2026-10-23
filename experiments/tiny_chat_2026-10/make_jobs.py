@@ -403,7 +403,7 @@ def run_jobs(tag, cells, sh, lrs, provisional, seeds=SEEDS, gate_extra=(), choic
                                   "--pt-weights", f"{C}/{name}/tc_{tag}_{cell}_r{seed}.safetensors",
                                   "--pt-dir", f"{C}/{name}", "--sft-template", f"{REL}/specs/sft.json",
                                   "--seed", str(seed), "--cell", cell, "--share", str(share), *PANELS, *ITEMS],
-                          "outputs": ["summary.json"]})
+                          "outputs": ["summary.json", *(MOR_POST_OUTPUTS if s.get("schedule") == "mor" else [])]})
             for st in rung_steps():
                 rungs.append({"name": f"rung_{tag}_{cell}_r{seed}_s{st}", "after": "data", "light": True,
                               "rung_of": {"job": name, "step": st}, "env": {"MICROTORCH_POOL_MB": LIGHT_POOL_MB},
@@ -827,6 +827,7 @@ MOR_OVERHEAD = 1.2                    # A4.7: gathering and per-sequence attenti
 MOR_CHOICE = f"{REL}/stage0/lr_choice_mor.json"        # tiny_chat_run.py choose_rec over the MoR block's screens
 MOR_CUDA_GATE = f"{REL}/recursion/cuda_gate_mor.json"  # the MoR Stage 0's cuda_gate.json (test_mor's device leg)
 MOR_STAGE0_DIR = os.path.join(HERE, "stage0", "mor")   # its probe receipts once home (probe_20m_<cell>/)
+MOR_POST_OUTPUTS = ["mor_depth/depth.json", "mor_depth/items.jsonl"]  # H-MoR2's trace (tools/carry5_depth.py)
 
 
 def mor_probes():
@@ -940,8 +941,9 @@ MOR_NOTE = (" MoR block (amendment 4): the gate refuses unless the floor pilot P
             f"({MOR_CUDA_GATE}) and every pretraining job's lr is the cell's choice in {MOR_CHOICE} (choose_rec: "
             "section 4's rule over the four-rate grid). A4.7: these runs launch only after the MoR probes have "
             "replaced the estimates and Jonathan has confirmed the measured total. H-MoR2's depth trace (mtstudio "
-            "score's per-token depths over Carry-5's context families, teacher-forced with gold history) is read "
-            "from each MoR3 seed's SFT model at home.")
+            "score's per-token depths over Carry-5's context families, teacher-forced with gold history: "
+            "tools/carry5_depth.py) runs in each MoR3 post job on its SFT model and comes home in summary.json "
+            "(mor_depth, with pt_mor: the run's realised depth m_s) and mor_depth/.")
 
 
 def e1_mor_doc(sh, ms):

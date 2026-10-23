@@ -1,5 +1,5 @@
 {
- "_comment": "tiny-chat MoR block at 20M (amendment 4, A4.3) (experiments/tiny_chat_2026-10/PREREGISTRATION.md). 9 pretraining runs of 10000 steps x 16384 tokens (163.84M), each then SFT (1500 steps on human dialogues), two fixed text panels and Carry-5 (post job); one pick per cell. PROVISIONAL learning rates (1e-3): the gate job fails until experiments/tiny_chat_2026-10/stage0/lr_choice_mor.json exists and matches; rerun make_jobs.py after the MoR Stage 0. One GPU job at a time (amendment 2: Stage 0 measured no throughput gain from sharing the L4, and sharing crashed its screens); rung jobs beside it in the light slot, their cache capped at 2048 MB. Estimated 30 L4 VM-hours (the Stage 0 probes, plus 0.3 h per post job and 0.08 h per rung, unmeasured). Rungs (amendment 1): every PT job snapshots its weights at steps [500, 1000, 2500, 5000] and a light rung job scores each snapshot (panels, base-model Carry-5 teacher-forced; rung.json home); runs are never stopped early. Home: each PT job's weights (relays + final), each post's summary.json, each rung's rung.json, each pick's best model. Upload vocab_llama3_bpe.gguf with the runner's --upload. MoR block (amendment 4): the gate refuses unless the floor pilot PASSED, the block's CUDA gate passed (experiments/tiny_chat_2026-10/recursion/cuda_gate_mor.json) and every pretraining job's lr is the cell's choice in experiments/tiny_chat_2026-10/stage0/lr_choice_mor.json (choose_rec: section 4's rule over the four-rate grid). A4.7: these runs launch only after the MoR probes have replaced the estimates and Jonathan has confirmed the measured total. H-MoR2's depth trace (mtstudio score's per-token depths over Carry-5's context families, teacher-forced with gold history) is read from each MoR3 seed's SFT model at home. Dialogue levels [0, 17, 35, 70]% (copies), E1 at 35% (design.json final).",
+ "_comment": "tiny-chat MoR block at 20M (amendment 4, A4.3) (experiments/tiny_chat_2026-10/PREREGISTRATION.md). 9 pretraining runs of 10000 steps x 16384 tokens (163.84M), each then SFT (1500 steps on human dialogues), two fixed text panels and Carry-5 (post job); one pick per cell. PROVISIONAL learning rates (1e-3): the gate job fails until experiments/tiny_chat_2026-10/stage0/lr_choice_mor.json exists and matches; rerun make_jobs.py after the MoR Stage 0. One GPU job at a time (amendment 2: Stage 0 measured no throughput gain from sharing the L4, and sharing crashed its screens); rung jobs beside it in the light slot, their cache capped at 2048 MB. Estimated 30 L4 VM-hours (the Stage 0 probes, plus 0.3 h per post job and 0.08 h per rung, unmeasured). Rungs (amendment 1): every PT job snapshots its weights at steps [500, 1000, 2500, 5000] and a light rung job scores each snapshot (panels, base-model Carry-5 teacher-forced; rung.json home); runs are never stopped early. Home: each PT job's weights (relays + final), each post's summary.json, each rung's rung.json, each pick's best model. Upload vocab_llama3_bpe.gguf with the runner's --upload. MoR block (amendment 4): the gate refuses unless the floor pilot PASSED, the block's CUDA gate passed (experiments/tiny_chat_2026-10/recursion/cuda_gate_mor.json) and every pretraining job's lr is the cell's choice in experiments/tiny_chat_2026-10/stage0/lr_choice_mor.json (choose_rec: section 4's rule over the four-rate grid). A4.7: these runs launch only after the MoR probes have replaced the estimates and Jonathan has confirmed the measured total. H-MoR2's depth trace (mtstudio score's per-token depths over Carry-5's context families, teacher-forced with gold history: tools/carry5_depth.py) runs in each MoR3 post job on its SFT model and comes home in summary.json (mor_depth, with pt_mor: the run's realised depth m_s) and mor_depth/. Dialogue levels [0, 17, 35, 70]% (copies), E1 at 35% (design.json final).",
  "max_parallel": 1,
  "max_parallel_light": 1,
  "jobs": [
@@ -1711,7 +1711,9 @@
     "corpus/eval/carry5_v1.jsonl"
    ],
    "outputs": [
-    "summary.json"
+    "summary.json",
+    "mor_depth/depth.json",
+    "mor_depth/items.jsonl"
    ]
   },
   {
@@ -1816,7 +1818,9 @@
     "corpus/eval/carry5_v1.jsonl"
    ],
    "outputs": [
-    "summary.json"
+    "summary.json",
+    "mor_depth/depth.json",
+    "mor_depth/items.jsonl"
    ]
   },
   {
@@ -1921,7 +1925,9 @@
     "corpus/eval/carry5_v1.jsonl"
    ],
    "outputs": [
-    "summary.json"
+    "summary.json",
+    "mor_depth/depth.json",
+    "mor_depth/items.jsonl"
    ]
   },
   {
