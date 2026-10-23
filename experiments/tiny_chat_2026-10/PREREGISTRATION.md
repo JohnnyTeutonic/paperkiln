@@ -1129,3 +1129,33 @@ the spot-check gave 40/40 items and 320/320 replies identical between ember and 
 generated tokens; 136 s for ember, 458 s for mtstudio). The post job end to end on toy llama, fixed-recursion and
 MoR models (`tests/test_tiny_chat_ember.py`): spot-check 3/3 items (24/24 replies) and the whole-run gate 283/283
 on each family, ember generating. The CUDA spot-checks are the first E post jobs' own.
+
+### 24 Oct 2026, before any E5, E1, recursion, MoR or successive-halving post job: the SFT loss on the device
+
+An implementation note, not an amendment: no hypothesis, metric, cell, seed, item, threshold, analysis or SFT recipe
+changes. It changes the speed of the SFT stage, not its loss.
+
+**What changes.** `ops::cross_entropy_masked` (the SFT objective) gains a device path. Until now it had none: on
+every SFT step it downloaded the [16,384, 16,384] logits (1 GiB at batch 32 x T 512 x the 16k vocabulary), ran the
+softmax and the gradient on the host and uploaded the 1 GiB gradient. The floor pilot's SFT ran at 3,490 tok/s on an
+L4 against 25,113 tok/s for pretraining the same 27M model at the same tokens per step (1.96 h per post job; section
+10 budgets SFT at the pretraining rate). The device path runs the same softmax, nll and (P - onehot) g kernels as
+`ops::cross_entropy`, with masked rows contributing an exact 0 to the loss sum and an exact 0 gradient, and the mean
+over the kept rows. paperkiln commit: the one carrying this note.
+
+**Why the loss is the same.** (1) A mask of all ones still returns `ops::cross_entropy` itself, so it is equal bit for
+bit (`tests/test_posttrain_losses.cpp`, and on the device `tests/test_cuda_ops.cpp` leg 9, write-through and
+deferred). (2) The unmasked kernels are template instantiations whose masked branch is compiled out, so
+`ops::cross_entropy` (pretraining) is unchanged. (3) On a kept row the masked kernel executes the unmasked kernel's
+instructions, so its softmax and gradient equal device `cross_entropy` on the kept rows bit for bit (leg 9); the
+loss differs only in the order of one fp32 sum (leg 9 bound: 1e-6 relative to device `cross_entropy` on the kept
+rows, 1e-5 relative to the host op; gradient within 1e-6 of the host op). (4) The host path, used on CPU, is
+unchanged: its bit-for-bit equality with `cross_entropy` on the kept rows and its finite-difference gradcheck (worst
+relative error 5.8e-6) pass as before. The CUDA legs run on Colab in `tools/colab_cuda_validate.sh` before the first
+post job; they were compiled, not run, locally.
+
+**Measured locally (CPU).** The host path at half the SFT shape (8,192 x 16,384, two threads) took 2.35 s per step
+(forward 0.87 s, backward 1.48 s), about 4.7 s at the full shape before any bus traffic, against the observed 4.04 s
+per-step gap between SFT and pretraining on the L4 (whose VM has more cores for the forward's parallel softmax; the
+backward's loops are serial). Expected SFT rate with the device path: about the pretraining rate, ~25k tok/s, so
+1,500 SFT steps in about 16 minutes instead of 1.96 h; the first post job's step log measures it.

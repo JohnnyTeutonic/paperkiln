@@ -7,6 +7,16 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Masked cross-entropy on the device** (24 Oct, the SFT loss): `ops::cross_entropy_masked`
+  had no device path, so every SFT step downloaded the [rows, vocab] logits, ran the softmax on
+  the host and uploaded the gradient (1 GiB each way at batch 32, T 512, 16k vocab; the tiny-chat
+  pilot's SFT ran at 3,490 tok/s on an L4 against 25,113 for pretraining the same model). New
+  `devops::ce_fwd_masked` / `ce_bwd_masked` run `k_ce_fwd` / `k_ce_bwd` instantiated with a mask
+  (masked rows carry target -1: nll 0, gradient exactly 0); the unmasked instantiation compiles
+  to the previous kernels, so `cross_entropy` is untouched, and an all-ones mask still returns
+  `cross_entropy` itself. Kept rows' P and gradient are the unmasked kernels' bit for bit; the
+  loss differs from the host op only by the sum's order. The host path is unchanged. Tests:
+  `tests/test_cuda_ops.cpp` leg 9 (Colab, `tools/colab_cuda_validate.sh`).
 - **Mixture-of-Recursions, causal token choice** (23 Oct, tiny-chat amendment 4):
   `arch.custom.recursion` schedule "mor" with {"mor": {route "token_choice", gate "score" |
   "none", balance 0.1, z_loss 0.001, kv_rows "active"}}: one linear router (state key

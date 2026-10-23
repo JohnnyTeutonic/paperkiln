@@ -19,9 +19,11 @@
 // strided column loops and edge cases are exercised.
 //
 // CPU-only builds / MICROTORCH_DEVICE != cuda: prints SKIP and exits 0.
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <random>
 #include <vector>
 
@@ -531,6 +533,162 @@ void leg7_deferred_gemm() {
     device::set_step_residency(false);
 }
 
+// leg 9: MASKED CROSS-ENTROPY ON THE DEVICE (24 Oct 2026). Until then
+// ops::cross_entropy_masked had no device path: every SFT step downloaded
+// the [R, vocab] logits, ran softmax on the host and uploaded the gradient
+// (SFT at 3,490 tok/s against pretraining's 25,113 on an L4). Pins:
+//   a. device vs the host op (device ops OFF), loss within 1e-5 relative,
+//      gradient within 1e-6 absolute (|grad| <= 1/kept), masked rows exact 0;
+//   b. device masked == device cross_entropy on the kept rows: gradient bit
+//      for bit, loss within 1e-6 relative (only the sum's tree differs);
+//   c. all-ones mask == cross_entropy bit for bit on the device,
+//      write-through and deferred;
+//   d. matmul -> masked CE -> backward under deferral (the SFT step's
+//      shape): the logits are still device-only after the loss (the op no
+//      longer brings them home), and loss/grads match the host run.
+// Masked rows carry garbage targets (-1, out of range): never read.
+constexpr size_t MR = 67, MC = 1000;
+
+std::vector<uint8_t> sft_mask(size_t n) {
+    // prompt, completion, prompt, completion, padding
+    std::vector<uint8_t> m(n, 0);
+    for (size_t i = 10; i < 30 && i < n; ++i) m[i] = 1;
+    for (size_t i = 40; i < 56 && i < n; ++i) m[i] = 1;
+    return m;
+}
+
+std::vector<int> sft_targets(const std::vector<uint8_t>& m, size_t V, unsigned seed) {
+    std::vector<int> t(m.size());
+    for (size_t i = 0; i < m.size(); ++i)
+        t[i] = m[i] ? static_cast<int>((seed + 7 * i) % V) : (i % 2 ? -1 : static_cast<int>(V + 5));
+    return t;
+}
+
+struct LeafCe {
+    float loss;
+    Matrix g;
+};
+
+// mode 0: host (device ops off); 1: device write-through; 2: device deferred.
+LeafCe run_leaf_ce(const Matrix& L, const std::vector<int>& t, const std::vector<uint8_t>* mask, int mode) {
+    using mt::Var;
+    device::set_device_ops(mode != 0);
+    device::set_step_residency(mode == 2);
+    device::set_defer_downloads(mode == 2);
+    Var x = mt::make_var(L, true);
+    if (mode == 2) device::step_begin();
+    Var loss = mask ? mt::ops::cross_entropy_masked(x, t, *mask) : mt::ops::cross_entropy(x, t);
+    mt::backward(loss);
+    if (mode == 2) device::step_end();
+    device::set_defer_downloads(false);
+    device::set_step_residency(false);
+    device::set_device_ops(true);
+    return LeafCe{loss->data(0, 0), x->grad};
+}
+
+bool bit_equal(const Matrix& a, const Matrix& b) {
+    if (a.rows() != b.rows() || a.cols() != b.cols()) return false;
+    return std::memcmp(a.get_data(), b.get_data(), a.rows() * a.cols() * sizeof(float)) == 0;
+}
+
+double rel(double a, double b) { return std::fabs(a - b) / std::max(1.0, std::fabs(b)); }
+
+struct ChainCe {
+    float loss;
+    Matrix gx, gw;
+    bool stale_before, stale_after;
+};
+
+ChainCe run_chain_ce(unsigned seed, int mode) {
+    using mt::Var;
+    const size_t D = 24;
+    const auto m = sft_mask(MR);
+    const auto t = sft_targets(m, MC, seed);
+    device::set_device_ops(mode != 0);
+    device::set_step_residency(mode == 2);
+    device::set_defer_downloads(mode == 2);
+    Var x = mt::make_var(filled(MR, D, seed), true);
+    Var w = mt::make_var(filled(D, MC, seed + 1), true);
+    if (mode == 2) device::step_begin();
+    Var y = mt::ops::matmul(x, w);
+    const bool before = device::host_stale(y->data);
+    Var loss = mt::ops::cross_entropy_masked(y, t, m);
+    const bool after = device::host_stale(y->data);
+    mt::backward(loss);
+    if (mode == 2) device::step_end();
+    device::set_defer_downloads(false);
+    device::set_step_residency(false);
+    device::set_device_ops(true);
+    return ChainCe{loss->data(0, 0), x->grad, w->grad, before, after};
+}
+
+void leg9_masked_ce() {
+    std::printf("-- leg 9: masked cross-entropy on the device (SFT) --\n");
+    const Matrix L = filled(MR, MC, 90);
+    const auto m = sft_mask(MR);
+    const auto t = sft_targets(m, MC, 91);
+
+    // a. device vs host
+    const LeafCe host = run_leaf_ce(L, t, &m, 0);
+    const LeafCe dev = run_leaf_ce(L, t, &m, 1);
+    const LeafCe def = run_leaf_ce(L, t, &m, 2);
+    check(rel(dev.loss, host.loss) <= 1e-5, "masked loss, device vs host (rel)", rel(dev.loss, host.loss));
+    check(max_abs_diff(dev.g, host.g) <= 1e-6, "masked grad, device vs host", max_abs_diff(dev.g, host.g));
+    check(rel(def.loss, host.loss) <= 1e-5, "masked loss, deferred vs host (rel)", rel(def.loss, host.loss));
+    check(max_abs_diff(def.g, host.g) <= 1e-6, "masked grad, deferred vs host", max_abs_diff(def.g, host.g));
+    double masked_abs = 0.0;
+    for (size_t i = 0; i < MR; ++i)
+        if (!m[i])
+            for (size_t j = 0; j < MC; ++j)
+                masked_abs = std::max({masked_abs, static_cast<double>(std::fabs(dev.g(i, j))),
+                                       static_cast<double>(std::fabs(def.g(i, j)))});
+    check(masked_abs == 0.0, "masked rows: gradient exactly 0", masked_abs);
+
+    // b. device masked == device cross_entropy on the kept rows
+    std::vector<size_t> keep;
+    for (size_t i = 0; i < MR; ++i)
+        if (m[i]) keep.push_back(i);
+    Matrix K(keep.size(), MC);
+    std::vector<int> tk;
+    for (size_t r = 0; r < keep.size(); ++r) {
+        for (size_t j = 0; j < MC; ++j) K(r, j) = L(keep[r], j);
+        tk.push_back(t[keep[r]]);
+    }
+    const LeafCe sub = run_leaf_ce(K, tk, nullptr, 1);
+    Matrix kept_rows(keep.size(), MC);
+    for (size_t r = 0; r < keep.size(); ++r)
+        for (size_t j = 0; j < MC; ++j) kept_rows(r, j) = dev.g(keep[r], j);
+    check(bit_equal(kept_rows, sub.g), "kept-row grad == device CE on kept rows (bitwise)",
+          max_abs_diff(kept_rows, sub.g));
+    check(rel(dev.loss, sub.loss) <= 1e-6, "loss vs device CE on kept rows (rel)", rel(dev.loss, sub.loss));
+
+    // c. all ones: the plain op, bit for bit
+    const std::vector<uint8_t> ones(MR, 1);
+    std::vector<int> t1(MR);
+    for (size_t i = 0; i < MR; ++i) t1[i] = static_cast<int>((91 + 7 * i) % MC);
+    for (int mode = 1; mode <= 2; ++mode) {
+        const LeafCe a = run_leaf_ce(L, t1, &ones, mode);
+        const LeafCe b = run_leaf_ce(L, t1, nullptr, mode);
+        const bool same = std::memcmp(&a.loss, &b.loss, sizeof(float)) == 0 && bit_equal(a.g, b.g);
+        check(same, mode == 1 ? "all-ones == cross_entropy (bitwise, write-through)"
+                              : "all-ones == cross_entropy (bitwise, deferred)",
+              std::fabs(static_cast<double>(a.loss) - b.loss) + max_abs_diff(a.g, b.g));
+    }
+
+    // d. the SFT step's chain under deferral
+    const ChainCe ch = run_chain_ce(92, 0);
+    const ChainCe cw = run_chain_ce(92, 1);
+    const ChainCe cd = run_chain_ce(92, 2);
+    check(cd.stale_before && cd.stale_after, "deferred logits stay device-only through the loss",
+          (cd.stale_before ? 1.0 : 0.0) + (cd.stale_after ? 1.0 : 0.0));
+    check(rel(cw.loss, ch.loss) <= 1e-5, "matmul->masked CE loss, device vs host (rel)", rel(cw.loss, ch.loss));
+    check(rel(cd.loss, ch.loss) <= 1e-5, "matmul->masked CE loss, deferred vs host (rel)", rel(cd.loss, ch.loss));
+    check(max_abs_diff(cw.gx, ch.gx) <= 1e-4, "grad x, device vs host", max_abs_diff(cw.gx, ch.gx));
+    check(max_abs_diff(cw.gw, ch.gw) <= 1e-4, "grad W, device vs host", max_abs_diff(cw.gw, ch.gw));
+    check(max_abs_diff(cd.gx, ch.gx) <= 1e-4, "grad x, deferred vs host", max_abs_diff(cd.gx, ch.gx));
+    check(max_abs_diff(cd.gw, ch.gw) <= 1e-4, "grad W, deferred vs host", max_abs_diff(cd.gw, ch.gw));
+}
+
 }  // namespace
 
 // leg 8: ENDURANCE. Every other leg here is short — 9 to 50 steps — and
@@ -596,12 +754,13 @@ int main() {
     leg6_optimizers();
     leg7_deferred_gemm();
     leg8_endurance();
+    leg9_masked_ce();
 
     if (g_failures == 0) {
         std::printf(
             "test_cuda_ops PASSED (B2.1a kernels + tape parity + "
             "B2.1b deferred downloads + B2.2 attention/embed/CE + "
-            "endurance)\n");
+            "endurance + masked CE)\n");
         return 0;
     }
     std::printf("test_cuda_ops: %d FAILURE(S)\n", g_failures);

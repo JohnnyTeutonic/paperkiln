@@ -652,10 +652,45 @@ Var cross_entropy_masked(const Var& logits, const std::vector<int>& targets, con
             throw std::runtime_error("cross_entropy_masked: target out of range");
         }
     }
+    auto P = cached(device::out_matrix(R, C));
+    // Device path (24 Oct 2026): masked rows travel as target -1; softmax,
+    // nll and the gradient stay on the device exactly as cross_entropy's,
+    // so the [R, vocab] logits and gradient never cross the bus (the host
+    // path below cost a 1 GiB download and upload per SFT step at batch 32,
+    // T 512, 16k vocab: SFT ran at 3,490 tok/s against pretraining's 25,113).
+    std::vector<int> st(R);
+    for (size_t i = 0; i < R; ++i) st[i] = mask[i] ? targets[i] : -1;
+    float lossv = 0.0f;
+    if (device::devops::ce_fwd_masked(logits->data, st.data(), kept, *P, lossv)) {
+        Matrix out(1, 1);
+        out(0, 0) = lossv;
+        return record(std::move(out), {logits}, [P, st, kept](Variable* self) {
+            const Var& l = self->parents[0];
+            if (!l->requires_grad) return;
+            device::materialize(self->grad);
+            const float g = self->grad(0, 0) / static_cast<float>(kept);
+            Matrix dl = device::out_matrix(P->rows(), P->cols());
+            if (!device::devops::ce_bwd_masked(*P, st.data(), g, dl)) {
+                device::materialize(*P);
+                dl = *P;
+                for (size_t i = 0; i < dl.rows(); ++i) {
+                    if (st[i] < 0) {
+                        for (size_t j = 0; j < dl.cols(); ++j) dl(i, j) = 0.0f;
+                    } else {
+                        dl(i, st[i]) -= 1.0f;
+                    }
+                }
+                l->accumulate(dl * g);
+                device::discard(*P);
+                return;
+            }
+            l->accumulate(std::move(dl));  // rvalue: self-discarding
+            device::discard(*P);           // never host-read; skip its step_end D2H
+        });
+    }
     // Host path, in cross_entropy's own operation order restricted to kept
     // rows, so it equals cross_entropy on the kept rows bit for bit.
     device::materialize(logits->data);
-    auto P = cached(Matrix(R, C));
     *P = logits->data;
     P->apply_softmax();
     double nll = 0.0;

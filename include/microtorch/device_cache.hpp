@@ -296,6 +296,13 @@ bool attn_heads_bwd(const Matrix& qkv, size_t heads, const Matrix& A, const Matr
 bool embed_gather(const Matrix& table, const int* ids, size_t n_ids, Matrix& out);
 bool ce_fwd(const Matrix& logits, const int* targets, Matrix& P, float& loss);
 bool ce_bwd(const Matrix& P, const int* targets, float g, Matrix& dl);
+// Masked cross-entropy (ops::cross_entropy_masked): targets are -1 on masked
+// rows (the caller bounds-checks the kept ones). Masked rows add nothing to
+// the loss (mean over `kept` rows) and get an exact zero gradient; a kept
+// row's P and gradient are the unmasked kernels' bit for bit (only the
+// loss sum's reduction tree differs, so the loss carries fp32 tolerance).
+bool ce_fwd_masked(const Matrix& logits, const int* targets, size_t kept, Matrix& P, float& loss);
+bool ce_bwd_masked(const Matrix& P, const int* targets, float g, Matrix& dl);
 // B2.3a: optimizer steps on device, write-through parity seam (state
 // round-trips per step for now; persistent device state is B2.3b).
 // c1/c2 are the host-computed bias corrections so the per-element math

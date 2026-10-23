@@ -158,6 +158,12 @@ bool ce_fwd(const Matrix&, const int*, Matrix&, float&) {
 bool ce_bwd(const Matrix&, const int*, float, Matrix&) {
     return false;
 }
+bool ce_fwd_masked(const Matrix&, const int*, size_t, Matrix&, float&) {
+    return false;
+}
+bool ce_bwd_masked(const Matrix&, const int*, float, Matrix&) {
+    return false;
+}
 bool adamw_step(Matrix&, const Matrix&, Matrix&, Matrix&, float, float, float, float, float, float,
                 float) {
     return false;

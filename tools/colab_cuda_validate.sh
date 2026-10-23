@@ -36,6 +36,10 @@ MICROTORCH_DEVICE=cuda ./test_resident_parity
 ./test_step_residency
 # Phase B2.1a gate (docs/CUDA_PHASE_B2.md section 4): the device op set --
 # kernel parity vs the CPU formulas + composed-tape parity OFF vs ON.
+# Leg 9 (24 Oct 2026) is the SFT loss: masked cross-entropy on the device
+# vs the host op, kept-row gradient bitwise vs device cross_entropy, the
+# all-ones mask bitwise vs cross_entropy, and matmul -> masked CE under
+# deferral with the logits still device-only after the loss.
 MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 ./test_cuda_ops
 # The FULL suites again with the op set live: same FD oracle, ops on GPU.
 MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 ./test_gradcheck
@@ -53,4 +57,4 @@ MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 ./test_recursion
 # Mixture-of-Recursions (schedule mor): routing, causality, gradcheck, and the
 # training-step comparison (first micro-batch depths identical on both paths).
 MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 ./test_mor
-echo "CUDA validation PASSED (Phase A + B1 + B2.0 + B2.1a op set + B2.1b deferred downloads)"
+echo "CUDA validation PASSED (Phase A + B1 + B2.0 + B2.1a op set + B2.1b deferred downloads + masked CE)"

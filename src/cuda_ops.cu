@@ -434,12 +434,26 @@ __global__ void k_embed_gather(const float* tab, const int* ids, float* out,
 // backward (the same (P - onehot)/N contract as the host op), per-row
 // nll[i] = -log(max(P[i, tgt[i]], 1e-12)) — the exact host formula,
 // clamp included.
+// kMasked (ops::cross_entropy_masked, 24 Oct 2026): a row whose target is
+// negative is masked out: P row and nll written as zeros, no softmax. The
+// test is per block (one row), so the whole block leaves together before
+// any __syncthreads. kMasked = false compiles to the unmasked kernel
+// exactly (the branch is a compile-time constant), so ops::cross_entropy's
+// numerics are untouched; a kept row runs the same instructions in both
+// instantiations, so its P and nll are bit-identical to the unmasked op's.
+template <bool kMasked>
 __global__ void k_ce_fwd(const float* x, const int* tgt, float* P,
                          float* nll, int C) {
     extern __shared__ float sh[];
     const int i = blockIdx.x;
     const float* xr = x + static_cast<size_t>(i) * C;
     float* Pr = P + static_cast<size_t>(i) * C;
+
+    if (kMasked && tgt[i] < 0) {
+        for (int j = threadIdx.x; j < C; j += blockDim.x) Pr[j] = 0.0f;
+        if (threadIdx.x == 0) nll[i] = 0.0f;
+        return;
+    }
 
     float mx = -3.402823466e+38f;
     for (int j = threadIdx.x; j < C; j += blockDim.x)
@@ -489,13 +503,19 @@ __global__ void k_vec_sum(const float* v, float* out, int n) {
     if (threadIdx.x == 0) out[0] = sh[0];
 }
 
-// CE backward: dl = (P - onehot(tgt)) * g, elementwise.
+// CE backward: dl = (P - onehot(tgt)) * g, elementwise. kMasked: a row
+// with a negative target gets an exact zero gradient (the host op's rule).
+template <bool kMasked>
 __global__ void k_ce_bwd(const float* P, const int* tgt, float g, float* dl,
                          int C, size_t n) {
     for (size_t idx = blockIdx.x * blockDim.x + threadIdx.x; idx < n;
          idx += static_cast<size_t>(gridDim.x) * blockDim.x) {
         const size_t i = idx / C;
         const int j = static_cast<int>(idx % C);
+        if (kMasked && tgt[i] < 0) {
+            dl[idx] = 0.0f;
+            continue;
+        }
         dl[idx] = (P[idx] - (j == tgt[i] ? 1.0f : 0.0f)) * g;
     }
 }
@@ -1006,9 +1026,8 @@ bool ce_fwd(const Matrix& logits, const int* targets, Matrix& P,
     Out dP(P.get_data(), n);
     DBuf dnll(static_cast<size_t>(R));
     DBuf dsum(1);
-    k_ce_fwd<<<R, ROW_THREADS, ROW_THREADS * sizeof(float)>>>(dx.d, dt.d,
-                                                              dP.d, dnll.d,
-                                                              C);
+    k_ce_fwd<false><<<R, ROW_THREADS, ROW_THREADS * sizeof(float)>>>(
+        dx.d, dt.d, dP.d, dnll.d, C);
     cuda_check(cudaGetLastError(), "ce_fwd");
     k_vec_sum<<<1, ROW_THREADS, ROW_THREADS * sizeof(float)>>>(dnll.d,
                                                                dsum.d, R);
@@ -1016,6 +1035,36 @@ bool ce_fwd(const Matrix& logits, const int* targets, Matrix& P,
     float s = 0.0f;
     d2h(&s, dsum.d, 1);
     loss = s / static_cast<float>(R);
+    dP.finish();
+    return true;
+}
+
+// Masked CE forward (ops::cross_entropy_masked, 24 Oct 2026): targets
+// carry -1 on masked rows. Masked rows add an exact 0.0f to the sum, and
+// the mean is over the `kept` rows. Before this the masked op had no
+// device path: every SFT step downloaded the [R, vocab] logits, ran the
+// softmax on the host and uploaded the gradient (1 GiB each way at
+// batch 32 x T 512 x 16k vocab).
+bool ce_fwd_masked(const Matrix& logits, const int* targets, size_t kept,
+                   Matrix& P, float& loss) {
+    if (!active()) return false;
+    const int R = static_cast<int>(logits.rows());
+    const int C = static_cast<int>(logits.cols());
+    const size_t n = static_cast<size_t>(R) * C;
+    In dx(logits.get_data(), n);
+    IBuf dt(targets, static_cast<size_t>(R));
+    Out dP(P.get_data(), n);
+    DBuf dnll(static_cast<size_t>(R));
+    DBuf dsum(1);
+    k_ce_fwd<true><<<R, ROW_THREADS, ROW_THREADS * sizeof(float)>>>(
+        dx.d, dt.d, dP.d, dnll.d, C);
+    cuda_check(cudaGetLastError(), "ce_fwd_masked");
+    k_vec_sum<<<1, ROW_THREADS, ROW_THREADS * sizeof(float)>>>(dnll.d,
+                                                               dsum.d, R);
+    cuda_check(cudaGetLastError(), "ce_fwd_masked sum");
+    float s = 0.0f;
+    d2h(&s, dsum.d, 1);
+    loss = s / static_cast<float>(kept);
     dP.finish();
     return true;
 }
@@ -1030,8 +1079,22 @@ bool ce_bwd(const Matrix& P, const int* targets, float g, Matrix& dl) {
     In dP(P.get_data(), n);
     IBuf dt(targets, P.rows());
     Out ddl(dl.get_data(), n);
-    k_ce_bwd<<<ew_grid(n), NTHREADS>>>(dP.d, dt.d, g, ddl.d, C, n);
+    k_ce_bwd<false><<<ew_grid(n), NTHREADS>>>(dP.d, dt.d, g, ddl.d, C, n);
     cuda_check(cudaGetLastError(), "ce_bwd");
+    ddl.finish();
+    return true;
+}
+
+// Masked CE backward: as ce_bwd, rows with target -1 written as zeros.
+bool ce_bwd_masked(const Matrix& P, const int* targets, float g, Matrix& dl) {
+    if (!active()) return false;
+    const int C = static_cast<int>(P.cols());
+    const size_t n = static_cast<size_t>(P.rows()) * C;
+    In dP(P.get_data(), n);
+    IBuf dt(targets, P.rows());
+    Out ddl(dl.get_data(), n);
+    k_ce_bwd<true><<<ew_grid(n), NTHREADS>>>(dP.d, dt.d, g, ddl.d, C, n);
+    cuda_check(cudaGetLastError(), "ce_bwd_masked");
     ddl.finish();
     return true;
 }
