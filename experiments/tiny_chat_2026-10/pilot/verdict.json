@@ -1,0 +1,19 @@
+{
+ "verdict": "PASS",
+ "gate_i_twin_primary": true,
+ "gate_ii_twin_minus_qalone_ctx": true,
+ "twin_primary": 0.5315315315315315,
+ "chance": 0.25,
+ "twin_ctx": 0.535024154589372,
+ "qalone_ctx": 0.2318840579710145,
+ "twin_minus_qalone_ctx": 0.3031400966183575,
+ "thresholds": {
+  "i": "twin_primary >= chance + 0.1",
+  "ii": "twin_minus_qalone_ctx >= 0.1"
+ },
+ "cell": "s35",
+ "seed": 99,
+ "pt_lr": 0.001,
+ "summary": "C:/ml_artifacts/tiny_chat\\pilot\\post_pilot_s35_r99\\summary.json",
+ "excluded_from_analysis": true
+}
