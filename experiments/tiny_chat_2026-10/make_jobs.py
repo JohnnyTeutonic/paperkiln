@@ -20,6 +20,9 @@ Writes
   tools/colab_chat/tiny_chat_e1_rec.json                E1-R: R2, R4, MC7 x 3 seeds at E1's level
   tools/colab_chat/tiny_chat_e1_rec_r8.json             E1-R's R8 x 3 seeds, on the R8 rule
   experiments/tiny_chat_2026-10/recursion/specs/shape_20m_<R2|R4|R8|MC7>.json   the recursion cells' specs
+  tools/colab_chat/tiny_chat_s0_mor.json                the MoR block's Stage 0 (amendment 4): CUDA gate, probes, screens
+  tools/colab_chat/tiny_chat_e1_mor.json                the MoR block: MoR3, MC2, MC3 x 3 seeds at E1's level
+  experiments/tiny_chat_2026-10/recursion/specs/shape_20m_<MoR3|MC2|MC3>.json   its cells' specs
   experiments/tiny_chat_2026-10/asha_plan.json          its sampled configurations, rounds and cost
 
 Every E pretraining job snapshots its weights at the rungs (5/10/25/50% of its steps; jobs_vm.py
@@ -207,8 +210,11 @@ def tok_per_s(s):
     if "recursion" in s:
         if s["sid"] in REC_PROBES:
             return REC_PROBES[s["sid"]]
+        if s["sid"] in MOR_PROBES:
+            return MOR_PROBES[s["sid"]]
         b = s["base"]
-        return tok_per_s(b) * flops_per_token(b) / flops_per_token(s)
+        # amendment 4 (A4.7): MoR3 costed at its largest depth plus its gathering overhead
+        return tok_per_s(b) * flops_per_token(b) / flops_per_token(s) / s.get("overhead", 1.0)
     k = (s["size"], s["layers"])
     if k in PROBES:
         return PROBES[k]
@@ -246,7 +252,9 @@ def pt_spec(sid, s, corpus, lr, seed, steps=STEPS, warmup=500):
     b, a = batching(s.get("eff_layers", s["layers"]))
     custom = {"d": s["d"], "layers": s["layers"], "heads": s["heads"], "d_ff": s["d_ff"]}
     if "recursion" in s:
-        custom["recursion"] = dict(s["recursion"], schedule="fixed", inject="none")
+        custom["recursion"] = dict(s["recursion"], schedule=s.get("schedule", "fixed"), inject="none")
+        if s.get("mor"):  # amendment 4: causal token-choice MoR
+            custom["recursion"]["mor"] = dict(s["mor"])
     return {"name": f"tc_{sid}",
             "arch": {"preset": "llama-tiny", "rope_heads": "all", "custom": custom},
             "data": {"corpus": corpus, "vocab": VOCAB, "vocab_cap": V, "T": T, "max_tokens": 0},
@@ -294,7 +302,7 @@ def corpus_of(share):
 
 
 def spec_path(sid):
-    if sid.split("_", 1)[-1] in REC_CELLS:
+    if sid.split("_", 1)[-1] in REC_CELLS or sid.split("_", 1)[-1] in MOR_CELLS:
         return f"{REL}/recursion/specs/shape_{sid}.json"
     return f"{REL}/specs/shape_{sid}.json"
 
@@ -808,6 +816,172 @@ def budget_rec(sh):
     return chr(10).join(out)
 
 
+# ---------------------------------------------------------------- amendment 4: the MoR block (A4.3)
+MOR_CELLS = {                         # cell: ((prelude, block, repeats, coda), schedule)
+    "MoR3": ((1, 2, 3, 1), "mor"),     # causal token choice, depths 1..3 (registered)
+    "MC2": ((1, 2, 2, 1), "fixed"),    # MoR3's balanced mean depth: the FLOP-matched fixed cell
+    "MC3": ((1, 2, 3, 1), "fixed"),    # MoR3's largest depth
+}
+MOR_SETTINGS = {"route": "token_choice", "gate": "score", "balance": 0.1, "z_loss": 0.001, "kv_rows": "active"}
+MOR_OVERHEAD = 1.2                    # A4.7: gathering and per-sequence attention, until MoR3's probe measures it
+MOR_CHOICE = f"{REL}/stage0/lr_choice_mor.json"        # tiny_chat_run.py choose_rec over the MoR block's screens
+MOR_CUDA_GATE = f"{REL}/recursion/cuda_gate_mor.json"  # the MoR Stage 0's cuda_gate.json (test_mor's device leg)
+MOR_STAGE0_DIR = os.path.join(HERE, "stage0", "mor")   # its probe receipts once home (probe_20m_<cell>/)
+
+
+def mor_probes():
+    out = {}
+    for n in sorted(os.listdir(MOR_STAGE0_DIR)) if os.path.isdir(MOR_STAGE0_DIR) else []:
+        p = os.path.join(MOR_STAGE0_DIR, n, "summary.json")
+        if n.startswith("probe_") and os.path.exists(p):
+            with open(p, encoding="utf-8") as f:
+                d = json.load(f)
+            if d.get("rc") == 0 and d.get("tok_per_s_steady"):
+                out[n[len("probe_"):]] = d["tok_per_s_steady"]
+    return out
+
+
+MOR_PROBES = mor_probes()
+
+
+def mor_shapes(sh):
+    """{sid: shape} for the MoR block (A4.3), at 20m_L4's shape: eff_layers is the largest number of
+    applications (MoR3: 8, costed with MOR_OVERHEAD until its probe is home); mean_layers the
+    applications at perfect balance (MoR3: 6), for the FLOPs table."""
+    b = sh[REC_BASE]
+    per_layer = 4 * b["d"] ** 2 + 3 * b["d"] * b["d_ff"] + 2 * b["d"]
+    out = {}
+    for cell, ((P, B, R, Cd), sched) in MOR_CELLS.items():
+        assert P + B + Cd == b["layers"], cell
+        eff = P + B * R + Cd
+        s = {**b, "sid": f"20m_{cell}", "cell": cell, "base": b, "schedule": sched,
+             "recursion": {"prelude": P, "block": B, "repeats": R, "coda": Cd},
+             "eff_layers": eff, "nonemb_applied": eff * per_layer + b["d"], "mean_layers": eff}
+        if sched == "mor":
+            s["mor"] = dict(MOR_SETTINGS)
+            s["overhead"] = MOR_OVERHEAD
+            s["mean_layers"] = P + B * (R + 1) / 2 + Cd
+            s["router_params"] = R * b["d"]
+        out[f"20m_{cell}"] = s
+    return out
+
+
+def mor_lr_table():
+    p = os.path.join(ROOT, MOR_CHOICE)
+    if os.path.exists(p):
+        with open(p, encoding="utf-8") as f:
+            d = json.load(f)
+        return d["lr"], sorted(d.get("dropped", {})), False
+    return {}, [], True
+
+
+def mor_spec(sid, s, lr):
+    spec = pt_spec(sid, s, corpus_of(E1_SHARE), lr, SEEDS[0])
+    spec["_shape"] = {**{k: s[k] for k in ("size", "nonemb", "emb", "total")},
+                      "recursion": dict(s["recursion"]), "schedule": s["schedule"],
+                      "effective_layers": s["eff_layers"], "mean_layers_at_balance": s["mean_layers"],
+                      "stored_layers": s["layers"]}
+    if s.get("router_params"):
+        spec["_shape"]["router_params"] = s["router_params"]
+    return spec
+
+
+def s0_mor_hours(ms):
+    return (CUDA_GATE_H + DATA_H + sum(hours(s, PROBE_STEPS) for s in ms.values())
+            + sum(len(REC_SCREEN_LRS) * hours(s, SCREEN_STEPS) for s in ms.values()))
+
+
+def s0_mor_doc(ms):
+    """The MoR block's Stage 0 (A4.4), built as A3.3's (s0_rec_doc): cuda_gate first and alone (every
+    device leg of tools/colab_cuda_validate.sh, test_mor's among them: A4.6 gate 5), the gate (design
+    and the floor pilot's PASS), the data job, a 300-step probe per cell, then the screens at the
+    four-rate grid, dearest first; one GPU job at a time."""
+    name = "tiny_chat_s0_mor.json"
+    gate = {"name": "gate", "cmd": ["python3", RUN, "gate", "--out", "{out}", "--stage0", "--jobs",
+                                    f"tools/colab_chat/{name}", "--design", f"{REL}/design.json", *PILOT_GATE,
+                                    "--need-pilot", "PASS"],
+            "outputs": ["gate.json"]}
+    cuda = {"name": "cuda_gate", "cmd": ["python3", RUN, "cuda_gate", "--out", "{out}"],
+            "outputs": ["cuda_gate.json", "cuda_gate.log"]}
+    jobs = [cuda, gate, {**data_job([E1_SHARE]), "after": "gate"}]
+    after = ["data", "cuda_gate"]
+    pre = ["--cuda-gate", f"{C}/cuda_gate", "--data-job", f"tools/colab_chat/{name}"]
+    for sid in ms:
+        jobs.append({"name": f"probe_{sid}", "after": after,
+                     "cmd": ["python3", RUN, "probe", "--out", "{out}", "--spec", spec_path(sid),
+                             "--corpus", corpus_of(E1_SHARE), "--steps", str(PROBE_STEPS), *pre],
+                     "outputs": ["summary.json"]})
+    for sid in sorted(ms, key=lambda k: -flops_per_token(ms[k]) * ms[k].get("overhead", 1.0)):
+        for k, lr in enumerate(REC_SCREEN_LRS):
+            jobs.append({"name": f"screen_{sid}_lr{k}", "after": after,
+                         "cmd": ["python3", RUN, "screen", "--out", "{out}", "--spec", spec_path(sid),
+                                 "--corpus", corpus_of(E1_SHARE), "--lr", repr(lr), "--steps", str(SCREEN_STEPS),
+                                 "--seed", str(SCREEN_SEED), *pre],
+                         "outputs": ["summary.json"]})
+    est = s0_mor_hours(ms)
+    doc = {"_comment": f"tiny-chat MoR block, Stage 0 ({REL}/PREREGISTRATION.md amendment 4, A4.4): the CUDA gate (every "
+                       f"device leg of tools/colab_cuda_validate.sh, test_mor's included), a {PROBE_STEPS}-step probe "
+                       f"per cell ({', '.join(ms)}), then screens at {REC_SCREEN_LRS} x {SCREEN_STEPS} steps, seed "
+                       f"{SCREEN_SEED}, on the {E1_SHARE}% mix. MoR3 is causal token-choice Mixture-of-Recursions "
+                       f"(arch.custom.recursion schedule mor: {MOR_SETTINGS}); MC2 and MC3 fixed recursion at the same "
+                       f"stored layers. One GPU job at a time. The gate needs the floor pilot's PASS; probes and screens "
+                       f"need the CUDA gate passed on their VM. Estimated {est:.1f} L4 VM-hours (20m_L4's probe scaled by "
+                       f"FLOPs per token, MoR3 at its largest depth x {MOR_OVERHEAD}, until the block's probes come home). "
+                       f"A4.7: this Stage 0 runs on Jonathan's go; the nine runs after the probes and his confirmation. "
+                       f"Afterwards, at home: copy ART/cuda_gate/cuda_gate.json to {MOR_CUDA_GATE} and the probe "
+                       f"folders to {REL}/stage0/mor/, then python {RUN} choose_rec --art ART --out {MOR_CHOICE}, "
+                       f"commit, rerun make_jobs.py. Upload vocab_llama3_bpe.gguf with the runner's --upload."
+                       + DESIGN_NOTE,
+           "max_parallel": GPU_JOBS_PER_VM, "jobs": jobs}
+    return name, doc
+
+
+MOR_NOTE = (" MoR block (amendment 4): the gate refuses unless the floor pilot PASSED, the block's CUDA gate passed "
+            f"({MOR_CUDA_GATE}) and every pretraining job's lr is the cell's choice in {MOR_CHOICE} (choose_rec: "
+            "section 4's rule over the four-rate grid). A4.7: these runs launch only after the MoR probes have "
+            "replaced the estimates and Jonathan has confirmed the measured total. H-MoR2's depth trace (mtstudio "
+            "score's per-token depths over Carry-5's context families, teacher-forced with gold history) is read "
+            "from each MoR3 seed's SFT model at home.")
+
+
+def e1_mor_doc(sh, ms):
+    """tiny_chat_e1_mor.json: MoR3, MC2, MC3 x 3 seeds at E1's level (a dropped cell is left out)."""
+    lrs, dropped, prov = mor_lr_table()
+    allsh = {**sh, **ms}
+    gate = [*PILOT_GATE, "--need-pilot", "PASS", "--need-cuda-gate", MOR_CUDA_GATE]
+    cells = [(ms[k]["cell"], k, E1_SHARE) for k in ms if k not in dropped]
+    if prov:
+        lr_note = (f"PROVISIONAL learning rates (1e-3): the gate job fails until {MOR_CHOICE} exists and matches; "
+                   "rerun make_jobs.py after the MoR Stage 0")
+    else:
+        lr_note = f"learning rates from {MOR_CHOICE}: " + ", ".join(f"{k} {lrs[k]:g}" for _, k, _ in cells if k in lrs)
+    drop_note = f" Dropped (all screens diverged): {dropped}." if dropped else ""
+    return e_doc("e1_mor", cells, allsh, lrs, prov, [E1_SHARE], "MoR block at 20M (amendment 4, A4.3)",
+                 gate_extra=gate, note=MOR_NOTE + drop_note, lr_note=lr_note, choice=MOR_CHOICE)
+
+
+def budget_mor(sh):
+    ms, u = mor_shapes(sh), UNITS_PER_L4_HOUR
+    run = lambda k: len(SEEDS) * run_hours(ms[k])  # noqa: E731
+    rows = [("Stage 0-MoR: CUDA gate, data, 3 probes, 12 screens", s0_mor_hours(ms)),
+            ("MoR block: MoR3, MC2, MC3 x 3 seeds", DATA_H + sum(run(k) for k in ms))]
+    tot = sum(h for _, h in rows)
+    rec = budget_rec_rows(sh)
+    rec_no8, rec_all = rec[0][1] + rec[1][1], sum(h for _, h in rec)
+    src = "the block's probes" if len(MOR_PROBES) == len(ms) else (
+        f"20m_L4's probe scaled by FLOPs per token, MoR3 at its largest depth x {MOR_OVERHEAD}")
+    out = ["| MoR block (amendment 4) | L4 VM-hours | compute units |", "|---|---|---|"]
+    out += [f"| {n} | {h:.1f} | {h * u:.0f} |" for n, h in rows]
+    out.append(f"| MoR block | {tot:.1f} | {tot * u:.0f} |")
+    out.append(f"| recursion arms (A3.3 without R8 + MoR) | {rec_no8 + tot:.1f} | {(rec_no8 + tot) * u:.0f} |")
+    out.append(f"| recursion arms (A3.3 with R8 + MoR) | {rec_all + tot:.1f} | {(rec_all + tot) * u:.0f} |")
+    out.append(chr(10) + f"rates from {src}: " + ", ".join(
+        f"{ms[k]['cell']} {tok_per_s(ms[k]) / 1e3:.1f}k tok/s ({ms[k]['mean_layers']:g} applications at balance)"
+        for k in ms) + ". A4.7: the arms are " + ("ABOVE" if rec_no8 + tot > 80 else "within")
+        + " 80 VM-hours: the MoR Stage 0 runs on Jonathan's go, the nine runs after the probes and his confirmation")
+    return chr(10).join(out)
+
+
 def tables(sh):
     rows = ["| shape | layers | d | heads | d_ff | d_ff/d | non-emb | emb (V x d) | total | emb share | "
             "tok/s (probe) | PT h | SFT h |", "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
@@ -894,6 +1068,8 @@ def main(argv=None):
         print(budget_a3(sh))
         print()
         print(budget_rec(sh))
+        print()
+        print(budget_mor(sh))
         return 0
     global SHARES, E1_SHARE, DESIGN_NOTE
     if a.dialogue_pt_bytes is not None:
@@ -971,10 +1147,19 @@ def main(argv=None):
     e1r, e1r8 = e1_rec_docs(sh, rs)
     write(os.path.join(COLAB, "tiny_chat_e1_rec.json"), e1r)
     write(os.path.join(COLAB, "tiny_chat_e1_rec_r8.json"), e1r8)
+    # Amendment 4: the MoR block (mtstudio arch.custom.recursion schedule "mor").
+    ms = mor_shapes(sh)
+    mlrs, _, _ = mor_lr_table()
+    for sid, sm in ms.items():
+        write(os.path.join(REC_SPECS, f"shape_{sid}.json"), mor_spec(sid, sm, mlrs.get(sid, PROVISIONAL_LR)))
+    n, doc = s0_mor_doc(ms)
+    write(os.path.join(COLAB, n), doc)
+    write(os.path.join(COLAB, "tiny_chat_e1_mor.json"), e1_mor_doc(sh, ms))
     print("\nwrote specs/, asha_plan.json, tiny_chat_s0.json, tiny_chat_s0_60m.json, tiny_chat_e5.json, "
           "tiny_chat_e1.json, tiny_chat_e1_60m.json, tiny_chat_asha.json, the Stage 0 rerun files, "
           "tiny_chat_pilot.json, tiny_chat_e5_60m.json, recursion/specs/, tiny_chat_s0_rec.json, "
-          "tiny_chat_s0_rec_r8.json, tiny_chat_e1_rec.json, tiny_chat_e1_rec_r8.json"
+          "tiny_chat_s0_rec_r8.json, tiny_chat_e1_rec.json, tiny_chat_e1_rec_r8.json, tiny_chat_s0_mor.json, "
+          "tiny_chat_e1_mor.json"
           + (" (PROVISIONAL learning rates)" if provisional else ""))
     print()
     print(budget(sh))
@@ -982,6 +1167,8 @@ def main(argv=None):
     print(budget_a3(sh))
     print()
     print(budget_rec(sh))
+    print()
+    print(budget_mor(sh))
     return 0
 
 
