@@ -942,3 +942,146 @@ $R --commit SHA_V --jobs tools/colab_chat/tiny_chat_e5_60m.json --name pk-tc-e5-
 
 On the FAIL branch, `analyze.py` gains its E5-at-60M block (the 35% cell read from E1 at 60M's L8 runs) with
 tests before the first of those runs comes home.
+
+### Amendment 4 (23 Oct 2026, before any recursion, E5 or E1 data, and before mtstudio's schedule "mor" exists): Mixture-of-Recursions runs now, as causal token choice
+
+Written after Jonathan's instruction of 23 Oct 2026 ("Mixture of Recursions I have an intuition is a missing
+ingredient": step 2 of the recursion arm registered now and built as soon as fixed recursion passes its gate). Fixed
+recursion has passed its CPU gates (paperkiln 567a441d; ember runs weight_index, ember 6a6e655). No recursion job has
+run (`tiny_chat_s0_rec.json` and `tiny_chat_e1_rec.json` are not launched), no E5, E1, pilot or successive-halving job
+has produced data, and this programme has produced no Carry-5 number. The commit that adds this amendment holds no
+engine code for the new schedule: its implementation follows in later commits. Sections 0-12 and amendments 1-3 stand
+except where this amendment says otherwise. Sources: the MoR paper (Bae et al., arXiv 2507.10524, read from its arXiv
+HTML on 23 Oct 2026: section 2.2, appendix A.2-A.3, section 4.2 and Table 4, appendix G), `RECURSION_LITCHECK.md`, and
+the five constraints in `include/microtorch/ir.hpp` agreed with ember.
+
+**A4.1 What changes in A3.3.**
+- A3.3's bullet "Step 2, Mixture-of-Recursions-style adaptive recursion ...: only if HR1 is SUPPORTED" is replaced by
+  this amendment. **Step 2 is no longer conditional on HR1; it runs alongside the fixed arm** (the MoR block, A4.3),
+  under the arm's gates: the pilot's PASS and each cell's own Stage 0 choice.
+- Its design changes from expert choice to **causal token choice** (A4.2). A3.3's measurements (m1)-(m3) become
+  H-MoR2's registered statistics (A4.5); A3.3 had them descriptive.
+- A3.3's other rules (HR1-HR4, the R8 rule, MC7, the cost rule) are unchanged. On the pilot's FAIL branch the MoR
+  block is not run at 20M (its comparison cells are 20M cells); a 60M MoR block would need a further amendment.
+
+**A4.2 The mechanism (mtstudio `arch.custom.recursion` schedule "mor"; registered here, implemented after this commit).**
+- **Topology:** Middle-Cycle, as MoR and MC7: prelude P = 1, shared block B = 2, coda C = 1 (4 stored layers);
+  `repeats` = N_r, the largest number of recursion steps a token can take. Recursion step k (k = 0 .. N_r - 1) is the
+  B applications P + kB .. P + kB + B - 1.
+- **Router (token choice, MoR section 2.2.1):** one linear map W [N_r, d], no bias (GGUF `rec.0.router.weight`, written
+  in full), reads the token's own hidden state h at the input of step 0 (after the prelude: MoR's H^1 = h^1 under
+  Middle-Cycle). p = softmax(W h) over the N_r depths; the token's depth n = 1 + the index of the largest p (ties to the
+  lower index, the shallower depth), n in 1 .. N_r; its gate g = p[n - 1]. The depth is a constant (top-1, as in MoE),
+  not differentiated; g is.
+- **Update:** the token takes steps 0 .. n - 1. At each step it takes, x <- x + g (S(x) - x), S(x) the step's B
+  applications; at the steps it skips, x is unchanged. Every token passes step 0, so every token's gate receives the
+  language-model gradient. `gate: "none"` (x <- S(x), no scaling) exists for tests only.
+- **KV policy `kv_rows: "active"` (MoR's recursion-wise caching, its default):** at every application of step k the
+  active tokens (n > k) of each sequence are the queries and the keys; attention is causal by absolute position among
+  them, RoPE at absolute positions; a token that has exited writes no k/v row at that application or any later one.
+  Decode keeps, per application, exactly those rows (ir.hpp constraint 2). Recursive KV sharing (`kv_from`) stays
+  reserved and is not built.
+- **Causality (ir.hpp constraint 1):** a token's depth is a function of its own prefix only, so prefilling a prompt and
+  decoding it token by token give the same depths and, to rounding, the same logits.
+- **Auxiliary losses (MoR appendix A.2 and G.1), coefficients fixed now:** balancing loss alpha sum_i f_i P_i with
+  f_i = (N_r / T) #(tokens choosing depth i) and P_i = the mean of p_i over the micro-batch's tokens (1 at perfect
+  balance), **alpha = 0.1**; router z-loss mean_t (logsumexp_i W h)^2, **coefficient 1e-3**.
+- **MoR's settings, recorded as A3.3 required ("a dated note before any step-2 run"):** the paper's router ablation is at
+  360M with N_r = 3 (Table 4, right). Linear routers with balancing loss 0.1 had MaxVio 0.266-0.492 (MLP: 0.200; the
+  0.01 coefficient: 0.682; loss-free: 0.852-1.281), and section 4.2's final design keeps the balancing loss and adds
+  the z-loss back at 1e-3 (appendix G.3). We take balancing loss 0.1 (A4.5's compute matching needs balance), softmax,
+  a linear router (the one an IR linear expresses; mtstudio has no MLP router), z-loss 1e-3, **N_r = 3** (the paper's
+  iso-FLOP and ablation setting, and its 135M MoR, 1 + 10 + 1 layers) and recursion-wise caching.
+- **What this is not.** This tests **causal token-choice MoR**, not the paper's expert-choice variant. Expert choice
+  ranks tokens across the sequence at every step (top-k per step), so a token's depth depends on later tokens and it
+  cannot be served token by token; the paper's remedies (an auxiliary router, or a BCE loss pushing the router towards
+  the top-k) make inference causal only approximately. At N_r = 3 and 16.5e18 FLOPs the paper reports expert choice
+  42.6% and token choice 40.0% few-shot (Table 3). **The lower expected accuracy is a modelling cost accepted for an
+  exactly servable model** (prefill equals decode, one token at a time, in ember).
+- **An interpretation, stated.** The paper's equation 2.2 as printed gates g_t^r f(H^r) at every step and adds H^1 only
+  at the exit step. We use the residual form x + g (S(x) - x) at every step taken, with g the chosen depth's
+  probability (the top-1 MoE convention, and the residual form of its equation 2.1).
+- **Compute:** mtstudio runs each step's applications on the active rows only (gathered per sequence), so a model's
+  training FLOPs follow its tokens' depths.
+
+**A4.3 The MoR block (cells).** All at 20m_L4's shape (d 640, 10 heads, d_ff 1,760; 4 stored layers, 20.08M
+non-embedding, 10.49M embedding; the MoR router adds N_r d = 1,920 parameters).
+
+| cell | recursion (P, B x r, C) | schedule | layer applications per token | training FLOPs/token |
+|---|---|---|---:|---:|
+| MoR3 | 1, 2 x {1, 2, 3}, 1 | mor, N_r = 3 | 4, 6 or 8; mean 6 at perfect balance | about 0.26G at balance (0.19-0.32G) |
+| MC2 | 1, 2 x 2, 1 | fixed | 6 | 0.26G |
+| MC3 | 1, 2 x 3, 1 (MoR3's largest depth) | fixed | 8 | 0.32G |
+
+FLOPs as A3.3's table (about 0.0325G per application plus 0.06G for the head; attention under kv_rows active is
+lower still for MoR3: at balance its three steps cost 1 + 4/9 + 1/9, about 1.56, full-width attention steps against
+MC2's 2). Every cell trains on the 35% mix with section 1's budget (163.84M tokens), SFT, Carry-5, panels and the rung
+logging of amendment 1 (b) (rungs at 5, 10, 25 and 50%), on seeds 1-3, batch 32 x 1 (effective depth at most 8). The
+validity gate (A2.5) applies to every cell; a contrast that uses a FLOOR cell is FLOOR. None of input injection,
+per-step embeddings, LoRA relaxation, deep supervision or EMA (as A3.3).
+
+**A4.4 Training and Stage 0.** Each cell gets its own Stage 0 as A3.3: a 300-step probe alone on the GPU and screens at
+**{2.5e-4, 5e-4, 1e-3, 2e-3}**, 1,500 steps, seed 101, the 35% mix; the rate by section 4's rule with A2.2's statuses.
+A cell whose four screens all diverge is dropped and reported; if MoR3 is dropped, no H-MoR contrast is computed; if
+MC2 or MC3 is dropped, H-MoR1 and H-MoR0 are not computed (H-MoR2 needs MoR3 alone). The router's depth fractions,
+balancing loss and z-loss are logged at every step (mtstudio's step events), and the depth fractions at every
+validation. Files: `tools/colab_chat/tiny_chat_s0_mor.json` (probes and screens) and
+`tools/colab_chat/tiny_chat_e1_mor.json` (the nine runs with their post and rung jobs), separate from A3.3's files;
+their gates need the pilot's PASS and each cell's choice. Section 8's failure rules apply.
+
+**A4.5 Hypotheses** (three seeds, `decide` and verdicts as section 7; two-tailed, n = 3, critical 4.303).
+- **Realised depth.** m_s = the mean number of recursion steps per training token over seed s's whole pretraining run
+  (the mean over its 10,000 steps of each step's depth fractions, each step weighted equally; 1 <= m_s <= 3; perfect
+  balance gives 2).
+- **The fixed line at that depth (the compute matching).** Y_fix(s) = Y(MC2, s) + (m_s - 2) (Y(MC3, s) - Y(MC2, s))
+  when m_s >= 2, and Y(MC2, s) when m_s < 2 (MC2 then spends more block compute than MoR3: conservative). MoR3's block
+  FLOPs per token equal fixed recursion's at m_s steps (its attention FLOPs are lower); the linear interpolation in Y
+  between 6 and 8 applications is the assumption that makes the comparison FLOP-matched at matched parameters. The
+  same construction gives L_fix(s) for the FineWeb panel loss.
+- **H-MoR1 (Jonathan's intuition; registered prediction):** at matched parameters and matched training FLOPs, causal
+  token-choice MoR beats fixed recursion on Y. **D1(s) = Y(MoR3, s) - Y_fix(s) > 0**, SESOI 3 points (the pairwise
+  SESOI). Literature-led alternative (MoR's own token choice below its expert choice; MoR below vanilla at 135M;
+  `RECURSION_LITCHECK.md`): D1 is not above the SESOI (EQUIVALENT or CONTRADICTED). H-MoR1 is falsified by EQUIVALENT
+  or CONTRADICTED; NOT_RESOLVED decides neither. Secondary (SECONDARY, no verdict claimed for the hypothesis):
+  Y(MoR3) - Y(MC2), Y(MoR3) - Y(MC3), and the panel contrast L(MoR3) - L_fix; each seed's m_s is reported beside D1.
+- **H-MoR2 (the router reads the task).** From the per-token depth trace of each MoR3 seed's SFT model, teacher-forced
+  with gold history over Carry-5's context families (recall, correction, topic return: 828 items), in the multi-turn
+  rendering carry5_eval scores. *Answer positions*: the positions whose next token is a token of the gold value inside
+  the target reply (the positions that predict the answer, as MoR section 5.2 reads depth against the next token).
+  *Other assistant positions*: every other position whose next token belongs to an assistant turn.
+  - **H-MoR2a:** Delta(s) = the mean depth over answer positions minus the mean over other assistant positions (each
+    pooled over the items) **> 0**, SESOI 0.10 recursion steps (5% of the 1-3 range).
+  - **H-MoR2b:** per seed, the OLS slope of an item's mean answer-position depth on its fact distance (Carry-5's
+    `distance`, 1-4 turns) **> 0**, SESOI 0.05 steps per turn.
+  - H-MoR2 is SUPPORTED when both are; it is falsified when either is CONTRADICTED or EQUIVALENT. Descriptive beside
+    them (A3.3's m3): the same allocations on the single-turn twins (distance 0) and on the question alone.
+- **H-MoR0 (counter: causal routing collapses).** *Collapse criterion*, per seed, on all positions of the H-MoR2 trace:
+  the normalised entropy of the depth fractions H(f) / log 3 < 0.35 (one depth takes about 90% of positions), or
+  |Delta(s)| < 0.05 steps (half H-MoR2a's SESOI: routing does not separate answers from other tokens). **H-MoR0 is SUPPORTED when the collapse criterion holds in every seed and D1 is EQUIVALENT** (the 90%
+  interval inside +-3 points): MoR is then fixed recursion with extra steps. It is falsified when D1 is SUPPORTED or
+  CONTRADICTED, or when no seed collapses.
+- Extension rule (section 7) applies to D1 alone.
+
+**A4.6 Engine gates, before any MoR job runs** (CPU here; CUDA on Colab through a gate job before the Stage 0 launch):
+(1) causality: prefill equals token-by-token decode, logits to rounding and depths token for token; (2) a
+finite-difference gradcheck through the routed model (gate, router and auxiliary losses included); (3) with every token
+forced to the largest depth and `gate: "none"`, the model equals fixed recursion (MC3's topology) bit for bit; (4) the
+IR: numpy over the F32 GGUF against `mtstudio score` within ROUNDING, greedy 40/40, and the depth trace identical token
+for token; (5) `tools/colab_cuda_validate.sh` with the MoR leg passes on Colab. `analyze.py`'s MoR block (H-MoR0-2,
+m_s, the interpolation) lands with its tests before any MoR run comes home.
+
+**A4.7 Budget** (amendment 2's measured model with A3.3's per-application estimate: about 0.098 s per application per
+16,384-token step at d 640, plus 0.117 s; probes replace it). Per run (pretraining + SFT + 0.62 h of post and rung
+jobs): MC2 2.9, MC3 3.5, MoR3 4.1 L4 VM-hours (MoR3 costed at its largest depth plus 20% for gathering and
+per-sequence attention, until its probe measures it). The nine runs: about **31 VM-hours**; Stage 0 (3 probes, 12
+screens, the session's data and gate jobs): about **5**; the MoR block **about 36 VM-hours** (about 175 compute units).
+With A3.3's arm (about 48 VM-hours without R8, 78 with it) the recursion arms come to **about 84, or 114 with R8: past
+80**. Jonathan approved "go for all" (23 Oct 2026). Under section 8 rule 5's form: the MoR Stage 0 (about 5 VM-hours)
+runs on that go; **the nine MoR runs launch after the probes have replaced these estimates and Jonathan has confirmed
+the measured total**. No cell, seed or token budget changes silently.
+
+**A4.8 Interfaces.** mtstudio: `arch.custom.recursion` = {prelude, block, repeats, coda, schedule "mor", inject "none",
+"mor": {route "token_choice", gate "score", balance 0.1, z_loss 0.001, kv_rows "active"}}; step events carry the
+depth fractions and the router losses; `mtstudio score` writes each prompt's per-token depth trace. IR (`ir.hpp`): the
+`depth_route` node and the kv slot's `kv_rows: "active"`, normative from the implementing commit. Jobs:
+`tiny_chat_s0_mor.json`, `tiny_chat_e1_mor.json`. Analysis: `analyze.py` MoR block, as A4.6 says.
