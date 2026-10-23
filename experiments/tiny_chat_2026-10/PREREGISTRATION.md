@@ -746,3 +746,199 @@ $R --commit SHA3 --jobs tools/colab_chat/tiny_chat_e1.json --name pk-tc-e1 --art
 $R --commit SHA3 --jobs tools/colab_chat/tiny_chat_e1_60m.json --name pk-tc-e1-60m \
    --art /mnt/c/ml_artifacts/tiny_chat/e1_60m --state-dir /home/jonat/pk_tc_e1_60m_runner --max-hours 23.5 $U
 ```
+
+### Amendment 3 (23 Oct 2026, before any E5, E1, successive-halving or recursion run): the floor pilot, the branch it decides, and the recursion arm
+
+Written after Jonathan's go of 23 Oct 2026 (E5 and E1 at 20M, the 60M stage, E5w on its condition, the
+successive-halving arm after `pk-base`, a recursion arm in E1; complete autonomy, paced across the month
+boundary). It was written while the Stage 0 reruns were running (`pk-tc-s0r`, `pk-tc-s0r-60m`), before any of their screens
+came home, before any E5, E1, successive-halving or recursion job ran, and before this programme produced
+any Carry-5 number. Sections 0-12 and amendments 1-2 stand except where this amendment says otherwise. The
+recursion design follows `RECURSION_LITCHECK.md` (this folder, paperkiln 1602a3ee).
+
+**A3.1 The floor pilot.** The live 14.6M model fails both parts of the validity gate (A2.5). If 20m_L8
+lands on the floor at this budget, every E5 and E1 contrast at 20M ends FLOOR, and those blocks' 61 VM-hours
+buy no verdict. One run settles the question before that money is spent.
+- **The run:** one complete 20m_L8 run at E1's level (35%), by section 1's recipe without change: 10,000
+  pretraining steps, the same SFT, the post job (panels, Carry-5 with self history, base-model Carry-5) and the
+  four rung jobs (5/10/25/50%) logged as for every E run. **Seed 99**, declared here before it runs; it is
+  outside 1-5 and is not the screen seed 101. File: `tools/colab_chat/tiny_chat_pilot.json` (the data job at
+  35% only, the gate, one pretraining job, four light rung jobs with the 2 GB cache cap, the post job and a
+  pick); one GPU job per VM; about 2.7 L4 VM-hours (13 units).
+- **Excluded from all analysis.** It lives in `ART/pilot`, which no analysis block reads; `analyze.py` refuses
+  a seed-99 summary found inside an E block. It never counts as a seed, a cell, a rung point, an extension
+  seed or data-bar evidence. Its verdict file holds only the gate's quantities (twin accuracy over the
+  primary families, chance, twin and question-alone accuracy over the context families). Its Y and
+  multi-turn accuracies are not read or reported in any result of this programme; they remain in its
+  `summary.json` on disk.
+- **Its learning rate, fixed now** (`tiny_chat_run.py pilot_lr`; `make_jobs.py pilot_rate`):
+  (0) Stage 0's choice for 20m_L8 when `stage0/lr_choice.json` holds it. Otherwise `pilot_lr` writes
+  `stage0/pilot_lr.json`: when 20m_L8's three screens are all FINISHED or DIVERGED, section 4's rule exactly
+  as `choose` applies it (so `choose` refusing the whole file over another shape does not hold the pilot
+  up); if all three diverged, 2.5e-4, the first rate of section 4's downward extension. Otherwise the pilot
+  waits until the `pk-tc-s0r` session has ended (its runner exits when every job is terminal or at
+  `--max-hours` 23.5, so the wait is bounded), and then takes the first of these that applies:
+  (F1) section 4's rule over 20m_L8's FINISHED screens; (F2) the smaller of the rates the same rule gives
+  20m_L4 and 20m_L16 (half and twice the depth) over their FINISHED screens; (F3) the smallest rate among the
+  FINISHED 20M screens. If no 20M screen finished, the pilot has no rate and Jonathan decides.
+- The pilot's rate never enters `lr_choice.json`. E5 and E1 still train on Stage 0's choice (A2.2: an L8
+  screen that fails again alone leaves 20m_L8 unchosen until a further amendment). If the choice later
+  differs from a fallback rate the pilot ran at, the verdict stands and the pilot is not rerun.
+- **The verdict, fixed now** (`analyze.py --art ART --pilot-verdict pilot/verdict.json`, committed before
+  any E5 or E1 job): the A2.5 gate on the pilot's SFT model. **PASS** if (i) twin accuracy over the primary
+  families is at least chance + 10 points (0.35) **and** (ii) twin minus question-alone accuracy over the
+  context families is at least 10 points; **FAIL** otherwise. With one run, the cell mean over seeds is
+  that run's value.
+- A pilot interrupted by a reclaim resumes as section 8 rule 4 says. If its post job fails twice, or no
+  verdict can be computed, there is no default: Jonathan decides. The E5 and E1 gate jobs at 20M refuse
+  unless `pilot/verdict.json` says PASS.
+
+**A3.2 What runs after the pilot.**
+- **PASS:** E5 and E1 at 20M launch as registered (`tiny_chat_e5.json`, `tiny_chat_e1.json`), from the commit
+  holding `lr_choice.json` with the 20M shapes and the verdict. E1 at 60M, E5w at 20m_L8 (on its condition),
+  the successive-halving arm (after `pk-base`) and the recursion arm at 20M (A3.3) follow as registered.
+  `tiny_chat_e5_60m.json` is not run.
+- **FAIL: the primary size moves to 60M before any 20M E5 or E1 spend.**
+  - *What runs:* E1 at 60M as registered (`tiny_chat_e1_60m.json`: L4, L8, L16, L32 x 3 seeds on its own
+    Stage 0 choice). **E5 at 60M** (`tiny_chat_e5_60m.json`): 60m_L8 at 0, 17 and 70% x 3 seeds (9 runs).
+    Its 35% cell is E1 at 60M's L8 cell (the same runs), just as E1's L8 cell at 20M is E5's 35% cell. Its gate
+    needs the verdict FAIL and 60m_L8's choice. Section 5 applies with 60m_L8 in place of 20m_L8: the
+    hypotheses, SESOIs, data bar, contrasts and extension rule. E5w, on its condition, moves to 60m_L8. The
+    60M sign prediction (section 6) has no 20M sign to compare with and is reported as not testable.
+  - *The 20M blocks:* E5 and E1 at 20M are not run. Their files stay as generated and their gates refuse. No
+    20M E contrast is reported. The pilot's FAIL is reported as one run's observation at this budget (the
+    gate's quantities), not as a test. Running them later needs a new amendment.
+  - The successive-halving arm (20M) is held: its promotion metric would rank configurations near chance. If
+    it is already running, it finishes and every finalist is reported with the gate's quantities beside it.
+  - The recursion arm: A3.3, last item.
+  - No second pilot at 60M. The 60M cells meet the validity gate as registered, and a floor cell is FLOOR.
+- **Budget** (`make_jobs.py budget_a3`; amendment 2's measured model): PASS branch 154.2 L4 VM-hours (740
+  units: amendment 2's 727 and the pilot's 13); FAIL branch 114.1 VM-hours (548 units: plus the pilot and
+  E5 at 60M, 40.0; minus E5 and E1 at 20M and the held arm). Both exclude the recursion arm.
+
+**A3.3 The recursion arm (E1-R), step 1: fixed recursion.** Jonathan's question: does a shared block applied
+several times carry facts across turns better than plain depth or width at E1's ~20M non-embedding
+parameters?
+- **Mechanism:** mtstudio's `arch.custom.recursion` = {prelude P, block B, repeats r, coda C, schedule
+  `fixed`} stores P + B + C distinct layers and applies the prelude once, the block r times and the coda once.
+  Each application has its own KV cache, backprop runs through every application, and there is no input
+  injection. At the time of writing its owner is adding it to mtstudio. The arm's jobs are generated from
+  the commit that holds it.
+- **Cells,** all at 20m_L4's shape: d 640, 10 heads, d_ff 1,760; 20.08M non-embedding, 10.49M embedding,
+  30.56M total. Every cell trains on the 35% mix with section 1's budget, SFT, Carry-5, panels and rungs,
+  on seeds 1-3.
+
+  | cell | recursion (P, B x r, C) | effective depth | FLOPs/token (training) | plain twin in E1 |
+  |---|---|---:|---:|---|
+  | (r = 1) | E1's 20m_L4 cell, no new runs | 4 | 0.19G | - |
+  | R2 | 0, 4 x 2, 0 | 8 | 0.32G | 20m_L8 (0.17G) |
+  | R4 | 0, 4 x 4, 0 | 16 | 0.58G | 20m_L16 (0.17G) |
+  | R8 | 0, 4 x 8, 0 (conditional, below) | 32 | 1.09G | 20m_L32 (0.16G) |
+  | MC7 | 1, 2 x 7, 1 (Middle-Cycle topology) | 16 | 0.58G | 20m_L16; R4 |
+
+- **Training:** section 1 except the learning rate.
+  - Each cell gets its own Stage 0: a 300-step probe alone on the GPU (throughput, peak memory) and screens
+    at **{2.5e-4, 5e-4, 1e-3, 2e-3}**, 1,500 steps, seed 101, on the 35% mix. The extra low rate is there
+    because shared weights sum their gradients over r applications, and Ouro and Huginn needed lower rates.
+  - The rate is chosen by section 4's rule with A2.2's statuses. A cell whose four screens all diverge is
+    dropped and reported.
+  - Batch 16 x 2 at effective depth 16 or more (R4, R8, MC7); 32 x 1 at R2.
+  - None of: input injection, per-step embeddings, LoRA relaxation, deep supervision or EMA (all break
+    exact matching or are untested here).
+- **Matching and confounds.** The cells are matched on non-embedding parameters only, as E1 is. Recursion
+  multiplies compute (table), so **no compute-matched verdict is registered**. FLOPs per token and Y per
+  L4-hour (S10) are reported per cell, and the 60M cells nearest in FLOPs are shown descriptively. **The
+  embedding confound is the reverse of E1's:** the recursion cells carry 10.49M embedding against the twins'
+  7.34, 5.24 and 3.15M, so a recursion win over its twin is ambiguous between recursion and lexical
+  capacity, as a width win is in E1.
+- **Hypotheses** (`decide`, three seeds, verdicts as section 7; the validity gate applies to every recursion
+  cell, and a contrast that uses a FLOOR cell is FLOOR):
+  - **HR1 (registered prediction; Saunshi et al. 2502.17416, MobileLLM-LS, GPT-BERT 2609.09691): Y rises
+    with passes.** The within-seed OLS slope of Y on log2(r) over r = 1, 2, 4 (E1's L4, R2, R4) is > 0; SESOI
+    1 point per doubling. With R8, the slope over r = 1, 2, 4, 8 is secondary.
+    **HR1-knowledge** (Saunshi; Ouro 2510.25741: looping adds no stored knowledge): the FineWeb panel loss
+    does not improve with passes. Its slope on log2(r) over the same cells is predicted not SUPPORTED in the
+    falling direction (EQUIVALENT within 0.01 nats per doubling, or rising). It is falsified by a SUPPORTED
+    fall.
+  - **HR2, recursion against plain depth at equal parameters and effective depth.** Per seed, the mean of
+    Y(R2) - Y(20m_L8) and Y(R4) - Y(20m_L16); with R8, the three-pair mean (adding Y(R8) - Y(20m_L32)) is
+    secondary. SESOI 3 points. *Literature-led prediction* (MoR at 135M, ALBERT, GPT-BERT entity tracking):
+    the difference is not above the SESOI (EQUIVALENT or CONTRADICTED), falsified by SUPPORTED. *Jonathan's
+    view, registered as the alternative HR2-J:* recursion helps sequential carry-over, so the difference is
+    SUPPORTED; HR2-J is falsified by EQUIVALENT or CONTRADICTED. NOT_RESOLVED decides neither.
+  - **HR3, inductive bias (Saunshi's isoplot): at equal FineWeb panel loss, recursion cells have higher Y.**
+    Per seed, the OLS line of Y on the FineWeb panel loss through E1's five plain 20M cells. Each of R2 and
+    R4 (R8 secondary) gets its residual from that line at its own panel loss, and the per-seed mean residual is
+    > 0; SESOI 3 points. A cell whose panel loss falls outside the plain cells' range is flagged as an
+    extrapolation.
+  - **HR4 (descriptive): diminishing returns.** The quadratic contrast of Y over log2(r) at r = 1, 2, 4, 8
+    is negative. It is computed only when R8 runs, with no verdict.
+  - Secondary, no prediction: MC7 - R4 (topology at equal parameters, effective depth and FLOPs) and
+    MC7 - 20m_L16, labelled SECONDARY.
+- **R8 runs only if 4 passes beats 2 (registered; halves the cost risk).** R8's screens and runs launch only
+  if R2 and R4 both pass the validity gate on their three seeds and the mean over seeds of Y(R4) - Y(R2) is at
+  least 1 point (the SESOI per doubling). The check is read at home once both cells' post jobs are home,
+  written to `rec_decision.json` and committed before any R8 job. It reads only that number and the two
+  cells' gates.
+- **Step 2, Mixture-of-Recursions-style adaptive recursion (Bae et al. 2507.10524): only if HR1 is
+  SUPPORTED.** Design: MC7's Middle-Cycle topology with per-token expert-choice routing and MoR's auxiliary
+  loss, a new mtstudio schedule. **Registered measurement (not a run date),** on the SFT model, teacher-forced
+  with gold history over Carry-5's primary families, per seed:
+  - (m1) mean recursions allocated to answer tokens (the gold value's tokens in the target reply) minus the
+    mean over the other assistant tokens;
+  - (m2) the OLS slope of answer-token recursions on fact distance (Carry-5's turns between plant and query);
+  - (m3) the same allocations on the single-turn twins (distance 0), beside them.
+  These results are descriptive. The literature check expects MoR to trail fixed recursion at this size (MoR
+  trailed vanilla at 135M). The router's capacity, auxiliary-loss weight and maximum recursion count take
+  MoR's best 135M setting and are recorded in a dated note before any step-2 run.
+- **Failure rules:** section 8 (divergence reruns at half the rate; resumes recorded).
+- **Cost** (the literature check's extrapolation from A2.1's probes; the arm's probes replace it).
+  - Pretraining per run: about 2.5, 4 and 7 h at r = 2, 4 and 8. With SFT and evaluations, about 52 L4
+    VM-hours for R2, R4 and R8 x 3 seeds, and about 15 for MC7.
+  - Screens: about 6 VM-hours, plus about 4 for R8's. That makes about 48 VM-hours without R8 and about 78
+    with it.
+  - Jonathan's go approves the arm at about 65 VM-hours of runs. If the probes put the runs (R8 included)
+    above 80 VM-hours, Jonathan decides before they launch, in section 8 rule 5's form.
+- **Files:** `tiny_chat_s0_rec.json` (probes and screens; R8's screens are a separate file, made on the R8
+  rule) and `tiny_chat_e1_rec.json`. Both are written by `make_jobs.py` from the commit that holds mtstudio's
+  recursion. Their gates need the pilot's PASS and each cell's choice. `analyze.py`'s E1-R block (HR1-HR4 and
+  the R8 rule) lands with its tests before any run of the arm. None of this changes a rule above.
+- **On the pilot's FAIL branch** the arm is not run at 20M, because its twins and its r = 1 cell are 20M E1
+  cells that then do not run. Its 60M transfer recurses the whole 60m_L4 stack (d 1,088) 2 and 4 times,
+  against the twins 60m_L8 and 60m_L16, with r = 1 as E1 at 60M's L4 cell. R8 and MC7 are not registered at
+  60M. The rules are those above with the 60M cells. It runs if its probes put it within 65 L4 VM-hours
+  (estimated at about 75: r times 60m_L4's cost per token); otherwise Jonathan decides.
+
+**A3.4 Interfaces.** `tiny_chat_run.py`: `pilot_lr`, `screen_rule`, and the gate's `--pilot-lr` (the pilot's
+rate, used only for a shape that the choice lacks), `--pilot-verdict` and `--need-pilot PASS|FAIL`.
+`make_jobs.py`: `PILOT_SEED`, `pilot_rate`, `pilot_doc`, `e5_60m_cells` and `budget_a3`;
+`tiny_chat_pilot.json` and `tiny_chat_e5_60m.json`; the E5 and E1 gates at 20M need PASS. `analyze.py`:
+`pilot_verdict` and `--pilot-verdict`, and `load` refuses the pilot seed. Tests: `test_tiny_chat_design.py`,
+`test_tiny_chat_pipeline.py`, `test_tiny_chat_analyze.py`.
+
+**A3.5 Launch** (the main session launches). This commit holds the machinery. The pilot launches from the
+commit that adds its rate (SHA_P); E5 and E1 at 20M, or E5 at 60M, launch from the commit that adds the
+verdict (SHA_V).
+
+```
+U="--upload vocab_llama3_bpe.gguf=/mnt/c/ml_artifacts/capacity/vocab/vocab_llama3_bpe.gguf"
+R="python3 -u tools/colab_chat/runner_multi.py"
+# once pk-tc-s0r has brought 20m_L8's screens home (A2.7's choose first; it may refuse over other shapes):
+python3 tools/colab_chat/tiny_chat_run.py choose --art /mnt/c/ml_artifacts/tiny_chat/s0 \
+   --art /mnt/c/ml_artifacts/tiny_chat/s0_rerun --out experiments/tiny_chat_2026-10/stage0/lr_choice.json
+# only if lr_choice.json lacks 20m_L8 (add --session-ended once the pk-tc-s0r runner has exited):
+python3 tools/colab_chat/tiny_chat_run.py pilot_lr --art /mnt/c/ml_artifacts/tiny_chat/s0 \
+   --art /mnt/c/ml_artifacts/tiny_chat/s0_rerun --out experiments/tiny_chat_2026-10/stage0/pilot_lr.json
+python3 experiments/tiny_chat_2026-10/make_jobs.py   # commit the rate file(s) and the jobs files, push: SHA_P
+$R --commit SHA_P --jobs tools/colab_chat/tiny_chat_pilot.json --name pk-tc-pilot --art /mnt/c/ml_artifacts/tiny_chat/pilot \
+   --state-dir /home/jonat/pk_tc_pilot_runner --max-hours 8 $U
+# once post_pilot_s35_r99 is home:
+python experiments/tiny_chat_2026-10/analyze.py --art C:/ml_artifacts/tiny_chat \
+   --pilot-verdict experiments/tiny_chat_2026-10/pilot/verdict.json   # commit it, push: SHA_V
+# PASS: A2.7's E5 and E1 commands with --commit SHA_V. FAIL:
+$R --commit SHA_V --jobs tools/colab_chat/tiny_chat_e5_60m.json --name pk-tc-e5-60m \
+   --art /mnt/c/ml_artifacts/tiny_chat/e5_60m --state-dir /home/jonat/pk_tc_e5_60m_runner --max-hours 23.5 $U
+```
+
+On the FAIL branch, `analyze.py` gains its E5-at-60M block (the 35% cell read from E1 at 60M's L8 runs) with
+tests before the first of those runs comes home.

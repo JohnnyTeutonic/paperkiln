@@ -160,3 +160,52 @@ def test_budget_rule_five_from_the_probes():
     assert [r[0].split(":")[0] for r in rows[:4]] == ["Stage 0, 20M", "Stage 0, 20M", "E5 (4 dialogue levels x 3 seeds at 20m_L8)",
                                                        "E1 20M (L2, L4, L16, L32 x 3 seeds; L8 from E5)"]
     assert abs(core - 66.2) < 0.1 and core < mj.CORE_RULE_VM_H  # the amendment's number
+
+
+# ---- amendment 3 (23 Oct 2026): the floor pilot, and E5 at 60M if it fails ----
+def test_pilot_is_one_e1_level_run_on_a_pilot_seed():
+    doc = json.loads((COLAB / "tiny_chat_pilot.json").read_text())
+    assert doc["max_parallel"] == 1 and doc["max_parallel_light"] == 1
+    js = {j["name"]: j for j in doc["jobs"]}
+    pts = [j for j in js.values() if "spec" in j]
+    assert len(pts) == 1 and mj.PILOT_SEED not in mj.SEEDS and mj.PILOT_SEED != mj.SCREEN_SEED
+    pt = pts[0]
+    sp = pt["spec"]
+    assert pt["name"] == f"pt_pilot_s35_r{mj.PILOT_SEED}" and sp["name"] == "tc_20m_L8"
+    assert sp["train"]["seed"] == mj.PILOT_SEED and sp["train"]["steps"] == mj.STEPS
+    assert sp["data"]["corpus"].endswith("/mix_s35.ids") and sp["arch"]["custom"]["layers"] == 8
+    assert pt["snapshot_steps"] == [500, 1000, 2500, 5000] and pt["after"] == ["data", "gate"]
+    rungs = [j for j in js.values() if j.get("rung_of")]
+    assert sorted(r["rung_of"]["step"] for r in rungs) == pt["snapshot_steps"]
+    for r in rungs:
+        assert r["light"] and r["env"] == {"MICROTORCH_POOL_MB": mj.LIGHT_POOL_MB}
+    post = js[f"post_pilot_s35_r{mj.PILOT_SEED}"]
+    assert post["init_job"] == pt["name"] and "--seed" in post["cmd"] and str(mj.PILOT_SEED) in post["cmd"]
+    gate = js["gate"]["cmd"]
+    assert gate[gate.index("--jobs") + 1] == "tools/colab_chat/tiny_chat_pilot.json"
+    assert gate[gate.index("--pilot-lr") + 1].endswith("stage0/pilot_lr.json") and "--need-pilot" not in gate
+    data = js["data"]["cmd"]
+    assert data[data.index("--shares") + 1] == "35"
+    lr, src, prov = mj.pilot_rate(mj.lr_table()[0])
+    assert sp["train"]["lr"] == lr and (prov == (src == "PROVISIONAL"))
+
+
+def test_blocks_gated_on_the_pilot_verdict():
+    for f, need in (("tiny_chat_e5.json", "PASS"), ("tiny_chat_e1.json", "PASS"), ("tiny_chat_e5_60m.json", "FAIL")):
+        gate = next(j for j in jobs(f) if j["name"] == "gate")["cmd"]
+        assert gate[gate.index("--need-pilot") + 1] == need, f
+        assert gate[gate.index("--pilot-verdict") + 1] == "experiments/tiny_chat_2026-10/pilot/verdict.json"
+    for f in ("tiny_chat_e1_60m.json", "tiny_chat_asha.json", "tiny_chat_pilot.json"):
+        gate = next(j for j in jobs(f) if j["name"] == "gate")["cmd"]
+        assert "--need-pilot" not in gate, f
+    pts = [j for j in jobs("tiny_chat_e5_60m.json") if "spec" in j]
+    assert sorted({j["spec"]["data"]["corpus"].rsplit("/", 1)[1] for j in pts}) == [
+        "mix_s0.ids", "mix_s17.ids", "mix_s70.ids"]  # the 35% cell is E1 at 60M's L8 cell
+    assert len(pts) == 9 and {j["spec"]["name"] for j in pts} == {"tc_60m_L8"}
+    assert {j["spec"]["train"]["seed"] for j in pts} == set(mj.SEEDS)
+
+
+def test_budget_amendment_3():
+    b = mj.budget_a3_rows(mj.shapes())
+    assert abs(b["pilot"] - 2.7) < 0.05 and abs(b["e5_60m"] - 40.0) < 0.05
+    assert abs(b["pass"] - 154.2) < 0.05 and abs(b["fail"] - 114.1) < 0.05

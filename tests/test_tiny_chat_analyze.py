@@ -159,3 +159,26 @@ def test_early_ranking(tmp_path):
         shutil.rmtree(tmp_path / "e5" / f"rung_e5_{cell}_r1_s5000")
     rc, res = run(tmp_path)
     assert res["early_ranking"]["E5"]["rungs"]["50%"]["Y_base->Y"]["verdict"] == "INCOMPLETE"
+
+
+# ---- amendment 3 (23 Oct 2026): the floor pilot ----
+def test_pilot_verdict_and_exclusion(tmp_path):
+    out = tmp_path / "verdict.json"
+    put(tmp_path, "pilot", "s35", 99, 0.70, twin=0.80, qalone=0.25)
+    p = subprocess.run(TOOL + ["--art", str(tmp_path), "--pilot-verdict", str(out)], capture_output=True, text=True)
+    v = json.loads(out.read_text())
+    assert p.returncode == 0 and v["verdict"] == "PASS" and v["excluded_from_analysis"]
+    assert "Y" not in v and "multi_self" not in v  # only the gate's quantities
+    for twin, qalone in ((0.34, 0.20), (0.60, 0.51)):  # (i) fails; (ii) fails
+        import shutil
+        shutil.rmtree(tmp_path / "pilot")
+        put(tmp_path, "pilot", "s35", 99, 0.30, twin=twin, qalone=qalone)
+        subprocess.run(TOOL + ["--art", str(tmp_path), "--pilot-verdict", str(out)], capture_output=True, text=True)
+        assert json.loads(out.read_text())["verdict"] == "FAIL"
+    # A pilot-seed summary inside an E block is refused.
+    for s in (1, 2, 3):
+        for c, m in (("s0", 0.70), ("s25", 0.72), ("s50", 0.75), ("s100", 0.75)):
+            put(tmp_path, "e5", c, s, m)
+    put(tmp_path, "e5", "s50", 99, 0.75)
+    rc, err = run(tmp_path)
+    assert rc != 0 and "floor pilot" in err

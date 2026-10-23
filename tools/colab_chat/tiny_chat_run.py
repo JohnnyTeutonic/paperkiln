@@ -8,7 +8,10 @@ data-job commands that tiny_chat_*.json run through jobs_vm.py, plus `choose` at
                             --seed S --cell C --share N --panel NAME=IDS ... --carry5-items ITEMS
     tiny_chat_run.py pick   --out D --run POST_DIR [--run ...]
     tiny_chat_run.py gate   --out D --jobs JOBS.json --choice LR_CHOICE.json
+                            [--pilot-lr PILOT_LR.json] [--pilot-verdict VERDICT.json --need-pilot PASS|FAIL]
     tiny_chat_run.py choose --art ART_DIR [--art RERUN_DIR] --out LR_CHOICE.json   (at home, after Stage 0)
+    tiny_chat_run.py pilot_lr --art ART_DIR --art RERUN_DIR [--session-ended] --out PILOT_LR.json
+                            (at home: the floor pilot's rate, amendment 3)
     tiny_chat_run.py rung   --out D --spec SHAPE.json --weights SNAP/model.safetensors --pt-dir P --step N
                             --job J --cell C --seed S --share N --panel NAME=IDS ... --carry5-items ITEMS
     tiny_chat_run.py asha_train   --out D --spec SHAPE.json --corpus C.ids --budget N --lr X --warmup-frac F
@@ -682,8 +685,17 @@ def cmd_gate(a):
         print(json.dumps({"ok": not problems, "problems": problems}))
         return 1 if problems else 0
     choice = jload(a.choice)["lr"] if os.path.exists(a.choice) else None
+    if a.pilot_lr and os.path.exists(a.pilot_lr):  # amendment 3: the pilot's own rate, for its shape only
+        pl = jload(a.pilot_lr)
+        if choice is None or pl["shape"] not in choice:
+            choice = {**(choice or {}), pl["shape"]: pl["lr"]}
     if choice is None:
         problems.append(f"{a.choice} missing: Stage 0 has not chosen the learning rates")
+    if a.need_pilot:  # amendment 3: E5/E1 at 20M need the floor pilot PASSED; E5 at 60M needs it FAILED
+        v = jload(a.pilot_verdict).get("verdict") if a.pilot_verdict and os.path.exists(a.pilot_verdict) else None
+        if v != a.need_pilot:
+            problems.append(f"floor pilot verdict {v} ({a.pilot_verdict}), this block needs {a.need_pilot} "
+                            "(PREREGISTRATION.md amendment 3)")
     for j in jload(a.jobs)["jobs"]:
         if "spec" not in j:
             continue
@@ -760,6 +772,74 @@ def cmd_choose(a):
     return 0
 
 
+def screen_rule(ss):
+    """Section 4's rule among FINISHED screens: the lowest final validation loss; within SCREEN_TIE
+    nats of it, the smallest lr. None when no screen finished."""
+    good = [s for s in ss if s["status"] == "FINISHED"]
+    if not good:
+        return None
+    best = min(s["final_val"] for s in good)
+    return min(s["lr"] for s in good if s["final_val"] <= best + SCREEN_TIE)
+
+
+def cmd_pilot_lr(a):
+    """The floor pilot's learning rate (amendment 3), for --shape (20m_L8). (0) When the shape's
+    three screens are all FINISHED or DIVERGED, section 4's rule exactly as choose applies it
+    ("registered"); if all three diverged, 2.5e-4, the first rate of section 4's downward extension
+    ("all_diverged"). Otherwise the pilot waits for the rerun session; once it has ended
+    (--session-ended), the registered fallback, first that applies: (F1) section 4's rule over the
+    shape's FINISHED screens; (F2) the smaller of the rates the same rule gives the shape's
+    neighbours in depth at its size (20m_L4 and 20m_L16 for 20m_L8), over their FINISHED screens;
+    (F3) the smallest rate among the size's FINISHED screens. The rate is the pilot's only: it never
+    enters lr_choice.json."""
+    found = {}
+    for k, art in enumerate(a.art):
+        for p in sorted(glob.glob(os.path.join(art, "screen_*", "summary.json"))):
+            job = os.path.basename(os.path.dirname(p))
+            s = jload(p)
+            found.setdefault(job, []).append({**s, "status": screen_status(s), "art": art, "job": job})
+    by = {}
+    for job, rows in sorted(found.items()):
+        sid = job[len("screen_"):].rsplit("_lr", 1)[0]
+        valid = [r for r in rows if r["status"] != "FAILED"]
+        if len(valid) > 1:
+            raise SystemExit(f"{job}: valid in {[r['art'] for r in valid]}; a finished or diverged screen is never rerun")
+        by.setdefault(sid, []).append(valid[0] if valid else rows[-1])
+    size, depth = a.shape.split("_L")
+    own = by.get(a.shape, [])
+    resolved = len(own) == len(SCREEN_LRS_EXPECTED) and all(s["status"] != "FAILED" for s in own)
+    lr, source = None, None
+    if resolved:
+        lr = screen_rule(own)
+        source = "registered" if lr is not None else "all_diverged"
+        if lr is None:
+            lr = SCREEN_LRS_EXPECTED[0] / 2
+    elif not a.session_ended:
+        raise SystemExit(f"{a.shape}: {len(own)} of {len(SCREEN_LRS_EXPECTED)} screens resolved; the pilot waits for "
+                         "the rerun session (rerun with --session-ended once it has ended)")
+    else:
+        lr, source = screen_rule(own), "F1_finished_screens"
+        if lr is None:
+            # E1's grid doubles the depth: the neighbours of L are L/2 and 2L (20m_L4, 20m_L16 for 20m_L8)
+            nb = [n for n in (f"{size}_L{int(depth) // 2}", f"{size}_L{int(depth) * 2}") if n in by]
+            got = [x for x in (screen_rule(by[n]) for n in nb) if x is not None]
+            lr, source = (min(got), f"F2_neighbours_{'_'.join(nb)}") if got else (None, None)
+        if lr is None:
+            fin = [s["lr"] for sid, ss in by.items() if sid.startswith(size + "_L") for s in ss
+                   if s["status"] == "FINISHED"]
+            lr, source = (min(fin), f"F3_smallest_finished_{size}") if fin else (None, None)
+        if lr is None:
+            raise SystemExit(f"no {size} screen FINISHED: the pilot has no rate (amendment 3: Jonathan decides)")
+    out = {"shape": a.shape, "lr": lr, "source": source, "pilot_only": True, "arts": a.art,
+           "rule": " ".join(cmd_pilot_lr.__doc__.split()),
+           "screens": {sid: [{k: s.get(k) for k in ("lr", "final_val", "status", "job", "art")} for s in ss]
+                       for sid, ss in sorted(by.items())}}
+    os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
+    jsave(a.out, out)
+    print(json.dumps({"shape": a.shape, "lr": lr, "source": source}))
+    return 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = ap.add_subparsers(dest="mode", required=True)
@@ -798,6 +878,17 @@ def main(argv=None):
     p.add_argument("--stage0", action="store_true", help="check the design only (before the screens)")
     p.add_argument("--carry5-items", default="corpus/eval/carry5_v1.jsonl")
     p.add_argument("--need-carry5", action="store_true", help="with --stage0: also require Carry-5 (the ASHA arm)")
+    p.add_argument("--pilot-lr", default="", help="amendment 3: the floor pilot's rate (pilot_lr.json), used for its "
+                                                  "shape only when the choice lacks that shape")
+    p.add_argument("--pilot-verdict", default="", help="amendment 3: the floor pilot's verdict.json")
+    p.add_argument("--need-pilot", choices=["PASS", "FAIL"], default=None,
+                   help="amendment 3: refuse unless the pilot verdict is this")
+    p = sub.add_parser("pilot_lr")
+    p.add_argument("--art", action="append", required=True, help="Stage 0 folders, first attempt first (as choose)")
+    p.add_argument("--shape", default="20m_L8")
+    p.add_argument("--session-ended", action="store_true",
+                   help="the rerun session has ended: allow the registered fallback (amendment 3)")
+    p.add_argument("--out", required=True)
     p = sub.add_parser("choose")
     p.add_argument("--art", action="append", required=True,
                    help="a Stage 0 artefact folder; repeat for reruns (amendment 2), first attempt first")
@@ -834,11 +925,11 @@ def main(argv=None):
     p.add_argument("--round", required=True)
     p.add_argument("--state", default="", help="the uploaded state file (tiny_chat_asha.py sync)")
     a = ap.parse_args(argv)
-    if a.mode != "choose":
+    if a.mode not in ("choose", "pilot_lr"):
         os.makedirs(a.out, exist_ok=True)
     return {"probe": cmd_probe, "screen": cmd_screen, "post": cmd_post, "pick": cmd_pick, "gate": cmd_gate,
             "choose": cmd_choose, "rung": cmd_rung, "asha_train": cmd_asha_train,
-            "asha_promote": cmd_asha_promote}[a.mode](a)
+            "asha_promote": cmd_asha_promote, "pilot_lr": cmd_pilot_lr}[a.mode](a)
 
 
 if __name__ == "__main__":

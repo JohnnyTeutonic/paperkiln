@@ -422,3 +422,92 @@ def test_carry5_pools_reproduce_the_sanity_receipts():
         num = sum(ref["twin"]["family"][f]["mean"] * ref["twin"]["family"][f]["n"] for f in tcr.PRIMARY_FAMILIES)
         assert abs(p["acc"]["primary"]["twin"]["mean"] - num / n_primary) < 1e-3
     assert p["instruction_complies_gen"]["self"] == {"mean": 0.0, "n": 21}  # gen7: complies 0/21
+
+
+# ---- amendment 3 (23 Oct 2026): the floor pilot's rate and the gate's pilot checks ----
+def _pilot_lr(tmp_path, arts, *extra):
+    out = tmp_path / "pilot_lr.json"
+    if out.exists():
+        out.unlink()
+    r = subprocess.run(RUN + ["pilot_lr", *[x for a in arts for x in ("--art", str(a))], "--out", str(out), *extra],
+                       capture_output=True, text=True)
+    return r, (json.loads(out.read_text()) if out.exists() else None)
+
+
+def test_pilot_lr_registered_rule_then_fallbacks(tmp_path):
+    a1, a2 = tmp_path / "attempt1", tmp_path / "rerun"
+    _screen(a1 / "screen_20m_L4_lr0", 5e-4, 0, 4.34)
+    _screen(a1 / "screen_20m_L4_lr1", 1e-3, 1, None, first=None, last=None)
+    _screen(a1 / "screen_20m_L16_lr1", 1e-3, 0, 4.24)
+    _screen(a1 / "screen_20m_L16_lr2", 2e-3, 0, 4.48)
+    _screen(a1 / "screen_20m_L32_lr2", 2e-3, 0, 4.28)
+    for k, lr in enumerate((5e-4, 1e-3, 2e-3)):
+        _screen(a1 / f"screen_20m_L8_lr{k}", lr, 1, None, first=None, last=None)
+    # Nothing for L8 yet: the pilot waits, and without --session-ended no fallback applies.
+    r, out = _pilot_lr(tmp_path, [a1, a2])
+    assert r.returncode != 0 and out is None and "waits" in r.stderr
+    # The session ended with every L8 screen failed again: F2, the smaller of the neighbours' rates.
+    for k, lr in enumerate((5e-4, 1e-3, 2e-3)):
+        _screen(a2 / f"screen_20m_L8_lr{k}", lr, 1, None, first=None, last=None)
+    r, out = _pilot_lr(tmp_path, [a1, a2], "--session-ended")
+    assert r.returncode == 0, r.stderr
+    assert out["lr"] == 5e-4 and out["source"] == "F2_neighbours_20m_L4_20m_L16" and out["pilot_only"]
+    # One L8 screen finished on the rerun: F1, the rule over L8's finished screens.
+    import shutil
+    shutil.rmtree(a2 / "screen_20m_L8_lr1")
+    _screen(a2 / "screen_20m_L8_lr1", 1e-3, 0, 4.20)
+    r, out = _pilot_lr(tmp_path, [a1, a2], "--session-ended")
+    assert r.returncode == 0 and out["lr"] == 1e-3 and out["source"] == "F1_finished_screens"
+    # All three resolved: section 4's rule exactly, as choose would apply it (tie within 0.01 -> smaller).
+    for k, (lr, v) in ((0, (5e-4, 4.205)), (2, (2e-3, 4.30))):
+        shutil.rmtree(a2 / f"screen_20m_L8_lr{k}")
+        _screen(a2 / f"screen_20m_L8_lr{k}", lr, 0, v)
+    r, out = _pilot_lr(tmp_path, [a1, a2])
+    assert r.returncode == 0 and out["lr"] == 5e-4 and out["source"] == "registered"
+    # All three diverged: the first rate of section 4's downward extension.
+    for k, lr in enumerate((5e-4, 1e-3, 2e-3)):
+        shutil.rmtree(a2 / f"screen_20m_L8_lr{k}")
+        _screen(a2 / f"screen_20m_L8_lr{k}", lr, 0, 9.9, first=9.8, last=9.9)
+    r, out = _pilot_lr(tmp_path, [a1, a2])
+    assert r.returncode == 0 and out["lr"] == 2.5e-4 and out["source"] == "all_diverged"
+
+
+def test_pilot_lr_f3_and_refusal(tmp_path):
+    a1 = tmp_path / "attempt1"
+    _screen(a1 / "screen_20m_L2_lr1", 1e-3, 0, 4.4)
+    _screen(a1 / "screen_20m_L2_lr2", 2e-3, 0, 4.3)
+    _screen(a1 / "screen_20m_L8_lr0", 5e-4, 1, None, first=None, last=None)
+    r, out = _pilot_lr(tmp_path, [a1], "--session-ended")  # L8 is the shallowest-but-one: no L4/L16 screens
+    assert r.returncode == 0 and out["lr"] == 1e-3 and out["source"] == "F3_smallest_finished_20m"
+    b = tmp_path / "b"
+    _screen(b / "screen_20m_L8_lr0", 5e-4, 1, None, first=None, last=None)
+    r, out = _pilot_lr(tmp_path, [b], "--session-ended")
+    assert r.returncode != 0 and out is None and "Jonathan decides" in r.stderr
+
+
+def test_gate_pilot_lr_and_verdict(tmp_path):
+    jobs = tmp_path / "jobs.json"
+    jobs.write_text(json.dumps({"jobs": [{"name": "pt", "spec": {"name": "tc_20m_L8", "train": {"lr": 0.0005}}}]}))
+    items = tmp_path / "items.jsonl"
+    items.write_text("{}" + chr(10))
+    fake = tmp_path / "c5.py"
+    fake.write_text("")
+    env = {**os.environ, "TINY_CHAT_CARRY5": str(fake)}
+    design = tmp_path / "design.json"
+    design.write_text(json.dumps({"levels": [0, 17, 35, 70], "e1_share": 35, "final": True}))
+    choice, plr, verdict = tmp_path / "lr_choice.json", tmp_path / "pilot_lr.json", tmp_path / "verdict.json"
+    gate = RUN + ["gate", "--out", str(tmp_path / "g"), "--jobs", str(jobs), "--carry5-items", str(items),
+                  "--design", str(design), "--choice", str(choice)]
+    ok = lambda *x: subprocess.run(gate + list(x), env=env, capture_output=True).returncode == 0  # noqa: E731
+    assert not ok("--pilot-lr", str(plr))                       # no choice and no pilot rate
+    plr.write_text(json.dumps({"shape": "20m_L8", "lr": 5e-4, "source": "F2"}))
+    assert ok("--pilot-lr", str(plr)) and not ok()               # the pilot rate serves the pilot's gate only
+    choice.write_text(json.dumps({"lr": {"20m_L8": 1e-3}}))
+    assert not ok("--pilot-lr", str(plr))                        # Stage 0's choice wins over the pilot rate
+    jobs.write_text(json.dumps({"jobs": [{"name": "pt", "spec": {"name": "tc_20m_L8", "train": {"lr": 0.001}}}]}))
+    assert ok() and not ok("--pilot-verdict", str(verdict), "--need-pilot", "PASS")
+    verdict.write_text(json.dumps({"verdict": "FAIL"}))
+    assert not ok("--pilot-verdict", str(verdict), "--need-pilot", "PASS")
+    assert ok("--pilot-verdict", str(verdict), "--need-pilot", "FAIL")
+    verdict.write_text(json.dumps({"verdict": "PASS"}))
+    assert ok("--pilot-verdict", str(verdict), "--need-pilot", "PASS")

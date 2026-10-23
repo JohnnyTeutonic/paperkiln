@@ -13,6 +13,8 @@ Writes
   tools/colab_chat/tiny_chat_e1.json                    E1 at 20M: L2, L4, L16, L32 x 3 seeds (L8 is E5's 50% cell)
   tools/colab_chat/tiny_chat_s0_60m.json, tiny_chat_e1_60m.json   the 60M stage (authorised 23 Oct 2026)
   tools/colab_chat/tiny_chat_asha.json                  the exploratory successive-halving arm (amendment 1)
+  tools/colab_chat/tiny_chat_pilot.json                 the floor pilot (amendment 3): one 20m_L8 run, seed 99
+  tools/colab_chat/tiny_chat_e5_60m.json                E5 at 60M, run only if the floor pilot FAILS (amendment 3)
   experiments/tiny_chat_2026-10/asha_plan.json          its sampled configurations, rounds and cost
 
 Every E pretraining job snapshots its weights at the rungs (5/10/25/50% of its steps; jobs_vm.py
@@ -98,6 +100,11 @@ def estimate_pt_bytes(dirs):
 PROVISIONAL_LR = 1e-3
 SIZES = {"20m": (20_000_000, [2, 4, 8, 16, 32]), "60m": (60_000_000, [4, 8, 16, 32])}
 E5_SHAPE = "20m_L8"
+# Amendment 3: the floor pilot, one complete 20m_L8 run at E1's level on a seed outside 1-3, excluded
+# from all analysis; its verdict (the A2.5 validity gate) decides whether the primary size stays at 20M.
+PILOT_SEED = 99
+PILOT_LR = os.path.join(HERE, "stage0", "pilot_lr.json")   # tiny_chat_run.py pilot_lr, when lr_choice lacks 20m_L8
+E5_60M_SHAPE = "60m_L8"                                     # E5 at 60M if the pilot FAILS
 RUN = "tools/colab_chat/tiny_chat_run.py"
 
 # Throughput model (PREREGISTRATION.md, compute budget): per job on an L4 shared with 1-3 others,
@@ -352,12 +359,12 @@ def stage0_rerun(sh, size):
                   "max_parallel": GPU_JOBS_PER_VM, "jobs": jobs}
 
 
-def run_jobs(tag, cells, sh, lrs, provisional):
+def run_jobs(tag, cells, sh, lrs, provisional, seeds=SEEDS, gate_extra=()):
     """cells: [(cell id, shape id, share)]. PT = training job (relayed, resumable across VMs); post = SFT,
     panels and Carry-5 as a data job (init_job brings the PT weights to a fresh VM); pick = the cell's
     best SFT model by the primary metric; rung = one light job per rung snapshot (amendment 1)."""
     pts, posts, picks, rungs = [], [], [], []
-    for seed in SEEDS:
+    for seed in seeds:
         for cell, sid, share in cells:
             s = sh[sid]
             name = f"pt_{tag}_{cell}_r{seed}"
@@ -381,17 +388,17 @@ def run_jobs(tag, cells, sh, lrs, provisional):
                                       "--seed", str(seed), "--share", str(share), *PANELS, *ITEMS],
                               "outputs": ["rung.json"]})
     for cell, sid, share in cells:
-        picks.append({"name": f"pick_{tag}_{cell}", "after": [f"post_{tag}_{cell}_r{r}" for r in SEEDS],
+        picks.append({"name": f"pick_{tag}_{cell}", "after": [f"post_{tag}_{cell}_r{r}" for r in seeds],
                       "cmd": ["python3", RUN, "pick", "--out", "{out}",
-                              *[a for r in SEEDS for a in ("--run", f"{C}/post_{tag}_{cell}_r{r}")]],
+                              *[a for r in seeds for a in ("--run", f"{C}/post_{tag}_{cell}_r{r}")]],
                       "outputs": ["best.json", "model.safetensors", "model.gguf", "spec.json"]})
     # Longest pretraining first, so the critical path starts at once.
     pts.sort(key=lambda j: -j["spec"]["arch"]["custom"]["layers"])
     gate = {"name": "gate",
             "cmd": ["python3", RUN, "gate", "--out", "{out}", "--jobs", f"tools/colab_chat/tiny_chat_{tag}.json",
-                    "--choice", f"{REL}/stage0/lr_choice.json", "--design", f"{REL}/design.json"],
+                    "--choice", f"{REL}/stage0/lr_choice.json", "--design", f"{REL}/design.json", *gate_extra],
             "outputs": ["gate.json"]}
-    est = sum(run_hours(sh[sid]) for _, sid, _ in cells) * len(SEEDS)
+    est = sum(run_hours(sh[sid]) for _, sid, _ in cells) * len(seeds)
     return pts, posts, picks, rungs, gate, est
 
 
@@ -401,13 +408,14 @@ def run_hours(s):
     return hours(s, STEPS) + hours(s, SFT_STEPS) + POST_EVAL_H + len(RUNG_FRACTIONS) * RUNG_H
 
 
-def e_doc(tag, cells, sh, lrs, provisional, shares, title):
-    pts, posts, picks, rungs, gate, est = run_jobs(tag, cells, sh, lrs, provisional)
-    lr_note = ("PROVISIONAL learning rates (1e-3): the gate job fails until stage0/lr_choice.json exists and "
+def e_doc(tag, cells, sh, lrs, provisional, shares, title, seeds=SEEDS, gate_extra=(), note="", lr_note=None):
+    pts, posts, picks, rungs, gate, est = run_jobs(tag, cells, sh, lrs, provisional, seeds, gate_extra)
+    base_note = ("PROVISIONAL learning rates (1e-3): the gate job fails until stage0/lr_choice.json exists and "
                "matches; rerun make_jobs.py after Stage 0" if provisional else
                "learning rates from stage0/lr_choice.json: " + ", ".join(f"{k} {lrs[k]:g}" for k in sorted(lrs)
                                                                          if k in {c[1] for c in cells}))
-    doc = {"_comment": f"tiny-chat {title} ({REL}/PREREGISTRATION.md). {len(pts)} pretraining runs of {STEPS} steps x "
+    lr_note = lr_note or base_note
+    doc = {"_comment": f"tiny-chat {title} ({REL}/PREREGISTRATION.md). {len(pts)} pretraining run{'s' if len(pts) != 1 else ''} of {STEPS} steps x "
                        f"{TOKENS_PER_STEP} tokens ({STEPS * TOKENS_PER_STEP / 1e6:.2f}M), each then SFT ({SFT_STEPS} "
                        f"steps on human dialogues), two fixed text panels and Carry-5 (post job); one pick per cell. "
                        f"{lr_note}. One GPU job at a time (amendment 2: Stage 0 measured no throughput gain from "
@@ -418,7 +426,7 @@ def e_doc(tag, cells, sh, lrs, provisional, shares, title):
                        f"{rung_steps()} and a light rung job scores each snapshot (panels, base-model Carry-5 "
                        f"teacher-forced; rung.json home); runs are never stopped early. Home: each PT job's weights "
                        f"(relays + final), each post's summary.json, each rung's rung.json, each pick's best model. "
-                       f"Upload vocab_llama3_bpe.gguf with the runner's --upload." + DESIGN_NOTE,
+                       f"Upload vocab_llama3_bpe.gguf with the runner's --upload." + note + DESIGN_NOTE,
            "max_parallel": GPU_JOBS_PER_VM, "max_parallel_light": 1,
            "jobs": [data_job(shares), gate, *rungs, *posts, *picks, *pts]}
     return doc
@@ -541,6 +549,64 @@ def asha_doc(plan, sh):
             "max_parallel": GPU_JOBS_PER_VM, "max_parallel_light": 1, "jobs": jobs}
 
 
+# ---------------------------------------------------------------- amendment 3: the floor pilot
+def pilot_rate(lrs):
+    """(lr, where from, provisional): Stage 0's choice for 20m_L8 when lr_choice.json holds it, else
+    the pilot's own rate (stage0/pilot_lr.json: section 4's rule on 20m_L8 alone, or the registered
+    fallback), else PROVISIONAL (the pilot's gate refuses on the VM)."""
+    if E5_SHAPE in lrs:
+        return lrs[E5_SHAPE], "stage0/lr_choice.json", False
+    if os.path.exists(PILOT_LR):
+        with open(PILOT_LR, encoding="utf-8") as f:
+            pl = json.load(f)
+        assert pl["shape"] == E5_SHAPE, pl
+        return pl["lr"], f"stage0/pilot_lr.json ({pl['source']})", False
+    return PROVISIONAL_LR, "PROVISIONAL", True
+
+
+PILOT_GATE = ["--pilot-verdict", f"{REL}/pilot/verdict.json"]
+
+
+def pilot_doc(sh, lrs):
+    lr, src, prov = pilot_rate(lrs)
+    assert PILOT_SEED not in SEEDS and PILOT_SEED != SCREEN_SEED
+    note = (f" FLOOR PILOT (amendment 3): seed {PILOT_SEED}, declared before it runs and excluded from every analysis "
+            f"(analyze.py reads only the verdict's gate quantities). Afterwards, at home: python "
+            f"{REL}/analyze.py --art ART --pilot-verdict {REL}/pilot/verdict.json, commit. PASS: E5 and E1 at 20M "
+            f"launch as registered; FAIL: the primary size moves to 60M (tiny_chat_e5_60m.json, beside E1 at 60M).")
+    lr_note = ("PROVISIONAL learning rate (1e-3): the gate job fails until stage0/lr_choice.json holds 20m_L8 or "
+               "stage0/pilot_lr.json exists; rerun make_jobs.py then" if prov else f"learning rate {lr:g} from {src}")
+    return e_doc("pilot", [(f"s{E1_SHARE}", E5_SHAPE, E1_SHARE)], sh, {E5_SHAPE: lr}, prov, [E1_SHARE],
+                 "floor pilot", seeds=[PILOT_SEED], gate_extra=["--pilot-lr", f"{REL}/stage0/pilot_lr.json"],
+                 note=note, lr_note=lr_note)
+
+
+def e5_60m_cells():
+    """E5 at 60M (amendment 3, only if the pilot FAILS): the levels other than E1's at 60m_L8; its
+    E1-level cell is E1 at 60M's L8 cell (the same runs), as E1's L8 cell at 20M is E5's."""
+    return [(f"s{p}", E5_60M_SHAPE, p) for p in SHARES if p != E1_SHARE]
+
+
+def budget_a3_rows(sh):
+    """Amendment 3: the pilot, E5 at 60M, and the two branches after the pilot (VM-hours)."""
+    rows = budget_rows(sh)
+    tot = sum(h for _, _, h in rows)
+    e5_20, e1_20, asha = rows[2][2], rows[3][2], rows[-1][2]
+    pilot = DATA_H + run_hours(sh[E5_SHAPE])
+    e5_60 = DATA_H + len(e5_60m_cells()) * len(SEEDS) * run_hours(sh[E5_60M_SHAPE])
+    return {"pilot": pilot, "e5_60m": e5_60, "pass": tot + pilot, "fail": tot + pilot - e5_20 - e1_20 - asha + e5_60}
+
+
+def budget_a3(sh):
+    b, u = budget_a3_rows(sh), UNITS_PER_L4_HOUR
+    rows = [("floor pilot (one 20m_L8 run at E1's level, seed 99)", b["pilot"]),
+            (f"E5 at 60M ({len(e5_60m_cells())} levels x 3 seeds at {E5_60M_SHAPE}; FAIL branch only)", b["e5_60m"]),
+            ("PASS branch: amendment 2's everything + the pilot", b["pass"]),
+            ("FAIL branch: + the pilot + E5 at 60M - E5 and E1 at 20M - the held arm", b["fail"])]
+    return chr(10).join(["| amendment 3 | L4 VM-hours | compute units |", "|---|---|---|"]
+                   + [f"| {n} | {h:.1f} | {h * u:.0f} |" for n, h in rows])
+
+
 def tables(sh):
     rows = ["| shape | layers | d | heads | d_ff | d_ff/d | non-emb | emb (V x d) | total | emb share | "
             "tok/s (probe) | PT h | SFT h |", "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
@@ -623,6 +689,8 @@ def main(argv=None):
     print()
     if a.tables:
         print(budget(sh))
+        print()
+        print(budget_a3(sh))
         return 0
     global SHARES, E1_SHARE, DESIGN_NOTE
     if a.dialogue_pt_bytes is not None:
@@ -659,11 +727,22 @@ def main(argv=None):
         if failed_screens(size):
             n, doc = stage0_rerun(sh, size)
             write(os.path.join(COLAB, n), doc)
-    e5 =[(f"s{p}", E5_SHAPE, p) for p in SHARES]
-    write(os.path.join(COLAB, "tiny_chat_e5.json"), e_doc("e5", e5, sh, lrs, provisional, SHARES, "E5, the data bar"))
+    need_pass = [*PILOT_GATE, "--need-pilot", "PASS"]  # amendment 3: the floor pilot first
+    pass_note = " Amendment 3: the gate refuses unless the floor pilot PASSED (pilot/verdict.json)."
+    e5 = [(f"s{p}", E5_SHAPE, p) for p in SHARES]
+    write(os.path.join(COLAB, "tiny_chat_e5.json"), e_doc("e5", e5, sh, lrs, provisional, SHARES, "E5, the data bar",
+                                                          gate_extra=need_pass, note=pass_note))
     e1 = [(sid.split("_")[1], sid, E1_SHARE) for sid in sh if sh[sid]["size"] == "20m" and sid != E5_SHAPE]
     write(os.path.join(COLAB, "tiny_chat_e1.json"), e_doc("e1", e1, sh, lrs, provisional, [E1_SHARE],
-                                                          "E1 at 20M, the shape sweep"))
+                                                          "E1 at 20M, the shape sweep", gate_extra=need_pass,
+                                                          note=pass_note))
+    write(os.path.join(COLAB, "tiny_chat_pilot.json"), pilot_doc(sh, lrs))
+    write(os.path.join(COLAB, "tiny_chat_e5_60m.json"),
+          e_doc("e5_60m", e5_60m_cells(), sh, lrs, provisional, [p for p in SHARES if p != E1_SHARE],
+                "E5 at 60M, the data bar if the floor pilot FAILS (amendment 3)",
+                gate_extra=[*PILOT_GATE, "--need-pilot", "FAIL"],
+                note=f" Amendment 3: the gate refuses unless the floor pilot FAILED (pilot/verdict.json). The "
+                     f"{E1_SHARE}% cell is E1 at 60M's L8 cell (tiny_chat_e1_60m.json, the same runs)."))
     e1b = [(sid.split("_")[1], sid, E1_SHARE) for sid in sh if sh[sid]["size"] == "60m"]
     write(os.path.join(COLAB, "tiny_chat_e1_60m.json"), e_doc("e1_60m", e1b, sh, lrs, provisional, [E1_SHARE],
                                                               "E1 at 60M, the shape sweep (authorised 23 Oct 2026)"))
@@ -678,10 +757,13 @@ def main(argv=None):
     write(os.path.join(COLAB, "tiny_chat_asha.json"), asha_doc(plan, ash))
     print(f"ASHA arm: worst case {plan['cost_job_hours']['worst_vm_hours']} L4 VM-hours (cap {ASHA_CAP_VM_HOURS})")
     print("\nwrote specs/, asha_plan.json, tiny_chat_s0.json, tiny_chat_s0_60m.json, tiny_chat_e5.json, "
-          "tiny_chat_e1.json, tiny_chat_e1_60m.json, tiny_chat_asha.json, the Stage 0 rerun files"
+          "tiny_chat_e1.json, tiny_chat_e1_60m.json, tiny_chat_asha.json, the Stage 0 rerun files, "
+          "tiny_chat_pilot.json, tiny_chat_e5_60m.json"
           + (" (PROVISIONAL learning rates)" if provisional else ""))
     print()
     print(budget(sh))
+    print()
+    print(budget_a3(sh))
     return 0
 
 

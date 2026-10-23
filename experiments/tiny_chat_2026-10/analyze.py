@@ -39,13 +39,43 @@ DEPTHS_20 = [2, 4, 8, 16, 32]
 DEPTHS_60 = [4, 8, 16, 32]
 
 
+PILOT_SEED = 99         # amendment 3: the floor pilot's seed, excluded from every analysis
+
+
 def load(art, block):
-    """{(cell, seed): summary} for one block's post jobs."""
+    """{(cell, seed): summary} for one block's post jobs. The floor pilot (amendment 3) lives in
+    ART/pilot, which no block reads; a pilot-seed summary inside a block is refused."""
     out = {}
     for p in glob.glob(os.path.join(art, block, "post_*", "summary.json")):
         s = json.load(open(p, encoding="utf-8"))
+        if s.get("seed") == PILOT_SEED:
+            raise SystemExit(f"{p}: seed {PILOT_SEED} is the floor pilot's, excluded from all analysis (amendment 3)")
         out[(s["cell"], s["seed"])] = s
     return out
+
+
+def pilot_verdict(art):
+    """Amendment 3: the floor pilot's verdict by the validity gate as amended (A2.5), on its one run:
+    PASS when (i) twin accuracy over the primary families >= chance + FLOOR and (ii) twin minus
+    question-alone accuracy over the context families >= FLOOR_QALONE; FAIL otherwise. Only the
+    gate's quantities are written: the pilot's Y and multi-turn accuracies are not read."""
+    ps = glob.glob(os.path.join(art, "pilot", "post_*", "summary.json"))
+    if len(ps) != 1:
+        raise SystemExit(f"{len(ps)} pilot post summaries in {os.path.join(art, 'pilot')}; the verdict needs exactly one")
+    s = json.load(open(ps[0], encoding="utf-8"))
+    if s.get("seed") != PILOT_SEED:
+        raise SystemExit(f"{ps[0]}: seed {s.get('seed')}, not the pilot's {PILOT_SEED}")
+    q = {k: get(s, k) for k in ("twin_self", "chance", "twin_ctx", "noctx_ctx", "twin_minus_qalone_ctx")}
+    if any(v is None for v in q.values()):
+        raise SystemExit(f"{ps[0]}: the gate's quantities are incomplete: {q}")
+    i = q["twin_self"] >= q["chance"] + FLOOR
+    ii = q["twin_minus_qalone_ctx"] >= FLOOR_QALONE
+    return {"verdict": "PASS" if i and ii else "FAIL", "gate_i_twin_primary": i, "gate_ii_twin_minus_qalone_ctx": ii,
+            "twin_primary": q["twin_self"], "chance": q["chance"], "twin_ctx": q["twin_ctx"],
+            "qalone_ctx": q["noctx_ctx"], "twin_minus_qalone_ctx": q["twin_minus_qalone_ctx"],
+            "thresholds": {"i": f"twin_primary >= chance + {FLOOR}", "ii": f"twin_minus_qalone_ctx >= {FLOOR_QALONE}"},
+            "cell": s.get("cell"), "seed": s.get("seed"), "pt_lr": s.get("pt_lr"), "summary": ps[0],
+            "excluded_from_analysis": True}
 
 
 def get(s, key):
@@ -394,7 +424,15 @@ def main(argv=None):
     ap.add_argument("--out", default=None)
     ap.add_argument("--partial", action="store_true")
     ap.add_argument("--design", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "design.json"))
+    ap.add_argument("--pilot-verdict", default=None, metavar="OUT",
+                    help="amendment 3: write the floor pilot's verdict (ART/pilot) to OUT and do nothing else")
     a = ap.parse_args(argv)
+    if a.pilot_verdict:
+        v = pilot_verdict(a.art)
+        os.makedirs(os.path.dirname(os.path.abspath(a.pilot_verdict)), exist_ok=True)
+        open(a.pilot_verdict, "w", encoding="utf-8", newline="\n").write(json.dumps(v, indent=1) + "\n")
+        print(json.dumps(v, indent=1))
+        return 0
     design = json.load(open(a.design, encoding="utf-8"))
     r5 = load(a.art, "e5")
     r1 = load(a.art, "e1")
