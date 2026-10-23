@@ -2,7 +2,7 @@
 runs paperkiln GGUFs with them, tools/thirdparty_parity.py runs third-party GGUFs whose IR
 tools/gguf_ir.py builds from llama.cpp metadata.
 
-    run_nodes(nodes, env, W, i=None, no_window=False)   # one embed / block / head node list
+    run_nodes(nodes, env, W, i=None, no_window=False, wi=None)   # one embed / block / head node list
     forward(doc, W, ids, last_only=False)               # logits [T, vocab] (or the last row only)
     load_weights(path)                                  # {name: f32 array [.., in]} from any GGUF type
 
@@ -23,7 +23,9 @@ For third-party graphs:
   rope        freq_scale s (default 1): the angle is (pos * s) * theta^(-2j/n_rot) (linear scaling).
   conv1d_causal, selective_scan  Mamba-1's ops (include/microtorch/ir.hpp).
 Any attribute of a block node (and of a block state slot) may be {"per_layer": [v_0, .., v_{L-1}]}:
-block i reads v_i.
+block i reads v_i. The block's own key "weight_index" {"per_layer": [m_0, .., m_{L-1}]} (tied-block
+recursion) makes application i read its tensors from blk.{m_i}.* (run_nodes' wi); everything else,
+per-layer attributes and state included, stays indexed by i.
 """
 from __future__ import annotations
 
@@ -82,9 +84,23 @@ def _rope(x, pos, heads, hd, n_rot, theta, pairing, freq_scale=1.0):
     return out.reshape(len(pos), heads * hd).astype(np.float32)
 
 
-def run_nodes(nodes, env, W, i=None, no_window=False):
+def weight_index(doc, i):
+    """The stored layer whose tensors block application i reads (ir.hpp weight_index; i when absent)."""
+    wmap = doc["block"].get("weight_index")
+    if wmap is None:
+        return i
+    m = wmap["per_layer"]
+    if len(m) != doc["block"]["repeat"] or not all(isinstance(x, int) and x >= 0 for x in m):
+        raise SystemExit("ir_numpy: block weight_index must list block.repeat integers >= 0")
+    return m[i]
+
+
+def run_nodes(nodes, env, W, i=None, no_window=False, wi=None):
+    """wi: the stored layer whose tensors "{i}" names (default i, the application)."""
+    ti = i if wi is None else wi
+
     def name(key):
-        return key.replace("{i}", str(i)) if i is not None else key
+        return key.replace("{i}", str(ti)) if ti is not None else key
 
     def w(key):
         return W[name(key)]
@@ -286,7 +302,7 @@ def forward(doc, W, ids, last_only=False, no_window=False):
     env = {"tokens": np.array(ids), "pos": np.arange(len(ids))}  # pos unused by graphs without positions
     run_nodes(doc["embed"]["nodes"], env, W, no_window=no_window)
     for i in range(doc["block"]["repeat"]):
-        run_nodes(doc["block"]["nodes"], env, W, i, no_window=no_window)
+        run_nodes(doc["block"]["nodes"], env, W, i, no_window=no_window, wi=weight_index(doc, i))
     if last_only:
         for k in list(env):
             if isinstance(env[k], np.ndarray) and env[k].ndim == 2 and env[k].shape[0] == len(ids):

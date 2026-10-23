@@ -155,7 +155,45 @@ ir::json LlamaBlock::export_ir() const {
     return {{"state", ir::json::array({ir::kv_state("kv", H, H, dk, n_ctx, 0, 0)})}, {"nodes", n}};
 }
 
+std::vector<size_t> layer_schedule(const LlamaConfig& cfg) {
+    std::vector<size_t> s;
+    const auto& r = cfg.recursion;
+    if (!r.on()) {
+        for (size_t i = 0; i < cfg.n_layers; ++i) s.push_back(i);
+        return s;
+    }
+    if (r.schedule != "fixed")
+        throw std::runtime_error("llama recursion: schedule \"" + r.schedule +
+                                 "\" is not implemented (only \"fixed\": every token takes every application)");
+    if (r.repeats < 1) throw std::runtime_error("llama recursion: repeats must be >= 1");
+    if (cfg.n_layers != r.prelude + r.block + r.coda)
+        throw std::runtime_error("llama recursion: n_layers " + std::to_string(cfg.n_layers) +
+                                 " is not prelude + block + coda = " +
+                                 std::to_string(r.prelude + r.block + r.coda) + " (n_layers counts stored layers)");
+    for (size_t i = 0; i < r.prelude; ++i) s.push_back(i);
+    for (size_t k = 0; k < r.repeats; ++k)
+        for (size_t j = 0; j < r.block; ++j) s.push_back(r.prelude + j);
+    for (size_t i = 0; i < r.coda; ++i) s.push_back(r.prelude + r.block + i);
+    return s;
+}
+
+std::vector<size_t> injection_points(const LlamaConfig& cfg) {
+    const auto& r = cfg.recursion;
+    std::vector<size_t> at;
+    if (!r.on() || r.inject == "none") return at;
+    if (r.inject != "add")
+        throw std::runtime_error("llama recursion: inject must be none or add, got " + r.inject);
+    for (size_t k = 1; k < r.repeats; ++k) at.push_back(r.prelude + k * r.block);
+    return at;
+}
+
 Llama::Llama(const LlamaConfig& cfg_, unsigned seed) : cfg(cfg_) {
+    // Stored layers are built exactly as in a plain model of n_layers
+    // (seed + 100 (i + 1) for layer i), so recursion with repeats 1 and no
+    // prelude or coda is the plain model bit for bit.
+    schedule = layer_schedule(cfg);
+    inject_before.assign(schedule.size(), 0);
+    for (const size_t a : injection_points(cfg)) inject_before[a] = 1;
     embed_tokens = mod<Embedding>("embed_tokens", cfg.vocab, cfg.d, seed + 11);
     for (size_t i = 0; i < cfg.n_layers; ++i)
         blocks.push_back(
@@ -175,7 +213,13 @@ Var Llama::forward(const std::vector<int>& ids, size_t seq_len, MoEAux* aux) con
     if (aux && checkpoint_blocks && grad_enabled())
         throw std::runtime_error("llama: MoE auxiliary losses are not supported with checkpoint_blocks");
     Var h = embed_tokens->forward(ids);
-    for (const auto& b : blocks) {
+    const Var e = h;  // the token embedding, re-added under inject "add"
+    // Each application of a shared layer is its own stretch of tape over the
+    // same parameter Vars, so backward accumulates the layer's gradient once
+    // per application (Variable::accumulate), in reverse application order.
+    for (size_t l = 0; l < schedule.size(); ++l) {
+        const auto& b = blocks[schedule[l]];
+        if (inject_before[l]) h = ops::add(h, e);
         h = checkpoint_blocks && grad_enabled()
                 ? checkpoint(
                       [b, pos, seq_len](const Var& in) { return b->forward(in, pos, seq_len); }, h)
@@ -191,13 +235,20 @@ Var Llama::forward(const std::vector<int>& ids, size_t seq_len, MoEAux* aux) con
 Var Llama::forward_cached(const std::vector<int>& ids, LlamaKV& kv) const {
     if (ids.empty()) throw std::runtime_error("llama: forward_cached needs at least one new token");
     if (kv.k.empty()) {
-        kv.k.assign(blocks.size(), {});
-        kv.v.assign(blocks.size(), {});
+        kv.k.assign(schedule.size(), {});
+        kv.v.assign(schedule.size(), {});
         kv.d = cfg.d;
         kv.len = 0;
     }
+    if (kv.k.size() != schedule.size()) throw std::runtime_error("llama: kv cache is for another depth");
     Var h = embed_tokens->forward(ids);
-    for (size_t l = 0; l < blocks.size(); ++l) h = blocks[l]->forward_cached(h, kv.len, kv.k[l], kv.v[l]);
+    const Var e = h;
+    // One cache per application (a shared layer sees different inputs on
+    // each pass).
+    for (size_t l = 0; l < schedule.size(); ++l) {
+        if (inject_before[l]) h = ops::add(h, e);
+        h = blocks[schedule[l]]->forward_cached(h, kv.len, kv.k[l], kv.v[l]);
+    }
     kv.len += ids.size();
     h = ops::rmsnorm(h, norm_w);
     if (lm_head) return lm_head->forward(h);
@@ -223,20 +274,53 @@ ir::json Llama::export_ir() const {
                        {"weight", "output.weight"}, {"bias", nullptr},
                        {"tied_to", "token_embd.weight"}, {"out", "logits"}};
     }
+    // A recursed model (cfg.recursion) is a different network from the
+    // llama of its stored layers: its own hint, so no engine takes the llama
+    // fast path for it, and n_layers / block.repeat count applications.
+    // Recursion with one repeat and no sharing is the plain llama.
+    const bool shared = schedule.size() != blocks.size();
     ir::json doc;
     doc["ir_version"] = ir::kVersion;
-    doc["family_hint"] = "llama";
+    doc["family_hint"] = shared ? "llama_recursive" : "llama";
     doc["model"] = {{"vocab", cfg.vocab},
                     {"d", cfg.d},
-                    {"n_layers", cfg.n_layers},
+                    {"n_layers", schedule.size()},
                     {"ctx", cfg.n_ctx},
                     {"dtype", "f32"}};
     doc["inputs"] = ir::json::array({{{"name", "tokens"}, {"kind", "token_ids"}},
                                      {{"name", "pos"},
                                       {"kind", "positions"},
                                       {"note", "absolute positions; prefill 0..T-1, decode = cache length"}}});
+    const bool inject = std::any_of(inject_before.begin(), inject_before.end(), [](char c) { return c != 0; });
     doc["embed"] = {{"nodes", ir::json::array({embed_tokens->export_ir("tokens", "x", "token_embd.weight")})}};
-    doc["block"] = {{"repeat", blocks.size()}, {"state", blk["state"]}, {"nodes", blk["nodes"]}};
+    // inject "add": a second gather keeps the embedding as e (EXACT, the same
+    // rows), and each block starts with x = x + c_i e, c_i = 1 before the
+    // first application of repeats 1.. and 0 elsewhere (affine with a
+    // per-layer scale; x + 0 e is x up to the sign of zero).
+    if (inject) doc["embed"]["nodes"].push_back(embed_tokens->export_ir("tokens", "e", "token_embd.weight"));
+    doc["block"] = {{"repeat", schedule.size()}};
+    if (shared) {
+        // Application i reads its tensors from stored layer schedule[i]
+        // (ir.hpp, "weight_index"); its state slot is its own.
+        const auto& r = cfg.recursion;
+        doc["block"]["weight_index"] = {{"per_layer", schedule}};
+        doc["block"]["_recursion"] = {{"prelude", r.prelude}, {"block", r.block}, {"repeats", r.repeats},
+                                      {"coda", r.coda},       {"schedule", r.schedule},
+                                      {"inject", r.inject},   {"stored_layers", blocks.size()}};
+    }
+    doc["block"]["state"] = blk["state"];
+    if (inject) {
+        std::vector<float> c(inject_before.size(), 0.0f);
+        for (size_t l = 0; l < c.size(); ++l) c[l] = inject_before[l] ? 1.0f : 0.0f;
+        ir::json nodes = ir::json::array();
+        nodes.push_back({{"op", "affine"}, {"in", ir::json::array({"e"})}, {"scale", {{"per_layer", c}}},
+                         {"shift", 0.0}, {"out", "inj"}});
+        nodes.push_back(ir::binary("add", "x", "inj", "x"));
+        for (const auto& n : blk["nodes"]) nodes.push_back(n);
+        doc["block"]["nodes"] = nodes;
+    } else {
+        doc["block"]["nodes"] = blk["nodes"];
+    }
     const ir::json final_norm = ir::rmsnorm("x", "output_norm.weight", ops::kRmsNormEps, "h");
     doc["head"] = {{"nodes", ir::json::array({final_norm, head_linear})}};
     doc["outputs"] = ir::json::array({{{"name", "logits"}, {"kind", "logits"}}});

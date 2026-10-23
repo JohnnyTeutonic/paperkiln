@@ -26,10 +26,46 @@ struct LlamaConfig {
     // Mixture-of-experts FFN (moe.hpp). experts == 0 (the default) is the
     // dense SwiGLU block, constructed exactly as before.
     MoEConfig moe;
+    // Tied-block recursion (spec arch.custom.recursion). Off (block == 0,
+    // the default): every stored layer is applied once, in order, as before.
+    // On: the model stores n_layers = prelude + block + coda distinct layers
+    // (layers.0 .. layers.{n_layers-1}) and applies
+    //   prelude layers 0 .. P-1 once each,
+    //   then the block's layers P .. P+B-1 in order, `repeats` times over,
+    //   then coda layers P+B .. P+B+C-1 once each,
+    // so the effective depth is P + B * repeats + C with the parameters of
+    // P + B + C layers. Each application has its own KV cache (its inputs
+    // differ), and backward runs through every application: a shared
+    // layer's gradient is the sum over its applications. "schedule" names
+    // how applications are chosen: "fixed" (every token takes every
+    // application) is the only one implemented; per-token adaptive depth
+    // (Mixture-of-Recursions routers) would be a new schedule over the same
+    // application -> stored-layer map, layer_schedule().
+    // inject "add" (an ablation; "none" is the default): the token
+    // embedding e (the embedding's output, before the prelude) is added to
+    // the stream before each repeat after the first, x = x + e, with no
+    // parameters (as looped GPT-BERT and HRM; z_{t+1} = F(x + z_t)).
+    struct Recursion {
+        size_t prelude = 0, block = 0, repeats = 1, coda = 0;
+        std::string schedule = "fixed";
+        std::string inject = "none";
+        bool on() const { return block > 0; }
+    } recursion;
 };
 
-// Keys and values of every layer for the tokens decoded so far (inference
-// only): k[l], v[l] are [len, d] after RoPE, rows at absolute positions
+// The applications before which inject "add" adds the embedding: the first
+// application of repeats 1 .. repeats-1 (empty when injection or recursion is off).
+std::vector<size_t> injection_points(const LlamaConfig& cfg);
+
+// Application a (0 <= a < effective depth) -> the stored layer it runs: the
+// identity 0 .. n_layers-1 when recursion is off. Throws when recursion is
+// on and n_layers != prelude + block + coda, repeats < 1, or the schedule
+// is not "fixed".
+std::vector<size_t> layer_schedule(const LlamaConfig& cfg);
+
+// Keys and values of every layer application for the tokens decoded so far
+// (inference only; one entry per application, so a recursed model keeps
+// one cache per pass through a shared layer): k[l], v[l] are [len, d] after RoPE, rows at absolute positions
 // 0..len-1. truncate() drops a suffix, so a chat turn that re-sends its
 // history reuses the shared prefix.
 struct LlamaKV {
@@ -89,10 +125,15 @@ public:
     ir::json export_ir() const;
 
     LlamaConfig cfg;
-    // Activation checkpointing per block (see autograd.hpp).
+    // Activation checkpointing per block application (see autograd.hpp).
     bool checkpoint_blocks = false;
     std::shared_ptr<Embedding> embed_tokens;
+    // The stored layers (cfg.n_layers of them, registered once each, so
+    // parameters() lists every tensor once and an optimiser updates it once
+    // per step) and the order they are applied in (layer_schedule(cfg)).
     std::vector<std::shared_ptr<LlamaBlock>> blocks;
+    std::vector<size_t> schedule;
+    std::vector<char> inject_before;  // per application: add the embedding first
     Var norm_w;                       // final RMSNorm gamma
     std::shared_ptr<Linear> lm_head;  // null when tied
 };

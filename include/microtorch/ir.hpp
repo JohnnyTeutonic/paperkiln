@@ -248,6 +248,46 @@
 //               and kv window 512 on local layers, 0 on global ones; rope
 //               theta 10000 / 1e6). Every other attribute is the same in
 //               every block.
+//   weight_index  a key of the block itself, not of a node: {"per_layer":
+//               [m_0, ..., m_{L-1}]}, L = block.repeat, integers m_i >= 0.
+//               Application i of the block reads every tensor name it holds
+//               ("weight", "bias", "router", "experts", ssm_scan's a b c d,
+//               ...) with "{i}" replaced by m_i, i.e. blk.{m_i}.*, so several
+//               applications share one stored layer's tensors (tied-block
+//               recursion: prelude layers, a shared block applied R times,
+//               coda layers; paperkiln family_hint "llama_recursive").
+//               Everything else per application stays indexed by i: each
+//               application has its own instance of every state slot (its
+//               own kv cache: a shared layer sees different inputs on each
+//               pass), and per-layer attributes read v_i. Absent: m_i = i.
+//               The stored layers are 0 .. max m_i, each used at least once;
+//               their count is the GGUF's <arch>.block_count, while
+//               model.n_layers = block.repeat counts applications. A file
+//               whose applications share tensors has architecture
+//               "paperkiln" (llama.cpp's graphs apply each stored layer
+//               once). An engine that does not implement weight_index
+//               refuses the file at load. Embedding re-injection (paperkiln
+//               recursion inject "add") needs no new op: the embed section
+//               gathers the embedding a second time into e, and every block
+//               starts with affine(e; scale {"per_layer": [c_i]}, shift 0)
+//               -> inj, add(x, inj) -> x, c_i = 1 before the first
+//               application of repeats 1 .. R-1 and 0 elsewhere (x + 0 e is
+//               x up to the sign of zero).
+//   (reserved, step 2, not implemented) per-token recursion depth
+//               (Mixture-of-Recursions): recursion step k covers
+//               applications P + kB .. P + (k+1)B - 1. A "depth_route" node
+//               at the first application of step k >= 1 would write a [T, 1]
+//               mask a of the tokens that continue (router weight
+//               rec.{k}.router.weight, top-k or threshold attribute), and the
+//               step's output for a token with a = 0 is its input unchanged.
+//               The kv slot would gain "kv_rows": "active" (MoR's
+//               recursion-wise caching: at application i only active tokens
+//               append k/v rows, and a query attends to the rows of tokens
+//               active at that depth, positions kept absolute) or the
+//               per-layer "kv_from": {"per_layer": [s_0, ..]} (recursive KV
+//               sharing: application i reads, and never appends to, the kv
+//               rows application s_i wrote for every token; s_i = i
+//               default).
 //   attention   kv_heads < heads (grouped-query): query head h reads k/v
 //               head h / (heads / kv_heads); k and v are [T, kv_heads *
 //               head_dim]. heads % kv_heads == 0.
@@ -367,6 +407,13 @@
 //               GPT-2 flavour (layernorm, gelu, learned, residual) exports
 //               as gpt2 / gpt2_swa; plain with that flavour is gpt2 tensors
 //               (gpt2 architecture, IR-only semantics); others paperkiln.
+//   llama_recursive  the llama block (tensor names and nodes as llama)
+//               under a block weight_index: n_layers = prelude + block *
+//               repeats + coda applications of prelude + block + coda stored
+//               layers (block._recursion records the counts for humans);
+//               architecture "paperkiln", whose block_count is the stored
+//               count. With inject "add", embed adds a second embedding node
+//               (out e) and the block an affine and an add at its start.
 //   mamba       no positions; block: h = layernorm(x) (blk.{i}.ssm_norm), u =
 //               ssm_in(h) [n], y = ssm_out(ssm_scan(u)) [d], y = y *
 //               gelu(ssm_gate(h)) * gelu(ssm_out_gate(x)) (multiplied in that

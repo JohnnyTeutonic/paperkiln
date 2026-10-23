@@ -96,10 +96,12 @@ def weight_refs(doc):
             for key, n, fb in names(node):
                 out.append((f"{sect}[{j}].{key}", n, fb))
     blk = doc.get("block", {})
+    wmap = (blk.get("weight_index") or {}).get("per_layer")
     for i in range(blk.get("repeat", 0)):
+        m = wmap[i] if wmap is not None and i < len(wmap) else i  # ir.hpp weight_index
         for j, node in enumerate(blk.get("nodes", [])):
             for key, n, fb in names(node):
-                out.append((f"block {i}[{j}].{key}", n.replace("{i}", str(i)), fb))
+                out.append((f"block {i}[{j}].{key}", n.replace("{i}", str(m)), fb))
     return out
 
 
@@ -117,6 +119,12 @@ def state_errors(doc):
             errs.append(f"model.{k} missing or not a positive integer")
     if blk.get("repeat") != model.get("n_layers"):
         errs.append(f"block.repeat {blk.get('repeat')} != model.n_layers {model.get('n_layers')}")
+    if "weight_index" in blk:
+        m = (blk["weight_index"] or {}).get("per_layer") if isinstance(blk["weight_index"], dict) else None
+        if not isinstance(m, list) or len(m) != blk.get("repeat") or not all(isinstance(x, int) and x >= 0 for x in m):
+            errs.append("block.weight_index must be {per_layer: [block.repeat integers >= 0]}")
+        elif sorted(set(m)) != list(range(max(m) + 1)):
+            errs.append(f"block.weight_index uses stored layers {sorted(set(m))}, not every one of 0..{max(m)}")
     slots = {}
     for s in blk.get("state", []):
         if s.get("name") in slots:
@@ -169,6 +177,15 @@ def check(path, like=None, tensors_as=None):
         if n not in have and not (fb and fb in have):
             errs.append(f"{where}: {n} is not a tensor of {path}")
     errs += state_errors(doc)
+    wmap = (doc.get("block", {}).get("weight_index") or {}).get("per_layer")
+    if isinstance(wmap, list) and wmap:
+        # Shared layers (ir.hpp weight_index): llama.cpp would run each stored layer once.
+        arch = meta.get("general.architecture", (None, None))[1]
+        if arch != "paperkiln":
+            errs.append(f"block.weight_index needs architecture paperkiln, not {arch}")
+        bc = meta.get(f"{arch}.block_count", (None, None))[1]
+        if bc != max(wmap) + 1:
+            errs.append(f"{arch}.block_count {bc} != the {max(wmap) + 1} stored layers weight_index uses")
     side = Path(path).with_suffix(".ir.json")
     if side.is_file() and json.loads(side.read_text(encoding="utf-8")) != doc:
         errs.append(f"sidecar {side} differs from the embedded IR")

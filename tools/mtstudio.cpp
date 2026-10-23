@@ -77,6 +77,12 @@ struct Spec {
     size_t moe_experts = 0, moe_top_k = 1;
     std::string moe_gate;  // "renorm" (Mixtral) | "raw" (Switch); resolved in parse_spec
     float moe_aux = 0.01f, moe_z = 0.001f;  // load-balance and router z-loss coefficients
+    // llama family: tied-block recursion (arch.custom.recursion; nn::LlamaConfig::Recursion).
+    // rec_block == 0 = no recursion key = the plain model, untouched. With it,
+    // `layers` counts STORED layers (prelude + block + coda).
+    size_t rec_prelude = 0, rec_block = 0, rec_repeats = 1, rec_coda = 0;
+    std::string rec_schedule = "fixed";
+    std::string rec_inject = "none";  // none | add (nn::LlamaConfig::Recursion::inject)
     // data
     std::string corpus, vocab_gguf;
     size_t vocab_cap = 4096;
@@ -231,6 +237,36 @@ Spec parse_spec(const std::string& path) {
         s.window = c.value("window", s.window);
         s.sinks = c.value("sinks", s.sinks);
         s.d_state = c.value("d_state", s.d_state);
+        if (c.contains("recursion")) {
+            // {"block": B, "repeats": R, "prelude": P, "coda": C, "schedule": "fixed"}:
+            // B stored layers applied R times between P and C unshared ones.
+            const json r = c["recursion"];
+            if (!r.is_object()) throw std::runtime_error("arch.custom.recursion must be an object");
+            for (const auto& [k, v] : r.items())
+                if (k != "block" && k != "repeats" && k != "prelude" && k != "coda" && k != "schedule" &&
+                    k != "inject" && k.rfind("_", 0) != 0)
+                    throw std::runtime_error("arch.custom.recursion: unknown key " + k +
+                                             " (block, repeats, prelude, coda, schedule, inject)");
+            s.rec_block = r.value("block", size_t(0));
+            s.rec_repeats = r.value("repeats", size_t(1));
+            s.rec_prelude = r.value("prelude", size_t(0));
+            s.rec_coda = r.value("coda", size_t(0));
+            s.rec_schedule = r.value("schedule", s.rec_schedule);
+            s.rec_inject = r.value("inject", s.rec_inject);
+            if (s.rec_inject != "none" && s.rec_inject != "add")
+                throw std::runtime_error("arch.custom.recursion.inject must be none or add, got " + s.rec_inject);
+            if (s.rec_block < 1) throw std::runtime_error("arch.custom.recursion.block must be >= 1");
+            if (s.rec_repeats < 1) throw std::runtime_error("arch.custom.recursion.repeats must be >= 1");
+            if (s.rec_schedule != "fixed")
+                throw std::runtime_error("arch.custom.recursion.schedule \"" + s.rec_schedule +
+                                         "\" is not implemented (\"fixed\" only)");
+            const size_t stored = s.rec_prelude + s.rec_block + s.rec_coda;
+            if (c.contains("layers") && s.layers != stored)
+                throw std::runtime_error("arch.custom.layers " + std::to_string(s.layers) +
+                                         " counts stored layers and must equal recursion prelude + block + coda = " +
+                                         std::to_string(stored));
+            s.layers = stored;
+        }
     }
     // Family resolution for the flavor knobs. RoPE with the llama block's
     // flavours (rmsnorm, swiglu, residual stream, exact attention; each
@@ -278,6 +314,8 @@ Spec parse_spec(const std::string& path) {
                 "kimi/srd presets are 2-block parity models (layers must be 2)");
     }
 
+    if (s.rec_block > 0 && s.family != "llama")
+        throw std::runtime_error("arch.custom.recursion needs the llama family (rmsnorm, swiglu, rope, exact attention)");
     if (arch.contains("moe")) {
         // {"experts": E, "top_k": k, "gate": "renorm"|"raw", "aux_loss": a, "z_loss": z}
         const json m = arch["moe"];
@@ -415,7 +453,15 @@ Spec parse_spec(const std::string& path) {
             throw std::runtime_error("arch.moe: objective " + s.objective + " is not wired for MoE yet (lm, sft, rejection_sft)");
         if (s.ckpt_act)
             throw std::runtime_error("arch.moe: train.checkpoint_activations is not supported with MoE yet");
+        if (s.rec_block > 0) throw std::runtime_error("arch.moe with arch.custom.recursion is not wired yet");
     }
+    if (s.rec_block > 0)
+        for (const auto& q : s.exp_gguf_quants)
+            if (q == "q4_0" || q == "q4_k_m" || q == "q4_k_s")
+                // Those mixes are defined as llama.cpp's quantiser's output, and
+                // a recursed model is a "paperkiln" file llama.cpp does not read.
+                throw std::runtime_error("export gguf_" + q + ": llama.cpp's mix has no reference for a recursed "
+                                         "model (gguf and gguf_q8_0* only)");
     return s;
 }
 
@@ -424,6 +470,21 @@ void apply_moe(nn::LlamaConfig& lc, const Spec& s) {
     lc.moe.experts = s.moe_experts;
     lc.moe.top_k = s.moe_top_k;
     lc.moe.renormalize = s.moe_gate != "raw";
+}
+
+// The spec's recursion onto a llama config (no-op without arch.custom.recursion).
+void apply_recursion(nn::LlamaConfig& lc, const Spec& s) {
+    lc.recursion.block = s.rec_block;
+    lc.recursion.repeats = s.rec_repeats;
+    lc.recursion.prelude = s.rec_prelude;
+    lc.recursion.coda = s.rec_coda;
+    lc.recursion.schedule = s.rec_schedule;
+    lc.recursion.inject = s.rec_inject;
+}
+
+// Layer applications per forward: prelude + block * repeats + coda, or layers.
+size_t effective_layers(const Spec& s) {
+    return s.rec_block > 0 ? s.rec_prelude + s.rec_block * s.rec_repeats + s.rec_coda : s.layers;
 }
 
 // ---- events: JSONL to stdout + file (the M2 UI's feed) ----
@@ -1041,7 +1102,14 @@ void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama, 
         gguf::LlamaExportConfig gc;
         gc.name = s.name;
         gc.embedding_length = (uint32_t)s.d;
+        // Stored layers: a recursed model writes its shared layers once.
         gc.block_count = (uint32_t)s.layers;
+        // A recursed model applies them more than once, which llama.cpp's
+        // llama graph cannot express: architecture "paperkiln" (its keys
+        // paperkiln.*, ir.hpp), so llama.cpp refuses the file rather than
+        // running the stored layers once each, and only the IR (block
+        // weight_index) reproduces it.
+        if (effective_layers(s) != s.layers) gc.architecture = "paperkiln";
         gc.head_count = (uint32_t)s.heads;
         // The model's real FFN width. Exports before 19 Oct 2026 wrote 3d
         // whatever arch.custom.d_ff said; llama.cpp checks ffn tensor
@@ -1272,6 +1340,11 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                                             ? "unstated (all for a new run; a resumed run keeps "
                                               "its recorded value, first if none)"
                                             : s.rope_heads.c_str());
+    if (s.rec_block > 0)
+        std::printf("recursion: prelude %zu + block %zu x %zu + coda %zu = %zu layer applications over %zu stored "
+                    "layers (schedule %s, inject %s)\n",
+                    s.rec_prelude, s.rec_block, s.rec_repeats, s.rec_coda, effective_layers(s), s.layers,
+                    s.rec_schedule.c_str(), s.rec_inject.c_str());
     if (s.moe_experts > 0)
         std::printf("moe: %zu experts, top_k=%zu, gate=%s, aux_loss=%g, z_loss=%g%s%s\n", s.moe_experts,
                     s.moe_top_k, s.moe_gate.c_str(), s.moe_aux, s.moe_z,
@@ -1503,6 +1576,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         lc.n_ctx = s.T;
         lc.rope_all_heads = rope_heads == "all";
         apply_moe(lc, s);
+        apply_recursion(lc, s);
         llama = std::make_shared<nn::Llama>(lc, s.seed);
         llama->checkpoint_blocks = s.ckpt_act;
     } else {
@@ -1553,6 +1627,12 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         model_ev["lr_schedule"] = {
             {"warmup_steps", s.lr_warmup}, {"decay", s.lr_decay}, {"min_lr_frac", s.lr_min_frac}};
     if (llama) model_ev["rope_heads"] = rope_heads;
+    // Absent without recursion: the model event is unchanged.
+    if (s.rec_block > 0)
+        model_ev["recursion"] = {{"block", s.rec_block},     {"repeats", s.rec_repeats},
+                                 {"prelude", s.rec_prelude}, {"coda", s.rec_coda},
+                                 {"schedule", s.rec_schedule}, {"inject", s.rec_inject},
+                                 {"effective_layers", effective_layers(s)}};
     // Absent for dense models: their model event is unchanged.
     if (s.moe_experts > 0)
         model_ev["moe"] = {{"experts", s.moe_experts},
@@ -2472,6 +2552,7 @@ struct LoadedLM {
             rope_heads = resolve_rope_heads(s, /*existing=*/true);
             lc.rope_all_heads = rope_heads == "all";
             apply_moe(lc, s);
+            apply_recursion(lc, s);
             llama = std::make_shared<nn::Llama>(lc, s.seed);
         } else {
             gpt = std::make_shared<parity::ParityLM>(attn_kind(s.attention), tokens.size(), s.d,

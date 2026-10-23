@@ -7,6 +7,16 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Tied-block recursion** (23 Oct, the tiny-chat recursion arm): llama-family
+  `arch.custom.recursion` {prelude P, block B, repeats R, coda C, schedule "fixed", inject
+  "none" | "add"} stores P + B + C layers and applies P, then B R times, then C, each application
+  with its own KV cache and full backprop through all of them (`nn::layer_schedule`). IR: the
+  block key `weight_index` {"per_layer": [...]} (application i reads blk.{m_i}), family
+  `llama_recursive`, GGUF architecture `paperkiln` with the shared layers stored once;
+  `tools/ir_numpy.py` and `ir_check.py` follow it. Tests: `tests/test_recursion.cpp` (R = 1 bit
+  for bit, tied vs untied bit for bit, FD gradcheck worst 2.7e-3, KV cache, AdamW once per
+  tensor, the device-resident step for Colab) and `tests/test_recursion_ir.py` (numpy IR vs
+  mtstudio within 3.8e-7, greedy 40/40).
 - **Tiny-chat experiments, pre-registered and prepared** (23 Oct): `experiments/tiny_chat_2026-10/`
   (PREREGISTRATION.md, `make_jobs.py`, `analyze.py`, shape and SFT specs),
   `tools/colab_chat/tiny_chat_run.py` and `tiny_chat_data.py`, jobs files
