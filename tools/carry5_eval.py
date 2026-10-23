@@ -176,7 +176,13 @@ class ChatServer:
             want = os.path.realpath(gguf)
         else:
             argv = [a.mtstudio, "chat", spec_path, "--port", str(a.port)]
-            want = json.load(open(spec_path, encoding="utf-8"))["name"]
+            # The KV cache (gated: logits within 2e-7 of the range vs recompute, greedy 40/40,
+            # tests/test_kv_cache.cpp) for the llama family: without it every token recomputes the
+            # whole conversation, and the floor pilot's post job spent over 2 h generating (24 Oct 2026).
+            spec = json.load(open(spec_path, encoding="utf-8"))
+            if not getattr(a, "no_kv_cache", False) and spec.get("arch", {}).get("preset", "").startswith("llama"):
+                argv.append("--kv-cache")
+            want = spec["name"]
         self.proc = subprocess.Popen(argv, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         health = None
         for _ in range(300):
@@ -672,6 +678,8 @@ def main(argv=None):
         p.add_argument("--mtstudio", default="")
         p.add_argument("--scorer", default="mtstudio", choices=["mtstudio", "ir", "uniform", "none"])
         p.add_argument("--port", type=int, default=8093)
+        p.add_argument("--no-kv-cache", action="store_true",
+                       help="mtstudio chat without its KV cache (the default uses it for the llama family)")
         p.add_argument("--max-new", type=int, default=24)
         if name == "report":
             continue
