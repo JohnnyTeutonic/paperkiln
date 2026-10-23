@@ -1,0 +1,296 @@
+{
+ "_comment": "tiny-chat Stage 0 RERUN (20m; experiments/tiny_chat_2026-10/PREREGISTRATION.md amendment 2): the 10 screens of attempt 1 that FAILED (crashes with finite losses, not divergence; receipts in experiments/tiny_chat_2026-10/stage0/attempt1/), rerun unchanged and one at a time (max_parallel 1). Measured estimate 2.5 job-hours plus the data job. Afterwards, at home: python tools/colab_chat/tiny_chat_run.py choose --art ATTEMPT1_ART --art THIS_ART --out experiments/tiny_chat_2026-10/stage0/lr_choice.json, commit, rerun make_jobs.py. Upload vocab_llama3_bpe.gguf with the runner's --upload. Dialogue levels [0, 17, 35, 70]% (copies), E1 at 35% (design.json final).",
+ "max_parallel": 1,
+ "jobs": [
+  {
+   "name": "gate",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "gate",
+    "--out",
+    "{out}",
+    "--stage0",
+    "--jobs",
+    "tools/colab_chat/tiny_chat_s0_rerun.json",
+    "--design",
+    "experiments/tiny_chat_2026-10/design.json"
+   ],
+   "outputs": [
+    "gate.json"
+   ]
+  },
+  {
+   "name": "data",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_data.py",
+    "--out",
+    "{out}",
+    "--vocab",
+    "/content/chat/upload/vocab_llama3_bpe.gguf",
+    "--fineweb",
+    "corpus/data/fineweb_edu_shard0_v1",
+    "--shares",
+    "35",
+    "--mix-bytes",
+    "800000000",
+    "--max-epochs",
+    "4",
+    "--T",
+    "512",
+    "--seed",
+    "1",
+    "--human-fetch",
+    "python3 corpus/fetchers/human_dialogue.py oasst,convai2,wow,bst,taskmaster,multiwoz,self_dialogue,topical_chat,dolly,quac,empathetic,dailydialog,no_robots --allow-sa --allow-nc --out-dir {human}",
+    "--sources",
+    "oasst,convai2,wow,bst,taskmaster,multiwoz,self_dialogue,topical_chat,dolly,quac,empathetic,dailydialog,no_robots",
+    "--require-pinned"
+   ],
+   "outputs": [
+    "data.ledger.json"
+   ],
+   "after": "gate"
+  },
+  {
+   "name": "screen_20m_L32_lr0",
+   "after": "data",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "screen",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L32.json",
+    "--corpus",
+    "/content/chat/data/mix_s35.ids",
+    "--lr",
+    "0.0005",
+    "--steps",
+    "1500",
+    "--seed",
+    "101"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "screen_20m_L32_lr1",
+   "after": "data",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "screen",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L32.json",
+    "--corpus",
+    "/content/chat/data/mix_s35.ids",
+    "--lr",
+    "0.001",
+    "--steps",
+    "1500",
+    "--seed",
+    "101"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "screen_20m_L16_lr0",
+   "after": "data",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "screen",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L16.json",
+    "--corpus",
+    "/content/chat/data/mix_s35.ids",
+    "--lr",
+    "0.0005",
+    "--steps",
+    "1500",
+    "--seed",
+    "101"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "screen_20m_L8_lr0",
+   "after": "data",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "screen",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L8.json",
+    "--corpus",
+    "/content/chat/data/mix_s35.ids",
+    "--lr",
+    "0.0005",
+    "--steps",
+    "1500",
+    "--seed",
+    "101"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "screen_20m_L8_lr1",
+   "after": "data",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "screen",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L8.json",
+    "--corpus",
+    "/content/chat/data/mix_s35.ids",
+    "--lr",
+    "0.001",
+    "--steps",
+    "1500",
+    "--seed",
+    "101"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "screen_20m_L8_lr2",
+   "after": "data",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "screen",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L8.json",
+    "--corpus",
+    "/content/chat/data/mix_s35.ids",
+    "--lr",
+    "0.002",
+    "--steps",
+    "1500",
+    "--seed",
+    "101"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "screen_20m_L4_lr1",
+   "after": "data",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "screen",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L4.json",
+    "--corpus",
+    "/content/chat/data/mix_s35.ids",
+    "--lr",
+    "0.001",
+    "--steps",
+    "1500",
+    "--seed",
+    "101"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "screen_20m_L4_lr2",
+   "after": "data",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "screen",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L4.json",
+    "--corpus",
+    "/content/chat/data/mix_s35.ids",
+    "--lr",
+    "0.002",
+    "--steps",
+    "1500",
+    "--seed",
+    "101"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "screen_20m_L2_lr1",
+   "after": "data",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "screen",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
+    "--corpus",
+    "/content/chat/data/mix_s35.ids",
+    "--lr",
+    "0.001",
+    "--steps",
+    "1500",
+    "--seed",
+    "101"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "screen_20m_L2_lr2",
+   "after": "data",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "screen",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
+    "--corpus",
+    "/content/chat/data/mix_s35.ids",
+    "--lr",
+    "0.002",
+    "--steps",
+    "1500",
+    "--seed",
+    "101"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  }
+ ]
+}

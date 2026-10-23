@@ -1,6 +1,6 @@
 {
- "_comment": "tiny-chat EXPLORATORY successive-halving arm (experiments/tiny_chat_2026-10/PREREGISTRATION.md amendment 1; plan experiments/tiny_chat_2026-10/asha_plan.json). 27 random configurations (shape, peak lr, warmup, dialogue share) trained from scratch for 1000 steps; the top 9 by base-model Carry-5 acc_gold retrain for 3000; the top 3 for the full 10000 steps, then SFT and Carry-5 as the E cells. Promotion runs on the VM (asha_promote_*); candidates not promoted end FAILED with 'not promoted' in their log. Worst case 19.5 L4 VM-hours; cap 20 (the runner's --max-hours). Launch through tools/colab_chat/tiny_chat_asha.py drive, which keeps ART/asha_state.json (every result and decision home so far) current for the runner's --upload asha_state.json=..., so a replaced VM can still promote. Upload vocab_llama3_bpe.gguf too. Dialogue levels [0, 17, 35, 70]% (copies), E1 at 35% (design.json final).",
- "max_parallel": 4,
+ "_comment": "tiny-chat EXPLORATORY successive-halving arm (experiments/tiny_chat_2026-10/PREREGISTRATION.md amendment 1, one GPU job at a time by amendment 2; plan experiments/tiny_chat_2026-10/asha_plan.json). 27 random configurations (shape, peak lr, warmup, dialogue share) trained from scratch for 1000 steps; the top 9 by base-model Carry-5 acc_gold retrain for 3000; the top 3 for the full 10000 steps, then SFT and Carry-5 as the E cells. Promotion runs on the VM (asha_promote_*); candidates not promoted end FAILED with 'not promoted' in their log. Worst case 19.0 L4 VM-hours; cap 20 (the runner's --max-hours). Launch through tools/colab_chat/tiny_chat_asha.py drive, which keeps ART/asha_state.json (every result and decision home so far) current for the runner's --upload asha_state.json=..., so a replaced VM can still promote. Upload vocab_llama3_bpe.gguf too. Dialogue levels [0, 17, 35, 70]% (copies), E1 at 35% (design.json final).",
+ "max_parallel": 1,
  "max_parallel_light": 1,
  "jobs": [
   {
@@ -640,162 +640,6 @@
    ]
   },
   {
-   "name": "asha_r0_c02",
-   "after": "data",
-   "cmd": [
-    "python3",
-    "tools/colab_chat/tiny_chat_run.py",
-    "asha_train",
-    "--out",
-    "{out}",
-    "--spec",
-    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
-    "--corpus",
-    "/content/chat/data/mix_s35.ids",
-    "--budget",
-    "1000",
-    "--lr",
-    "0.00282",
-    "--warmup-frac",
-    "0.02",
-    "--seed",
-    "1002",
-    "--share",
-    "35",
-    "--config",
-    "c02",
-    "--round",
-    "r0",
-    "--panel",
-    "fineweb=/content/chat/data/panel_fineweb.ids",
-    "--panel",
-    "dialogue=/content/chat/data/panel_dialogue.ids",
-    "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
-   ],
-   "outputs": [
-    "rung.json",
-    "run/events.jsonl"
-   ]
-  },
-  {
-   "name": "asha_r0_c19",
-   "after": "data",
-   "cmd": [
-    "python3",
-    "tools/colab_chat/tiny_chat_run.py",
-    "asha_train",
-    "--out",
-    "{out}",
-    "--spec",
-    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
-    "--corpus",
-    "/content/chat/data/mix_s0.ids",
-    "--budget",
-    "1000",
-    "--lr",
-    "0.00255",
-    "--warmup-frac",
-    "0.1",
-    "--seed",
-    "1019",
-    "--share",
-    "0",
-    "--config",
-    "c19",
-    "--round",
-    "r0",
-    "--panel",
-    "fineweb=/content/chat/data/panel_fineweb.ids",
-    "--panel",
-    "dialogue=/content/chat/data/panel_dialogue.ids",
-    "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
-   ],
-   "outputs": [
-    "rung.json",
-    "run/events.jsonl"
-   ]
-  },
-  {
-   "name": "asha_r0_c21",
-   "after": "data",
-   "cmd": [
-    "python3",
-    "tools/colab_chat/tiny_chat_run.py",
-    "asha_train",
-    "--out",
-    "{out}",
-    "--spec",
-    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
-    "--corpus",
-    "/content/chat/data/mix_s70.ids",
-    "--budget",
-    "1000",
-    "--lr",
-    "0.000868",
-    "--warmup-frac",
-    "0.05",
-    "--seed",
-    "1021",
-    "--share",
-    "70",
-    "--config",
-    "c21",
-    "--round",
-    "r0",
-    "--panel",
-    "fineweb=/content/chat/data/panel_fineweb.ids",
-    "--panel",
-    "dialogue=/content/chat/data/panel_dialogue.ids",
-    "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
-   ],
-   "outputs": [
-    "rung.json",
-    "run/events.jsonl"
-   ]
-  },
-  {
-   "name": "asha_r0_c25",
-   "after": "data",
-   "cmd": [
-    "python3",
-    "tools/colab_chat/tiny_chat_run.py",
-    "asha_train",
-    "--out",
-    "{out}",
-    "--spec",
-    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
-    "--corpus",
-    "/content/chat/data/mix_s0.ids",
-    "--budget",
-    "1000",
-    "--lr",
-    "0.00245",
-    "--warmup-frac",
-    "0.02",
-    "--seed",
-    "1025",
-    "--share",
-    "0",
-    "--config",
-    "c25",
-    "--round",
-    "r0",
-    "--panel",
-    "fineweb=/content/chat/data/panel_fineweb.ids",
-    "--panel",
-    "dialogue=/content/chat/data/panel_dialogue.ids",
-    "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
-   ],
-   "outputs": [
-    "rung.json",
-    "run/events.jsonl"
-   ]
-  },
-  {
    "name": "asha_r0_c00",
    "after": "data",
    "cmd": [
@@ -1108,6 +952,162 @@
    ]
   },
   {
+   "name": "asha_r0_c02",
+   "after": "data",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "asha_train",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
+    "--corpus",
+    "/content/chat/data/mix_s35.ids",
+    "--budget",
+    "1000",
+    "--lr",
+    "0.00282",
+    "--warmup-frac",
+    "0.02",
+    "--seed",
+    "1002",
+    "--share",
+    "35",
+    "--config",
+    "c02",
+    "--round",
+    "r0",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json",
+    "run/events.jsonl"
+   ]
+  },
+  {
+   "name": "asha_r0_c19",
+   "after": "data",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "asha_train",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
+    "--corpus",
+    "/content/chat/data/mix_s0.ids",
+    "--budget",
+    "1000",
+    "--lr",
+    "0.00255",
+    "--warmup-frac",
+    "0.1",
+    "--seed",
+    "1019",
+    "--share",
+    "0",
+    "--config",
+    "c19",
+    "--round",
+    "r0",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json",
+    "run/events.jsonl"
+   ]
+  },
+  {
+   "name": "asha_r0_c21",
+   "after": "data",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "asha_train",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
+    "--corpus",
+    "/content/chat/data/mix_s70.ids",
+    "--budget",
+    "1000",
+    "--lr",
+    "0.000868",
+    "--warmup-frac",
+    "0.05",
+    "--seed",
+    "1021",
+    "--share",
+    "70",
+    "--config",
+    "c21",
+    "--round",
+    "r0",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json",
+    "run/events.jsonl"
+   ]
+  },
+  {
+   "name": "asha_r0_c25",
+   "after": "data",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "asha_train",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
+    "--corpus",
+    "/content/chat/data/mix_s0.ids",
+    "--budget",
+    "1000",
+    "--lr",
+    "0.00245",
+    "--warmup-frac",
+    "0.02",
+    "--seed",
+    "1025",
+    "--share",
+    "0",
+    "--config",
+    "c25",
+    "--round",
+    "r0",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json",
+    "run/events.jsonl"
+   ]
+  },
+  {
    "name": "asha_promote_r1",
    "light": true,
    "after_terminal": true,
@@ -1127,10 +1127,6 @@
     "asha_r0_c05",
     "asha_r0_c22",
     "asha_r0_c26",
-    "asha_r0_c02",
-    "asha_r0_c19",
-    "asha_r0_c21",
-    "asha_r0_c25",
     "asha_r0_c00",
     "asha_r0_c03",
     "asha_r0_c07",
@@ -1138,7 +1134,11 @@
     "asha_r0_c24",
     "asha_r0_c01",
     "asha_r0_c08",
-    "asha_r0_c16"
+    "asha_r0_c16",
+    "asha_r0_c02",
+    "asha_r0_c19",
+    "asha_r0_c21",
+    "asha_r0_c25"
    ],
    "cmd": [
     "python3",
@@ -1863,194 +1863,6 @@
    ]
   },
   {
-   "name": "asha_r1_c02",
-   "after": "asha_promote_r1",
-   "promoted_by": {
-    "files": [
-     "/content/chat/asha_promote_r1/decisions.json",
-     "/content/chat/upload/asha_state.json"
-    ],
-    "round": "r1",
-    "key": "c02"
-   },
-   "cmd": [
-    "python3",
-    "tools/colab_chat/tiny_chat_run.py",
-    "asha_train",
-    "--out",
-    "{out}",
-    "--spec",
-    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
-    "--corpus",
-    "/content/chat/data/mix_s35.ids",
-    "--budget",
-    "3000",
-    "--lr",
-    "0.00282",
-    "--warmup-frac",
-    "0.02",
-    "--seed",
-    "1002",
-    "--share",
-    "35",
-    "--config",
-    "c02",
-    "--round",
-    "r1",
-    "--panel",
-    "fineweb=/content/chat/data/panel_fineweb.ids",
-    "--panel",
-    "dialogue=/content/chat/data/panel_dialogue.ids",
-    "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
-   ],
-   "outputs": [
-    "rung.json",
-    "run/events.jsonl"
-   ]
-  },
-  {
-   "name": "asha_r1_c19",
-   "after": "asha_promote_r1",
-   "promoted_by": {
-    "files": [
-     "/content/chat/asha_promote_r1/decisions.json",
-     "/content/chat/upload/asha_state.json"
-    ],
-    "round": "r1",
-    "key": "c19"
-   },
-   "cmd": [
-    "python3",
-    "tools/colab_chat/tiny_chat_run.py",
-    "asha_train",
-    "--out",
-    "{out}",
-    "--spec",
-    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
-    "--corpus",
-    "/content/chat/data/mix_s0.ids",
-    "--budget",
-    "3000",
-    "--lr",
-    "0.00255",
-    "--warmup-frac",
-    "0.1",
-    "--seed",
-    "1019",
-    "--share",
-    "0",
-    "--config",
-    "c19",
-    "--round",
-    "r1",
-    "--panel",
-    "fineweb=/content/chat/data/panel_fineweb.ids",
-    "--panel",
-    "dialogue=/content/chat/data/panel_dialogue.ids",
-    "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
-   ],
-   "outputs": [
-    "rung.json",
-    "run/events.jsonl"
-   ]
-  },
-  {
-   "name": "asha_r1_c21",
-   "after": "asha_promote_r1",
-   "promoted_by": {
-    "files": [
-     "/content/chat/asha_promote_r1/decisions.json",
-     "/content/chat/upload/asha_state.json"
-    ],
-    "round": "r1",
-    "key": "c21"
-   },
-   "cmd": [
-    "python3",
-    "tools/colab_chat/tiny_chat_run.py",
-    "asha_train",
-    "--out",
-    "{out}",
-    "--spec",
-    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
-    "--corpus",
-    "/content/chat/data/mix_s70.ids",
-    "--budget",
-    "3000",
-    "--lr",
-    "0.000868",
-    "--warmup-frac",
-    "0.05",
-    "--seed",
-    "1021",
-    "--share",
-    "70",
-    "--config",
-    "c21",
-    "--round",
-    "r1",
-    "--panel",
-    "fineweb=/content/chat/data/panel_fineweb.ids",
-    "--panel",
-    "dialogue=/content/chat/data/panel_dialogue.ids",
-    "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
-   ],
-   "outputs": [
-    "rung.json",
-    "run/events.jsonl"
-   ]
-  },
-  {
-   "name": "asha_r1_c25",
-   "after": "asha_promote_r1",
-   "promoted_by": {
-    "files": [
-     "/content/chat/asha_promote_r1/decisions.json",
-     "/content/chat/upload/asha_state.json"
-    ],
-    "round": "r1",
-    "key": "c25"
-   },
-   "cmd": [
-    "python3",
-    "tools/colab_chat/tiny_chat_run.py",
-    "asha_train",
-    "--out",
-    "{out}",
-    "--spec",
-    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
-    "--corpus",
-    "/content/chat/data/mix_s0.ids",
-    "--budget",
-    "3000",
-    "--lr",
-    "0.00245",
-    "--warmup-frac",
-    "0.02",
-    "--seed",
-    "1025",
-    "--share",
-    "0",
-    "--config",
-    "c25",
-    "--round",
-    "r1",
-    "--panel",
-    "fineweb=/content/chat/data/panel_fineweb.ids",
-    "--panel",
-    "dialogue=/content/chat/data/panel_dialogue.ids",
-    "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
-   ],
-   "outputs": [
-    "rung.json",
-    "run/events.jsonl"
-   ]
-  },
-  {
    "name": "asha_r1_c00",
    "after": "asha_promote_r1",
    "promoted_by": {
@@ -2427,6 +2239,194 @@
    ]
   },
   {
+   "name": "asha_r1_c02",
+   "after": "asha_promote_r1",
+   "promoted_by": {
+    "files": [
+     "/content/chat/asha_promote_r1/decisions.json",
+     "/content/chat/upload/asha_state.json"
+    ],
+    "round": "r1",
+    "key": "c02"
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "asha_train",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
+    "--corpus",
+    "/content/chat/data/mix_s35.ids",
+    "--budget",
+    "3000",
+    "--lr",
+    "0.00282",
+    "--warmup-frac",
+    "0.02",
+    "--seed",
+    "1002",
+    "--share",
+    "35",
+    "--config",
+    "c02",
+    "--round",
+    "r1",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json",
+    "run/events.jsonl"
+   ]
+  },
+  {
+   "name": "asha_r1_c19",
+   "after": "asha_promote_r1",
+   "promoted_by": {
+    "files": [
+     "/content/chat/asha_promote_r1/decisions.json",
+     "/content/chat/upload/asha_state.json"
+    ],
+    "round": "r1",
+    "key": "c19"
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "asha_train",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
+    "--corpus",
+    "/content/chat/data/mix_s0.ids",
+    "--budget",
+    "3000",
+    "--lr",
+    "0.00255",
+    "--warmup-frac",
+    "0.1",
+    "--seed",
+    "1019",
+    "--share",
+    "0",
+    "--config",
+    "c19",
+    "--round",
+    "r1",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json",
+    "run/events.jsonl"
+   ]
+  },
+  {
+   "name": "asha_r1_c21",
+   "after": "asha_promote_r1",
+   "promoted_by": {
+    "files": [
+     "/content/chat/asha_promote_r1/decisions.json",
+     "/content/chat/upload/asha_state.json"
+    ],
+    "round": "r1",
+    "key": "c21"
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "asha_train",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
+    "--corpus",
+    "/content/chat/data/mix_s70.ids",
+    "--budget",
+    "3000",
+    "--lr",
+    "0.000868",
+    "--warmup-frac",
+    "0.05",
+    "--seed",
+    "1021",
+    "--share",
+    "70",
+    "--config",
+    "c21",
+    "--round",
+    "r1",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json",
+    "run/events.jsonl"
+   ]
+  },
+  {
+   "name": "asha_r1_c25",
+   "after": "asha_promote_r1",
+   "promoted_by": {
+    "files": [
+     "/content/chat/asha_promote_r1/decisions.json",
+     "/content/chat/upload/asha_state.json"
+    ],
+    "round": "r1",
+    "key": "c25"
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "asha_train",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
+    "--corpus",
+    "/content/chat/data/mix_s0.ids",
+    "--budget",
+    "3000",
+    "--lr",
+    "0.00245",
+    "--warmup-frac",
+    "0.02",
+    "--seed",
+    "1025",
+    "--share",
+    "0",
+    "--config",
+    "c25",
+    "--round",
+    "r1",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json",
+    "run/events.jsonl"
+   ]
+  },
+  {
    "name": "asha_promote_r2",
    "light": true,
    "after_terminal": true,
@@ -2446,10 +2446,6 @@
     "asha_r1_c05",
     "asha_r1_c22",
     "asha_r1_c26",
-    "asha_r1_c02",
-    "asha_r1_c19",
-    "asha_r1_c21",
-    "asha_r1_c25",
     "asha_r1_c00",
     "asha_r1_c03",
     "asha_r1_c07",
@@ -2457,7 +2453,11 @@
     "asha_r1_c24",
     "asha_r1_c01",
     "asha_r1_c08",
-    "asha_r1_c16"
+    "asha_r1_c16",
+    "asha_r1_c02",
+    "asha_r1_c19",
+    "asha_r1_c21",
+    "asha_r1_c25"
    ],
    "cmd": [
     "python3",
@@ -3902,386 +3902,6 @@
    ]
   },
   {
-   "name": "asha_r2_c02",
-   "model_name": "tc_asha_c02",
-   "after": "asha_promote_r2",
-   "promoted_by": {
-    "files": [
-     "/content/chat/asha_promote_r2/decisions.json",
-     "/content/chat/upload/asha_state.json"
-    ],
-    "round": "r2",
-    "key": "c02"
-   },
-   "relay_every_steps": 2500,
-   "spec": {
-    "name": "tc_20m_L2",
-    "arch": {
-     "preset": "llama-tiny",
-     "rope_heads": "all",
-     "custom": {
-      "d": 896,
-      "layers": 2,
-      "heads": 14,
-      "d_ff": 2528
-     }
-    },
-    "data": {
-     "corpus": "/content/chat/data/mix_s35.ids",
-     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
-     "vocab_cap": 16384,
-     "T": 512,
-     "max_tokens": 0
-    },
-    "train": {
-     "steps": 10000,
-     "lr": 0.00282,
-     "batch": 32,
-     "accum": 1,
-     "clip": 1.0,
-     "eval_every": 500,
-     "eval_windows": 32,
-     "checkpoint_every": 500,
-     "gradmap_every": 0,
-     "seed": 1002,
-     "optimizer": "adamw",
-     "lr_schedule": {
-      "warmup_steps": 200,
-      "decay": "cosine",
-      "min_lr_frac": 0.1
-     }
-    },
-    "export": {
-     "formats": [
-      "safetensors",
-      "gguf"
-     ]
-    }
-   }
-  },
-  {
-   "name": "asha_post_c02",
-   "after": "asha_r2_c02",
-   "init_job": "asha_r2_c02",
-   "cmd": [
-    "python3",
-    "tools/colab_chat/tiny_chat_run.py",
-    "post",
-    "--out",
-    "{out}",
-    "--spec",
-    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
-    "--pt-weights",
-    "/content/chat/asha_r2_c02/tc_asha_c02.safetensors",
-    "--pt-dir",
-    "/content/chat/asha_r2_c02",
-    "--sft-template",
-    "experiments/tiny_chat_2026-10/specs/sft.json",
-    "--seed",
-    "1002",
-    "--cell",
-    "asha_c02",
-    "--share",
-    "35",
-    "--pt-lr",
-    "0.00282",
-    "--panel",
-    "fineweb=/content/chat/data/panel_fineweb.ids",
-    "--panel",
-    "dialogue=/content/chat/data/panel_dialogue.ids",
-    "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
-   ],
-   "outputs": [
-    "summary.json"
-   ]
-  },
-  {
-   "name": "asha_r2_c19",
-   "model_name": "tc_asha_c19",
-   "after": "asha_promote_r2",
-   "promoted_by": {
-    "files": [
-     "/content/chat/asha_promote_r2/decisions.json",
-     "/content/chat/upload/asha_state.json"
-    ],
-    "round": "r2",
-    "key": "c19"
-   },
-   "relay_every_steps": 2500,
-   "spec": {
-    "name": "tc_20m_L2",
-    "arch": {
-     "preset": "llama-tiny",
-     "rope_heads": "all",
-     "custom": {
-      "d": 896,
-      "layers": 2,
-      "heads": 14,
-      "d_ff": 2528
-     }
-    },
-    "data": {
-     "corpus": "/content/chat/data/mix_s0.ids",
-     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
-     "vocab_cap": 16384,
-     "T": 512,
-     "max_tokens": 0
-    },
-    "train": {
-     "steps": 10000,
-     "lr": 0.00255,
-     "batch": 32,
-     "accum": 1,
-     "clip": 1.0,
-     "eval_every": 500,
-     "eval_windows": 32,
-     "checkpoint_every": 500,
-     "gradmap_every": 0,
-     "seed": 1019,
-     "optimizer": "adamw",
-     "lr_schedule": {
-      "warmup_steps": 1000,
-      "decay": "cosine",
-      "min_lr_frac": 0.1
-     }
-    },
-    "export": {
-     "formats": [
-      "safetensors",
-      "gguf"
-     ]
-    }
-   }
-  },
-  {
-   "name": "asha_post_c19",
-   "after": "asha_r2_c19",
-   "init_job": "asha_r2_c19",
-   "cmd": [
-    "python3",
-    "tools/colab_chat/tiny_chat_run.py",
-    "post",
-    "--out",
-    "{out}",
-    "--spec",
-    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
-    "--pt-weights",
-    "/content/chat/asha_r2_c19/tc_asha_c19.safetensors",
-    "--pt-dir",
-    "/content/chat/asha_r2_c19",
-    "--sft-template",
-    "experiments/tiny_chat_2026-10/specs/sft.json",
-    "--seed",
-    "1019",
-    "--cell",
-    "asha_c19",
-    "--share",
-    "0",
-    "--pt-lr",
-    "0.00255",
-    "--panel",
-    "fineweb=/content/chat/data/panel_fineweb.ids",
-    "--panel",
-    "dialogue=/content/chat/data/panel_dialogue.ids",
-    "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
-   ],
-   "outputs": [
-    "summary.json"
-   ]
-  },
-  {
-   "name": "asha_r2_c21",
-   "model_name": "tc_asha_c21",
-   "after": "asha_promote_r2",
-   "promoted_by": {
-    "files": [
-     "/content/chat/asha_promote_r2/decisions.json",
-     "/content/chat/upload/asha_state.json"
-    ],
-    "round": "r2",
-    "key": "c21"
-   },
-   "relay_every_steps": 2500,
-   "spec": {
-    "name": "tc_20m_L2",
-    "arch": {
-     "preset": "llama-tiny",
-     "rope_heads": "all",
-     "custom": {
-      "d": 896,
-      "layers": 2,
-      "heads": 14,
-      "d_ff": 2528
-     }
-    },
-    "data": {
-     "corpus": "/content/chat/data/mix_s70.ids",
-     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
-     "vocab_cap": 16384,
-     "T": 512,
-     "max_tokens": 0
-    },
-    "train": {
-     "steps": 10000,
-     "lr": 0.000868,
-     "batch": 32,
-     "accum": 1,
-     "clip": 1.0,
-     "eval_every": 500,
-     "eval_windows": 32,
-     "checkpoint_every": 500,
-     "gradmap_every": 0,
-     "seed": 1021,
-     "optimizer": "adamw",
-     "lr_schedule": {
-      "warmup_steps": 500,
-      "decay": "cosine",
-      "min_lr_frac": 0.1
-     }
-    },
-    "export": {
-     "formats": [
-      "safetensors",
-      "gguf"
-     ]
-    }
-   }
-  },
-  {
-   "name": "asha_post_c21",
-   "after": "asha_r2_c21",
-   "init_job": "asha_r2_c21",
-   "cmd": [
-    "python3",
-    "tools/colab_chat/tiny_chat_run.py",
-    "post",
-    "--out",
-    "{out}",
-    "--spec",
-    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
-    "--pt-weights",
-    "/content/chat/asha_r2_c21/tc_asha_c21.safetensors",
-    "--pt-dir",
-    "/content/chat/asha_r2_c21",
-    "--sft-template",
-    "experiments/tiny_chat_2026-10/specs/sft.json",
-    "--seed",
-    "1021",
-    "--cell",
-    "asha_c21",
-    "--share",
-    "70",
-    "--pt-lr",
-    "0.000868",
-    "--panel",
-    "fineweb=/content/chat/data/panel_fineweb.ids",
-    "--panel",
-    "dialogue=/content/chat/data/panel_dialogue.ids",
-    "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
-   ],
-   "outputs": [
-    "summary.json"
-   ]
-  },
-  {
-   "name": "asha_r2_c25",
-   "model_name": "tc_asha_c25",
-   "after": "asha_promote_r2",
-   "promoted_by": {
-    "files": [
-     "/content/chat/asha_promote_r2/decisions.json",
-     "/content/chat/upload/asha_state.json"
-    ],
-    "round": "r2",
-    "key": "c25"
-   },
-   "relay_every_steps": 2500,
-   "spec": {
-    "name": "tc_20m_L2",
-    "arch": {
-     "preset": "llama-tiny",
-     "rope_heads": "all",
-     "custom": {
-      "d": 896,
-      "layers": 2,
-      "heads": 14,
-      "d_ff": 2528
-     }
-    },
-    "data": {
-     "corpus": "/content/chat/data/mix_s0.ids",
-     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
-     "vocab_cap": 16384,
-     "T": 512,
-     "max_tokens": 0
-    },
-    "train": {
-     "steps": 10000,
-     "lr": 0.00245,
-     "batch": 32,
-     "accum": 1,
-     "clip": 1.0,
-     "eval_every": 500,
-     "eval_windows": 32,
-     "checkpoint_every": 500,
-     "gradmap_every": 0,
-     "seed": 1025,
-     "optimizer": "adamw",
-     "lr_schedule": {
-      "warmup_steps": 200,
-      "decay": "cosine",
-      "min_lr_frac": 0.1
-     }
-    },
-    "export": {
-     "formats": [
-      "safetensors",
-      "gguf"
-     ]
-    }
-   }
-  },
-  {
-   "name": "asha_post_c25",
-   "after": "asha_r2_c25",
-   "init_job": "asha_r2_c25",
-   "cmd": [
-    "python3",
-    "tools/colab_chat/tiny_chat_run.py",
-    "post",
-    "--out",
-    "{out}",
-    "--spec",
-    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
-    "--pt-weights",
-    "/content/chat/asha_r2_c25/tc_asha_c25.safetensors",
-    "--pt-dir",
-    "/content/chat/asha_r2_c25",
-    "--sft-template",
-    "experiments/tiny_chat_2026-10/specs/sft.json",
-    "--seed",
-    "1025",
-    "--cell",
-    "asha_c25",
-    "--share",
-    "0",
-    "--pt-lr",
-    "0.00245",
-    "--panel",
-    "fineweb=/content/chat/data/panel_fineweb.ids",
-    "--panel",
-    "dialogue=/content/chat/data/panel_dialogue.ids",
-    "--carry5-items",
-    "corpus/eval/carry5_v1.jsonl"
-   ],
-   "outputs": [
-    "summary.json"
-   ]
-  },
-  {
    "name": "asha_r2_c00",
    "model_name": "tc_asha_c00",
    "after": "asha_promote_r2",
@@ -5030,6 +4650,386 @@
     "35",
     "--pt-lr",
     "0.000327",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "asha_r2_c02",
+   "model_name": "tc_asha_c02",
+   "after": "asha_promote_r2",
+   "promoted_by": {
+    "files": [
+     "/content/chat/asha_promote_r2/decisions.json",
+     "/content/chat/upload/asha_state.json"
+    ],
+    "round": "r2",
+    "key": "c02"
+   },
+   "relay_every_steps": 2500,
+   "spec": {
+    "name": "tc_20m_L2",
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 896,
+      "layers": 2,
+      "heads": 14,
+      "d_ff": 2528
+     }
+    },
+    "data": {
+     "corpus": "/content/chat/data/mix_s35.ids",
+     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+     "vocab_cap": 16384,
+     "T": 512,
+     "max_tokens": 0
+    },
+    "train": {
+     "steps": 10000,
+     "lr": 0.00282,
+     "batch": 32,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 500,
+     "eval_windows": 32,
+     "checkpoint_every": 500,
+     "gradmap_every": 0,
+     "seed": 1002,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 200,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   }
+  },
+  {
+   "name": "asha_post_c02",
+   "after": "asha_r2_c02",
+   "init_job": "asha_r2_c02",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "post",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
+    "--pt-weights",
+    "/content/chat/asha_r2_c02/tc_asha_c02.safetensors",
+    "--pt-dir",
+    "/content/chat/asha_r2_c02",
+    "--sft-template",
+    "experiments/tiny_chat_2026-10/specs/sft.json",
+    "--seed",
+    "1002",
+    "--cell",
+    "asha_c02",
+    "--share",
+    "35",
+    "--pt-lr",
+    "0.00282",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "asha_r2_c19",
+   "model_name": "tc_asha_c19",
+   "after": "asha_promote_r2",
+   "promoted_by": {
+    "files": [
+     "/content/chat/asha_promote_r2/decisions.json",
+     "/content/chat/upload/asha_state.json"
+    ],
+    "round": "r2",
+    "key": "c19"
+   },
+   "relay_every_steps": 2500,
+   "spec": {
+    "name": "tc_20m_L2",
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 896,
+      "layers": 2,
+      "heads": 14,
+      "d_ff": 2528
+     }
+    },
+    "data": {
+     "corpus": "/content/chat/data/mix_s0.ids",
+     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+     "vocab_cap": 16384,
+     "T": 512,
+     "max_tokens": 0
+    },
+    "train": {
+     "steps": 10000,
+     "lr": 0.00255,
+     "batch": 32,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 500,
+     "eval_windows": 32,
+     "checkpoint_every": 500,
+     "gradmap_every": 0,
+     "seed": 1019,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 1000,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   }
+  },
+  {
+   "name": "asha_post_c19",
+   "after": "asha_r2_c19",
+   "init_job": "asha_r2_c19",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "post",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
+    "--pt-weights",
+    "/content/chat/asha_r2_c19/tc_asha_c19.safetensors",
+    "--pt-dir",
+    "/content/chat/asha_r2_c19",
+    "--sft-template",
+    "experiments/tiny_chat_2026-10/specs/sft.json",
+    "--seed",
+    "1019",
+    "--cell",
+    "asha_c19",
+    "--share",
+    "0",
+    "--pt-lr",
+    "0.00255",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "asha_r2_c21",
+   "model_name": "tc_asha_c21",
+   "after": "asha_promote_r2",
+   "promoted_by": {
+    "files": [
+     "/content/chat/asha_promote_r2/decisions.json",
+     "/content/chat/upload/asha_state.json"
+    ],
+    "round": "r2",
+    "key": "c21"
+   },
+   "relay_every_steps": 2500,
+   "spec": {
+    "name": "tc_20m_L2",
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 896,
+      "layers": 2,
+      "heads": 14,
+      "d_ff": 2528
+     }
+    },
+    "data": {
+     "corpus": "/content/chat/data/mix_s70.ids",
+     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+     "vocab_cap": 16384,
+     "T": 512,
+     "max_tokens": 0
+    },
+    "train": {
+     "steps": 10000,
+     "lr": 0.000868,
+     "batch": 32,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 500,
+     "eval_windows": 32,
+     "checkpoint_every": 500,
+     "gradmap_every": 0,
+     "seed": 1021,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 500,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   }
+  },
+  {
+   "name": "asha_post_c21",
+   "after": "asha_r2_c21",
+   "init_job": "asha_r2_c21",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "post",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
+    "--pt-weights",
+    "/content/chat/asha_r2_c21/tc_asha_c21.safetensors",
+    "--pt-dir",
+    "/content/chat/asha_r2_c21",
+    "--sft-template",
+    "experiments/tiny_chat_2026-10/specs/sft.json",
+    "--seed",
+    "1021",
+    "--cell",
+    "asha_c21",
+    "--share",
+    "70",
+    "--pt-lr",
+    "0.000868",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "asha_r2_c25",
+   "model_name": "tc_asha_c25",
+   "after": "asha_promote_r2",
+   "promoted_by": {
+    "files": [
+     "/content/chat/asha_promote_r2/decisions.json",
+     "/content/chat/upload/asha_state.json"
+    ],
+    "round": "r2",
+    "key": "c25"
+   },
+   "relay_every_steps": 2500,
+   "spec": {
+    "name": "tc_20m_L2",
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 896,
+      "layers": 2,
+      "heads": 14,
+      "d_ff": 2528
+     }
+    },
+    "data": {
+     "corpus": "/content/chat/data/mix_s0.ids",
+     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+     "vocab_cap": 16384,
+     "T": 512,
+     "max_tokens": 0
+    },
+    "train": {
+     "steps": 10000,
+     "lr": 0.00245,
+     "batch": 32,
+     "accum": 1,
+     "clip": 1.0,
+     "eval_every": 500,
+     "eval_windows": 32,
+     "checkpoint_every": 500,
+     "gradmap_every": 0,
+     "seed": 1025,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 200,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   }
+  },
+  {
+   "name": "asha_post_c25",
+   "after": "asha_r2_c25",
+   "init_job": "asha_r2_c25",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "post",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L2.json",
+    "--pt-weights",
+    "/content/chat/asha_r2_c25/tc_asha_c25.safetensors",
+    "--pt-dir",
+    "/content/chat/asha_r2_c25",
+    "--sft-template",
+    "experiments/tiny_chat_2026-10/specs/sft.json",
+    "--seed",
+    "1025",
+    "--cell",
+    "asha_c25",
+    "--share",
+    "0",
+    "--pt-lr",
+    "0.00245",
     "--panel",
     "fineweb=/content/chat/data/panel_fineweb.ids",
     "--panel",

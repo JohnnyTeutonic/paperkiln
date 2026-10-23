@@ -46,13 +46,13 @@
   }
  ],
  "schedule": "each round trains from scratch: warmup = warmup_frac x budget, cosine to 0.1x at the budget",
- "promotion": "into each round, the top `keep` of the previous round's candidates by base-model Carry-5 forced-choice accuracy with gold history (acc_gold), ties by lower dialogue panel loss, then config id; diverged or failed runs rank last and are never promoted",
+ "promotion": "into each round, the top `keep` of the previous round's candidates by base-model Carry-5 forced-choice accuracy with gold history (acc_gold) over the primary metric's families (amendment 2: the instruction family out), ties by lower dialogue panel loss, then config id; diverged or failed runs rank last and are never promoted",
  "cap_vm_hours": 20,
  "cost_job_hours": {
-  "r0": 11.2,
-  "r1_worst": 15.7,
-  "r2_worst": 21.9,
-  "worst_vm_hours": 19.5
+  "r0": 6.4,
+  "r1_worst": 5.5,
+  "r2_worst": 7.1,
+  "worst_vm_hours": 19.0
  },
  "configs": [
   {

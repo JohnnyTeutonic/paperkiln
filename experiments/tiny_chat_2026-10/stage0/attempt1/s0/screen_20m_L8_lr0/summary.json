@@ -1,0 +1,15 @@
+{
+ "mode": "screen",
+ "spec": "experiments/tiny_chat_2026-10/specs/shape_20m_L8.json",
+ "rc": 1,
+ "lr": 0.0005,
+ "seed": 101,
+ "steps": 1500,
+ "final_val": null,
+ "diverged": true,
+ "first_loss": 9.766529083251953,
+ "last_loss": 5.206896781921387,
+ "tok_per_s_steady": 9017.531989629215,
+ "other_mtstudio_at_end": 2,
+ "gpu": "NVIDIA L4"
+}

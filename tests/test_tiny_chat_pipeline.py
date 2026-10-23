@@ -223,9 +223,23 @@ def test_probe_screen_post_pick(built, tmp_path):
                     "assert os.path.exists(os.path.join(spec['out_dir'], spec['name'] + '.safetensors'))\n"
                     "m = 0.5 if spec['name'].endswith('r1') else 0.6\n"
                     "acc = {'gold': 0.65, 'self': m, 'twin': 0.7, 'noctx': 0.25}\n"
-                    "fc = {k: {mode: {'all': {'mean': v, 'n': 100}} for mode, v in acc.items()}"
-                    " for k in ('acc', 'acc_norm')}\n"
-                    "os.makedirs(arg('--out'), exist_ok=True)\n"
+                    "modes = [k for k in acc if k != 'self' or arg('--gen') != 'none']\n"
+                    # carry5_eval's summary lists every mode; an unscored one has mean None.
+                    "fc = {k: {mode: {'all': {'mean': acc[mode] + 0.05 if mode in modes else None,"
+                    " 'n': 100 if mode in modes else 0}} for mode in acc} for k in ('acc', 'acc_norm')}\n"
+                    "os.makedirs(os.path.join(arg('--out'), 'm'), exist_ok=True)\n"
+                    # Per-item records (amendment 2 pools from them): 20 recall items carrying the means
+                    # above, and 4 instruction items right in every mode, which the primary pool leaves out.
+                    "with open(os.path.join(arg('--out'), 'm', 'items.jsonl'), 'w') as f:\n"
+                    "    for i in range(20):\n"
+                    "        r = {'family': 'recall', 'fc': {mode: {'acc': float(i < round(20 * acc[mode])),"
+                    " 'acc_norm': 0.0} for mode in modes}, 'gen': {}}\n"
+                    "        f.write(json.dumps(r) + '\\n')\n"
+                    "    for i in range(4):\n"
+                    "        g = {mode: {'complies': i < 1} for mode in modes} if arg('--gen') != 'none' else {}\n"
+                    "        r = {'family': 'instruction', 'fc': {mode: {'acc': 1.0, 'acc_norm': 1.0} for mode in modes},"
+                    " 'gen': g}\n"
+                    "        f.write(json.dumps(r) + '\\n')\n"
                     "json.dump({'meta': {'gen': arg('--gen'), 'port': arg('--port')}, 'models': {'m': {'fc': fc}}},"
                     " open(os.path.join(arg('--out'), 'summary.json'), 'w'))\n")
     items = tmp_path / "items.jsonl"
@@ -250,6 +264,11 @@ def test_probe_screen_post_pick(built, tmp_path):
         assert s["sft_evals"] and s["carry5"]["meta"]["gen"] == "mtstudio" and s["carry5_base"]["meta"]["gen"] == "none"
         assert s["carry5"]["meta"]["port"] != s["carry5_base"]["meta"]["port"]
         assert abs(s["primary"] - ((0.5 if seed == 1 else 0.6) - 0.7)) < 1e-9
+        # Amendment 2: the pool leaves the instruction items out; the all-items values stay beside it.
+        assert s["carry5"]["pools"]["acc"]["primary"]["twin"]["n"] == 20 and s["carry5"]["ctx"]["noctx"] == 0.25
+        assert s["carry5"]["acc"]["twin"] == 0.75 and s["primary_all_items"] is not None
+        assert s["carry5"]["pools"]["instruction_complies_gen"]["self"] == {"mean": 0.25, "n": 4}
+        assert "self" not in s["carry5_base"]["pool"] and abs(s["final_rung"]["acc_gold_all"] - 0.70) < 1e-9
     r = subprocess.run(RUN + ["pick", "--out", str(tmp_path / "pick"), "--run", str(tmp_path / "post_r1"),
                               "--run", str(tmp_path / "post_r2")], capture_output=True, text=True, cwd=ROOT)
     assert r.returncode == 0, r.stderr[-1000:]
@@ -328,3 +347,78 @@ def test_choose_rule_and_gate(tmp_path):
     os.remove(fake)
     jobs.write_text(json.dumps({"jobs": [{"name": "pt_a", "spec": {"name": "tc_20m_L8", "train": {"lr": 0.001}}}]}))
     assert subprocess.run(gate + ["--choice", str(choice)], env=env, capture_output=True).returncode == 1
+
+
+# ---- amendment 2 (23 Oct 2026): failed screens are rerun; the amended Carry-5 pools ----
+def _screen(d, lr, rc, final_val, first=9.8, last=4.5):
+    d.mkdir(parents=True)
+    (d / "summary.json").write_text(json.dumps({"lr": lr, "rc": rc, "final_val": final_val, "first_loss": first,
+                                                "last_loss": last, "diverged": final_val is None,
+                                                "tok_per_s_steady": 1.0}))
+
+
+def test_choose_reads_reruns_of_failed_screens(tmp_path):
+    a1, a2 = tmp_path / "attempt1", tmp_path / "rerun"
+    # Attempt 1: L2 finished at 5e-4 only, its other two crashed (rc 1, finite losses: FAILED, not
+    # diverged); L8 crashed in all three, one of them after a single step.
+    _screen(a1 / "screen_20m_L2_lr0", 5e-4, 0, 4.44)
+    _screen(a1 / "screen_20m_L2_lr1", 1e-3, 1, None, first=None, last=None)
+    _screen(a1 / "screen_20m_L2_lr2", 2e-3, 1, None, first=None, last=None)
+    for k, lr in enumerate((5e-4, 1e-3, 2e-3)):
+        _screen(a1 / f"screen_20m_L8_lr{k}", lr, 1, None, last=9.8 if k == 2 else 5.2)
+    choice = tmp_path / "lr_choice.json"
+    r = subprocess.run(RUN + ["choose", "--art", str(a1), "--out", str(choice)], capture_output=True, text=True)
+    assert r.returncode != 0 and "FAILED" in r.stderr and not choice.exists()
+    # The rerun: L2's two failed screens finish (2e-3 diverges by the registered definition), L8's three finish.
+    _screen(a2 / "screen_20m_L2_lr1", 1e-3, 0, 4.30)
+    _screen(a2 / "screen_20m_L2_lr2", 2e-3, 0, 9.9, first=9.8, last=9.9)
+    for k, (lr, v) in enumerate(((5e-4, 4.40), (1e-3, 4.25), (2e-3, 4.255))):
+        _screen(a2 / f"screen_20m_L8_lr{k}", lr, 0, v)
+    r = subprocess.run(RUN + ["choose", "--art", str(a1), "--art", str(a2), "--out", str(choice)],
+                       capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    out = json.loads(choice.read_text())
+    assert out["lr"] == {"20m_L2": 1e-3, "20m_L8": 1e-3}  # L8: 2e-3 within 0.01 of 1e-3, so the smaller wins
+    l2 = {s["lr"]: s for s in out["screens"]["20m_L2"]}
+    assert l2[2e-3]["status"] == "DIVERGED" and l2[5e-4]["art"] == str(a1) and l2[1e-3]["art"] == str(a2)
+    assert [x["status"] for x in l2[1e-3]["attempts"]] == ["FAILED", "FINISHED"]
+    # A valid screen run twice is refused (no choosing among reruns).
+    choice.unlink()
+    _screen(a2 / "screen_20m_L2_lr0", 5e-4, 0, 4.10)
+    r = subprocess.run(RUN + ["choose", "--art", str(a1), "--art", str(a2), "--out", str(choice)],
+                       capture_output=True, text=True)
+    assert r.returncode != 0 and "never rerun" in r.stderr
+
+
+def test_screen_status_on_the_attempt1_receipts():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("tcr", ROOT / "tools" / "colab_chat" / "tiny_chat_run.py")
+    tcr = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(tcr)
+    base = ROOT / "experiments" / "tiny_chat_2026-10" / "stage0" / "attempt1"
+    st = {p.parent.name: tcr.screen_status(json.loads(p.read_text())) for p in base.glob("*/screen_*/summary.json")}
+    assert len(st) == 27 and sorted(set(st.values())) == ["FAILED", "FINISHED"]
+    assert sorted(k for k, v in st.items() if v == "FINISHED") == [
+        "screen_20m_L16_lr1", "screen_20m_L16_lr2", "screen_20m_L2_lr0", "screen_20m_L32_lr2", "screen_20m_L4_lr0"]
+    assert tcr.screen_status({"rc": 0, "final_val": float("nan"), "first_loss": 9.0}) == "DIVERGED"
+    assert tcr.screen_status({"rc": 1, "first_loss": 9.0, "last_loss": float("nan")}) == "DIVERGED"
+
+
+def test_carry5_pools_reproduce_the_sanity_receipts():
+    """carry5_pools over the live model's per-item records equals carry5_eval's own family means,
+    leaves the instruction family out of the primary pool, and reads generation compliance."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("tcr", ROOT / "tools" / "colab_chat" / "tiny_chat_run.py")
+    tcr = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(tcr)
+    for run, n_primary in (("fc_all", 888), ("gen7", 127)):
+        d = ROOT / "experiments" / "carry5_2026-10-23" / "sanity" / run
+        p = tcr.carry5_pools(d / "live" / "items.jsonl")
+        ref = json.loads((d / "summary.json").read_text())["models"]["live"]["fc"]["acc"]
+        for mode, fams in p["acc"]["family"].items():
+            for fam, v in fams.items():
+                assert round(v["mean"], 4) == ref[mode]["family"][fam]["mean"], (run, mode, fam)
+        assert p["acc"]["primary"]["twin"]["n"] == n_primary
+        num = sum(ref["twin"]["family"][f]["mean"] * ref["twin"]["family"][f]["n"] for f in tcr.PRIMARY_FAMILIES)
+        assert abs(p["acc"]["primary"]["twin"]["mean"] - num / n_primary) < 1e-3
+    assert p["instruction_complies_gen"]["self"] == {"mean": 0.0, "n": 21}  # gen7: complies 0/21

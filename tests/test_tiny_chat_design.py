@@ -117,3 +117,46 @@ def test_asha_jobs_wiring():
         assert js[f"asha_post_{cid}"]["init_job"] == n
     for n in r0 + r1:
         assert js[n]["outputs"] == ["rung.json", "run/events.jsonl"]  # every killed run's curve comes home
+
+
+# ---- amendment 2 (23 Oct 2026): Stage 0's measurements, its reruns, one GPU job at a time ----
+def test_throughput_comes_from_the_probes():
+    sh = mj.shapes()
+    assert abs(mj.tok_per_s(sh["20m_L8"]) - 27947.6) < 1 and abs(mj.tok_per_s(sh["60m_L32"]) - 10307.6) < 1
+    a = mj.asha_shapes()  # an ASHA-only depth: time per token between its probed neighbours
+    t3 = 1 / mj.tok_per_s(a["20m_L3"])
+    assert 1 / mj.tok_per_s(sh["20m_L2"]) < t3 < 1 / mj.tok_per_s(sh["20m_L4"])
+    assert mj.VM_SPEEDUP == 1.0 and mj.GPU_JOBS_PER_VM == 1
+
+
+def test_gpu_jobs_one_at_a_time_and_light_jobs_capped():
+    for f in ("tiny_chat_e5.json", "tiny_chat_e1.json", "tiny_chat_e1_60m.json", "tiny_chat_asha.json",
+              "tiny_chat_s0_rerun.json", "tiny_chat_s0_60m_rerun.json"):
+        doc = json.loads((COLAB / f).read_text())
+        assert doc["max_parallel"] == 1, f
+        for j in doc["jobs"]:
+            if j.get("rung_of"):
+                assert j["light"] and j["env"] == {"MICROTORCH_POOL_MB": mj.LIGHT_POOL_MB}
+    # The Stage 0 files stay as launched for attempt 1.
+    for f in ("tiny_chat_s0.json", "tiny_chat_s0_60m.json"):
+        assert json.loads((COLAB / f).read_text())["max_parallel"] == 3
+
+
+def test_reruns_are_exactly_the_failed_screens_unchanged():
+    for size, f, n in (("20m", "tiny_chat_s0.json", 10), ("60m", "tiny_chat_s0_60m.json", 12)):
+        rerun = f.replace(".json", "_rerun.json")
+        first = {j["name"]: j for j in jobs(f)}
+        again = [j for j in jobs(rerun) if j["name"].startswith("screen_")]
+        assert sorted(j["name"] for j in again) == sorted(mj.failed_screens(size)) and len(again) == n
+        for j in again:
+            assert j["cmd"] == first[j["name"]]["cmd"] and j["after"] == "data"  # the same command, lr and seed
+        gate = next(j for j in jobs(rerun) if j["name"] == "gate")
+        assert gate["cmd"][gate["cmd"].index("--jobs") + 1] == f"tools/colab_chat/{rerun}"
+
+
+def test_budget_rule_five_from_the_probes():
+    rows = mj.budget_rows(mj.shapes())
+    core = sum(h for _, _, h in rows[:4])
+    assert [r[0].split(":")[0] for r in rows[:4]] == ["Stage 0, 20M", "Stage 0, 20M", "E5 (4 dialogue levels x 3 seeds at 20m_L8)",
+                                                       "E1 20M (L2, L4, L16, L32 x 3 seeds; L8 from E5)"]
+    assert abs(core - 66.2) < 0.1 and core < mj.CORE_RULE_VM_H  # the amendment's number

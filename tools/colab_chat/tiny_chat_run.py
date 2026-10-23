@@ -8,7 +8,7 @@ data-job commands that tiny_chat_*.json run through jobs_vm.py, plus `choose` at
                             --seed S --cell C --share N --panel NAME=IDS ... --carry5-items ITEMS
     tiny_chat_run.py pick   --out D --run POST_DIR [--run ...]
     tiny_chat_run.py gate   --out D --jobs JOBS.json --choice LR_CHOICE.json
-    tiny_chat_run.py choose --art ART_DIR --out LR_CHOICE.json          (at home, after Stage 0)
+    tiny_chat_run.py choose --art ART_DIR [--art RERUN_DIR] --out LR_CHOICE.json   (at home, after Stage 0)
     tiny_chat_run.py rung   --out D --spec SHAPE.json --weights SNAP/model.safetensors --pt-dir P --step N
                             --job J --cell C --seed S --share N --panel NAME=IDS ... --carry5-items ITEMS
     tiny_chat_run.py asha_train   --out D --spec SHAPE.json --corpus C.ids --budget N --lr X --warmup-frac F
@@ -49,6 +49,7 @@ import time
 BIN = os.environ.get("JOBS_MTSTUDIO", "/content/pk/build_cuda/mtstudio")
 CARRY5_TOOL = os.environ.get("TINY_CHAT_CARRY5", "tools/carry5_eval.py")  # override: tests only
 SCREEN_TIE = 0.01  # nats: screens closer than this to the best count as tied; the smaller lr wins
+SCREEN_LRS_EXPECTED = (5e-4, 1e-3, 2e-3)  # section 4's grid: a shape is chosen only with all three screens
 
 
 # ---------------------------------------------------------------- the Carry-5 interface
@@ -67,18 +68,77 @@ def carry5_argv(spec, items, out_dir, gen, port):
             "--mtstudio", BIN, "--gen", gen, "--set", items, "--port", str(port)]
 
 
+# Amendment 2 (PREREGISTRATION.md): the instruction family's forced choice is confounded by answer
+# length (the compliant candidate is always the shortest; the question alone scores ~0.83 on the live
+# model), so the primary metric pools the other four families. The question-alone floor is read on
+# the families whose twin carries a statement the question alone lacks (knowledge's twin IS its
+# question alone, verbatim).
+PRIMARY_FAMILIES = ("recall", "correction", "topic", "knowledge")
+CONTEXT_FAMILIES = ("recall", "correction", "topic")
+
+
+def carry5_pools(items_path):
+    """Exact pooled means from carry5_eval's per-item records (items.jsonl): forced-choice acc and
+    acc_norm per history mode over the PRIMARY_FAMILIES ("primary") and the CONTEXT_FAMILIES
+    ("context"), per family, and the instruction family's generation-scored compliance per mode
+    (its machine check on the greedy reply). Modes a run did not score (self without generation)
+    are absent."""
+    with open(items_path, encoding="utf-8") as f:
+        recs = [json.loads(x) for x in f if x.strip()]
+    out = {"primary_families": list(PRIMARY_FAMILIES), "context_families": list(CONTEXT_FAMILIES)}
+    for kind in ("acc", "acc_norm"):
+        pools = {"primary": {}, "context": {}, "family": {}}
+        for mode in CARRY5_MODES:
+            vals = {}
+            for r in recs:
+                if mode in r.get("fc", {}):
+                    vals.setdefault(r["family"], []).append(float(r["fc"][mode][kind]))
+            if not vals:
+                continue
+            for pool, fams in (("primary", PRIMARY_FAMILIES), ("context", CONTEXT_FAMILIES)):
+                xs = [v for fam in fams for v in vals.get(fam, [])]
+                pools[pool][mode] = {"mean": sum(xs) / len(xs) if xs else None, "n": len(xs)}
+            pools["family"][mode] = {fam: {"mean": sum(v) / len(v), "n": len(v)} for fam, v in sorted(vals.items())}
+        out[kind] = pools
+    comp = {}
+    for mode in CARRY5_MODES:
+        xs = [bool(r["gen"][mode]["complies"]) for r in recs if r["family"] == "instruction"
+              and mode in r.get("gen", {}) and r["gen"][mode].get("complies") is not None]
+        if xs:
+            comp[mode] = {"mean": sum(xs) / len(xs), "n": len(xs)}
+    out["instruction_complies_gen"] = comp
+    return out
+
+
 def carry5_read(out_dir):
-    """The model's summary plus the headline means: acc and acc_norm per history mode."""
+    """The model's summary plus the headline means: acc and acc_norm per history mode over all
+    items (the frozen definition), and the amended pools (carry5_pools) from the per-item records,
+    which the amended primary metric and floor need."""
     s = jload(os.path.join(out_dir, "summary.json"))
     m = s["models"]["m"]
+    items = os.path.join(out_dir, "m", "items.jsonl")
+    if not os.path.exists(items):
+        raise SystemExit(f"{items} missing: the amended primary metric (amendment 2) needs carry5_eval's item records")
+    pools = carry5_pools(items)
     return {"meta": s["meta"], "chance": CARRY5_CHANCE,
             "acc": {k: m["fc"]["acc"][k]["all"]["mean"] for k in CARRY5_MODES},
             "acc_norm": {k: m["fc"]["acc_norm"][k]["all"]["mean"] for k in CARRY5_MODES},
-            "summary": m}
+            "pool": {k: v["mean"] for k, v in pools["acc"]["primary"].items()},
+            "ctx": {k: v["mean"] for k, v in pools["acc"]["context"].items()},
+            "pools": pools, "summary": m}
 
 
 def primary(c5):
-    """The registered primary metric: forced-choice accuracy (acc), SELF history, multi-turn minus twin."""
+    """The primary metric as amended (amendment 2): forced-choice accuracy (acc), SELF history,
+    multi-turn minus twin, over the PRIMARY_FAMILIES (the instruction family excluded)."""
+    try:
+        return float(c5["pool"]["self"]) - float(c5["pool"]["twin"])
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def primary_all_items(c5):
+    """Section 3's frozen definition over all items, instruction included (reported beside it)."""
     try:
         return float(c5["acc"]["self"]) - float(c5["acc"]["twin"])
     except (KeyError, TypeError, ValueError):
@@ -203,6 +263,38 @@ def final_eval(out_dir):
     return ev[-1]["val_loss"] if ev else None
 
 
+def log_tail(path, n=4000):
+    """The end of an mtstudio log, so a failure's cause comes home in the summary (Stage 0's first
+    attempt kept its logs on the VM only)."""
+    try:
+        with open(path, encoding="utf-8", errors="replace") as f:
+            return f.read()[-n:]
+    except OSError:
+        return None
+
+
+def finite(x):
+    return x is not None and isinstance(x, (int, float)) and math.isfinite(x)
+
+
+def screen_status(s):
+    """A screen's state under section 4's rule as clarified by amendment 2. DIVERGED: a logged
+    training loss went non-finite, or the run finished and its final validation loss is missing,
+    non-finite or above the first training loss. FINISHED: the run finished otherwise. FAILED: the
+    process ended non-zero with finite losses (a crash, not a property of the lr); it is rerun,
+    unchanged, and carries no information about the rate. Works on summaries written before the
+    distinction existed (their `diverged` flag also marked crashes)."""
+    losses = [s.get("first_loss"), s.get("last_loss")]
+    if any(x is not None and not finite(x) for x in losses) or s.get("nonfinite_loss"):
+        return "DIVERGED"
+    if s.get("rc") == 0:
+        v, f0 = s.get("final_val"), s.get("first_loss")
+        if s.get("diverged") or not finite(v) or (finite(f0) and v > f0):  # rc 0: the flag can only mean divergence
+            return "DIVERGED"
+        return "FINISHED"
+    return "FAILED"
+
+
 # ---------------------------------------------------------------- modes
 def cmd_probe(a):
     spec = shape_spec(a.spec)
@@ -223,6 +315,8 @@ def cmd_probe(a):
          "tok_per_s_steady": rate, "tok_per_s_result": res.get("tokens_per_second"),
          "wall_seconds": res.get("wall_seconds"), "peak_gpu_mem_mib": mon.peak, "gpu": gpu_name(),
          "other_mtstudio_at_start": others, "params": res.get("params")}
+    if rc != 0:
+        s["log_tail"] = log_tail(os.path.join(a.out, "mtstudio.log"))
     jsave(os.path.join(a.out, "summary.json"), s)
     print(json.dumps(s))
     return 0 if rc == 0 else 1
@@ -241,11 +335,15 @@ def cmd_screen(a):
     ev = events(run_dir)
     losses = [e["loss"] for e in ev if e.get("event") == "step"]
     val = final_eval(run_dir)
-    bad = val is None or not math.isfinite(val) or (losses and val > losses[0])
     s = {"mode": "screen", "spec": a.spec, "rc": rc, "lr": a.lr, "seed": a.seed, "steps": a.steps,
-         "final_val": val, "diverged": bool(bad), "first_loss": losses[0] if losses else None,
-         "last_loss": losses[-1] if losses else None, "tok_per_s_steady": rate,
+         "final_val": val, "first_loss": losses[0] if losses else None,
+         "last_loss": losses[-1] if losses else None, "last_step": max((e.get("step", 0) for e in ev if e.get("event") == "step"), default=None),
+         "nonfinite_loss": any(not finite(x) for x in losses), "tok_per_s_steady": rate,
          "other_mtstudio_at_end": concurrent_mtstudio(), "gpu": gpu_name()}
+    s["status"] = screen_status(s)
+    s["diverged"] = s["status"] == "DIVERGED"
+    if rc != 0:
+        s["log_tail"] = log_tail(os.path.join(a.out, "mtstudio.log"))
     jsave(os.path.join(a.out, "summary.json"), s)
     print(json.dumps(s))
     return 0 if rc == 0 else 1
@@ -268,7 +366,7 @@ def zero_rate_panels(shape, weights, out, panel_kvs):
                     "export": {"formats": []}}
             rc, _ = run_mtstudio(spec, d, os.path.join(out, "mtstudio.log"))
             if rc != 0:
-                raise SystemExit(f"panel {name} failed (rc {rc})")
+                raise SystemExit(f"panel {name} failed (rc {rc}): {log_tail(os.path.join(out, 'mtstudio.log'), 1500)}")
         res[name] = final_eval(d)
     return res
 
@@ -283,7 +381,12 @@ def carry5_base(shape, weights, items, out, required=False):
     pb = subprocess.run(carry5_argv(base_spec, items, c5b, "none", port_for(c5b)), capture_output=True, text=True)
     open(os.path.join(out, "carry5_base.log"), "w", encoding="utf-8").write(pb.stdout[-20000:] + pb.stderr[-20000:])
     if pb.returncode == 0 and os.path.exists(os.path.join(c5b, "summary.json")):
-        return carry5_read(c5b)
+        try:
+            return carry5_read(c5b)
+        except SystemExit as e:
+            if required:
+                raise
+            return {"error": str(e)}
     if required:
         raise SystemExit(f"carry5_eval (base) failed (rc {pb.returncode}): {pb.stderr[-500:]}")
     return {"error": pb.stderr[-500:]}
@@ -291,12 +394,22 @@ def carry5_base(shape, weights, items, out, required=False):
 
 def rung_metrics(c5b):
     """The rung predictors (amendment 1): base-model forced-choice accuracy with gold history
-    (acc_gold) and Y_base = acc_gold - acc_twin, both teacher-forced."""
+    (acc_gold) and Y_base = acc_gold - acc_twin, both teacher-forced, over the primary metric's
+    families (amendment 2: the instruction family out); the all-items values beside them, and the
+    twin and question-alone accuracies on the context families (the floor's quantities)."""
     try:
-        g, t = float(c5b["acc"]["gold"]), float(c5b["acc"]["twin"])
+        g, t = float(c5b["pool"]["gold"]), float(c5b["pool"]["twin"])
     except (KeyError, TypeError, ValueError):
         return {"acc_gold": None, "Y_base": None}
-    return {"acc_gold": g, "Y_base": g - t}
+    out = {"acc_gold": g, "Y_base": g - t}
+    try:
+        out["acc_gold_all"] = float(c5b["acc"]["gold"])
+        out["Y_base_all"] = out["acc_gold_all"] - float(c5b["acc"]["twin"])
+    except (KeyError, TypeError, ValueError):
+        pass
+    out["twin_ctx"] = c5b.get("ctx", {}).get("twin")
+    out["noctx_ctx"] = c5b.get("ctx", {}).get("noctx")
+    return out
 
 
 def preflight(items):
@@ -338,7 +451,7 @@ def cmd_post(a):
     if not os.path.exists(os.path.join(sd, "result.json")):
         rc, rate = run_mtstudio(spec, sd, os.path.join(a.out, "mtstudio.log"), t_from=20)
         if rc != 0:
-            raise SystemExit(f"SFT failed (rc {rc})")
+            raise SystemExit(f"SFT failed (rc {rc}): {log_tail(os.path.join(a.out, 'mtstudio.log'), 1500)}")
         s["sft_tok_per_s_steady"] = rate
     s["sft_seconds"] = round(time.time() - t0, 1)
     s["sft_result"] = jload(os.path.join(sd, "result.json"))
@@ -356,6 +469,7 @@ def cmd_post(a):
         raise SystemExit(f"carry5_eval failed (rc {p.returncode}): {p.stderr[-500:]}")
     s["carry5"] = carry5_read(c5)
     s["primary"] = primary(s["carry5"])
+    s["primary_all_items"] = primary_all_items(s["carry5"])  # section 3's frozen definition, reported beside it
     s["carry5_base"] = carry5_base(shape, a.pt_weights, a.carry5_items, a.out)
     s["final_rung"] = rung_metrics(s["carry5_base"])  # the 100% rung of the early-ranking analysis
     s["other_mtstudio_at_end"] = concurrent_mtstudio()
@@ -458,7 +572,7 @@ def cmd_asha_train(a):
     if not os.path.exists(os.path.join(run_dir, "result.json")):  # resumes from its own checkpoint on this VM
         rc, rate = run_mtstudio(spec, run_dir, os.path.join(a.out, "mtstudio.log"), t_from=min(50, a.budget // 2))
         if rc != 0:
-            raise SystemExit(f"mtstudio failed (rc {rc})")
+            raise SystemExit(f"mtstudio failed (rc {rc}): {log_tail(os.path.join(a.out, 'mtstudio.log'), 1500)}")
     ev = events(run_dir)
     losses = [e["loss"] for e in ev if e.get("event") == "step"]
     val = final_eval(run_dir)
@@ -589,21 +703,48 @@ def cmd_gate(a):
 def cmd_choose(a):
     """The registered screen rule, per shape: among screens that did not diverge, the lowest final
     validation loss; any screen within SCREEN_TIE nats of it counts as tied and the smallest tied lr
-    wins. A shape whose screens all diverged stops the programme (no rate is chosen)."""
-    by = {}
-    for p in sorted(glob.glob(os.path.join(a.art, "screen_*", "summary.json"))):
-        s = jload(p)
-        sid = os.path.basename(os.path.dirname(p))[len("screen_"):].rsplit("_lr", 1)[0]
-        by.setdefault(sid, []).append(s)
+    wins. A shape whose screens all diverged stops the programme (no rate is chosen). Amendment 2:
+    a FAILED screen (screen_status: a crash with finite losses) is no evidence about its rate and is
+    rerun unchanged; --art may be given several times (the first attempt, then its reruns) and each
+    screen is read from the one folder that holds it FINISHED or DIVERGED. A shape is chosen only
+    when all its screens are FINISHED or DIVERGED; otherwise nothing is written."""
+    found = {}
+    for k, art in enumerate(a.art):
+        for p in sorted(glob.glob(os.path.join(art, "screen_*", "summary.json"))):
+            job = os.path.basename(os.path.dirname(p))
+            s = jload(p)
+            found.setdefault(job, []).append((k, art, s, screen_status(s)))
+    by, problems = {}, []
+    for job, rows in sorted(found.items()):
+        sid = job[len("screen_"):].rsplit("_lr", 1)[0]
+        valid = [r for r in rows if r[3] != "FAILED"]
+        if len(valid) > 1:
+            problems.append(f"{job}: valid in {[r[1] for r in valid]}; a finished or diverged screen is never rerun")
+            continue
+        if not valid:
+            problems.append(f"{job}: FAILED in every folder ({[r[1] for r in rows]}); rerun it")
+            by.setdefault(sid, [])
+            continue
+        _, art, s, st = valid[0]
+        by.setdefault(sid, []).append({**s, "status": st, "art": art, "job": job,
+                                       "attempts": [{"art": r[1], "status": r[3], "rc": r[2].get("rc")} for r in rows]})
+    for sid, ss in by.items():
+        if len(ss) != len(SCREEN_LRS_EXPECTED) and not any(p.startswith(f"screen_{sid}_") for p in problems):
+            problems.append(f"{sid}: {len(ss)} screens found, {len(SCREEN_LRS_EXPECTED)} registered")
+    if problems:
+        raise SystemExit("no rate is chosen:\n  " + "\n  ".join(problems))
     lr, detail = {}, {}
     for sid, ss in sorted(by.items()):
-        good = [s for s in ss if not s["diverged"] and s["rc"] == 0]
+        good = [s for s in ss if s["status"] == "FINISHED"]
         if not good:
-            raise SystemExit(f"{sid}: every screen diverged or failed; no rate is chosen")
+            raise SystemExit(f"{sid}: every screen diverged; no rate is chosen (section 4: one amendment may "
+                             "extend the grid downwards)")
         best = min(s["final_val"] for s in good)
         tied = [s for s in good if s["final_val"] <= best + SCREEN_TIE]
         lr[sid] = min(s["lr"] for s in tied)
-        detail[sid] = [{k: s[k] for k in ("lr", "final_val", "diverged", "tok_per_s_steady")} for s in ss]
+        detail[sid] = [{k: s.get(k) for k in ("lr", "final_val", "status", "first_loss", "last_loss",
+                                              "tok_per_s_steady", "job", "art", "attempts")}
+                       for s in sorted(ss, key=lambda x: x["lr"])]
     out = {"rule": " ".join(cmd_choose.__doc__.split()), "tie_nats": SCREEN_TIE, "lr": {}, "screens": {}}
     if os.path.exists(a.out):  # the 60M stage adds its shapes to the 20M choice; a shape is chosen once
         out = jload(a.out)
@@ -658,7 +799,8 @@ def main(argv=None):
     p.add_argument("--carry5-items", default="corpus/eval/carry5_v1.jsonl")
     p.add_argument("--need-carry5", action="store_true", help="with --stage0: also require Carry-5 (the ASHA arm)")
     p = sub.add_parser("choose")
-    p.add_argument("--art", required=True)
+    p.add_argument("--art", action="append", required=True,
+                   help="a Stage 0 artefact folder; repeat for reruns (amendment 2), first attempt first")
     p.add_argument("--out", required=True)
     p = sub.add_parser("rung")
     p.add_argument("--out", required=True)

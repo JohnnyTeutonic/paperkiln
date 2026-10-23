@@ -577,3 +577,172 @@ $R --commit SHA2 --jobs tools/colab_chat/tiny_chat_e1_60m.json --name pk-tc-e1-6
    --art /mnt/c/ml_artifacts/tiny_chat/e1_60m --state-dir /home/jonat/pk_tc_e1_60m_runner --max-hours 23.5 $U
 python experiments/tiny_chat_2026-10/analyze.py --art C:/ml_artifacts/tiny_chat --out experiments/tiny_chat_2026-10/analysis.json
 ```
+
+### Amendment 2 (23 Oct 2026, after Stage 0's first attempt, before any E5, E1 or successive-halving run): failed screens, one GPU job at a time, the measured budget, and the instruction family
+
+Written after both Stage 0 sessions came home (`pk-tc-s0`, 07:10-09:56, and `pk-tc-s0-60m`, 07:10-08:06, from
+amendment 1's commit) and after the Carry-5 sanity run on the live model (`experiments/carry5_2026-10-23/README.md`),
+before any E5, E1 or successive-halving job ran and before this programme produced any Carry-5 number. Sections 0-12
+and amendment 1 stand except where this amendment says otherwise. Receipts: `stage0/attempt1/` (every Stage 0 job's
+`summary.json`, the data ledgers, both runner logs).
+
+**A2.1 Stage 0, attempt 1.** Probes, each shape alone on the L4 (300 steps; steady rate from step 50; 16,384 tokens
+per step; peak memory is the whole device's, from `nvidia-smi`):
+
+| shape | tokens/s | s/step | peak GPU MiB | | shape | tokens/s | s/step | peak GPU MiB |
+|---|---:|---:|---:|---|---|---:|---:|---:|
+| 20m_L2 | 33,942 | 0.483 | 8,668 | | 60m_L4 | 13,803 | 1.187 | 13,940 |
+| 20m_L4 | 32,202 | 0.509 | 9,214 | | 60m_L8 | 13,799 | 1.187 | 15,906 |
+| 20m_L8 | 27,948 | 0.586 | 10,492 | | 60m_L16 | 12,517 | 1.309 | 10,628 |
+| 20m_L16 | 25,383 | 0.645 | 6,660 | | 60m_L32 | 10,308 | 1.590 | 13,244 |
+| 20m_L32 | 21,856 | 0.750 | 8,132 | | | | | |
+
+- All nine probes finished. Per token, 20m_L32 takes **1.55x** 20m_L2's time (60M: L32 1.34x L4). Section 6's
+  throughput prediction (at least 3x) does not hold: depth costs far less on this GPU than section 10's per-layer
+  model assumed. S10 (Y per L4-hour) is reported as registered.
+- **Screens: 5 of 27 finished, 22 failed** (exit code 1). Finished, final validation loss (128 windows): 20m_L2 at
+  5e-4, 4.439; 20m_L4 at 5e-4, 4.338; 20m_L16 at 1e-3, 4.241, and at 2e-3, 4.476; 20m_L32 at 2e-3, 4.282. Failed:
+  20m_L2 and 20m_L4 at 1e-3 and 2e-3, all three 20m_L8 screens, 20m_L16 at 5e-4, 20m_L32 at 5e-4 and 1e-3, and all
+  twelve 60M screens.
+- **None of the 22 is a divergence** under section 4's definition. No logged training loss is non-finite. Five
+  failed screens logged losses before stopping, falling from 9.74-9.77 to 4.65-5.85 (one stopped near its last
+  step; one after its first step); seventeen stopped before their first step.
+- **Likely cause: GPU memory, with three jobs on one L4** (the Stage 0 files' `max_parallel` 3). Each mtstudio
+  process caches freed device blocks up to three quarters of the device (`src/device_pool.cuh`) and, when an
+  allocation fails, returns only its own cache. Alone, the 20M shapes held 6,660-10,492 MiB and the 60M shapes
+  10,628-15,906 MiB of the L4's ~23,000. Each 20M crash before a first step came as a third job started while the
+  three jobs' solo footprints summed past the device (24,396, 25,088 and 26,550 MiB); no two 60M footprints fit
+  together, and all twelve 60M screens failed within one runner poll of the probes ending. mtstudio's own log stayed
+  on the VM (only `summary.json` came home), so the cause is inferred from these facts, not read from a log; screen and
+  probe summaries now carry the log's tail on any failure.
+- **Sharing bought no throughput.** The screens' own timings ran at 0.30-0.38 of their shapes' solo rates with two
+  others beside them: 0.93-1.05 jobs' worth per VM in all, against section 10's assumed 2.5. One job saturates the L4.
+- The registered `choose` refuses for both sizes (no shape has three usable screens; 20m_L8, E5's shape, has none),
+  so no learning rate is chosen and `stage0/lr_choice.json` does not exist. The E gate jobs refuse until it does.
+
+**A2.2 Failed screens are rerun (section 4, clarified).** Section 4's rule knows screens that diverged and screens
+that did not; a crashed process is neither, and says nothing about its rate.
+- A screen is FINISHED (exit 0, a finite final validation loss not above its first training loss), DIVERGED
+  (section 4's definition: a non-finite training loss, or a finished run whose final validation loss is missing,
+  non-finite or above its first training loss) or FAILED (a non-zero exit with finite losses)
+  (`tiny_chat_run.py screen_status`).
+- Every FAILED screen is rerun once, unchanged (the same spec, lr, seed 101, 1,500 steps and 35% mix, rebuilt on the
+  VM from the pinned sources), one GPU job at a time: `tools/colab_chat/tiny_chat_s0_rerun.json` (the ten 20M
+  failures) and `tiny_chat_s0_60m_rerun.json` (the twelve 60M screens). The five finished screens stand: a run's
+  arithmetic does not depend on the processes beside it.
+- `choose` reads attempt 1 and then the rerun (`--art` given twice) and takes each screen from the one folder that
+  holds it FINISHED or DIVERGED; a finished or diverged screen found twice is refused, so no choice is ever made among
+  reruns. A shape is chosen only when all three of its screens are FINISHED or DIVERGED, by section 4's rule as written
+  (lowest final validation loss; within 0.01 nats, the smaller lr).
+- A screen that FAILS again, alone on the GPU, is reported with its log tail; its shape stays unchosen until a further
+  amendment, written before any E run uses that shape.
+- Nothing else changes: the token budget, the grid, the shapes, the screen recipe and every step count stand. This
+  amendment changes no learning rate.
+
+**A2.3 One GPU job at a time** (section 4: Stage 0 may change the schedule and the concurrency). Every jobs file
+written from now on (the reruns, E5, E1, E1 at 60M and the successive-halving arm) has `max_parallel` 1:
+pretraining, post, screen and successive-halving training jobs run one after another on a VM. Light jobs (rungs,
+promotion steps) keep their own slot beside the GPU job; rung jobs run with `MICROTORCH_POOL_MB=2048`, so their cache
+stays small. By A2.1 this costs no VM-hours; each block takes longer on the clock, and blocks run as parallel
+sessions (at most four Colab sessions in all). The Stage 0 files as launched (`tiny_chat_s0.json`,
+`tiny_chat_s0_60m.json`) are kept as they ran.
+
+**A2.4 The budget from the probes** (section 10's model replaced, as it said Stage 0 would; section 8 rule 5).
+`make_jobs.py` reads the probes in `stage0/attempt1/`. A run's pretraining and SFT run at its shape's solo rate (the
+successive-halving depths 3, 6 and 12 interpolated in log2 depth between probed neighbours), one job per VM, plus
+allowances not yet measured: 0.30 h per post job beyond its SFT (panels, Carry-5 with generation, base-model
+Carry-5), 0.08 h per rung job, and 0.25 h per session for the gate and data jobs (attempt 1: 13-19 minutes).
+Compute units at 4.8 per L4 hour (section 10's figure).
+
+| block | runs | L4 VM-hours | compute units |
+|---|---:|---:|---:|
+| Stage 0 20M, attempt 1 (as run) | 20 | 2.8 | 13 |
+| Stage 0 20M, rerun of the 10 failed screens | 10 | 2.7 | 13 |
+| E5 (4 levels x 3 seeds at 20m_L8) | 12 | 30.2 | 145 |
+| E1 20M (L2, L4, L16, L32 x 3 seeds) | 12 | 30.6 | 147 |
+| **core (section 8 rule 5)** | | **66.2** | **318** |
+| Stage 0 60M, attempt 1 (as run) | 16 | 0.9 | 4 |
+| Stage 0 60M, rerun of the 12 screens | 12 | 6.8 | 33 |
+| E1 60M (4 shapes x 3 seeds) | 12 | 58.2 | 279 |
+| successive halving (worst case; cap 20) | 27 | 19.2 | 92 |
+| everything | | 151.4 | 727 |
+
+- Per run (pretraining + SFT + allowances, VM-hours): 20m_L2 2.16, L4 2.25, L8 2.49, L16 2.68, L32 3.01; 60m_L4
+  4.41, L8 4.41, L16 4.80, L32 5.70.
+- **Rule 5 is not triggered: the core (Stage 0 at 20M, both attempts, E5 and E1 at 20M) is 66.2 L4 VM-hours, under
+  80.** Without the evaluation allowances it is 51.3; it reaches 80 only if a run's post and rung jobs together take
+  more than 1.20 h (allowed: 0.62 h). The first E5 post jobs measure it: if the first three E5 runs' post and rung
+  jobs average more than 1.20 h per run, rule 5 applies then, before E1 launches.
+- The whole programme, 151 VM-hours (727 units), is more than one month's 600 units; E1 at 60M is the largest block.
+- E5 and E1 take about 30 VM-hours each and E1 at 60M about 58, past the runner's `--max-hours 23.5`: each session
+  ends at least once mid-block, and a run in flight resumes from its last relay with a cold optimiser (section 8
+  rule 4: recorded per run, and the primary contrasts reported without resumed runs as well).
+
+**A2.5 The instruction family and the question-alone floor** (section 3; before any Carry-5 number from this
+programme). On the live model (`chat_sftfinal_v3`, 14.6M; `experiments/carry5_2026-10-23/README.md`) the instruction
+family's compliant answer is always the shortest of the four candidates, so raw forced choice rewards a length prior:
+gold 0.854, twin 0.875 and **the question alone 0.826**, while the model complied in 0 of 21 generated replies. On the
+memory families it was at chance in every mode, the twin included.
+- **(a) Primary metric, amended: Y = forced-choice accuracy (raw log-prob, `acc`) with SELF history minus that on
+  the single-turn twins, over the recall, correction, topic-return and knowledge families (888 of the 1,032 items).
+  The instruction family (144 items) is out of Y and of every contrast.** Section 3's all-items Y is reported beside
+  it (`Y_all`), descriptively. Instruction-following is reported separately and descriptively as generation-scored
+  compliance (carry5_eval's machine check on the greedy target reply: one word, one to five words, yes or no, one
+  number), with self history and in the twin (S12, new). Its forced-choice accuracy appears in the family table,
+  marked as length-confounded.
+- **(b) The question alone** (carry5_eval's `noctx` mode: the target question with no statement and no history) is
+  reported beside the twin for every family and every cell (S5), on the SFT model and at every rung.
+- **The validity gate, restated.** A cell's Y is interpreted only if, on the cell's means over seeds, **(i)** twin
+  accuracy over the primary families is at least chance + 10 points (0.35), and **(ii)** twin accuracy minus
+  question-alone accuracy over the context families (recall, correction, topic return: 828 items) is **at least 10
+  points (0.10)**. Knowledge is left out of (ii) because its twin is its question alone, word for word. A contrast
+  that uses a cell failing either part is FLOOR, as before. Why this margin: the set's balance puts the question
+  alone near chance (0.251 on the context families for the live model), so (ii) binds where a model's prior over the
+  candidates lifts its twin above chance without its reading the statement; 10 points is the same margin as (i) and
+  about four item-level standard errors of the paired difference at 828 items. The live model fails both parts:
+  twin 0.260 over the primary families, and twin minus question alone 0.002 on the context families.
+- **(c) Everything built from Y or the twin uses the same items:** S1-S3 (multi-turn and twin accuracy, gold-history
+  Y), H1(b)'s twin slope and the data bar's twin condition over the primary families; the rung predictors Y_base and
+  acc_gold (amendment 1) and the successive-halving promotion metric acc_gold over the primary families, with the
+  all-items values kept beside them. No successive-halving job has run, so its promotion rule changes before its
+  data.
+- SESOIs, hypotheses, directions, decision rules and the extension rule are unchanged.
+
+**A2.6 Interfaces.** `tiny_chat_run.py`: `carry5_pools` (exact pools from carry5_eval's `items.jsonl`: per mode over
+the primary and the context families, per family, and instruction compliance by generation; checked against the
+sanity receipts), `carry5_read` (requires the item records), the amended `primary` with `primary_all_items`,
+`rung_metrics` over the primary families (all-items values and the floor's quantities beside them), `screen_status`,
+the screen summary's `status` and `log_tail`, `choose --art` repeated. `make_jobs.py`: the probes, `failed_screens`,
+the two rerun files, `max_parallel` 1, the light jobs' cache cap, the measured budget (`budget_rows`). `analyze.py`:
+the amended Y and validity gate, `Y_all`, the family table with the question alone, instruction compliance. Tests:
+`tests/test_tiny_chat_analyze.py`, `test_tiny_chat_design.py`, `test_tiny_chat_pipeline.py`.
+
+**A2.7 Launch** (the main session launches). SHA2 = this commit: the two reruns, and the successive-halving arm, which
+needs no Stage 0 choice. E5 and E1 launch from the commit that adds the 20M choice (SHA3); E1 at 60M from the commit
+that adds the 60M choice (SHA3 if both are home, else SHA4).
+
+```
+U="--upload vocab_llama3_bpe.gguf=/mnt/c/ml_artifacts/capacity/vocab/vocab_llama3_bpe.gguf"
+R="python3 -u tools/colab_chat/runner_multi.py"
+# SHA2 (this commit):
+$R --commit SHA2 --jobs tools/colab_chat/tiny_chat_s0_rerun.json --name pk-tc-s0r --art /mnt/c/ml_artifacts/tiny_chat/s0_rerun \
+   --state-dir /home/jonat/pk_tc_s0r_runner --max-hours 23.5 $U
+$R --commit SHA2 --jobs tools/colab_chat/tiny_chat_s0_60m_rerun.json --name pk-tc-s0r-60m \
+   --art /mnt/c/ml_artifacts/tiny_chat/s0_60m_rerun --state-dir /home/jonat/pk_tc_s0r_60m_runner --max-hours 23.5 $U
+python3 -u tools/colab_chat/tiny_chat_asha.py drive --art /mnt/c/ml_artifacts/tiny_chat/asha \
+   --state-dir /home/jonat/pk_tc_asha_runner -- $R --commit SHA2 --jobs tools/colab_chat/tiny_chat_asha.json \
+   --name pk-tc-asha --art /mnt/c/ml_artifacts/tiny_chat/asha --state-dir /home/jonat/pk_tc_asha_runner \
+   --max-hours 20 $U --upload asha_state.json=/mnt/c/ml_artifacts/tiny_chat/asha/asha_state.json
+# after each rerun, at home (the 60M call adds its shapes to the same file):
+python3 tools/colab_chat/tiny_chat_run.py choose --art /mnt/c/ml_artifacts/tiny_chat/s0 \
+   --art /mnt/c/ml_artifacts/tiny_chat/s0_rerun --out experiments/tiny_chat_2026-10/stage0/lr_choice.json
+python3 tools/colab_chat/tiny_chat_run.py choose --art /mnt/c/ml_artifacts/tiny_chat/s0_60m \
+   --art /mnt/c/ml_artifacts/tiny_chat/s0_60m_rerun --out experiments/tiny_chat_2026-10/stage0/lr_choice.json
+python3 experiments/tiny_chat_2026-10/make_jobs.py   # commit lr_choice.json and the jobs files, push: SHA3
+$R --commit SHA3 --jobs tools/colab_chat/tiny_chat_e5.json --name pk-tc-e5 --art /mnt/c/ml_artifacts/tiny_chat/e5 \
+   --state-dir /home/jonat/pk_tc_e5_runner --max-hours 23.5 $U
+$R --commit SHA3 --jobs tools/colab_chat/tiny_chat_e1.json --name pk-tc-e1 --art /mnt/c/ml_artifacts/tiny_chat/e1 \
+   --state-dir /home/jonat/pk_tc_e1_runner --max-hours 23.5 $U
+$R --commit SHA3 --jobs tools/colab_chat/tiny_chat_e1_60m.json --name pk-tc-e1-60m \
+   --art /mnt/c/ml_artifacts/tiny_chat/e1_60m --state-dir /home/jonat/pk_tc_e1_60m_runner --max-hours 23.5 $U
+```

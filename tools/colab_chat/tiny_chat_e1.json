@@ -1,6 +1,6 @@
 {
- "_comment": "tiny-chat E1 at 20M, the shape sweep (experiments/tiny_chat_2026-10/PREREGISTRATION.md). 12 pretraining runs of 10000 steps x 16384 tokens (163.84M), each then SFT (1500 steps on human dialogues), two fixed text panels and Carry-5 (post job); one pick per cell. PROVISIONAL learning rates (1e-3): the gate job fails until stage0/lr_choice.json exists and matches; rerun make_jobs.py after Stage 0. Estimated 75 job-hours (30 L4 VM-hours at 2.5x per VM). Rungs (amendment 1): every PT job snapshots its weights at steps [500, 1000, 2500, 5000] and a light rung job scores each snapshot (panels, base-model Carry-5 teacher-forced; rung.json home); runs are never stopped early. Home: each PT job's weights (relays + final), each post's summary.json, each rung's rung.json, each pick's best model. Upload vocab_llama3_bpe.gguf with the runner's --upload. Dialogue levels [0, 17, 35, 70]% (copies), E1 at 35% (design.json final).",
- "max_parallel": 4,
+ "_comment": "tiny-chat E1 at 20M, the shape sweep (experiments/tiny_chat_2026-10/PREREGISTRATION.md). 12 pretraining runs of 10000 steps x 16384 tokens (163.84M), each then SFT (1500 steps on human dialogues), two fixed text panels and Carry-5 (post job); one pick per cell. PROVISIONAL learning rates (1e-3): the gate job fails until stage0/lr_choice.json exists and matches; rerun make_jobs.py after Stage 0. One GPU job at a time (amendment 2: Stage 0 measured no throughput gain from sharing the L4, and sharing crashed its screens); rung jobs beside it in the light slot, their cache capped at 2048 MB. Estimated 30 L4 VM-hours (the Stage 0 probes, plus 0.3 h per post job and 0.08 h per rung, unmeasured). Rungs (amendment 1): every PT job snapshots its weights at steps [500, 1000, 2500, 5000] and a light rung job scores each snapshot (panels, base-model Carry-5 teacher-forced; rung.json home); runs are never stopped early. Home: each PT job's weights (relays + final), each post's summary.json, each rung's rung.json, each pick's best model. Upload vocab_llama3_bpe.gguf with the runner's --upload. Dialogue levels [0, 17, 35, 70]% (copies), E1 at 35% (design.json final).",
+ "max_parallel": 1,
  "max_parallel_light": 1,
  "jobs": [
   {
@@ -61,6 +61,9 @@
     "job": "pt_e1_L2_r1",
     "step": 500
    },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
    "cmd": [
     "python3",
     "tools/colab_chat/tiny_chat_run.py",
@@ -102,6 +105,9 @@
    "rung_of": {
     "job": "pt_e1_L2_r1",
     "step": 1000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
    },
    "cmd": [
     "python3",
@@ -145,6 +151,9 @@
     "job": "pt_e1_L2_r1",
     "step": 2500
    },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
    "cmd": [
     "python3",
     "tools/colab_chat/tiny_chat_run.py",
@@ -186,6 +195,9 @@
    "rung_of": {
     "job": "pt_e1_L2_r1",
     "step": 5000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
    },
    "cmd": [
     "python3",
@@ -229,6 +241,9 @@
     "job": "pt_e1_L4_r1",
     "step": 500
    },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
    "cmd": [
     "python3",
     "tools/colab_chat/tiny_chat_run.py",
@@ -270,6 +285,9 @@
    "rung_of": {
     "job": "pt_e1_L4_r1",
     "step": 1000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
    },
    "cmd": [
     "python3",
@@ -313,6 +331,9 @@
     "job": "pt_e1_L4_r1",
     "step": 2500
    },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
    "cmd": [
     "python3",
     "tools/colab_chat/tiny_chat_run.py",
@@ -354,6 +375,9 @@
    "rung_of": {
     "job": "pt_e1_L4_r1",
     "step": 5000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
    },
    "cmd": [
     "python3",
@@ -397,6 +421,9 @@
     "job": "pt_e1_L16_r1",
     "step": 500
    },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
    "cmd": [
     "python3",
     "tools/colab_chat/tiny_chat_run.py",
@@ -438,6 +465,9 @@
    "rung_of": {
     "job": "pt_e1_L16_r1",
     "step": 1000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
    },
    "cmd": [
     "python3",
@@ -481,6 +511,9 @@
     "job": "pt_e1_L16_r1",
     "step": 2500
    },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
    "cmd": [
     "python3",
     "tools/colab_chat/tiny_chat_run.py",
@@ -522,6 +555,9 @@
    "rung_of": {
     "job": "pt_e1_L16_r1",
     "step": 5000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
    },
    "cmd": [
     "python3",
@@ -565,6 +601,9 @@
     "job": "pt_e1_L32_r1",
     "step": 500
    },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
    "cmd": [
     "python3",
     "tools/colab_chat/tiny_chat_run.py",
@@ -606,6 +645,9 @@
    "rung_of": {
     "job": "pt_e1_L32_r1",
     "step": 1000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
    },
    "cmd": [
     "python3",
@@ -649,6 +691,9 @@
     "job": "pt_e1_L32_r1",
     "step": 2500
    },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
    "cmd": [
     "python3",
     "tools/colab_chat/tiny_chat_run.py",
@@ -690,6 +735,9 @@
    "rung_of": {
     "job": "pt_e1_L32_r1",
     "step": 5000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
    },
    "cmd": [
     "python3",
@@ -733,6 +781,9 @@
     "job": "pt_e1_L2_r2",
     "step": 500
    },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
    "cmd": [
     "python3",
     "tools/colab_chat/tiny_chat_run.py",
@@ -774,6 +825,9 @@
    "rung_of": {
     "job": "pt_e1_L2_r2",
     "step": 1000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
    },
    "cmd": [
     "python3",
@@ -817,6 +871,9 @@
     "job": "pt_e1_L2_r2",
     "step": 2500
    },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
    "cmd": [
     "python3",
     "tools/colab_chat/tiny_chat_run.py",
@@ -858,6 +915,9 @@
    "rung_of": {
     "job": "pt_e1_L2_r2",
     "step": 5000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
    },
    "cmd": [
     "python3",
@@ -901,6 +961,9 @@
     "job": "pt_e1_L4_r2",
     "step": 500
    },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
    "cmd": [
     "python3",
     "tools/colab_chat/tiny_chat_run.py",
@@ -942,6 +1005,9 @@
    "rung_of": {
     "job": "pt_e1_L4_r2",
     "step": 1000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
    },
    "cmd": [
     "python3",
@@ -985,6 +1051,9 @@
     "job": "pt_e1_L4_r2",
     "step": 2500
    },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
    "cmd": [
     "python3",
     "tools/colab_chat/tiny_chat_run.py",
@@ -1026,6 +1095,9 @@
    "rung_of": {
     "job": "pt_e1_L4_r2",
     "step": 5000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
    },
    "cmd": [
     "python3",
@@ -1069,6 +1141,9 @@
     "job": "pt_e1_L16_r2",
     "step": 500
    },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
    "cmd": [
     "python3",
     "tools/colab_chat/tiny_chat_run.py",
@@ -1110,6 +1185,9 @@
    "rung_of": {
     "job": "pt_e1_L16_r2",
     "step": 1000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
    },
    "cmd": [
     "python3",
@@ -1153,6 +1231,9 @@
     "job": "pt_e1_L16_r2",
     "step": 2500
    },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
    "cmd": [
     "python3",
     "tools/colab_chat/tiny_chat_run.py",
@@ -1194,6 +1275,9 @@
    "rung_of": {
     "job": "pt_e1_L16_r2",
     "step": 5000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
    },
    "cmd": [
     "python3",
@@ -1237,6 +1321,9 @@
     "job": "pt_e1_L32_r2",
     "step": 500
    },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
    "cmd": [
     "python3",
     "tools/colab_chat/tiny_chat_run.py",
@@ -1278,6 +1365,9 @@
    "rung_of": {
     "job": "pt_e1_L32_r2",
     "step": 1000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
    },
    "cmd": [
     "python3",
@@ -1321,6 +1411,9 @@
     "job": "pt_e1_L32_r2",
     "step": 2500
    },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
    "cmd": [
     "python3",
     "tools/colab_chat/tiny_chat_run.py",
@@ -1362,6 +1455,9 @@
    "rung_of": {
     "job": "pt_e1_L32_r2",
     "step": 5000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
    },
    "cmd": [
     "python3",
@@ -1405,6 +1501,9 @@
     "job": "pt_e1_L2_r3",
     "step": 500
    },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
    "cmd": [
     "python3",
     "tools/colab_chat/tiny_chat_run.py",
@@ -1446,6 +1545,9 @@
    "rung_of": {
     "job": "pt_e1_L2_r3",
     "step": 1000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
    },
    "cmd": [
     "python3",
@@ -1489,6 +1591,9 @@
     "job": "pt_e1_L2_r3",
     "step": 2500
    },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
    "cmd": [
     "python3",
     "tools/colab_chat/tiny_chat_run.py",
@@ -1530,6 +1635,9 @@
    "rung_of": {
     "job": "pt_e1_L2_r3",
     "step": 5000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
    },
    "cmd": [
     "python3",
@@ -1573,6 +1681,9 @@
     "job": "pt_e1_L4_r3",
     "step": 500
    },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
    "cmd": [
     "python3",
     "tools/colab_chat/tiny_chat_run.py",
@@ -1614,6 +1725,9 @@
    "rung_of": {
     "job": "pt_e1_L4_r3",
     "step": 1000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
    },
    "cmd": [
     "python3",
@@ -1657,6 +1771,9 @@
     "job": "pt_e1_L4_r3",
     "step": 2500
    },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
    "cmd": [
     "python3",
     "tools/colab_chat/tiny_chat_run.py",
@@ -1698,6 +1815,9 @@
    "rung_of": {
     "job": "pt_e1_L4_r3",
     "step": 5000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
    },
    "cmd": [
     "python3",
@@ -1741,6 +1861,9 @@
     "job": "pt_e1_L16_r3",
     "step": 500
    },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
    "cmd": [
     "python3",
     "tools/colab_chat/tiny_chat_run.py",
@@ -1782,6 +1905,9 @@
    "rung_of": {
     "job": "pt_e1_L16_r3",
     "step": 1000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
    },
    "cmd": [
     "python3",
@@ -1825,6 +1951,9 @@
     "job": "pt_e1_L16_r3",
     "step": 2500
    },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
    "cmd": [
     "python3",
     "tools/colab_chat/tiny_chat_run.py",
@@ -1866,6 +1995,9 @@
    "rung_of": {
     "job": "pt_e1_L16_r3",
     "step": 5000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
    },
    "cmd": [
     "python3",
@@ -1909,6 +2041,9 @@
     "job": "pt_e1_L32_r3",
     "step": 500
    },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
    "cmd": [
     "python3",
     "tools/colab_chat/tiny_chat_run.py",
@@ -1950,6 +2085,9 @@
    "rung_of": {
     "job": "pt_e1_L32_r3",
     "step": 1000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
    },
    "cmd": [
     "python3",
@@ -1993,6 +2131,9 @@
     "job": "pt_e1_L32_r3",
     "step": 2500
    },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
    "cmd": [
     "python3",
     "tools/colab_chat/tiny_chat_run.py",
@@ -2034,6 +2175,9 @@
    "rung_of": {
     "job": "pt_e1_L32_r3",
     "step": 5000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
    },
    "cmd": [
     "python3",

@@ -10,12 +10,20 @@ ROOT = Path(__file__).resolve().parents[1]
 TOOL = [sys.executable, str(ROOT / "experiments" / "tiny_chat_2026-10" / "analyze.py")]
 
 
-def put(art, block, cell, seed, multi, twin=0.80, chance=0.25, fw=3.5, gold=None):
+def put(art, block, cell, seed, multi, twin=0.80, chance=0.25, fw=3.5, gold=None, qalone=0.25):
+    """A post job's summary as tiny_chat_run.py post writes it after amendment 2: `pool` over the
+    primary families (Y's), `ctx` over the context families (the question-alone floor's), and the
+    all-items `acc` (instruction included: here inflated by its length prior, as on the live model)."""
     d = art / block / f"post_{block}_{cell}_r{seed}"
     d.mkdir(parents=True)
-    acc = {"self": multi, "twin": twin, "gold": gold if gold is not None else multi + 0.02, "noctx": 0.25}
+    g = gold if gold is not None else multi + 0.02
+    pool = {"self": multi, "twin": twin, "gold": g, "noctx": qalone}
+    allitems = {k: v + 0.08 for k, v in pool.items()}
+    fam = {m: {"recall": {"mean": v, "n": 432}, "instruction": {"mean": 0.85, "n": 144}} for m, v in pool.items()}
     (d / "summary.json").write_text(json.dumps({
-        "cell": cell, "seed": seed, "primary": multi - twin, "carry5": {"acc": acc, "chance": chance},
+        "cell": cell, "seed": seed, "primary": multi - twin, "primary_all_items": allitems["self"] - allitems["twin"],
+        "carry5": {"acc": allitems, "pool": pool, "ctx": dict(pool), "chance": chance,
+                   "pools": {"acc": {"family": fam}, "instruction_complies_gen": {"self": {"mean": 0.1, "n": 144}}}},
         "panels": {"fineweb": fw, "dialogue": 3.0}, "sft_evals": [[1500, 2.5]]}))
 
 
@@ -59,6 +67,49 @@ def test_floor_and_incomplete(tmp_path):
     assert rc != 0 and "incomplete" in err
     rc, res = run(tmp_path, "--partial")
     assert rc == 0 and res["E5"]["label"] == "DESCRIPTIVE, PARTIAL"
+
+
+def test_question_alone_floor(tmp_path):
+    """Amendment 2: a twin well above chance is not enough when the question alone scores as well
+    (a prior over the candidates, not reading the statement); the cell is FLOOR."""
+    for r in (1, 2, 3):
+        for cell in ("s0", "s25", "s50", "s100"):
+            q = 0.75 if cell == "s50" else 0.25
+            put(tmp_path, "e5", cell, r, 0.70 + 0.01 * r, twin=0.80, qalone=q)
+    rc, res = run(tmp_path)
+    assert rc == 0, res
+    assert res["E5"]["floor_ok"] == {"s0": True, "s25": True, "s50": False, "s100": True}
+    assert res["E5"]["H5_primary_YE1_minus_Y0"]["verdict"].startswith("FLOOR")
+    # Exactly 10 points above the question alone passes; just under fails.
+    for q, ok in ((0.70, True), (0.71, False)):
+        art = tmp_path / f"q{q}"
+        for r in (1, 2, 3):
+            for cell in ("s0", "s25", "s50", "s100"):
+                put(art, "e5", cell, r, 0.70 + 0.01 * r, twin=0.80, qalone=q if cell == "s50" else 0.25)
+        rc, res = run(art)
+        assert res["E5"]["floor_ok"]["s50"] is ok
+
+
+def test_amended_metric_tables_and_refusal(tmp_path):
+    for r in (1, 2, 3):
+        for cell, m in (("s0", 0.60), ("s25", 0.62), ("s50", 0.66), ("s100", 0.66)):
+            put(tmp_path, "e5", cell, r, m + 0.002 * r)
+    rc, res = run(tmp_path)
+    assert rc == 0, res
+    c = res["E5"]["cells"]["s50"]
+    assert abs(c["Y"]["mean"] - (0.664 - 0.80)) < 1e-9 and abs(c["Y_all"]["mean"] - c["Y"]["mean"]) < 1e-9
+    assert c["twin_ctx"]["mean"] == 0.80 and c["noctx_ctx"]["mean"] == 0.25
+    assert abs(c["twin_minus_qalone_ctx"]["mean"] - 0.55) < 1e-9 and c["instruction_complies_self"]["mean"] == 0.1
+    fam = res["E5"]["families"]["s50"]
+    assert set(fam) == {"recall", "instruction"} and "length" in fam["instruction"]["note"]
+    assert fam["recall"]["noctx"] == 0.25 and abs(fam["recall"]["twin"] - 0.80) < 1e-12
+    # A summary written before amendment 2 (no pools) is refused, not read with the old metric.
+    p = tmp_path / "e5" / "post_e5_s0_r1" / "summary.json"
+    s = json.loads(p.read_text())
+    del s["carry5"]["pool"]
+    p.write_text(json.dumps(s))
+    rc, err = run(tmp_path)
+    assert rc != 0 and "amendment 2" in err
 
 
 def test_extension_rule(tmp_path):

@@ -27,6 +27,7 @@ a rate the screen did not choose.
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import math
 import os
@@ -36,6 +37,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 REL = os.path.relpath(HERE, ROOT).replace(os.sep, "/")
 COLAB = os.path.join(ROOT, "tools", "colab_chat")
+_spec = importlib.util.spec_from_file_location("tiny_chat_run", os.path.join(COLAB, "tiny_chat_run.py"))
+tcr = importlib.util.module_from_spec(_spec)  # screen_status: the one definition of FAILED vs DIVERGED
+_spec.loader.exec_module(tcr)
 C = "/content/chat"
 VOCAB = f"{C}/upload/vocab_llama3_bpe.gguf"
 V = 16384
@@ -100,9 +104,19 @@ RUN = "tools/colab_chat/tiny_chat_run.py"
 # min(per-layer rate, FLOP ceiling). Anchors from the receipts: arxiv_2302_13971_base (d384 L6, T 512,
 # batch 16, 16k vocab) 19,388 tok/s beside pk_base_v1; pk_base_v1 (d768 L12, same T and batch)
 # 0.84-1.01 s/step = 8.1-9.8k tok/s. Both give ~0.07 s per layer per 8,192 tokens.
+# Used only for the Stage 0 files as launched (attempt 1); amendment 2 replaces it with the probes.
 LAYER_TOKENS_PER_S = 8192 / 0.07      # tokens/s for a 1-layer model
 FLOP_CEILING = 6.0e12                 # sustained FLOP/s seen on the L4 (pk_base_v1)
-VM_SPEEDUP = 2.5                      # a VM running 3-4 jobs delivers ~2.5 jobs' worth (assumption; Stage 0 measures)
+MODEL_VM_SPEEDUP = 2.5                # the model's assumption: a VM running 3-4 jobs delivers ~2.5 jobs' worth
+# Amendment 2: Stage 0 measured it. Three screens on one L4 together ran at 0.93-1.05 of one job alone
+# (the GPU is saturated by one job), and the sharing crashed 22 of 27 screens (each mtstudio process
+# caches up to 3/4 of the device: src/device_pool.cuh). GPU jobs now run one at a time per VM.
+VM_SPEEDUP = 1.0
+GPU_JOBS_PER_VM = 1
+LIGHT_POOL_MB = 2048                  # a light (scoring) job beside the training job caches at most this
+POST_EVAL_H = 0.30                    # per post job beyond its SFT: panels, Carry-5 with generation, base Carry-5
+RUNG_H = 0.08                         # per rung job (panels + base Carry-5); both unmeasured until the first post
+STAGE0_DIR = os.path.join(HERE, "stage0", "attempt1")   # Stage 0's first attempt: the probes and the screens
 
 
 def nonemb(L, d, dff):
@@ -146,12 +160,55 @@ def flops_per_token(s):
     return 6 * (s["nonemb"] + V * s["d"]) + 6 * s["layers"] * T * s["d"]
 
 
-def tok_per_s(s):
+def model_tok_per_s(s):
     return min(LAYER_TOKENS_PER_S / s["layers"], FLOP_CEILING / flops_per_token(s))
+
+
+def probes():
+    """{(size, layers): steady tokens/s alone on the L4} from Stage 0's probe receipts."""
+    out = {}
+    for d in ("s0", "s0_60m"):
+        root = os.path.join(STAGE0_DIR, d)
+        if not os.path.isdir(root):
+            continue
+        for n in sorted(os.listdir(root)):
+            p = os.path.join(root, n, "summary.json")
+            if n.startswith("probe_") and os.path.exists(p):
+                with open(p, encoding="utf-8") as f:
+                    s = json.load(f)
+                if s.get("rc") == 0 and s.get("tok_per_s_steady"):
+                    size, L = n[len("probe_"):].split("_L")
+                    out[(size, int(L))] = s["tok_per_s_steady"]
+    return out
+
+
+PROBES = probes()
+
+
+def tok_per_s(s):
+    """Amendment 2: the probe's rate for a probed shape; between probed depths of the same size, the
+    time per token interpolated linearly in log2(layers) (the ASHA-only depths 3, 6, 12); the old
+    model only where no probe exists."""
+    k = (s["size"], s["layers"])
+    if k in PROBES:
+        return PROBES[k]
+    same = sorted(L for (z, L) in PROBES if z == s["size"])
+    lo = [L for L in same if L < s["layers"]]
+    hi = [L for L in same if L > s["layers"]]
+    if lo and hi:
+        a, b = lo[-1], hi[0]
+        w = (math.log2(s["layers"]) - math.log2(a)) / (math.log2(b) - math.log2(a))
+        t = (1 - w) / PROBES[(s["size"], a)] + w / PROBES[(s["size"], b)]
+        return 1 / t
+    return model_tok_per_s(s)
 
 
 def hours(s, steps):
     return steps * TOKENS_PER_STEP / tok_per_s(s) / 3600
+
+
+def model_hours(s, steps):
+    return steps * TOKENS_PER_STEP / model_tok_per_s(s) / 3600
 
 
 def lr_table():
@@ -237,7 +294,8 @@ def stage0(sh, size):
                                  "--corpus", corpus_of(E1_SHARE), "--lr", repr(lr), "--steps", str(SCREEN_STEPS),
                                  "--seed", str(SCREEN_SEED)],
                          "outputs": ["summary.json"]})
-    est = sum(hours(sh[s], PROBE_STEPS) for s in ids) + sum(hours(sh[s], SCREEN_STEPS) * 3 for s in ids)
+    # The file as launched for attempt 1 (amendment 1's commit): the model's estimate, three at a time.
+    est = sum(model_hours(sh[s], PROBE_STEPS) for s in ids) + sum(model_hours(sh[s], SCREEN_STEPS) * 3 for s in ids)
     doc = {"_comment": f"tiny-chat Stage 0 ({size}; {REL}/PREREGISTRATION.md): the {E1_SHARE}% dialogue mix (E1 level; design.json) built on the VM, "
                        f"a {PROBE_STEPS}-step throughput probe per shape alone on the GPU, then lr screens "
                        f"{SCREEN_LRS} x {SCREEN_STEPS} steps per shape (seed {SCREEN_SEED}), three at a time. "
@@ -246,6 +304,52 @@ def stage0(sh, size):
                        f"Upload vocab_llama3_bpe.gguf with the runner's --upload." + DESIGN_NOTE,
            "max_parallel": 3, "jobs": jobs}
     return doc
+
+
+def failed_screens(size):
+    """Stage 0 attempt 1's screens that FAILED (a crash with finite losses; tiny_chat_run.screen_status),
+    from the receipts in stage0/attempt1/. Amendment 2: each is rerun unchanged, alone on the GPU."""
+    root = os.path.join(STAGE0_DIR, "s0" if size == "20m" else f"s0_{size}")
+    out = []
+    for n in sorted(os.listdir(root)) if os.path.isdir(root) else []:
+        p = os.path.join(root, n, "summary.json")
+        if n.startswith("screen_") and os.path.exists(p):
+            with open(p, encoding="utf-8") as f:
+                if tcr.screen_status(json.load(f)) == "FAILED":
+                    out.append(n)
+    return out
+
+
+def stage0_rerun(sh, size):
+    """Amendment 2: the failed screens of attempt 1, the same commands (spec, lr, seed 101, 1,500 steps,
+    the 35% mix rebuilt from the pinned sources), one GPU job at a time."""
+    ids = [k for k in sh if sh[k]["size"] == size]
+    name = f"tiny_chat_s0{'' if size == '20m' else '_' + size}_rerun.json"
+    again = set(failed_screens(size))
+    gate = {"name": "gate", "cmd": ["python3", RUN, "gate", "--out", "{out}", "--stage0", "--jobs",
+                                    f"tools/colab_chat/{name}", "--design", f"{REL}/design.json"],
+            "outputs": ["gate.json"]}
+    jobs = [gate, {**data_job([E1_SHARE]), "after": "gate"}]
+    est = 0.0
+    for sid in sorted(ids, key=lambda k: -sh[k]["layers"]):
+        for k, lr in enumerate(SCREEN_LRS):
+            n = f"screen_{sid}_lr{k}"
+            if n not in again:
+                continue
+            est += hours(sh[sid], SCREEN_STEPS)
+            jobs.append({"name": n, "after": "data",
+                         "cmd": ["python3", RUN, "screen", "--out", "{out}", "--spec", spec_path(sid),
+                                 "--corpus", corpus_of(E1_SHARE), "--lr", repr(lr), "--steps", str(SCREEN_STEPS),
+                                 "--seed", str(SCREEN_SEED)],
+                         "outputs": ["summary.json"]})
+    assert len(jobs) - 2 == len(again), (sorted(again), [j["name"] for j in jobs])
+    return name, {"_comment": f"tiny-chat Stage 0 RERUN ({size}; {REL}/PREREGISTRATION.md amendment 2): the {len(again)} "
+                              f"screens of attempt 1 that FAILED (crashes with finite losses, not divergence; receipts in "
+                              f"{REL}/stage0/attempt1/), rerun unchanged and one at a time (max_parallel 1). Measured "
+                              f"estimate {est:.1f} job-hours plus the data job. Afterwards, at home: python {RUN} choose "
+                              f"--art ATTEMPT1_ART --art THIS_ART --out {REL}/stage0/lr_choice.json, commit, rerun "
+                              f"make_jobs.py. Upload vocab_llama3_bpe.gguf with the runner's --upload." + DESIGN_NOTE,
+                  "max_parallel": GPU_JOBS_PER_VM, "jobs": jobs}
 
 
 def run_jobs(tag, cells, sh, lrs, provisional):
@@ -269,7 +373,7 @@ def run_jobs(tag, cells, sh, lrs, provisional):
                           "outputs": ["summary.json"]})
             for st in rung_steps():
                 rungs.append({"name": f"rung_{tag}_{cell}_r{seed}_s{st}", "after": "data", "light": True,
-                              "rung_of": {"job": name, "step": st},
+                              "rung_of": {"job": name, "step": st}, "env": {"MICROTORCH_POOL_MB": LIGHT_POOL_MB},
                               "cmd": ["python3", RUN, "rung", "--out", "{out}", "--spec", spec_path(sid),
                                       "--weights", f"{C}/{name}/rung_{st}/model.safetensors", "--pt-dir",
                                       f"{C}/{name}", "--step", str(st), "--drop-snapshot", "--job", name,
@@ -287,8 +391,14 @@ def run_jobs(tag, cells, sh, lrs, provisional):
             "cmd": ["python3", RUN, "gate", "--out", "{out}", "--jobs", f"tools/colab_chat/tiny_chat_{tag}.json",
                     "--choice", f"{REL}/stage0/lr_choice.json", "--design", f"{REL}/design.json"],
             "outputs": ["gate.json"]}
-    est = sum(hours(sh[sid], STEPS) + hours(sh[sid], SFT_STEPS) for _, sid, _ in cells) * len(SEEDS)
+    est = sum(run_hours(sh[sid]) for _, sid, _ in cells) * len(SEEDS)
     return pts, posts, picks, rungs, gate, est
+
+
+def run_hours(s):
+    """One E run on the VM (amendment 2): pretraining and SFT at the probe's rate, the post job's
+    evaluation and four rung jobs (allowances, unmeasured)."""
+    return hours(s, STEPS) + hours(s, SFT_STEPS) + POST_EVAL_H + len(RUNG_FRACTIONS) * RUNG_H
 
 
 def e_doc(tag, cells, sh, lrs, provisional, shares, title):
@@ -300,13 +410,16 @@ def e_doc(tag, cells, sh, lrs, provisional, shares, title):
     doc = {"_comment": f"tiny-chat {title} ({REL}/PREREGISTRATION.md). {len(pts)} pretraining runs of {STEPS} steps x "
                        f"{TOKENS_PER_STEP} tokens ({STEPS * TOKENS_PER_STEP / 1e6:.2f}M), each then SFT ({SFT_STEPS} "
                        f"steps on human dialogues), two fixed text panels and Carry-5 (post job); one pick per cell. "
-                       f"{lr_note}. Estimated {est:.0f} job-hours ({est / VM_SPEEDUP:.0f} L4 VM-hours at "
-                       f"{VM_SPEEDUP}x per VM). Rungs (amendment 1): every PT job snapshots its weights at steps "
+                       f"{lr_note}. One GPU job at a time (amendment 2: Stage 0 measured no throughput gain from "
+                       f"sharing the L4, and sharing crashed its screens); rung jobs beside it in the light slot, their "
+                       f"cache capped at {LIGHT_POOL_MB} MB. Estimated {est:.0f} L4 VM-hours (the Stage 0 probes, plus "
+                       f"{POST_EVAL_H} h per post job and {RUNG_H} h per rung, unmeasured). Rungs (amendment 1): every "
+                       f"PT job snapshots its weights at steps "
                        f"{rung_steps()} and a light rung job scores each snapshot (panels, base-model Carry-5 "
                        f"teacher-forced; rung.json home); runs are never stopped early. Home: each PT job's weights "
                        f"(relays + final), each post's summary.json, each rung's rung.json, each pick's best model. "
                        f"Upload vocab_llama3_bpe.gguf with the runner's --upload." + DESIGN_NOTE,
-           "max_parallel": 3 if tag == "e5" else 4, "max_parallel_light": 1,
+           "max_parallel": GPU_JOBS_PER_VM, "max_parallel_light": 1,
            "jobs": [data_job(shares), gate, *rungs, *posts, *picks, *pts]}
     return doc
 
@@ -346,7 +459,7 @@ def asha_plan(levels):
     (_, b0, _), (_, b1, k1), (_, b2, k2) = ASHA_ROUNDS
     r0 = sum(p * b0 + ASHA_SCORE_H for p in per_step)
     r1 = sum(p * b1 + ASHA_SCORE_H for p in per_step[:k1])                      # worst case: the dearest 9
-    r2 = sum(p * (b2 + SFT_STEPS) + 2 * ASHA_SCORE_H for p in per_step[:k2])    # and the dearest 3
+    r2 = sum(p * (b2 + SFT_STEPS) + POST_EVAL_H for p in per_step[:k2])         # and the dearest 3, with the post job
     worst = (r0 + r1 + r2) / VM_SPEEDUP
     if worst > ASHA_CAP_VM_HOURS:
         raise SystemExit(f"ASHA worst case {worst:.1f} L4 VM-hours exceeds the cap {ASHA_CAP_VM_HOURS}")
@@ -359,7 +472,8 @@ def asha_plan(levels):
             "rounds": [{"id": r, "budget": b, "keep": k} for r, b, k in ASHA_ROUNDS],
             "schedule": "each round trains from scratch: warmup = warmup_frac x budget, cosine to 0.1x at the budget",
             "promotion": "into each round, the top `keep` of the previous round's candidates by base-model Carry-5 "
-                         "forced-choice accuracy with gold history (acc_gold), ties by lower dialogue panel loss, "
+                         "forced-choice accuracy with gold history (acc_gold) over the primary metric's families (amendment 2: "
+                         "the instruction family out), ties by lower dialogue panel loss, "
                          "then config id; diverged or failed runs rank last and are never promoted",
             "cap_vm_hours": ASHA_CAP_VM_HOURS,
             "cost_job_hours": {"r0": round(r0, 1), "r1_worst": round(r1, 1), "r2_worst": round(r2, 1),
@@ -414,7 +528,7 @@ def asha_doc(plan, sh):
                              "outputs": ["summary.json"]})
     assert set(cfg) == {c["id"] for c in plan["configs"]}
     cj = plan["cost_job_hours"]
-    return {"_comment": f"tiny-chat EXPLORATORY successive-halving arm ({REL}/PREREGISTRATION.md amendment 1; plan "
+    return {"_comment": f"tiny-chat EXPLORATORY successive-halving arm ({REL}/PREREGISTRATION.md amendment 1, one GPU job at a time by amendment 2; plan "
                         f"{REL}/asha_plan.json). {ASHA_N} random configurations (shape, peak lr, warmup, dialogue share) "
                         f"trained from scratch for {ASHA_ROUNDS[0][1]} steps; the top {ASHA_ROUNDS[1][2]} by base-model "
                         f"Carry-5 acc_gold retrain for {ASHA_ROUNDS[1][1]}; the top {ASHA_ROUNDS[2][2]} for the full "
@@ -424,12 +538,12 @@ def asha_doc(plan, sh):
                         f"Launch through tools/colab_chat/tiny_chat_asha.py drive, which keeps ART/asha_state.json (every "
                         f"result and decision home so far) current for the runner's --upload asha_state.json=..., so a "
                         f"replaced VM can still promote. Upload vocab_llama3_bpe.gguf too." + DESIGN_NOTE,
-            "max_parallel": 4, "max_parallel_light": 1, "jobs": jobs}
+            "max_parallel": GPU_JOBS_PER_VM, "max_parallel_light": 1, "jobs": jobs}
 
 
 def tables(sh):
     rows = ["| shape | layers | d | heads | d_ff | d_ff/d | non-emb | emb (V x d) | total | emb share | "
-            "est. tok/s | PT h | SFT h |", "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
+            "tok/s (probe) | PT h | SFT h |", "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for sid, s in sh.items():
         rows.append(f"| {sid} | {s['layers']} | {s['d']} | {s['heads']} | {s['d_ff']} | {s['d_ff'] / s['d']:.2f} | "
                     f"{s['nonemb'] / 1e6:.2f}M | {s['emb'] / 1e6:.2f}M | {s['total'] / 1e6:.2f}M | "
@@ -438,24 +552,51 @@ def tables(sh):
     return "\n".join(rows)
 
 
-def budget(sh):
+# Stage 0 attempt 1 as it ran (runner.log in stage0/attempt1/): session up to session stopped.
+STAGE0_ATTEMPT1_VM_H = {"20m": (9 * 60 + 56 + 13 / 60 - (7 * 60 + 10 + 53 / 60)) / 60,   # 07:10:53-09:56:13
+                        "60m": (8 * 60 + 6 + 8 / 60 - (7 * 60 + 10 + 55 / 60)) / 60}     # 07:10:55-08:06:08
+DATA_H = 0.25                         # gate + data job on a fresh VM (attempt 1: 13-19 minutes)
+UNITS_PER_L4_HOUR = 4.8               # Colab compute units per L4 hour (section 10's figure)
+CORE_RULE_VM_H = 80                   # section 8 rule 5
+
+
+def budget_rows(sh):
+    """Amendment 2's budget from the probes: (block, runs, VM-hours), one GPU job at a time."""
     s20 = [k for k in sh if sh[k]["size"] == "20m"]
     s60 = [k for k in sh if sh[k]["size"] == "60m"]
-    st0 = lambda ids: sum(hours(sh[s], PROBE_STEPS) + 3 * hours(sh[s], SCREEN_STEPS) for s in ids)
-    run = lambda sid: hours(sh[sid], STEPS) + hours(sh[sid], SFT_STEPS)
-    lines = [("Stage 0, 20M (probes + screens)", 5 + 15, st0(s20)),
-             ("E5 (4 dialogue levels x 3 seeds at 20m_L8)", 12, 4 * len(SEEDS) * run(E5_SHAPE)),
-             ("E1 20M (L2, L4, L16, L32 x 3 seeds; L8 from E5)", 12,
-              len(SEEDS) * sum(run(s) for s in s20 if s != E5_SHAPE)),
-             ("Stage 0, 60M (on go)", 4 + 12, st0(s60)),
-             ("E1 60M (4 shapes x 3 seeds, on go)", 12, len(SEEDS) * sum(run(s) for s in s60))]
-    out = ["| block | jobs | job-hours | L4 VM-hours |", "|---|---|---|---|"]
-    for name, n, h in lines:
-        out.append(f"| {name} | {n} | {h:.0f} | {h / VM_SPEEDUP:.0f} |")
-    core = sum(h for _, _, h in lines[:3])
-    out.append(f"| core (Stage 0 + E5 + E1 20M) | | {core:.0f} | {core / VM_SPEEDUP:.0f} |")
-    out.append(f"| with the 60M stage | | {sum(h for _, _, h in lines):.0f} | "
-               f"{sum(h for _, _, h in lines) / VM_SPEEDUP:.0f} |")
+    rerun = lambda size: DATA_H + sum(hours(sh[n[len("screen_"):].rsplit("_lr", 1)[0]], SCREEN_STEPS)
+                                      for n in failed_screens(size))
+    plan_p = PLAN if os.path.exists(PLAN) else None
+    asha = None
+    if plan_p:
+        with open(plan_p, encoding="utf-8") as f:
+            asha = json.load(f)["cost_job_hours"]
+    return [("Stage 0, 20M: attempt 1 (as run)", 20, STAGE0_ATTEMPT1_VM_H["20m"]),
+            (f"Stage 0, 20M: rerun of the {len(failed_screens('20m'))} failed screens", len(failed_screens("20m")),
+             rerun("20m")),
+            ("E5 (4 dialogue levels x 3 seeds at 20m_L8)", 12, DATA_H + 4 * len(SEEDS) * run_hours(sh[E5_SHAPE])),
+            ("E1 20M (L2, L4, L16, L32 x 3 seeds; L8 from E5)", 12,
+             DATA_H + len(SEEDS) * sum(run_hours(sh[s]) for s in s20 if s != E5_SHAPE)),
+            ("Stage 0, 60M: attempt 1 (as run)", 16, STAGE0_ATTEMPT1_VM_H["60m"]),
+            (f"Stage 0, 60M: rerun of the {len(failed_screens('60m'))} failed screens", len(failed_screens("60m")),
+             rerun("60m")),
+            ("E1 60M (4 shapes x 3 seeds)", 12, DATA_H + len(SEEDS) * sum(run_hours(sh[s]) for s in s60)),
+            ("successive halving (exploratory; worst case, cap 20)", 27,
+             (asha["worst_vm_hours"] + DATA_H) if asha else float("nan"))]
+
+
+def budget(sh):
+    rows = budget_rows(sh)
+    out = ["| block | runs | L4 VM-hours | compute units |", "|---|---|---|---|"]
+    for name, n, h in rows:
+        out.append(f"| {name} | {n} | {h:.1f} | {h * UNITS_PER_L4_HOUR:.0f} |")
+    core = sum(h for _, _, h in rows[:4])
+    tot = sum(h for _, _, h in rows)
+    out.append(f"| **core (Stage 0 20M + E5 + E1 20M; rule 5)** | | **{core:.1f}** | **{core * UNITS_PER_L4_HOUR:.0f}** |")
+    out.append(f"| everything (with the 60M stage and the arm) | | {tot:.1f} | {tot * UNITS_PER_L4_HOUR:.0f} |")
+    out.append(f"\nsection 8 rule 5: the core is {core:.1f} L4 VM-hours, "
+               + ("ABOVE" if core > CORE_RULE_VM_H else "below") + f" {CORE_RULE_VM_H}; per-token time L32/L2 at 20M "
+               f"{tok_per_s(sh['20m_L2']) / tok_per_s(sh['20m_L32']):.2f}x (section 6 predicted at least 3x)")
     return "\n".join(out)
 
 
@@ -480,8 +621,8 @@ def main(argv=None):
     sh = shapes()
     print(tables(sh))
     print()
-    print(budget(sh))
     if a.tables:
+        print(budget(sh))
         return 0
     global SHARES, E1_SHARE, DESIGN_NOTE
     if a.dialogue_pt_bytes is not None:
@@ -514,7 +655,11 @@ def main(argv=None):
     write(os.path.join(HERE, "specs", "sft.json"), SFT)
     write(os.path.join(COLAB, "tiny_chat_s0.json"), stage0(sh, "20m"))
     write(os.path.join(COLAB, "tiny_chat_s0_60m.json"), stage0(sh, "60m"))
-    e5 = [(f"s{p}", E5_SHAPE, p) for p in SHARES]
+    for size in ("20m", "60m"):  # amendment 2: the failed screens of attempt 1, one at a time
+        if failed_screens(size):
+            n, doc = stage0_rerun(sh, size)
+            write(os.path.join(COLAB, n), doc)
+    e5 =[(f"s{p}", E5_SHAPE, p) for p in SHARES]
     write(os.path.join(COLAB, "tiny_chat_e5.json"), e_doc("e5", e5, sh, lrs, provisional, SHARES, "E5, the data bar"))
     e1 = [(sid.split("_")[1], sid, E1_SHARE) for sid in sh if sh[sid]["size"] == "20m" and sid != E5_SHAPE]
     write(os.path.join(COLAB, "tiny_chat_e1.json"), e_doc("e1", e1, sh, lrs, provisional, [E1_SHARE],
@@ -533,8 +678,10 @@ def main(argv=None):
     write(os.path.join(COLAB, "tiny_chat_asha.json"), asha_doc(plan, ash))
     print(f"ASHA arm: worst case {plan['cost_job_hours']['worst_vm_hours']} L4 VM-hours (cap {ASHA_CAP_VM_HOURS})")
     print("\nwrote specs/, asha_plan.json, tiny_chat_s0.json, tiny_chat_s0_60m.json, tiny_chat_e5.json, "
-          "tiny_chat_e1.json, tiny_chat_e1_60m.json, tiny_chat_asha.json"
+          "tiny_chat_e1.json, tiny_chat_e1_60m.json, tiny_chat_asha.json, the Stage 0 rerun files"
           + (" (PROVISIONAL learning rates)" if provisional else ""))
+    print()
+    print(budget(sh))
     return 0
 
 

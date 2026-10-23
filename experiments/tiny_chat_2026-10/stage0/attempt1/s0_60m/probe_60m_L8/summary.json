@@ -1,0 +1,20 @@
+{
+ "mode": "probe",
+ "spec": "experiments/tiny_chat_2026-10/specs/shape_60m_L8.json",
+ "rc": 0,
+ "steps": 300,
+ "arch": {
+  "d": 768,
+  "layers": 8,
+  "heads": 12,
+  "d_ff": 2240
+ },
+ "tokens_per_step": 16384,
+ "tok_per_s_steady": 13798.664584859443,
+ "tok_per_s_result": 13339.843997700149,
+ "wall_seconds": 368.460081006,
+ "peak_gpu_mem_mib": 15906,
+ "gpu": "NVIDIA L4",
+ "other_mtstudio_at_start": 0,
+ "params": 72758016
+}

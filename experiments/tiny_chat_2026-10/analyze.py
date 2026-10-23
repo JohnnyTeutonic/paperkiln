@@ -9,6 +9,10 @@ ART holds the runners' artefact folders: ART/s0 (Stage 0), ART/e5, ART/e1, ART/e
 <job>/summary.json per job. E1's L8 cell at 20M is E5's cell at E1's dialogue level (the same runs).
 Amendment 1 adds the early-ranking analysis (rung_<...>/rung.json per rung job; rung_analysis) and
 a descriptive summary of the exploratory successive-halving arm (ART/asha; asha_summary).
+Amendment 2: Y over the primary families (the instruction family out; its generation-scored
+compliance reported separately), the validity gate's second condition (twin at least 10 points
+above the question alone on the context families), the per-family table with the question alone
+beside the twin, and section 3's all-items Y beside the amended one.
 """
 from __future__ import annotations
 
@@ -25,7 +29,9 @@ SEEDS_EXT = [4, 5]
 SESOI_E5 = 0.03          # 3 points of Y
 SESOI_E1 = 0.01          # 1 point of Y per doubling of depth
 SESOI_LOSS_E1 = 0.01     # nats per doubling (panel losses)
-FLOOR = 0.10             # validity gate: twin accuracy at least chance + 10 points
+FLOOR = 0.10             # validity gate (i): twin accuracy at least chance + 10 points (primary families)
+FLOOR_QALONE = 0.10      # amendment 2, gate (ii): twin minus question-alone at least 10 points (context families)
+MODES = ("gold", "self", "twin", "noctx")
 # Two-tailed t critical values: alpha 0.05 and the 90% interval (TOST at 5%), by df.
 T05 = {1: 12.706, 2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571, 6: 2.447, 7: 2.365, 8: 2.306, 9: 2.262}
 T10 = {1: 6.314, 2: 2.920, 3: 2.353, 4: 2.132, 5: 2.015, 6: 1.943, 7: 1.895, 8: 1.860, 9: 1.833}
@@ -44,18 +50,60 @@ def load(art, block):
 
 def get(s, key):
     """One run's metric. carry5 = tiny_chat_run.carry5_read: forced-choice acc per history mode
-    (gold, self, twin, noctx), chance 0.25."""
+    (gold, self, twin, noctx = the question alone), chance 0.25. Amendment 2: Y, the multi-turn and
+    twin accuracies and the gold-history Y are over the primary families (`pool`: recall,
+    correction, topic, knowledge; the instruction family out); the floor's question-alone check is
+    on the context families (`ctx`: recall, correction, topic); Y_all is section 3's frozen
+    all-items definition, reported beside it."""
     c5 = s.get("carry5", {})
-    acc = c5.get("acc", {})
-    gold = acc.get("gold") - acc.get("twin") if acc.get("gold") is not None and acc.get("twin") is not None else None
+    if "pool" not in c5 or "ctx" not in c5:
+        raise SystemExit(f"{s.get('cell')} seed {s.get('seed')}: summary without the amended Carry-5 pools "
+                         "(amendment 2); rerun its post job from the amended commit")
+    pool, ctx = c5["pool"], c5["ctx"]
+    comp = (c5.get("pools") or {}).get("instruction_complies_gen", {})
+
+    def diff(d, a, b):
+        return d[a] - d[b] if d.get(a) is not None and d.get(b) is not None else None
     return {"Y": s.get("primary"),
-            "multi_self": acc.get("self"),
-            "twin_self": acc.get("twin"),
-            "Y_gold": gold,
+            "Y_all": s.get("primary_all_items"),
+            "multi_self": pool.get("self"),
+            "twin_self": pool.get("twin"),
+            "noctx": pool.get("noctx"),
+            "twin_ctx": ctx.get("twin"),
+            "noctx_ctx": ctx.get("noctx"),
+            "twin_minus_qalone_ctx": diff(ctx, "twin", "noctx"),
+            "Y_gold": diff(pool, "gold", "twin"),
+            "instruction_complies_self": (comp.get("self") or {}).get("mean"),
+            "instruction_complies_twin": (comp.get("twin") or {}).get("mean"),
             "panel_fineweb": s.get("panels", {}).get("fineweb"),
             "panel_dialogue": s.get("panels", {}).get("dialogue"),
             "sft_val": s["sft_evals"][-1][1] if s.get("sft_evals") else None,
             "chance": c5.get("chance")}[key]
+
+
+CELL_KEYS = ["Y", "Y_all", "multi_self", "twin_self", "noctx", "twin_ctx", "noctx_ctx", "twin_minus_qalone_ctx",
+             "Y_gold", "instruction_complies_self", "instruction_complies_twin", "panel_fineweb", "panel_dialogue",
+             "sft_val"]
+
+
+def family_table(runs, cells, seeds):
+    """S5 as amended: per cell, per family (the instruction family included, its forced choice
+    flagged as length-confounded), the mean forced-choice accuracy over seeds in every history mode,
+    the question alone beside the twin."""
+    out = {}
+    for c in cells:
+        fams = {}
+        for r in seeds:
+            if (c, r) not in runs:
+                continue
+            fam = (runs[(c, r)].get("carry5", {}).get("pools") or {}).get("acc", {}).get("family", {})
+            for mode, rows in fam.items():
+                for f, v in rows.items():
+                    fams.setdefault(f, {}).setdefault(mode, []).append(v["mean"])
+        out[c] = {f: {m: st.mean(v) for m, v in modes.items()} for f, modes in sorted(fams.items())}
+        if "instruction" in out[c]:
+            out[c]["instruction"]["note"] = "forced choice confounded by answer length (amendment 2); not in Y"
+    return out
 
 
 def decide(diffs, sesoi, direction=+1):
@@ -109,11 +157,19 @@ def cell_table(runs, cells, seeds, keys):
 
 
 def floor_ok(runs, cell, seeds):
+    """The validity gate as amended (amendment 2), on the cell's means over seeds: (i) twin accuracy
+    over the primary families at least chance + FLOOR, and (ii) twin minus question-alone accuracy
+    over the context families at least FLOOR_QALONE."""
     tw = [get(runs[(cell, r)], "twin_self") for r in seeds]
     ch = [get(runs[(cell, r)], "chance") for r in seeds]
-    if any(x is None for x in tw + ch):
+    tq = [get(runs[(cell, r)], "twin_minus_qalone_ctx") for r in seeds]
+    if any(x is None for x in tw + ch + tq):
         return None
-    return st.mean(tw) >= st.mean(ch) + FLOOR
+    return st.mean(tw) >= st.mean(ch) + FLOOR and st.mean(tq) >= FLOOR_QALONE
+
+
+FLOOR_TEXT = ("FLOOR (twin accuracy within 10 points of chance, or twin within 10 points of the question alone "
+              "on the context families)")
 
 
 def contrast(runs, cells, weights, seeds, key):
@@ -128,8 +184,7 @@ def e5(runs, partial, design):
     seeds = seeds_of(runs, cells)
     miss = cells_complete(runs, cells, seeds)
     res = {"design": design, "seeds": seeds, "missing": miss,
-           "cells": cell_table(runs, cells, seeds, ["Y", "multi_self", "twin_self", "Y_gold", "panel_fineweb",
-                                                     "panel_dialogue", "sft_val"])}
+           "cells": cell_table(runs, cells, seeds, CELL_KEYS), "families": family_table(runs, cells, seeds)}
     if miss and not partial:
         raise SystemExit(f"E5 incomplete: {miss} (use --partial for a descriptive read)")
     if miss:
@@ -139,7 +194,7 @@ def e5(runs, partial, design):
     if all(res["floor_ok"].get(c) is not False for c in (d0, de1)):
         res["H5_primary_YE1_minus_Y0"] = decide(contrast(runs, [de1, d0], [1, -1], seeds, "Y"), SESOI_E5, +1)
     else:
-        res["H5_primary_YE1_minus_Y0"] = {"verdict": "FLOOR (twin accuracy within 10 points of chance)"}
+        res["H5_primary_YE1_minus_Y0"] = {"verdict": FLOOR_TEXT}
     if dtop != de1:
         res["H5_sat_Ytop_minus_YE1"] = decide(contrast(runs, [dtop, de1], [1, -1], seeds, "Y"), SESOI_E5, +1)
     res["H5_knowledge_fineweb_top_minus_0"] = decide(
@@ -164,8 +219,7 @@ def e1(runs, depths, partial, tag):
     seeds = seeds_of(runs, cells)
     miss = cells_complete(runs, cells, seeds)
     res = {"seeds": seeds, "missing": miss,
-           "cells": cell_table(runs, cells, seeds, ["Y", "multi_self", "twin_self", "Y_gold", "panel_fineweb",
-                                                     "panel_dialogue", "sft_val"])}
+           "cells": cell_table(runs, cells, seeds, CELL_KEYS), "families": family_table(runs, cells, seeds)}
     if miss and not partial:
         raise SystemExit(f"E1 {tag} incomplete: {miss} (use --partial for a descriptive read)")
     if miss:
@@ -179,7 +233,7 @@ def e1(runs, depths, partial, tag):
     quad = [qi - qm for qi in q]
     res["floor_ok"] = {c: floor_ok(runs, c, seeds) for c in cells}
     if any(v is False for v in res["floor_ok"].values()):
-        res["H1a_depth_slope_Y"] = {"verdict": "FLOOR in " + ", ".join(c for c, v in res["floor_ok"].items()
+        res["H1a_depth_slope_Y"] = {"verdict": FLOOR_TEXT + " in " + ", ".join(c for c, v in res["floor_ok"].items()
                                                                       if v is False)}
     else:
         res["H1a_depth_slope_Y"] = decide(contrast(runs, cells, lin, seeds, "Y"), SESOI_E1, +1)
