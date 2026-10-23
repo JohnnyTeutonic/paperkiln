@@ -415,10 +415,11 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
         n = todo.pop()
         if n in by and n not in needed:
             needed.add(n)
-            # A home training job's needs are not: its final weights are uploaded instead. A job
-            # that runs here (not home, or a data job run again) needs its own inputs.
-            if not st.job(n)["home"] or "cmd" in by[n]:
-                todo.extend(needs(by[n]))
+            # Followed through home training jobs too: a job that runs after one often reads that
+            # job's own inputs without declaring them (24 Oct 2026: the pilot's post job read
+            # data/panel_fineweb.ids on a replacement VM, after only its pretraining job), so every
+            # data job upstream of unfinished work runs again. Training jobs never rerun.
+            todo.extend(needs(by[n]))
     failed = [j["name"] for j in jobs if st.job(j["name"])["home"] and st.job(j["name"]).get("status") == "FAILED"]
     rerun = [j["name"] for j in jobs if st.job(j["name"])["home"] and "cmd" in j and j["name"] in needed
              and j["name"] not in failed]
