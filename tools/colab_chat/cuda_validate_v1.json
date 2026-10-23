@@ -1,0 +1,8 @@
+{
+  "_comment": "CUDA validation on an L4 before the tiny-chat post jobs rely on device masked cross-entropy (paperkiln 4d2d1427): runs every leg of tools/colab_cuda_validate.sh (incl. tests/test_cuda_ops.cpp leg 9, test_recursion, test_mor) through tiny_chat_run.py cuda_gate. About 0.3 L4 VM-hours.",
+  "max_parallel": 1,
+  "jobs": [
+    {"name": "cuda_gate", "cmd": ["python3", "tools/colab_chat/tiny_chat_run.py", "cuda_gate", "--out", "{out}"],
+     "outputs": ["cuda_gate.json", "cuda_gate.log"]}
+  ]
+}
