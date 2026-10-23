@@ -3,7 +3,7 @@ runs paperkiln GGUFs with them, tools/thirdparty_parity.py runs third-party GGUF
 tools/gguf_ir.py builds from llama.cpp metadata.
 
     run_nodes(nodes, env, W, i=None, no_window=False, wi=None)   # one embed / block / head node list
-    forward(doc, W, ids, last_only=False)               # logits [T, vocab] (or the last row only)
+    forward(doc, W, ids, last_only=False, trace=None)   # logits [T, vocab] (or the last row only)
     load_weights(path)                                  # {name: f32 array [.., in]} from any GGUF type
 
 Every op computes in f32. Beyond the ops tools/ir_run.py documents:
@@ -26,6 +26,9 @@ Any attribute of a block node (and of a block state slot) may be {"per_layer": [
 block i reads v_i. The block's own key "weight_index" {"per_layer": [m_0, .., m_{L-1}]} (tied-block
 recursion) makes application i read its tensors from blk.{m_i}.* (run_nodes' wi); everything else,
 per-layer attributes and state included, stays indexed by i.
+A block whose first node is depth_route (Mixture-of-Recursions, causal token choice; kv slots with
+kv_rows "active") routes at step 0's first application and runs each recursion step's applications on
+its active rows only (forward's trace receives the depths).
 """
 from __future__ import annotations
 
@@ -296,13 +299,66 @@ def run_nodes(nodes, env, W, i=None, no_window=False, wi=None):
         env[nd["out"]] = y.astype(np.float32)
 
 
-def forward(doc, W, ids, last_only=False, no_window=False):
+def _routed_blocks(doc, W, env, no_window, trace):
+    """The block under a depth_route node (ir.hpp; Mixture-of-Recursions, causal token choice): route at
+    step 0's first application, run each step's applications on its active rows only (their positions,
+    so attention and RoPE see exactly those rows), then x = x_in + g (x - x_in) for them."""
+    route, nodes = doc["block"]["nodes"][0], doc["block"]["nodes"][1:]
+    if route.get("route") != "token_choice" or route.get("gate") not in ("score", "none"):
+        raise SystemExit("ir_numpy: depth_route supports route token_choice and gate score | none")
+    for s in doc["block"].get("state", []):
+        if s.get("kind") == "kv" and s.get("kv_rows") != "active":
+            raise SystemExit("ir_numpy: depth_route needs every kv slot's kv_rows to be active")
+    steps, L = route["step"]["per_layer"], doc["block"]["repeat"]
+    T = env["x"].shape[0]
+    depth = gate = x_in = act = sub = None
+    for i in range(L):
+        k = steps[i]
+        if k < 0:
+            run_nodes(nodes, env, W, i, no_window=no_window, wi=weight_index(doc, i))
+            continue
+        first = i == 0 or steps[i - 1] != k
+        last = i == L - 1 or steps[i + 1] != k
+        if k == 0 and first:
+            logits = (env["x"] @ W[route["weight"]].T).astype(np.float32)  # [T, R]
+            j = np.argmax(logits, axis=1)  # the first largest: ties to the lower index
+            e = np.exp(logits - logits.max(axis=1, keepdims=True))
+            p = (e / e.sum(axis=1, keepdims=True)).astype(np.float32)
+            depth = j + 1
+            gate = p[np.arange(T), j][:, None]
+            srt = np.sort(logits, axis=1)
+            env["rec_margin"] = srt[:, -1] - srt[:, -2] if logits.shape[1] > 1 else np.full(T, np.inf)
+            env[route["out"]] = depth[:, None].astype(np.float32)
+            if trace is not None:
+                trace.extend(int(d) for d in depth)
+        if first:
+            x_in, act = env["x"], np.nonzero(depth > k)[0]
+            sub = {"x": x_in[act], "pos": env["pos"][act]}
+        if act.size == 0:
+            continue
+        run_nodes(nodes, sub, W, i, no_window=no_window, wi=weight_index(doc, i))
+        if last:
+            x = x_in.copy()
+            if route["gate"] == "score":
+                d = (sub["x"] - x_in[act]).astype(np.float32)
+                x[act] = (x_in[act] + (gate[act] * d).astype(np.float32)).astype(np.float32)
+            else:
+                x[act] = sub["x"]
+            env["x"] = x
+
+
+def forward(doc, W, ids, last_only=False, no_window=False, trace=None):
     """Logits [T, vocab] for one sequence from position 0; last_only runs the head on the last row
-    only (every head op is row-wise), the cheap way to decode greedily."""
+    only (every head op is row-wise), the cheap way to decode greedily. trace (a list): under a
+    depth_route block, each token's depth is appended to it."""
     env = {"tokens": np.array(ids), "pos": np.arange(len(ids))}  # pos unused by graphs without positions
     run_nodes(doc["embed"]["nodes"], env, W, no_window=no_window)
-    for i in range(doc["block"]["repeat"]):
-        run_nodes(doc["block"]["nodes"], env, W, i, no_window=no_window, wi=weight_index(doc, i))
+    blk = doc["block"]["nodes"]
+    if blk and blk[0]["op"] == "depth_route":
+        _routed_blocks(doc, W, env, no_window, trace)
+    else:
+        for i in range(doc["block"]["repeat"]):
+            run_nodes(blk, env, W, i, no_window=no_window, wi=weight_index(doc, i))
     if last_only:
         for k in list(env):
             if isinstance(env[k], np.ndarray) and env[k].ndim == 2 and env[k].shape[0] == len(ids):

@@ -160,6 +160,54 @@ def state_errors(doc):
     return errs
 
 
+def depth_route_errors(doc):
+    """ir.hpp depth_route and kv_rows: the node first and once, its steps consecutive, ascending and
+    equally long, the router named in full, every kv slot's kv_rows "active"."""
+    errs = []
+    blk = doc.get("block", {})
+    nodes = blk.get("nodes", [])
+    at = [j for j, n in enumerate(nodes) if n.get("op") == "depth_route"]
+    slots = [s for s in blk.get("state", []) if s.get("kind") == "kv"]
+    for s in slots:
+        if "kv_rows" in s and s["kv_rows"] != "active":
+            errs.append(f"kv state {s.get('name')}: kv_rows {s['kv_rows']!r} (only \"active\" is defined)")
+    if not at:
+        return errs
+    if at != [0]:
+        return errs + ["depth_route must be the block's first node, once"]
+    r = nodes[0]
+    R = r.get("n_rec")
+    if not isinstance(R, int) or R < 1:
+        return errs + ["depth_route: n_rec must be an integer >= 1"]
+    if r.get("route") != "token_choice":
+        errs.append(f"depth_route: route {r.get('route')!r} (only token_choice, causal, is defined)")
+    if r.get("gate") not in ("score", "none"):
+        errs.append(f"depth_route: gate {r.get('gate')!r} is not score or none")
+    w = r.get("weight")
+    if not isinstance(w, str) or "{" in w:
+        errs.append("depth_route: weight must be the router's full tensor name (no substitution)")
+    if not isinstance(r.get("out"), str):
+        errs.append("depth_route: out must name the depth trace")
+    st = (r.get("step") or {}).get("per_layer") if isinstance(r.get("step"), dict) else None
+    if not isinstance(st, list) or len(st) != blk.get("repeat") or not all(isinstance(x, int) for x in st):
+        return errs + ["depth_route: step must be {per_layer: [block.repeat integers]}"]
+    inside = [x for x in st if x != -1]
+    runs = []
+    for i, x in enumerate(st):
+        if x == -1:
+            continue
+        if i == 0 or st[i - 1] != x:
+            runs.append([x, 0])
+        runs[-1][1] += 1
+    if any(x < -1 or x >= R for x in st) or [k for k, _ in runs] != list(range(R)) or not inside:
+        errs.append(f"depth_route: steps {st} are not -1 or the consecutive steps 0 .. {R - 1} in order")
+    elif len({n for _, n in runs}) != 1:
+        errs.append(f"depth_route: steps {st} differ in length")
+    if not slots or any(s.get("kv_rows") != "active" for s in slots):
+        errs.append("depth_route needs kv_rows \"active\" on every kv slot")
+    return errs
+
+
 def check(path, like=None, tensors_as=None):
     errs = []
     meta, tensors, data_start, raw, (i0, i1) = read_gguf(path)
@@ -177,6 +225,13 @@ def check(path, like=None, tensors_as=None):
         if n not in have and not (fb and fb in have):
             errs.append(f"{where}: {n} is not a tensor of {path}")
     errs += state_errors(doc)
+    errs += depth_route_errors(doc)
+    for node in doc.get("block", {}).get("nodes", [])[:1]:
+        if node.get("op") == "depth_route":
+            dims = {t[0]: t[1] for t in tensors}.get(node.get("weight"))
+            want = [doc.get("model", {}).get("d"), node.get("n_rec")]
+            if dims is not None and dims != want:
+                errs.append(f"depth_route: {node['weight']} has ne {dims}, not [d, n_rec] = {want}")
     wmap = (doc.get("block", {}).get("weight_index") or {}).get("per_layer")
     if isinstance(wmap, list) and wmap:
         # Shared layers (ir.hpp weight_index): llama.cpp would run each stored layer once.

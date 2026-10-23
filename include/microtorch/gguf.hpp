@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "microtorch/primitives.hpp"
@@ -42,6 +43,12 @@ struct LlamaExportConfig {
     // llama-architecture MoE renormalises the top-k softmax gates, so only
     // a renormalised-gate model is served faithfully.
     uint32_t expert_count = 0, expert_used_count = 0;
+    // Further 2-D projections, state-dict key -> GGUF name, each written as
+    // a linear weight [out, in] (ne = {in, out}) after output_norm, F32 in
+    // every variant (no Q8_0 pick: the names are not blk.*). The
+    // Mixture-of-Recursions router: recursion.router.weight ->
+    // rec.0.router.weight (ir.hpp depth_route).
+    std::vector<std::pair<std::string, std::string>> extra_proj;
 
     // Weight layout of the 2-D projection tensors in the state_dict:
     //  false (default): HF torch.nn.Linear rows=[out], cols=[in] -- what

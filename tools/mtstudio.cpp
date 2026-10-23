@@ -22,6 +22,7 @@
 #include <filesystem>
 #include <fstream>
 #include <functional>
+#include <limits>
 #include <map>
 #include <mutex>
 #include <random>
@@ -83,6 +84,10 @@ struct Spec {
     size_t rec_prelude = 0, rec_block = 0, rec_repeats = 1, rec_coda = 0;
     std::string rec_schedule = "fixed";
     std::string rec_inject = "none";  // none | add (nn::LlamaConfig::Recursion::inject)
+    // schedule "mor" (arch.custom.recursion.mor; tiny-chat amendment 4):
+    // causal token choice, the router's balancing and z-loss coefficients.
+    std::string rec_mor_route = "token_choice", rec_mor_gate = "score", rec_mor_kv = "active";
+    float rec_mor_balance = 0.1f, rec_mor_z = 0.001f;
     // data
     std::string corpus, vocab_gguf;
     size_t vocab_cap = 4096;
@@ -244,9 +249,9 @@ Spec parse_spec(const std::string& path) {
             if (!r.is_object()) throw std::runtime_error("arch.custom.recursion must be an object");
             for (const auto& [k, v] : r.items())
                 if (k != "block" && k != "repeats" && k != "prelude" && k != "coda" && k != "schedule" &&
-                    k != "inject" && k.rfind("_", 0) != 0)
+                    k != "inject" && k != "mor" && k.rfind("_", 0) != 0)
                     throw std::runtime_error("arch.custom.recursion: unknown key " + k +
-                                             " (block, repeats, prelude, coda, schedule, inject)");
+                                             " (block, repeats, prelude, coda, schedule, inject, mor)");
             s.rec_block = r.value("block", size_t(0));
             s.rec_repeats = r.value("repeats", size_t(1));
             s.rec_prelude = r.value("prelude", size_t(0));
@@ -257,9 +262,41 @@ Spec parse_spec(const std::string& path) {
                 throw std::runtime_error("arch.custom.recursion.inject must be none or add, got " + s.rec_inject);
             if (s.rec_block < 1) throw std::runtime_error("arch.custom.recursion.block must be >= 1");
             if (s.rec_repeats < 1) throw std::runtime_error("arch.custom.recursion.repeats must be >= 1");
-            if (s.rec_schedule != "fixed")
+            if (s.rec_schedule != "fixed" && s.rec_schedule != "mor")
                 throw std::runtime_error("arch.custom.recursion.schedule \"" + s.rec_schedule +
-                                         "\" is not implemented (\"fixed\" only)");
+                                         "\" is not implemented (\"fixed\" or \"mor\")");
+            if (r.contains("mor") && s.rec_schedule != "mor")
+                throw std::runtime_error("arch.custom.recursion.mor needs schedule \"mor\"");
+            if (s.rec_schedule == "mor") {
+                // {"route": "token_choice", "gate": "score", "balance": 0.1,
+                //  "z_loss": 0.001, "kv_rows": "active"} (nn::LlamaConfig::MoR).
+                const json m = r.value("mor", json::object());
+                if (!m.is_object()) throw std::runtime_error("arch.custom.recursion.mor must be an object");
+                for (const auto& [k, v] : m.items())
+                    if (k != "route" && k != "gate" && k != "balance" && k != "z_loss" && k != "kv_rows" &&
+                        k.rfind("_", 0) != 0)
+                        throw std::runtime_error("arch.custom.recursion.mor: unknown key " + k +
+                                                 " (route, gate, balance, z_loss, kv_rows)");
+                s.rec_mor_route = m.value("route", s.rec_mor_route);
+                s.rec_mor_gate = m.value("gate", s.rec_mor_gate);
+                s.rec_mor_kv = m.value("kv_rows", s.rec_mor_kv);
+                s.rec_mor_balance = m.value("balance", s.rec_mor_balance);
+                s.rec_mor_z = m.value("z_loss", s.rec_mor_z);
+                if (s.rec_mor_route != "token_choice")
+                    throw std::runtime_error("arch.custom.recursion.mor.route must be token_choice (causal; expert "
+                                             "choice ranks tokens across the sequence and cannot decode), got " +
+                                             s.rec_mor_route);
+                if (s.rec_mor_gate != "score" && s.rec_mor_gate != "none")
+                    throw std::runtime_error("arch.custom.recursion.mor.gate must be score or none, got " +
+                                             s.rec_mor_gate);
+                if (s.rec_mor_kv != "active")
+                    throw std::runtime_error("arch.custom.recursion.mor.kv_rows must be active (kv_from is reserved), "
+                                             "got " + s.rec_mor_kv);
+                if (s.rec_mor_balance < 0.0f || s.rec_mor_z < 0.0f)
+                    throw std::runtime_error("arch.custom.recursion.mor.balance and z_loss must be >= 0");
+                if (s.rec_inject != "none")
+                    throw std::runtime_error("arch.custom.recursion: inject add is not wired with schedule mor");
+            }
             const size_t stored = s.rec_prelude + s.rec_block + s.rec_coda;
             if (c.contains("layers") && s.layers != stored)
                 throw std::runtime_error("arch.custom.layers " + std::to_string(s.layers) +
@@ -480,7 +517,13 @@ void apply_recursion(nn::LlamaConfig& lc, const Spec& s) {
     lc.recursion.coda = s.rec_coda;
     lc.recursion.schedule = s.rec_schedule;
     lc.recursion.inject = s.rec_inject;
+    lc.recursion.mor.route = s.rec_mor_route;
+    lc.recursion.mor.gate = s.rec_mor_gate;
+    lc.recursion.mor.kv_rows = s.rec_mor_kv;
 }
+
+// schedule "mor": per-token depth (nn::LlamaConfig::MoR).
+bool routed(const Spec& s) { return s.rec_block > 0 && s.rec_schedule == "mor"; }
 
 // Layer applications per forward: prelude + block * repeats + coda, or layers.
 size_t effective_layers(const Spec& s) {
@@ -1109,7 +1152,9 @@ void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama, 
         // paperkiln.*, ir.hpp), so llama.cpp refuses the file rather than
         // running the stored layers once each, and only the IR (block
         // weight_index) reproduces it.
-        if (effective_layers(s) != s.layers) gc.architecture = "paperkiln";
+        if (effective_layers(s) != s.layers || routed(s)) gc.architecture = "paperkiln";
+        // schedule "mor": the router, written in full (ir.hpp depth_route).
+        if (llama->rec_router) gc.extra_proj.emplace_back("recursion.router.weight", "rec.0.router.weight");
         gc.head_count = (uint32_t)s.heads;
         // The model's real FFN width. Exports before 19 Oct 2026 wrote 3d
         // whatever arch.custom.d_ff said; llama.cpp checks ffn tensor
@@ -1345,6 +1390,11 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                     "layers (schedule %s, inject %s)\n",
                     s.rec_prelude, s.rec_block, s.rec_repeats, s.rec_coda, effective_layers(s), s.layers,
                     s.rec_schedule.c_str(), s.rec_inject.c_str());
+    if (routed(s))
+        std::printf("mor: causal token choice over depths 1..%zu (router %zu x %zu at step 0's input), gate %s, "
+                    "balance %g, z_loss %g, kv_rows %s\n",
+                    s.rec_repeats, s.rec_repeats, s.d, s.rec_mor_gate.c_str(), s.rec_mor_balance, s.rec_mor_z,
+                    s.rec_mor_kv.c_str());
     if (s.moe_experts > 0)
         std::printf("moe: %zu experts, top_k=%zu, gate=%s, aux_loss=%g, z_loss=%g%s%s\n", s.moe_experts,
                     s.moe_top_k, s.moe_gate.c_str(), s.moe_aux, s.moe_z,
@@ -1633,6 +1683,10 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                                  {"prelude", s.rec_prelude}, {"coda", s.rec_coda},
                                  {"schedule", s.rec_schedule}, {"inject", s.rec_inject},
                                  {"effective_layers", effective_layers(s)}};
+    if (routed(s))
+        model_ev["recursion"]["mor"] = {{"route", s.rec_mor_route}, {"gate", s.rec_mor_gate},
+                                        {"balance", s.rec_mor_balance}, {"z_loss", s.rec_mor_z},
+                                        {"kv_rows", s.rec_mor_kv}, {"router_params", s.d * s.rec_repeats}};
     // Absent for dense models: their model event is unchanged.
     if (s.moe_experts > 0)
         model_ev["moe"] = {{"experts", s.moe_experts},
@@ -1880,6 +1934,8 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         // per-layer means; the loss adds coefficient * these).
         double moe_lb = 0, moe_z = 0;
         std::vector<std::vector<double>> moe_frac;
+        double mor_lb = 0, mor_z = 0;
+        std::vector<double> mor_frac;  // schedule "mor": the step's depth fractions
         json gmet;
         if (grpo) {
             // Phase 4 step: P prompts x G pure-temperature samples from the
@@ -2051,8 +2107,8 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             }
             mark("data");
             nn::MoEAux maux;
-            Var logits = s.moe_experts > 0 ? llama->forward(x, s.batch > 1 ? s.T : 0, &maux)
-                                           : fwd(x, s.batch > 1 ? s.T : 0);
+            Var logits = s.moe_experts > 0 || routed(s) ? llama->forward(x, s.batch > 1 ? s.T : 0, &maux)
+                                                        : fwd(x, s.batch > 1 ? s.T : 0);
             mark("forward");
             Var task = sft ? ops::cross_entropy_masked(logits, y, mask) : ops::cross_entropy(logits, y);
             Var loss = task;
@@ -2066,6 +2122,15 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                 if (moe_frac.empty()) moe_frac.assign(maux.frac.size(), std::vector<double>(s.moe_experts, 0.0));
                 for (size_t l = 0; l < maux.frac.size(); ++l)
                     for (size_t e = 0; e < s.moe_experts; ++e) moe_frac[l][e] += maux.frac[l][e] / s.accum;
+            }
+            if (routed(s)) {
+                // The router's balancing loss and z-loss (amendment 4: 0.1 and 1e-3).
+                loss = ops::add(loss, ops::add(ops::scale(maux.lb, s.rec_mor_balance),
+                                               ops::scale(maux.z, s.rec_mor_z)));
+                mor_lb += maux.lb->data(0, 0) / s.accum;
+                mor_z += maux.z->data(0, 0) / s.accum;
+                if (mor_frac.empty()) mor_frac.assign(s.rec_repeats, 0.0);
+                for (size_t i = 0; i < s.rec_repeats; ++i) mor_frac[i] += maux.frac.at(0)[i] / s.accum;
             }
             mark("loss");
             backward(ops::scale(loss, 1.0f / static_cast<float>(s.accum)));
@@ -2158,6 +2223,21 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             e["moe_min_frac"] = fmin;
             e["moe_frac"] = fr;
         }
+        if (!mor_frac.empty()) {
+            // Depth fractions (depth 1 .. repeats), the mean depth in recursion
+            // steps, their normalised entropy, and the router's two losses.
+            json fr = json::array();
+            double mean = 0;
+            for (size_t i = 0; i < mor_frac.size(); ++i) {
+                fr.push_back(std::round(mor_frac[i] * 1e6) / 1e6);
+                mean += static_cast<double>(i + 1) * mor_frac[i];
+            }
+            e["mor_frac"] = fr;
+            e["mor_depth"] = mean;
+            e["mor_entropy"] = nn::routing_entropy(mor_frac);
+            e["mor_balance"] = mor_lb;
+            e["mor_z"] = mor_z;
+        }
         if (!gm.is_null()) e["grads"] = gm;
         for (auto it = gmet.begin(); it != gmet.end(); ++it) e[it.key()] = it.value();
         ev.emit(e);
@@ -2208,6 +2288,13 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             NoGrad ng;
             model_ref.eval();
             double vl = 0;
+            // schedule "mor": the evaluation windows' depth counts.
+            std::vector<double> ev_depth;
+            auto note_depth = [&]() {
+                if (!routed(s) || !llama) return;
+                if (ev_depth.empty()) ev_depth.assign(s.rec_repeats, 0.0);
+                for (int d : llama->last_depth) ev_depth[static_cast<size_t>(d - 1)] += 1.0;
+            };
             if (sft) {
                 // Every held-out example, the masked mean over all their
                 // completion targets (each example weighted by its targets).
@@ -2228,6 +2315,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                     if (k == 0) continue;
                     // One example: the original call. Several: stacked as in training.
                     Var lg = e1 - e0 == 1 ? fwd(x) : fwd(x, s.T);
+                    note_depth();
                     sum += static_cast<double>(ops::cross_entropy_masked(lg, y, m)->data(0, 0)) * k;
                     kept += k;
                 }
@@ -2240,11 +2328,27 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                     std::vector<int> vx(ids.begin() + va, ids.begin() + va + s.T);
                     std::vector<int> vy(ids.begin() + va + 1, ids.begin() + va + s.T + 1);
                     vl += ops::cross_entropy(fwd(vx), vy)->data(0, 0);
+                    note_depth();
                 }
                 vl /= NV;
             }
             model_ref.train();
-            ev.emit({{"event", "eval"}, {"step", step}, {"val_loss", vl}});
+            json eve = {{"event", "eval"}, {"step", step}, {"val_loss", vl}};
+            if (!ev_depth.empty()) {
+                double tot = 0, mean = 0;
+                for (double c : ev_depth) tot += c;
+                json fr = json::array();
+                std::vector<double> f(ev_depth.size());
+                for (size_t i = 0; i < ev_depth.size(); ++i) {
+                    f[i] = ev_depth[i] / tot;
+                    fr.push_back(std::round(f[i] * 1e6) / 1e6);
+                    mean += static_cast<double>(i + 1) * f[i];
+                }
+                eve["mor_frac"] = fr;
+                eve["mor_depth"] = mean;
+                eve["mor_entropy"] = nn::routing_entropy(f);
+            }
+            ev.emit(eve);
             if (s.es_patience > 0) {
                 if (vl < best_val - s.es_min_delta) {
                     best_val = static_cast<float>(vl);
@@ -3505,6 +3609,16 @@ int score_cmd(const std::string& target, const std::string& in_path, const std::
         }
         const std::vector<int> ctx(ids.begin(), ids.end() - 1);
         Var logits = lm.forward(ctx);
+        if (lm.llama && lm.llama->rec_router) {
+            // schedule "mor": the depth trace (ir.hpp constraint 5): each
+            // context position's depth, 1 .. repeats, and the smallest
+            // routing margin (largest router logit minus the runner-up) over
+            // them, so a consumer can tell a near-tie from a disagreement.
+            rec["depth"] = lm.llama->last_depth;
+            float mm = std::numeric_limits<float>::infinity();
+            for (float m : lm.llama->last_margin) mm = std::min(mm, m);
+            if (std::isfinite(mm)) rec["depth_margin_min"] = mm;
+        }
         if (logits->data.rows() != ctx.size() || logits->data.cols() != V)
             throw std::runtime_error("score: logits shape differs from the context");
         std::vector<double> lp;

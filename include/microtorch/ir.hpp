@@ -273,21 +273,70 @@
 //               -> inj, add(x, inj) -> x, c_i = 1 before the first
 //               application of repeats 1 .. R-1 and 0 elsewhere (x + 0 e is
 //               x up to the sign of zero).
-//   (reserved, step 2, not implemented) per-token recursion depth
-//               (Mixture-of-Recursions): recursion step k covers
-//               applications P + kB .. P + (k+1)B - 1. A "depth_route" node
-//               at the first application of step k >= 1 would write a [T, 1]
-//               mask a of the tokens that continue (router weight
-//               rec.{k}.router.weight, top-k or threshold attribute), and the
-//               step's output for a token with a = 0 is its input unchanged.
-//               The kv slot would gain "kv_rows": "active" (MoR's
-//               recursion-wise caching: at application i only active tokens
-//               append k/v rows, and a query attends to the rows of tokens
-//               active at that depth, positions kept absolute) or the
-//               per-layer "kv_from": {"per_layer": [s_0, ..]} (recursive KV
-//               sharing: application i reads, and never appends to, the kv
-//               rows application s_i wrote for every token; s_i = i
-//               default).
+//   depth_route  per-token recursion depth (Mixture-of-Recursions, causal
+//               token choice; paperkiln recursion schedule "mor", family_hint
+//               "llama_mor", tiny-chat amendment 4). A control node: it must
+//               be the block's FIRST node, and it changes which rows the
+//               rest of the block runs on. Form:
+//                 {"op": "depth_route", "in": ["x"],
+//                  "weight": "rec.0.router.weight", "route": "token_choice",
+//                  "n_rec": R, "gate": "score" | "none",
+//                  "step": {"per_layer": [s_0, ..., s_{L-1}]},
+//                  "out": "rec_depth"}
+//               s_i = -1: application i is outside the recursion (prelude or
+//               coda): the node does nothing and the block runs on every row
+//               as usual. s_i = k in 0 .. R-1: application i belongs to
+//               recursion step k. The applications of step k are
+//               consecutive, the steps appear in ascending order 0 .. R-1,
+//               and every step has the same number of applications.
+//               (a) Routing, at the first application of step 0: logits =
+//               x W^T, W = "weight" [R, d] (a matmul reduction, as linear),
+//               [T, R]. Each token's depth n_t = 1 + j*, j* the index of the
+//               largest logit, ties to the LOWER index; p = softmax over the
+//               row (e_j = exp(l_j - max), z summed in ascending j, p_j =
+//               e_j / z); its gate g_t = p_t[n_t - 1]. The depth and gate
+//               hold for the rest of the forward; "out" receives the depths
+//               [T, 1] (the depth trace, 1 .. R).
+//               (b) At the first application of step k the step's input
+//               x_in = x is kept and the active tokens are those with n_t >
+//               k. Every application of step k runs the block's other nodes
+//               on the active rows only: the rows of active tokens, in
+//               order, with their absolute positions (pos), so for those
+//               nodes T is the number of active tokens. Rows of inactive
+//               tokens are not computed and stay as they are.
+//               (c) After the last application of step k, for each active
+//               token: gate "score": x = x_in + g (x - x_in), the difference
+//               rounded, then the product, then the sum (no fused
+//               multiply-add); gate "none": x stays the step's output.
+//               Inactive tokens keep x_in.
+//               (d) A step with no active token is skipped: its
+//               applications run nothing and write no kv rows (in decode,
+//               the one token has exited).
+//               A token's depth is a function of its own prefix only
+//               (constraint 1 below), so prefill and token-by-token decode
+//               give the same depths and, to rounding, the same logits.
+//               Depths are nested: a token active at step k was active at
+//               every earlier step. The router tensor is written in full
+//               (constraint 4) and stays F32 in paperkiln's Q8_0 variants.
+//               EXACT routing given the logits; ROUNDING otherwise (a token
+//               whose two largest logits differ by less than rounding may
+//               route differently in another engine: the gate's trace
+//               reports the smallest margin per prompt).
+//   kv_rows     a key of a kv state slot: "active" (MoR's recursion-wise
+//               caching; required under depth_route). At application i the
+//               slot holds exactly the k/v rows of the tokens active at i
+//               (every token when s_i = -1), each written once, when the
+//               token passes application i, at its absolute position with
+//               RoPE unchanged; a query at application i attends causally
+//               (key position <= query position) to exactly those rows. A
+//               token that exits before application i writes no row there
+//               and never gets one later. Engines keep each application's
+//               row positions; truncating the cache to n tokens (prefix
+//               reuse, rewind) keeps the rows whose positions are < n.
+//   (reserved, not implemented) "kv_from": {"per_layer": [s_0, ..]} on a
+//               kv slot (MoR's recursive KV sharing): application i reads,
+//               and never appends to, the kv rows application s_i wrote for
+//               every token; s_i = i default.
 //               Constraints agreed with ember (23 Oct 2026), binding on any
 //               implementation: (1) routing is CAUSAL token choice: a token's
 //               depth is a function of its own prefix only (a per-token
@@ -434,6 +483,13 @@
 //               architecture "paperkiln", whose block_count is the stored
 //               count. With inject "add", embed adds a second embedding node
 //               (out e) and the block an affine and an add at its start.
+//   llama_mor   llama_recursive with per-token depth: the block's nodes are a
+//               depth_route node (router rec.0.router.weight [R, d], at the
+//               first application after the prelude) and then the llama
+//               block's; weight_index lists every application a token can
+//               take (prelude, the shared block R times, coda); the kv slot
+//               has "kv_rows": "active". No injection. Architecture
+//               "paperkiln", block_count = the stored layers.
 //   mamba       no positions; block: h = layernorm(x) (blk.{i}.ssm_norm), u =
 //               ssm_in(h) [n], y = ssm_out(ssm_scan(u)) [d], y = y *
 //               gelu(ssm_gate(h)) * gelu(ssm_out_gate(x)) (multiplied in that

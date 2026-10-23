@@ -481,6 +481,7 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
     }
 
     add_norm(require("norm.weight"), "output_norm.weight");
+    for (const auto& [key, name] : cfg.extra_proj) add_proj(require(key), name);
 
     // lm_head is optional: tied-embedding models reuse token_embd.
     if (const Matrix* head = find(state_dict, "lm_head.weight")) {

@@ -38,18 +38,45 @@ struct LlamaConfig {
     // differ), and backward runs through every application: a shared
     // layer's gradient is the sum over its applications. "schedule" names
     // how applications are chosen: "fixed" (every token takes every
-    // application) is the only one implemented; per-token adaptive depth
-    // (Mixture-of-Recursions routers) would be a new schedule over the same
+    // application) or "mor" (per-token depth, below), both over the same
     // application -> stored-layer map, layer_schedule().
     // inject "add" (an ablation; "none" is the default): the token
     // embedding e (the embedding's output, before the prelude) is added to
     // the stream before each repeat after the first, x = x + e, with no
     // parameters (as looped GPT-BERT and HRM; z_{t+1} = F(x + z_t)).
+    //
+    // schedule "mor" (Mixture-of-Recursions, causal token choice;
+    // tiny-chat amendment 4, ir.hpp depth_route): recursion step k is the
+    // block's k-th repeat, applications prelude + k*block .. + block - 1. A
+    // router (linear d -> repeats, no bias; state key recursion.router.weight,
+    // GGUF rec.0.router.weight) reads each token's own hidden state at the
+    // input of step 0 (after the prelude): p = softmax(logits), depth n =
+    // 1 + argmax over the logits (ties to the lower index), gate g = p[n-1].
+    // The token takes steps 0 .. n-1, each as x <- x + g (S(x) - x) (gate
+    // "score"; "none": x <- S(x), for tests), and skips the rest unchanged.
+    // At every application of step k only the tokens with n > k are rows:
+    // each sequence's active tokens attend causally among themselves at
+    // their absolute positions (kv_rows "active"); an exited token writes no
+    // key/value row there or later. A token's depth depends on its own
+    // prefix only, so prefill equals decode. Auxiliary losses (through
+    // MoEAux when one is passed): balance = N_r sum_i f_i P_i (f_i the
+    // fraction of tokens choosing depth i, P_i the mean of p_i; 1 when
+    // balanced) and z = mean_t logsumexp(logits_t)^2; their coefficients are
+    // the caller's (mtstudio: mor.balance, mor.z_loss).
+    struct MoR {
+        std::string route = "token_choice";
+        std::string gate = "score";      // "score" | "none"
+        std::string kv_rows = "active";  // the only policy implemented
+        // Tests only: every token takes this depth (1 .. repeats); 0 = routed.
+        size_t force_depth = 0;
+    };
     struct Recursion {
         size_t prelude = 0, block = 0, repeats = 1, coda = 0;
         std::string schedule = "fixed";
         std::string inject = "none";
+        MoR mor;
         bool on() const { return block > 0; }
+        bool routed() const { return on() && schedule == "mor"; }
     } recursion;
 };
 
@@ -60,7 +87,8 @@ std::vector<size_t> injection_points(const LlamaConfig& cfg);
 // Application a (0 <= a < effective depth) -> the stored layer it runs: the
 // identity 0 .. n_layers-1 when recursion is off. Throws when recursion is
 // on and n_layers != prelude + block + coda, repeats < 1, or the schedule
-// is not "fixed".
+// is neither "fixed" nor "mor" (under "mor" the map lists every
+// application a token can take; each token runs a prefix of the repeats).
 std::vector<size_t> layer_schedule(const LlamaConfig& cfg);
 
 // Keys and values of every layer application for the tokens decoded so far
@@ -68,13 +96,27 @@ std::vector<size_t> layer_schedule(const LlamaConfig& cfg);
 // one cache per pass through a shared layer): k[l], v[l] are [len, d] after RoPE, rows at absolute positions
 // 0..len-1. truncate() drops a suffix, so a chat turn that re-sends its
 // history reuses the shared prefix.
+// Under schedule "mor" an application keeps only the rows of the tokens
+// active there: pos[l] lists their absolute positions (ascending), and
+// truncate() keeps the rows before position n. Empty pos: row j is
+// position j, as before.
 struct LlamaKV {
     std::vector<std::vector<float>> k, v;  // per layer, row-major [len, d]
+    std::vector<std::vector<int>> pos;     // per layer (schedule "mor" only)
     size_t len = 0, d = 0;
     void truncate(size_t n) {
         if (n >= len) return;
-        for (auto& m : k) m.resize(n * d);
-        for (auto& m : v) m.resize(n * d);
+        for (size_t l = 0; l < k.size(); ++l) {
+            size_t rows = n;
+            if (l < pos.size()) {
+                auto& p = pos[l];
+                rows = 0;
+                while (rows < p.size() && p[rows] < static_cast<int>(n)) ++rows;
+                p.resize(rows);
+            }
+            k[l].resize(rows * d);
+            v[l].resize(rows * d);
+        }
         len = n;
     }
 };
@@ -93,6 +135,18 @@ public:
     // same arithmetic as forward() except the attention's summation order,
     // so logits agree to rounding, not bit for bit. Call under NoGrad.
     Var forward_cached(const Var& x, size_t pos0, std::vector<float>& k, std::vector<float>& v) const;
+    // The same with explicit absolute positions (ascending, after every
+    // cached row's): row i attends to the cached rows and to rows 0..i of
+    // x. forward_cached(x, pos0, ..) is this with pos = pos0, pos0 + 1, ..
+    // over a cache holding pos0 rows.
+    Var forward_cached_rows(const Var& x, const std::vector<int>& pos, std::vector<float>& k,
+                            std::vector<float>& v) const;
+    // Training forward over a subset of rows (schedule "mor"): x's rows in
+    // `segs` ranges (start, length), each range one sequence's tokens in
+    // position order at absolute positions `pos`; attention is causal within
+    // each range and never across ranges.
+    Var forward_rows(const Var& x, const std::vector<int>& pos,
+                     const std::vector<std::pair<size_t, size_t>>& segs) const;
     // The IR block (microtorch/ir.hpp): {"state": [kv], "nodes": [...]},
     // GGUF names templated on "{i}". Reads x and pos, writes x.
     ir::json export_ir() const;
@@ -136,6 +190,19 @@ public:
     std::vector<char> inject_before;  // per application: add the embedding first
     Var norm_w;                       // final RMSNorm gamma
     std::shared_ptr<Linear> lm_head;  // null when tied
+    // schedule "mor": the router ([d, repeats], state key
+    // recursion.router.weight; null otherwise) and, after every forward or
+    // forward_cached, each row's depth (1 .. repeats) and its routing margin
+    // (largest logit minus the runner-up; repeats 1: +inf) for the rows that
+    // call processed: the depth trace.
+    std::shared_ptr<Linear> rec_router;
+    mutable std::vector<int> last_depth;
+    mutable std::vector<float> last_margin;
+
+private:
+    // Routing for the rows of h (schedule "mor"): depths, margins, and the
+    // gate column [rows, 1] (on the tape); aux collects the losses.
+    Var route(const Var& h, std::vector<int>& depth, std::vector<float>& margin, MoEAux* aux) const;
 };
 
 }  // namespace nn

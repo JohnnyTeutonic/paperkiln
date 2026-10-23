@@ -7,6 +7,21 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Mixture-of-Recursions, causal token choice** (23 Oct, tiny-chat amendment 4):
+  `arch.custom.recursion` schedule "mor" with {"mor": {route "token_choice", gate "score" |
+  "none", balance 0.1, z_loss 0.001, kv_rows "active"}}: one linear router (state key
+  `recursion.router.weight`, GGUF `rec.0.router.weight`) at step 0's input picks each token's
+  depth 1..R by its largest logit; the token takes that many repeats, each x + g (S(x) - x) with
+  g the chosen depth's probability, on its sequence's active rows only (gathered; attention causal
+  among them at absolute positions, so prefill equals decode); the balancing loss and z-loss go
+  through `MoEAux`. Step and eval events log the depth fractions, mean depth, entropy and router
+  losses; `mtstudio score` writes each prompt's depth trace. IR: the `depth_route` node and the kv
+  slot's `kv_rows: "active"` (normative in ir.hpp), family `llama_mor`; `tools/ir_numpy.py` and
+  `ir_check.py` follow it. Tests: `tests/test_mor.cpp` (forced full depth with gate none = fixed
+  recursion bit for bit, logits and gradients; prefix, decode and stacked-sequence causality with
+  depths identical; per-application rows exactly the active tokens'; FD gradcheck worst 7.2e-3;
+  the device-resident step for Colab) and `tests/test_mor_ir.py` (numpy IR vs mtstudio within
+  4.0e-7, greedy 40/40, depth traces 40/40). Jobs: `tiny_chat_s0_mor.json`, `tiny_chat_e1_mor.json`.
 - **Tied-block recursion** (23 Oct, the tiny-chat recursion arm): llama-family
   `arch.custom.recursion` {prelude P, block B, repeats R, coda C, schedule "fixed", inject
   "none" | "add"} stores P + B + C layers and applies P, then B R times, then C, each application
