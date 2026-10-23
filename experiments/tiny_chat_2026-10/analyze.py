@@ -16,6 +16,10 @@ beside the twin, and section 3's all-items Y beside the amended one.
 Amendment 3 (A3.3) adds the recursion arm, E1-R (ART/e1_rec, ART/e1_rec_r8; e1_rec: HR1-HR4, the
 twin pairs R2-L8, R4-L16, R8-L32, MC7-L16, FLOPs per token and Y per L4-hour) and the R8 rule
 (--rec-decision OUT, from R2's and R4's post jobs).
+Amendment 4 (A4.5) adds the MoR block, E1_mor_20m (ART/e1_mor: MoR3, MC2, MC3): H-MoR1 (D1 = Y(MoR3) minus
+the fixed line interpolated between MC2 and MC3 at MoR3's realised depth m_s), H-MoR2a/2b from each MoR3
+seed's depth trace (tools/carry5_depth.py, run in its post job), H-MoR0 (routing collapse), FLOPs per token
+(MoR3's at its realised depth fractions) and Y per L4-hour.
 """
 from __future__ import annotations
 
@@ -627,9 +631,230 @@ def e1_rec(art, r1, r60, partial):
     return res
 
 
+# ---------------------------------------------------------------- the MoR block (amendment 4, A4.5)
+MOR_CELLS = ["MoR3", "MC2", "MC3"]
+SESOI_MOR = 0.03            # H-MoR1: 3 points of Y (the pairwise SESOI)
+SESOI_PANEL_PAIR = 0.02     # section 3: 0.02 nats pairwise for panel losses (the secondary panel contrast)
+SESOI_DELTA = 0.10          # H-MoR2a: 0.10 recursion steps (5% of the 1-3 range)
+SESOI_SLOPE = 0.05          # H-MoR2b: 0.05 steps per turn of fact distance
+COLLAPSE_ENTROPY = 0.35     # H-MoR0: normalised depth entropy below this, or ...
+COLLAPSE_DELTA = 0.05       # ... |Delta| below this (half H-MoR2a's SESOI)
+MOR_CHOICE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "stage0", "lr_choice_mor.json")
+
+
+def mor_dropped(path):
+    """A4.4: the cells whose four screens all diverged (choose_rec's "dropped", keyed by shape id)."""
+    if not path or not os.path.exists(path):
+        return []
+    d = json.load(open(path, encoding="utf-8")).get("dropped", {})
+    return sorted(k.split("_", 1)[1] if k.startswith("20m_") else k for k in d)
+
+
+def realised_depth(evs):
+    """A4.5's m_s: the mean over the run's steps of each step's mean depth (sum_i i f_i over its depth
+    fractions, each step weighted equally; a step logged twice counts once, its last record), the mean
+    fractions and the active fraction a_k at each recursion step k. tiny_chat_run.py post records the same
+    (pt_mor) when its VM ran the pretraining."""
+    by = {}
+    for e in evs:
+        if e.get("event") == "step" and e.get("mor_frac"):
+            by[e["step"]] = e["mor_frac"]
+    if not by:
+        return None
+    R = len(next(iter(by.values())))
+    steps = sorted(by)
+    m = sum(sum((i + 1) * f for i, f in enumerate(by[t])) for t in steps) / len(steps)
+    fm = [sum(by[t][i] for t in steps) / len(steps) for i in range(R)]
+    return {"m": m, "steps_logged": len(steps), "first_step": steps[0], "last_step": steps[-1],
+            "frac_mean": fm, "active": [sum(fm[k:]) for k in range(R)]}
+
+
+def mor_m_s(art, s, seed):
+    """m_s for one MoR3 seed: from the pretraining job's events at home (ART/e1_mor/pt_e1_mor_MoR3_r<s>/),
+    else the post summary's pt_mor. Flagged when fewer steps were logged than the run's STEPS."""
+    p = os.path.join(art, "e1_mor", f"pt_e1_mor_MoR3_r{seed}", "events.jsonl")
+    rd, src = None, None
+    if os.path.exists(p):
+        with open(p, encoding="utf-8") as f:
+            rd = realised_depth(json.loads(x) for x in f if x.strip())
+        src = p
+    if rd is None and s.get("pt_mor"):
+        rd, src = s["pt_mor"], "summary pt_mor"
+    if rd is None:
+        return None
+    return {**rd, "source": src, "complete": rd["steps_logged"] >= STEPS}
+
+
+def mor_flops(arch, active):
+    """Training FLOPs per token of a MoR model whose recursion steps run on active fractions a_k (A4.3's
+    accounting): every token takes the prelude and coda; step k's B applications run on the active rows
+    (P + C + B sum_k a_k applications, i.e. the mean depth); attention under kv_rows active scales with the
+    square of the active fraction (P + C + B sum_k a_k^2 full-width layers: 1 + 4/9 + 1/9 per step at
+    balance); plus the router (R x d)."""
+    d, dff = arch["d"], arch.get("d_ff") or 3 * arch["d"]
+    rec = arch["recursion"]
+    P, B, C, R = rec.get("prelude", 0), rec["block"], rec.get("coda", 0), rec["repeats"]
+    per_layer = 4 * d * d + 3 * d * dff + 2 * d
+    apps = P + C + B * sum(active)
+    attn = P + C + B * sum(a * a for a in active)
+    return 6 * (apps * per_layer + d + VOCAB * d + R * d) + 6 * attn * CTX * d
+
+
+def no_extension(r):
+    """Section 7's extension rule applies to D1 alone (A4.5)."""
+    if isinstance(r, dict) and "extend_to_5_seeds" in r:
+        r["extend_to_5_seeds"] = False
+        r["extension"] = "not applicable (A4.5: the extension rule applies to D1 alone)"
+    return r
+
+
+def hmor_reading(v):
+    """The hypothesis reading of a registered verdict: SUPPORTED confirms; EQUIVALENT or CONTRADICTED
+    falsifies; NOT_RESOLVED, SIGNIFICANT_BELOW_SESOI, FLOOR and unavailable decide neither."""
+    return {"SUPPORTED": "confirmed", "EQUIVALENT": "falsified", "CONTRADICTED": "falsified"}.get(v, "undecided")
+
+
+def mor_trace_row(d):
+    """One MoR3 seed's depth trace (its post summary's mor_depth), the registered numbers and the
+    descriptive ones (single-turn twin = distance 0; the question alone)."""
+    modes = d.get("modes") or {}
+
+    def at(mode, *keys):
+        x = modes.get(mode) or {}
+        for k in keys:
+            x = (x or {}).get(k)
+        return x
+    return {**(d.get("registered") or {}), "error": d.get("error"),
+            "twin_delta": at("twin", "delta"), "noctx_delta": at("noctx", "delta"),
+            "twin_answer_mean": at("twin", "answer", "mean"), "noctx_answer_mean": at("noctx", "answer", "mean"),
+            "answer_hist": at("gold", "answer", "hist"), "all_hist": at("gold", "all_positions", "hist"),
+            "by_distance": at("gold", "distance"), "depth_margin_min": d.get("depth_margin_min")}
+
+
+def e1_mor(art, partial, choice=MOR_CHOICE):
+    """A4.5's MoR block. m_s = MoR3's realised mean depth per seed. H-MoR1: D1(s) = Y(MoR3, s) - Y_fix(s),
+    Y_fix(s) = Y(MC2, s) + (m_s - 2)(Y(MC3, s) - Y(MC2, s)) when m_s >= 2, else Y(MC2, s); > 0, SESOI 3
+    points, seed-paired; the extension rule applies to it alone. Secondary: Y(MoR3) - Y(MC2), Y(MoR3) -
+    Y(MC3) and the FineWeb panel L(MoR3) - L_fix (lower is better; 0.02 nats). H-MoR2a: Delta(s) (answer
+    minus other assistant positions, gold history) > 0, SESOI 0.10 steps; H-MoR2b: the slope of an item's
+    mean answer depth on fact distance > 0, SESOI 0.05 steps per turn; H-MoR2 confirmed when both are
+    SUPPORTED, falsified when either is CONTRADICTED or EQUIVALENT. H-MoR0: SUPPORTED when the collapse
+    criterion (depth entropy H(f) / log R < 0.35 or |Delta| < 0.05) holds in every seed and D1 is
+    EQUIVALENT; FALSIFIED by D1 SUPPORTED or CONTRADICTED, or no seed collapsing. A dropped MoR3 computes
+    no contrast; a dropped MC2 or MC3, no H-MoR1 or H-MoR0. The validity gate applies to every cell: a
+    contrast with a FLOOR cell is FLOOR (H-MoR2 reads MoR3 alone; panel contrasts are not gated)."""
+    runs = load(art, "e1_mor")
+    if not runs:
+        return None
+    dropped = mor_dropped(choice)
+    cells = [c for c in MOR_CELLS if c not in dropped]
+    seeds = seeds_of(runs, cells)
+    miss = cells_complete(runs, cells, seeds)
+    res = {"label": "REGISTERED (A4.5)", "seeds": seeds, "missing": miss, "dropped": dropped,
+           "cells": cell_table(runs, cells, seeds, CELL_KEYS), "families": family_table(runs, cells, seeds),
+           "cost": rec_cell_table(runs, art, {c: "e1_mor" for c in cells}, cells, seeds)}
+    m_s = {r: mor_m_s(art, runs[("MoR3", r)], r) for r in seeds if ("MoR3", r) in runs}
+    res["m_s"] = m_s
+    if "MoR3" in res["cost"]:
+        arch = runs[next(k for k in runs if k[0] == "MoR3")]["arch"]
+        R = arch["recursion"]["repeats"]
+        fl = [mor_flops(arch, v["active"]) for v in m_s.values() if v]
+        c3 = res["cost"]["MoR3"]
+        c3["flops_per_token_largest_depth"] = c3["flops_per_token"]
+        c3["flops_per_token_at_balance"] = mor_flops(arch, [(R - k) / R for k in range(R)])
+        c3["flops_per_token_realised"] = st.mean(fl) if fl else None
+        c3["flops_per_token"] = c3["flops_per_token_realised"]
+        c3["flops_note"] = "flops_per_token is MoR3's at its realised depth fractions (mean over seeds)"
+    depth = {r: (runs[("MoR3", r)].get("mor_depth") or {}) for r in seeds if ("MoR3", r) in runs}
+    res["depth_trace"] = {r: mor_trace_row(d) for r, d in depth.items()}
+    if "MoR3" in dropped:
+        res["note"] = "MoR3 dropped (all four screens diverged): no H-MoR contrast is computed (A4.4)"
+        return res
+    if miss and not partial:
+        raise SystemExit(f"MoR block incomplete: {miss} (use --partial for a descriptive read)")
+    if miss:
+        res["label"] = "DESCRIPTIVE, PARTIAL"
+        return res
+    res["floor_ok"] = {c: floor_ok(runs, c, seeds) for c in cells}
+    fixed_ok = "MC2" not in dropped and "MC3" not in dropped
+    no_ms = [r for r in seeds if not m_s.get(r)]
+    if not fixed_ok:
+        res["H_MoR1_D1"] = {"verdict": "NOT COMPUTED (" + ", ".join(c for c in ("MC2", "MC3") if c in dropped)
+                                       + " dropped, A4.4)"}
+    elif no_ms:
+        res["H_MoR1_D1"] = {"verdict": f"UNAVAILABLE (no depth fractions for MoR3 seeds {no_ms})"}
+    else:
+        ms = [m_s[r]["m"] for r in seeds]
+        w3 = [max(0.0, m - 2) for m in ms]
+        used = ["MoR3", "MC2"] + (["MC3"] if any(w > 0 for w in w3) else [])
+
+        def fix(key):
+            return [get(runs[("MC2", r)], key) + w * (get(runs[("MC3", r)], key) - get(runs[("MC2", r)], key))
+                    for r, w in zip(seeds, w3)]
+        yfix = fix("Y")
+        d1 = [get(runs[("MoR3", r)], "Y") - y for r, y in zip(seeds, yfix)]
+        h1 = gated(runs, used, seeds, lambda: decide(d1, SESOI_MOR, +1))
+        h1.update({"m_s": ms, "Y_fix": yfix, "Y_MoR3": [get(runs[("MoR3", r)], "Y") for r in seeds],
+                   "cells_used": used, "reading": hmor_reading(h1["verdict"]),
+                   "m_s_incomplete": [r for r in seeds if not m_s[r]["complete"]],
+                   "interpolation": "Y_fix = Y(MC2) + max(0, m_s - 2) (Y(MC3) - Y(MC2))"})
+        res["H_MoR1_D1"] = h1
+        lfix = fix("panel_fineweb")
+        res["secondary_panel_fineweb_MoR3_minus_Lfix"] = {**no_extension(decide(
+            [get(runs[("MoR3", r)], "panel_fineweb") - x for r, x in zip(seeds, lfix)], SESOI_PANEL_PAIR, -1)),
+            "L_fix": lfix, "label": "SECONDARY (lower is better: the registered direction is negative)"}
+    for c in ("MC2", "MC3"):
+        if c not in dropped:
+            res[f"secondary_Y_MoR3_minus_{c}"] = {**no_extension(gated(runs, ["MoR3", c], seeds, lambda c=c: decide(
+                contrast(runs, ["MoR3", c], [1, -1], seeds, "Y"), SESOI_MOR, +1))), "label": "SECONDARY"}
+    # H-MoR2: MoR3's depth traces (gold history).
+    bad = [r for r in seeds if not depth.get(r, {}).get("registered") or depth[r].get("error")]
+    deltas = None
+    if bad:
+        res["H_MoR2"] = {"reading": "undecided", "verdict": f"UNAVAILABLE (no depth trace for MoR3 seeds {bad})"}
+    else:
+        deltas = [depth[r]["registered"]["delta"] for r in seeds]
+        slopes = [depth[r]["registered"]["slope_answer_on_distance"] for r in seeds]
+        a = no_extension(gated(runs, ["MoR3"], seeds, lambda: decide(deltas, SESOI_DELTA, +1)))
+        b = no_extension(gated(runs, ["MoR3"], seeds, lambda: decide(slopes, SESOI_SLOPE, +1)))
+        a.setdefault("per_seed", deltas)
+        b.setdefault("per_seed", slopes)
+        res["H_MoR2a_delta"] = a
+        res["H_MoR2b_slope_on_distance"] = b
+        va, vb = a["verdict"], b["verdict"]
+        reading = ("confirmed" if va == vb == "SUPPORTED" else
+                   "falsified" if {va, vb} & {"CONTRADICTED", "EQUIVALENT"} else "undecided")
+        res["H_MoR2"] = {"reading": reading, "H_MoR2a": va, "H_MoR2b": vb,
+                         "descriptive_twin_delta": [res["depth_trace"][r]["twin_delta"] for r in seeds],
+                         "descriptive_noctx_delta": [res["depth_trace"][r]["noctx_delta"] for r in seeds],
+                         "descriptive_twin_answer_mean": [res["depth_trace"][r]["twin_answer_mean"] for r in seeds],
+                         "descriptive_noctx_answer_mean": [res["depth_trace"][r]["noctx_answer_mean"] for r in seeds]}
+    # H-MoR0: routing collapse.
+    if not fixed_ok:
+        res["H_MoR0_collapse"] = {"verdict": "NOT COMPUTED (MC2 or MC3 dropped, A4.4)"}
+    elif deltas is None:
+        res["H_MoR0_collapse"] = {"verdict": "UNAVAILABLE (no depth trace)"}
+    else:
+        ents = [depth[r]["registered"]["entropy_norm"] for r in seeds]
+        col = [(e is not None and e < COLLAPSE_ENTROPY) or abs(dl) < COLLAPSE_DELTA for e, dl in zip(ents, deltas)]
+        v1 = res["H_MoR1_D1"]["verdict"]
+        if all(col) and v1 == "EQUIVALENT":
+            v = "SUPPORTED"
+        elif v1 in ("SUPPORTED", "CONTRADICTED") or not any(col):
+            v = "FALSIFIED"
+        else:
+            v = "UNDECIDED"
+        res["H_MoR0_collapse"] = {"verdict": v, "collapsed": col, "entropy_norm": ents, "delta": deltas,
+                                  "D1_verdict": v1,
+                                  "criterion": f"entropy_norm < {COLLAPSE_ENTROPY} or |Delta| < {COLLAPSE_DELTA} in "
+                                               "every seed, and D1 EQUIVALENT"}
+    return res
+
+
 def throughput(art, size):
     out = {}
-    for p in sorted(glob.glob(os.path.join(art, {"20m": "s0", "60m": "s0_60m", "rec": "s0_rec"}[size], "probe_*",
+    stage = {"20m": "s0", "60m": "s0_60m", "rec": "s0_rec", "mor": "s0_mor"}[size]
+    for p in sorted(glob.glob(os.path.join(art, stage, "probe_*",
                                            "summary.json"))):
         s = json.load(open(p, encoding="utf-8"))
         sid = re.sub(r"^probe_", "", os.path.basename(os.path.dirname(p)))
@@ -645,6 +870,8 @@ def main(argv=None):
     ap.add_argument("--design", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "design.json"))
     ap.add_argument("--pilot-verdict", default=None, metavar="OUT",
                     help="amendment 3: write the floor pilot's verdict (ART/pilot) to OUT and do nothing else")
+    ap.add_argument("--mor-choice", default=MOR_CHOICE,
+                    help="A4.4: the MoR block's lr_choice_mor.json (its dropped cells)")
     ap.add_argument("--rec-decision", default=None, metavar="OUT",
                     help="A3.3: write the R8 rule's decision (ART/e1_rec, R2 and R4) to OUT and do nothing else")
     a = ap.parse_args(argv)
@@ -677,6 +904,9 @@ def main(argv=None):
     rec = e1_rec(a.art, r1, r60, a.partial)  # A3.3: E1-R, beside E1 at 20M (its r = 1 cell and twins)
     if rec is not None:
         res["E1_rec_20m"] = rec
+    mor = e1_mor(a.art, a.partial, a.mor_choice)  # amendment 4: the MoR block (MoR3, MC2, MC3)
+    if mor is not None:
+        res["E1_mor_20m"] = mor
     # Early ranking (amendment 1): read only for complete blocks unless --partial.
     g5, g1, g60 = load_rungs(a.art, "e5"), load_rungs(a.art, "e1"), load_rungs(a.art, "e1_60m")
     for (cell, seed, step), s in list(g5.items()):  # E1's L8 cell is E5's dE1 cell: the same runs
@@ -696,11 +926,15 @@ def main(argv=None):
     if rrec:  # the recursion arm's rungs: logged as E1's, read descriptively (not in amendment 1's registered set)
         early["E1_rec"] = rung_analysis(rrec, {**load_rungs(a.art, "e1_rec"), **load_rungs(a.art, "e1_rec_r8")},
                                         "DESCRIPTIVE (recursion arm, A3.3)")
+    rmor = load(a.art, "e1_mor")
+    if rmor:  # the MoR block's rungs: descriptive, as the recursion arm's
+        early["E1_mor"] = rung_analysis(rmor, load_rungs(a.art, "e1_mor"), "DESCRIPTIVE (MoR block, A4.3)")
     res["early_ranking"] = early
     res["asha"] = asha_summary(a.art)
     res["throughput_20m"] = throughput(a.art, "20m")
     res["throughput_60m"] = throughput(a.art, "60m")
     res["throughput_rec"] = throughput(a.art, "rec")
+    res["throughput_mor"] = throughput(a.art, "mor")
     text = json.dumps(res, indent=1, default=str)
     if a.out:
         open(a.out, "w", encoding="utf-8", newline="\n").write(text + "\n")

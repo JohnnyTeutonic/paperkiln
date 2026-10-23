@@ -290,3 +290,202 @@ def test_rec_floor_and_incomplete(tmp_path):
     (tmp_path / "e1_rec" / "post_e1_rec_R2_r2" / "summary.json").unlink()
     p = subprocess.run(TOOL + ["--art", str(tmp_path), "--rec-decision", str(out)], capture_output=True, text=True)
     assert p.returncode != 0 and "R8 rule needs" in p.stderr
+
+
+# ---- amendment 4, A4.5 (23 Oct 2026): the MoR block, E1_mor_20m ----
+MOR_REC = {"MoR3": (1, 2, 3, 1, "mor"), "MC2": (1, 2, 2, 1, "fixed"), "MC3": (1, 2, 3, 1, "fixed")}
+
+
+def mor_arch(cell):
+    P, B, R, C, sched = MOR_REC[cell]
+    rec = {"prelude": P, "block": B, "repeats": R, "coda": C, "schedule": sched, "inject": "none"}
+    if sched == "mor":
+        rec["mor"] = {"route": "token_choice", "gate": "score", "balance": 0.1, "z_loss": 0.001, "kv_rows": "active"}
+    return {"d": 640, "layers": 4, "heads": 10, "d_ff": 1760, "recursion": rec}
+
+
+def frac_for(m):
+    """Depth fractions over 1..3 with mean m (symmetric around the middle when m = 2)."""
+    f3 = max(0.0, m - 2) * 0.8 + 0.1
+    f1 = f3 + 2 - m
+    return [f1, 1 - f1 - f3, f3]
+
+
+def mor_art(art, y, m_s, delta, slope, ent, twin=None, events_seeds=(), fw=None, hours=None):
+    """MoR3, MC2, MC3 on seeds 1-3. y: {cell: [Y per seed]}; m_s, delta, slope, ent: per seed (MoR3's
+    realised depth and its depth trace); twin: {cell: twin accuracy} (FLOOR below 0.35); events_seeds: the
+    seeds whose pretraining events are home (the rest carry the post summary's pt_mor)."""
+    for k, r in enumerate((1, 2, 3)):
+        for cell in ("MoR3", "MC2", "MC3"):
+            if cell not in y:
+                continue
+            ex = {"arch": mor_arch(cell)}
+            if hours:
+                ex.update({"pt_result": {"wall_seconds": hours[cell] * 3600}, "sft_result": {"wall_seconds": 0.0}})
+            if cell == "MoR3":
+                fr = frac_for(m_s[k])
+                ex["pt_mor"] = {"m": m_s[k], "steps_logged": 10000, "frac_mean": fr,
+                                "active": [sum(fr[j:]) for j in range(3)]}
+                ex["mor_depth"] = {
+                    "registered": {"delta": delta[k], "slope_answer_on_distance": slope[k], "entropy_norm": ent[k],
+                                   "items": 828},
+                    "modes": {"gold": {"delta": delta[k], "answer": {"mean": 2.2, "hist": [1, 2, 3]},
+                                       "all_positions": {"hist": [5, 5, 5]}},
+                              "twin": {"delta": delta[k] / 2, "answer": {"mean": 2.1}},
+                              "noctx": {"delta": 0.0, "answer": {"mean": 2.0}}},
+                    "depth_margin_min": 0.01}
+            t = (twin or {}).get(cell, 0.80)
+            put(art, "e1_mor", cell, r, y[cell][k] + t, twin=t, fw=(fw or {}).get(cell, [3.5] * 3)[k], extra=ex)
+        if r in events_seeds:  # the pretraining job's events at home: m_s read from them, not from pt_mor
+            d = art / "e1_mor" / f"pt_e1_mor_MoR3_r{r}"
+            d.mkdir(parents=True)
+            fr = frac_for(m_s[k])
+            lines = [{"event": "model"}] + [{"event": "step", "step": t, "mor_frac": fr} for t in range(1, 10001)]
+            lines.append({"event": "step", "step": 10000, "mor_frac": fr})  # a relayed step logged twice
+            (d / "events.jsonl").write_text("".join(json.dumps(x) + "\n" for x in lines))
+
+
+def run_mor(art, *extra):
+    return run(art, *extra, levels=(0, 17, 35, 70), e1=35)
+
+
+def an_module():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("an", ROOT / "experiments" / "tiny_chat_2026-10" / "analyze.py")
+    an = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(an)
+    return an
+
+
+def test_mor_flops_and_realised_depth():
+    an = an_module()
+    mc2, mc3 = an.flops_per_token(mor_arch("MC2")), an.flops_per_token(mor_arch("MC3"))
+    assert abs(mc2 / 1e9 - 0.26) < 0.006 and abs(mc3 / 1e9 - 0.32) < 0.006  # A4.3's table
+    bal = an.mor_flops(mor_arch("MoR3"), [1, 2 / 3, 1 / 3])
+    full = an.mor_flops(mor_arch("MoR3"), [1, 1, 1])
+    assert 0.95 * mc2 < bal < mc2  # 6 applications, attention 1 + 4/9 + 1/9 per recursion step against 2
+    assert abs(full - mc3 - 6 * 3 * 640) < 1  # every token at the largest depth: MC3 plus the router
+    evs = [{"event": "step", "step": 1, "mor_frac": [1, 0, 0]}, {"event": "step", "step": 2, "mor_frac": [0, 0, 1]},
+           {"event": "eval", "mor_frac": [1, 0, 0]}, {"event": "step", "step": 2, "mor_frac": [0, 1, 0]}]
+    rd = an.realised_depth(evs)  # step 2's last record (depth 2) replaces its first; evals are not steps
+    assert rd["m"] == 1.5 and rd["steps_logged"] == 2 and rd["active"] == [1.0, 0.5, 0.0]
+
+
+def test_mor_supported_and_confirmed(tmp_path):
+    # m_s = 2.5: Y_fix = Y(MC2) + 0.5 (Y(MC3) - Y(MC2)) = 0.07; MoR3 6 points above it.
+    mor_art(tmp_path, {"MoR3": [0.13, 0.134, 0.126], "MC2": [0.05] * 3, "MC3": [0.09] * 3}, [2.5] * 3,
+            delta=[0.30, 0.32, 0.28], slope=[0.10, 0.11, 0.09], ent=[0.9] * 3, events_seeds=(1,),
+            fw={"MoR3": [3.40] * 3, "MC2": [3.50] * 3, "MC3": [3.45] * 3},
+            hours={"MoR3": 4.0, "MC2": 3.0, "MC3": 3.5})
+    rc, res = run_mor(tmp_path)
+    assert rc == 0, res
+    m = res["E1_mor_20m"]
+    h1 = m["H_MoR1_D1"]
+    assert h1["verdict"] == "SUPPORTED" and h1["reading"] == "confirmed"
+    assert all(abs(y - 0.07) < 1e-9 for y in h1["Y_fix"]) and abs(h1["mean"] - 0.06) < 1e-9
+    assert h1["cells_used"] == ["MoR3", "MC2", "MC3"] and h1["m_s_incomplete"] == []
+    assert m["m_s"]["1"]["source"].endswith("events.jsonl") and m["m_s"]["2"]["source"] == "summary pt_mor"
+    assert abs(m["m_s"]["1"]["m"] - 2.5) < 1e-9 and m["m_s"]["1"]["steps_logged"] == 10000
+    pan = m["secondary_panel_fineweb_MoR3_minus_Lfix"]  # L_fix = 3.475; MoR3 at 3.40
+    assert abs(pan["mean"] + 0.075) < 1e-9 and pan["extend_to_5_seeds"] is False
+    assert m["secondary_Y_MoR3_minus_MC2"]["verdict"] == "SUPPORTED"
+    assert m["H_MoR2a_delta"]["verdict"] == "SUPPORTED" and m["H_MoR2b_slope_on_distance"]["verdict"] == "SUPPORTED"
+    assert m["H_MoR2"]["reading"] == "confirmed" and m["H_MoR2"]["descriptive_twin_delta"] == [0.15, 0.16, 0.14]
+    assert m["H_MoR2a_delta"]["extend_to_5_seeds"] is False
+    assert m["H_MoR0_collapse"]["verdict"] == "FALSIFIED" and m["H_MoR0_collapse"]["collapsed"] == [False] * 3
+    c = m["cost"]
+    assert c["MoR3"]["flops_per_token_realised"] < c["MoR3"]["flops_per_token_largest_depth"]
+    assert c["MoR3"]["flops_per_token"] == c["MoR3"]["flops_per_token_realised"]
+    assert abs(c["MC2"]["Y_per_l4_hour"] - 0.05 / 3.0) < 1e-9 and abs(c["MC2"]["l4_hours_per_run"] - 3.0) < 1e-9
+
+
+def test_mor_equivalent_and_collapse(tmp_path):
+    # MoR3 on the fixed line (Y_fix = 0.07) within a point; routing does not separate answers (|Delta| < 0.05).
+    mor_art(tmp_path, {"MoR3": [0.071, 0.069, 0.070], "MC2": [0.05] * 3, "MC3": [0.09] * 3}, [2.5] * 3,
+            delta=[0.01, 0.012, 0.008], slope=[0.0, 0.01, -0.01], ent=[0.9] * 3)
+    rc, res = run_mor(tmp_path)
+    assert rc == 0, res
+    m = res["E1_mor_20m"]
+    assert m["H_MoR1_D1"]["verdict"] == "EQUIVALENT" and m["H_MoR1_D1"]["reading"] == "falsified"
+    assert m["H_MoR2a_delta"]["verdict"] == "EQUIVALENT" and m["H_MoR2"]["reading"] == "falsified"
+    h0 = m["H_MoR0_collapse"]
+    assert h0["verdict"] == "SUPPORTED" and h0["collapsed"] == [True] * 3
+
+
+def test_mor_not_resolved_contradicted_and_entropy_collapse(tmp_path):
+    # D1 per seed +8, -5, +2 points: NOT_RESOLVED, mixed signs, no extension. One seed's router collapses
+    # (entropy 0.2): H-MoR0 neither supported nor falsified.
+    mor_art(tmp_path, {"MoR3": [0.15, 0.02, 0.09], "MC2": [0.05] * 3, "MC3": [0.09] * 3}, [2.5] * 3,
+            delta=[0.3, 0.3, 0.3], slope=[0.2, -0.1, 0.05], ent=[0.2, 0.9, 0.9])
+    rc, res = run_mor(tmp_path)
+    assert rc == 0, res
+    m = res["E1_mor_20m"]
+    assert m["H_MoR1_D1"]["verdict"] == "NOT_RESOLVED" and m["H_MoR1_D1"]["reading"] == "undecided"
+    assert m["H_MoR1_D1"]["extend_to_5_seeds"] is False and m["H_MoR1_D1"]["sign_agreement"] == "2/3"
+    assert m["H_MoR0_collapse"]["verdict"] == "UNDECIDED" and m["H_MoR0_collapse"]["collapsed"] == [True, False, False]
+    assert m["H_MoR2"]["reading"] == "undecided"
+    # The same, with MoR3 6 points below the fixed line on every seed: CONTRADICTED, H-MoR0 falsified.
+    t2 = tmp_path / "b"
+    mor_art(t2, {"MoR3": [0.01, 0.012, 0.008], "MC2": [0.05] * 3, "MC3": [0.09] * 3}, [2.5] * 3,
+            delta=[-0.3, -0.32, -0.28], slope=[0.1] * 3, ent=[0.2] * 3)
+    rc, res = run_mor(t2)
+    m = res["E1_mor_20m"]
+    assert m["H_MoR1_D1"]["verdict"] == "CONTRADICTED" and m["H_MoR1_D1"]["reading"] == "falsified"
+    assert m["H_MoR2a_delta"]["verdict"] == "CONTRADICTED" and m["H_MoR2"]["reading"] == "falsified"
+    assert m["H_MoR0_collapse"]["verdict"] == "FALSIFIED"  # every seed collapses, but D1 is CONTRADICTED
+
+
+def test_mor_shallow_depth_uses_mc2_and_gates(tmp_path):
+    # m_s < 2: Y_fix is MC2 itself (MC2 then spends more block compute: conservative); MC3 is not used, so
+    # its FLOOR does not touch D1, though it does the MoR3 - MC3 secondary.
+    mor_art(tmp_path, {"MoR3": [0.11, 0.114, 0.106], "MC2": [0.05] * 3, "MC3": [0.09] * 3}, [1.6, 1.7, 1.8],
+            delta=[0.3] * 3, slope=[0.1] * 3, ent=[0.9] * 3, twin={"MC3": 0.30})
+    rc, res = run_mor(tmp_path)
+    assert rc == 0, res
+    m = res["E1_mor_20m"]
+    assert m["H_MoR1_D1"]["cells_used"] == ["MoR3", "MC2"] and all(abs(y - 0.05) < 1e-12 for y in m["H_MoR1_D1"]["Y_fix"])
+    assert m["H_MoR1_D1"]["verdict"] == "SUPPORTED" and m["floor_ok"]["MC3"] is False
+    assert m["secondary_Y_MoR3_minus_MC3"]["verdict"].startswith("FLOOR")
+    # Above 2 the interpolation uses MC3, and its FLOOR makes D1 FLOOR; a FLOOR MoR3 makes H-MoR2 FLOOR.
+    t2 = tmp_path / "b"
+    mor_art(t2, {"MoR3": [0.13] * 3, "MC2": [0.05] * 3, "MC3": [0.09] * 3}, [2.2, 2.3, 2.4],
+            delta=[0.3] * 3, slope=[0.1] * 3, ent=[0.9] * 3, twin={"MC3": 0.30, "MoR3": 0.30})
+    rc, res = run_mor(t2)
+    m = res["E1_mor_20m"]
+    assert m["H_MoR1_D1"]["verdict"].startswith("FLOOR") and "MC3" in m["H_MoR1_D1"]["verdict"]
+    assert m["H_MoR2a_delta"]["verdict"].startswith("FLOOR") and m["H_MoR2"]["reading"] == "undecided"
+
+
+def test_mor_dropped_cells_missing_trace_and_incomplete(tmp_path):
+    choice = tmp_path / "lr_choice_mor.json"
+    choice.write_text(json.dumps({"lr": {"20m_MoR3": 5e-4, "20m_MC2": 1e-3},
+                                  "dropped": {"20m_MC3": "all 4 screens diverged"}}))
+    mor_art(tmp_path, {"MoR3": [0.13] * 3, "MC2": [0.05] * 3}, [2.5] * 3,
+            delta=[0.30, 0.32, 0.28], slope=[0.10, 0.11, 0.09], ent=[0.9] * 3)
+    rc, res = run_mor(tmp_path, "--mor-choice", str(choice))
+    assert rc == 0, res
+    m = res["E1_mor_20m"]
+    assert m["dropped"] == ["MC3"] and m["missing"] == []
+    assert m["H_MoR1_D1"]["verdict"].startswith("NOT COMPUTED") and "MC3" in m["H_MoR1_D1"]["verdict"]
+    assert m["H_MoR0_collapse"]["verdict"].startswith("NOT COMPUTED")
+    assert m["H_MoR2"]["reading"] == "confirmed" and "secondary_Y_MoR3_minus_MC3" not in m
+    choice.write_text(json.dumps({"lr": {}, "dropped": {"20m_MoR3": "all 4 screens diverged"}}))
+    rc, res = run_mor(tmp_path, "--mor-choice", str(choice))
+    assert rc == 0 and "no H-MoR contrast" in res["E1_mor_20m"]["note"] and "H_MoR1_D1" not in res["E1_mor_20m"]
+    # Without the dropped file, the missing MC3 runs make the block incomplete.
+    rc, err = run_mor(tmp_path)
+    assert rc != 0 and "MoR block incomplete" in err
+    rc, res = run_mor(tmp_path, "--partial")
+    assert rc == 0 and res["E1_mor_20m"]["label"] == "DESCRIPTIVE, PARTIAL"
+    # A MoR3 seed whose depth trace failed: H-MoR2 and H-MoR0 unavailable, H-MoR1 still read.
+    t2 = tmp_path / "b"
+    mor_art(t2, {"MoR3": [0.13, 0.134, 0.126], "MC2": [0.05] * 3, "MC3": [0.09] * 3}, [2.5] * 3,
+            delta=[0.3] * 3, slope=[0.1] * 3, ent=[0.9] * 3)
+    p = t2 / "e1_mor" / "post_e1_mor_MoR3_r2" / "summary.json"
+    s = json.loads(p.read_text())
+    s["mor_depth"] = {"error": "carry5_depth failed (rc 1)"}
+    p.write_text(json.dumps(s))
+    rc, res = run_mor(t2)
+    m = res["E1_mor_20m"]
+    assert m["H_MoR2"]["verdict"].startswith("UNAVAILABLE") and m["H_MoR0_collapse"]["verdict"].startswith("UNAVAILABLE")
+    assert m["H_MoR1_D1"]["verdict"] == "SUPPORTED"
