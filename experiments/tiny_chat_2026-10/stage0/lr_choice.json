@@ -1,0 +1,328 @@
+{
+ "rule": "The registered screen rule, per shape: among screens that did not diverge, the lowest final validation loss; any screen within SCREEN_TIE nats of it counts as tied and the smallest tied lr wins. A shape whose screens all diverged stops the programme (no rate is chosen). Amendment 2: a FAILED screen (screen_status: a crash with finite losses) is no evidence about its rate and is rerun unchanged; --art may be given several times (the first attempt, then its reruns) and each screen is read from the one folder that holds it FINISHED or DIVERGED. A shape is chosen only when all its screens are FINISHED or DIVERGED; otherwise nothing is written.",
+ "tie_nats": 0.01,
+ "lr": {
+  "20m_L16": 0.001,
+  "20m_L2": 0.001,
+  "20m_L32": 0.002,
+  "20m_L4": 0.001,
+  "20m_L8": 0.001
+ },
+ "screens": {
+  "20m_L16": [
+   {
+    "lr": 0.0005,
+    "final_val": 4.555959979072213,
+    "status": "FINISHED",
+    "first_loss": 9.768790245056152,
+    "last_loss": 4.650905609130859,
+    "tok_per_s_steady": 25338.036637983674,
+    "job": "screen_20m_L16_lr0",
+    "art": "C:/ml_artifacts/tiny_chat/s0_rerun",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0",
+      "status": "FAILED",
+      "rc": 1
+     },
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_rerun",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   },
+   {
+    "lr": 0.001,
+    "final_val": 4.241057379171252,
+    "status": "FINISHED",
+    "first_loss": 9.768790245056152,
+    "last_loss": 4.329835414886475,
+    "tok_per_s_steady": 8917.3588033148,
+    "job": "screen_20m_L16_lr1",
+    "art": "C:/ml_artifacts/tiny_chat/s0",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   },
+   {
+    "lr": 0.002,
+    "final_val": 4.475804453715682,
+    "status": "FINISHED",
+    "first_loss": 9.768790245056152,
+    "last_loss": 4.590004920959473,
+    "tok_per_s_steady": 9582.255233419086,
+    "job": "screen_20m_L16_lr2",
+    "art": "C:/ml_artifacts/tiny_chat/s0",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   }
+  ],
+  "20m_L2": [
+   {
+    "lr": 0.0005,
+    "final_val": 4.438600439578295,
+    "status": "FINISHED",
+    "first_loss": 9.913858413696289,
+    "last_loss": 4.544675827026367,
+    "tok_per_s_steady": 18212.610538222747,
+    "job": "screen_20m_L2_lr0",
+    "art": "C:/ml_artifacts/tiny_chat/s0",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   },
+   {
+    "lr": 0.001,
+    "final_val": 4.37272509559989,
+    "status": "FINISHED",
+    "first_loss": 9.913858413696289,
+    "last_loss": 4.480634689331055,
+    "tok_per_s_steady": 33759.42406134021,
+    "job": "screen_20m_L2_lr1",
+    "art": "C:/ml_artifacts/tiny_chat/s0_rerun",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0",
+      "status": "FAILED",
+      "rc": 1
+     },
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_rerun",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   },
+   {
+    "lr": 0.002,
+    "final_val": 4.614530682563782,
+    "status": "FINISHED",
+    "first_loss": 9.913858413696289,
+    "last_loss": 4.726008415222168,
+    "tok_per_s_steady": 33845.46087908213,
+    "job": "screen_20m_L2_lr2",
+    "art": "C:/ml_artifacts/tiny_chat/s0_rerun",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0",
+      "status": "FAILED",
+      "rc": 1
+     },
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_rerun",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   }
+  ],
+  "20m_L32": [
+   {
+    "lr": 0.0005,
+    "final_val": 4.903670858591795,
+    "status": "FINISHED",
+    "first_loss": 9.735864639282227,
+    "last_loss": 4.993005752563477,
+    "tok_per_s_steady": 21774.601073167167,
+    "job": "screen_20m_L32_lr0",
+    "art": "C:/ml_artifacts/tiny_chat/s0_rerun",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0",
+      "status": "FAILED",
+      "rc": 1
+     },
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_rerun",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   },
+   {
+    "lr": 0.001,
+    "final_val": 4.568626519292593,
+    "status": "FINISHED",
+    "first_loss": 9.735864639282227,
+    "last_loss": 4.6636505126953125,
+    "tok_per_s_steady": 21727.35000107156,
+    "job": "screen_20m_L32_lr1",
+    "art": "C:/ml_artifacts/tiny_chat/s0_rerun",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0",
+      "status": "FAILED",
+      "rc": 1
+     },
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_rerun",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   },
+   {
+    "lr": 0.002,
+    "final_val": 4.28241054713726,
+    "status": "FINISHED",
+    "first_loss": 9.735864639282227,
+    "last_loss": 4.380743980407715,
+    "tok_per_s_steady": 6592.849903691238,
+    "job": "screen_20m_L32_lr2",
+    "art": "C:/ml_artifacts/tiny_chat/s0",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   }
+  ],
+  "20m_L4": [
+   {
+    "lr": 0.0005,
+    "final_val": 4.338489532470703,
+    "status": "FINISHED",
+    "first_loss": 9.855649948120117,
+    "last_loss": 4.437948226928711,
+    "tok_per_s_steady": 15404.105050099019,
+    "job": "screen_20m_L4_lr0",
+    "art": "C:/ml_artifacts/tiny_chat/s0",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   },
+   {
+    "lr": 0.001,
+    "final_val": 4.171209642663598,
+    "status": "FINISHED",
+    "first_loss": 9.855649948120117,
+    "last_loss": 4.249343395233154,
+    "tok_per_s_steady": 32537.484946712702,
+    "job": "screen_20m_L4_lr1",
+    "art": "C:/ml_artifacts/tiny_chat/s0_rerun",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0",
+      "status": "FAILED",
+      "rc": 1
+     },
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_rerun",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   },
+   {
+    "lr": 0.002,
+    "final_val": 4.518114099279046,
+    "status": "FINISHED",
+    "first_loss": 9.855649948120117,
+    "last_loss": 4.639806270599365,
+    "tok_per_s_steady": 32634.011646559185,
+    "job": "screen_20m_L4_lr2",
+    "art": "C:/ml_artifacts/tiny_chat/s0_rerun",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0",
+      "status": "FAILED",
+      "rc": 1
+     },
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_rerun",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   }
+  ],
+  "20m_L8": [
+   {
+    "lr": 0.0005,
+    "final_val": 4.453679932281375,
+    "status": "FINISHED",
+    "first_loss": 9.766529083251953,
+    "last_loss": 4.548269748687744,
+    "tok_per_s_steady": 28181.0866498172,
+    "job": "screen_20m_L8_lr0",
+    "art": "C:/ml_artifacts/tiny_chat/s0_rerun",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0",
+      "status": "FAILED",
+      "rc": 1
+     },
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_rerun",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   },
+   {
+    "lr": 0.001,
+    "final_val": 4.216519379988313,
+    "status": "FINISHED",
+    "first_loss": 9.766529083251953,
+    "last_loss": 4.295616149902344,
+    "tok_per_s_steady": 28136.60098199606,
+    "job": "screen_20m_L8_lr1",
+    "art": "C:/ml_artifacts/tiny_chat/s0_rerun",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0",
+      "status": "FAILED",
+      "rc": 1
+     },
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_rerun",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   },
+   {
+    "lr": 0.002,
+    "final_val": 4.4977837316691875,
+    "status": "FINISHED",
+    "first_loss": 9.766529083251953,
+    "last_loss": 4.6165289878845215,
+    "tok_per_s_steady": 28190.1345700715,
+    "job": "screen_20m_L8_lr2",
+    "art": "C:/ml_artifacts/tiny_chat/s0_rerun",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0",
+      "status": "FAILED",
+      "rc": 1
+     },
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_rerun",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   }
+  ]
+ }
+}
