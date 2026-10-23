@@ -17,6 +17,17 @@ data-job commands that tiny_chat_*.json run through jobs_vm.py, plus `choose` at
     tiny_chat_run.py asha_train   --out D --spec SHAPE.json --corpus C.ids --budget N --lr X --warmup-frac F
                                   --seed S --share N --config ID --round R --panel ... --carry5-items ITEMS
     tiny_chat_run.py asha_promote --out D --plan PLAN.json --round R [--state STATE.json]
+    tiny_chat_run.py cuda_gate --out D [--script tools/colab_cuda_validate.sh] [--build-dir DIR]
+    tiny_chat_run.py choose_rec --art ART_DIR [--art ...] --out LR_CHOICE_REC.json   (at home: the recursion arm)
+
+The recursion arm (amendment 3, A3.3): cuda_gate builds and runs, on the VM's GPU, every device leg of
+tools/colab_cuda_validate.sh (test_recursion's device leg among them) and test_recursion once more with
+the kernels jobs_vm.py trains with; cuda_gate.json records each leg's output. probe and screen take
+--cuda-gate DIR (refuse unless DIR/cuda_gate.json passed; on a fresh VM, where the gate job is home and
+not rerun, they run the gate there first) and --data-job JOBS.json (rebuild the corpus with that file's
+data job when a fresh VM lacks it). choose_rec is choose over A3.3's four-rate grid; a cell whose four
+screens all diverged is dropped and reported, not chosen. post batches by effective depth (prelude +
+block x repeats + coda).
 
 rung, asha_train and asha_promote serve the early-stopping study (PREREGISTRATION.md amendment 1):
 rung scores a pretraining run's weights at a rung (5/10/25/50% of its steps; jobs_vm.py keeps the
@@ -53,6 +64,8 @@ BIN = os.environ.get("JOBS_MTSTUDIO", "/content/pk/build_cuda/mtstudio")
 CARRY5_TOOL = os.environ.get("TINY_CHAT_CARRY5", "tools/carry5_eval.py")  # override: tests only
 SCREEN_TIE = 0.01  # nats: screens closer than this to the best count as tied; the smaller lr wins
 SCREEN_LRS_EXPECTED = (5e-4, 1e-3, 2e-3)  # section 4's grid: a shape is chosen only with all three screens
+REC_SCREEN_LRS = (2.5e-4, 5e-4, 1e-3, 2e-3)  # A3.3: the recursion cells' grid (shared weights sum r gradients)
+CUDA_SCRIPT = "tools/colab_cuda_validate.sh"
 
 
 # ---------------------------------------------------------------- the Carry-5 interface
@@ -191,6 +204,15 @@ def batching(layers):
     return (16, 2) if layers >= 16 else (32, 1)
 
 
+def effective_layers(custom):
+    """Layer applications per forward: prelude + block x repeats + coda with arch.custom.recursion
+    (A3.3; `layers` then counts stored layers), else layers. Batching and activation memory follow it."""
+    r = custom.get("recursion")
+    if not r:
+        return custom["layers"]
+    return r.get("prelude", 0) + r["block"] * r.get("repeats", 1) + r.get("coda", 0)
+
+
 def gpu_name():
     try:
         return subprocess.run(["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"], capture_output=True,
@@ -298,8 +320,157 @@ def screen_status(s):
     return "FAILED"
 
 
+# ---------------------------------------------------------------- the CUDA gate (amendment 3, A3.3)
+def validate_plan(script):
+    """(make targets, [(env, binary)]) read from tools/colab_cuda_validate.sh, the one list of the
+    device legs (so the gate cannot drift from it): the `make` line's targets, and every line of the
+    form `[VAR=value ...] ./test_x` in order."""
+    import re
+    lines, buf = [], ""
+    with open(script, encoding="utf-8") as f:
+        for raw in f:
+            s = raw.rstrip("\n").rstrip()
+            if s.lstrip().startswith("#"):
+                continue
+            if s.endswith(chr(92)):  # a continued line
+                buf += s[:-1] + " "
+                continue
+            lines.append(buf + s)
+            buf = ""
+    targets, legs = [], []
+    leg_re = re.compile(r"^((?:[A-Z_][A-Z0-9_]*=\S*\s+)*)\./([\w.+-]+)\s*$")
+    for s in lines:
+        t = s.strip()
+        if t.startswith("make "):
+            targets = [x for x in t.split()[1:] if not x.startswith("-")]
+        m = leg_re.match(t)
+        if m:
+            env = dict(kv.split("=", 1) for kv in m.group(1).split())
+            legs.append((env, m.group(2)))
+    if "test_recursion" not in targets or not any(b == "test_recursion" for _, b in legs):
+        raise SystemExit(f"{script}: no test_recursion target or leg; the recursion arm's gate needs it")
+    return targets, legs
+
+
+def git_head():
+    try:
+        return subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, timeout=30).stdout.strip()
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+
+
+def run_cuda_gate(out, script=CUDA_SCRIPT, build=None):
+    """Build the validation targets in mtstudio's own build directory (configured by boot_jobs.sh) and
+    run every leg of the script on this VM's GPU, each in its own environment with the job's
+    MICROTORCH_* variables removed (jobs_vm.py sets them for every job; the legs set their own). Then
+    test_recursion once more with the kernels mtstudio trains with here (the job's MICROTORCH_* minus
+    step residency and deferred downloads, which its leg 8 switches on itself). Every leg runs even
+    after a failure, so one failure does not hide the others. Writes OUT/cuda_gate.json:
+    {"ok", "legs": [{"binary", "env", "rc", "seconds", "output" (test_recursion, whole), "log_tail"}], ...}."""
+    build = build or os.path.dirname(BIN)
+    os.makedirs(out, exist_ok=True)
+    targets, legs = validate_plan(script)
+    job_env = {k: v for k, v in os.environ.items() if k.startswith("MICROTORCH_")}
+    base = {k: v for k, v in os.environ.items() if not k.startswith("MICROTORCH_")}
+    prod = {k: v for k, v in job_env.items() if k not in ("MICROTORCH_STEP_RESIDENCY", "MICROTORCH_DEFER_DOWNLOADS")}
+    prod.setdefault("MICROTORCH_DEVICE", "cuda")
+    prod.setdefault("MICROTORCH_DEVICE_OPS", "1")
+    legs = legs + [(prod, "test_recursion")]
+    res = {"mode": "cuda_gate", "script": script, "build_dir": build, "commit": git_head(), "gpu": gpu_name(),
+           "targets": targets, "job_env": job_env, "legs": []}
+    log = os.path.join(out, "cuda_gate.log")
+    make = os.environ.get("TINY_CHAT_MAKE", "make")  # override: tests only
+    t0 = time.time()
+    try:
+        b = subprocess.run([make, f"-j{os.cpu_count() or 4}", *targets], cwd=build, capture_output=True, text=True,
+                           timeout=7200)
+        brc, btext = b.returncode, b.stdout + b.stderr
+    except (OSError, subprocess.TimeoutExpired) as e:
+        brc, btext = -1, f"{type(e).__name__}: {e}"
+    with open(log, "a", encoding="utf-8") as f:
+        f.write(btext)
+    res["build"] = {"rc": brc, "seconds": round(time.time() - t0, 1)}
+    if brc != 0:
+        res["build"]["log_tail"] = btext[-4000:]
+    else:
+        for k, (env, binary) in enumerate(legs):
+            t1 = time.time()
+            try:
+                p = subprocess.run([os.path.join(build, binary)], cwd=build, env={**base, **env}, capture_output=True,
+                                   text=True, timeout=3600)
+                rc, text = p.returncode, p.stdout + p.stderr
+            except (OSError, subprocess.TimeoutExpired) as e:
+                rc, text = -1, f"{type(e).__name__}: {e}"
+            with open(log, "a", encoding="utf-8") as f:
+                f.write(f"\n=== leg {k}: {env} ./{binary}: rc {rc}\n{text}")
+            leg = {"binary": binary, "env": env, "rc": rc, "seconds": round(time.time() - t1, 1),
+                   "production_kernels": k == len(legs) - 1}
+            if binary == "test_recursion":
+                leg["output"] = text[-20000:]  # its measured worst errors are the tolerance evidence
+            if rc != 0:
+                leg["log_tail"] = text[-4000:]
+            res["legs"].append(leg)
+    res["ok"] = brc == 0 and bool(res["legs"]) and all(x["rc"] == 0 for x in res["legs"])
+    res["failed"] = [f"{x['env']} ./{x['binary']}" for x in res["legs"] if x["rc"] != 0]
+    res["seconds"] = round(time.time() - t0, 1)
+    jsave(os.path.join(out, "cuda_gate.json"), res)
+    return res
+
+
+def cmd_cuda_gate(a):
+    res = run_cuda_gate(a.out, a.script, a.build_dir)
+    print(json.dumps({k: res[k] for k in ("ok", "failed", "gpu", "commit", "seconds")}))
+    return 0 if res["ok"] else 1
+
+
+def rebuild_data(jobs_path, corpus, log_path):
+    """A fresh VM lacks the corpus when the data job came home on the VM it replaced (the runner marks
+    home jobs FINISHED there, so it is not rerun): run that jobs file's data job here, into the
+    corpus's directory, exactly as jobs_vm.py would (it is idempotent and pinned)."""
+    j = next(x for x in jload(jobs_path)["jobs"] if x["name"] == "data")
+    chat = os.environ.get("JOBS_CHAT_DIR", "/content/chat")
+    out = os.path.dirname(os.path.abspath(corpus))
+    argv = [x.replace("{out}", out).replace("{upload}", os.path.join(chat, "upload")) for x in j["cmd"]]
+    p = subprocess.run(argv, capture_output=True, text=True)
+    with open(log_path, "a", encoding="utf-8") as f:
+        f.write(p.stdout[-20000:] + p.stderr[-20000:])
+    return p.returncode, (p.stdout + p.stderr)[-1500:]
+
+
+def vm_prereqs(a):
+    """None, or why this probe or screen must not start: the CUDA gate has not passed on this VM, or
+    the corpus is missing and could not be rebuilt."""
+    if getattr(a, "cuda_gate", None):
+        g = os.path.join(a.cuda_gate, "cuda_gate.json")
+        if not os.path.exists(g):  # a fresh VM: the gate job is home, not here; validate this GPU first
+            try:
+                run_cuda_gate(a.cuda_gate)
+            except (OSError, subprocess.SubprocessError, SystemExit) as e:
+                return f"the CUDA gate could not run on this VM: {type(e).__name__}: {e}"
+        r = jload(g)
+        if not r.get("ok"):
+            return f"the CUDA gate did not pass on this VM ({g}; failed legs {r.get('failed')})"
+    if getattr(a, "data_job", None) and not os.path.exists(a.corpus):
+        rc, tail = rebuild_data(a.data_job, a.corpus, os.path.join(a.out, "data_rebuild.log"))
+        if rc != 0 or not os.path.exists(a.corpus):
+            return f"{a.corpus} missing and the data job failed to rebuild it (rc {rc}): {tail}"
+    return None
+
+
+def refuse(a, why):
+    s = {"mode": a.mode, "spec": a.spec, "rc": None, "refused": why, "status": "FAILED", "gpu": gpu_name()}
+    if a.mode == "screen":
+        s.update({"lr": a.lr, "seed": a.seed, "steps": a.steps, "final_val": None, "diverged": False})
+    jsave(os.path.join(a.out, "summary.json"), s)
+    print(json.dumps(s))
+    return 1
+
+
 # ---------------------------------------------------------------- modes
 def cmd_probe(a):
+    why = vm_prereqs(a)
+    if why:
+        return refuse(a, why)
     spec = shape_spec(a.spec)
     spec["data"]["corpus"] = a.corpus
     spec["train"].update({"steps": a.steps, "eval_every": a.steps, "eval_windows": 1, "checkpoint_every": 10 ** 7})
@@ -326,6 +497,9 @@ def cmd_probe(a):
 
 
 def cmd_screen(a):
+    why = vm_prereqs(a)
+    if why:
+        return refuse(a, why)
     spec = shape_spec(a.spec)
     spec["data"]["corpus"] = a.corpus
     spec["train"].update({"steps": a.steps, "lr": a.lr, "seed": a.seed, "eval_every": a.steps, "eval_windows": 128,
@@ -429,7 +603,7 @@ def cmd_post(a):
     preflight(a.carry5_items)
     shape = shape_spec(a.spec)
     custom = shape["arch"]["custom"]
-    b, acc = batching(custom["layers"])
+    b, acc = batching(effective_layers(custom))
     if not os.path.exists(a.pt_weights):
         raise SystemExit(f"pretrained weights not found: {a.pt_weights}")
     s = {"mode": "post", "cell": a.cell, "share": a.share, "seed": a.seed, "spec": a.spec, "arch": custom,
@@ -676,6 +850,20 @@ def cmd_gate(a):
     if not design.get("final"):
         problems.append(f"{a.design} is missing or provisional: the dialogue levels need the whole default "
                         "human set measured (make_jobs.py --dialogue-pt-bytes)")
+    if a.need_pilot:  # amendment 3: E5/E1 at 20M and the recursion arm need PASS; E5 at 60M needs FAIL
+        v = jload(a.pilot_verdict).get("verdict") if a.pilot_verdict and os.path.exists(a.pilot_verdict) else None
+        if v != a.need_pilot:
+            problems.append(f"floor pilot verdict {v} ({a.pilot_verdict}), this block needs {a.need_pilot} "
+                            "(PREREGISTRATION.md amendment 3)")
+    if a.need_cuda_gate:  # A3.3: the recursion arm's runs need the device legs validated on an L4
+        g = jload(a.need_cuda_gate) if os.path.exists(a.need_cuda_gate) else {}
+        if not g.get("ok"):
+            problems.append(f"{a.need_cuda_gate}: no passed CUDA gate (Stage 0's cuda_gate.json, copied home and "
+                            "committed)")
+    if a.need_rec_r8:  # A3.3's R8 rule, read at home (analyze.py --rec-decision) and committed
+        d = jload(a.need_rec_r8) if os.path.exists(a.need_rec_r8) else {}
+        if d.get("run_r8") is not True:
+            problems.append(f"{a.need_rec_r8}: run_r8 is {d.get('run_r8')}; R8 runs only on A3.3's rule")
     if a.stage0:
         if a.need_carry5:
             problems += [f"{p} missing: the rung metrics cannot be computed" for p in (CARRY5_TOOL, a.carry5_items)
@@ -691,11 +879,6 @@ def cmd_gate(a):
             choice = {**(choice or {}), pl["shape"]: pl["lr"]}
     if choice is None:
         problems.append(f"{a.choice} missing: Stage 0 has not chosen the learning rates")
-    if a.need_pilot:  # amendment 3: E5/E1 at 20M need the floor pilot PASSED; E5 at 60M needs it FAILED
-        v = jload(a.pilot_verdict).get("verdict") if a.pilot_verdict and os.path.exists(a.pilot_verdict) else None
-        if v != a.need_pilot:
-            problems.append(f"floor pilot verdict {v} ({a.pilot_verdict}), this block needs {a.need_pilot} "
-                            "(PREREGISTRATION.md amendment 3)")
     for j in jload(a.jobs)["jobs"]:
         if "spec" not in j:
             continue
@@ -720,6 +903,8 @@ def cmd_choose(a):
     rerun unchanged; --art may be given several times (the first attempt, then its reruns) and each
     screen is read from the one folder that holds it FINISHED or DIVERGED. A shape is chosen only
     when all its screens are FINISHED or DIVERGED; otherwise nothing is written."""
+    grid = tuple(getattr(a, "grid", None) or SCREEN_LRS_EXPECTED)
+    drop = bool(getattr(a, "drop_diverged", False))
     found = {}
     for k, art in enumerate(a.art):
         for p in sorted(glob.glob(os.path.join(art, "screen_*", "summary.json"))):
@@ -741,13 +926,20 @@ def cmd_choose(a):
         by.setdefault(sid, []).append({**s, "status": st, "art": art, "job": job,
                                        "attempts": [{"art": r[1], "status": r[3], "rc": r[2].get("rc")} for r in rows]})
     for sid, ss in by.items():
-        if len(ss) != len(SCREEN_LRS_EXPECTED) and not any(p.startswith(f"screen_{sid}_") for p in problems):
-            problems.append(f"{sid}: {len(ss)} screens found, {len(SCREEN_LRS_EXPECTED)} registered")
+        if len(ss) != len(grid) and not any(p.startswith(f"screen_{sid}_") for p in problems):
+            problems.append(f"{sid}: {len(ss)} screens found, {len(grid)} registered")
+        elif len(ss) == len(grid) and sorted(float(s["lr"]) for s in ss) != sorted(grid):
+            problems.append(f"{sid}: screened at {sorted(s['lr'] for s in ss)}, registered {sorted(grid)}")
     if problems:
         raise SystemExit("no rate is chosen:\n  " + "\n  ".join(problems))
-    lr, detail = {}, {}
+    lr, detail, dropped = {}, {}, {}
     for sid, ss in sorted(by.items()):
         good = [s for s in ss if s["status"] == "FINISHED"]
+        if not good and drop:  # A3.3: a recursion cell whose four screens all diverge is dropped and reported
+            dropped[sid] = f"all {len(ss)} screens diverged (A3.3: the cell is dropped)"
+            detail[sid] = [{k: s.get(k) for k in ("lr", "final_val", "status", "first_loss", "last_loss", "job", "art")}
+                           for s in sorted(ss, key=lambda x: x["lr"])]
+            continue
         if not good:
             raise SystemExit(f"{sid}: every screen diverged; no rate is chosen (section 4: one amendment may "
                              "extend the grid downwards)")
@@ -758,17 +950,23 @@ def cmd_choose(a):
                                               "tok_per_s_steady", "job", "art", "attempts")}
                        for s in sorted(ss, key=lambda x: x["lr"])]
     out = {"rule": " ".join(cmd_choose.__doc__.split()), "tie_nats": SCREEN_TIE, "lr": {}, "screens": {}}
+    if drop:
+        out.update({"grid": list(grid), "dropped": {},
+                    "rule_rec": "A3.3: the same rule over the four-rate grid; a cell whose screens all diverged "
+                                "is dropped and reported"})
     if os.path.exists(a.out):  # the 60M stage adds its shapes to the 20M choice; a shape is chosen once
         out = jload(a.out)
-        again = sorted(set(lr) & set(out["lr"]))
+        again = sorted((set(lr) | set(dropped)) & (set(out["lr"]) | set(out.get("dropped", {}))))
         if again:
             raise SystemExit(f"{a.out} already holds a choice for {again}")
     out["lr"].update(lr)
     out["screens"].update(detail)
+    if drop:
+        out.setdefault("dropped", {}).update(dropped)
     lr = out["lr"]
     os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
     jsave(a.out, out)
-    print(json.dumps({"lr": lr}))
+    print(json.dumps({"lr": lr, **({"dropped": out.get("dropped", {})} if drop else {})}))
     return 0
 
 
@@ -840,6 +1038,12 @@ def cmd_pilot_lr(a):
     return 0
 
 
+def vm_flags(p):
+    p.add_argument("--cuda-gate", default=None, help="A3.3: refuse unless DIR/cuda_gate.json passed on this VM "
+                                                     "(a fresh VM runs the gate into DIR first)")
+    p.add_argument("--data-job", default=None, help="a jobs file whose data job rebuilds a missing corpus here")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = ap.add_subparsers(dest="mode", required=True)
@@ -848,6 +1052,7 @@ def main(argv=None):
     p.add_argument("--spec", required=True)
     p.add_argument("--corpus", required=True)
     p.add_argument("--steps", type=int, default=300)
+    vm_flags(p)
     p = sub.add_parser("screen")
     p.add_argument("--out", required=True)
     p.add_argument("--spec", required=True)
@@ -855,6 +1060,7 @@ def main(argv=None):
     p.add_argument("--lr", type=float, required=True)
     p.add_argument("--steps", type=int, required=True)
     p.add_argument("--seed", type=int, required=True)
+    vm_flags(p)
     p = sub.add_parser("post")
     p.add_argument("--out", required=True)
     p.add_argument("--spec", required=True)
@@ -883,6 +1089,16 @@ def main(argv=None):
     p.add_argument("--pilot-verdict", default="", help="amendment 3: the floor pilot's verdict.json")
     p.add_argument("--need-pilot", choices=["PASS", "FAIL"], default=None,
                    help="amendment 3: refuse unless the pilot verdict is this")
+    p.add_argument("--need-cuda-gate", default="", help="A3.3: refuse unless this cuda_gate.json passed")
+    p.add_argument("--need-rec-r8", default="", help="A3.3: refuse unless this rec_decision.json has run_r8 true")
+    p = sub.add_parser("cuda_gate")
+    p.add_argument("--out", required=True)
+    p.add_argument("--script", default=CUDA_SCRIPT)
+    p.add_argument("--build-dir", default=None, help="default: mtstudio's build directory (dirname of JOBS_MTSTUDIO)")
+    p = sub.add_parser("choose_rec")
+    p.add_argument("--art", action="append", required=True, help="the recursion Stage 0 folders, first attempt first")
+    p.add_argument("--out", required=True)
+    p.set_defaults(grid=REC_SCREEN_LRS, drop_diverged=True)
     p = sub.add_parser("pilot_lr")
     p.add_argument("--art", action="append", required=True, help="Stage 0 folders, first attempt first (as choose)")
     p.add_argument("--shape", default="20m_L8")
@@ -925,11 +1141,12 @@ def main(argv=None):
     p.add_argument("--round", required=True)
     p.add_argument("--state", default="", help="the uploaded state file (tiny_chat_asha.py sync)")
     a = ap.parse_args(argv)
-    if a.mode not in ("choose", "pilot_lr"):
+    if a.mode not in ("choose", "pilot_lr", "choose_rec"):
         os.makedirs(a.out, exist_ok=True)
     return {"probe": cmd_probe, "screen": cmd_screen, "post": cmd_post, "pick": cmd_pick, "gate": cmd_gate,
             "choose": cmd_choose, "rung": cmd_rung, "asha_train": cmd_asha_train,
-            "asha_promote": cmd_asha_promote, "pilot_lr": cmd_pilot_lr}[a.mode](a)
+            "asha_promote": cmd_asha_promote, "pilot_lr": cmd_pilot_lr, "cuda_gate": cmd_cuda_gate,
+            "choose_rec": cmd_choose}[a.mode](a)
 
 
 if __name__ == "__main__":

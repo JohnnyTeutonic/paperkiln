@@ -180,6 +180,35 @@ def test_short_dialogue_runs_at_the_largest_covered_share(tmp_path):
     assert m["dialogue_copies"] == 4 and m["share_effective"] < 100 and "note" in m
 
 
+# A stand-in for tools/carry5_eval.py's `run` interface and summary schema.
+FAKE_CARRY5 = ("import json, os, sys\n"
+               "arg = lambda k: sys.argv[sys.argv.index(k) + 1]\n"
+               "assert sys.argv[1] == 'run' and arg('--scorer') == 'mtstudio'\n"
+               "spec = json.load(open(arg('--model').split('=', 1)[1]))\n"
+               "assert os.path.exists(os.path.join(spec['out_dir'], spec['name'] + '.safetensors'))\n"
+               "m = 0.5 if spec['name'].endswith('r1') else 0.6\n"
+               "acc = {'gold': 0.65, 'self': m, 'twin': 0.7, 'noctx': 0.25}\n"
+               "modes = [k for k in acc if k != 'self' or arg('--gen') != 'none']\n"
+               # carry5_eval's summary lists every mode; an unscored one has mean None.
+               "fc = {k: {mode: {'all': {'mean': acc[mode] + 0.05 if mode in modes else None,"
+               " 'n': 100 if mode in modes else 0}} for mode in acc} for k in ('acc', 'acc_norm')}\n"
+               "os.makedirs(os.path.join(arg('--out'), 'm'), exist_ok=True)\n"
+               # Per-item records (amendment 2 pools from them): 20 recall items carrying the means
+               # above, and 4 instruction items right in every mode, which the primary pool leaves out.
+               "with open(os.path.join(arg('--out'), 'm', 'items.jsonl'), 'w') as f:\n"
+               "    for i in range(20):\n"
+               "        r = {'family': 'recall', 'fc': {mode: {'acc': float(i < round(20 * acc[mode])),"
+               " 'acc_norm': 0.0} for mode in modes}, 'gen': {}}\n"
+               "        f.write(json.dumps(r) + '\\n')\n"
+               "    for i in range(4):\n"
+               "        g = {mode: {'complies': i < 1} for mode in modes} if arg('--gen') != 'none' else {}\n"
+               "        r = {'family': 'instruction', 'fc': {mode: {'acc': 1.0, 'acc_norm': 1.0} for mode in modes},"
+               " 'gen': g}\n"
+               "        f.write(json.dumps(r) + '\\n')\n"
+               "json.dump({'meta': {'gen': arg('--gen'), 'port': arg('--port')}, 'models': {'m': {'fc': fc}}},"
+               " open(os.path.join(arg('--out'), 'summary.json'), 'w'))\n")
+
+
 def shape_spec(t, out, steps=20):
     spec = {"name": "tc_toy", "arch": {"preset": "llama-tiny", "rope_heads": "all",
                                        "custom": {"d": 32, "layers": 2, "heads": 2, "d_ff": 64}},
@@ -216,32 +245,7 @@ def test_probe_screen_post_pick(built, tmp_path):
     assert subprocess.run([BIN, "run", str(tmp_path / "pt.json")], capture_output=True).returncode == 0
     fake = tmp_path / "carry5_fake.py"
     # The stand-in speaks tools/carry5_eval.py's `run` interface and summary schema.
-    fake.write_text("import json, os, sys\n"
-                    "arg = lambda k: sys.argv[sys.argv.index(k) + 1]\n"
-                    "assert sys.argv[1] == 'run' and arg('--scorer') == 'mtstudio'\n"
-                    "spec = json.load(open(arg('--model').split('=', 1)[1]))\n"
-                    "assert os.path.exists(os.path.join(spec['out_dir'], spec['name'] + '.safetensors'))\n"
-                    "m = 0.5 if spec['name'].endswith('r1') else 0.6\n"
-                    "acc = {'gold': 0.65, 'self': m, 'twin': 0.7, 'noctx': 0.25}\n"
-                    "modes = [k for k in acc if k != 'self' or arg('--gen') != 'none']\n"
-                    # carry5_eval's summary lists every mode; an unscored one has mean None.
-                    "fc = {k: {mode: {'all': {'mean': acc[mode] + 0.05 if mode in modes else None,"
-                    " 'n': 100 if mode in modes else 0}} for mode in acc} for k in ('acc', 'acc_norm')}\n"
-                    "os.makedirs(os.path.join(arg('--out'), 'm'), exist_ok=True)\n"
-                    # Per-item records (amendment 2 pools from them): 20 recall items carrying the means
-                    # above, and 4 instruction items right in every mode, which the primary pool leaves out.
-                    "with open(os.path.join(arg('--out'), 'm', 'items.jsonl'), 'w') as f:\n"
-                    "    for i in range(20):\n"
-                    "        r = {'family': 'recall', 'fc': {mode: {'acc': float(i < round(20 * acc[mode])),"
-                    " 'acc_norm': 0.0} for mode in modes}, 'gen': {}}\n"
-                    "        f.write(json.dumps(r) + '\\n')\n"
-                    "    for i in range(4):\n"
-                    "        g = {mode: {'complies': i < 1} for mode in modes} if arg('--gen') != 'none' else {}\n"
-                    "        r = {'family': 'instruction', 'fc': {mode: {'acc': 1.0, 'acc_norm': 1.0} for mode in modes},"
-                    " 'gen': g}\n"
-                    "        f.write(json.dumps(r) + '\\n')\n"
-                    "json.dump({'meta': {'gen': arg('--gen'), 'port': arg('--port')}, 'models': {'m': {'fc': fc}}},"
-                    " open(os.path.join(arg('--out'), 'summary.json'), 'w'))\n")
+    fake.write_text(FAKE_CARRY5)
     items = tmp_path / "items.jsonl"
     items.write_text("{}\n")
     sft = {"data": {"vocab": str(t / "v.gguf"), "vocab_cap": 300, "T": 64, "sft_examples": str(out / "sft_human.jsonl")},
@@ -511,3 +515,220 @@ def test_gate_pilot_lr_and_verdict(tmp_path):
     assert ok("--pilot-verdict", str(verdict), "--need-pilot", "FAIL")
     verdict.write_text(json.dumps({"verdict": "PASS"}))
     assert ok("--pilot-verdict", str(verdict), "--need-pilot", "PASS")
+
+
+# ---- amendment 3, A3.3 (23 Oct 2026): the recursion arm ----
+posix_only = pytest.mark.skipif(os.name == "nt", reason="fake build tools are POSIX shell scripts")
+
+
+def test_choose_rec_four_rates_drop_and_merge(tmp_path):
+    art = tmp_path / "s0_rec"
+    rates = (2.5e-4, 5e-4, 1e-3, 2e-3)
+    for k, (lr, v) in enumerate(zip(rates, (4.30, 4.295, 4.20, 4.50))):
+        _screen(art / f"screen_20m_R4_lr{k}", lr, 0, v)  # 1e-3 best; nothing within 0.01 below it
+    for k, (lr, v) in enumerate(zip(rates, (4.31, 4.305, 4.40, 4.60))):
+        _screen(art / f"screen_20m_R2_lr{k}", lr, 0, v)  # 2.5e-4 and 5e-4 tied: the smaller wins
+    for k, lr in enumerate(rates):
+        _screen(art / f"screen_20m_MC7_lr{k}", lr, 0, 9.9, first=9.8, last=9.9)  # all four diverged
+    out = tmp_path / "lr_choice_rec.json"
+    r = subprocess.run(RUN + ["choose_rec", "--art", str(art), "--out", str(out)], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    d = json.loads(out.read_text())
+    assert d["lr"] == {"20m_R2": 2.5e-4, "20m_R4": 1e-3} and list(d["dropped"]) == ["20m_MC7"]
+    assert d["grid"] == list(rates)
+    # Section 4's plain choose still refuses a shape whose screens all diverged, and a three-rate grid.
+    r = subprocess.run(RUN + ["choose", "--art", str(art), "--out", str(tmp_path / "plain.json")],
+                       capture_output=True, text=True)
+    assert r.returncode != 0
+    # R8's screens, on the R8 rule, add their cell to the same file; a cell is chosen once.
+    r8 = tmp_path / "s0_rec_r8"
+    for k, (lr, v) in enumerate(zip(rates, (4.10, 4.05, 4.30, 4.40))):
+        _screen(r8 / f"screen_20m_R8_lr{k}", lr, 0, v)
+    r = subprocess.run(RUN + ["choose_rec", "--art", str(r8), "--out", str(out)], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    assert json.loads(out.read_text())["lr"]["20m_R8"] == 5e-4
+    r = subprocess.run(RUN + ["choose_rec", "--art", str(r8), "--out", str(out)], capture_output=True, text=True)
+    assert r.returncode != 0 and "already holds" in r.stderr
+    # A screen at an unregistered rate is refused.
+    bad = tmp_path / "bad"
+    for k, lr in enumerate((1.25e-4, 5e-4, 1e-3, 2e-3)):
+        _screen(bad / f"screen_20m_R2_lr{k}", lr, 0, 4.3)
+    r = subprocess.run(RUN + ["choose_rec", "--art", str(bad), "--out", str(tmp_path / "x.json")],
+                       capture_output=True, text=True)
+    assert r.returncode != 0 and "registered" in r.stderr
+
+
+def test_gate_recursion_needs(tmp_path):
+    jobs = tmp_path / "jobs.json"
+    jobs.write_text(json.dumps({"jobs": [{"name": "pt", "spec": {"name": "tc_20m_R2", "train": {"lr": 0.00025}}}]}))
+    items = tmp_path / "items.jsonl"
+    items.write_text("{}" + chr(10))
+    fake = tmp_path / "c5.py"
+    fake.write_text("")
+    env = {**os.environ, "TINY_CHAT_CARRY5": str(fake)}
+    design = tmp_path / "design.json"
+    design.write_text(json.dumps({"levels": [0, 17, 35, 70], "e1_share": 35, "final": True}))
+    choice, verdict = tmp_path / "lr_choice_rec.json", tmp_path / "verdict.json"
+    cuda, dec = tmp_path / "cuda_gate.json", tmp_path / "rec_decision.json"
+    choice.write_text(json.dumps({"lr": {"20m_R2": 2.5e-4}}))
+    verdict.write_text(json.dumps({"verdict": "PASS"}))
+    gate = RUN + ["gate", "--out", str(tmp_path / "g"), "--jobs", str(jobs), "--carry5-items", str(items),
+                  "--design", str(design), "--choice", str(choice), "--pilot-verdict", str(verdict),
+                  "--need-pilot", "PASS"]
+    ok = lambda *x: subprocess.run(gate + list(x), env=env, capture_output=True).returncode == 0  # noqa: E731
+    assert ok() and not ok("--need-cuda-gate", str(cuda))
+    cuda.write_text(json.dumps({"ok": False}))
+    assert not ok("--need-cuda-gate", str(cuda))
+    cuda.write_text(json.dumps({"ok": True}))
+    assert ok("--need-cuda-gate", str(cuda)) and not ok("--need-rec-r8", str(dec))
+    dec.write_text(json.dumps({"run_r8": False}))
+    assert not ok("--need-rec-r8", str(dec))
+    dec.write_text(json.dumps({"run_r8": True}))
+    assert ok("--need-cuda-gate", str(cuda), "--need-rec-r8", str(dec))
+    # The Stage 0 form (the arm's screens) checks the pilot and the R8 rule too.
+    assert ok("--stage0", "--need-rec-r8", str(dec))
+    verdict.write_text(json.dumps({"verdict": "FAIL"}))
+    assert not ok("--stage0") and not ok()
+
+
+def test_probe_and_screen_refuse_without_a_passed_cuda_gate(tmp_path):
+    g = tmp_path / "cuda_gate"
+    g.mkdir()
+    (g / "cuda_gate.json").write_text(json.dumps({"ok": False, "failed": ["./test_recursion"]}))
+    for mode, extra in (("probe", ["--steps", "300"]), ("screen", ["--lr", "0.001", "--steps", "1500", "--seed", "101"])):
+        out = tmp_path / mode
+        r = subprocess.run(RUN + [mode, "--out", str(out), "--spec", "unused.json", "--corpus", "unused.ids",
+                                  "--cuda-gate", str(g), *extra], capture_output=True, text=True, cwd=ROOT)
+        s = json.loads((out / "summary.json").read_text())
+        assert r.returncode == 1 and "CUDA gate did not pass" in s["refused"] and s["status"] == "FAILED"
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("tcr", ROOT / "tools" / "colab_chat" / "tiny_chat_run.py")
+    tcr = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(tcr)
+    assert tcr.screen_status(s) == "FAILED"  # a refusal says nothing about the rate: rerun, never chosen from
+
+
+def fake_build(d, fail=()):
+    """A build directory of shell scripts standing in for the validation binaries: each prints the
+    MICROTORCH_* variables it saw; those in `fail` exit 1. A fake make records its arguments."""
+    d.mkdir(parents=True, exist_ok=True)
+    _, legs = TCR.validate_plan(str(ROOT / "tools" / "colab_cuda_validate.sh"))
+    names = {b for _, b in legs} | {"test_a", "test_b"}
+    for n in names:
+        p = d / n
+        p.write_text("#!/bin/sh\necho \"$0 dev=$MICROTORCH_DEVICE ops=$MICROTORCH_DEVICE_OPS "
+                     "cublas=$MICROTORCH_CUBLAS res=$MICROTORCH_STEP_RESIDENCY\"\n"
+                     + ("exit 1\n" if n in fail else "exit 0\n"))
+        p.chmod(0o755)
+    mk = d / "fake_make"
+    mk.write_text("#!/bin/sh\necho \"$@\" > \"$(pwd)/make_args.txt\"\nexit 0\n")
+    mk.chmod(0o755)
+    return mk
+
+
+def _tcr():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("tcr", ROOT / "tools" / "colab_chat" / "tiny_chat_run.py")
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
+
+
+TCR = _tcr()
+
+
+@posix_only
+def test_cuda_gate_runs_every_leg_and_the_production_kernels(tmp_path):
+    build = tmp_path / "build"
+    mk = fake_build(build, fail={"test_b"})
+    script = tmp_path / "validate.sh"
+    script.write_text("#!/usr/bin/env bash\n# comment ./test_x\nmake microtorch test_a test_b \\\n"
+                      "     test_recursion -j\"$(nproc)\"\nMICROTORCH_DEVICE=cuda ./test_a\n./test_b\n"
+                      "MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 ./test_recursion\necho done\n")
+    env = {**os.environ, "TINY_CHAT_MAKE": str(mk), "MICROTORCH_CUBLAS": "1", "MICROTORCH_STEP_RESIDENCY": "1",
+           "MICROTORCH_DEVICE": "cuda", "MICROTORCH_DEVICE_OPS": "1"}
+    r = subprocess.run(RUN + ["cuda_gate", "--out", str(tmp_path / "g"), "--script", str(script), "--build-dir",
+                              str(build)], capture_output=True, text=True, env=env, cwd=ROOT)
+    res = json.loads((tmp_path / "g" / "cuda_gate.json").read_text())
+    assert r.returncode == 1 and not res["ok"] and res["failed"] == ["{} ./test_b"]
+    assert (build / "make_args.txt").read_text().split()[1:] == ["microtorch", "test_a", "test_b", "test_recursion"]
+    legs = res["legs"]
+    assert [x["binary"] for x in legs] == ["test_a", "test_b", "test_recursion", "test_recursion"]  # all ran
+    # Script legs see only their own variables (jobs_vm.py's are removed) ...
+    assert "cublas= res=" in legs[2]["output"] and "dev=cuda ops=1" in legs[2]["output"]
+    # ... and the last runs test_recursion with the kernels mtstudio trains with, minus residency and deferral.
+    assert legs[3]["production_kernels"] and "cublas=1 res=" in legs[3]["output"]
+    assert legs[1]["log_tail"] and "log_tail" not in legs[0]
+    fake_build(build)  # every leg passes
+    r = subprocess.run(RUN + ["cuda_gate", "--out", str(tmp_path / "g2"), "--script", str(script), "--build-dir",
+                              str(build)], capture_output=True, text=True, env=env, cwd=ROOT)
+    assert r.returncode == 0 and json.loads((tmp_path / "g2" / "cuda_gate.json").read_text())["ok"]
+
+
+@posix_only
+def test_fresh_vm_runs_the_cuda_gate_before_a_probe(tmp_path):
+    """On a replaced VM the gate job is home and not rerun: the first probe runs the gate there (the
+    real validation script's legs, here stand-ins) and refuses when it fails."""
+    build = tmp_path / "build"
+    mk = fake_build(build, fail={"test_cuda_ops"})
+    g = tmp_path / "cuda_gate"
+    env = {**os.environ, "TINY_CHAT_MAKE": str(mk), "JOBS_MTSTUDIO": str(build / "mtstudio")}
+    out = tmp_path / "probe"
+    r = subprocess.run(RUN + ["probe", "--out", str(out), "--spec", "unused.json", "--corpus", "unused.ids",
+                              "--cuda-gate", str(g)], capture_output=True, text=True, env=env, cwd=ROOT)
+    s = json.loads((out / "summary.json").read_text())
+    res = json.loads((g / "cuda_gate.json").read_text())
+    assert r.returncode == 1 and "test_cuda_ops" in s["refused"] and not res["ok"]
+    assert len(res["legs"]) == 14 and res["legs"][-1]["production_kernels"]
+
+
+@needs_bin
+def test_recursion_probe_data_rebuild_and_post_batching(built, tmp_path):
+    """A recursed toy model (1 + [1] x 15, effective depth 16) through the arm's commands: a probe on a
+    'fresh VM' whose corpus is missing rebuilds it with the jobs file's data job; the post job's SFT
+    batches 16 x 2 by effective depth."""
+    t, out = built
+    env = {**os.environ, "JOBS_MTSTUDIO": BIN}
+    spec = json.loads(shape_spec(t, out).read_text())
+    spec["arch"]["custom"]["recursion"] = {"prelude": 1, "block": 1, "repeats": 15, "coda": 0, "schedule": "fixed",
+                                           "inject": "none"}
+    spec["name"] = "tc_rec"
+    sp = tmp_path / "shape_rec.json"
+    sp.write_text(json.dumps(spec))
+    data = tmp_path / "data2"
+    jobs = tmp_path / "jobs.json"
+    jobs.write_text(json.dumps({"jobs": [{"name": "data", "cmd": DATA + [
+        "--out", "{out}", "--vocab", str(t / "v.gguf"), "--fineweb", str(t / "fw"), "--shares", "50", "--mix-bytes",
+        "150000", "--max-epochs", "4", "--T", "64", "--seed", "1", "--human-dir", str(t / "human"),
+        "--human-fetch", ""]}]}))
+    r = subprocess.run(RUN + ["probe", "--out", str(tmp_path / "probe"), "--spec", str(sp), "--corpus",
+                              str(data / "mix_s50.ids"), "--steps", "60", "--data-job", str(jobs)],
+                       capture_output=True, text=True, env=env, cwd=ROOT)
+    assert r.returncode == 0, r.stdout[-2000:] + r.stderr[-2000:]
+    pr = json.loads((tmp_path / "probe" / "summary.json").read_text())
+    assert (data / "mix_s50.ids").exists() and pr["tok_per_s_steady"] and pr["arch"]["recursion"]["repeats"] == 15
+    pt = dict(spec, out_dir=str(tmp_path / "pt"))
+    (tmp_path / "pt.json").write_text(json.dumps(pt))
+    p = subprocess.run([BIN, "run", str(tmp_path / "pt.json")], capture_output=True, text=True)
+    assert p.returncode == 0, p.stdout[-2000:]
+    fake = tmp_path / "carry5_fake.py"
+    fake.write_text(FAKE_CARRY5)
+    items = tmp_path / "items.jsonl"
+    items.write_text("{}" + chr(10))
+    sft = {"data": {"vocab": str(t / "v.gguf"), "vocab_cap": 300, "T": 64, "sft_examples": str(out / "sft_human.jsonl")},
+           "train": {"objective": "sft", "steps": 4, "lr": 0.001, "batch": 32, "eval_every": 2, "eval_batch": 4,
+                     "checkpoint_every": 2, "gradmap_every": 0, "seed": 1, "optimizer": "adamw"},
+           "export": {"formats": ["safetensors", "gguf"]}}
+    (tmp_path / "sft.json").write_text(json.dumps(sft))
+    post = tmp_path / "post_r1"
+    r = subprocess.run(RUN + ["post", "--out", str(post), "--spec", str(sp), "--pt-weights",
+                              str(tmp_path / "pt" / "tc_rec.safetensors"), "--pt-dir", str(tmp_path / "pt"),
+                              "--sft-template", str(tmp_path / "sft.json"), "--seed", "1", "--cell", "R16",
+                              "--share", "50", "--panel", f"fineweb={out / 'panel_fineweb.ids'}",
+                              "--carry5-items", str(items)],
+                       capture_output=True, text=True, env={**env, "TINY_CHAT_CARRY5": str(fake)}, cwd=ROOT)
+    assert r.returncode == 0, r.stdout[-2000:] + r.stderr[-2000:]
+    ss = json.loads((post / "sft_spec.json").read_text())
+    assert (ss["train"]["batch"], ss["train"]["accum"]) == (16, 2) and ss["arch"]["custom"]["recursion"]["repeats"] == 15
+    s = json.loads((post / "summary.json").read_text())
+    assert s["primary"] is not None and s["panels"]["fineweb"] is not None

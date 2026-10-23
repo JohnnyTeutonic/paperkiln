@@ -15,6 +15,11 @@ Writes
   tools/colab_chat/tiny_chat_asha.json                  the exploratory successive-halving arm (amendment 1)
   tools/colab_chat/tiny_chat_pilot.json                 the floor pilot (amendment 3): one 20m_L8 run, seed 99
   tools/colab_chat/tiny_chat_e5_60m.json                E5 at 60M, run only if the floor pilot FAILS (amendment 3)
+  tools/colab_chat/tiny_chat_s0_rec.json                the recursion arm's Stage 0 (A3.3): CUDA gate, probes, screens
+  tools/colab_chat/tiny_chat_s0_rec_r8.json             R8's screens, on A3.3's R8 rule (recursion/rec_decision.json)
+  tools/colab_chat/tiny_chat_e1_rec.json                E1-R: R2, R4, MC7 x 3 seeds at E1's level
+  tools/colab_chat/tiny_chat_e1_rec_r8.json             E1-R's R8 x 3 seeds, on the R8 rule
+  experiments/tiny_chat_2026-10/recursion/specs/shape_20m_<R2|R4|R8|MC7>.json   the recursion cells' specs
   experiments/tiny_chat_2026-10/asha_plan.json          its sampled configurations, rounds and cost
 
 Every E pretraining job snapshots its weights at the rungs (5/10/25/50% of its steps; jobs_vm.py
@@ -163,8 +168,10 @@ def batching(L):
 
 
 def flops_per_token(s):
-    # 6 x (non-embedding + tied head matmul) + attention (Kaplan's 6 L T d for training)
-    return 6 * (s["nonemb"] + V * s["d"]) + 6 * s["layers"] * T * s["d"]
+    # 6 x (non-embedding + tied head matmul) + attention (Kaplan's 6 L T d for training). A recursed
+    # shape (A3.3) applies its stored layers eff_layers times: its applied non-embedding count.
+    L = s.get("eff_layers", s["layers"])
+    return 6 * (s.get("nonemb_applied", s["nonemb"]) + V * s["d"]) + 6 * L * T * s["d"]
 
 
 def model_tok_per_s(s):
@@ -195,7 +202,13 @@ PROBES = probes()
 def tok_per_s(s):
     """Amendment 2: the probe's rate for a probed shape; between probed depths of the same size, the
     time per token interpolated linearly in log2(layers) (the ASHA-only depths 3, 6, 12); the old
-    model only where no probe exists."""
+    model only where no probe exists. A recursed shape (A3.3): its own probe once home (stage0/rec/), else its base shape's
+    probe scaled by training FLOPs per token (the literature check's extrapolation)."""
+    if "recursion" in s:
+        if s["sid"] in REC_PROBES:
+            return REC_PROBES[s["sid"]]
+        b = s["base"]
+        return tok_per_s(b) * flops_per_token(b) / flops_per_token(s)
     k = (s["size"], s["layers"])
     if k in PROBES:
         return PROBES[k]
@@ -228,11 +241,14 @@ def lr_table():
 
 def pt_spec(sid, s, corpus, lr, seed, steps=STEPS, warmup=500):
     # eval_every 500 (amendment 1): a validation loss at every rung. mtstudio's evaluation draws its
-    # windows from its own fixed generator, so the training data order is unchanged.
-    b, a = batching(s["layers"])
+    # windows from its own fixed generator, so the training data order is unchanged. A recursed shape
+    # (A3.3) stores `layers` and batches by its effective depth.
+    b, a = batching(s.get("eff_layers", s["layers"]))
+    custom = {"d": s["d"], "layers": s["layers"], "heads": s["heads"], "d_ff": s["d_ff"]}
+    if "recursion" in s:
+        custom["recursion"] = dict(s["recursion"], schedule="fixed", inject="none")
     return {"name": f"tc_{sid}",
-            "arch": {"preset": "llama-tiny", "rope_heads": "all",
-                     "custom": {"d": s["d"], "layers": s["layers"], "heads": s["heads"], "d_ff": s["d_ff"]}},
+            "arch": {"preset": "llama-tiny", "rope_heads": "all", "custom": custom},
             "data": {"corpus": corpus, "vocab": VOCAB, "vocab_cap": V, "T": T, "max_tokens": 0},
             "train": {"steps": steps, "lr": lr, "batch": b, "accum": a, "clip": 1.0, "eval_every": 500,
                       "eval_windows": 32, "checkpoint_every": 500, "gradmap_every": 0, "seed": seed,
@@ -278,6 +294,8 @@ def corpus_of(share):
 
 
 def spec_path(sid):
+    if sid.split("_", 1)[-1] in REC_CELLS:
+        return f"{REL}/recursion/specs/shape_{sid}.json"
     return f"{REL}/specs/shape_{sid}.json"
 
 
@@ -359,7 +377,7 @@ def stage0_rerun(sh, size):
                   "max_parallel": GPU_JOBS_PER_VM, "jobs": jobs}
 
 
-def run_jobs(tag, cells, sh, lrs, provisional, seeds=SEEDS, gate_extra=()):
+def run_jobs(tag, cells, sh, lrs, provisional, seeds=SEEDS, gate_extra=(), choice=f"{REL}/stage0/lr_choice.json"):
     """cells: [(cell id, shape id, share)]. PT = training job (relayed, resumable across VMs); post = SFT,
     panels and Carry-5 as a data job (init_job brings the PT weights to a fresh VM); pick = the cell's
     best SFT model by the primary metric; rung = one light job per rung snapshot (amendment 1)."""
@@ -392,11 +410,11 @@ def run_jobs(tag, cells, sh, lrs, provisional, seeds=SEEDS, gate_extra=()):
                       "cmd": ["python3", RUN, "pick", "--out", "{out}",
                               *[a for r in seeds for a in ("--run", f"{C}/post_{tag}_{cell}_r{r}")]],
                       "outputs": ["best.json", "model.safetensors", "model.gguf", "spec.json"]})
-    # Longest pretraining first, so the critical path starts at once.
-    pts.sort(key=lambda j: -j["spec"]["arch"]["custom"]["layers"])
+    # Longest pretraining first, so the critical path starts at once (a recursed shape by its effective depth).
+    pts.sort(key=lambda j: -tcr.effective_layers(j["spec"]["arch"]["custom"]))
     gate = {"name": "gate",
             "cmd": ["python3", RUN, "gate", "--out", "{out}", "--jobs", f"tools/colab_chat/tiny_chat_{tag}.json",
-                    "--choice", f"{REL}/stage0/lr_choice.json", "--design", f"{REL}/design.json", *gate_extra],
+                    "--choice", choice, "--design", f"{REL}/design.json", *gate_extra],
             "outputs": ["gate.json"]}
     est = sum(run_hours(sh[sid]) for _, sid, _ in cells) * len(seeds)
     return pts, posts, picks, rungs, gate, est
@@ -408,8 +426,9 @@ def run_hours(s):
     return hours(s, STEPS) + hours(s, SFT_STEPS) + POST_EVAL_H + len(RUNG_FRACTIONS) * RUNG_H
 
 
-def e_doc(tag, cells, sh, lrs, provisional, shares, title, seeds=SEEDS, gate_extra=(), note="", lr_note=None):
-    pts, posts, picks, rungs, gate, est = run_jobs(tag, cells, sh, lrs, provisional, seeds, gate_extra)
+def e_doc(tag, cells, sh, lrs, provisional, shares, title, seeds=SEEDS, gate_extra=(), note="", lr_note=None,
+          choice=f"{REL}/stage0/lr_choice.json"):
+    pts, posts, picks, rungs, gate, est = run_jobs(tag, cells, sh, lrs, provisional, seeds, gate_extra, choice)
     base_note = ("PROVISIONAL learning rates (1e-3): the gate job fails until stage0/lr_choice.json exists and "
                "matches; rerun make_jobs.py after Stage 0" if provisional else
                "learning rates from stage0/lr_choice.json: " + ", ".join(f"{k} {lrs[k]:g}" for k in sorted(lrs)
@@ -607,6 +626,188 @@ def budget_a3(sh):
                    + [f"| {n} | {h:.1f} | {h * u:.0f} |" for n, h in rows])
 
 
+# ---------------------------------------------------------------- amendment 3: the recursion arm (A3.3)
+REC_BASE = "20m_L4"                   # every cell recurses E1's 20m_L4 shape (d 640, 10 heads, d_ff 1,760)
+REC_CELLS = {                         # cell: ((prelude, block, repeats, coda), plain twin in E1)
+    "R2": ((0, 4, 2, 0), "L8"),
+    "R4": ((0, 4, 4, 0), "L16"),
+    "R8": ((0, 4, 8, 0), "L32"),       # conditional: A3.3's R8 rule
+    "MC7": ((1, 2, 7, 1), "L16"),      # Middle-Cycle topology; also compared with R4
+}
+REC_R8 = "R8"
+REC_SCREEN_LRS = list(tcr.REC_SCREEN_LRS)   # {2.5e-4, 5e-4, 1e-3, 2e-3}: shared weights sum r gradients
+REC_SPECS = os.path.join(HERE, "recursion", "specs")
+REC_CHOICE = f"{REL}/stage0/lr_choice_rec.json"        # tiny_chat_run.py choose_rec, at home
+REC_DECISION = f"{REL}/recursion/rec_decision.json"    # analyze.py --rec-decision: A3.3's R8 rule
+REC_CUDA_GATE = f"{REL}/recursion/cuda_gate.json"      # Stage 0's cuda_gate.json, copied home and committed
+REC_STAGE0_DIR = os.path.join(HERE, "stage0", "rec")   # the arm's probe receipts once home (probe_20m_<cell>/)
+CUDA_GATE_H = 0.30                    # build the validation tests and run every device leg (unmeasured)
+
+
+def rec_probes():
+    out = {}
+    for n in sorted(os.listdir(REC_STAGE0_DIR)) if os.path.isdir(REC_STAGE0_DIR) else []:
+        p = os.path.join(REC_STAGE0_DIR, n, "summary.json")
+        if n.startswith("probe_") and os.path.exists(p):
+            with open(p, encoding="utf-8") as f:
+                s = json.load(f)
+            if s.get("rc") == 0 and s.get("tok_per_s_steady"):
+                out[n[len("probe_"):]] = s["tok_per_s_steady"]
+    return out
+
+
+REC_PROBES = rec_probes()
+
+
+def rec_shapes(sh):
+    """{sid: shape} for the recursion cells: the base shape's stored layers, applied P + B x r + C
+    times; nonemb counts stored parameters (the matching), nonemb_applied the applied ones (FLOPs)."""
+    b = sh[REC_BASE]
+    per_layer = 4 * b["d"] ** 2 + 3 * b["d"] * b["d_ff"] + 2 * b["d"]
+    out = {}
+    for cell, ((P, B, R, Cd), twin) in REC_CELLS.items():
+        assert P + B + Cd == b["layers"], cell
+        eff = P + B * R + Cd
+        out[f"20m_{cell}"] = {**b, "sid": f"20m_{cell}", "cell": cell, "twin": twin, "base": b,
+                              "recursion": {"prelude": P, "block": B, "repeats": R, "coda": Cd},
+                              "eff_layers": eff, "nonemb_applied": eff * per_layer + b["d"]}
+    return out
+
+
+def rec_lr_table():
+    """(lr by sid, dropped sids, provisional): stage0/lr_choice_rec.json once choose_rec has run."""
+    p = os.path.join(ROOT, REC_CHOICE)
+    if os.path.exists(p):
+        with open(p, encoding="utf-8") as f:
+            d = json.load(f)
+        return d["lr"], sorted(d.get("dropped", {})), False
+    return {}, [], True
+
+
+def rec_spec(sid, s, lr):
+    spec = pt_spec(sid, s, corpus_of(E1_SHARE), lr, SEEDS[0])
+    spec["_shape"] = {**{k: s[k] for k in ("size", "nonemb", "emb", "total")},
+                      "recursion": dict(s["recursion"]), "effective_layers": s["eff_layers"],
+                      "stored_layers": s["layers"]}
+    return spec
+
+
+def s0_rec_doc(rs, r8=False):
+    """The arm's Stage 0 (A3.3), one GPU job at a time (amendment 2). cuda_gate builds and runs every
+    device leg of tools/colab_cuda_validate.sh on the VM's L4 (test_recursion's device leg among them,
+    never run on a GPU before) and test_recursion again with the kernels mtstudio trains with; it runs
+    first and alone. The gate refuses unless the floor pilot PASSED (A3.2: the arm runs at 20M only on
+    PASS; R8's file also needs the R8 rule). Probes (300 steps, every cell) then screens (1,500 steps,
+    seed 101, four rates, dearest first) wait for the data job and the CUDA gate, and each refuses on
+    its own unless the gate passed on its VM (--cuda-gate; a fresh VM reruns the gate first) and
+    rebuilds a corpus a fresh VM lacks (--data-job). R8's screens are the separate file."""
+    name = "tiny_chat_s0_rec_r8.json" if r8 else "tiny_chat_s0_rec.json"
+    gate = {"name": "gate", "cmd": ["python3", RUN, "gate", "--out", "{out}", "--stage0", "--jobs",
+                                    f"tools/colab_chat/{name}", "--design", f"{REL}/design.json", *PILOT_GATE,
+                                    "--need-pilot", "PASS", *(["--need-rec-r8", REC_DECISION] if r8 else [])],
+            "outputs": ["gate.json"]}
+    cuda = {"name": "cuda_gate", "cmd": ["python3", RUN, "cuda_gate", "--out", "{out}"],
+            "outputs": ["cuda_gate.json", "cuda_gate.log"]}
+    jobs = [cuda, gate, {**data_job([E1_SHARE]), "after": "gate"}]
+    after = ["data", "cuda_gate"]
+    pre = ["--cuda-gate", f"{C}/cuda_gate", "--data-job", f"tools/colab_chat/{name}"]
+    probed = [] if r8 else list(rs)
+    screened = [f"20m_{REC_R8}"] if r8 else [k for k in rs if rs[k]["cell"] != REC_R8]
+    for sid in probed:
+        jobs.append({"name": f"probe_{sid}", "after": after,
+                     "cmd": ["python3", RUN, "probe", "--out", "{out}", "--spec", spec_path(sid),
+                             "--corpus", corpus_of(E1_SHARE), "--steps", str(PROBE_STEPS), *pre],
+                     "outputs": ["summary.json"]})
+    for sid in sorted(screened, key=lambda k: -flops_per_token(rs[k])):  # dearest first
+        for k, lr in enumerate(REC_SCREEN_LRS):
+            jobs.append({"name": f"screen_{sid}_lr{k}", "after": after,
+                         "cmd": ["python3", RUN, "screen", "--out", "{out}", "--spec", spec_path(sid),
+                                 "--corpus", corpus_of(E1_SHARE), "--lr", repr(lr), "--steps", str(SCREEN_STEPS),
+                                 "--seed", str(SCREEN_SEED), *pre],
+                         "outputs": ["summary.json"]})
+    est = s0_rec_hours(rs, r8)
+    what = ("R8's screens (A3.3's R8 rule: recursion/rec_decision.json run_r8 true)" if r8 else
+            f"the CUDA gate, a {PROBE_STEPS}-step probe per cell ({', '.join(rs)}), then the screens of "
+            f"{', '.join(k for k in rs if rs[k]['cell'] != REC_R8)} (R8's wait for the R8 rule)")
+    doc = {"_comment": f"tiny-chat recursion arm, Stage 0 ({REL}/PREREGISTRATION.md amendment 3, A3.3): {what}; screens at "
+                       f"{REC_SCREEN_LRS} x {SCREEN_STEPS} steps, seed {SCREEN_SEED}, on the {E1_SHARE}% mix. One GPU job "
+                       f"at a time. The gate needs the floor pilot's PASS; probes and screens need the CUDA gate passed "
+                       f"on their VM. Estimated {est:.1f} L4 VM-hours (probes scaled from 20m_L4's by FLOPs per token "
+                       f"until the arm's own come home). Afterwards, at home: copy ART/cuda_gate/cuda_gate.json to "
+                       f"{REC_CUDA_GATE} and the probe folders to {REL}/stage0/rec/, then python {RUN} choose_rec "
+                       f"--art ART --out {REC_CHOICE}, commit, rerun make_jobs.py. Upload vocab_llama3_bpe.gguf with "
+                       f"the runner's --upload." + DESIGN_NOTE,
+           "max_parallel": GPU_JOBS_PER_VM, "jobs": jobs}
+    return name, doc
+
+
+def s0_rec_hours(rs, r8=False):
+    if r8:
+        return CUDA_GATE_H + DATA_H + len(REC_SCREEN_LRS) * hours(rs[f"20m_{REC_R8}"], SCREEN_STEPS)
+    return (CUDA_GATE_H + DATA_H + sum(hours(s, PROBE_STEPS) for s in rs.values())
+            + sum(len(REC_SCREEN_LRS) * hours(s, SCREEN_STEPS) for s in rs.values() if s["cell"] != REC_R8))
+
+
+REC_NOTE = (" Recursion arm (A3.3): the gate refuses unless the floor pilot PASSED, the arm's CUDA gate passed "
+            f"({REC_CUDA_GATE}) and every pretraining job's lr is the cell's choice in {REC_CHOICE} (choose_rec: "
+            "section 4's rule over the four-rate grid). Shared-weight cells are matched on non-embedding parameters "
+            "only; they spend more FLOPs per token than their twins.")
+
+
+def e1_rec_docs(sh, rs):
+    """tiny_chat_e1_rec.json (R2, R4, MC7 x 3 seeds; a dropped cell is left out and reported) and
+    tiny_chat_e1_rec_r8.json (R8 x 3 seeds, gated on A3.3's R8 rule as well)."""
+    lrs, dropped, prov = rec_lr_table()
+    allsh = {**sh, **rs}
+    base_gate = [*PILOT_GATE, "--need-pilot", "PASS", "--need-cuda-gate", REC_CUDA_GATE]
+    cells = [(rs[k]["cell"], k, E1_SHARE) for k in rs if rs[k]["cell"] != REC_R8 and k not in dropped]
+
+    def lr_note(cs):
+        if prov:
+            return (f"PROVISIONAL learning rates (1e-3): the gate job fails until {REC_CHOICE} exists and matches; "
+                    "rerun make_jobs.py after the arm's Stage 0")
+        return f"learning rates from {REC_CHOICE}: " + ", ".join(f"{k} {lrs[k]:g}" for _, k, _ in cs if k in lrs)
+    drop_note = f" Dropped (all screens diverged): {dropped}." if dropped else ""
+    main = e_doc("e1_rec", cells, allsh, lrs, prov, [E1_SHARE], "E1-R, the recursion arm at 20M (amendment 3, A3.3)",
+                 gate_extra=base_gate, note=REC_NOTE + drop_note, lr_note=lr_note(cells), choice=REC_CHOICE)
+    r8 = [(REC_R8, f"20m_{REC_R8}", E1_SHARE)] if f"20m_{REC_R8}" not in dropped else []
+    r8doc = e_doc("e1_rec_r8", r8, allsh, lrs, prov, [E1_SHARE], "E1-R's R8 cell, on A3.3's R8 rule",
+                  gate_extra=[*base_gate, "--need-rec-r8", REC_DECISION],
+                  note=REC_NOTE + f" R8 runs only if R2 and R4 pass the validity gate on their three seeds and the "
+                                  f"mean over seeds of Y(R4) - Y(R2) is at least 1 point ({REC_DECISION}, written by "
+                                  f"analyze.py --rec-decision and committed before any R8 job).",
+                  lr_note=lr_note(r8), choice=REC_CHOICE)
+    return main, r8doc
+
+
+def budget_rec_rows(sh):
+    """A3.3's arm in L4 VM-hours: (row, hours). Runs at the arm's probe rates once home, else 20m_L4's
+    probe scaled by FLOPs per token."""
+    rs = rec_shapes(sh)
+    run = lambda c: len(SEEDS) * run_hours(rs[f"20m_{c}"])  # noqa: E731
+    rows = [("Stage 0-R: CUDA gate, data, 4 probes, 12 screens (R2, R4, MC7)", s0_rec_hours(rs)),
+            ("E1-R: R2, R4, MC7 x 3 seeds", DATA_H + run("R2") + run("R4") + run("MC7")),
+            ("R8 (rule): CUDA gate, data, 4 screens", s0_rec_hours(rs, r8=True)),
+            ("R8 (rule): 3 seeds", DATA_H + run("R8"))]
+    return rows
+
+
+def budget_rec(sh):
+    rows, u = budget_rec_rows(sh), UNITS_PER_L4_HOUR
+    rs = rec_shapes(sh)
+    src = "the arm's probes" if len(REC_PROBES) == len(rs) else "20m_L4's probe scaled by FLOPs per token"
+    runs_all = rows[1][1] + rows[3][1]
+    out = ["| recursion arm (A3.3) | L4 VM-hours | compute units |", "|---|---|---|"]
+    out += [f"| {n} | {h:.1f} | {h * u:.0f} |" for n, h in rows]
+    out.append(f"| without R8 | {rows[0][1] + rows[1][1]:.1f} | {(rows[0][1] + rows[1][1]) * u:.0f} |")
+    out.append(f"| with R8 | {sum(h for _, h in rows):.1f} | {sum(h for _, h in rows) * u:.0f} |")
+    out.append(f"\nrates from {src}: " + ", ".join(
+        f"{rs[k]['cell']} {tok_per_s(rs[k]) / 1e3:.1f}k tok/s ({flops_per_token(rs[k]) / 1e9:.2f} GFLOP/token)"
+        for k in rs) + f". A3.3: the runs, R8 included, {runs_all:.1f} VM-hours, "
+        + ("ABOVE" if runs_all > 80 else "within") + " the 80 at which Jonathan decides before they launch")
+    return chr(10).join(out)
+
+
 def tables(sh):
     rows = ["| shape | layers | d | heads | d_ff | d_ff/d | non-emb | emb (V x d) | total | emb share | "
             "tok/s (probe) | PT h | SFT h |", "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
@@ -691,6 +892,8 @@ def main(argv=None):
         print(budget(sh))
         print()
         print(budget_a3(sh))
+        print()
+        print(budget_rec(sh))
         return 0
     global SHARES, E1_SHARE, DESIGN_NOTE
     if a.dialogue_pt_bytes is not None:
@@ -756,14 +959,29 @@ def main(argv=None):
     write(PLAN, plan)
     write(os.path.join(COLAB, "tiny_chat_asha.json"), asha_doc(plan, ash))
     print(f"ASHA arm: worst case {plan['cost_job_hours']['worst_vm_hours']} L4 VM-hours (cap {ASHA_CAP_VM_HOURS})")
+    # Amendment 3, A3.3: the recursion arm (paperkiln 567a441d holds arch.custom.recursion).
+    rs = rec_shapes(sh)
+    rlrs, _, _ = rec_lr_table()
+    os.makedirs(REC_SPECS, exist_ok=True)
+    for sid, s in rs.items():
+        write(os.path.join(REC_SPECS, f"shape_{sid}.json"), rec_spec(sid, s, rlrs.get(sid, PROVISIONAL_LR)))
+    for r8 in (False, True):
+        n, doc = s0_rec_doc(rs, r8)
+        write(os.path.join(COLAB, n), doc)
+    e1r, e1r8 = e1_rec_docs(sh, rs)
+    write(os.path.join(COLAB, "tiny_chat_e1_rec.json"), e1r)
+    write(os.path.join(COLAB, "tiny_chat_e1_rec_r8.json"), e1r8)
     print("\nwrote specs/, asha_plan.json, tiny_chat_s0.json, tiny_chat_s0_60m.json, tiny_chat_e5.json, "
           "tiny_chat_e1.json, tiny_chat_e1_60m.json, tiny_chat_asha.json, the Stage 0 rerun files, "
-          "tiny_chat_pilot.json, tiny_chat_e5_60m.json"
+          "tiny_chat_pilot.json, tiny_chat_e5_60m.json, recursion/specs/, tiny_chat_s0_rec.json, "
+          "tiny_chat_s0_rec_r8.json, tiny_chat_e1_rec.json, tiny_chat_e1_rec_r8.json"
           + (" (PROVISIONAL learning rates)" if provisional else ""))
     print()
     print(budget(sh))
     print()
     print(budget_a3(sh))
+    print()
+    print(budget_rec(sh))
     return 0
 
 

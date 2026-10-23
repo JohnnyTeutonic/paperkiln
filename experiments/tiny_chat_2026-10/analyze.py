@@ -13,6 +13,9 @@ Amendment 2: Y over the primary families (the instruction family out; its genera
 compliance reported separately), the validity gate's second condition (twin at least 10 points
 above the question alone on the context families), the per-family table with the question alone
 beside the twin, and section 3's all-items Y beside the amended one.
+Amendment 3 (A3.3) adds the recursion arm, E1-R (ART/e1_rec, ART/e1_rec_r8; e1_rec: HR1-HR4, the
+twin pairs R2-L8, R4-L16, R8-L32, MC7-L16, FLOPs per token and Y per L4-hour) and the R8 rule
+(--rec-decision OUT, from R2's and R4's post jobs).
 """
 from __future__ import annotations
 
@@ -409,9 +412,225 @@ def asha_summary(art):
     return out
 
 
+# ---------------------------------------------------------------- the recursion arm (amendment 3, A3.3)
+REC_PASSES = {"L4": 1, "R2": 2, "R4": 4, "R8": 8}          # r for HR1/HR4; E1's L4 is r = 1
+REC_TWINS = {"R2": "L8", "R4": "L16", "R8": "L32", "MC7": "L16"}
+SESOI_REC = 0.03                                            # HR2, HR3 and the secondary pairs: 3 points of Y
+PLAIN_20M = [f"L{L}" for L in DEPTHS_20]
+VOCAB, CTX = 16384, 512
+
+
+def flops_per_token(arch):
+    """Training FLOPs per token from a run's arch (summary["arch"], arch.custom): 6 x (applied
+    non-embedding + tied head) + attention (6 L T d), with L the effective depth of a recursed model.
+    make_jobs.py's formula; reproduces A3.3's table (0.19G at 20m_L4, 0.32 / 0.58 / 1.09 / 0.58G for
+    R2 / R4 / R8 / MC7, 0.17 / 0.17 / 0.16G for their twins)."""
+    d, dff = arch["d"], arch.get("d_ff") or 3 * arch["d"]
+    rec = arch.get("recursion")
+    L = rec.get("prelude", 0) + rec["block"] * rec.get("repeats", 1) + rec.get("coda", 0) if rec else arch["layers"]
+    return 6 * (L * (4 * d * d + 3 * d * dff + 2 * d) + d + VOCAB * d) + 6 * L * CTX * d
+
+
+def run_l4_hours(s, art, block):
+    """S10's denominator: the run's wall-clock on the L4, pretraining plus SFT. Pretraining from its
+    result.json at home (ART/<block>/pt_<...>/result.json; the post summary's copy when the post job ran
+    on that VM); a resumed run counts its last segment only, so it is flagged."""
+    pt = None
+    p = os.path.join(art, block, f"pt_{block}_{s['cell']}_r{s['seed']}", "result.json")
+    if os.path.exists(p):
+        pt = json.load(open(p, encoding="utf-8")).get("wall_seconds")
+    if pt is None:
+        pt = (s.get("pt_result") or {}).get("wall_seconds")
+    sft = (s.get("sft_result") or {}).get("wall_seconds")
+    if sft is None:
+        sft = s.get("sft_seconds")
+    if pt is None or sft is None:
+        return None
+    return (pt + sft) / 3600
+
+
+def rec_cell_table(runs, art, blocks, cells, seeds):
+    """Per cell: FLOPs per token (from its arch), mean wall-clock L4-hours per run and S10 (Y per
+    L4-hour, the mean over seeds of each run's Y / hours)."""
+    out = {}
+    for c in cells:
+        rs = [(r, runs[(c, r)]) for r in seeds if (c, r) in runs]
+        if not rs:
+            continue
+        arch = rs[0][1].get("arch")
+        hrs, yph = [], []
+        for r, s in rs:
+            h = run_l4_hours(s, art, blocks.get(c, ""))
+            if h:
+                hrs.append(h)
+                if s.get("primary") is not None:
+                    yph.append(s["primary"] / h)
+        out[c] = {"flops_per_token": flops_per_token(arch) if arch else None,
+                  "l4_hours_per_run": st.mean(hrs) if hrs else None,
+                  "Y_per_l4_hour": st.mean(yph) if yph else None, "runs_with_hours": len(hrs)}
+    return out
+
+
+def gated(runs, cells, seeds, fn):
+    """A3.3: the validity gate applies to every cell; a Y contrast that uses a FLOOR cell is FLOOR."""
+    bad = [c for c in cells if floor_ok(runs, c, seeds) is False]
+    return {"verdict": FLOOR_TEXT + " in " + ", ".join(bad)} if bad else fn()
+
+
+def slope_weights(xs):
+    xm = st.mean(xs)
+    return [(x - xm) / sum((y - xm) ** 2 for y in xs) for x in xs]
+
+
+def readings_hr2(v):
+    """HR2's two registered readings of one verdict: the literature's (not above the SESOI) and
+    Jonathan's HR2-J (recursion helps carry-over). NOT_RESOLVED, SIGNIFICANT_BELOW_SESOI and FLOOR
+    decide neither."""
+    lit = {"SUPPORTED": "falsified", "EQUIVALENT": "confirmed", "CONTRADICTED": "confirmed"}.get(v, "undecided")
+    j = {"SUPPORTED": "confirmed", "EQUIVALENT": "falsified", "CONTRADICTED": "falsified"}.get(v, "undecided")
+    return {"literature_prediction": lit, "HR2_J": j}
+
+
+def hr3_residuals(runs, cells, seeds):
+    """Per seed, the OLS line of Y on the FineWeb panel loss through E1's five plain 20M cells; each
+    recursion cell's residual at its own panel loss, flagged when that loss lies outside the plain
+    cells' range in that seed."""
+    per_seed, flags = [], []
+    for r in seeds:
+        xs = [get(runs[(c, r)], "panel_fineweb") for c in PLAIN_20M]
+        ys = [get(runs[(c, r)], "Y") for c in PLAIN_20M]
+        xm, ym = st.mean(xs), st.mean(ys)
+        b = sum((x - xm) * (y - ym) for x, y in zip(xs, ys)) / sum((x - xm) ** 2 for x in xs)
+        res = {}
+        for c in cells:
+            x = get(runs[(c, r)], "panel_fineweb")
+            res[c] = get(runs[(c, r)], "Y") - (ym + b * (x - xm))
+            if not min(xs) <= x <= max(xs):
+                flags.append({"cell": c, "seed": r, "panel_fineweb": x, "plain_range": [min(xs), max(xs)]})
+        per_seed.append(res)
+    return per_seed, flags
+
+
+def rec_r8_decision(runs):
+    """A3.3's R8 rule, read once R2's and R4's post jobs are home: R8 runs only if R2 and R4 both pass
+    the validity gate on their three seeds and the mean over seeds of Y(R4) - Y(R2) is at least 1 point
+    (the SESOI per doubling). It reads only that number and the two cells' gates."""
+    missing = [(c, r) for c in ("R2", "R4") for r in SEEDS_FIRST
+               if (c, r) not in runs or runs[(c, r)].get("primary") is None]
+    if missing:
+        raise SystemExit(f"the R8 rule needs R2 and R4 on seeds {SEEDS_FIRST}: missing {missing}")
+    g2, g4 = floor_ok(runs, "R2", SEEDS_FIRST), floor_ok(runs, "R4", SEEDS_FIRST)
+    diffs = [get(runs[("R4", r)], "Y") - get(runs[("R2", r)], "Y") for r in SEEDS_FIRST]
+    m = st.mean(diffs)
+    run = bool(g2) and bool(g4) and m >= SESOI_E1
+    return {"run_r8": run, "gate_R2": g2, "gate_R4": g4, "mean_Y_R4_minus_R2": m, "per_seed": diffs,
+            "threshold": SESOI_E1, "seeds": SEEDS_FIRST, "rule": " ".join(rec_r8_decision.__doc__.split())}
+
+
+def nearest_60m(runs60, flops):
+    """The 60M plain cell nearest in FLOPs per token (log scale), with its mean Y: descriptive."""
+    cells = {}
+    for (c, r), s in runs60.items():
+        if s.get("arch"):
+            cells.setdefault(c, {"flops": flops_per_token(s["arch"]), "Y": []})["Y"].append(s.get("primary"))
+    if not cells:
+        return None
+    c = min(cells, key=lambda k: abs(math.log(cells[k]["flops"] / flops)))
+    ys = [y for y in cells[c]["Y"] if y is not None]
+    return {"cell": f"60m_{c}", "flops_per_token": cells[c]["flops"], "Y_mean": st.mean(ys) if ys else None,
+            "n": len(ys)}
+
+
+def e1_rec(art, r1, r60, partial):
+    """A3.3's E1-R block. HR1: within-seed OLS slope of Y on log2(r) over L4, R2, R4 (> 0, SESOI 1 point
+    per doubling; with R8 the four-point slope is secondary). HR1-knowledge: the FineWeb panel loss's
+    slope on the same cells, predicted not to fall (falsified by a SUPPORTED fall, SESOI 0.01 nats).
+    HR2: per seed, the mean of Y(R2) - Y(L8) and Y(R4) - Y(L16) (SESOI 3 points; with R8 the three-pair
+    mean adds Y(R8) - Y(L32), secondary), read for the literature's prediction and for HR2-J. HR3: per
+    seed, the mean residual of R2 and R4 from the line of Y on FineWeb panel loss through E1's five plain
+    20M cells (> 0, SESOI 3 points; R8 secondary; extrapolations flagged). HR4 (only with R8):
+    the quadratic contrast of Y over log2(r) at r = 1, 2, 4, 8, descriptive. Secondary: MC7 - R4 and
+    MC7 - L16. FLOPs per token and Y per L4-hour (S10) per cell; the 60M cell nearest in FLOPs beside each
+    recursion cell (descriptive). The validity gate applies to every cell and a Y contrast with a FLOOR
+    cell is FLOOR; panel-loss contrasts are not gated (as E1's)."""
+    rr = {**load(art, "e1_rec"), **load(art, "e1_rec_r8")}
+    if not rr:
+        return None
+    runs = {**r1, **rr}
+    have_r8 = any(c == "R8" for c, _ in rr)
+    core = PLAIN_20M + ["R2", "R4", "MC7"]
+    cells = core + (["R8"] if have_r8 else [])
+    seeds = seeds_of(runs, cells)
+    miss = cells_complete(runs, cells, seeds)
+    blocks = {**{c: "e1" for c in PLAIN_20M}, "L8": "e5", "R2": "e1_rec", "R4": "e1_rec", "MC7": "e1_rec",
+              "R8": "e1_rec_r8"}
+    res = {"label": "REGISTERED (A3.3)", "seeds": seeds, "missing": miss, "r8_ran": have_r8,
+           "cells": cell_table(runs, cells, seeds, CELL_KEYS), "families": family_table(runs, cells, seeds),
+           "cost": rec_cell_table(runs, art, blocks, cells, seeds),
+           "matching": "non-embedding parameters only; recursion multiplies FLOPs (no compute-matched verdict); "
+                       "the recursion cells carry 10.49M embedding against their twins' 7.34M (L8), 5.24M (L16) "
+                       "and 3.15M (L32), so a win over a twin is ambiguous between recursion and lexical capacity"}
+    if miss and not partial:
+        raise SystemExit(f"E1-R incomplete: {miss} (use --partial for a descriptive read)")
+    if miss:
+        res["label"] = "DESCRIPTIVE, PARTIAL"
+        return res
+    res["floor_ok"] = {c: floor_ok(runs, c, seeds) for c in cells}
+    hr1 = ["L4", "R2", "R4"]
+    w1 = slope_weights([math.log2(REC_PASSES[c]) for c in hr1])
+    res["HR1_passes_slope_Y"] = gated(runs, hr1, seeds,
+                                      lambda: decide(contrast(runs, hr1, w1, seeds, "Y"), SESOI_E1, +1))
+    k = decide(contrast(runs, hr1, w1, seeds, "panel_fineweb"), SESOI_LOSS_E1, -1)
+    k["prediction"] = "falsified (a SUPPORTED fall)" if k["verdict"] == "SUPPORTED" else "not falsified"
+    res["HR1_knowledge_passes_slope_fineweb_loss"] = k
+    pairs = [("R2", "L8"), ("R4", "L16")]
+
+    def pair_mean(ps):
+        cs = [x for p in ps for x in p]
+        w = [v for _ in ps for v in (1 / len(ps), -1 / len(ps))]
+        return gated(runs, cs, seeds, lambda: decide(contrast(runs, cs, w, seeds, "Y"), SESOI_REC, +1))
+    h2 = pair_mean(pairs)
+    h2.update(readings_hr2(h2["verdict"]))
+    res["HR2_recursion_minus_plain_depth"] = h2
+    per_seed, flags = hr3_residuals(runs, ["R2", "R4"] + (["R8"] if have_r8 else []), seeds)
+    res["HR3_residual_from_plain_isoloss_line"] = gated(
+        runs, PLAIN_20M + ["R2", "R4"], seeds,
+        lambda: {**decide([(d["R2"] + d["R4"]) / 2 for d in per_seed], SESOI_REC, +1),
+                 "per_cell_mean_residual": {c: st.mean(d[c] for d in per_seed) for c in per_seed[0]},
+                 "extrapolations": flags})
+    res["secondary_MC7_minus_R4"] = {**gated(runs, ["MC7", "R4"], seeds, lambda: decide(
+        contrast(runs, ["MC7", "R4"], [1, -1], seeds, "Y"), SESOI_REC, +1)), "label": "SECONDARY"}
+    res["secondary_MC7_minus_L16"] = {**gated(runs, ["MC7", "L16"], seeds, lambda: decide(
+        contrast(runs, ["MC7", "L16"], [1, -1], seeds, "Y"), SESOI_REC, +1)), "label": "SECONDARY"}
+    if have_r8:
+        hr8 = ["L4", "R2", "R4", "R8"]
+        x8 = [math.log2(REC_PASSES[c]) for c in hr8]
+        w8 = slope_weights(x8)
+        res["secondary_HR1_slope_with_R8"] = {**gated(runs, hr8, seeds, lambda: decide(
+            contrast(runs, hr8, w8, seeds, "Y"), SESOI_E1, +1)), "label": "SECONDARY"}
+        k8 = decide(contrast(runs, hr8, w8, seeds, "panel_fineweb"), SESOI_LOSS_E1, -1)
+        res["secondary_HR1_knowledge_with_R8"] = {**k8, "label": "SECONDARY"}
+        h28 = pair_mean(pairs + [("R8", "L32")])
+        res["secondary_HR2_three_pairs"] = {**h28, **readings_hr2(h28["verdict"]), "label": "SECONDARY"}
+        res["secondary_HR3_with_R8"] = {**gated(runs, PLAIN_20M + ["R2", "R4", "R8"], seeds, lambda: decide(
+            [(d["R2"] + d["R4"] + d["R8"]) / 3 for d in per_seed], SESOI_REC, +1)), "label": "SECONDARY"}
+        xm = st.mean(x8)
+        q = [(x - xm) ** 2 for x in x8]
+        quad = [v - st.mean(q) for v in q]
+        vals = contrast(runs, hr8, quad, seeds, "Y")
+        res["HR4_quadratic_Y_over_log2_passes"] = {"label": "DESCRIPTIVE (no verdict)", "per_seed": vals,
+                                                   "mean": st.mean(vals), "negative": st.mean(vals) < 0,
+                                                   "sign_agreement": f"{sum(1 for v in vals if v < 0)}/{len(vals)} negative"}
+    res["nearest_60m_in_flops"] = {c: nearest_60m(r60, res["cost"][c]["flops_per_token"])
+                                   for c in ("R2", "R4", "MC7", "R8") if c in res["cost"]
+                                   and res["cost"][c]["flops_per_token"]}
+    return res
+
+
 def throughput(art, size):
     out = {}
-    for p in sorted(glob.glob(os.path.join(art, "s0" if size == "20m" else "s0_60m", "probe_*", "summary.json"))):
+    for p in sorted(glob.glob(os.path.join(art, {"20m": "s0", "60m": "s0_60m", "rec": "s0_rec"}[size], "probe_*",
+                                           "summary.json"))):
         s = json.load(open(p, encoding="utf-8"))
         sid = re.sub(r"^probe_", "", os.path.basename(os.path.dirname(p)))
         out[sid] = {"tok_per_s": s.get("tok_per_s_steady"), "peak_gpu_mem_mib": s.get("peak_gpu_mem_mib")}
@@ -426,7 +645,15 @@ def main(argv=None):
     ap.add_argument("--design", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "design.json"))
     ap.add_argument("--pilot-verdict", default=None, metavar="OUT",
                     help="amendment 3: write the floor pilot's verdict (ART/pilot) to OUT and do nothing else")
+    ap.add_argument("--rec-decision", default=None, metavar="OUT",
+                    help="A3.3: write the R8 rule's decision (ART/e1_rec, R2 and R4) to OUT and do nothing else")
     a = ap.parse_args(argv)
+    if a.rec_decision:
+        v = rec_r8_decision(load(a.art, "e1_rec"))
+        os.makedirs(os.path.dirname(os.path.abspath(a.rec_decision)), exist_ok=True)
+        open(a.rec_decision, "w", encoding="utf-8", newline="\n").write(json.dumps(v, indent=1) + "\n")
+        print(json.dumps(v, indent=1))
+        return 0
     if a.pilot_verdict:
         v = pilot_verdict(a.art)
         os.makedirs(os.path.dirname(os.path.abspath(a.pilot_verdict)), exist_ok=True)
@@ -447,6 +674,9 @@ def main(argv=None):
     r60 = {(c.replace("60m_", ""), r): s for (c, r), s in load(a.art, "e1_60m").items()}
     if r60:
         res["E1_60m"] = e1(r60, DEPTHS_60, a.partial, "60m")
+    rec = e1_rec(a.art, r1, r60, a.partial)  # A3.3: E1-R, beside E1 at 20M (its r = 1 cell and twins)
+    if rec is not None:
+        res["E1_rec_20m"] = rec
     # Early ranking (amendment 1): read only for complete blocks unless --partial.
     g5, g1, g60 = load_rungs(a.art, "e5"), load_rungs(a.art, "e1"), load_rungs(a.art, "e1_60m")
     for (cell, seed, step), s in list(g5.items()):  # E1's L8 cell is E5's dE1 cell: the same runs
@@ -462,10 +692,15 @@ def main(argv=None):
         pooled = {**r5, **{k: v for k, v in r1.items() if k[0] != "L8"}}
         prungs = {**g5, **{k: v for k, v in g1.items() if k[0] != "L8"}}
         early["pooled_20m"] = rung_analysis(pooled, prungs, lab)
+    rrec = {**load(a.art, "e1_rec"), **load(a.art, "e1_rec_r8")}
+    if rrec:  # the recursion arm's rungs: logged as E1's, read descriptively (not in amendment 1's registered set)
+        early["E1_rec"] = rung_analysis(rrec, {**load_rungs(a.art, "e1_rec"), **load_rungs(a.art, "e1_rec_r8")},
+                                        "DESCRIPTIVE (recursion arm, A3.3)")
     res["early_ranking"] = early
     res["asha"] = asha_summary(a.art)
     res["throughput_20m"] = throughput(a.art, "20m")
     res["throughput_60m"] = throughput(a.art, "60m")
+    res["throughput_rec"] = throughput(a.art, "rec")
     text = json.dumps(res, indent=1, default=str)
     if a.out:
         open(a.out, "w", encoding="utf-8", newline="\n").write(text + "\n")
