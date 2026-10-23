@@ -6,7 +6,11 @@
   "20m_L2": 0.001,
   "20m_L32": 0.002,
   "20m_L4": 0.001,
-  "20m_L8": 0.001
+  "20m_L8": 0.001,
+  "60m_L16": 0.001,
+  "60m_L32": 0.001,
+  "60m_L4": 0.0005,
+  "60m_L8": 0.0005
  },
  "screens": {
   "20m_L16": [
@@ -318,6 +322,278 @@
      },
      {
       "art": "C:/ml_artifacts/tiny_chat/s0_rerun",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   }
+  ],
+  "60m_L16": [
+   {
+    "lr": 0.0005,
+    "final_val": 4.29719084315002,
+    "status": "FINISHED",
+    "first_loss": 9.830036163330078,
+    "last_loss": 4.3897504806518555,
+    "tok_per_s_steady": 13007.584190561909,
+    "job": "screen_60m_L16_lr0",
+    "art": "C:/ml_artifacts/tiny_chat/s0_60m_rerun",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_60m",
+      "status": "FAILED",
+      "rc": 1
+     },
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_60m_rerun",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   },
+   {
+    "lr": 0.001,
+    "final_val": 4.230734940618277,
+    "status": "FINISHED",
+    "first_loss": 9.830036163330078,
+    "last_loss": 4.334404945373535,
+    "tok_per_s_steady": 12989.23062554275,
+    "job": "screen_60m_L16_lr1",
+    "art": "C:/ml_artifacts/tiny_chat/s0_60m_rerun",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_60m",
+      "status": "FAILED",
+      "rc": 1
+     },
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_60m_rerun",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   },
+   {
+    "lr": 0.002,
+    "final_val": 4.651559574529529,
+    "status": "FINISHED",
+    "first_loss": 9.830036163330078,
+    "last_loss": 4.758947372436523,
+    "tok_per_s_steady": 13110.27306512035,
+    "job": "screen_60m_L16_lr2",
+    "art": "C:/ml_artifacts/tiny_chat/s0_60m_rerun",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_60m",
+      "status": "FAILED",
+      "rc": 1
+     },
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_60m_rerun",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   }
+  ],
+  "60m_L32": [
+   {
+    "lr": 0.0005,
+    "final_val": 4.529330497607589,
+    "status": "FINISHED",
+    "first_loss": 9.786614418029785,
+    "last_loss": 4.6238532066345215,
+    "tok_per_s_steady": 10555.64538857252,
+    "job": "screen_60m_L32_lr0",
+    "art": "C:/ml_artifacts/tiny_chat/s0_60m_rerun",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_60m",
+      "status": "FAILED",
+      "rc": 1
+     },
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_60m_rerun",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   },
+   {
+    "lr": 0.001,
+    "final_val": 4.420591402798891,
+    "status": "FINISHED",
+    "first_loss": 9.786614418029785,
+    "last_loss": 4.506993293762207,
+    "tok_per_s_steady": 10544.149588990527,
+    "job": "screen_60m_L32_lr1",
+    "art": "C:/ml_artifacts/tiny_chat/s0_60m_rerun",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_60m",
+      "status": "FAILED",
+      "rc": 1
+     },
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_60m_rerun",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   },
+   {
+    "lr": 0.002,
+    "final_val": 4.621377877891064,
+    "status": "FINISHED",
+    "first_loss": 9.786614418029785,
+    "last_loss": 4.7455878257751465,
+    "tok_per_s_steady": 10607.181997253845,
+    "job": "screen_60m_L32_lr2",
+    "art": "C:/ml_artifacts/tiny_chat/s0_60m_rerun",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_60m",
+      "status": "FAILED",
+      "rc": 1
+     },
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_60m_rerun",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   }
+  ],
+  "60m_L4": [
+   {
+    "lr": 0.0005,
+    "final_val": 4.1095961555838585,
+    "status": "FINISHED",
+    "first_loss": 9.887946128845215,
+    "last_loss": 4.19212532043457,
+    "tok_per_s_steady": 14389.219383132853,
+    "job": "screen_60m_L4_lr0",
+    "art": "C:/ml_artifacts/tiny_chat/s0_60m_rerun",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_60m",
+      "status": "FAILED",
+      "rc": 1
+     },
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_60m_rerun",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   },
+   {
+    "lr": 0.001,
+    "final_val": 4.293318334966898,
+    "status": "FINISHED",
+    "first_loss": 9.887946128845215,
+    "last_loss": 4.388927459716797,
+    "tok_per_s_steady": 14394.582753350962,
+    "job": "screen_60m_L4_lr1",
+    "art": "C:/ml_artifacts/tiny_chat/s0_60m_rerun",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_60m",
+      "status": "FAILED",
+      "rc": 1
+     },
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_60m_rerun",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   },
+   {
+    "lr": 0.002,
+    "final_val": 5.131014881655574,
+    "status": "FINISHED",
+    "first_loss": 9.887946128845215,
+    "last_loss": 5.261497974395752,
+    "tok_per_s_steady": 14521.9357498082,
+    "job": "screen_60m_L4_lr2",
+    "art": "C:/ml_artifacts/tiny_chat/s0_60m_rerun",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_60m",
+      "status": "FAILED",
+      "rc": 1
+     },
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_60m_rerun",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   }
+  ],
+  "60m_L8": [
+   {
+    "lr": 0.0005,
+    "final_val": 4.150017337873578,
+    "status": "FINISHED",
+    "first_loss": 9.859230995178223,
+    "last_loss": 4.2497711181640625,
+    "tok_per_s_steady": 14378.604078835495,
+    "job": "screen_60m_L8_lr0",
+    "art": "C:/ml_artifacts/tiny_chat/s0_60m_rerun",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_60m",
+      "status": "FAILED",
+      "rc": 1
+     },
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_60m_rerun",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   },
+   {
+    "lr": 0.001,
+    "final_val": 4.301828868687153,
+    "status": "FINISHED",
+    "first_loss": 9.859230995178223,
+    "last_loss": 4.405482292175293,
+    "tok_per_s_steady": 14367.729953679216,
+    "job": "screen_60m_L8_lr1",
+    "art": "C:/ml_artifacts/tiny_chat/s0_60m_rerun",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_60m",
+      "status": "FAILED",
+      "rc": 1
+     },
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_60m_rerun",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   },
+   {
+    "lr": 0.002,
+    "final_val": 5.208661096170545,
+    "status": "FINISHED",
+    "first_loss": 9.859230995178223,
+    "last_loss": 5.329989433288574,
+    "tok_per_s_steady": 14519.564614456101,
+    "job": "screen_60m_L8_lr2",
+    "art": "C:/ml_artifacts/tiny_chat/s0_60m_rerun",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_60m",
+      "status": "FAILED",
+      "rc": 1
+     },
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_60m_rerun",
       "status": "FINISHED",
       "rc": 0
      }

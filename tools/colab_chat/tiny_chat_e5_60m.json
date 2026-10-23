@@ -1,5 +1,5 @@
 {
- "_comment": "tiny-chat E5 at 60M, the data bar if the floor pilot FAILS (amendment 3) (experiments/tiny_chat_2026-10/PREREGISTRATION.md). 9 pretraining runs of 10000 steps x 16384 tokens (163.84M), each then SFT (1500 steps on human dialogues), two fixed text panels and Carry-5 (post job); one pick per cell. learning rates from stage0/lr_choice.json: . One GPU job at a time (amendment 2: Stage 0 measured no throughput gain from sharing the L4, and sharing crashed its screens); rung jobs beside it in the light slot, their cache capped at 2048 MB. Estimated 40 L4 VM-hours (the Stage 0 probes, plus 0.3 h per post job and 0.08 h per rung, unmeasured). Rungs (amendment 1): every PT job snapshots its weights at steps [500, 1000, 2500, 5000] and a light rung job scores each snapshot (panels, base-model Carry-5 teacher-forced; rung.json home); runs are never stopped early. Home: each PT job's weights (relays + final), each post's summary.json, each rung's rung.json, each pick's best model. Upload vocab_llama3_bpe.gguf with the runner's --upload. Amendment 3: the gate refuses unless the floor pilot FAILED (pilot/verdict.json). The 35% cell is E1 at 60M's L8 cell (tiny_chat_e1_60m.json, the same runs). Dialogue levels [0, 17, 35, 70]% (copies), E1 at 35% (design.json final).",
+ "_comment": "tiny-chat E5 at 60M, the data bar if the floor pilot FAILS (amendment 3) (experiments/tiny_chat_2026-10/PREREGISTRATION.md). 9 pretraining runs of 10000 steps x 16384 tokens (163.84M), each then SFT (1500 steps on human dialogues), two fixed text panels and Carry-5 (post job); one pick per cell. learning rates from stage0/lr_choice.json: 60m_L8 0.0005. One GPU job at a time (amendment 2: Stage 0 measured no throughput gain from sharing the L4, and sharing crashed its screens); rung jobs beside it in the light slot, their cache capped at 2048 MB. Estimated 40 L4 VM-hours (the Stage 0 probes, plus 0.3 h per post job and 0.08 h per rung, unmeasured). Rungs (amendment 1): every PT job snapshots its weights at steps [500, 1000, 2500, 5000] and a light rung job scores each snapshot (panels, base-model Carry-5 teacher-forced; rung.json home); runs are never stopped early. Home: each PT job's weights (relays + final), each post's summary.json, each rung's rung.json, each pick's best model. Upload vocab_llama3_bpe.gguf with the runner's --upload. Amendment 3: the gate refuses unless the floor pilot FAILED (pilot/verdict.json). The 35% cell is E1 at 60M's L8 cell (tiny_chat_e1_60m.json, the same runs). Dialogue levels [0, 17, 35, 70]% (copies), E1 at 35% (design.json final).",
  "max_parallel": 1,
  "max_parallel_light": 1,
  "jobs": [
@@ -2108,7 +2108,7 @@
     },
     "train": {
      "steps": 10000,
-     "lr": 0.001,
+     "lr": 0.0005,
      "batch": 32,
      "accum": 1,
      "clip": 1.0,
@@ -2167,7 +2167,7 @@
     },
     "train": {
      "steps": 10000,
-     "lr": 0.001,
+     "lr": 0.0005,
      "batch": 32,
      "accum": 1,
      "clip": 1.0,
@@ -2226,7 +2226,7 @@
     },
     "train": {
      "steps": 10000,
-     "lr": 0.001,
+     "lr": 0.0005,
      "batch": 32,
      "accum": 1,
      "clip": 1.0,
@@ -2285,7 +2285,7 @@
     },
     "train": {
      "steps": 10000,
-     "lr": 0.001,
+     "lr": 0.0005,
      "batch": 32,
      "accum": 1,
      "clip": 1.0,
@@ -2344,7 +2344,7 @@
     },
     "train": {
      "steps": 10000,
-     "lr": 0.001,
+     "lr": 0.0005,
      "batch": 32,
      "accum": 1,
      "clip": 1.0,
@@ -2403,7 +2403,7 @@
     },
     "train": {
      "steps": 10000,
-     "lr": 0.001,
+     "lr": 0.0005,
      "batch": 32,
      "accum": 1,
      "clip": 1.0,
@@ -2462,7 +2462,7 @@
     },
     "train": {
      "steps": 10000,
-     "lr": 0.001,
+     "lr": 0.0005,
      "batch": 32,
      "accum": 1,
      "clip": 1.0,
@@ -2521,7 +2521,7 @@
     },
     "train": {
      "steps": 10000,
-     "lr": 0.001,
+     "lr": 0.0005,
      "batch": 32,
      "accum": 1,
      "clip": 1.0,
@@ -2580,7 +2580,7 @@
     },
     "train": {
      "steps": 10000,
-     "lr": 0.001,
+     "lr": 0.0005,
      "batch": 32,
      "accum": 1,
      "clip": 1.0,
