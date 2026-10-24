@@ -199,7 +199,8 @@ not allowed, and nor is any rearrangement that presents separate exchanges as on
    agent turns are the collectors' template lines, are dropped), ABCD (MIT), CCPE-M (CC BY 4.0) and
    PersuasionForGood (Apache-2.0); Multi-Session Chat (`human_msc_v1`, crowdworker-written, no licence stated by
    its authors) is held behind `--allow-unstated-licence`. Excluded: Conversation Chronicles and LoCoMo
-   (LLM-written), DuLeMon (Chinese). Measured on the laptop (`C:/ml_artifacts/human_dialogue/hd_long/`): MSC
+   (LLM-written), DuLeMon (Chinese). Measured on the laptop (`dialogue_lengths_long_laptop_v1.json`; corpora in
+   `C:/ml_artifacts/human_dialogue/hd_long/`): MSC
    3,989 dialogues, all 12+ turns (2,306 reach 20), ABCD 242, CCPE-M 119, PersuasionForGood 25; with these four
    the 12+-turn count is 10,804 of 184,093 dialogues (6,815 without MSC), and the SFT split's 12+ dialogues go
    from 668 to 1,151; Taskmaster-3 is estimated at about 740 (one of its 20 files), measured by the prepared

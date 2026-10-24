@@ -307,7 +307,7 @@ points for Jonathan:
    are not read, by the train-split rule.
 
 **Counts.** A turn is one exchange; `tools/dialogue_lengths.py` normalises as the data job does.
-Measured on the laptop (`C:/ml_artifacts/human_dialogue/hd_long/dialogue_lengths_long_laptop_v1.json`,
+Measured on the laptop (`experiments/tiny_chat_long_2026-10/dialogue_lengths_long_laptop_v1.json`,
 16k vocabulary) except Taskmaster-3, which is an estimate from one of its twenty data files:
 
 | Corpus | Dialogues | Turns p50 / p90 / max | Reach 12 | Reach 14 | Reach 20 | SFT split reach 12 | 16k tokens |
