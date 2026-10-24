@@ -1,0 +1,25 @@
+{
+  "_comment": "bf16_gate_v2 (25 Oct 2026), one RunPod L4, in order. (1) cuda_gate: every leg of tools/colab_cuda_validate.sh (the flash kernels were re-blocked for speed since v1). (2) noise_20m: the noise-floor gate on 20m_L8 (batch 32, 300 steps, lr 1e-3, FineWeb-Edu sample text): FP32 tiled at seeds 1, 2, 3, then flash, bf16 and bf16_flash at the same seeds. PASS RULE, stated before any result (docs/receipts/bf16_gate_v2_prereg_20261025.md): primary |mean over seeds of (V_cfg - V_fp32)| <= the FP32 3-seed range of the final validation loss V; secondary, mean over steps 50-300 of |mean over seeds of the 20-step moving-average loss difference| <= the mean FP32 3-seed range of that moving average; both, plus every run finishing and recording its setting. (3) noise_60m: 60m_L8 (lr 5e-4) at seed 1, all four configs, reported only (one seed has no spread). (4) step_profile_v2: the per-op-class step profile and clean throughput for the nine tiny-chat shapes and pk_base_v1 under fp32, bf16, flash and bf16_flash (30 steps each), same VM, so the speedup per shape is measured on one GPU. About 2.7 L4 VM-hours. Upload vocab_llama3_bpe.gguf. Brings home cuda_gate.json, noise.json (x2, with every run's curve), profile.json.",
+  "max_parallel": 1,
+  "jobs": [
+    {"name": "cuda_gate",
+     "cmd": ["python3", "tools/colab_chat/tiny_chat_run.py", "cuda_gate", "--out", "{out}"],
+     "outputs": ["cuda_gate.json", "cuda_gate.log"]},
+    {"name": "noise_20m", "after": "cuda_gate",
+     "cmd": ["python3", "tools/precision_gate.py", "noise", "--new", "/content/pk/build_cuda/mtstudio",
+             "--text", "corpus/data/fineweb_edu_sample_v1/pretrain_train.txt", "--vocab", "{upload}/vocab_llama3_bpe.gguf",
+             "--out", "{out}", "--shape", "20m_L8", "--batch", "32", "--accum", "1", "--steps", "300",
+             "--seeds", "1,2,3", "--lr", "0.001", "--configs", "flash,bf16,bf16_flash"],
+     "outputs": ["noise.json"]},
+    {"name": "noise_60m", "after": "noise_20m",
+     "cmd": ["python3", "tools/precision_gate.py", "noise", "--new", "/content/pk/build_cuda/mtstudio",
+             "--text", "corpus/data/fineweb_edu_sample_v1/pretrain_train.txt", "--vocab", "{upload}/vocab_llama3_bpe.gguf",
+             "--out", "{out}", "--shape", "60m_L8", "--batch", "32", "--accum", "1", "--steps", "300",
+             "--seeds", "1", "--lr", "0.0005", "--configs", "flash,bf16,bf16_flash"],
+     "outputs": ["noise.json"]},
+    {"name": "step_profile_v2", "after": "noise_60m",
+     "cmd": ["python3", "tools/step_profile.py", "run", "--out", "{out}", "--vocab", "{upload}/vocab_llama3_bpe.gguf",
+             "--configs", "fp32,bf16,flash,bf16_flash", "--steps", "30", "--warm", "8"],
+     "outputs": ["profile.json"]}
+  ]
+}

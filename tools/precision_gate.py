@@ -19,6 +19,23 @@ relative and final validation within 0.5%; bf16 and bf16_flash moving average wi
 validation within 1%. Every run must record its setting (model event, result.json, GGUF key
 paperkiln.train.precision for bf16). --cpu runs the host path (MICROTORCH_DEVICE=cpu); otherwise
 the production device environment (tools/colab_chat/jobs_vm.py ENV).
+
+    python3 tools/precision_gate.py noise --new BIN --text TEXT --vocab VOCAB.gguf --out DIR
+        [--shape 20m_L8] [--seeds 1,2,3] [--configs flash,bf16,bf16_flash] [--batch B] [--accum A] [--steps N]
+
+The noise-floor gate (bf16_gate_v2, 25 Oct 2026): a single paired run measures trajectory
+divergence, not precision error (v1: FP32 flash, equal to tiled attention to rounding, moved the
+final validation loss by 0.66% in 300 steps). FP32 tiled runs at every seed give the seed-to-seed
+spread; each config runs at the same seeds. Rule, stated before any result
+(docs/receipts/bf16_gate_v2_prereg_20261025.md), with n seeds s and V the final validation loss:
+  primary   |mean_s (V_cfg,s - V_fp32,s)| <= R_V = max_s V_fp32,s - min_s V_fp32,s
+  secondary mean over steps 50..N of |mean_s (MA_cfg,s(t) - MA_fp32,s(t))|
+            <= mean over the same steps of (max_s MA_fp32,s(t) - min_s MA_fp32,s(t))
+            (MA = 20-step moving average of the training loss)
+A config passes when both hold (and every run finished and recorded its setting). With one seed
+there is no spread: the differences are reported, no verdict. Each finished run is kept as
+DIR/runs/<name>.summary.json, so a relaunch resumes. Exit 0 once every run finished (the verdicts
+are in DIR/noise.json), 1 if a run failed.
 """
 import argparse
 import hashlib
@@ -133,7 +150,8 @@ def compare(leg, run_leg, base):
             if run_leg["s_per_step"] and base["s_per_step"] else None}
 
 
-def cmd_run(a):
+def build_spec(a):
+    """The gate's spec and environment; the corpus is the first --text-bytes of TEXT, whole lines."""
     os.makedirs(a.out, exist_ok=True)
     text = os.path.join(a.out, "text.txt")
     if not os.path.exists(text):
@@ -148,9 +166,10 @@ def cmd_run(a):
         arch = {"preset": "llama-tiny", "custom": {"d": d, "layers": layers, "heads": heads, "d_ff": dff}}
     else:
         arch = step_profile.shape_spec(a.shape)["arch"]
+    lr = a.lr if a.lr is not None else (step_profile.shape_spec(a.shape)["train"]["lr"] if not a.custom else 0.002)
     spec = {"name": "gate", "arch": arch,
             "data": {"corpus": text, "vocab": a.vocab, "vocab_cap": 16384, "T": a.T, "max_tokens": 0},
-            "train": {"steps": a.steps, "lr": a.lr, "batch": a.batch, "accum": a.accum, "clip": 1.0,
+            "train": {"steps": a.steps, "lr": lr, "batch": a.batch, "accum": a.accum, "clip": 1.0,
                       "eval_every": a.steps, "eval_windows": 16, "checkpoint_every": 10 ** 7, "gradmap_every": 0,
                       "seed": 1, "optimizer": "adamw",
                       "lr_schedule": {"warmup_steps": max(1, a.steps // 10), "decay": "cosine", "min_lr_frac": 0.1}},
@@ -158,6 +177,11 @@ def cmd_run(a):
     env = {k: v for k, v in os.environ.items() if not k.startswith("MICROTORCH_")}
     env.update({"MICROTORCH_DEVICE": "cpu", "OMP_NUM_THREADS": os.environ.get("OMP_NUM_THREADS", "4")} if a.cpu
                else step_profile.ENV)
+    return spec, env
+
+
+def cmd_run(a):
+    spec, env = build_spec(a)
     gate = {"spec": spec, "env": {k: v for k, v in env.items() if k.startswith(("MICROTORCH_", "OMP_"))},
             "new": a.new, "old": a.old, "gpu": None if a.cpu else step_profile.gpu_name(), "legs": {}}
     R = os.path.join(a.out, "runs")
@@ -182,6 +206,107 @@ def cmd_run(a):
     return 0 if gate["ok"] else 1
 
 
+NOISE_FROM = 50  # the secondary rule's first step (warmup ends at N / 10)
+
+
+def run_cached(binary, spec, run_dir, env):
+    """run(), kept as RUN_DIR.summary.json once finished, so a relaunch skips it."""
+    sp = run_dir.rstrip("/") + ".summary.json"
+    if os.path.exists(sp):
+        with open(sp, encoding="utf-8") as f:
+            return json.load(f)
+    r = run(binary, spec, run_dir, env)
+    if r["rc"] == 0:
+        with open(sp + ".tmp", "w", encoding="utf-8") as f:
+            json.dump(r, f)
+        os.replace(sp + ".tmp", sp)
+        # The exports are only for the off-bitwise legs: drop the weights, keep the summary.
+        for fn in os.listdir(run_dir):
+            if fn.endswith((".safetensors", ".gguf")):
+                os.remove(os.path.join(run_dir, fn))
+    return r
+
+
+def noise_verdict(base, runs, steps, want):
+    """The pre-stated rule (module docstring) for one config: base and runs map seed -> run summary."""
+    seeds = sorted(base)
+    V = [base[s]["val"] for s in seeds]
+    dV = [runs[s]["val"] - base[s]["val"] for s in seeds]
+    ma_b = {s: moving(base[s]["loss"]) for s in seeds}
+    ma_c = {s: moving(runs[s]["loss"]) for s in seeds}
+    ts = range(NOISE_FROM - 1, steps)
+    m_t = [sum(ma_c[s][t] - ma_b[s][t] for s in seeds) / len(seeds) for t in ts]
+    R_t = [max(ma_b[s][t] for s in seeds) - min(ma_b[s][t] for s in seeds) for t in ts]
+    mean_V = sum(V) / len(V)
+    out = {"seeds": seeds, "val_fp32": V, "val_cfg": [runs[s]["val"] for s in seeds], "val_diff": dV,
+           "val_diff_mean": sum(dV) / len(dV), "val_diff_mean_rel": sum(dV) / len(dV) / mean_V,
+           "curve_diff_mean_abs": sum(abs(x) for x in m_t) / len(m_t),
+           "curve_diff_signed_mean": sum(m_t) / len(m_t),
+           "s_per_step_fp32": [base[s]["s_per_step"] for s in seeds],
+           "s_per_step_cfg": [runs[s]["s_per_step"] for s in seeds]}
+    sp_b = [x for x in out["s_per_step_fp32"] if x]
+    sp_c = [x for x in out["s_per_step_cfg"] if x]
+    out["speedup"] = (sum(sp_b) / len(sp_b)) / (sum(sp_c) / len(sp_c)) if sp_b and sp_c else None
+    recorded = all(all(runs[s]["model"].get(k) == v and runs[s]["result"].get(k) == v for k, v in want.items())
+                   and (runs[s]["gguf_precision_key"] if "precision" in want else True) for s in seeds)
+    out["recorded"] = recorded
+    if len(seeds) < 2:
+        out.update({"verdict": "report only (one seed: no spread)", "ok": None})
+        return out
+    R_V = max(V) - min(V)
+    R_curve = sum(R_t) / len(R_t)
+    out.update({"floor_val_range": R_V, "floor_val_range_rel": R_V / mean_V, "floor_curve_range_mean": R_curve,
+                "primary_ok": abs(out["val_diff_mean"]) <= R_V, "secondary_ok": out["curve_diff_mean_abs"] <= R_curve})
+    out["ok"] = bool(out["primary_ok"] and out["secondary_ok"] and recorded)
+    out["verdict"] = "PASS" if out["ok"] else "FAIL"
+    return out
+
+
+def cmd_noise(a):
+    spec, env = build_spec(a)
+    seeds = [int(x) for x in a.seeds.split(",")]
+    configs = a.configs.split(",")
+    R = os.path.join(a.out, "runs")
+    res = {"spec": spec, "env": {k: v for k, v in env.items() if k.startswith(("MICROTORCH_", "OMP_"))},
+           "gpu": None if a.cpu else step_profile.gpu_name(), "rule": "tools/precision_gate.py docstring; "
+           "docs/receipts/bf16_gate_v2_prereg_20261025.md", "seeds": seeds, "configs": {}}
+    base, failed = {}, []
+    for sd in seeds:
+        s = dict(spec, train=dict(spec["train"], seed=sd))
+        base[sd] = run_cached(a.new, s, os.path.join(R, f"fp32_s{sd}"), env)
+        if base[sd]["rc"] != 0:
+            failed.append(f"fp32_s{sd}")
+    for cfg in configs:
+        runs = {}
+        for sd in seeds:
+            s = dict(spec, train=dict(spec["train"], seed=sd, **LEGS[cfg]))
+            runs[sd] = run_cached(a.new, s, os.path.join(R, f"{cfg}_s{sd}"), env)
+            if runs[sd]["rc"] != 0:
+                failed.append(f"{cfg}_s{sd}")
+        if not failed:
+            res["configs"][cfg] = noise_verdict(base, runs, a.steps, LEGS[cfg])
+    if not failed and len(seeds) > 1:
+        V = [base[s]["val"] for s in seeds]
+        pair = [abs(V[i] - V[j]) for i in range(len(V)) for j in range(i + 1, len(V))]
+        res["floor"] = {"val_fp32": V, "val_range": max(V) - min(V), "val_pairwise_abs": pair,
+                        "val_range_rel": (max(V) - min(V)) / (sum(V) / len(V))}
+    res["failed"] = failed
+    res["runs"] = {}  # every run's curve, so the receipt can be re-analysed at home
+    for fn in sorted(os.listdir(R)):
+        if fn.endswith(".summary.json"):
+            with open(os.path.join(R, fn), encoding="utf-8") as f:
+                r = json.load(f)
+            res["runs"][fn[:-len(".summary.json")]] = {k: r.get(k) for k in ("loss", "grad_norm", "val", "s_per_step",
+                                                                               "model", "result")}
+    with open(os.path.join(a.out, "noise.json"), "w", encoding="utf-8") as f:
+        json.dump(res, f, indent=1)
+    for cfg, v in res["configs"].items():
+        print(cfg, json.dumps({k: v.get(k) for k in ("verdict", "val_diff_mean", "floor_val_range", "curve_diff_mean_abs",
+                                                     "floor_curve_range_mean", "speedup")}))
+    print("NOISE", "FAILED RUNS " + ",".join(failed) if failed else "DONE")
+    return 1 if failed else 0
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -197,11 +322,25 @@ def main():
     r.add_argument("--accum", type=int, default=2)
     r.add_argument("--T", type=int, default=512)
     r.add_argument("--steps", type=int, default=300)
-    r.add_argument("--lr", type=float, default=0.002)
+    r.add_argument("--lr", type=float, default=0.002)  # the v1 gate's rate; noise uses the shape's registered lr
     r.add_argument("--text-bytes", type=int, default=20_000_000)
     r.add_argument("--cpu", action="store_true")
+    n = sub.add_parser("noise")
+    for x in ("--new", "--text", "--vocab", "--out"):
+        n.add_argument(x, required=True)
+    n.add_argument("--shape", default="20m_L8")
+    n.add_argument("--custom")
+    n.add_argument("--seeds", default="1,2,3")
+    n.add_argument("--configs", default="flash,bf16,bf16_flash")
+    n.add_argument("--batch", type=int, default=32)
+    n.add_argument("--accum", type=int, default=1)
+    n.add_argument("--T", type=int, default=512)
+    n.add_argument("--steps", type=int, default=300)
+    n.add_argument("--lr", type=float, default=None)
+    n.add_argument("--text-bytes", type=int, default=20_000_000)
+    n.add_argument("--cpu", action="store_true")
     a = ap.parse_args()
-    return cmd_run(a)
+    return cmd_noise(a) if a.cmd == "noise" else cmd_run(a)
 
 
 if __name__ == "__main__":

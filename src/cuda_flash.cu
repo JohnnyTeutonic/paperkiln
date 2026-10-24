@@ -161,18 +161,29 @@ __global__ void k_flash_fwd(Geo g, float scale, float* __restrict__ y, float* __
         stage<BK, DK>(Ks, g.qkv, g.ld, b0, k0, g.sl, g.d + h * g.dk, g.dk);
         stage<BK, DK>(Vs, g.qkv, g.ld, b0, k0, g.sl, 2 * g.d + h * g.dk, g.dk);
         __syncthreads();
+        // Register-blocked scores: k outermost, so each staged value feeds
+        // several FMAs; every output still sums k ascending from 0 (the same
+        // bits as one dot product at a time).
+        float sc[4][2];
+#pragma unroll
+        for (int a = 0; a < 4; ++a) sc[a][0] = sc[a][1] = 0.0f;
+#pragma unroll 8
+        for (int k = 0; k < DK; ++k) {
+            const float k0v = Ks[tx][k], k1v = Ks[tx + 16][k];
+#pragma unroll
+            for (int a = 0; a < 4; ++a) {
+                const float qv = Qs[ty + 16 * a][k];
+                sc[a][0] = fmaf(qv, k0v, sc[a][0]);
+                sc[a][1] = fmaf(qv, k1v, sc[a][1]);
+            }
+        }
 #pragma unroll
         for (int a = 0; a < 4; ++a) {
             const int li = q0 + ty + 16 * a;
             float s[2];
 #pragma unroll
-            for (int c = 0; c < 2; ++c) {
-                const int lj = k0 + tx + 16 * c;
-                float acc = 0.0f;
-#pragma unroll 16
-                for (int k = 0; k < DK; ++k) acc = fmaf(Qs[ty + 16 * a][k], Ks[tx + 16 * c][k], acc);
-                s[c] = fl_visible(g, b0, li, lj) ? acc * scale : -INFINITY;
-            }
+            for (int c = 0; c < 2; ++c)
+                s[c] = fl_visible(g, b0, li, k0 + tx + 16 * c) ? sc[a][c] * scale : -INFINITY;
             const float mn = fmaxf(m[a], row16_max(fmaxf(s[0], s[1])));
             const float mu = mn == -INFINITY ? 0.0f : mn;
             const float p0 = expf(s[0] - mu), p1 = expf(s[1] - mu);
@@ -185,14 +196,18 @@ __global__ void k_flash_fwd(Geo g, float scale, float* __restrict__ y, float* __
             Ps[ty + 16 * a][tx + 16] = p1;
         }
         __syncthreads();
+#pragma unroll 4
+        for (int j = 0; j < BK; ++j) {
+            float vv[NB];
 #pragma unroll
-        for (int a = 0; a < 4; ++a)
-#pragma unroll 8
-            for (int j = 0; j < BK; ++j) {
+            for (int b = 0; b < NB; ++b) vv[b] = Vs[j][tx + 16 * b];
+#pragma unroll
+            for (int a = 0; a < 4; ++a) {
                 const float p = Ps[ty + 16 * a][j];
 #pragma unroll
-                for (int b = 0; b < NB; ++b) o[a][b] = fmaf(p, Vs[j][tx + 16 * b], o[a][b]);
+                for (int b = 0; b < NB; ++b) o[a][b] = fmaf(p, vv[b], o[a][b]);
             }
+        }
     }
 #pragma unroll
     for (int a = 0; a < 4; ++a) {
@@ -258,34 +273,51 @@ __global__ void k_flash_bwd_kv(Geo g, const float* __restrict__ dy, const float*
             Ds[threadIdx.x] = li < g.sl ? D[r] : 0.0f;
         }
         __syncthreads();
+        {
+            // Register-blocked: k outermost (8 loads per 8 FMAs, was 2 per FMA),
+            // each output summing k ascending as before.
+            float s[2][2] = {}, dp[2][2] = {};
+#pragma unroll 8
+            for (int k = 0; k < DK; ++k) {
+                const float q0v = Qs[tx][k], q1v = Qs[tx + 16][k], g0v = Gs[tx][k], g1v = Gs[tx + 16][k];
 #pragma unroll
-        for (int a = 0; a < 2; ++a) {
-            const int kj = ty + 16 * a, lj = k0 + kj;
-#pragma unroll
-            for (int c = 0; c < 2; ++c) {
-                const int qi = tx + 16 * c, li = i0 + qi;
-                float s = 0.0f, dp = 0.0f;
-#pragma unroll 16
-                for (int k = 0; k < DK; ++k) {
-                    s = fmaf(Qs[qi][k], Ks[kj][k], s);
-                    dp = fmaf(Gs[qi][k], Vs[kj][k], dp);
+                for (int a = 0; a < 2; ++a) {
+                    const float kv = Ks[ty + 16 * a][k], vv = Vs[ty + 16 * a][k];
+                    s[a][0] = fmaf(q0v, kv, s[a][0]);
+                    s[a][1] = fmaf(q1v, kv, s[a][1]);
+                    dp[a][0] = fmaf(g0v, vv, dp[a][0]);
+                    dp[a][1] = fmaf(g1v, vv, dp[a][1]);
                 }
-                const float p = fl_visible(g, b0, li, lj) ? expf(s * scale - Ls[qi]) : 0.0f;
-                Ps[kj][qi] = p;
-                Ss[kj][qi] = p * (dp - Ds[qi]);
+            }
+#pragma unroll
+            for (int a = 0; a < 2; ++a) {
+                const int kj = ty + 16 * a, lj = k0 + kj;
+#pragma unroll
+                for (int c = 0; c < 2; ++c) {
+                    const int qi = tx + 16 * c, li = i0 + qi;
+                    const float p = fl_visible(g, b0, li, lj) ? expf(s[a][c] * scale - Ls[qi]) : 0.0f;
+                    Ps[kj][qi] = p;
+                    Ss[kj][qi] = p * (dp[a][c] - Ds[qi]);
+                }
             }
         }
         __syncthreads();
+#pragma unroll 4
+        for (int qi = 0; qi < BK; ++qi) {
+            float gv[NB], qv[NB];
 #pragma unroll
-        for (int a = 0; a < 2; ++a) {
-            const int kj = ty + 16 * a;
-#pragma unroll 8
-            for (int qi = 0; qi < BK; ++qi) {
+            for (int b = 0; b < NB; ++b) {
+                gv[b] = Gs[qi][tx + 16 * b];
+                qv[b] = Qs[qi][tx + 16 * b];
+            }
+#pragma unroll
+            for (int a = 0; a < 2; ++a) {
+                const int kj = ty + 16 * a;
                 const float p = Ps[kj][qi], ds = Ss[kj][qi];
 #pragma unroll
                 for (int b = 0; b < NB; ++b) {
-                    dv_acc[a][b] = fmaf(p, Gs[qi][tx + 16 * b], dv_acc[a][b]);
-                    dk_acc[a][b] = fmaf(ds, Qs[qi][tx + 16 * b], dk_acc[a][b]);
+                    dv_acc[a][b] = fmaf(p, gv[b], dv_acc[a][b]);
+                    dk_acc[a][b] = fmaf(ds, qv[b], dk_acc[a][b]);
                 }
             }
         }
@@ -338,31 +370,42 @@ __global__ void k_flash_bwd_q(Geo g, const float* __restrict__ dy, const float* 
         stage<BK, DK>(Ks, g.qkv, g.ld, b0, k0, g.sl, g.d + h * g.dk, g.dk);
         stage<BK, DK>(Vs, g.qkv, g.ld, b0, k0, g.sl, 2 * g.d + h * g.dk, g.dk);
         __syncthreads();
+        {
+            float s[2][2] = {}, dp[2][2] = {};
+#pragma unroll 8
+            for (int k = 0; k < DK; ++k) {
+                const float k0v = Ks[tx][k], k1v = Ks[tx + 16][k], v0v = Vs[tx][k], v1v = Vs[tx + 16][k];
 #pragma unroll
-        for (int a = 0; a < 2; ++a) {
-            const int qi = ty + 16 * a, li = i0 + qi;
-#pragma unroll
-            for (int c = 0; c < 2; ++c) {
-                const int kj = tx + 16 * c, lj = k0 + kj;
-                float s = 0.0f, dp = 0.0f;
-#pragma unroll 16
-                for (int k = 0; k < DK; ++k) {
-                    s = fmaf(Qs[qi][k], Ks[kj][k], s);
-                    dp = fmaf(Gs[qi][k], Vs[kj][k], dp);
+                for (int a = 0; a < 2; ++a) {
+                    const float qv = Qs[ty + 16 * a][k], gv = Gs[ty + 16 * a][k];
+                    s[a][0] = fmaf(qv, k0v, s[a][0]);
+                    s[a][1] = fmaf(qv, k1v, s[a][1]);
+                    dp[a][0] = fmaf(gv, v0v, dp[a][0]);
+                    dp[a][1] = fmaf(gv, v1v, dp[a][1]);
                 }
-                const float p = fl_visible(g, b0, li, lj) ? expf(s * scale - Lr[a]) : 0.0f;
-                Ss[qi][kj] = p * (dp - Dr[a]);
+            }
+#pragma unroll
+            for (int a = 0; a < 2; ++a) {
+                const int qi = ty + 16 * a, li = i0 + qi;
+#pragma unroll
+                for (int c = 0; c < 2; ++c) {
+                    const int kj = tx + 16 * c, lj = k0 + kj;
+                    const float p = fl_visible(g, b0, li, lj) ? expf(s[a][c] * scale - Lr[a]) : 0.0f;
+                    Ss[qi][kj] = p * (dp[a][c] - Dr[a]);
+                }
             }
         }
         __syncthreads();
+#pragma unroll 4
+        for (int kj = 0; kj < BK; ++kj) {
+            float kv[NB];
 #pragma unroll
-        for (int a = 0; a < 2; ++a) {
-            const int qi = ty + 16 * a;
-#pragma unroll 8
-            for (int kj = 0; kj < BK; ++kj) {
-                const float ds = Ss[qi][kj];
+            for (int b = 0; b < NB; ++b) kv[b] = Ks[kj][tx + 16 * b];
 #pragma unroll
-                for (int b = 0; b < NB; ++b) dq_acc[a][b] = fmaf(ds, Ks[kj][tx + 16 * b], dq_acc[a][b]);
+            for (int a = 0; a < 2; ++a) {
+                const float ds = Ss[ty + 16 * a][kj];
+#pragma unroll
+                for (int b = 0; b < NB; ++b) dq_acc[a][b] = fmaf(ds, kv[b], dq_acc[a][b]);
             }
         }
     }
