@@ -2,8 +2,8 @@
 
 *Proposed wording for `include/microtorch/ir.hpp`, written for review by paperkiln and ember before any
 implementation. Nothing here is normative and `ir.hpp` is not edited: the text becomes normative only
-when the implementing commit copies it into `ir.hpp` and both runtimes pass the gates in section 5.
-Context: `PREREGISTRATION_DRAFT.md` (this folder), cells S-full / S-gist (E4), X (cross-layer) and the
+when the implementing commit copies it into `ir.hpp` and both runtimes pass the gates in section 5. The
+ember session has reviewed this text (24 Oct 2026); it remains a draft. Context: `PREREGISTRATION_DRAFT.md` (this folder), cells S-full / S-gist (E4), X (cross-layer) and the
 exploratory step-2 cells; `CROSSLAYER_LITCHECK.md`.*
 
 Primary sources read for the state-token design (24 Oct 2026, arXiv PDFs):
@@ -66,7 +66,19 @@ never produces one.
                 prompts and after generation alike (a generated <|endoftext|>
                 is followed by a k-token prefill of the state ids, no
                 sampling). A state block is exactly the ids vocab .. vocab+k-1
-                in ascending order; any other use of an id >= vocab is refused.
+                in ascending order.
+                Replies that stop early: a reply that ends without
+                <|endoftext|> (max_new_tokens reached, a stop string, a client
+                abort) leaves no state block, and the next user turn would then
+                land in the same segment and see the whole previous text, which
+                training never shows. So before the next <|user|>, the engine
+                appends <|endoftext|> and then the k state ids after any
+                assistant reply that did not end with <|endoftext|>. Training
+                data match: the serialiser (section 1.5) does the same.
+                Raw-ids clients (/completion, prompts given as ids): an id >=
+                vocab is accepted only as part of a complete, ordered state
+                block (S_0 .. S_{k-1}, directly after an <|endoftext|> that
+                ends an assistant reply) and refused otherwise.
 
 ### 1.3 The attention mask
 
@@ -104,16 +116,24 @@ state ids is one segment, so `turn_state` on ordinary text is plain causal atten
                 delete those rows. After n complete turns the slot holds n * k
                 state rows plus the rows of the current turn. Positions stay
                 absolute (decode pos = tokens seen, not rows kept), as for the
-                sliding window. Evicting is EXACT against keeping every row: the
-                deleted rows are masked for every later query, and the visible
-                keys are summed in the same ascending order either way. Engines
-                that keep every row compute the same values by the mask.
-                Truncating the cache to n tokens (prefix reuse, rewind) is safe
-                at any position at or after the last evicted row; rewinding into
-                an evicted turn needs a re-prefill from the start of that turn's
-                segment, whose rows the engine must then hold (engines keep the
-                rows of the current segment, so regenerating the latest reply
-                needs nothing more).
+                sliding window. Against keeping every row, evicting is EXACT on
+                a kernel that sums the visible keys sequentially in ascending
+                position (ember's CPU attention): the deleted rows are masked
+                for every later query and the same keys are summed in the same
+                order either way. It is ROUNDING on device kernels that group
+                keys into tiles (ember's CUDA flash2, a tiled online softmax):
+                deleting rows moves the tile boundaries and the points where
+                the running maximum rescales, so the sums change at rounding
+                level. Engines that keep every row compute the same values by
+                the mask, to the same tolerance. Truncating the cache to n
+                tokens (prefix reuse, rewind) is safe at any position at or
+                after the last evicted row. Rewinding into an evicted turn m
+                (prefix reuse meets this when an earlier user message is
+                edited) drops every row, text and state, with segment s >= m,
+                and re-prefills from the start of segment m, whose rows the
+                engine must then hold; the state rows of segments s < m stay.
+                Engines keep the rows of the current segment, so regenerating
+                the latest reply needs nothing more.
 
 Size, from this folder's receipts (f32, 20m_L8: 2 x 448 x 4 bytes x 8 layers = 28 KiB per row): a 14-turn
 Carry-12 conversation at 48-token replies is at most 870 tokens (`carry12_v0_budget.json`), 24 MiB of cache
@@ -121,12 +141,18 @@ in full; with k = 4 and eviction, 13 x 4 state rows plus at most ~110 rows of th
 Attention per decoded token falls in the same ratio. The cache stops growing with the number of turns, which
 is what ember's WASM Space cares about.
 
+ember's implementation order (informative, not normative): first the mask with every row kept (a per-row
+visible list on CPU, a segment-and-kind array on CUDA), then eviction, which reuses the compact per-layer
+cache that MoR's `kv_rows: "active"` introduced, with its stored row positions (ember ceadd42).
+
 ### 1.5 Training (mtstudio; for the record, not IR)
 
 - State ids are inserted on the fly when `arch.state_tokens.k > 0`: after every `<|endoftext|>` that closes an
   exchange (an `<|endoftext|>` with an `<|assistant|>` after the latest `<|user|>` in the same document), in
-  pretraining windows and SFT rows alike, before windowing. FineWeb-Edu documents have no exchanges and get
-  none. The same `.ids` mixes then serve every cell, so the token stream and data order before insertion are
+  pretraining windows and SFT rows alike, before windowing. An assistant reply followed by a `<|user|>`
+  without an `<|endoftext|>` between them gets `<|endoftext|>` and then the k state ids before that
+  `<|user|>`, as the engine does for a reply that stopped early (section 1.2), so serving never shows a
+  segment layout that training did not. FineWeb-Edu documents have no exchanges and get none. The same `.ids` mixes then serve every cell, so the token stream and data order before insertion are
   the plain cell's.
 - No loss at a position whose target is a state id, nor at the last state position (its target is the next
   `<|user|>`, always supplied by the template). State positions are never prediction targets.
@@ -162,8 +188,11 @@ No new op. A family composed from existing nodes (`list`, `append`, `depth_atten
 
 - The difference from the existing `attnres` family is the block (llama instead of GPT-2) and the granularity
   (sublayer entries, not one `a + f` entry per block). ember runs `list`, `append` and `depth_attend` on CPU,
-  CUDA and WASM (attnres tiny 40/40, ember ec53c26 and 1232431), so ember should need nothing new; that is
-  unverified until the gate in section 5 passes on a trained tiny `llama_attnres`.
+  CUDA and WASM (attnres tiny 40/40, ember ec53c26 and 1232431), but those ops have been gated only on GPT-2
+  blocks. So the first trained tiny `llama_attnres` model gets an ember gate on CPU, CUDA and WASM before any
+  run relies on the family, in the recursion gate's file layout (`tests/test_mor_ir.py` under
+  `MOR_GATE_DIR`: the F32 GGUF, the IR, `score_in.jsonl` / `score_out.jsonl` and a `manifest.json` with
+  sha256s); section 5, gate 5.
 - mtstudio: `AttnResStack` around the llama blocks (today only `parity::AttnResLM`, GPT-2 blocks), a new
   `arch.custom.attn_res = {form: "full"}` and the exporter's family. At 20m_L16: 33 sources, 2 x 16 + 1
   queries of 320 = 10,560 parameters.
@@ -181,12 +210,16 @@ the IR must answer is whose pseudo-queries a pass uses:
   no IR change. All passes of a shared block then ask the same depth question.
 - **Per application** (proposed): a node key
 
-      "weight_index": "application"   on a node of a block with a block
-                weight_index: that node's tensor names substitute "{i}" with the
-                application index i, not m_i (GGUF rec_app.{i}.attnres_attn_q,
-                rec_app.{i}.attnres_ffn_q, written in full as constraint 4
-                requires of router names). Every other node keeps m_i. Absent:
-                m_i, as now.
+      "tensor_index": "application"   a key of a node (not of the block) in a
+                block with a block weight_index. In a node so tagged, "{i}" in
+                its tensor names means the application index i, not the stored
+                layer m_i: the node reads rec_app.{i}.attnres_attn_q and
+                rec_app.{i}.attnres_ffn_q with {i} = 0 .. block.repeat - 1. This
+                is the only second meaning of "{i}" in the IR. Every untagged
+                node keeps m_i. Absent: the stored layer m_i, as now.
+                Constraint 4's rule that names are written in full ({k} is not
+                a substitution) applies to MoR's router names only, not to
+                these tensors.
 
   Cost d per query per application (at 20m_L4 recursed 4 times: 16 applications, 33 queries, 21K
   parameters). Recommended for the cell, because a pass that reads the same sources with the same query as
@@ -203,7 +236,10 @@ different tokens would hold different numbers of entries. Proposed wording:
                 [T] (every row present by default). Under depth_route, an
                 append at an application of step k writes the entry for the
                 active rows only and marks the inactive rows absent (their
-                entry is never computed; engines may store any value).
+                entry is never computed; engines may store any value). For a
+                bank, "absent" means no append for that row: the row's list is
+                one entry shorter, and depth_attend reads each row's own
+                entries.
     depth_attend (rows with absent entries)  each row attends over its present
                 entries only, in ascending index; S_row counts them (always >= 1:
                 the embedding entry and the prelude's entries are present for
@@ -218,18 +254,24 @@ different tokens would hold different numbers of entries. Proposed wording:
   (constraint 1); depth attention is per row, so prefill equals decode.
 - `kv_rows: "active"` is unchanged (it concerns the kv slot, not the bank).
 - Gates before any run: section 5's, plus "every token forced to the largest depth with gate none equals
-  recursion x AttnRes (section 3) bit for bit", MoR's gate (3) in this form.
+  recursion x AttnRes (section 3) bit for bit", MoR's gate (3) in this form (every row then has every
+  entry, so the per-row reads are the full bank's).
 
 ## 5. Gates (as amendment 4, A4.6, for each item before a run uses it)
 
 1. **Prefill equals token-by-token decode** (logits to rounding) on CPU, for every new mask, family and key.
-2. **State tokens, eviction is exact:** greedy generation and the logits of every position equal between an
-   engine run that keeps every kv row and one that evicts at `turn_state`, 40/40 on a 14-turn conversation
-   set (Carry-12 items, gold history), CPU and CUDA; and with k > 0 but no state ids in the input, the model
-   equals plain causal attention bit for bit.
+2. **State tokens, eviction against keeping every row**, on a 14-turn conversation set (Carry-12 items, gold
+   history): on CPU, greedy generation and the logits of every position are bit-equal between an engine run
+   that keeps every kv row and one that evicts at `turn_state`, 40/40; on CUDA (tiled kernels, section 1.4),
+   greedy 40/40 and the logits within ROUNDING, not bit equality. With k > 0 but no state ids in the input,
+   the model equals plain causal attention bit for bit. A reply stopped by max_new_tokens and followed by
+   the next user turn gets `<|endoftext|>` and the state block (section 1.2), giving the ids the training
+   serialiser gives; a rewind into an evicted turn equals a run that never evicted it.
 3. **numpy IR** (`tools/ir_numpy.py`, the new mask, the extended embedding, `llama_attnres`, the
-   per-application key, row presence) against `mtstudio score` within ROUNDING, greedy 40/40.
+   `tensor_index` key, row presence) against `mtstudio score` within ROUNDING, greedy 40/40.
 4. **Finite-difference gradcheck** in mtstudio through the `turn_state` mask (its backward kernel), through
    `llama_attnres` (as `test_attn_res`), and through the presence-masked depth attention.
 5. **ember** 40/40 on CPU, CUDA and WASM for `llama_attnres` and the state-token model (eviction on and off);
-   `tools/colab_cuda_validate.sh` legs for the new kernels on Colab.
+   `tools/colab_cuda_validate.sh` legs for the new kernels on Colab. For `llama_attnres`, the first trained
+   tiny model is gated before any run relies on the family, with the recursion gate's files (F32 GGUF, IR,
+   `score_in.jsonl` / `score_out.jsonl`, `manifest.json`; section 2).

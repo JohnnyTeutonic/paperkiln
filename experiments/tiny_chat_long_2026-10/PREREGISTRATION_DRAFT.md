@@ -210,9 +210,13 @@ turn's text and every earlier state block (gisting's mask applied after every tu
 through attention). Trained from scratch in pretraining dialogue documents and SFT, full backpropagation
 through each window, no loss at state positions. At inference a finished turn's rows are dropped and its 4
 state rows kept: after n turns the cache holds 4n state rows plus the current turn (about 5x smaller than
-the full cache on a 14-turn Carry-12 conversation at 48-token replies). k = 4: gisting found its models
-insensitive to k from 1 to 10, and RMT's gain faded beyond 5 memory tokens. Spec text, kernels and gates:
-`IR_SPEC_DRAFT.md` sections 1 and 5.
+the full cache on a 14-turn Carry-12 conversation at 48-token replies). Dropping the rows is bit-exact on
+ember's CPU path and rounding-level on CUDA (tiled attention), so S-gist's numbers do not depend on whether
+the serving engine evicts. A reply cut short (here, by `--max-new 48`) is closed with `<|endoftext|>` and
+the state block before the next user turn, and the training serialiser does the same, so self-history
+conversations keep the segment layout training saw. k = 4: gisting found its models insensitive to k from 1
+to 10, and RMT's gain faded beyond 5 memory tokens. Spec text, kernels and gates: `IR_SPEC_DRAFT.md`
+sections 1 and 5.
 
 **X: cross-layer connections (Jonathan's long-held intuition; `CROSSLAYER_LITCHECK.md`).** A mechanism that
 learns, per token, which earlier activations to strengthen beyond the fixed residual sum. Full Attention
@@ -225,14 +229,16 @@ generated per position from the current state, four streams for Q, K, V and the 
 Jonathan's idea, but no published comparison with AttnRes and a new four-stream wiring) and value residual
 learning (first-layer values into every layer). At 20m_L16 (the shape the literature check chose: depth
 attention needs depth) against P16, paired by seed, P16's learning rate (conservative against the arm, as
-Kimi). A port is needed: the `attnres` family is GPT-2 blocks only; ember should need nothing new
-(unverified; IR_SPEC_DRAFT section 2). mtstudio composes depth attention from tape ops; unfused AttnRes has
+Kimi). A port is needed: the `attnres` family is GPT-2 blocks only. ember already runs the ops, but they
+have been gated only on GPT-2 blocks, so the first trained tiny `llama_attnres` model passes an ember gate
+on CPU, CUDA and WASM (the recursion gate's files) before any X run relies on it (IR_SPEC_DRAFT sections 2
+and 5). mtstudio composes depth attention from tape ops; unfused AttnRes has
 been reported at 0.2-0.5x training throughput, so tokens/s is reported and the cell is costed at 0.3x.
 
 **Step 2, registered as conditional (not costed in the core):**
 - *on X's main effect* (section 8, HX-main SUPPORTED): a separate value route (one more pseudo-query per layer
   for the value input, the cheapest multiway step), and a recursion x attention-residual cell with every pass
-  as a source and per-pass queries (IR_SPEC_DRAFT section 3's `"weight_index": "application"`);
+  as a source and per-pass queries (IR_SPEC_DRAFT section 3's `"tensor_index": "application"`);
 - *EXPLORATORY* (no hypothesis tested; no such combination found anywhere): MoR x attention residuals, MoR
   choosing how many passes and depth attention choosing what each pass reads (IR_SPEC_DRAFT section 4, a
   row-presence mask on the bank). Runs only if R is MoR and X has a main effect.
@@ -335,8 +341,11 @@ X's cost falls by up to two thirds if mtstudio gets a device depth-attention pat
 4. **Carry-12 v1:** the draft's review (counts, small talk, the `near` definition), its pin, and
    `tools/carry12_eval.py` with tests; the VM-side decontamination against the FineWeb-Edu shard.
 5. **Engine work, each through IR_SPEC_DRAFT's gates:** the `turn_state` mask and kernels in mtstudio, the
-   extended embedding, eviction in ember; `llama_attnres` in mtstudio and its export; the T 1,024 data job
-   (the same sources and split at T 1,024).
+   extended embedding and the early-stop rule (`<|endoftext|>` and the state block after a reply that did
+   not end with one, in the serialiser and in ember); in ember the mask with every row kept first, then
+   eviction, gated bit-equal on CPU and on CUDA by greedy 40/40 with logits within ROUNDING (gate 2);
+   `llama_attnres` in mtstudio and its export, and the ember gate on its first trained tiny model; the
+   T 1,024 data job (the same sources and split at T 1,024).
 6. **Stage 0 at T 1,024:** probes replace section 10's estimates; Jonathan's go on the measured total.
 7. Jonathan's ruling on data option 3 (new long human sources), if wanted before the freeze.
 
