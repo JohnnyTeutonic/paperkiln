@@ -1,39 +1,34 @@
 # paperkiln roadmap
 
-*The one list of what is left to do, as at 22 October 2026. Finished work
+*The one list of what is left to do, as at 24 October 2026. Finished work
 moves to [`CHANGELOG.md`](CHANGELOG.md) and comes out of here. Everything
 else under `docs/` and `atlas/` is reference (design, records, results);
 where one of those documents carries a plan, this file wins.*
 
 ## 1. Now
 
-0. **The chat model (LOCAL_LLM_STACK.md sections 8 and 11: data levers, then judged
-   preference training).**
-   - Evaluate moe_sft and ctrl_sft against the live model (chat_eval on the frozen
-     prompts, chat_prompts_v1 per source, the simple-QA probe), on the GPU once the
-     current CUDA mtstudio build is checked against the CPU build (the old build could
-     not load MoE weights).
-   - big (d768 L12) finishes 60,000 steps on the L4 (Colab pk-cap, under the Windows
-     watchdog), then big_sft and its evals.
-   - The next base, pk_base_v1: `tools/colab_chat/next_base_v1.json` (lever 2's mix and
-     its `.ids` built on the VM, a gate model on the 16k Llama 3 vocabulary for ember's
-     parity gate, the base with `data.anneal`, lever 1 rebuilt for the new vocabulary,
-     and the two arXiv runs). Watchdog entry `pk-base` in the root
-     `scripts/colab_driver.json`, disabled until Jonathan's go on its ~15-25 L4 hours.
-     Commits must be pushed before a VM boots (`boot_jobs.sh` clones from GitHub).
+0. **Tiny chat from scratch (LOCAL_LLM_STACK.md section 11, item 1;
+   `experiments/tiny_chat_2026-10/`, `experiments/tiny_chat_long_2026-10/`).**
+   E5, E1 and the recursion arm run on Colab; E1 at 60M waits for an L4 (first use of the
+   RunPod backend for `tools/colab_chat/runner_multi.py`, under validation); Carry-12 and its
+   Stage L0 follow E5 and E1.
+1. **The chat model (LOCAL_LLM_STACK.md sections 8 and 11, item 2).**
+   - Evaluate moe_sft, big_sft and ctrl_sft against the live model (chat_eval on the frozen
+     prompts, chat_prompts_v1 per source, the simple-QA probe), on the GPU once the current
+     CUDA mtstudio build is checked against the CPU build (the old build could not load MoE
+     weights).
+   - pk_base_v1's SFT on lever 1's set at T 512.
    - After SFT: the Claude-judge pilot (`experiments/chat_general/judge_pilot.sh`,
-     200 prompts, $100 cap), then DPO; device-side SFT evaluation in the step
-     window; real k-quants (the next base's d768 qualifies).
-1. **The redesign (LOCAL_LLM_STACK.md section 5): any paper, any architecture.**
-   - Official Mamba-130m and Gemma-3-270m reference gates (`tools/thirdparty_parity.py`;
-     GPT-2 124M and Pythia-160m pass 40/40).
-   - The extractor's `expr` check through `tools/ir_expr.py` (see section 5).
-   - Training-side support for the third-party ops paperkiln only references in numpy
-     today (grouped-query attention, NEOX rotary, per-head RMSNorm, Mamba-1's
-     conv1d_causal and selective_scan), so an extracted paper using them can train
-     here, not only run in ember.
-2. **Push paperkiln** (master is ahead of origin) before the next VM boot.
-3. **Colab runner: a re-provisioned driver pushes stale checkpoints over
+     200 prompts, $100 cap), then DPO.
+2. **One conversation schema for instruction tuning and chat** (LOCAL_LLM_STACK.md section 11,
+   item 3): the schema, the loss policy in the SFT spec, the template declared in the GGUF and IR.
+3. **Engine:** BF16 mixed precision and a fused attention backward (opt-in; building);
+   device-side SFT evaluation in the step window; real k-quants (pk_base_v1's d768 qualifies).
+4. **The redesign (LOCAL_LLM_STACK.md section 5): any paper, any architecture.**
+   Training-side support for the third-party ops paperkiln only references in numpy today
+   (grouped-query attention, NEOX rotary, per-head RMSNorm, Mamba-1's conv1d_causal and
+   selective_scan), so an extracted paper using them can train here, not only run in ember.
+5. **Colab runner: a re-provisioned driver pushes stale checkpoints over
    finished runs** (`tools/colab_transfer_runner.py`). In Study 3 it
    overwrote four M25 event logs at step ~2900; the runs were re-run
    (execution clarification 1). Fix: never relay a checkpoint into a run
@@ -41,7 +36,9 @@ where one of those documents carries a plan, this file wins.*
 
 ## 2. Decisions waiting on Jonathan
 
-- The next base's launch: ~15-25 L4 hours for pk_base_v1 and the two arXiv runs (section 1).
+- The tiny-chat MoR block's nine runs (amendment 4, A4.7: his confirmation of the measured
+  total) and R8 if A3.3's rule fires.
+- Carry-12's MSC rulings (licence unstated; an episode as one conversation; ConvAI2 duplicates).
 
 Settled on 22 Oct 2026: up to four Colab sessions at once, one named session per job, each
 driver under the Windows watchdog. Settled on 16 Oct 2026: the post-training and corpus charter
@@ -233,11 +230,10 @@ advisory steps that cannot fail the build.
     probes).
 - **Browser chat** for SWA, Kimi, SRD and attnres models. It supports
   exact attention only.
-- **Open-weight models on our own engines: speed.** Parity is done through the IR
-  (Qwen2.5 and Qwen3 40/40 vs HF in ember on the CPU; GPT-2 and Pythia 40/40 in the
-  numpy reference); benchmark ember against `transformers` for speed once its CUDA
-  kernels for the new ops land.
-- **WebGPU backend,** after CUDA, through the same dispatch seam.
+- **Open-weight models on our own engines: speed.** Parity is done through the IR,
+  on the CPU and on CUDA; benchmark ember against `transformers` for speed.
+- **WebGPU for the IR families** (ember's browser chat runs llama and MoE GGUFs on
+  WebGPU).
 - **Windows testing of the quickstart** (parked).
 
 ## 8. Ecosystem (coalfire.cpp, ember.cpp)
