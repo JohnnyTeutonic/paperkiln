@@ -36,7 +36,7 @@ ops, layers, Llama family, quantisation, GGUF) is about 5,100 lines, and the who
 | **Conversations** | one schema for instruction tuning and chat (an instruction is a one-exchange conversation; system messages supported); the loss policy declared per run; the chat template written into every GGUF as a versioned record, with a generated `tokenizer.chat_template` and an Ollama Modelfile, so llama.cpp, LM Studio and Ollama prompt a 16k-vocabulary model exactly as paperkiln and ember.cpp do |
 | **Runtime-defined ops** | a paper's new activation, gate or norm variant written as an `expr` (`"activation": "expr:max(x, 0)^2"`): parsed at runtime into differentiable primitives, gradient-checked, trained and exported as an IR node without recompiling; ember.cpp runs the same grammar. C++ vs the numpy reference within 1.2e-7 |
 | **Any architecture, both directions** | every family exports its graph as IR; and standard llama.cpp GGUFs of Qwen2/Qwen3, Gemma 3, GPT-2, GPT-NeoX (Pythia), Mistral (sliding window) and Mamba-1 get an IR built from their metadata (`tools/gguf_ir.py`), run by a numpy reference interpreter (`tools/ir_numpy.py`) and gated against Hugging Face transformers (`tools/thirdparty_parity.py`: GPT-2 124M and Pythia-160m 40/40 greedy); ember.cpp runs them, Qwen2.5 and Qwen3 40/40 vs HF |
-| **Training** | AdamW, SGD, **Muon**; warmup + cosine; mini-batching, gradient accumulation, checkpointing, fused attention; LoRA and QLoRA (int8); **CUDA** device-resident step (L4: 0.109 s/step at d384, from 6.4) |
+| **Training** | AdamW, SGD, **Muon**; warmup + cosine; mini-batching, gradient accumulation, checkpointing, fused attention; LoRA and QLoRA (int8); **CUDA** device-resident step (L4: 0.109 s/step at d384, from 6.4); **BF16 mixed precision** and flash attention, opt-in (`train.precision`, `train.attention_kernel`): 1.58x (20M) to 1.71x (60M) on an L4, with the final loss moved by about 1/40 of FP32's seed-to-seed spread |
 | **Post-training** | masked SFT, rejection SFT, GRPO, DPO + RPO; AI-judged preference data: candidate replies sampled through ember (`tools/posttrain/sample_candidates.py`), a Claude judge ranking both orders under a hard cost cap, and a 200-prompt pilot (`experiments/chat_general/judge_pilot.sh`) |
 | **Data** | pinned corpora with ledgers and hashes: FineWeb-Edu (shard 0; shards 1-3 are pinned on their first fetch), dialogue for pretraining (SODA, OpenAssistant, UltraChat, everyday-conversations; `corpus/fetchers/dialogue_pt.py`), a large SFT set from smol-smoltalk (`tools/lever1_sft.py`); the dialogue and SFT sources checked against the frozen eval sets (`corpus/decontam.py`); a two-part mixer with an annealing tail (`corpus/mix_pretrain.py`); pre-tokenised `.ids` corpora (`tools/corpus_ids.py`) |
 | **Tokenisers** | paperkiln's byte-level BPE, and a llama.cpp-compatible vocabulary in the Llama 3 scheme: a trainer (`corpus/fetchers/vocab_llama3_bpe.py`) whose check compares ids with llama.cpp's own tokeniser, and an exact C++ encoder ported from llama.cpp (`include/microtorch/llama3_tokenizer.hpp`) |
@@ -238,9 +238,8 @@ python tools/reproduce.py S3-lrxopt --run             # re-run a finding: REPLIC
   set, then DPO on Claude-judged pairs (pilot: 200 prompts). The MoE, dense-control and d768 L12
   fine-tunes are evaluated against the live model on the frozen chat prompts and the simple-QA
   probe.
-- **Mixed precision:** BF16 GEMMs and a flash-style attention, opt-in; with both off, training
-  is bit for bit unchanged. A measured step profile on the L4 puts GEMMs at 42-68% of a step.
-  BF16 adopts once its accuracy gate passes against the seed-to-seed spread of FP32 runs.
+- **After mixed precision:** a per-shape BF16 step profile decides the next speed-up: a fused
+  LM head and cross-entropy, or fewer kernel launches per step.
 - **Papers to models:** a gated or parameterised activation (DyT's learned alpha) in `expr`,
   post-norm placement and relative position biases; Claude-drafted primitives in both engines,
   accepted only through the same gates.
