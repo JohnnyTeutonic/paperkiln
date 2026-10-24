@@ -27,7 +27,8 @@ not the way.
 
 ## 1. What our IR is, precisely
 
-Normative text: the header comment of `include/microtorch/ir.hpp`. Reference interpreter:
+Normative text: `spec/IR_SPEC.md` (IR version 1), with the schema `spec/ir.schema.json`, the validator
+`tools/ir_validate.py` and the conformance suite `spec/conformance/`. Reference interpreter:
 `tools/ir_numpy.py` with `tools/ir_expr.py`. Implementations: paperkiln (exporter and trainer; CPU
 and CUDA) and ember.cpp (`graph_ir.cpp` and `graph_ir_cuda.cu`; CPU, CUDA, WASM, and WebGPU for llama
 and MoE). Contracts and gates: `LOCAL_LLM_STACK.md` sections 3 to 5 and 10.

@@ -2,8 +2,8 @@
 runs paperkiln GGUFs with them, tools/thirdparty_parity.py runs third-party GGUFs whose IR
 tools/gguf_ir.py builds from llama.cpp metadata.
 
-    run_nodes(nodes, env, W, i=None, no_window=False, wi=None)   # one embed / block / head node list
-    forward(doc, W, ids, last_only=False, trace=None)   # logits [T, vocab] (or the last row only)
+    run_nodes(nodes, env, W, i=None, no_window=False, wi=None, states=None)   # one embed / block / head node list
+    forward(doc, W, ids, last_only=False, trace=None, states=None)   # logits [T, vocab] (or the last row only)
     load_weights(path)                                  # {name: f32 array [.., in]} from any GGUF type
 
 Every op computes in f32. Beyond the ops tools/ir_run.py documents:
@@ -36,6 +36,8 @@ reads row v - vocab of that tensor for an id v >= vocab; an attention node with 
 the query at p see the key at j <= p iff j is a state position or in p's segment (turn_state_codes below,
 from the token ids, k = the state_weight's rows). A kv slot's "evict" changes no value (the engine may
 drop rows no later query sees), so the prefill reference ignores it.
+states (a dict): each recurrent op records its slot's tensors after the last row, as
+states[slot][application] = {tensor: array} (the decode state a prefill leaves; spec/IR_SPEC.md 6.3).
 """
 from __future__ import annotations
 
@@ -122,8 +124,13 @@ def weight_index(doc, i):
     return m[i]
 
 
-def run_nodes(nodes, env, W, i=None, no_window=False, wi=None):
-    """wi: the stored layer whose tensors "{i}" names (default i, the application)."""
+def run_nodes(nodes, env, W, i=None, no_window=False, wi=None, states=None):
+    """wi: the stored layer whose tensors "{i}" names (default i, the application). states: see the module
+    docstring (recurrent slots' tensors after the last row, per application)."""
+
+    def keep(nd, **tensors):
+        if states is not None:
+            states.setdefault(nd["state"], {})[i] = {k: np.array(v, dtype=np.float32) for k, v in tensors.items()}
     ti = i if wi is None else wi
     cur = [ti]  # the index "{i}" means for the current node (tensor_index "application": i)
 
@@ -194,6 +201,7 @@ def run_nodes(nodes, env, W, i=None, no_window=False, wi=None):
                 y = (y + wt[:, k] * xx[k:k + x.shape[0]]).astype(np.float32)
             if nd.get("bias"):
                 y = y + w(nd["bias"])
+            keep(nd, x=xx[-(K - 1):])
         elif op == "selective_scan":
             # Mamba-1 (ggml_ssm_scan): delta = softplus(dt); s = s * exp(delta A) + B (x delta);
             # y = sum_n s C (n ascending); + D x.
@@ -207,6 +215,7 @@ def run_nodes(nodes, env, W, i=None, no_window=False, wi=None):
                 y[t] = s @ cm[t]
             if nd.get("d"):
                 y = y + xs * w(nd["d"]).reshape(-1)
+            keep(nd, s=s)
         elif op == "gelu":
             if nd["approx"] == "tanh":
                 y = 0.5 * x * (1 + np.tanh(np.float32(math.sqrt(2 / math.pi)) * (x + np.float32(0.044715) * x ** 3)))
@@ -217,7 +226,7 @@ def run_nodes(nodes, env, W, i=None, no_window=False, wi=None):
         elif op in ("add", "mul", "sub"):
             y = x + env[ins[1]] if op == "add" else x * env[ins[1]] if op == "mul" else x - env[ins[1]]
         elif op == "relu":
-            y = np.maximum(x, np.float32(0))
+            y = np.where(x > np.float32(0), x, np.float32(0))  # IR_SPEC 5.9: relu(-0) = relu(NaN) = +0
         elif op == "sigmoid":
             y = np.float32(1) / (np.float32(1) + np.exp(-x))
         elif op == "affine":
@@ -240,6 +249,7 @@ def run_nodes(nodes, env, W, i=None, no_window=False, wi=None):
             num = np.cumsum(pk * v, axis=0, dtype=np.float32)
             den = np.cumsum(pk, axis=0, dtype=np.float32)
             y = (phi(q) * num) / np.maximum(den, np.float32(nd["den_floor"]))
+            keep(nd, num=num[-1].reshape(nd["heads"], nd["head_dim"]), den=den[-1].reshape(nd["heads"], nd["head_dim"]))
         elif op == "list":
             env[nd["out"]] = [env[n] for n in ins]
             continue
@@ -269,6 +279,7 @@ def run_nodes(nodes, env, W, i=None, no_window=False, wi=None):
             for t in range(x.shape[0]):
                 s = (A @ s + b * x[t]).astype(np.float32)
                 y[t] = c * s + d[0] * x[t]
+            keep(nd, s=s)
         elif op == "split":
             outs, at = [], 0
             for s in nd["sizes"]:
@@ -390,7 +401,7 @@ def _routed_blocks(doc, W, env, no_window, trace):
             env["x"] = x
 
 
-def forward(doc, W, ids, last_only=False, no_window=False, trace=None):
+def forward(doc, W, ids, last_only=False, no_window=False, trace=None, states=None):
     """Logits [T, vocab] for one sequence from position 0; last_only runs the head on the last row
     only (every head op is row-wise), the cheap way to decode greedily. trace (a list): under a
     depth_route block, each token's depth is appended to it."""
@@ -404,7 +415,7 @@ def forward(doc, W, ids, last_only=False, no_window=False, trace=None):
         _routed_blocks(doc, W, env, no_window, trace)
     else:
         for i in range(doc["block"]["repeat"]):
-            run_nodes(blk, env, W, i, no_window=no_window, wi=weight_index(doc, i))
+            run_nodes(blk, env, W, i, no_window=no_window, wi=weight_index(doc, i), states=states)
     if last_only:
         for k in list(env):
             if isinstance(env[k], np.ndarray) and env[k].ndim == 2 and env[k].shape[0] == len(ids):

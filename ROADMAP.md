@@ -33,7 +33,11 @@ where one of those documents carries a plan, this file wins.*
    Training-side support for the third-party ops paperkiln only references in numpy today
    (grouped-query attention, NEOX rotary, per-head RMSNorm, Mamba-1's conv1d_causal and
    selective_scan), so an extracted paper using them can train here, not only run in ember.
-5. **Colab runner: a re-provisioned driver pushes stale checkpoints over
+5. **The IR as a specification (`docs/IR_PRIOR_ART.md` items 1-4, approved by Jonathan on 25 Oct
+   2026; LOCAL_LLM_STACK.md section 11, item 8).** The conformance suite (`spec/conformance/`,
+   `tools/ir_conformance.py`: per-op fixtures, state traces, whole models, refusals; adapters for
+   the numpy reference and mtstudio). Then exporters write `ir_version` 1 (ember ce41ffb reads it).
+6. **Colab runner: a re-provisioned driver pushes stale checkpoints over
    finished runs** (`tools/colab_transfer_runner.py`). In Study 3 it
    overwrote four M25 event logs at step ~2900; the runs were re-run
    (execution clarification 1). Fix: never relay a checkpoint into a run
