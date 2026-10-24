@@ -476,7 +476,8 @@ class RunPodTransport:
                     "datacenter": dc, "cloud": self.cloud, "gpu_type_id": api.gpu_id(self.gpu),
                     "usd_per_hr": float(rate), "volume": (self.R().get("volume") or {}).get("id"),
                     "machine": {k: (pod.get("machine") or {}).get(k) for k in
-                                ("gpuTypeId", "cpuCount", "cpuType", "location", "dataCenterId", "secureCloud")},
+                                ("gpuTypeId", "location", "dataCenterId", "secureCloud", "diskThroughputMBps",
+                                 "maxDownloadSpeedMbps", "maxUploadSpeedMbps")},
                     "memory_gb": pod.get("memoryInGb"), "vcpu": pod.get("vcpuCount")}
         script = open(PRELUDE).read()
         rc, out = self.exec(

@@ -147,7 +147,7 @@ def list_pods():
 
 def get_pod(pod_id):
     """The pod, or None when the API says it does not exist (terminated). Raises when the API fails."""
-    st, d = rest("GET", f"/pods/{pod_id}")
+    st, d = rest("GET", f"/pods/{pod_id}?includeMachine=true")  # the host's data centre, location, disk/network
     if st == 200 and isinstance(d, dict) and d.get("id"):
         return d
     if st in (400, 404):
