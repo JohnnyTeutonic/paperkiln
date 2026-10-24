@@ -1011,15 +1011,23 @@ def cmd_pick(a):
     rc = 1
     if best:
         sd = os.path.join(best["run"], "sft")
-        w = glob.glob(os.path.join(sd, "*.safetensors"))
-        w = [x for x in w if os.path.basename(x) != "model.safetensors"]
-        g = [x for x in glob.glob(os.path.join(sd, "*.gguf"))]
-        if w and g and os.path.exists(sd + "_spec.json"):
-            shutil.copyfile(w[0], os.path.join(a.out, "model.safetensors"))
-            shutil.copyfile(g[0], os.path.join(a.out, "model.gguf"))
-            shutil.copyfile(sd + "_spec.json", os.path.join(a.out, "spec.json"))
-            out["weights_sha256"] = sha256(os.path.join(a.out, "model.safetensors"))
-            rc = 0
+        # The SFT model's own files, named after its spec (24 Oct 2026: a glob over *.safetensors
+        # picked the optimiser file, so the pilot's pick brought home AdamW state as its "model").
+        name = jload(sd + "_spec.json").get("name") if os.path.exists(sd + "_spec.json") else None
+        w = os.path.join(sd, f"{name}.safetensors") if name else ""
+        g = os.path.join(sd, f"{name}.gguf") if name else ""
+        want = jload(os.path.join(best["run"], "summary.json")).get("sft_weights_sha256")
+        if name and os.path.exists(w) and os.path.exists(g):
+            got = sha256(w)
+            if want and got != want:
+                out["weights"] = f"{w} has sha256 {got}, not the post job's SFT weights {want}; not copied"
+            else:
+                shutil.copyfile(w, os.path.join(a.out, "model.safetensors"))
+                shutil.copyfile(g, os.path.join(a.out, "model.gguf"))
+                shutil.copyfile(sd + "_spec.json", os.path.join(a.out, "spec.json"))
+                out["weights_sha256"] = got
+                out["weights_match_summary"] = bool(want)
+                rc = 0
         else:
             out["weights"] = "lost (VM replaced after the post job); rerun that post job for the model"
     jsave(os.path.join(a.out, "best.json"), out)
