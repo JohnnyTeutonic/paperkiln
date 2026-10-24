@@ -1,0 +1,20 @@
+{
+  "_comment": "step_profile_v1.json then bf16_gate_v1.json on ONE L4 (RunPod, 24 Oct 2026), in sequence: the FP32 step profile first (alone on the pod), then the BF16/flash gates in their own order (cuda_gate -> precision_gate -> step_profile_bf16). The jobs are copied unchanged from those two files; cuda_gate runs after step_profile has ended either way (after_terminal), so a profile failure does not hold the gates. About 2.8 L4 VM-hours. Upload vocab_llama3_bpe.gguf (C:/ml_artifacts/capacity/vocab/) with the runner's --upload. At home: python tools/step_profile.py table ART/step_profile/profile.json and ART/step_profile_bf16/profile.json.",
+  "max_parallel": 1,
+  "jobs": [
+    {"name": "step_profile",
+     "cmd": ["python3", "tools/step_profile.py", "run", "--out", "{out}", "--vocab", "{upload}/vocab_llama3_bpe.gguf",
+             "--configs", "fp32", "--steps", "40", "--warm", "10"],
+     "outputs": ["profile.json"]},
+    {"name": "cuda_gate", "after": "step_profile", "after_terminal": true,
+     "cmd": ["python3", "tools/colab_chat/tiny_chat_run.py", "cuda_gate", "--out", "{out}"],
+     "outputs": ["cuda_gate.json", "cuda_gate.log"]},
+    {"name": "precision_gate", "after": "cuda_gate",
+     "cmd": ["bash", "tools/colab_chat/precision_gate_vm.sh", "{out}", "{upload}", "dc29b5e6", "20m_L8", "32", "1", "300"],
+     "outputs": ["gate.json"]},
+    {"name": "step_profile_bf16", "after": "precision_gate",
+     "cmd": ["python3", "tools/step_profile.py", "run", "--out", "{out}", "--vocab", "{upload}/vocab_llama3_bpe.gguf",
+             "--configs", "fp32,bf16,flash,bf16_flash", "--steps", "30", "--warm", "8"],
+     "outputs": ["profile.json"]}
+  ]
+}
