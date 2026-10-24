@@ -90,6 +90,8 @@ if(MICROTORCH_CUDA)
     target_sources(microtorch PRIVATE src/cuda_ops.cu)
     # ops::depth_attend's kernels (llama_attnres; its own TU, the same seam).
     target_sources(microtorch PRIVATE src/cuda_depth_attend.cu)
+    # Flash attention (ops::attention_heads* with attention_kernel Flash; 24 Oct 2026).
+    target_sources(microtorch PRIVATE src/cuda_flash.cu)
     # Training GEMMs may run as cublasSgemm (MICROTORCH_CUBLAS=1), 18 Oct 2026.
     find_package(CUDAToolkit REQUIRED)
     target_link_libraries(microtorch PRIVATE CUDA::cublas)
@@ -193,6 +195,9 @@ add_test(NAME kv_cache COMMAND test_kv_cache)
 add_executable(test_state_tokens tests/test_state_tokens.cpp)
 target_link_libraries(test_state_tokens PRIVATE microtorch)
 add_test(NAME state_tokens COMMAND test_state_tokens)
+add_executable(test_mixed_precision tests/test_mixed_precision.cpp)
+target_link_libraries(test_mixed_precision PRIVATE microtorch)
+add_test(NAME mixed_precision COMMAND test_mixed_precision)
 add_executable(test_moe tests/test_moe.cpp)
 target_link_libraries(test_moe PRIVATE microtorch)
 add_test(NAME moe COMMAND test_moe)

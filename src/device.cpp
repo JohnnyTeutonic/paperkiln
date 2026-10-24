@@ -162,5 +162,49 @@ Matrix gemm(const Matrix& A, DevState** devA, Trans tA, const Matrix& B, DevStat
     return matmul_optimized(A.transpose(), B.transpose());
 }
 
+// ---- Mixed precision (device_cache.hpp) ----
+
+namespace {
+Precision g_matmul_precision = Precision::FP32;
+const char* g_profile_tag = nullptr;
+}  // namespace
+
+void set_matmul_precision(Precision p) { g_matmul_precision = p; }
+Precision matmul_precision() { return g_matmul_precision; }
+const char* precision_name(Precision p) { return p == Precision::BF16 ? "bf16" : "fp32"; }
+const char* profile_tag() { return g_profile_tag; }
+void set_profile_tag(const char* tag) { g_profile_tag = tag; }
+
+Matrix bf16_rounded(const Matrix& m) {
+    Matrix r(m.rows(), m.cols());
+    const float* s = m.get_data();
+    float* d = r.get_data();
+    const size_t n = m.rows() * m.cols();
+    for (size_t i = 0; i < n; ++i) d[i] = bf16_round(s[i]);
+    return r;
+}
+
+Matrix gemm(const Matrix& A, DevState** devA, Trans tA, const Matrix& B, DevState** devB, Trans tB,
+            Precision prec) {
+    if (prec == Precision::FP32) return gemm(A, devA, tA, B, devB, tB);
+#ifdef MICROTORCH_CUDA
+    if (g_device == Device::CUDA) {
+        const size_t M = (tA == Trans::T) ? A.cols() : A.rows();
+        const size_t Ka = (tA == Trans::T) ? A.rows() : A.cols();
+        const size_t Kb = (tB == Trans::T) ? B.cols() : B.rows();
+        const size_t N = (tB == Trans::T) ? B.rows() : B.cols();
+        if (Ka != Kb) throw std::runtime_error("gemm: inner dimensions disagree");
+        Matrix C = out_matrix(M, N);
+        if (step_resident_gemm(A, devA, tA, B, devB, tB, C, prec)) return C;
+    }
+#endif
+    // The emulation: bfloat16-rounded copies through the FP32 path (no
+    // DevState: the copies are temporaries). Host storage is current here
+    // (deferral lives only inside a step window, where the device path ran).
+    materialize(A);
+    materialize(B);
+    return gemm(bf16_rounded(A), nullptr, tA, bf16_rounded(B), nullptr, tB);
+}
+
 }  // namespace device
 }  // namespace microtorch

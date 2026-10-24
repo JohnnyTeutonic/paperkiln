@@ -7,6 +7,32 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **BF16 mixed precision and flash attention, opt-in** (24 Oct; `train.precision` "fp32" |
+  "bf16", `train.attention_kernel` "tiled" | "flash", llama family; the defaults are the previous
+  step bit for bit and write nothing new into events, results or GGUFs). BF16 rounds the inputs
+  of every `ops::matmul` GEMM (forward and both backward products) to bfloat16, round to nearest
+  even, and accumulates and returns FP32: on the device `cublasGemmEx` (CUDA_R_16BF in, CUDA_R_32F
+  out, CUBLAS_COMPUTE_32F; sm80+), elsewhere a host emulation (rounded copies through the FP32
+  path). Master weights, AdamW state, gradients, norms, softmax, RoPE, residual adds and the loss
+  stay FP32; no loss scaling (bfloat16 has float32's exponent, and no gradient is stored in it).
+  Recorded as `precision` in the model event and result.json and as `paperkiln.train.precision`
+  in the F32/Q8_0 GGUFs. Flash attention (`ops::attention_heads_flash`, `src/cuda_flash.cu`):
+  online-softmax forward that keeps the per-row log-sum-exp instead of the [H T, seq_len]
+  weights, and a recompute backward (dK/dV per key tile, dQ per query tile, no atomics), FP32,
+  on the full, causal and turn_state masks, head widths up to 64; host loops over the same tiles
+  are the reference. CPU gates (`tests/test_mixed_precision.cpp`): rounding against a
+  nearest-neighbour reference on 1e6 floats, BF16 GEMMs and `ops::matmul` equal to the rounded
+  FP32 GEMMs bit for bit, flash vs tiled within 5.7e-7 (y) and 5.6e-7 (dqkv) relative on every
+  mask, FD gradchecks of the flash op (worst 1.1e-3), a 60-step llama run: flash vs tiled 2.3e-7,
+  BF16 vs FP32 4.5e-3 per-step loss. Through mtstudio on the CPU (`tools/precision_gate.py`, d 64
+  L2, 150 steps on FineWeb-Edu text, 16k vocabulary): precision off vs the pre-change binary bit
+  for bit (every step's loss and grad norm, the validation loss, the safetensors and GGUF sha256),
+  as are the explicit-off spec and a rerun; 20-step moving-average loss vs FP32 tiled: flash
+  1.9e-8, BF16 7.5e-5, both 1.0e-4 (receipts `docs/receipts/*_cpu_20261024.*`). Every CUDA
+  target compiles (nvcc 12.6, sm_89; the flash kernels spill nothing). Device legs in `tools/colab_cuda_validate.sh`; the GPU
+  gate and throughput run is `tools/colab_chat/bf16_gate_v1.json`. `tools/step_profile.py`
+  (per-op-class step breakdown) and `tools/precision_gate.py` (off-bitwise and loss-curve legs
+  through mtstudio) come with it.
 - **Masked cross-entropy on the device** (24 Oct, the SFT loss): `ops::cross_entropy_masked`
   had no device path, so every SFT step downloaded the [rows, vocab] logits, ran the softmax on
   the host and uploaded the gradient (1 GiB each way at batch 32, T 512, 16k vocab; the tiny-chat

@@ -327,6 +327,10 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
         writer.write_metadata_uint32(a + ".expert_used_count", cfg.expert_used_count);
     }
     if (cfg.state_tokens_k > 0) writer.write_metadata_uint32("paperkiln.state_tokens.k", cfg.state_tokens_k);
+    // Training provenance (mixed precision, 24 Oct 2026): written only when set, and never into the
+    // 4-bit variants, which are llama.cpp's quantiser output byte for byte.
+    if (!cfg.train_precision.empty() && !lcpp)
+        writer.write_metadata_string("paperkiln.train.precision", cfg.train_precision);
 
     write_tokenizer(writer, cfg);
     if (lcpp) {

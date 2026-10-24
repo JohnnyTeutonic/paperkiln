@@ -199,7 +199,14 @@ advisory steps that cannot fail the build.
   - Re-measure the speedup on the op-set configuration over a full run
     before any paper quotes it. The 21x and 30.5x figures were measured
     over nine steps with deferral on.
-- **Mixed precision** (fp16/bf16 on the tape).
+- **BF16 mixed precision and flash attention** (`train.precision` bf16, `train.attention_kernel`
+  flash; built opt-in and CPU-gated 24 Oct 2026, CHANGELOG): the device gate and L4 throughput,
+  `tools/colab_chat/bf16_gate_v1.json` (CUDA legs, precision-off bitwise against dc29b5e6 through
+  mtstudio, loss-curve legs, step profile per config). Then, per the profile
+  (`tools/step_profile.py`): a fused LM head + cross-entropy (chunked over the vocabulary, no
+  [tokens, vocab] logits) if the head and loss classes dominate, and launch-count work (CUDA
+  graphs or fused elementwise ops) if the idle share does; BF16 inside the attention products
+  only if attention shows up.
 - **Mamba:** a selective SSM (input-dependent A and B) and a parallel scan.
 - **int4/NF4 quantisation.**
 - **Kimi linear attention:** the non-causal backward (`src/ops.cpp:658`

@@ -152,6 +152,16 @@ bool attn_heads_bwd(const Matrix&, size_t, const Matrix&, const Matrix&, float, 
 bool attn_heads_fwd_ts(const Matrix&, size_t, float, size_t, const std::vector<int>&, Matrix&, Matrix&) {
     return false;
 }
+bool flash_attention_supported(size_t head_dim) {
+    return head_dim > 0 && head_dim <= 64;  // the device kernels' limit, so CPU and CUDA builds agree
+}
+bool attn_flash_fwd(const Matrix&, size_t, float, size_t, int, const std::vector<int>*, Matrix&, Matrix&) {
+    return false;
+}
+bool attn_flash_bwd(const Matrix&, size_t, const Matrix&, const Matrix&, const Matrix&, float, size_t, int,
+                    const std::vector<int>*, Matrix&) {
+    return false;
+}
 bool embed_gather(const Matrix&, const int*, size_t, Matrix&) {
     return false;
 }

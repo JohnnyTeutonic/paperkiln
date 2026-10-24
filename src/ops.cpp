@@ -59,15 +59,20 @@ Var matmul(const Var& a, const Var& b) {
     // this runs exactly the pre-B2 ops (materialized transpose + the
     // same matmul), bit-identical.
     using device::Trans;
-    Matrix c = device::gemm(a->data, &a->dev, Trans::N, b->data, &b->dev, Trans::N);
-    return record(std::move(c), {a, b}, [](Variable* self) {
+    // Mixed precision (device_cache.hpp): the forward's precision is the
+    // backward's too, as is the profile tag (names only).
+    const device::Precision prec = device::matmul_precision();
+    const char* tag = device::profile_tag();
+    Matrix c = device::gemm(a->data, &a->dev, Trans::N, b->data, &b->dev, Trans::N, prec);
+    return record(std::move(c), {a, b}, [prec, tag](Variable* self) {
         const Var& a = self->parents[0];
         const Var& b = self->parents[1];
+        device::ProfileTag pt(tag);
         if (a->requires_grad) {
-            a->accumulate(device::gemm(self->grad, nullptr, Trans::N, b->data, &b->dev, Trans::T));
+            a->accumulate(device::gemm(self->grad, nullptr, Trans::N, b->data, &b->dev, Trans::T, prec));
         }
         if (b->requires_grad) {
-            b->accumulate(device::gemm(a->data, &a->dev, Trans::T, self->grad, nullptr, Trans::N));
+            b->accumulate(device::gemm(a->data, &a->dev, Trans::T, self->grad, nullptr, Trans::N, prec));
         }
     });
 }
@@ -1346,10 +1351,137 @@ static Matrix block_rows(const Matrix& m, size_t r0, size_t n) {
     return out;
 }
 
+namespace {
+AttnKernel g_attn_kernel = AttnKernel::Tiled;
+constexpr size_t kFlashKeyTile = 32;  // keys per online-softmax update (src/cuda_flash.cu BK)
+
+bool flash_visible(int mode, const std::vector<int>* code, size_t b0, size_t li, size_t lj) {
+    if (mode == 0) return true;
+    if (lj > li) return false;
+    if (mode == 1) return true;
+    return turn_state_visible((*code)[b0 + li], (*code)[b0 + lj]);
+}
+
+// Host reference of the Flash forward: y [T, d], lse [H T].
+void flash_fwd_host(const Matrix& m, size_t heads, float scale, size_t sl, int mode, const std::vector<int>* code,
+                    Matrix& lse, Matrix& y) {
+    const size_t T = m.rows(), d = m.cols() / 3, dk = d / heads;
+    std::vector<float> o(dk), s(kFlashKeyTile);
+    for (size_t h = 0; h < heads; ++h) {
+        const size_t oq = h * dk, ok = d + h * dk, ov = 2 * d + h * dk;
+        for (size_t i = 0; i < T; ++i) {
+            const size_t b0 = (i / sl) * sl, li = i - b0;
+            const size_t kend = mode == 0 ? sl : li + 1;
+            float mx = -INFINITY, l = 0.0f;
+            std::fill(o.begin(), o.end(), 0.0f);
+            for (size_t k0 = 0; k0 < kend; k0 += kFlashKeyTile) {
+                const size_t kn = std::min(kFlashKeyTile, kend - k0);
+                float tmax = -INFINITY;
+                for (size_t t = 0; t < kn; ++t) {
+                    const size_t lj = k0 + t;
+                    if (!flash_visible(mode, code, b0, li, lj)) {
+                        s[t] = -INFINITY;
+                        continue;
+                    }
+                    float acc = 0.0f;
+                    for (size_t c = 0; c < dk; ++c) acc += m(i, oq + c) * m(b0 + lj, ok + c);
+                    s[t] = acc * scale;
+                    tmax = std::max(tmax, s[t]);
+                }
+                const float mn = std::max(mx, tmax);
+                const float mu = mn == -INFINITY ? 0.0f : mn;
+                const float alpha = std::exp(mx - mu);
+                float psum = 0.0f;
+                for (size_t c = 0; c < dk; ++c) o[c] *= alpha;
+                for (size_t t = 0; t < kn; ++t) {
+                    const float p = std::exp(s[t] - mu);
+                    psum += p;
+                    if (p == 0.0f) continue;
+                    for (size_t c = 0; c < dk; ++c) o[c] += p * m(b0 + k0 + t, ov + c);
+                }
+                l = l * alpha + psum;
+                mx = mn;
+            }
+            for (size_t c = 0; c < dk; ++c) y(i, oq + c) = o[c] / l;
+            lse(h * T + i, 0) = mx + std::log(l);
+        }
+    }
+}
+
+// Host reference of the Flash backward; g [T, 3d] zero on entry.
+void flash_bwd_host(const Matrix& m, size_t heads, const Matrix& lse, const Matrix& y, const Matrix& gy, float scale,
+                    size_t sl, int mode, const std::vector<int>* code, Matrix& g) {
+    const size_t T = m.rows(), d = m.cols() / 3, dk = d / heads;
+    for (size_t h = 0; h < heads; ++h) {
+        const size_t oq = h * dk, ok = d + h * dk, ov = 2 * d + h * dk;
+        for (size_t i = 0; i < T; ++i) {
+            const size_t b0 = (i / sl) * sl, li = i - b0;
+            const size_t kend = mode == 0 ? sl : li + 1;
+            float D = 0.0f;
+            for (size_t c = 0; c < dk; ++c) D += gy(i, oq + c) * y(i, oq + c);
+            const float L = lse(h * T + i, 0);
+            for (size_t lj = 0; lj < kend; ++lj) {
+                if (!flash_visible(mode, code, b0, li, lj)) continue;
+                const size_t j = b0 + lj;
+                float s = 0.0f, dp = 0.0f;
+                for (size_t c = 0; c < dk; ++c) {
+                    s += m(i, oq + c) * m(j, ok + c);
+                    dp += gy(i, oq + c) * m(j, ov + c);
+                }
+                const float p = std::exp(s * scale - L);
+                const float ds = p * (dp - D);
+                for (size_t c = 0; c < dk; ++c) {
+                    g(j, ov + c) += p * gy(i, oq + c);
+                    g(j, ok + c) += scale * ds * m(i, oq + c);
+                    g(i, oq + c) += scale * ds * m(j, ok + c);
+                }
+            }
+        }
+    }
+}
+}  // namespace
+
+void set_attention_kernel(AttnKernel k) { g_attn_kernel = k; }
+AttnKernel attention_kernel() { return g_attn_kernel; }
+
+Var attention_heads_flash(const Var& qkv, size_t heads, float scale, size_t seq_len, int mode,
+                          const std::vector<int>* code) {
+    const size_t T = qkv->data.rows(), d3 = qkv->data.cols();
+    if (heads == 0 || d3 % (3 * heads) != 0) throw std::runtime_error("attention_heads_flash: bad head split");
+    const size_t d = d3 / 3, sl = seq_len == 0 ? T : seq_len;
+    if (T % sl != 0) throw std::runtime_error("attention_heads_flash: rows not a multiple of seq_len");
+    if (mode < 0 || mode > 2 || (mode == 2) != (code != nullptr))
+        throw std::runtime_error("attention_heads_flash: mode 2 (turn_state) and a code vector go together");
+    if (code && code->size() != T) throw std::runtime_error("attention_heads_flash: one code per row");
+    std::shared_ptr<const std::vector<int>> codep;
+    if (code) codep = std::make_shared<const std::vector<int>>(*code);
+    auto lse = cached(device::out_matrix(heads * T, 1));
+    Matrix y = device::out_matrix(T, d);
+    if (!device::devops::attn_flash_fwd(qkv->data, heads, scale, sl, mode, codep.get(), *lse, y)) {
+        device::materialize(qkv->data);
+        flash_fwd_host(qkv->data, heads, scale, sl, mode, codep.get(), *lse, y);
+    }
+    return record(std::move(y), {qkv}, [lse, heads, scale, sl, mode, codep](Variable* self) {
+        const Var& qkv = self->parents[0];
+        if (!qkv->requires_grad) return;
+        Matrix g = device::out_matrix(qkv->data.rows(), qkv->data.cols());
+        if (!device::devops::attn_flash_bwd(qkv->data, heads, *lse, self->data, self->grad, scale, sl, mode,
+                                            codep.get(), g)) {
+            for (const Matrix* x : std::vector<const Matrix*>{&qkv->data, &self->data, &self->grad, lse.get()})
+                device::materialize(*x);
+            g.fill(0.0f);
+            flash_bwd_host(qkv->data, heads, *lse, self->data, self->grad, scale, sl, mode, codep.get(), g);
+        }
+        qkv->accumulate(std::move(g));
+    });
+}
+
 Var attention_heads(const Var& qkv, size_t heads, float scale, size_t seq_len, bool causal) {
     const size_t T = qkv->data.rows(), d3 = qkv->data.cols();
     if (heads == 0 || d3 % (3 * heads) != 0) throw std::runtime_error("attention_heads: bad head split");
     const size_t d = d3 / 3, dk = d / heads, sl = seq_len == 0 ? T : seq_len;
+    if (g_attn_kernel == AttnKernel::Flash && device::devops::flash_attention_supported(dk))
+        return attention_heads_flash(qkv, heads, scale, seq_len, causal ? 1 : 0, nullptr);
     // All heads in one device op (20 Oct 2026) where the per-head path would
     // take the blocked device kernels: the same kernels with head strides,
     // reading q, k, v straight out of qkv. Per-head slices, their column
@@ -1426,6 +1558,8 @@ Var attention_heads_turn_state(const Var& qkv, size_t heads, float scale, size_t
     const size_t d = d3 / 3, dk = d / heads, sl = seq_len == 0 ? T : seq_len;
     if (T % sl != 0) throw std::runtime_error("attention_heads_turn_state: rows not a multiple of seq_len");
     if (code.size() != T) throw std::runtime_error("attention_heads_turn_state: one code per row");
+    if (g_attn_kernel == AttnKernel::Flash && device::devops::flash_attention_supported(dk))
+        return attention_heads_flash(qkv, heads, scale, seq_len, 2, &code);
     // Device: the blocked all-heads kernels (scores for every j <= i, a
     // turn_state softmax, the causal products). Masked weights are zeros,
     // so the causal backward is the turn_state backward.

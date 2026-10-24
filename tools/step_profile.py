@@ -14,7 +14,9 @@ does not depend on the text) twice per config:
      summed per entry point). Per step, the wall time is the sum of the phases and the GPU time
      the sum of the ops; the difference is time the GPU sat idle inside the step: host work,
      launch gaps, host syncs and copies outside an op.
-The entry points are grouped into classes (CLASSES below). Writes OUT/profile.json and prints the
+The entry points are grouped into classes (CLASSES below): the LM head's GEMMs (forward and
+backward, tagged "gemm_head" by nn::Llama) and the cross-entropy/softmax kernels ("loss") each
+have their own class, apart from the other GEMMs and the elementwise ops. Writes OUT/profile.json and prints the
 table. A config other than fp32 sets train.precision / train.attention_kernel and is refused
 (recorded, not run) unless the binary records the setting in its model event.
 """
@@ -44,14 +46,16 @@ CONFIGS = {"fp32": {}, "bf16": {"precision": "bf16"}, "flash": {"attention_kerne
            "bf16_flash": {"precision": "bf16", "attention_kernel": "flash"}}
 # Device entry point (MICROTORCH_GPU_PROFILE's op names) -> class. Unlisted names count as "other".
 CLASSES = {
-    "gemm": ["gemm", "gemm_bf16"],
+    "gemm": ["gemm", "gemm_bf16"],  # every GEMM but the LM head's
+    "head_gemm": ["gemm_head", "gemm_head_bf16", "transpose"],  # logits = h E^T and its backward, E^T itself
+    "bf16_convert": ["bf16_convert"],
     "attention_fwd": ["attn_heads_fwd", "attn_heads_fwd_ts", "attn_blocked_fwd", "attn_masked_softmax",
                       "swa_masked_softmax", "attn_flash_fwd"],
     "attention_bwd": ["attn_heads_bwd", "attn_blocked_bwd", "attn_softmax_bwd_inplace", "attn_flash_bwd"],
     "norms": ["rmsnorm_fwd", "rmsnorm_bwd", "layernorm_fwd", "layernorm_bwd"],
     "loss": ["ce_fwd", "ce_bwd", "ce_fwd_masked", "ce_bwd_masked", "logsumexp_fwd", "logsumexp_bwd"],
     "optimizer": ["adamw_step", "adamw_step_dev", "sgd_step", "sgd_step_dev", "sumsq"],
-    "embedding": ["embed_gather", "embed_scatter_add", "transpose"],
+    "embedding": ["embed_gather", "embed_scatter_add"],
     "elementwise": ["add", "sub", "mul", "scale", "axpy", "fill", "sigmoid_fwd", "sigmoid_bwd", "silu_fwd",
                     "silu_bwd", "swiglu_fwd", "swiglu_bwd", "gelu_fwd", "gelu_bwd", "softmax_fwd", "softmax_bwd",
                     "rope_fwd", "rope_bwd", "slice_cols", "place_cols", "concat_cols", "accumulate_cols",

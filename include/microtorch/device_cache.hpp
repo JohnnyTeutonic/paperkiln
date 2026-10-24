@@ -9,6 +9,8 @@
 // CPU-only builds: every call is a no-op (residency_enabled() == false),
 // so callers never need #ifdefs.
 #pragma once
+#include <cstdint>
+#include <cstring>
 #include <string>
 #include <utility>
 #include <vector>
@@ -114,11 +116,72 @@ enum class Trans { N, T };
 // and match today's numerics exactly.
 Matrix gemm(const Matrix& A, DevState** devA, Trans tA, const Matrix& B, DevState** devB, Trans tB);
 
+// ---- Mixed precision (BF16 autocast for the projection GEMMs, 24 Oct 2026)
+//
+// Precision::BF16 rounds both GEMM inputs to bfloat16 (round to nearest
+// even) and accumulates and returns FP32: master weights, optimiser state,
+// gradients, norms, softmax, RoPE, residual adds and the loss all stay
+// FP32, because only the GEMM INPUTS are rounded and every output is a
+// float. No loss scaling: bfloat16 keeps float32's 8-bit exponent (normal
+// range down to ~1.2e-38), so nothing a float holds underflows when
+// rounded, and no gradient is ever stored in bfloat16 (FP16, with 5
+// exponent bits and normals only above ~6.1e-5, is what needs scaling).
+// On the CUDA step-resident path the inputs are converted on the device
+// (__float2bfloat16_rn) and multiplied by cublasGemmEx (CUDA_R_16BF in,
+// CUDA_R_32F out, CUBLAS_COMPUTE_32F; compute capability 8.0 or newer).
+// Everywhere else (CPU, the Phase A/B1 device paths) the inputs are
+// rounded on the host and the FP32 path multiplies them: an emulation
+// whose only difference from the device is the FP32 summation order
+// (a bfloat16 x bfloat16 product is exact in float32).
+// Precision::FP32 is the existing gemm, unchanged bit for bit.
+enum class Precision { FP32, BF16 };
+// Process-wide precision of ops::matmul (default FP32; mtstudio sets it
+// from the spec's train.precision). Only ops::matmul reads it: attention's
+// internal products and every other op stay FP32.
+void set_matmul_precision(Precision p);
+Precision matmul_precision();
+const char* precision_name(Precision p);  // "fp32" / "bf16"
+// float -> nearest bfloat16 (ties to even), returned as the float it
+// equals. NaN stays NaN (quiet), +-inf stays inf, a finite value past the
+// largest bfloat16 rounds to inf: __float2bfloat16_rn's results.
+inline float bf16_round(float x) {
+    uint32_t u;
+    std::memcpy(&u, &x, 4);
+    if ((u & 0x7f800000u) == 0x7f800000u && (u & 0x007fffffu) != 0) {
+        u = (u | 0x00400000u) & 0xffff0000u;  // quiet NaN, sign kept
+    } else {
+        u += 0x7fffu + ((u >> 16) & 1u);
+        u &= 0xffff0000u;
+    }
+    float y;
+    std::memcpy(&y, &u, 4);
+    return y;
+}
+Matrix bf16_rounded(const Matrix& m);  // elementwise bf16_round copy
+// gemm at a precision: FP32 is the 6-argument gemm exactly.
+Matrix gemm(const Matrix& A, DevState** devA, Trans tA, const Matrix& B, DevState** devB, Trans tB,
+            Precision prec);
+
+// Profile tag (MICROTORCH_GPU_PROFILE): while a ProfileTag is alive, gemm
+// reports its time under the tag's name (a string literal, e.g.
+// "gemm_head") instead of "gemm"; ops::matmul carries the tag into its
+// backward. Names only: numerics are untouched, and with the profile off
+// nothing reads it.
+const char* profile_tag();
+void set_profile_tag(const char* tag);
+struct ProfileTag {
+    const char* prev;
+    explicit ProfileTag(const char* t) : prev(profile_tag()) { set_profile_tag(t); }
+    ~ProfileTag() { set_profile_tag(prev); }
+    ProfileTag(const ProfileTag&) = delete;
+    ProfileTag& operator=(const ProfileTag&) = delete;
+};
+
 #ifdef MICROTORCH_CUDA
 // B2 gemm path; returns false (doing nothing) unless step residency is
 // on AND a window is open, so the caller falls through to B1/Phase A.
 bool step_resident_gemm(const Matrix& A, DevState** devA, Trans tA, const Matrix& B,
-                        DevState** devB, Trans tB, Matrix& C);
+                        DevState** devB, Trans tB, Matrix& C, Precision prec = Precision::FP32);
 #endif
 
 // ---- Phase B2.1a: the device-side op set (docs/CUDA_PHASE_B2.md sec 4)
@@ -295,6 +358,18 @@ bool attn_heads_bwd(const Matrix& qkv, size_t heads, const Matrix& A, const Matr
 // zeros, so attn_heads_bwd with causal = true is its backward.
 bool attn_heads_fwd_ts(const Matrix& qkv, size_t heads, float scale, size_t seq_len, const std::vector<int>& code,
                        Matrix& A, Matrix& y);
+// Flash attention (src/cuda_flash.cu; ops::attention_heads* with the Flash
+// kernel): the same fused qkv layout, mode 0 full (every key of the row's
+// seq_len block), 1 causal, 2 turn_state (code: one entry per row, else
+// null). The forward writes y [T, d] and lse [H T] (head-major per-row
+// log-sum-exp of the scaled scores) and stores no weights; the backward
+// recomputes them from qkv and lse and writes all of dqkv [T, 3d]. seq_len
+// 0 = one sequence. Head widths up to 64 (flash_attention_supported).
+bool flash_attention_supported(size_t head_dim);
+bool attn_flash_fwd(const Matrix& qkv, size_t heads, float scale, size_t seq_len, int mode,
+                    const std::vector<int>* code, Matrix& lse, Matrix& y);
+bool attn_flash_bwd(const Matrix& qkv, size_t heads, const Matrix& lse, const Matrix& y, const Matrix& dY, float scale,
+                    size_t seq_len, int mode, const std::vector<int>* code, Matrix& dqkv);
 // B2.2: embedding gather (ids bounds-checked by the HOST caller first;
 // backward scatter-add stays host until B2.3) and cross-entropy
 // (softmax + nll on-device, host receives ONE float; P cached for the

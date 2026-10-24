@@ -577,6 +577,9 @@ Var Llama::forward(const std::vector<int>& ids, size_t seq_len, MoEAux* aux) con
     h = ops::rmsnorm(h, norm_w);
     // Tied head: logits = h @ E^T (gradients flow into the embedding both
     // through the gather and through the head matmul).
+    // The head's GEMMs (forward and backward) profile as "gemm_head"
+    // (MICROTORCH_GPU_PROFILE; names only).
+    device::ProfileTag head_tag("gemm_head");
     if (lm_head) return lm_head->forward(h);
     return ops::matmul(h, ops::transpose(embed_tokens->weight));
 }

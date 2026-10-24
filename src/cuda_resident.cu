@@ -7,12 +7,16 @@
 // relayed by the ember.cpp session): step-window GEMMs may run as plain
 // cublasSgemm, FP32 in and out, opt-in by MICROTORCH_CUBLAS=1, with TF32
 // tensor-core math scoped to the call by MICROTORCH_TF32=1 (ember's
-// pattern, tinyllama.cpp model.cpp). No mixed-precision GemmEx.
+// pattern, tinyllama.cpp model.cpp). BF16 autocast (24 Oct 2026, opt-in per
+// spec, device_cache.hpp Precision) is the one GemmEx: bfloat16 inputs,
+// FP32 accumulate and output.
 #include <cublas_v2.h>
+#include <cuda_bf16.h>
 #include <cuda_runtime.h>
 
 #include "device_pool.cuh"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
@@ -558,11 +562,69 @@ void cublas_gemm_rowmajor(const float* dA, bool ta, const float* dB, bool tb, fl
     if (s != CUBLAS_STATUS_SUCCESS) throw std::runtime_error("cublasSgemm failed: " + std::to_string(s));
 }
 
+__global__ void k_to_bf16(const float* x, __nv_bfloat16* y, size_t n) {
+    for (size_t i = blockIdx.x * static_cast<size_t>(blockDim.x) + threadIdx.x; i < n;
+         i += static_cast<size_t>(gridDim.x) * blockDim.x)
+        y[i] = __float2bfloat16_rn(x[i]);
+}
+
+__nv_bfloat16* to_bf16(const float* d, size_t n) {
+    __nv_bfloat16* h = nullptr;
+    cuda_check(pool::dmalloc(&h, n * sizeof(__nv_bfloat16)), "malloc bf16");
+    const unsigned blocks = static_cast<unsigned>(std::min<size_t>((n + 255) / 256, 4096));
+    k_to_bf16<<<blocks, 256>>>(d, h, n);
+    cuda_check(cudaGetLastError(), "bf16 convert");
+    return h;
+}
+
+// The BF16 GEMM wants tensor cores with bfloat16 support (sm80+: A100,
+// L4, H100). Older devices are refused loudly rather than emulated slowly.
+void require_bf16_device() {
+    static const bool ok = [] {
+        int dev = 0, major = 0;
+        cuda_check(cudaGetDevice(&dev), "get device");
+        cuda_check(cudaDeviceGetAttribute(&major, cudaDevAttrComputeCapabilityMajor, dev), "device attribute");
+        return major >= 8;
+    }();
+    if (!ok) throw std::runtime_error("precision bf16 needs compute capability 8.0 or newer (an L4 is 8.9)");
+}
+
+// Row-major C[M,N] = op(A) op(B) with A and B rounded to bfloat16 on the
+// device and FP32 accumulation and output (cublas_gemm_rowmajor's operand
+// mapping). The rounded copies are temporaries, freed before return.
+void cublas_gemm_rowmajor_bf16(const float* dA, bool ta, const float* dB, bool tb, float* dC, int M, int N,
+                               int K, const char* gemm_name) {
+    require_bf16_device();
+    detail::gpu_profile_begin("bf16_convert");
+    __nv_bfloat16* a16 = to_bf16(dA, static_cast<size_t>(M) * K);
+    __nv_bfloat16* b16 = to_bf16(dB, static_cast<size_t>(K) * N);
+    detail::gpu_profile_end("bf16_convert");
+    detail::gpu_profile_begin(gemm_name);
+    const float one = 1.0f, zero = 0.0f;
+    const cublasStatus_t s =
+        cublasGemmEx(cublas_handle(), tb ? CUBLAS_OP_T : CUBLAS_OP_N, ta ? CUBLAS_OP_T : CUBLAS_OP_N, N, M, K, &one,
+                     b16, CUDA_R_16BF, tb ? K : N, a16, CUDA_R_16BF, ta ? M : K, &zero, dC, CUDA_R_32F, N,
+                     CUBLAS_COMPUTE_32F, CUBLAS_GEMM_DEFAULT);
+    detail::gpu_profile_end(gemm_name);
+    pool::dfree(a16);
+    pool::dfree(b16);
+    if (s != CUBLAS_STATUS_SUCCESS) throw std::runtime_error("cublasGemmEx (bf16) failed: " + std::to_string(s));
+}
+
+// MICROTORCH_GPU_PROFILE names: the ProfileTag's name (or "gemm"), with a
+// _bf16 twin for the mixed-precision path, and the conversion's own name.
+const char* gemm_profile_name(bool bf16) {
+    const char* t = profile_tag();
+    const bool head = t != nullptr && std::strcmp(t, "gemm_head") == 0;
+    if (bf16) return head ? "gemm_head_bf16" : "gemm_bf16";
+    return head ? "gemm_head" : "gemm";
+}
+
 }  // namespace
 
 bool step_resident_gemm(const Matrix& A, DevState** devA, Trans tA,
                         const Matrix& B, DevState** devB, Trans tB,
-                        Matrix& C) {
+                        Matrix& C, Precision prec) {
     if (!g_step_residency || !g_in_step) return false;
     const int M = static_cast<int>(C.rows());
     const int N = static_cast<int>(C.cols());
@@ -584,19 +646,25 @@ bool step_resident_gemm(const Matrix& A, DevState** devA, Trans tA,
     dim3 block(TILE, TILE);
     dim3 grid((N + TILE - 1) / TILE, (M + TILE - 1) / TILE);
     const bool ta = (tA == Trans::T), tb = (tB == Trans::T);
-    detail::gpu_profile_begin("gemm");
-    if (cublas_on())
-        cublas_gemm_rowmajor(dA, ta, dB, tb, dC, M, N, K);
-    else if (!ta && !tb)
-        gemm_tiled_ops<false, false><<<grid, block>>>(dA, dB, dC, M, N, K);
-    else if (ta && !tb)
-        gemm_tiled_ops<true, false><<<grid, block>>>(dA, dB, dC, M, N, K);
-    else if (!ta && tb)
-        gemm_tiled_ops<false, true><<<grid, block>>>(dA, dB, dC, M, N, K);
-    else
-        gemm_tiled_ops<true, true><<<grid, block>>>(dA, dB, dC, M, N, K);
-    cuda_check(cudaGetLastError(), "gemm_ops launch");
-    detail::gpu_profile_end("gemm");
+    const bool bf16 = prec == Precision::BF16;
+    const char* pname = gemm_profile_name(bf16);
+    if (bf16) {
+        cublas_gemm_rowmajor_bf16(dA, ta, dB, tb, dC, M, N, K, pname);
+    } else {
+        detail::gpu_profile_begin(pname);
+        if (cublas_on())
+            cublas_gemm_rowmajor(dA, ta, dB, tb, dC, M, N, K);
+        else if (!ta && !tb)
+            gemm_tiled_ops<false, false><<<grid, block>>>(dA, dB, dC, M, N, K);
+        else if (ta && !tb)
+            gemm_tiled_ops<true, false><<<grid, block>>>(dA, dB, dC, M, N, K);
+        else if (!ta && tb)
+            gemm_tiled_ops<false, true><<<grid, block>>>(dA, dB, dC, M, N, K);
+        else
+            gemm_tiled_ops<true, true><<<grid, block>>>(dA, dB, dC, M, N, K);
+        cuda_check(cudaGetLastError(), "gemm_ops launch");
+        detail::gpu_profile_end(pname);
+    }
     if (!deferred) {
         cuda_check(cudaMemcpy(C.get_data(), dC, nC * sizeof(float),
                               cudaMemcpyDeviceToHost), "D2H");

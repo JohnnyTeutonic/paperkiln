@@ -60,6 +60,11 @@ struct LlamaExportConfig {
     // k}, row v - vocab for id v), F32 in every variant (the Q8_0 picks name
     // blk.*, output and token_embd only). 0 (the default) writes neither.
     uint32_t state_tokens_k = 0;
+    // The precision the weights were trained at (mtstudio's train.precision,
+    // e.g. "bf16"; the weights themselves are the FP32 masters). Non-empty
+    // writes the string key paperkiln.train.precision (not in the 4-bit
+    // variants); empty (the default, and every FP32 run) writes nothing.
+    std::string train_precision;
 
     // Weight layout of the 2-D projection tensors in the state_dict:
     //  false (default): HF torch.nn.Linear rows=[out], cols=[in] -- what

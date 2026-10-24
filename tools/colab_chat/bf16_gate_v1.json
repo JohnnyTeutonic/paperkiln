@@ -1,0 +1,16 @@
+{
+  "_comment": "Device gates for train.precision bf16 and train.attention_kernel flash (24 Oct 2026), on one L4 (RunPod or Colab), in order, each after the last passed: (1) cuda_gate: every leg of tools/colab_cuda_validate.sh, incl. the new test_mixed_precision legs (device BF16 GEMM vs host emulation, device flash kernels vs host flash and the tiled path on full/causal/turn_state masks, FD gradchecks, device training vs host); (2) precision_gate: mtstudio at dc29b5e6 (the commit tiny-chat E5/E1 launched on) vs HEAD with precision off, bitwise (every step's loss and grad norm, final val, exported safetensors/GGUF sha256), HEAD repeat and explicit-off bitwise, then flash, bf16 and bf16+flash vs FP32 tiled on 20m_L8 (batch 32, 300 steps, FineWeb-Edu sample text): 20-step moving-average loss within 0.5% (flash) / 2% (bf16), final val within 0.5% / 1%, s/step each; (3) step_profile: the step breakdown per op class and clean throughput for the nine tiny-chat shapes and pk_base_v1 under fp32, bf16, flash and bf16_flash (30 steps each). About 2.3 L4 VM-hours. Upload vocab_llama3_bpe.gguf (C:/ml_artifacts/capacity/vocab/) with the runner's --upload. Brings home cuda_gate.json, gate.json, profile.json; at home: python tools/step_profile.py table ART/step_profile_bf16/profile.json.",
+  "max_parallel": 1,
+  "jobs": [
+    {"name": "cuda_gate",
+     "cmd": ["python3", "tools/colab_chat/tiny_chat_run.py", "cuda_gate", "--out", "{out}"],
+     "outputs": ["cuda_gate.json", "cuda_gate.log"]},
+    {"name": "precision_gate", "after": "cuda_gate",
+     "cmd": ["bash", "tools/colab_chat/precision_gate_vm.sh", "{out}", "{upload}", "dc29b5e6", "20m_L8", "32", "1", "300"],
+     "outputs": ["gate.json"]},
+    {"name": "step_profile_bf16", "after": "precision_gate",
+     "cmd": ["python3", "tools/step_profile.py", "run", "--out", "{out}", "--vocab", "{upload}/vocab_llama3_bpe.gguf",
+             "--configs", "fp32,bf16,flash,bf16_flash", "--steps", "30", "--warm", "8"],
+     "outputs": ["profile.json"]}
+  ]
+}

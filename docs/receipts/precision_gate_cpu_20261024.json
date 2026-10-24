@@ -1,0 +1,183 @@
+{
+ "spec": {
+  "name": "gate",
+  "arch": {
+   "preset": "llama-tiny",
+   "custom": {
+    "d": 64,
+    "layers": 2,
+    "heads": 2,
+    "d_ff": 128
+   }
+  },
+  "data": {
+   "corpus": "/home/jonat/pk_bf16_gate_cpu/text.txt",
+   "vocab": "/mnt/c/ml_artifacts/capacity/vocab/vocab_llama3_bpe.gguf",
+   "vocab_cap": 16384,
+   "T": 64,
+   "max_tokens": 0
+  },
+  "train": {
+   "steps": 150,
+   "lr": 0.003,
+   "batch": 4,
+   "accum": 2,
+   "clip": 1.0,
+   "eval_every": 150,
+   "eval_windows": 16,
+   "checkpoint_every": 10000000,
+   "gradmap_every": 0,
+   "seed": 1,
+   "optimizer": "adamw",
+   "lr_schedule": {
+    "warmup_steps": 15,
+    "decay": "cosine",
+    "min_lr_frac": 0.1
+   }
+  },
+  "export": {
+   "formats": [
+    "safetensors",
+    "gguf"
+   ]
+  }
+ },
+ "env": {
+  "OMP_NUM_THREADS": "4",
+  "MICROTORCH_DEVICE": "cpu"
+ },
+ "new": "/home/jonat/pk_bf16_build/mtstudio",
+ "old": "/home/jonat/pk_bf16_base_build/mtstudio",
+ "gpu": null,
+ "legs": {
+  "off_bitwise": {
+   "ok": true,
+   "steps_differ": 0,
+   "val": [
+    7.563785701990128,
+    7.563785701990128
+   ],
+   "files_identical": true,
+   "files": {
+    "gate.gguf": "62e29300b08a9db56a90bbe495b9b59340d932ea00d54f79e798289de5d66e15",
+    "gate.safetensors": "799aa51b0b021f6489dbb5292773cf056caf35348c8f9f35fc4ef30b6ee9987e",
+    "model.safetensors": "799aa51b0b021f6489dbb5292773cf056caf35348c8f9f35fc4ef30b6ee9987e",
+    "optim.safetensors": "5db99b0afce349dc3fa45e95676cc0defa6f0ce7ab9cfc96149da8c87f1027e0"
+   }
+  },
+  "off_explicit": {
+   "ok": true,
+   "steps_differ": 0,
+   "val": [
+    7.563785701990128,
+    7.563785701990128
+   ],
+   "files_identical": true,
+   "files": {
+    "gate.gguf": "62e29300b08a9db56a90bbe495b9b59340d932ea00d54f79e798289de5d66e15",
+    "gate.safetensors": "799aa51b0b021f6489dbb5292773cf056caf35348c8f9f35fc4ef30b6ee9987e",
+    "model.safetensors": "799aa51b0b021f6489dbb5292773cf056caf35348c8f9f35fc4ef30b6ee9987e",
+    "optim.safetensors": "5db99b0afce349dc3fa45e95676cc0defa6f0ce7ab9cfc96149da8c87f1027e0"
+   }
+  },
+  "repeat": {
+   "ok": true,
+   "steps_differ": 0,
+   "val": [
+    7.563785701990128,
+    7.563785701990128
+   ],
+   "files_identical": true,
+   "files": {
+    "gate.gguf": "62e29300b08a9db56a90bbe495b9b59340d932ea00d54f79e798289de5d66e15",
+    "gate.safetensors": "799aa51b0b021f6489dbb5292773cf056caf35348c8f9f35fc4ef30b6ee9987e",
+    "model.safetensors": "799aa51b0b021f6489dbb5292773cf056caf35348c8f9f35fc4ef30b6ee9987e",
+    "optim.safetensors": "5db99b0afce349dc3fa45e95676cc0defa6f0ce7ab9cfc96149da8c87f1027e0"
+   }
+  },
+  "flash": {
+   "ok": true,
+   "recorded": true,
+   "loss_raw_worst_rel": 1.2580407675658975e-07,
+   "loss_ma20_worst_rel": 1.9061455838735873e-08,
+   "val": [
+    7.563785672187805,
+    7.563785701990128
+   ],
+   "val_rel": 3.9401330976172346e-09,
+   "tolerance": {
+    "ma20": 0.005,
+    "val": 0.005
+   },
+   "first_last": [
+    9.721352577209473,
+    7.428802490234375,
+    9.721352577209473,
+    7.428802490234375
+   ],
+   "s_per_step": [
+    2.7484926187429144,
+    2.472279421592871
+   ],
+   "speedup": 0.8995037515231256
+  },
+  "bf16": {
+   "ok": true,
+   "recorded": true,
+   "loss_raw_worst_rel": 0.00047777677291957124,
+   "loss_ma20_worst_rel": 7.502149309791066e-05,
+   "val": [
+    7.563387364149094,
+    7.563785701990128
+   ],
+   "val_rel": 5.2663818982751964e-05,
+   "tolerance": {
+    "ma20": 0.02,
+    "val": 0.01
+   },
+   "first_last": [
+    9.72136402130127,
+    7.428269386291504,
+    9.721352577209473,
+    7.428802490234375
+   ],
+   "s_per_step": [
+    2.45225488954997,
+    2.472279421592871
+   ],
+   "speedup": 1.0081657629181344
+  },
+  "bf16_flash": {
+   "ok": true,
+   "recorded": true,
+   "loss_raw_worst_rel": 0.0005322883604394348,
+   "loss_ma20_worst_rel": 0.00010002031407276837,
+   "val": [
+    7.56501230597496,
+    7.563785701990128
+   ],
+   "val_rel": 0.00016216799803173016,
+   "tolerance": {
+    "ma20": 0.02,
+    "val": 0.01
+   },
+   "first_last": [
+    9.72136402130127,
+    7.427733421325684,
+    9.721352577209473,
+    7.428802490234375
+   ],
+   "s_per_step": [
+    2.35847445304992,
+    2.472279421592871
+   ],
+   "speedup": 1.048253636326559
+  }
+ },
+ "base": {
+  "rc": 0,
+  "val": 7.563785701990128,
+  "s_per_step": 2.472279421592871
+ },
+ "ok": true
+}

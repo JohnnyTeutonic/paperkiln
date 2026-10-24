@@ -62,6 +62,29 @@ bool blocked_attention_enabled();
 // attention live (sl < T) it is one op over all heads (no slices), the
 // same floats.
 Var attention_heads(const Var& qkv, size_t heads, float scale, size_t seq_len, bool causal);
+// The attention kernel of attention_heads and attention_heads_turn_state
+// (24 Oct 2026; mtstudio's train.attention_kernel, process-wide, default
+// Tiled). Tiled is the code above and below, unchanged. Flash runs
+// attention_heads_flash for every head width up to 64
+// (devops::flash_attention_supported; wider heads keep Tiled): an online
+// softmax that stores the per-row log-sum-exp instead of the [H T, seq_len]
+// weights, and a backward that recomputes them (FlashAttention-2). Same
+// formulas, another summation order: equal to the tiled path to float
+// rounding, not bit for bit.
+enum class AttnKernel { Tiled, Flash };
+void set_attention_kernel(AttnKernel k);
+AttnKernel attention_kernel();
+// The Flash op itself. mode 0: full attention within each seq_len block
+// (seq_len 0 = one sequence), 1: causal, 2: turn_state with one code per row
+// (code non-null exactly for mode 2). On CUDA with the device op set live
+// the kernels of src/cuda_flash.cu; otherwise host loops over the same
+// tiles (32 keys per online-softmax update), the reference the device legs
+// and the gradchecks pin. Backward per row i of each head, visible keys j:
+//   P_ij = exp(scale q_i . k_j - L_i), D_i = dy_i . y_i,
+//   dS_ij = P_ij (dy_i . v_j - D_i), dv_j += P_ij dy_i,
+//   dq_i += scale dS_ij k_j, dk_j += scale dS_ij q_i.
+Var attention_heads_flash(const Var& qkv, size_t heads, float scale, size_t seq_len, int mode,
+                          const std::vector<int>* code);
 // ---- per-turn state tokens (ir.hpp attention mask "turn_state", 24 Oct 2026) ----
 // The mask's per-position code, a function of the ids alone: code = 2 s + c
 // with c = 1 for a state id (id >= vocab) and 0 for text, and s the number

@@ -167,6 +167,12 @@ struct Spec {
     std::string optimizer = "adamw";  // adamw | muon (hybrid: hidden matrices
                                       // to Muon, embeddings/vectors to AdamW)
     float muon_lr = 0.02f;
+    // Mixed precision and the attention kernel (24 Oct 2026; opt-in, the
+    // defaults are the FP32 tiled step bit for bit): train.precision "fp32" |
+    // "bf16" (BF16 GEMM inputs, FP32 accumulate, FP32 masters; device_cache.hpp
+    // Precision) and train.attention_kernel "tiled" | "flash" (ops::AttnKernel).
+    std::string precision = "fp32";
+    std::string attention_kernel = "tiled";
     int gradmap_every = 5;   // per-layer grad-norm event cadence
     size_t es_patience = 0;  // early stopping (0 = off)
     float es_min_delta = 0.0f;
@@ -515,6 +521,20 @@ Spec parse_spec(const std::string& path) {
     }
     s.optimizer = tr.value("optimizer", s.optimizer);
     s.muon_lr = tr.value("muon_lr", s.muon_lr);
+    s.precision = tr.value("precision", s.precision);
+    s.attention_kernel = tr.value("attention_kernel", s.attention_kernel);
+    if (s.precision != "fp32" && s.precision != "bf16")
+        throw std::runtime_error("train.precision must be fp32 or bf16 (got " + s.precision + ")");
+    if (s.attention_kernel != "tiled" && s.attention_kernel != "flash")
+        throw std::runtime_error("train.attention_kernel must be tiled or flash (got " + s.attention_kernel + ")");
+    // Refuse what would be ignored: only the llama family's attention runs
+    // through ops::attention_heads, and only its projections are checked
+    // under bf16 (tests/test_mixed_precision.cpp).
+    if ((s.precision != "fp32" || s.attention_kernel != "tiled") && s.family != "llama")
+        throw std::runtime_error("train.precision bf16 and train.attention_kernel flash are wired for the llama family only");
+    if (s.attention_kernel == "flash" && (s.heads == 0 || s.d % s.heads != 0 ||
+                                          !device::devops::flash_attention_supported(s.d / s.heads)))
+        throw std::runtime_error("train.attention_kernel flash supports head widths up to 64 (d / heads)");
     s.gradmap_every = tr.value("gradmap_every", s.gradmap_every);
     if (tr.contains("early_stopping")) {
         s.es_patience = tr["early_stopping"].value("patience", size_t(0));
@@ -1373,6 +1393,7 @@ void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama, 
         // before 19 Oct 2026 wrote 1e-6, so engines normalised slightly
         // differently from training (greedy parity held at 40/40).
         gc.rms_eps = 1e-5f;
+        if (s.precision != "fp32") gc.train_precision = s.precision;  // paperkiln.train.precision
         gc.weights_in_out = true;  // microtorch Linear is [in, out]
         set_export_tokenizer(gc, s, tokens, vocab);
         // The IR, from the modules themselves (Llama::export_ir).
@@ -1938,6 +1959,12 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                            {"aux_loss", s.moe_aux},
                            {"z_loss", s.moe_z}};
     if (sft || grpo || po) model_ev["objective"] = s.objective;
+    // Process-wide for this run (eval included); absent from the model event
+    // at the defaults, so FP32 tiled runs' events are unchanged.
+    device::set_matmul_precision(s.precision == "bf16" ? device::Precision::BF16 : device::Precision::FP32);
+    ops::set_attention_kernel(s.attention_kernel == "flash" ? ops::AttnKernel::Flash : ops::AttnKernel::Tiled);
+    if (s.precision != "fp32") model_ev["precision"] = s.precision;
+    if (s.attention_kernel != "tiled") model_ev["attention_kernel"] = s.attention_kernel;
     if (ops::blocked_attention_enabled()) model_ev["attention_impl"] = "blocked";  // absent = stacked  // absent for "lm": events unchanged
     ev.emit(model_ev);
     nn::Module& model_ref = model_pick;
@@ -2659,6 +2686,8 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                                                               static_cast<double>(s.batch) *
                                                               s.accum * s.T / wall_s
                                                         : 0.0}};
+        if (s.precision != "fp32") result["precision"] = s.precision;
+        if (s.attention_kernel != "tiled") result["attention_kernel"] = s.attention_kernel;
         std::ofstream rf(s.out_dir + "/result.json");
         rf << result.dump(2) << "\n";
     }
