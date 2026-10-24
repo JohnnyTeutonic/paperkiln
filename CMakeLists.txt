@@ -64,6 +64,8 @@ add_library(microtorch STATIC
     src/quant.cpp
     src/ir.cpp
     src/llama.cpp
+    src/llama_attnres.cpp
+    src/depth_attend.cpp
     src/moe.cpp
     src/kimi_linear.cpp
     src/srd.cpp
@@ -86,6 +88,8 @@ if(MICROTORCH_CUDA)
     target_sources(microtorch PRIVATE src/cuda_resident.cu)
     # Phase B2.1a op set (docs/CUDA_PHASE_B2.md section 4): same TU rules.
     target_sources(microtorch PRIVATE src/cuda_ops.cu)
+    # ops::depth_attend's kernels (llama_attnres; its own TU, the same seam).
+    target_sources(microtorch PRIVATE src/cuda_depth_attend.cu)
     # Training GEMMs may run as cublasSgemm (MICROTORCH_CUBLAS=1), 18 Oct 2026.
     find_package(CUDAToolkit REQUIRED)
     target_link_libraries(microtorch PRIVATE CUDA::cublas)
@@ -173,6 +177,10 @@ add_test(NAME lora_quant COMMAND test_lora_quant)
 add_executable(test_llama tests/test_llama.cpp)
 target_link_libraries(test_llama PRIVATE microtorch)
 add_test(NAME llama COMMAND test_llama)
+add_executable(test_llama_attnres tests/test_llama_attnres.cpp)
+target_link_libraries(test_llama_attnres PRIVATE microtorch)
+add_test(NAME llama_attnres COMMAND test_llama_attnres)
+
 add_executable(test_recursion tests/test_recursion.cpp)
 target_link_libraries(test_recursion PRIVATE microtorch)
 add_test(NAME recursion COMMAND test_recursion)

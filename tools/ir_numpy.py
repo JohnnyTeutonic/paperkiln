@@ -25,7 +25,9 @@ For third-party graphs:
 Any attribute of a block node (and of a block state slot) may be {"per_layer": [v_0, .., v_{L-1}]}:
 block i reads v_i. The block's own key "weight_index" {"per_layer": [m_0, .., m_{L-1}]} (tied-block
 recursion) makes application i read its tensors from blk.{m_i}.* (run_nodes' wi); everything else,
-per-layer attributes and state included, stays indexed by i.
+per-layer attributes and state included, stays indexed by i. A node with "tensor_index": "application"
+(llama_attnres under recursion: each application's own pseudo-queries) reads "{i}" as the application i
+instead (IR_SPEC_DRAFT section 3, not yet in ir.hpp).
 A block whose first node is depth_route (Mixture-of-Recursions, causal token choice; kv slots with
 kv_rows "active") routes at step 0's first application and runs each recursion step's applications on
 its active rows only (forward's trace receives the depths).
@@ -101,15 +103,17 @@ def weight_index(doc, i):
 def run_nodes(nodes, env, W, i=None, no_window=False, wi=None):
     """wi: the stored layer whose tensors "{i}" names (default i, the application)."""
     ti = i if wi is None else wi
+    cur = [ti]  # the index "{i}" means for the current node (tensor_index "application": i)
 
     def name(key):
-        return key.replace("{i}", str(ti)) if ti is not None else key
+        return key.replace("{i}", str(cur[0])) if cur[0] is not None else key  # cur: see tensor_index
 
     def w(key):
         return W[name(key)]
 
     for nd in nodes:
         nd = per_layer(nd, i)
+        cur[0] = i if nd.get("tensor_index") == "application" else ti
         op, ins = nd["op"], nd["in"]
         x = env[ins[0]]
         if op == "embedding":
@@ -363,5 +367,7 @@ def forward(doc, W, ids, last_only=False, no_window=False, trace=None):
         for k in list(env):
             if isinstance(env[k], np.ndarray) and env[k].ndim == 2 and env[k].shape[0] == len(ids):
                 env[k] = env[k][-1:]
+            elif isinstance(env[k], list):  # a depth_attend bank (attnres, llama_attnres): per-row entries
+                env[k] = [e[-1:] if e.ndim == 2 and e.shape[0] == len(ids) else e for e in env[k]]
     run_nodes(doc["head"]["nodes"], env, W, no_window=no_window)
     return env["logits"]

@@ -101,7 +101,9 @@ def weight_refs(doc):
         m = wmap[i] if wmap is not None and i < len(wmap) else i  # ir.hpp weight_index
         for j, node in enumerate(blk.get("nodes", [])):
             for key, n, fb in names(node):
-                out.append((f"block {i}[{j}].{key}", n.replace("{i}", str(m)), fb))
+                # "tensor_index": "application" (llama_attnres queries under recursion): "{i}" is i.
+                t = i if node.get("tensor_index") == "application" else m
+                out.append((f"block {i}[{j}].{key}", n.replace("{i}", str(t)), fb))
     return out
 
 

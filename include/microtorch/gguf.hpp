@@ -34,6 +34,11 @@ struct LlamaExportConfig {
     uint32_t vocab_size = 0;           // required
     float rms_eps = 1e-6f;
     float rope_freq_base = 10000.0f;
+    // Vectors, state-dict key -> GGUF name, each a [1, n] row written as the
+    // 1-D tensor {n} after output_norm (and after extra_proj), F32 in every
+    // variant: the pseudo-queries of llama_attnres (blk.{i}.attnres_attn_q,
+    // attnres_ffn_q, attnres_out_q; microtorch/llama_attnres.hpp).
+    std::vector<std::pair<std::string, std::string>> extra_vec;
     // Mixture of experts (llama.cpp's Mixtral layout; nn::MoEFFN). 0 = dense.
     // When set, each layer's FFN is read from
     //   layers.N.mlp.router.weight                    -> blk.N.ffn_gate_inp.weight  ne={d, E}

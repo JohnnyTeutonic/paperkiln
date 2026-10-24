@@ -1,0 +1,88 @@
+{
+ "_comment": "llama_attnres (cell X) build receipt, 24 Oct 2026: arch.custom.attn_res {form full, scale sources|none} on the llama block, ops::depth_attend fused (host + CUDA kernels), IR family llama_attnres, ember gate files. Numbers from tests/test_llama_attnres.cpp and tests/test_llama_attnres_ir.py on the laptop's CPU; CUDA compiled and linked only (validation on Colab: tools/colab_cuda_validate.sh leg test_llama_attnres).",
+ "init_equivalence": {
+  "_note": "zero pseudo-queries against the plain llama of the same seed (identical non-query tensors bit for bit). scale sources: every sublayer input is S * mean of the sources = the plain stream to rounding; scale none (Kimi's convex mixture): rmsnorm(x / S) = x / sqrt(mean x^2 + S^2 eps), eps 1e-5, which at the default init (stream mean square ~4e-4, S up to 33) shrinks deep sublayer inputs and the head.",
+  "sources_3_layers_default_init": {
+   "logits_worst_rel": 1.06e-07,
+   "plain_param_grad_worst_rel": 4.86e-07
+  },
+  "sources_16_layers_default_init": {
+   "logits_worst_rel": 3.02e-07,
+   "plain_param_grad_worst_rel": 1.09e-06
+  },
+  "none_3_layers_default_init": {
+   "logits_worst_rel": 0.23,
+   "plain_param_grad_worst_rel": 0.666
+  },
+  "none_16_layers_default_init": {
+   "logits_worst_rel": 0.744,
+   "plain_param_grad_worst_rel": 1.38
+  },
+  "mtstudio_step1_loss_3_layers": {
+   "plain": 2.802767,
+   "sources": 2.802767,
+   "none": 2.774905
+  },
+  "mtstudio_step1_loss_16_layers": {
+   "plain": 2.7488942,
+   "sources": 2.7488942,
+   "none": 2.7241778
+  },
+  "bit_equal": false,
+  "why_not_bit_equal": "a_i = fl(1/S) and the mixture sums S rounded products before the S rescale, against the plain model's sequential adds: equal to rounding (exact when S is a power of two)"
+ },
+ "gradcheck": {
+  "fused_op_fd_worst_rel": 0.00344,
+  "model_3_layers_sources": 0.00655,
+  "model_3_layers_none": 0.0065,
+  "model_recursion_1_2x3_1": 0.00338,
+  "fused_vs_composed_tape_ops_grad_worst_rel": 4.6e-07
+ },
+ "decode": {
+  "forward_cached_vs_forward_worst_rel": 3.08e-06
+ },
+ "numpy_ir_vs_mtstudio": {
+  "ar3": {
+   "worst": 3.04e-07,
+   "greedy": "40/40"
+  },
+  "ar3n": {
+   "worst": 3.03e-07,
+   "greedy": "40/40"
+  },
+  "ar_rec_1_2x2_1_tensor_index": {
+   "worst": 3.22e-07,
+   "greedy": "40/40"
+  }
+ },
+ "cpu_throughput_20m_L16": {
+  "_note": "mtstudio run, T 256, batch 2, 2 cores (cpu_budget), steps 3-12, laptop shared with other jobs: attnres and attnres_none do identical work, so their spread (1.02 vs 0.85) is contention noise; the depth attention is ~1.5% of a step's FLOPs and not resolvable on CPU.",
+  "plain_tok_s": 10.33,
+  "attnres_sources_tok_s": 10.52,
+  "attnres_none_tok_s": 8.81
+ },
+ "gpu_estimate_20m_L16_L4": {
+  "_note": "bandwidth estimate, not a measurement: the fused kernels read every source twice forward and twice backward and write one gradient per source per call (sum of S over a model = 560 at L16), plus the tape's accumulation of those gradients: about 80 GB per 16,384-token step, ~0.3-0.4 s on an L4, on top of plain's 0.645 s/step (E1 probe_20m_L16, 25,383 tok/s). Expected X/P16 ~0.6-0.7, against the 0.3 costed in PREREGISTRATION_DRAFT section 10. The composed tape form would be far slower on the device (ops::mul_row and ops::scale are host-only: a round trip per source). Measured by tools/colab_chat/tiny_chat_long_x_probe.json.",
+  "expected_ratio": [
+   0.6,
+   0.7
+  ]
+ },
+ "ember_gate": {
+  "dir": "/mnt/c/ml_artifacts/attnres_gate/ar3",
+  "files": {
+   "ar3.gguf": "0e2aea089db358e5c95d9dfba6d45bff5b958959ea654deab0d3e49108298c28",
+   "ar3.ir.json": "7428c891d0ee1964d67c3278d6fc48cb1c568bb718cbdb683a00308eedc722a8",
+   "ar3_q8_0.gguf": "e1a119bc6d7f5fc89054eac99a08e4ef6448de9ad63c8980c1023a328fd92b35",
+   "v.gguf": "879b0dcb5995b7d79c9b0b72779416d9fe54fb9a4bb223424feee827605ea48a",
+   "score_in.jsonl": "7c53d154e550772d5b4fcc8d34fed9f6230abd81bd3b058a2fff086a259ccec0",
+   "score_out.jsonl": "81e677bb7875608d5eed2bd6bfaa2965518c2abe6db15db4b5bfd655d889f8cb",
+   "spec.json": "842b1df3d4764c999616be239958c0f80e242cffbf7066fd633c8668cfbc7597"
+  },
+  "numpy_vs_mtstudio": {
+   "worst": 3.0367458249893366e-07,
+   "agree": 40,
+   "n": 40
+  }
+ }
+}

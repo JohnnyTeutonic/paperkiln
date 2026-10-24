@@ -1,0 +1,98 @@
+{
+ "_comment": "NOT LAUNCHED (24 Oct 2026). Long-carry cell X throughput probes (PREREGISTRATION_DRAFT.md section 10 costs X at 0.3x of P16): the CUDA gate (tools/colab_cuda_validate.sh, now with test_llama_attnres: the depth_attend kernels against the host loop and device training steps), then 300-step probes of P16 and X at T 1,024 and X at T 512 (against E1's probe_20m_L16, 25,383 tok/s). The X ratio is probe_X_T1024's tok_per_s_steady over probe_P16_T1024's; peak_gpu_mem_mib gives the activation cost. The corpus is E1's T 512 mix (no T 1,024 data job exists yet): mtstudio draws random windows of T tokens from the id stream, so the rate does not depend on the windowing; the T 1,024 data job replaces it before any training run. About 0.5 L4 VM-hours. Afterwards, at home: copy ART/probe_*/summary.json to experiments/tiny_chat_long_2026-10/stage0/ and record the ratio in PREREGISTRATION_DRAFT.md section 10. Upload vocab_llama3_bpe.gguf with the runner's --upload.",
+ "max_parallel": 1,
+ "jobs": [
+  {
+   "name": "cuda_gate",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "cuda_gate",
+    "--out",
+    "{out}"
+   ],
+   "outputs": [
+    "cuda_gate.json",
+    "cuda_gate.log"
+   ]
+  },
+  {
+   "name": "probe_P16_T1024",
+   "after": [
+    "cuda_gate"
+   ],
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "probe",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_long_2026-10/specs/probe_P16_T1024.json",
+    "--corpus",
+    "/content/chat/data/mix_s35.ids",
+    "--steps",
+    "300",
+    "--cuda-gate",
+    "/content/chat/cuda_gate",
+    "--data-job",
+    "tools/colab_chat/tiny_chat_s0.json"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "probe_X_T1024",
+   "after": [
+    "cuda_gate"
+   ],
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "probe",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_long_2026-10/specs/probe_X_T1024.json",
+    "--corpus",
+    "/content/chat/data/mix_s35.ids",
+    "--steps",
+    "300",
+    "--cuda-gate",
+    "/content/chat/cuda_gate",
+    "--data-job",
+    "tools/colab_chat/tiny_chat_s0.json"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "probe_X_T512",
+   "after": [
+    "cuda_gate"
+   ],
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "probe",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_long_2026-10/specs/probe_X_T512.json",
+    "--corpus",
+    "/content/chat/data/mix_s35.ids",
+    "--steps",
+    "300",
+    "--cuda-gate",
+    "/content/chat/cuda_gate",
+    "--data-job",
+    "tools/colab_chat/tiny_chat_s0.json"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  }
+ ]
+}

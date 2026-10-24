@@ -9,6 +9,7 @@
 
 #include "microtorch/device_cache.hpp"
 #include "microtorch/ir.hpp"
+#include "microtorch/llama_attnres.hpp"
 
 namespace microtorch {
 namespace nn {
@@ -277,6 +278,12 @@ Llama::Llama(const LlamaConfig& cfg_, unsigned seed) : cfg(cfg_) {
     // Its own seed, so every other tensor starts as in the fixed schedule.
     if (cfg.recursion.routed())
         rec_router = mod<Linear>("recursion.router", cfg.d, cfg.recursion.repeats, false, seed + 13);
+    // Attention Residuals (llama_attnres.hpp): zero-initialised queries, no
+    // random draw, so every other tensor starts as in the plain model.
+    if (cfg.attn_res.on) {
+        attnres_check(cfg);
+        attn_res = mod<AttnResQueries>("attn_res", cfg.d, schedule.size());
+    }
 }
 
 Var Llama::route(const Var& h, std::vector<int>& depth, std::vector<float>& margin, MoEAux* aux) const {
@@ -326,6 +333,7 @@ Var Llama::route(const Var& h, std::vector<int>& depth, std::vector<float>& marg
 }
 
 Var Llama::forward(const std::vector<int>& ids, size_t seq_len, MoEAux* aux) const {
+    if (attn_res) return attnres_forward(*this, ids, seq_len, aux);
     // RoPE positions restart every seq_len (0 = one sequence).
     const size_t sl = seq_len == 0 ? ids.size() : seq_len;
     if (ids.size() % sl != 0) throw std::runtime_error("ids not a multiple of seq_len");
@@ -409,6 +417,7 @@ Var Llama::forward(const std::vector<int>& ids, size_t seq_len, MoEAux* aux) con
 }
 
 Var Llama::forward_cached(const std::vector<int>& ids, LlamaKV& kv) const {
+    if (attn_res) return attnres_forward_cached(*this, ids, kv);
     if (ids.empty()) throw std::runtime_error("llama: forward_cached needs at least one new token");
     if (kv.k.empty()) {
         kv.k.assign(schedule.size(), {});
@@ -481,6 +490,7 @@ Var Llama::forward_cached(const std::vector<int>& ids, LlamaKV& kv) const {
 }
 
 ir::json Llama::export_ir() const {
+    if (attn_res) return attnres_export_ir(*this);
     // One block template for all layers. Every LlamaBlock is built from the
     // same config, but check: a block that differed would need a per-layer
     // override, which this exporter does not write.

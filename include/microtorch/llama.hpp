@@ -12,6 +12,8 @@
 namespace microtorch {
 namespace nn {
 
+class AttnResQueries;  // microtorch/llama_attnres.hpp
+
 struct LlamaConfig {
     size_t vocab = 4096, d = 128, n_layers = 2, n_heads = 4;
     size_t d_ff = 512;  // SwiGLU intermediate
@@ -26,6 +28,15 @@ struct LlamaConfig {
     // Mixture-of-experts FFN (moe.hpp). experts == 0 (the default) is the
     // dense SwiGLU block, constructed exactly as before.
     MoEConfig moe;
+    // Attention Residuals on the sublayer stream (spec arch.custom.attn_res;
+    // microtorch/llama_attnres.hpp; family llama_attnres). Off by default:
+    // the plain residual stream, untouched. scale "sources" (default) or
+    // "none" (Kimi's convex mixture; see llama_attnres.hpp for why the
+    // default rescales).
+    struct AttnRes {
+        bool on = false;
+        std::string scale = "sources";
+    } attn_res;
     // Tied-block recursion (spec arch.custom.recursion). Off (block == 0,
     // the default): every stored layer is applied once, in order, as before.
     // On: the model stores n_layers = prelude + block + coda distinct layers
@@ -198,6 +209,8 @@ public:
     std::shared_ptr<Linear> rec_router;
     mutable std::vector<int> last_depth;
     mutable std::vector<float> last_margin;
+    // cfg.attn_res.on: the pseudo-queries (registered as "attn_res"; null otherwise).
+    std::shared_ptr<AttnResQueries> attn_res;
 
 private:
     // Routing for the rows of h (schedule "mor"): depths, margins, and the

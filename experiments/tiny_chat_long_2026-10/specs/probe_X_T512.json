@@ -1,0 +1,56 @@
+{
+ "name": "tcl_X_T512",
+ "arch": {
+  "preset": "llama-tiny",
+  "rope_heads": "all",
+  "custom": {
+   "d": 320,
+   "layers": 16,
+   "heads": 5,
+   "d_ff": 864,
+   "attn_res": {
+    "form": "full",
+    "scale": "sources"
+   }
+  }
+ },
+ "data": {
+  "corpus": "/content/chat/data/mix_s35.ids",
+  "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+  "vocab_cap": 16384,
+  "T": 512,
+  "max_tokens": 0
+ },
+ "train": {
+  "steps": 10000,
+  "lr": 0.001,
+  "batch": 16,
+  "accum": 2,
+  "clip": 1.0,
+  "eval_every": 500,
+  "eval_windows": 32,
+  "checkpoint_every": 500,
+  "gradmap_every": 0,
+  "seed": 1,
+  "optimizer": "adamw",
+  "lr_schedule": {
+   "warmup_steps": 500,
+   "decay": "cosine",
+   "min_lr_frac": 0.1
+  }
+ },
+ "export": {
+  "formats": [
+   "safetensors",
+   "gguf"
+  ]
+ },
+ "_shape": {
+  "size": "20m",
+  "nonemb": 19835200,
+  "emb": 5242880,
+  "total": 25088320,
+  "attn_res_query_params": 10240
+ },
+ "_note": "X at E1's T 512 batch 16 x 2: directly comparable with stage0/attempt1/s0/probe_20m_L16 (25,383 tokens/s steady on an L4). Throughput probe only."
+}

@@ -42,6 +42,7 @@
 #include "microtorch/gguf.hpp"
 #include "microtorch/ir.hpp"
 #include "microtorch/llama.hpp"
+#include "microtorch/llama_attnres.hpp"
 #include "microtorch/safetensors.hpp"
 #include "microtorch/posttrain/grpo.hpp"
 #include "microtorch/posttrain/verifier.hpp"
@@ -78,6 +79,10 @@ struct Spec {
     size_t moe_experts = 0, moe_top_k = 1;
     std::string moe_gate;  // "renorm" (Mixtral) | "raw" (Switch); resolved in parse_spec
     float moe_aux = 0.01f, moe_z = 0.001f;  // load-balance and router z-loss coefficients
+    // llama family: Attention Residuals on the sublayer stream (arch.custom.attn_res;
+    // nn::LlamaConfig::AttnRes, microtorch/llama_attnres.hpp). false = no key = the plain stream.
+    bool attn_res = false;
+    std::string attn_res_scale = "sources";
     // llama family: tied-block recursion (arch.custom.recursion; nn::LlamaConfig::Recursion).
     // rec_block == 0 = no recursion key = the plain model, untouched. With it,
     // `layers` counts STORED layers (prelude + block + coda).
@@ -304,6 +309,24 @@ Spec parse_spec(const std::string& path) {
                                          std::to_string(stored));
             s.layers = stored;
         }
+        if (c.contains("attn_res")) {
+            // {"form": "full", "scale": "sources" | "none"}: every sublayer reads attention over
+            // the embedding and all earlier sublayer outputs (zero-initialised pseudo-queries).
+            const json a = c["attn_res"];
+            if (!a.is_object()) throw std::runtime_error("arch.custom.attn_res must be an object");
+            for (const auto& [k, v] : a.items())
+                if (k != "form" && k != "scale" && k.rfind("_", 0) != 0)
+                    throw std::runtime_error("arch.custom.attn_res: unknown key " + k + " (form, scale)");
+            const std::string form = a.value("form", std::string("full"));
+            if (form != "full")
+                throw std::runtime_error("arch.custom.attn_res.form \"" + form +
+                                         "\" is not implemented (\"full\": every sublayer output is a source)");
+            s.attn_res = true;
+            s.attn_res_scale = a.value("scale", s.attn_res_scale);
+            if (s.attn_res_scale != "sources" && s.attn_res_scale != "none")
+                throw std::runtime_error("arch.custom.attn_res.scale must be sources or none, got " +
+                                         s.attn_res_scale);
+        }
     }
     // Family resolution for the flavor knobs. RoPE with the llama block's
     // flavours (rmsnorm, swiglu, residual stream, exact attention; each
@@ -351,6 +374,9 @@ Spec parse_spec(const std::string& path) {
                 "kimi/srd presets are 2-block parity models (layers must be 2)");
     }
 
+    if (s.attn_res && s.family != "llama")
+        throw std::runtime_error("arch.custom.attn_res needs the llama family (rmsnorm, swiglu, rope, exact attention); "
+                                 "the gpt2 attnres preset is its own family");
     if (s.rec_block > 0 && s.family != "llama")
         throw std::runtime_error("arch.custom.recursion needs the llama family (rmsnorm, swiglu, rope, exact attention)");
     if (arch.contains("moe")) {
@@ -499,7 +525,31 @@ Spec parse_spec(const std::string& path) {
                 // a recursed model is a "paperkiln" file llama.cpp does not read.
                 throw std::runtime_error("export gguf_" + q + ": llama.cpp's mix has no reference for a recursed "
                                          "model (gguf and gguf_q8_0* only)");
+    if (s.attn_res) {
+        // nn::attnres_check refuses the same at construction; plan says so first.
+        if (s.moe_experts > 0) throw std::runtime_error("arch.custom.attn_res with arch.moe is not wired");
+        if (s.rec_block > 0 && s.rec_schedule == "mor")
+            throw std::runtime_error("arch.custom.attn_res with recursion schedule mor is not implemented (the bank's "
+                                     "per-row presence, IR_SPEC_DRAFT section 4, is exploratory); fixed recursion "
+                                     "is supported, one pair of queries per application");
+        if (s.rec_block > 0 && s.rec_inject != "none")
+            throw std::runtime_error("arch.custom.attn_res: recursion inject add has no residual stream to add to");
+        const size_t apps = s.rec_block > 0 ? s.rec_prelude + s.rec_block * s.rec_repeats + s.rec_coda : s.layers;
+        if (2 * apps + 1 > 128)
+            throw std::runtime_error("arch.custom.attn_res: " + std::to_string(2 * apps + 1) +
+                                     " depth sources exceed the depth_attend kernel's 128");
+        for (const auto& q : s.exp_gguf_quants)
+            if (q == "q4_0" || q == "q4_k_m" || q == "q4_k_s")
+                throw std::runtime_error("export gguf_" + q + ": llama.cpp's mix has no reference for an "
+                                         "attention-residual model (gguf and gguf_q8_0* only)");
+    }
     return s;
+}
+
+// The spec's attention residuals onto a llama config (no-op without arch.custom.attn_res).
+void apply_attn_res(nn::LlamaConfig& lc, const Spec& s) {
+    lc.attn_res.on = s.attn_res;
+    lc.attn_res.scale = s.attn_res_scale;
 }
 
 // The spec's MoE settings onto a llama config (no-op for a dense spec).
@@ -1155,6 +1205,15 @@ void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama, 
         if (effective_layers(s) != s.layers || routed(s)) gc.architecture = "paperkiln";
         // schedule "mor": the router, written in full (ir.hpp depth_route).
         if (llama->rec_router) gc.extra_proj.emplace_back("recursion.router.weight", "rec.0.router.weight");
+        if (llama->attn_res) {
+            // llama_attnres (llama_attnres.hpp): llama.cpp's graph has no depth
+            // attention, so the file is "paperkiln"; the pseudo-queries are [d]
+            // vectors, application 0's attention query (never read) as zeros.
+            gc.architecture = "paperkiln";
+            sd2.emplace("attn_res.attn_q.0", Matrix(1, s.d));
+            gc.extra_vec.emplace_back("attn_res.attn_q.0", nn::attnres_unused_query_name(*llama));
+            for (const auto& kv : nn::attnres_gguf_names(*llama)) gc.extra_vec.push_back(kv);
+        }
         gc.head_count = (uint32_t)s.heads;
         // The model's real FFN width. Exports before 19 Oct 2026 wrote 3d
         // whatever arch.custom.d_ff said; llama.cpp checks ffn tensor
@@ -1390,6 +1449,10 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                     "layers (schedule %s, inject %s)\n",
                     s.rec_prelude, s.rec_block, s.rec_repeats, s.rec_coda, effective_layers(s), s.layers,
                     s.rec_schedule.c_str(), s.rec_inject.c_str());
+    if (s.attn_res)
+        std::printf("attn_res: full (sublayer level), scale %s, %zu depth sources, %zu zero-initialised "
+                    "pseudo-queries of %zu\n",
+                    s.attn_res_scale.c_str(), 2 * effective_layers(s) + 1, 2 * effective_layers(s), s.d);
     if (routed(s))
         std::printf("mor: causal token choice over depths 1..%zu (router %zu x %zu at step 0's input), gate %s, "
                     "balance %g, z_loss %g, kv_rows %s\n",
@@ -1626,6 +1689,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         lc.n_ctx = s.T;
         lc.rope_all_heads = rope_heads == "all";
         apply_moe(lc, s);
+        apply_attn_res(lc, s);
         apply_recursion(lc, s);
         llama = std::make_shared<nn::Llama>(lc, s.seed);
         llama->checkpoint_blocks = s.ckpt_act;
@@ -1687,6 +1751,10 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         model_ev["recursion"]["mor"] = {{"route", s.rec_mor_route}, {"gate", s.rec_mor_gate},
                                         {"balance", s.rec_mor_balance}, {"z_loss", s.rec_mor_z},
                                         {"kv_rows", s.rec_mor_kv}, {"router_params", s.d * s.rec_repeats}};
+    // Absent without attention residuals: the model event is unchanged.
+    if (s.attn_res)
+        model_ev["attn_res"] = {{"form", "full"}, {"scale", s.attn_res_scale},
+                                {"sources", 2 * effective_layers(s) + 1}, {"query_params", 2 * effective_layers(s) * s.d}};
     // Absent for dense models: their model event is unchanged.
     if (s.moe_experts > 0)
         model_ev["moe"] = {{"experts", s.moe_experts},
@@ -2656,6 +2724,7 @@ struct LoadedLM {
             rope_heads = resolve_rope_heads(s, /*existing=*/true);
             lc.rope_all_heads = rope_heads == "all";
             apply_moe(lc, s);
+            apply_attn_res(lc, s);
             apply_recursion(lc, s);
             llama = std::make_shared<nn::Llama>(lc, s.seed);
         } else {
