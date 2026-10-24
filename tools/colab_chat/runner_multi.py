@@ -400,7 +400,7 @@ def fetch_outputs(st, name, outputs, best_effort=False):
             js.setdefault("fetched", []).append(f)
             st.save()
             log(f"{name}: {f} downloaded")
-        if not best_effort:
+        if not best_effort and not T.whole_files:  # RunPod's rsync is fast: all of them now, no idle pod ticks
             return
     if best_effort or len(js.get("fetched", [])) == len(outputs) + 1:
         js["home"] = True
