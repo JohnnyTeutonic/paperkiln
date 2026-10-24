@@ -37,5 +37,10 @@ fi
 python3 -m pip -q install --root-user-action=ignore huggingface_hub pandas pyarrow tokenizers numpy 2>&1 | tail -3 || true
 nvidia-smi -L
 nvcc --version | tail -2 || true
+# The host driver's CUDA (the create carries no allowedCudaVersions filter): the image's 12.4 runtime and
+# sm_89 binaries run on any 12.x driver (minor-version compatibility); older is refused.
+cuda=$(nvidia-smi | sed -n 's/.*CUDA Version: *\([0-9][0-9]*\)\..*/\1/p' | head -1)
+echo "host driver CUDA major: ${cuda:-unknown}"
+if [ -z "$cuda" ] || [ "$cuda" -lt 12 ]; then echo "host CUDA driver older than 12: refused"; exit 3; fi
 nproc; free -g | head -2; df -h /content | tail -1
 echo "prelude done $(date -u)"

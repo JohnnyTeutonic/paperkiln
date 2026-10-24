@@ -36,7 +36,8 @@ import urllib.request
 import runpod_api as api
 
 IMAGE = "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04"  # official RunPod, CUDA 12.4 devel (nvcc)
-CUDA_OK = ["12.4", "12.5", "12.6", "12.7", "12.8", "12.9", "13.0"]  # host drivers that run the image's 12.4
+# No allowedCudaVersions filter on the create: with it (12.4 to 13.0) RunPod found no L4 host at all (24 Oct
+# 2026, EUR-IS-2 and EU-RO-1); the prelude records the host driver's CUDA and refuses one older than 12.0.
 KEY = os.path.expanduser("~/.ssh/runpod_ed25519")
 REGISTRY = os.path.expanduser("~/.runpod/runners.json")
 PRELUDE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "runpod_prelude.sh")
@@ -324,6 +325,15 @@ class RunPodTransport:
     def _stocked(self):
         return api.stocked_dcs(self.gpu, MIN_RAM, MIN_VCPU, secure=self.cloud == "SECURE")
 
+    def _retire(self, st, vol):
+        """The campaign leaves this volume: deleted now when no pod ever ran on it (nothing to lose), else
+        kept until the next pod is up (create) or the campaign is home (release)."""
+        R = self.R(st)
+        if not any(p.get("volume") == vol["id"] for p in R["ledger"]["pods"]) and self._delete_volume(st, vol):
+            return
+        R["retired_volumes"].append(vol)
+        st.save()
+
     def _volume_for_create(self, st):
         """(data centre, volume or None) for the next pod; creates the volume when needed."""
         R = self.R(st)
@@ -335,7 +345,7 @@ class RunPodTransport:
             return stocked[0], None
         if self.dc:
             if vol and vol["dc"] != self.dc:
-                R["retired_volumes"].append(vol)
+                self._retire(st, vol)
                 vol = R["volume"] = None
             dc = self.dc
         else:
@@ -350,7 +360,7 @@ class RunPodTransport:
                     return vol["dc"], vol
                 self.log(f"{vol['dc']}: no {self.gpu} (stock {stocked}, {R.get('dc_fails', 0)} failed creates); "
                          "moving the campaign to a new volume (full prepare)")
-                R["retired_volumes"].append(vol)
+                self._retire(st, vol)
                 vol = R["volume"] = None
                 stocked = others
             dc = stocked[0]
@@ -377,7 +387,7 @@ class RunPodTransport:
             pub = open(KEY + ".pub").read().strip()
             body = {"name": self.name, "imageName": self.image, "computeType": "GPU", "cloudType": self.cloud,
                     "gpuTypeIds": [api.gpu_id(self.gpu)], "gpuCount": 1, "dataCenterIds": [dc],
-                    "allowedCudaVersions": CUDA_OK, "containerDiskInGb": 30 if vol else self.volume_gb,
+                    "containerDiskInGb": 30 if vol else self.volume_gb,
                     "volumeInGb": 0, "ports": ["22/tcp"], "env": {"PUBLIC_KEY": pub}, "interruptible": False,
                     "minRAMPerGPU": MIN_RAM, "minVCPUPerGPU": MIN_VCPU}
             if vol:
