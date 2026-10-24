@@ -1188,3 +1188,21 @@ wall-clock, which depends on the host (CPU, bus, power cap) as well as the GPU. 
 model, driver and CUDA version and image digest (`provenance` in its result and summary files). S9 and S10 are
 reported with each run's provider beside them, and a cell whose runs span providers has its S10 flagged. Stage 0's
 per-shape probe rates, all measured on Colab, stay the reference for per-token time.
+
+### 25 Oct 2026, before the MoR Stage 0 and before any R8 decision: decisions delegated by Jonathan
+
+An implementation note, not an amendment: no hypothesis, metric, cell, seed, item, threshold or analysis changes.
+
+Jonathan delegated four decisions to the main session (2e) on 25 Oct 2026, before leaving it to work unattended:
+the MoR block's launch, including A4.7's confirmation of the measured total; R8 if A3.3's rule fires; the Carry-12
+MSC rulings (recorded in the long-carry pre-registration); and the RunPod pod cap (raised from 2 to 4).
+
+**A4.7, the criterion fixed before the probes report.** The nine MoR runs launch when the MoR Stage 0 is home and
+(a) its CUDA gate passed, (b) choose_rec chose a learning rate for every cell (no cell dropped), and (c) the measured
+total for the nine runs, from the block's own probes through `make_jobs.py`, is at most 47 L4 VM-hours (1.5 times
+A4.7's 31-hour estimate). Above 47, or with a dropped cell, the runs wait for Jonathan. The runs execute on an L4
+(Colab or RunPod; the provider note of 24 Oct applies).
+
+**R8.** If `analyze.py --rec-decision` writes `run_r8: true` (A3.3's rule on R2 and R4), R8's Stage 0 and its three
+runs launch without a further confirmation, though the arm then exceeds 80 L4 VM-hours (about 81); the decision file
+is committed before any R8 job, as A3.3 requires.
