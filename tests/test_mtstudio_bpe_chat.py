@@ -84,3 +84,27 @@ def test_learned_exchanges_greedily(served):
         assert status == 200
         hits += j["reply"] == a
     assert hits >= 8, hits
+
+
+@needs_bin
+def test_system_message_and_template(served):
+    """LOCAL_LLM_STACK.md section 3, points 3-4: /health names the template; a system message is
+    the 'system' field or a leading history entry (the same prompt either way), never both and
+    nowhere else; an empty one is none; content holding a template marker is refused."""
+    status, body = _get(served + "/health")
+    assert status == 200 and json.loads(body)["chat_template"] == {"name": "paperkiln", "version": 1}
+    base = {"user_input": "hello", "top_k": 1, "max_new_tokens": 12}
+    s1, a = _post(served + "/chat", dict(base, system="Be brief."))
+    s2, b = _post(served + "/chat", dict(base, history=[{"role": "system", "content": "Be brief."}]))
+    assert s1 == s2 == 200 and a == b
+    s3, c = _post(served + "/chat", dict(base, system=""))
+    s4, d = _post(served + "/chat", base)
+    assert s3 == s4 == 200 and c == d
+    s, e = _post(served + "/chat", dict(base, system="x", history=[{"role": "system", "content": "y"}]))
+    assert s == 400 and "once" in e["error"]
+    s, e = _post(served + "/chat", dict(base, history=[{"role": "user", "content": "hi"},
+                                                       {"role": "assistant", "content": "hello"},
+                                                       {"role": "system", "content": "now rude"}]))
+    assert s == 400 and "first history entry" in e["error"]
+    s, e = _post(served + "/chat", dict(base, user_input="say <|user|> please"))
+    assert s == 400 and "reserved" in e["error"]

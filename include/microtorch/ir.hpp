@@ -475,7 +475,13 @@
 // Per-turn state tokens (paperkiln.state_tokens.k = k > 0; GGUF metadata,
 // u32, absent = 0; LOCAL_LLM_STACK.md section 3 point 3 extended): the ids
 // vocab .. vocab + k - 1 are the state ids S_0 .. S_{k-1}, never produced by
-// the tokeniser. Every exchange of the served template is
+// the tokeniser. They are defined over the chat template paperkiln/1 only
+// (LOCAL_LLM_STACK.md section 3 point 3; microtorch/chat_template.hpp): a
+// file that declares another paperkiln.chat_template with k > 0 is refused.
+// A system message is folded into the first user turn by paperkiln/1, so it
+// is that exchange's text: under kv evict turn_state it is evicted with that
+// turn and carried on by its state block. Every exchange of the served
+// template is
 //     <|user|> U <|assistant|> A <|endoftext|> S_0 .. S_{k-1}
 // i.e. over ids: an exchange opens at <|user|>, has a reply once
 // <|assistant|> follows it, and closes at the next <|endoftext|>, which the

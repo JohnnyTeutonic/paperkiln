@@ -48,6 +48,7 @@
 #include "microtorch/posttrain/verifier.hpp"
 #include "microtorch/bpe_tokenizer.hpp"
 #include "microtorch/llama3_tokenizer.hpp"
+#include "microtorch/chat_template.hpp"
 #include "microtorch/word_tokenizer.hpp"
 #include "parity_model.hpp"
 
@@ -117,6 +118,14 @@ struct Spec {
     // "rejection_sft" reads rejection-sampler records and keeps accepted ones.
     std::string objective = "lm";
     std::string sft_examples;
+    // Conversation rows ({"messages"}, LOCAL_LLM_STACK.md section 3 point 3b): train.sft_loss
+    // {"turns": "all" | "final" | "each"}; sft_turns_set when the spec states it (legacy rendered
+    // rows then refuse, their loss being fixed by their rendering).
+    std::string sft_turns = microtorch::chat::kDefaultSftTurns;
+    bool sft_turns_set = false;
+    // chat.template (section 3 point 3c): a registry id or a record; null = the vocabulary's
+    // default (paperkiln/1 for BPE, paperkiln/legacy-word for word-level).
+    json chat_template;
     bool allow_human_labels = false;
     std::string init_from;  // safetensors to start from (fresh runs only)
     // Sparse upcycling (fresh MoE runs only): a DENSE llama safetensors whose
@@ -461,6 +470,29 @@ Spec parse_spec(const std::string& path) {
     s.accum = tr.value("accum", s.accum);
     s.ckpt_act = tr.value("checkpoint_activations", s.ckpt_act);
     s.seed = tr.value("seed", s.seed);
+    if (tr.contains("sft_loss")) {
+        const json& sl = tr["sft_loss"];
+        if (!sl.is_object()) throw std::runtime_error("train.sft_loss must be an object {\"turns\": ...}");
+        for (auto it = sl.begin(); it != sl.end(); ++it)
+            if (it.key() != "turns" && it.key().rfind("_", 0) != 0)
+                throw std::runtime_error("train.sft_loss: unknown key " + it.key() + " (turns)");
+        s.sft_turns = sl.value("turns", s.sft_turns);
+        s.sft_turns_set = true;
+        if (s.sft_turns != "all" && s.sft_turns != "final" && s.sft_turns != "each")
+            throw std::runtime_error("train.sft_loss.turns must be all, final or each (got " + s.sft_turns + ")");
+    }
+    if (j.contains("chat")) {
+        const json& ch = j["chat"];
+        for (auto it = ch.begin(); it != ch.end(); ++it)
+            if (it.key() != "template" && it.key().rfind("_", 0) != 0)
+                throw std::runtime_error("chat: unknown key " + it.key() + " (template)");
+        if (ch.contains("template")) {
+            s.chat_template = ch["template"];
+            // Checked now: an unknown id or field is refused before any work.
+            if (s.chat_template.is_string()) microtorch::chat::get(s.chat_template.get<std::string>());
+            else microtorch::chat::Template::from_json(s.chat_template);
+        }
+    }
     if (tr.contains("lr_schedule")) {
         // {"warmup_steps": N, "decay": "none" | "cosine", "min_lr_frac": f}
         const json ls = tr["lr_schedule"];
@@ -789,6 +821,32 @@ std::vector<int> tokenize(const std::string& text, const std::map<std::string, i
 std::vector<int> read_corpus(const std::string& path, const std::map<std::string, int>& vocab, size_t n_vocab,
                              size_t max_tokens);
 
+// The chat template a model renders conversations with (LOCAL_LLM_STACK.md section 3 point 3;
+// microtorch/chat_template.hpp): the spec's chat.template, else paperkiln/1 for a BPE vocabulary
+// and paperkiln/legacy-word for a word-level one (read_gguf_vocab has run). Per-turn state tokens
+// are defined over paperkiln/1's markers only (ir.hpp).
+chat::Template chat_template_of(const Spec& s) {
+    chat::Template t = s.chat_template.is_string() ? chat::get(s.chat_template.get<std::string>())
+                       : s.chat_template.is_object() ? chat::Template::from_json(s.chat_template)
+                       : g_bpe ? chat::v1()
+                               : chat::legacy_word();
+    if (s.state_k > 0 && t.id() != chat::kV1)
+        throw std::runtime_error("arch.state_tokens is defined over the paperkiln/1 template only (chat.template is " +
+                                 t.id() + ")");
+    return t;
+}
+
+// Whether exports declare the template (paperkiln.chat_template, tokenizer.chat_template and a
+// Modelfile): a spec that names one, or a vocabulary whose ids 0-3 are paperkiln's specials.
+// Word-level vocabularies write no keys.
+bool declares_chat_template(const Spec& s, const std::vector<std::string>& tokens) {
+    if (!s.chat_template.is_null()) return true;
+    if (!g_bpe || tokens.size() < 4) return false;
+    for (size_t i = 0; i < 4; ++i)
+        if (tokens[i] != chat::kV1Specials[i]) return false;
+    return true;
+}
+
 parity::AttnKind attn_kind(const std::string& s) {
     if (s == "kimi") return parity::AttnKind::KIMI;
     if (s == "srd") return parity::AttnKind::SRD;
@@ -896,6 +954,9 @@ struct SftSet {
     // dialogue row and rows dropped because the state ids pushed them past
     // T + 1.
     size_t state_blocks = 0, state_closed = 0, state_turns_cut = 0, state_rows_dropped = 0;
+    // Conversation rows: read, rows written, dropped (first exchange, or under "each" the
+    // exchange's prefix, past T + 1), exchanges cut from the end, rows with no trained reply.
+    size_t conv_rows = 0, conv_out = 0, conv_over_T = 0, conv_exchanges_cut = 0, conv_untrained = 0;
     size_t val_start = 0;
     size_t target_tokens = 0;   // kept targets in the training split
     size_t completion_unk = 0;  // <unk> among kept targets, all splits
@@ -910,6 +971,7 @@ SftSet load_sft(const Spec& s, const std::map<std::string, int>& vocab) {
     const bool rej = s.objective == "rejection_sft";
     SftSet d;
     const nn::StateTemplate stt = s.state_k > 0 ? state_template(s, vocab) : nn::StateTemplate{};
+    const chat::Template tmpl = chat_template_of(s);
     // State tokens on one row (IR_SPEC_DRAFT 1.5): the k ids after every
     // <|endoftext|> that closes an exchange, flags (loss, continuation) carried
     // with 0 on inserted ids. A block that would end the row is left out: no
@@ -954,6 +1016,111 @@ SftSet load_sft(const Spec& s, const std::map<std::string, int>& vocab) {
         ++n;
         if (line.find_first_not_of(" \t\r") == std::string::npos) continue;
         const json r = json::parse(line, nullptr, false);
+        if (!r.is_discarded() && !rej && r.contains("messages")) {
+            // A conversation (LOCAL_LLM_STACK.md section 3 point 3a) rendered by the model's chat
+            // template, with train.sft_loss (3b) choosing the trained replies: a reply's content
+            // and its close (paperkiln/1: the <|endoftext|> after it) carry loss; markers, user
+            // and system text, padding, state ids and state positions never do. Pieces are
+            // tokenised one by one (special tokens are pre-tokeniser boundaries, so this equals
+            // the whole rendering: tests/test_chat_template.py). A row keeps the longest prefix
+            // of whole exchanges that fits T + 1 ("each": one row per reply, dropped when its
+            // prefix does not fit); a reply is never cut. Under "all" these rows equal the
+            // segments rows chat_data.py --all-turns writes, and under "each" its
+            // {prompt, completion} rows (G2, tests/test_chat_template_sft.py).
+            ++d.conv_rows;
+            std::vector<chat::Message> msgs;
+            std::vector<chat::Piece> pieces;
+            try {
+                msgs = chat::messages_from_json(r["messages"]);
+                pieces = chat::render_pieces(msgs, tmpl, /*generation_prompt=*/false);
+            } catch (const chat::Error& e) {
+                throw std::runtime_error(s.sft_examples + ":" + std::to_string(n) + ": " + e.what());
+            }
+            const size_t first = msgs[0].role == "system" ? 1 : 0;
+            const size_t E = (msgs.size() - first) / 2;
+            // Per exchange: its ids, each id's message index (-1: bos / default system) and
+            // whether it is reply content or a reply's close.
+            std::vector<std::vector<int>> ex_ids(E), ex_msg(E);
+            std::vector<std::vector<uint8_t>> ex_reply(E);
+            for (const auto& p : pieces) {
+                const size_t ex = p.index < static_cast<int>(first) ? 0 : (static_cast<size_t>(p.index) - first) / 2;
+                const auto t = tokenize(p.text, vocab, 1u << 30);
+                const uint8_t reply = p.role == "assistant" && (p.kind == "content" || p.kind == "close");
+                ex_ids[ex].insert(ex_ids[ex].end(), t.begin(), t.end());
+                ex_msg[ex].insert(ex_msg[ex].end(), t.size(), p.index);
+                ex_reply[ex].insert(ex_reply[ex].end(), t.size(), reply);
+            }
+            std::vector<size_t> upto(E + 1, 0);  // tokens in exchanges 0 .. k-1
+            for (size_t k = 0; k < E; ++k) upto[k + 1] = upto[k] + ex_ids[k].size();
+            auto reply_of = [&](size_t k) { return static_cast<int>(first + 2 * k + 1); };
+            auto trainable = [&](int i) { return msgs[static_cast<size_t>(i)].loss != 0; };
+            std::vector<std::pair<size_t, std::vector<int>>> rows;  // (exchanges kept, trained messages)
+            if (s.sft_turns == "each") {
+                for (size_t k = 0; k < E; ++k) {
+                    if (!trainable(reply_of(k))) continue;
+                    if (upto[k + 1] > s.T + 1) {
+                        ++d.conv_over_T;
+                        continue;
+                    }
+                    rows.push_back({k + 1, {reply_of(k)}});
+                }
+            } else {
+                size_t k = 0;
+                while (k < E && upto[k + 1] <= s.T + 1) ++k;
+                if (k == 0) {
+                    ++d.conv_over_T;
+                    continue;
+                }
+                d.conv_exchanges_cut += E - k;
+                std::vector<int> tr;
+                for (size_t q = 0; q < k; ++q)
+                    if (trainable(reply_of(q))) tr.push_back(reply_of(q));
+                if (s.sft_turns == "final") tr = tr.empty() || tr.back() != reply_of(k - 1) ? std::vector<int>{}
+                                                                                            : std::vector<int>{tr.back()};
+                rows.push_back({k, tr});
+            }
+            for (const auto& [k, tr] : rows) {
+                std::vector<int> seq;
+                std::vector<uint8_t> lt;
+                for (size_t q = 0; q < k; ++q) {
+                    seq.insert(seq.end(), ex_ids[q].begin(), ex_ids[q].end());
+                    for (size_t i = 0; i < ex_ids[q].size(); ++i)
+                        lt.push_back(ex_reply[q][i] && std::find(tr.begin(), tr.end(), ex_msg[q][i]) != tr.end());
+                }
+                if (std::find(lt.begin(), lt.end(), uint8_t(1)) == lt.end()) {
+                    ++d.conv_untrained;
+                    continue;
+                }
+                if (s.state_k > 0 && !with_state(seq, lt, /*cut_ok=*/s.sft_turns != "each")) continue;
+                if (seq.size() > s.T + 1)
+                    throw std::runtime_error("example at line " + std::to_string(n) + " has " +
+                                             std::to_string(seq.size()) + " tokens; data.T + 1 = " +
+                                             std::to_string(s.T + 1));
+                std::vector<int> x(s.T, pad), y(s.T, pad);
+                std::vector<uint8_t> m(s.T, 0);
+                size_t trained = 0;
+                for (size_t i = 0; i + 1 < seq.size(); ++i) {
+                    x[i] = seq[i];
+                    y[i] = seq[i + 1];
+                    m[i] = lt[i + 1];
+                    trained += m[i];
+                    if (m[i] && y[i] == 0) ++d.completion_unk;
+                }
+                if (!trained) {
+                    ++d.state_rows_dropped;  // every trained reply was cut by the state blocks
+                    continue;
+                }
+                d.x.push_back(std::move(x));
+                d.y.push_back(std::move(y));
+                d.m.push_back(std::move(m));
+                ++d.conv_out;
+            }
+            continue;
+        }
+        if (!r.is_discarded() && s.sft_turns_set)
+            throw std::runtime_error(s.sft_examples + ":" + std::to_string(n) +
+                                     ": train.sft_loss applies to conversation rows ({\"messages\"}); this row is "
+                                     "a rendered one, whose loss its rendering fixes");
         if (!r.is_discarded() && !rej && r.contains("segments")) {
             // A whole dialogue in one row: the segments' tokens in order, end-of-text
             // appended after every loss segment (as after a completion), and a target
@@ -1291,6 +1458,26 @@ void set_export_tokenizer(Cfg& gc, const Spec& s, const std::vector<std::string>
     // external engine stops where this one does (else keep the
     // exporter's default).
     if (const int e = wordtok::eos_id(vocab); e >= 0) gc.eos_token_id = (uint32_t)e;
+    // The chat template as data (LOCAL_LLM_STACK.md section 3 point 3c): the record and, for a
+    // paperkiln record, the Jinja llama.cpp, LM Studio and Ollama's import read.
+    if (declares_chat_template(s, tokens)) {
+        const chat::Template t = chat_template_of(s);
+        gc.chat_template = t.to_json().dump();
+        if (t.name == "paperkiln") gc.chat_template_jinja = chat::jinja(t);
+    }
+}
+
+// <name>.Modelfile beside an F32 GGUF that declares a paperkiln template (Ollama's TEMPLATE and
+// stop parameters; `ollama create NAME -f <name>.Modelfile` from that folder).
+void write_chat_modelfile(const Spec& s, const std::vector<std::string>& tokens, const std::string& gguf_path) {
+    if (!declares_chat_template(s, tokens)) return;
+    const chat::Template t = chat_template_of(s);
+    if (t.name != "paperkiln") return;
+    const std::string base = std::filesystem::path(gguf_path).filename().string();
+    const std::string mpath = gguf_path.substr(0, gguf_path.size() - 5) + ".Modelfile";
+    std::ofstream f(mpath, std::ios::binary);
+    f << chat::modelfile(base, t);
+    if (!f) throw std::runtime_error("export: could not write " + mpath);
 }
 
 // The IR document for a model's own export_ir(), with the vocabulary's
@@ -1407,6 +1594,7 @@ void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama, 
             const bool f32 = q == "f32";
             const std::string gpath = out_dir + "/" + s.name + (f32 ? "" : "_" + q) + ".gguf";
             gguf::export_gguf_llama(gpath, sd2, gc);
+            if (f32) write_chat_modelfile(s, tokens, gpath);
             json xe = {{"event", "export"},
                        {"format", f32 ? "gguf" : "gguf_" + q},
                        {"path", gpath},
@@ -1451,6 +1639,7 @@ void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama, 
         const auto sd = gpt ? gpt->gpt2_state_dict() : flex->gpt2_state_dict();
         gguf::export_gguf_gpt2(gpath, sd, gc, &unmapped);
         if (!unmapped.empty()) throw std::runtime_error("export: gpt2 tensor not exported: " + unmapped[0]);
+        write_chat_modelfile(s, tokens, gpath);
         // Every trained parameter must be in the file (gpt2_state_dict is a
         // copy under other names, so count them).
         if (sd.size() != model_ref.named_parameters().size())
@@ -1515,6 +1704,7 @@ void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama, 
                                          std::to_string(fx->constants) + " constants");
             gguf::export_gguf_paperkiln(gpath, fx->tensors, gc);
         }
+        write_chat_modelfile(s, tokens, gpath);
         json xe = {{"event", "export"},           {"format", "gguf"}, {"path", gpath}, {"arch", fx->arch},
                    {"family", fx->ir["family_hint"]}, {"ir", ir_path}};
         if (!fx->warning.empty()) xe["warning"] = fx->warning;
@@ -1798,6 +1988,11 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             ev.emit({{"event", "state_tokens"}, {"k", s.state_k}, {"mask", s.state_mask},
                      {"corpus", "data.sft_examples"}, {"blocks", sd.state_blocks}, {"closed_early", sd.state_closed},
                      {"turns_cut_over_T", sd.state_turns_cut}, {"rows_dropped_over_T", sd.state_rows_dropped}});
+        if (sd.conv_rows > 0)
+            ev.emit({{"event", "sft_conversations"}, {"chat_template", chat_template_of(s).id()},
+                     {"sft_loss", {{"turns", s.sft_turns}}}, {"conversations", sd.conv_rows}, {"rows", sd.conv_out},
+                     {"dropped_over_T", sd.conv_over_T}, {"exchanges_cut_over_T", sd.conv_exchanges_cut},
+                     {"untrained", sd.conv_untrained}});
     }
 
     // Model + optimizer (+ resume). Two families behind one seam: the
@@ -3156,7 +3351,10 @@ int sample_set_cmd(const Spec& s, const std::string& prompts_path, const std::st
     while (std::getline(in, line)) {
         if (line.find_first_not_of(" \t\r") == std::string::npos) continue;
         const json pr = json::parse(line);
-        const std::string prompt = pr.at("prompt").get<std::string>();
+        // {"prompt": text} or {"messages": [...]} (a prompt conversation, rendered by the template).
+        const std::string prompt = pr.contains("messages")
+                                       ? chat::render(chat::messages_from_json(pr["messages"]), chat_template_of(s), true)
+                                       : pr.at("prompt").get<std::string>();
         std::vector<int> pids = tokenize(prompt, lm.vocab, 100000);
         if (lm.st.k > 0) pids = nn::insert_state_ids(pids, lm.st);
         if (pids.empty()) throw std::runtime_error("prompt " + std::to_string(pi) + " has no in-vocabulary token");
@@ -3591,30 +3789,6 @@ Spec resolve_chat_spec(const std::string& arg) {
     return parse_spec(arg);
 }
 
-// The chat template of BPE chat models (tools/chat_data.py writes SFT data in
-// exactly this form): every past turn is <|user|>U<|assistant|>A<|endoftext|>
-// and a new reply is prompted by <|user|>U<|assistant|>.
-std::string chat_prompt_bpe(const json& req) {
-    std::string p;
-    if (req.contains("history") && req["history"].is_array()) {
-        std::string pending_user;
-        for (const auto& turn : req["history"]) {
-            if (!turn.is_object()) continue;
-            if (turn.contains("role")) {
-                const std::string role = turn.value("role", "");
-                if (role == "user") pending_user = turn.value("content", "");
-                if (role == "assistant") {
-                    p += "<|user|>" + pending_user + "<|assistant|>" + turn.value("content", "") + "<|endoftext|>";
-                    pending_user.clear();
-                }
-                continue;
-            }
-            p += "<|user|>" + turn.value("user", "") + "<|assistant|>" + turn.value("assistant", "") + "<|endoftext|>";
-        }
-    }
-    return p + "<|user|>" + req["user_input"].get<std::string>() + "<|assistant|>";
-}
-
 // The request's history as whole (user, assistant) turns, oldest first:
 // [{role, content}] lists pair each assistant message with the user message
 // before it, as chat_prompt_bpe reads them.
@@ -3638,24 +3812,18 @@ json history_turns(const json& req) {
     return turns;
 }
 
-std::string chat_prompt(const json& req) {
-    if (g_bpe) return chat_prompt_bpe(req);
-    std::string p;
-    if (req.contains("history") && req["history"].is_array()) {
-        // [{role: user|assistant, content}] or [{user, assistant}] turns.
-        for (const auto& turn : req["history"]) {
-            if (!turn.is_object()) continue;
-            if (turn.contains("role")) {
-                const std::string role = turn.value("role", "");
-                if (role == "user" || role == "assistant")
-                    p += role + ": " + turn.value("content", "") + " ";
-                continue;
-            }
-            if (turn.contains("user")) p += "user: " + turn.value("user", "") + " ";
-            if (turn.contains("assistant")) p += "assistant: " + turn.value("assistant", "") + " ";
-        }
-    }
-    return p + "user: " + req["user_input"].get<std::string>() + " assistant:";
+// The served prompt (LOCAL_LLM_STACK.md section 3, points 3-5): the request's history as whole
+// (user, assistant) turns (history_turns), the optional system message and the new message,
+// rendered by the model's chat template (microtorch/chat_template.hpp). paperkiln/1 gives
+// <|user|>U<|assistant|>A<|endoftext|> per past turn, then <|user|>U<|assistant|>, as the string
+// builder it replaced (tests/test_chat_template.cpp); paperkiln/legacy-word gives the word-level
+// "user: U assistant: A " form. The system message (fold under paperkiln/1) is never dropped.
+std::string chat_prompt(const json& req, const chat::Template& tmpl, const std::string* system, int thinking = -1) {
+    std::vector<std::pair<std::string, std::string>> turns;
+    for (const auto& t : history_turns(req))
+        turns.push_back({t["user"].get<std::string>(), t["assistant"].get<std::string>()});
+    const std::string user = req["user_input"].get<std::string>();
+    return chat::render(chat::from_pairs(turns, &user, system), tmpl, /*generation_prompt=*/true, thinking);
 }
 
 int chat_cmd(const std::string& target, const std::string& host, int port, bool kv_cache, bool evict) {
@@ -3671,15 +3839,14 @@ int chat_cmd(const std::string& target, const std::string& host, int port, bool 
     // The model's own token sequences for a new turn ("user :",
     // "assistant :"), unusable if a piece is out of vocabulary (it would
     // be <unk>, which the sampler never emits anyway).
+    // The template's turn stops: a reply ends where the model would open a new turn (paperkiln/1:
+    // <|user|>, <|assistant|>; legacy-word: "user:", "assistant:", skipped when out of vocabulary).
+    const chat::Template tmpl = chat_template_of(s);
     std::vector<std::vector<int>> turn_markers;
-    for (const char* m : {"user:", "assistant:"}) {
-        if (g_bpe) break;
-        auto seq = tokenize(m, lm.vocab, 16);
-        if (std::find(seq.begin(), seq.end(), 0) == seq.end()) turn_markers.push_back(seq);
+    for (const auto& m : tmpl.stop_turn) {
+        auto seq = tokenize(m, lm.vocab, g_bpe ? 4 : 16);
+        if (g_bpe || std::find(seq.begin(), seq.end(), 0) == seq.end()) turn_markers.push_back(seq);
     }
-    // BPE chat models: a reply ends where the model would open a new turn.
-    if (g_bpe)
-        for (const char* m : {"<|user|>", "<|assistant|>"}) turn_markers.push_back(tokenize(m, lm.vocab, 4));
     // The repetition penalty's exempt stop set: end-of-text and the
     // single-token BPE turn markers (the ids generation stops on).
     std::vector<int> stop_ids;
@@ -3728,6 +3895,7 @@ int chat_cmd(const std::string& target, const std::string& host, int port, bool 
                               {"vocab", lm.tokens.size()},
                               {"context", s.T},
                               {"state_tokens", s.state_k},
+                              {"chat_template", {{"name", tmpl.name}, {"version", json::parse(tmpl.version.dump())}}},
                               {"eos", lm.eos >= 0}})
                             .dump(),
                         "application/json");
@@ -3769,13 +3937,44 @@ int chat_cmd(const std::string& target, const std::string& host, int port, bool 
             // attend over more than T positions, so a reply that reaches the
             // limit ends with P + reply = T + 1 and stop_reason "length".
             const size_t T = s.T;
+            // The system message (section 3 point 4): "system", or a leading {"role": "system"}
+            // history entry, not both and nowhere else; empty means none. It is pinned: only
+            // whole turns are dropped below.
+            std::string system;
+            bool has_system = false;
+            if (r.contains("system")) {
+                if (!r["system"].is_string()) {
+                    fail(400, "system must be a string");
+                    return;
+                }
+                system = r["system"].get<std::string>();
+                has_system = true;
+            }
+            if (r.contains("history") && r["history"].is_array())
+                for (size_t i = 0; i < r["history"].size(); ++i) {
+                    const json& h = r["history"][i];
+                    if (!h.is_object() || h.value("role", "") != "system") continue;
+                    if (i != 0) {
+                        fail(400, "a system message is allowed only as the first history entry");
+                        return;
+                    }
+                    if (has_system) {
+                        fail(400, "give the system message once: the 'system' field or a leading history entry");
+                        return;
+                    }
+                    system = h.value("content", "");
+                    has_system = true;
+                }
+            has_system = has_system && !system.empty();
+            // "thinking": false selects a template's no-think generation prompt (ignored without one).
+            const int thinking = r.contains("thinking") && r["thinking"].is_boolean() ? (r["thinking"].get<bool>() ? 1 : 0) : -1;
             const json turns = history_turns(r);
             json q = r;
             size_t first = 0;
             std::vector<int> ids;
             while (true) {
                 q["history"] = json(turns.begin() + static_cast<std::ptrdiff_t>(first), turns.end());
-                const std::string prompt = chat_prompt(q);
+                const std::string prompt = chat_prompt(q, tmpl, has_system ? &system : nullptr, thinking);
                 ids = tokenize(prompt, lm.vocab, prompt.size() + 1);
                 // State tokens: the template's blocks after every finished
                 // reply (the history's replies all end with <|endoftext|>).
@@ -3822,6 +4021,8 @@ int chat_cmd(const std::string& target, const std::string& host, int port, bool 
             // state rows plus the current turn under --evict).
             if (lm.kv_on) body["kv_rows"] = lm.kv.rows();
             res.set_content(body.dump(), "application/json");
+        } catch (const chat::Error& e) {
+            fail(400, e.what());  // the template refuses the conversation (section 3 point 3)
         } catch (const json::exception& e) {
             fail(400, std::string("bad request field: ") + e.what());
         } catch (const std::exception& e) {
@@ -3892,8 +4093,12 @@ int score_cmd(const std::string& target, const std::string& in_path, const std::
         auto it = lm.vocab.find(sp);
         if (it != lm.vocab.end()) banned[static_cast<size_t>(it->second)] = 1;
     }
+    const chat::Template tmpl = chat_template_of(s);
     auto ids_of = [&](const json& r, const char* ids_key, const char* text_key) {
         if (r.contains(ids_key)) return r[ids_key].get<std::vector<int>>();
+        // {"messages": [...]}: a prompt conversation, rendered with the generation prompt.
+        if (std::string(text_key) == "prompt" && r.contains("messages"))
+            return tokenize(chat::render(chat::messages_from_json(r["messages"]), tmpl, true), lm.vocab, 1u << 30);
         return tokenize(r.at(text_key).get<std::string>(), lm.vocab, 1u << 30);
     };
     NoGrad ng;
@@ -4021,6 +4226,39 @@ int score_cmd(const std::string& target, const std::string& in_path, const std::
 }
 }  // namespace
 
+// The SFT rows a spec trains on (load_sft), one JSON line per row {x, y, m} (positions after the
+// last target trimmed), then a summary on stdout: the G2 gate (tests/test_chat_template_sft.py)
+// compares conversation rows with the rendered rows they replace.
+int sft_dump_cmd(const Spec& s, const std::string& out_path) {
+    auto tokens = read_gguf_vocab(s.vocab_gguf);
+    if (g_bpe && s.vocab_cap > 0 && s.vocab_cap < tokens.size())
+        throw std::runtime_error("data.vocab_cap " + std::to_string(s.vocab_cap) + " is below the BPE vocabulary's " +
+                                 std::to_string(tokens.size()) + " tokens: merged ids would fall outside the model");
+    if (s.vocab_cap > 0 && s.vocab_cap < tokens.size()) tokens.resize(s.vocab_cap);
+    std::map<std::string, int> vocab;
+    for (size_t i = 0; i < tokens.size(); ++i) vocab.emplace(tokens[i], static_cast<int>(i));
+    const SftSet d = load_sft(s, vocab);
+    std::ofstream out(out_path, std::ios::trunc);
+    if (!out) throw std::runtime_error("cannot write " + out_path);
+    for (size_t e = 0; e < d.x.size(); ++e) {
+        size_t n = d.x[e].size();
+        while (n > 0 && d.m[e][n - 1] == 0) --n;
+        out << json({{"x", std::vector<int>(d.x[e].begin(), d.x[e].begin() + n)},
+                     {"y", std::vector<int>(d.y[e].begin(), d.y[e].begin() + n)},
+                     {"m", std::vector<int>(d.m[e].begin(), d.m[e].begin() + n)}})
+                   .dump()
+            << "\n";
+    }
+    std::printf("%s\n", json({{"rows", d.x.size()}, {"val_start", d.val_start}, {"target_tokens", d.target_tokens},
+                              {"conversations", d.conv_rows}, {"conversation_rows", d.conv_out},
+                              {"dropped_over_T", d.conv_over_T}, {"exchanges_cut_over_T", d.conv_exchanges_cut},
+                              {"untrained", d.conv_untrained}, {"state_blocks", d.state_blocks},
+                              {"state_rows_dropped", d.state_rows_dropped}, {"state_turns_cut", d.state_turns_cut}})
+                            .dump()
+                            .c_str());
+    return 0;
+}
+
 int main(int argc, char** argv) {
     const std::string cmd = argc > 1 ? argv[1] : "";
     try {
@@ -4101,6 +4339,13 @@ int main(int argc, char** argv) {
             }
             return chat_cmd(argv[2], host, port, kv_cache, evict);
         }
+        if (cmd == "sft-dump" && argc >= 3) {
+            std::string out_path;
+            for (int i = 3; i + 1 < argc; i += 2)
+                if (std::string(argv[i]) == "--out") out_path = argv[i + 1];
+            if (out_path.empty()) throw std::runtime_error("sft-dump needs --out");
+            return sft_dump_cmd(parse_spec(argv[2]), out_path);
+        }
         if (cmd == "score" && argc >= 3) {
             std::string in_path, out_path;
             bool kv_cache = false, evict = false;
@@ -4134,6 +4379,7 @@ int main(int argc, char** argv) {
                  "overrides the index.html path)\n"
                  "       mtstudio chat <out_dir|spec.json> [--port 8080] [--host 127.0.0.1] [--kv-cache [--evict]]\n"
                  "       mtstudio score <out_dir|spec.json> --in REQ.jsonl --out RES.jsonl [--kv-cache [--evict] "
-                 "[--kv-step N]]   (per-token log-probs of {prompt, continuation})\n");
+                 "[--kv-step N]]   (per-token log-probs of {prompt | messages, continuation})\n"
+                 "       mtstudio sft-dump spec.json --out ROWS.jsonl   (the SFT rows the spec trains on)\n");
     return 2;
 }

@@ -263,6 +263,9 @@ void write_tokenizer(GGUFWriter& writer, const Cfg& cfg) {
     writer.write_metadata_uint32("tokenizer.ggml.eos_token_id", cfg.eos_token_id);
     writer.write_metadata_uint32("tokenizer.ggml.unknown_token_id", cfg.unk_token_id);
     writer.write_metadata_uint32("tokenizer.ggml.padding_token_id", cfg.pad_token_id);
+    if (!cfg.chat_template.empty()) writer.write_metadata_string("paperkiln.chat_template", cfg.chat_template);
+    if (!cfg.chat_template_jinja.empty())
+        writer.write_metadata_string("tokenizer.chat_template", cfg.chat_template_jinja);
 }
 
 // The IR keys, written last so every key before them sits where it did

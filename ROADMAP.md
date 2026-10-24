@@ -20,8 +20,13 @@ where one of those documents carries a plan, this file wins.*
    - pk_base_v1's SFT on lever 1's set at T 512.
    - After SFT: the Claude-judge pilot (`experiments/chat_general/judge_pilot.sh`,
      200 prompts, $100 cap), then DPO.
-2. **One conversation schema for instruction tuning and chat** (LOCAL_LLM_STACK.md section 11,
-   item 3): the schema, the loss policy in the SFT spec, the template declared in the GGUF and IR.
+2. **Conversation schema follow-ups** (LOCAL_LLM_STACK.md section 3 point 3; section 11, item 3):
+   the evaluations it lacks (IF-tiny, a single-turn verifiable instruction set for tiny models;
+   instruction compliance by turn distance; instruction placement, measurable on a v2 model), and
+   v2 (a reserved control-token block appended to the vocabulary) when Jonathan decides. His
+   three decisions sit behind one constant each: v1's system mode (`SYSTEM_MODE_V1` /
+   `kSystemModeV1`, fold or none), the default loss policy (`DEFAULT_SFT_TURNS` /
+   `kDefaultSftTurns`), and when v2 is built.
 3. **Engine:** BF16 mixed precision and a fused attention backward (opt-in; building);
    device-side SFT evaluation in the step window; real k-quants (pk_base_v1's d768 qualifies).
 4. **The redesign (LOCAL_LLM_STACK.md section 5): any paper, any architecture.**

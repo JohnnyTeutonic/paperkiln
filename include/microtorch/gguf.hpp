@@ -89,6 +89,11 @@ struct LlamaExportConfig {
     std::vector<std::string> merges;
     uint32_t bos_token_id = 1, eos_token_id = 1;
     uint32_t unk_token_id = 0, pad_token_id = 0;
+    // The chat template as data (LOCAL_LLM_STACK.md section 3 point 3c; microtorch/chat_template.hpp):
+    // the record as JSON -> paperkiln.chat_template, and its Jinja -> tokenizer.chat_template, both
+    // after the tokenizer block (so llama.cpp's quantiser, which copies every key, keeps them in
+    // place in the 4-bit variants). Empty (the default) writes neither.
+    std::string chat_template, chat_template_jinja;
 
     // Weight storage. "f32" (default) writes every tensor as F32. The Q8_0
     // variants (llama.cpp's block format, see quantize_q8_0) quantise the 2-D
@@ -200,6 +205,11 @@ struct Gpt2ExportConfig {
     std::vector<std::string> merges;
     uint32_t bos_token_id = 1, eos_token_id = 1;
     uint32_t unk_token_id = 0, pad_token_id = 0;
+    // The chat template as data (LOCAL_LLM_STACK.md section 3 point 3c; microtorch/chat_template.hpp):
+    // the record as JSON -> paperkiln.chat_template, and its Jinja -> tokenizer.chat_template, both
+    // after the tokenizer block (so llama.cpp's quantiser, which copies every key, keeps them in
+    // place in the 4-bit variants). Empty (the default) writes neither.
+    std::string chat_template, chat_template_jinja;
     std::string ir;  // written as paperkiln.ir / paperkiln.ir_version when non-empty
 };
 
@@ -243,6 +253,11 @@ struct PaperkilnExportConfig {
     std::vector<std::string> merges;
     uint32_t bos_token_id = 1, eos_token_id = 1;
     uint32_t unk_token_id = 0, pad_token_id = 0;
+    // The chat template as data (LOCAL_LLM_STACK.md section 3 point 3c; microtorch/chat_template.hpp):
+    // the record as JSON -> paperkiln.chat_template, and its Jinja -> tokenizer.chat_template, both
+    // after the tokenizer block (so llama.cpp's quantiser, which copies every key, keeps them in
+    // place in the 4-bit variants). Empty (the default) writes neither.
+    std::string chat_template, chat_template_jinja;
     std::string ir;  // required: without it nothing can run the file
 };
 

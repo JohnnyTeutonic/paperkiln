@@ -7,6 +7,27 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **One conversation schema for instruction tuning and chat** (24 Oct; LOCAL_LLM_STACK.md section
+  3, points 3-5). A conversation is `{"messages": [{role system | user | assistant, content,
+  loss?}]}` (one leading system message, strict alternation, tool reserved); an instruction is a
+  one-exchange conversation. The template is a versioned record (`paperkiln/1` = the old
+  `<|user|>U<|assistant|>A<|endoftext|>` template byte for byte, system folded into the first
+  user turn behind one constant; `paperkiln/legacy-word`; ember's ChatML Qwen2.5/Qwen3 and
+  Gemma 3 records) in `tools/chat_template.py` and its header-only C++ twin
+  `include/microtorch/chat_template.hpp` (render, Jinja, Ollama Modelfile, resolution). mtstudio:
+  `{"messages"}` SFT rows under `train.sft_loss` {"turns": "all" | "final" | "each"} (default
+  all), `chat.template` in the spec, `/chat` takes `system` (or a leading system history entry)
+  and `thinking`, `/health` names the template, `score` and `sample-set` take `messages` rows,
+  `sft-dump` writes the rows a spec trains on; every GGUF of a vocabulary with the v1 specials
+  carries `paperkiln.chat_template` and the generated `tokenizer.chat_template`, with
+  `<name>.Modelfile` beside the F32 file. The Python builders (chat_data, carry5_eval, chat_eval,
+  carry12_build, `_common.render_dialogue`) render through it. Gates: v1 bit identity on 460
+  frozen prompts, 9,288 Carry-5 and 24,684 Carry-12 prompt strings and 99,608 pinned dialogues
+  (each corpus's pinned text.txt sha256 reproduced), ids per piece = whole under both
+  vocabularies; mtstudio's conversation rows bit-identical to the segments and per-turn rows on
+  600 pinned dialogues, T 96 and 512, state tokens k 0 and 4, both vocabularies; Jinja = record
+  under jinja2 on 1,000 random conversations; the third-party records = their HF templates; 29
+  edge cases in both languages (`tests/chat_template_cases.json`).
 - **BF16 mixed precision and flash attention, opt-in** (24 Oct; `train.precision` "fp32" |
   "bf16", `train.attention_kernel` "tiled" | "flash", llama family; the defaults are the previous
   step bit for bit and write nothing new into events, results or GGUFs). BF16 rounds the inputs
