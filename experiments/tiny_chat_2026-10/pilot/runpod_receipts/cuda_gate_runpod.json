@@ -1,0 +1,257 @@
+{
+ "mode": "cuda_gate",
+ "script": "tools/colab_cuda_validate.sh",
+ "build_dir": "/content/pk/build_cuda",
+ "commit": "3e1ea954616a9e54545001456e83b6f1874cdb8c",
+ "gpu": "NVIDIA L4",
+ "targets": [
+  "microtorch",
+  "test_gradcheck",
+  "test_nn",
+  "test_lora_quant",
+  "test_resident_parity",
+  "test_step_residency",
+  "test_cuda_ops",
+  "test_recursion",
+  "test_mor",
+  "test_state_tokens",
+  "test_llama_attnres"
+ ],
+ "job_env": {
+  "MICROTORCH_DEVICE_OPS": "1",
+  "MICROTORCH_STEP_RESIDENCY": "1",
+  "MICROTORCH_DEVICE": "cuda",
+  "MICROTORCH_DEFER_DOWNLOADS": "1",
+  "MICROTORCH_ATTN_BLOCKED": "1",
+  "MICROTORCH_CUBLAS": "1"
+ },
+ "legs": [
+  {
+   "binary": "test_gradcheck",
+   "env": {
+    "MICROTORCH_DEVICE": "cuda"
+   },
+   "rc": 0,
+   "seconds": 0.6,
+   "production_kernels": false
+  },
+  {
+   "binary": "test_nn",
+   "env": {
+    "MICROTORCH_DEVICE": "cuda"
+   },
+   "rc": 0,
+   "seconds": 2.0,
+   "production_kernels": false
+  },
+  {
+   "binary": "test_lora_quant",
+   "env": {
+    "MICROTORCH_DEVICE": "cuda"
+   },
+   "rc": 0,
+   "seconds": 0.4,
+   "production_kernels": false
+  },
+  {
+   "binary": "test_resident_parity",
+   "env": {
+    "MICROTORCH_DEVICE": "cuda"
+   },
+   "rc": 0,
+   "seconds": 0.4,
+   "production_kernels": false
+  },
+  {
+   "binary": "test_step_residency",
+   "env": {},
+   "rc": 0,
+   "seconds": 0.4,
+   "production_kernels": false
+  },
+  {
+   "binary": "test_cuda_ops",
+   "env": {
+    "MICROTORCH_DEVICE": "cuda",
+    "MICROTORCH_DEVICE_OPS": "1"
+   },
+   "rc": 0,
+   "seconds": 0.6,
+   "production_kernels": false
+  },
+  {
+   "binary": "test_gradcheck",
+   "env": {
+    "MICROTORCH_DEVICE": "cuda",
+    "MICROTORCH_DEVICE_OPS": "1"
+   },
+   "rc": 0,
+   "seconds": 0.6,
+   "production_kernels": false
+  },
+  {
+   "binary": "test_nn",
+   "env": {
+    "MICROTORCH_DEVICE": "cuda",
+    "MICROTORCH_DEVICE_OPS": "1"
+   },
+   "rc": 0,
+   "seconds": 4.1,
+   "production_kernels": false
+  },
+  {
+   "binary": "test_cuda_ops",
+   "env": {
+    "MICROTORCH_DEVICE": "cuda",
+    "MICROTORCH_DEVICE_OPS": "1",
+    "MICROTORCH_STEP_RESIDENCY": "1",
+    "MICROTORCH_DEFER_DOWNLOADS": "1"
+   },
+   "rc": 0,
+   "seconds": 0.5,
+   "production_kernels": false
+  },
+  {
+   "binary": "test_step_residency",
+   "env": {
+    "MICROTORCH_DEVICE": "cuda",
+    "MICROTORCH_DEVICE_OPS": "1",
+    "MICROTORCH_STEP_RESIDENCY": "1",
+    "MICROTORCH_DEFER_DOWNLOADS": "1"
+   },
+   "rc": 0,
+   "seconds": 0.5,
+   "production_kernels": false
+  },
+  {
+   "binary": "test_gradcheck",
+   "env": {
+    "MICROTORCH_DEVICE": "cuda",
+    "MICROTORCH_DEVICE_OPS": "1",
+    "MICROTORCH_STEP_RESIDENCY": "1",
+    "MICROTORCH_DEFER_DOWNLOADS": "1"
+   },
+   "rc": 0,
+   "seconds": 0.5,
+   "production_kernels": false
+  },
+  {
+   "binary": "test_nn",
+   "env": {
+    "MICROTORCH_DEVICE": "cuda",
+    "MICROTORCH_DEVICE_OPS": "1",
+    "MICROTORCH_STEP_RESIDENCY": "1",
+    "MICROTORCH_DEFER_DOWNLOADS": "1"
+   },
+   "rc": 0,
+   "seconds": 4.0,
+   "production_kernels": false
+  },
+  {
+   "binary": "test_recursion",
+   "env": {
+    "MICROTORCH_DEVICE": "cuda",
+    "MICROTORCH_DEVICE_OPS": "1"
+   },
+   "rc": 0,
+   "seconds": 3.3,
+   "production_kernels": false,
+   "output": "tied-block recursion (llama family)\nUsing CUDA device: NVIDIA L4\nCompute capability: 8.9\n  R=1: logits and 29 gradients bit for bit (0 bits differ); IR identical\n  1 + [2] x 3 + 1: 8 applications of 4 stored layers; 38 tensors listed once, 9440 parameters (the plain 4-layer model's names and count)\n  tied vs untied (1 + [2] x 3 + 1 vs 8 unshared copies): logits 0 bits differ; shared gradient vs the sum of its copies' worst rel 0.00e+00 (0/9440 bits differ)\n  FD gradcheck 1 + [2] x 3 + 1: 74 entries over 38 tensors, worst rel 2.93e-03\n  FD gradcheck [2] x 4: 56 entries over 20 tensors, worst rel 3.10e-03\n  FD gradcheck 1 + [2] x 3 + 1, inject add: 74 entries over 38 tensors, worst rel 3.54e-03\n  checkpoint_blocks per application (plain 4 layers, the reference): gradients 0 bits differ, worst rel 0.00e+00\n  checkpoint_blocks per application (1 + [2] x 3 + 1): gradients 0 bits differ, worst rel 0.00e+00\n  checkpoint_blocks per application (1 + [2] x 3 + 1, inject add): gradients 40 bits differ, worst rel 6.10e-08 embed_tokens.weight\n  forward_cached (prefill 6, decode 4; 8 caches, inject none) vs forward: worst rel 4.88e-07\n  forward_cached (prefill 6, decode 4; 8 caches, inject add) vs forward: worst rel 5.25e-07\n  AdamW on the recursed model vs on the plain stored-layer model with its gradients: 0 bits differ over 9440 parameters\ndevice steps (device op set ON)\n  [2] x 4, 4 steps, accum 2 (device op set + residency + deferred downloads vs host): loss worst rel 6.50e-08, step-1 gradients worst rel 1.62e-06, final parameters max |diff| 4.02e-07 (1815/5024 bits differ); losses 3.8390 -> 3.6096\n  1 + [2] x 3 + 1, inject add, 4 steps, accum 2 (device op set + residency + deferred downloads vs host): loss worst rel 6.17e-08, step-1 gradients worst rel 1.64e-06, final parameters max |diff| 8.49e-07 (3299/9440 bits differ); losses 3.9858 -> 3.5192\n\n[PASS] recursion\n[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)\n"
+  },
+  {
+   "binary": "test_mor",
+   "env": {
+    "MICROTORCH_DEVICE": "cuda",
+    "MICROTORCH_DEVICE_OPS": "1"
+   },
+   "rc": 0,
+   "seconds": 3.8,
+   "production_kernels": false
+  },
+  {
+   "binary": "test_llama_attnres",
+   "env": {
+    "MICROTORCH_DEVICE": "cuda",
+    "MICROTORCH_DEVICE_OPS": "1"
+   },
+   "rc": 0,
+   "seconds": 2.7,
+   "production_kernels": false
+  },
+  {
+   "binary": "test_state_tokens",
+   "env": {
+    "MICROTORCH_DEVICE": "cuda",
+    "MICROTORCH_DEVICE_OPS": "1"
+   },
+   "rc": 0,
+   "seconds": 2.9,
+   "production_kernels": false
+  },
+  {
+   "binary": "test_recursion",
+   "env": {
+    "MICROTORCH_DEVICE_OPS": "1",
+    "MICROTORCH_DEVICE": "cuda",
+    "MICROTORCH_ATTN_BLOCKED": "1",
+    "MICROTORCH_CUBLAS": "1"
+   },
+   "rc": 0,
+   "seconds": 3.0,
+   "production_kernels": true,
+   "output": "tied-block recursion (llama family)\nUsing CUDA device: NVIDIA L4\nCompute capability: 8.9\n  R=1: logits and 29 gradients bit for bit (0 bits differ); IR identical\n  1 + [2] x 3 + 1: 8 applications of 4 stored layers; 38 tensors listed once, 9440 parameters (the plain 4-layer model's names and count)\n  tied vs untied (1 + [2] x 3 + 1 vs 8 unshared copies): logits 0 bits differ; shared gradient vs the sum of its copies' worst rel 0.00e+00 (0/9440 bits differ)\n  FD gradcheck 1 + [2] x 3 + 1: 74 entries over 38 tensors, worst rel 2.93e-03\n  FD gradcheck [2] x 4: 56 entries over 20 tensors, worst rel 3.10e-03\n  FD gradcheck 1 + [2] x 3 + 1, inject add: 74 entries over 38 tensors, worst rel 3.54e-03\n  checkpoint_blocks per application (plain 4 layers, the reference): gradients 0 bits differ, worst rel 0.00e+00\n  checkpoint_blocks per application (1 + [2] x 3 + 1): gradients 0 bits differ, worst rel 0.00e+00\n  checkpoint_blocks per application (1 + [2] x 3 + 1, inject add): gradients 40 bits differ, worst rel 6.10e-08 embed_tokens.weight\n  forward_cached (prefill 6, decode 4; 8 caches, inject none) vs forward: worst rel 4.88e-07\n  forward_cached (prefill 6, decode 4; 8 caches, inject add) vs forward: worst rel 5.25e-07\n  AdamW on the recursed model vs on the plain stored-layer model with its gradients: 0 bits differ over 9440 parameters\ndevice steps (device op set ON)\n  [2] x 4, 4 steps, accum 2 (device op set + residency + deferred downloads vs host): loss worst rel 6.50e-08, step-1 gradients worst rel 1.61e-06, final parameters max |diff| 1.79e-07 (1741/5024 bits differ); losses 3.8390 -> 3.6096\n  1 + [2] x 3 + 1, inject add, 4 steps, accum 2 (device op set + residency + deferred downloads vs host): loss worst rel 6.17e-08, step-1 gradients worst rel 1.83e-06, final parameters max |diff| 7.90e-07 (2973/9440 bits differ); losses 3.9858 -> 3.5192\n\n[PASS] recursion\n[matmul] Using AVX2 SIMD (8 floats/instruction + FMA)\n"
+  }
+ ],
+ "provenance": {
+  "provider": "runpod",
+  "pod_id": "pylf0nx6n86wze",
+  "image": "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
+  "image_digest": "sha256:61a4aafb0094cd773f11eefa378929d5a687bd775febeb78eac62fc824141fb5",
+  "image_digest_source": "Docker Hub tag lookup when the pod was created",
+  "datacenter": "EUR-IS-2",
+  "cloud": "SECURE",
+  "gpu_type_id": "NVIDIA L4",
+  "usd_per_hr": 0.59,
+  "volume": "b7ujnkix73",
+  "machine": {
+   "gpuTypeId": null,
+   "cpuCount": null,
+   "cpuType": null,
+   "location": null,
+   "dataCenterId": null,
+   "secureCloud": null
+  },
+  "memory_gb": 100,
+  "vcpu": 12,
+  "cgroup_cpus": 10.2,
+  "cgroup_mem_gb": 93.1,
+  "gpu": "NVIDIA L4",
+  "gpus": [
+   {
+    "name": "NVIDIA L4",
+    "driver": "595.91.07",
+    "memory": "23034 MiB",
+    "power_limit": "72.00 W",
+    "pci": "00000000:23:00.0"
+   }
+  ],
+  "driver_version": "595.91.07",
+  "cuda_driver_api": "13.2",
+  "nvcc": "12.4",
+  "cpu": "AMD EPYC 7F52 16-Core Processor",
+  "cpus": 64,
+  "mem_gb": 503.7,
+  "os": "Ubuntu 22.04.5 LTS",
+  "kernel": "6.8.0-138-generic",
+  "python": "3.11.10",
+  "paperkiln_commit": "3e1ea954616a9e54545001456e83b6f1874cdb8c",
+  "written_at": "2026-10-24T09:59:35Z"
+ },
+ "build": {
+  "rc": 0,
+  "seconds": 33.7
+ },
+ "ok": true,
+ "failed": [],
+ "seconds": 64.1
+}

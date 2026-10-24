@@ -1,0 +1,364 @@
+{
+ "comparison": "floor pilot, Colab L4 vs RunPod L4 (PREREGISTRATION.md implementation note, 24 Oct 2026)",
+ "excluded_from_analysis": true,
+ "verdict_colab": "PASS",
+ "verdict_runpod": "PASS",
+ "verdict_colab_file": "PASS",
+ "carry5_accuracy": {
+  "multi_self": {
+   "colab": 0.48085585585585583,
+   "runpod": 0.48085585585585583,
+   "gap": 0.0,
+   "se_gap": 0.023711550277085772,
+   "gap_in_se": 0.0
+  },
+  "twin_self": {
+   "colab": 0.5315315315315315,
+   "runpod": 0.5315315315315315,
+   "gap": 0.0,
+   "se_gap": 0.023681718465048705,
+   "gap_in_se": 0.0
+  },
+  "noctx": {
+   "colab": 0.2533783783783784,
+   "runpod": 0.2545045045045045,
+   "gap": 0.0011261261261261146,
+   "se_gap": 0.020656739065714583,
+   "gap_in_se": 0.054516161652795624
+  },
+  "twin_ctx": {
+   "colab": 0.535024154589372,
+   "runpod": 0.535024154589372,
+   "gap": 0.0,
+   "se_gap": 0.024513296628214856,
+   "gap_in_se": 0.0
+  },
+  "noctx_ctx": {
+   "colab": 0.2318840579710145,
+   "runpod": 0.23309178743961353,
+   "gap": 0.0012077294685990392,
+   "se_gap": 0.020760730797356207,
+   "gap_in_se": 0.058173745442180604
+  }
+ },
+ "carry5_differences": {
+  "Y": {
+   "colab": -0.05067567567567571,
+   "runpod": -0.05067567567567571,
+   "gap": 0.0,
+   "se_gap": 0.033512108349081755,
+   "gap_in_se": 0.0
+  },
+  "Y_all": {
+   "colab": -0.027100000000000013,
+   "runpod": -0.027100000000000013,
+   "gap": 0.0
+  },
+  "Y_gold": {
+   "colab": -0.025900900900900914,
+   "runpod": -0.025900900900900914,
+   "gap": 0.0,
+   "se_gap": 0.03352335673992928,
+   "gap_in_se": 0.0
+  },
+  "twin_minus_qalone_ctx": {
+   "colab": 0.3031400966183575,
+   "runpod": 0.30193236714975846,
+   "gap": -0.0012077294685990392,
+   "se_gap": 0.03212335061638409,
+   "gap_in_se": -0.037596621940895934
+  }
+ },
+ "losses": {
+  "panel_fineweb": {
+   "colab": 3.8377784439362586,
+   "runpod": 3.8377784439362586,
+   "gap": 0.0
+  },
+  "panel_dialogue": {
+   "colab": 3.2356272330507636,
+   "runpod": 3.2356272330507636,
+   "gap": 0.0
+  },
+  "sft_val": {
+   "colab": 3.016201072146997,
+   "runpod": 3.016282169947581,
+   "gap": 8.109780058385141e-05
+  }
+ },
+ "pretraining": {
+  "best_val": {
+   "colab": 3.427698850631714,
+   "runpod": 3.427698850631714,
+   "gap": 0.0
+  },
+  "final_val": {
+   "colab": 3.4276989474892616,
+   "runpod": 3.4276989474892616,
+   "gap": 0.0
+  },
+  "val_curve": {
+   "steps_compared": 20,
+   "max_abs_gap": 0.0,
+   "mean_gap": 0.0,
+   "gap_at": {
+    "500": 0.0,
+    "2500": 0.0,
+    "5000": 0.0,
+    "7500": 0.0,
+    "10000": 0.0
+   }
+  },
+  "tokens_per_second": {
+   "colab": 25112.82150195966,
+   "runpod": 24743.253895602484,
+   "gap": -369.5676063571773
+  },
+  "pt_wall_seconds": {
+   "colab": 6524.157390567,
+   "runpod": 2979.721273163,
+   "gap": -3544.436117404
+  }
+ },
+ "rungs": {
+  "500": {
+   "val_loss": {
+    "colab": 5.182712107896805,
+    "runpod": 5.182712107896805,
+    "gap": 0.0
+   },
+   "acc_gold": {
+    "colab": 0.24324324324324326,
+    "runpod": 0.24324324324324326,
+    "gap": 0.0
+   },
+   "Y_base": {
+    "colab": -0.0022522522522522292,
+    "runpod": -0.0022522522522522292,
+    "gap": 0.0
+   },
+   "panel_fineweb": {
+    "colab": 5.615820717997849,
+    "runpod": 5.615820717997849,
+    "gap": 0.0
+   },
+   "panel_dialogue": {
+    "colab": 4.672344638966024,
+    "runpod": 4.672344638966024,
+    "gap": 0.0
+   }
+  },
+  "1000": {
+   "val_loss": {
+    "colab": 4.44366829097271,
+    "runpod": 4.44366829097271,
+    "gap": 0.0
+   },
+   "acc_gold": {
+    "colab": 0.38626126126126126,
+    "runpod": 0.38626126126126126,
+    "gap": 0.0
+   },
+   "Y_base": {
+    "colab": -0.014639639639639657,
+    "runpod": -0.014639639639639657,
+    "gap": 0.0
+   },
+   "panel_fineweb": {
+    "colab": 4.886690890416503,
+    "runpod": 4.886690890416503,
+    "gap": 0.0
+   },
+   "panel_dialogue": {
+    "colab": 4.0782735287211835,
+    "runpod": 4.0782735287211835,
+    "gap": 0.0
+   }
+  },
+  "2500": {
+   "val_loss": {
+    "colab": 3.9076021388173103,
+    "runpod": 3.9076021388173103,
+    "gap": 0.0
+   },
+   "acc_gold": {
+    "colab": 0.46283783783783783,
+    "runpod": 0.46283783783783783,
+    "gap": 0.0
+   },
+   "Y_base": {
+    "colab": -0.0247747747747748,
+    "runpod": -0.0247747747747748,
+    "gap": 0.0
+   },
+   "panel_fineweb": {
+    "colab": 4.318778895772994,
+    "runpod": 4.318778895772994,
+    "gap": 0.0
+   },
+   "panel_dialogue": {
+    "colab": 3.6451571914367378,
+    "runpod": 3.6451571914367378,
+    "gap": 0.0
+   }
+  },
+  "5000": {
+   "val_loss": {
+    "colab": 3.6234800294041634,
+    "runpod": 3.6234800294041634,
+    "gap": 0.0
+   },
+   "acc_gold": {
+    "colab": 0.4797297297297297,
+    "runpod": 0.4797297297297297,
+    "gap": 0.0
+   },
+   "Y_base": {
+    "colab": -0.04842342342342343,
+    "runpod": -0.04842342342342343,
+    "gap": 0.0
+   },
+   "panel_fineweb": {
+    "colab": 4.046139152254909,
+    "runpod": 4.046139152254909,
+    "gap": 0.0
+   },
+   "panel_dialogue": {
+    "colab": 3.4212297881022096,
+    "runpod": 3.4212297881022096,
+    "gap": 0.0
+   }
+  }
+ },
+ "post": {
+  "sft_tok_per_s_steady": {
+   "colab": 3551.7135552665227,
+   "runpod": 24558.4339822786,
+   "gap": 21006.720427012075
+  },
+  "sft_seconds": {
+   "colab": 7046.8,
+   "runpod": 1055.4,
+   "gap": -5991.4
+  }
+ },
+ "provenance": {
+  "colab": null,
+  "runpod": {
+   "provider": "runpod",
+   "pod_id": "tjwl155f8yb43k",
+   "image": "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
+   "image_digest": "sha256:61a4aafb0094cd773f11eefa378929d5a687bd775febeb78eac62fc824141fb5",
+   "image_digest_source": "Docker Hub tag lookup when the pod was created",
+   "datacenter": "EU-RO-1",
+   "cloud": "SECURE",
+   "gpu_type_id": "NVIDIA L4",
+   "usd_per_hr": 0.59,
+   "volume": "8qhzng419g",
+   "machine": {
+    "gpuTypeId": null,
+    "cpuCount": null,
+    "cpuType": null,
+    "location": null,
+    "dataCenterId": null,
+    "secureCloud": null
+   },
+   "memory_gb": 62,
+   "vcpu": 6,
+   "cgroup_cpus": 5.1,
+   "cgroup_mem_gb": 57.7,
+   "gpu": "NVIDIA L4",
+   "gpus": [
+    {
+     "name": "NVIDIA L4",
+     "driver": "595.91.07",
+     "memory": "23034 MiB",
+     "power_limit": "72.00 W",
+     "pci": "00000000:03:00.0"
+    }
+   ],
+   "driver_version": "595.91.07",
+   "cuda_driver_api": "13.2",
+   "nvcc": "12.4",
+   "cpu": "AMD EPYC 9254 24-Core Processor",
+   "cpus": 48,
+   "mem_gb": 503.4,
+   "os": "Ubuntu 22.04.5 LTS",
+   "kernel": "6.8.0-138-generic",
+   "python": "3.11.10",
+   "paperkiln_commit": "08caeac1ea577bbb3091b5dd5448a46c4ae9f5ef",
+   "written_at": "2026-10-24T11:22:44Z"
+  }
+ },
+ "runpod_spend": {
+  "ledger_usd": 2.4969,
+  "pods": [
+   {
+    "id": "2nxl8x0gve3r6b",
+    "dc": "EU-RO-1",
+    "usd_per_hr": 0.59,
+    "start": 1792836152.356628,
+    "stop": 1792838854.9963434,
+    "stopped_by": "runner",
+    "hours": 0.751
+   },
+   {
+    "id": "obm2c2j0gjjtab",
+    "dc": "EU-RO-1",
+    "usd_per_hr": 0.59,
+    "start": 1792839053.2050145,
+    "stop": 1792840848.0500987,
+    "stopped_by": "sweep",
+    "hours": 0.499
+   },
+   {
+    "id": "tjwl155f8yb43k",
+    "dc": "EU-RO-1",
+    "usd_per_hr": 0.59,
+    "start": 1792840866.1062317,
+    "stop": 1792851477.7684157,
+    "stopped_by": "runner",
+    "hours": 2.948
+   }
+  ],
+  "volumes": [
+   {
+    "id": "8qhzng419g",
+    "dc": "EU-RO-1",
+    "gb": 50,
+    "created": 1792836148.7186263,
+    "name": "pk-rp-pilot-vol",
+    "deleted": 1792851479.239183
+   }
+  ],
+  "balance_before": 100.0,
+  "balance_after": 96.6078
+ },
+ "identity": {
+  "pt_weights_sha256_equal": true,
+  "pt_records_compared": 10020,
+  "pt_records_differing": 0,
+  "rung_records_identical": {
+   "500": true,
+   "1000": true,
+   "2500": true,
+   "5000": true
+  },
+  "sft_data_sha256_equal": true,
+  "sft_weights_sha256_equal": false
+ },
+ "campaign_wall_hours": {
+  "colab": 7.54,
+  "runpod": 4.26
+ },
+ "commits": {
+  "colab": "68eea8035029ace00968d77c7c5a54a9b238a9a0",
+  "runpod": "08caeac1ea577bbb3091b5dd5448a46c4ae9f5ef"
+ },
+ "notes": [
+  "Pretraining is bitwise identical across providers: weights sha256, all 10,020 step and eval records (loss, grad norm, val loss), with the RunPod run resumed twice from its volume (warm optimiser) after the kill tests (SIGTERM at step 3000, SIGKILL at step 5500).",
+  "Rungs 500/1000/2500/5000 bitwise identical (every field of rung.json).",
+  "SFT differs by code, not provider: the Colab pilot's post job ran at 68eea803 with the host masked cross-entropy, the RunPod one at 08caeac1 with the device kernel (4d2d1427; the implementation note says the loss differs only in the order of one fp32 sum). SFT validation gaps are 6e-5 to 1e-4 nats; Carry-5 differs by at most a few items per mode (twin and Y identical; question-alone on the context families one item of 828).",
+  "Throughput and wall-clock are host properties (S9/S10 carry the provider). RunPod result.json wall_seconds counts from the last resume only; campaign wall-clock is first VM up to all jobs home, including both kill-test relaunches (about 7 minutes) on RunPod and the slow host SFT (1.96 h) on Colab."
+ ]
+}

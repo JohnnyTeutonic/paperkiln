@@ -1,0 +1,161 @@
+{
+ "endpoint": null,
+ "launches": 3,
+ "jobs": {
+  "data": {
+   "relayed_step": 0,
+   "status": "FINISHED",
+   "home": true,
+   "failed_seen": 0,
+   "fetched": [
+    "data.ledger.json",
+    "../data_train.log"
+   ]
+  },
+  "gate": {
+   "relayed_step": 0,
+   "status": "FINISHED",
+   "home": true,
+   "failed_seen": 0,
+   "fetched": [
+    "gate.json",
+    "../gate_train.log"
+   ]
+  },
+  "rung_pilot_s35_r99_s500": {
+   "relayed_step": 0,
+   "status": "FINISHED",
+   "home": true,
+   "failed_seen": 0,
+   "fetched": [
+    "rung.json",
+    "../rung_pilot_s35_r99_s500_train.log"
+   ]
+  },
+  "rung_pilot_s35_r99_s1000": {
+   "relayed_step": 0,
+   "status": "FINISHED",
+   "home": true,
+   "failed_seen": 0,
+   "fetched": [
+    "rung.json",
+    "../rung_pilot_s35_r99_s1000_train.log"
+   ]
+  },
+  "rung_pilot_s35_r99_s2500": {
+   "relayed_step": 0,
+   "status": "FINISHED",
+   "home": true,
+   "failed_seen": 0,
+   "fetched": [
+    "rung.json",
+    "../rung_pilot_s35_r99_s2500_train.log"
+   ]
+  },
+  "rung_pilot_s35_r99_s5000": {
+   "relayed_step": 0,
+   "status": "FINISHED",
+   "home": true,
+   "failed_seen": 0,
+   "fetched": [
+    "rung.json",
+    "../rung_pilot_s35_r99_s5000_train.log"
+   ]
+  },
+  "post_pilot_s35_r99": {
+   "relayed_step": 0,
+   "status": "FINISHED",
+   "home": true,
+   "failed_seen": 0,
+   "fetched": [
+    "summary.json",
+    "../post_pilot_s35_r99_train.log"
+   ]
+  },
+  "pick_pilot_s35": {
+   "relayed_step": 0,
+   "status": "FINISHED",
+   "home": true,
+   "failed_seen": 0,
+   "fetched": [
+    "best.json",
+    "model.safetensors",
+    "model.gguf",
+    "spec.json",
+    "../pick_pilot_s35_train.log"
+   ]
+  },
+  "pt_pilot_s35_r99": {
+   "relayed_step": 7500,
+   "status": "FINISHED",
+   "home": true,
+   "failed_seen": 0
+  }
+ },
+ "gpu": "L4",
+ "backend": "runpod",
+ "runpod": {
+  "pod": null,
+  "volume": null,
+  "retired_volumes": [],
+  "ledger": {
+   "pods": [
+    {
+     "id": "2nxl8x0gve3r6b",
+     "name": "pk-rp-pilot",
+     "gpu": "L4",
+     "usd_per_hr": 0.59,
+     "dc": "EU-RO-1",
+     "volume": "8qhzng419g",
+     "start": 1792836152.356628,
+     "stop": 1792838854.9963434,
+     "image": "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
+     "image_digest": "sha256:61a4aafb0094cd773f11eefa378929d5a687bd775febeb78eac62fc824141fb5",
+     "stopped_by": "runner"
+    },
+    {
+     "id": "obm2c2j0gjjtab",
+     "name": "pk-rp-pilot",
+     "gpu": "L4",
+     "usd_per_hr": 0.59,
+     "dc": "EU-RO-1",
+     "volume": "8qhzng419g",
+     "start": 1792839053.2050145,
+     "stop": 1792840848.0500987,
+     "image": "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
+     "image_digest": "sha256:61a4aafb0094cd773f11eefa378929d5a687bd775febeb78eac62fc824141fb5",
+     "stopped_by": "sweep"
+    },
+    {
+     "id": "tjwl155f8yb43k",
+     "name": "pk-rp-pilot",
+     "gpu": "L4",
+     "usd_per_hr": 0.59,
+     "dc": "EU-RO-1",
+     "volume": "8qhzng419g",
+     "start": 1792840866.1062317,
+     "stop": 1792851477.7684157,
+     "image": "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
+     "image_digest": "sha256:61a4aafb0094cd773f11eefa378929d5a687bd775febeb78eac62fc824141fb5",
+     "stopped_by": "runner"
+    }
+   ],
+   "volumes": [
+    {
+     "id": "8qhzng419g",
+     "dc": "EU-RO-1",
+     "gb": 50,
+     "created": 1792836148.7186263,
+     "name": "pk-rp-pilot-vol",
+     "deleted": 1792851479.239183
+    }
+   ]
+  },
+  "dc_fails": 0,
+  "creating": null
+ },
+ "booted": true,
+ "pending_uploads": [],
+ "gone_ticks": 0,
+ "campaign_home": true
+}
