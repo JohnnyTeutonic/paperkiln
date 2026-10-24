@@ -35,6 +35,16 @@ if [ -n "$need" ]; then
   apt-get install -y -q rsync procps cmake git build-essential libboost-regex-dev > /dev/null
 fi
 python3 -m pip -q install --root-user-action=ignore huggingface_hub pandas pyarrow tokenizers numpy 2>&1 | tail -3 || true
+# CMake 3.24 or later (transformer_cpp's FetchContent uses DOWNLOAD_EXTRACT_TIMESTAMP; Ubuntu 22.04's 3.22 reads it
+# as a URL and fails), as on Colab, which ships a pip CMake: 3.31 into /usr/local/bin, ahead of /usr/bin.
+python3 -m pip -q install --root-user-action=ignore "cmake==3.31.6" 2>&1 | tail -3 || true
+hash -r
+cmake --version | head -1
+python3 - <<'PY'
+import re, subprocess, sys
+v = tuple(map(int, re.search(r"(\d+)\.(\d+)", subprocess.run(["cmake", "--version"], capture_output=True, text=True).stdout).groups()))
+sys.exit(0 if v >= (3, 24) else "cmake older than 3.24")
+PY
 nvidia-smi -L
 nvcc --version | tail -2 || true
 # The host driver's CUDA (the create carries no allowedCudaVersions filter): the image's 12.4 runtime and
