@@ -490,7 +490,34 @@
 //               take (prelude, the shared block R times, coda); the kv slot
 //               has "kv_rows": "active". No injection. Architecture
 //               "paperkiln", block_count = the stored layers.
-//   mamba       no positions; block: h = layernorm(x) (blk.{i}.ssm_norm), u =
+//   llama_attnres  the llama block (tensor names and nodes as llama) whose
+//               residual stream is a list, one entry per sublayer: embed ends
+//               with list [x] -> bank. Block i: x = depth_attend(bank;
+//               blk.{i}.attnres_attn_q), then affine(x; scale {"per_layer":
+//               [1, 3, 5, ..]} (entry i = 2i + 1), shift 0); the llama
+//               attention sublayer of rmsnorm(x; attn_norm) gives o;
+//               append(bank, o). x = depth_attend(bank; blk.{i}.attnres_ffn_q),
+//               then affine(x; scale {"per_layer": [2, 4, 6, ..]} (entry i =
+//               2i + 2), shift 0); the SwiGLU of rmsnorm(x; ffn_norm) gives f;
+//               append(bank, f). Head: depth_attend(bank; attnres_out_q), then
+//               affine(x; scale 2L + 1 (a plain scalar: the head sits outside
+//               the blocks), shift 0), output_norm, output. Keys and weights
+//               are depth_attend's own; the scale by the source count S is the
+//               only attnres-specific step. Every reader of the stream is an
+//               RMSNorm, so a mean of sources and their sum differ only
+//               through eps; multiplying by S makes the zero-query model
+//               exactly llama (Kimi's convex mix is llama with eps * S^2).
+//               Pseudo-queries are [d], F32 in every variant;
+//               blk.0.attnres_attn_q is written as zeros and never read (a
+//               loader may require it present; an exporter must not drop it).
+//               Under weight_index the affine attributes and the bank are per
+//               APPLICATION, not per stored block: application i's source
+//               count grows with i even when it binds blk.{m_i}; the queries
+//               are rec_app.{i}.* with "tensor_index": "application" ({i} =
+//               the application index in tagged nodes, the only second
+//               meaning of {i}). Architecture "paperkiln". Reference:
+//               paperkiln c48ca962; ember's ar3 gate (CPU).
+//   mamba      no positions; block: h = layernorm(x) (blk.{i}.ssm_norm), u =
 //               ssm_in(h) [n], y = ssm_out(ssm_scan(u)) [d], y = y *
 //               gelu(ssm_gate(h)) * gelu(ssm_out_gate(x)) (multiplied in that
 //               order), x = x + y; projections biased; ssm_scan weights
