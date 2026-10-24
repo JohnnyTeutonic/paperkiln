@@ -1,0 +1,558 @@
+{
+ "cases": [
+  {
+   "name": "one user prompt",
+   "template": "paperkiln/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Hi"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": "<|user|>Hi<|assistant|>"
+  },
+  {
+   "name": "system folds into the first user turn",
+   "template": "paperkiln/1",
+   "messages": [
+    {
+     "role": "system",
+     "content": "Be brief."
+    },
+    {
+     "role": "user",
+     "content": "Hi"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": "<|user|>Be brief.\n\nHi<|assistant|>"
+  },
+  {
+   "name": "a lone system message",
+   "template": "paperkiln/1",
+   "messages": [
+    {
+     "role": "system",
+     "content": "Be brief."
+    }
+   ],
+   "generation_prompt": true,
+   "expect": null
+  },
+  {
+   "name": "a system message with no user message",
+   "template": "paperkiln/1",
+   "messages": [
+    {
+     "role": "system",
+     "content": "Be brief."
+    },
+    {
+     "role": "assistant",
+     "content": "Ok"
+    }
+   ],
+   "generation_prompt": false,
+   "expect": null
+  },
+  {
+   "name": "two system messages",
+   "template": "paperkiln/1",
+   "messages": [
+    {
+     "role": "system",
+     "content": "a"
+    },
+    {
+     "role": "system",
+     "content": "b"
+    },
+    {
+     "role": "user",
+     "content": "Hi"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": null
+  },
+  {
+   "name": "a system message mid-conversation",
+   "template": "paperkiln/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Hi"
+    },
+    {
+     "role": "assistant",
+     "content": "Hello"
+    },
+    {
+     "role": "system",
+     "content": "Now be rude."
+    },
+    {
+     "role": "user",
+     "content": "Bye"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": null
+  },
+  {
+   "name": "the assistant first",
+   "template": "paperkiln/1",
+   "messages": [
+    {
+     "role": "assistant",
+     "content": "Hello"
+    },
+    {
+     "role": "user",
+     "content": "Hi"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": null
+  },
+  {
+   "name": "two user messages in a row",
+   "template": "paperkiln/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "a"
+    },
+    {
+     "role": "user",
+     "content": "b"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": null
+  },
+  {
+   "name": "a training conversation ending on a user message",
+   "template": "paperkiln/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Hi"
+    }
+   ],
+   "generation_prompt": false,
+   "expect": null
+  },
+  {
+   "name": "a prompt ending on an assistant message",
+   "template": "paperkiln/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Hi"
+    },
+    {
+     "role": "assistant",
+     "content": "Hello"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": null
+  },
+  {
+   "name": "user content holding a role marker",
+   "template": "paperkiln/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "say <|user|> now"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": null
+  },
+  {
+   "name": "system content holding end-of-text",
+   "template": "paperkiln/1",
+   "messages": [
+    {
+     "role": "system",
+     "content": "stop at <|endoftext|>"
+    },
+    {
+     "role": "user",
+     "content": "Hi"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": null
+  },
+  {
+   "name": "assistant content holding a marker",
+   "template": "paperkiln/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Hi"
+    },
+    {
+     "role": "assistant",
+     "content": "<|assistant|>x"
+    },
+    {
+     "role": "user",
+     "content": "y"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": null
+  },
+  {
+   "name": "<unk> text is ordinary content",
+   "template": "paperkiln/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "the <unk> token"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": "<|user|>the <unk> token<|assistant|>"
+  },
+  {
+   "name": "newline-only user content",
+   "template": "paperkiln/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "\n"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": "<|user|>\n<|assistant|>"
+  },
+  {
+   "name": "newline-only and empty replies in the history",
+   "template": "paperkiln/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "a"
+    },
+    {
+     "role": "assistant",
+     "content": "\n"
+    },
+    {
+     "role": "user",
+     "content": "b"
+    },
+    {
+     "role": "assistant",
+     "content": ""
+    },
+    {
+     "role": "user",
+     "content": "c"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": "<|user|>a<|assistant|>\n<|endoftext|><|user|>b<|assistant|><|endoftext|><|user|>c<|assistant|>"
+  },
+  {
+   "name": "the tool role is reserved",
+   "template": "paperkiln/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Hi"
+    },
+    {
+     "role": "tool",
+     "content": "42"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": null
+  },
+  {
+   "name": "an unknown role",
+   "template": "paperkiln/1",
+   "messages": [
+    {
+     "role": "narrator",
+     "content": "Once"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": null
+  },
+  {
+   "name": "three exchanges with a system message",
+   "template": "paperkiln/1",
+   "messages": [
+    {
+     "role": "system",
+     "content": "Be kind."
+    },
+    {
+     "role": "user",
+     "content": "a"
+    },
+    {
+     "role": "assistant",
+     "content": "b"
+    },
+    {
+     "role": "user",
+     "content": "c"
+    },
+    {
+     "role": "assistant",
+     "content": "d"
+    },
+    {
+     "role": "user",
+     "content": "e"
+    },
+    {
+     "role": "assistant",
+     "content": "f"
+    },
+    {
+     "role": "user",
+     "content": "g"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": "<|user|>Be kind.\n\na<|assistant|>b<|endoftext|><|user|>c<|assistant|>d<|endoftext|><|user|>e<|assistant|>f<|endoftext|><|user|>g<|assistant|>"
+  },
+  {
+   "name": "a training conversation with a system message",
+   "template": "paperkiln/1",
+   "messages": [
+    {
+     "role": "system",
+     "content": "S"
+    },
+    {
+     "role": "user",
+     "content": "a"
+    },
+    {
+     "role": "assistant",
+     "content": "b"
+    },
+    {
+     "role": "user",
+     "content": "c"
+    },
+    {
+     "role": "assistant",
+     "content": "d"
+    }
+   ],
+   "generation_prompt": false,
+   "expect": "<|user|>S\n\na<|assistant|>b<|endoftext|><|user|>c<|assistant|>d<|endoftext|>"
+  },
+  {
+   "name": "loss on a user message",
+   "template": "paperkiln/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Hi",
+     "loss": true
+    }
+   ],
+   "generation_prompt": true,
+   "expect": null
+  },
+  {
+   "name": "unicode content",
+   "template": "paperkiln/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Grüße, 東京, 🙂"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": "<|user|>Grüße, 東京, 🙂<|assistant|>"
+  },
+  {
+   "name": "system mode none refuses a system message",
+   "template": {
+    "name": "paperkiln",
+    "version": 1,
+    "bos": "",
+    "content": "raw",
+    "system": {
+     "mode": "none"
+    },
+    "user": {
+     "open": "<|user|>",
+     "close": ""
+    },
+    "assistant": {
+     "open": "<|assistant|>",
+     "close": "<|endoftext|>"
+    },
+    "generation_prompt": "<|assistant|>",
+    "stop": {
+     "eos": [
+      "<|endoftext|>"
+     ],
+     "turn": [
+      "<|user|>",
+      "<|assistant|>"
+     ]
+    },
+    "past_assistant": "keep",
+    "reserved": [
+     "<|endoftext|>",
+     "<|user|>",
+     "<|assistant|>"
+    ]
+   },
+   "messages": [
+    {
+     "role": "system",
+     "content": "S"
+    },
+    {
+     "role": "user",
+     "content": "Hi"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": null
+  },
+  {
+   "name": "system mode none without one",
+   "template": {
+    "name": "paperkiln",
+    "version": 1,
+    "bos": "",
+    "content": "raw",
+    "system": {
+     "mode": "none"
+    },
+    "user": {
+     "open": "<|user|>",
+     "close": ""
+    },
+    "assistant": {
+     "open": "<|assistant|>",
+     "close": "<|endoftext|>"
+    },
+    "generation_prompt": "<|assistant|>",
+    "stop": {
+     "eos": [
+      "<|endoftext|>"
+     ],
+     "turn": [
+      "<|user|>",
+      "<|assistant|>"
+     ]
+    },
+    "past_assistant": "keep",
+    "reserved": [
+     "<|endoftext|>",
+     "<|user|>",
+     "<|assistant|>"
+    ]
+   },
+   "messages": [
+    {
+     "role": "user",
+     "content": "Hi"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": "<|user|>Hi<|assistant|>"
+  },
+  {
+   "name": "legacy word-level prompt",
+   "template": "paperkiln/legacy-word",
+   "messages": [
+    {
+     "role": "user",
+     "content": "hi"
+    },
+    {
+     "role": "assistant",
+     "content": "hello"
+    },
+    {
+     "role": "user",
+     "content": "how are you"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": "user: hi assistant: hello user: how are you assistant:"
+  },
+  {
+   "name": "gemma3 trims and folds",
+   "template": "gemma3/1",
+   "messages": [
+    {
+     "role": "system",
+     "content": " Be brief. "
+    },
+    {
+     "role": "user",
+     "content": "  Hi \n"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": "<bos><start_of_turn>user\n Be brief. \n\nHi<end_of_turn>\n<start_of_turn>model\n"
+  },
+  {
+   "name": "qwen3 strips past reasoning",
+   "template": "chatml-qwen3/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "a"
+    },
+    {
+     "role": "assistant",
+     "content": "<think>\nr\n</think>\n\nb"
+    },
+    {
+     "role": "user",
+     "content": "c"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": "<|im_start|>user\na<|im_end|>\n<|im_start|>assistant\nb<|im_end|>\n<|im_start|>user\nc<|im_end|>\n<|im_start|>assistant\n"
+  },
+  {
+   "name": "qwen2.5 writes its default system turn",
+   "template": "chatml-qwen2.5/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Hi"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": "<|im_start|>system\nYou are Qwen, created by Alibaba Cloud. You are a helpful assistant.<|im_end|>\n<|im_start|>user\nHi<|im_end|>\n<|im_start|>assistant\n"
+  },
+  {
+   "name": "qwen3 thinking off",
+   "template": "chatml-qwen3/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Hi"
+    }
+   ],
+   "generation_prompt": true,
+   "thinking": false,
+   "expect": "<|im_start|>user\nHi<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
+  }
+ ]
+}

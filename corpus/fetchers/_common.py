@@ -161,10 +161,18 @@ def normalise_dialogue(msgs):
 
 
 def render_dialogue(turns):
-    """The chat template (LOCAL_LLM_STACK.md section 3, point 3) for a whole dialogue, one
-    document: <|user|>U<|assistant|>A<|endoftext|> per exchange, then a newline."""
-    return "".join(f"<|user|>{turns[k]['content']}<|assistant|>{turns[k + 1]['content']}<|endoftext|>"
-                   for k in range(0, len(turns) - 1, 2)) + "\n"
+    """The chat template (LOCAL_LLM_STACK.md section 3, point 3; tools/chat_template.py
+    render_document, paperkiln/1) for a whole dialogue, one document:
+    <|user|>U<|assistant|>A<|endoftext|> per exchange, then a newline."""
+    return _chat_template().render_document(turns)
+
+
+def _chat_template():
+    tools = os.path.join(os.path.dirname(CORPUS_DIR), "tools")
+    if tools not in sys.path:
+        sys.path.insert(0, tools)
+    import chat_template
+    return chat_template
 
 
 def dialogue_key(turns):

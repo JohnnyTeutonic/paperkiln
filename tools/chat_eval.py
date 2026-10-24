@@ -43,6 +43,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import bpe  # noqa: E402
+import chat_template as CT  # noqa: E402
 
 
 def read_jsonl(p):
@@ -117,7 +118,7 @@ def ref_bpb(mtstudio, spec_path, prompts, work, tag):
     room = spec["data"]["T"] + 1
     ex, cut = [], 0
     for p in prompts:
-        pr = f"<|user|>{p['prompt']}<|assistant|>"
+        pr = CT.prompt([], p["prompt"])
         ref = p["reference"]
         n = room - len(tok.encode(pr)) - 1
         if n < 1:
@@ -210,7 +211,7 @@ def sample_ember(ember_bin, port, spec_path, prompts, n, temp, max_new, out, gre
         with open(ex, "w", encoding="utf-8", newline="\n") as f:
             for _ in range(n):
                 for p in prompts:
-                    f.write(json.dumps({"prompt": f"<|user|>{p['prompt']}<|assistant|>", "completion": p["reference"]},
+                    f.write(json.dumps({"prompt": CT.prompt([], p["prompt"]), "completion": p["reference"]},
                                        ensure_ascii=False) + "\n")
         subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "chat_sample_ember.py"),
                         ex, "--url", url, "--vocab", spec["data"]["vocab"], "--out", out, "--temp", repr(temp),
@@ -260,7 +261,7 @@ def main(argv=None):
     pf = os.path.join(a.out, "prompts_templated.jsonl")
     with open(pf, "w", encoding="utf-8", newline="\n") as f:
         for p in prompts:
-            f.write(json.dumps({"prompt": f"<|user|>{p['prompt']}<|assistant|>", "uri": p["uri"]}) + "\n")
+            f.write(json.dumps({"prompt": CT.prompt([], p["prompt"]), "uri": p["uri"]}) + "\n")
     summary, replies = {}, {}
     for m in a.model:
         tag, spec = m.split("=", 1)

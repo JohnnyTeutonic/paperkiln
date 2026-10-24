@@ -803,6 +803,7 @@ def dist(xs, limits=(512, 1024, 2048)):
 
 
 def cmd_budget(a):
+    import chat_template
     import llama3_bpe
     tok = llama3_bpe.from_gguf(a.vocab)
 
@@ -839,7 +840,7 @@ def cmd_budget(a):
             r[f"self{L}"] = sum(users[:tt - 1]) + L * (tt - 1) + 3 * (tt - 1) + users[tt - 1] + 2 + golds[tt - 1] + 1
             r[f"full_self{L}"] = sum(users) + L * len(turns) + 3 * len(turns)
         if idx % 97 == 0:  # the whole rendering, tokenised in one piece, equals the sum of pieces
-            whole = "".join(f"{USER}{t['user']}{ASSISTANT}{t['gold']}{EOT}" for t in turns[:tt])
+            whole = chat_template.render(chat_template.from_pairs([(t["user"], t["gold"]) for t in turns[:tt]]))
             assert n(whole) == target_gold, (it["id"], n(whole), target_gold)
             check_whole += 1
         rows.append(r)

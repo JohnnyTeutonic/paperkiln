@@ -60,6 +60,7 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import bpe  # noqa: E402
 import chat_eval  # noqa: E402
+import chat_template  # noqa: E402
 import qa_eval  # noqa: E402
 
 SET = os.path.join(ROOT, "corpus", "eval", "carry5_v1.jsonl")
@@ -84,7 +85,8 @@ def write_atomic(path, text):
 
 
 def template(history, user):
-    return "".join(f"{USER}{u}{ASSISTANT}{a}{EOT}" for u, a in history) + f"{USER}{user}{ASSISTANT}"
+    """The served prompt (tools/chat_template.py, paperkiln/1) for `user` after (user, reply) pairs."""
+    return chat_template.prompt(history, user)
 
 
 # ---------------------------------------------------------------- tokeniser

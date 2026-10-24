@@ -7,9 +7,9 @@
     python tools/chat_data.py pairs SFT.jsonl SAMPLES.jsonl --vocab V.gguf --T 256 --out PAIRS.jsonl
     python tools/chat_data.py mix A.jsonl B.jsonl [...] --seed 1 --out MIX.jsonl
 
-The template (tools/mtstudio.cpp chat_prompt_bpe): every past turn is
-<|user|>U<|assistant|>A<|endoftext|>, and a reply is prompted by
-<|user|>U<|assistant|>. Each assistant turn k becomes one example:
+The template (tools/chat_template.py, paperkiln/1; mtstudio renders the same through
+include/microtorch/chat_template.hpp): every past turn is <|user|>U<|assistant|>A<|endoftext|>,
+and a reply is prompted by <|user|>U<|assistant|>. Each assistant turn k becomes one example:
   prompt     = turns 1..k-1 in full, then <|user|>U_k<|assistant|>
   completion = A_k   (mtstudio appends <|endoftext|> and masks the prompt)
 An example whose BPE length (prompt + completion + end-of-text) exceeds
@@ -18,7 +18,8 @@ model to stop mid-sentence. A dialogue whose text still carries a source
 role marker ([INST], [/INST] or a variant) is dropped whole and counted:
 about 0.3% of TinyChat conversations separate turns with bare [/INST], so
 one "assistant turn" holds several (ledger 0003), and training on them
-would teach the model to print markers. --skip N starts after the first N
+would teach the model to print markers. A dialogue whose content holds the template's own
+markers (<|user|>, <|assistant|>, <|endoftext|>) is dropped and counted the same way. --skip N starts after the first N
 kept examples, so a later stage can draw examples the SFT run never saw.
 --all-turns writes one example per dialogue instead, in mtstudio's
 "segments" form ({"segments": [{"text", "loss"}...]}: user turns with
@@ -41,20 +42,24 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import bpe  # noqa: E402
+import chat_template as CT  # noqa: E402
 
 MARKER = re.compile(r"\[\s*/?\W?\s*INST|INST\s*\]")
 
 
+def _pairs(messages):
+    """(user, assistant) contents by position, as the template's exchanges."""
+    return [(messages[k]["content"], messages[k + 1]["content"]) for k in range(0, len(messages) - 1, 2)]
+
+
 def turn(u, a):
-    return f"<|user|>{u}<|assistant|>{a}<|endoftext|>"
+    return CT.render(CT.from_pairs([(u, a)]))
 
 
 def examples(messages):
-    hist = ""
-    for k in range(0, len(messages) - 1, 2):
-        u, a = messages[k]["content"], messages[k + 1]["content"]
-        yield {"prompt": hist + f"<|user|>{u}<|assistant|>", "completion": a}
-        hist += turn(u, a)
+    pairs = _pairs(messages)
+    for k, (u, a) in enumerate(pairs):
+        yield {"prompt": CT.prompt(pairs[:k], u), "completion": a}
 
 
 def read_jsonl(p):
@@ -103,7 +108,11 @@ def _sized(line):
         return d, None
     ms = d["messages"]
     out, hist = [], 0
-    for k, ex in enumerate(examples(ms)):
+    try:
+        exs = list(examples(ms))
+    except CT.TemplateError:  # content holding the template's own markers: dropped with the marked ones
+        return d, None
+    for k, ex in enumerate(exs):
         nu = len(_TOK.encode(ms[2 * k]["content"]))
         na = len(_TOK.encode(ms[2 * k + 1]["content"]))
         out.append((ex, hist + 2 + nu + na + 1))  # <|user|> u <|assistant|> + a + <|endoftext|>
@@ -121,11 +130,7 @@ def all_turns(messages, sized, T):
         k += 1
     if k == 0:
         return None, 0
-    segs = []
-    for j in range(k):
-        segs.append({"text": f"<|user|>{messages[2 * j]['content']}<|assistant|>", "loss": False})
-        segs.append({"text": messages[2 * j + 1]["content"], "loss": True})
-    return {"segments": segs}, k
+    return CT.to_segments(CT.from_pairs(_pairs(messages)[:k])), k
 
 
 def cmd_sft(a):
