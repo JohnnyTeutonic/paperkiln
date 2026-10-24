@@ -27,7 +27,7 @@ REST = "https://rest.runpod.io/v1"
 GRAPHQL = "https://api.runpod.io/graphql"
 CATALOG = "https://api.runpod.io/v2/catalog/datacenters"
 KEY_PATH = os.path.expanduser(os.environ.get("RUNPOD_KEY_PATH", "~/.runpod/api_key"))
-MAX_PODS = 2          # account-wide, every create
+MAX_PODS = 4          # account-wide, every create (Jonathan raised it from 2 on 25 Oct 2026)
 MIN_BALANCE = 15.0    # dollars; no create below it
 GPU_IDS = {"L4": "NVIDIA L4", "T4": "Tesla T4", "A100": "NVIDIA A100 80GB PCIe", "4090": "NVIDIA GeForce RTX 4090"}
 

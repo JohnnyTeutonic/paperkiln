@@ -56,9 +56,9 @@ class FakeAPI:
 
 
 def test_create_pod_guardrails(monkeypatch):
-    f = FakeAPI(pods=[{"id": "a"}, {"id": "b"}])
+    f = FakeAPI(pods=[{"id": i} for i in "abcd"])
     f.install(monkeypatch)
-    with pytest.raises(api.Refused, match="cap 2"):
+    with pytest.raises(api.Refused, match="cap 4"):
         api.create_pod({"name": "x"})
     f.pods = [{"id": "a"}]
     f.bal = 14.99
