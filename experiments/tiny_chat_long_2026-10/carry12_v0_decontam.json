@@ -1,0 +1,372 @@
+{
+ "set": "corpus/eval/carry12_v0_draft.jsonl",
+ "set_sha256": "c914ec6296c986b85642b10485b81f35f3db6707833b1aecb3bff863aa05d418",
+ "command": "tools/carry12_build.py decontam (carry5_build's scan; load items scanned as recall) over the 13 tiny-chat sources, Simple English Wikipedia and corpus/data/fineweb_edu_sample_v1/pretrain_train.txt",
+ "summary": {
+  "items": 1452,
+  "corpora": 15,
+  "rows_scanned": 406291,
+  "item_leaks": 0,
+  "items_with_fact_sentence_in_training": 56,
+  "eval_texts_hit": {
+   "sentence": 96,
+   "prompt": 7
+  },
+  "rules": "decontam.py ngram (13 words), prompt (user turn equal, 4+ words), span (8-12 word user turn); sentence: any 3+ word template sentence as a span; fact_sentence: an item's value-bearing fact sentence; item_leak: fact sentence and question in one row"
+ },
+ "per_corpus": {
+  "C:/ml_artifacts/human_dialogue/hd_default/human_oasst_v1/dialogues.jsonl": {
+   "rows": 5328,
+   "bytes": 11241421,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 129,
+     "patterns": 19
+    },
+    "fact_sentence": {
+     "rows": 2,
+     "patterns": 2
+    }
+   }
+  },
+  "C:/ml_artifacts/human_dialogue/hd_default/human_convai2_v1/dialogues.jsonl": {
+   "rows": 8951,
+   "bytes": 11598030,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 7523,
+     "patterns": 58
+    },
+    "fact_sentence": {
+     "rows": 146,
+     "patterns": 42
+    },
+    "prompt": {
+     "rows": 42,
+     "patterns": 3
+    }
+   }
+  },
+  "C:/ml_artifacts/human_dialogue/hd_default/human_wow_v1/dialogues.jsonl": {
+   "rows": 18428,
+   "bytes": 19250269,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 449,
+     "patterns": 28
+    },
+    "fact_sentence": {
+     "rows": 25,
+     "patterns": 16
+    },
+    "prompt": {
+     "rows": 3,
+     "patterns": 1
+    }
+   }
+  },
+  "C:/ml_artifacts/human_dialogue/hd_default/human_bst_v1/dialogues.jsonl": {
+   "rows": 4819,
+   "bytes": 6021733,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 379,
+     "patterns": 28
+    },
+    "fact_sentence": {
+     "rows": 19,
+     "patterns": 17
+    }
+   }
+  },
+  "C:/ml_artifacts/human_dialogue/hd_default/human_taskmaster_v1/dialogues.jsonl": {
+   "rows": 28791,
+   "bytes": 45723989,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 5032,
+     "patterns": 28
+    },
+    "prompt": {
+     "rows": 3,
+     "patterns": 3
+    }
+   }
+  },
+  "C:/ml_artifacts/human_dialogue/hd_default/human_multiwoz_v1/dialogues.jsonl": {
+   "rows": 8292,
+   "bytes": 12454765,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 861,
+     "patterns": 14
+    },
+    "prompt": {
+     "rows": 1,
+     "patterns": 1
+    }
+   }
+  },
+  "C:/ml_artifacts/human_dialogue/hd_default/human_self_dialogue_v1/dialogues.jsonl": {
+   "rows": 24133,
+   "bytes": 34647146,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 632,
+     "patterns": 21
+    },
+    "prompt": {
+     "rows": 1,
+     "patterns": 1
+    }
+   }
+  },
+  "C:/ml_artifacts/human_dialogue/hd_optin/human_topical_chat_v1/dialogues.jsonl": {
+   "rows": 8605,
+   "bytes": 26162515,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 1695,
+     "patterns": 27
+    },
+    "prompt": {
+     "rows": 2,
+     "patterns": 1
+    }
+   }
+  },
+  "C:/ml_artifacts/human_dialogue/hd_optin/human_dolly_v1/dialogues.jsonl": {
+   "rows": 14945,
+   "bytes": 13266351,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 16,
+     "patterns": 6
+    }
+   }
+  },
+  "C:/ml_artifacts/human_dialogue/hd_optin/human_quac_v1/dialogues.jsonl": {
+   "rows": 11567,
+   "bytes": 14990412,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 10,
+     "patterns": 3
+    },
+    "prompt": {
+     "rows": 1,
+     "patterns": 1
+    }
+   }
+  },
+  "C:/ml_artifacts/human_dialogue/hd_optin/human_empathetic_v1/dialogues.jsonl": {
+   "rows": 17780,
+   "bytes": 8463964,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 964,
+     "patterns": 24
+    },
+    "fact_sentence": {
+     "rows": 2,
+     "patterns": 2
+    }
+   }
+  },
+  "C:/ml_artifacts/human_dialogue/hd_optin/human_dailydialog_v1/dialogues.jsonl": {
+   "rows": 10235,
+   "bytes": 8194793,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 630,
+     "patterns": 23
+    },
+    "fact_sentence": {
+     "rows": 5,
+     "patterns": 4
+    }
+   }
+  },
+  "corpus/data/human_no_robots_v1/dialogues.jsonl": {
+   "rows": 8698,
+   "bytes": 12639989,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 49,
+     "patterns": 12
+    }
+   }
+  },
+  "C:/ml_artifacts/human_dialogue/hd_optin/human_simplewiki_v1/documents.jsonl": {
+   "rows": 224597,
+   "bytes": 300681910,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 38,
+     "patterns": 13
+    }
+   }
+  },
+  "corpus/data/fineweb_edu_sample_v1/pretrain_train.txt": {
+   "rows": 11122,
+   "bytes": 52426369,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 33,
+     "patterns": 7
+    }
+   }
+  }
+ },
+ "item_leaks": {},
+ "top_sentences": {
+  "how are you": 7189,
+  "how can i help": 3726,
+  "how are you today": 1718,
+  "sorry to hear that": 1616,
+  "you are welcome": 1473,
+  "yes of course": 441,
+  "what is it about": 421,
+  "i am sorry to hear that": 289,
+  "nice to meet you": 275,
+  "that sounds nice": 264,
+  "how is it going": 174,
+  "it was a pleasure": 134,
+  "have a lovely day": 129,
+  "that sounds lovely": 80,
+  "that is good to know": 61,
+  "thanks for telling me": 43,
+  "i am well thank you": 41,
+  "oh that is nice": 40,
+  "that sounds relaxing": 36,
+  "can you help me with this": 23,
+  "hello nice to meet you": 19,
+  "i work as an accountant": 16,
+  "i work as a nurse": 14,
+  "that is annoying": 14,
+  "sorry my mistake": 11,
+  "i hope you are well": 11,
+  "that is frustrating": 9,
+  "can you tell me something interesting": 8,
+  "i work as a paramedic": 7,
+  "i work as a chef": 7,
+  "sorry i made a mistake": 6,
+  "what would you like to talk about": 6,
+  "i work as a teacher": 6,
+  "thanks for sharing that": 6,
+  "thanks that is all for now": 6,
+  "i am 20 years old": 5,
+  "what is on your mind": 5,
+  "it was lovely talking with you": 5,
+  "my favourite colour is blue": 4,
+  "i work as a pharmacist": 4,
+  "i work as a mechanic": 4,
+  "i work as a vet": 4,
+  "where am i going": 4,
+  "what a nice surprise": 4,
+  "i work as an engineer": 3,
+  "i work as a pilot": 3,
+  "i am 32 years old": 3,
+  "i work as a lawyer": 3,
+  "what is new with you": 3,
+  "is it a big one": 3,
+  "how old am i": 2,
+  "i am 19 years old": 2,
+  "i am 30 years old": 2,
+  "my sister plays the clarinet": 2,
+  "that sounds refreshing": 2,
+  "i work as a welder": 2,
+  "i am 18 years old": 2,
+  "i work as a librarian": 2,
+  "my name is rosa": 2,
+  "i work as a translator": 2
+ },
+ "drop_rule_examples": {
+  "prompt|carry12_v0_draft:recall:0025:t1:user": {
+   "corpus": "C:/ml_artifacts/human_dialogue/hd_default/human_convai2_v1/dialogues.jsonl",
+   "examples": [
+    {
+     "row": 191,
+     "context": "Hi there, how are you today?"
+    },
+    {
+     "row": 599,
+     "context": "Hi there how are you today?"
+    }
+   ]
+  },
+  "prompt|carry12_v0_draft:recall:0259:t1:user": {
+   "corpus": "C:/ml_artifacts/human_dialogue/hd_default/human_convai2_v1/dialogues.jsonl",
+   "examples": [
+    {
+     "row": 321,
+     "context": "I work as a chef."
+    }
+   ]
+  },
+  "prompt|carry12_v0_draft:recall:0253:t1:user": {
+   "corpus": "C:/ml_artifacts/human_dialogue/hd_default/human_convai2_v1/dialogues.jsonl",
+   "examples": [
+    {
+     "row": 2531,
+     "context": "I work as an accountant"
+    }
+   ]
+  },
+  "prompt|carry12_v0_draft:recall:0418:t1:user": {
+   "corpus": "C:/ml_artifacts/human_dialogue/hd_default/human_wow_v1/dialogues.jsonl",
+   "examples": [
+    {
+     "row": 6243,
+     "context": "My favourite colour is blue! :)"
+    },
+    {
+     "row": 6466,
+     "context": "My favourite colour is blue."
+    }
+   ]
+  },
+  "prompt|carry12_v0_draft:recall:0003:t12:user": {
+   "corpus": "C:/ml_artifacts/human_dialogue/hd_default/human_taskmaster_v1/dialogues.jsonl",
+   "examples": [
+    {
+     "row": 3446,
+     "context": "Thanks that is all for now."
+    }
+   ]
+  },
+  "prompt|carry12_v0_draft:recall:0004:t10:user": {
+   "corpus": "C:/ml_artifacts/human_dialogue/hd_default/human_taskmaster_v1/dialogues.jsonl",
+   "examples": [
+    {
+     "row": 15325,
+     "context": "What is my name?"
+    }
+   ]
+  },
+  "prompt|carry12_v0_draft:recall:0016:t8:user": {
+   "corpus": "C:/ml_artifacts/human_dialogue/hd_optin/human_quac_v1/dialogues.jsonl",
+   "examples": [
+    {
+     "row": 9146,
+     "context": "Can you tell me something interesting?"
+    }
+   ]
+  }
+ }
+}
