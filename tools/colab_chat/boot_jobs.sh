@@ -28,6 +28,9 @@ if [ ! -x /content/pk/build_cuda/mtstudio ]; then
   make -j"$(nproc)" mtstudio > make.log 2>&1 || { tail -30 make.log; echo BOOT_FAILED > /content/chat/STATUS; exit 1; }
 fi
 cd /content/pk
+# Provenance (PREREGISTRATION.md, implementation note of 24 Oct 2026): provider, GPU, driver, CUDA and
+# image of this VM, copied by tiny_chat_run.py and jobs_vm.py into every summary and result.
+python3 tools/colab_chat/provenance.py /content/chat/provenance.json || true
 pip -q install huggingface_hub pandas pyarrow
 python3 corpus/fetchers/fineweb_edu.py sample_v1
 python3 corpus/fetchers/tinychat_hf.py sample_v1

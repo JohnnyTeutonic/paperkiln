@@ -188,6 +188,22 @@ def take_snapshot(name, job):
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def stamp_provenance(name):
+    """Copy the VM's provenance.json (boot_jobs.sh) into a finished training job's result.json as
+    `provenance` (PREREGISTRATION.md, implementation note of 24 Oct 2026); mtstudio writes the rest."""
+    res, prov = f"{C}/{name}/result.json", f"{C}/provenance.json"
+    try:
+        r = json.load(open(res))
+        if "provenance" in r or not os.path.exists(prov):
+            return
+        r["provenance"] = json.load(open(prov))
+    except (OSError, ValueError):
+        return
+    with open(res + ".tmp", "w") as f:
+        json.dump(r, f, indent=2)
+    os.replace(res + ".tmp", res)
+
+
 def note(name, msg):
     with open(f"{C}/{name}_train.log", "a") as f:
         f.write(msg + "\n")
@@ -260,6 +276,8 @@ def main():
         for name, p in list(running.items()):
             rc = p.poll()
             if rc is not None:
+                if rc == 0 and "cmd" not in jobs[name]:
+                    stamp_provenance(name)
                 set_status(name, "FINISHED" if rc == 0 else "FAILED")
                 print(f"{name}: exit {rc} {time.strftime('%H:%M:%S')}", flush=True)
                 del running[name]

@@ -486,6 +486,16 @@ def effective_layers(custom):
     return r.get("prelude", 0) + r["block"] * r.get("repeats", 1) + r.get("coda", 0)
 
 
+def provenance():
+    """The VM's provenance.json (boot_jobs.sh: provider, GPU, driver, CUDA, image), or None on a VM booted
+    before it existed. Every summary and result this file writes carries it as `provenance`
+    (PREREGISTRATION.md, implementation note of 24 Oct 2026)."""
+    try:
+        return jload(os.path.join(os.environ.get("JOBS_CHAT_DIR", "/content/chat"), "provenance.json"))
+    except (OSError, ValueError):
+        return None
+
+
 def gpu_name():
     try:
         return subprocess.run(["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"], capture_output=True,
@@ -650,7 +660,7 @@ def run_cuda_gate(out, script=CUDA_SCRIPT, build=None):
     prod.setdefault("MICROTORCH_DEVICE_OPS", "1")
     legs = legs + [(prod, "test_recursion")]
     res = {"mode": "cuda_gate", "script": script, "build_dir": build, "commit": git_head(), "gpu": gpu_name(),
-           "targets": targets, "job_env": job_env, "legs": []}
+           "targets": targets, "job_env": job_env, "legs": [], "provenance": provenance()}
     log = os.path.join(out, "cuda_gate.log")
     make = os.environ.get("TINY_CHAT_MAKE", "make")  # override: tests only
     t0 = time.time()
@@ -731,7 +741,8 @@ def vm_prereqs(a):
 
 
 def refuse(a, why):
-    s = {"mode": a.mode, "spec": a.spec, "rc": None, "refused": why, "status": "FAILED", "gpu": gpu_name()}
+    s = {"mode": a.mode, "spec": a.spec, "rc": None, "refused": why, "status": "FAILED", "gpu": gpu_name(),
+         "provenance": provenance()}
     if a.mode == "screen":
         s.update({"lr": a.lr, "seed": a.seed, "steps": a.steps, "final_val": None, "diverged": False})
     jsave(os.path.join(a.out, "summary.json"), s)
@@ -761,7 +772,7 @@ def cmd_probe(a):
          "tokens_per_step": spec["train"]["batch"] * spec["train"].get("accum", 1) * spec["data"]["T"],
          "tok_per_s_steady": rate, "tok_per_s_result": res.get("tokens_per_second"),
          "wall_seconds": res.get("wall_seconds"), "peak_gpu_mem_mib": mon.peak, "gpu": gpu_name(),
-         "other_mtstudio_at_start": others, "params": res.get("params")}
+         "other_mtstudio_at_start": others, "params": res.get("params"), "provenance": provenance()}
     if rc != 0:
         s["log_tail"] = log_tail(os.path.join(a.out, "mtstudio.log"))
     jsave(os.path.join(a.out, "summary.json"), s)
@@ -789,7 +800,7 @@ def cmd_screen(a):
          "final_val": val, "first_loss": losses[0] if losses else None,
          "last_loss": losses[-1] if losses else None, "last_step": max((e.get("step", 0) for e in ev if e.get("event") == "step"), default=None),
          "nonfinite_loss": any(not finite(x) for x in losses), "tok_per_s_steady": rate,
-         "other_mtstudio_at_end": concurrent_mtstudio(), "gpu": gpu_name()}
+         "other_mtstudio_at_end": concurrent_mtstudio(), "gpu": gpu_name(), "provenance": provenance()}
     s["status"] = screen_status(s)
     s["diverged"] = s["status"] == "DIVERGED"
     if rc != 0:
@@ -924,7 +935,7 @@ def cmd_post(a):
     s = {"mode": "post", "cell": a.cell, "share": a.share, "seed": a.seed, "spec": a.spec, "arch": custom,
          "shape": jload(a.spec).get("_shape"), "pt_lr": a.pt_lr if a.pt_lr is not None else shape["train"]["lr"],
          "pt_weights_sha256": sha256(a.pt_weights),
-         "gpu": gpu_name()}
+         "gpu": gpu_name(), "provenance": provenance()}
     # Pretraining receipts, when this VM ran the job (on a fresh VM they are home already).
     if os.path.exists(os.path.join(a.pt_dir, "result.json")):
         s["pt_result"] = jload(os.path.join(a.pt_dir, "result.json"))
@@ -1066,6 +1077,7 @@ def cmd_rung(a):
     s["carry5_base"] = carry5_base(shape, a.weights, a.carry5_items, a.out, required=True)
     s.update(rung_metrics(s["carry5_base"]))
     s["gpu"] = gpu_name()
+    s["provenance"] = provenance()
     jsave(done, s)
     if a.drop_snapshot:  # scored and recorded: the VM's disk need not hold 4 copies of every run
         os.remove(a.weights)
@@ -1110,7 +1122,7 @@ def cmd_asha_train(a):
          "final_val": val, "diverged": diverged, "first_loss": losses[0] if losses else None,
          "last_loss": losses[-1] if losses else None, "tok_per_s_steady": rate,
          "evals": [(e["step"], e["val_loss"]) for e in ev if e.get("event") == "eval"], "gpu": gpu_name(),
-         "acc_gold": None, "Y_base": None}
+         "acc_gold": None, "Y_base": None, "provenance": provenance()}
     if not diverged:
         w = os.path.join(run_dir, spec["name"] + ".safetensors")
         s["panels"] = zero_rate_panels(shape, w, a.out, a.panel)

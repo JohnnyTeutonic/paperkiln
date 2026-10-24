@@ -171,6 +171,27 @@ Report to the author: which sessions exist, which driver owns each, where its
 log is, how many runs are banked locally, and the exact command to resume.
 If a session exists that no running driver owns, stop it.
 
+### 8. RunPod (second L4 provider, 24 Oct 2026)
+
+`runner_multi.py --backend runpod` runs the same jobs files on a RunPod L4 (pre-registration
+implementation note of 24 Oct 2026: a RunPod L4 counts as the study GPU; no other GPU type enters an
+arm). The key is `~/.runpod/api_key` (WSL), read only by `tools/colab_chat/runpod_api.py`; never print it
+or put it on a command line. The ssh key is `~/.ssh/runpod_ed25519`.
+
+- **Status**: `python3 tools/colab_chat/runpod_api.py status` (balance, spend per hour, pods, volumes,
+  L4 stock). Run it before and after any RunPod work; finish every turn with no pod that a live driver
+  does not own.
+- **Guardrails** (in code): at most 2 pods account-wide and no create below a $15 balance (checked
+  through the API before every create); `--max-usd` caps one runner's ledger (state.json `runpod.ledger`).
+- **No idle spend**: the runner terminates its pod when the queue is empty, at the deadline, on any exit
+  (SIGTERM/SIGINT/SIGHUP, atexit); the watchdog runs `tools/colab_chat/runpod_sweep.py` every tick, which
+  terminates any pod whose driver is dead or that no runner state records, and deletes the network
+  volume of a campaign that is home. Pods made by hand go in `~/.runpod/keep.json` or the sweep ends them.
+- **Volume**: one per campaign, mounted at `/content` (checkpoints, data, build survive a pod). A
+  stopped driver keeps it for the resume; it costs about $0.07/GB/month until deleted.
+- **Moving a Colab campaign**: stop its Colab driver first (never two runners on one state dir), then
+  start the same command with `--backend runpod`; prepare() treats the pod as a replacement VM.
+
 ---
 
 ## Other working rules for this repository

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reclaim-resilient Colab driver for a session of several training jobs.
+"""Reclaim-resilient Colab (or RunPod) driver for a session of several training jobs.
 
     python3 tools/colab_chat/runner_multi.py --commit SHA --jobs tools/colab_chat/JOBS.json \\
         --name pk-cap --art /mnt/c/ml_artifacts/capacity --state-dir ~/pk_cap_runner \\
@@ -15,6 +15,17 @@ chunks back up on a relaunch, so a reclaim costs at most one checkpoint
 interval per job) and downloads the final outputs when it finishes.
 --upload files go to /content/chat/upload/ on every launch (job inputs such
 as an init checkpoint or SFT examples). Artifacts: ART/<job>/.
+
+Backends (24 Oct 2026). Every VM operation goes through a Transport: create, listed/alive, exec,
+put, get, stop. --backend colab (the default) is the colab CLI exactly as before. --backend runpod
+rents a pod (runpod_api.py): REST create/terminate, exec over ssh, put/get by rsync, a network
+volume per campaign mounted at /content (checkpoints, data and the build survive a pod's death, so
+a relaunch in the same data centre re-uploads nothing the volume holds), the account-wide pod cap
+and balance floor checked before every create, a spend ledger in state.json, and the pod
+terminated the moment the queue is empty or the driver exits (finally, atexit, SIGTERM/SIGINT/
+SIGHUP). runpod_sweep.py (run by the Windows watchdog each tick) terminates pods whose driver is
+dead and deletes the volumes of campaigns that are home. A state dir moves from Colab to RunPod
+like a replacement VM: stop the Colab driver, start the same command with --backend runpod.
 """
 from __future__ import annotations
 
@@ -35,6 +46,7 @@ ADOPT = os.path.join(os.path.dirname(HERE), "colab_adopt.py")
 CHUNK = 45 * 1024 * 1024
 TICK = 240
 NAME = ART = HOME = None
+T = None  # the Transport (ColabTransport unless --backend runpod)
 
 
 def log(msg):
@@ -57,17 +69,62 @@ def colab(*args, timeout=240):
     return sh([COL, *args], timeout)
 
 
+# ---------------------------------------------------------------- transports
+class ColabTransport:
+    """The colab CLI, call for call what this runner did before the Transport existed."""
+    backend = "colab"
+    persistent = False   # a fresh VM's disk starts empty
+    whole_files = False  # uploads go in CHUNK parts, downloads above CHUNK in parts cut on the VM
+
+    def __init__(self, gpu="L4"):
+        self.gpu = gpu
+
+    def create(self, st):
+        return colab("new", "-s", NAME, "--gpu", self.gpu, timeout=600)
+
+    def listed(self):
+        rc, out = colab("sessions", timeout=120)
+        m = re.search(r"^\[" + re.escape(NAME) + r"\]\s+(\S+)", out, re.M)
+        return m.group(1) if m else None
+
+    def refresh(self, st):
+        sh([COLPY, ADOPT, "--refresh"], 180)
+
+    def adopt(self, ep):
+        rc, out = sh([COLPY, ADOPT, "--adopt", f"{ep}={NAME}"], 180) if ep else (1, "")
+        return rc == 0 and "adopted" in out
+
+    def gone(self, st):
+        return False  # the Colab listing is never proof: three silent ticks decide
+
+    def exec(self, code, timeout=200):
+        path = os.path.join(HOME, "exec.py")
+        with open(path, "w") as f:
+            f.write(code)
+        return colab("exec", "-s", NAME, "-f", path, "--timeout", "150", timeout=timeout)
+
+    def put(self, src, dst, timeout):
+        return colab("upload", "-s", NAME, src, dst, timeout=timeout)
+
+    def get(self, src, dst, timeout):
+        return colab("download", "-s", NAME, src, dst, timeout=timeout)
+
+    def stop(self, st):
+        colab("stop", "-s", NAME, timeout=120)
+
+    def release(self, st):
+        pass  # nothing outlives a Colab session
+
+    def over_budget(self, st):
+        return None
+
+
 def exec_py(code, timeout=200):
-    path = os.path.join(HOME, "exec.py")
-    with open(path, "w") as f:
-        f.write(code)
-    return colab("exec", "-s", NAME, "-f", path, "--timeout", "150", timeout=timeout)
+    return T.exec(code, timeout)
 
 
 def listed():
-    rc, out = colab("sessions", timeout=120)
-    m = re.search(r"^\[" + re.escape(NAME) + r"\]\s+(\S+)", out, re.M)
-    return m.group(1) if m else None
+    return T.listed()
 
 
 class State:
@@ -97,7 +154,10 @@ def upload_file(src, dst):
     checkpoints; whole input files are reassembled by the exec below). Parts
     already on the VM at full size are skipped, so a failed upload resumes
     instead of starting over (at ~0.6 MB/s a restart cost 20 minutes), and a
-    failed part is retried before the upload gives up."""
+    failed part is retried before the upload gives up. A whole-file transport
+    (RunPod) sends the file as one part, dst.part00, after the same checks."""
+    if T.whole_files:
+        return T.upload_whole(src, dst)
     have = remote_sizes(os.path.dirname(dst))
     with open(src, "rb") as fh:
         i = 0
@@ -112,7 +172,7 @@ def upload_file(src, dst):
             part = os.path.join(HOME, f"up.part{i:02d}")
             open(part, "wb").write(buf)
             for _ in range(3):
-                rc, _ = colab("upload", "-s", NAME, part, f"{dst}.part{i:02d}", timeout=1500)
+                rc, _ = T.put(part, f"{dst}.part{i:02d}", 1500)
                 if rc == 0:
                     break
                 log(f"upload of {src} part {i} failed; retrying")
@@ -160,7 +220,10 @@ def download_file(src, dst, timeout=1800):
     """Download a VM file; one above CHUNK comes in CHUNK-sized parts cut on the VM, each part
     resumable across ticks, reassembled here and checked against the VM's sha256 (23 Oct 2026:
     the Jupyter contents API returned HTTP 500 for every 390 MB relay of pk_base_v1). Returns
-    0 on success, as colab() does."""
+    0 on success, as colab() does. A whole-file transport (RunPod) fetches it in one resumable
+    rsync, checked against the VM's sha256 the same way."""
+    if T.whole_files:
+        return T.download_whole(src, dst, timeout)
     key = re.sub(r"[^A-Za-z0-9_.-]", "_", src.strip("/"))
     rc, out = exec_py(
         "import hashlib, json, os\n"
@@ -198,7 +261,7 @@ def download_file(src, dst, timeout=1800):
     if not meta:
         return 1
     if not meta["parts"]:
-        rc, _ = colab("download", "-s", NAME, src, dst, timeout=timeout)
+        rc, _ = T.get(src, dst, timeout)
         if rc == 0:
             return 0
         if not exec_fetch(src, meta["size"], dst + ".dltmp"):
@@ -214,7 +277,7 @@ def download_file(src, dst, timeout=1800):
         lp = os.path.join(local, os.path.basename(p))
         if os.path.exists(lp) and os.path.getsize(lp) == n:
             continue
-        rc, _ = colab("download", "-s", NAME, p, lp + ".tmp", timeout=900)
+        rc, _ = T.get(p, lp + ".tmp", 900)
         if rc != 0 or not os.path.exists(lp + ".tmp") or os.path.getsize(lp + ".tmp") != n:
             if not exec_fetch(p, n, lp + ".tmp"):
                 return 1
@@ -309,8 +372,7 @@ def fetch_final(st, name, model_name):
         ok = ok and download_file(f"/content/chat/{f}", os.path.join(art, os.path.basename(f))) == 0
     # Optional extra exports (e.g. q8_0_all) are fetched best-effort.
     download_file(f"/content/chat/{name}/{model_name}_q8_0_all.gguf", os.path.join(art, f"{model_name}_q8_0_all.gguf"))
-    colab("download", "-s", NAME, f"/content/chat/{name}/{model_name}.ir.json",
-          os.path.join(art, f"{model_name}.ir.json"), timeout=300)
+    T.get(f"/content/chat/{name}/{model_name}.ir.json", os.path.join(art, f"{model_name}.ir.json"), 300)
     if ok:
         st.job(name)["home"] = True
         st.save()
@@ -347,10 +409,10 @@ def fetch_outputs(st, name, outputs, best_effort=False):
 
 
 def launch(st, commit, jobs_rel, jobs, uploads):
-    colab("stop", "-s", NAME, timeout=120)
-    rc, out = colab("new", "-s", NAME, "--gpu", "L4", timeout=600)
+    T.stop(st)
+    rc, out = T.create(st)
     if rc != 0:
-        log(f"no L4 ({out.strip()[-120:]}); retry later")
+        log(f"no {T.gpu} ({out.strip()[-120:]}); retry later")
         return False
     st.d["endpoint"] = listed()
     st.d["launches"] += 1
@@ -366,7 +428,7 @@ def upload_checkpoint(st, name):
     art = os.path.join(ART, name)
     upload_file(os.path.join(art, "model.safetensors"), f"/content/chat/upload/{name}/model.safetensors")
     for f in ("state.txt", "events.jsonl"):
-        rc, _ = colab("upload", "-s", NAME, os.path.join(art, f), f"/content/chat/upload/{name}/{f}", timeout=600)
+        rc, _ = T.put(os.path.join(art, f), f"/content/chat/upload/{name}/{f}", 600)
         if rc != 0:
             raise RuntimeError(f"upload of {name}/{f} failed")
     rc, out = exec_py(f"open('/content/chat/upload/{name}/READY', 'w').close()\nprint('READY_OK')\n")
@@ -388,6 +450,56 @@ def upload_pending(st):
         log(str(e))
 
 
+def local_step(name):
+    p = os.path.join(ART, name, "state.txt")
+    try:
+        return int(open(p).readline().strip() or 0)
+    except (OSError, ValueError):
+        return 0
+
+
+def volume_has(pend, finals):
+    """A persistent VM disk (RunPod's network volume): the pending jobs whose own checkpoint on the
+    volume is at or past the relayed one (they resume from it, warm, and need no upload) and the
+    home parents' final weights already in place (same sha256). None when the VM cannot be read."""
+    shas = {}
+    for _, src, dst in finals:
+        h = hashlib.sha256()
+        with open(src, "rb") as f:
+            for b in iter(lambda: f.read(1 << 22), b""):
+                h.update(b)
+        shas[dst] = h.hexdigest()
+    rc, out = exec_py(
+        "import hashlib, json, os\n"
+        f"pend, finals = {pend!r}, {sorted(shas)!r}\n"
+        "steps, have = {}, {}\n"
+        "for n in pend:\n"
+        "    d = '/content/chat/' + n\n"
+        "    try:\n"
+        "        s = int(open(d + '/state.txt').readline().strip() or 0)\n"
+        "    except (OSError, ValueError):\n"
+        "        s = None\n"
+        "    steps[n] = s if os.path.exists(d + '/model.safetensors') else None\n"
+        "for p in finals:\n"
+        "    if os.path.exists(p):\n"
+        "        h = hashlib.sha256()\n"
+        "        with open(p, 'rb') as f:\n"
+        "            for b in iter(lambda: f.read(1 << 22), b''):\n"
+        "                h.update(b)\n"
+        "        have[p] = h.hexdigest()\n"
+        "print('VOLHAS', json.dumps({'steps': steps, 'finals': have}))\n", timeout=600)
+    m = re.search(r"^VOLHAS (.*)$", out, re.M)
+    if not m:
+        return None
+    d = json.loads(m.group(1))
+    on_volume = {n for n in pend if d["steps"].get(n) is not None and d["steps"][n] >= local_step(n)}
+    for n in sorted(on_volume):
+        log(f"{n}: the volume holds its checkpoint at step {d['steps'][n]} (relayed {local_step(n)}); "
+            "it resumes from the volume, nothing uploaded")
+    placed = {dst for dst, sha in shas.items() if d["finals"].get(dst) == sha}
+    return on_volume, placed
+
+
 def prepare(st, commit, jobs_rel, jobs, uploads):
     """Inputs, relayed checkpoints and the boot onto a session that is up but
     not yet booted. Retried every tick until it succeeds (st.d["booted"]), so
@@ -403,6 +515,7 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
     # it FINISHED let a failed gate's dependants run). A home data job ("cmd") that an unfinished
     # job still needs, directly or through others, runs again: its files live on the VM that made
     # them, and a replacement VM has none (an unfinished pretraining job would find no corpus).
+    # (On a persistent volume the data job's STATUS and files are still there, so it is not rerun.)
     by = {j["name"]: j for j in jobs}
 
     def needs(j):
@@ -442,19 +555,27 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
             src = os.path.join(ART, n, model + ".safetensors")
             if os.path.exists(src):
                 finals.append((f"{n}__final.safetensors", src, f"/content/chat/{n}/{model}.safetensors"))
+    # Resume checkpoints of unfinished jobs, smallest first (see below).
+    pend = sorted((j["name"] for j in jobs if not st.job(j["name"])["home"]
+                   and os.path.exists(os.path.join(ART, j["name"], "state.txt"))),
+                  key=lambda n: os.path.getsize(os.path.join(ART, n, "model.safetensors")))
+    if T.persistent:  # what the volume already holds is not uploaded again
+        has = volume_has(pend, finals)
+        if has is None:
+            log("prepare: the volume could not be read; will retry")
+            return False
+        pend = [n for n in pend if n not in has[0]]
+        finals = [f for f in finals if f[2] not in has[1]]
     try:
         for key, src in uploads:
             upload_file(src, f"/content/chat/upload/{key}")
         for key, src, _ in finals:
             upload_file(src, f"/content/chat/upload/{key}")
             log(f"{key}: uploaded for a dependent job")
-        # Resume checkpoints of unfinished jobs, smallest first. The first goes up before the boot;
+        # The first resume checkpoint goes up before the boot;
         # the rest one per tick while the VM trains (upload_pending), and jobs_vm.py holds each job
         # until its READY marker. Weights, step and events only: no optimiser state (22 Oct 2026,
         # VMs living 40-60 min against a 50-min 1.9 GB upload); jobs_vm.py resumes those cold.
-        pend = sorted((j["name"] for j in jobs if not st.job(j["name"])["home"]
-                       and os.path.exists(os.path.join(ART, j["name"], "state.txt"))),
-                      key=lambda n: os.path.getsize(os.path.join(ART, n, "model.safetensors")))
         rc, out = exec_py(f"for n in {pend!r}: open('/content/chat/upload/' + n + '/PENDING', 'w').close()\n"
                           "print('PENDING_OK')\n")
         if "PENDING_OK" not in out:
@@ -522,8 +643,16 @@ def vm_status(jobs):
     return json.loads(m.group(1)) if m else None
 
 
+def make_transport(a):
+    if a.backend == "colab":
+        return ColabTransport(a.gpu)
+    from runpod_transport import RunPodTransport  # tools/colab_chat/runpod_transport.py
+    return RunPodTransport(gpu=a.gpu, cloud=a.cloud, volume_gb=a.volume_gb, datacenter=a.datacenter,
+                           image=a.image, max_usd=a.max_usd, commit=a.commit, name=NAME, home=HOME, log=log)
+
+
 def main():
-    global NAME, ART, HOME
+    global NAME, ART, HOME, T
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--commit", required=True)
     ap.add_argument("--jobs", required=True, help="jobs JSON, path relative to the paperkiln repo root")
@@ -532,6 +661,14 @@ def main():
     ap.add_argument("--art", required=True, help="local artifact directory")
     ap.add_argument("--state-dir", required=True, help="runner state, pid file and log")
     ap.add_argument("--upload", action="append", default=[], help="KEY=LOCAL_PATH, sent to /content/chat/upload/KEY")
+    ap.add_argument("--backend", choices=["colab", "runpod"], default="colab")
+    ap.add_argument("--gpu", default="L4", help="GPU type (both backends; L4 is the study GPU)")
+    ap.add_argument("--cloud", choices=["SECURE", "COMMUNITY"], default="SECURE", help="RunPod cloud")
+    ap.add_argument("--volume-gb", type=int, default=50, help="RunPod network volume size")
+    ap.add_argument("--datacenter", default=None, help="RunPod data centre (default: one with the GPU in stock)")
+    ap.add_argument("--image", default=None, help="RunPod image (default: runpod_transport.IMAGE)")
+    ap.add_argument("--max-usd", type=float, default=None,
+                    help="RunPod: stop and create nothing once this runner's ledger passes this many dollars")
     a = ap.parse_args()
     NAME, ART, HOME = a.name, a.art, os.path.expanduser(a.state_dir)
     os.makedirs(HOME, exist_ok=True)
@@ -549,26 +686,43 @@ def main():
             sys.exit("another runner is live (pid file); refusing")
         except (OSError, ValueError):
             pass
-    open(pid, "w").write(str(os.getpid()))
     st = State()
+    # One GPU type per campaign (a claim-carrying arm never mixes GPU types; AGENTS.md): recorded on
+    # the first run under the new flag, refused when a later run asks for another.
+    if st.d.get("gpu") not in (None, a.gpu):
+        sys.exit(f"this state dir ran on {st.d['gpu']}; refusing --gpu {a.gpu} (one GPU type per campaign)")
+    T = make_transport(a)
+    open(pid, "w").write(str(os.getpid()))
+    if a.backend != "colab":
+        st.d["gpu"] = a.gpu
+        st.d["backend"] = a.backend
+        st.save()
+        T.attach(st)  # registers the runner for runpod_sweep.py; atexit and signal handlers end the pod
+
     deadline = time.time() + a.max_hours * 3600
     if listed() is None and not st.d.get("endpoint"):
         if not launch(st, a.commit, a.jobs, jobs, uploads):
             time.sleep(TICK)
     try:
         while time.time() < deadline:
-            sh([COLPY, ADOPT, "--refresh"], 180)
+            why = T.over_budget(st)
+            if why:
+                log(why)
+                break
+            T.refresh(st)
             if listed() is None:
                 ep = st.d.get("endpoint")
-                rc, out = sh([COLPY, ADOPT, "--adopt", f"{ep}={NAME}"], 180) if ep else (1, "")
-                if not (rc == 0 and "adopted" in out):
+                if not T.adopt(ep):
                     # The listing comes back empty now and then while the VM is
                     # fine, and a relaunch begins with `colab stop`: on 20 Oct
                     # one empty listing destroyed a live VM's unrelayed work.
                     # Relaunch only after three straight ticks with no listing,
-                    # no adoption and no answer from the VM itself.
+                    # no adoption and no answer from the VM itself. (RunPod: the API saying the pod
+                    # no longer exists is proof, and the relaunch comes at once.)
                     probe = vm_status(jobs)
                     st.d["gone_ticks"] = 0 if probe is not None else st.d.get("gone_ticks", 0) + 1
+                    if probe is None and T.gone(st):
+                        st.d["gone_ticks"] = max(st.d["gone_ticks"], 3)
                     st.save()
                     if probe is None and st.d["gone_ticks"] >= 3:
                         log("session gone on 3 consecutive ticks; relaunching from the relayed checkpoints")
@@ -595,7 +749,7 @@ def main():
                 continue
             if r["vm"] == "BOOT_FAILED":
                 log("boot failed on the VM; downloading boot.log")
-                colab("download", "-s", NAME, "/content/chat/boot.log", os.path.join(ART, "boot.log"), timeout=120)
+                T.get("/content/chat/boot.log", os.path.join(ART, "boot.log"), 120)
                 break
             done = True
             for j in jobs:
@@ -618,17 +772,20 @@ def main():
                 if r[n] == "FAILED" and js["failed_seen"] >= 2 and not js["home"]:
                     if "cmd" in j:  # a failed data job's outputs are its diagnosis: whatever exists
                         fetch_outputs(st, n, j.get("outputs", []), best_effort=True)
-                    colab("download", "-s", NAME, f"/content/chat/{n}_train.log",
-                          os.path.join(ART, n, f"{n}_train.log"), timeout=300)
+                    T.get(f"/content/chat/{n}_train.log", os.path.join(ART, n, f"{n}_train.log"), 300)
                     js["home"] = True
                     st.save()
                 done = done and js["home"]
             if done:
                 log("all jobs finished and home")
+                st.d["campaign_home"] = True
+                st.save()
                 break
             time.sleep(TICK)
     finally:
-        colab("stop", "-s", NAME, timeout=120)
+        T.stop(st)
+        if st.d.get("campaign_home"):
+            T.release(st)
         log("session stopped; runner exiting")
         os.remove(pid)
 
