@@ -3725,9 +3725,10 @@ int chat_cmd(const std::string& target, const std::string& host, int port, bool 
             const float temp = r.value("temperature", 0.1f);
             const int top_k = r.value("top_k", 40);
             const float top_p = r.value("top_p", 0.9f);
-            // Repetition penalty (section 3 point 4): p in [1, 2], n in [0, ctx].
+            // Repetition penalty (section 3 point 4): p in [1, 2], n in [0, ctx];
+            // n defaults to 64, or the context when that is smaller.
             const float rep_p = r.value("repeat_penalty", 1.0f);
-            const long rep_n = r.value("repeat_last_n", 64L);
+            const long rep_n = r.value("repeat_last_n", std::min(64L, static_cast<long>(s.T)));
             if (!(rep_p >= 1.0f && rep_p <= 2.0f) || rep_n < 0 || rep_n > static_cast<long>(s.T)) {
                 fail(400, "repeat_penalty must be in [1, 2] and repeat_last_n in [0, " + std::to_string(s.T) + "]");
                 return;
