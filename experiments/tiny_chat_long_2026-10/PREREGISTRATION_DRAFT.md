@@ -204,9 +204,13 @@ not allowed, and nor is any rearrangement that presents separate exchanges as on
    3,989 dialogues, all 12+ turns (2,306 reach 20), ABCD 242, CCPE-M 119, PersuasionForGood 25; with these four
    the 12+-turn count is 10,804 of 184,093 dialogues (6,815 without MSC), and the SFT split's 12+ dialogues go
    from 668 to 1,151; Taskmaster-3 is estimated at about 740 (one of its 20 files), measured by the prepared
-   Colab job `tools/colab_chat/human_dialogue_long_v1.json`. Jonathan's rulings needed: whether an MSC episode
-   (the same two personas continuing, the workers possibly changing between sessions) is one conversation;
-   MSC's unstated licence; dropping the ConvAI2 dialogues MSC's first sessions repeat (3,987 of 3,989).
+   Colab job `tools/colab_chat/human_dialogue_long_v1.json`. Rulings (25 Oct 2026, the main session under
+   Jonathan's delegation): **MSC is excluded**: its authors state no data licence (the paper, the ParlAI
+   archive and the project page parl.ai/projects/msc, checked 25 Oct 2026, carry none), and an unclear licence
+   excludes a source. Recorded for a later version that finds a licence: an MSC episode (the same two personas
+   continuing) counts as one conversation, and the ConvAI2 dialogues its first sessions repeat (3,987 of 3,989)
+   are dropped. The long sources are therefore Taskmaster-3, ABCD, CCPE-M and PersuasionForGood; without MSC
+   the 12+-turn count is 6,815 of the measured dialogues plus Taskmaster-3's.
 4. **Packing unrelated dialogues into one window is allowed only as separate documents** (an
    `<|endoftext|>` between, as the mixes do now): it is ordinary packing, teaches nothing about long carry,
    and must never be presented as one conversation (no shared template run, no state tokens across the join).
