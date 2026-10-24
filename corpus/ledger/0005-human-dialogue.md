@@ -34,9 +34,15 @@ Dialogue, CoQA, Commonsense-Dialogues, CMU_DoG, Taskmaster-4.
 
 **Kept (default, permissive):** OpenAssistant oasst2 + oasst1 (Apache-2.0; synthetic messages and
 ChatGPT tells removed), ConvAI2/PersonaChat, Wizard of Wikipedia and Blended Skill Talk (CC BY 4.0
-per ParlAI), Taskmaster-1/2/3 (CC BY 4.0), MultiWOZ 2.2 (MIT), the Self-dialogue Corpus (BSD-3).
+per ParlAI), Taskmaster-1/2 (CC BY 4.0), MultiWOZ 2.2 (MIT), the Self-dialogue Corpus (BSD-3).
 **Opt-in, off by default:** share-alike Topical-Chat, Dolly, QuAC, Simple English Wikipedia;
 non-commercial EmpatheticDialogues, DailyDialog, No Robots; LLM-risk Aya (English originals).
+**Long dialogue (group `long`, survey section 9):** Taskmaster-3 without its "Auto template"
+dialogues (`human_taskmaster3_v1`, CC BY 4.0), ABCD (MIT), CCPE-M (CC BY 4.0), PersuasionForGood
+(Apache-2.0), and Multi-Session Chat (`human_msc_v1`, human-written, licence unstated by its
+authors: behind `--allow-unstated-licence` pending Jonathan's decision). Rejected for long
+dialogue: Conversation Chronicles (ChatGPT), LoCoMo (LLM agents), DuLeMon (Chinese), Wizard of the
+Internet (human, but 5-6 turns by design).
 
 **5. Contamination.**
 - `corpus/decontam.py` against `simple_qa_v1`, `tinychat_hf_prompts_v1`, `chat_prompts_v1`, and

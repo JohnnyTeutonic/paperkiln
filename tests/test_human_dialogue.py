@@ -172,3 +172,138 @@ def test_taskmaster_and_multiwoz_readers(tmp_path, monkeypatch):
     out = list(H.raw_multiwoz(ctx))
     assert out == [("multiwoz:data/MultiWOZ_2.2/train/dialogues_001.json#x",
                     [{"role": "user", "content": "Hi"}, {"role": "assistant", "content": "Hello"}], None)]
+
+
+# ---- long-dialogue sources (24 Oct 2026) ---------------------------------------------------------
+V1_ORDER = ["oasst", "convai2", "wow", "bst", "taskmaster", "multiwoz", "aya_en", "self_dialogue", "topical_chat",
+            "dolly", "quac", "simplewiki", "empathetic", "dailydialog", "no_robots"]
+
+
+def test_long_sources_leave_the_v1_groups_and_gates_unchanged():
+    """The pinned v1 corpora are built by default/optin/all: the long sources join none of them."""
+    assert [s for s in H.SOURCES if s not in H.LONG_SET] == V1_ORDER
+    assert H.OPTIN_SET == ["aya_en", "topical_chat", "dolly", "quac", "simplewiki", "empathetic", "dailydialog",
+                           "no_robots"]
+    assert not set(H.LONG_SET) & (set(H.DEFAULT_SET) | set(H.OPTIN_SET))
+    assert H.SOURCES["taskmaster"][:3] == (H.DEFAULT, "CC BY 4.0", "USER=user, ASSISTANT=assistant")
+
+    class A:
+        allow_sa = allow_nc = allow_llm_risk = False
+    assert all(H.gate_ok(s, A) for s in ("taskmaster3", "abcd", "ccpe", "p4g")) and not H.gate_ok("msc", A)
+    A.allow_unstated_licence = True
+    assert H.gate_ok("msc", A)
+
+
+def _tm3_files(tmp_path, convs, held_id):
+    files = {}
+    for p in H.TM3_HELD:
+        f = tmp_path / p.replace("/", "_")
+        f.write_text(f"<U>hi<A>hello\t[A]bye\t{held_id}\n" if p.endswith("dev-aa.tsv") else "", encoding="utf-8")
+        files[p] = str(f)
+    for p in H.TM_FILES + H.TM3_FILES:
+        f = tmp_path / p.replace("/", "_")
+        f.write_text(json.dumps(convs if p == "TM-3-2020/data/data_00.json" else []), encoding="utf-8")
+        files[p] = str(f)
+    return files
+
+
+def test_taskmaster3_reads_lower_case_labels_and_drops_templates_and_held_ids(tmp_path, monkeypatch):
+    def conv(cid, scenario):
+        return {"conversation_id": cid, "scenario": scenario, "utterances": [
+            {"speaker": "assistant", "text": "Welcome."}, {"speaker": "user", "text": "Two tickets, please."},
+            {"speaker": "user", "text": "For tonight."}, {"speaker": "assistant", "text": "Which film?"}]}
+    convs = [conv("dlg-free", "Successful Purchase"), conv("dlg-auto", "Auto Template 13 movie name resolution"),
+             conv("dlg-auto2", "Auto template 1"), conv("dlg-held", "Successful Purchase")]
+    files = _tm3_files(tmp_path, convs, "dlg-held")
+    monkeypatch.setattr(H, "github_file", lambda rc, p, raw, want=None: files[p])
+    ctx = {"raw": str(tmp_path), "counts": Counter()}
+    out = list(H.raw_taskmaster3(ctx))
+    assert [r for _, _, r in out] == [None, "auto_template", "auto_template", "held_out_split"]
+    assert out[0][0] == "taskmaster3:TM-3-2020/data/data_00.json#dlg-free"
+    assert out[0][1] == [{"role": "user", "content": "Two tickets, please.\nFor tonight."},
+                         {"role": "assistant", "content": "Which film?"}]
+    # the v1 reader is unchanged: TM-3's lower-case labels still drop there
+    out = list(H.raw_taskmaster(ctx))
+    assert [r for _, _, r in out] == ["unknown_speaker"] * 4
+
+
+def test_taskmaster3_build_writes_its_own_corpus_id(tmp_path):
+    dc = decontam.Decontaminator(chat_sets=[])
+    rows = [("t1", [{"role": "user", "content": "Two tickets."}, {"role": "assistant", "content": "Which film?"}], None),
+            ("t2", None, "auto_template")]
+    rep = H.build("taskmaster3", dc=dc, rows=rows, out_dir=str(tmp_path))
+    assert rep["id"] == "human_taskmaster3_v1" and rep["counts"]["auto_template"] == 1 and rep["counts"]["written"] == 1
+    assert (tmp_path / "human_taskmaster3_v1" / "dialogues.jsonl").exists()
+    assert not (tmp_path / "human_taskmaster_v1").exists()
+
+
+def test_msc_joins_sessions_with_positional_speakers():
+    s1 = [{"text": "Hi, I'm Sam."}, {"text": "Hello Sam."}]
+    s2 = [{"text": "How was the hike?", "id": "Speaker 1"}, {"text": "Great!", "id": "Speaker 2"},
+          {"text": "Glad.", "id": "Speaker 1"}]                                   # odd: ends on Speaker 1
+    s3 = [{"text": "Back again!", "id": "4711"}, {"text": "Welcome back.", "id": "Speaker 2"}]  # numeric opener id
+    rec2 = {"dialog": s2, "previous_dialogs": [{"dialog": s1}], "metadata": {"initial_data_id": "train:ordered_1"}}
+    rec3 = {"dialog": s3, "previous_dialogs": [{"dialog": s1}, {"dialog": s2, "time_num": 2, "time_unit": "days"}],
+            "metadata": {"initial_data_id": "train:ordered_1"}}
+    lone = {"dialog": [{"text": "Hey"}, {"text": "Hey you"}], "previous_dialogs": [{"dialog": [{"text": "A"}, {"text": "B"}]}],
+            "metadata": {"initial_data_id": "train:ordered_2"}}
+    c = Counter()
+    out = list(H.msc_episodes({"train:ordered_1": {2: rec2, 3: rec3}, "train:ordered_2": {2: lone}}, c))
+    assert [u for u, _, _ in out] == ["msc:session_3/train.txt#train:ordered_1", "msc:session_2/train.txt#train:ordered_2"]
+    assert out[0][1] == [{"role": "user", "content": "Hi, I'm Sam."}, {"role": "assistant", "content": "Hello Sam."},
+                         {"role": "user", "content": "How was the hike?"}, {"role": "assistant", "content": "Great!"},
+                         {"role": "user", "content": "Glad.\nBack again!"}, {"role": "assistant", "content": "Welcome back."}]
+    assert c["msc_session_joins_same_speaker"] == 1
+    assert c["msc_episodes_3_sessions"] == 1 and c["msc_episodes_2_sessions"] == 1
+    assert c["msc_session_text_differs_from_its_own_record"] == 0
+    rec3["previous_dialogs"][1]["dialog"] = s2[:2] + [{"text": "Glad!"}]
+    list(H.msc_episodes({"x": {2: rec2, 3: rec3}}, c))
+    assert c["msc_session_text_differs_from_its_own_record"] == 1
+
+
+def test_msc_reader_on_a_synthetic_archive(tmp_path, monkeypatch):
+    rec = {"dialog": [{"text": "Back!", "id": "Speaker 1"}, {"text": "Hi again.", "id": "Speaker 2"}],
+           "previous_dialogs": [{"dialog": [{"text": "Hello"}, {"text": "Hi"}]}],
+           "metadata": {"initial_data_id": "train:ordered_9"}}
+    line = (json.dumps(rec) + "\n").encode()
+    path = _tgz(tmp_path / "msc.tgz", [("msc/msc_dialogue/session_2/train.txt", line),
+                                       ("msc/msc_dialogue/session_2/valid.txt", line)])
+    monkeypatch.setattr(H, "fetch_url", lambda url, raw, want=None: path)
+    out = list(H.raw_msc({"raw": str(tmp_path), "counts": Counter()}))
+    assert len(out) == 1 and [m["content"] for m in out[0][1]] == ["Hello", "Hi", "Back!", "Hi again."]
+
+
+def test_abcd_ccpe_p4g_readers(tmp_path, monkeypatch):
+    import gzip
+    abcd = {"train": [{"convo_id": 7, "original": [
+        ["agent", "Hi!"], ["customer", "I need a refund."], ["agent", "Sure."],
+        ["action", "Account has been pulled up for X."], ["agent", "Your name?"], ["customer", "Ann"]]}],
+        "dev": [], "test": []}
+    ap = tmp_path / "abcd.json.gz"
+    with gzip.open(ap, "wt", encoding="utf-8") as f:
+        json.dump(abcd, f)
+    cp = tmp_path / "ccpe.json"
+    cp.write_text(json.dumps([{"conversationId": "c1", "utterances": [
+        {"index": 1, "speaker": "USER", "text": "Thrillers."},
+        {"index": 0, "speaker": "ASSISTANT", "text": "What do you watch?"},
+        {"index": 2, "speaker": "ASSISTANT", "text": "Why?"}, {"index": 3, "speaker": "USER", "text": "Suspense."}]}]),
+        encoding="utf-8")
+    pp = tmp_path / "p4g.csv"
+    pp.write_text(",Unit,Turn,B4,B2\n0,Good morning.,0,0,d1\n1,How are you?,0,0,d1\n2,Fine.,0,1,d1\n"
+                  "3,Ever heard of Save the Children?,1,0,d1\n4,No.,1,1,d1\n", encoding="utf-8")
+    monkeypatch.setattr(H, "github_file", lambda rc, p, raw, want=None: str(ap) if p.endswith(".gz") else str(cp))
+    monkeypatch.setattr(H, "fetch_url", lambda url, raw, want=None: str(pp))
+    ctx = {"raw": str(tmp_path), "counts": Counter()}
+    out = list(H.raw_abcd(ctx))
+    assert out[0][0] == "abcd:train#7" and out[0][1] == [
+        {"role": "user", "content": "I need a refund."}, {"role": "assistant", "content": "Sure.\nYour name?"},
+        {"role": "user", "content": "Ann"}]
+    assert ctx["counts"]["action_lines_removed"] == 1 and ctx["counts"]["leading_assistant_turns_trimmed"] == 1
+    out = list(H.raw_ccpe(ctx))
+    assert out[0][1] == [{"role": "user", "content": "Thrillers."}, {"role": "assistant", "content": "Why?"},
+                         {"role": "user", "content": "Suspense."}]
+    out = list(H.raw_p4g(ctx))
+    assert out == [("p4g:full_dialog.csv#d1", [{"role": "user", "content": "Good morning. How are you?"},
+                                              {"role": "assistant", "content": "Fine."},
+                                              {"role": "user", "content": "Ever heard of Save the Children?"},
+                                              {"role": "assistant", "content": "No."}], None)]

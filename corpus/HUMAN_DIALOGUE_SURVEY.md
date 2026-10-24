@@ -62,7 +62,7 @@ people with no access to a capable chat model; see section 3 for the later ones.
 | DailyDialog | "Human-written" daily-life dialogues (card; the card does not name the writers) | CC BY-NC-SA 4.0 (card) | 13,118 dialogues (train 11,118) | 7.5 turns (measured) | Everyday life | Pre-ChatGPT | OPT-IN (NC, SA) |
 | EmpatheticDialogues | Paired crowd workers: speaker describes a situation, listener responds | CC BY-NC 4.0 (repo LICENSE and HF card); ParlAI README says CC BY 4.0: conflict, the stricter reading taken | 25k conversations (76,673 train utterances) | 4.1 turns (measured) | Emotional situations | Pre-ChatGPT | OPT-IN (NC) |
 | MultiWOZ 2.2 | Crowd workers, Wizard-of-Oz (both sides human) | MIT (repo README and LICENSE; HF card says Apache-2.0) | 10,438 dialogues (train 8,438) | Multi-turn | Multi-domain booking and information (README) | Pre-ChatGPT | DEFAULT (Colab: 172 MB of JSON) |
-| Taskmaster-1, -2, -3 | TM-1: two-person spoken WOz (crowd users, trained call-centre operators) and written self-dialogues; TM-2: spoken WOz; TM-3: self-dialogues | CC BY 4.0 (each README) | 13,215 + 17,289 + 23,789 dialogues | Multi-turn | Ordering, booking, search, movie tickets | Pre-ChatGPT (2019-2020) | DEFAULT (Colab: 0.99 GB of JSON); TM-1 dev/test ids excluded |
+| Taskmaster-1, -2, -3 | TM-1: two-person spoken WOz (crowd users, trained call-centre operators) and written self-dialogues; TM-2: spoken WOz; TM-3: self-dialogues | CC BY 4.0 (each README) | 13,215 + 17,289 + 23,789 dialogues | Multi-turn | Ordering, booking, search, movie tickets | Pre-ChatGPT (2019-2020) | DEFAULT (Colab: 0.99 GB of JSON); TM-1 dev/test ids excluded; v1 reads TM-1 and TM-2 only, TM-3 is `human_taskmaster3_v1` (section 9) |
 | Taskmaster-4 | Crowd self-dialogues for a 2024 paper | CC BY 4.0 | 6,500 dialogues | | Coffee ordering | Crowd text of the LLM era with no stated control (section 3) | EXCLUDED |
 | Schema-Guided Dialogue | Simulator outlines paraphrased by crowd workers | CC BY-SA 4.0 (card) | 16,142 train dialogues | | Task-oriented | Dialogue flow machine-made (not an LLM) | EXCLUDED (template flow, SA) |
 | Self-dialogue Corpus | One Mechanical Turk worker writes both sides (2017) | BSD-3-Clause (repo LICENSE) | 24,165 conversations, 141,945 turns, 3.65M words (README) | 15.4 utterances (measured; the README counts turns differently) | Movies, music, sport | Pre-ChatGPT | DEFAULT |
@@ -183,9 +183,9 @@ appears from both speakers) and 19 decontaminated; Wizard of Wikipedia 2 deconta
 
 **Taskmaster v1 holds Taskmaster-1 and -2 only.** Taskmaster-3 labels its speakers `user` and
 `assistant` in lower case and the reader maps `USER` and `ASSISTANT`, so all 23,757 TM-3 dialogues
-drop as `unknown_speaker`. TM-3's agent turns are filled from templates ("Auto template ..." in each
-record) with crowd-written customer turns, which is a reason to leave it out as well as a reason to
-read it; adding it is a new corpus id (`human_taskmaster_v2`) and a pre-registration amendment.
+drop as `unknown_speaker`. Taskmaster-3 has its own corpus id, `human_taskmaster3_v1` (section 9):
+its free self-dialogues, without the "Auto template" dialogues whose agent turns come fixed from the
+collectors' templates. Using it in a pre-registered study needs that study's amendment.
 
 The tiny-chat data job (`tools/colab_chat/tiny_chat_data.py`) builds the 13 sources on the VM with
 `--allow-sa --allow-nc` and refuses unless every file equals its pin (`--require-pinned`).
@@ -235,3 +235,93 @@ speaker as user stands. The questions as they were put:
 - Terms: Reddit Data API Terms (redditinc.com/policies/data-api-terms, sections 2.4 and 3.2);
   BetterUp CANDOR page and ConvoKit's CANDOR page; ConvoKit's Cornell Movie-Dialogs page; LDC
   catalogue LDC97S62 (Switchboard-1 Release 2).
+- Read on 24 Oct 2026 for section 9: google-research-datasets/Taskmaster TM-3-2020/README.md and
+  splits/{train,dev,test}/README.md at commit d92cb6af, and TM-3-2020/data/data_00.json itself;
+  "Beyond Goldfish Memory" (Xu, Szlam and Weston, arXiv 2107.07567 and ACL 2022 long 356, section 3,
+  tables 1-2, appendix B, ethics statement); ParlAI parlai/tasks/msc/{build.py, agents.py},
+  parlai/tasks/task_list.py (msc entry), projects/msc/README.md, the repository README and LICENSE
+  (MIT, "ParlAI is MIT licensed"), parlai/tasks/{wizard_of_internet, casino}/README.md, and the
+  msc_v0.1 archive's file list; ABCD (Chen et al., arXiv 2104.00783, sections 4-5, appendix A, ethics
+  statement) and asappresearch/abcd README and LICENSE (MIT) at commit 6b8700ce;
+  google-research-datasets/ccpe README (CC BY 4.0) at commit 2c9cd30f; Persuasion for Good (Wang et
+  al., arXiv 1906.06725, section 3 and table 2) and gitlab.com/ucdavisnlp/persuasionforgood README,
+  LICENSE (Apache-2.0) and data/FullData/readme.md at commit 90a3fd7b; Wizard of the Internet
+  (Komeili et al., arXiv 2107.07566, section 4 and table 1); Conversation Chronicles (Jang et al.,
+  arXiv 2310.13420, section 3 and footnote 2) and the jihyoung/ConversationChronicles card; LoCoMo
+  (Maharana et al., arXiv 2402.17753, abstract and section 3) and snap-research/locomo README;
+  DuLeMon (Xu et al., arXiv 2203.05797). Hugging Face mirrors of MSC (gonced8/multi-session_chat
+  tagged GPL-3.0, nayohan/multi_session_chat untagged) carry their uploaders' labels, not the
+  authors' licence.
+
+## 9. Long human dialogue (24 Oct 2026)
+
+For the long-carry programme (`experiments/tiny_chat_long_2026-10/PREREGISTRATION_DRAFT.md`
+section 4, option 3): sources whose dialogues reach 12 or more turns (a turn is one exchange, as
+`tools/dialogue_lengths.py` counts). Same rules as above, with Jonathan's decisions of 23 Oct:
+share-alike and non-commercial licences are allowed; anything written by a language model is
+excluded; human-written text only, no distillation; separate dialogues are never concatenated into
+one conversation. Fetcher group `long` of `human_dialogue.py` (outside default/optin/all, so the
+v1 corpora and their pins are unchanged; a rebuild of bst, dailydialog and empathetic with the new
+code equals their pins byte for byte); ledger `human_dialogue_long_v1.ledger.json`; Colab job
+`tools/colab_chat/human_dialogue_long_v1.json`.
+
+| Source | Who wrote it | Licence (primary page) | Size | Depth | Content | LLM contamination | Verdict |
+|---|---|---|---|---|---|---|---|
+| Taskmaster-3 (TicketTalk) | One crowd worker writes both the customer and the ticketing agent (self-dialog). "Auto template" dialogues (scenario field, either case) are partly pre-written: the agent's turns are fixed lines of the collectors' template with slot values ("force assistant" in the instructions) and the worker writes only the customer's turns (README; checked in data_00.json) | CC BY 4.0 (TM-3 README) | 23,789 dialogues (README); data_00.json: 1,188, of which 344 Auto template (29%) | data_00.json, free dialogues as built: median 10 turns, max 15; 46 of 836 reach 12, 3 reach 14, none 20 | Buying movie tickets | Pre-ChatGPT (2020; instructions mention COVID-19 closures) | PASS for the free self-dialogues: `human_taskmaster3_v1`, default gate; Auto template dialogues drop (`auto_template`: their agent turns are template text, not the worker's), dev/test ids drop (`held_out_split`, from splits/dev and splits/test). Built by the Colab job (0.4 GB with the split files) |
+| Multi-Session Chat (MSC) | Mechanical Turk workers (over 1,000, English-speaking, US; about six months, released July 2021). Session 1 is PersonaChat; sessions 2-5 were written later by workers playing the same two personas, shown the earlier sessions' crowd-written summaries and dialogue; "these crowdworkers may not be the same ones that played those characters in previous sessions" (paper, section 3). Session openings are human annotations (paper, figure 4). No model text in the dialogue files; the archive's `summaries_subsample5.json` files are model-predicted summaries (ParlAI agents.py) and are not read | **Not stated.** No licence in the paper, the archive, the ParlAI task folder (no README, unlike ConvAI2, WoW and BST, CC BY 4.0) or the task list; the ParlAI LICENSE (MIT) covers the code. Session 1 is PersonaChat (CC BY 4.0, ParlAI ConvAI2 README) | Train 4,000 episodes (2,999 end at session 3, 1,001 at session 4); valid 500 and test 501 five-session episodes (msc_v0.1, 51 MB, sha256 pinned by ParlAI's build.py) | Built: median 20 turns, max 32; all 3,989 reach 12 and 14, 2,306 reach 20 | Persona chit-chat, picking up earlier sessions after hours or days | Pre-ChatGPT | Human-written: PASS. `human_msc_v1`, behind `--allow-unstated-licence` until Jonathan rules on the licence. Train episodes only. Built and pinned on the laptop |
+| ABCD (Action-Based Conversations) | Expert Live Chat: a trained crowd agent (qualification exams, guidelines, live coaching) and a crowd customer, synchronous, "all participants are human – no wizard" (paper, section 4.2); customer scenarios and their synthetic names and order numbers come from the collectors | MIT (repository LICENSE) | 10,042 conversations (train 8,034), 22.1 utterances on average with the agent's action lines (paper, table 2) | Built: median 6 turns, max 22 (texting style: 35,486 consecutive messages by one speaker merged); 242 reach 12, 70 reach 14, 1 reaches 20 | Retail customer service | Pre-ChatGPT (NAACL 2021) | PASS: `human_abcd_v1` (default gate); action lines removed. Built and pinned on the laptop |
+| CCPE-M | Two paid crowd workers, Wizard-of-Oz: the "assistant" types, eliciting movie preferences; the "user" speaks and is transcribed (README) | CC BY 4.0 (README) | 502 dialogues, 11,971 utterances | Built: median 9 turns, max 25; 119 reach 12, 52 reach 14, 6 reach 20 | Movie preferences | Pre-ChatGPT (SIGDIAL 2019) | PASS: `human_ccpe_v1` (default gate). The assistant opens 492 of 502 dialogues; that question is trimmed by the role rule (section 4). Built and pinned on the laptop |
+| PersuasionForGood | Paired Mechanical Turk workers, a persuader and a persuadee, at least 10 turns each; collected over two months (paper, section 3), in 2018 (dialogue ids) | Apache-2.0 (repository LICENSE) | 1,017 dialogues (paper, table 2) | Built: median 10 turns, max 15; 25 reach 12, 1 reaches 14 | Persuasion to donate to Save the Children | Pre-ChatGPT | PASS: `human_p4g_v1` (default gate); persuader (speaks first) = user. Built and pinned on the laptop |
+| Taskmaster-2 | Spoken Wizard-of-Oz | CC BY 4.0 | 17,289 dialogues | | Seven domains | Pre-ChatGPT | Already in `human_taskmaster_v1` and in the 6,429 below: no new supply |
+| Wizard of the Internet | Crowd apprentice and a wizard who searches the internet | CC BY 4.0 (ParlAI task README) | 9,633 dialogues; 1.3 GB archive | 5-6 turns by design, 9.6 utterances per dialogue (paper, table 1) | Knowledge-grounded chat | Pre-ChatGPT (2021) | Passes the rule, adds no 12+-turn dialogue: not implemented |
+| Conversation Chronicles | ChatGPT ("We use ChatGPT", paper, footnote 2) | CC BY 4.0 (card) | 200,000 episodes of five sessions | Long | Multi-session chat | Model-generated | EXCLUDED (the rule) |
+| LoCoMo | LLM agents generate, annotators edit for consistency (paper, abstract) | None in the README | 50 conversations (10 released), about 300 turns each | Very long | Multi-session chat with images | Model-generated | EXCLUDED (the rule) |
+| DuLeMon | Long-term persona chat (paper) | | | Multi-session | Chinese | | EXCLUDED (Chinese; the tokeniser, template and evaluations are English) |
+| CANDOR, Switchboard-1, Reddit threads, SODA | Section 2 | Section 2 | | Long | | | Still EXCLUDED for the section 2 reasons (access by application and research-only; paid LDC licence; Reddit's terms and multi-party threads; model-generated); length does not change a licence |
+
+**Joining MSC sessions (decision for Jonathan).** An episode is the record of its last session,
+which carries sessions 1..k-1 in `previous_dialogs`: the same two characters continuing, each later
+session written as a continuation of the earlier ones. The sessions are joined in order with no
+marker between them; the time gaps (hours or days) stay in the source's metadata, because any marker
+would be text no participant wrote. Speakers are positional, as ParlAI's msc teacher reads them:
+utterances 0, 2, ... of every session are Speaker 1, who opens each session (464 of the 4,000
+session-2 records give the opener a numeric id instead of "Speaker 1"; the rest alternate). Speaker 1
+is the user. When a session ends on Speaker 1 (an odd number of utterances), Speaker 1 also opens the
+next: the two messages become one user turn joined by a newline (303 joins in 4,000 episodes,
+`msc_session_joins_same_speaker`). In 47 places a session's text differs slightly between its own
+record and the later record's copy (case, a removed phrase); the last record's copy is used. Three
+points for Jonathan:
+
+1. **Is a multi-session episode one conversation?** The characters are the same and each session
+   continues the last, but the workers behind a character may change between sessions (paper,
+   section 3). The build treats it as one conversation; the alternative is to train on single
+   sessions only, which leaves no long dialogue (a session is about 6 turns; session 1 about 7).
+2. **The licence is unstated.** Comparable ParlAI datasets of the same group are CC BY 4.0, but
+   nothing says so for MSC. Until he rules, `human_msc_v1` sits behind `--allow-unstated-licence`
+   (CMU_DoG, with no licence file, is excluded in section 2).
+3. **Session 1 duplicates ConvAI2.** 3,987 of the 3,989 MSC episodes open with a dialogue already
+   in `human_convai2_v1` (first two messages equal after word normalisation). Using both shows that
+   text twice and lets it fall on both sides of the data job's hash split (the MSC episode and the
+   ConvAI2 dialogue hash differently). One option: where MSC is used, drop the matching ConvAI2
+   dialogues in the data job. MSC's valid and test episodes (1,001, five sessions, about 33 turns)
+   are not read, by the train-split rule.
+
+**Counts.** A turn is one exchange; `tools/dialogue_lengths.py` normalises as the data job does.
+Measured on the laptop (`C:/ml_artifacts/human_dialogue/hd_long/dialogue_lengths_long_laptop_v1.json`,
+16k vocabulary) except Taskmaster-3, which is an estimate from one of its twenty data files:
+
+| Corpus | Dialogues | Turns p50 / p90 / max | Reach 12 | Reach 14 | Reach 20 | SFT split reach 12 | 16k tokens |
+|---|---:|---|---:|---:|---:|---:|---:|
+| msc (measured) | 3,989 | 20 / 26 / 32 | 3,989 | 3,989 | 2,306 | 447 | 4,267,234 |
+| abcd (measured) | 8,019 | 6 / 10 / 22 | 242 | 70 | 1 | 24 | 1,720,656 |
+| ccpe (measured) | 502 | 9 / 14 / 25 | 119 | 52 | 6 | 10 | 199,292 |
+| p4g (measured) | 1,011 | 10 / 11 / 15 | 25 | 1 | 0 | 2 | 467,402 |
+| **four measured** | **13,521** | | **4,375** | **4,112** | **2,313** | **483** | **6,654,584** |
+| taskmaster3 (ESTIMATE: data_00.json, 836 built, 46 / 3 / 0, times 20 files times the train share 0.8) | about 13,400 | 10 / 11 / 15 | about 740 | about 50 | 0 | | |
+| **current 13 sources** | 170,572 | | 6,429 | 2,814 | 306 | 668 | |
+| **with the four measured** | 184,093 | | 10,804 | 6,926 | 2,619 | 1,151 | |
+| **without msc** | 180,104 | | 6,815 | 2,937 | 313 | 704 | |
+
+The real Taskmaster-3 counts come from the Colab job's `dialogue_lengths_long_v1.json`. MSC is
+nearly all of the gain, and almost every MSC turn from 12 on lies in sessions 2-4: the long-range supply
+depends on decisions 1-3 above.

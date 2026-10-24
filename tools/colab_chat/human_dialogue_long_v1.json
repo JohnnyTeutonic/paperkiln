@@ -1,0 +1,59 @@
+{
+ "_comment": "Long human dialogue (experiments/tiny_chat_long_2026-10/PREREGISTRATION_DRAFT.md section 4, option 3; survey corpus/HUMAN_DIALOGUE_SURVEY.md section 9), prepared 24 Oct 2026, NOT launched: the main session launches Colab work. Two CPU data jobs, no GPU work. hd_long builds the `long` group of corpus/fetchers/human_dialogue.py (taskmaster3, msc, abcd, ccpe, p4g; msc needs --allow-unstated-licence, its authors state no data licence) with token counts; ~0.5 GB of downloads (Taskmaster-3 data 0.31 GB and its dev/test split files 0.09 GB, MSC 51 MB, ABCD 37 MB, CCPE 5 MB, PersuasionForGood 2.6 MB), deleted after each source's build. msc, abcd, ccpe and p4g were built and pinned on the laptop (C:/ml_artifacts/human_dialogue/hd_long): their VM copies must equal those pins; taskmaster3 is new. hd_long_lengths then runs tools/dialogue_lengths.py over the five corpora: the receipt of 12+, 14+ and 20+ turn dialogues (a turn is one exchange). Upload C:/ml_artifacts/capacity/vocab/vocab_llama3_bpe.gguf with the runner's --upload (both jobs read it); the 8k fineweb_tinychat vocabulary is the one the boot fetches. At home: copy hd_long/ to C:/ml_artifacts/human_dialogue/hd_long_vm, run `python corpus/fetchers/human_dialogue.py pin taskmaster3 msc abcd ccpe p4g --out-dir C:/ml_artifacts/human_dialogue/hd_long_vm` (pins taskmaster3, verifies the other four), and copy dialogue_lengths_long_v1.json into experiments/tiny_chat_long_2026-10/.",
+ "max_parallel": 2,
+ "jobs": [
+  {
+   "name": "hd_long",
+   "cmd": [
+    "python3",
+    "corpus/fetchers/human_dialogue.py",
+    "long",
+    "--allow-unstated-licence",
+    "--out-dir",
+    "{out}",
+    "--count-vocab",
+    "/content/chat/upload/vocab_llama3_bpe.gguf",
+    "--count-vocab",
+    "/content/pk/corpus/data/vocab_fineweb_tinychat_bpe8k_v1/fineweb_tinychat_bpe8k.gguf"
+   ],
+   "outputs": [
+    "human_dialogue_long_v1.ledger.json",
+    "human_taskmaster3_v1/report.json",
+    "human_taskmaster3_v1/dialogues.jsonl",
+    "human_taskmaster3_v1/text.txt",
+    "human_msc_v1/report.json",
+    "human_msc_v1/dialogues.jsonl",
+    "human_msc_v1/text.txt",
+    "human_abcd_v1/report.json",
+    "human_abcd_v1/dialogues.jsonl",
+    "human_abcd_v1/text.txt",
+    "human_ccpe_v1/report.json",
+    "human_ccpe_v1/dialogues.jsonl",
+    "human_ccpe_v1/text.txt",
+    "human_p4g_v1/report.json",
+    "human_p4g_v1/dialogues.jsonl",
+    "human_p4g_v1/text.txt"
+   ]
+  },
+  {
+   "name": "hd_long_lengths",
+   "after": "hd_long",
+   "cmd": [
+    "python3",
+    "tools/dialogue_lengths.py",
+    "--vocab",
+    "/content/chat/upload/vocab_llama3_bpe.gguf",
+    "--out",
+    "{out}/dialogue_lengths_long_v1.json",
+    "/content/chat/hd_long/human_taskmaster3_v1/dialogues.jsonl",
+    "/content/chat/hd_long/human_msc_v1/dialogues.jsonl",
+    "/content/chat/hd_long/human_abcd_v1/dialogues.jsonl",
+    "/content/chat/hd_long/human_ccpe_v1/dialogues.jsonl",
+    "/content/chat/hd_long/human_p4g_v1/dialogues.jsonl"
+   ],
+   "outputs": [
+    "dialogue_lengths_long_v1.json"
+   ]
+  }
+ ]
+}

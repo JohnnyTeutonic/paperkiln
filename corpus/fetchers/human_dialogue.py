@@ -44,12 +44,21 @@ are applied where the corpora become training data (tools/colab_chat/tiny_chat_d
 `tools/carry5_build.py decontam` scans the pinned outputs for its template and item-leak rules.
 
     python corpus/fetchers/human_dialogue.py pin SOURCE ... [--out-dir DIR]   # files in DIR/human_<s>_v1/
+
+LONG DIALOGUE (24 Oct 2026; survey section 9, experiments/tiny_chat_long_2026-10 section 4): the group
+`long` (taskmaster3, msc, abcd, ccpe, p4g) is outside default/optin/all, so those groups build what
+they built before; a run of it writes human_dialogue_long_v1.ledger.json. taskmaster3 is Taskmaster-3
+read with its lower-case speaker labels, without its "Auto template" dialogues (agent turns fixed by
+the collectors' templates) and without its dev/test ids; msc (Multi-Session Chat) joins each
+episode's sessions 1..k, the same two characters continuing, and is gated behind
+--allow-unstated-licence (its authors state no data licence).
 """
 from __future__ import annotations
 
 import argparse
 import codecs
 import csv
+import gzip
 import hashlib
 import json
 import os
@@ -107,6 +116,19 @@ WOW_URL = "https://dl.fbaipublicfiles.com/parlai/wizard_of_wikipedia/wizard_of_w
 ARCHIVE_SHA256 = {CONVAI2_URL: "d0ae89defe2fd0b0a4221eaa642a457d7d40cef475f54798119c7f3b8dd9361d",
                   WOW_URL: "2a549627a83fea745efa2076a41d1c0078ad002ab2b54eae6a4e3d3d66ae24b7"}  # pk-hd, 23 Oct 2026
 
+# Long-dialogue sources (24 Oct 2026). Taskmaster-3 is read from the TASKMASTER commit above.
+TM3_FILES = [f"TM-3-2020/data/data_{k:02d}.json" for k in range(20)]
+TM3_HELD = [f"TM-3-2020/splits/{s}/{s}-a{c}.tsv" for s in ("dev", "test") for c in "abcd"]
+MSC_URL = "https://dl.fbaipublicfiles.com/parlai/msc/msc_v0.1.tar.gz"
+ARCHIVE_SHA256[MSC_URL] = "e640e37cf4317cd09fc02a4cd57ef130a185f23635f4003b0cee341ffcb45e60"  # ParlAI build.py's pin; laptop, 24 Oct 2026
+ABCD = ("asappresearch/abcd", "6b8700ce67c6b37b062dd7a60abc76d7ef832a97")
+CCPE = ("google-research-datasets/ccpe", "2c9cd30f33f3a154b5a27d015333679262ff36f5")
+P4G_URL = ("https://gitlab.com/ucdavisnlp/persuasionforgood/-/raw/90a3fd7b93437cec880e8f8192d26b144ecc493a/"
+           "data/FullData/full_dialog.csv")
+FILE_SHA256 = {"data/abcd_v1.1.json.gz": "2bdf53ac359543dcdc38d55bc6513e78df120363f8f44870716e909f4606de15",
+               "data.json": "4ff051ea7ea60cf0f480c911c7e2cfed56434e2e2c9ea8965ac5e26365773f0a",
+               P4G_URL: "3ecaa3e9f0577170b91c3306d2439c910150cf010b76e7637ef3bab724075a9f"}  # laptop, 24 Oct 2026
+
 # Phrases that mark ChatGPT-style text: the OpenAssistant paper's own filters ("as a large language
 # model", "knowledge cutoff after September 2021"; 2304.07327 appendix D) and their near variants.
 TELLS = ("as an ai language model", "as a large language model", "as a language model", "as an ai assistant",
@@ -132,8 +154,23 @@ SOURCES = {
     "dailydialog": (NC, "CC BY-NC-SA 4.0", "first speaker=user, alternating", False, "local"),
     "no_robots": (NC, "CC BY-NC 4.0", "user=user, assistant=assistant (system instructions drop)", True, "local"),
 }
+# Long-dialogue sources (survey section 9): the group `long`, never part of default/optin/all.
+NOLIC = "licence-unstated"
+LONG_SOURCES = {
+    "taskmaster3": (DEFAULT, "CC BY 4.0 (TM-3 README)",
+                    "user=user, assistant=assistant (lower-case labels); Auto template dialogues drop", False, "colab"),
+    "msc": (NOLIC, "not stated by the authors (no ParlAI task README, nothing in the archive or paper); "
+                   "session 1 is PersonaChat (CC BY 4.0 in ParlAI's ConvAI2 README)",
+            "Speaker 1 (opens every session)=user, Speaker 2=assistant; sessions 1..k joined in order", False, "local"),
+    "abcd": (DEFAULT, "MIT (repository LICENSE)", "customer=user, agent=assistant; action lines removed", False, "local"),
+    "ccpe": (DEFAULT, "CC BY 4.0 (README)", "USER=user, ASSISTANT=assistant", False, "local"),
+    "p4g": (DEFAULT, "Apache-2.0 (repository LICENSE)", "persuader (speaks first)=user, persuadee=assistant", False, "local"),
+}
+LONG_SET = list(LONG_SOURCES)
+LONG_LEDGER = "human_dialogue_long_v1.ledger.json"
 DEFAULT_SET = [s for s, v in SOURCES.items() if v[0] == DEFAULT]
 OPTIN_SET = [s for s, v in SOURCES.items() if v[0] != DEFAULT]
+SOURCES.update(LONG_SOURCES)
 
 
 def names_for(source):
@@ -166,9 +203,9 @@ def fetch_url(url, raw_dir, want=None):
     return dest
 
 
-def github_file(repo_commit, path, raw_dir):
+def github_file(repo_commit, path, raw_dir, want=None):
     repo, commit = repo_commit
-    return fetch_url(f"https://raw.githubusercontent.com/{repo}/{commit}/{path}", raw_dir)
+    return fetch_url(f"https://raw.githubusercontent.com/{repo}/{commit}/{path}", raw_dir, want)
 
 
 def github_tree(repo_commit, prefix, suffix):
@@ -549,10 +586,139 @@ def raw_no_robots(ctx):
         yield uri, [dict(m) for m in row["messages"]], None
 
 
+# ---- long-dialogue sources (24 Oct 2026; survey section 9) ----------------------
+def raw_taskmaster3(ctx):
+    """Taskmaster-3 (TicketTalk, 2020): self-dialogs, one crowd worker writing both the customer and
+    the ticketing agent, speaker labels "user" and "assistant" in lower case (the v1 reader maps
+    upper case, so human_taskmaster_v1 holds none of them). Dialogues whose scenario starts "Auto
+    template" (any case) drop (auto_template): the worker filled in a partly written conversation
+    whose agent turns came fixed from the collectors' template ("force assistant" lines with slot
+    values), so those turns are not the worker's text (TM-3 README, COLLECTION METHODOLOGY). The ids
+    in the dev and test splits (splits/{dev,test}/*.tsv, third column) drop as held_out_split."""
+    held = set()
+    for p in TM3_HELD:
+        with open(github_file(TASKMASTER, p, ctx["raw"]), encoding="utf-8") as f:
+            for line in f:
+                cols = line.rstrip("\n").split("\t")
+                if len(cols) >= 3 and cols[2].startswith("dlg-"):
+                    held.add(cols[2].strip())
+    for p in TM3_FILES:
+        with open(github_file(TASKMASTER, p, ctx["raw"]), "rb") as f:
+            for conv in iter_json_array(f):
+                cid = conv.get("conversation_id", "")
+                uri = f"taskmaster3:{p}#{cid}"
+                if cid in held:
+                    yield uri, None, "held_out_split"
+                elif (conv.get("scenario") or "").lower().startswith("auto template"):
+                    yield uri, None, "auto_template"
+                else:
+                    utts = [(u.get("speaker"), u.get("text", "")) for u in conv.get("utterances", [])]
+                    msgs, reason = to_messages(utts, {"user": "user", "assistant": "assistant"}, ctx["counts"])
+                    yield uri, msgs, reason
+
+
+def raw_msc(ctx):
+    """Multi-Session Chat train (Xu, Szlam and Weston 2021; ParlAI msc_v0.1). Session 1 is PersonaChat;
+    sessions 2-4 were written later by crowd workers playing the same two personas, who read the
+    earlier sessions (not always the workers of session 1: paper section 3). The record of an
+    episode's last session holds the earlier sessions in previous_dialogs, so one episode is that
+    record's sessions 1..k in order. Valid and test (500 + 501 five-session episodes) are not read."""
+    path = fetch_url(MSC_URL, ctx["raw"], ARCHIVE_SHA256[MSC_URL])
+    recs = defaultdict(dict)
+    with tarfile.open(path, "r:gz") as tar:
+        names = {m.name: m for m in tar.getmembers() if m.isfile()}
+        for s in (2, 3, 4, 5):
+            m = names.get(f"msc/msc_dialogue/session_{s}/train.txt")
+            if m is None:
+                continue
+            for line in tar.extractfile(m).read().decode("utf-8").splitlines():
+                if line.strip():
+                    r = json.loads(line)
+                    recs[r["metadata"]["initial_data_id"]][s] = r
+    yield from msc_episodes(recs, ctx["counts"])
+
+
+def msc_episodes(recs, counts):
+    """(uri, messages, reason) per MSC episode. recs: {initial_data_id: {session: record}}. Speakers
+    are positional in every session, as ParlAI's msc teacher reads them: utterance 0, 2, ... is
+    Speaker 1, who opens each session (a session's first "id" is sometimes a number instead of
+    "Speaker 1"). An odd-length session ends on Speaker 1, who also opens the next: to_messages merges
+    the two into one user turn with a newline (counted: msc_session_joins_same_speaker). No marker is
+    inserted between sessions; the time gaps stay in the source's metadata."""
+    for iid in sorted(recs):
+        by = recs[iid]
+        last = max(by)
+        rec = by[last]
+        sessions = [pd.get("dialog", []) for pd in rec.get("previous_dialogs", [])] + [rec.get("dialog", [])]
+        for s in range(2, last):
+            if s in by and [u.get("text") for u in by[s].get("dialog", [])] != [u.get("text") for u in sessions[s - 1]]:
+                counts["msc_session_text_differs_from_its_own_record"] += 1   # the last record's copy is used
+        utts = []
+        for sess in sessions:
+            new = [("speaker1" if i % 2 == 0 else "speaker2", u.get("text") or "") for i, u in enumerate(sess)]
+            prev = [s for s, t in utts if t.strip()]
+            nxt = [s for s, t in new if t.strip()]
+            if prev and nxt and prev[-1] == nxt[0]:
+                counts["msc_session_joins_same_speaker"] += 1
+            utts += new
+        counts[f"msc_episodes_{len(sessions)}_sessions"] += 1
+        msgs, reason = to_messages(utts, {"speaker1": "user", "speaker2": "assistant"}, counts)
+        yield f"msc:session_{last}/train.txt#{iid}", msgs, reason
+
+
+def raw_abcd(ctx):
+    """ABCD train (Chen et al. 2021): Expert Live Chat, a trained crowd agent and a crowd customer
+    chatting in real time. The agent's system actions ("action" lines, e.g. "Account has been pulled
+    up for ...") are interface records, not dialogue: removed (counted), so the agent's messages on
+    either side of one merge."""
+    with gzip.open(github_file(ABCD, "data/abcd_v1.1.json.gz", ctx["raw"], FILE_SHA256["data/abcd_v1.1.json.gz"]),
+                   "rt", encoding="utf-8") as f:
+        data = json.load(f)
+    for c in data["train"]:
+        utts = [(s, t) for s, t in c.get("original", []) if s != "action"]
+        ctx["counts"]["action_lines_removed"] += len(c.get("original", [])) - len(utts)
+        msgs, reason = to_messages(utts, {"customer": "user", "agent": "assistant"}, ctx["counts"])
+        yield f"abcd:train#{c.get('convo_id')}", msgs, reason
+
+
+def raw_ccpe(ctx):
+    """CCPE-M (Radlinski et al. 2019): two crowd workers, Wizard-of-Oz; the assistant elicits movie
+    preferences, the user's speech is transcribed. No splits defined: all 502 dialogues."""
+    with open(github_file(CCPE, "data.json", ctx["raw"], FILE_SHA256["data.json"]), encoding="utf-8") as f:
+        data = json.load(f)
+    for c in data:
+        utts = [(u.get("speaker"), u.get("text", "")) for u in sorted(c.get("utterances", []), key=lambda u: u.get("index", 0))]
+        msgs, reason = to_messages(utts, {"USER": "user", "ASSISTANT": "assistant"}, ctx["counts"])
+        yield f"ccpe:data.json#{c.get('conversationId')}", msgs, reason
+
+
+def raw_p4g(ctx):
+    """PersuasionForGood (Wang et al. 2019): paired Mechanical Turk workers, one persuading the other
+    to donate to a charity, at least 10 turns each. full_dialog.csv holds one sentence per row (Unit),
+    with the turn index (Turn), the role (B4: 0 persuader, 1 persuadee) and the dialogue (B2); a
+    speaker's sentences within one turn are joined with a space. No splits defined: all 1,017."""
+    convs = {}
+    with open(fetch_url(P4G_URL, ctx["raw"], FILE_SHA256[P4G_URL]), encoding="utf-8", newline="") as f:
+        for row in csv.DictReader(f):
+            utts = convs.setdefault(row["B2"], [])
+            key = (row["Turn"], row["B4"])
+            text = (row["Unit"] or "").strip()
+            if utts and utts[-1][0] == key:
+                utts[-1] = (key, (utts[-1][1] + " " + text).strip())
+            else:
+                utts.append((key, text))
+    for did, utts in convs.items():   # file order
+        role = {"0": "persuader", "1": "persuadee"}
+        msgs, reason = to_messages([(role.get(k[1], k[1]), t) for k, t in utts],
+                                   {"persuader": "user", "persuadee": "assistant"}, ctx["counts"])
+        yield f"p4g:full_dialog.csv#{did}", msgs, reason
+
+
 RAW = {"oasst": raw_oasst, "convai2": raw_convai2, "wow": raw_wow, "bst": raw_bst, "taskmaster": raw_taskmaster,
        "multiwoz": raw_multiwoz, "aya_en": raw_aya_en, "self_dialogue": raw_self_dialogue,
        "topical_chat": raw_topical_chat, "dolly": raw_dolly, "quac": raw_quac, "dailydialog": raw_dailydialog,
-       "empathetic": raw_empathetic, "no_robots": raw_no_robots}
+       "empathetic": raw_empathetic, "no_robots": raw_no_robots,
+       "taskmaster3": raw_taskmaster3, "msc": raw_msc, "abcd": raw_abcd, "ccpe": raw_ccpe, "p4g": raw_p4g}
 
 
 # ---- decontamination targets --------------------------------------------------
@@ -745,7 +911,7 @@ def add_tokens(cid, vocabs, out_dir):
 
 
 # ---- ledger ------------------------------------------------------------------------
-def write_ledger(reports, out_dir, carry5_sha):
+def write_ledger(reports, out_dir, carry5_sha, name=LEDGER):
     """Per-source counts and sizes, plus exact duplicates ACROSS sources (reported, not dropped:
     each corpus is built and pinned alone)."""
     where = {}
@@ -769,14 +935,15 @@ def write_ledger(reports, out_dir, carry5_sha):
             k: r[k] for k in ("id", "gate", "licence", "roles", "counts", "stats", "bytes") if k in r} | {
             "tokens": r.get("tokens", {}), "decontam_dropped": len(r["decontam_dropped"]),
             "answer_flags": len(r["answer_flags"])}
-    with open(os.path.join(out_dir or C.DATA_DIR, LEDGER), "w", encoding="utf-8", newline="\n") as f:
+    with open(os.path.join(out_dir or C.DATA_DIR, name), "w", encoding="utf-8", newline="\n") as f:
         json.dump(ledger, f, indent=1)
     return ledger
 
 
 def gate_ok(source, a):
     g = SOURCES[source][0]
-    return g == DEFAULT or (g == SA and a.allow_sa) or (g == NC and a.allow_nc) or (g == RISK and a.allow_llm_risk)
+    return g == DEFAULT or (g == SA and a.allow_sa) or (g == NC and a.allow_nc) or (g == RISK and a.allow_llm_risk) or (
+        g == NOLIC and getattr(a, "allow_unstated_licence", False))
 
 
 def main(argv=None):
@@ -786,6 +953,8 @@ def main(argv=None):
     ap.add_argument("--allow-sa", action="store_true", help="permit share-alike sources")
     ap.add_argument("--allow-nc", action="store_true", help="permit non-commercial sources")
     ap.add_argument("--allow-llm-risk", action="store_true", help="permit sources with a documented LLM-text risk")
+    ap.add_argument("--allow-unstated-licence", action="store_true",
+                    help="permit sources whose authors state no data licence (msc)")
     ap.add_argument("--pin", action="store_true")
     ap.add_argument("--out-dir", help="write here instead of corpus/data/ (a VM run; pin at home)")
     ap.add_argument("--count-vocab", action="append", default=[], help="GGUF vocabulary to count tokens with (repeat)")
@@ -802,19 +971,20 @@ def main(argv=None):
             else:
                 add_tokens(cid, a.count_vocab, a.out_dir)
         return 0
-    groups = {"default": DEFAULT_SET, "optin": OPTIN_SET, "all": list(SOURCES)}
+    groups = {"default": DEFAULT_SET, "optin": OPTIN_SET, "all": [s for s in SOURCES if s not in LONG_SET], "long": LONG_SET}
     if a.what in groups:
         todo = [s for s in groups[a.what] if gate_ok(s, a)]
         skipped = [s for s in groups[a.what] if not gate_ok(s, a)]
         if skipped:
-            print(f"gate: skipped {skipped} (--allow-sa / --allow-nc / --allow-llm-risk)")
+            print(f"gate: skipped {skipped} (--allow-sa / --allow-nc / --allow-llm-risk / --allow-unstated-licence)")
     else:
         todo = a.what.split(",")
         for s in todo:
             if s not in SOURCES:
-                C.die(f"unknown source {s!r}; one of {sorted(SOURCES)} (comma-separated) or default/optin/all/pin/tokens")
+                C.die(f"unknown source {s!r}; one of {sorted(SOURCES)} (comma-separated) or default/optin/all/long/pin/tokens")
             if not gate_ok(s, a):
-                C.die(f"{s} is {SOURCES[s][0]} ({SOURCES[s][1]}); pass --allow-sa, --allow-nc or --allow-llm-risk")
+                C.die(f"{s} is {SOURCES[s][0]} ({SOURCES[s][1]}); pass --allow-sa, --allow-nc, --allow-llm-risk "
+                      "or --allow-unstated-licence")
     dc, carry5_sha = decontaminator(a.carry5)
     print(f"decontamination: frozen eval sets{' + carry5_v1' if carry5_sha else ' (carry5_v1 not used)'}")
     reports = {}
@@ -831,7 +1001,8 @@ def main(argv=None):
             print(f"human_{s}_v1: FAILED {type(e).__name__}: {e}", file=sys.stderr)
             reports[s] = {"error": f"{type(e).__name__}: {e}"}
     if len(todo) > 1:
-        write_ledger(reports, a.out_dir, carry5_sha)
+        long_run = all(s in LONG_SET for s in todo)
+        write_ledger(reports, a.out_dir, carry5_sha, LONG_LEDGER if long_run else LEDGER)
     return 1 if any("error" in r for r in reports.values()) else 0
 
 
