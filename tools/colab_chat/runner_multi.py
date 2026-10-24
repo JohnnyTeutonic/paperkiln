@@ -695,6 +695,9 @@ def main():
     # failed at this commit stays down until the commit changes (or boot_failed_commit is removed from state.json).
     if a.backend != "colab" and st.d.get("boot_failed_commit") == a.commit:
         sys.exit(f"the boot failed at {a.commit} (ART/boot.log); refusing to rent another pod for it")
+    # Nor for a campaign that is home (a restart after the end would otherwise launch a pod and find nothing to do).
+    if a.backend != "colab" and all(st.d["jobs"].get(j["name"], {}).get("home") for j in jobs):
+        sys.exit("every job is home; nothing to run (no pod rented)")
     T = make_transport(a)
     open(pid, "w").write(str(os.getpid()))
     if a.backend != "colab":
