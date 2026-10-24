@@ -84,6 +84,49 @@
      "XPASS": 0
     }
    }
+  },
+  {
+   "file": "ember_cpu.json",
+   "engine": "ember.cpp ir_adapter, CPU interpreter, built at ember 97166f6 (~/ember_wt/base_97166f6/ir_adapter; hello: 'ir_adapter 1 (IR versions 0 and 1)')",
+   "date": "2026-10-25",
+   "counts": {
+    "PASS": 95,
+    "FAIL": 13,
+    "SKIP": 46,
+    "XFAIL": 3,
+    "XPASS": 0
+   },
+   "by_kind": {
+    "model": {
+     "PASS": 19,
+     "FAIL": 0,
+     "SKIP": 0,
+     "XFAIL": 1,
+     "XPASS": 0
+    },
+    "trace": {
+     "PASS": 30,
+     "FAIL": 0,
+     "SKIP": 0,
+     "XFAIL": 1,
+     "XPASS": 0
+    },
+    "op": {
+     "PASS": 0,
+     "FAIL": 0,
+     "SKIP": 46,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "refuse": {
+     "PASS": 46,
+     "FAIL": 13,
+     "SKIP": 0,
+     "XFAIL": 1,
+     "XPASS": 0
+    }
+   },
+   "_note": "The 13 FAILs are refusals ember's review listed as gaps it is closing (IR_SPEC Appendix C: closed key sets and the load-time refusals of rules 3, 7, 10, 11, 12, 24 and 28): refuse/unknown_attribute, refuse/unknown_top_key, refuse/model_ctx_missing, refuse/add_one_input, refuse/attention_window_differs, refuse/slot_declared_twice, refuse/slot_unread, refuse/attention_no_slot, refuse/split_count, refuse/moe_top_k_too_large, refuse/version_key_mismatch, refuse/state_template_not_v1, refuse/state_tokens_arch_llama. The 3 XFAILs are tensor_index (expected_fail.json)."
   }
  ]
 }
