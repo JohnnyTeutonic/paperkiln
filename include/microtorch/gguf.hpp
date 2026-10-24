@@ -54,6 +54,12 @@ struct LlamaExportConfig {
     // Mixture-of-Recursions router: recursion.router.weight ->
     // rec.0.router.weight (ir.hpp depth_route).
     std::vector<std::pair<std::string, std::string>> extra_proj;
+    // Per-turn state tokens (ir.hpp embedding state_weight; nn::LlamaConfig
+    // state_k). k > 0 writes the u32 key paperkiln.state_tokens.k = k and the
+    // state dict's state_embd.weight [k, d] as state_embd.weight (ne = {d,
+    // k}, row v - vocab for id v), F32 in every variant (the Q8_0 picks name
+    // blk.*, output and token_embd only). 0 (the default) writes neither.
+    uint32_t state_tokens_k = 0;
 
     // Weight layout of the 2-D projection tensors in the state_dict:
     //  false (default): HF torch.nn.Linear rows=[out], cols=[in] -- what

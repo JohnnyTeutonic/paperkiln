@@ -1,0 +1,51 @@
+{
+ "_comment": "Per-turn state tokens (cells S-full / S-gist, E4) build receipt, 24 Oct 2026: arch.state_tokens {k (default 4), mask turn_state | causal} on the llama family (fixed recursion included; MoR, MoE, attn_res, grpo and provenance_po refused), IR_SPEC_DRAFT.md section 1 at paperkiln 0a58e5b6. Numbers from tests/test_state_tokens.cpp and tests/test_state_tokens_ir.py on the laptop's CPU; CUDA compiled only (validation on Colab: tools/colab_cuda_validate.sh leg test_state_tokens).",
+ "cpp_test_state_tokens": {
+  "_note": "k = 3, vocab 37, d 16, 2 heads; a three-turn conversation with two state blocks (26 ids).",
+  "no_state_id_is_plain_causal": {"turn_state": {"logit_bits_differ": 0, "gradient_bits_differ": 0}, "causal": {"logit_bits_differ": 0, "gradient_bits_differ": 0}},
+  "mask_meaning_turn2_logits_after_editing_turn0_text": {"one_layer_turn_state_bits_differ": 0, "one_layer_causal_bits_differ": 222, "two_layers_turn_state_bits_differ": 222},
+  "fd_gradcheck_worst_rel": {"attention_heads_turn_state_op_468_entries": 4.81e-04, "model_turn_state_2_layers": 4.15e-03, "model_causal_with_state_rows": 2.16e-03, "model_turn_state_recursion_1_2x2_1": 5.17e-03},
+  "op_forward_vs_double_masked_reference_rel": 1.08e-07,
+  "prefill_equals_decode_rel_to_forward": {"turn_state": 0.0, "causal": 4.88e-07, "turn_state_recursion": 0.0},
+  "eviction_vs_keep_every_row_bits_differ": {"plain": 0, "recursion": 0, "rows_kept_after_two_turns": "12 of 26 (2 k state rows + 6)"},
+  "rewind_into_evicted_turn": {"truncate_13_returns": 10, "reprefill_vs_never_evicted_bits_differ": 0},
+  "training_steps_host_vs_host_bits_differ": 0
+ },
+ "python_test_state_tokens_ir": {
+  "_note": "BPE vocabulary 400 (+ 4 state ids 400..403), d 32, 2 layers, 2 heads, T 128, 200 lm steps on synthetic multi-turn dialogues; 40 multi-turn prompts with state blocks, prompt 7 with a reply cut short (the template closes it).",
+  "numpy_ir_vs_mtstudio_score_worst_rel": {"full_forward": 8.15e-07, "kv_cache": 8.15e-07, "kv_cache_evict": 8.15e-07, "kv_cache_evict_token_by_token": 8.15e-07},
+  "greedy_agreement": "40/40 in all four modes",
+  "evict_vs_keep_identical_records": "40/40",
+  "text_prompts_vs_ids_prompts_identical": "40/40",
+  "kv_rows_first_five_prompts": {"keep": [91, 51, 89, 94, 99], "evict": [28, 21, 29, 28, 29], "state_blocks": [4, 2, 4, 4, 4]},
+  "chat_greedy_replies_identical_plain_kv_evict": ["hello cara, nice to meet you.", "a fish is a good friend.", "i am not sure, thank you.", "your name is cara.", "you have a fish."],
+  "chat_kv_rows": {"keep": [15, 34, 53, 70, 88], "evict": [15, 18, 22, 24, 29]}
+ },
+ "ember_gate": {
+  "dir": "C:/ml_artifacts/state_gate/state4 (WSL /mnt/c/ml_artifacts/state_gate/state4)",
+  "_note": "d 64, 2 layers, 2 heads, k 4, mask turn_state, 600 lm steps (final loss 0.2227); numpy vs mtstudio worst rel 2.39e-06 in every mode, greedy 40/40, eviction identical; manifest.json lists every file with its sha256.",
+  "sha256": {
+   "state4.gguf": "89ea81de2d950c7715df67474d07413108420d95557b71292723f5cf94879bad",
+   "state4.ir.json": "24b06c0e4cd3d84605ea6778b71525f3fa2a6b9eaf2ddb6528f6903da8a30a64",
+   "state4_q8_0.gguf": "511813e4d2604d933b2fc415b13538242cc69dcca5cfd64194f71946a3e40a1d",
+   "v.gguf": "76177bf799f1f22882d76e110b1e1a909d2aae24a0c94b13ae0d382792a066fe",
+   "score_in.jsonl": "9ac966147905113de3c26f23569b0da429b0b7d441dca0901d3db69c88d2440c",
+   "score_out.jsonl": "399f4abf711fdb300735ea00f3c58f8b0126bb3ad4131a00cf662448f82302a3",
+   "score_out_kv.jsonl": "c97fa9cff7472cdaf6d083e17a16cb38dc703150cb9a07b21961bb3e22989a52",
+   "score_out_evict.jsonl": "62fae5ede1ae8fcd2677655209eee0d578575230390636896b74d0ccd9132b95",
+   "score_out_evict_step1.jsonl": "62fae5ede1ae8fcd2677655209eee0d578575230390636896b74d0ccd9132b95",
+   "score_out_text.jsonl": "399f4abf711fdb300735ea00f3c58f8b0126bb3ad4131a00cf662448f82302a3",
+   "prompts_text.jsonl": "e9f931a589c3bfed6358fba60ebd4c53b806cd515801ea4c4fb8ce5e3a154403",
+   "spec.json": "1486bef4e188a542ecb9f5d447bf3cbfba0336556f1b19cdb5261d4453668a9f",
+   "manifest.json": "0681072c89e663782172ee8801bc7ca6945722e8c192e4a1e7391fd531cb63c4"
+  }
+ },
+ "readings_of_the_spec": {
+  "complete_block": "k consecutive ids vocab .. vocab + k - 1 in that order; a state id outside one is a state position of the current segment and completes nothing (training windows that start inside a block).",
+  "k_in_the_ir": "the embedding's state_weight rows, equal to paperkiln.state_tokens.k (tools/ir_check.py checks both).",
+  "family_hint": "llama_state for a plain llama with state tokens (either mask); llama_recursive keeps its hint under fixed recursion.",
+  "sft_trailing_block": "a block that would end an SFT row is left out (no position reads it); a dialogue row past T + 1 after insertion is cut at its last whole exchange, a prompt/completion row is dropped, both counted in the state_tokens event.",
+  "loss": "no loss where the target is a state id or the input is a state position.",
+  "raw_ids": "state ids accepted only as a complete ordered block directly after an <|endoftext|> that closed an exchange; a missing block is not an error and is not inserted."
+ }
+}

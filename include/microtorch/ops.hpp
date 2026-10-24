@@ -62,6 +62,36 @@ bool blocked_attention_enabled();
 // attention live (sl < T) it is one op over all heads (no slices), the
 // same floats.
 Var attention_heads(const Var& qkv, size_t heads, float scale, size_t seq_len, bool causal);
+// ---- per-turn state tokens (ir.hpp attention mask "turn_state", 24 Oct 2026) ----
+// The mask's per-position code, a function of the ids alone: code = 2 s + c
+// with c = 1 for a state id (id >= vocab) and 0 for text, and s the number
+// of COMPLETE state blocks strictly before the position, a complete block
+// being k consecutive ids vocab, vocab + 1, .., vocab + k - 1 in that order.
+// Counted afresh in every seq_len block of ids (0 = one sequence). A state
+// id outside a complete block (a window that starts inside one) is a state
+// position of the current segment.
+std::vector<int> turn_state_codes(const std::vector<int>& ids, size_t vocab, size_t k, size_t seq_len = 0);
+// The incremental form: feed ids one at a time from (seg, run) = (0, 0);
+// returns the position's code and advances the tracker.
+int turn_state_step(int id, size_t vocab, size_t k, int& seg, int& run);
+// Whether key code cj is visible to query code ci (key at or before the
+// query): the same segment, or a state position of an earlier one.
+inline bool turn_state_visible(int ci, int cj) { return (cj & 1) != 0 || (cj >> 1) == (ci >> 1); }
+// attention_heads under the turn_state mask: query i of a sequence block
+// sees key j <= i iff turn_state_visible(code[i], code[j]); code has one
+// entry per row (turn_state_codes over the same seq_len). Per head, row by
+// row, over the visible keys in ascending position: dot product summed
+// over the head's columns, times scale, max over the visible keys,
+// exp(s - max), the sum, divided, then the weighted values summed in
+// ascending key order (forward_cached_rows' arithmetic). Host loops, or
+// with the device op set on CUDA the blocked all-heads kernels with a
+// turn_state softmax (equal to rounding). Weights are kept block-local [H
+// T, seq_len] (head-major) for the backward; masked entries are zeros, so
+// the backward is the causal one. A code vector with no state position
+// still runs this op (callers that want plain causal attention bit for bit
+// call attention_heads).
+Var attention_heads_turn_state(const Var& qkv, size_t heads, float scale, size_t seq_len,
+                               const std::vector<int>& code);
 Var dpo_weighted(const Var& logits, const std::vector<int>& targets, const std::vector<int>& row_pair,
                  const std::vector<int8_t>& row_sign, const std::vector<double>& ref_margin,
                  const std::vector<float>& pair_w, float beta);

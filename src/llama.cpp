@@ -21,6 +21,7 @@ LlamaBlock::LlamaBlock(const LlamaConfig& cfg, unsigned seed)
       rope_theta_(cfg.rope_theta),
       rms_eps_(cfg.rms_eps),
       rope_all_heads_(cfg.rope_all_heads) {
+    turn_state = cfg.turn_state();
     if (cfg.d % cfg.n_heads != 0) throw std::runtime_error("llama: d must divide by n_heads");
     // HF names throughout; Linear registers its matrix as "weight", so the
     // collected dotted paths match LlamaForCausalLM exactly.
@@ -42,7 +43,8 @@ LlamaBlock::LlamaBlock(const LlamaConfig& cfg, unsigned seed)
     }
 }
 
-Var LlamaBlock::forward(const Var& x, const std::vector<int>& pos, size_t seq_len, MoEAux* aux) const {
+Var LlamaBlock::forward(const Var& x, const std::vector<int>& pos, size_t seq_len, MoEAux* aux,
+                        const std::vector<int>* ts_code) const {
     // ---- attention sublayer (pre-RMSNorm) ----
     Var h = ops::rmsnorm(x, ln1_w);
     Var q = q_proj->forward(h);
@@ -68,7 +70,10 @@ Var LlamaBlock::forward(const Var& x, const std::vector<int>& pos, size_t seq_le
     // (ops::attention_heads = concat of ops::fused_attention per head;
     // FD-checked). Its output, the head concat, feeds o_proj.
     const float sc = 1.0f / std::sqrt(static_cast<float>(dk));
-    Var heads_cat = ops::attention_heads(qkv, H, sc, seq_len, /*causal=*/true);
+    // State tokens under the turn_state mask (llama.hpp): the codes say which
+    // keys each row sees. Without them (or without a state id) causal.
+    Var heads_cat = ts_code ? ops::attention_heads_turn_state(qkv, H, sc, seq_len, *ts_code)
+                            : ops::attention_heads(qkv, H, sc, seq_len, /*causal=*/true);
     Var attn = o_proj->forward(heads_cat);
     Var x1 = ops::add(x, attn);
     device::release(attn->data);  // add's backward reads no data
@@ -139,9 +144,13 @@ Var LlamaBlock::forward_cached(const Var& x, size_t pos0, std::vector<float>& kc
 }
 
 Var LlamaBlock::forward_cached_rows(const Var& x, const std::vector<int>& pos, std::vector<float>& kc,
-                                    std::vector<float>& vc) const {
+                                    std::vector<float>& vc, const std::vector<int>* cached_code,
+                                    const std::vector<int>* new_code) const {
     const size_t n = x->data.rows(), d = x->data.cols();
     if (pos.size() != n) throw std::runtime_error("llama: forward_cached_rows needs one position per row");
+    if ((cached_code == nullptr) != (new_code == nullptr) ||
+        (new_code && (new_code->size() != n || cached_code->size() * d != kc.size())))
+        throw std::runtime_error("llama: forward_cached_rows needs a turn_state code per cached and per new row");
     if (n > 0 && static_cast<size_t>(pos.back()) + 1 > n_ctx)
         throw std::runtime_error("llama: kv cache past the context length");
     const size_t base = kc.size() / d;  // rows cached before these
@@ -160,7 +169,39 @@ Var LlamaBlock::forward_cached_rows(const Var& x, const std::vector<int>& pos, s
     const float sc = 1.0f / std::sqrt(static_cast<float>(dk));
     Matrix att(n, d);
     std::vector<float> a;
-    for (size_t i = 0; i < n; ++i) {
+    if (new_code) {
+        // turn_state: the same arithmetic over the visible rows only (cached
+        // rows, then rows 0..i of x, ascending), so a cache that never held
+        // the invisible rows gives the same floats (LlamaKV evict).
+        std::vector<size_t> vis;
+        for (size_t i = 0; i < n; ++i) {
+            const int ci = (*new_code)[i];
+            vis.clear();
+            for (size_t j = 0; j < base + i + 1; ++j)
+                if (ops::turn_state_visible(ci, j < base ? (*cached_code)[j] : (*new_code)[j - base])) vis.push_back(j);
+            a.resize(vis.size());
+            for (size_t hd = 0; hd < H; ++hd) {
+                const size_t o = hd * dk;
+                float mx = -1e30f;
+                for (size_t t = 0; t < vis.size(); ++t) {
+                    const size_t j = vis[t];
+                    float s = 0.0f;
+                    for (size_t c = 0; c < dk; ++c) s += m(i, o + c) * kc[j * d + o + c];
+                    a[t] = s * sc;
+                    mx = std::max(mx, a[t]);
+                }
+                float z = 0.0f;
+                for (size_t t = 0; t < vis.size(); ++t) z += (a[t] = std::exp(a[t] - mx));
+                for (size_t t = 0; t < vis.size(); ++t) a[t] /= z;
+                for (size_t c = 0; c < dk; ++c) {
+                    float acc = 0.0f;
+                    for (size_t t = 0; t < vis.size(); ++t) acc += a[t] * vc[vis[t] * d + o + c];
+                    att(i, o + c) = acc;
+                }
+            }
+        }
+    }
+    for (size_t i = 0; !new_code && i < n; ++i) {
         const size_t hi = base + i + 1;  // causal: every cached row, then rows 0..i of x
         a.resize(hi);
         for (size_t hd = 0; hd < H; ++hd) {
@@ -199,7 +240,14 @@ ir::json LlamaBlock::export_ir() const {
     n.push_back(k_proj->export_ir("h", "k", p + "attn_k.weight"));
     n.push_back(v_proj->export_ir("h", "v", p + "attn_v.weight"));
     n.push_back(ir::rope("q", "k", "pos", H, dk, rope_theta_, rope_all_heads_));
-    n.push_back(ir::attention("q", "k", "v", "kv", H, H, dk, sc, /*causal=*/true, 0, 0, "a"));
+    ir::json att = ir::attention("q", "k", "v", "kv", H, H, dk, sc, /*causal=*/true, 0, 0, "a");
+    if (turn_state) {
+        // ir.hpp attention "mask": "turn_state" (absent = causal), before "out".
+        att.erase("out");
+        att["mask"] = "turn_state";
+        att["out"] = "a";
+    }
+    n.push_back(att);
     n.push_back(o_proj->export_ir("a", "o", p + "attn_output.weight"));
     n.push_back(ir::binary("add", "x", "o", "x"));
     n.push_back(ir::rmsnorm("x", p + "ffn_norm.weight", ops::kRmsNormEps, "h2"));
@@ -213,7 +261,10 @@ ir::json LlamaBlock::export_ir() const {
         n.push_back(down_proj->export_ir("gu", "f", p + "ffn_down.weight"));
     }
     n.push_back(ir::binary("add", "x", "f", "x"));
-    return {{"state", ir::json::array({ir::kv_state("kv", H, H, dk, n_ctx, 0, 0)})}, {"nodes", n}};
+    ir::json kv = ir::kv_state("kv", H, H, dk, n_ctx, 0, 0);
+    // Finished turns' text rows may be dropped (ir.hpp kv "evict").
+    if (turn_state) kv["evict"] = "turn_state";
+    return {{"state", ir::json::array({kv})}, {"nodes", n}};
 }
 
 std::vector<size_t> layer_schedule(const LlamaConfig& cfg) {
@@ -252,6 +303,75 @@ std::vector<size_t> layer_schedule(const LlamaConfig& cfg) {
     return s;
 }
 
+std::vector<int> insert_state_ids(const std::vector<int>& ids, const StateTemplate& t, StateInsertCount* count) {
+    if (t.k == 0 || t.eot < 0 || t.user < 0 || t.assistant < 0)
+        throw std::runtime_error("insert_state_ids: needs k >= 1 and the <|endoftext|>, <|user|>, <|assistant|> ids");
+    enum { NONE, USER, REPLY } phase = NONE;
+    std::vector<int> out;
+    out.reserve(ids.size() + ids.size() / 8);
+    StateInsertCount c;
+    auto block = [&] {
+        for (size_t j = 0; j < t.k; ++j) out.push_back(static_cast<int>(t.vocab + j));
+        ++c.blocks;
+    };
+    for (const int id : ids) {
+        if (id < 0 || static_cast<size_t>(id) >= t.vocab)
+            throw std::runtime_error("insert_state_ids: id " + std::to_string(id) + " is not a text id");
+        if (id == t.user) {
+            if (phase == REPLY) {  // a reply that stopped early: close it first
+                out.push_back(t.eot);
+                block();
+                ++c.closed;
+            }
+            phase = USER;
+            out.push_back(id);
+        } else if (id == t.assistant) {
+            if (phase == USER) phase = REPLY;
+            out.push_back(id);
+        } else if (id == t.eot) {
+            out.push_back(id);
+            if (phase == REPLY) block();
+            phase = NONE;
+        } else {
+            out.push_back(id);
+        }
+    }
+    if (count) *count = c;
+    return out;
+}
+
+std::string state_ids_error(const std::vector<int>& ids, const StateTemplate& t) {
+    enum { NONE, USER, REPLY } phase = NONE;
+    bool closed = false;  // the previous id is an <|endoftext|> that closed an exchange
+    for (size_t p = 0; p < ids.size(); ++p) {
+        const int id = ids[p];
+        if (id < 0 || static_cast<size_t>(id) >= t.vocab + t.k)
+            return "id " + std::to_string(id) + " at position " + std::to_string(p) + " is out of range";
+        if (static_cast<size_t>(id) >= t.vocab) {
+            if (!closed || static_cast<size_t>(id) != t.vocab)
+                return "state id " + std::to_string(id) + " at position " + std::to_string(p) +
+                       " does not start a block after an <|endoftext|> that ends a reply";
+            for (size_t j = 0; j < t.k; ++j)
+                if (p + j >= ids.size() || static_cast<size_t>(ids[p + j]) != t.vocab + j)
+                    return "the state block at position " + std::to_string(p) + " is not the ids " +
+                           std::to_string(t.vocab) + " .. " + std::to_string(t.vocab + t.k - 1) + " in order";
+            p += t.k - 1;
+            closed = false;
+            continue;
+        }
+        closed = false;
+        if (id == t.user) {
+            phase = USER;
+        } else if (id == t.assistant) {
+            if (phase == USER) phase = REPLY;
+        } else if (id == t.eot) {
+            closed = phase == REPLY;
+            phase = NONE;
+        }
+    }
+    return "";
+}
+
 std::vector<size_t> injection_points(const LlamaConfig& cfg) {
     const auto& r = cfg.recursion;
     std::vector<size_t> at;
@@ -275,6 +395,20 @@ Llama::Llama(const LlamaConfig& cfg_, unsigned seed) : cfg(cfg_) {
             mod<LlamaBlock>("layers." + std::to_string(i), cfg, seed + 100 * (unsigned)(i + 1)));
     norm_w = reg("norm.weight", Matrix(1, cfg.d, 1.0f));
     if (!cfg.tie_embeddings) lm_head = mod<Linear>("lm_head", cfg.d, cfg.vocab, false, seed + 12);
+    if (cfg.state_mask != "turn_state" && cfg.state_mask != "causal")
+        throw std::runtime_error("llama state tokens: mask must be turn_state or causal, got " + cfg.state_mask);
+    if (cfg.state_k > 0) {
+        if (cfg.recursion.routed())
+            throw std::runtime_error("llama state tokens: not wired with recursion schedule mor (the turn_state mask "
+                                     "over each step's active rows, kv_rows active, is not implemented); use schedule "
+                                     "fixed");
+        if (cfg.attn_res.on)
+            throw std::runtime_error("llama state tokens: not wired with attention residuals (llama_attnres has its "
+                                     "own forward, without the state embedding or the turn_state mask)");
+        // Its own seed (seed + 14), so every other tensor starts as without it;
+        // the embedding's initialiser (llama.hpp).
+        state_embd = mod<Embedding>("state_embd", cfg.state_k, cfg.d, seed + 14);
+    }
     // Its own seed, so every other tensor starts as in the fixed schedule.
     if (cfg.recursion.routed())
         rec_router = mod<Linear>("recursion.router", cfg.d, cfg.recursion.repeats, false, seed + 13);
@@ -332,6 +466,29 @@ Var Llama::route(const Var& h, std::vector<int>& depth, std::vector<float>& marg
     return g;
 }
 
+Var Llama::embed(const std::vector<int>& ids) const {
+    if (!state_embd) return embed_tokens->forward(ids);
+    const int V = static_cast<int>(cfg.vocab), K = static_cast<int>(cfg.state_k);
+    std::vector<int> tok, st, tok_row, st_row;
+    for (size_t t = 0; t < ids.size(); ++t) {
+        if (ids[t] >= V + K)
+            throw std::runtime_error("llama: id " + std::to_string(ids[t]) + " is past the " + std::to_string(K) +
+                                     " state ids after the vocabulary");
+        if (ids[t] >= V) {
+            st.push_back(ids[t] - V);
+            st_row.push_back(static_cast<int>(t));
+        } else {
+            tok.push_back(ids[t]);
+            tok_row.push_back(static_cast<int>(t));
+        }
+    }
+    if (st.empty()) return embed_tokens->forward(ids);  // the plain model's gather, bit for bit
+    if (tok.empty()) return ops::scatter_add_rows(state_embd->forward(st), st_row, ids.size());
+    // Each row named once: a copy (ops.hpp), so the rows are the gathers' bits.
+    return ops::scatter_add_rows({embed_tokens->forward(tok), state_embd->forward(st)}, {tok_row, st_row},
+                                 ids.size());
+}
+
 Var Llama::forward(const std::vector<int>& ids, size_t seq_len, MoEAux* aux) const {
     if (attn_res) return attnres_forward(*this, ids, seq_len, aux);
     // RoPE positions restart every seq_len (0 = one sequence).
@@ -339,11 +496,17 @@ Var Llama::forward(const std::vector<int>& ids, size_t seq_len, MoEAux* aux) con
     if (ids.size() % sl != 0) throw std::runtime_error("ids not a multiple of seq_len");
     std::vector<int> pos(ids.size());
     for (size_t i = 0; i < pos.size(); ++i) pos[i] = static_cast<int>(i % sl);
+    // turn_state: the mask's codes, from the ids alone (ops::turn_state_codes);
+    // none when no id is a state id (plain causal attention, bit for bit).
+    std::shared_ptr<const std::vector<int>> ts;
+    if (cfg.turn_state() &&
+        std::any_of(ids.begin(), ids.end(), [&](int t) { return t >= static_cast<int>(cfg.vocab); }))
+        ts = std::make_shared<const std::vector<int>>(ops::turn_state_codes(ids, cfg.vocab, cfg.state_k, sl));
     // A checkpointed segment's forward records no tape, so auxiliary losses
     // built inside it could not be differentiated: refuse rather than drop them.
     if (aux && cfg.moe.experts > 0 && checkpoint_blocks && grad_enabled())
         throw std::runtime_error("llama: MoE auxiliary losses are not supported with checkpoint_blocks");
-    Var h = embed_tokens->forward(ids);
+    Var h = embed(ids);
     const Var e = h;  // the token embedding, re-added under inject "add"
     // Each application of a shared layer is its own stretch of tape over the
     // same parameter Vars, so backward accumulates the layer's gradient once
@@ -351,8 +514,10 @@ Var Llama::forward(const std::vector<int>& ids, size_t seq_len, MoEAux* aux) con
     const bool ckpt = checkpoint_blocks && grad_enabled();
     auto apply = [&](size_t l, const Var& in) {
         const auto& b = blocks[schedule[l]];
-        return ckpt ? checkpoint([b, pos, seq_len](const Var& v) { return b->forward(v, pos, seq_len); }, in)
-                    : b->forward(in, pos, seq_len, aux);
+        return ckpt ? checkpoint([b, pos, seq_len, ts](const Var& v) {
+                          return b->forward(v, pos, seq_len, nullptr, ts.get());
+                      }, in)
+                    : b->forward(in, pos, seq_len, aux, ts.get());
     };
     if (!cfg.recursion.routed()) {
         for (size_t l = 0; l < schedule.size(); ++l) {
@@ -416,6 +581,56 @@ Var Llama::forward(const std::vector<int>& ids, size_t seq_len, MoEAux* aux) con
     return ops::matmul(h, ops::transpose(embed_tokens->weight));
 }
 
+size_t LlamaKV::truncate(size_t n) {
+    if (n >= len) return len;
+    if (state_k > 0) {
+        // The segment n falls in; a rewind into a turn whose text rows were
+        // evicted restarts at that segment's first position (llama.hpp).
+        retrack(n, state_vocab, state_k);
+        if (seg < evicted) {
+            const int m = seg;
+            int s2 = 0, r2 = 0;
+            size_t start = 0;
+            for (size_t p = 0; p < n && s2 < m; ++p) {
+                ops::turn_state_step(ids[p], state_vocab, state_k, s2, r2);
+                if (s2 == m) start = p + 1;
+            }
+            n = start;
+            evicted = m;
+            retrack(n, state_vocab, state_k);
+        }
+        size_t keep = 0;
+        while (keep < row_pos.size() && row_pos[keep] < static_cast<int>(n)) ++keep;
+        row_pos.resize(keep);
+        row_code.resize(keep);
+        ids.resize(n);
+        for (size_t l = 0; l < k.size(); ++l) {
+            k[l].resize(keep * d);
+            v[l].resize(keep * d);
+        }
+        len = n;
+        return len;
+    }
+    for (size_t l = 0; l < k.size(); ++l) {
+        size_t rows = n;
+        if (l < pos.size()) {
+            auto& p = pos[l];
+            rows = 0;
+            while (rows < p.size() && p[rows] < static_cast<int>(n)) ++rows;
+            p.resize(rows);
+        }
+        k[l].resize(rows * d);
+        v[l].resize(rows * d);
+    }
+    len = n;
+    return len;
+}
+
+void LlamaKV::retrack(size_t n, size_t vocab, size_t k_state) {
+    seg = run = 0;
+    for (size_t p = 0; p < n; ++p) ops::turn_state_step(ids[p], vocab, k_state, seg, run);
+}
+
 Var Llama::forward_cached(const std::vector<int>& ids, LlamaKV& kv) const {
     if (attn_res) return attnres_forward_cached(*this, ids, kv);
     if (ids.empty()) throw std::runtime_error("llama: forward_cached needs at least one new token");
@@ -426,8 +641,64 @@ Var Llama::forward_cached(const std::vector<int>& ids, LlamaKV& kv) const {
         kv.len = 0;
     }
     if (kv.k.size() != schedule.size()) throw std::runtime_error("llama: kv cache is for another depth");
-    Var h = embed_tokens->forward(ids);
+    if (kv.evict && !cfg.turn_state())
+        throw std::runtime_error("llama: kv evict needs state tokens with the turn_state mask");
+    Var h = embed(ids);
     const Var e = h;
+    if (state_embd) {
+        // State tokens (llama.hpp, LlamaKV): codes for the new rows from the
+        // tracker, attention over the visible rows, then eviction.
+        if (kv.state_k == 0) {
+            if (kv.len != 0) throw std::runtime_error("llama: a state-token kv cache needs its ids from the start");
+            kv.state_vocab = cfg.vocab;
+            kv.state_k = cfg.state_k;
+        }
+        const size_t n = ids.size();
+        std::vector<int> pos(n), code(n);
+        for (size_t i = 0; i < n; ++i) {
+            pos[i] = static_cast<int>(kv.len + i);
+            code[i] = ops::turn_state_step(ids[i], cfg.vocab, cfg.state_k, kv.seg, kv.run);
+        }
+        const bool ts = cfg.turn_state();
+        for (size_t l = 0; l < schedule.size(); ++l) {
+            if (inject_before[l]) h = ops::add(h, e);
+            h = blocks[schedule[l]]->forward_cached_rows(h, pos, kv.k[l], kv.v[l], ts ? &kv.row_code : nullptr,
+                                                         ts ? &code : nullptr);
+        }
+        kv.ids.insert(kv.ids.end(), ids.begin(), ids.end());
+        kv.row_pos.insert(kv.row_pos.end(), pos.begin(), pos.end());
+        kv.row_code.insert(kv.row_code.end(), code.begin(), code.end());
+        kv.len += n;
+        if (kv.evict && kv.seg > kv.evicted) {
+            // Blocks completed: the text rows of every segment < kv.seg are
+            // never visible again (ir.hpp kv evict). Keep the rest, in order.
+            size_t w = 0;
+            for (size_t r = 0; r < kv.row_pos.size(); ++r) {
+                const int c = kv.row_code[r];
+                if ((c & 1) == 0 && (c >> 1) < kv.seg) continue;
+                if (w != r)
+                    for (size_t l = 0; l < kv.k.size(); ++l) {
+                        std::copy(kv.k[l].begin() + r * kv.d, kv.k[l].begin() + (r + 1) * kv.d,
+                                  kv.k[l].begin() + w * kv.d);
+                        std::copy(kv.v[l].begin() + r * kv.d, kv.v[l].begin() + (r + 1) * kv.d,
+                                  kv.v[l].begin() + w * kv.d);
+                    }
+                kv.row_pos[w] = kv.row_pos[r];
+                kv.row_code[w] = c;
+                ++w;
+            }
+            kv.row_pos.resize(w);
+            kv.row_code.resize(w);
+            for (size_t l = 0; l < kv.k.size(); ++l) {
+                kv.k[l].resize(w * kv.d);
+                kv.v[l].resize(w * kv.d);
+            }
+            kv.evicted = kv.seg;
+        }
+        h = ops::rmsnorm(h, norm_w);
+        if (lm_head) return lm_head->forward(h);
+        return ops::matmul(h, ops::transpose(embed_tokens->weight));
+    }
     if (!cfg.recursion.routed()) {
         // One cache per application (a shared layer sees different inputs on
         // each pass).
@@ -521,7 +792,10 @@ ir::json Llama::export_ir() const {
     doc["ir_version"] = ir::kVersion;
     // A routed model is not a fixed recursion: its own hint, so an engine
     // with a llama_recursive path does not run it without the routing.
-    doc["family_hint"] = routed ? "llama_mor" : shared ? "llama_recursive" : "llama";
+    // State tokens (llama.hpp): the template contract and the extended
+    // embedding are not llama's, so a plain llama with them is its own
+    // family (a recursed one keeps llama_recursive; its keys say the rest).
+    doc["family_hint"] = routed ? "llama_mor" : shared ? "llama_recursive" : state_embd ? "llama_state" : "llama";
     doc["model"] = {{"vocab", cfg.vocab},
                     {"d", cfg.d},
                     {"n_layers", schedule.size()},
@@ -532,12 +806,23 @@ ir::json Llama::export_ir() const {
                                       {"kind", "positions"},
                                       {"note", "absolute positions; prefill 0..T-1, decode = cache length"}}});
     const bool inject = std::any_of(inject_before.begin(), inject_before.end(), [](char c) { return c != 0; });
-    doc["embed"] = {{"nodes", ir::json::array({embed_tokens->export_ir("tokens", "x", "token_embd.weight")})}};
+    ir::json emb = embed_tokens->export_ir("tokens", "x", "token_embd.weight");
+    if (state_embd) {
+        // ir.hpp embedding "state_weight": ids vocab .. vocab + k - 1 read its rows.
+        emb.erase("out");
+        emb["state_weight"] = "state_embd.weight";
+        emb["out"] = "x";
+    }
+    doc["embed"] = {{"nodes", ir::json::array({emb})}};
     // inject "add": a second gather keeps the embedding as e (EXACT, the same
     // rows), and each block starts with x = x + c_i e, c_i = 1 before the
     // first application of repeats 1.. and 0 elsewhere (affine with a
     // per-layer scale; x + 0 e is x up to the sign of zero).
-    if (inject) doc["embed"]["nodes"].push_back(embed_tokens->export_ir("tokens", "e", "token_embd.weight"));
+    if (inject) {
+        ir::json e2 = emb;
+        e2["out"] = "e";
+        doc["embed"]["nodes"].push_back(e2);
+    }
     doc["block"] = {{"repeat", schedule.size()}};
     if (shared) {
         // Application i reads its tensors from stored layer schedule[i]

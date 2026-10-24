@@ -1388,6 +1388,137 @@ Var attention_heads(const Var& qkv, size_t heads, float scale, size_t seq_len, b
     return out;
 }
 
+// ---- per-turn state tokens (ir.hpp "turn_state"; ops.hpp) ----
+
+int turn_state_step(int id, size_t vocab, size_t k, int& seg, int& run) {
+    const bool state = id >= 0 && static_cast<size_t>(id) >= vocab;
+    const int code = 2 * seg + (state ? 1 : 0);
+    if (!state) {
+        run = 0;
+    } else {
+        const size_t j = static_cast<size_t>(id) - vocab;  // S_j
+        run = j == static_cast<size_t>(run) ? run + 1 : j == 0 ? 1 : 0;
+        if (static_cast<size_t>(run) == k) {  // S_0 .. S_{k-1} complete: the segment ends here
+            ++seg;
+            run = 0;
+        }
+    }
+    return code;
+}
+
+std::vector<int> turn_state_codes(const std::vector<int>& ids, size_t vocab, size_t k, size_t seq_len) {
+    if (k == 0) throw std::runtime_error("turn_state_codes: k must be >= 1");
+    const size_t sl = seq_len == 0 ? ids.size() : seq_len;
+    if (sl == 0 || ids.size() % sl != 0) throw std::runtime_error("turn_state_codes: ids not a multiple of seq_len");
+    std::vector<int> code(ids.size());
+    int seg = 0, run = 0;
+    for (size_t p = 0; p < ids.size(); ++p) {
+        if (p % sl == 0) seg = run = 0;
+        code[p] = turn_state_step(ids[p], vocab, k, seg, run);
+    }
+    return code;
+}
+
+Var attention_heads_turn_state(const Var& qkv, size_t heads, float scale, size_t seq_len,
+                               const std::vector<int>& code) {
+    const size_t T = qkv->data.rows(), d3 = qkv->data.cols();
+    if (heads == 0 || d3 % (3 * heads) != 0) throw std::runtime_error("attention_heads_turn_state: bad head split");
+    const size_t d = d3 / 3, dk = d / heads, sl = seq_len == 0 ? T : seq_len;
+    if (T % sl != 0) throw std::runtime_error("attention_heads_turn_state: rows not a multiple of seq_len");
+    if (code.size() != T) throw std::runtime_error("attention_heads_turn_state: one code per row");
+    // Device: the blocked all-heads kernels (scores for every j <= i, a
+    // turn_state softmax, the causal products). Masked weights are zeros,
+    // so the causal backward is the turn_state backward.
+    if (device::device_ops_enabled() && device::get() == device::Device::CUDA) {
+        auto Ab = cached(device::out_matrix(heads * T, sl));
+        Matrix y = device::out_matrix(T, d);
+        if (device::devops::attn_heads_fwd_ts(qkv->data, heads, scale, sl, code, *Ab, y)) {
+            return record(std::move(y), {qkv}, [Ab, heads, scale, sl](Variable* self) {
+                const Var& qkv = self->parents[0];
+                if (!qkv->requires_grad) return;
+                Matrix g = device::out_matrix(qkv->data.rows(), qkv->data.cols());
+                if (!device::devops::attn_heads_bwd(qkv->data, heads, *Ab, self->grad, scale, sl, /*causal=*/true, g))
+                    throw std::runtime_error("attention_heads_turn_state: device backward unavailable");
+                qkv->accumulate(std::move(g));
+            });
+        }
+    }
+    device::materialize(qkv->data);
+    const Matrix& m = qkv->data;
+    auto A = std::make_shared<Matrix>(heads * T, sl);  // zeros: masked weights
+    Matrix y(T, d);
+    std::vector<size_t> vis;
+    std::vector<float> a;
+    for (size_t i = 0; i < T; ++i) {
+        const size_t b0 = (i / sl) * sl;
+        vis.clear();
+        for (size_t j = b0; j <= i; ++j)
+            if (turn_state_visible(code[i], code[j])) vis.push_back(j);
+        a.resize(vis.size());
+        for (size_t h = 0; h < heads; ++h) {
+            const size_t o = h * dk;
+            float mx = -1e30f;
+            for (size_t t = 0; t < vis.size(); ++t) {
+                const size_t j = vis[t];
+                float s = 0.0f;
+                for (size_t c = 0; c < dk; ++c) s += m(i, o + c) * m(j, d + o + c);
+                a[t] = s * scale;
+                mx = std::max(mx, a[t]);
+            }
+            float z = 0.0f;
+            for (size_t t = 0; t < vis.size(); ++t) z += (a[t] = std::exp(a[t] - mx));
+            for (size_t t = 0; t < vis.size(); ++t) a[t] /= z;
+            for (size_t c = 0; c < dk; ++c) {
+                float acc = 0.0f;
+                for (size_t t = 0; t < vis.size(); ++t) acc += a[t] * m(vis[t], 2 * d + o + c);
+                y(i, o + c) = acc;
+            }
+            for (size_t t = 0; t < vis.size(); ++t) (*A)(h * T + i, vis[t] - b0) = a[t];
+        }
+    }
+    return record(std::move(y), {qkv}, [A, heads, scale, sl](Variable* self) {
+        const Var& qkv = self->parents[0];
+        if (!qkv->requires_grad) return;
+        device::materialize(self->grad);
+        device::materialize(qkv->data);
+        const Matrix& m = qkv->data;
+        const Matrix& gy = self->grad;
+        const size_t T = m.rows(), d = m.cols() / 3, dk = d / heads;
+        Matrix g(T, 3 * d);
+        std::vector<float> ds(sl);
+        for (size_t h = 0; h < heads; ++h) {
+            const size_t o = h * dk;
+            for (size_t i = 0; i < T; ++i) {
+                const size_t b0 = (i / sl) * sl, li = i - b0;
+                const float* Ar = &(*A)(h * T + i, 0);
+                // dA_ij = dy_i . v_j, dot = sum_j A_ij dA_ij (masked: A = 0).
+                float dot = 0.0f;
+                for (size_t lj = 0; lj <= li; ++lj) {
+                    if (Ar[lj] == 0.0f) {
+                        ds[lj] = 0.0f;
+                        continue;
+                    }
+                    float s = 0.0f;
+                    for (size_t c = 0; c < dk; ++c) s += gy(i, o + c) * m(b0 + lj, 2 * d + o + c);
+                    ds[lj] = s;
+                    dot += s * Ar[lj];
+                }
+                for (size_t lj = 0; lj <= li; ++lj) {
+                    if (Ar[lj] == 0.0f) continue;
+                    const size_t j = b0 + lj;
+                    const float w = scale * Ar[lj] * (ds[lj] - dot);
+                    for (size_t c = 0; c < dk; ++c) {
+                        g(i, o + c) += w * m(j, d + o + c);              // dq_i += ds_ij k_j
+                        g(j, d + o + c) += w * m(i, o + c);              // dk_j += ds_ij q_i
+                        g(j, 2 * d + o + c) += Ar[lj] * gy(i, o + c);    // dv_j += A_ij dy_i
+                    }
+                }
+            }
+        }
+        qkv->accumulate(std::move(g));
+    });
+}
+
 Var fused_attention_blocked(const Var& q, const Var& k, const Var& v, float scale, size_t sl, bool causal) {
     const size_t T = q->data.rows(), nb = T / sl;
     // Device path (18 Oct 2026): the same formulas in kernels, with A kept

@@ -20,7 +20,7 @@ cmake .. -DCMAKE_BUILD_TYPE=Release -DMICROTORCH_CUDA=ON
 
 echo "== 2/3 build =="
 make microtorch test_gradcheck test_nn test_lora_quant test_resident_parity \
-     test_step_residency test_cuda_ops test_recursion test_mor test_llama_attnres -j"$(nproc)"
+     test_step_residency test_cuda_ops test_recursion test_mor test_state_tokens test_llama_attnres -j"$(nproc)"
 
 echo "== 3/3 run gradchecks on CUDA =="
 # device::set(CUDA) is process-wide; MICROTORCH_DEVICE=cuda is read by the
@@ -61,4 +61,10 @@ MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 ./test_mor
 # kernels against the host loop at d 320 / 33 sources, and training steps with
 # the op set, step residency and deferred downloads against the host path.
 MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 ./test_llama_attnres
+# Per-turn state tokens (turn_state mask, IR_SPEC_DRAFT section 1): the device
+# turn_state softmax kernel against the host loops (forward and backward), the
+# gradchecks and prefill = decode with the op set live, the KV cache with and
+# without eviction, and training steps with the op set, step residency and
+# deferred downloads against the host path.
+MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 ./test_state_tokens
 echo "CUDA validation PASSED (Phase A + B1 + B2.0 + B2.1a op set + B2.1b deferred downloads + masked CE)"

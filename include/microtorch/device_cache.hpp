@@ -289,6 +289,12 @@ bool attn_heads_fwd(const Matrix& qkv, size_t heads, float scale, size_t seq_len
                     Matrix& y);
 bool attn_heads_bwd(const Matrix& qkv, size_t heads, const Matrix& A, const Matrix& dY, float scale, size_t seq_len,
                     bool causal, Matrix& dqkv);
+// attn_heads_fwd under the turn_state mask (ops::attention_heads_turn_state):
+// code holds one entry per row of qkv (ops::turn_state_codes); key j <= i is
+// visible iff ops::turn_state_visible(code[i], code[j]). Masked weights are
+// zeros, so attn_heads_bwd with causal = true is its backward.
+bool attn_heads_fwd_ts(const Matrix& qkv, size_t heads, float scale, size_t seq_len, const std::vector<int>& code,
+                       Matrix& A, Matrix& y);
 // B2.2: embedding gather (ids bounds-checked by the HOST caller first;
 // backward scatter-add stays host until B2.3) and cross-entropy
 // (softmax + nll on-device, host receives ONE float; P cached for the

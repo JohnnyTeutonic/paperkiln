@@ -93,6 +93,12 @@ struct Spec {
     // causal token choice, the router's balancing and z-loss coefficients.
     std::string rec_mor_route = "token_choice", rec_mor_gate = "score", rec_mor_kv = "active";
     float rec_mor_balance = 0.1f, rec_mor_z = 0.001f;
+    // llama family: per-turn state tokens (arch.state_tokens {"k": 4, "mask":
+    // "turn_state" | "causal"}; nn::LlamaConfig state_k / state_mask;
+    // experiments/tiny_chat_long_2026-10/IR_SPEC_DRAFT.md section 1). state_k
+    // == 0 = no key = the plain model, untouched.
+    size_t state_k = 0;
+    std::string state_mask = "turn_state";
     // data
     std::string corpus, vocab_gguf;
     size_t vocab_cap = 4096;
@@ -402,6 +408,20 @@ Spec parse_spec(const std::string& path) {
             throw std::runtime_error("arch.moe.aux_loss and z_loss must be >= 0");
     }
 
+    if (arch.contains("state_tokens")) {
+        const json st = arch["state_tokens"];
+        if (!st.is_object()) throw std::runtime_error("arch.state_tokens must be an object");
+        for (const auto& [k, v] : st.items())
+            if (k != "k" && k != "mask" && k.rfind("_", 0) != 0)
+                throw std::runtime_error("arch.state_tokens: unknown key " + k + " (k, mask)");
+        s.state_k = st.value("k", size_t(4));
+        s.state_mask = st.value("mask", s.state_mask);
+        if (s.state_k < 1) throw std::runtime_error("arch.state_tokens.k must be >= 1");
+        if (s.state_mask != "turn_state" && s.state_mask != "causal")
+            throw std::runtime_error("arch.state_tokens.mask must be turn_state or causal, got " + s.state_mask);
+        if (s.family != "llama") throw std::runtime_error("arch.state_tokens needs the llama family");
+    }
+
     const json data = j.value("data", json::object());
     s.corpus = data.value("corpus", "");
     s.vocab_gguf = data.value("vocab", "");
@@ -518,6 +538,21 @@ Spec parse_spec(const std::string& path) {
             throw std::runtime_error("arch.moe: train.checkpoint_activations is not supported with MoE yet");
         if (s.rec_block > 0) throw std::runtime_error("arch.moe with arch.custom.recursion is not wired yet");
     }
+    if (s.state_k > 0) {
+        // Refuse what is not wired rather than train or serve it wrongly.
+        if (s.moe_experts > 0) throw std::runtime_error("arch.state_tokens with arch.moe is not wired yet");
+        if (s.attn_res) throw std::runtime_error("arch.state_tokens with arch.custom.attn_res is not wired yet");
+        if (s.rec_block > 0 && s.rec_schedule == "mor")
+            throw std::runtime_error("arch.state_tokens with recursion schedule mor is not wired (the turn_state mask "
+                                     "over each step's active rows); schedule fixed is");
+        if (s.objective == "grpo" || s.objective == "provenance_po")
+            throw std::runtime_error("arch.state_tokens: objective " + s.objective +
+                                     " is not wired (its rows get no state ids); lm, sft and rejection_sft are");
+        for (const auto& q : s.exp_gguf_quants)
+            if (q == "q4_0" || q == "q4_k_m" || q == "q4_k_s")
+                throw std::runtime_error("export gguf_" + q + ": llama.cpp's mix has no state embedding "
+                                         "(gguf and gguf_q8_0* only)");
+    }
     if (s.rec_block > 0)
         for (const auto& q : s.exp_gguf_quants)
             if (q == "q4_0" || q == "q4_k_m" || q == "q4_k_s")
@@ -570,6 +605,58 @@ void apply_recursion(nn::LlamaConfig& lc, const Spec& s) {
     lc.recursion.mor.route = s.rec_mor_route;
     lc.recursion.mor.gate = s.rec_mor_gate;
     lc.recursion.mor.kv_rows = s.rec_mor_kv;
+}
+
+// The spec's state tokens onto a llama config (no-op without arch.state_tokens).
+void apply_state(nn::LlamaConfig& lc, const Spec& s) {
+    lc.state_k = s.state_k;
+    lc.state_mask = s.state_mask;
+}
+
+// The chat template's ids the state-token serialiser needs (nn::insert_state_ids).
+nn::StateTemplate state_template(const Spec& s, const std::map<std::string, int>& vocab) {
+    nn::StateTemplate t;
+    t.vocab = vocab.size();
+    t.k = s.state_k;
+    auto id = [&](const char* name) {
+        const auto it = vocab.find(name);
+        if (it == vocab.end())
+            throw std::runtime_error(std::string("arch.state_tokens needs ") + name +
+                                     " in the vocabulary (the chat template's specials)");
+        return it->second;
+    };
+    t.eot = id("<|endoftext|>");
+    t.user = id("<|user|>");
+    t.assistant = id("<|assistant|>");
+    return t;
+}
+
+// nn::insert_state_ids carrying a per-id flag along (a loss flag, or "is a
+// continuation token"): inserted ids get 0. The insertions are an
+// <|endoftext|> before a <|user|> and the state ids, so the greedy match
+// below pairs every original id with its copy.
+std::vector<int> insert_state_flagged(const std::vector<int>& ids, const std::vector<uint8_t>& flag,
+                                      const nn::StateTemplate& t, std::vector<uint8_t>& out_flag,
+                                      nn::StateInsertCount* count = nullptr) {
+    std::vector<int> out = nn::insert_state_ids(ids, t, count);
+    out_flag.assign(out.size(), 0);
+    size_t j = 0;
+    for (size_t i = 0; i < out.size(); ++i)
+        if (j < ids.size() && out[i] == ids[j]) out_flag[i] = flag[j++];
+    if (j != ids.size()) throw std::runtime_error("insert_state_flagged: ids lost in the insertion");
+    return out;
+}
+
+// Language-model rows under state tokens: no loss where the target is a
+// state id or the input is a state position (its target is the template's
+// next <|user|>), IR_SPEC_DRAFT section 1.5. Masked targets become 0 (in range).
+void state_loss_mask(const std::vector<int>& x, std::vector<int>& y, std::vector<uint8_t>& mask, size_t V) {
+    mask.assign(y.size(), 1);
+    for (size_t i = 0; i < y.size(); ++i)
+        if (static_cast<size_t>(x[i]) >= V || static_cast<size_t>(y[i]) >= V) {
+            mask[i] = 0;
+            if (static_cast<size_t>(y[i]) >= V) y[i] = 0;
+        }
 }
 
 // schedule "mor": per-token depth (nn::LlamaConfig::MoR).
@@ -784,6 +871,11 @@ Sampled sample_pure(F&& forward, const std::vector<int>& prompt, size_t T, size_
 struct SftSet {
     std::vector<std::vector<int>> x, y;
     std::vector<std::vector<uint8_t>> m;
+    // State tokens (arch.state_tokens): blocks inserted (and of them after a
+    // reply without <|endoftext|>), whole exchanges cut from the end of a
+    // dialogue row and rows dropped because the state ids pushed them past
+    // T + 1.
+    size_t state_blocks = 0, state_closed = 0, state_turns_cut = 0, state_rows_dropped = 0;
     size_t val_start = 0;
     size_t target_tokens = 0;   // kept targets in the training split
     size_t completion_unk = 0;  // <unk> among kept targets, all splits
@@ -797,6 +889,44 @@ SftSet load_sft(const Spec& s, const std::map<std::string, int>& vocab) {
     const int pad = eos >= 0 ? eos : 0;
     const bool rej = s.objective == "rejection_sft";
     SftSet d;
+    const nn::StateTemplate stt = s.state_k > 0 ? state_template(s, vocab) : nn::StateTemplate{};
+    // State tokens on one row (IR_SPEC_DRAFT 1.5): the k ids after every
+    // <|endoftext|> that closes an exchange, flags (loss, continuation) carried
+    // with 0 on inserted ids. A block that would end the row is left out: no
+    // position after it reads it, so it changes no loss or gradient. Rows past
+    // T + 1: cut at the last whole exchange that fits (cut_ok), else dropped.
+    // Returns false when the row is dropped.
+    auto with_state = [&](std::vector<int>& seq, std::vector<uint8_t>& fl, bool cut_ok) {
+        nn::StateInsertCount c;
+        std::vector<uint8_t> f2;
+        std::vector<int> out = insert_state_flagged(seq, fl, stt, f2, &c);
+        const int S0 = static_cast<int>(stt.vocab);
+        if (out.size() > s.T + 1) {
+            size_t end = 0, ends_after = 0;
+            for (size_t i = 0; i < out.size(); ++i)
+                if (out[i] == stt.eot && i + 1 <= s.T + 1 && (i + 1 == out.size() || out[i + 1] == S0)) end = i + 1;
+            if (!cut_ok || end == 0) {
+                ++d.state_rows_dropped;
+                return false;
+            }
+            for (size_t i = end; i < out.size(); ++i)
+                if (out[i] == stt.eot && (i + 1 == out.size() || out[i + 1] == S0)) ++ends_after;
+            d.state_turns_cut += ends_after;
+            out.resize(end);
+            f2.resize(end);
+        }
+        if (out.size() >= stt.k && out.back() == S0 + static_cast<int>(stt.k) - 1) {
+            out.resize(out.size() - stt.k);
+            f2.resize(f2.size() - stt.k);
+        }
+        size_t blocks = 0;
+        for (int t : out) blocks += t == S0;
+        d.state_blocks += blocks;
+        d.state_closed += c.closed;
+        seq = std::move(out);
+        fl = std::move(f2);
+        return true;
+    };
     std::map<std::string, size_t> kinds;
     size_t n = 0, skipped = 0;
     std::string line;
@@ -827,6 +957,7 @@ SftSet load_sft(const Spec& s, const std::map<std::string, int>& vocab) {
             }
             // Token 0 is never a target: a loss segment there would silently lose its first token.
             if (lt[0]) throw std::runtime_error("example " + std::to_string(n) + ": the first segment cannot carry loss");
+            if (s.state_k > 0 && !with_state(seq, lt, /*cut_ok=*/true)) continue;
             if (seq.size() > s.T + 1)
                 throw std::runtime_error("example at line " + std::to_string(n) + " has " + std::to_string(seq.size()) +
                                          " tokens; data.T + 1 = " + std::to_string(s.T + 1));
@@ -839,6 +970,10 @@ SftSet load_sft(const Spec& s, const std::map<std::string, int>& vocab) {
                 m[i] = lt[i + 1];
                 trained += m[i];
                 if (m[i] && y[i] == 0) ++d.completion_unk;
+            }
+            if (!trained && s.state_k > 0) {
+                ++d.state_rows_dropped;  // every trained turn was cut
+                continue;
             }
             if (!trained) throw std::runtime_error("example " + std::to_string(n) + " has no loss segment");
             d.x.push_back(std::move(x));
@@ -873,6 +1008,10 @@ SftSet load_sft(const Spec& s, const std::map<std::string, int>& vocab) {
         std::vector<int> seq = p;
         seq.insert(seq.end(), c.begin(), c.end());
         if (p.empty() || c.empty()) throw std::runtime_error("example " + std::to_string(n) + " is empty");
+        // comp[j] = 1: token j is a completion token (a trained target).
+        std::vector<uint8_t> comp(seq.size(), 0);
+        for (size_t j = p.size(); j < seq.size(); ++j) comp[j] = 1;
+        if (s.state_k > 0 && !with_state(seq, comp, /*cut_ok=*/false)) continue;
         if (seq.size() > s.T + 1)
             throw std::runtime_error("example at line " + std::to_string(n) + " has " + std::to_string(seq.size()) +
                                      " tokens; data.T + 1 = " + std::to_string(s.T + 1));
@@ -881,7 +1020,7 @@ SftSet load_sft(const Spec& s, const std::map<std::string, int>& vocab) {
         for (size_t i = 0; i + 1 < seq.size(); ++i) {
             x[i] = seq[i];
             y[i] = seq[i + 1];
-            m[i] = i + 1 >= p.size() ? 1 : 0;
+            m[i] = comp[i + 1];
             if (m[i] && y[i] == 0) ++d.completion_unk;
         }
         d.x.push_back(std::move(x));
@@ -1203,6 +1342,12 @@ void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama, 
         // running the stored layers once each, and only the IR (block
         // weight_index) reproduces it.
         if (effective_layers(s) != s.layers || routed(s)) gc.architecture = "paperkiln";
+        // State tokens: the extended embedding and the template are not
+        // llama.cpp's (ir.hpp embedding state_weight; paperkiln.state_tokens.k).
+        if (s.state_k > 0) {
+            gc.architecture = "paperkiln";
+            gc.state_tokens_k = static_cast<uint32_t>(s.state_k);
+        }
         // schedule "mor": the router, written in full (ir.hpp depth_route).
         if (llama->rec_router) gc.extra_proj.emplace_back("recursion.router.weight", "rec.0.router.weight");
         if (llama->attn_res) {
@@ -1458,6 +1603,9 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                     "balance %g, z_loss %g, kv_rows %s\n",
                     s.rec_repeats, s.rec_repeats, s.d, s.rec_mor_gate.c_str(), s.rec_mor_balance, s.rec_mor_z,
                     s.rec_mor_kv.c_str());
+    if (s.state_k > 0)
+        std::printf("state_tokens: k %zu after every finished reply, mask %s, %zu parameters\n", s.state_k,
+                    s.state_mask.c_str(), s.state_k * s.d);
     if (s.moe_experts > 0)
         std::printf("moe: %zu experts, top_k=%zu, gate=%s, aux_loss=%g, z_loss=%g%s%s\n", s.moe_experts,
                     s.moe_top_k, s.moe_gate.c_str(), s.moe_aux, s.moe_z,
@@ -1577,6 +1725,17 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                  {"reward_shift", s.grpo_reward_shift}});
     } else if (!sft) {
         ids = read_corpus(s.corpus, vocab, tokens.size(), s.max_tokens);
+        if (s.state_k > 0) {
+            // State tokens (IR_SPEC_DRAFT 1.5): inserted into the stream before
+            // windowing; the held-out tail is cut from the stream with them.
+            const nn::StateTemplate stt = state_template(s, vocab);
+            const size_t before = ids.size();
+            nn::StateInsertCount c;
+            ids = nn::insert_state_ids(ids, stt, &c);
+            ev.emit({{"event", "state_tokens"}, {"k", s.state_k}, {"mask", s.state_mask}, {"corpus", "data.corpus"},
+                     {"tokens_before", before}, {"tokens_after", ids.size()}, {"blocks", c.blocks},
+                     {"closed_early", c.closed}});
+        }
         // Hold out the tail 5% for validation (early stopping's signal).
         val_start = ids.size() - ids.size() / 20;
         // Both parts must hold a window of T + 1 targets: the window draws below are
@@ -1590,6 +1749,14 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                  {"val_tokens", ids.size() - val_start}});
         if (!s.anneal_corpus.empty()) {
             anneal_ids = read_corpus(s.anneal_corpus, vocab, tokens.size(), 0);
+            if (s.state_k > 0) {
+                const size_t before = anneal_ids.size();
+                nn::StateInsertCount c;
+                anneal_ids = nn::insert_state_ids(anneal_ids, state_template(s, vocab), &c);
+                ev.emit({{"event", "state_tokens"}, {"k", s.state_k}, {"mask", s.state_mask},
+                         {"corpus", "data.anneal"}, {"tokens_before", before}, {"tokens_after", anneal_ids.size()},
+                         {"blocks", c.blocks}, {"closed_early", c.closed}});
+            }
             if (anneal_ids.size() < static_cast<size_t>(s.T) + 2)
                 throw std::runtime_error("data.anneal corpus is shorter than one training window");
             ev.emit({{"event", "anneal_data"},
@@ -1606,6 +1773,10 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                  {"vocab", tokens.size()},
                  {"completion_unk", sd.completion_unk},
                  {"provenance", sd.provenance}});
+        if (s.state_k > 0)
+            ev.emit({{"event", "state_tokens"}, {"k", s.state_k}, {"mask", s.state_mask},
+                     {"corpus", "data.sft_examples"}, {"blocks", sd.state_blocks}, {"closed_early", sd.state_closed},
+                     {"turns_cut_over_T", sd.state_turns_cut}, {"rows_dropped_over_T", sd.state_rows_dropped}});
     }
 
     // Model + optimizer (+ resume). Two families behind one seam: the
@@ -1691,6 +1862,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         apply_moe(lc, s);
         apply_attn_res(lc, s);
         apply_recursion(lc, s);
+        apply_state(lc, s);
         llama = std::make_shared<nn::Llama>(lc, s.seed);
         llama->checkpoint_blocks = s.ckpt_act;
     } else {
@@ -1741,6 +1913,9 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         model_ev["lr_schedule"] = {
             {"warmup_steps", s.lr_warmup}, {"decay", s.lr_decay}, {"min_lr_frac", s.lr_min_frac}};
     if (llama) model_ev["rope_heads"] = rope_heads;
+    // Absent without state tokens: the model event is unchanged.
+    if (s.state_k > 0)
+        model_ev["state_tokens"] = {{"k", s.state_k}, {"mask", s.state_mask}, {"params", s.state_k * s.d}};
     // Absent without recursion: the model event is unchanged.
     if (s.rec_block > 0)
         model_ev["recursion"] = {{"block", s.rec_block},     {"repeats", s.rec_repeats},
@@ -2178,7 +2353,9 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             Var logits = s.moe_experts > 0 || routed(s) ? llama->forward(x, s.batch > 1 ? s.T : 0, &maux)
                                                         : fwd(x, s.batch > 1 ? s.T : 0);
             mark("forward");
-            Var task = sft ? ops::cross_entropy_masked(logits, y, mask) : ops::cross_entropy(logits, y);
+            // State tokens: no loss at state targets or state positions.
+            if (!sft && s.state_k > 0) state_loss_mask(x, y, mask, tokens.size());
+            Var task = sft || s.state_k > 0 ? ops::cross_entropy_masked(logits, y, mask) : ops::cross_entropy(logits, y);
             Var loss = task;
             if (is_srd) loss = ops::add(task, ops::scale(gpt->mean_gate(), s.lambda_gate));
             if (s.moe_experts > 0) {
@@ -2395,7 +2572,13 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                     const size_t va = val_start + vrng() % (ids.size() - val_start - s.T - 1);
                     std::vector<int> vx(ids.begin() + va, ids.begin() + va + s.T);
                     std::vector<int> vy(ids.begin() + va + 1, ids.begin() + va + s.T + 1);
-                    vl += ops::cross_entropy(fwd(vx), vy)->data(0, 0);
+                    if (s.state_k > 0) {
+                        std::vector<uint8_t> vm;
+                        state_loss_mask(vx, vy, vm, tokens.size());
+                        vl += ops::cross_entropy_masked(fwd(vx), vy, vm)->data(0, 0);
+                    } else {
+                        vl += ops::cross_entropy(fwd(vx), vy)->data(0, 0);
+                    }
                     note_depth();
                 }
                 vl /= NV;
@@ -2726,6 +2909,7 @@ struct LoadedLM {
             apply_moe(lc, s);
             apply_attn_res(lc, s);
             apply_recursion(lc, s);
+            apply_state(lc, s);
             llama = std::make_shared<nn::Llama>(lc, s.seed);
         } else {
             gpt = std::make_shared<parity::ParityLM>(attn_kind(s.attention), tokens.size(), s.d,
@@ -2734,7 +2918,10 @@ struct LoadedLM {
         const std::string ckpt = s.out_dir + "/" + s.name + ".safetensors";
         model().load_state_dict(load_safetensors(ckpt), /*strict=*/true);
         model().eval();
+        if (s.state_k > 0) st = state_template(s, vocab);
     }
+    // State tokens (arch.state_tokens): the template's ids; st.k == 0 otherwise.
+    nn::StateTemplate st;
     nn::Module& model() {
         if (mamba) return *mamba;
         return flex ? static_cast<nn::Module&>(*flex)
@@ -2770,7 +2957,9 @@ struct LoadedLM {
             size_t p = 0;
             while (p < kv_ids.size() && p < ctx.size() && kv_ids[p] == ctx[p]) ++p;
             if (p == ctx.size()) --p;  // the last token's logits are not cached
-            kv.truncate(p);
+            // Less than p after a rewind into a turn whose rows were evicted
+            // (nn::LlamaKV::truncate): re-prefill from there.
+            p = kv.truncate(p);
             logits = llama->forward_cached(std::vector<int>(ctx.begin() + static_cast<long>(p), ctx.end()), kv);
             kv_ids = ctx;
         } else {
@@ -2939,7 +3128,8 @@ int sample_set_cmd(const Spec& s, const std::string& prompts_path, const std::st
         if (line.find_first_not_of(" \t\r") == std::string::npos) continue;
         const json pr = json::parse(line);
         const std::string prompt = pr.at("prompt").get<std::string>();
-        const std::vector<int> pids = tokenize(prompt, lm.vocab, 100000);
+        std::vector<int> pids = tokenize(prompt, lm.vocab, 100000);
+        if (lm.st.k > 0) pids = nn::insert_state_ids(pids, lm.st);
         if (pids.empty()) throw std::runtime_error("prompt " + std::to_string(pi) + " has no in-vocabulary token");
         size_t unk = 0;
         for (int id : pids) unk += id == 0;
@@ -3439,11 +3629,16 @@ std::string chat_prompt(const json& req) {
     return p + "user: " + req["user_input"].get<std::string>() + " assistant:";
 }
 
-int chat_cmd(const std::string& target, const std::string& host, int port, bool kv_cache) {
+int chat_cmd(const std::string& target, const std::string& host, int port, bool kv_cache, bool evict) {
     const Spec s = resolve_chat_spec(target);
     LoadedLM lm(s);
     if (kv_cache && !lm.llama) throw std::runtime_error("chat --kv-cache: only the llama family has a KV cache");
+    // --evict (ir.hpp kv evict "turn_state"): finished turns keep only their
+    // state rows in the cache; the replies are those of --kv-cache alone.
+    if (evict && (!kv_cache || s.state_k == 0 || s.state_mask != "turn_state"))
+        throw std::runtime_error("chat --evict needs --kv-cache and a state-token model with the turn_state mask");
     lm.kv_on = kv_cache;
+    lm.kv.evict = evict;
     // The model's own token sequences for a new turn ("user :",
     // "assistant :"), unusable if a piece is out of vocabulary (it would
     // be <unk>, which the sampler never emits anyway).
@@ -3503,6 +3698,7 @@ int chat_cmd(const std::string& target, const std::string& host, int port, bool 
                               {"params", lm.model().parameter_count()},
                               {"vocab", lm.tokens.size()},
                               {"context", s.T},
+                              {"state_tokens", s.state_k},
                               {"eos", lm.eos >= 0}})
                             .dump(),
                         "application/json");
@@ -3551,6 +3747,9 @@ int chat_cmd(const std::string& target, const std::string& host, int port, bool 
                 q["history"] = json(turns.begin() + static_cast<std::ptrdiff_t>(first), turns.end());
                 const std::string prompt = chat_prompt(q);
                 ids = tokenize(prompt, lm.vocab, prompt.size() + 1);
+                // State tokens: the template's blocks after every finished
+                // reply (the history's replies all end with <|endoftext|>).
+                if (lm.st.k > 0) ids = nn::insert_state_ids(ids, lm.st);
                 if (first == turns.size() || ids.size() + static_cast<size_t>(max_new) <= T) break;
                 ++first;
             }
@@ -3585,13 +3784,14 @@ int chat_cmd(const std::string& target, const std::string& host, int port, bool 
             const auto b = reply.find_first_not_of(" \t\r\n");
             const auto e = reply.find_last_not_of(" \t\r\n");
             reply = b == std::string::npos ? "" : reply.substr(b, e - b + 1);
-            res.set_content(
-                json({{"reply", reply},
-                      {"stop_reason", stop},
-                      {"tokens", out.size()},
-                      {"history_turns_used", turns.size() - first}})
-                    .dump(),
-                "application/json");
+            json body = {{"reply", reply},
+                         {"stop_reason", stop},
+                         {"tokens", out.size()},
+                         {"history_turns_used", turns.size() - first}};
+            // The cache's rows per layer after the reply (state models: n k
+            // state rows plus the current turn under --evict).
+            if (lm.kv_on) body["kv_rows"] = lm.kv.rows();
+            res.set_content(body.dump(), "application/json");
         } catch (const json::exception& e) {
             fail(400, std::string("bad request field: ") + e.what());
         } catch (const std::exception& e) {
@@ -3634,9 +3834,24 @@ int chat_cmd(const std::string& target, const std::string& host, int port, bool 
 // argmax == continuation at every position (the parity gate in
 // carry5_eval.py). A sequence longer than T + 1 ids is reported over_ctx
 // and not scored: `chat` never attends past T positions.
-int score_cmd(const std::string& target, const std::string& in_path, const std::string& out_path) {
+// State-token models (arch.state_tokens): a text prompt gets the template's
+// state blocks (nn::insert_state_ids over prompt + continuation, so a
+// continuation spanning a finished reply gets its block too, as context
+// only: state ids are never scored); prompt_ids may hold state ids, each in
+// a complete block after a reply's <|endoftext|> (nn::state_ids_error), and
+// continuation_ids are text ids. --kv-cache scores through the KV cache,
+// prefilled in chunks that end where a state block completes (and of at
+// most --kv-step ids; 1 = token by token); --evict drops finished turns'
+// text rows as it goes (turn_state only), with the same logits bit for bit
+// (llama.hpp LlamaKV). Records then carry kv_rows (rows per layer held after
+// the context) and state_blocks (complete blocks in the context).
+int score_cmd(const std::string& target, const std::string& in_path, const std::string& out_path, bool kv_cache,
+              bool evict, size_t kv_step) {
     const Spec s = resolve_chat_spec(target);
     LoadedLM lm(s);
+    if (kv_cache && !lm.llama) throw std::runtime_error("score --kv-cache: only the llama family has a KV cache");
+    if (evict && (!kv_cache || s.state_k == 0 || s.state_mask != "turn_state"))
+        throw std::runtime_error("score --evict needs --kv-cache and a state-token model with the turn_state mask");
     std::ifstream in(in_path);
     if (!in) throw std::runtime_error("cannot open " + in_path);
     std::ofstream out(out_path, std::ios::trunc);
@@ -3661,23 +3876,73 @@ int score_cmd(const std::string& target, const std::string& in_path, const std::
         const std::vector<int> c = ids_of(r, "continuation_ids", "continuation");
         if (p.empty() || c.empty())
             throw std::runtime_error("score: line " + std::to_string(n) + " has an empty prompt or continuation");
+        const size_t PV = V + (lm.st.k > 0 ? lm.st.k : 0);  // prompt ids may be state ids
         for (int t : p)
-            if (t < 0 || static_cast<size_t>(t) >= V) throw std::runtime_error("score: prompt id out of range");
+            if (t < 0 || static_cast<size_t>(t) >= PV) throw std::runtime_error("score: prompt id out of range");
         for (int t : c)
             if (t < 0 || static_cast<size_t>(t) >= V) throw std::runtime_error("score: continuation id out of range");
         json rec = {{"i", n}, {"prompt_tokens", p.size()}, {"continuation_ids", c}};
         if (r.contains("key")) rec["key"] = r["key"];
         std::vector<int> ids = p;
         ids.insert(ids.end(), c.begin(), c.end());
-        if (ids.size() > s.T + 1) {
+        // at[j]: the position of continuation token j in ids.
+        std::vector<size_t> at(c.size());
+        for (size_t j = 0; j < c.size(); ++j) at[j] = p.size() + j;
+        if (lm.st.k > 0) {
+            if (r.contains("prompt_ids")) {
+                const std::string err = nn::state_ids_error(ids, lm.st);
+                if (!err.empty()) throw std::runtime_error("score: line " + std::to_string(n) + ": " + err);
+            } else {
+                std::vector<uint8_t> fl(ids.size(), 0), f2;
+                for (size_t j = p.size(); j < ids.size(); ++j) fl[j] = 1;
+                ids = insert_state_flagged(ids, fl, lm.st, f2);
+                at.clear();
+                for (size_t q = 0; q < ids.size(); ++q)
+                    if (f2[q]) at.push_back(q);
+                rec["prompt_tokens"] = at[0];
+            }
+        }
+        if (at.back() + 1 > s.T + 1) {
             rec["over_ctx"] = true;
             out << rec.dump() << "\n";
             ++n;
             ++over;
             continue;
         }
-        const std::vector<int> ctx(ids.begin(), ids.end() - 1);
-        Var logits = lm.forward(ctx);
+        const std::vector<int> ctx(ids.begin(), ids.begin() + static_cast<long>(at.back()));
+        Var logits;
+        if (kv_cache) {
+            // Chunks that end where a state block completes (eviction acts
+            // between them) and of at most kv_step ids.
+            nn::LlamaKV kv;
+            kv.evict = evict;
+            Matrix all(ctx.size(), V);
+            size_t q0 = 0;
+            int seg = 0, run = 0;
+            for (size_t q = 0; q < ctx.size(); ++q) {
+                if (lm.st.k > 0) ops::turn_state_step(ctx[q], V, lm.st.k, seg, run);
+                const bool block_end = lm.st.k > 0 && run == 0 && static_cast<size_t>(ctx[q]) == V + lm.st.k - 1;
+                if (q + 1 == ctx.size() || block_end || (kv_step > 0 && q + 1 - q0 == kv_step)) {
+                    const Matrix l =
+                        lm.llama->forward_cached(std::vector<int>(ctx.begin() + static_cast<long>(q0),
+                                                                  ctx.begin() + static_cast<long>(q + 1)), kv)->data;
+                    for (size_t i = 0; i < l.rows(); ++i)
+                        for (size_t k = 0; k < V; ++k) all(q0 + i, k) = l(i, k);
+                    q0 = q + 1;
+                }
+            }
+            rec["kv_rows"] = kv.rows();
+            logits = make_var(std::move(all));
+        } else {
+            logits = lm.forward(ctx);
+        }
+        if (lm.st.k > 0) {
+            size_t blocks = 0;
+            int seg = 0, run = 0;
+            for (int t : ctx) ops::turn_state_step(t, V, lm.st.k, seg, run);
+            blocks = static_cast<size_t>(seg);
+            rec["state_blocks"] = blocks;
+        }
         if (lm.llama && lm.llama->rec_router) {
             // schedule "mor": the depth trace (ir.hpp constraint 5): each
             // context position's depth, 1 .. repeats, and the smallest
@@ -3694,7 +3959,7 @@ int score_cmd(const std::string& target, const std::string& in_path, const std::
         std::vector<int> am;
         double sum = 0.0;
         for (size_t j = 0; j < c.size(); ++j) {
-            const size_t row = p.size() - 1 + j;
+            const size_t row = at[j] - 1;
             double mx = -1e300;
             int best = -1;
             double best_v = -1e300;
@@ -3791,29 +4056,36 @@ int main(int argc, char** argv) {
         if (cmd == "chat" && argc >= 3) {
             std::string host = "127.0.0.1";
             int port = 8080;
-            bool kv_cache = false;
+            bool kv_cache = false, evict = false;
             for (int i = 3; i < argc; ++i) {
                 const std::string k = argv[i];
                 if (k == "--kv-cache") {
                     kv_cache = true;
+                } else if (k == "--evict") {
+                    evict = true;
                 } else if (i + 1 < argc && (k == "--port" || k == "--host")) {
                     const std::string v = argv[++i];
                     if (k == "--port") port = std::atoi(v.c_str());
                     if (k == "--host") host = v;
                 }
             }
-            return chat_cmd(argv[2], host, port, kv_cache);
+            return chat_cmd(argv[2], host, port, kv_cache, evict);
         }
         if (cmd == "score" && argc >= 3) {
             std::string in_path, out_path;
-            for (int i = 3; i + 1 < argc; i += 2) {
-                const std::string k = argv[i], v = argv[i + 1];
-                if (k == "--in") in_path = v;
-                else if (k == "--out") out_path = v;
+            bool kv_cache = false, evict = false;
+            size_t kv_step = 0;
+            for (int i = 3; i < argc; ++i) {
+                const std::string k = argv[i];
+                if (k == "--kv-cache") kv_cache = true;
+                else if (k == "--evict") evict = true;
+                else if (i + 1 < argc && k == "--in") in_path = argv[++i];
+                else if (i + 1 < argc && k == "--out") out_path = argv[++i];
+                else if (i + 1 < argc && k == "--kv-step") kv_step = static_cast<size_t>(std::atoll(argv[++i]));
                 else throw std::runtime_error("score: unknown option " + k);
             }
             if (in_path.empty() || out_path.empty()) throw std::runtime_error("score needs --in and --out");
-            return score_cmd(argv[2], in_path, out_path);
+            return score_cmd(argv[2], in_path, out_path, kv_cache, evict, kv_step);
         }
     } catch (const std::exception& e) {
         std::fprintf(stderr, "mtstudio: %s\n", e.what());
@@ -3830,8 +4102,8 @@ int main(int argc, char** argv) {
                  "         [--out-dir DIR]\n"
                  "       mtstudio serve <out_dir> [port] [spec]   (MTSTUDIO_UI "
                  "overrides the index.html path)\n"
-                 "       mtstudio chat <out_dir|spec.json> [--port 8080] [--host 127.0.0.1] [--kv-cache]\n"
-                 "       mtstudio score <out_dir|spec.json> --in REQ.jsonl --out RES.jsonl   "
-                 "(per-token log-probs of {prompt, continuation})\n");
+                 "       mtstudio chat <out_dir|spec.json> [--port 8080] [--host 127.0.0.1] [--kv-cache [--evict]]\n"
+                 "       mtstudio score <out_dir|spec.json> --in REQ.jsonl --out RES.jsonl [--kv-cache [--evict] "
+                 "[--kv-step N]]   (per-token log-probs of {prompt, continuation})\n");
     return 2;
 }

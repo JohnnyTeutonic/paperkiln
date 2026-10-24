@@ -295,6 +295,10 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
         throw std::runtime_error(
             "export_gguf_llama: quant must be f32, q8_0, q8_0_out, q8_0_all, q4_0, q4_k_m or q4_k_s, got " +
             cfg.quant);
+    if (lcpp && cfg.state_tokens_k > 0)
+        throw std::runtime_error("export_gguf_llama: " + cfg.quant +
+                                 " follows llama.cpp's type choice, which has no state embedding; state-token models "
+                                 "export f32 and q8_0*");
     if (lcpp && cfg.expert_count > 0)
         throw std::runtime_error("export_gguf_llama: " + cfg.quant +
                                  " follows llama.cpp's dense-model type choice; MoE models are not supported");
@@ -322,6 +326,7 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
         writer.write_metadata_uint32(a + ".expert_count", cfg.expert_count);
         writer.write_metadata_uint32(a + ".expert_used_count", cfg.expert_used_count);
     }
+    if (cfg.state_tokens_k > 0) writer.write_metadata_uint32("paperkiln.state_tokens.k", cfg.state_tokens_k);
 
     write_tokenizer(writer, cfg);
     if (lcpp) {
@@ -456,6 +461,19 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
         info.type = GGMLType::F32;
         info.data = &emb(0, 0);
         info.num_elements = emb.rows() * emb.cols();
+        add(info);
+    }
+    if (cfg.state_tokens_k > 0) {
+        // The state rows, laid out as token_embd: [k, d] row-major, ne = {d, k}.
+        const Matrix& st = require("state_embd.weight");
+        if (st.rows() != cfg.state_tokens_k || st.cols() != cfg.embedding_length)
+            throw std::runtime_error("export_gguf_llama: state_embd.weight is not [state_tokens_k, d]");
+        TensorExportInfo info;
+        info.name = "state_embd.weight";
+        info.shape = {static_cast<uint64_t>(st.rows()), static_cast<uint64_t>(st.cols())};
+        info.type = GGMLType::F32;
+        info.data = &st(0, 0);
+        info.num_elements = st.rows() * st.cols();
         add(info);
     }
 

@@ -210,6 +210,54 @@ def depth_route_errors(doc):
     return errs
 
 
+def state_token_errors(doc, meta, tensors):
+    """Per-turn state tokens (IR_SPEC_DRAFT section 1): an embedding's state_weight is a tensor [d, k] (ne)
+    with k = paperkiln.state_tokens.k, the file is architecture paperkiln and its tokenizer names the
+    template's specials; attention masks are causal or turn_state (window 0, sinks 0, state tokens
+    present); a kv slot's evict is turn_state and every attention node reading it masks turn_state."""
+    errs = []
+    dims = {t[0]: t[1] for t in tensors}
+    k = meta.get("paperkiln.state_tokens.k", (None, None))[1]
+    sws = [n.get("state_weight") for n in doc.get("embed", {}).get("nodes", [])
+           if n.get("op") == "embedding" and "state_weight" in n]
+    if (k is not None) != bool(sws):
+        errs.append(f"paperkiln.state_tokens.k {k} without an embedding state_weight, or the reverse")
+    for sw in sws:
+        want = [doc.get("model", {}).get("d"), k]
+        if sw not in dims:
+            errs.append(f"embedding state_weight {sw} is not a tensor of the file")
+        elif dims[sw] != want:
+            errs.append(f"embedding state_weight {sw} has ne {dims[sw]}, not [d, paperkiln.state_tokens.k] = {want}")
+    if sws:
+        arch = meta.get("general.architecture", (None, None))[1]
+        if arch != "paperkiln":
+            errs.append(f"state tokens need architecture paperkiln, not {arch}")
+        sp = (doc.get("tokenizer") or {}).get("specials") or {}
+        for role in ("eot", "user", "assistant"):
+            if not isinstance(sp.get(role), int):
+                errs.append(f"state tokens: the tokenizer names no {role} id (the template needs it)")
+    blk = doc.get("block", {})
+    masks = {}
+    for node in blk.get("nodes", []):
+        if node.get("op") != "attention":
+            continue
+        m = node.get("mask", "causal")
+        if m not in ("causal", "turn_state"):
+            errs.append(f"attention mask {m!r} (causal or turn_state)")
+        if m == "turn_state" and (node.get("window") or node.get("sinks") or not sws):
+            errs.append("attention mask turn_state needs window 0, sinks 0 and an embedding state_weight")
+        masks.setdefault(node.get("state"), set()).add(m)
+    for st in blk.get("state", []):
+        if "evict" not in st:
+            continue
+        if st["evict"] != "turn_state":
+            errs.append(f"kv state {st.get('name')}: evict {st['evict']!r} (only turn_state is defined)")
+        elif masks.get(st.get("name")) != {"turn_state"}:
+            errs.append(f"kv state {st.get('name')}: evict turn_state needs every attention node reading it to "
+                        f"mask turn_state")
+    return errs
+
+
 def check(path, like=None, tensors_as=None):
     errs = []
     meta, tensors, data_start, raw, (i0, i1) = read_gguf(path)
@@ -228,6 +276,7 @@ def check(path, like=None, tensors_as=None):
             errs.append(f"{where}: {n} is not a tensor of {path}")
     errs += state_errors(doc)
     errs += depth_route_errors(doc)
+    errs += state_token_errors(doc, meta, tensors)
     for node in doc.get("block", {}).get("nodes", [])[:1]:
         if node.get("op") == "depth_route":
             dims = {t[0]: t[1] for t in tensors}.get(node.get("weight"))

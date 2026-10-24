@@ -1563,6 +1563,39 @@ __global__ void k_blk_ds_rows(const float* A, float* ds, float scale, int sl, in
     for (int j = threadIdx.x; j < sl; j += blockDim.x) dr[j] = j < hi ? scale * Ar[j] * (dr[j] - dot) : 0.0f;
 }
 
+// The turn_state mask (ops::attention_heads_turn_state, ir.hpp): row i of
+// the head-major [H T, sl] scores, key j <= i visible iff code[j] is odd (a
+// state position) or code[j] / 2 == code[i] / 2 (the same segment). The
+// scores kernel wrote every j <= i (causal); this is k_blk_softmax_rows with
+// the visibility test, masked entries hard zeros, so the causal products and
+// the causal backward are the turn_state ones.
+__global__ void k_blk_softmax_rows_ts(float* A, int sl, int T, const int* code) {
+    extern __shared__ float red[];
+    const int i = blockIdx.x, r = i % T, li = r % sl, b0 = r - li, hi = li + 1;
+    const int ci = code[r] >> 1;
+    float* Ar = A + static_cast<size_t>(i) * sl;
+    float mx = -1e30f;
+    for (int j = threadIdx.x; j < hi; j += blockDim.x) {
+        const int cj = code[b0 + j];
+        if ((cj & 1) || (cj >> 1) == ci) mx = fmaxf(mx, Ar[j]);
+    }
+    mx = blk_reduce(mx, red, true);
+    float z = 0.0f;
+    for (int j = threadIdx.x; j < hi; j += blockDim.x) {
+        const int cj = code[b0 + j];
+        if ((cj & 1) || (cj >> 1) == ci) {
+            const float e = expf(Ar[j] - mx);
+            Ar[j] = e;
+            z += e;
+        }
+    }
+    z = blk_reduce(z, red, false);
+    for (int j = threadIdx.x; j < sl; j += blockDim.x) {
+        const int cj = j < hi ? code[b0 + j] : 0;
+        Ar[j] = j < hi && ((cj & 1) || (cj >> 1) == ci) ? Ar[j] / z : 0.0f;
+    }
+}
+
 dim3 blk_grid(int T, int sl, int N, int heads = 1) {
     const int nt = (sl + AT - 1) / AT;
     return dim3(static_cast<unsigned>((T / sl) * nt), static_cast<unsigned>((N + AT - 1) / AT),
@@ -1698,6 +1731,31 @@ bool attn_heads_bwd(const Matrix& qkv, size_t heads, const Matrix& A, const Matr
                                                           dk);
     cuda_check(cudaGetLastError(), "attn_heads_bwd dv");
     og.finish();
+    return true;
+}
+
+bool attn_heads_fwd_ts(const Matrix& qkv, size_t heads, float scale, size_t seq_len, const std::vector<int>& code,
+                       Matrix& A, Matrix& y) {
+    if (!active()) return false;
+    const int T = static_cast<int>(qkv.rows()), H = static_cast<int>(heads), sl = static_cast<int>(seq_len);
+    if (H <= 0 || qkv.cols() % (3 * heads) != 0 || sl <= 0 || T % sl != 0 || code.size() != qkv.rows()) return false;
+    const int d = static_cast<int>(qkv.cols() / 3), dk = d / H, ld = 3 * d;
+    if (A.rows() != heads * qkv.rows() || A.cols() != seq_len || y.rows() != qkv.rows() ||
+        y.cols() != static_cast<size_t>(d))
+        return false;
+    In iqkv(qkv.get_data(), static_cast<size_t>(T) * ld);
+    IBuf dcode(code.data(), code.size());
+    Out oA(A.get_data(), static_cast<size_t>(H) * T * sl), oy(y.get_data(), static_cast<size_t>(T) * d);
+    const size_t hsA = static_cast<size_t>(T) * sl;
+    k_blk_scores<<<blk_grid(T, sl, sl, H), AT_THREADS>>>(iqkv.d, ld, iqkv.d + d, ld, oA.d, scale, sl, 1, dk, dk, dk,
+                                                         hsA);
+    cuda_check(cudaGetLastError(), "attn_heads_fwd_ts scores");
+    k_blk_softmax_rows_ts<<<H * T, ROW_THREADS, ROW_THREADS * sizeof(float)>>>(oA.d, sl, T, dcode.d);
+    cuda_check(cudaGetLastError(), "attn_heads_fwd_ts softmax");
+    k_blk_rowprod<<<blk_grid(T, sl, dk, H), AT_THREADS>>>(oA.d, iqkv.d + 2 * d, ld, oy.d, d, sl, 1, dk, hsA, dk, dk);
+    cuda_check(cudaGetLastError(), "attn_heads_fwd_ts av");
+    oA.finish();
+    oy.finish();
     return true;
 }
 

@@ -31,6 +31,11 @@ instead (IR_SPEC_DRAFT section 3, not yet in ir.hpp).
 A block whose first node is depth_route (Mixture-of-Recursions, causal token choice; kv slots with
 kv_rows "active") routes at step 0's first application and runs each recursion step's applications on
 its active rows only (forward's trace receives the depths).
+Per-turn state tokens (IR_SPEC_DRAFT section 1, not yet in ir.hpp): an embedding node with "state_weight"
+reads row v - vocab of that tensor for an id v >= vocab; an attention node with "mask": "turn_state" lets
+the query at p see the key at j <= p iff j is a state position or in p's segment (turn_state_codes below,
+from the token ids, k = the state_weight's rows). A kv slot's "evict" changes no value (the engine may
+drop rows no later query sees), so the prefill reference ignores it.
 """
 from __future__ import annotations
 
@@ -55,6 +60,23 @@ def load_weights(path):
             a = gguf.quants.dequantize(t.data, t.tensor_type).astype(np.float32)
         W[t.name] = a.reshape(shape)
     return W
+
+
+def turn_state_codes(ids, vocab, k):
+    """ops::turn_state_codes for one sequence: 2 * s + c per position, c = 1 for a state id (>= vocab),
+    s = the complete state blocks (k consecutive ids vocab .. vocab + k - 1) strictly before it."""
+    out, seg, run = [], 0, 0
+    for t in ids:
+        state = t >= vocab
+        out.append(2 * seg + (1 if state else 0))
+        if not state:
+            run = 0
+        else:
+            j = t - vocab
+            run = run + 1 if j == run else (1 if j == 0 else 0)
+            if run == k:
+                seg, run = seg + 1, 0
+    return out
 
 
 def per_layer(nd, i):
@@ -117,7 +139,15 @@ def run_nodes(nodes, env, W, i=None, no_window=False, wi=None):
         op, ins = nd["op"], nd["in"]
         x = env[ins[0]]
         if op == "embedding":
-            y = w(nd["weight"])[x]
+            tab = w(nd["weight"])
+            if nd.get("state_weight"):
+                st = w(nd["state_weight"])
+                V = tab.shape[0]
+                if (x >= V + st.shape[0]).any() or (x < 0).any():
+                    raise SystemExit("ir_numpy: an id past the state ids")
+                y = np.where((x >= V)[:, None], st[np.clip(x - V, 0, st.shape[0] - 1)], tab[np.clip(x, 0, V - 1)])
+            else:
+                y = tab[x]
         elif op == "pos_embedding":
             y = x + w(nd["weight"])[env[ins[1]]]
         elif op == "linear":
@@ -287,6 +317,15 @@ def run_nodes(nodes, env, W, i=None, no_window=False, wi=None):
             # sink (j < sinks) nor among the last `window` (j >= p - window + 1).
             p, j = np.arange(T)[:, None], np.arange(T)[None, :]
             mask = j > p
+            m = nd.get("mask", "causal")
+            if m == "turn_state":
+                if nd["window"] or nd["sinks"] or "_ts_code" not in env:
+                    raise SystemExit("ir_numpy: mask turn_state needs window 0, sinks 0 and a state embedding")
+                c = np.asarray(env["_ts_code"])
+                seg, st = c >> 1, c & 1
+                mask |= ~((st[None, :] == 1) | (seg[None, :] == seg[:, None]))
+            elif m != "causal":
+                raise SystemExit(f"ir_numpy: attention mask {m!r}")
             win = 0 if no_window else nd["window"]
             if win:
                 mask |= (j >= nd["sinks"]) & (j < p - win + 1)
@@ -357,6 +396,9 @@ def forward(doc, W, ids, last_only=False, no_window=False, trace=None):
     depth_route block, each token's depth is appended to it."""
     env = {"tokens": np.array(ids), "pos": np.arange(len(ids))}  # pos unused by graphs without positions
     run_nodes(doc["embed"]["nodes"], env, W, no_window=no_window)
+    sw = [n["state_weight"] for n in doc["embed"]["nodes"] if n.get("op") == "embedding" and n.get("state_weight")]
+    if sw:  # the turn_state mask's codes, from the ids alone
+        env["_ts_code"] = turn_state_codes(list(ids), doc["model"]["vocab"], W[sw[0]].shape[0])
     blk = doc["block"]["nodes"]
     if blk and blk[0]["op"] == "depth_route":
         _routed_blocks(doc, W, env, no_window, trace)
