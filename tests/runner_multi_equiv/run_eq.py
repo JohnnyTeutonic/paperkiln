@@ -49,17 +49,23 @@ def tree(d):
     return out
 
 
-def run(runner, work, scenario):
-    shutil.rmtree(work, ignore_errors=True)
+def run(runner, work, scenario, jobs=JOBS, fresh=True):
+    """One runner run against the fake. fresh=False (run_rungs.py) runs again on the same work dir: the
+    state dir, artifacts and the fake's session state carry over, and the scenario keys are updated."""
     layout = os.path.join(work, "repo", "tools", "colab_chat")
-    os.makedirs(layout)
+    fake = os.path.join(work, "fake")
+    if fresh:
+        shutil.rmtree(work, ignore_errors=True)
+        os.makedirs(layout)
+        os.makedirs(fake)
+        json.dump({"alive": False, "launches": 0, "name": None, **scenario}, open(os.path.join(fake, "fake.json"), "w"))
+    else:
+        d = json.load(open(os.path.join(fake, "fake.json")))
+        json.dump({**d, **scenario}, open(os.path.join(fake, "fake.json"), "w"))
     for f in os.listdir(os.path.dirname(runner)):
         if f.endswith(".py") or f.endswith(".sh"):
             shutil.copyfile(os.path.join(os.path.dirname(runner), f), os.path.join(layout, f))
-    json.dump(JOBS, open(os.path.join(layout, "eqjobs.json"), "w"))
-    fake = os.path.join(work, "fake")
-    os.makedirs(fake)
-    json.dump({"alive": False, "launches": 0, "name": None, **scenario}, open(os.path.join(fake, "fake.json"), "w"))
+    json.dump(jobs, open(os.path.join(layout, "eqjobs.json"), "w"))
     col = os.path.join(work, "colab")
     open(col, "w").write(f"#!/bin/sh\nexec {sys.executable} {HERE}/fakecolab.py \"$@\"\n")
     colpy = os.path.join(work, "colpy")
@@ -92,7 +98,7 @@ def main():
     shutil.rmtree(os.path.join(work, "w_new"), ignore_errors=True)
     shutil.move(os.path.join(work, "w"), os.path.join(work, "w_new"))
     sb = dict(b["state"])
-    added = {k: sb.pop(k) for k in ("campaign_home",) if k in sb}
+    added = {k: sb.pop(k) for k in ("campaign_home",) if k in sb and k not in a["state"]}  # OLD before a90ec0e2
     res = {"rc": [a["rc"], b["rc"]], "calls_equal": a["calls"] == b["calls"], "log_equal": a["log"] == b["log"],
            "state_equal": a["state"] == sb, "art_equal": a["art"] == b["art"], "new_state_fields": added,
            "n_calls": a["calls"].count("\n"), "n_log": a["log"].count("\n")}

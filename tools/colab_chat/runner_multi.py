@@ -26,6 +26,18 @@ terminated the moment the queue is empty or the driver exits (finally, atexit, S
 SIGHUP). runpod_sweep.py (run by the Windows watchdog each tick) terminates pods whose driver is
 dead and deletes the volumes of campaigns that are home. A state dir moves from Colab to RunPod
 like a replacement VM: stop the Colab driver, start the same command with --backend runpod.
+
+Rung snapshots (25 Oct 2026). jobs_vm.py copies a training job's weights at each of its
+"snapshot_steps" to /content/chat/<job>/rung_<step>/ (model.safetensors, state.txt: weights only),
+and a "rung_of" job scores them later, often hours later. They lived only on the VM, so a
+replacement VM failed the rung jobs not yet run ("rung lost"). Now each snapshot comes home once,
+one per tick and never in a tick that relayed a checkpoint (ART/<job>/rung_snapshots/rung_<step>/,
+recorded in state.json "rung_snapshots"); prepare() puts it back at the same VM path before the
+boot when an unfinished rung job would otherwise lose it (its training job is home or resumes past
+the step; a copy already on a RunPod volume is used as it is); the home copy is deleted once every
+rung job of that snapshot is home and FINISHED (its rung.json records the weights' sha256). A rung
+job that failed "rung lost" while its snapshot is home is rerun after reset_lost_rungs.py, applied
+when the runner next starts. A campaign without rung jobs makes exactly the calls it made before.
 """
 from __future__ import annotations
 
@@ -35,6 +47,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -306,7 +319,8 @@ def relay(st, name, every=0):
     """If the job's step advanced (by at least `every`), snapshot its
     checkpoint set on the VM and download the snapshot. Downloading the live
     files raced the saves: at ~1.6 MB/s a 0.85-1.1 GB set takes longer than a
-    save interval, so every relay came home torn and was discarded."""
+    save interval, so every relay came home torn and was discarded. True when a
+    download was attempted (that tick fetches no rung snapshot)."""
     art = os.path.join(ART, name)
     os.makedirs(art, exist_ok=True)
     js = st.job(name)
@@ -339,7 +353,7 @@ def relay(st, name, every=0):
     if not m:
         if "SNAPTORN" in out:
             log(f"{name}: snapshot overtaken by a save; will retry")
-        return
+        return False
     step = int(m.group(1))
     ok = True
     # Weights, events and step only (23 Oct 2026): a resume is weights-only (cold AdamW) anyway, and
@@ -351,7 +365,7 @@ def relay(st, name, every=0):
     ok = ok and os.path.exists(tmp) and int(open(tmp).readline().strip() or 0) == step
     if not ok:
         log(f"{name}: relay download of the step-{step} snapshot failed; will retry")
-        return
+        return True
     for f in ("model.safetensors", "events.jsonl"):
         os.replace(os.path.join(art, f + ".new"), os.path.join(art, f))
     stale = os.path.join(art, "optim.safetensors")  # older than these weights: never resume from it
@@ -361,6 +375,7 @@ def relay(st, name, every=0):
     js["relayed_step"] = step
     st.save()
     log(f"{name}: relayed checkpoint at step {step}")
+    return True
 
 
 def fetch_final(st, name, model_name):
@@ -406,6 +421,221 @@ def fetch_outputs(st, name, outputs, best_effort=False):
         js["home"] = True
         st.save()
         log(f"{name}: outputs downloaded")
+
+
+# ---------------------------------------------------------------- rung snapshots
+RUNG_FILES = ("model.safetensors", "state.txt")  # what jobs_vm.take_snapshot copies; the rung job reads both
+
+
+def rung_owners(jobs):
+    """{(training job, step): [rung jobs that score its snapshot at that step]}, in jobs order."""
+    own = {}
+    for j in jobs:
+        ro = j.get("rung_of")
+        if ro:
+            own.setdefault((ro["job"], int(ro["step"])), []).append(j["name"])
+    return own
+
+
+def snap_home(pt, step):
+    return os.path.join(ART, pt, "rung_snapshots", f"rung_{step}")
+
+
+def snap_vm(pt, step):
+    return f"/content/chat/{pt}/rung_{step}"
+
+
+def file_step(p):
+    try:
+        return int(open(p).readline().strip() or 0)
+    except (OSError, ValueError):
+        return None
+
+
+def snap_at_home(pt, step):
+    d = snap_home(pt, step)
+    return os.path.exists(os.path.join(d, "model.safetensors")) and file_step(os.path.join(d, "state.txt")) == step
+
+
+def fetch_rung_snapshot(st, jobs, r, busy):
+    """Each tick, after the relays: home copies whose rung jobs are all home and FINISHED are deleted
+    (rung.json is the receipt); then, unless this tick relayed a checkpoint (busy), ONE snapshot on
+    the VM that an unscored rung job still needs comes home (one exec finds them; none while no
+    training job with rung jobs is active on the VM)."""
+    own = rung_owners(jobs)
+    rec = st.d.get("rung_snapshots") or {}
+    for key, e in rec.items():
+        pt, step = key.rsplit("/rung_", 1)
+        names = own.get((pt, int(step)), [])
+        if not e.get("deleted") and names and all(
+                st.job(n)["home"] and st.job(n)["status"] == "FINISHED" for n in names):
+            shutil.rmtree(snap_home(pt, int(step)), ignore_errors=True)
+            e["deleted"] = time.time()
+            st.save()
+            log(f"{key}: rung snapshot's home copy deleted ({', '.join(names)} home)")
+    if busy:
+        return
+    cand = [(pt, s) for (pt, s), names in own.items() if f"{pt}/rung_{s}" not in rec
+            and r.get(pt) in ("RUNNING", "FINISHED", "FAILED")
+            and not all(st.job(n)["home"] or r.get(n) == "FINISHED" for n in names)]
+    if not cand:
+        return
+    rc, out = exec_py(
+        "import json, os\n"
+        f"cand = {[[pt, s, snap_vm(pt, s)] for pt, s in cand]!r}\n"
+        "def step(p):\n"
+        "    try:\n"
+        "        return int(open(p).readline().strip() or 0)\n"
+        "    except (OSError, ValueError):\n"
+        "        return None\n"
+        "have = [[pt, s] for pt, s, d in cand if os.path.exists(d + '/model.safetensors') and step(d + '/state.txt') == s]\n"
+        "print('RUNGSNAP', json.dumps(have))\n")
+    m = re.search(r"^RUNGSNAP (.*)$", out, re.M)
+    have = json.loads(m.group(1)) if m else []
+    if not have:
+        return
+    pt, s = have[0]
+    d = snap_home(pt, s)
+    os.makedirs(d, exist_ok=True)
+    ok = True
+    for f in RUNG_FILES:
+        ok = ok and download_file(f"{snap_vm(pt, s)}/{f}", os.path.join(d, f + ".new"), timeout=2400) == 0
+    ok = ok and file_step(os.path.join(d, "state.txt.new")) == s
+    if not ok:
+        log(f"{pt}: download of the rung_{s} snapshot failed; will retry")
+        return
+    for f in RUNG_FILES:
+        os.replace(os.path.join(d, f + ".new"), os.path.join(d, f))
+    h = hashlib.sha256()
+    with open(os.path.join(d, "model.safetensors"), "rb") as fh:
+        for b in iter(lambda: fh.read(1 << 22), b""):
+            h.update(b)
+    size = os.path.getsize(os.path.join(d, "model.safetensors"))
+    st.d.setdefault("rung_snapshots", {})[f"{pt}/rung_{s}"] = {"bytes": size, "sha256": h.hexdigest(),
+                                                               "fetched": time.time()}
+    st.save()
+    log(f"{pt}: rung snapshot at step {s} downloaded ({size / 1e6:.0f} MB)")
+
+
+def rung_inputs(st, jobs):
+    """prepare(): the home rung snapshots this VM must hold before the boot, as (key, src, VM path)
+    whole-file inputs. A snapshot is put back when an unfinished rung job needs it and the VM would
+    not make it again: its training job is home, or resumes (from the relayed or the volume's
+    checkpoint) past the step. Already on the VM (a RunPod volume): left as it is. The training
+    job's events.jsonl goes too when the VM has none (the rung job reads the step's val_loss there).
+    Rung jobs reset by reset_lost_rungs.py lose the FAILED status a volume still holds. [] when
+    there is nothing to do (no VM call); None when the VM did not answer."""
+    need, resets = [], []
+    for (pt, s), names in rung_owners(jobs).items():
+        open_ = [n for n in names if not st.job(n)["home"]]
+        resets += [n for n in open_ if st.job(n).get("rung_reset")]
+        if open_ and snap_at_home(pt, s):
+            need.append([pt, s])
+    if not need and not resets:
+        return []
+    rc, out = exec_py(
+        "import json, os\n"
+        f"need, resets = {need!r}, {resets!r}\n"
+        "def step(p):\n"
+        "    try:\n"
+        "        return int(open(p).readline().strip() or 0)\n"
+        "    except (OSError, ValueError):\n"
+        "        return None\n"
+        "r = {}\n"
+        "for pt, s in need:\n"
+        "    d = '/content/chat/' + pt\n"
+        "    snap = d + '/rung_' + str(s)\n"
+        "    r[pt + '/' + str(s)] = [os.path.exists(snap + '/model.safetensors') and step(snap + '/state.txt') == s,\n"
+        "                          step(d + '/state.txt'), os.path.exists(d + '/events.jsonl')]\n"
+        "for n in resets:\n"
+        "    p = '/content/chat/STATUS_' + n\n"
+        "    if os.path.exists(p):\n"
+        "        os.remove(p)\n"
+        "print('RUNGHAS', json.dumps(r))\n")
+    m = re.search(r"^RUNGHAS (.*)$", out, re.M)
+    if not m:
+        return None
+    vm = json.loads(m.group(1))
+    for n in resets:
+        st.job(n).pop("rung_reset", None)
+    if resets:
+        st.save()
+        log(f"prepare: reset rung jobs {resets} run again on this VM")
+    up, events = [], set()
+    for pt, s in need:
+        on_vm, vm_step, has_ev = vm[f"{pt}/{s}"]
+        if on_vm:
+            log(f"{pt}: rung_{s} snapshot already on this VM (volume); nothing uploaded")
+            continue
+        resume = max(local_step(pt), vm_step or 0)
+        if not st.job(pt)["home"] and resume <= s:
+            continue  # the job resumes at or before the step and snapshots it again on this VM
+        for f in RUNG_FILES:
+            up.append((f"{pt}__rung_{s}__{f}", os.path.join(snap_home(pt, s), f), f"{snap_vm(pt, s)}/{f}"))
+        rec = st.d.setdefault("rung_snapshots", {})
+        if f"{pt}/rung_{s}" not in rec:  # a home copy not fetched by this runner: never downloaded back
+            rec[f"{pt}/rung_{s}"] = {"bytes": os.path.getsize(os.path.join(snap_home(pt, s), "model.safetensors")),
+                                     "fetched": None}
+            st.save()
+        ev = os.path.join(ART, pt, "events.jsonl")
+        if not has_ev and pt not in events and os.path.exists(ev):
+            events.add(pt)
+            up.append((f"{pt}__events.jsonl", ev, f"/content/chat/{pt}/events.jsonl"))
+    return up
+
+
+def lost_rungs(d, jobs):
+    """Rung jobs in state dict d that are home, FAILED, and whose home log says "rung lost":
+    [(name, training job, step, snapshot at home)]."""
+    out = []
+    for j in jobs:
+        ro, n = j.get("rung_of"), j["name"]
+        js = d["jobs"].get(n) or {}
+        if not ro or not js.get("home") or js.get("status") != "FAILED":
+            continue
+        lp = os.path.join(ART, n, f"{n}_train.log")
+        try:
+            lost = "rung lost" in open(lp, errors="replace").read()
+        except OSError:
+            lost = False
+        if lost:
+            out.append((n, ro["job"], int(ro["step"]), snap_at_home(ro["job"], int(ro["step"]))))
+    return out
+
+
+RESET_REQUEST = "rung_reset.json"
+
+
+def apply_rung_resets(st, jobs):
+    """At startup (no other runner is live): the rung jobs named in HOME/rung_reset.json
+    (reset_lost_rungs.py) that failed "rung lost" and whose snapshot is now home go back to
+    WAITING (a fresh state entry, marked rung_reset). No other job is touched. The request file is
+    removed once read; a named job that does not qualify is logged and left as it is."""
+    p = os.path.join(HOME, RESET_REQUEST)
+    if not os.path.exists(p):
+        return
+    try:
+        want = list(json.load(open(p)).get("rungs", []))
+    except (OSError, ValueError) as e:
+        log(f"rung reset request unreadable ({e}); ignored")
+        os.remove(p)
+        return
+    ok = {n for n, _, _, home in lost_rungs(st.d, jobs) if home}
+    done = []
+    for n in want:
+        if n not in ok:
+            log(f"{n}: rung reset refused (not a home FAILED 'rung lost' job with its snapshot at home)")
+            continue
+        lp = os.path.join(ART, n, f"{n}_train.log")
+        if os.path.exists(lp):  # the next run's log comes home under this name
+            os.replace(lp, os.path.join(ART, n, f"{n}_train.lost.log"))
+        st.d["jobs"][n] = {"relayed_step": 0, "status": None, "home": False, "rung_reset": time.time()}
+        done.append(n)
+    if done:
+        st.d.pop("campaign_home", None)  # a RunPod release would otherwise delete the volume at the end
+        st.save()
+        log(f"rung jobs reset to WAITING (their snapshots go up at the next prepare): {done}")
+    os.remove(p)
 
 
 def launch(st, commit, jobs_rel, jobs, uploads):
@@ -566,12 +796,31 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
             return False
         pend = [n for n in pend if n not in has[0]]
         finals = [f for f in finals if f[2] not in has[1]]
+    # Rung snapshots that unfinished rung jobs need, from their home copies (before the boot: jobs_vm.py at the
+    # campaigns' pinned commits fails a rung job whose snapshot is missing as soon as its "after" jobs finish).
+    try:
+        rung_up = rung_inputs(st, jobs)
+    except (OSError, ValueError, KeyError, TypeError) as e:  # never let the rung backstop stall a launch
+        log(f"prepare: rung snapshots skipped ({e!r})")
+        rung_up = []
+    if rung_up is None:
+        log("prepare: rung snapshot check got no reply; will retry")
+        return False
     try:
         for key, src in uploads:
             upload_file(src, f"/content/chat/upload/{key}")
         for key, src, _ in finals:
             upload_file(src, f"/content/chat/upload/{key}")
             log(f"{key}: uploaded for a dependent job")
+        if rung_up:
+            t0 = time.time()
+            for key, src, _ in rung_up:
+                upload_file(src, f"/content/chat/upload/{key}")
+            snaps = sorted({dst.rsplit("/", 1)[0][len("/content/chat/"):] for _, _, dst in rung_up
+                            if "/rung_" in dst})
+            mb = sum(os.path.getsize(src) for _, src, _ in rung_up) / 1e6
+            log(f"prepare: {len(snaps)} rung snapshots uploaded from home ({mb:.0f} MB, "
+                f"{(time.time() - t0) / 60:.1f} min): {snaps}")
         # The first resume checkpoint goes up before the boot;
         # the rest one per tick while the VM trains (upload_pending), and jobs_vm.py holds each job
         # until its READY marker. Weights, step and events only: no optimiser state (22 Oct 2026,
@@ -589,8 +838,8 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
         log(str(e))
         return False
     # Reassemble the whole-file inputs; a home parent's final weights then move into its out_dir.
-    names = [k for k, _ in uploads] + [k for k, _, _ in finals]
-    moves = [(k, dst) for k, _, dst in finals]
+    names = [k for k, _ in uploads] + [k for k, _, _ in finals] + [k for k, _, _ in rung_up]
+    moves = [(k, dst) for k, _, dst in finals] + [(k, dst) for k, _, dst in rung_up]
     rc, out = exec_py(
         "import os, shutil\n"
         f"for k in {names!r}:\n"
@@ -687,6 +936,12 @@ def main():
         except (OSError, ValueError):
             pass
     st = State()
+    has_rungs = any(j.get("rung_of") for j in jobs)
+    if has_rungs:
+        try:
+            apply_rung_resets(st, jobs)  # reset_lost_rungs.py's request; safe here: no other runner is live
+        except (OSError, ValueError, KeyError, TypeError) as e:
+            log(f"rung reset request not applied ({e!r})")
     # One GPU type per campaign (a claim-carrying arm never mixes GPU types; AGENTS.md): recorded on
     # the first run under the new flag, refused when a later run asks for another.
     if st.d.get("gpu") not in (None, a.gpu):
@@ -761,6 +1016,7 @@ def main():
                 st.save()
                 break
             done = True
+            relayed = False
             for j in jobs:
                 n = j["name"]
                 js = st.job(n)
@@ -769,7 +1025,7 @@ def main():
                     js["status"] = r[n]
                     st.save()
                 if r[n] == "RUNNING" and not js["home"] and "cmd" not in j:
-                    relay(st, n, j.get("relay_every_steps", 0))
+                    relayed = relay(st, n, j.get("relay_every_steps", 0)) or relayed
                 if r[n] == "FINISHED" and not js["home"]:
                     if "cmd" in j:
                         fetch_outputs(st, n, j.get("outputs", []))
@@ -785,6 +1041,11 @@ def main():
                     js["home"] = True
                     st.save()
                 done = done and js["home"]
+            if has_rungs:
+                try:
+                    fetch_rung_snapshot(st, jobs, r, relayed)
+                except (OSError, ValueError, KeyError, TypeError) as e:  # a backstop must never end a driver
+                    log(f"rung snapshots: {e!r}")
             if done:
                 log("all jobs finished and home")
                 st.d["campaign_home"] = True

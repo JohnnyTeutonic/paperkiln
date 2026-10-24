@@ -70,8 +70,31 @@ def restore(n):
             os.replace(os.path.join(up, f), os.path.join(out, f))
 
 
+def ckpt_step(dr):
+    try:
+        return int(open(os.path.join(dr, "state.txt")).readline().strip() or 0)
+    except (OSError, ValueError):
+        return None
+
+
+def take_snapshots(jobs):
+    """jobs_vm.take_snapshot: a training job's checkpoint at one of its snapshot_steps is copied to
+    rung_<step>/ (model.safetensors, state.txt) unless that directory exists."""
+    for j in jobs:
+        if not j.get("snapshot_steps") or "cmd" in j or status(j["name"]) in ("FINISHED", "FAILED"):
+            continue
+        out = os.path.join(CHAT, j["name"])
+        s = ckpt_step(out)
+        dst = os.path.join(out, f"rung_{s}")
+        if s in j["snapshot_steps"] and not os.path.isdir(dst):
+            os.makedirs(dst)
+            for f in ("model.safetensors", "state.txt"):
+                shutil.copyfile(os.path.join(out, f), os.path.join(dst, f))
+
+
 def sim_step(d):
     jobs = json.load(open(os.environ["FAKE_JOBS"]))["jobs"]
+    take_snapshots(jobs)
     for j in jobs:
         n, s = j["name"], status(j["name"])
         if s in ("FINISHED", "FAILED"):
@@ -94,6 +117,25 @@ def sim_step(d):
         out = os.path.join(CHAT, n)
         os.makedirs(out, exist_ok=True)
         log = os.path.join(CHAT, f"{n}_train.log")
+        ro = j.get("rung_of")
+        snap = os.path.join(CHAT, ro["job"], f"rung_{ro['step']}", "model.safetensors") if ro else None
+        if ro and s != "RUNNING":  # jobs_vm.rung_state; "rung_start_at" stands for a busy light slot
+            if d.get("status_calls", 0) < d.get("rung_start_at", 0):
+                continue
+            if not os.path.exists(snap):
+                ps = ckpt_step(os.path.join(CHAT, ro["job"]))
+                if status(ro["job"]) in ("FINISHED", "FAILED") or (ps is not None and ps > ro["step"]):
+                    open(log, "a").write(f"rung lost: no snapshot of {ro} on this VM\n")
+                    set_status(n, "FAILED")
+                    return
+                continue
+        if ro and s == "RUNNING":  # tiny_chat_run.py rung: score the snapshot, record its sha256, drop it
+            open(os.path.join(out, "rung.json"), "w").write(json.dumps(
+                {"step": ro["step"], "weights_sha256": hashlib.sha256(open(snap, "rb").read()).hexdigest()}))
+            os.remove(snap)
+            open(log, "a").write(f"{n} done\n")
+            set_status(n, "FINISHED")
+            return
         if s != "RUNNING":
             set_status(n, "RUNNING")
             open(log, "a").write(f"{n} started\n")
@@ -120,6 +162,7 @@ def sim_step(d):
         open(os.path.join(out, "events.jsonl"), "a").write(json.dumps({"event": "step", "step": step}) + "\n")
         open(os.path.join(out, "state.txt"), "w").write(f"{step}\n{{}}\n")
         open(log, "a").write(f'{{"event":"step","step":{step}}}\n')
+        take_snapshots(jobs)
         if step >= STEPS:
             m = j.get("model_name", n)
             shutil.copyfile(os.path.join(out, "model.safetensors"), os.path.join(out, f"{m}.safetensors"))
