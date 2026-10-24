@@ -108,3 +108,18 @@ def test_system_message_and_template(served):
     assert s == 400 and "first history entry" in e["error"]
     s, e = _post(served + "/chat", dict(base, user_input="say <|user|> please"))
     assert s == 400 and "reserved" in e["error"]
+
+
+def test_history_pairs_strictly(served):
+    """Section 3 point 3a: role-form history alternates user and assistant, starting with user and
+    ending with assistant (the new message is user_input); anything else is a 400 naming the rule.
+    A well-formed role history gives the same reply as the same turns in pair form."""
+    base = {"user_input": "hello", "top_k": 1, "max_new_tokens": 12}
+    u, a = {"role": "user", "content": "hi"}, {"role": "assistant", "content": "hello there"}
+    s1, r1 = _post(served + "/chat", dict(base, history=[u, a]))
+    s2, r2 = _post(served + "/chat", dict(base, history=[{"user": "hi", "assistant": "hello there"}]))
+    assert s1 == s2 == 200 and r1 == r2
+    for hist, rule in (([a, u], "without a user message before it"), ([u, u, a], "two user messages"),
+                       ([u, a, u], "ends with a user message"), ([u, {"role": "narrator", "content": "x"}], "role")):
+        s, e = _post(served + "/chat", dict(base, history=hist))
+        assert s == 400 and rule in e["error"], (hist, e)

@@ -344,6 +344,10 @@ def test_g5_third_party_records_match_hf():
                 kw = {} if thinking is None else {"enable_thinking": False}
                 want = jt.render(messages=m, add_generation_prompt=True, bos_token="<bos>", **kw)
                 assert CT.render(m, tid, generation_prompt=True, thinking=thinking) == want, (tid, m)
+        for c in edge_cases():  # gemma3's hand-written cases (its Unicode trim) against HF's own template
+            if tid == "gemma3/1" and c["template"] == tid and c["expect"] is not None:
+                want = jt.render(messages=c["messages"], add_generation_prompt=True, bos_token="<bos>")
+                assert c["expect"] == want, (tid, c["name"])
         seen += 1
     if not seen:
         pytest.skip("no third-party templates on disk")
@@ -395,6 +399,14 @@ def edge_cases():
         ("legacy word-level prompt", CT.LEGACY_WORD, CT.from_pairs([("hi", "hello")], "how are you"), True),
         ("gemma3 trims and folds", "gemma3/1",
          [{"role": "system", "content": " Be brief. "}, {"role": "user", "content": "  Hi \n"}], True),
+        # HF's trim is str.strip(): Unicode whitespace at the ends goes, a zero-width space stays.
+        ("gemma3 trims unicode edge whitespace", "gemma3/1",
+         [{"role": "user", "content": " 　Hi there \n"}], True),
+        ("gemma3 trims unicode whitespace in system and history", "gemma3/1",
+         [{"role": "system", "content": " Be brief. "}, {"role": "user", "content": " Q1\u0085"},
+          {"role": "assistant", "content": " A1 "}, {"role": "user", "content": "\x1cQ2\x1f"}], True),
+        ("gemma3 keeps inner unicode whitespace and zero-width space", "gemma3/1",
+         [{"role": "user", "content": "​A B​"}], True),
         ("qwen3 strips past reasoning", "chatml-qwen3/1",
          CT.from_pairs([("a", "<think>\nr\n</think>\n\nb")], "c"), True),
         ("qwen2.5 writes its default system turn", "chatml-qwen2.5/1", [{"role": "user", "content": "Hi"}], True),

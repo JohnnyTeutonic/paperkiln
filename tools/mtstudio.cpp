@@ -3792,23 +3792,47 @@ Spec resolve_chat_spec(const std::string& arg) {
 // The request's history as whole (user, assistant) turns, oldest first:
 // [{role, content}] lists pair each assistant message with the user message
 // before it, as chat_prompt_bpe reads them.
+// Role-form history pairs strictly (section 3 point 3a, as ember's /chat): after an optional
+// leading system entry (the caller reads it), user and assistant alternate, starting with user and
+// ending with assistant (the new message is user_input); anything else is refused by name
+// (chat::Error, HTTP 400). Pair-form entries {user, assistant} are whole turns.
 json history_turns(const json& req) {
     json turns = json::array();
     if (!req.contains("history") || !req["history"].is_array()) return turns;
+    bool have_user = false;
     std::string pending_user;
-    for (const auto& turn : req["history"]) {
+    const json& h = req["history"];
+    for (size_t i = 0; i < h.size(); ++i) {
+        const json& turn = h[i];
         if (!turn.is_object()) continue;
         if (turn.contains("role")) {
             const std::string role = turn.value("role", "");
-            if (role == "user") pending_user = turn.value("content", "");
-            if (role == "assistant") {
+            if (role == "system" && i == 0) continue;
+            if (role == "user") {
+                if (have_user)
+                    throw chat::Error("history has two user messages in a row: user and assistant messages "
+                                      "must alternate (section 3 point 3a)");
+                pending_user = turn.value("content", "");
+                have_user = true;
+            } else if (role == "assistant") {
+                if (!have_user)
+                    throw chat::Error("history has an assistant message without a user message before it: user "
+                                      "and assistant messages must alternate, starting with user (section 3 point 3a)");
                 turns.push_back({{"user", pending_user}, {"assistant", turn.value("content", "")}});
                 pending_user.clear();
+                have_user = false;
+            } else {
+                throw chat::Error("history role '" + role + "' is not allowed here (user, assistant; system only first)");
             }
             continue;
         }
+        if (have_user)
+            throw chat::Error("history has a user message without its assistant reply before a {user, assistant} pair");
         turns.push_back({{"user", turn.value("user", "")}, {"assistant", turn.value("assistant", "")}});
     }
+    if (have_user)
+        throw chat::Error("history ends with a user message: it must end with an assistant reply (the new message "
+                          "goes in user_input)");
     return turns;
 }
 

@@ -510,6 +510,54 @@
    "expect": "<bos><start_of_turn>user\n Be brief. \n\nHi<end_of_turn>\n<start_of_turn>model\n"
   },
   {
+   "name": "gemma3 trims unicode edge whitespace",
+   "template": "gemma3/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": " 　Hi there \n"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": "<bos><start_of_turn>user\nHi there<end_of_turn>\n<start_of_turn>model\n"
+  },
+  {
+   "name": "gemma3 trims unicode whitespace in system and history",
+   "template": "gemma3/1",
+   "messages": [
+    {
+     "role": "system",
+     "content": " Be brief. "
+    },
+    {
+     "role": "user",
+     "content": " Q1"
+    },
+    {
+     "role": "assistant",
+     "content": " A1 "
+    },
+    {
+     "role": "user",
+     "content": "\u001cQ2\u001f"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": "<bos><start_of_turn>user\n Be brief. \n\nQ1<end_of_turn>\n<start_of_turn>model\nA1<end_of_turn>\n<start_of_turn>user\nQ2<end_of_turn>\n<start_of_turn>model\n"
+  },
+  {
+   "name": "gemma3 keeps inner unicode whitespace and zero-width space",
+   "template": "gemma3/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "​A B​"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": "<bos><start_of_turn>user\n​A B​<end_of_turn>\n<start_of_turn>model\n"
+  },
+  {
    "name": "qwen3 strips past reasoning",
    "template": "chatml-qwen3/1",
    "messages": [

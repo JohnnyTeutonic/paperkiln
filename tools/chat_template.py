@@ -37,7 +37,6 @@ ROLES = ("system", "user", "assistant")
 RESERVED_ROLES = ("tool",)
 SFT_TURNS = ("all", "final", "each")
 V1_SPECIALS = ["<unk>", "<|endoftext|>", "<|user|>", "<|assistant|>"]  # ids 0-3 of every paperkiln BPE vocabulary
-TRIM_WS = " \t\n\r\f\v"        # "trim": ASCII whitespace (the C++ twin's set; HF's Jinja strips Unicode too)
 
 
 class TemplateError(ValueError):
@@ -219,7 +218,7 @@ def render_pieces(messages, tmpl=V1, generation_prompt=False, thinking=None):
 
     def body(text):
         if trim:
-            text = text.strip(TRIM_WS)
+            text = text.strip()  # "trim": Python's str.strip(), as HF's Jinja trim (the C++ twin's strip_py_ws)
         for r in reserved:
             if r in text:
                 raise TemplateError(f"content holds the template's reserved text {r!r}")
