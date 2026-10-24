@@ -112,10 +112,29 @@ def stock(gpu):
 RANK = {"HIGH": 3, "MEDIUM": 2, "LOW": 1}
 
 
-def stocked_dcs(gpu):
-    """Data centres with the GPU in stock, best availability first."""
+def host_stock(gpu, dc, min_ram=None, min_vcpu=None, secure=True):
+    """RunPod's stock status ("High"/"Medium"/"Low") for one GPU in one data centre on hosts with at least
+    min_ram GB and min_vcpu vCPUs per GPU, or None when no such host has one free. The catalog's
+    availability ignores host size (24 Oct 2026: EU-RO-1 listed L4 as LOW while its L4 hosts have 6 vCPUs,
+    and a create asking for 8 found no instance)."""
+    inp = {"gpuCount": 1, "secureCloud": secure, "dataCenterId": dc}
+    if min_ram:
+        inp["minMemoryInGb"] = int(min_ram)
+    if min_vcpu:
+        inp["minVcpuCount"] = int(min_vcpu)
+    d = graphql("query($id: String, $i: GpuLowestPriceInput) { gpuTypes(input: {id: $id}) "
+                "{ lowestPrice(input: $i) { stockStatus } } }", {"id": gpu_id(gpu), "i": inp})["gpuTypes"]
+    return ((d or [{}])[0].get("lowestPrice") or {}).get("stockStatus")
+
+
+def stocked_dcs(gpu, min_ram=None, min_vcpu=None, secure=True):
+    """Data centres with the GPU in stock (on hosts of at least min_ram GB / min_vcpu vCPUs per GPU when
+    given), best availability first."""
     s = stock(gpu)
-    return sorted((dc for dc, a in s.items() if RANK.get(a, 0) > 0), key=lambda dc: (-RANK[s[dc]], dc))
+    dcs = [dc for dc, a in s.items() if RANK.get(a, 0) > 0]
+    if min_ram or min_vcpu:
+        dcs = [dc for dc in dcs if host_stock(gpu, dc, min_ram, min_vcpu, secure)]
+    return sorted(dcs, key=lambda dc: (-RANK[s[dc]], dc))
 
 
 # ---------------------------------------------------------------- pods

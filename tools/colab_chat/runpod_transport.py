@@ -42,6 +42,7 @@ REGISTRY = os.path.expanduser("~/.runpod/runners.json")
 PRELUDE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "runpod_prelude.sh")
 UP_SECONDS = 1500  # create -> ssh answering (image pull included) before the pod is given up
 DC_FAILS_MOVE = 2   # failed creates in the volume's data centre before the campaign moves
+MIN_RAM, MIN_VCPU = 32, 6  # per GPU: the host floor (RunPod L4 hosts: 6 vCPU/62 GB in EU-RO-1, 12/100 in EUR-IS-2)
 
 
 def file_sha(path, _cache={}):
@@ -320,12 +321,15 @@ class RunPodTransport:
             self.log(f"delete volume {v['id']}: {e}")
         return False
 
+    def _stocked(self):
+        return api.stocked_dcs(self.gpu, MIN_RAM, MIN_VCPU, secure=self.cloud == "SECURE")
+
     def _volume_for_create(self, st):
         """(data centre, volume or None) for the next pod; creates the volume when needed."""
         R = self.R(st)
         vol = R.get("volume")
         if not self.persistent:
-            stocked = [self.dc] if self.dc else api.stocked_dcs(self.gpu)
+            stocked = [self.dc] if self.dc else self._stocked()
             if not stocked:
                 raise api.RunPodError(f"no {self.gpu} in stock in any data centre")
             return stocked[0], None
@@ -335,7 +339,7 @@ class RunPodTransport:
                 vol = R["volume"] = None
             dc = self.dc
         else:
-            stocked = api.stocked_dcs(self.gpu)
+            stocked = self._stocked()
             if vol and vol["dc"] in stocked and R.get("dc_fails", 0) < DC_FAILS_MOVE:
                 return vol["dc"], vol
             if not stocked:
@@ -375,7 +379,7 @@ class RunPodTransport:
                     "gpuTypeIds": [api.gpu_id(self.gpu)], "gpuCount": 1, "dataCenterIds": [dc],
                     "allowedCudaVersions": CUDA_OK, "containerDiskInGb": 30 if vol else self.volume_gb,
                     "volumeInGb": 0, "ports": ["22/tcp"], "env": {"PUBLIC_KEY": pub}, "interruptible": False,
-                    "minRAMPerGPU": 32, "minVCPUPerGPU": 8}
+                    "minRAMPerGPU": MIN_RAM, "minVCPUPerGPU": MIN_VCPU}
             if vol:
                 body.update(networkVolumeId=vol["id"], volumeMountPath="/content")
             else:
