@@ -413,16 +413,58 @@ def edge_cases():
     return out
 
 
+def fixture():
+    """Everything tests/test_chat_template.cpp checks the C++ twin against."""
+    none = dict(CT.get(CT.V1), system={"mode": "none"})
+    reg = CT._registry()
+    jin = {"paperkiln/1": CT.jinja(CT.V1), "paperkiln/1 none": CT.jinja(none),
+           "paperkiln/legacy-word": CT.jinja(CT.LEGACY_WORD)}
+    res = [
+        {"declared": "", "tokens": CT.V1_SPECIALS + ["a"], "model": "gpt2", "chat_template": "", "arch": "llama",
+         "expect": CT.V1},
+        {"declared": json.dumps(none), "tokens": CT.V1_SPECIALS, "model": "bpe", "chat_template": "", "arch": "llama",
+         "expect": CT.V1},
+        {"declared": "", "tokens": ["<unk>", "the"], "model": "word", "chat_template": "", "arch": "gpt2",
+         "expect": CT.LEGACY_WORD},
+        {"declared": "", "tokens": ["<bos>", "<start_of_turn>", "<end_of_turn>"], "model": "llama", "chat_template": "",
+         "arch": "gemma3", "expect": "gemma3/1"},
+        {"declared": "", "tokens": ["<bos>", "<start_of_turn>"], "model": "llama", "chat_template": "",
+         "arch": "gemma3", "expect": None},
+        {"declared": "", "tokens": ["a", "b"], "model": "gpt2", "chat_template": "{{ x }}", "arch": "llama",
+         "expect": None},
+    ]
+    q25 = THIRD / "qwen2.5-0.5b-instruct" / "qwen2.5-0.5b-instruct-fp16.gguf"
+    if q25.exists():
+        import llama3_bpe
+        jt = llama3_bpe.read_gguf_kv(str(q25), {"tokenizer.chat_template"})["tokenizer.chat_template"]
+        res.append({"declared": "", "tokens": ["a"], "model": "gpt2", "chat_template": jt, "arch": "qwen2",
+                    "expect": "chatml-qwen2.5/1"})
+    for r in res:
+        meta = {"tokenizer.ggml.tokens": r["tokens"], "tokenizer.ggml.model": r["model"],
+                "general.architecture": r["arch"]}
+        if r["declared"]:
+            meta["paperkiln.chat_template"] = r["declared"]
+        if r["chat_template"]:
+            meta["tokenizer.chat_template"] = r["chat_template"]
+        got = CT.resolve(meta)[0]
+        assert (CT.rid(got) if got else None) == r["expect"], r
+    return {"cases": edge_cases(), "records": {k: v for k, v in reg.items()}, "jinja": jin,
+            "modelfile": {"paperkiln/1": CT.modelfile("model.gguf")}, "resolve": res,
+            "sha256": {"abc": hashlib.sha256(b"abc").hexdigest(), "": hashlib.sha256(b"").hexdigest()}}
+
+
 def test_g5_edge_cases_frozen():
     """The cases file is what the renderer gives now (the C++ test reads the same file); refused
     cases are refused, the rest are as written here."""
     cases = edge_cases()
     assert len(cases) >= 20
-    want = {"cases": cases}
+    want = fixture()
     have = json.loads(CASES.read_text(encoding="utf-8")) if CASES.exists() else None
     if have is None or os.environ.get("PK_WRITE_CASES"):
         CASES.write_text(json.dumps(want, ensure_ascii=False, indent=1) + "\n", encoding="utf-8", newline="\n")
         have = want
+    if len(have["resolve"]) > len(want["resolve"]):  # the Qwen2.5 GGUF is not on this machine
+        have = dict(have, resolve=have["resolve"][:len(want["resolve"])])
     assert have == want
     by = {c["name"]: c["expect"] for c in cases}
     assert by["system folds into the first user turn"] == "<|user|>Be brief.\n\nHi<|assistant|>"
