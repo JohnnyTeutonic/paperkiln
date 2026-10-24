@@ -209,8 +209,13 @@ not allowed, and nor is any rearrangement that presents separate exchanges as on
    archive and the project page parl.ai/projects/msc, checked 25 Oct 2026, carry none), and an unclear licence
    excludes a source. Recorded for a later version that finds a licence: an MSC episode (the same two personas
    continuing) counts as one conversation, and the ConvAI2 dialogues its first sessions repeat (3,987 of 3,989)
-   are dropped. The long sources are therefore Taskmaster-3, ABCD, CCPE-M and PersuasionForGood; without MSC
-   the 12+-turn count is 6,815 of the measured dialogues plus Taskmaster-3's.
+   are dropped. The long sources are therefore Taskmaster-3, ABCD, CCPE-M and PersuasionForGood. Taskmaster-3
+   (`human_taskmaster3_v1`, pinned 25 Oct 2026, 16,675 dialogues, 5.37M tokens on the 16k vocabulary): its
+   splits are per turn, not per dialogue (the train shards name 22,967 of its 23,757 dialogues), so a
+   dialogue is held out only when its id appears in dev/test and never in train (2); 6,856 "auto template"
+   dialogues drop. It adds 902 dialogues of 12+ turns (124 of 14+, none of 20+; median 10 turns), so the
+   12+-turn count is 7,717 without MSC (`dialogue_lengths_long_v1.json`: the four long sources pooled hold
+   1,288 of 12+ turns).
 4. **Packing unrelated dialogues into one window is allowed only as separate documents** (an
    `<|endoftext|>` between, as the mixes do now): it is ordinary packing, teaches nothing about long carry,
    and must never be presented as one conversation (no shared template run, no state tokens across the join).

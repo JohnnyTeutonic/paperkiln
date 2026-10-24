@@ -49,7 +49,7 @@ LONG DIALOGUE (24 Oct 2026; survey section 9, experiments/tiny_chat_long_2026-10
 `long` (taskmaster3, msc, abcd, ccpe, p4g) is outside default/optin/all, so those groups build what
 they built before; a run of it writes human_dialogue_long_v1.ledger.json. taskmaster3 is Taskmaster-3
 read with its lower-case speaker labels, without its "Auto template" dialogues (agent turns fixed by
-the collectors' templates) and without its dev/test ids; msc (Multi-Session Chat) joins each
+the collectors' templates) and without the dialogues its splits put only in dev/test (2 at d92cb6af); msc (Multi-Session Chat) joins each
 episode's sessions 1..k, the same two characters continuing, and is gated behind
 --allow-unstated-licence (its authors state no data licence).
 """
@@ -119,6 +119,13 @@ ARCHIVE_SHA256 = {CONVAI2_URL: "d0ae89defe2fd0b0a4221eaa642a457d7d40cef475f54798
 # Long-dialogue sources (24 Oct 2026). Taskmaster-3 is read from the TASKMASTER commit above.
 TM3_FILES = [f"TM-3-2020/data/data_{k:02d}.json" for k in range(20)]
 TM3_HELD = [f"TM-3-2020/splits/{s}/{s}-a{c}.tsv" for s in ("dev", "test") for c in "abcd"]
+# Taskmaster-3's splits are per turn (one context -> next-turn example per line, cut into 10,000-line
+# shards aa, ab, ...), not per dialogue: at d92cb6af the train shards name 22,967 of the 23,757 dialogues
+# and nearly every dev/test dialogue also has train turns. "Train splits only" therefore keeps a dialogue
+# that train uses and drops only those whose ids appear in dev/test and never in train (2); the other
+# 788 dialogues appear in no split file and are kept.
+TM3_TRAIN = [f"TM-3-2020/splits/train/train-{a}{b}.tsv" for a, b in
+             [("a", c) for c in "abcdefghijklmnopqrstuvwxyz"] + [("b", c) for c in "abc"]]
 MSC_URL = "https://dl.fbaipublicfiles.com/parlai/msc/msc_v0.1.tar.gz"
 ARCHIVE_SHA256[MSC_URL] = "e640e37cf4317cd09fc02a4cd57ef130a185f23635f4003b0cee341ffcb45e60"  # ParlAI build.py's pin; laptop, 24 Oct 2026
 ABCD = ("asappresearch/abcd", "6b8700ce67c6b37b062dd7a60abc76d7ef832a97")
@@ -593,15 +600,19 @@ def raw_taskmaster3(ctx):
     upper case, so human_taskmaster_v1 holds none of them). Dialogues whose scenario starts "Auto
     template" (any case) drop (auto_template): the worker filled in a partly written conversation
     whose agent turns came fixed from the collectors' template ("force assistant" lines with slot
-    values), so those turns are not the worker's text (TM-3 README, COLLECTION METHODOLOGY). The ids
-    in the dev and test splits (splits/{dev,test}/*.tsv, third column) drop as held_out_split."""
-    held = set()
-    for p in TM3_HELD:
-        with open(github_file(TASKMASTER, p, ctx["raw"]), encoding="utf-8") as f:
-            for line in f:
-                cols = line.rstrip("\n").split("\t")
-                if len(cols) >= 3 and cols[2].startswith("dlg-"):
-                    held.add(cols[2].strip())
+    values), so those turns are not the worker's text (TM-3 README, COLLECTION METHODOLOGY). The
+    splits are per turn (see TM3_TRAIN): a dialogue drops as held_out_split only when its id appears
+    in the dev or test splits (splits/{dev,test}/*.tsv, third column) and in no train shard."""
+    def split_ids(paths):
+        out = set()
+        for p in paths:
+            with open(github_file(TASKMASTER, p, ctx["raw"]), encoding="utf-8") as f:
+                for line in f:
+                    cols = line.rstrip("\n").split("\t")
+                    if len(cols) >= 3 and cols[2].startswith("dlg-"):
+                        out.add(cols[2].strip())
+        return out
+    held = split_ids(TM3_HELD) - split_ids(TM3_TRAIN)
     for p in TM3_FILES:
         with open(github_file(TASKMASTER, p, ctx["raw"]), "rb") as f:
             for conv in iter_json_array(f):
