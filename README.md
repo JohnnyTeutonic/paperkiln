@@ -32,7 +32,8 @@ ops, layers, Llama family, quantisation, GGUF) is about 5,100 lines, and the who
 
 | Area | What you get |
 |---|---|
-| **Model families** | Llama (RMSNorm, RoPE, SwiGLU), GPT-2, flex (any depth, norm, activation, positions; paper-faithful), sliding-window attention with sinks, Kimi linear attention, Mamba-style state space, SRD, AttnRes, highway, **mixture of experts** (top-k, load-balance + z-loss, sparse upcycling) |
+| **Model families** | Llama (RMSNorm, RoPE, SwiGLU), GPT-2, flex (any depth, norm, activation, positions; paper-faithful), sliding-window attention with sinks, Kimi linear attention, Mamba-style state space, SRD, AttnRes, highway, **mixture of experts** (top-k, load-balance + z-loss, sparse upcycling); on the Llama block: tied-block **recursion** and **Mixture-of-Recursions** (per-token depth, causal), **per-turn state tokens** (a turn-state attention mask, KV eviction of finished turns) and attention residuals across sublayers |
+| **Conversations** | one schema for instruction tuning and chat (an instruction is a one-exchange conversation; system messages supported); the loss policy declared per run; the chat template written into every GGUF as a versioned record, with a generated `tokenizer.chat_template` and an Ollama Modelfile, so llama.cpp, LM Studio and Ollama prompt a 16k-vocabulary model exactly as paperkiln and ember.cpp do |
 | **Runtime-defined ops** | a paper's new activation, gate or norm variant written as an `expr` (`"activation": "expr:max(x, 0)^2"`): parsed at runtime into differentiable primitives, gradient-checked, trained and exported as an IR node without recompiling; ember.cpp runs the same grammar. C++ vs the numpy reference within 1.2e-7 |
 | **Any architecture, both directions** | every family exports its graph as IR; and standard llama.cpp GGUFs of Qwen2/Qwen3, Gemma 3, GPT-2, GPT-NeoX (Pythia), Mistral (sliding window) and Mamba-1 get an IR built from their metadata (`tools/gguf_ir.py`), run by a numpy reference interpreter (`tools/ir_numpy.py`) and gated against Hugging Face transformers (`tools/thirdparty_parity.py`: GPT-2 124M and Pythia-160m 40/40 greedy); ember.cpp runs them, Qwen2.5 and Qwen3 40/40 vs HF |
 | **Training** | AdamW, SGD, **Muon**; warmup + cosine; mini-batching, gradient accumulation, checkpointing, fused attention; LoRA and QLoRA (int8); **CUDA** device-resident step (L4: 0.109 s/step at d384, from 6.4) |
@@ -176,6 +177,37 @@ opt.zero_grad(); backward(loss); opt.step();
 pip install paperkiln          # Linux x86-64 wheels, Python 3.10-3.12; import microtorch
 ```
 
+## Research programme: tiny chat from scratch
+
+How small can a language model be and still hold a conversation? This programme trains 5M-150M
+parameter models from scratch for multi-turn chat with a little general knowledge, under rules
+fixed before any run: **human-written text only** (13 pinned dialogue sources, no output from
+larger models, no distillation), pre-registered hypotheses, seeds and analysis
+([experiments/tiny_chat_2026-10/PREREGISTRATION.md](experiments/tiny_chat_2026-10/PREREGISTRATION.md)).
+
+- **The benchmark measures carry, not fluency.** [Carry-5](docs/TOUR.md#evaluating-a-tiny-chat-model-carry-5)
+  (1,032 items) plants a fact, a correction, a topic or a standing instruction early in a
+  five-turn conversation and asks about it later, scored by forced choice. Each item also runs as
+  a single-turn *twin* holding the same information, so the primary metric separates carrying
+  context across turns from reading a fact once. Carry-12 (1,452 items, 12-14 turns) extends it to
+  long conversations.
+- **The questions.** How much dialogue the pretraining mix needs (E5: 0, 17, 35 and 70%); whether
+  depth beats width at matched parameters for sequential, turn-by-turn reasoning (E1: 2 to 32
+  layers at 20M and at 60M); whether reusing layers helps (tied-block recursion, and
+  Mixture-of-Recursions with per-token depth); and whether early training ranks predict final
+  ones. For long conversations: per-turn state tokens that let finished turns leave the KV cache,
+  and attention over earlier layers' outputs (attention residuals).
+- **Built for it, in both engines.** Recursion, Mixture-of-Recursions (causal token choice, so
+  every token's depth is decided from what it has seen), per-turn state tokens with their
+  attention mask and KV eviction, and attention residuals: each is in paperkiln's trainer, the IR
+  spec ([`include/microtorch/ir.hpp`](include/microtorch/ir.hpp)) and ember.cpp's interpreter,
+  gated token for token between the two.
+- **Status (25 Oct 2026).** The floor pilot passed: a 20M model reads facts planted in a
+  conversation (single-turn twin accuracy 0.53, chance 0.25, gate 0.35). E5, E1 at 20M and the
+  recursion arm run on Colab; E1 at 60M runs on RunPod. The same pilot run on both providers
+  matches bit for bit in pretraining. Results land in the pre-registration's folder with their
+  receipts.
+
 ## Research: what the methodology found
 
 Run five copies of an identical experiment, varying only the seed. Does sliding-window
@@ -199,30 +231,19 @@ python tools/reproduce.py S3-lrxopt --run             # re-run a finding: REPLIC
 
 ## In progress
 
-The goal is a basic question-answering chat model trained from scratch, then features, then
-the arXiv-to-chat chain tested properly. The data is the lever: the current base models learnt
-facts from expository prose but saw dialogue only in a small fine-tune, so they answer like a
-textbook and loop.
-
-**Done for the chat model:** the conversational pretraining corpora (1.35M dialogues) and the
-large SFT set, both checked against the frozen eval sets; the 16,384-token Llama 3 scheme
-vocabulary, checked id for id against llama.cpp's own tokeniser; mtstudio's `.ids` corpora,
-annealing tail (`data.anneal`), Llama 3 encoder, `/chat` repetition penalty shared with ember,
-KV cache (`mtstudio chat --kv-cache`) and batched SFT evaluation; a 70M mixture-of-experts
-fine-tune.
-
-**Landing next:**
-- **Evaluations:** the MoE fine-tune and the dense control against the live model on the frozen
-  chat prompts and the simple-QA probe; the d768 L12 base (finishing on Colab) and its fine-tune.
-- **The next base:** `pk_base_v1`, d768 L12 T512 for 120,000 steps on a 4.2 GB mix (27%
-  dialogue, 47% in the annealing tail), with a gate model on the new vocabulary for ember's
-  40/40 parity gate. Then its SFT and DPO on Claude-judged pairs (pilot: 200 prompts).
-- **arXiv paper to conversation:** `tools/arxiv_to_chat.py` takes a paper id through
-  extraction, training, export and a chat served by ember. Its first two runs (LLaMA and
-  Cerebras-GPT architectures, d384 L6) ride in the next-base launch.
-- **Third-party families on the GPU:** ember's CUDA kernels for the ops the new families
-  brought (NEOX rotary, per-head norms, `expr`, Mamba's convolution and selective scan), and the
-  official Gemma-3-270m and Mamba-130m gates.
+- **Tiny chat from scratch** (above): E5, E1 and the recursion arm on Colab, E1 at 60M on
+  RunPod; Carry-12 and its first stage follow E5 and E1.
+- **The general chat model:** `pk_base_v1` (d768 L12, 97.5M parameters, 0.98B tokens on the
+  16k Llama 3 scheme vocabulary) is trained and runs in ember; its fine-tune on the large SFT
+  set, then DPO on Claude-judged pairs (pilot: 200 prompts). The MoE, dense-control and d768 L12
+  fine-tunes are evaluated against the live model on the frozen chat prompts and the simple-QA
+  probe.
+- **Mixed precision:** BF16 GEMMs and a flash-style attention, opt-in; with both off, training
+  is bit for bit unchanged. A measured step profile on the L4 puts GEMMs at 42-68% of a step.
+  BF16 adopts once its accuracy gate passes against the seed-to-seed spread of FP32 runs.
+- **Papers to models:** a gated or parameterised activation (DyT's learned alpha) in `expr`,
+  post-norm placement and relative position biases; Claude-drafted primitives in both engines,
+  accepted only through the same gates.
 
 [ROADMAP.md](ROADMAP.md) has the full list.
 
