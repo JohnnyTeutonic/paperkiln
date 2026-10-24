@@ -197,7 +197,9 @@ def port_for(path):
 # 40/40 on every family); the spot-check below enforces it on every run, and a run whose spot-check is
 # not N/N generates with mtstudio throughout (the engines are never mixed within a run).
 EMBER_REPO = os.environ.get("TINY_CHAT_EMBER_REPO", "https://github.com/JohnnyTeutonic/ember.cpp.git")
-EMBER_COMMIT = "69d7ca26d5cd4eaf3773a8baf49f6c885c6e7706"  # ember main, 24 Oct 2026: CUDA prefill rmsnorm fix
+# ember main, 25 Oct 2026: conformant with spec/IR_SPEC.md v1 (reads ir_version 0 and 1; its parity receipts
+# byte-identical to 69d7ca26d5cd's, the CUDA prefill rmsnorm fix it carries).
+EMBER_COMMIT = "aa50a6112dfd706078e5c7849070f8ca5af620b4"
 EMBER_DIR = os.environ.get("TINY_CHAT_EMBER_DIR", "/content/ember")  # one build per VM, shared by post jobs
 EMBER_CMAKE = os.environ.get("TINY_CHAT_EMBER_CMAKE", "-DCMAKE_CUDA_ARCHITECTURES=89").split()
 EMBER_GPU_LAYERS = os.environ.get("TINY_CHAT_EMBER_GPU_LAYERS", "-1")  # all layers on the GPU

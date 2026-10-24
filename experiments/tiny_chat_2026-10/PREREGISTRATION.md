@@ -1102,14 +1102,17 @@ allowed 0.3 h per post job beyond its SFT, and E5, E1 and E1 at 60M hold about 3
 (`LOCAL_LLM_STACK.md`: ember and mtstudio agree greedy 40/40 on every family, CUDA included). The run enforces it
 per job rather than assuming it:
 
-1. *Build.* Every post job uses ember at the commit `tiny_chat_run.EMBER_COMMIT` names, cloned from GitHub and
-   built once per VM (`/content/ember/build`, Release, CUDA architecture 89) by the first post job under a file
-   lock; the commit is recorded in each post job's `gen_engine.json` and `summary.json`. Campaigns launched from
-   paperkiln dc29b5e6 to 2d42395c (E5, E1 and E1-R at 20M, E1 at 60M) pin `cbdcb915d26a` (main on 24 Oct 2026:
-   weight_index recursion and MoR). Later commits pin `69d7ca26d5cd` (ember's CUDA prefill rmsnorm reduced over a
-   power-of-two block: at d 192, 20m_L32's width, `cbdcb915d26a` dropped a third of the sum of squares, so
-   20m_L32's spot-check failed 0/40 and its post jobs generate with `mtstudio chat`, as rule 3 provides; every
-   other width in the sweep is unaffected).
+1. *Build.* Every post job uses ember at the commit `tiny_chat_run.EMBER_COMMIT` names, cloned from GitHub and built
+   once per VM (`/content/ember/build`, Release, CUDA architecture 89) by the first post job under a file lock; the
+   commit is recorded in each post job's `gen_engine.json` and `summary.json`. Campaigns launched from paperkiln
+   dc29b5e6 to 2d42395c (E5, E1 and E1-R at 20M, E1 at 60M) pin `cbdcb915d26a` (main on 24 Oct 2026: weight_index
+   recursion and MoR). Later commits, to 0c802f86, pin `69d7ca26d5cd` (ember's CUDA prefill rmsnorm reduced over a
+   power-of-two block: at d 192, 20m_L32's width, `cbdcb915d26a` dropped a third of the sum of squares, so 20m_L32's
+   spot-check failed 0/40 and its post jobs generate with `mtstudio chat`, as rule 3 provides; every other width in
+   the sweep is unaffected). Commits after 0c802f86 pin `aa50a6112dfd` (ember main on 25 Oct 2026, conformant with
+   `spec/IR_SPEC.md` v1: it reads `ir_version` 1, which paperkiln's exporters write from the next commit on, and
+   which `69d7ca26d5cd` refuses). Its parity receipts are byte-identical to `69d7ca26d5cd`'s, so generation is
+   unchanged, and the per-run spot-check still gates every run.
 2. *Server.* The SFT model's F32 GGUF (the SFT spec exports it; `mtstudio export` re-exports it when missing or not
    F32), all layers on the GPU, `EMBER_GEMM_TF32=0` (TF32 GEMMs can flip greedy tokens against mtstudio's f32),
    flash-attention-2 on (parity-gated in ember).
