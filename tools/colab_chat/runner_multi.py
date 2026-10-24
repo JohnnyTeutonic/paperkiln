@@ -691,6 +691,10 @@ def main():
     # the first run under the new flag, refused when a later run asks for another.
     if st.d.get("gpu") not in (None, a.gpu):
         sys.exit(f"this state dir ran on {st.d['gpu']}; refusing --gpu {a.gpu} (one GPU type per campaign)")
+    # A paid pod per watchdog restart must not loop on a boot that cannot succeed: a RunPod runner whose boot
+    # failed at this commit stays down until the commit changes (or boot_failed_commit is removed from state.json).
+    if a.backend != "colab" and st.d.get("boot_failed_commit") == a.commit:
+        sys.exit(f"the boot failed at {a.commit} (ART/boot.log); refusing to rent another pod for it")
     T = make_transport(a)
     open(pid, "w").write(str(os.getpid()))
     if a.backend != "colab":
@@ -750,6 +754,8 @@ def main():
             if r["vm"] == "BOOT_FAILED":
                 log("boot failed on the VM; downloading boot.log")
                 T.get("/content/chat/boot.log", os.path.join(ART, "boot.log"), 120)
+                st.d["boot_failed_commit"] = a.commit
+                st.save()
                 break
             done = True
             for j in jobs:
