@@ -1,0 +1,28 @@
+{
+ "mode": "probe",
+ "spec": "experiments/tiny_chat_2026-10/recursion/specs/shape_20m_MC7.json",
+ "rc": 0,
+ "steps": 300,
+ "arch": {
+  "d": 640,
+  "layers": 4,
+  "heads": 10,
+  "d_ff": 1760,
+  "recursion": {
+   "prelude": 1,
+   "block": 2,
+   "repeats": 7,
+   "coda": 1,
+   "schedule": "fixed",
+   "inject": "none"
+  }
+ },
+ "tokens_per_step": 16384,
+ "tok_per_s_steady": 9517.260842520602,
+ "tok_per_s_result": 9436.821807036322,
+ "wall_seconds": 520.853323344,
+ "peak_gpu_mem_mib": 11072,
+ "gpu": "NVIDIA L4",
+ "other_mtstudio_at_start": 0,
+ "params": 30561920
+}
