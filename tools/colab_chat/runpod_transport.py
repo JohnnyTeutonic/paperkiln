@@ -41,6 +41,20 @@ IMAGE = "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04"  # official R
 KEY = os.path.expanduser("~/.ssh/runpod_ed25519")
 REGISTRY = os.path.expanduser("~/.runpod/runners.json")
 PRELUDE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "runpod_prelude.sh")
+# An ssh session does not carry the image's environment (24 Oct 2026: no nvcc on PATH, so the VM-side cmake found
+# no CUDA compiler; Colab's kernel has it). Every exec first takes PATH, the library paths and the CUDA/NVIDIA/RUNPOD
+# variables from the container's own process 1, so the boot and the jobs it starts see what Colab's would.
+ENV_PREAMBLE = (
+    "import os as _pk_os\n"
+    "try:\n"
+    "    for _kv in open('/proc/1/environ', 'rb').read().split(bytes(1)):\n"
+    "        _k, _s, _v = _kv.decode('utf-8', 'replace').partition('=')\n"
+    "        if _s and (_k in ('PATH', 'LD_LIBRARY_PATH', 'LIBRARY_PATH') or _k.startswith(('CUDA', 'NV', 'RUNPOD_'))):\n"
+    "            _pk_os.environ[_k] = _v\n"
+    "except OSError:\n"
+    "    pass\n"
+    "if _pk_os.path.isdir('/usr/local/cuda/bin') and '/usr/local/cuda/bin' not in _pk_os.environ.get('PATH', ''):\n"
+    "    _pk_os.environ['PATH'] = '/usr/local/cuda/bin:' + _pk_os.environ.get('PATH', '')\n")
 UP_SECONDS = 1500  # create -> ssh answering (image pull included) before the pod is given up
 DC_FAILS_MOVE = 2   # failed creates in the volume's data centre before the campaign moves
 MIN_RAM, MIN_VCPU = 32, 6  # per GPU: the host floor (RunPod L4 hosts: 6 vCPU/62 GB in EU-RO-1, 12/100 in EUR-IS-2)
@@ -158,6 +172,7 @@ class RunPodTransport:
         if not pod or not pod.get("ip"):
             return 255, "no pod"
         self._n += 1
+        code = ENV_PREAMBLE + code
         f = f"/tmp/pkx/{os.getpid()}_{self._n}.py"
         limit = max(60, int(timeout) - 15)
         # The code goes to a file and python3 runs with stdin from /dev/null, so anything it starts in

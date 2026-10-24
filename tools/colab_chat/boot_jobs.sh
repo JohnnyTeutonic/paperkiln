@@ -13,6 +13,9 @@ cd /content
 LOG=/content/chat/boot.log
 mkdir -p /content/chat/upload
 exec >> "$LOG" 2>&1
+# Any failed step ends the boot as BOOT_FAILED, so the runner fetches boot.log and stops the VM (24 Oct 2026: a
+# cmake failure under set -e left STATUS unwritten, and the runner would have waited on an idle RunPod pod).
+trap 'echo "boot failed at line $LINENO"; echo BOOT_FAILED > /content/chat/STATUS' ERR
 echo "=== boot $(date -u) commit $COMMIT jobs $JOBS ==="
 nvidia-smi -L || true
 nproc; free -g | head -2

@@ -42,6 +42,27 @@ def gpus():
     return rows
 
 
+def cgroup_limits():
+    """(CPUs, memory GB) the container may use: a RunPod pod sees all the host's cores in os.cpu_count() (64 on a
+    12-vCPU L4 pod, 24 Oct 2026) and all its memory in /proc/meminfo. None where no limit is set."""
+    def rd(p):
+        try:
+            return open(p).read().strip()
+        except OSError:
+            return None
+    cpu, mem = None, None
+    v2 = rd("/sys/fs/cgroup/cpu.max")
+    if v2 and v2.split()[0] != "max":
+        cpu = int(v2.split()[0]) / int(v2.split()[1])
+    q, p = rd("/sys/fs/cgroup/cpu/cpu.cfs_quota_us"), rd("/sys/fs/cgroup/cpu/cpu.cfs_period_us")
+    if cpu is None and q and p and int(q) > 0:
+        cpu = int(q) / int(p)
+    m = rd("/sys/fs/cgroup/memory.max") or rd("/sys/fs/cgroup/memory/memory.limit_in_bytes")
+    if m and m != "max" and int(m) < 1 << 60:
+        mem = round(int(m) / 2 ** 30, 1)
+    return cpu, mem
+
+
 def collect():
     prov = {}
     pj = os.path.join(CHAT, "provider.json")
@@ -81,7 +102,8 @@ def collect():
     except OSError:
         pass
     head = run(["git", "-C", os.environ.get("JOBS_REPO", "/content/pk"), "rev-parse", "HEAD"])
-    return {**prov, "gpu": g[0]["name"] if g else None, "gpus": g, "driver_version": g[0]["driver"] if g else None,
+    cg_cpu, cg_mem = cgroup_limits()
+    return {**prov, "cgroup_cpus": cg_cpu, "cgroup_mem_gb": cg_mem, "gpu": g[0]["name"] if g else None, "gpus": g, "driver_version": g[0]["driver"] if g else None,
             "cuda_driver_api": m.group(1) if m else None, "nvcc": n.group(1) if n else None,
             "cpu": cpu, "cpus": os.cpu_count(), "mem_gb": mem, "os": osr, "kernel": platform.release(),
             "python": platform.python_version(), "paperkiln_commit": head.strip() if head else None,
