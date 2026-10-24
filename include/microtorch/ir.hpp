@@ -25,6 +25,17 @@
 //
 // Ops (v0):
 //   embedding   rows of weight [vocab, d] gathered by token id. EXACT.
+//               Per-turn state tokens: with "state_weight" (GGUF
+//               state_embd.weight, [k, d], ne {d, k}) an id v with vocab <= v
+//               < vocab + k reads row v - vocab of it instead:
+//                 {"op": "embedding", "in": ["tokens"], "weight":
+//                  "token_embd.weight", "state_weight": "state_embd.weight",
+//                  "out": "x"}
+//               k is the tensor's row count and equals the u32 GGUF key
+//               paperkiln.state_tokens.k. Without "state_weight" an id >=
+//               vocab is refused. The tied output head covers ids 0 .. vocab
+//               - 1 only: state rows are never logits and never sampled.
+//               EXACT.
 //   pos_embedding  learned absolute positions: in [x, pos], out = x +
 //               weight[pos] row by row, weight [ctx, d] (position_embd).
 //               pos must be < ctx: under the context contract
@@ -81,7 +92,29 @@
 //               Positions stay absolute (decode pos = tokens seen, not rows
 //               kept); the sinks are the first tokens of the prompt. Under
 //               the context contract no position reaches model.ctx.
-//   add, mul    elementwise. EXACT.  silu  x * sigmoid(x). ROUNDING.
+//               Per-turn state tokens: "mask": "turn_state" (absent =
+//               "causal"; window 0 and sinks 0 only, and the embedding must
+//               carry "state_weight"). Every position p (0-based from the
+//               slot's first token) has a code that depends on the ids up to
+//               p alone: c(p) = 1 if id_p >= vocab (a state position), else
+//               0; s(p) = the number of COMPLETE state blocks strictly before
+//               p, a complete block being k consecutive ids vocab, vocab + 1,
+//               .., vocab + k - 1 in that order. A state id outside a
+//               complete block (a training window that starts inside one) is a
+//               state position of the current segment and completes nothing.
+//               Partial blocks arise only in training windows; an engine
+//               serving prompts may refuse them under the raw-ids rule.
+//               The key at j <= p is visible to the query at p iff
+//                 s(j) == s(p)   or   c(j) == 1
+//               (j <= p gives s(j) <= s(p)): a turn's text sees its own
+//               segment and every earlier state block; a state block sees its
+//               turn's text, its own earlier positions and every earlier
+//               block. Masked keys contribute exactly 0 and the row maximum is
+//               taken over visible keys only; paperkiln sums the visible keys
+//               in ascending position. RoPE and positions unchanged. Ids
+//               without a state id form one segment: plain causal attention,
+//               bit for bit. ROUNDING, as attention.
+//   add, mul   elementwise. EXACT.  silu  x * sigmoid(x). ROUNDING.
 //   moe_ffn     a mixture of SwiGLU experts in llama.cpp's layout:
 //                 router  [E, d] tensor (ffn_gate_inp), logits = x R^T
 //                 experts {gate, up, down}: 3-D stacks (ffn_*_exps), expert
@@ -222,6 +255,25 @@
 // sequence; a node names its slot in "state"):
 //   kv          {name, kind "kv", heads, kv_heads, head_dim, max_len, window,
 //               sinks, dtype}: the k and v rows of the tokens seen so far.
+//               "evict": "turn_state" (optional; every attention node reading
+//               the slot has mask turn_state): once the last position of
+//               state block n is written, no later query sees a text row of
+//               any segment <= n, so the engine MAY drop those rows; after n
+//               complete turns the slot holds n * k state rows plus the rows of
+//               the current segment. Positions stay absolute (decode pos =
+//               tokens seen, not rows kept). Against keeping every row,
+//               evicting is EXACT on a kernel that sums the visible keys
+//               sequentially in ascending position (ember's CPU attention,
+//               paperkiln's KV cache: the same keys in the same order), and
+//               ROUNDING on tiled device kernels (ember's CUDA flash2: tile
+//               boundaries and running-maximum rescales move). Truncating the
+//               cache to n tokens (prefix reuse, rewind) keeps the rows before
+//               n when n lies in the current segment. When n lies in a segment
+//               m whose text rows were dropped (an earlier message edited; a
+//               re-tokenised reply that differs from the generated ids), the
+//               engine drops every row of segment >= m, text and state, and
+//               re-prefills from segment m's first position (the position
+//               after block m - 1, or 0); the state rows of segments < m stay.
 //   recurrent   {name, kind "recurrent", op, dtype "f32", tensors: [{name,
 //               shape, init}, ...]}: a fixed-size state carried from token to
 //               token by the op named in "op" (linear_attention: num, den;
@@ -420,6 +472,28 @@
 //               C, ssm_dt (biased), selective_scan (state "ssm"; a = ssm_a,
 //               d = ssm_d), * silu(z), ssm_out, residual add.
 //
+// Per-turn state tokens (paperkiln.state_tokens.k = k > 0; GGUF metadata,
+// u32, absent = 0; LOCAL_LLM_STACK.md section 3 point 3 extended): the ids
+// vocab .. vocab + k - 1 are the state ids S_0 .. S_{k-1}, never produced by
+// the tokeniser. Every exchange of the served template is
+//     <|user|> U <|assistant|> A <|endoftext|> S_0 .. S_{k-1}
+// i.e. over ids: an exchange opens at <|user|>, has a reply once
+// <|assistant|> follows it, and closes at the next <|endoftext|>, which the
+// engine follows with S_0 .. S_{k-1} (in prompts, and after a generated
+// <|endoftext|> as a k-token prefill, no sampling). Every <|endoftext|> ends
+// the exchange state, so documents without exchanges get no block. A reply
+// that ends without <|endoftext|> (max_new_tokens, a stop string, a client
+// abort) gets <|endoftext|> and S_0 .. S_{k-1} before the next <|user|>.
+// Raw ids (/completion, ids prompts): an id >= vocab is accepted only as part
+// of a complete block S_0 .. S_{k-1} in order directly after an
+// <|endoftext|> that closed an exchange; absent blocks are not inserted into
+// raw ids. Training (paperkiln) inserts the same blocks in pretraining
+// streams and SFT rows (a block that would end an SFT row is left out: no
+// position reads it), with no loss where the target is a state id or the
+// input is a state position. Reference: nn::insert_state_ids,
+// nn::state_ids_error, ops::turn_state_codes (llama.hpp, ops.hpp);
+// tools/state_tokens.py.
+//
 // Families (family_hint; GGUF general.architecture). A tensor that is the
 // same thing as a gpt2 tensor keeps llama.cpp's gpt2 name: token_embd,
 // position_embd, blk.{i}.attn_norm, attn_qkv, attn_output, ffn_norm, ffn_up,
@@ -517,6 +591,14 @@
 //               the application index in tagged nodes, the only second
 //               meaning of {i}). Architecture "paperkiln". Reference:
 //               paperkiln c48ca962; ember's ar3 gate (CPU).
+//   llama_state  the llama block (tensor names and nodes as llama) with an
+//               embedding state_weight (state_embd.weight [k, d]) and the
+//               state-token template; the attention mask is turn_state with
+//               kv evict turn_state (S-gist), or absent (causal: S-full, the
+//               insertion alone). Architecture "paperkiln" (llama.cpp's graph
+//               has no state embedding). Under fixed recursion the hint stays
+//               llama_recursive and the same keys carry the rest; with
+//               Mixture-of-Recursions it is not defined (paperkiln refuses it).
 //   mamba      no positions; block: h = layernorm(x) (blk.{i}.ssm_norm), u =
 //               ssm_in(h) [n], y = ssm_out(ssm_scan(u)) [d], y = y *
 //               gelu(ssm_gate(h)) * gelu(ssm_out_gate(x)) (multiplied in that

@@ -27,11 +27,11 @@ block i reads v_i. The block's own key "weight_index" {"per_layer": [m_0, .., m_
 recursion) makes application i read its tensors from blk.{m_i}.* (run_nodes' wi); everything else,
 per-layer attributes and state included, stays indexed by i. A node with "tensor_index": "application"
 (llama_attnres under recursion: each application's own pseudo-queries) reads "{i}" as the application i
-instead (IR_SPEC_DRAFT section 3, not yet in ir.hpp).
+instead (ir.hpp, family llama_attnres).
 A block whose first node is depth_route (Mixture-of-Recursions, causal token choice; kv slots with
 kv_rows "active") routes at step 0's first application and runs each recursion step's applications on
 its active rows only (forward's trace receives the depths).
-Per-turn state tokens (IR_SPEC_DRAFT section 1, not yet in ir.hpp): an embedding node with "state_weight"
+Per-turn state tokens (ir.hpp): an embedding node with "state_weight"
 reads row v - vocab of that tensor for an id v >= vocab; an attention node with "mask": "turn_state" lets
 the query at p see the key at j <= p iff j is a state position or in p's segment (turn_state_codes below,
 from the token ids, k = the state_weight's rows). A kv slot's "evict" changes no value (the engine may
