@@ -136,3 +136,36 @@ def test_ir_check_uses_the_validator():
     bad = mor(doc)
     kv(bad).pop("kv_rows")
     assert ir_check.depth_route_errors(bad) == v.depth_route_errors(bad) and v.depth_route_errors(bad)
+
+
+SUITE_MODEL = ROOT / "spec" / "conformance" / "models" / "pk_llama_attnres"
+
+
+@pytest.mark.skipif(not SUITE_MODEL.is_dir(), reason="the conformance suite's models are absent")
+def test_s1_pseudo_query_absent_is_an_exporter_warning(tmp_path):
+    """IR_SPEC 5.18: a consumer may accept a missing S = 1 pseudo-query; exporters must write it, so the
+    validator warns (exporter rule) and still accepts the file. A missing S >= 2 query is refused."""
+    import ir_conformance as conf
+    doc, W, meta, _ = conf.load_model(SUITE_MODEL)
+    assert v.depth_attend_sources(doc)["blk.0.attnres_attn_q.weight"] == {1}
+    for name, refused in (("blk.0.attnres_attn_q.weight", False), ("blk.1.attnres_attn_q.weight", True)):
+        p = tmp_path / f"{refused}.gguf"
+        conf.write_gguf(p, meta, {k: a for k, a in W.items() if k != name}, doc)
+        errs, warns = v.file_report(p)
+        if refused:
+            assert any(name in e and e.startswith("IR_SPEC 3.7") for e in errs), errs
+        else:
+            assert errs == [] and len(warns) == 1 and "exporter rule" in warns[0] and name in warns[0], (errs, warns)
+
+
+@pytest.mark.skipif(not SUITE_MODEL.is_dir(), reason="the conformance suite's models are absent")
+def test_version_key_follows_the_embedded_document():
+    """IR_SPEC 11.2: a document read in place of the file's own is governed by its own ir_version (rule 2);
+    rule 24 compares paperkiln.ir_version with the embedded document, as ember does."""
+    import ir_conformance as conf
+    doc, W, meta, path = conf.load_model(SUITE_MODEL)
+    sub = dict(doc, ir_version=1 - doc["ir_version"])
+    meta2, tensors, *_ = v.read_gguf(path)
+    assert v.gguf_errors(sub, meta2, tensors) == [] and v.doc_errors(sub) == []
+    bad = dict(meta2, **{"paperkiln.ir_version": (4, 7)})
+    assert any(e.startswith("IR_SPEC 3.1") for e in v.gguf_errors(sub, bad, tensors))

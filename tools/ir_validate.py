@@ -616,21 +616,60 @@ def weight_refs(doc):
     return out
 
 
-def gguf_errors(doc, meta, tensors):
-    """Container rules 24-28 (section 10.1) for a document embedded in a GGUF."""
-    errs = []
+def depth_attend_sources(doc):
+    """{tensor name: set of S} for every depth_attend pseudo-query the document reads, S its source count
+    at each use (IR_SPEC 5.18: S is structural, fixed by the list and append nodes before it)."""
+    out, lens = {}, {}
+    blk = doc.get("block", {})
+    wmap = (blk.get("weight_index") or {}).get("per_layer") if isinstance(blk.get("weight_index"), dict) else None
+
+    def walk(nodes, i=None, m=None):
+        for n in nodes:
+            ins = n.get("in") or []
+            if n.get("op") == "list" and isinstance(n.get("out"), str):
+                lens[n["out"]] = len(ins)
+            elif n.get("op") == "append" and isinstance(n.get("out"), str) and ins and ins[0] in lens:
+                lens[n["out"]] = lens[ins[0]] + 1
+            elif n.get("op") == "depth_attend" and isinstance(n.get("weight"), str) and ins and ins[0] in lens:
+                t = i if n.get("tensor_index") == "application" else m
+                name = n["weight"].replace("{i}", str(t)) if t is not None else n["weight"]
+                out.setdefault(name, set()).add(lens[ins[0]] + len(ins) - 1)
+
+    walk(doc.get("embed", {}).get("nodes", []))
+    for i in range(blk.get("repeat", 0) if isinstance(blk.get("repeat"), int) else 0):
+        walk(blk.get("nodes", []), i, wmap[i] if isinstance(wmap, list) and i < len(wmap) else i)
+    walk(doc.get("head", {}).get("nodes", []))
+    return out
+
+
+def gguf_report(doc, meta, tensors):
+    """(errors, warnings) of the container rules 24-28 (section 10.1) for a document read with a GGUF.
+    Rule 24 compares the version key with the file's own embedded document when it has one (a document read
+    in place of it, as ember's EMBER_IR, is governed by its own ir_version: rule 2). A missing pseudo-query
+    that only S = 1 depth_attend nodes name is a warning, the exporter rule of 5.18, not a refusal."""
+    errs, warns = [], []
     ver = meta.get("paperkiln.ir_version")
-    if ver is None or ver[0] != 4 or ver[1] != doc.get("ir_version"):
-        errs.append(E("3.1", f"paperkiln.ir_version {ver} does not match the document's ir_version "
-                             f"{doc.get('ir_version')}"))
+    embedded = meta.get("paperkiln.ir")
+    try:
+        emb_ver = json.loads(embedded[1]).get("ir_version") if embedded and embedded[0] == 8 else doc.get("ir_version")
+    except ValueError:
+        emb_ver = doc.get("ir_version")
+    if ver is None or ver[0] != 4 or ver[1] != emb_ver:
+        errs.append(E("3.1", f"paperkiln.ir_version {ver} does not match the embedded document's ir_version "
+                             f"{emb_ver}"))
     have = {t[0] for t in tensors}
     dims = {t[0]: t[1] for t in tensors}
     refs = weight_refs(doc)
     if not refs:
         errs.append(E("3.7", "the document names no tensors"))
+    single = {n for n, ss in depth_attend_sources(doc).items() if ss == {1}}
     for where, n, fb in refs:
         if n not in have and not (fb and fb in have):
-            errs.append(E("3.7", f"{where}: {n} is not a tensor of the file"))
+            if n in single:
+                warns.append(E("5.18", f"exporter rule: {where}: the S = 1 pseudo-query {n} is not a tensor of the "
+                                       f"file (exporters write it; the document stays valid)"))
+            else:
+                errs.append(E("3.7", f"{where}: {n} is not a tensor of the file"))
     arch = meta.get("general.architecture", (None, None))[1]
     for node in doc.get("block", {}).get("nodes", [])[:1]:
         if node.get("op") == "depth_route":
@@ -646,7 +685,12 @@ def gguf_errors(doc, meta, tensors):
         if bc != max(wmap) + 1:
             errs.append(E("7.1", f"{arch}.block_count {bc} != the {max(wmap) + 1} stored layers weight_index uses"))
     errs += state_token_gguf_errors(doc, meta, tensors)
-    return errs
+    return errs, sorted(set(warns))
+
+
+def gguf_errors(doc, meta, tensors):
+    """The refusals of gguf_report (its warnings dropped)."""
+    return gguf_report(doc, meta, tensors)[0]
 
 
 def state_token_gguf_errors(doc, meta, tensors):
@@ -691,20 +735,26 @@ def state_token_gguf_errors(doc, meta, tensors):
     return errs
 
 
-def file_errors(path):
-    """A .json document, or a GGUF with paperkiln.ir (its sidecar too)."""
+def file_report(path):
+    """(errors, warnings) of a .json document, or of a GGUF with paperkiln.ir (its sidecar too)."""
     path = Path(path)
     if path.suffix == ".gguf":
         meta, tensors, *_ = read_gguf(path)
         if "paperkiln.ir" not in meta or meta["paperkiln.ir"][0] != 8:
-            return [E("3.1", f"{path}: no string key paperkiln.ir")]
+            return [E("3.1", f"{path}: no string key paperkiln.ir")], []
         doc = json.loads(meta["paperkiln.ir"][1])
-        errs = doc_errors(doc) + gguf_errors(doc, meta, tensors)
+        gerrs, warns = gguf_report(doc, meta, tensors)
+        errs = doc_errors(doc) + gerrs
         side = path.with_suffix(".ir.json")
         if side.is_file() and json.loads(side.read_text(encoding="utf-8")) != doc:
             errs.append(E("3.1", f"sidecar {side} differs from the embedded document"))
-        return errs
-    return doc_errors(json.loads(path.read_text(encoding="utf-8")))
+        return errs, warns
+    return doc_errors(json.loads(path.read_text(encoding="utf-8"))), []
+
+
+def file_errors(path):
+    """The refusals of file_report."""
+    return file_report(path)[0]
 
 
 # ---------------------------------------------------------------- the corpus
@@ -733,10 +783,12 @@ def main(argv):
     bad = 0
     for p in paths:
         try:
-            errs = file_errors(p)
+            errs, warns = file_report(p)
         except (OSError, ValueError) as e:
-            errs = [f"cannot read: {e}"]
+            errs, warns = [f"cannot read: {e}"], []
         bad += bool(errs)
+        for w in warns:
+            print(f"WARN {p}: {w}")
         if errs:
             print(f"REFUSED {p}")
             for e in errs:

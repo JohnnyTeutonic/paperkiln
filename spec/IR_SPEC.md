@@ -1120,10 +1120,12 @@ Recursion (section 7):
     `depth_attend` nodes (7.4).
 
 Container (a GGUF with `paperkiln.ir`, sections 3.1, 6.8, 7, 8.2):
-24. `paperkiln.ir_version` is missing, not a uint32, or differs from the document's `ir_version`.
+24. `paperkiln.ir_version` is missing, not a uint32, or differs from the `ir_version` of the
+    document embedded in the file (a document read in place of the embedded one is governed by its
+    own `ir_version`, rule 2).
 25. A tensor the document names is not a tensor of the file (a `linear` weight passes through its
-    `tied_to`). The validator checks exports, so it reports a missing S = 1 `depth_attend`
-    pseudo-query too, which a consumer may accept (5.18).
+    `tied_to`). A missing pseudo-query that only S = 1 `depth_attend` nodes name is not refused:
+    the validator reports it as a warning tagged "exporter rule" (exporters write it, 5.18).
 26. The `depth_route` router's ne is not {d, n_rec}.
 27. Under `weight_index`: the architecture is not `paperkiln`, or `<arch>.block_count` is missing or
     differs from the number of stored layers.
@@ -1201,7 +1203,9 @@ digit order (1.0 is `3f800000`). Integer arrays are plain JSON lists.
 - **refusal** (`refuse/<name>.json`): `{"doc"?: <document>, "gguf": "<path in the suite>", "rule":
   <10.1 rule number>, "section": "<section>"}`. With `doc`, the engine loads the GGUF (a suite
   model) with that document in place of its own (as ember's `EMBER_IR` does); without it, the GGUF
-  (`refuse/<name>.gguf`) breaks a container rule. A consumer passes when it refuses; the reference
+  (`refuse/<name>.gguf`) breaks a container rule. The version that governs is that of the document
+  actually read, the one in place of the file's own; the file's `paperkiln.ir_version` must still
+  match the document embedded in it (rule 24). A consumer passes when it refuses; the reference
   adapter must also report a violation under `section`.
 
 ### 11.3 The adapter contract
@@ -1476,7 +1480,9 @@ equal to dc29b5e6 bit for bit) and the pinned commits of the RunPod campaigns ar
   documents. Settled with ember.cpp's review (section 12.1): required attributes have no defaults;
   NaN and signed zero in EXACT ops; the f32 RoPE table; per-layer scope; one attention node per kv
   slot; `tokens` and `pos`; one `{i}` per name; depth_route's `out` and its exclusion of list values;
-  the eviction bound and the rewind result; raw ids; the specials under state tokens.
+  the eviction bound and the rewind result; raw ids; the specials under state tokens. After ember's
+  conformance run: rule 24 compares the version key with the embedded document, and a missing S = 1
+  pseudo-query is an exporter-rule warning, not a refusal.
 - Version 0 history (informative; commits in paperkiln unless marked): llama in the IR (1147ca0);
   gpt2 ops (ember c843421); sliding window with sinks (ember aa145f5); MoE, highway, attention
   residuals, SRD, kimi linear attention, mamba scan; third-party ops (grouped-query attention, NEOX
@@ -1496,7 +1502,7 @@ the engine has agreed to close, the specification already states the intended be
 | numpy reference (`tools/ir_numpy.py`) | core, state, recursion, chat, thirdparty | the reference (prefill only: no cache) | float32 numpy (BLAS order) | `rope_heads` "first" |
 | paperkiln `mtstudio`, CPU | the families it trains (section 9.2), from its own runs | EXACT ops EXACT on x86-64; eviction EXACT at equal chunking (Appendix A) | `matmul_optimized` (FMA, shape-dependent order) | documents it did not export (it runs its modules, not documents) |
 | paperkiln `mtstudio`, CUDA | as CPU | ROUNDING | cuBLAS FP32; TF32 opt-in | as CPU |
-| ember interpreter, CPU | core, state, recursion (not `tensor_index` yet), chat, thirdparty | EXACT where this document says so | `dot_f32_as_f64`, a fixed 8-lane double order independent of T and threads | see below |
+| ember interpreter, CPU | core, state, recursion, chat, thirdparty | EXACT where this document says so | `dot_f32_as_f64`, a fixed 8-lane double order independent of T and threads | see below |
 | ember interpreter, CUDA | as CPU, ops with device kernels | ROUNDING by construction (tiles, flash2, nvcc's default `--fmad`) | cuBLAS FP32 (its own handle at default math) | documents with an op without a device kernel are served on the CPU automatically (turn_state and MoR documents among them); `EMBER_IR_DEVICE=cpu` forces the CPU for every document |
 | ember interpreter, WebAssembly | as CPU | as CPU (no FMA in the build) | as CPU | as CPU (4 GB heap for 0.5B models) |
 | ember tuned llama path, CPU and CUDA | llama | ROUNDING against the interpreter | CUDA: TF32 on by default (`EMBER_GEMM_TF32=0` gives FP32) | anything it is not selected for |
@@ -1513,13 +1519,22 @@ scale and shift, depth_route step, and the slot's window (per-layer sinks includ
 list (which excludes `split`, `moe_ffn`, `rope`, `pos_embedding` and `embedding`); `depth_route` with
 recurrent state or a windowed slot; `mask: turn_state` with `kv_rows: active`; eviction with recurrent
 state; `expr` nested deeper than 200 (the CUDA expr kernel takes up to 96 instructions, a stack of 16
-and 8 reductions, and serves larger expressions on the CPU); `tensor_index` until it is implemented.
+and 8 reductions, and serves larger expressions on the CPU).
 
-**Gaps ember is closing** (from its review): closed attribute and key sets (rules 1 and 4) and
-`tensor_index` refused or implemented; the load-time refusals of rules 3, 10, 11, 12, 13, 15, 20, 24,
-26, 27 and 28; depth_attend's S computed at load (a missing S >= 2 pseudo-query refused then);
-`-ffp-contract=off` on `graph_ir.cpp` and `utils.cpp`; the structural check above; required
-attributes without defaults (section 3.5).
+**ember's conformance.** At ember aa50a61 (`tensor_index` implemented, closed key sets and the
+load-time refusals of its review in place) its adapter passes the suite with 111 pass, 0 fail and 46
+skip, the skips being the single-op fixtures (no `run_node`); receipt
+`spec/conformance/receipts/ember_cpu.json`. ember's comparison of its load-time verdicts with
+`tools/ir_validate.py`, made before revision 1.0's last two validator changes, agreed on 246 of 248
+documents and on 166 of 166 document-only checks.
+
+**Differences between the validator and ember at load:**
+- *Two kv slots in one block* (expected, remains). Valid (section 6.1); ember refuses them as a
+  capability (one kv slot per block).
+- *A missing S = 1 pseudo-query* (resolved). ember accepts it, as section 5.18 allows; the validator
+  now accepts it too, with an exporter-rule warning.
+- *The version key with a substituted document* (resolved). Rule 24 compares the key with the
+  embedded document in both (section 11.2).
 
 **paperkiln gaps:** `-ffp-contract=off` is not pinned (Q15); its numpy reference keeps the double
 RoPE table (Q3).
