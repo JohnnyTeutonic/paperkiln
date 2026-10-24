@@ -7,10 +7,11 @@ file `PREREGISTRATION.md` in this folder, licensed by the commit that adds it wi
 pin, the evaluation tool and the jobs files, each exercised end to end on CPU at toy size. Until then every
 number below is a planning number and every rule is open to change without an amendment.*
 
-Receipts in this folder: `carry12_v0_build.json` (counts), `carry12_v0_budget.json` (context lengths),
-`carry12_v0_decontam.json` (contamination), `dialogue_lengths_v1.json` (the human corpora in turns and tokens),
-`IR_SPEC_DRAFT.md` (spec text for ir.hpp review), `CROSSLAYER_LITCHECK.md` (cross-layer arm, by another agent).
-Tools: `tools/carry12_build.py`, `tools/dialogue_lengths.py`.
+Receipts in this folder: `carry12_v1_build.json` (counts and balance), `carry12_v1_budget.json` (context
+lengths), `carry12_v1_decontam.json` (contamination), `dialogue_lengths_v1.json` (the human corpora in turns
+and tokens), `STAGE_L0.md` (Stage L0's frozen registration), `IR_SPEC_DRAFT.md` (spec text for ir.hpp
+review), `CROSSLAYER_LITCHECK.md` (cross-layer arm, by another agent). Tools: `tools/carry12_build.py`,
+`tools/carry12_eval.py`, `tools/carry12_l0.py`, `tools/dialogue_lengths.py`.
 
 ## 0. Objective and constraints
 
@@ -23,12 +24,12 @@ Tools: `tools/carry12_build.py`, `tools/dialogue_lengths.py`.
 
 ## 1. What the receipts say now
 
-- **Carry-12 v0 draft:** 1,452 items (recall 480, correction 360, topic 360, load 120, instruction 72,
-  knowledge 60), 12-14 turns, target turns 10-14 (balanced), fact distances 6-13 (recall, topic, load) and
-  1-11 (correction). Section 2.
-- **Context:** with the gold (canned) history every item fits T 512 (max 348 tokens, median 266). With self
-  history at 24 tokens per earlier reply, 7 of 1,452 targets pass 512 (max 517); at 48 tokens all pass 512
-  and none passes 1,024 (max 829; the whole 14-turn conversation, max 870). **Recommended T = 1,024.**
+- **Carry-12 v1 (frozen, sha256 `de24f2c7...`):** 1,452 items (recall 480, correction 360, topic 360,
+  load 120, instruction 72, knowledge 60), 12-14 turns, target turns 10-14 (balanced), fact distances 6-13
+  (recall, topic, load) and 1-11 (correction). Section 2.
+- **Context:** with the gold (canned) history every item fits T 512 (max 353 tokens, median 269). With self
+  history at 24 tokens per earlier reply, 4 of 1,452 targets pass 512 (max 515); at 48 tokens all pass 512
+  and none passes 1,024 (max 827; the whole 14-turn conversation, max 869). **Recommended T = 1,024.**
   Section 3.
 - **Long human dialogue is scarce, not cut.** Of the 13 sources' 170,572 dialogues, 6,429 (3.8%) reach 12
   turns (2.90M of 39.9M tokens), 2,814 reach 14 and 306 reach 20; 5,161 of the 6,429 are Taskmaster. The
@@ -38,14 +39,30 @@ Tools: `tools/carry12_build.py`, `tools/dialogue_lengths.py`.
 
 ## 2. The benchmark: Carry-12
 
-**Generator** `tools/carry12_build.py` (imports Carry-5's templates, value lists, acknowledgements, openers,
-closings, instructions and knowledge questions from `tools/carry5_build.py`; seed 20261024). Every item is a
-scripted conversation: 12-14 user turns, a canned short assistant reply per turn (the gold history), one
-target turn whose reply is scored, four forced-choice candidates in a shared answer frame. Turns that hold no
-event are natural small talk from 46 hand-written single exchanges and 14 two-turn arcs (weather, cooking, a
-cold, a jigsaw ...), never model text. The build refuses small talk that names any list value or raises a
-slot's subject (names, pets, homes, work, ages, favourites, trips, cakes, books, gardens, parties, music,
-relatives), so small talk is never an unlabelled distractor.
+**Generator** `tools/carry12_build.py` (imports Carry-5's slot, topic and knowledge templates, value lists,
+acknowledgements, openers, closings and question-answer pairs from `tools/carry5_build.py`; seed 20261024).
+Every item is a scripted conversation: 12-14 user turns, a canned short assistant reply per turn (the gold
+history), one target turn whose reply is scored, four forced-choice candidates in a shared answer frame.
+Turns that hold no event are natural small talk from 46 hand-written single exchanges and 14 two-turn arcs
+(weather, cooking, a cold, a jigsaw ...), never model text. The build refuses small talk that names any list
+value or raises a slot's subject, plural forms included (names, pets, homes, work, ages, favourites and their
+categories, trips, cakes, books, gardens, parties, music and learning, relatives), and per item refuses
+small talk before the target holding a word of that item's candidates (knowledge: also its accepted
+answers; instruction: its four forms), so small talk never primes a candidate ("two people" before a
+tricycle question).
+
+**Balance and artefacts (the v1 review of the draft).** The gold position is exactly balanced in every
+family (a shuffled position sequence independent of the cells; the draft had 132/112/127/109 in recall);
+candidate values are drawn from per-slot shuffled cycles, so a value is gold on average a quarter of the
+times it is a candidate (recall, correction, topic: means 0.248; load, 20 items per slot, 0.20); no two items
+of a family share a twin, a user-turn sequence or a near rendering (the draft had 24 topic items with a
+duplicated near rendering). The instruction family is length-neutral: Carry-5's four brevity kinds made the
+compliant answer the shortest candidate on every item (72 of 72 in the draft), so v1 has two format kinds
+whose four candidates are the same correct sentence in four forms: `opener` (start every answer with Sure /
+Okay / Right / Well) and `closer` (end it with "of course" / "I think" / "you know" / "for sure"), the
+required form rotating (each form gold 9 times). In tokens the gold is uniquely the shortest candidate on 0
+of 72 instruction items and on 2-7% of the other families' (`carry12_v1_budget.json`); the build refuses any
+family where it is uniquely the shortest or the longest on more than 35%.
 
 | family | items | cells | distance (target - fact) |
 |---|---:|---|---|
@@ -53,7 +70,7 @@ relatives), so small talk is never an unlabelled distractor.
 | correction | 360 | 6 slots x (plant, fix) in {(1,3), (2,4)} early or {(1,7), (3,9)} late x target 10-14 x 0-2 distractors | 1-11 |
 | topic | 360 | 6 topics x plant 1-4 x target 10-14 x 0-2 distractors in the digression | 6-13 |
 | load | 120 | 6 slots x plant 1-4 x target 10-14; two facts of other slots in turns 1-4 | 6-13 |
-| instruction | 72 | 4 kinds x instruction turn 1-3 x target 10/12/14, twice | 7-13 |
+| instruction | 72 | 2 format kinds x instruction turn 1-3 x target 10/12/14, four times (form rotating) | 7-13 |
 | knowledge | 60 | Carry-5's 60 questions at targets 10-14 after small talk | - |
 
 Small-talk turns before the target: 5-12 per memory item. **Controls on every item:** `twin` (the statements
@@ -62,39 +79,51 @@ often, so it is chance by construction), and new, `near`: the same event turns (
 corrections, load facts) and the question with the small talk removed. So Y decomposes into the cost of
 splitting into turns (twin -> near) and the cost of distance (near -> full).
 
-**Contamination** (`carry12_v0_decontam.json`, carry5_build's scan: decontam.py's 13-grams, user-turn
+**Contamination** (`carry12_v1_decontam.json`, carry5_build's scan: decontam.py's 13-grams, user-turn
 equality and 8-12-word spans, plus template sentences, fact sentences and item leaks), over the 13 tiny-chat
-sources, Simple English Wikipedia and the local FineWeb-Edu sample (406,291 rows): **no item leaks**, no 13-gram
-or span hits; 56 items' fact sentences occur somewhere (everyday sentences such as "I work as a chef."); 7
-Carry-12 user turns occur as whole training user turns ("Hi there! How are you today?", "I work as a chef.",
-"I work as an accountant.", "My favourite colour is blue.", "Thanks, that is all for now.", "What is my
-name?", "Can you tell me something interesting?"). The long programme's data job adds Carry-12 to the frozen
-sets beside Carry-5 and drops dialogues by those rules, counted. The VM's FineWeb-Edu shard is not on the
-laptop; its scan is a VM data-job step before Stage 0.
+sources, Simple English Wikipedia, the local FineWeb-Edu sample and the four long sources built on the laptop
+(MSC, ABCD, CCPE-M, PersuasionForGood; section 4): 19 corpora, 419,812 rows. **No item leaks**, no 13-gram or
+span hits; 45 items' fact sentences occur somewhere (everyday sentences such as "I work as a chef."; 26 of
+them in MSC, whose personas are ConvAI2's); 7 Carry-12 user turns occur as whole training user turns ("Hi
+there! How are you today?", "I work as a chef.", "I work as an accountant.", "My favourite colour is blue.",
+"Thanks, that is all for now.", "What is my name?", "Can you tell me something interesting?"). The long
+programme's data job adds Carry-12 to the frozen sets beside Carry-5 and drops dialogues by those rules,
+counted. The VM's FineWeb-Edu shard and Taskmaster-3 are not on the laptop; their scans are VM data-job steps
+before Stage 0.
 
-**Scoring.** Forced choice (raw summed log-prob, `acc`) and greedy exact match, history gold or self, as
-Carry-5. `tools/carry5_eval.py run --set corpus/eval/carry12_v0_draft.jsonl` reads the items unchanged in
-format, but its per-turn curves stop at turn 5 and it has no `near` mode; the frozen programme uses a new
-`tools/carry12_eval.py` (to be written; carry5_eval stays as it is, because the running jobs use it) with: the
-`near` mode; self history played to the target only (Stage L0 at T 512) or the whole conversation; per-turn
-curves to 14; the state-token template (section 6) for the S cells.
+**Scoring: `tools/carry12_eval.py`** (built on carry5_eval's internals, which stay unchanged because the
+running jobs use them; tests in `tests/test_carry12_eval.py`, end to end on CPU with a toy model at T 1,024
+through `mtstudio chat` and ember). Forced choice (raw summed log-prob, `acc`; per token, `acc_norm`) in six
+history modes: gold, self, near, near_self (the near rendering with the model's own replies), twin and noctx;
+a rendering beyond the model's context is `over_ctx` (0 credit in `acc`, out of `acc_fit`, counted). Greedy
+generation through ember's server after a spot-check against `mtstudio chat` (ember only on N/N identical
+items, otherwise mtstudio for the whole run, as the tiny-chat post job), `EMBER_GEMM_TF32=0`, every
+generated reply scored again by `mtstudio score` (the parity gate); self history played to the target
+(`--self-scope target`, Stage L0) or the whole conversation. Curves by distance, target turn, interference,
+distractor window, correction kind and family x distance, the self conversation by turn to 14, the HL0
+slopes, and the pools and decomposition below (Y12, twin -> near, near -> gold, gold -> self). Still to add
+for the S cells: the state-token template (section 6).
 
-**Frozen v1 (with the pre-registration):** the counts above unless the draft's review changes them; the build
-pinned in `corpus/hashes/carry12_v1.sha256`; the decontamination rerun over the frozen training sets.
+**Frozen v1:** `corpus/eval/carry12_v1.jsonl`, sha256
+`de24f2c726a1006e8e61542dd3b2dfbf8677b9e6fe689277cca035305bd32797`, pinned in
+`corpus/hashes/carry12_v1.sha256`; `python tools/carry12_build.py check` rebuilds it byte for byte
+(`tests/test_carry12.py`).
 
 ## 3. Context length: T = 1,024
 
-From `carry12_v0_budget.json` (the 16k Llama 3-scheme vocabulary, the served template; a rendering's length
+From `carry12_v1_budget.json` (the 16k Llama 3-scheme vocabulary, the served template; a rendering's length
 equals the sum of its pieces, checked on 15 whole renderings):
 
 | rendering | median | p99 | max | over 512 | over 1,024 |
 |---|---:|---:|---:|---:|---:|
-| gold history to the target, plus the reply | 266 | 339 | 348 | 0 | 0 |
-| self history, 24 tokens per earlier reply | 422 | 510 | 517 | 7 | 0 |
-| self history, 48 tokens per earlier reply | 686 | 822 | 829 | 1,452 | 0 |
-| whole conversation, 48-token replies | 788 | 866 | 870 | 1,452 | 0 |
-| twin | 40 | 67 | 79 | 0 | 0 |
-| near | 64 | 191 | 230 | 0 | 0 |
+| gold history to the target, plus the reply | 269 | 339 | 353 | 0 | 0 |
+| self history, 24 tokens per earlier reply | 423 | 510 | 515 | 4 | 0 |
+| self history, 48 tokens per earlier reply | 687 | 822 | 827 | 1,452 | 0 |
+| whole conversation, 48-token replies | 788 | 864 | 869 | 1,452 | 0 |
+| twin | 40 | 67 | 73 | 0 | 0 |
+| near | 65 | 289 | 336 | 0 | 0 |
+
+(Near's long tail is the instruction family, whose compliant question-answer turns are all events.)
 
 The canned replies are short (median 9 tokens); human chit-chat replies run 11-25 tokens at the median
 (`dialogue_lengths_v1.json`), so 48 tokens per reply is a generous cap for self history. **T = 2,048 buys
@@ -164,11 +193,19 @@ not allowed, and nor is any rearrangement that presents separate exchanges as on
    within the rule.
 2. **Train at T 1,024 throughout:** the 85% pretraining split's 12+-turn dialogues then sit whole in windows
    instead of across window boundaries (the E5/E1 mixes pack documents into 512-token windows).
-3. **Add genuinely long human sources, by the survey's rules:** candidates to check (licence, authorship,
-   collection date), not facts read today: multi-session human chat collected as continuations of the same
-   pair's earlier conversation (Multi-Session Chat, ParlAI), and Taskmaster-3 (a new corpus id, amendment 1's
-   note: its agent turns are template-filled, a reason it may fail the rule). Each needs a survey row and a pin
-   before use.
+3. **Add genuinely long human sources, by the survey's rules** (`corpus/HUMAN_DIALOGUE_SURVEY.md` section 9,
+   fetcher group `long` in `corpus/fetchers/human_dialogue.py`, each a new corpus id). Pass: Taskmaster-3
+   (`human_taskmaster3_v1`, CC BY 4.0, one worker writing both sides; its "auto template" dialogues, whose
+   agent turns are the collectors' template lines, are dropped), ABCD (MIT), CCPE-M (CC BY 4.0) and
+   PersuasionForGood (Apache-2.0); Multi-Session Chat (`human_msc_v1`, crowdworker-written, no licence stated by
+   its authors) is held behind `--allow-unstated-licence`. Excluded: Conversation Chronicles and LoCoMo
+   (LLM-written), DuLeMon (Chinese). Measured on the laptop (`C:/ml_artifacts/human_dialogue/hd_long/`): MSC
+   3,989 dialogues, all 12+ turns (2,306 reach 20), ABCD 242, CCPE-M 119, PersuasionForGood 25; with these four
+   the 12+-turn count is 10,804 of 184,093 dialogues (6,815 without MSC), and the SFT split's 12+ dialogues go
+   from 668 to 1,151; Taskmaster-3 is estimated at about 740 (one of its 20 files), measured by the prepared
+   Colab job `tools/colab_chat/human_dialogue_long_v1.json`. Jonathan's rulings needed: whether an MSC episode
+   (the same two personas continuing, the workers possibly changing between sessions) is one conversation;
+   MSC's unstated licence; dropping the ConvAI2 dialogues MSC's first sessions repeat (3,987 of 3,989).
 4. **Packing unrelated dialogues into one window is allowed only as separate documents** (an
    `<|endoftext|>` between, as the mixes do now): it is ordinary packing, teaches nothing about long carry,
    and must never be presented as one conversation (no shared template run, no state tokens across the join).
@@ -179,10 +216,12 @@ not allowed, and nor is any rearrangement that presents separate exchanges as on
 
 ## 5. Stage L0: the gap on E5/E1's models (no training)
 
-Before any new run, score E5's and E1's SFT models (20M; 60M if run) on Carry-12 at T 512, where they were
-trained: forced choice with gold history, twin, near and noctx on every model (minutes each, no generation),
-and self history at `--max-new 24` played to the target (7 items over 512 are reported as overflow) on the
-data-bar winner's three models. This needs no new training, costs about 4 VM-hours, and answers the first
+Registered and frozen in `STAGE_L0.md` (before any L0 scoring). Every E5 and E1 pick (20M; 60M if run; one
+SFT model per cell comes home) is scored on Carry-12 v1 at T 512, where it was trained: forced choice with
+gold, near, twin and noctx history on every model (`tools/carry12_l0.py run --gen none`, on the laptop CPU),
+and, on Colab, self and near_self history at `--max-new 24` played to the target (4 items over 512 are
+reported as overflow; `colab-jobs` prepares the jobs file). Read: the validity gate, and HL0 on the E5 and
+E1 winners' picks; everything else is descriptive. This needs no new training and answers the first
 question: does E5/E1's best model already carry facts 10 turns, and how much does distance cost?
 
 ## 6. Cells
@@ -247,8 +286,9 @@ been reported at 0.2-0.5x training throughput, so tokens/s is reported and the c
 
 **Primary, per run: Y12 = forced-choice accuracy (raw log-prob) with SELF history on Carry-12's primary
 families minus that on their single-turn twins.** Primary families: recall, correction, topic, load and
-knowledge (1,380 items); instruction is out of Y (length-confounded forced choice, as Carry-5 A2.5) and is
-reported by generation-scored compliance. Self history at `--max-new 48`, the whole conversation played (it
+knowledge (1,380 items). Instruction is out of Y here and reported by forced choice and by generation-scored
+compliance; v1's instruction family is length-neutral (section 2), so its forced choice is not confounded
+as Carry-5's was (A2.5), and whether it joins Y12 is decided at the freeze. Self history at `--max-new 48`, the whole conversation played (it
 fits T 1,024: section 3).
 
 **Validity gate (as A2.5).** A cell's Y12 is interpreted only if, on its means over seeds, (i) twin accuracy
@@ -335,11 +375,10 @@ X's cost falls by up to two thirds if mtstudio gets a device depth-attention pat
 1. **E5's data bar** (the dialogue share) and its verdicts; **E1's shape winner** (20M; 60M if run) and
    whether any E cell sat on the FLOOR (if the winner is FLOOR on Carry-5, the long programme waits).
 2. **The recursion arm** (E1-R and MoR): HR1/HR2/H-MoR1 verdicts, which fix R's design and HR's direction.
-3. **Stage L0's numbers**, read under the pre-registration's discipline: the freeze happens after L0 only if
-   L0 is itself registered first (a short frozen note: the commands, the models, and that only the gate's
-   quantities and HL0 are read). Otherwise L0 runs as part of the frozen programme.
-4. **Carry-12 v1:** the draft's review (counts, small talk, the `near` definition), its pin, and
-   `tools/carry12_eval.py` with tests; the VM-side decontamination against the FineWeb-Edu shard.
+3. **Stage L0's numbers**, read under `STAGE_L0.md` (frozen before any L0 scoring: the commands, the
+   models, and that only the gate's quantities and HL0 are read).
+4. **Carry-12 v1** is frozen with its pin, `tools/carry12_eval.py` and tests; still open: the VM-side
+   decontamination against the FineWeb-Edu shard and Taskmaster-3.
 5. **Engine work, each through IR_SPEC_DRAFT's gates:** the `turn_state` mask and kernels in mtstudio, the
    extended embedding and the early-stop rule (`<|endoftext|>` and the state block after a reply that did
    not end with one, in the serialiser and in ember); in ember the mask with every row kept first, then

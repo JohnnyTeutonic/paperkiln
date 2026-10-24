@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Carry-12: a 12-14 turn chat carry-over benchmark for tiny language models (DRAFT v0).
+"""Carry-12: a 12-14 turn chat carry-over benchmark for tiny language models (FROZEN v1).
 
-    python tools/carry12_build.py build [--out corpus/eval/carry12_v0_draft.jsonl]
+    python tools/carry12_build.py build [--out corpus/eval/carry12_v1.jsonl]
+    python tools/carry12_build.py check            # regenerate in memory; compare bytes and the pinned sha256
     python tools/carry12_build.py summary [--set FILE] [--out FILE.json]
     python tools/carry12_build.py budget --vocab V.gguf [--set FILE] [--reply-tokens 24,48] --out FILE.json
     python tools/carry12_build.py decontam --out REPORT.json [--state STATE.json] CORPUS [CORPUS ...]
@@ -10,9 +11,9 @@ The long-carry companion of Carry-5 (tools/carry5_build.py; experiments/tiny_cha
 PREREGISTRATION_DRAFT.md). Jonathan, 24 Oct 2026: tiny chat models should carry a conversation for at
 least a dozen turns. Every item is a scripted conversation of 12-14 user turns with a canned short
 assistant reply per turn (the GOLD history), one TARGET turn (10-14) whose reply is scored, and four
-forced-choice candidates in a shared answer frame, exactly as Carry-5: the slot, topic, instruction and
-knowledge templates and every value list are imported from carry5_build, so the two benchmarks differ
-only in length, distance and the small talk between the facts.
+forced-choice candidates in a shared answer frame, as Carry-5: the slot, topic and knowledge templates
+and every value list are imported from carry5_build, so on those families the two benchmarks differ only
+in length, distance and the small talk between the facts.
 
 Families:
   recall       a fact about the user planted at turn 1-4, asked at turn 10-14; 0-3 same-type
@@ -25,16 +26,22 @@ Families:
                "Anyway, back to ..." at turn 10-14; 0-2 same-type distractors inside the digression.
   load         a fact planted at turn 1-4 beside two facts of OTHER slots about the user (no same-type
                distractor): several facts carried at once.
-  instruction  a standing instruction (carry5's four kinds) at turn 1-3 with compliant question-answer
-               turns up to the target at 10, 12 or 14. Descriptive: its forced choice is length-confounded
-               (Carry-5 pre-registration A2.5); read it from generation.
+  instruction  a standing FORMAT instruction at turn 1-3 with compliant question-answer turns up to the
+               target at 10, 12 or 14. v1 replaces Carry-5's four brevity kinds (whose compliant answer
+               is always the shortest candidate: Carry-5 pre-registration A2.5) by two length-neutral
+               kinds: `opener` (start every answer with Sure / Okay / Right / Well) and `closer` (end
+               every answer with "of course" / "I think" / "you know" / "for sure"). The four candidates
+               are the same correct answer in the four forms, the required form rotates over the set, so
+               the question alone is chance by construction and no length heuristic finds the gold.
   knowledge    a common-knowledge question at turn 10-14 after small talk (carry5's 60 questions): does
                a long context alone hurt plain question answering?
 
 Turns that hold no event are natural small talk from hand-written templates (SMALL_TALK, ARCS: two-turn
 exchanges on one theme), never model text; turn 1 opens, the last turn after the target closes. No small
 talk names a value of any list or touches a slot's subject (names, pets, homes, work, ages, favourites,
-trips, cakes, books, gardens, parties, music), so it never acts as an unlabelled distractor.
+trips, cakes, books, gardens, parties, music, relatives), and none before the target holds a word of the
+item's own candidates (or, for knowledge, its accepted answers; for instruction, its four forms), so small
+talk never primes a candidate.
 
 Controls on every item, as Carry-5: `twin` (the statements and the question in one user turn), `noctx`
 (the question alone), `interference`, `distance` (target minus the turn holding the needed fact), and
@@ -42,10 +49,13 @@ new: `near`, the same event turns and question with the small talk removed (a sh
 rendering, so twin -> near is the cost of splitting into turns and near -> full is the cost of the
 distance), with `near_target` its target turn.
 
-The file is DRAFT v0, never a registered benchmark: corpus/eval/carry12_v0_draft.jsonl carries
-"draft": true in every item and is not pinned. The frozen v1 is built by this tool (VERSION and the
-counts fixed then) in the commit that freezes the pre-registration, and its sha256 pinned in
-corpus/hashes/carry12_v1.sha256. It is an evaluation set: nothing here may enter training data.
+Balance (v1): the gold position is exactly balanced within every family (a shuffled position sequence,
+independent of the cells), every candidate value is drawn from per-slot shuffled cycles, so across the set
+each value is gold about a quarter of the times it is a candidate, and no two items of a family share a
+twin, a user-turn sequence or a near rendering.
+
+The file is frozen at first build: corpus/eval/carry12_v1.jsonl, sha256 in corpus/hashes/carry12_v1.sha256;
+a change is a new version. It is an evaluation set: nothing here may enter training data.
 
 `budget` tokenises every item in the served chat template (<|user|>U<|assistant|>A<|endoftext|>) with
 the 16k Llama 3-scheme vocabulary, for the gold history and for self history with every earlier
@@ -58,6 +68,7 @@ import hashlib
 import itertools
 import json
 import os
+import random
 import re
 import sys
 import tempfile
@@ -67,15 +78,17 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import carry5_build as C5  # noqa: E402
 from carry5_build import (ACK_FACT, ACK_FIX, ACK_NAME, ACK_OTHER, ACK_TOPIC, ANIMALS, CLOSINGS,  # noqa: E402
-                          FAVOURITES, INSTRUCTIONS, KNOWLEDGE, KNOWLEDGE_ASK, LONG, NEUTRAL, ONE_WORD_QA,
-                          OPENERS, RELATIVES, SLOTS, TOPICS, VERBOSE, Builder, article, number_words,
-                          plant_templates, shuffle_candidates, words)
+                          FAVOURITES, KNOWLEDGE, KNOWLEDGE_ASK, NEUTRAL, NUMBER_QA, ONE_WORD_QA, OPENERS,
+                          RELATIVES, SLOTS, TOPICS, Builder, article, number_words, plant_templates, words)
 
-OUT = os.path.join(ROOT, "corpus", "eval", "carry12_v0_draft.jsonl")
-VERSION = "carry12_v0_draft"
+OUT = os.path.join(ROOT, "corpus", "eval", "carry12_v1.jsonl")
+HASH = os.path.join(ROOT, "corpus", "hashes", "carry12_v1.sha256")
+VERSION = "carry12_v1"
 SEED = 20261024
 TARGETS = (10, 11, 12, 13, 14)
 PLANTS = (1, 2, 3, 4)
+FAMILY_SIZES = {"recall": 480, "correction": 360, "topic": 360, "load": 120, "instruction": 72, "knowledge": 60}
+STOP = {"a", "an", "the", "is", "of", "for", "i", "you", "it", "to", "in", "on"}
 
 # ---------------------------------------------------------------- small talk (hand-written)
 SMALL_TALK = [
@@ -86,7 +99,7 @@ SMALL_TALK = [
     ("How do I stop feeling so tired after lunch?", "A short walk and a glass of water can help."),
     ("Do you have a tip for staying focused?", "Try short blocks of effort with small breaks in between."),
     ("How can I keep my kitchen tidy?", "Wash up straight after cooking and wipe the counters each night."),
-    ("What should I pack for a day at the beach?", "Sun cream, a hat, water and a towel."),
+    ("What should I keep in my bag for a long day out?", "A bottle of water, a snack and a spare charger."),
     ("Can you tell me something interesting?", "Honey never really goes off if it is kept sealed."),
     ("Is it good to stretch in the morning?", "Yes, a gentle stretch can wake your body up."),
     ("How do I make a room feel cosier?", "Soft lights, a blanket and a few cushions make a big difference."),
@@ -124,7 +137,7 @@ SMALL_TALK = [
     ("How can I make a long day go faster?", "Break it into small parts and plan a treat for the end."),
     ("What should I keep in a first aid box?", "Plasters, bandages, a pair of scissors and some cream."),
     ("How do I stop my glasses from fogging up?", "Wash them with a drop of soap and let them dry."),
-    ("Can you suggest a game to play with friends?", "Charades is fun and needs no equipment."),
+    ("Can you suggest a game for a group?", "Charades is fun and needs no equipment."),
 ]
 ARCS = [
     [("It has been raining all morning here.", "Rainy mornings can feel slow. Are you staying inside?"),
@@ -143,7 +156,7 @@ ARCS = [
      ("I boiled some water in a pan instead.", "Good thinking, that is a handy trick.")],
     [("I went for a long walk by the sea.", "That sounds refreshing. Was it windy?"),
      ("Very windy, but the fresh air was nice.", "Sea air can really clear your head.")],
-    [("I am learning to knit a scarf.", "What a nice skill to learn. Is it going well?"),
+    [("I have started knitting a scarf.", "What a nice skill. Is it going well?"),
      ("It is slow, but I am getting better.", "Practice makes it easier every time.")],
     [("I tried a new recipe for dinner.", "How exciting. Did it turn out well?"),
      ("It was nice, though a bit too salty.", "Next time you can add a little less salt.")],
@@ -161,11 +174,43 @@ EXTRA_OPENERS = [("Hi! Do you have time for a chat?", "Yes, I would love to chat
 CLOSING_EXTRA = [("Right, I should get going now.", "Okay! It was lovely talking with you.")]
 
 # A filler must not raise any slot's subject: these words would turn small talk into an unlabelled cue.
+# Matched with plural forms (forms()): "friends" raises "friend".
 SUBJECT_WORDS = {"name", "called", "live", "lives", "home", "work", "works", "job", "old", "age", "favourite",
                  "trip", "travel", "travelling", "holiday", "cake", "baking", "book", "reading", "garden",
                  "planting", "party", "birthday", "music", "lessons", "instrument", "pet", "dog", "cat",
                  "brother", "sister", "cousin", "friend", "neighbour", "aunt", "uncle", "colleague", "mum",
-                 "dad"} | set(ANIMALS)
+                 "dad", "colour", "fruit", "sport", "learn", "learning", "flavour", "grow", "growing",
+                 "visit", "visiting", "years"} | set(ANIMALS)
+
+# ---------------------------------------------------------------- length-neutral standing instructions
+# (v1; Carry-5's brevity kinds made the compliant answer the shortest candidate on every item.)
+INSTRUCTIONS = {
+    "opener": {"say": ["From now on, please start every answer with the word '{W}'.",
+                       "Please begin each answer with the word '{W}' from now on.",
+                       "From now on, the first word of each of your answers should be '{W}'."],
+               "forms": ["Sure", "Okay", "Right", "Well"],
+               "reply": lambda w, s: f"{w}, {s}."},
+    "closer": {"say": ["From now on, please end every answer with the words '{W}'.",
+                       "Please finish each answer with the words '{W}' from now on.",
+                       "From now on, the last words of each of your answers should be '{W}'."],
+               "forms": ["of course", "I think", "you know", "for sure"],
+               "reply": lambda w, s: f"{s[0].upper() + s[1:]}, {w}."},
+}
+INSTRUCTION_QA = list(ONE_WORD_QA) + list(NUMBER_QA)  # (question, short, statement, answers): 42, no yes/no
+
+
+def forms(w):
+    """A word and its plural / singular forms, for the small-talk clash checks."""
+    out = {w, w + "s", w + "es"}
+    if w.endswith("es"):
+        out.add(w[:-2])
+    if w.endswith("s"):
+        out.add(w[:-1])
+    return out
+
+
+def clashes(text, banned):
+    return sorted({x for x in words(text) if forms(x) & banned})
 
 
 def lower_first(text):
@@ -192,15 +237,19 @@ def n_turns_for(target):
     return min(14, max(12, target + 1))
 
 
-def compose(item, rng, digression_at=None):
+def compose(item, rng, digression_at=None, banned=frozenset()):
     """[{user, gold}] for turns 1..n. Event turns join their events' text; empty turns before the target
     take small talk (two-turn arcs where two empty turns follow each other, single exchanges otherwise),
-    turn 1 an opener; turns after the target small talk then a closing. Nothing repeats in an item."""
-    singles = list(SMALL_TALK)
+    turn 1 an opener; turns after the target small talk then a closing. Nothing repeats in an item, and
+    no small talk or opener holds a BANNED word (the item's own candidate words)."""
+    def ok(pairs):
+        return not any(clashes(q + " " + a, banned) for q, a in pairs)
+    singles = [p for p in SMALL_TALK if ok([p])]
     rng.shuffle(singles)
-    arcs = [list(a) for a in ARCS]
+    arcs = [list(a) for a in ARCS if ok(a)]
     rng.shuffle(arcs)
     closing = rng.choice(CLOSINGS + CLOSING_EXTRA)
+    openers = [p for p in OPENERS + EXTRA_OPENERS if ok([p])]
     out = [None] * item.n
     t = 1
     while t <= item.n:
@@ -216,7 +265,7 @@ def compose(item, rng, digression_at=None):
             t += 1
             continue
         if t == 1:
-            q, a = rng.choice(OPENERS + EXTRA_OPENERS)
+            q, a = rng.choice(openers)
             out[0] = {"user": q, "gold": a, "kind": "opener"}
             t += 1
             continue
@@ -247,11 +296,46 @@ def near_of(conv, target):
     return keep
 
 
+def banned_words(texts):
+    """The content words of an item's candidates (and accepted answers): small talk must hold none."""
+    return {w for t in texts for x in words(t) if x not in STOP for w in forms(x)}
+
+
 def build_items(seed=SEED):
     b = Builder(seed)
     rng = b.rng
     items = []
     seen = set()
+    cycles = {}
+    accepted = {f: 0 for f in FAMILY_SIZES}
+    positions = {}
+    for fam, n in FAMILY_SIZES.items():  # exact gold-position balance, independent of the cells
+        seq = [0, 1, 2, 3] * (n // 4)
+        random.Random(f"{seed}:position:{fam}").shuffle(seq)
+        positions[fam] = seq
+
+    def draw(key, values, exclude, k):
+        """k distinct values not in EXCLUDE from a per-key shuffled cycle (refilled when empty; skipped
+        values go back on top), so every value is a candidate about equally often."""
+        st = cycles.setdefault(key, [])
+        out, skipped = [], []
+        while len(out) < k:
+            if not st:
+                st.extend(values)
+                rng.shuffle(st)
+            v = st.pop()
+            (skipped if v in exclude or v in out else out).append(v)
+        st.extend(reversed(skipped))
+        return out
+
+    def place(fam, gold, others, acc):
+        """Candidates with the gold at this family's next balanced position, the others shuffled."""
+        pos = positions[fam][accepted[fam]]
+        idx = [1, 2, 3]
+        rng.shuffle(idx)
+        order = idx[:pos] + [0] + idx[pos:]
+        cands = [gold] + list(others)
+        return [cands[i] for i in order], pos, (None if acc is None else [acc[i] for i in order])
 
     def slot_values(slot, ctx):
         if slot == "name":
@@ -272,10 +356,13 @@ def build_items(seed=SEED):
     def unique(make):
         for _ in range(200):
             it = make()
-            keys = (("twin", it["twin"]), ("turns", tuple(t["user"] for t in it["turns"])))
+            fam = it["family"]
+            keys = ((fam, "twin", it["twin"]), (fam, "turns", tuple(t["user"] for t in it["turns"])),
+                    (fam, "near", tuple((t["user"], t["gold"]) for t in it["near"])))
             if not any(k in seen for k in keys):
                 seen.update(keys)
                 items.append(it)
+                accepted[fam] += 1
                 return
         raise ValueError(f"no unique {it['family']} item after 200 draws")
 
@@ -301,15 +388,16 @@ def build_items(seed=SEED):
         spec = SLOTS[slot]
         ctx = {"a": rng.choice(ANIMALS), "c": list(FAVOURITES)[n % 3]}
         values, acc, show = slot_values(slot, ctx)
-        gold = b.cycle((key_prefix, slot, ctx.get("c") if slot == "favourite" else ""), values)
+        vkey = (slot, ctx.get("c") if slot == "favourite" else "")
+        gold = b.cycle((key_prefix, *vkey), values)
         frame = spec["frame"].replace("{a}", ctx["a"]).replace("{c}", ctx["c"])
-        return spec, ctx, values, acc, show, gold, frame
+        return spec, ctx, values, acc, show, gold, frame, (key_prefix, "others", *vkey)
 
     # ---- recall: slot x plant 1-4 x target 10-14 x interference 0-3, distractor window alternating
     def recall(n, slot, plant, target, inter):
-        spec, ctx, values, acc, show, gold, frame = slot_draw(slot, n, "recall")
-        dis = b.others(values, {gold}, inter)
-        fill_k = b.others(values, {gold, *dis}, 3 - inter)
+        spec, ctx, values, acc, show, gold, frame, okey = slot_draw(slot, n, "recall")
+        others = draw(okey, values, {gold}, 3)
+        dis = others[:inter]  # the rest fill the four candidates
         rels = rng.sample(NEUTRAL if slot == "name" else RELATIVES, inter)
         where = "early" if (n // 4) % 2 == 0 else "late"  # n // 4 indexes (slot, plant, target): balanced per level
         item = Item(n_turns_for(target), target)
@@ -324,10 +412,9 @@ def build_items(seed=SEED):
             item.put(t, {"text": s, "gold": rng.choice(ACK_OTHER), "main": True, "kind": "distractor"})
         q = fill(rng.choice(spec["question"]), ctx)
         item.put(target, {"text": q, "gold": frame.format(show(gold)), "main": True, "kind": "question"})
-        conv = compose(item, rng)
+        cands, gi, cacc = place("recall", show(gold), [show(v) for v in others], [acc(v) for v in [gold] + others])
+        conv = compose(item, rng, banned=banned_words(cands))
         statements = [s for _, s in sorted([(plant, plant_txt)] + dis_txt)]
-        cands, gi, cacc = shuffle_candidates(rng, show(gold), [show(v) for v in dis + fill_k],
-                                             [acc(v) for v in [gold] + dis + fill_k])
         return finish("recall", slot, item, conv, q, {
             "fact_turn": plant, "distance": target - plant, "interference": inter, "distractor_turns": dturns,
             "distractor_window": where if inter else None, "distractor_values": [show(v) for v in dis],
@@ -340,10 +427,9 @@ def build_items(seed=SEED):
 
     # ---- correction: slot x (plant, fix) x target x interference 0-2
     def correction(n, slot, plant, corr, target, inter):
-        spec, ctx, values, acc, show, new, frame = slot_draw(slot, n, "fix")
-        old = b.others(values, {new}, 1)[0]
-        dis = b.others(values, {new, old}, inter)
-        fill_k = b.others(values, {new, old, *dis}, 2 - inter)
+        spec, ctx, values, acc, show, new, frame, okey = slot_draw(slot, n, "fix")
+        others = draw(okey, values, {new}, 3)
+        old, dis = others[0], others[1:1 + inter]
         rels = rng.sample(NEUTRAL if slot == "name" else RELATIVES, inter)
         item = Item(n_turns_for(target), target)
         plant_txt = fill(rng.choice(plant_templates(spec, plant)), ctx, v=show(old))
@@ -359,10 +445,10 @@ def build_items(seed=SEED):
             item.put(t, {"text": s, "gold": rng.choice(ACK_OTHER), "main": True, "kind": "distractor"})
         q = fill(rng.choice(spec["question"]), ctx)
         item.put(target, {"text": q, "gold": frame.format(show(new)), "main": True, "kind": "question"})
-        conv = compose(item, rng)
+        cands, gi, cacc = place("correction", show(new), [show(v) for v in others],
+                                [acc(v) for v in [new] + others])
+        conv = compose(item, rng, banned=banned_words(cands))
         statements = [s for _, s in sorted([(plant, plant_txt), (corr, fix_txt)] + dis_txt)]
-        cands, gi, cacc = shuffle_candidates(rng, show(new), [show(v) for v in [old] + dis + fill_k],
-                                             [acc(v) for v in [new, old] + dis + fill_k])
         return finish("correction", slot, item, conv, q, {
             "fact_turn": corr, "plant_turn": plant, "correction_kind": "early" if corr <= 4 else "late",
             "held_turns": corr - plant, "distance": target - corr, "interference": inter,
@@ -380,8 +466,8 @@ def build_items(seed=SEED):
         spec = TOPICS[kind]
         values = spec["values"]
         gold = b.cycle(("topic", kind), values)
-        dis = b.others(values, {gold}, inter)
-        fill_k = b.others(values, {gold, *dis}, 3 - inter)
+        others = draw(("topic", "others", kind), values, {gold}, 3)
+        dis = others[:inter]
         rels = rng.sample(RELATIVES, inter)
         item = Item(n_turns_for(target), target)
         plant_txt = rng.choice(spec["plant"]).format(v=gold)
@@ -394,15 +480,14 @@ def build_items(seed=SEED):
             item.put(t, {"text": s, "gold": rng.choice(ACK_OTHER), "main": True, "kind": "distractor"})
         q = spec["question"]
         item.put(target, {"text": q, "gold": spec["frame"].format(gold), "main": True, "kind": "question"})
-        conv = compose(item, rng, digression_at=plant + 1)
+        cands, gi, cacc = place("topic", gold, others, [[v.lower()] for v in [gold] + others])
+        conv = compose(item, rng, digression_at=plant + 1, banned=banned_words(cands))
         twin_q = rng.choice(spec["twin_q"])
-        cands, gi, cacc = shuffle_candidates(rng, gold, dis + fill_k, [[v.lower()] for v in [gold] + dis + fill_k])
-        out = finish("topic", kind, item, conv, twin_q, {
+        return finish("topic", kind, item, conv, twin_q, {
             "fact_turn": plant, "distance": target - plant, "interference": inter, "distractor_turns": dturns,
             "distractor_values": list(dis), "answers": [gold.lower()], "frame": spec["frame"],
             "candidates": cands, "gold_index": gi, "candidate_answers": cacc, "check": None, "noctx": twin_q},
             [plant_txt] + dist_sent)
-        return out
 
     cells = list(itertools.product(TOPICS, PLANTS, TARGETS, (0, 1, 2)))
     for kind, plant, target, inter in cells:
@@ -410,8 +495,8 @@ def build_items(seed=SEED):
 
     # ---- load: the queried fact beside two facts of other slots, all in turns 1-4
     def load(n, slot, plant, target):
-        spec, ctx, values, acc, show, gold, frame = slot_draw(slot, n, "load")
-        fill_k = b.others(values, {gold}, 3)
+        spec, ctx, values, acc, show, gold, frame, okey = slot_draw(slot, n, "load")
+        others = draw(okey, values, {gold}, 3)
         item = Item(n_turns_for(target), target)
         plant_txt = fill(rng.choice(plant_templates(spec, plant)), ctx, v=show(gold))
         item.put(plant, {"text": plant_txt, "gold": rng.choice(ACK_NAME if slot == "name" else ACK_FACT),
@@ -431,9 +516,8 @@ def build_items(seed=SEED):
                          "kind": "load"})
         q = fill(rng.choice(spec["question"]), ctx)
         item.put(target, {"text": q, "gold": frame.format(show(gold)), "main": True, "kind": "question"})
-        conv = compose(item, rng)
-        cands, gi, cacc = shuffle_candidates(rng, show(gold), [show(v) for v in fill_k],
-                                             [acc(v) for v in [gold] + fill_k])
+        cands, gi, cacc = place("load", show(gold), [show(v) for v in others], [acc(v) for v in [gold] + others])
+        conv = compose(item, rng, banned=banned_words(cands))
         return finish("load", slot, item, conv, q, {
             "fact_turn": plant, "distance": target - plant, "interference": 0, "load_slots": other_slots,
             "load_turns": oturns, "distractor_turns": [], "distractor_values": [], "answers": acc(gold),
@@ -444,34 +528,33 @@ def build_items(seed=SEED):
     for n, (slot, plant, target) in enumerate(cells):
         unique(lambda: load(n, slot, plant, target))
 
-    # ---- instruction (descriptive): kind x instruction turn 1-3 x target 10/12/14, twice
+    # ---- instruction (length-neutral): kind x instruction turn 1-3 x target 10/12/14, four times
     def instruction(kind, at, target):
         spec = INSTRUCTIONS[kind]
-        tq = b.cycle(("inst", kind), spec["qa"])
-        pool = list(spec["qa"])
-        if kind == "short":  # one-word answers comply with "five words or fewer" too
-            have = {x[0] for x in pool}
-            pool += [x for x in ONE_WORD_QA if x[0] not in have]
-        rest = [x for x in pool if x[0] != tq[0]]
+        form = b.cycle(("inst", kind), spec["forms"])
+        tq = b.cycle(("inst_q", kind), INSTRUCTION_QA)
+        rest = [x for x in INSTRUCTION_QA if x[0] != tq[0]]
         rng.shuffle(rest)
-        say = rng.choice(spec["say"])
+        say = rng.choice(spec["say"]).format(W=form)
         item = Item(n_turns_for(target), target)
-        item.put(at, {"text": f"{say} {rest[0][0]}", "gold": rest[0][1], "main": True, "kind": "instruction"})
+        reply = spec["reply"]
+        item.put(at, {"text": f"{say} {rest[0][0]}", "gold": reply(form, rest[0][2]), "main": True,
+                      "kind": "instruction"})
         for k, t in enumerate(range(at + 1, target), start=1):
-            item.put(t, {"text": rest[k][0], "gold": rest[k][1], "main": True, "kind": "compliant"})
-        q, short, s, ans = tq
-        item.put(target, {"text": q, "gold": short, "main": True, "kind": "question"})
-        conv = compose(item, rng)
-        bad = [t.format(S=s[0].upper() + s[1:], s=s) for t in (LONG if kind == "short" else VERBOSE)]
-        cands, gi, _ = shuffle_candidates(rng, short, bad, [ans] * 4)
-        out = finish("instruction", kind, item, conv, q, {
+            item.put(t, {"text": rest[k][0], "gold": reply(form, rest[k][2]), "main": True, "kind": "compliant"})
+        q, _short, s, ans = tq
+        others = [w for w in spec["forms"] if w != form]
+        cands, gi, _ = place("instruction", reply(form, s), [reply(w, s) for w in others], None)
+        item.put(target, {"text": q, "gold": reply(form, s), "main": True, "kind": "question"})
+        conv = compose(item, rng, banned=banned_words(spec["forms"] + ans))
+        return finish("instruction", kind, item, conv, q, {
             "fact_turn": at, "distance": target - at, "interference": 0, "distractor_turns": [],
             "distractor_values": [], "answers": ans, "frame": "{}", "candidates": cands, "gold_index": gi,
-            "candidate_answers": None, "check": {"kind": kind}, "noctx": q}, [say])
-        return out
+            "candidate_answers": None, "check": {"kind": kind, "form": form, "forms": spec["forms"]},
+            "noctx": q}, [say])
 
     cells = list(itertools.product(INSTRUCTIONS, (1, 2, 3), (10, 12, 14)))
-    for _rep in range(2):
+    for _rep in range(4):
         for kind, at, target in cells:
             unique(lambda: instruction(kind, at, target))
 
@@ -481,13 +564,12 @@ def build_items(seed=SEED):
         ask = KNOWLEDGE_ASK[n % len(KNOWLEDGE_ASK)].format(q=q)
         item = Item(n_turns_for(target), target)
         item.put(target, {"text": ask, "gold": frame.format(gold), "main": True, "kind": "question"})
-        conv = compose(item, rng)
-        cands, gi, cacc = shuffle_candidates(rng, gold, dis, [acc] + [[d.lower()] for d in dis])
-        out = finish("knowledge", "knowledge", item, conv, ask, {
+        cands, gi, cacc = place("knowledge", gold, dis, [acc] + [[d.lower()] for d in dis])
+        conv = compose(item, rng, banned=banned_words(cands + acc))
+        return finish("knowledge", "knowledge", item, conv, ask, {
             "fact_turn": None, "distance": None, "interference": 0, "distractor_turns": [],
             "distractor_values": [], "answers": acc, "frame": frame, "candidates": cands, "gold_index": gi,
             "candidate_answers": cacc, "check": None, "noctx": q}, [])
-        return out
 
     for n, k in enumerate(KNOWLEDGE):
         unique(lambda: knowledge(n, *k))
@@ -497,7 +579,7 @@ def build_items(seed=SEED):
     for it in items:
         fam = it["family"]
         counts[fam] = counts.get(fam, 0) + 1
-        out.append({"id": f"{VERSION}:{fam}:{counts[fam]:04d}", "version": VERSION, "draft": True, **it})
+        out.append({"id": f"{VERSION}:{fam}:{counts[fam]:04d}", "version": VERSION, **it})
     validate(out)
     return out
 
@@ -510,11 +592,33 @@ def all_values():
     return values
 
 
+def check_instruction(check, reply):
+    """The v1 instruction kinds' machine check on a reply: opener = its first word is the form, closer =
+    its last words are the form (case and punctuation ignored)."""
+    w = words(reply)
+    f = words(check["form"])
+    if check["kind"] == "opener":
+        return w[:len(f)] == f
+    if check["kind"] == "closer":
+        return len(w) >= len(f) and w[-len(f):] == f
+    raise ValueError(check["kind"])
+
+
+def length_extremes(it):
+    """(gold uniquely shortest, gold uniquely longest) among the filled candidate replies, in characters."""
+    L = [len(it["frame"].format(c)) for c in it["candidates"]]
+    g = L[it["gold_index"]]
+    return g == min(L) and L.count(g) == 1, g == max(L) and L.count(g) == 1
+
+
 def validate(items):
     """Build-time checks: Carry-5's (four distinct candidates, the gold reply is the frame filled with the
     gold candidate, the needed fact before the target, distractors visible before the target and in the
     twin) plus: 12-14 turns, a target of 10-14, facts at 1-4 for recall/topic/load, small talk naming no
-    list value and no slot subject, every item's near rendering ending in its target question."""
+    list value and no slot subject, no small talk before the target holding a word of the item's
+    candidates, every item's near rendering ending in its target question; per family the counts, an
+    exactly balanced gold position, and the gold uniquely shortest or uniquely longest on at most 35% of
+    items (Carry-5's instruction family: 100% shortest)."""
     values = all_values()
     canned = [t for pair in OPENERS + EXTRA_OPENERS + SMALL_TALK + CLOSINGS + CLOSING_EXTRA for t in pair]
     canned += [t for arc in ARCS for pair in arc for t in pair]
@@ -523,14 +627,17 @@ def validate(items):
         clash = values & set(words(text))
         if clash:
             raise ValueError(f"canned text {text!r} names list values {sorted(clash)}")
+    subject = {w for s in SUBJECT_WORDS for w in forms(s)}
     for text in [t for pair in SMALL_TALK + EXTRA_OPENERS + CLOSING_EXTRA for t in pair] + \
             [t for arc in ARCS for pair in arc for t in pair]:
-        clash = SUBJECT_WORDS & set(words(text))
+        clash = clashes(text, subject)
         if clash:
-            raise ValueError(f"small talk {text!r} raises a slot subject {sorted(clash)}")
+            raise ValueError(f"small talk {text!r} raises a slot subject {clash}")
     if len({q for q, _ in SMALL_TALK} | {q for arc in ARCS for q, _ in arc}) != len(SMALL_TALK) + 2 * len(ARCS):
         raise ValueError("small talk questions repeat")
+    by = {}
     for it in items:
+        by.setdefault(it["family"], []).append(it)
         n, tt = it["n_turns"], it["target_turn"]
         assert len(it["turns"]) == n and 12 <= n <= 14 and 10 <= tt <= 14 and tt <= n, it["id"]
         assert len(set(it["candidates"])) == 4, it["id"]
@@ -542,6 +649,12 @@ def validate(items):
             assert it["fact_turn"] < tt, it["id"]
         if it["family"] != "instruction":
             assert any(a in gold.lower() for a in it["answers"]), it["id"]
+        else:
+            assert check_instruction(it["check"], gold), it["id"]
+            assert sum(check_instruction(it["check"], c) for c in it["candidates"]) == 1, it["id"]
+            for t, k in zip(it["turns"][:tt], it["turn_kinds"]):
+                if k in ("instruction", "compliant", "question"):
+                    assert check_instruction(it["check"], t["gold"]), (it["id"], t)
         assert len(it["distractor_values"]) == it["interference"], it["id"]
         assert all(t < tt for t in it["distractor_turns"]), it["id"]
         before = " ".join(t["user"] for t in it["turns"][:tt - 1])
@@ -555,10 +668,34 @@ def validate(items):
         kinds = it["turn_kinds"]
         assert kinds[tt - 1].endswith("question"), it["id"]
         assert all(k != "closing" for k in kinds[:tt]), it["id"]
+        if it["family"] == "instruction":  # its candidates are whole sentences: the forms and the answer
+            ban = banned_words(it["check"]["forms"] + it["answers"])
+        else:
+            ban = banned_words(it["candidates"] + (it["answers"] if it["family"] == "knowledge" else []))
+        for t, k in zip(it["turns"][:tt - 1], kinds):
+            if k in ("small_talk", "digression", "opener"):
+                assert not clashes(t["user"] + " " + t["gold"], ban), (it["id"], t)
+    assert {f: len(v) for f, v in by.items()} == FAMILY_SIZES, {f: len(v) for f, v in by.items()}
+    for fam, xs in by.items():
+        gi = [it["gold_index"] for it in xs]
+        assert all(gi.count(p) == len(xs) // 4 for p in range(4)), (fam, [gi.count(p) for p in range(4)])
+        ext = [length_extremes(it) for it in xs]
+        for k, what in ((0, "shortest"), (1, "longest")):
+            share = sum(e[k] for e in ext) / len(xs)
+            assert share <= 0.35, f"{fam}: the gold is uniquely {what} on {share:.0%} of items"
 
 
 def dump(items):
     return "".join(json.dumps(it, ensure_ascii=False) + "\n" for it in items).encode("utf-8")
+
+
+def pinned():
+    if not os.path.exists(HASH):
+        return None
+    for line in open(HASH, encoding="utf-8"):
+        if line.strip() and not line.startswith("#"):
+            return line.split()[0]
+    return None
 
 
 def summarise(items):
@@ -573,24 +710,64 @@ def summarise(items):
             keys.append(("distractor_window", it["distractor_window"]))
         if it.get("correction_kind"):
             keys.append(("correction_kind", it["correction_kind"]))
+        if it["family"] == "instruction":
+            keys.append(("form", it["check"]["form"]))
         small = sum(1 for k in it["turn_kinds"][:it["target_turn"] - 1]
                     if k in ("small_talk", "digression", "opener"))
         keys.append(("small_talk_turns_before_target", small))
+        short, long_ = length_extremes(it)
+        keys += [("gold_uniquely_shortest", short), ("gold_uniquely_longest", long_)]
         for k, v in keys:
             f.setdefault(k, {})
             f[k][str(v)] = f[k].get(str(v), 0) + 1
-    return {"items": len(items), "families": by}
+    # Across the set, how often each value is gold when it is a candidate (chance by construction: 0.25).
+    cand, gold = {}, {}
+    for it in items:
+        if it["family"] in ("recall", "correction", "topic", "load"):
+            for k, c in enumerate(it["candidates"]):
+                key = (it["family"], it["slot"], c)
+                cand[key] = cand.get(key, 0) + 1
+                gold[key] = gold.get(key, 0) + (k == it["gold_index"])
+    rates = {}
+    for (fam, _, _), n in cand.items():
+        rates.setdefault(fam, [])
+    for key, n in cand.items():
+        rates[key[0]].append(gold[key] / n)
+    gold_rate = {fam: {"values": len(r), "min": round(min(r), 3), "p50": round(sorted(r)[len(r) // 2], 3),
+                       "max": round(max(r), 3), "mean": round(sum(r) / len(r), 3)} for fam, r in rates.items()}
+    return {"items": len(items), "families": by, "value_gold_rate": gold_rate}
 
 
 def cmd_build(a):
     data = dump(build_items())
     sha = hashlib.sha256(data).hexdigest()
-    with open(a.out, "wb") as f:
-        f.write(data)
+    pin = pinned()
+    if os.path.exists(a.out):
+        if open(a.out, "rb").read() != data:
+            sys.exit(f"{a.out} exists and differs from this build (frozen set; a change is a new version)")
+    elif pin and pin != sha:
+        sys.exit(f"this build's sha256 {sha} differs from the pinned {pin}")
+    else:
+        with open(a.out, "wb") as f:
+            f.write(data)
+    if not pin and os.path.abspath(a.out) == os.path.abspath(OUT):
+        with open(HASH, "w", encoding="utf-8", newline="\n") as f:
+            f.write("# FROZEN Carry-12 v1: 12-14 turn chat long-carry benchmark for tiny models "
+                    "(tools/carry12_build.py, seed 20261024); an evaluation set, never training data\n")
+            f.write(f"{sha}  carry12_v1.jsonl\n")
     summary = summarise([json.loads(x) for x in data.decode("utf-8").splitlines()])
     print(json.dumps({"items": summary["items"], "by_family": {k: v["items"] for k, v in summary["families"].items()},
-                      "sha256": sha, "out": a.out, "draft": True}, indent=1))
+                      "sha256": sha, "out": a.out}, indent=1))
     return 0
+
+
+def cmd_check(a):
+    data = dump(build_items())
+    sha = hashlib.sha256(data).hexdigest()
+    disk = open(OUT, "rb").read()
+    ok = data == disk and sha == pinned()
+    print(json.dumps({"rebuild_equals_file": data == disk, "sha256": sha, "pinned": pinned(), "ok": ok}))
+    return 0 if ok else 1
 
 
 def cmd_summary(a):
@@ -676,7 +853,7 @@ def cmd_budget(a):
                "gold": "the gold-history prompt up to the target turn plus the gold reply and <|endoftext|>: the "
                        "longest sequence forced choice scores (candidates share the frame)",
                "selfN": "the same with every earlier assistant reply assumed to be N tokens (self history; "
-                        "carry5_eval caps generated replies at --max-new)",
+                        "carry12_eval caps generated replies at --max-new)",
                "full_selfN": "every turn of the item with replies of N tokens: the longest context the self "
                              "mode reaches while it plays the whole conversation",
                "twin": "the single-turn twin prompt plus the gold reply", "near": "the near control rendering",
@@ -694,10 +871,20 @@ def cmd_budget(a):
     reply_tok = [nc(t["gold"]) for it in items for t in it["turns"]]
     user_tok = [nc(t["user"]) for it in items for t in it["turns"]]
     rep["per_turn"] = {"gold_reply_tokens": dist(reply_tok, ()), "user_tokens": dist(user_tok, ())}
+    # Candidate lengths in tokens (the frame filled): how often the gold is uniquely the shortest / longest.
+    ext = {}
+    for it in items:
+        L = [nc(it["frame"].format(c)) for c in it["candidates"]]
+        g = L[it["gold_index"]]
+        e = ext.setdefault(it["family"], {"items": 0, "gold_uniquely_shortest": 0, "gold_uniquely_longest": 0})
+        e["items"] += 1
+        e["gold_uniquely_shortest"] += g == min(L) and L.count(g) == 1
+        e["gold_uniquely_longest"] += g == max(L) and L.count(g) == 1
+    rep["candidate_token_length_extremes"] = ext
     with open(a.out, "w", encoding="utf-8", newline="\n") as f:
         json.dump(rep, f, indent=1)
         f.write("\n")
-    print(json.dumps({k: rep["all"][k] for k in keys}, indent=1))
+    print(json.dumps({k: rep["all"][k] for k in keys} | {"extremes": ext}, indent=1))
     return 0
 
 
@@ -725,6 +912,7 @@ def main(argv=None):
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("build")
     p.add_argument("--out", default=OUT)
+    sub.add_parser("check")
     p = sub.add_parser("summary")
     p.add_argument("--set", default=OUT)
     p.add_argument("--out", default="")
@@ -739,7 +927,8 @@ def main(argv=None):
     p.add_argument("--state", default="")
     p.add_argument("--set", default=OUT)
     a = ap.parse_args(argv)
-    return {"build": cmd_build, "summary": cmd_summary, "budget": cmd_budget, "decontam": cmd_decontam}[a.cmd](a)
+    return {"build": cmd_build, "check": cmd_check, "summary": cmd_summary, "budget": cmd_budget,
+            "decontam": cmd_decontam}[a.cmd](a)
 
 
 if __name__ == "__main__":

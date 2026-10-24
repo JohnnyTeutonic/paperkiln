@@ -35,10 +35,10 @@
     "3": 120
    },
    "gold_index": {
-    "0": 132,
-    "2": 127,
-    "3": 109,
-    "1": 112
+    "2": 120,
+    "3": 120,
+    "1": 120,
+    "0": 120
    },
    "n_turns": {
     "12": 192,
@@ -60,6 +60,14 @@
     "10": 72,
     "11": 48,
     "12": 24
+   },
+   "gold_uniquely_shortest": {
+    "False": 422,
+    "True": 58
+   },
+   "gold_uniquely_longest": {
+    "False": 412,
+    "True": 68
    },
    "distractor_window": {
     "early": 180,
@@ -102,10 +110,10 @@
     "2": 120
    },
    "gold_index": {
-    "3": 97,
-    "1": 97,
-    "0": 82,
-    "2": 84
+    "2": 90,
+    "0": 90,
+    "3": 90,
+    "1": 90
    },
    "n_turns": {
     "12": 144,
@@ -130,6 +138,14 @@
     "9": 72,
     "10": 48,
     "11": 24
+   },
+   "gold_uniquely_shortest": {
+    "False": 323,
+    "True": 37
+   },
+   "gold_uniquely_longest": {
+    "False": 307,
+    "True": 53
    }
   },
   "topic": {
@@ -165,10 +181,10 @@
     "2": 120
    },
    "gold_index": {
-    "1": 98,
-    "0": 84,
-    "3": 100,
-    "2": 78
+    "1": 90,
+    "2": 90,
+    "0": 90,
+    "3": 90
    },
    "n_turns": {
     "12": 144,
@@ -189,6 +205,14 @@
     "10": 72,
     "11": 48,
     "12": 24
+   },
+   "gold_uniquely_shortest": {
+    "False": 306,
+    "True": 54
+   },
+   "gold_uniquely_longest": {
+    "False": 290,
+    "True": 70
    }
   },
   "load": {
@@ -222,10 +246,10 @@
     "0": 120
    },
    "gold_index": {
-    "0": 32,
-    "2": 27,
-    "3": 36,
-    "1": 25
+    "0": 30,
+    "2": 30,
+    "3": 30,
+    "1": 30
    },
    "n_turns": {
     "12": 48,
@@ -244,15 +268,21 @@
     "8": 24,
     "9": 24,
     "10": 24
+   },
+   "gold_uniquely_shortest": {
+    "False": 98,
+    "True": 22
+   },
+   "gold_uniquely_longest": {
+    "False": 107,
+    "True": 13
    }
   },
   "instruction": {
    "items": 72,
    "slot": {
-    "one_word": 18,
-    "short": 18,
-    "yes_no": 18,
-    "number": 18
+    "opener": 36,
+    "closer": 36
    },
    "target_turn": {
     "10": 24,
@@ -272,10 +302,10 @@
     "0": 72
    },
    "gold_index": {
-    "2": 16,
-    "0": 15,
-    "1": 15,
-    "3": 26
+    "2": 18,
+    "1": 18,
+    "3": 18,
+    "0": 18
    },
    "n_turns": {
     "12": 24,
@@ -287,10 +317,28 @@
     "2": 24,
     "3": 24
    },
+   "form": {
+    "Okay": 9,
+    "Right": 9,
+    "Well": 9,
+    "Sure": 9,
+    "for sure": 9,
+    "you know": 9,
+    "of course": 9,
+    "I think": 9
+   },
    "small_talk_turns_before_target": {
     "0": 24,
     "1": 24,
     "2": 24
+   },
+   "gold_uniquely_shortest": {
+    "False": 63,
+    "True": 9
+   },
+   "gold_uniquely_longest": {
+    "False": 54,
+    "True": 18
    }
   },
   "knowledge": {
@@ -312,10 +360,10 @@
     "0": 60
    },
    "gold_index": {
-    "0": 19,
-    "2": 10,
-    "3": 17,
-    "1": 14
+    "0": 15,
+    "1": 15,
+    "3": 15,
+    "2": 15
    },
    "n_turns": {
     "12": 24,
@@ -331,10 +379,48 @@
     "11": 12,
     "12": 12,
     "13": 12
+   },
+   "gold_uniquely_shortest": {
+    "False": 52,
+    "True": 8
+   },
+   "gold_uniquely_longest": {
+    "True": 12,
+    "False": 48
    }
   }
  },
- "set": "corpus/eval/carry12_v0_draft.jsonl",
- "sha256": "c914ec6296c986b85642b10485b81f35f3db6707833b1aecb3bff863aa05d418",
+ "value_gold_rate": {
+  "recall": {
+   "values": 253,
+   "min": 0.1,
+   "p50": 0.25,
+   "max": 0.4,
+   "mean": 0.248
+  },
+  "correction": {
+   "values": 253,
+   "min": 0.0,
+   "p50": 0.25,
+   "max": 0.4,
+   "mean": 0.248
+  },
+  "topic": {
+   "values": 87,
+   "min": 0.161,
+   "p50": 0.25,
+   "max": 0.333,
+   "mean": 0.248
+  },
+  "load": {
+   "values": 251,
+   "min": 0.0,
+   "p50": 0.0,
+   "max": 0.5,
+   "mean": 0.2
+  }
+ },
+ "set": "corpus/eval/carry12_v1.jsonl",
+ "sha256": "de24f2c726a1006e8e61542dd3b2dfbf8677b9e6fe689277cca035305bd32797",
  "rebuild_equals_file": true
 }

@@ -1,15 +1,12 @@
 {
- "set": "corpus/eval/carry12_v0_draft.jsonl",
- "set_sha256": "c914ec6296c986b85642b10485b81f35f3db6707833b1aecb3bff863aa05d418",
- "command": "tools/carry12_build.py decontam (carry5_build's scan; load items scanned as recall) over the 13 tiny-chat sources, Simple English Wikipedia and corpus/data/fineweb_edu_sample_v1/pretrain_train.txt",
  "summary": {
   "items": 1452,
-  "corpora": 15,
-  "rows_scanned": 406291,
+  "corpora": 19,
+  "rows_scanned": 419812,
   "item_leaks": 0,
-  "items_with_fact_sentence_in_training": 56,
+  "items_with_fact_sentence_in_training": 45,
   "eval_texts_hit": {
-   "sentence": 96,
+   "sentence": 92,
    "prompt": 7
   },
   "rules": "decontam.py ngram (13 words), prompt (user turn equal, 4+ words), span (8-12 word user turn); sentence: any 3+ word template sentence as a span; fact_sentence: an item's value-bearing fact sentence; item_leak: fact sentence and question in one row"
@@ -21,8 +18,8 @@
    "done": true,
    "by_rule": {
     "sentence": {
-     "rows": 129,
-     "patterns": 19
+     "rows": 128,
+     "patterns": 18
     },
     "fact_sentence": {
      "rows": 2,
@@ -36,12 +33,12 @@
    "done": true,
    "by_rule": {
     "sentence": {
-     "rows": 7523,
-     "patterns": 58
+     "rows": 7513,
+     "patterns": 52
     },
     "fact_sentence": {
-     "rows": 146,
-     "patterns": 42
+     "rows": 97,
+     "patterns": 28
     },
     "prompt": {
      "rows": 42,
@@ -55,16 +52,16 @@
    "done": true,
    "by_rule": {
     "sentence": {
-     "rows": 449,
-     "patterns": 28
-    },
-    "fact_sentence": {
-     "rows": 25,
-     "patterns": 16
+     "rows": 448,
+     "patterns": 27
     },
     "prompt": {
      "rows": 3,
      "patterns": 1
+    },
+    "fact_sentence": {
+     "rows": 14,
+     "patterns": 8
     }
    }
   },
@@ -74,12 +71,12 @@
    "done": true,
    "by_rule": {
     "sentence": {
-     "rows": 379,
-     "patterns": 28
+     "rows": 378,
+     "patterns": 27
     },
     "fact_sentence": {
-     "rows": 19,
-     "patterns": 17
+     "rows": 18,
+     "patterns": 15
     }
    }
   },
@@ -119,12 +116,16 @@
    "done": true,
    "by_rule": {
     "sentence": {
-     "rows": 632,
-     "patterns": 21
+     "rows": 633,
+     "patterns": 22
     },
     "prompt": {
      "rows": 1,
      "patterns": 1
+    },
+    "fact_sentence": {
+     "rows": 2,
+     "patterns": 2
     }
    }
   },
@@ -134,8 +135,8 @@
    "done": true,
    "by_rule": {
     "sentence": {
-     "rows": 1695,
-     "patterns": 27
+     "rows": 1694,
+     "patterns": 26
     },
     "prompt": {
      "rows": 2,
@@ -175,12 +176,12 @@
    "done": true,
    "by_rule": {
     "sentence": {
-     "rows": 964,
-     "patterns": 24
+     "rows": 963,
+     "patterns": 23
     },
     "fact_sentence": {
-     "rows": 2,
-     "patterns": 2
+     "rows": 1,
+     "patterns": 1
     }
    }
   },
@@ -190,12 +191,12 @@
    "done": true,
    "by_rule": {
     "sentence": {
-     "rows": 630,
-     "patterns": 23
+     "rows": 631,
+     "patterns": 24
     },
     "fact_sentence": {
-     "rows": 5,
-     "patterns": 4
+     "rows": 7,
+     "patterns": 5
     }
    }
   },
@@ -205,8 +206,8 @@
    "done": true,
    "by_rule": {
     "sentence": {
-     "rows": 49,
-     "patterns": 12
+     "rows": 48,
+     "patterns": 11
     }
    }
   },
@@ -216,8 +217,8 @@
    "done": true,
    "by_rule": {
     "sentence": {
-     "rows": 38,
-     "patterns": 13
+     "rows": 37,
+     "patterns": 12
     }
    }
   },
@@ -231,73 +232,129 @@
      "patterns": 7
     }
    }
+  },
+  "C:/ml_artifacts/human_dialogue/hd_long/human_msc_v1/dialogues.jsonl": {
+   "rows": 3989,
+   "bytes": 22129484,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 3782,
+     "patterns": 48
+    },
+    "fact_sentence": {
+     "rows": 74,
+     "patterns": 26
+    },
+    "prompt": {
+     "rows": 18,
+     "patterns": 2
+    }
+   }
+  },
+  "C:/ml_artifacts/human_dialogue/hd_long/human_abcd_v1/dialogues.jsonl": {
+   "rows": 8019,
+   "bytes": 9866942,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 1342,
+     "patterns": 22
+    }
+   }
+  },
+  "C:/ml_artifacts/human_dialogue/hd_long/human_ccpe_v1/dialogues.jsonl": {
+   "rows": 502,
+   "bytes": 1105594,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 92,
+     "patterns": 5
+    }
+   }
+  },
+  "C:/ml_artifacts/human_dialogue/hd_long/human_p4g_v1/dialogues.jsonl": {
+   "rows": 1011,
+   "bytes": 2637004,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 715,
+     "patterns": 18
+    },
+    "prompt": {
+     "rows": 3,
+     "patterns": 1
+    }
+   }
   }
  },
  "item_leaks": {},
  "top_sentences": {
-  "how are you": 7189,
-  "how can i help": 3726,
-  "how are you today": 1718,
-  "sorry to hear that": 1616,
-  "you are welcome": 1473,
-  "yes of course": 441,
-  "what is it about": 421,
-  "i am sorry to hear that": 289,
-  "nice to meet you": 275,
-  "that sounds nice": 264,
-  "how is it going": 174,
-  "it was a pleasure": 134,
-  "have a lovely day": 129,
-  "that sounds lovely": 80,
-  "that is good to know": 61,
-  "thanks for telling me": 43,
-  "i am well thank you": 41,
-  "oh that is nice": 40,
-  "that sounds relaxing": 36,
-  "can you help me with this": 23,
-  "hello nice to meet you": 19,
-  "i work as an accountant": 16,
-  "i work as a nurse": 14,
-  "that is annoying": 14,
-  "sorry my mistake": 11,
-  "i hope you are well": 11,
-  "that is frustrating": 9,
+  "how are you": 9768,
+  "how can i help": 4162,
+  "sorry to hear that": 2513,
+  "how are you today": 2392,
+  "you are welcome": 1839,
+  "what is it about": 583,
+  "yes of course": 534,
+  "i am sorry to hear that": 418,
+  "that sounds nice": 404,
+  "nice to meet you": 370,
+  "how is it going": 258,
+  "it was a pleasure": 152,
+  "that sounds lovely": 136,
+  "have a lovely day": 132,
+  "that is good to know": 90,
+  "i am well thank you": 62,
+  "oh that is nice": 55,
+  "thanks for telling me": 53,
+  "that sounds relaxing": 51,
+  "can you help me with this": 33,
+  "i work as an accountant": 27,
+  "hello nice to meet you": 26,
+  "i work as a nurse": 22,
+  "i hope you are well": 20,
+  "that is annoying": 17,
+  "i work as a chef": 15,
+  "sorry my mistake": 14,
+  "that is frustrating": 14,
+  "i work as a paramedic": 12,
   "can you tell me something interesting": 8,
-  "i work as a paramedic": 7,
-  "i work as a chef": 7,
+  "i work as a teacher": 7,
+  "i am 20 years old": 7,
+  "i work as a pharmacist": 7,
+  "i work as a mechanic": 7,
+  "what is new with you": 7,
   "sorry i made a mistake": 6,
   "what would you like to talk about": 6,
-  "i work as a teacher": 6,
+  "i work as a vet": 6,
+  "what is on your mind": 6,
   "thanks for sharing that": 6,
   "thanks that is all for now": 6,
-  "i am 20 years old": 5,
-  "what is on your mind": 5,
+  "i work as an engineer": 5,
+  "my favourite colour is blue": 5,
+  "i work as a pilot": 5,
+  "i work as a librarian": 5,
   "it was lovely talking with you": 5,
-  "my favourite colour is blue": 4,
-  "i work as a pharmacist": 4,
-  "i work as a mechanic": 4,
-  "i work as a vet": 4,
+  "i am 19 years old": 4,
+  "my name is rosa": 4,
   "where am i going": 4,
   "what a nice surprise": 4,
-  "i work as an engineer": 3,
-  "i work as a pilot": 3,
-  "i am 32 years old": 3,
-  "i work as a lawyer": 3,
-  "what is new with you": 3,
+  "that sounds refreshing": 3,
+  "i work as a welder": 3,
+  "lovely to meet you": 3,
   "is it a big one": 3,
   "how old am i": 2,
-  "i am 19 years old": 2,
-  "i am 30 years old": 2,
-  "my sister plays the clarinet": 2,
-  "that sounds refreshing": 2,
-  "i work as a welder": 2,
   "i am 18 years old": 2,
-  "i work as a librarian": 2,
-  "my name is rosa": 2,
+  "you work as a nurse": 2,
+  "my sister plays the guitar": 2,
+  "i am 39 years old": 2,
   "i work as a translator": 2
  },
  "drop_rule_examples": {
-  "prompt|carry12_v0_draft:recall:0025:t1:user": {
+  "prompt|carry12_v1:recall:0024:t1:user": {
    "corpus": "C:/ml_artifacts/human_dialogue/hd_default/human_convai2_v1/dialogues.jsonl",
    "examples": [
     {
@@ -310,7 +367,7 @@
     }
    ]
   },
-  "prompt|carry12_v0_draft:recall:0259:t1:user": {
+  "prompt|carry12_v1:load:0021:t4:user": {
    "corpus": "C:/ml_artifacts/human_dialogue/hd_default/human_convai2_v1/dialogues.jsonl",
    "examples": [
     {
@@ -319,7 +376,7 @@
     }
    ]
   },
-  "prompt|carry12_v0_draft:recall:0253:t1:user": {
+  "prompt|carry12_v1:recall:0253:t1:user": {
    "corpus": "C:/ml_artifacts/human_dialogue/hd_default/human_convai2_v1/dialogues.jsonl",
    "examples": [
     {
@@ -328,7 +385,7 @@
     }
    ]
   },
-  "prompt|carry12_v0_draft:recall:0418:t1:user": {
+  "prompt|carry12_v1:recall:0409:t1:user": {
    "corpus": "C:/ml_artifacts/human_dialogue/hd_default/human_wow_v1/dialogues.jsonl",
    "examples": [
     {
@@ -341,7 +398,7 @@
     }
    ]
   },
-  "prompt|carry12_v0_draft:recall:0003:t12:user": {
+  "prompt|carry12_v1:recall:0001:t12:user": {
    "corpus": "C:/ml_artifacts/human_dialogue/hd_default/human_taskmaster_v1/dialogues.jsonl",
    "examples": [
     {
@@ -350,7 +407,7 @@
     }
    ]
   },
-  "prompt|carry12_v0_draft:recall:0004:t10:user": {
+  "prompt|carry12_v1:recall:0001:t10:user": {
    "corpus": "C:/ml_artifacts/human_dialogue/hd_default/human_taskmaster_v1/dialogues.jsonl",
    "examples": [
     {
@@ -359,7 +416,7 @@
     }
    ]
   },
-  "prompt|carry12_v0_draft:recall:0016:t8:user": {
+  "prompt|carry12_v1:recall:0013:t10:user": {
    "corpus": "C:/ml_artifacts/human_dialogue/hd_optin/human_quac_v1/dialogues.jsonl",
    "examples": [
     {

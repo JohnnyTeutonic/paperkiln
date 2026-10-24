@@ -1,7 +1,9 @@
-"""Carry-12 DRAFT (tools/carry12_build.py) and the dialogue-length tool (tools/dialogue_lengths.py):
-the draft file rebuilds byte for byte, its items are well formed and balanced as the draft
-pre-registration says (experiments/tiny_chat_long_2026-10/PREREGISTRATION_DRAFT.md), and the
+"""Carry-12 v1 (tools/carry12_build.py) and the dialogue-length tool (tools/dialogue_lengths.py): the
+frozen file rebuilds byte for byte and matches its pin, its items are well formed and balanced as the
+pre-registration draft says (experiments/tiny_chat_long_2026-10/PREREGISTRATION_DRAFT.md), no family has
+a length artefact (Carry-5's instruction family: the compliant answer always the shortest), and the
 SFT-rule arithmetic matches tools/chat_data.py. Offline: no model, no tokeniser."""
+import hashlib
 import json
 import os
 import sys
@@ -17,11 +19,14 @@ def items():
         return [json.loads(x) for x in f if x.strip()]
 
 
-def test_draft_rebuilds_and_is_marked_draft():
+def test_frozen_file_rebuilds_byte_identical_and_matches_its_pin():
     with open(c12.OUT, "rb") as f:
-        assert c12.dump(c12.build_items()) == f.read()
+        disk = f.read()
+    assert c12.dump(c12.build_items()) == disk
+    assert hashlib.sha256(disk).hexdigest() == c12.pinned() ==         "de24f2c726a1006e8e61542dd3b2dfbf8677b9e6fe689277cca035305bd32797"
     its = items()
-    assert all(it["draft"] is True and it["version"] == "carry12_v0_draft" for it in its)
+    assert all(it["version"] == "carry12_v1" and it["id"].startswith("carry12_v1:") and "draft" not in it
+               for it in its)
 
 
 def test_counts_and_balance():
@@ -39,6 +44,43 @@ def test_counts_and_balance():
         win = [it["distractor_window"] for it in rec if it["interference"] == inter]
         assert win.count("early") == win.count("late") == 60
     assert all(6 <= it["distance"] <= 13 for it in rec + by["topic"] + by["load"])
+    for fam, xs in by.items():  # the gold position is exactly balanced in every family
+        gi = [it["gold_index"] for it in xs]
+        assert [gi.count(p) for p in range(4)] == [len(xs) // 4] * 4, fam
+
+
+def test_no_family_has_a_length_artefact():
+    """The gold reply is uniquely the shortest (or longest) candidate on at most 35% of any family's items
+    (chance-level heuristics); Carry-5's instruction family had the compliant answer shortest on all."""
+    by = {}
+    for it in items():
+        by.setdefault(it["family"], []).append(c12.length_extremes(it))
+    for fam, ext in by.items():
+        assert sum(e[0] for e in ext) <= 0.35 * len(ext), fam
+        assert sum(e[1] for e in ext) <= 0.35 * len(ext), fam
+
+
+def test_instruction_family_is_length_neutral_and_rotates_its_forms():
+    ins = [it for it in items() if it["family"] == "instruction"]
+    forms = {}
+    for it in ins:
+        chk = it["check"]
+        assert sum(c12.check_instruction(chk, c) for c in it["candidates"]) == 1
+        assert c12.check_instruction(chk, it["candidates"][it["gold_index"]])
+        content = [c12.words(c) for c in it["candidates"]]
+        common = set(content[0]).intersection(*content[1:])
+        assert all(len(set(w) - common) <= 2 for w in content)  # same content: only the form words differ
+        forms[(chk["kind"], chk["form"])] = forms.get((chk["kind"], chk["form"]), 0) + 1
+    assert sorted(forms.values()) == [9] * 8  # each of the 2 x 4 forms gold equally often
+
+
+def test_value_gold_rate_is_near_chance():
+    """Across the set a value is gold about a quarter of the times it is a candidate (noctx is chance by
+    construction); load is small (20 items per slot), so only its mean is checked."""
+    rate = c12.summarise(items())["value_gold_rate"]
+    for fam in ("recall", "correction", "topic"):
+        assert 0.23 <= rate[fam]["mean"] <= 0.27 and rate[fam]["max"] <= 0.5, (fam, rate[fam])
+    assert 0.15 <= rate["load"]["mean"] <= 0.27
 
 
 def test_controls():
@@ -55,12 +97,28 @@ def test_controls():
             assert it["turns"][it["fact_turn"]]["user"].startswith("By the way, ")
 
 
-def test_small_talk_never_names_a_value():
+def test_small_talk_never_names_a_value_or_primes_a_candidate():
     values = c12.all_values()
     for it in items():
-        for t, k in zip(it["turns"], it["turn_kinds"]):
+        if it["family"] == "instruction":
+            ban = c12.banned_words(it["check"]["forms"] + it["answers"])
+        else:
+            ban = c12.banned_words(it["candidates"] + (it["answers"] if it["family"] == "knowledge" else []))
+        for n, (t, k) in enumerate(zip(it["turns"], it["turn_kinds"]), 1):
             if k in ("small_talk", "digression", "opener", "closing"):
                 assert not (values & set(c12.words(t["user"] + " " + t["gold"]))), (it["id"], t)
+            if k in ("small_talk", "digression", "opener") and n < it["target_turn"]:
+                assert not c12.clashes(t["user"] + " " + t["gold"], ban), (it["id"], t)
+
+
+def test_no_two_items_of_a_family_share_a_twin_turns_or_near_rendering():
+    seen = set()
+    for it in items():
+        for key in (("twin", it["twin"]), ("turns", tuple(t["user"] for t in it["turns"])),
+                    ("near", tuple((t["user"], t["gold"]) for t in it["near"]))):
+            k = (it["family"],) + key
+            assert k not in seen, (it["id"], key[0])
+            seen.add(k)
 
 
 def test_sft_rule_matches_chat_data():
