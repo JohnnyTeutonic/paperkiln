@@ -1159,3 +1159,28 @@ post job; they were compiled, not run, locally.
 per-step gap between SFT and pretraining on the L4 (whose VM has more cores for the forward's parallel softmax; the
 backward's loops are serial). Expected SFT rate with the device path: about the pretraining rate, ~25k tok/s, so
 1,500 SFT steps in about 16 minutes instead of 1.96 h; the first post job's step log measures it.
+
+### 24 Oct 2026, before any run outside Colab: a second L4 provider
+
+An implementation note, not an amendment: no hypothesis, metric, cell, seed, item, threshold or analysis changes.
+
+**What changes.** Runs may execute on an NVIDIA L4 rented from RunPod as well as on Colab's L4 (`runner_multi.py
+--backend runpod`; the same jobs files, `tiny_chat_run.py` and checkpoint relay). Reason: Colab grants three L4s at
+once, and E1 at 60M waits for a slot behind E5, E1 and the recursion arm.
+
+**The GPU rule.** microtorch/AGENTS.md makes the L4 the study GPU and forbids mixing GPU types inside an arm. A
+RunPod L4 is the same GPU (Ada, sm89, 24 GB), so an arm may hold runs from both providers; no other GPU type (A100,
+RTX 4090 and the like) enters a claim-carrying arm. A run's pretraining and its post job may sit on different
+providers (the post job reads the pretrained weights); a relaunch resumes a run only on an L4.
+
+**Why the registered metrics carry over.** Y, the validity gate, the panels and the validation losses are computed
+from the models' outputs. Different L4 instances (already a different Colab VM for nearly every run) differ only in
+the rounding of the same kernels. Before any arm uses RunPod, the floor pilot (20m_L8, 35% dialogue, seed 99, lr
+1e-3, its post job and Carry-5) is repeated there and compared with its Colab run; the comparison is recorded in
+experiments/tiny_chat_2026-10/pilot/ beside the Colab verdict.
+
+**What does not carry over: wall-clock.** S9 (throughput in the runs) and S10 (Y per L4-hour) use each run's own
+wall-clock, which depends on the host (CPU, bus, power cap) as well as the GPU. Every run records its provider, GPU
+model, driver and CUDA version and image digest (`provenance` in its result and summary files). S9 and S10 are
+reported with each run's provider beside them, and a cell whose runs span providers has its S10 flagged. Stage 0's
+per-shape probe rates, all measured on Colab, stay the reference for per-token time.
