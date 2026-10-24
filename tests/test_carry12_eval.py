@@ -182,7 +182,8 @@ def test_end_to_end_mtstudio_whole_conversation(toy, tmp_path):
     for mode in c12e.MODES:
         assert m["fc"]["acc"][mode]["all"]["n"] == 14, mode
     assert m["fc"]["over_ctx"]["gold"] == 0  # the toy's T 1,024 holds every gold history
-    assert m["gate"]["argmax_identical"] == m["gate"]["replies"] > 14 * 12 - 4 * m["gen"]["server_errors"], m["gate"]
+    # `mtstudio chat` returns no token ids, so its replies are not gated (as Carry-5; ember's are, below).
+    assert m["gate"]["replies"] == 0 and m["gen"]["server_errors"] <= 4, (m["gate"], m["gen"]["server_errors"])
     assert "14" in m["decay"] and m["gen"]["complies"]["gold"]["all"]["n"] == 1
     # report re-aggregates the same numbers without generating
     r = subprocess.run(TOOL + ["report", "--out", str(tmp_path / "e"), "--mtstudio", BIN], capture_output=True,
@@ -275,3 +276,15 @@ def test_l0_smoke_on_a_pick_folder(toy, tmp_path):
     assert rec["hl0"]["D"]["n"] == len([x for x in items()[::50] if x["family"] in L0.CONTEXT_FAMILIES])
     assert rec["hl0"]["verdict"] in ("FLOOR", "SUPPORTED", "SIGNIFICANT_BELOW_SESOI", "CONTRADICTED", "EQUIVALENT",
                                      "NOT_RESOLVED")
+
+
+def test_l0_detects_an_optimiser_file_posing_as_weights(tmp_path):
+    import struct
+
+    def st(path, keys):
+        h = json.dumps({k: {"dtype": "F32", "shape": [1], "data_offsets": [4 * i, 4 * i + 4]}
+                        for i, k in enumerate(keys)}).encode()
+        path.write_bytes(struct.pack("<Q", len(h)) + h + b"\0" * 4 * len(keys))
+    st(tmp_path / "w.safetensors", ["tok_emb", "layers.0.attn.wq"])
+    st(tmp_path / "o.safetensors", ["adamw.0.m.0", "adamw.0.v.0"])
+    assert L0.weights_ok(str(tmp_path / "w.safetensors")) and not L0.weights_ok(str(tmp_path / "o.safetensors"))

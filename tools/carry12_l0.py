@@ -67,6 +67,21 @@ def jsave(p, obj):
     os.replace(tmp, p)
 
 
+def safetensors_keys(path):
+    import struct
+    with open(path, "rb") as f:
+        n = struct.unpack("<Q", f.read(8))[0]
+        return [k for k in json.loads(f.read(n)) if k != "__metadata__"]
+
+
+def weights_ok(path):
+    """False when the pick's model.safetensors holds optimiser state, not weights (tiny_chat_run.py pick
+    copies the first non-model.safetensors file of the SFT folder; on the floor pilot's VM that was
+    optim.safetensors, 148 adamw.* tensors). The GGUF beside it is the model."""
+    keys = safetensors_keys(path)
+    return bool(keys) and not all(k.startswith("adamw.") for k in keys)
+
+
 def local_spec(model_dir, vocab, out):
     """A spec that names DIR/model.safetensors (and DIR/model.gguf): the pick's spec with its VM paths
     replaced."""
@@ -158,6 +173,18 @@ def cmd_run(a):
                            text=True)
         if p.returncode != 0 or not os.path.exists(g):
             sys.exit(f"mtstudio export --formats gguf failed (rc {p.returncode}): {p.stderr[-500:]}")
+    good = weights_ok(w)
+    scorer = a.scorer if a.scorer != "auto" else ("mtstudio" if good else "ir")
+    spot = a.spot
+    flag = None
+    if not good:
+        flag = (f"{w} holds optimiser state, not weights (tiny_chat_run pick); forced choice by the IR scorer "
+                "on the GGUF (tools/ir_numpy.py)" + ("; ember generation without the mtstudio spot-check"
+                                                     if a.gen == "ember" else ""))
+        if scorer == "mtstudio":
+            sys.exit(flag.replace("forced choice by", "use --scorer ir or auto for"))
+        spot = 0
+        print(flag, file=sys.stderr)
     ember = a.ember_bin
     build = None
     if a.gen == "ember" and ember == "auto":
@@ -169,11 +196,11 @@ def cmd_run(a):
         ember = build["bin"]
     smoke = a.smoke or a.every > 1
     argv = [sys.executable, os.path.join(HERE, "carry12_eval.py"), "run", "--model", f"{tag}={spec_path}",
-            "--out", os.path.join(out, "eval"), "--set", c12.OUT, "--scorer", "mtstudio", "--mtstudio", a.mtstudio,
+            "--out", os.path.join(out, "eval"), "--set", c12.OUT, "--scorer", scorer, "--mtstudio", a.mtstudio,
             "--gen", a.gen, "--self-scope", "target", "--max-new", str(a.max_new), "--every", str(a.every),
             "--port", str(a.port)]
     if a.gen == "ember":
-        argv += ["--ember-bin", ember, "--gpu-layers", str(a.gpu_layers), "--spot", str(a.spot)]
+        argv += ["--ember-bin", ember, "--gpu-layers", str(a.gpu_layers), "--spot", str(spot)]
     p = subprocess.run(argv, capture_output=True, text=True)
     with open(os.path.join(out, "eval.log"), "w", encoding="utf-8") as f:
         f.write(p.stdout[-20000:] + p.stderr[-20000:])
@@ -188,7 +215,8 @@ def cmd_run(a):
                       "T": spec["data"].get("T"), "arch": spec.get("arch")},
             "set": {"path": s["meta"]["set"], "sha256": s["meta"]["sha256"],
                     "pinned": s["meta"]["sha256"] == c12.pinned()},
-            "eval": {"argv": argv[1:], "gen": a.gen, "every": a.every, "ember_build": build}}
+            "eval": {"argv": argv[1:], "gen": a.gen, "every": a.every, "scorer": scorer, "spot": spot,
+                     "weights_are_weights": good, "flag": flag, "ember_build": build}}
     rec = l0_receipt(os.path.join(out, "eval", tag, "items.jsonl"), s["models"][tag], meta)
     jsave(os.path.join(out, "l0.json"), rec)
     print(json.dumps({k: rec[k] for k in ("tag", "smoke", "validity_gate")} | {"hl0": rec["hl0"]["D"],
@@ -279,6 +307,8 @@ def main(argv=None):
     p.add_argument("--port", type=int, default=8094)
     p.add_argument("--every", type=int, default=1)
     p.add_argument("--smoke", action="store_true")
+    p.add_argument("--scorer", default="auto", choices=["auto", "mtstudio", "ir"],
+                   help="auto: mtstudio score, or the IR scorer on the GGUF when model.safetensors is not weights")
     p = sub.add_parser("table")
     p.add_argument("root")
     p.add_argument("--out", default="")

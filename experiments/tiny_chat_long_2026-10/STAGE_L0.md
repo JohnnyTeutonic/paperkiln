@@ -72,3 +72,15 @@ cell, threshold or hypothesis of the long programme is chosen by looking at any 
 - Picks were chosen on Carry-5; HL0's direction does not depend on that choice, its size may.
 - Near differs from gold in length as well as distance (fewer tokens of context); D is the cost of the
   intervening small talk as a whole, not of position alone.
+
+## Amendments
+
+**A1 (24 Oct 2026, before any L0 scoring): the scoring backend when a pick's weights file is not the
+model.** The floor pilot's pick (`pick_pilot_s35`) shows that `tiny_chat_run.py pick` can copy the SFT
+folder's optimiser file as `model.safetensors` (148 `adamw.*` tensors; its sha256 e122fef5... is not the
+post job's `sft_weights_sha256` 27c212fd...); the pick's `model.gguf` is the model. `carry12_l0.py run
+--scorer auto` therefore scores forced choice with `mtstudio score` when `model.safetensors` holds weights
+and otherwise with the IR scorer on the GGUF (`tools/ir_numpy.py`, carry5_eval's `ir` backend: an
+independent forward pass of the same exported model); with `--gen ember`, ember then generates without the
+mtstudio spot-check (which needs the weights), its replies still gated by the IR scorer. The receipt records
+the backend (`eval.scorer`, `eval.weights_are_weights`, `eval.flag`). Section 3 (what is read) is unchanged.
