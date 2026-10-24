@@ -1,0 +1,10 @@
+{
+  "_comment": "Where an L4 training step's time goes (tools/step_profile.py): the nine tiny-chat shapes (20m L2-L32, 60m L4-L32) and pk_base_v1 (d768 L12), 40 steps each on a synthetic corpus, a clean run for throughput and a profiled run (MICROTORCH_STEP_TIMING + MICROTORCH_GPU_PROFILE: per-op CUDA events, summed per op class; wall minus GPU = host work, launch gaps and syncs). Production environment (jobs_vm.py ENV), FP32 only: measures today's step. One GPU job alone on the VM (timing). About 0.5 L4 VM-hours. Upload vocab_llama3_bpe.gguf (C:/ml_artifacts/capacity/vocab/) with the runner's --upload. Brings home profile.json; at home: python tools/step_profile.py table ART/step_profile/profile.json.",
+  "max_parallel": 1,
+  "jobs": [
+    {"name": "step_profile",
+     "cmd": ["python3", "tools/step_profile.py", "run", "--out", "{out}", "--vocab", "{upload}/vocab_llama3_bpe.gguf",
+             "--configs", "fp32", "--steps", "40", "--warm", "10"],
+     "outputs": ["profile.json"]}
+  ]
+}
