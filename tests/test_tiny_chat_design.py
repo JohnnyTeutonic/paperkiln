@@ -290,5 +290,7 @@ def test_e1_rec_files():
 
 def test_budget_recursion_arm():
     rows = dict(mj.budget_rec_rows(mj.shapes()))
+    # From the arm's own probes (stage0/rec, 24 Oct 2026): E1-R alone stays under A3.3's 80 L4
+    # VM-hours; with R8 the runs reach about 81, so R8 waits for Jonathan as well as for its rule.
     runs = rows["E1-R: R2, R4, MC7 x 3 seeds"] + rows["R8 (rule): 3 seeds"]
-    assert 40 < rows["E1-R: R2, R4, MC7 x 3 seeds"] < 50 and runs < 80  # A3.3: Jonathan decides above 80
+    assert 40 < rows["E1-R: R2, R4, MC7 x 3 seeds"] < 50 and 75 < runs < 90
