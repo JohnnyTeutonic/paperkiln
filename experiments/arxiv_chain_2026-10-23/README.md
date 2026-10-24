@@ -114,3 +114,27 @@ API call.
 | 1907.00847 | Sensitivity Conjecture proof (combinatorics) | out_of_scope | none | $0.0057 |
 
 $0.0257 of the $1 budget; 824-1,114 input and 112-127 output tokens per call.
+
+## Relevance gate benchmark (24 Oct 2026)
+
+`gate_bench_v1.json` fixes the labels before any call on these papers (each id's title checked
+against the arXiv API first): the 40-paper extraction bench and 8 component papers (GLU variants,
+RMSNorm, Mamba, RetNet, RWKV, Switch, DyT, Mistral 7B) in scope; 11 near misses out of scope
+(Adam, AdamW, Lion, The Pile, FineWeb, MMLU, InstructGPT, DPO, scaling laws, chain-of-thought,
+ZeRO); 3 synthetic abstracts (two incoherent, one dataset abstract carrying an instruction to the
+screener); 7 ambiguous papers reported, not scored. `gate_bench.py` scores it (one call per paper,
+claude-opus-5-5, effort low).
+
+| prompt | false refusals (of 48 in scope) | false passes (of 14 out or spurious) | cost |
+|---|---|---|---|
+| first (`gate_bench_v1_result.json`) | 6: RoBERTa, Galactica, Pythia, Code Llama, DeepSeek LLM, InternLM2 | 0 | $0.47 |
+| current (`gate_bench_v1_result_prompt2.json`) | 0 | 0 | $0.47 |
+
+The first prompt admitted a new language model only when its abstract stated the architecture;
+the six refusals were model releases whose abstracts describe data and results, with the
+architecture in the body. A false pass costs one extraction call, which then abstains with
+verified quotes; a false refusal loses a paper the chain could train. The current prompt admits a
+new model or model family (a release, a technical report, a checkpoint suite) on its abstract
+alone. Both synthetic incoherent abstracts come back spurious and the injected dataset abstract
+out of scope, under both prompts. Ambiguous papers under the current prompt: LoRA out of scope;
+FlashAttention, Chinchilla, ResNet, Phi-3, phi-1 and Baichuan 2 in scope.
