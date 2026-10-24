@@ -1,0 +1,109 @@
+{
+ "model": "models/tp_gemma3",
+ "evict": null,
+ "class": "ROUNDING",
+ "tol": 1e-05,
+ "steps": [
+  {
+   "method": "forward",
+   "ids": [
+    7,
+    6,
+    2,
+    20
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    3
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    18
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    17
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    11
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    15
+   ]
+  }
+ ],
+ "expect": [
+  {
+   "len": 4,
+   "logits": {
+    "shape": [
+     4,
+     24
+    ],
+    "f32": "babc38003ecb0dfcbf285144bf9f13523ea66c39bf3b5d65bec31bcc400896523feb4c1040568a8fbf1e8482bfccd7ea3f0f4351be0c67163f608b70be4d97243e5901e1bfb790bd3eaf59bcbe031034bf53e8013ef1f0d4bf5a8df83f07134ebfed519c3e45352ebd5b1f60bf0db822bf301c31bdf10bc23f386a353ee245413fd4c7a43e7d29583f7183723f4e8352bfc00f9a3d4d3b98bcb3b9a03e3629043d5666acbed6ea98bf7643463ddf5e04bffb75293fa5caf5c008e18d3f5047d6bfa303703f1bd3823fd0d7e5bf23c8dabe45b49ebeebb7bfbdd55fcabeb9663e3ef0a67c3ddecd883fb76f4b3e9225ddbfeaea9ebf2a460c3debfbe0bfa117f63f2c2f6abf646424bf4e60e23dc7d7e4bf5a5fcc3f3be870bfd4c25c3fe508933f8104bf3ea674f4bf04dacebf7af15f3f8961bf3e93601abf27623f4029fa383fea99ef4088f244bf96168cbffac6b63fdf0ef9bb64da603f05f9393e9b06773f7862dabfdb46253f9de29abfba3b623f10602a3eab7626bee44cb23e913e88"
+   }
+  },
+  {
+   "len": 5,
+   "logits": {
+    "shape": [
+     1,
+     24
+    ],
+    "f32": "bfc474d53fb9c2443e202fc03f856dccbf87b52abed951ca3f7ab7f43f16f4963fe80259bf4619563f13069f3fc3220cbfcab276bf05d2663f47f8823fb98de4bef318c2c00775a0bf1912ff3e63e324bfe282f13e91be4ec01a1fb5bea1e317"
+   }
+  },
+  {
+   "len": 6,
+   "logits": {
+    "shape": [
+     1,
+     24
+    ],
+    "f32": "bf387f733fd31946bf40d4c2c00f4e313f6a34473daf43703df8aa293f9e49573f4c2c6740414f953e8f0928bf4c4054bd8b76bebf042930beb896cbbf8214653d497e483efd3afcbdb57264bf9e1494bf58d8cfbdfdc454bf59200a3ede7a88"
+   }
+  },
+  {
+   "len": 7,
+   "logits": {
+    "shape": [
+     1,
+     24
+    ],
+    "f32": "c02845d63fc23636c00eb1a2bf9f0ab23f5eca12beafb87d3f54f5ab3f325615403f1f5b3fccd44f3f529cc93f2687363f476c113f1c5f5abfc418c73f9b7be3bf9201593faeff37be13f87abf8186d7bfe993d13fedef57bf2263023db58428"
+   }
+  },
+  {
+   "len": 8,
+   "logits": {
+    "shape": [
+     1,
+     24
+    ],
+    "f32": "bee2959f3fcce5c1bc6d7b403fb15821bf0dc7a6bf70b279bf19d7b1bfba9768bf41ac12bfe439043f566f3c3fee4ad6bf98145abf771c54bec452f33f6c77dabf30dc5c3ef97cbe3f45529b3e1ce4f73e3e7d92bff328593f9ed2bbbf659f69"
+   }
+  },
+  {
+   "len": 9,
+   "logits": {
+    "shape": [
+     1,
+     24
+    ],
+    "f32": "400c3da3be8f8b39bdf3821e3f9b6aabbef6d851bdfffeb1bf728cd43fae57b5be26663dbea57cffbfade558bcb3203340083c7ebf3615bb3f9dd8123f8544fdbf167276bfbb68853f99dbe93e7fbbdd3f88de00bff6ef4f3f1cf286bfa710f6"
+   }
+  }
+ ]
+}

@@ -1,0 +1,229 @@
+{
+ "model": "models/pk_mamba",
+ "evict": null,
+ "class": "ROUNDING",
+ "tol": 1e-05,
+ "steps": [
+  {
+   "method": "forward",
+   "ids": [
+    13,
+    8,
+    10,
+    14
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    6
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    13
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    6
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    10
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    12
+   ]
+  }
+ ],
+ "expect": [
+  {
+   "len": 4,
+   "logits": {
+    "shape": [
+     4,
+     15
+    ],
+    "f32": "bcd60d583ddb31cc3f90e0843f88b0fdbf050e98bd857fc23e867d45be5c4fbabe7370bc3e61dc18bcf749debc1443c83d961b0abd3395f83df8ac60bf09bb673f122f68be899c98be40b712bee60013be95bae5beaba0ccbdeb2f2ebe435713bc50cb00bf14f146bf00f150beb7eccabeeebb213fddf60abba3f3603e2db2693f8e3c573f882b1fbf077d76bcce202c3e60692ebe61adf6be8ac8c03e8752d6bdd5596abd205da03bf29f98bdbfc9033dd8b2efbed6dc8c3fd7b0d9be891cf8bea166c3bead6f6cbec99aadbdb22cddbecf6049bf1489f1be4edadebf1c1ca3bf0612febef3728abf298d003f009dc4"
+   },
+   "recurrent": {
+    "ssm": [
+     {
+      "s": {
+       "shape": [
+        8
+       ],
+       "f32": "3c4429183bed9fec3bb817b6bb9d72c2b9ed9b623bd2221bbc32aaa93cc5ffda"
+      }
+     },
+     {
+      "s": {
+       "shape": [
+        8
+       ],
+       "f32": "bca1d290ba270380bc43f534bc809532bd2d4946bb838769baafe0a43c7b1324"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "len": 5,
+   "logits": {
+    "shape": [
+     1,
+     15
+    ],
+    "f32": "be4958723c41f400bd9d359e3ddf5400be4a5b3fbc63dbd2bf465764beba5b1cbecc0cd53fcafb3abd8a3ee9bd87e8c3be36be80bd6e11ce3e154ee3"
+   },
+   "recurrent": {
+    "ssm": [
+     {
+      "s": {
+       "shape": [
+        8
+       ],
+       "f32": "bccb2580bbf445aa3be5ef8c3b3fffb63acf94f43c4af6813c8b8d6e3b52c477"
+      }
+     },
+     {
+      "s": {
+       "shape": [
+        8
+       ],
+       "f32": "bc8afce3bd0da4183cb024083cd4c0483d3a25b93bd7d7debbe68f223c3d5236"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "len": 6,
+   "logits": {
+    "shape": [
+     1,
+     15
+    ],
+    "f32": "bcd60e543ddb32ec3f90e0813f88b0fbbf050ea9bd857fdc3e867d51be5c4f23be73704b3e61dc02bcf74f8abc144b103d9619e6bd3398d13df8ac86"
+   },
+   "recurrent": {
+    "ssm": [
+     {
+      "s": {
+       "shape": [
+        8
+       ],
+       "f32": "3cf9eea73c2e34663b61eeb2bc4912593b43eb1b3afe2a2cbc8f32863d2b44f6"
+      }
+     },
+     {
+      "s": {
+       "shape": [
+        8
+       ],
+       "f32": "3c03148f3db4de11ba110aa6ba63c5b03c065a56bc523cec3bfc713abc27a2c0"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "len": 7,
+   "logits": {
+    "shape": [
+     1,
+     15
+    ],
+    "f32": "be4959703c41d578bd9d349e3ddf5349be4a598bbc63e942bf465790beba5a95becc0c6a3fcafb3ebd8a3bb1bd87e735be36bd81bd6e0cb43e154d69"
+   },
+   "recurrent": {
+    "ssm": [
+     {
+      "s": {
+       "shape": [
+        8
+       ],
+       "f32": "bcdc2728bc0d122c3c075ee33b7878f13a0575973c778f2c3ca7c6c6b8168480"
+      }
+     },
+     {
+      "s": {
+       "shape": [
+        8
+       ],
+       "f32": "bca6a5d4bcaf48023c5b7ccc3caef5a03d4b88bc38881720bc55ebeb3c7e8b36"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "len": 8,
+   "logits": {
+    "shape": [
+     1,
+     15
+    ],
+    "f32": "bba3fd303e2db3d93f8e3c4e3f882b17bf077da0bcce22d83e606998be61ac3bbe8ac8133e875274bdd55c97bd2061ca3bf27928bdbfcca03dd8b3bf"
+   },
+   "recurrent": {
+    "ssm": [
+     {
+      "s": {
+       "shape": [
+        8
+       ],
+       "f32": "3d02da8c3c34d5643b0b0842bc40461d3b3c504ebac06118bcb7e40d3d1dedad"
+      }
+     },
+     {
+      "s": {
+       "shape": [
+        8
+       ],
+       "f32": "3bd9a4cf3da83f7fba7bc082bb08c4943bf223acbc42276e3bec3952bbc73256"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "len": 9,
+   "logits": {
+    "shape": [
+     1,
+     15
+    ],
+    "f32": "bd2a81c03db10b9d3f8eb6b23f88d5cfbf00961dbd98cc703e79b4f0be44d2d4be7017193e847482bd8252e5bc9865ce3d05e08bbd987b193e208722"
+   },
+   "recurrent": {
+    "ssm": [
+     {
+      "s": {
+       "shape": [
+        8
+       ],
+       "f32": "3ccecbf63c0ef4c73c1cd4bcbc090ad33a95337c3c685787bc392cea3d092327"
+      }
+     },
+     {
+      "s": {
+       "shape": [
+        8
+       ],
+       "f32": "3c1397163dc082f3bbcef338bc2800423c94e738bb0ae65dbbc3fae33c0f4d07"
+      }
+     }
+    ]
+   }
+  }
+ ]
+}

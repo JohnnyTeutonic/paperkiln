@@ -1,0 +1,166 @@
+{
+ "model": "models/pk_llama",
+ "evict": null,
+ "class": "ROUNDING",
+ "tol": 1e-05,
+ "steps": [
+  {
+   "method": "forward",
+   "ids": [
+    12,
+    5,
+    11,
+    5,
+    8,
+    2,
+    10,
+    13,
+    10
+   ]
+  },
+  {
+   "method": "truncate",
+   "n": 5
+  },
+  {
+   "method": "forward",
+   "ids": [
+    13,
+    11
+   ]
+  }
+ ],
+ "expect": [
+  {
+   "len": 9,
+   "logits": {
+    "shape": [
+     9,
+     15
+    ],
+    "f32": "3e882555be8e093f3f7e09523f589fec3f1f72c83f076e09be6d8b7bbf2ade2bbf275efebf8dc7c63f0930083ea486073ef076253ec574bbbf32d739be7021cebf5ba24cbea522c4be9c03c03f060b0c3f2ddc523f8ecb543dd478893c0b98d43f71d5e7bf08670bbebf6b9abeeb457fbee841a3bf42e9a83e955213be1e1ec93f7cb9d93f5b39163ef879d63ec47fbcbeb654b6bf3b1991bf354b67bf9cd2a73f278f873eeb09c13f1107ee3eff9e9fbf272430be6fec05bf5bf7f3bea28bd3be9a1c223f06d88b3f2ebe313f8eca263dc705be3b0fb16a3f701a72bf06df06bebe02b8bee9449cbee6e758bf44bda9bea888763f7979c3bf0f05ddbeb610a2bf5a2d21bf41c072bf2beef73f1501803f27c47f3d3eccc5be16369abe471e1ebe1ab136be0b952e3fc2182b3dcfa549bf7db5f63f02f34c3ea003493f8b01e03f897ce83f54ebecbeaefbf4beca436ebc983e76be51b2b4be67099abe410403be462e53bf866e093e5ae8cebe548d2c3f823fb13f59d9703f129fd83eea2afdbe852ee2bf37fc9fbf32fdeabf968bd03f2d0aa03eb3cdc23f00da1f3eef8e6abf2665c33e83fac6be1e010e3f81deaf3f5a66523f0ce7ee3ece1ed0beaabd23bf32b16dbf31b879bf9b3a693f204bf73ebe9ad73f0259fe3f00b2debf18e8813e5c28d8be68f4bb3f817ecc3f5990633f15ac9c3ef27c6cbe804f4cbf32ec26bf2d7e33bf93577f3f261b193ea87b3c3ef659773ee2a4e6bf27e9c0"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      9
+     ],
+     [
+      9
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7,
+       8
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7,
+       8
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "len": 5,
+   "kv_rows": {
+    "kv": [
+     [
+      5
+     ],
+     [
+      5
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "len": 7,
+   "logits": {
+    "shape": [
+     2,
+     15
+    ],
+    "f32": "3e89fee0be1c73363f82f52c3f5a498f3f0bdae63ec71f7dbead8f02bf35c86dbf341bf9bf9c5ec73f256f733ec6097c3f05cb7b3f041319bf1b6c9f3e9b3eb5be2fe0f13f7eb7de3f5b64f33f0055943ec902c5beb00476bf3b43a4bf353a87bf9c0f9d3f25d4563eea764a3f0fae963efeb2cebf2a9a99"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      7
+     ],
+     [
+      7
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ]
+     ]
+    ]
+   }
+  }
+ ]
+}

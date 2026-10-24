@@ -20,6 +20,11 @@ models/
 *.gguf
 *.pt
 *.pth
+# The IR conformance suite's tiny fixture models (spec/IR_SPEC.md section 11; KBs each) are part
+# of the suite.
+!spec/conformance/models/
+!spec/conformance/**/*.gguf
+!spec/conformance/**/*.safetensors
 
 # Python
 __pycache__/

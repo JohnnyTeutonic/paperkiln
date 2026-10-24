@@ -1,0 +1,5 @@
+{
+ "gguf": "refuse/state_tokens_k_mismatch.gguf",
+ "rule": 28,
+ "section": "6.8.1"
+}

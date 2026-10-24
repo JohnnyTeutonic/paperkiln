@@ -1,0 +1,91 @@
+{
+ "op": "scale",
+ "cases": [
+  {
+   "name": "bias",
+   "node": {
+    "op": "scale",
+    "in": [
+     "x"
+    ],
+    "weight": "g",
+    "bias": "b",
+    "out": "y"
+   },
+   "inputs": {
+    "x": {
+     "shape": [
+      3,
+      6
+     ],
+     "f32": "3f6850dabf44cb463fd27e1f3e05d6b6beeec575be83bc24c02962e63ed4eed8be8127513f04c6d4bf2724543ec68f3d3ff607e4be294f22bf4c65ac3c89fa7d3fa2e7d13fe42fd5"
+    }
+   },
+   "weights": {
+    "g": {
+     "shape": [
+      6
+     ],
+     "f32": "bedf79563db226773f5794e23f41fa1e3f6fdb2e3f5ad955"
+    },
+    "b": {
+     "shape": [
+      6
+     ],
+     "f32": "3fbd6fb53f9de8743ed1c825bfe2f13dbf0f423cbf11919e"
+    }
+   },
+   "expect": {
+    "y": {
+     "shape": [
+      3,
+      6
+     ],
+     "f32": "3f8abc923f9559463fe5b460bfd64409bf7f1d9fbf49e0a44028a6923fa289e53e4a0a06bfb0a36dbf95ee20be72c9623f2419ee3f9c112abe867861bfe14f0a3f2201903f74934a"
+    }
+   },
+   "class": "EXACT",
+   "tol": 1e-05
+  },
+  {
+   "name": "no_bias",
+   "node": {
+    "op": "scale",
+    "in": [
+     "x"
+    ],
+    "weight": "g",
+    "bias": null,
+    "out": "y"
+   },
+   "inputs": {
+    "x": {
+     "shape": [
+      3,
+      6
+     ],
+     "f32": "3f6850dabf44cb463fd27e1f3e05d6b6beeec575be83bc24c02962e63ed4eed8be8127513f04c6d4bf2724543ec68f3d3ff607e4be294f22bf4c65ac3c89fa7d3fa2e7d13fe42fd5"
+    }
+   },
+   "weights": {
+    "g": {
+     "shape": [
+      6
+     ],
+     "f32": "bee7f8fabf8d15d4be9fef443f0982b6bfa99cd43f943ba2"
+    }
+   },
+   "expect": {
+    "y": {
+     "shape": [
+      3,
+      6
+     ],
+     "f32": "bed282e63f58e97abf0381113d8fc87b3f1e32a0be988ee93f997cfbbeeab36a3da160433e8ea4663f5d7ac03ee5f220bf5ef0673e3a9e0b3e7f645e3c143b00bfd7ddaa400420cf"
+    }
+   },
+   "class": "EXACT",
+   "tol": 1e-05
+  }
+ ]
+}

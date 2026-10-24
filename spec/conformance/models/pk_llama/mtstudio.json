@@ -1,0 +1,31 @@
+{
+ "name": "pk_llama",
+ "arch": {
+  "preset": "llama-tiny",
+  "custom": {
+   "d": 16,
+   "layers": 2,
+   "heads": 2
+  },
+  "rope_heads": "all"
+ },
+ "data": {
+  "T": 16,
+  "max_tokens": 0
+ },
+ "train": {
+  "steps": 30,
+  "lr": 0.003,
+  "eval_every": 1000,
+  "checkpoint_every": 1000,
+  "batch": 2,
+  "seed": 3,
+  "gradmap_every": 0
+ },
+ "export": {
+  "formats": [
+   "safetensors",
+   "gguf"
+  ]
+ }
+}

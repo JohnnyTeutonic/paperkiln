@@ -1,0 +1,78 @@
+{
+ "op": "ssm_scan",
+ "cases": [
+  {
+   "name": "n4",
+   "node": {
+    "op": "ssm_scan",
+    "in": [
+     "u"
+    ],
+    "state": "ssm",
+    "n": 4,
+    "a": "A",
+    "b": "B",
+    "c": "C",
+    "d": "Dk",
+    "out": "y"
+   },
+   "inputs": {
+    "u": {
+     "shape": [
+      5,
+      4
+     ],
+     "f32": "3feb14fdbe97235e3e08482dbf5a96b0bf976d67bf65c8573dc2b4e7bee7867dbe016f6e3e851ddf3e89ca00bed5ffb53fe939084011c1233f0ebcf23dd4e2eac013c0d7bf3c1b313e3575b43e7bea12"
+    }
+   },
+   "weights": {
+    "A": {
+     "shape": [
+      4,
+      4
+     ],
+     "f32": "be093b133db35f2d3e298869bf8376c73f0649623e158ad5bd8f7d94be0b8a753e692281bcde38933e1fad3ebda82c8f3d2040b2bdff439bbd37300ebdf03cb9"
+    },
+    "B": {
+     "shape": [
+      4
+     ],
+     "f32": "401dfb1f3f6a24023f8dcc6bbf5a2bbc"
+    },
+    "C": {
+     "shape": [
+      4
+     ],
+     "f32": "be1fc274bf0edc163f46014abf9a21e6"
+    },
+    "Dk": {
+     "shape": [
+      1
+     ],
+     "f32": "3f18544c"
+    }
+   },
+   "expect": {
+    "y": {
+     "shape": [
+      5,
+      4
+     ],
+     "f32": "3ec564d0bcccae003e45dd32bfb131b4bd17d650bfa8f40c3f69e07abf6062a0bda9dac33f9ebda0be947018be0930a43ed1d96a3e9d13f43f4b8004be2ea0aebecf1758bfb8a1473f84fbe53f096416"
+    }
+   },
+   "class": "ROUNDING",
+   "tol": 1e-05,
+   "expect_state": {
+    "ssm": {
+     "s": {
+      "shape": [
+       4
+      ],
+      "f32": "c0c6cd393fe690423f9a7c02bea5f3be"
+     }
+    }
+   }
+  }
+ ]
+}

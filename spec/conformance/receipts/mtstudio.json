@@ -1,0 +1,994 @@
+{
+ "adapter": {
+  "engine": "mtstudio",
+  "backend": "cpu",
+  "exact": true,
+  "profiles": [
+   "chat",
+   "core",
+   "recursion",
+   "state"
+  ]
+ },
+ "counts": {
+  "PASS": 25,
+  "FAIL": 0,
+  "SKIP": 132,
+  "XFAIL": 0,
+  "XPASS": 0
+ },
+ "by_kind": {
+  "model": {
+   "PASS": 15,
+   "FAIL": 0,
+   "SKIP": 5,
+   "XFAIL": 0,
+   "XPASS": 0
+  },
+  "trace": {
+   "PASS": 6,
+   "FAIL": 0,
+   "SKIP": 25,
+   "XFAIL": 0,
+   "XPASS": 0
+  },
+  "op": {
+   "PASS": 4,
+   "FAIL": 0,
+   "SKIP": 42,
+   "XFAIL": 0,
+   "XPASS": 0
+  },
+  "refuse": {
+   "PASS": 0,
+   "FAIL": 0,
+   "SKIP": 60,
+   "XFAIL": 0,
+   "XPASS": 0
+  }
+ },
+ "results": [
+  {
+   "id": "model/pk_attnres",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 9.52e-08; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_attnres_decode",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "model/pk_flex_expr",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 1.96e-07; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_flex_expr_decode",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "model/pk_flex_highway",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 9.97e-08; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_flex_highway_decode",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "model/pk_gpt2",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 1.10e-07; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_gpt2_decode",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "model/pk_gpt2_swa",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 9.62e-08; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_gpt2_swa_decode",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "model/pk_kimi",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 9.79e-08; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_kimi_decode",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "trace/pk_kimi_snapshot",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "model/pk_llama",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 1.41e-07; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_llama_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "decode by kv cache, token by token: log-probs worst 2.67e-08, greedy same (via mtstudio score)"
+  },
+  {
+   "id": "trace/pk_llama_truncate",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "model/pk_llama_attnres",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 9.63e-08; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_llama_attnres_decode",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "model/pk_llama_attnres_rec",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 1.28e-07; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_llama_attnres_rec_decode",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "model/pk_mamba",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 1.38e-07; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_mamba_decode",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "trace/pk_mamba_snapshot",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "model/pk_moe",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 1.19e-07; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_moe_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "decode by kv cache, token by token: log-probs worst 2.71e-08, greedy same (via mtstudio score)"
+  },
+  {
+   "id": "model/pk_mor",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 1.51e-07; greedy 4/4; depth traces 4/4"
+  },
+  {
+   "id": "trace/pk_mor_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "decode by kv cache, token by token: log-probs worst 3.55e-08, greedy same; depths of the last 1 decoded token(s) same (via mtstudio score)"
+  },
+  {
+   "id": "trace/pk_mor_truncate",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "model/pk_recursive",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 1.02e-07; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_recursive_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "decode by kv cache, token by token: log-probs worst 4.81e-08, greedy same (via mtstudio score)"
+  },
+  {
+   "id": "model/pk_srd",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 1.02e-07; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_srd_decode",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "trace/pk_srd_snapshot",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "model/pk_state",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 6.61e-08; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_state_evict_on",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "decode by kv cache, token by token: log-probs worst 2.01e-08, greedy same; kv rows 8 legal (via mtstudio score)"
+  },
+  {
+   "id": "trace/pk_state_evict_off",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "decode by kv cache, token by token: log-probs worst 2.01e-08, greedy same (via mtstudio score)"
+  },
+  {
+   "id": "trace/pk_state_rewind_evicted",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "trace/pk_state_rewind_current",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "trace/pk_state_rewind_at_block",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "model/tp_gemma3",
+   "kind": "model",
+   "verdict": "SKIP",
+   "detail": "no mtstudio run record (not a paperkiln-trained model)"
+  },
+  {
+   "id": "trace/tp_gemma3_decode",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "model/tp_gptneox",
+   "kind": "model",
+   "verdict": "SKIP",
+   "detail": "no mtstudio run record (not a paperkiln-trained model)"
+  },
+  {
+   "id": "trace/tp_gptneox_decode",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "model/tp_mamba1",
+   "kind": "model",
+   "verdict": "SKIP",
+   "detail": "no mtstudio run record (not a paperkiln-trained model)"
+  },
+  {
+   "id": "trace/tp_mamba1_decode",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "trace/tp_mamba1_snapshot",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "model/tp_mistral",
+   "kind": "model",
+   "verdict": "SKIP",
+   "detail": "no mtstudio run record (not a paperkiln-trained model)"
+  },
+  {
+   "id": "trace/tp_mistral_decode",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "model/tp_qwen3",
+   "kind": "model",
+   "verdict": "SKIP",
+   "detail": "no mtstudio run record (not a paperkiln-trained model)"
+  },
+  {
+   "id": "trace/tp_qwen3_decode",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "trace/tp_qwen3_truncate",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "op/embedding/rows",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/embedding/state_weight",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/pos_embedding/rows",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/linear/bias",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/linear/no_bias",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/linear/tied_to",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/scale/bias",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/scale/no_bias",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/split/three",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/rmsnorm/row",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/rmsnorm/group",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/rmsnorm/weight_offset",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/layernorm/row",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/gelu/tanh",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/gelu/none",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/silu/x",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/sigmoid/x",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/relu/x",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/add/ab",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/mul/ab",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/sub/ab",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/affine/scale_shift",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/mul_col/x_c",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/rms_row/eps",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/rope/interleaved",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/rope/neox",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/rope/neox_partial",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/rope/freq_scale",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/rope/grouped_query",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/attention/causal",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/attention/window_sinks",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/attention/grouped_query",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/moe_ffn/renorm",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/moe_ffn/raw",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/list/two",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/append/one",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/depth_attend/one_source",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/depth_attend/three_sources",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/expr/gelu_sigmoid",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 1.61e-08 of max(1, |ref|)"
+  },
+  {
+   "id": "op/expr/relu_squared",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/expr/where_rowmean",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/expr/layer_norm",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/linear_attention/two_heads",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/ssm_scan/n4",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/conv1d_causal/k4",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "op/selective_scan/d3n2",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes"
+  },
+  {
+   "id": "refuse/unknown_op",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/unknown_attribute",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/unknown_top_key",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/version_2",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/repeat_ne_n_layers",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/model_ctx_missing",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/per_layer_wrong_length",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/per_layer_in_head",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/add_one_input",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/rope_pairing_unknown",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/rope_n_rot_odd",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/attention_not_causal",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/attention_heads_not_multiple",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/attention_window_differs",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/slot_declared_twice",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/slot_unread",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/slot_unknown_kind",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/attention_no_slot",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/kv_slot_field_missing",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/tensor_index_without_weight_index",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/name_with_i_outside_block",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/evict_on_causal",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/missing_tensor",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/gelu_approx_unknown",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/split_count",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/expr_does_not_parse",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/moe_top_k_too_large",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/moe_gate_norm_unknown",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/recurrent_dtype_f16",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/recurrent_shape_mismatch",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/recurrent_op_mismatch",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/linear_attention_not_causal",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/conv_kernel_one",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/weight_index_wrong_length",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/weight_index_unused_layer",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/weight_index_negative",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/mor_route_not_first",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/mor_expert_choice",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/mor_unequal_steps",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/mor_steps_descending",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/mor_step_length_wrong",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/mor_no_kv_rows_active",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/mor_kv_from",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/mor_gate_unknown",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/mor_router_with_i",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/mor_kv_rows_shared",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/mor_route_in_head",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/turn_state_with_window",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/turn_state_without_state_weight",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/evict_without_mask",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/evict_unknown",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/mask_unknown",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/state_weight_with_i",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/two_state_weights",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/state_weight_wrong_name",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/version_key_mismatch",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/state_tokens_k_mismatch",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/state_template_not_v1",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/weight_index_block_count",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/state_tokens_arch_llama",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  }
+ ]
+}

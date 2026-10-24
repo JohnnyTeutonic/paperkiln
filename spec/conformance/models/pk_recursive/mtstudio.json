@@ -1,0 +1,37 @@
+{
+ "name": "pk_recursive",
+ "arch": {
+  "preset": "llama-tiny",
+  "custom": {
+   "d": 16,
+   "heads": 2,
+   "recursion": {
+    "prelude": 1,
+    "block": 1,
+    "repeats": 2,
+    "coda": 1,
+    "inject": "add"
+   }
+  },
+  "rope_heads": "all"
+ },
+ "data": {
+  "T": 16,
+  "max_tokens": 0
+ },
+ "train": {
+  "steps": 30,
+  "lr": 0.003,
+  "eval_every": 1000,
+  "checkpoint_every": 1000,
+  "batch": 2,
+  "seed": 3,
+  "gradmap_every": 0
+ },
+ "export": {
+  "formats": [
+   "safetensors",
+   "gguf"
+  ]
+ }
+}

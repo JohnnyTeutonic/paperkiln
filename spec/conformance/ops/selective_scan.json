@@ -1,0 +1,91 @@
+{
+ "op": "selective_scan",
+ "cases": [
+  {
+   "name": "d3n2",
+   "node": {
+    "op": "selective_scan",
+    "in": [
+     "x",
+     "dt",
+     "B",
+     "C"
+    ],
+    "state": "ssm",
+    "a": "A",
+    "d": "Dk",
+    "channels": 3,
+    "d_state": 2,
+    "dt_softplus": true,
+    "out": "y"
+   },
+   "inputs": {
+    "x": {
+     "shape": [
+      5,
+      3
+     ],
+     "f32": "bf6caac53f36600cc02695bebfd80664be8b7d0cc0046f91bfc02b7abf077804bfef16b53f8fad14bf464a22bfe2e63abe8340273edb06b43ea3c78b"
+    },
+    "dt": {
+     "shape": [
+      5,
+      3
+     ],
+     "f32": "bf87b7c9bd36360dbeff55da3dcc6e003eec99afbee06533bf6701de3eed4e333edc5ca4bfa25fc5bee869033f8928d941c80000c040000000000000"
+    },
+    "B": {
+     "shape": [
+      5,
+      2
+     ],
+     "f32": "3f76bc283e7cd2a6bf0ae137bfe868e73cfb4b75bf613524be8b5463400b6c49bfc11985bf8d73ad"
+    },
+    "C": {
+     "shape": [
+      5,
+      2
+     ],
+     "f32": "3e9dab28bf1f38153f3cdad9c01ca3ad3fb85a02bf477215bf887addbe25fd0bbf5dc3713f6857c8"
+    }
+   },
+   "weights": {
+    "A": {
+     "shape": [
+      3,
+      2
+     ],
+     "f32": "bf97160abf57ce41bf542913c0265e0cbfca59ecbf1ef4ac"
+    },
+    "Dk": {
+     "shape": [
+      3
+     ],
+     "f32": "3de33e753f09eab9bf2eba47"
+    }
+   },
+   "expect": {
+    "y": {
+     "shape": [
+      5,
+      3
+     ],
+     "f32": "be115eb93ee792413fccbff9c0a84befbf882cd3c026bb16bfa6911abee8db07bf354972beee5081bf045d613f995cfebffce86fbef85044c035560c"
+    }
+   },
+   "class": "ROUNDING",
+   "tol": 1e-05,
+   "expect_state": {
+    "ssm": {
+     "s": {
+      "shape": [
+       3,
+       2
+      ],
+      "f32": "411ab0b440e2a1a13e23da56bf22b4dbbdedcf0ec03f7f40"
+     }
+    }
+   }
+  }
+ ]
+}

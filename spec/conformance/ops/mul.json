@@ -1,0 +1,44 @@
+{
+ "op": "mul",
+ "cases": [
+  {
+   "name": "ab",
+   "node": {
+    "op": "mul",
+    "in": [
+     "a",
+     "b"
+    ],
+    "out": "y"
+   },
+   "inputs": {
+    "a": {
+     "shape": [
+      3,
+      6
+     ],
+     "f32": "3e3377a2bf637b2bbf764865bfaa9ba53e39e8523f7aee42c00199783e2f873abeb753b0bf81b14c3f09828e3fa1d81b3f3941bdbebde2043f7cded83f725a3fbfb91a593f8edaad"
+    },
+    "b": {
+     "shape": [
+      3,
+      6
+     ],
+     "f32": "3f51b4ef3e9d95c6bf41d3c13e54fdf4bf185b0b3e9324ae3f03bc723f916368bee3b2f43fe1d8f23e8d99a03f7a82dfbf40fa4ebf9ae4023fa203c73f80e54dbf8d88cebf47f05c"
+    }
+   },
+   "weights": {},
+   "expect": {
+    "y": {
+     "shape": [
+      3,
+      6
+     ],
+     "f32": "3e130383be8c07a03f3a784bbe8df223bddd481d3e903ac4bf8561de3e475f813e230f5cbfe4d5783e181eda3f9e5fc7bf0ba6703ee5c62a3fa008c03f740c663fccacdcbf5f243a"
+    }
+   },
+   "class": "EXACT",
+   "tol": 1e-05
+  }
+ ]
+}

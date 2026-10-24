@@ -1,0 +1,55 @@
+{
+ "op": "append",
+ "cases": [
+  {
+   "name": "one",
+   "node": {
+    "op": "append",
+    "in": [
+     "L",
+     "b"
+    ],
+    "out": "L2"
+   },
+   "inputs": {
+    "L": [
+     {
+      "shape": [
+       3,
+       6
+      ],
+      "f32": "3e3377a2bf637b2bbf764865bfaa9ba53e39e8523f7aee42c00199783e2f873abeb753b0bf81b14c3f09828e3fa1d81b3f3941bdbebde2043f7cded83f725a3fbfb91a593f8edaad"
+     }
+    ],
+    "b": {
+     "shape": [
+      3,
+      6
+     ],
+     "f32": "3f51b4ef3e9d95c6bf41d3c13e54fdf4bf185b0b3e9324ae3f03bc723f916368bee3b2f43fe1d8f23e8d99a03f7a82dfbf40fa4ebf9ae4023fa203c73f80e54dbf8d88cebf47f05c"
+    }
+   },
+   "weights": {},
+   "expect": {
+    "L2": [
+     {
+      "shape": [
+       3,
+       6
+      ],
+      "f32": "3e3377a2bf637b2bbf764865bfaa9ba53e39e8523f7aee42c00199783e2f873abeb753b0bf81b14c3f09828e3fa1d81b3f3941bdbebde2043f7cded83f725a3fbfb91a593f8edaad"
+     },
+     {
+      "shape": [
+       3,
+       6
+      ],
+      "f32": "3f51b4ef3e9d95c6bf41d3c13e54fdf4bf185b0b3e9324ae3f03bc723f916368bee3b2f43fe1d8f23e8d99a03f7a82dfbf40fa4ebf9ae4023fa203c73f80e54dbf8d88cebf47f05c"
+     }
+    ]
+   },
+   "class": "EXACT",
+   "tol": 1e-05
+  }
+ ]
+}

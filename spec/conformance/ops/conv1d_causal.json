@@ -1,0 +1,66 @@
+{
+ "op": "conv1d_causal",
+ "cases": [
+  {
+   "name": "k4",
+   "node": {
+    "op": "conv1d_causal",
+    "in": [
+     "x"
+    ],
+    "state": "conv",
+    "weight": "w",
+    "bias": "b",
+    "channels": 3,
+    "kernel": 4,
+    "out": "y"
+   },
+   "inputs": {
+    "x": {
+     "shape": [
+      5,
+      3
+     ],
+     "f32": "bfc53c8bbecd2852bff4d0fc3f619ad3bf817f28bdfb48843e969c36400d10dcbfcca21dbe9f53d53f6515673f47535cbfe130da3f0f4cd7bf051d51"
+    }
+   },
+   "weights": {
+    "w": {
+     "shape": [
+      3,
+      4
+     ],
+     "f32": "3f6e753c3fd900cf3fa1666bbe827afd3eb8532cbf69aad03e3441d13f9ae091bf904d67400d87b9bf531da5bf91ec23"
+    },
+    "b": {
+     "shape": [
+      3
+     ],
+     "f32": "bda9191ebfb05e5cbf6e7430"
+    }
+   },
+   "expect": {
+    "y": {
+     "shape": [
+      5,
+      3
+     ],
+     "f32": "3e9ec8babfee6d783f9fde4ac0100265c02b0aed3f4923f8bfd44f493fbd0628c04f30763eda4ea03f5f3f6c3fb12d403fa58044c03ad32ec08c1728"
+    }
+   },
+   "class": "ROUNDING",
+   "tol": 1e-05,
+   "expect_state": {
+    "conv": {
+     "x": {
+      "shape": [
+       3,
+       3
+      ],
+      "f32": "3e969c36400d10dcbfcca21dbe9f53d53f6515673f47535cbfe130da3f0f4cd7bf051d51"
+     }
+    }
+   }
+  }
+ ]
+}

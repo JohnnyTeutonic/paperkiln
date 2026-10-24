@@ -239,8 +239,8 @@ Any attribute of a block node, and any field of a block state slot, may be
 `{"per_layer": [v_0, ..., v_{L-1}]}` with L = `block.repeat`: application i reads v_i, except the
 structural keys: a node's `op`, `in`, `out`, `state`, `tensor_index`, `sizes`, `expr` and its
 tensor names (`weight`, `bias`, `router`, `experts`, `state_weight`, `tied_to`, `a`, `b`, `c`, `d`),
-and a slot's `name`, `kind`, `op`, `dtype`, `tensors`, `evict`, `kv_rows` and `kv_from`. Every other
-attribute is the same in every application. (Examples: gemma3's attention window and kv window, 512
+and a slot's `name`, `kind`, `op`, `dtype`, `tensors`, `evict` and `kv_rows` (`kv_from`, reserved, is
+per-layer by definition). An attribute not given per layer is the same in every application. (Examples: gemma3's attention window and kv window, 512
 on local layers and 0 on global ones; RoPE theta 10000 / 1e6; `depth_route`'s `step`; the injection
 `affine`'s `scale`.) A `per_layer` list whose length is not `block.repeat` is refused, as is a
 `per_layer` value outside the block.
@@ -258,8 +258,8 @@ its recurrent slot (section 6.3).
 Every op computes in f32. Where an op's text gives an order of operations and says "rounded", each
 operation it names is rounded to f32 before the next. Where the text says "rounded" or "no fused
 multiply-add", a * b + c is the product rounded and then the sum rounded; an engine must not
-contract it (a C or C++ build pins this with
-`-ffp-contract=off` or an equivalent, whatever `-march` the build adds).
+contract it (a C or C++ build pins this with `-ffp-contract=off` or an equivalent, whatever
+`-march` the build adds).
 
 ### 4.2 Classes
 
@@ -542,7 +542,7 @@ So `^` binds tightest and is right-associative (2^3^2 = 2^(3^2), -x^2 = -(x^2), 
 
       exp log sqrt tanh erf abs   elementwise (f32 libm)
       sigmoid(e)       1 / (1 + exp(-e)), as the sigmoid op
-      relu(e)          max(0, e), as the relu op
+      relu(e)          e where e > 0, else +0, as the relu op
       max(a, b)        a where a >= b, else b   (so max(NaN, b) = b, max(a, NaN) = NaN)
       min(a, b)        a where a <= b, else b
       where(c, a, b)   a where c > 0, else b    (a NaN condition selects b)
@@ -574,15 +574,15 @@ per sequence; a node names its slot in `state`. A block may declare several slot
 one recurrent). Every slot is read by at least one node, a slot name is declared once, and a node
 that names a slot names a declared slot of the kind its op needs. A kv slot is read by exactly one
 attention node (two readers would append twice per application, which is not defined); a block may
-still declare several kv slots. Nodes outside the block have no
-state, so a stateful op outside the block is refused.
+still declare several kv slots. Nodes outside the block have no state, so a stateful op outside
+the block is refused.
 
 ### 6.2 kv (core)
 
 `{name, kind "kv", heads, kv_heads, head_dim, max_len, window, sinks, dtype}`: the k and v rows of
 the tokens seen so far, `dtype` `"f32"`. window 0 and sinks 0 keep every row up to `max_len`, the
-slot's capacity in positions: a position >= max_len is refused at run time (exporters write max_len
-= model.ctx; an engine may hold fewer positions by choice and then refuses earlier).
+slot's capacity in positions: a position >= max_len is refused at run time (exporters write
+max_len = model.ctx; an engine may hold fewer positions by choice and then refuses earlier).
 Optional keys: `evict` (section 6.8.3), `kv_rows` (section 7.5) and `kv_from` (section 7.6). The
 attention nodes that read a slot declare its window, sinks, kv_heads and head_dim (section 5.15).
 
@@ -722,8 +722,7 @@ have mask `turn_state`. Once the last position of state block n is written, no l
 text row of any segment <= n, so the engine MAY drop those rows. Evicting eagerly, after n complete
 turns the slot holds n * k state rows plus the rows of the current segment; the lazy rule below also
 allows segment n - 1's text rows until the next text position arrives. Positions stay absolute
-(decode pos =
-tokens seen, not rows kept).
+(decode pos = tokens seen, not rows kept).
 
 The timing is the engine's: it may drop segment n's text rows at the end of the call that completes
 block n (eager) or later, but by the end of the call that writes the first text position after
@@ -748,16 +747,16 @@ those n tokens would leave. Per slot:
 - **kv, every row kept:** keep the rows of positions < n.
 - **kv with evict turn_state:** let m be the segment of the cut: the number of complete state
   blocks among positions 0 .. n-1 (the segment position n would belong to). When the text rows of
-  segment m are still held (m is the current segment), keep the rows of positions < n. When they
+  segment m are still held (always for the current segment; for the one before it, under lazy
+  eviction, until a text position follows its block), keep the rows of positions < n. When they
   were dropped (an earlier message edited; a re-tokenised reply that differs from the generated
   ids), the engine drops every row of segment >= m, text and state, keeps the state rows of
   segments < m, and re-prefills positions start(m) .. n - 1 from the ids it holds, start(m) being
   the position after block m - 1 (or 0); the result is the rows a run that never evicted would hold,
   less the dropped text rows of segments < m. A cut at start(m) re-prefills nothing. Regenerating
-  the latest reply cuts inside the current
-  segment: an engine that evicts lazily still holds that segment's text rows and re-prefills
-  nothing; one that evicted them when the reply's state block completed re-prefills the cut's
-  segment like any other.
+  the latest reply cuts inside the reply's segment: an engine that evicts lazily still holds its
+  text rows (no text position follows its state block yet) and keeps the rows before the cut; one
+  that evicted them when the reply's block completed re-prefills that segment like any other.
   The normative result is the state a fresh run over the first n tokens would leave. A lower layer of
   an engine may refuse a forward that starts inside a segment whose rows it dropped; the engine's
   session (and its conformance adapter's `truncate` and `forward`) must then succeed by
@@ -1069,14 +1068,14 @@ Document (section 3):
    `rope.rope_heads`, `attention.mask`, `moe_ffn.gate_norm`, `moe_ffn.activation`,
    `linear_attention.feature_map`, `depth_route.route`, `depth_route.gate`, `kv.evict`,
    `kv.kv_rows`, `tensor_index` (sections 5 to 7).
-6. A `per_layer` list outside the block, or of a length other than `block.repeat` (3.8).
+6. A `per_layer` list outside the block, on a structural key, or of a length other than
+   `block.repeat` (3.8).
 7. A node's arity is wrong: one output except `split` and `rope`; `sub`, `add`, `mul`,
-   `mul_col`, `append` and `pos_embedding` read two values; `embedding` reads one; `relu`,
-   `sigmoid`, `silu`, `gelu`, `affine`, `rms_row`, `scale`,
-   `rmsnorm`, `layernorm`, `linear`, `ssm_scan`, `conv1d_causal` and `depth_route` read one;
-   `attention` and `linear_attention` read [q, k, v]; `rope` reads [q, k, pos] and writes two;
-   `selective_scan` reads four; `list`, `depth_attend` and `expr` read at least one, `expr` at most
-   23 (sections 5 to 7).
+   `mul_col`, `append` and `pos_embedding` read two values; `embedding`, `relu`, `sigmoid`,
+   `silu`, `gelu`, `affine`, `rms_row`, `scale`, `rmsnorm`, `layernorm`, `linear`, `moe_ffn`,
+   `ssm_scan`, `conv1d_causal` and `depth_route` read one; `attention` and `linear_attention`
+   read [q, k, v]; `rope` reads [q, k, pos] and writes two; `selective_scan` reads four; `list`,
+   `depth_attend` and `expr` read at least one, `expr` at most 23 (sections 5 to 7).
 8. A required attribute is missing: `scale.weight`, `affine.scale` and `affine.shift`,
    `rms_row.eps`, `expr.expr` (a string), and the attributes each op's section lists.
 9. An `expr` does not parse (5.19).
@@ -1180,20 +1179,30 @@ row-major order, each as 8 hex digits of its little-endian IEEE binary32 bit pat
 digit order (1.0 is `3f800000`). Integer arrays are plain JSON lists.
 
 - **op case** (`ops/<op>.json`): `{"op", "cases": [{"name", "node", "inputs": {name: tensor},
-  "weights": {name: tensor}, "expect": {name: tensor}, "class", "tol"}]}`. `node` is an IR node; the
-  engine runs it alone as a one-node graph (block index 0, no state for stateless ops).
-- **state trace** (`state/<name>.json`): `{"model": "<models/... dir>", "evict": null | false,
+  "weights": {name: tensor}, "expect": {name: tensor}, "expect_state"?: {slot: {tensor: tensor}},
+  "class", "tol"}]}`. `node` is an IR node; the engine runs it alone as application 0 of a one-node
+  block, recurrent slots starting at their initial value, and `expect_state` gives a recurrent
+  slot's tensors after the last row. A `list` value is a JSON list of tensors; `tokens` and `pos`
+  are integer lists.
+- **state trace** (`state/<name>.json`): `{"model": "models/<name>", "evict": null | false,
   "steps": [{"method": "forward" | "truncate" | "snapshot" | "restore", ...its params}],
-  "expect": [one object per step]}`. Steps are the adapter methods of section 11.3 on one session;
-  each expectation holds the reports the step checks (`logits`, `kv_rows`, `kv_positions`, `depth`,
-  `recurrent`), with the class and tolerance of the trace.
-- **model case** (`models/<name>/case.json` beside `model.gguf`): `{"prompts": [{"ids",
-  "continuation", "logprobs", "argmax", "depth"?}], "class", "tol"}`: the continuation is the
-  reference's greedy one, `logprobs` its per-token log-probabilities and `argmax` the reference's
-  argmax at each continuation position.
-- **refusal** (`refuse/<name>.json`): `{"doc": <document>, "gguf_meta"?: {...}, "rule": <10.1
-  number>, "section": "<§>"}`. A consumer passes when it refuses the document; the validator also
-  reports the named rule.
+  "expect": [one object per step], "score_form"?: {...}}`. Steps are the adapter methods of
+  section 11.3 on one session; each expectation holds `len` and the reports the step checks
+  (`logits`, `kv_rows` and `kv_positions` as lists of allowed values per application, `depth`,
+  `recurrent`), at the trace's class and tolerance. `score_form` restates a forward-only trace as
+  one scoring request (prompt, continuation, log-probabilities, argmax, depths, allowed final kv
+  rows) for an engine that scores rather than reporting logits (mtstudio).
+- **model case** (`models/<name>/case.json` beside `models/<name>/<name>.gguf`): `{"model",
+  "prompts": [{"ids", "continuation", "logprobs", "argmax", "depth"?}], "banned", "class", "tol"}`:
+  the continuation is the reference's greedy one (ids in `banned` never chosen), `logprobs` its
+  per-token log-probabilities and `argmax` the reference's argmax at each continuation position.
+  A paperkiln-trained model's directory also holds `<name>.safetensors` and `mtstudio.json` (its
+  run's spec) so mtstudio can score it.
+- **refusal** (`refuse/<name>.json`): `{"doc"?: <document>, "gguf": "<path in the suite>", "rule":
+  <10.1 rule number>, "section": "<section>"}`. With `doc`, the engine loads the GGUF (a suite
+  model) with that document in place of its own (as ember's `EMBER_IR` does); without it, the GGUF
+  (`refuse/<name>.gguf`) breaks a container rule. A consumer passes when it refuses; the reference
+  adapter must also report a violation under `section`.
 
 ### 11.3 The adapter contract
 
@@ -1210,8 +1219,12 @@ stdout, in request order; stderr is free for logs. A request is `{"id": int, "me
     {"id": n, "error": "message"}  the method failed (the case fails)
     {"id": n, "skip": "reason"}    not implemented (the case is reported as skipped, never passed)
 
-**Values.** A tensor is `{"shape": [r, c], "f32": "<hex>"}` (section 11.2: 8 hex digits per value,
-the binary32 bit pattern, row-major). Ids and positions are JSON integer lists.
+**Values.** A tensor is `{"shape": [...], "f32": "<hex>"}` of any rank (a recurrent `s` [n] is
+1-D; section 11.2: 8 hex digits per value, the binary32 bit pattern, row-major). Ids and positions
+are JSON integer lists.
+
+**Skips.** A `skip` covers the whole call: there is no per-report skip. The engine decides it before
+running anything, so a skipped call leaves the session as it was.
 
 **Sessions.** A session is one sequence on one loaded model. Its length `len` is the number of
 tokens seen; its state is whatever the engine keeps (kv rows, recurrent tensors, MoR row sets). A
@@ -1233,18 +1246,22 @@ session owns the ids it has seen, so it can re-prefill after a rewind (section 6
 
 - `ir` (optional) is a document that replaces the file's embedded one (ember's `EMBER_IR`).
 - `evict`: null runs the document as declared; false keeps every kv row even where the document
-  declares `evict: turn_state` (the comparison run of section 6.8.3); true requires the declaration.
+  declares `evict: turn_state` (the comparison run of section 6.8.3); true requires the declaration,
+  and is an `error` on a document without it (a request the session cannot honour).
+- A snapshot lives until its session is closed and can be restored any number of times.
 - `forward` appends `ids` at positions len .. len + n - 1: on a fresh session it is a prefill, later
   an incremental step (n = 1 is token-by-token decode); any chunking is allowed. `truncate` applies
   section 6.9 to the first n tokens. `restore` returns the session to the ids and state of a
   `snapshot`.
-- `report` lists what to return after the call (each optional; an engine that cannot report one
-  replies `skip`):
+- `report` lists what to return after the call. `forward` may ask for any of them; `truncate` and
+  `restore` only for `kv_rows`, `kv_positions` and `recurrent` (they run no rows, so `logits` and
+  `depth` there are a runner error, and the suite never asks). An engine that cannot give a report
+  replies `skip` to the call:
 
 | Report | Shape | Meaning |
 |---|---|---|
 | `logits` | tensor [n, vocab] | the logits of the rows this call ran (`forward` only) |
-| `kv_rows` | `{slot: [rows per application]}` | k/v rows each application's instance of each kv slot holds after the call (after any eviction the call allows) |
+| `kv_rows` | `{slot: [rows per application]}` | k/v rows each application's instance of each kv slot holds after the call (after any eviction the call allows); `{}` for a document without kv slots |
 | `kv_positions` | `{slot: [[positions] per application]}` | the absolute positions of those rows, ascending |
 | `depth` | `[int per id of this call]` | under `depth_route`: each new token's depth, 1 .. R |
 | `recurrent` | `{slot: [{tensor: tensor} per application]}` | every recurrent slot's tensors after the call |
@@ -1274,6 +1291,14 @@ session owns the ids it has seen, so it can re-prefill after a rewind (section 6
 - `recurrent`: within ROUNDING of the reference after prefill; equal bit for bit between a prefill
   and the token-by-token decode of the same ids in the same engine where section 4.5's condition
   holds, otherwise within ROUNDING.
+
+**Environment.** The runner starts an engine's program with every `EMBER_*`, `MICROTORCH_*` and
+`MTSTUDIO_*` variable removed except those named with `--keep-env NAME` (an engine setting such as
+`EMBER_IR_CTX` changes what it runs, so a clean run carries none unless it is stated).
+
+**Expected failures.** `expected_fail.json` maps an engine (the `engine` of `hello`, by prefix) to
+the case ids it is known to fail, each with the reason and the fix it waits for. Such a case is
+reported XFAIL, not hidden as a skip; if it passes it is reported XPASS, and the entry should go.
 
 The in-process Python adapters implement the same methods with the same parameters and results
 (tensors as float32 arrays instead of hex). The numpy reference has no cache: its adapter recomputes

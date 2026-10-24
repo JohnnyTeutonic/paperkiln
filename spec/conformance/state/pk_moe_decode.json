@@ -1,0 +1,355 @@
+{
+ "model": "models/pk_moe",
+ "evict": null,
+ "class": "ROUNDING",
+ "tol": 1e-05,
+ "steps": [
+  {
+   "method": "forward",
+   "ids": [
+    2,
+    12,
+    5,
+    4
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    1
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    2
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    1
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    6
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    5
+   ]
+  }
+ ],
+ "expect": [
+  {
+   "len": 4,
+   "logits": {
+    "shape": [
+     4,
+     15
+    ],
+    "f32": "3d8b14babf89f3d93f034b923eb417fa3f8caaf03f8ad30c3f51168bbeef05c2bf0bd1873d3677b3be8515f8be73af22be5ff6c0be760ccebf8b6da43df85660bf0327da3f812c393f57d9a33f3dc2bb3f2d6bf23d2cde6cbf4285d4bf444993bf64266e3ef6beca3e56e70d3ec634d63e9ab4f0bf5d985ebe7a2e6abf848b05bd1b4784bd375b483f4acdeb3f5825fc3f938336bdbcaba8be4747713f4ebdb7bf0ec714bed25448befc4a2cbef06365bf611ceabe7532c4bf797a3ebdebca82be1336033f37c8b23f31f1633f950a02bce69c74be03bd2b3f668f65bf10bea3bec7fcb9bf00117abee18002bf498c6c"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      4
+     ],
+     [
+      4
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "len": 5,
+   "logits": {
+    "shape": [
+     1,
+     15
+    ],
+    "f32": "bd55f2be3f2fe2f43eb3d6343e9b7631bec44197bef37d6bbf2de3d1bf105ba0bf0df869bf6c543d3f6154c83f41670d3f46d5203f4d0006be46bb6e"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      5
+     ],
+     [
+      5
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "len": 6,
+   "logits": {
+    "shape": [
+     1,
+     15
+    ],
+    "f32": "3e012ba9bf8c88ea3f0c854f3ebac5703f8f6e2d3f8873743f4ce433bef69cf9bf0e647b3cf2cf89be7d4e38be614b5dbe5233cdbe630bfbbf90373f"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      6
+     ],
+     [
+      6
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "len": 7,
+   "logits": {
+    "shape": [
+     1,
+     15
+    ],
+    "f32": "bd3c24da3f312fa13eb0a5073e97d882bec7f6e2befa031abf2f4d2ebf0e261fbf0b8151bf6a068e3f605e673f41a26c3f46615a3f4cf481be404d20"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      7
+     ],
+     [
+      7
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "len": 8,
+   "logits": {
+    "shape": [
+     1,
+     15
+    ],
+    "f32": "be9d5c93bf002746bf312d26bf0c8cdc3d583c883dd197b43f58ff613f1e12eb3f128da33fbd54f4bf5383f3bf0f1834bf39497dbf2eee58bd94d146"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      8
+     ],
+     [
+      8
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "len": 9,
+   "logits": {
+    "shape": [
+     1,
+     15
+    ],
+    "f32": "be759146bf84624fbd569f7abd74620f3f480b253f533f993f943609bd9cefe3be3604283f56cf7fbf11494cbed45e9bbf003c06bef36dabbf5f715e"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      9
+     ],
+     [
+      9
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7,
+       8
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7,
+       8
+      ]
+     ]
+    ]
+   }
+  }
+ ],
+ "score_form": {
+  "prompt": [
+   2
+  ],
+  "continuation": [
+   12,
+   5,
+   4,
+   1,
+   2,
+   1,
+   6,
+   5
+  ],
+  "evict": false,
+  "logprobs": [
+   -3.1344319072154097,
+   -2.2851054537389555,
+   -2.0769700455892406,
+   -3.8334221562525355,
+   -2.5841236125954516,
+   -4.020040482808474,
+   -3.619612515878908,
+   -2.780285415642102
+  ],
+  "argmax": [
+   4,
+   2,
+   6,
+   6,
+   10,
+   4,
+   10,
+   9
+  ]
+ }
+}

@@ -1,0 +1,135 @@
+{
+ "op": "linear",
+ "cases": [
+  {
+   "name": "bias",
+   "node": {
+    "op": "linear",
+    "in": [
+     "x"
+    ],
+    "weight": "w",
+    "bias": "b",
+    "out": "y"
+   },
+   "inputs": {
+    "x": {
+     "shape": [
+      3,
+      6
+     ],
+     "f32": "3f6850dabf44cb463fd27e1f3e05d6b6beeec575be83bc24c02962e63ed4eed8be8127513f04c6d4bf2724543ec68f3d3ff607e4be294f22bf4c65ac3c89fa7d3fa2e7d13fe42fd5"
+    }
+   },
+   "weights": {
+    "w": {
+     "shape": [
+      5,
+      6
+     ],
+     "f32": "bfd08873bf01969d3fa1732d3f0f77e6bfa11951bfaac26e3ead6f053c7c60ad3fab701e3fb5ec83bf606fafbe9f40303f94d422bf6fad1abb8d8786bfc3326ebfd7ee29401d53f6be72abc7bea7a358beeb0f8abff3354cbd4fe3b83e09af08bf9a7ae5bf704539bf0d6ca33fd602233eff10933f30624a"
+    },
+    "b": {
+     "shape": [
+      5
+     ],
+     "f32": "bf778c0fbf6eb639bf2032183e745cd4bf3ebfab"
+    }
+   },
+   "expect": {
+    "y": {
+     "shape": [
+      3,
+      5
+     ],
+     "f32": "3f82bc32400f60a63f8c670bbf3d2db5c00df9ff405a5120bf78b4c8c034f6efbd60195840407631c10fe0e3c03ff9f7407e87e63eb19f9bbf140064"
+    }
+   },
+   "class": "ROUNDING",
+   "tol": 1e-05
+  },
+  {
+   "name": "no_bias",
+   "node": {
+    "op": "linear",
+    "in": [
+     "x"
+    ],
+    "weight": "w",
+    "bias": null,
+    "out": "y"
+   },
+   "inputs": {
+    "x": {
+     "shape": [
+      3,
+      6
+     ],
+     "f32": "3f6850dabf44cb463fd27e1f3e05d6b6beeec575be83bc24c02962e63ed4eed8be8127513f04c6d4bf2724543ec68f3d3ff607e4be294f22bf4c65ac3c89fa7d3fa2e7d13fe42fd5"
+    }
+   },
+   "weights": {
+    "w": {
+     "shape": [
+      5,
+      6
+     ],
+     "f32": "bf3a1a843ead8ca0bf1ac012bedd4ceebfcf72033eec5b393deb7d93bf7c1d11bfa363dcbfa9eb0a3f80f3c53dd44335c01745c6bef6d6fc3df0e2c2bfe3b3483ec9d91d3e48958dbf89e0aa3ea9d56abeabf3fabfab723d3e86dd9c3ec6f8d43dd69abcbe6e9f58bfd36223bed2704a3e918d943f47d05d"
+    }
+   },
+   "expect": {
+    "y": {
+     "shape": [
+      3,
+      5
+     ],
+     "f32": "bfaabac6bff4309ec0030d40c00bb12fc0350841404ec002bfd9573b409d7cd84016e2dfbd5c3229c00dee2240363f18c06f2111bf5a06d44053822e"
+    }
+   },
+   "class": "ROUNDING",
+   "tol": 1e-05
+  },
+  {
+   "name": "tied_to",
+   "node": {
+    "op": "linear",
+    "in": [
+     "x"
+    ],
+    "weight": "absent",
+    "bias": null,
+    "tied_to": "e",
+    "out": "y"
+   },
+   "inputs": {
+    "x": {
+     "shape": [
+      3,
+      6
+     ],
+     "f32": "3f6850dabf44cb463fd27e1f3e05d6b6beeec575be83bc24c02962e63ed4eed8be8127513f04c6d4bf2724543ec68f3d3ff607e4be294f22bf4c65ac3c89fa7d3fa2e7d13fe42fd5"
+    }
+   },
+   "weights": {
+    "e": {
+     "shape": [
+      7,
+      6
+     ],
+     "f32": "c0465ceb3f419d51bfc715dfbeb9d64bbf4565903f20206b3f5608653f50946dbecfadb7bedc4d1bbf2ee182bf35a923bfa616c6bf37b19e3f83f8c33f4996ecbf864bbb3f29bba83fb6102b3f733181bfb64fcc3e352c083dfecb6cbf87f99cbd99da283f880653bffa6614befcd93e3e9683cabf1aec53bfba0d5e3f7162033ea423fdbf81034b3f3310fe3fa3b7f93ec092f5be715e594001663a3f0e28f13eec43503f22d69e"
+    }
+   },
+   "expect": {
+    "y": {
+     "shape": [
+      3,
+      7
+     ],
+     "f32": "c0b99e70bdb7c56d3fbedf9bbfc58b00c084bc88c013703d4062a22041177becbfe977a340873dc3c05a57a33ee72957406b30e2bfaf5f53c096d150beb0ea27c055ad523ffda6143f075f1cbd56350f3f60d281"
+    }
+   },
+   "class": "ROUNDING",
+   "tol": 1e-05
+  }
+ ]
+}

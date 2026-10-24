@@ -40,7 +40,7 @@ TENSOR_KEYS = ("weight", "bias", "router", "state_weight", "tied_to")
 # Section 3.8: the structural keys, never per-layer (nodes, then slots).
 NOT_PER_LAYER = ("op", "in", "out", "state", "tensor_index", "sizes", "expr", "weight", "bias", "router", "experts",
                  "state_weight", "tied_to", "a", "b", "c", "d")
-SLOT_NOT_PER_LAYER = ("name", "kind", "op", "dtype", "tensors", "evict", "kv_rows", "kv_from")
+SLOT_NOT_PER_LAYER = ("name", "kind", "op", "dtype", "tensors", "evict", "kv_rows")
 MARKERS = {"eot": "<|endoftext|>", "user": "<|user|>", "assistant": "<|assistant|>"}  # paperkiln/1
 
 

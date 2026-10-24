@@ -1,0 +1,91 @@
+{
+ "op": "embedding",
+ "cases": [
+  {
+   "name": "rows",
+   "node": {
+    "op": "embedding",
+    "in": [
+     "tokens"
+    ],
+    "weight": "e",
+    "out": "x"
+   },
+   "inputs": {
+    "tokens": [
+     3,
+     0,
+     5,
+     1
+    ]
+   },
+   "weights": {
+    "e": {
+     "shape": [
+      8,
+      6
+     ],
+     "f32": "bef4612e3e410d4b3f22d5423f3ceab53fd3fbcc3ed9c4b43f42c7ca3f335ef43f0ba97c3e0a47cbbfb4b9e03dc3673cbf106538403d4c003f1f1cd03fc126f8bfbbe914be7b5eeebf3d62b73f4773b2bfddc3c6bed2e8923fb7a18cbd5bf9b93f769950c0086885bf6d6b903eeda6febf8b3b4bbf890c863cc6b1e23ec9a704bf1472153f9d6e1fbfe735fd3d63368dbe8fa73b3f09d1e83fa02d353f5abd813f0e44ad3fca5bd93e530962bf4d0b4bbf3276103fa669e8bfe1130d3fba302f"
+    }
+   },
+   "expect": {
+    "x": {
+     "shape": [
+      4,
+      6
+     ],
+     "f32": "bf3d62b73f4773b2bfddc3c6bed2e8923fb7a18cbd5bf9b9bef4612e3e410d4b3f22d5423f3ceab53fd3fbcc3ed9c4b43cc6b1e23ec9a704bf1472153f9d6e1fbfe735fd3d63368d3f42c7ca3f335ef43f0ba97c3e0a47cbbfb4b9e03dc3673c"
+    }
+   },
+   "class": "EXACT",
+   "tol": 1e-05
+  },
+  {
+   "name": "state_weight",
+   "node": {
+    "op": "embedding",
+    "in": [
+     "tokens"
+    ],
+    "weight": "e",
+    "state_weight": "s",
+    "out": "x"
+   },
+   "inputs": {
+    "tokens": [
+     2,
+     8,
+     9,
+     1
+    ]
+   },
+   "weights": {
+    "e": {
+     "shape": [
+      8,
+      6
+     ],
+     "f32": "bef4612e3e410d4b3f22d5423f3ceab53fd3fbcc3ed9c4b43f42c7ca3f335ef43f0ba97c3e0a47cbbfb4b9e03dc3673cbf106538403d4c003f1f1cd03fc126f8bfbbe914be7b5eeebf3d62b73f4773b2bfddc3c6bed2e8923fb7a18cbd5bf9b93f769950c0086885bf6d6b903eeda6febf8b3b4bbf890c863cc6b1e23ec9a704bf1472153f9d6e1fbfe735fd3d63368dbe8fa73b3f09d1e83fa02d353f5abd813f0e44ad3fca5bd93e530962bf4d0b4bbf3276103fa669e8bfe1130d3fba302f"
+    },
+    "s": {
+     "shape": [
+      2,
+      6
+     ],
+     "f32": "be3849243f055b743ea60e703fa8624ebebe6f8ebf24e6a73fe884003fa49c15bd7a1d20be6e5429401e9a8f3f8386af"
+    }
+   },
+   "expect": {
+    "x": {
+     "shape": [
+      4,
+      6
+     ],
+     "f32": "bf106538403d4c003f1f1cd03fc126f8bfbbe914be7b5eeebe3849243f055b743ea60e703fa8624ebebe6f8ebf24e6a73fe884003fa49c15bd7a1d20be6e5429401e9a8f3f8386af3f42c7ca3f335ef43f0ba97c3e0a47cbbfb4b9e03dc3673c"
+    }
+   },
+   "class": "EXACT",
+   "tol": 1e-05
+  }
+ ]
+}

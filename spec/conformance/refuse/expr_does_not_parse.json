@@ -1,0 +1,252 @@
+{
+ "doc": {
+  "_comment": "paperkiln IR v0 for pk_flex_expr, exported by mtstudio. Schema and semantics: microtorch/ir.hpp and LOCAL_LLM_STACK.md section 4.",
+  "ir_version": 0,
+  "family_hint": "flex",
+  "model": {
+   "vocab": 15,
+   "d": 16,
+   "n_layers": 2,
+   "ctx": 16,
+   "dtype": "f32"
+  },
+  "tokenizer": {
+   "type": "word",
+   "source": "gguf",
+   "specials": {
+    "unk": 0
+   },
+   "bos": null
+  },
+  "inputs": [
+   {
+    "name": "tokens",
+    "kind": "token_ids"
+   },
+   {
+    "name": "pos",
+    "kind": "positions",
+    "note": "absolute positions; prefill 0..T-1, decode = tokens seen so far; must stay below model.ctx"
+   }
+  ],
+  "embed": {
+   "nodes": [
+    {
+     "op": "embedding",
+     "in": [
+      "tokens"
+     ],
+     "weight": "token_embd.weight",
+     "out": "x"
+    }
+   ]
+  },
+  "block": {
+   "repeat": 2,
+   "state": [
+    {
+     "name": "kv",
+     "kind": "kv",
+     "heads": 2,
+     "kv_heads": 2,
+     "head_dim": 8,
+     "max_len": 16,
+     "window": 0,
+     "sinks": 0,
+     "dtype": "f32"
+    }
+   ],
+   "nodes": [
+    {
+     "op": "expr",
+     "in": [
+      "x"
+     ],
+     "expr": "max(x,",
+     "out": "h"
+    },
+    {
+     "op": "scale",
+     "in": [
+      "h"
+     ],
+     "weight": "blk.{i}.attn_norm_gain.weight",
+     "bias": "blk.{i}.attn_norm_gain.bias",
+     "out": "h"
+    },
+    {
+     "op": "linear",
+     "in": [
+      "h"
+     ],
+     "weight": "blk.{i}.attn_qkv.weight",
+     "bias": "blk.{i}.attn_qkv.bias",
+     "out": "qkv"
+    },
+    {
+     "op": "split",
+     "in": [
+      "qkv"
+     ],
+     "sizes": [
+      16,
+      16,
+      16
+     ],
+     "out": [
+      "q",
+      "k",
+      "v"
+     ]
+    },
+    {
+     "op": "rope",
+     "in": [
+      "q",
+      "k",
+      "pos"
+     ],
+     "heads": 2,
+     "head_dim": 8,
+     "theta": 10000.0,
+     "rope_heads": "all",
+     "pairing": "interleaved",
+     "_note": "adjacent pairs (x[2j], x[2j+1]) within each head, angle pos * theta^(-2j/head_dim); products rounded separately (no FMA)",
+     "out": [
+      "q",
+      "k"
+     ]
+    },
+    {
+     "op": "attention",
+     "in": [
+      "q",
+      "k",
+      "v"
+     ],
+     "state": "kv",
+     "heads": 2,
+     "kv_heads": 2,
+     "head_dim": 8,
+     "causal": true,
+     "scale": 0.35355338,
+     "window": 0,
+     "sinks": 0,
+     "softmax": "max-shifted, masked entries exactly zero",
+     "out": "a"
+    },
+    {
+     "op": "linear",
+     "in": [
+      "a"
+     ],
+     "weight": "blk.{i}.attn_output.weight",
+     "bias": "blk.{i}.attn_output.bias",
+     "out": "o"
+    },
+    {
+     "op": "add",
+     "in": [
+      "x",
+      "o"
+     ],
+     "out": "x"
+    },
+    {
+     "op": "expr",
+     "in": [
+      "x"
+     ],
+     "expr": "(x - rowmean(x)) / sqrt(rowmean((x - rowmean(x))^2) + 1e-5)",
+     "out": "h2"
+    },
+    {
+     "op": "scale",
+     "in": [
+      "h2"
+     ],
+     "weight": "blk.{i}.ffn_norm_gain.weight",
+     "bias": "blk.{i}.ffn_norm_gain.bias",
+     "out": "h2"
+    },
+    {
+     "op": "linear",
+     "in": [
+      "h2"
+     ],
+     "weight": "blk.{i}.ffn_up.weight",
+     "bias": "blk.{i}.ffn_up.bias",
+     "out": "u"
+    },
+    {
+     "op": "expr",
+     "in": [
+      "u"
+     ],
+     "expr": "relu(x)^2",
+     "out": "u"
+    },
+    {
+     "op": "linear",
+     "in": [
+      "u"
+     ],
+     "weight": "blk.{i}.ffn_down.weight",
+     "bias": "blk.{i}.ffn_down.bias",
+     "out": "f"
+    },
+    {
+     "op": "add",
+     "in": [
+      "x",
+      "f"
+     ],
+     "out": "x"
+    }
+   ]
+  },
+  "head": {
+   "nodes": [
+    {
+     "op": "expr",
+     "in": [
+      "x"
+     ],
+     "expr": "(x - rowmean(x)) / sqrt(rowmean((x - rowmean(x))^2) + 1e-5)",
+     "out": "h"
+    },
+    {
+     "op": "scale",
+     "in": [
+      "h"
+     ],
+     "weight": "output_norm_gain.weight",
+     "bias": "output_norm_gain.bias",
+     "out": "h"
+    },
+    {
+     "op": "linear",
+     "in": [
+      "h"
+     ],
+     "weight": "output.weight",
+     "bias": null,
+     "out": "logits"
+    }
+   ]
+  },
+  "outputs": [
+   {
+    "name": "logits",
+    "kind": "logits"
+   }
+  ],
+  "modes": {
+   "prefill": "all nodes over T tokens",
+   "decode": "the same graph with T = 1; attention reads and appends to its kv state"
+  }
+ },
+ "gguf": "models/pk_flex_expr/pk_flex_expr.gguf",
+ "rule": 9,
+ "section": "5.19"
+}

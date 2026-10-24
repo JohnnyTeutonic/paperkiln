@@ -1,0 +1,355 @@
+{
+ "model": "models/pk_llama",
+ "evict": null,
+ "class": "ROUNDING",
+ "tol": 1e-05,
+ "steps": [
+  {
+   "method": "forward",
+   "ids": [
+    12,
+    5,
+    11,
+    5
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    8
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    2
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    10
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    13
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    10
+   ]
+  }
+ ],
+ "expect": [
+  {
+   "len": 4,
+   "logits": {
+    "shape": [
+     4,
+     15
+    ],
+    "f32": "3e882555be8e093f3f7e09523f589fec3f1f72c83f076e09be6d8b7bbf2ade2bbf275efebf8dc7c63f0930083ea486073ef076253ec574bbbf32d739be7021d0bf5ba24cbea522c4be9c03c03f060b0b3f2ddc523f8ecb533dd4788a3c0b98e03f71d5e7bf08670bbebf6b9bbeeb457fbee841a4bf42e9a73e955212be1e1ecb3f7cb9d83f5b39153ef879d73ec47fbebeb654b6bf3b1990bf354b67bf9cd2a73f278f863eeb09c03f1107ee3eff9e9ebf272432be6fec07bf5bf7f4bea28bd5be9a1c223f06d88c3f2ebe313f8eca253dc705c13b0fb1c03f701a73bf06df07bebe02b9bee9449ebee6e75abf44bdaa"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      4
+     ],
+     [
+      4
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "len": 5,
+   "logits": {
+    "shape": [
+     1,
+     15
+    ],
+    "f32": "bea888753f7979c2bf0f05ddbeb610a5bf5a2d23bf41c072bf2beef73f15017f3f27c4803d3eccd8be16369ebe471e1dbe1ab137be0b95303fc2182b"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      5
+     ],
+     [
+      5
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "len": 6,
+   "logits": {
+    "shape": [
+     1,
+     15
+    ],
+    "f32": "3dcfa548bf7db5f63f02f34b3ea003473f8b01e13f897ce83f54ebf0beaefbf1beca436ebc983e57be51b2b6be67099cbe410404be462e56bf866e0a"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      6
+     ],
+     [
+      6
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "len": 7,
+   "logits": {
+    "shape": [
+     1,
+     15
+    ],
+    "f32": "3e5ae8cdbe548d303f823fb23f59d9703f129fd93eea2afdbe852ee2bf37fc9fbf32fdeabf968bd13f2d0a9f3eb3cdc23f00da1f3eef8e6cbf2665c3"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      7
+     ],
+     [
+      7
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "len": 8,
+   "logits": {
+    "shape": [
+     1,
+     15
+    ],
+    "f32": "3e83fac6be1e010e3f81deaf3f5a66523f0ce7ee3ece1ed0beaabd23bf32b16dbf31b879bf9b3a693f204bf73ebe9ad73f0259fe3f00b2debf18e881"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      8
+     ],
+     [
+      8
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "len": 9,
+   "logits": {
+    "shape": [
+     1,
+     15
+    ],
+    "f32": "3e5c28d8be68f4bb3f817ecc3f5990633f15ac9c3ef27c6cbe804f4cbf32ec26bf2d7e33bf93577f3f261b193ea87b3c3ef659773ee2a4e6bf27e9c0"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      9
+     ],
+     [
+      9
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7,
+       8
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7,
+       8
+      ]
+     ]
+    ]
+   }
+  }
+ ],
+ "score_form": {
+  "prompt": [
+   12
+  ],
+  "continuation": [
+   5,
+   11,
+   5,
+   8,
+   2,
+   10,
+   13,
+   10
+  ],
+  "evict": false,
+  "logprobs": [
+   -2.4395299024132098,
+   -3.212189107820047,
+   -2.5984262010207857,
+   -2.835737423649065,
+   -3.4918286770266396,
+   -3.1322573073747533,
+   -2.5145424806395713,
+   -2.3537338943559307
+  ],
+  "argmax": [
+   2,
+   6,
+   2,
+   6,
+   14,
+   4,
+   2,
+   2
+  ]
+ }
+}

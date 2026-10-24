@@ -1,0 +1,37 @@
+{
+ "name": "pk_moe",
+ "arch": {
+  "preset": "llama-tiny",
+  "custom": {
+   "d": 16,
+   "layers": 2,
+   "heads": 2
+  },
+  "moe": {
+   "experts": 4,
+   "top_k": 2,
+   "aux_loss": 0.01,
+   "z_loss": 0.001
+  },
+  "rope_heads": "all"
+ },
+ "data": {
+  "T": 16,
+  "max_tokens": 0
+ },
+ "train": {
+  "steps": 30,
+  "lr": 0.003,
+  "eval_every": 1000,
+  "checkpoint_every": 1000,
+  "batch": 2,
+  "seed": 3,
+  "gradmap_every": 0
+ },
+ "export": {
+  "formats": [
+   "safetensors",
+   "gguf"
+  ]
+ }
+}

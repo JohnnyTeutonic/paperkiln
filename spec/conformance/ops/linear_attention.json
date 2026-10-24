@@ -1,0 +1,76 @@
+{
+ "op": "linear_attention",
+ "cases": [
+  {
+   "name": "two_heads",
+   "node": {
+    "op": "linear_attention",
+    "in": [
+     "q",
+     "k",
+     "v"
+    ],
+    "state": "lin",
+    "heads": 2,
+    "head_dim": 4,
+    "causal": true,
+    "feature_map": "elu_plus_one",
+    "den_floor": 1e-08,
+    "out": "y"
+   },
+   "inputs": {
+    "q": {
+     "shape": [
+      6,
+      8
+     ],
+     "f32": "be2b8066beca6656bdf188b6bf89d361bf07d9803f83d60f3f422d2dbe9e3e45be1cac353e0b09dfbffb8d07bff03fa53e4af0b1bfe50c2bbe86cfde3f59cc35be7fd5bfbfac655fbf45bc983e261e90bfae898e3dc60c8dc00049ea3ebca6403f36be6c3ea2ca3e3f1971f1be5a0e2ebf8ba37cbf8cd8383f7ac2053e03fab23f5426d73ea15011bfcd86ddbeb17dbebe0a2ca7bda5672d4025a8b7be5e09c63dcbd125bee2aff63fc26fbcbf583db13eeb5adbbe80d814bfa3221d3eb775a4"
+    },
+    "k": {
+     "shape": [
+      6,
+      8
+     ],
+     "f32": "bf1d800abfda63f3bea38551bd3a238f3defd071bf9ffcad3ddcf6b03e90306ebe97e0d53f3ee7293fad2f7b3f5a32af3eae10a74031f52cbe00edb93d32e840bf8b756d3e160e73bf86dc873f0652e0bef8cecdbf989e69c019dc673e52fb4dbf96dac33f85d8e73f2561fabf842944bee4fdb8bf753f233e918ca03e23cf65bcc514df3f1d1ce3bdb8a65dbf92d7223d3a48d8be8b8eaabf9f4e0a3f9f244a3ed66f323ec5fede3f8e1b6bbe0820dd3f47e2353e8e9a6bbeaf3c1abfb49de2"
+    },
+    "v": {
+     "shape": [
+      6,
+      8
+     ],
+     "f32": "bd25c7f9bd91cdd4bf1dd6013e08fd403e83517c3eb7cc123f0b19483fcfc8f23fd9a06cc0174fe83f1d8883bf7803cb3ed1594b3f49caf5bee58fc3bf3df9923dec05f33f2f7d973f3b70cc3fa0d6c63e6439b7bffc94733f6675b9bed19298bd8d2eba3ec3b37b3f45424bbebf58823f3c7e65bf86207bbfa8e30abd21056fbf1f469bbf74b58abf19a0d1be9844303ee1d9293fbf0e84bf760da53e528393bed9f0253c0267e3bfc2ba16bf02f82cbea99cfcbf4bdcee3f165e8a3faab710"
+    }
+   },
+   "weights": {},
+   "expect": {
+    "y": {
+     "shape": [
+      6,
+      8
+     ],
+     "f32": "bd0c3762bd4463a4bf0c46f03d3aafe23e1a7ca03f3a8d263f749afb3f988a8c3f548232c01c27ab3d3a5ce8bdba10a03ed054cc3e01ab143da37b353f850d273f1d9e3abe914ca73e2d2f1b3d88e0663da5a0da3f1f909f3c98d1603ea12bea3f8f4f47bf2987393f4ba10a3ca3e2e33e05a9a23e153746bf53ddc53e3ced193ed23b5cbf4dbe083d879ea23b4834883eb302243f09ca1fbfd3b4dc3e11f8da3c48a3efbea632d9bec4b177bcff1d993e9626c03e80ec7fbda632363e9678e7"
+    }
+   },
+   "class": "ROUNDING",
+   "tol": 1e-05,
+   "expect_state": {
+    "lin": {
+     "num": {
+      "shape": [
+       2,
+       4
+      ],
+      "f32": "3d4536d0c08352dabf9e15afbeda42033fa8216a400cd2acbfa214893fc6ce14"
+     },
+     "den": {
+      "shape": [
+       2,
+       4
+      ],
+      "f32": "408a55d14101eb39410192b240bc377740d135fa40d96a62408b992840e5b623"
+     }
+    }
+   }
+  }
+ ]
+}

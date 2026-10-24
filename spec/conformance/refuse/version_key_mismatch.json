@@ -1,0 +1,5 @@
+{
+ "gguf": "refuse/version_key_mismatch.gguf",
+ "rule": 24,
+ "section": "3.1"
+}

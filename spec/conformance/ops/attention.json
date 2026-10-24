@@ -1,0 +1,170 @@
+{
+ "op": "attention",
+ "cases": [
+  {
+   "name": "causal",
+   "node": {
+    "op": "attention",
+    "in": [
+     "q",
+     "k",
+     "v"
+    ],
+    "state": "kv",
+    "heads": 2,
+    "kv_heads": 2,
+    "head_dim": 4,
+    "causal": true,
+    "scale": 0.5,
+    "window": 0,
+    "sinks": 0,
+    "out": "a"
+   },
+   "inputs": {
+    "q": {
+     "shape": [
+      6,
+      8
+     ],
+     "f32": "be2b8066beca6656bdf188b6bf89d361bf07d9803f83d60f3f422d2dbe9e3e45be1cac353e0b09dfbffb8d07bff03fa53e4af0b1bfe50c2bbe86cfde3f59cc35be7fd5bfbfac655fbf45bc983e261e90bfae898e3dc60c8dc00049ea3ebca6403f36be6c3ea2ca3e3f1971f1be5a0e2ebf8ba37cbf8cd8383f7ac2053e03fab23f5426d73ea15011bfcd86ddbeb17dbebe0a2ca7bda5672d4025a8b7be5e09c63dcbd125bee2aff63fc26fbcbf583db13eeb5adbbe80d814bfa3221d3eb775a4"
+    },
+    "k": {
+     "shape": [
+      6,
+      8
+     ],
+     "f32": "bf1d800abfda63f3bea38551bd3a238f3defd071bf9ffcad3ddcf6b03e90306ebe97e0d53f3ee7293fad2f7b3f5a32af3eae10a74031f52cbe00edb93d32e840bf8b756d3e160e73bf86dc873f0652e0bef8cecdbf989e69c019dc673e52fb4dbf96dac33f85d8e73f2561fabf842944bee4fdb8bf753f233e918ca03e23cf65bcc514df3f1d1ce3bdb8a65dbf92d7223d3a48d8be8b8eaabf9f4e0a3f9f244a3ed66f323ec5fede3f8e1b6bbe0820dd3f47e2353e8e9a6bbeaf3c1abfb49de2"
+    },
+    "v": {
+     "shape": [
+      6,
+      8
+     ],
+     "f32": "bd25c7f9bd91cdd4bf1dd6013e08fd403e83517c3eb7cc123f0b19483fcfc8f23fd9a06cc0174fe83f1d8883bf7803cb3ed1594b3f49caf5bee58fc3bf3df9923dec05f33f2f7d973f3b70cc3fa0d6c63e6439b7bffc94733f6675b9bed19298bd8d2eba3ec3b37b3f45424bbebf58823f3c7e65bf86207bbfa8e30abd21056fbf1f469bbf74b58abf19a0d1be9844303ee1d9293fbf0e84bf760da53e528393bed9f0253c0267e3bfc2ba16bf02f82cbea99cfcbf4bdcee3f165e8a3faab710"
+    }
+   },
+   "weights": {},
+   "expect": {
+    "a": {
+     "shape": [
+      6,
+      8
+     ],
+     "f32": "bd25c7f9bd91cdd4bf1dd6013e08fd403e83517c3eb7cc123f0b19483fcfc8f23de54261be8b409bbf0238c23d1883063e8549513ebd57343f04b2083fc826013df819b5bc8db6b6be226d663ebd8b9c3e717845bfd8b2933f4d0eb3bea9cece3f2ad3f2bf3ed4303ef5de09be9c45a93ef413c8bf1bb285be9549913efd6c09bd8e06a0be5fb3923d6eba863e5ca9ec3efdef10bdee5e9abf00a2b63eb6401b3dc50fd6befb84b8be889130bec3b9673e8e5828bf06de063e00175d3de0dbaa"
+    }
+   },
+   "class": "ROUNDING",
+   "tol": 1e-05
+  },
+  {
+   "name": "window_sinks",
+   "node": {
+    "op": "attention",
+    "in": [
+     "q",
+     "k",
+     "v"
+    ],
+    "state": "kv",
+    "heads": 2,
+    "kv_heads": 2,
+    "head_dim": 4,
+    "causal": true,
+    "scale": 0.5,
+    "window": 2,
+    "sinks": 1,
+    "out": "a"
+   },
+   "inputs": {
+    "q": {
+     "shape": [
+      6,
+      8
+     ],
+     "f32": "be2b8066beca6656bdf188b6bf89d361bf07d9803f83d60f3f422d2dbe9e3e45be1cac353e0b09dfbffb8d07bff03fa53e4af0b1bfe50c2bbe86cfde3f59cc35be7fd5bfbfac655fbf45bc983e261e90bfae898e3dc60c8dc00049ea3ebca6403f36be6c3ea2ca3e3f1971f1be5a0e2ebf8ba37cbf8cd8383f7ac2053e03fab23f5426d73ea15011bfcd86ddbeb17dbebe0a2ca7bda5672d4025a8b7be5e09c63dcbd125bee2aff63fc26fbcbf583db13eeb5adbbe80d814bfa3221d3eb775a4"
+    },
+    "k": {
+     "shape": [
+      6,
+      8
+     ],
+     "f32": "bf1d800abfda63f3bea38551bd3a238f3defd071bf9ffcad3ddcf6b03e90306ebe97e0d53f3ee7293fad2f7b3f5a32af3eae10a74031f52cbe00edb93d32e840bf8b756d3e160e73bf86dc873f0652e0bef8cecdbf989e69c019dc673e52fb4dbf96dac33f85d8e73f2561fabf842944bee4fdb8bf753f233e918ca03e23cf65bcc514df3f1d1ce3bdb8a65dbf92d7223d3a48d8be8b8eaabf9f4e0a3f9f244a3ed66f323ec5fede3f8e1b6bbe0820dd3f47e2353e8e9a6bbeaf3c1abfb49de2"
+    },
+    "v": {
+     "shape": [
+      6,
+      8
+     ],
+     "f32": "bd25c7f9bd91cdd4bf1dd6013e08fd403e83517c3eb7cc123f0b19483fcfc8f23fd9a06cc0174fe83f1d8883bf7803cb3ed1594b3f49caf5bee58fc3bf3df9923dec05f33f2f7d973f3b70cc3fa0d6c63e6439b7bffc94733f6675b9bed19298bd8d2eba3ec3b37b3f45424bbebf58823f3c7e65bf86207bbfa8e30abd21056fbf1f469bbf74b58abf19a0d1be9844303ee1d9293fbf0e84bf760da53e528393bed9f0253c0267e3bfc2ba16bf02f82cbea99cfcbf4bdcee3f165e8a3faab710"
+    }
+   },
+   "weights": {},
+   "expect": {
+    "a": {
+     "shape": [
+      6,
+      8
+     ],
+     "f32": "bd25c7f9bd91cdd4bf1dd6013e08fd403e83517c3eb7cc123f0b19483fcfc8f23de54261be8b409bbf0238c23d1883063e8549513ebd57343f04b2083fc826013df819b5bc8db6b6be226d663ebd8b9c3e717845bfd8b2933f4d0eb3bea9cecebc9c877f3ea922333ec7e1d73e0b041c3ef53070bf2724b8be92b7993f08d9c3beb4472dbee6e672beb0970abe41fb483f05e081bea37d9ebf0a24153f26f094bec6fa74be8ead11bf866ae4be98dd1d3e6e67803f3de770be920ef73f456e1d"
+    }
+   },
+   "class": "ROUNDING",
+   "tol": 1e-05
+  },
+  {
+   "name": "grouped_query",
+   "node": {
+    "op": "attention",
+    "in": [
+     "q",
+     "k",
+     "v"
+    ],
+    "state": "kv",
+    "heads": 2,
+    "kv_heads": 1,
+    "head_dim": 4,
+    "causal": true,
+    "scale": 0.5,
+    "window": 0,
+    "sinks": 0,
+    "out": "a"
+   },
+   "inputs": {
+    "q": {
+     "shape": [
+      6,
+      8
+     ],
+     "f32": "be2b8066beca6656bdf188b6bf89d361bf07d9803f83d60f3f422d2dbe9e3e45be1cac353e0b09dfbffb8d07bff03fa53e4af0b1bfe50c2bbe86cfde3f59cc35be7fd5bfbfac655fbf45bc983e261e90bfae898e3dc60c8dc00049ea3ebca6403f36be6c3ea2ca3e3f1971f1be5a0e2ebf8ba37cbf8cd8383f7ac2053e03fab23f5426d73ea15011bfcd86ddbeb17dbebe0a2ca7bda5672d4025a8b7be5e09c63dcbd125bee2aff63fc26fbcbf583db13eeb5adbbe80d814bfa3221d3eb775a4"
+    },
+    "k": {
+     "shape": [
+      6,
+      4
+     ],
+     "f32": "3e6b40513edabe473f2e64713f49a570bf1ea4ecbe1769703f6935d23cb7591d4033d590beae2b313ea2cab0bf217d243f8f1778be9505dd3e948eddbef581d14015ed25befb67013f1cb7c3bfe2d730bc211774be01da73bfbe8d943d9fffc6"
+    },
+    "v": {
+     "shape": [
+      6,
+      4
+     ],
+     "f32": "3ea61fe53f72c5d1bf89dca53f20548ebf7901e23c97bb6c3f9e9e513e264068bf0224c6c045a743bf5ab015bf74ad603e6d4c4f3f604e57bf9498acbf6aea203fab6f103e758c163f46a1dac01f7a7c3eb7346dbf573539bfd27b03bea26845"
+    }
+   },
+   "weights": {},
+   "expect": {
+    "a": {
+     "shape": [
+      6,
+      8
+     ],
+     "f32": "3ea61fe53f72c5d1bf89dca53f20548e3ea61fe53f72c5d1bf89dca53f20548ebefa23643ebb29ee3ebfda4b3eabc7e5beb252783eeea4703dfe74f43ec57768beeb3bddbf494012bdddbfbfbdbc1a9abec8be9a3e2d24f33dd6a6b53e8aac39be7e1c88bf7462cbbf292b7ebef988f3bee4435a3e2b5c503e327eb23caf8c4c3e6282edbf5a60e7beaf9627bf9a480f3c6b4aefbccddf803da9d183bf1c92443e9effb2be87f0a23cb2ad75bf936ecb3e46b4e5bf2c254abf5d4b11bf2b1eea"
+    }
+   },
+   "class": "ROUNDING",
+   "tol": 1e-05
+  }
+ ]
+}

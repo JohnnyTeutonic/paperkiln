@@ -1,0 +1,89 @@
+{
+ "_comment": "Runs of the conformance suite (spec/IR_SPEC.md section 11.4): one results file per engine, with every case's verdict and detail. SKIP means the engine has no path for the case.",
+ "runs": [
+  {
+   "file": "ir_numpy.json",
+   "engine": "numpy reference, tools/ir_numpy.py (numpy 2.3.3, WSL Python 3.12.3)",
+   "date": "2026-10-25",
+   "counts": {
+    "PASS": 157,
+    "FAIL": 0,
+    "SKIP": 0,
+    "XFAIL": 0,
+    "XPASS": 0
+   },
+   "by_kind": {
+    "model": {
+     "PASS": 20,
+     "FAIL": 0,
+     "SKIP": 0,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "trace": {
+     "PASS": 31,
+     "FAIL": 0,
+     "SKIP": 0,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "op": {
+     "PASS": 46,
+     "FAIL": 0,
+     "SKIP": 0,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "refuse": {
+     "PASS": 60,
+     "FAIL": 0,
+     "SKIP": 0,
+     "XFAIL": 0,
+     "XPASS": 0
+    }
+   }
+  },
+  {
+   "file": "mtstudio.json",
+   "engine": "paperkiln mtstudio CPU, built on an ext4 snapshot of paperkiln 3648a786's C++ sources (vendored transformer_core, Release, GCC 13.3)",
+   "date": "2026-10-25",
+   "counts": {
+    "PASS": 25,
+    "FAIL": 0,
+    "SKIP": 132,
+    "XFAIL": 0,
+    "XPASS": 0
+   },
+   "by_kind": {
+    "model": {
+     "PASS": 15,
+     "FAIL": 0,
+     "SKIP": 5,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "trace": {
+     "PASS": 6,
+     "FAIL": 0,
+     "SKIP": 25,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "op": {
+     "PASS": 4,
+     "FAIL": 0,
+     "SKIP": 42,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "refuse": {
+     "PASS": 0,
+     "FAIL": 0,
+     "SKIP": 60,
+     "XFAIL": 0,
+     "XPASS": 0
+    }
+   }
+  }
+ ]
+}

@@ -1,0 +1,52 @@
+{
+ "op": "pos_embedding",
+ "cases": [
+  {
+   "name": "rows",
+   "node": {
+    "op": "pos_embedding",
+    "in": [
+     "x",
+     "pos"
+    ],
+    "weight": "p",
+    "out": "y"
+   },
+   "inputs": {
+    "x": {
+     "shape": [
+      4,
+      6
+     ],
+     "f32": "bf355449bf9ebaafbeeeff3d3f3199cc3ebbd9b8be550d333e4a5dca3e5edb133eab516d3e81815b3f439a99bf14de403fa0f6aabfad43e5bf9791f0be6993d03f21e7383e84a107bec59961bfd24faebe579ca23f4dd7703e8a5749bf4278dd"
+    },
+    "pos": [
+     0,
+     1,
+     2,
+     3
+    ]
+   },
+   "weights": {
+    "p": {
+     "shape": [
+      8,
+      6
+     ],
+     "f32": "3f2954a2bfce0c69402f7f99bf313badbeed12c33eca83bfc008e42c3dc9af6dbd8ad4853cdf0117bf31a537bfd9cde43d0c676f3fe5823ebf18cf74bf1096c1bf241d99bf93b725bf3ebddc3f3bba883e0e32f0be95cbf43ec16c663f92d23e3f061ccc3f88e2af3fe611d23f575a6b3fdcfd3d3f4511fdbe2783a0bfb16a6bbf084315bf5e88073feb42553f4adc5ebf546eaf3eb6726c3ed93e59bf597ae63eccbffb3fb6b5dd3c3386f73f9ef731bf0c1af23f1114a73f7ebaf9bded4274"
+    }
+   },
+   "expect": {
+    "y": {
+     "shape": [
+      4,
+      6
+     ],
+     "f32": "bd3ffa70c036638c40119fb13abc3e00bdc4e42c3e3ffa4bbff87c9f3ea1d9653e889c4c3e8f716c3d8fab10c0121e823fa559e53ee0f964bfe3f9aabf4afbb5bc0d9840bf651dc6bf90c546bf68e4d4bd92d3643f02f1763f25e1d83ec6573e"
+    }
+   },
+   "class": "EXACT",
+   "tol": 1e-05
+  }
+ ]
+}

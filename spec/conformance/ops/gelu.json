@@ -1,0 +1,69 @@
+{
+ "op": "gelu",
+ "cases": [
+  {
+   "name": "tanh",
+   "node": {
+    "op": "gelu",
+    "in": [
+     "x"
+    ],
+    "approx": "tanh",
+    "out": "y"
+   },
+   "inputs": {
+    "x": {
+     "shape": [
+      3,
+      6
+     ],
+     "f32": "c045b1a3bf9e9b8abe6b16a9c080257a41149f84c07afabac0823b11be346af93fa59e21c0192a75c08e36a3c030c2d50000000080000000322bcc77b22bcc7741a00000c1a00000"
+    }
+   },
+   "weights": {},
+   "expect": {
+    "y": {
+     "shape": [
+      3,
+      6
+     ],
+     "f32": "bb328e89be08d1f1bdc0671cb88fea1741149f84b8d4fd46b852194abd9b2faa3f9561ddbca07dfeb6eb8a7ebbf4a346000000008000000031abcc77b1abcc7741a0000080000000"
+    }
+   },
+   "class": "ROUNDING",
+   "tol": 1e-05
+  },
+  {
+   "name": "none",
+   "node": {
+    "op": "gelu",
+    "in": [
+     "x"
+    ],
+    "approx": "none",
+    "out": "y"
+   },
+   "inputs": {
+    "x": {
+     "shape": [
+      3,
+      6
+     ],
+     "f32": "c045b1a3bf9e9b8abe6b16a9c080257a41149f84c07afabac0823b11be346af93fa59e21c0192a75c08e36a3c030c2d50000000080000000322bcc77b22bcc7741a00000c1a00000"
+    }
+   },
+   "weights": {},
+   "expect": {
+    "y": {
+     "shape": [
+      3,
+      6
+     ],
+     "f32": "bb4b4e02be0897d7bdc066a5b902662341149f84b934e1b3b8c8f123bd9b2f813f956963bca3b7a7b7a46f2cbc0205f9000000008000000031abcc77b1abcc7741a0000080000000"
+    }
+   },
+   "class": "ROUNDING",
+   "tol": 1e-05
+  }
+ ]
+}

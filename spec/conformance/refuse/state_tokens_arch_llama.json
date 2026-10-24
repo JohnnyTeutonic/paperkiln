@@ -1,0 +1,5 @@
+{
+ "gguf": "refuse/state_tokens_arch_llama.gguf",
+ "rule": 28,
+ "section": "8.2"
+}

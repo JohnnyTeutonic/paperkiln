@@ -1,0 +1,159 @@
+{
+ "model": "models/pk_mamba",
+ "evict": null,
+ "class": "ROUNDING",
+ "tol": 1e-05,
+ "steps": [
+  {
+   "method": "forward",
+   "ids": [
+    13,
+    8,
+    10,
+    14
+   ]
+  },
+  {
+   "method": "snapshot",
+   "tag": "p"
+  },
+  {
+   "method": "forward",
+   "ids": [
+    6,
+    13,
+    6
+   ]
+  },
+  {
+   "method": "restore",
+   "tag": "p"
+  },
+  {
+   "method": "forward",
+   "ids": [
+    1,
+    11,
+    12
+   ]
+  }
+ ],
+ "expect": [
+  {
+   "len": 4,
+   "logits": {
+    "shape": [
+     4,
+     15
+    ],
+    "f32": "bcd60d583ddb31cc3f90e0843f88b0fdbf050e98bd857fc23e867d45be5c4fbabe7370bc3e61dc18bcf749debc1443c83d961b0abd3395f83df8ac60bf09bb673f122f68be899c98be40b712bee60013be95bae5beaba0ccbdeb2f2ebe435713bc50cb00bf14f146bf00f150beb7eccabeeebb213fddf60abba3f3603e2db2693f8e3c573f882b1fbf077d76bcce202c3e60692ebe61adf6be8ac8c03e8752d6bdd5596abd205da03bf29f98bdbfc9033dd8b2efbed6dc8c3fd7b0d9be891cf8bea166c3bead6f6cbec99aadbdb22cddbecf6049bf1489f1be4edadebf1c1ca3bf0612febef3728abf298d003f009dc4"
+   },
+   "recurrent": {
+    "ssm": [
+     {
+      "s": {
+       "shape": [
+        8
+       ],
+       "f32": "3c4429183bed9fec3bb817b6bb9d72c2b9ed9b623bd2221bbc32aaa93cc5ffda"
+      }
+     },
+     {
+      "s": {
+       "shape": [
+        8
+       ],
+       "f32": "bca1d290ba270380bc43f534bc809532bd2d4946bb838769baafe0a43c7b1324"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "len": 4
+  },
+  {
+   "len": 7,
+   "logits": {
+    "shape": [
+     3,
+     15
+    ],
+    "f32": "be4958723c41f400bd9d359e3ddf5400be4a5b3fbc63dbd2bf465764beba5b1cbecc0cd53fcafb3abd8a3ee9bd87e8c3be36be80bd6e11ce3e154ee3bcd60e543ddb32ec3f90e0813f88b0fbbf050ea9bd857fdc3e867d51be5c4f23be73704b3e61dc02bcf74f8abc144b103d9619e6bd3398d13df8ac86be4959703c41d578bd9d349e3ddf5349be4a598bbc63e942bf465790beba5a95becc0c6a3fcafb3ebd8a3bb1bd87e735be36bd81bd6e0cb43e154d69"
+   },
+   "recurrent": {
+    "ssm": [
+     {
+      "s": {
+       "shape": [
+        8
+       ],
+       "f32": "bcdc2728bc0d122c3c075ee33b7878f13a0575973c778f2c3ca7c6c6b8168480"
+      }
+     },
+     {
+      "s": {
+       "shape": [
+        8
+       ],
+       "f32": "bca6a5d4bcaf48023c5b7ccc3caef5a03d4b88bc38881720bc55ebeb3c7e8b36"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "len": 4,
+   "recurrent": {
+    "ssm": [
+     {
+      "s": {
+       "shape": [
+        8
+       ],
+       "f32": "3c4429183bed9fec3bb817b6bb9d72c2b9ed9b623bd2221bbc32aaa93cc5ffda"
+      }
+     },
+     {
+      "s": {
+       "shape": [
+        8
+       ],
+       "f32": "bca1d290ba270380bc43f534bc809532bd2d4946bb838769baafe0a43c7b1324"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "len": 7,
+   "logits": {
+    "shape": [
+     3,
+     15
+    ],
+    "f32": "bd8b920ebeb13e493dff069bbd92f39bbe177410bd49d4073c7b5bb0bec28b69be9229903e326c4f3f819ee03f22406a3f555d003f37c8a4be8b825ebc8948a0be3b27123f7b59a53f86e08bbee565003df21c133e7d347abe8ad1dfbe5c0edf3ed029723bebf5003cb51ddc3d60a067bcfa2fb03e0a6f9abd2a82e53db10c893f8eb6ae3f88d5cbbf009629bd98cc8e3e79b4c8be44d261be7016cd3e847498bd8253e5bc9868563d05de79bd987c1f3e208712"
+   },
+   "recurrent": {
+    "ssm": [
+     {
+      "s": {
+       "shape": [
+        8
+       ],
+       "f32": "3cc458423c082aa63bf069b5bc10218b3a1ac6743c30f29dbc431ace3d096b1c"
+      }
+     },
+     {
+      "s": {
+       "shape": [
+        8
+       ],
+       "f32": "3c1a61133dc845e6bbceec22bc1edf463c9aef1abba373bdbbe481f13bdf5bb0"
+      }
+     }
+    ]
+   }
+  }
+ ]
+}

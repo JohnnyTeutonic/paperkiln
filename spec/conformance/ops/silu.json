@@ -1,0 +1,36 @@
+{
+ "op": "silu",
+ "cases": [
+  {
+   "name": "x",
+   "node": {
+    "op": "silu",
+    "in": [
+     "x"
+    ],
+    "out": "y"
+   },
+   "inputs": {
+    "x": {
+     "shape": [
+      3,
+      6
+     ],
+     "f32": "c045b1a3bf9e9b8abe6b16a9c080257a41149f84c07afabac0823b11be346af93fa59e21c0192a75c08e36a3c030c2d50000000080000000322bcc77b22bcc7741a00000c1a00000"
+    }
+   },
+   "weights": {},
+   "expect": {
+    "y": {
+     "shape": [
+      3,
+      6
+     ],
+     "f32": "be09ccaabe8e7c6bbdd03885bd92d9ae41149c00bd9c033cbd8bfc6bbda490a33f81fa3fbe4d1948bd53595fbe280bd4000000008000000031abcc77b1abcc7741a00000b3310d3f"
+    }
+   },
+   "class": "ROUNDING",
+   "tol": 1e-05
+  }
+ ]
+}
