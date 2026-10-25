@@ -1,0 +1,28 @@
+{
+ "name": "tc_sft_L32_r3",
+ "arch": {
+  "preset": "llama-tiny",
+  "custom": {
+   "d": 192,
+   "layers": 32,
+   "heads": 3,
+   "d_ff": 832
+  },
+  "rope_heads": "all"
+ },
+ "data": {
+  "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+  "vocab_cap": 16384,
+  "T": 512
+ },
+ "train": {
+  "steps": 1,
+  "lr": 0.001,
+  "batch": 16,
+  "seed": 1
+ },
+ "export": {
+  "formats": []
+ },
+ "out_dir": "/content/eval/pick_e1_L32"
+}

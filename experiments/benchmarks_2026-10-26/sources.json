@@ -1,0 +1,355 @@
+{
+ "_comment": "Pinned sources of the standard small-model benchmarks (tools/bench_build.py). Every URL names a fixed revision; files[name].sha256 is the downloaded file's, items_sha256 the item file built with --blimp-per 1000. Licences as checked on 26 Oct 2026 (dataset cards and upstream repositories). The data are not committed: tools/bench_build.py fetch + build reproduces the item file anywhere.",
+ "sets": {
+  "hellaswag": {
+   "source": "Rowan/hellaswag (HF) validation",
+   "revision": "218ec52e09a7e7462a5400043bb9a69a41d06b76",
+   "licence": "MIT (dataset card: github.com/rowanz/hellaswag LICENSE)",
+   "chance": 0.25
+  },
+  "arc_easy": {
+   "source": "allenai/ai2_arc (HF) ARC-Easy test",
+   "revision": "210d026faf9955653af8916fad021475a3f00453",
+   "licence": "CC BY-SA 4.0 (dataset card)",
+   "chance": "mean of 1/choices per item"
+  },
+  "arc_challenge": {
+   "source": "allenai/ai2_arc (HF) ARC-Challenge test",
+   "revision": "210d026faf9955653af8916fad021475a3f00453",
+   "licence": "CC BY-SA 4.0 (dataset card)",
+   "chance": "mean of 1/choices per item"
+  },
+  "piqa": {
+   "source": "github.com/ybisk/ybisk.github.io piqa/data valid.jsonl + valid-labels.lst",
+   "revision": "50ac265b6469095b0db861b0a8e20833ed5b25b7",
+   "licence": "Academic Free License 3.0 (yonatanbisk.com/piqa; the commit that added it)",
+   "chance": 0.5
+  },
+  "winogrande": {
+   "source": "allenai/winogrande (HF) winogrande_xl validation",
+   "revision": "01e74176c63542e6b0bcb004dcdea22d94fb67b5",
+   "licence": "Apache 2.0 (github.com/allenai/winogrande; the HF card states none)",
+   "chance": 0.5
+  },
+  "lambada": {
+   "source": "EleutherAI/lambada_openai (HF) data/lambada_test.jsonl (OpenAI's detokenised test set)",
+   "revision": "900124bf3b8235c6daf21033af9948b3f07346c4",
+   "licence": "modified MIT (OpenAI gpt-2 licence, dataset card); the original LAMBADA is CC BY 4.0",
+   "chance": 0.0
+  },
+  "blimp": {
+   "source": "nyu-mll/blimp (HF), 67 paradigms",
+   "revision": "877fba0801ffb7cbd8c39c1ff314a46f053f6036",
+   "licence": "CC BY 4.0 (dataset card)",
+   "chance": 0.5
+  }
+ },
+ "files": {
+  "hellaswag/validation.parquet": {
+   "url": "https://huggingface.co/datasets/Rowan/hellaswag/resolve/218ec52e09a7e7462a5400043bb9a69a41d06b76/data/validation-00000-of-00001.parquet",
+   "sha256": "899813071e1e95efafec90f856e1987d2150fa4d020fc005df6962c259f660cd"
+  },
+  "arc/ARC-Easy_test.parquet": {
+   "url": "https://huggingface.co/datasets/allenai/ai2_arc/resolve/210d026faf9955653af8916fad021475a3f00453/ARC-Easy/test-00000-of-00001.parquet",
+   "sha256": "4160597d618ae851c7eb04e281574f3f654776216ac6b6641588d64527b47177"
+  },
+  "arc/ARC-Challenge_test.parquet": {
+   "url": "https://huggingface.co/datasets/allenai/ai2_arc/resolve/210d026faf9955653af8916fad021475a3f00453/ARC-Challenge/test-00000-of-00001.parquet",
+   "sha256": "62f03257e737aed263f55c6abf87c7bb0028a44a6bdd2a26eb1279eb42c1d1e9"
+  },
+  "piqa/valid.jsonl": {
+   "url": "https://raw.githubusercontent.com/ybisk/ybisk.github.io/50ac265b6469095b0db861b0a8e20833ed5b25b7/piqa/data/valid.jsonl",
+   "sha256": "93503cc97c679e459b065c3d13e848282e44b2a25213985bed3e5d458abef72d"
+  },
+  "piqa/valid-labels.lst": {
+   "url": "https://raw.githubusercontent.com/ybisk/ybisk.github.io/50ac265b6469095b0db861b0a8e20833ed5b25b7/piqa/data/valid-labels.lst",
+   "sha256": "b4192dc3a2a0363d9d60ccf79800cbbe2f32ebb17726efdde6970e0b8131bceb"
+  },
+  "winogrande/xl_validation.parquet": {
+   "url": "https://huggingface.co/datasets/allenai/winogrande/resolve/01e74176c63542e6b0bcb004dcdea22d94fb67b5/winogrande_xl/validation-00000-of-00001.parquet",
+   "sha256": "f9d914d1818c0aba98cabdf8af2bc4bd943c462b9c5e7062647e05c2ce3315d1"
+  },
+  "lambada/lambada_test.jsonl": {
+   "url": "https://huggingface.co/datasets/EleutherAI/lambada_openai/resolve/900124bf3b8235c6daf21033af9948b3f07346c4/data/lambada_test.jsonl",
+   "sha256": "4aa8d02cd17c719165fc8a7887fddd641f43fcafa4b1c806ca8abc31fabdb226"
+  },
+  "blimp/adjunct_island.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/adjunct_island/train-00000-of-00001.parquet",
+   "sha256": "094b1a6c4d8e88d2a193d25b6a8eaf6dc746158c14eec537802dd2b67f57847b"
+  },
+  "blimp/anaphor_gender_agreement.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/anaphor_gender_agreement/train-00000-of-00001.parquet",
+   "sha256": "3c3f1d8d9e6aa071151e6455bf121c097ca4f7d9a0a7349ebfc9ec0e193c3472"
+  },
+  "blimp/anaphor_number_agreement.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/anaphor_number_agreement/train-00000-of-00001.parquet",
+   "sha256": "5dc16d19b9b3694589a11a66c7d0d0ca5707d3762a45d8cf0306133151575784"
+  },
+  "blimp/animate_subject_passive.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/animate_subject_passive/train-00000-of-00001.parquet",
+   "sha256": "d4c957edec77c6fb5b8afc3cee3b5b54c759458e0a19bca54ba1c35570c1d84e"
+  },
+  "blimp/animate_subject_trans.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/animate_subject_trans/train-00000-of-00001.parquet",
+   "sha256": "ef2f412c3f47a8bddc0a365aba51c7ce0678bc2a0d52874df923e008ea32bf2d"
+  },
+  "blimp/causative.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/causative/train-00000-of-00001.parquet",
+   "sha256": "cfec48a03e32498177214dd7add31df1200c2e049c6723678cbd3b66b5da52c4"
+  },
+  "blimp/complex_NP_island.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/complex_NP_island/train-00000-of-00001.parquet",
+   "sha256": "4a01cfd34626f006bcf0ae90ca3f340348b20d1f6c0530450f35b7218e1b8db7"
+  },
+  "blimp/coordinate_structure_constraint_complex_left_branch.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/coordinate_structure_constraint_complex_left_branch/train-00000-of-00001.parquet",
+   "sha256": "b776239fe67070fb13d64671fdeb4a31a81dd0693204abf4447fbe2e582c8f8a"
+  },
+  "blimp/coordinate_structure_constraint_object_extraction.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/coordinate_structure_constraint_object_extraction/train-00000-of-00001.parquet",
+   "sha256": "55d830a519e53f2400d3c436f751295a83a123f46084f247ce802ebec9585816"
+  },
+  "blimp/determiner_noun_agreement_1.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/determiner_noun_agreement_1/train-00000-of-00001.parquet",
+   "sha256": "eac75d95c9fa5a1e6e560918d8a2edf64e4c6e0fae8622a7389bbd5ec514727f"
+  },
+  "blimp/determiner_noun_agreement_2.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/determiner_noun_agreement_2/train-00000-of-00001.parquet",
+   "sha256": "17520554fff0a78a122cc5bf92708e64099b6907d1791c029a1c254e20089bca"
+  },
+  "blimp/determiner_noun_agreement_irregular_1.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/determiner_noun_agreement_irregular_1/train-00000-of-00001.parquet",
+   "sha256": "b73d7c301e81f55ce3631cf2c0a02de83a1c5fdf70fdaef4bff90ac5d4f60c7d"
+  },
+  "blimp/determiner_noun_agreement_irregular_2.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/determiner_noun_agreement_irregular_2/train-00000-of-00001.parquet",
+   "sha256": "73c404f947d00d35d8b21cce80d0c23b51268873fa834d162018fb45927d1c6c"
+  },
+  "blimp/determiner_noun_agreement_with_adj_2.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/determiner_noun_agreement_with_adj_2/train-00000-of-00001.parquet",
+   "sha256": "732f6dc785f282ef4757e119c847feef552c324b7125bb5191eb1f1377ef060d"
+  },
+  "blimp/determiner_noun_agreement_with_adj_irregular_1.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/determiner_noun_agreement_with_adj_irregular_1/train-00000-of-00001.parquet",
+   "sha256": "939567391e6ec007ef20a9f8306f41b2ee0e25c380842550ca46bcf0484ceca9"
+  },
+  "blimp/determiner_noun_agreement_with_adj_irregular_2.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/determiner_noun_agreement_with_adj_irregular_2/train-00000-of-00001.parquet",
+   "sha256": "e71c6a9baf9cf00d9e4bee09ac01590f9f3f96265ea80821ce309696d840811a"
+  },
+  "blimp/determiner_noun_agreement_with_adjective_1.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/determiner_noun_agreement_with_adjective_1/train-00000-of-00001.parquet",
+   "sha256": "dd61dd23aa32be9bfe5f8c440a1bfc1720bde1543428cbe919a1359f53fa8cfb"
+  },
+  "blimp/distractor_agreement_relational_noun.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/distractor_agreement_relational_noun/train-00000-of-00001.parquet",
+   "sha256": "2e0cef46676c822f3443d91aab2daaab23e177bc9b033d2eb50324df29052ae9"
+  },
+  "blimp/distractor_agreement_relative_clause.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/distractor_agreement_relative_clause/train-00000-of-00001.parquet",
+   "sha256": "c23c03ee033d92d9c22061089a80cbca29da2d337764bfa9bd20dc9d14d42afc"
+  },
+  "blimp/drop_argument.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/drop_argument/train-00000-of-00001.parquet",
+   "sha256": "4acf04febbe94ca4d8e0d12d2e02c808fb028c3501f4e66e62b1a1e2bfc8fdf3"
+  },
+  "blimp/ellipsis_n_bar_1.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/ellipsis_n_bar_1/train-00000-of-00001.parquet",
+   "sha256": "58edad00d53c2abe73e721a8afdd6220c06c5bf3aeb860da8670249b181a5fa1"
+  },
+  "blimp/ellipsis_n_bar_2.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/ellipsis_n_bar_2/train-00000-of-00001.parquet",
+   "sha256": "7506bd80abb5c2d54afddf64042bc2df6d587b271f37832c2dcdfa1b66c11d70"
+  },
+  "blimp/existential_there_object_raising.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/existential_there_object_raising/train-00000-of-00001.parquet",
+   "sha256": "1c63d5b77b5d40e0a8d475342d9893f2809093653b08c04f69f8a17252a98809"
+  },
+  "blimp/existential_there_quantifiers_1.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/existential_there_quantifiers_1/train-00000-of-00001.parquet",
+   "sha256": "ac2e197d55304a262bfeddaa498163f475e6da53dcab819892c799f58a229d99"
+  },
+  "blimp/existential_there_quantifiers_2.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/existential_there_quantifiers_2/train-00000-of-00001.parquet",
+   "sha256": "df307122fda88d067682497963044cfff29e3de5d9a88ace338e61d91e016f55"
+  },
+  "blimp/existential_there_subject_raising.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/existential_there_subject_raising/train-00000-of-00001.parquet",
+   "sha256": "1e281bf8a80a598b73f173f575003f6c3a7899143dd27412e18c06e5b561e171"
+  },
+  "blimp/expletive_it_object_raising.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/expletive_it_object_raising/train-00000-of-00001.parquet",
+   "sha256": "45a0a957726a018283bb5eaefc7a902257b363234f9b8793a73f8c4acfd20347"
+  },
+  "blimp/inchoative.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/inchoative/train-00000-of-00001.parquet",
+   "sha256": "cb452cd6ee3795f19a6b6e8b4328172610610c8cd9ed943c58c1ebbcd7e769cd"
+  },
+  "blimp/intransitive.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/intransitive/train-00000-of-00001.parquet",
+   "sha256": "f04f66e0a30a5f0ca8bbe130ed8f680ccf09d42a1e7971a1520352d37b667627"
+  },
+  "blimp/irregular_past_participle_adjectives.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/irregular_past_participle_adjectives/train-00000-of-00001.parquet",
+   "sha256": "77d65967bbf67977e0ccaa13f190a3ebcf2066222fa6bb343841257d6ad564c3"
+  },
+  "blimp/irregular_past_participle_verbs.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/irregular_past_participle_verbs/train-00000-of-00001.parquet",
+   "sha256": "f6acd480c04c37beac4a65252edf51b2472c391646ec55ff04794d29b0f1338e"
+  },
+  "blimp/irregular_plural_subject_verb_agreement_1.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/irregular_plural_subject_verb_agreement_1/train-00000-of-00001.parquet",
+   "sha256": "b4b07609019d870a0b95ee8245d0e3d97ea9999098d58eb03b49dbfe1a975e2c"
+  },
+  "blimp/irregular_plural_subject_verb_agreement_2.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/irregular_plural_subject_verb_agreement_2/train-00000-of-00001.parquet",
+   "sha256": "66a1bf6bba6daad40a9d90676e5f7971bf2f12543f96557968fa60ab40e25adc"
+  },
+  "blimp/left_branch_island_echo_question.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/left_branch_island_echo_question/train-00000-of-00001.parquet",
+   "sha256": "41a535903bc7f138d556dc01cff7cb6d9d8cc8e5d40fca1cb17e5da18ce12ae4"
+  },
+  "blimp/left_branch_island_simple_question.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/left_branch_island_simple_question/train-00000-of-00001.parquet",
+   "sha256": "8c718b6f37cb5674c5f8dfd2094d7cd54c43fe6f86154cf3a73eaf2dc74aa721"
+  },
+  "blimp/matrix_question_npi_licensor_present.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/matrix_question_npi_licensor_present/train-00000-of-00001.parquet",
+   "sha256": "a7ed0834104a8fe81b389072c856c10779d660295f924067362740d7901d3532"
+  },
+  "blimp/npi_present_1.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/npi_present_1/train-00000-of-00001.parquet",
+   "sha256": "cca3e48e8a08528c06eaec33e9a53aa2875048642f6b38f8c03355c008a55c4f"
+  },
+  "blimp/npi_present_2.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/npi_present_2/train-00000-of-00001.parquet",
+   "sha256": "44cdf2e5c7964d7618370927e5a86753f87de84b4b53555ed19f710eb61f8240"
+  },
+  "blimp/only_npi_licensor_present.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/only_npi_licensor_present/train-00000-of-00001.parquet",
+   "sha256": "8e26a57bc8d8625bfcc1cc018d6c46944abf202aa5f874a39a0f04c24df9e178"
+  },
+  "blimp/only_npi_scope.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/only_npi_scope/train-00000-of-00001.parquet",
+   "sha256": "c5c14f42c274448aaaaa7fe0e94440f9fdbe5c01a9cf1673af824189678d90e7"
+  },
+  "blimp/passive_1.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/passive_1/train-00000-of-00001.parquet",
+   "sha256": "3bcb3d7397215b8fc4804d74c6c2accf37c649cdf3976a56d8964004ed4f0ee5"
+  },
+  "blimp/passive_2.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/passive_2/train-00000-of-00001.parquet",
+   "sha256": "ee29e69ca55ec89cf648a57595f13c2b7271995ffb3329e10233a6703dbdd1bf"
+  },
+  "blimp/principle_A_c_command.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/principle_A_c_command/train-00000-of-00001.parquet",
+   "sha256": "6d18116ede2c686232348552e632f04be358cc62ce1a8c3d65e32263c625c887"
+  },
+  "blimp/principle_A_case_1.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/principle_A_case_1/train-00000-of-00001.parquet",
+   "sha256": "6615f7f1572b9bcc335be59e7645002ceb2c95d92dc2371551c91db48d9a9a55"
+  },
+  "blimp/principle_A_case_2.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/principle_A_case_2/train-00000-of-00001.parquet",
+   "sha256": "e3a13d2ab24f231adbc9b3dda2fcd448883855199419db178a449c42eee1d097"
+  },
+  "blimp/principle_A_domain_1.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/principle_A_domain_1/train-00000-of-00001.parquet",
+   "sha256": "5efcec2af824973d3eca500ee3591d444b5cc56569394c7bb1e0fb8a95efcd35"
+  },
+  "blimp/principle_A_domain_2.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/principle_A_domain_2/train-00000-of-00001.parquet",
+   "sha256": "5de4982ab8ba2914d476335ba48956cc5c26e24c5ae0b64b8aed7ab06cf2903b"
+  },
+  "blimp/principle_A_domain_3.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/principle_A_domain_3/train-00000-of-00001.parquet",
+   "sha256": "25227d39f6168b88f5b3ee0b35d0f6dd8105545016d76764d11c27f6031844d5"
+  },
+  "blimp/principle_A_reconstruction.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/principle_A_reconstruction/train-00000-of-00001.parquet",
+   "sha256": "bd57fef2d8e907730bfdf9be1048bfaa75571b8a5c3481219b08254df544feb1"
+  },
+  "blimp/regular_plural_subject_verb_agreement_1.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/regular_plural_subject_verb_agreement_1/train-00000-of-00001.parquet",
+   "sha256": "602d82e663e7d8d73aad82eeb8b4f6d1f578dcf33121a54fd639e3f0d5196aeb"
+  },
+  "blimp/regular_plural_subject_verb_agreement_2.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/regular_plural_subject_verb_agreement_2/train-00000-of-00001.parquet",
+   "sha256": "47b11c839024e89b06eae89dc874c1f5c447b384dfadec7ed0f812e97e4ba5a3"
+  },
+  "blimp/sentential_negation_npi_licensor_present.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/sentential_negation_npi_licensor_present/train-00000-of-00001.parquet",
+   "sha256": "2f2e30c846249f580be81a8a1276db371351bae9bf7c569e59679169404608dc"
+  },
+  "blimp/sentential_negation_npi_scope.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/sentential_negation_npi_scope/train-00000-of-00001.parquet",
+   "sha256": "06afb479723e7bff4071ca2f1511c1a78b8849331d09c608aa963fee057f8ac2"
+  },
+  "blimp/sentential_subject_island.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/sentential_subject_island/train-00000-of-00001.parquet",
+   "sha256": "a096e1ea8ff2e05ae00f0a52663f46598acc535ef108a7d3b2bbd73607b082f1"
+  },
+  "blimp/superlative_quantifiers_1.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/superlative_quantifiers_1/train-00000-of-00001.parquet",
+   "sha256": "eba2e172058aaa24858464ab6e79455564e2e220d18863395897895ce8fcec4e"
+  },
+  "blimp/superlative_quantifiers_2.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/superlative_quantifiers_2/train-00000-of-00001.parquet",
+   "sha256": "76eadb284f7c21aefe83c8eff7cf43afb446d237efbfbcb74962311650e5ba5e"
+  },
+  "blimp/tough_vs_raising_1.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/tough_vs_raising_1/train-00000-of-00001.parquet",
+   "sha256": "defbb5c0cb9b3d4b4b5f1571e64df8ba37428619bb4943d4d228ad5caf83f4d7"
+  },
+  "blimp/tough_vs_raising_2.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/tough_vs_raising_2/train-00000-of-00001.parquet",
+   "sha256": "01d9c6a6b0df268db59ce28ef6904541df2c0755cb5915b2f1f5dbcf08c3d82a"
+  },
+  "blimp/transitive.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/transitive/train-00000-of-00001.parquet",
+   "sha256": "1c92b23164784bdb7b721a87969a883ce76fcb13b7b2e2240230f67800544432"
+  },
+  "blimp/wh_island.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/wh_island/train-00000-of-00001.parquet",
+   "sha256": "63e455edde12fd76bca6e9287cb80920833b705ac656bc5ad105831b3327f219"
+  },
+  "blimp/wh_questions_object_gap.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/wh_questions_object_gap/train-00000-of-00001.parquet",
+   "sha256": "5107d0b8a4057d6f778a01253de18ee1de6c125b42ee6dc75111aeee43e20b41"
+  },
+  "blimp/wh_questions_subject_gap.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/wh_questions_subject_gap/train-00000-of-00001.parquet",
+   "sha256": "a58be1f30174106b6934ca13a7d89716e380a8f2ccd051f6bc20e85ba19904a4"
+  },
+  "blimp/wh_questions_subject_gap_long_distance.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/wh_questions_subject_gap_long_distance/train-00000-of-00001.parquet",
+   "sha256": "ca30473b9569b256cc7707d02668db436d097c810466c8cb60b1b7315ddb10e9"
+  },
+  "blimp/wh_vs_that_no_gap.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/wh_vs_that_no_gap/train-00000-of-00001.parquet",
+   "sha256": "92fc7e67b32b10f6e94b6b4c094204c51bb1b622d48812d714e33f91b6603fe2"
+  },
+  "blimp/wh_vs_that_no_gap_long_distance.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/wh_vs_that_no_gap_long_distance/train-00000-of-00001.parquet",
+   "sha256": "e1aa6fd1c7406b3bea5206e954b75f1dec7dd17c1019d526abe6005e715b38b3"
+  },
+  "blimp/wh_vs_that_with_gap.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/wh_vs_that_with_gap/train-00000-of-00001.parquet",
+   "sha256": "c905f68e44327d8a970a0341a4a023f4f70e402f382c0262f702cd5946b58c68"
+  },
+  "blimp/wh_vs_that_with_gap_long_distance.parquet": {
+   "url": "https://huggingface.co/datasets/nyu-mll/blimp/resolve/877fba0801ffb7cbd8c39c1ff314a46f053f6036/wh_vs_that_with_gap_long_distance/train-00000-of-00001.parquet",
+   "sha256": "c2adf0cb1714de75ac960e59eeed74c0fada5babee2e0cd6c2721b90aa8ed829"
+  }
+ },
+ "items_sha256": "978548d1c64f9a361c2e3d210e889955061bd7f71a496ab6a7734caf3969033c",
+ "counts": {
+  "hellaswag": 10042,
+  "arc_easy": 2376,
+  "arc_challenge": 1172,
+  "piqa": 1838,
+  "winogrande": 1267,
+  "lambada": 5153,
+  "blimp": 67000
+ }
+}
