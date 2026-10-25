@@ -8,6 +8,9 @@
 #include <random>
 #include <stdexcept>
 #include <utility>
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 namespace microtorch {
 namespace ops {
@@ -180,13 +183,38 @@ Var add_bias(const Var& x, const Var& b) {
     });
 }
 
+namespace {
+// The vendored Matrix::apply_gelu on one OpenMP thread. The core builds it
+// with -O3 -march=native -ffast-math, and GCC vectorises its loop with
+// libmvec's tanhf: 8 lanes (_ZGVdN8v_tanhf) over each thread's chunk, then
+// 4 lanes and scalar tanhf for the chunk's last chunk_len % 8 elements. The
+// three round differently, so an element's bits depended on where the thread
+// chunks fell, that is on the thread count and the matrix size: at 3, 5, 6
+// or 7 threads a stacked batch differed from its sequences run alone
+// (tests/test_deep_swa.cpp section 4). One thread runs the whole matrix as
+// one chunk: every thread count gives the bits OMP_NUM_THREADS=1 gives, which
+// are also the 2- and 4-thread bits wherever those chunks were multiples of
+// 8 elements (every size the gates use).
+void apply_gelu_one_chunk(Matrix& m) {
+#ifdef _OPENMP
+    const int n = omp_get_max_threads();
+    if (n > 1) omp_set_num_threads(1);
+    m.apply_gelu();
+    if (n > 1) omp_set_num_threads(n);
+#else
+    m.apply_gelu();
+#endif
+}
+}  // namespace
+
 Var gelu(const Var& x) {
     // B2.1a seam: same tanh-GELU formula on device (cuda_ops.cu) or the
-    // vendored apply_gelu on host; entry returns false -> CPU, unchanged.
+    // vendored apply_gelu on host (one chunk, above); entry returns false ->
+    // CPU, unchanged.
     Matrix out = device::out_matrix(x->data.rows(), x->data.cols());
     if (!device::devops::gelu_fwd(x->data, out)) {
         out = x->data;
-        out.apply_gelu();
+        apply_gelu_one_chunk(out);
     }
     return record(std::move(out), {x}, [](Variable* self) {
         const Var& x = self->parents[0];

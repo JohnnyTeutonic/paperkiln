@@ -7,6 +7,21 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **The host GELU gives the same bits at every OpenMP thread count** (26 Oct). `ops::gelu` on the CPU runs
+  the vendored `Matrix::apply_gelu` on one thread (`apply_gelu_one_chunk`, src/ops.cpp). The core compiles that
+  loop with -O3 -march=native -ffast-math, so GCC vectorises it with libmvec's tanhf: 8 lanes over each thread's
+  chunk, then 4 lanes and scalar tanhf for the chunk's last chunk_len % 8 elements, and the three round
+  differently. An element's bits therefore depended on where the chunks fell. At 3, 5, 6 or 7 threads a
+  stacked batch differed from its sequences run alone, which is the deep_swa batch pin's failure with
+  `OMP_NUM_THREADS=3`, present since the test was written.
+  - Every thread count now gives the one-thread bits. Those are also the 2- and 4-thread bits wherever those
+    chunks were multiples of 8 elements, which covers every gate's sizes. A probe hashed `ops::gelu` on seven
+    shapes and FlexLM logits on three: at 1-5 threads every hash now equals the old one-thread hash.
+  - mtstudio gpt2 and flex runs at 1-5 threads give weights byte-identical to the old one-thread run. Before
+    the change the flex run differed at 5 threads.
+  - `tests/test_deep_swa.cpp` section 4b runs the batch pin at 1-8 threads in process and checks each count's
+    logits against one thread's. ctest gives 42/42 at 2 and at 3 threads.
+
 - **Tiny chat, arm X5: Attention Residuals on the llama base** (26 Oct; `experiments/tiny_chat_2026-10/PREREGISTRATION.md`
   amendment 5). Jonathan's cross-layer idea on Carry-5. The arm is 20m_L16 with `llama_attnres` (full form at
   sublayer level: 33 depth sources, zero-initialised pseudo-queries, scale "sources"), against E1's three home L16

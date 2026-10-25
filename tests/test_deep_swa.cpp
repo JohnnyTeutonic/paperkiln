@@ -9,13 +9,17 @@
 //   3. FD spot-check through layer-0 attention weights at depth 4.
 //   4. batch pin at depth: stacked [2T] forward at seq_len=T equals the
 //      two single-sequence forwards row-for-row (window masking and
-//      positions isolate correctly through depth).
+//      positions isolate correctly through depth), at every OpenMP thread
+//      count from 1 to 8, each equal to one thread's logits.
 //   5. knob independence: swa + highway compose (registry #0001 lanes
 //      will want this eventually) — builds and runs.
 #include <cmath>
 #include <cstdio>
 #include <random>
 #include <vector>
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 #include "../tools/parity_model.hpp"
 #include "check.hpp"
@@ -134,6 +138,28 @@ int main() {
             }
         CHECK(md == 0.0f);
         std::printf("4. depth-4 batch pin: stacked == singles (max diff %.2e)\n", md);
+#ifdef _OPENMP
+        // The pin at every OpenMP thread count from 1 to 8, in process, and
+        // each count's logits equal to one thread's bit for bit (the host
+        // GELU's vectorised tanhf once rounded by where the thread chunks
+        // fell; ops.cpp apply_gelu_one_chunk).
+        const int n0 = omp_get_max_threads();
+        omp_set_num_threads(1);
+        Var r1 = m.forward(s1), rb = m.forward(both, T);
+        for (int t = 1; t <= 8; ++t) {
+            omp_set_num_threads(t);
+            Var b1 = m.forward(s1), b2 = m.forward(s2), bb = m.forward(both, T);
+            for (size_t i = 0; i < T; ++i)
+                for (size_t j = 0; j < V; ++j) {
+                    CHECK(bb->data(i, j) == b1->data(i, j));
+                    CHECK(bb->data(T + i, j) == b2->data(i, j));
+                    CHECK(b1->data(i, j) == r1->data(i, j));
+                    CHECK(bb->data(T + i, j) == rb->data(T + i, j));
+                }
+        }
+        omp_set_num_threads(n0);
+        std::printf("4b. batch pin at 1..8 OpenMP threads, each equal to one thread's logits bit for bit\n");
+#endif
     }
 
     // 5. swa + highway compose ----------------------------------------------

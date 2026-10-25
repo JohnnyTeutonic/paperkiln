@@ -74,14 +74,6 @@ Settled on 10 Oct 2026:
 
 ## 3. Broken now
 
-- **deep_swa fails with 3 OpenMP threads** (found 25 Oct 2026). Section 4 of
-  `tests/test_deep_swa.cpp` (a stacked forward of two sequences bit-equal to the
-  two singles, depth-4 SWA) fails with `OMP_NUM_THREADS=3` and passes with 1, 2, 4
-  or the variable unset, at cd050772 and every later commit; `scripts/cpu_budget.py
-  run --cores 3` sets that cap, so ctest under it shows 41/42. A threaded path on
-  that model is not batch-invariant at 3 threads: find it before trusting a
-  batch-pin gate run at other thread counts.
-
 CI is green on all three workflows (Code Quality, the test
 suite with its Python suites and the fetcher drift check, and the wheel
 build with its smoke test), and the chat-v1 release serves the quickstart's
