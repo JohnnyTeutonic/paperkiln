@@ -1,0 +1,50 @@
+{
+ "name": "pk_recurrence",
+ "arch": {
+  "preset": "gpt2-nano",
+  "custom": {
+   "d": 16,
+   "layers": 2,
+   "heads": 2,
+   "attention": "recurrence",
+   "recurrence": {
+    "index": {
+     "h": 2,
+     "e": 8
+    },
+    "inputs": [
+     "q[h,e]",
+     "k[h,e]",
+     "v[h,e]"
+    ],
+    "let": [
+     "pk[h,e] = where(k[h,e], k[h,e] + 1, (exp(min(0, k[h,e])) - 1) + 1)"
+    ],
+    "update": [
+     "num[h,e] = 0.9375 * num[h,e] + pk[h,e] * v[h,e]",
+     "den[h,e] = 0.9375 * den[h,e] + pk[h,e]"
+    ],
+    "readout": "y[h,e] = (where(q[h,e], q[h,e] + 1, (exp(min(0, q[h,e])) - 1) + 1) * num[h,e]) / max(den[h,e], 1e-08)"
+   }
+  }
+ },
+ "data": {
+  "T": 16,
+  "max_tokens": 0
+ },
+ "train": {
+  "steps": 30,
+  "lr": 0.003,
+  "eval_every": 1000,
+  "checkpoint_every": 1000,
+  "batch": 2,
+  "seed": 3,
+  "gradmap_every": 0
+ },
+ "export": {
+  "formats": [
+   "safetensors",
+   "gguf"
+  ]
+ }
+}

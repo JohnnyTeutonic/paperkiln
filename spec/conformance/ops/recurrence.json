@@ -1,0 +1,595 @@
+{
+ "op": "recurrence",
+ "cases": [
+  {
+   "name": "linear_attention_body",
+   "node": {
+    "op": "recurrence",
+    "in": [
+     "q",
+     "k",
+     "v"
+    ],
+    "state": "lin",
+    "index": {
+     "h": 2,
+     "e": 4
+    },
+    "inputs": [
+     "q[h,e]",
+     "k[h,e]",
+     "v[h,e]"
+    ],
+    "let": [
+     "pk[h,e] = where(k[h,e], k[h,e] + 1, (exp(min(0, k[h,e])) - 1) + 1)"
+    ],
+    "update": [
+     "num[h,e] = num[h,e] + pk[h,e] * v[h,e]",
+     "den[h,e] = den[h,e] + pk[h,e]"
+    ],
+    "readout": "y[h,e] = (where(q[h,e], q[h,e] + 1, (exp(min(0, q[h,e])) - 1) + 1) * num[h,e]) / max(den[h,e], 1e-08)",
+    "out": "y"
+   },
+   "inputs": {
+    "q": {
+     "shape": [
+      6,
+      8
+     ],
+     "f32": "be2b8066beca6656bdf188b6bf89d361bf07d9803f83d60f3f422d2dbe9e3e45be1cac353e0b09dfbffb8d07bff03fa53e4af0b1bfe50c2bbe86cfde3f59cc35be7fd5bfbfac655fbf45bc983e261e90bfae898e3dc60c8dc00049ea3ebca6403f36be6c3ea2ca3e3f1971f1be5a0e2ebf8ba37cbf8cd8383f7ac2053e03fab23f5426d73ea15011bfcd86ddbeb17dbebe0a2ca7bda5672d4025a8b7be5e09c63dcbd125bee2aff63fc26fbcbf583db13eeb5adbbe80d814bfa3221d3eb775a4"
+    },
+    "k": {
+     "shape": [
+      6,
+      8
+     ],
+     "f32": "bf1d800abfda63f3bea38551bd3a238f3defd071bf9ffcad3ddcf6b03e90306ebe97e0d53f3ee7293fad2f7b3f5a32af3eae10a74031f52cbe00edb93d32e840bf8b756d3e160e73bf86dc873f0652e0bef8cecdbf989e69c019dc673e52fb4dbf96dac33f85d8e73f2561fabf842944bee4fdb8bf753f233e918ca03e23cf65bcc514df3f1d1ce3bdb8a65dbf92d7223d3a48d8be8b8eaabf9f4e0a3f9f244a3ed66f323ec5fede3f8e1b6bbe0820dd3f47e2353e8e9a6bbeaf3c1abfb49de2"
+    },
+    "v": {
+     "shape": [
+      6,
+      8
+     ],
+     "f32": "bd25c7f9bd91cdd4bf1dd6013e08fd403e83517c3eb7cc123f0b19483fcfc8f23fd9a06cc0174fe83f1d8883bf7803cb3ed1594b3f49caf5bee58fc3bf3df9923dec05f33f2f7d973f3b70cc3fa0d6c63e6439b7bffc94733f6675b9bed19298bd8d2eba3ec3b37b3f45424bbebf58823f3c7e65bf86207bbfa8e30abd21056fbf1f469bbf74b58abf19a0d1be9844303ee1d9293fbf0e84bf760da53e528393bed9f0253c0267e3bfc2ba16bf02f82cbea99cfcbf4bdcee3f165e8a3faab710"
+    }
+   },
+   "weights": {},
+   "expect": {
+    "y": {
+     "shape": [
+      6,
+      8
+     ],
+     "f32": "bd0c3762bd4463a4bf0c46f03d3aafe23e1a7ca03f3a8d263f749afb3f988a8c3f548232c01c27ab3d3a5ce8bdba10a03ed054cc3e01ab143da37b353f850d273f1d9e3abe914ca73e2d2f1b3d88e0663da5a0da3f1f909f3c98d1603ea12bea3f8f4f47bf2987393f4ba10a3ca3e2e33e05a9a23e153746bf53ddc53e3ced193ed23b5cbf4dbe083d879ea23b4834883eb302243f09ca1fbfd3b4dc3e11f8da3c48a3efbea632d9bec4b177bcff1d993e9626c03e80ec7fbda632363e9678e7"
+    }
+   },
+   "class": "ROUNDING",
+   "tol": 1e-05,
+   "expect_state": {
+    "lin": {
+     "num": {
+      "shape": [
+       2,
+       4
+      ],
+      "f32": "3d4536d0c08352dabf9e15afbeda42033fa8216a400cd2acbfa214893fc6ce14"
+     },
+     "den": {
+      "shape": [
+       2,
+       4
+      ],
+      "f32": "408a55d14101eb39410192b240bc377740d135fa40d96a62408b992840e5b623"
+     }
+    }
+   },
+   "reproduces": "op/linear_attention/two_heads"
+  },
+  {
+   "name": "ssm_scan_body",
+   "node": {
+    "op": "recurrence",
+    "in": [
+     "u"
+    ],
+    "state": "ssm",
+    "index": {
+     "r": 4,
+     "j": 4,
+     "o": 1
+    },
+    "inputs": [
+     "u[r]"
+    ],
+    "weights": {
+     "A[r,j]": "A",
+     "B[r]": "B",
+     "C[r]": "C",
+     "D[o]": "Dk"
+    },
+    "update": [
+     "s[r] = sum(j, A[r,j] * s[j]) + B[r] * u[r]"
+    ],
+    "readout": "y[r] = C[r] * s[r] + D[0] * u[r]",
+    "out": "y"
+   },
+   "inputs": {
+    "u": {
+     "shape": [
+      5,
+      4
+     ],
+     "f32": "3feb14fdbe97235e3e08482dbf5a96b0bf976d67bf65c8573dc2b4e7bee7867dbe016f6e3e851ddf3e89ca00bed5ffb53fe939084011c1233f0ebcf23dd4e2eac013c0d7bf3c1b313e3575b43e7bea12"
+    }
+   },
+   "weights": {
+    "A": {
+     "shape": [
+      4,
+      4
+     ],
+     "f32": "be093b133db35f2d3e298869bf8376c73f0649623e158ad5bd8f7d94be0b8a753e692281bcde38933e1fad3ebda82c8f3d2040b2bdff439bbd37300ebdf03cb9"
+    },
+    "B": {
+     "shape": [
+      4
+     ],
+     "f32": "401dfb1f3f6a24023f8dcc6bbf5a2bbc"
+    },
+    "C": {
+     "shape": [
+      4
+     ],
+     "f32": "be1fc274bf0edc163f46014abf9a21e6"
+    },
+    "Dk": {
+     "shape": [
+      1
+     ],
+     "f32": "3f18544c"
+    }
+   },
+   "expect": {
+    "y": {
+     "shape": [
+      5,
+      4
+     ],
+     "f32": "3ec564d0bcccae003e45dd32bfb131b4bd17d650bfa8f40c3f69e07abf6062a0bda9dac33f9ebda0be947018be0930a43ed1d96a3e9d13f43f4b8004be2ea0aebecf1758bfb8a1473f84fbe53f096416"
+    }
+   },
+   "class": "EXACT",
+   "tol": 1e-05,
+   "expect_state": {
+    "ssm": {
+     "s": {
+      "shape": [
+       4
+      ],
+      "f32": "c0c6cd393fe690423f9a7c02bea5f3be"
+     }
+    }
+   },
+   "reproduces": "op/ssm_scan/n4"
+  },
+  {
+   "name": "conv1d_causal_body",
+   "node": {
+    "op": "recurrence",
+    "in": [
+     "x"
+    ],
+    "state": "conv",
+    "index": {
+     "c": 3,
+     "k": 4,
+     "r": 3
+    },
+    "inputs": [
+     "u[c]"
+    ],
+    "weights": {
+     "W[c,k]": "w",
+     "Bias[c]": "b"
+    },
+    "let": [
+     "xx[k,c] = where(k - 2.5, u[c], x[k,c])"
+    ],
+    "update": [
+     "x[r,c] = xx[r + 1,c]"
+    ],
+    "readout": "y[c] = sum(k, W[c,k] * xx[k,c]) + Bias[c]",
+    "out": "y"
+   },
+   "inputs": {
+    "x": {
+     "shape": [
+      5,
+      3
+     ],
+     "f32": "bfc53c8bbecd2852bff4d0fc3f619ad3bf817f28bdfb48843e969c36400d10dcbfcca21dbe9f53d53f6515673f47535cbfe130da3f0f4cd7bf051d51"
+    }
+   },
+   "weights": {
+    "w": {
+     "shape": [
+      3,
+      4
+     ],
+     "f32": "3f6e753c3fd900cf3fa1666bbe827afd3eb8532cbf69aad03e3441d13f9ae091bf904d67400d87b9bf531da5bf91ec23"
+    },
+    "b": {
+     "shape": [
+      3
+     ],
+     "f32": "bda9191ebfb05e5cbf6e7430"
+    }
+   },
+   "expect": {
+    "y": {
+     "shape": [
+      5,
+      3
+     ],
+     "f32": "3e9ec8babfee6d783f9fde4ac0100265c02b0aed3f4923f8bfd44f493fbd0628c04f30763eda4ea03f5f3f6c3fb12d403fa58044c03ad32ec08c1728"
+    }
+   },
+   "class": "EXACT",
+   "tol": 1e-05,
+   "expect_state": {
+    "conv": {
+     "x": {
+      "shape": [
+       3,
+       3
+      ],
+      "f32": "3e969c36400d10dcbfcca21dbe9f53d53f6515673f47535cbfe130da3f0f4cd7bf051d51"
+     }
+    }
+   },
+   "reproduces": "op/conv1d_causal/k4"
+  },
+  {
+   "name": "selective_scan_body",
+   "node": {
+    "op": "recurrence",
+    "in": [
+     "x",
+     "dt",
+     "B",
+     "C"
+    ],
+    "state": "ssm",
+    "index": {
+     "c": 3,
+     "n": 2
+    },
+    "inputs": [
+     "x[c]",
+     "dt[c]",
+     "Bm[n]",
+     "Cm[n]"
+    ],
+    "weights": {
+     "A[c,n]": "A",
+     "Dk[c]": "Dk"
+    },
+    "let": [
+     "delta[c] = where(dt[c] - 20, dt[c], log(1 + exp(min(20, dt[c]))))",
+     "xd[c] = x[c] * delta[c]"
+    ],
+    "update": [
+     "s[c,n] = s[c,n] * exp(delta[c] * A[c,n]) + Bm[n] * xd[c]"
+    ],
+    "readout": "y[c] = sum(n, s[c,n] * Cm[n]) + Dk[c] * x[c]",
+    "out": "y"
+   },
+   "inputs": {
+    "x": {
+     "shape": [
+      5,
+      3
+     ],
+     "f32": "bf6caac53f36600cc02695bebfd80664be8b7d0cc0046f91bfc02b7abf077804bfef16b53f8fad14bf464a22bfe2e63abe8340273edb06b43ea3c78b"
+    },
+    "dt": {
+     "shape": [
+      5,
+      3
+     ],
+     "f32": "bf87b7c9bd36360dbeff55da3dcc6e003eec99afbee06533bf6701de3eed4e333edc5ca4bfa25fc5bee869033f8928d941c80000c040000000000000"
+    },
+    "B": {
+     "shape": [
+      5,
+      2
+     ],
+     "f32": "3f76bc283e7cd2a6bf0ae137bfe868e73cfb4b75bf613524be8b5463400b6c49bfc11985bf8d73ad"
+    },
+    "C": {
+     "shape": [
+      5,
+      2
+     ],
+     "f32": "3e9dab28bf1f38153f3cdad9c01ca3ad3fb85a02bf477215bf887addbe25fd0bbf5dc3713f6857c8"
+    }
+   },
+   "weights": {
+    "A": {
+     "shape": [
+      3,
+      2
+     ],
+     "f32": "bf97160abf57ce41bf542913c0265e0cbfca59ecbf1ef4ac"
+    },
+    "Dk": {
+     "shape": [
+      3
+     ],
+     "f32": "3de33e753f09eab9bf2eba47"
+    }
+   },
+   "expect": {
+    "y": {
+     "shape": [
+      5,
+      3
+     ],
+     "f32": "be115eb83ee792423fccbff9c0a84befbf882cd3c026bb16bfa6911abee8db08bf354972beee5083bf045d613f995cfebffce86fbef85042c035560e"
+    }
+   },
+   "class": "ROUNDING",
+   "tol": 1e-05,
+   "expect_state": {
+    "ssm": {
+     "s": {
+      "shape": [
+       3,
+       2
+      ],
+      "f32": "411ab0b440e2a1a13e23da57bf22b4dabdedcf0cc03f7f42"
+     }
+    }
+   },
+   "reproduces": "op/selective_scan/d3n2"
+  },
+  {
+   "name": "rnn_init_offset",
+   "node": {
+    "op": "recurrence",
+    "in": [
+     "x"
+    ],
+    "state": "rnn",
+    "index": {
+     "i": 3,
+     "j": 3
+    },
+    "inputs": [
+     "x[i]"
+    ],
+    "weights": {
+     "W[i,j]": "W",
+     "U[i,j]": "U",
+     "h0[i]": "h0"
+    },
+    "init": [
+     "h[i] = h0[i]"
+    ],
+    "update": [
+     "h[i] = tanh(sum(j, W[i,j] * h[j]) + sum(j, U[i,j] * x[j]))"
+    ],
+    "readout": "y[i] = h[i] + 0.5 * h[i - 1]",
+    "out": "y"
+   },
+   "inputs": {
+    "x": {
+     "shape": [
+      6,
+      3
+     ],
+     "f32": "3e20555d3e73c1243f797ebbbeaa0223bd6de1063edded06bffba3733fcdbd1ebe5ac5183e9a517bbfcbe99abf8a7389bf6b89823f43028e400c57b83ffa3a69bf31da77bd2ed9c8"
+    }
+   },
+   "weights": {
+    "W": {
+     "shape": [
+      3,
+      3
+     ],
+     "f32": "3e14fde83ef2269c3decf606bf4d2533bf1e23933f81f2e53de90150bf51f283bf11747d"
+    },
+    "U": {
+     "shape": [
+      3,
+      3
+     ],
+     "f32": "be3201ca3ef381d7beb1e4513e221e6f3e79643c3f3625b3be98fd783ec4456f3e66f80b"
+    },
+    "h0": {
+     "shape": [
+      3
+     ],
+     "f32": "3fc3ad18be33ba4bbf3e9c18"
+    }
+   },
+   "expect": {
+    "y": {
+     "shape": [
+      6,
+      3
+     ],
+     "f32": "be4979cebf65c5fc3eba767cbed33eba3f399cea3f52ae153f6c08403f01d90e3e27c127be83222cbf88a848bf9b4482bf2b086d3f1799443fb85339be4b9e2c3f3028f2bf1593cc"
+    }
+   },
+   "class": "ROUNDING",
+   "tol": 1e-05,
+   "expect_state": {
+    "rnn": {
+     "h": {
+      "shape": [
+       3
+      ],
+      "f32": "be4b9e2c3f499cb8bf7a6228"
+     }
+    }
+   }
+  },
+  {
+   "name": "ema_bias_corrected",
+   "node": {
+    "op": "recurrence",
+    "in": [
+     "x",
+     "g"
+    ],
+    "state": "avg",
+    "index": {
+     "c": 4
+    },
+    "inputs": [
+     "x[c]",
+     "g[c]"
+    ],
+    "weights": {
+     "a[c]": "decay"
+    },
+    "update": [
+     "m[c] = a[c] * m[c] + (1 - a[c]) * (x[c] * g[c])",
+     "n[c] = n[c] + 1"
+    ],
+    "readout": "y[c] = m[c] / (1 - a[c] ^ n[c]) + max(x[c], 0)",
+    "out": "y"
+   },
+   "inputs": {
+    "x": {
+     "shape": [
+      5,
+      4
+     ],
+     "f32": "c0171c3fbf032ab43e0f06a0bec0cd01bf572d76bfcf95c63ee75ffe3f3aa977bf940a14be8f28803fb2c9403f86e1723f1cd35d3f381e48be20d9e33f4d3997bf9897c33f338b69bfcdb957c0484103"
+    },
+    "g": {
+     "shape": [
+      5,
+      4
+     ],
+     "f32": "bfb96875bf2de17dbda5390c3e22e3b73fb14502be7f346a401c01b0bfa3f571bf03cc3d3f3456c6bef283ea3ee95add3fa5071c3ff2ae8040084aecbf8b2603be558c4bbfc65e6b3f4f004bbf9506d4"
+    }
+   },
+   "weights": {
+    "decay": {
+     "shape": [
+      4
+     ],
+     "f32": "3f6000003f6000003f6000003f600000"
+    }
+   },
+   "expect": {
+    "y": {
+     "shape": [
+      5,
+      4
+     ],
+     "f32": "405ae2243eb22ec83e037cbbbd755a743f79a5ab3ec185223f845ee63e4ff1383f54d4f43e2416493fc105233f68a5b93fb738c83f9f18c0bcbff7393edfdcd23f2c284b3f4fce72beb3acef3f29fa07"
+    }
+   },
+   "class": "ROUNDING",
+   "tol": 1e-05,
+   "expect_state": {
+    "avg": {
+     "m": {
+      "shape": [
+       4
+      ],
+      "f32": "3ea7b6713d5c41ecbe2f09643ea59696"
+     },
+     "n": {
+      "shape": [
+       4
+      ],
+      "f32": "40a0000040a0000040a0000040a00000"
+     }
+    }
+   }
+  },
+  {
+   "name": "ema_exact",
+   "node": {
+    "op": "recurrence",
+    "in": [
+     "x",
+     "g"
+    ],
+    "state": "avg",
+    "index": {
+     "c": 4
+    },
+    "inputs": [
+     "x[c]",
+     "g[c]"
+    ],
+    "weights": {
+     "a[c]": "decay"
+    },
+    "update": [
+     "m[c] = a[c] * m[c] + (1 - a[c]) * (x[c] * g[c])",
+     "n[c] = n[c] + 1"
+    ],
+    "readout": "y[c] = m[c] / n[c] + max(x[c], 0)",
+    "out": "y"
+   },
+   "inputs": {
+    "x": {
+     "shape": [
+      5,
+      4
+     ],
+     "f32": "3e6329c73f3c31bb3e92d89bbdf7bc843cb117f83f2ba1e6bf0da440be8f6051be592dfdc012bc103f45422fbedadcdd3ecb0a47bfe85ebf3fd732cf3f7c4a083f70a5e73e8c08ebbed14068bf28a9b4"
+    },
+    "g": {
+     "shape": [
+      5,
+      4
+     ],
+     "f32": "3efa9a38beba22dcbf8039453f34b87bbe1045cf3eea441e3ef937c33efa128a3f59d7373f4d3fdd3eed03cf3e440dad3efde4943f0d798f3e1130aabed825c2bfbfd760bd04a453bf9676883fac4c51"
+    }
+   },
+   "weights": {
+    "decay": {
+     "shape": [
+      4
+     ],
+     "f32": "3f6000003f6000003f6000003f600000"
+    }
+   },
+   "expect": {
+    "y": {
+     "shape": [
+      5,
+      4
+     ],
+     "f32": "3e710fc13f33a45f3e807551bc2ee3133ce02dad3f2ccc8bbd054d50bc5891cabb888b6fbd976a993f44340fbc3633f93eccc953bda393383fd7ce463f7717b13f683e0e3e5e97773c7b30f3bd15040d"
+    }
+   },
+   "class": "EXACT",
+   "tol": 1e-05,
+   "expect_state": {
+    "avg": {
+     "m": {
+      "shape": [
+       4
+      ],
+      "f32": "be281ceabe8fb1ee3d9cfe98be3a4510"
+     },
+     "n": {
+      "shape": [
+       4
+      ],
+      "f32": "40a0000040a0000040a0000040a00000"
+     }
+    }
+   }
+  }
+ ]
+}

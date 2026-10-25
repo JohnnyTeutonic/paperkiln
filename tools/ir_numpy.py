@@ -22,6 +22,7 @@ For third-party graphs:
               the weight read as (w + c), rounded to f32 once (a load-time transform; Gemma's 1 + w).
   rope        freq_scale s (default 1): the angle is (pos * s) * theta^(-2j/n_rot) (linear scaling).
   conv1d_causal, selective_scan  Mamba-1's ops (include/microtorch/ir.hpp).
+  recurrence  a per-token state update declared in the document (spec/IR_SPEC.md 6.10; tools/ir_recurrence.py).
 Any attribute of a block node (and of a block state slot) may be {"per_layer": [v_0, .., v_{L-1}]}:
 block i reads v_i. The block's own key "weight_index" {"per_layer": [m_0, .., m_{L-1}]} (tied-block
 recursion) makes application i read its tensors from blk.{m_i}.* (run_nodes' wi); everything else,
@@ -235,6 +236,12 @@ def run_nodes(nodes, env, W, i=None, no_window=False, wi=None, states=None):
             y = x * env[ins[1]]  # [T, w] * [T, 1]
         elif op == "rms_row":
             y = np.sqrt((x * x).sum(axis=1, keepdims=True) / np.float32(x.shape[1]) + np.float32(nd["eps"]))
+        elif op == "recurrence":
+            # spec/IR_SPEC.md 6.10: the declared per-token update, t = 0 .. T-1 from the initial state.
+            import ir_recurrence
+            prog = ir_recurrence.compile_node(nd)
+            y, st = ir_recurrence.run(prog, [env[n] for n in ins], {n: w(t) for n, _, t in prog.weights})
+            keep(nd, **st)
         elif op == "linear_attention":
             # elu+1 features; num/den running sums over the tokens (a
             # sequential scan, np.cumsum), then phi(q) num / max(den, floor).

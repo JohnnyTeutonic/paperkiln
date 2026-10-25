@@ -1,0 +1,223 @@
+{
+ "model": "models/pk_recurrence",
+ "evict": null,
+ "class": "ROUNDING",
+ "tol": 1e-05,
+ "steps": [
+  {
+   "method": "forward",
+   "ids": [
+    6,
+    14,
+    14,
+    3
+   ]
+  },
+  {
+   "method": "snapshot",
+   "tag": "p"
+  },
+  {
+   "method": "forward",
+   "ids": [
+    14,
+    3,
+    1
+   ]
+  },
+  {
+   "method": "restore",
+   "tag": "p"
+  },
+  {
+   "method": "forward",
+   "ids": [
+    14,
+    11,
+    3
+   ]
+  }
+ ],
+ "expect": [
+  {
+   "len": 4,
+   "logits": {
+    "shape": [
+     4,
+     15
+    ],
+    "f32": "befa5c283dd649413e8a6cc63e1ed011be9833a4be399b17bf2e8fd4becc4e6abede36dc3fb98e8abed530cebf063c51beed9193becaaa593e6b6d02bf3bcdee3fbc855e3c87297fbd9d016cbf75155abf23983cbe02836cbee9efaabf1aa60d3e2ac58fbe8baf12bedaeb36bd7220b1be79c2843eb676b7bf3c1c4c3fbd176ebc415f58bdfe605bbf7cb9c0bf1dbde9bd8f80cebedfa18abf1ac62d3e123297be97edcfbee0e493bd85e3d2be84420a3ed3d261be52b984bee12312bd122374be2b485e3b852dc03f9b99ff3cdc88803edf58143e87cf1f3d9aeb313d8aac93be703677be3c275cbe34aa13be81a961"
+   },
+   "recurrent": {
+    "rec": [
+     {
+      "num": {
+       "shape": [
+        2,
+        8
+       ],
+       "f32": "3c8c74acbd27f2403ec9a22c3d4d346e3e8c34eb3d80bbc3be66a8683e2dfce2bd1c3eeebe339b293e6fb8763d86e0213dd9e2d23e4acd103e87add63eaf604c"
+      },
+      "den": {
+       "shape": [
+        2,
+        8
+       ],
+       "f32": "40605e4640702c6f404a09794065a8ca40748cce406cbb1740797487407b41ed40790d3a4065ccf0406799f4406d52b2405bb9f2408129ae40611e09406e2bac"
+      }
+     },
+     {
+      "num": {
+       "shape": [
+        2,
+        8
+       ],
+       "f32": "3dfc138fbd4ef9843e41cdbebe6fd60c3da7f09dbda2cbebbe017dd2bb4e2800bd6238d83e7b08423c5944e4be243f5abdcd13283e39267a3e1b98cbbea969be"
+      },
+      "den": {
+       "shape": [
+        2,
+        8
+       ],
+       "f32": "40670b29406874d94070af7f406857f640685fd04061d84240720ccf406630d04063560d406afff0407881c240522c56404d07264050760e406f576b407884e6"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "len": 4
+  },
+  {
+   "len": 7,
+   "logits": {
+    "shape": [
+     3,
+     15
+    ],
+    "f32": "bf3c619b3fbbd67ebdd25f75be5de30abf7f71f0bf1efafdbd738adebecfda8ebf14e1a03e0e4633be98ec25bed9a353bd76ff73be82620b3efa73d3be38756fbef6f6e0bd6edf85be38d6553d69ac4b3f9b5dd13e327cf33ed4644a3e6900583cb1acc53d25af1fbe782e71be55966fbe50c646be5042a83eb1af573e0c7a4cbe173304be416eb7be05922e3b90e7e9be7ab639bea77380be9b8bd8bebfc5b33f79c7ba3f62d7273f67c6e53f5c1c51befd7c7e"
+   },
+   "recurrent": {
+    "rec": [
+     {
+      "num": {
+       "shape": [
+        2,
+        8
+       ],
+       "f32": "3a830c003d4004443e279186bd7c6e183f1fff8e3d896e35be124c503eab91fb3e6fe8d6be7177c43ec922793e42721d3ccb2f983e88506a3ebb46da3f2844b2"
+      },
+      "den": {
+       "shape": [
+        2,
+        8
+       ],
+       "f32": "40b286a340c5bf6b40b16a9240b4b71440c50d5440bb2dc540bbd00740cba49840cf8e3b40be83b440b6cd8b40bb279140b530a040cce0b440b331ad40c46a41"
+      }
+     },
+     {
+      "num": {
+       "shape": [
+        2,
+        8
+       ],
+       "f32": "3de5bfa4bde763f43ed078d7be2a8624bd8bd9b1bdb67472be5d8bc93e863e503ea9eb3e3e350752be67fdc8beaf26aabdfa448cbc09b2683dc77760be54ac63"
+      },
+      "den": {
+       "shape": [
+        2,
+        8
+       ],
+       "f32": "40b5adce40bea55740b98e3540bbb1d040ba408340b5ba4940be986a40c0764740b8e63740bd286740c3394340b497d540abfef940b104ca40c391c040beabfb"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "len": 4,
+   "recurrent": {
+    "rec": [
+     {
+      "num": {
+       "shape": [
+        2,
+        8
+       ],
+       "f32": "3c8c74acbd27f2403ec9a22c3d4d346e3e8c34eb3d80bbc3be66a8683e2dfce2bd1c3eeebe339b293e6fb8763d86e0213dd9e2d23e4acd103e87add63eaf604c"
+      },
+      "den": {
+       "shape": [
+        2,
+        8
+       ],
+       "f32": "40605e4640702c6f404a09794065a8ca40748cce406cbb1740797487407b41ed40790d3a4065ccf0406799f4406d52b2405bb9f2408129ae40611e09406e2bac"
+      }
+     },
+     {
+      "num": {
+       "shape": [
+        2,
+        8
+       ],
+       "f32": "3dfc138fbd4ef9843e41cdbebe6fd60c3da7f09dbda2cbebbe017dd2bb4e2800bd6238d83e7b08423c5944e4be243f5abdcd13283e39267a3e1b98cbbea969be"
+      },
+      "den": {
+       "shape": [
+        2,
+        8
+       ],
+       "f32": "40670b29406874d94070af7f406857f640685fd04061d84240720ccf406630d04063560d406afff0407881c240522c56404d07264050760e406f576b407884e6"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "len": 7,
+   "logits": {
+    "shape": [
+     3,
+     15
+    ],
+    "f32": "bf3c619b3fbbd67ebdd25f75be5de30abf7f71f0bf1efafdbd738adebecfda8ebf14e1a03e0e4633be98ec25bed9a353bd76ff73be82620b3efa73d3bdcd02c93e29006d3f715b213f7cd2a93bc57b23be58f4c6bea0ad97bd8f5717bd30b7a33e2badb0beb2da3cbecbcc61be8f99a1be7df5d3bf0479abbe31d3d9bed41522bb134133bdd6075a3d0ec1783f9d822b3dbf74f33ebcb1c03e4ed1babcb8847d3e2c470ebe26b1d4bde843bebddcdd29bec9592b"
+   },
+   "recurrent": {
+    "rec": [
+     {
+      "num": {
+       "shape": [
+        2,
+        8
+       ],
+       "f32": "bce2b1a6bd5a40883ea4fc893cbda4843f00b5fbbdf5ec7cbeaa255a3e84f8d73e6423b0be6831353e93dacb3e12e04a3dd71df23df9373c3e5419273f29997c"
+      },
+      "den": {
+       "shape": [
+        2,
+        8
+       ],
+       "f32": "40b0597040ba8a6940ab898140b4879b40bcd01b40c017c040bd1a5040c63ecd40c6172840c1e27440bce66f40bcaf6340b1a7db40cea1e440b78b4040c00864"
+      }
+     },
+     {
+      "num": {
+       "shape": [
+        2,
+        8
+       ],
+       "f32": "3e620f693ca7534a3d901e48be9330a23e01c6e9bc7f6bf8be850db4bdbc7cd6be45d7fe3ec2b8b03dd44a84be780038badd61403eae701c3e64cc1abeb8212b"
+      },
+      "den": {
+       "shape": [
+        2,
+        8
+       ],
+       "f32": "40b7825d40b820e640bac6fb40bb9e3440bd7ca640b4120f40becf9440b994f740bae3aa40be056140c6ace540a55cb140ac933840b270a340c2fdfa40cb835d"
+      }
+     }
+    ]
+   }
+  }
+ ]
+}

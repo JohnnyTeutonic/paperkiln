@@ -1,6 +1,11 @@
 #include "microtorch/ir.hpp"
 
+#include "microtorch/recurrence.hpp"
+
+#include <algorithm>
+#include <array>
 #include <charconv>
+#include <cmath>
 #include <cstdlib>
 #include <stdexcept>
 
@@ -13,6 +18,224 @@ double f32(float v) {
     *r.ptr = '\0';
     return std::strtod(buf, nullptr);
 }
+
+// ---- the digest (IR_SPEC.md section 3.10) ----
+
+namespace {
+
+// ECMAScript Number::toString of a finite double (RFC 8785 section 3.2.2.3).
+std::string es_number(double x) {
+    if (!std::isfinite(x)) throw DigestError("digest: a number is not finite");
+    if (x == 0) {
+        if (std::signbit(x)) throw DigestError("digest: a negative zero (RFC 8785 writes it as 0)");
+        return "0";
+    }
+    if (x < 0) return "-" + es_number(-x);
+    char buf[64];
+    // Shortest round-trip digits, the closest of them (as ECMAScript requires).
+    const auto r = std::to_chars(buf, buf + sizeof buf, x, std::chars_format::scientific);
+    const std::string s(buf, r.ptr);
+    const size_t epos = s.find('e');
+    std::string digits;
+    for (size_t i = 0; i < epos; ++i)
+        if (s[i] != '.') digits += s[i];
+    while (digits.size() > 1 && digits.back() == '0') digits.pop_back();
+    const int k = static_cast<int>(digits.size());
+    const int n = std::stoi(s.substr(epos + 1)) + 1;  // x = 0.digits * 10^n
+    if (k <= n && n <= 21) return digits + std::string(static_cast<size_t>(n - k), '0');
+    if (0 < n && n <= 21) return digits.substr(0, static_cast<size_t>(n)) + "." + digits.substr(static_cast<size_t>(n));
+    if (-6 < n && n <= 0) return "0." + std::string(static_cast<size_t>(-n), '0') + digits;
+    const int e = n - 1;
+    return (k == 1 ? digits : digits.substr(0, 1) + "." + digits.substr(1)) + "e" + (e >= 0 ? "+" : "-") +
+           std::to_string(e >= 0 ? e : -e);
+}
+
+// The UTF-16 code units of a UTF-8 string (the RFC 8785 key order); throws on malformed UTF-8.
+std::u16string utf16(const std::string& s) {
+    std::u16string out;
+    for (size_t i = 0; i < s.size();) {
+        const unsigned char c = static_cast<unsigned char>(s[i]);
+        uint32_t cp = 0;
+        size_t len = 0;
+        if (c < 0x80) cp = c, len = 1;
+        else if ((c & 0xE0) == 0xC0) cp = c & 0x1F, len = 2;
+        else if ((c & 0xF0) == 0xE0) cp = c & 0x0F, len = 3;
+        else if ((c & 0xF8) == 0xF0) cp = c & 0x07, len = 4;
+        else throw DigestError("digest: malformed UTF-8");
+        if (i + len > s.size()) throw DigestError("digest: malformed UTF-8");
+        for (size_t j = 1; j < len; ++j) {
+            const unsigned char d = static_cast<unsigned char>(s[i + j]);
+            if ((d & 0xC0) != 0x80) throw DigestError("digest: malformed UTF-8");
+            cp = (cp << 6) | (d & 0x3F);
+        }
+        static const uint32_t kMin[] = {0, 0, 0x80, 0x800, 0x10000};
+        if (cp < kMin[len] || cp > 0x10FFFF || (cp >= 0xD800 && cp <= 0xDFFF))
+            throw DigestError("digest: malformed UTF-8");
+        if (cp >= 0x10000) {
+            cp -= 0x10000;
+            out.push_back(static_cast<char16_t>(0xD800 + (cp >> 10)));
+            out.push_back(static_cast<char16_t>(0xDC00 + (cp & 0x3FF)));
+        } else {
+            out.push_back(static_cast<char16_t>(cp));
+        }
+        i += len;
+    }
+    return out;
+}
+
+// JSON.stringify of a string (RFC 8785 section 3.2.2.2).
+std::string es_string(const std::string& s) {
+    utf16(s);  // well-formed or throws
+    std::string out = "\"";
+    for (const char ch : s) {
+        const unsigned char c = static_cast<unsigned char>(ch);
+        switch (ch) {
+            case '"': out += "\\\""; break;
+            case '\\': out += "\\\\"; break;
+            case '\b': out += "\\b"; break;
+            case '\t': out += "\\t"; break;
+            case '\n': out += "\\n"; break;
+            case '\f': out += "\\f"; break;
+            case '\r': out += "\\r"; break;
+            default:
+                if (c < 0x20) {
+                    static const char* hex = "0123456789abcdef";
+                    out += "\\u00";
+                    out += hex[c >> 4];
+                    out += hex[c & 15];
+                } else {
+                    out += ch;
+                }
+        }
+    }
+    return out + "\"";
+}
+
+void canon(const json& v, std::string& out, bool keep_prose) {
+    if (v.is_null()) {
+        out += "null";
+    } else if (v.is_boolean()) {
+        out += v.get<bool>() ? "true" : "false";
+    } else if (v.is_number_unsigned() || v.is_number_integer()) {
+        constexpr double kMax = 9007199254740992.0;  // 2^53
+        const double d = v.is_number_unsigned() ? static_cast<double>(v.get<uint64_t>())
+                                                : static_cast<double>(v.get<int64_t>());
+        const bool in_range = v.is_number_unsigned() ? v.get<uint64_t>() <= 9007199254740992ull
+                                                     : (v.get<int64_t>() <= 9007199254740992ll &&
+                                                        v.get<int64_t>() >= -9007199254740992ll);
+        if (!in_range || std::fabs(d) > kMax) throw DigestError("digest: an integer beyond 2^53");
+        out += es_number(d);
+    } else if (v.is_number_float()) {
+        out += es_number(v.get<double>());
+    } else if (v.is_string()) {
+        out += es_string(v.get<std::string>());
+    } else if (v.is_array()) {
+        out += '[';
+        for (size_t i = 0; i < v.size(); ++i) {
+            if (i) out += ',';
+            canon(v[i], out, keep_prose);
+        }
+        out += ']';
+    } else if (v.is_object()) {
+        std::vector<std::pair<std::u16string, std::string>> keys;
+        for (const auto& [k, x] : v.items())
+            if (keep_prose || k.empty() || k[0] != '_') keys.emplace_back(utf16(k), k);
+        std::sort(keys.begin(), keys.end());
+        out += '{';
+        for (size_t i = 0; i < keys.size(); ++i) {
+            if (i) out += ',';
+            out += es_string(keys[i].second);
+            out += ':';
+            canon(v.at(keys[i].second), out, keep_prose);
+        }
+        out += '}';
+    } else {
+        throw DigestError("digest: not a JSON value");
+    }
+}
+
+}  // namespace
+
+std::string canonical(const json& doc, bool keep_prose) {
+    std::string out;
+    canon(doc, out, keep_prose);
+    return out;
+}
+
+// FIPS 180-4 SHA-256.
+std::string sha256_hex(const std::string& bytes) {
+    static const uint32_t K[64] = {
+        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+        0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+        0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+        0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+        0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+        0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+        0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+        0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2};
+    uint32_t h[8] = {0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19};
+    std::string m = bytes;
+    const uint64_t bits = static_cast<uint64_t>(bytes.size()) * 8;
+    m += static_cast<char>(0x80);
+    while (m.size() % 64 != 56) m += '\0';
+    for (int i = 7; i >= 0; --i) m += static_cast<char>((bits >> (8 * i)) & 0xff);
+    auto rotr = [](uint32_t x, int n) { return (x >> n) | (x << (32 - n)); };
+    for (size_t off = 0; off < m.size(); off += 64) {
+        uint32_t w[64];
+        for (int i = 0; i < 16; ++i)
+            w[i] = (static_cast<uint32_t>(static_cast<unsigned char>(m[off + 4 * i])) << 24) |
+                   (static_cast<uint32_t>(static_cast<unsigned char>(m[off + 4 * i + 1])) << 16) |
+                   (static_cast<uint32_t>(static_cast<unsigned char>(m[off + 4 * i + 2])) << 8) |
+                   static_cast<uint32_t>(static_cast<unsigned char>(m[off + 4 * i + 3]));
+        for (int i = 16; i < 64; ++i) {
+            const uint32_t s0 = rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >> 3);
+            const uint32_t s1 = rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >> 10);
+            w[i] = w[i - 16] + s0 + w[i - 7] + s1;
+        }
+        uint32_t a = h[0], b = h[1], c = h[2], d = h[3], e = h[4], f = h[5], g = h[6], hh = h[7];
+        for (int i = 0; i < 64; ++i) {
+            const uint32_t t1 = hh + (rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25)) + ((e & f) ^ (~e & g)) + K[i] + w[i];
+            const uint32_t t2 = (rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22)) + ((a & b) ^ (a & c) ^ (b & c));
+            hh = g, g = f, f = e, e = d + t1, d = c, c = b, b = a, a = t1 + t2;
+        }
+        h[0] += a, h[1] += b, h[2] += c, h[3] += d, h[4] += e, h[5] += f, h[6] += g, h[7] += hh;
+    }
+    static const char* hex = "0123456789abcdef";
+    std::string out;
+    for (uint32_t x : h)
+        for (int i = 7; i >= 0; --i) out += hex[(x >> (4 * i)) & 15];
+    return out;
+}
+
+std::string digest(const json& doc) { return sha256_hex(canonical(doc)); }
+
+json parse_ijson(const std::string& text) {
+    std::vector<std::vector<std::string>> keys;  // the member names seen, per open object
+    bool dup = false;
+    json::parser_callback_t cb = [&](int, json::parse_event_t ev, json& parsed) {
+        if (ev == json::parse_event_t::object_start) {
+            keys.emplace_back();
+        } else if (ev == json::parse_event_t::object_end) {
+            if (!keys.empty()) keys.pop_back();
+        } else if (ev == json::parse_event_t::key && !keys.empty()) {
+            const std::string k = parsed.get<std::string>();
+            auto& seen = keys.back();
+            if (std::find(seen.begin(), seen.end(), k) != seen.end()) dup = true;
+            seen.push_back(k);
+        }
+        return true;
+    };
+    json v;
+    try {
+        v = json::parse(text, cb);
+    } catch (const json::exception& e) {
+        throw DigestError(std::string("digest: not an I-JSON text (") + e.what() + ")");
+    }
+    if (dup) throw DigestError("digest: a duplicate member name");
+    return v;
+}
+
+std::string digest_text(const std::string& text) { return digest(parse_ijson(text)); }
 
 json rmsnorm(const std::string& in, const std::string& weight, float eps, const std::string& out) {
     return {{"op", "rmsnorm"}, {"in", json::array({in})}, {"weight", weight}, {"eps", f32(eps)}, {"out", out}};
@@ -144,6 +367,36 @@ json append(const std::string& list, const std::string& x, const std::string& ou
 
 json expr(const std::vector<std::string>& ins, const std::string& text, const std::string& out) {
     return {{"op", "expr"}, {"in", ins}, {"expr", text}, {"out", out}};
+}
+
+json recurrence(const std::vector<std::string>& ins, const std::string& state, const json& body,
+                const std::string& out) {
+    json n = {{"op", "recurrence"}, {"in", ins}, {"state", state}};
+    for (const char* k : {"index", "inputs", "weights", "init", "let", "update", "readout"})
+        if (body.contains(k)) n[k] = body[k];
+    n["out"] = out;
+    return n;
+}
+
+json recurrence_state(const std::string& name, const json& node) {
+    const Recurrence r = Recurrence::from_json(node);
+    json tensors = json::array();
+    for (size_t k = 0; k < r.state().size(); ++k)
+        tensors.push_back({{"name", r.state()[k].name},
+                           {"shape", r.state()[k].shape},
+                           {"init", r.initialised(k) ? json("body") : json(0)}});
+    return {{"name", name}, {"kind", "recurrent"}, {"op", "recurrence"}, {"dtype", "f32"}, {"tensors", tensors}};
+}
+
+json linear_attention_body(size_t heads, size_t head_dim) {
+    auto phi = [](const std::string& x) {
+        return "where(" + x + ", " + x + " + 1, (exp(min(0, " + x + ")) - 1) + 1)";
+    };
+    return {{"index", {{"h", heads}, {"e", head_dim}}},
+            {"inputs", json::array({"q[h,e]", "k[h,e]", "v[h,e]"})},
+            {"let", json::array({"pk[h,e] = " + phi("k[h,e]")})},
+            {"update", json::array({"num[h,e] = num[h,e] + pk[h,e] * v[h,e]", "den[h,e] = den[h,e] + pk[h,e]"})},
+            {"readout", "y[h,e] = (" + phi("q[h,e]") + " * num[h,e]) / max(den[h,e], 1e-08)"}};
 }
 
 json ssm_scan(const std::string& in, const std::string& state, const std::string& prefix, size_t n,

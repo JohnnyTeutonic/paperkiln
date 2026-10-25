@@ -211,6 +211,28 @@
    "profile": "recursion"
   },
   {
+   "id": "model/pk_recurrence",
+   "kind": "model",
+   "file": "models/pk_recurrence/case.json",
+   "model": "models/pk_recurrence",
+   "profile": "recurrence",
+   "class": "ROUNDING"
+  },
+  {
+   "id": "trace/pk_recurrence_decode",
+   "kind": "trace",
+   "file": "state/pk_recurrence_decode.json",
+   "model": "models/pk_recurrence",
+   "profile": "recurrence"
+  },
+  {
+   "id": "trace/pk_recurrence_snapshot",
+   "kind": "trace",
+   "file": "state/pk_recurrence_snapshot.json",
+   "model": "models/pk_recurrence",
+   "profile": "state"
+  },
+  {
    "id": "model/pk_recursive",
    "kind": "model",
    "file": "models/pk_recursive/case.json",
@@ -574,6 +596,13 @@
    "file": "ops/selective_scan.json",
    "profile": "core",
    "n": 1
+  },
+  {
+   "id": "op/recurrence",
+   "kind": "op",
+   "file": "ops/recurrence.json",
+   "profile": "recurrence",
+   "n": 7
   },
   {
    "id": "refuse/unknown_op",
@@ -961,6 +990,90 @@
    "section": "6.8.1"
   },
   {
+   "id": "refuse/recurrence_body_does_not_parse",
+   "kind": "refuse",
+   "file": "refuse/recurrence_body_does_not_parse.json",
+   "rule": 31,
+   "section": "6.10"
+  },
+  {
+   "id": "refuse/recurrence_name_twice",
+   "kind": "refuse",
+   "file": "refuse/recurrence_name_twice.json",
+   "rule": 31,
+   "section": "6.10"
+  },
+  {
+   "id": "refuse/recurrence_rowsum",
+   "kind": "refuse",
+   "file": "refuse/recurrence_rowsum.json",
+   "rule": 31,
+   "section": "6.10"
+  },
+  {
+   "id": "refuse/recurrence_index_size_zero",
+   "kind": "refuse",
+   "file": "refuse/recurrence_index_size_zero.json",
+   "rule": 31,
+   "section": "6.10"
+  },
+  {
+   "id": "refuse/recurrence_index_out_of_scope",
+   "kind": "refuse",
+   "file": "refuse/recurrence_index_out_of_scope.json",
+   "rule": 32,
+   "section": "6.10"
+  },
+  {
+   "id": "refuse/recurrence_init_reads_input",
+   "kind": "refuse",
+   "file": "refuse/recurrence_init_reads_input.json",
+   "rule": 32,
+   "section": "6.10"
+  },
+  {
+   "id": "refuse/recurrence_rank_mismatch",
+   "kind": "refuse",
+   "file": "refuse/recurrence_rank_mismatch.json",
+   "rule": 32,
+   "section": "6.10"
+  },
+  {
+   "id": "refuse/recurrence_index_undeclared",
+   "kind": "refuse",
+   "file": "refuse/recurrence_index_undeclared.json",
+   "rule": 32,
+   "section": "6.10"
+  },
+  {
+   "id": "refuse/recurrence_slot_shape",
+   "kind": "refuse",
+   "file": "refuse/recurrence_slot_shape.json",
+   "rule": 33,
+   "section": "6.10"
+  },
+  {
+   "id": "refuse/recurrence_slot_missing_tensor",
+   "kind": "refuse",
+   "file": "refuse/recurrence_slot_missing_tensor.json",
+   "rule": 33,
+   "section": "6.10"
+  },
+  {
+   "id": "refuse/recurrence_init_flag",
+   "kind": "refuse",
+   "file": "refuse/recurrence_init_flag.json",
+   "rule": 33,
+   "section": "6.10"
+  },
+  {
+   "id": "refuse/recurrence_weight_size",
+   "kind": "refuse",
+   "file": "refuse/recurrence_weight_size.json",
+   "rule": 34,
+   "section": "6.10"
+  },
+  {
    "id": "refuse/version_key_mismatch",
    "kind": "refuse",
    "file": "refuse/version_key_mismatch.json",
@@ -994,6 +1107,55 @@
    "file": "refuse/state_tokens_arch_llama.json",
    "rule": 28,
    "section": "8.2"
+  },
+  {
+   "id": "digest/vectors",
+   "kind": "digest",
+   "file": "digest/vectors.json",
+   "profile": "core",
+   "n": 74
+  },
+  {
+   "id": "dequant/blocks",
+   "kind": "dequant",
+   "file": "quant/blocks.json",
+   "profile": "core",
+   "n": 10
+  },
+  {
+   "id": "grad/recurrence",
+   "kind": "grad",
+   "file": "grad/recurrence.json",
+   "profile": "recurrence",
+   "n": 7
+  },
+  {
+   "id": "trace/pk_kimi_recurrence",
+   "kind": "trace",
+   "file": "state/pk_kimi_recurrence.json",
+   "model": "models/pk_kimi",
+   "profile": "recurrence"
+  },
+  {
+   "id": "trace/pk_srd_recurrence",
+   "kind": "trace",
+   "file": "state/pk_srd_recurrence.json",
+   "model": "models/pk_srd",
+   "profile": "recurrence"
+  },
+  {
+   "id": "trace/pk_mamba_recurrence",
+   "kind": "trace",
+   "file": "state/pk_mamba_recurrence.json",
+   "model": "models/pk_mamba",
+   "profile": "recurrence"
+  },
+  {
+   "id": "trace/tp_mamba1_recurrence",
+   "kind": "trace",
+   "file": "state/tp_mamba1_recurrence.json",
+   "model": "models/tp_mamba1",
+   "profile": "recurrence"
   }
  ]
 }

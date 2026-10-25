@@ -6,44 +6,66 @@
   "profiles": [
    "chat",
    "core",
+   "recurrence",
    "recursion",
    "state",
    "thirdparty"
   ]
  },
  "counts": {
-  "PASS": 157,
+  "PASS": 267,
   "FAIL": 0,
-  "SKIP": 0,
+  "SKIP": 7,
   "XFAIL": 0,
   "XPASS": 0
  },
  "by_kind": {
   "model": {
-   "PASS": 20,
+   "PASS": 21,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
    "XPASS": 0
   },
   "trace": {
-   "PASS": 31,
+   "PASS": 37,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
    "XPASS": 0
   },
   "op": {
-   "PASS": 46,
+   "PASS": 53,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
    "XPASS": 0
   },
   "refuse": {
-   "PASS": 60,
+   "PASS": 72,
    "FAIL": 0,
    "SKIP": 0,
+   "XFAIL": 0,
+   "XPASS": 0
+  },
+  "digest": {
+   "PASS": 74,
+   "FAIL": 0,
+   "SKIP": 0,
+   "XFAIL": 0,
+   "XPASS": 0
+  },
+  "dequant": {
+   "PASS": 10,
+   "FAIL": 0,
+   "SKIP": 0,
+   "XFAIL": 0,
+   "XPASS": 0
+  },
+  "grad": {
+   "PASS": 0,
+   "FAIL": 0,
+   "SKIP": 7,
    "XFAIL": 0,
    "XPASS": 0
   }
@@ -216,6 +238,24 @@
    "kind": "trace",
    "verdict": "PASS",
    "detail": "3 steps"
+  },
+  {
+   "id": "model/pk_recurrence",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 0.00e+00; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_recurrence_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "trace/pk_recurrence_snapshot",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "5 steps"
   },
   {
    "id": "model/pk_recursive",
@@ -632,6 +672,48 @@
    "detail": "y worst 9.07e-08 of max(1, |ref|); state ssm.s worst 6.17e-09 of max(1, |ref|)"
   },
   {
+   "id": "op/recurrence/linear_attention_body",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 0.00e+00 of max(1, |ref|); state lin.num worst 0.00e+00 of max(1, |ref|); state lin.den worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/recurrence/ssm_scan_body",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y 0 values differ in their bits; state ssm.s 0 values differ in their bits"
+  },
+  {
+   "id": "op/recurrence/conv1d_causal_body",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y 0 values differ in their bits; state conv.x 0 values differ in their bits"
+  },
+  {
+   "id": "op/recurrence/selective_scan_body",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 0.00e+00 of max(1, |ref|); state ssm.s worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/recurrence/rnn_init_offset",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 0.00e+00 of max(1, |ref|); state rnn.h worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/recurrence/ema_bias_corrected",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 0.00e+00 of max(1, |ref|); state avg.m worst 0.00e+00 of max(1, |ref|); state avg.n worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/recurrence/ema_exact",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y 0 values differ in their bits; state avg.m 0 values differ in their bits; state avg.n 0 values differ in their bits"
+  },
+  {
    "id": "refuse/unknown_op",
    "kind": "refuse",
    "verdict": "PASS",
@@ -962,6 +1044,78 @@
    "detail": "refused (IR_SPEC 6.8.1)"
   },
   {
+   "id": "refuse/recurrence_body_does_not_parse",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 6.10)"
+  },
+  {
+   "id": "refuse/recurrence_name_twice",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 6.10)"
+  },
+  {
+   "id": "refuse/recurrence_rowsum",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 6.10)"
+  },
+  {
+   "id": "refuse/recurrence_index_size_zero",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 6.10)"
+  },
+  {
+   "id": "refuse/recurrence_index_out_of_scope",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 6.10)"
+  },
+  {
+   "id": "refuse/recurrence_init_reads_input",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 6.10)"
+  },
+  {
+   "id": "refuse/recurrence_rank_mismatch",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 6.10)"
+  },
+  {
+   "id": "refuse/recurrence_index_undeclared",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 6.10)"
+  },
+  {
+   "id": "refuse/recurrence_slot_shape",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 6.10)"
+  },
+  {
+   "id": "refuse/recurrence_slot_missing_tensor",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 6.10)"
+  },
+  {
+   "id": "refuse/recurrence_init_flag",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 6.10)"
+  },
+  {
+   "id": "refuse/recurrence_weight_size",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 6.10)"
+  },
+  {
    "id": "refuse/version_key_mismatch",
    "kind": "refuse",
    "verdict": "PASS",
@@ -990,6 +1144,576 @@
    "kind": "refuse",
    "verdict": "PASS",
    "detail": "refused (IR_SPEC 8.2)"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_0000000000000000",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_0000000000000001",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_8000000000000001",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_7fefffffffffffff",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_ffefffffffffffff",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_4340000000000000",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_c340000000000000",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_4430000000000000",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_44b52d02c7e14af5",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_44b52d02c7e14af6",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_44b52d02c7e14af7",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_444b1ae4d6e2ef4e",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_444b1ae4d6e2ef4f",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_444b1ae4d6e2ef50",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_3eb0c6f7a0b5ed8c",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_3eb0c6f7a0b5ed8d",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_41b3de4355555553",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_41b3de4355555554",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_41b3de4355555555",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_41b3de4355555556",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_41b3de4355555557",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_becbf647612f3696",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_43143ff3c1cb0959",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/f32_eps",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/f32_rope_theta",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/f32_scale",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/f32_den_floor",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/integer_2p53",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/negative_integer",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/minus_zero_integer_form",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/exponent_form",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_controls",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_controls_escaped",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_escapes",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_escapes_escaped",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_line_separators",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_line_separators_escaped",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_astral",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_astral_escaped",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_accents",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_accents_escaped",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_names",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_names_escaped",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/key_order_utf16",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/nesting",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/prose_removed",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/prose_kept_in_serialiser_test",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_attnres",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_flex_expr",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_flex_highway",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_gpt2",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_gpt2_swa",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_kimi",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_llama",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_llama_attnres",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_llama_attnres_rec",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_mamba",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_moe",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_mor",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_recurrence",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_recursive",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_srd",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_state",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_tp_gemma3",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_tp_gptneox",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_tp_mamba1",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_tp_mistral",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_tp_qwen3",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/negative_zero",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "digest/vectors/integer_beyond_2p53",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "digest/vectors/overflow",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "digest/vectors/duplicate_key",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "digest/vectors/lone_surrogate",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "digest/vectors/nan_literal",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "dequant/blocks/f32",
+   "kind": "dequant",
+   "verdict": "PASS",
+   "detail": "0 values differ in their bits"
+  },
+  {
+   "id": "dequant/blocks/f16",
+   "kind": "dequant",
+   "verdict": "PASS",
+   "detail": "0 values differ in their bits"
+  },
+  {
+   "id": "dequant/blocks/q4_0",
+   "kind": "dequant",
+   "verdict": "PASS",
+   "detail": "0 values differ in their bits"
+  },
+  {
+   "id": "dequant/blocks/q5_0",
+   "kind": "dequant",
+   "verdict": "PASS",
+   "detail": "0 values differ in their bits"
+  },
+  {
+   "id": "dequant/blocks/q5_1",
+   "kind": "dequant",
+   "verdict": "PASS",
+   "detail": "0 values differ in their bits"
+  },
+  {
+   "id": "dequant/blocks/q8_0",
+   "kind": "dequant",
+   "verdict": "PASS",
+   "detail": "0 values differ in their bits"
+  },
+  {
+   "id": "dequant/blocks/q4_k",
+   "kind": "dequant",
+   "verdict": "PASS",
+   "detail": "0 values differ in their bits"
+  },
+  {
+   "id": "dequant/blocks/q5_k",
+   "kind": "dequant",
+   "verdict": "PASS",
+   "detail": "0 values differ in their bits"
+  },
+  {
+   "id": "dequant/blocks/q6_k",
+   "kind": "dequant",
+   "verdict": "PASS",
+   "detail": "0 values differ in their bits"
+  },
+  {
+   "id": "dequant/blocks/bf16",
+   "kind": "dequant",
+   "verdict": "PASS",
+   "detail": "0 values differ in their bits"
+  },
+  {
+   "id": "grad/recurrence/linear_attention_body",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "the reference has no backward: the gradient cases are its finite differences"
+  },
+  {
+   "id": "grad/recurrence/ssm_scan_body",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "the reference has no backward: the gradient cases are its finite differences"
+  },
+  {
+   "id": "grad/recurrence/conv1d_causal_body",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "the reference has no backward: the gradient cases are its finite differences"
+  },
+  {
+   "id": "grad/recurrence/selective_scan_body",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "the reference has no backward: the gradient cases are its finite differences"
+  },
+  {
+   "id": "grad/recurrence/rnn_init_offset",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "the reference has no backward: the gradient cases are its finite differences"
+  },
+  {
+   "id": "grad/recurrence/ema_bias_corrected",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "the reference has no backward: the gradient cases are its finite differences"
+  },
+  {
+   "id": "grad/recurrence/ema_exact",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "the reference has no backward: the gradient cases are its finite differences"
+  },
+  {
+   "id": "trace/pk_kimi_recurrence",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "9 steps"
+  },
+  {
+   "id": "trace/pk_srd_recurrence",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "9 steps"
+  },
+  {
+   "id": "trace/pk_mamba_recurrence",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "9 steps"
+  },
+  {
+   "id": "trace/tp_mamba1_recurrence",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "9 steps"
   }
  ]
 }

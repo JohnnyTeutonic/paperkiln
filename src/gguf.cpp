@@ -609,14 +609,23 @@ void write_tokenizer(GGUFWriter& writer, const Cfg& cfg) {
 }
 
 // The IR keys, written last so every key before them sits where it did
-// without the IR (an empty `ir` writes neither).
+// without the IR (an empty `ir` writes none): the document, its version and
+// its digest (IR_SPEC.md section 3.10; a document with no digest, which no
+// exporter writes, gets no digest key).
 void write_ir(GGUFWriter& writer, const std::string& ir, const char* who) {
     if (ir.empty()) return;
     const auto doc = ir::json::parse(ir);
     if (!doc.contains("ir_version") || !doc["ir_version"].is_number_unsigned())
         throw std::runtime_error(std::string(who) + ": the IR has no unsigned ir_version");
-    writer.write_metadata_string(ir::kGGUFKey, doc.dump());
+    const std::string dump = doc.dump();
+    writer.write_metadata_string(ir::kGGUFKey, dump);
     writer.write_metadata_uint32(ir::kGGUFVersionKey, doc["ir_version"].get<uint32_t>());
+    std::string sha;
+    try {
+        sha = ir::digest(ir::json::parse(dump));  // the embedded text, as a reader parses it
+    } catch (const ir::DigestError&) {
+    }
+    if (!sha.empty()) writer.write_metadata_string(ir::kGGUFDigestKey, sha);
 }
 
 }  // namespace

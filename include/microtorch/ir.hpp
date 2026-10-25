@@ -25,6 +25,7 @@
 // the uint32 key kGGUFVersionKey, written after every other metadata key
 // (IR_SPEC.md section 3.1).
 #include <cstdint>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -39,10 +40,30 @@ using json = nlohmann::ordered_json;
 constexpr uint32_t kVersion = 1;
 constexpr const char* kGGUFKey = "paperkiln.ir";
 constexpr const char* kGGUFVersionKey = "paperkiln.ir_version";
+// The document's digest (IR_SPEC.md section 3.10), 64 lowercase hex digits,
+// written after kGGUFVersionKey.
+constexpr const char* kGGUFDigestKey = "paperkiln.ir_sha256";
 
 // A float32 attribute as the shortest decimal that reads back as the same
 // float (1e-5f -> 1e-05, not 9.999999747378752e-06).
 double f32(float v);
+
+// The IR digest (IR_SPEC.md section 3.10): the RFC 8785 serialisation of the
+// document with every "_" key removed (canonical), and the sha256 of its UTF-8
+// bytes as 64 lowercase hex digits (digest). A value with no digest (a
+// negative zero, an integer beyond 2^53, a non-finite number, malformed
+// UTF-8) throws DigestError. tools/ir_validate.py's canonical() and digest()
+// are the reference; spec/conformance/digest/ holds the vectors.
+struct DigestError : std::runtime_error {
+    using std::runtime_error::runtime_error;
+};
+std::string canonical(const json& doc, bool keep_prose = false);  // keep_prose: the serialiser alone (tests)
+std::string digest(const json& doc);
+std::string sha256_hex(const std::string& bytes);
+// A JSON text: parsed (a duplicate member name or a malformed text throws
+// DigestError), then canonical / digest.
+json parse_ijson(const std::string& text);
+std::string digest_text(const std::string& text);
 
 // Nodes for the ops that no module owns.
 json rmsnorm(const std::string& in, const std::string& weight, float eps, const std::string& out);
@@ -81,6 +102,16 @@ json ssm_scan(const std::string& in, const std::string& state, const std::string
 json ssm_state(const std::string& name, size_t n);
 // A runtime-defined op: text in the grammar of microtorch/expr.hpp.
 json expr(const std::vector<std::string>& ins, const std::string& text, const std::string& out);
+// A recurrence (IR_SPEC.md 6.10, microtorch/recurrence.hpp): `body` holds index, inputs and
+// update, readout, and optionally weights, init and let; in, state and out are added. Its slot:
+// one tensor per update assignment, with that assignment's shape, init "body" when the node's
+// init assigns it, else 0 (throws std::invalid_argument when the node does not check).
+json recurrence(const std::vector<std::string>& ins, const std::string& state, const json& body,
+                const std::string& out);
+json recurrence_state(const std::string& name, const json& node);
+// Section 6.4's elu+1 linear attention as a recurrence body (IR_SPEC.md 6.10.6), den_floor 1e-8,
+// over inputs q, k, v [heads, head_dim]: the text tools/ir_recurrence.py's rewrite writes.
+json linear_attention_body(size_t heads, size_t head_dim);
 
 }  // namespace ir
 }  // namespace microtorch

@@ -61,7 +61,10 @@ struct Spec {
     std::string name = "run";
     // arch
     std::string family = "gpt2";      // gpt2 | llama | flex | mamba
-    std::string attention = "exact";  // exact | kimi | srd (gpt2 family)
+    std::string attention = "exact";  // exact | kimi | srd | recurrence (gpt2 family)
+    // attention "recurrence": arch.custom.recurrence, the node's body (IR_SPEC.md 6.10: index, inputs
+    // q, k, v, let, update, readout); null = the linear_attention body (ir::linear_attention_body).
+    json recurrence;
     size_t d = 128, layers = 2, heads = 4, T = 128;
     // Paper-faithful flavor knobs (the flex family; empty = family default).
     std::string norm, activation, position;
@@ -259,6 +262,11 @@ Spec parse_spec(const std::string& path) {
         s.layers = c.value("layers", s.layers);
         s.heads = c.value("heads", s.heads);
         s.attention = c.value("attention", s.attention);
+        if (c.contains("recurrence")) {
+            if (s.attention != "recurrence")
+                throw std::runtime_error("arch.custom.recurrence needs attention \"recurrence\"");
+            s.recurrence = c["recurrence"];
+        }
         s.norm = c.value("norm", s.norm);
         s.activation = c.value("activation", s.activation);
         s.position = c.value("position", s.position);
@@ -390,9 +398,9 @@ Spec parse_spec(const std::string& path) {
         // remain 2-block parity models.
         if (s.attention == "exact" || s.attention == "swa")
             s.family = "flex";
-        else if (s.attention == "kimi" || s.attention == "srd")
+        else if (s.attention == "kimi" || s.attention == "srd" || s.attention == "recurrence")
             throw std::runtime_error(
-                "kimi/srd presets are 2-block parity models (layers must be 2)");
+                "kimi/srd/recurrence are 2-block parity models (layers must be 2)");
     }
 
     if (s.attn_res && s.family != "llama")
@@ -861,7 +869,16 @@ parity::AttnKind attn_kind(const std::string& s) {
     if (s == "kimi") return parity::AttnKind::KIMI;
     if (s == "srd") return parity::AttnKind::SRD;
     if (s == "swa") return parity::AttnKind::SWA;
+    if (s == "recurrence") return parity::AttnKind::RECURRENCE;
     return parity::AttnKind::EXACT;
+}
+
+// The gpt2-family parity model; attention "recurrence" passes arch.custom.recurrence (the node's
+// body, IR_SPEC.md 6.10) as the IR's ordered json, or nothing for the default body.
+std::shared_ptr<parity::ParityLM> make_parity(const Spec& s, size_t vocab) {
+    const ir::json body = s.recurrence.is_null() ? ir::json() : ir::json::parse(s.recurrence.dump());
+    return std::make_shared<parity::ParityLM>(attn_kind(s.attention), vocab, s.d, s.heads, s.T, s.seed, s.window,
+                                              s.sinks, s.recurrence.is_null() ? nullptr : &body);
 }
 
 // Per-module L2 gradient norms, grouped by the first dotted-path segment
@@ -2092,8 +2109,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         llama = std::make_shared<nn::Llama>(lc, s.seed);
         llama->checkpoint_blocks = s.ckpt_act;
     } else {
-        gpt = std::make_shared<parity::ParityLM>(attn_kind(s.attention), tokens.size(), s.d,
-                                                 s.heads, s.T, s.seed, s.window, s.sinks);
+        gpt = make_parity(s, tokens.size());
         if (s.ckpt_act) {
             throw std::runtime_error(
                 "train.checkpoint_activations requires the llama family for now");
@@ -3168,8 +3184,7 @@ struct LoadedLM {
             apply_state(lc, s);
             llama = std::make_shared<nn::Llama>(lc, s.seed);
         } else {
-            gpt = std::make_shared<parity::ParityLM>(attn_kind(s.attention), tokens.size(), s.d,
-                                                     s.heads, s.T, s.seed, s.window, s.sinks);
+            gpt = make_parity(s, tokens.size());
         }
         const std::string ckpt = s.out_dir + "/" + s.name + ".safetensors";
         model().load_state_dict(load_safetensors(ckpt), /*strict=*/true);

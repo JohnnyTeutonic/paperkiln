@@ -2,11 +2,14 @@
 
 *Normative specification of the paperkiln model IR: a versioned JSON graph of a language model that an
 engine interprets, rather than recognising a fixed architecture. IR version 1, specification revision
-1.0 (25 October 2026).*
+1.1 (25 October 2026).*
 
 - Schema: `spec/ir.schema.json` (JSON Schema 2020-12, the document's structure).
-- Validator: `tools/ir_validate.py` (the schema plus every refusal rule in section 10).
-- Reference interpreter: `tools/ir_numpy.py`, with `tools/ir_expr.py` for `expr`.
+- Validator: `tools/ir_validate.py` (the schema plus every refusal rule in section 10; its `digest`
+  subcommand gives a document's digest, section 3.10).
+- Reference interpreter: `tools/ir_numpy.py`, with `tools/ir_expr.py` for `expr`,
+  `tools/ir_recurrence.py` for `recurrence` (section 6.10) and `tools/ir_quant.py` for stored tensors
+  (section 4.7).
 - Conformance suite: `spec/conformance/`, run by `tools/ir_conformance.py` (section 11).
 - Implementations: paperkiln (exporter, trainer and `mtstudio`; CPU and CUDA) and ember.cpp
   (`graph_ir.cpp`, `graph_ir_cuda.cu`; CPU, CUDA, WebAssembly).
@@ -37,9 +40,11 @@ not semantics: when the header and this document differ, this document holds.
 
 ## 0. Status
 
-This document is version 1 of the IR. It states the semantics that `include/microtorch/ir.hpp`'s
-header comment stated under the number 0, reorganised into profiles, with the numerics made
-consistent with what the reference build computes (section 4 and Appendix A). The IR documents
+This document is version 1 of the IR, revision 1.1. It states the semantics that
+`include/microtorch/ir.hpp`'s header comment stated under the number 0, reorganised into profiles,
+with the numerics made consistent with what the reference build computes (section 4 and Appendix A).
+Revision 1.1 adds the digest (section 3.10), the values of stored tensors (section 4.7) and the
+`recurrence` profile (section 6.10), and settles the questions that were open in 1.0 (section 12). The IR documents
 that paperkiln commits before 5349ee19 exported carry `"ir_version": 0` and are version 1 documents
 (section 2.1); later exports carry 1 (section 2.3).
 
@@ -126,6 +131,7 @@ naming the op and the backend.
 | `recursion` | `weight_index`, `tensor_index`, `depth_route`, `kv_rows: active`, `kv_from` (reserved) | 7 |
 | `chat` | the template record and its resolution; the state-token template contract | 8 |
 | `thirdparty` | the attributes and ops added for graphs built from llama.cpp metadata: grouped-query attention, `rope` `neox` / `n_rot` / `freq_scale` / `kv_heads`, `rmsnorm` `group` / `weight_offset`, `conv1d_causal`, `selective_scan` | 5.6, 5.14, 5.15, 6.6, 6.7, 9.3 |
+| `recurrence` | the `recurrence` op: a per-token state update declared in the document (init, let, update and readout bodies), over a recurrent slot of the state profile | 6.10 |
 
 Profiles are not declared inside the document (an engine infers them from the ops and keys it
 meets). Each engine's adapter for the conformance suite states its profiles (section 11.3).
@@ -141,7 +147,10 @@ commit that lands it. A draft is never normative.
 ### 3.1 Container
 
 - In a GGUF, the compact JSON dump of the document is the string key `paperkiln.ir` and the version
-  is the uint32 key `paperkiln.ir_version`, both written after every other metadata key.
+  is the uint32 key `paperkiln.ir_version`, both written after every other metadata key. The string
+  key `paperkiln.ir_sha256`, when present, follows them and holds the embedded document's digest
+  (section 3.10): 64 lowercase hex digits. It is optional; a file whose digest key is not the digest
+  of its embedded document is refused (rule 30). paperkiln's exporters write it.
 - A sidecar `<stem>.ir.json` beside the GGUF may hold the same document. When present, it must be
   the embedded document; a consumer that reads sidecars refuses one that differs.
 - A third-party GGUF without `paperkiln.ir` gets a document built from its `general.architecture`
@@ -227,8 +236,8 @@ GGUF tensor and never state.
 - `weight` (and `bias`, `router`, `experts`, `state_weight` and the tensor attributes of
   `ssm_scan`, `conv1d_causal` and `selective_scan`) name GGUF tensors.
 - Layout: a matrix is [out, in] row-major, as GGUF and llama.cpp store it (ggml `ne0` = in).
-- Storage: each tensor's storage type is its GGUF type (f32, f16, q8_0, ...). Engines compute in
-  `model.dtype`.
+- Storage: each tensor's storage type is its GGUF type (f32, f16, q8_0, ...), and its values are the
+  f32 values section 4.7 defines for that type. Engines compute in `model.dtype`.
 - `"{i}"` in a name in the block is replaced by the block index i (by m_i under `weight_index`,
   section 7.1; by the application index under `tensor_index`, section 7.2). A name holds `{i}` at
   most once, and only in the block: outside the block it has no value, and a name holding it there
@@ -240,7 +249,8 @@ GGUF tensor and never state.
 
 Any attribute of a block node, and any field of a block state slot, may be
 `{"per_layer": [v_0, ..., v_{L-1}]}` with L = `block.repeat`: application i reads v_i, except the
-structural keys: a node's `op`, `in`, `out`, `state`, `tensor_index`, `sizes`, `expr` and its
+structural keys: a node's `op`, `in`, `out`, `state`, `tensor_index`, `sizes`, `expr`, a
+recurrence's `index`, `inputs`, `weights`, `init`, `let`, `update` and `readout`, and its
 tensor names (`weight`, `bias`, `router`, `experts`, `state_weight`, `tied_to`, `a`, `b`, `c`, `d`),
 and a slot's `name`, `kind`, `op`, `dtype`, `tensors`, `evict` and `kv_rows` (`kv_from`, reserved, is
 per-layer by definition). An attribute not given per layer is the same in every application.
@@ -253,6 +263,46 @@ per-layer by definition). An attribute not given per layer is the same in every 
 Every op has the same semantics on T rows (prefill) and on one row (decode, T = 1). In decode,
 attention also reads and appends to its kv slot (section 6.2), and a recurrent op reads and replaces
 its recurrent slot (section 6.3).
+
+### 3.10 The digest
+
+A document's digest identifies it exactly, so a paper can cite the document it used. It is the
+SHA-256 of the document's canonical form:
+
+1. The document is parsed as I-JSON (RFC 7493): no duplicate member names, every number a finite
+   IEEE binary64 value, every integer within -2^53 .. 2^53, every string well-formed Unicode.
+2. Every member whose name starts with `_`, at any depth, is removed (prose, section 3.2).
+3. What remains is serialised by the JSON Canonicalization Scheme, RFC 8785: no whitespace, member
+   names sorted by their UTF-16 code units, strings as ECMAScript's `JSON.stringify` writes them
+   (only `"`, `\` and the controls U+0000 .. U+001F escaped), numbers as ECMAScript's
+   `Number.prototype.toString` writes the binary64 value (shortest round-trip digits; `1e-05` is
+   written `0.00001`, `1e21` as `1e+21`).
+4. The digest is the SHA-256 (FIPS 180-4) of that text's UTF-8 bytes, written as 64 lowercase hex
+   digits. A citation may prefix it with `sha256:`.
+
+- **What it identifies.** Two documents have the same digest exactly when they are equal as I-JSON
+  values after step 2: member order, whitespace, number spelling (`1e-05`, `0.00001`, `1.0E-5`) and
+  prose do not matter; array order does. `ir_version` is part of the document, so a version 0 file
+  and its version 1 re-export (section 2.1) have different digests. A number is its binary64 value: two
+  documents whose doubles differ but round to the same f32 attribute are different documents
+  (paperkiln's exporters write each f32 attribute as the shortest decimal of the float, `ir::f32`).
+- **Documents without a digest.** RFC 8785 writes -0 as `0`, while -0 and +0 are different values of an
+  EXACT op (an `affine` shift of -0 keeps the sign of a zero product, +0 does not; section 4.2). A
+  document that holds a negative zero therefore has no digest, nor does one outside I-JSON. Such a
+  document stays valid; it is refused only as the subject of a digest (`DigestError`), and no
+  paperkiln exporter writes one (every stored document has a digest).
+- **Container.** `paperkiln.ir_sha256` (section 3.1) is the digest of the document embedded in the
+  file. A document read in place of the embedded one (ember's `EMBER_IR`) has its own digest; the key
+  is checked against the embedded document only.
+- **Implementations.** `tools/ir_validate.py` (`canonical`, `digest`, and
+  `python tools/ir_validate.py digest FILE`) is the reference; `ir::canonical` and `ir::digest` in
+  `include/microtorch/ir.hpp` are paperkiln's C++, which the exporters use. The vectors are
+  `spec/conformance/digest/vectors.json` (section 11): RFC 8785's number table (Appendix B of the RFC),
+  strings and member names that exercise the escapes and the UTF-16 order, every suite model's
+  document, and texts that have no digest. The reference serialiser agrees with V8's own
+  `JSON.stringify` and member sort on 23,216 numbers (random binary64 patterns, every decimal exponent
+  from -330 to 308), on those strings and on all 24 stored documents of `ir/` and `experiments/`
+  (checked 25 October 2026), and on the 20 suite models' documents.
 
 ## 4. Numerics (core)
 
@@ -324,6 +374,64 @@ The numpy reference (`tools/ir_numpy.py`) is the reference for values. paperkiln
 transformer_core, compiled with `-ffast-math`, for its matrix product, `gelu` and row softmax.
 Appendix A lists which ops reach those translation units and why no EXACT statement in this
 document depends on them.
+
+### 4.7 Stored tensors
+
+A tensor stored in a GGUF type other than F32 has, element by element, the f32 values below; every op
+reads those values (section 3.7). The arithmetic is ggml's scalar `dequantize_row_*`
+(`ggml/src/ggml-quants.c`, block layouts in `ggml/src/ggml-common.h`, llama.cpp tag b6000, commit
+4762ad7316dcdec20016ab5985fb46a27902204d:
+https://github.com/ggml-org/llama.cpp/blob/4762ad7316dcdec20016ab5985fb46a27902204d/ggml/src/ggml-quants.c).
+A block's fields are little-endian; `h(x)` is the fp16 field x converted to f32 (exact, subnormals
+included); integers are converted to f32 exactly; the elements of a row are its blocks in order.
+
+| Type (ggml id) | Block: elements, bytes | Element j of a block |
+|---|---|---|
+| F32 (0) | 1, 4 | the binary32 value |
+| F16 (1) | 1, 2 | h(the value) |
+| BF16 (30) | 1, 2 | the 16 bits as the high half of a binary32, low half zero |
+| Q8_0 (8) | 32, 34: d (fp16), qs[32] (int8) | qs[j] * h(d) |
+| Q4_0 (2) | 32, 18: d, qs[16] | ((qs[j] & 15) - 8) * h(d) for j < 16; ((qs[j - 16] >> 4) - 8) * h(d) for j >= 16 |
+| Q5_0 (6) | 32, 22: d, qh (uint32), qs[16] | (q - 16) * h(d), q = the Q4_0 nibble of element j (unshifted) plus 16 times bit j of qh |
+| Q5_1 (7) | 32, 24: d, m (fp16), qh, qs[16] | (q * h(d)) + h(m), q as Q5_0 |
+| Q4_K (12) | 256, 144: d, dmin (fp16), scales[12], qs[128] | (d_s * q) - m_s, below |
+| Q5_K (13) | 256, 176: d, dmin, scales[12], qh[32], qs[128] | (d_s * (q + 16 h)) - m_s, below |
+| Q6_K (14) | 256, 210: ql[128], qh[64], scales[16] (int8), d | (h(d) * scales[s]) * (q - 32), below |
+
+- **Q4_K, Q5_K.** The 256 elements are 8 sub-blocks of 32. Sub-block s (0 .. 7) has the 6-bit scale and
+  minimum (sc_s, mn_s) of `get_scale_min_k4(s)`: for s < 4, sc_s = scales[s] & 63 and mn_s =
+  scales[s + 4] & 63; for s >= 4, sc_s = (scales[s + 4] & 15) | ((scales[s - 4] >> 6) << 4) and mn_s =
+  (scales[s + 4] >> 4) | ((scales[s] >> 6) << 4). d_s = h(d) * sc_s and m_s = h(dmin) * mn_s. Chunk c
+  (0 .. 3) covers sub-blocks 2c and 2c + 1 with the 32 bytes qs[32c .. 32c + 31]: element l of sub-block
+  2c has q = qs[32c + l] & 15, of sub-block 2c + 1 q = qs[32c + l] >> 4. In Q5_K, h is bit 2c (sub-block
+  2c) or bit 2c + 1 (sub-block 2c + 1) of qh[l].
+- **Q6_K.** Two halves of 128 elements; half n reads ql[64n ..], qh[32n ..] and scales[8n ..]. For
+  l = 0 .. 31, with is = l / 16 (integer division): the elements 128n + l, + 32, + 64 and + 96 have
+  q = (ql[l] & 15) | ((qh[l] & 3) << 4), (ql[l + 32] & 15) | (((qh[l] >> 2) & 3) << 4), (ql[l] >> 4) |
+  (((qh[l] >> 4) & 3) << 4) and (ql[l + 32] >> 4) | (((qh[l] >> 6) & 3) << 4), with the scales
+  scales[is], scales[is + 2], scales[is + 4] and scales[is + 6] of the half.
+- **Class: EXACT, on every backend.** Every product above is exact in f32: an fp16 value has at most 11
+  significant bits and the integer factors at most 7 + 5 (Q6_K) or 6 + 5 (Q5_K) more, at most 23 in all.
+  So Q8_0, Q4_0, Q5_0, Q6_K, F16 and BF16 values involve no rounding at all, and Q5_1, Q4_K and Q5_K
+  exactly one (the final + h(m) or - m_s, of two exact operands). A fused multiply-add of the last step
+  rounds the same exact value once, so contraction, vector width and evaluation order cannot change any
+  value: every engine and backend gives the same bits. A non-finite fp16 field gives the IEEE result
+  (a NaN matches any NaN, section 4.2).
+- **Reference and fixtures.** `tools/ir_quant.py` is the numpy reference; `tests/test_ir_quant.py`
+  checks it bit for bit against gguf-py 0.19.0's `dequantize` on random blocks of every type (fp16
+  fields normal, subnormal, signed, zero and 65504) and against the exact value of every element
+  computed in float64. `spec/conformance/quant/blocks.json` holds fixtures for every type (section
+  11).
+- **What paperkiln writes.** `export.quant` (`include/microtorch/gguf.hpp`): `f32` writes F32 only;
+  `q8_0`, `q8_0_out` and `q8_0_all` Q8_0 for the selected 2-D tensors and F32 for the rest; `q4_0`,
+  `q4_k_m` and `q4_k_s` the types llama.cpp's quantiser chooses (llama_tensor_get_type): Q4_0, and the
+  k-quants Q4_K, Q5_K and Q6_K where a tensor's ne0 is a multiple of 256, with llama.cpp's fallbacks
+  Q5_0, Q5_1 and Q8_0 elsewhere, and the 1-D norms F32. Every type a paperkiln export can hold is in
+  the table, as are those of the third-party files the gates load (F16, BF16, the k-quants).
+- **Computing on quantised blocks.** The values above are what an op reads. An engine that multiplies
+  quantised weights by activations it quantises too (ggml's `vec_dot_q4_K_q8_K` and its kin quantise
+  the activations to Q8_K) computes a different function of the activations; such a path is ROUNDING
+  by construction, judged on greedy parity, and its engine's capability table says so (Appendix C).
 
 ## 5. Core ops
 
@@ -576,8 +684,9 @@ ROUNDING (libm transcendentals differ by an ulp between platforms).
 per sequence; a node names its slot in `state`. A block may declare several slots (srd: one kv and
 one recurrent). Every slot is read by at least one node, a slot name is declared once, and a node
 that names a slot names a declared slot of the kind its op needs. A kv slot is read by exactly one
-attention node (two readers would append twice per application, which is not defined); a block may
-still declare several kv slots. Nodes outside the block have no state, so a stateful op outside
+attention node (two readers would append twice per application, which is not defined), and a
+recurrent slot of op `recurrence` by exactly one recurrence node (section 6.10); a block may still
+declare several kv slots. Nodes outside the block have no state, so a stateful op outside
 the block is refused.
 
 ### 6.2 kv (core)
@@ -602,8 +711,9 @@ integers), every tensor set to `init` (0) when a sequence starts.
 - The size does not grow with the sequence; there is no max_len or window, and positions never
   enter a recurrent op (model.ctx still bounds every sequence under the context contract).
 - The ops and their tensors: `linear_attention` (num, den), `ssm_scan` (s), `conv1d_causal` (x),
-  `selective_scan` (s). A slot whose op is not one of these, whose dtype is not f32, or whose tensors
-  do not fit its op (sections 6.4 to 6.7) is refused.
+  `selective_scan` (s), and `recurrence` (the tensors its update assigns, section 6.10, whose `init`
+  is 0 or `"body"`). A slot whose op is not one of these, whose dtype is not f32, or whose tensors
+  do not fit its op (sections 6.4 to 6.7 and 6.10) is refused.
 
 ### 6.4 linear_attention
 
@@ -768,7 +878,163 @@ those n tokens would leave. Per slot:
   application's written-rows mask truncated with them (section 7.5).
 - **recurrent:** a recurrence cannot drop tokens. Prefix reuse keeps a snapshot of the slot's
   tensors taken after the prefix's last token; rewinding means restoring a snapshot or running again
-  from the start. A snapshot is the slot's tensors, nothing else.
+  from the start. A snapshot is the slot's tensors, nothing else. A recurrence's slot is such a slot
+  (section 6.10.5).
+
+### 6.10 recurrence (recurrence profile)
+
+A recurrent op defined in the document: a fixed-size state, its initial value, a per-token update
+and a readout, each written as a body in a closed grammar (`expr`'s, section 5.19, with indexed
+tensors and an ordered sum). A paper's new recurrent primitive, a state-space model or a linear
+attention variant, travels as data and runs in both engines without engine code; the four
+hand-written recurrent ops are recurrences too (section 6.10.6). It extends ONNX's `Scan` and Keras's
+cell contract with decode-state semantics, numerics classes and a gradient check as conformance
+(`docs/IR_PRIOR_ART.md` section 4c).
+
+#### 6.10.1 The node
+
+    {"op": "recurrence", "in": ["q", "k", "v"], "state": "lin",
+     "index":   {"h": 2, "e": 8},
+     "inputs":  ["q[h,e]", "k[h,e]", "v[h,e]"],
+     "weights": {"A[h,e]": "blk.{i}.decay"},
+     "init":    ["num[h,e] = 0"],
+     "let":     ["pk[h,e] = ..."],
+     "update":  ["num[h,e] = A[h,e] * num[h,e] + pk[h,e] * v[h,e]", "den[h,e] = den[h,e] + pk[h,e]"],
+     "readout": "y[h,e] = ...",
+     "out": "a"}
+
+- `index` (required): index names to sizes (positive integers).
+- `inputs` (required): one declaration `name[i1, ..., ik]` per value of `in`, in order. The value is
+  [T, w] with w the product of the declared sizes; row t is the input's tensor at token t, row-major
+  (the last index fastest). A value whose width is not w is refused (rule 34), at load by an engine
+  that knows the widths and at the latest when the rows arrive.
+- `weights` (optional): declarations to tensor names. The tensor (`{i}` replaced as in section 3.7,
+  `tensor_index` allowed) holds as many elements as its declaration, read row-major in numpy order
+  (section 3.7); its stored shape is otherwise free (a [1] tensor is declared `D[o]` with o of size 1).
+- `update` (required): one assignment per state tensor, `name[i1, ..., ik] = body`; the names are
+  the state's tensors and their index sizes the tensors' shapes. `init` (optional): an assignment for
+  a state tensor whose initial value is a body (a learned initial state, read from weights); every
+  other state tensor starts at +0. `let` (optional): intermediate tensors, in order. `readout`
+  (required): one assignment, the output row; the value `out` is [T, w], w the product of its sizes.
+- `state` names a recurrent slot of op `recurrence` (section 6.3) whose tensors are the update's: one
+  per state tensor, with its name and shape, and `init` `"body"` exactly when the node's `init`
+  assigns it (otherwise 0). The slot is read by this node alone.
+- Names (index, input, weight, state, let and the readout's) are identifiers
+  ([A-Za-z_][A-Za-z0-9_]*), distinct across all of them, and none is a function name, `pi`, `sum`,
+  `rowsum`, `rowmean`, `rowmax` or `per_layer`. They are local to the node: an input's name need not
+  be its value's name in `in`.
+- Every key of the node is structural (section 3.8): its declarations and bodies are the same in every
+  application, and only its weights' tensors differ, through `{i}`.
+
+#### 6.10.2 Bodies
+
+A body is an `expr` (section 5.19) with these changes; nothing else is accepted:
+
+    assignment := name '[' index (',' index)* ']' '=' expr
+    primary    := number | 'pi' | name '[' ix (',' ix)* ']' | index
+                  | fn '(' expr (',' expr)* ')' | 'sum' '(' index ',' expr ')' | '(' expr ')'
+    ix         := index | index ('+' | '-') integer | integer
+    fn         := exp log sqrt tanh erf abs sigmoid relu max min where
+
+- `name[...]` reads a tensor (an input, a weight, a state tensor or a let), one `ix` per dimension. A
+  bare index name is that index's value at the point: an integer, as f32 (exact).
+- `sum(j, e)` adds e over j = 0 .. size(j) - 1. j must be declared and not already in scope.
+- The functions and operators are `expr`'s, with the same definitions (`max`, `min`, `where`, `relu`,
+  `sigmoid`, `^`). The row reductions `rowsum`, `rowmean` and `rowmax` are not part of this grammar
+  (`sum` replaces them). Numbers are read as in `expr` (the nearest float, strtof).
+- **Scope.** In `t[i1, ..., ik] = e`, the indices i1 .. ik are in scope, distinct and declared; `sum`
+  adds its index inside its argument. Every index a body uses is in scope.
+- **What a body reads.** `init`: weights only. `let`: inputs, weights, the state before the token and
+  earlier lets. `update`: inputs, weights, the state before the token and the lets. `readout`: inputs,
+  weights, the lets and the state after the token. A read has as many indices as its tensor has
+  dimensions.
+- Every body nests at most 200 deep (as `expr`).
+
+*Why this extension.* `expr` covers stateless maps of [T, w] rows. A state with structure needs
+indexed tensors (a matrix state, an outer product B[n] * x[c], a state shifted by one row) and a
+contraction in a stated order (a matrix-vector product). Index offsets with zero padding give the
+causal convolution's history. Those three additions express the four hand-written ops (section
+6.10.6) and keep `expr`'s numerics rule for every primitive.
+
+#### 6.10.3 Semantics
+
+At the start of a sequence each state tensor takes its init body's value, or +0. Then for each
+token t in order (prefill: t = 0 .. T-1; decode: the one token):
+
+1. every input name reads row t of its value, as a tensor of its declared shape;
+2. the lets are evaluated in order;
+3. every state tensor's update is evaluated from the state before the token (the whole new state is
+   formed before any of it replaces the old);
+4. the readout is evaluated with the state after the update; row t of `out` is its tensor, row-major.
+
+A body is evaluated at every point of its assignment's index space. At a point:
+
+- **Reads.** Each ix is the index's value plus its offset, or the integer. A read whose coordinates
+  lie outside the tensor's shape in any dimension is +0 (zero padding).
+- **sum(j, e)** is ((+0 + e|j=0) + e|j=1) + ... + e|j=n-1, in ascending j, each addition rounded.
+- **Everything else** is `expr`'s numerics: every primitive computed in f32 and rounded to f32 after
+  it, with no fused multiply-add; constant subexpressions are folded in f32 with the same operations.
+
+A recurrence runs over the rows of one sequence. Several sequences stacked in one call (a training
+batch) are separate sequences, each from its own initial state.
+
+#### 6.10.4 Class
+
+A recurrence whose bodies use none of `exp`, `log`, `tanh`, `erf`, `sigmoid` and `^` is **EXACT**:
+its arithmetic is IEEE `+ - * /`, `sqrt` and selections in a fully stated order (section 4.4). One
+that uses them is **ROUNDING** (libm transcendentals differ by an ulp between platforms). Both are
+stated against the sequential order of section 6.10.3; a chunked or parallel evaluation (a scan, the
+SSD form, fla's `chunk`) is ROUNDING against it, as section 6.3 says of every recurrent op.
+
+#### 6.10.5 Decode state and gradients
+
+- **Decode state.** The slot's tensors are the state (section 6.3): prefilling a prompt and decoding
+  it token by token leave the same state bit for bit given the same inputs (section 4.5); a snapshot
+  is the slot's tensors, and rewinding restores one or runs again from the start (section 6.9). The
+  conformance suite checks it (prefill against incremental decode, snapshot and restore).
+- **Gradients** (for training engines): backpropagation through the sequential fold of section
+  6.10.3, from the primitives' rules (`expr`'s: `max`, `min` and `where` pass the gradient to the
+  chosen operand and none to `where`'s condition; `abs` and `relu` give 0 at 0); a read passes its
+  gradient to the element it read (none for a read outside the tensor); `sum` passes it to every term;
+  index values and numbers have none. Gradients reach the inputs and the weights (through any body,
+  `init` included). An engine may derive the backward by autograd over the unrolled bodies (paperkiln
+  does) or supply one for a body it recognises; either way it passes the suite's gradient cases,
+  central finite differences of the reference evaluated in float64 (section 11).
+- *Informative.* Under these rules an unselected branch still has its forward value: in
+  `where(x, x + 1, exp(x))` a large x makes `exp(x)` infinite, and the gradient 0 it receives times
+  that infinity is NaN. Bodies keep the unselected branch finite, as `exp(min(0, x))` does in section
+  6.10.6 (`min(0, x)` is x wherever that branch is selected, NaN included).
+
+#### 6.10.6 The hand-written recurrent ops as recurrences (informative)
+
+`tools/ir_recurrence.py` (`rewrite`) replaces each hand-written recurrent node with these, keeping the
+slot's name and its tensors:
+
+- **linear_attention** (heads H, head_dim E, den_floor f): index {h: H, e: E}; inputs q, k, v [h,e];
+  let `pk[h,e] = where(k[h,e], k[h,e] + 1, (exp(min(0, k[h,e])) - 1) + 1)`; update
+  `num[h,e] = num[h,e] + pk[h,e] * v[h,e]`, `den[h,e] = den[h,e] + pk[h,e]`; readout
+  `y[h,e] = (phi(q) * num[h,e]) / max(den[h,e], f)`, phi(q) the same `where` on q. ROUNDING.
+- **ssm_scan** (n; tensors a, b, c, d): index {r: n, j: n, o: 1}; input u[r]; weights A[r,j], B[r],
+  C[r], D[o]; update `s[r] = sum(j, A[r,j] * s[j]) + B[r] * u[r]`; readout
+  `y[r] = C[r] * s[r] + D[0] * u[r]`. EXACT.
+- **conv1d_causal** (C, K; weight, bias): index {c: C, k: K, r: K - 1}; input u[c]; weights W[c,k],
+  Bias[c]; let `xx[k,c] = where(k - (K - 1.5), u[c], x[k,c])` (the K - 1 earlier inputs, then this
+  token's; the read x[K-1, c] lies outside the state, is +0 and is not selected); update
+  `x[r,c] = xx[r + 1,c]`; readout `y[c] = sum(k, W[c,k] * xx[k,c]) + Bias[c]`. EXACT.
+- **selective_scan** (D, N; a, d, dt_softplus): index {c: D, n: N}; inputs x[c], dt[c], Bm[n], Cm[n];
+  weights A[c,n], Dk[c]; lets `delta[c] = where(dt[c] - 20, dt[c], log(1 + exp(min(20, dt[c]))))`
+  (dt itself when dt_softplus is false) and `xd[c] = x[c] * delta[c]`; update
+  `s[c,n] = s[c,n] * exp(delta[c] * A[c,n]) + Bm[n] * xd[c]`; readout
+  `y[c] = sum(n, s[c,n] * Cm[n]) + Dk[c] * x[c]`. ROUNDING (log(1 + e) for log1p).
+
+Measured (25 October 2026): in the numpy reference, the linear_attention, ssm_scan and conv1d_causal
+rewrites reproduce the hand-written ops' outputs and states bit for bit on the suite's op fixtures,
+and selective_scan within 9.1e-8 (log1p, and the hand-written readout's BLAS order); the rewritten
+pk_kimi, pk_srd and pk_mamba documents give bit-identical logits and tp_mamba1's within 3.0e-7. In
+paperkiln's C++, `ops::recurrence` over the linear_attention body equals `ops::kimi_attention` bit
+for bit, and over the ssm_scan body `ops::ssm_scan` (`tests/test_recurrence_op.cpp`). Section 6.4's
+num starts at +0, so its first sum is +0 + phi(k_0) v_0, which the recurrence computes; the
+hand-written ops store phi(k_0) v_0 itself, which differs only in the sign of a zero.
 
 ## 7. The recursion profile
 
@@ -990,6 +1256,12 @@ A tensor that is the same thing as a gpt2 tensor keeps llama.cpp's gpt2 name: `t
   blk.{i}.highway_attn / highway_ffn [d, d] + bias, nodes linear, sigmoid, sub, mul, add. The GPT-2
   flavour (layernorm, gelu, learned, residual) exports as gpt2 / gpt2_swa; plain with that flavour
   is gpt2 tensors (gpt2 architecture, IR-only semantics); others paperkiln.
+- **recurrence**: kimi's model with its linear attention replaced by a recurrence node (section 6.10) over
+  q, k and v, slot "rec": the gpt2 tensor set exactly (architecture gpt2; only the IR reproduces the
+  model). mtstudio's `arch.custom.attention` "recurrence" trains it, with `arch.custom.recurrence` the
+  node's body (index, inputs q, k, v, let, update, readout; no weights of its own); without it the body
+  is section 6.10.6's linear attention, and the model is kimi's bit for bit. Documents rewritten by
+  `tools/ir_recurrence.py` keep their family's tensors and take the hint `<family>_recurrence`.
 - **mamba** (paperkiln's, not Mamba-1): no positions; block: h = layernorm(x) (blk.{i}.ssm_norm),
   u = ssm_in(h) [n], y = ssm_out(ssm_scan(u)) [d], y = y * gelu(ssm_gate(h)) * gelu(ssm_out_gate(x))
   (multiplied in that order), x = x + y; projections biased; ssm_scan tensors blk.{i}.ssm_a [n, n],
@@ -1078,7 +1350,7 @@ Document (section 3):
    `silu`, `gelu`, `affine`, `rms_row`, `scale`, `rmsnorm`, `layernorm`, `linear`, `moe_ffn`,
    `ssm_scan`, `conv1d_causal` and `depth_route` read one; `attention` and `linear_attention`
    read [q, k, v]; `rope` reads [q, k, pos] and writes two; `selective_scan` reads four; `list`,
-   `depth_attend` and `expr` read at least one, `expr` at most 23 (sections 5 to 7).
+   `depth_attend`, `expr` and `recurrence` read at least one, `expr` at most 23 (sections 5 to 7).
 8. A required attribute is missing: `scale.weight`, `affine.scale` and `affine.shift`,
    `rms_row.eps`, `expr.expr` (a string), and the attributes each op's section lists.
 9. An `expr` does not parse (5.19).
@@ -1094,8 +1366,8 @@ State (section 6):
 12. A kv slot lacks heads, kv_heads, head_dim, max_len, window or sinks; an attention node's
     window, sinks, kv_heads or head_dim differs from its slot's (5.15, 6.2).
 13. A recurrent slot's op is not a recurrent op, or differs from the op reading it; its dtype is not
-    f32; its tensors are empty, have a non-positive shape or an init other than 0, or do not fit the
-    op (6.3 to 6.7).
+    f32; its tensors are empty, have a non-positive shape or an init other than 0 (`"body"` too, for
+    op `recurrence`), or do not fit the op (6.3 to 6.7, 6.10).
 14. `attention.causal` is not true; `linear_attention.causal` is not true (5.15, 6.4).
 15. `mask: turn_state` with a window or sinks (in any application), with a windowed kv slot, or
     without an embedding `state_weight` (6.8.2).
@@ -1138,6 +1410,25 @@ Container (a GGUF with `paperkiln.ir`, sections 3.1, 6.8, 7, 8.2):
     declared `paperkiln.chat_template` other than `paperkiln/1`.
 29. A sidecar `<stem>.ir.json` that differs from the embedded document (for a consumer that reads
     sidecars).
+30. `paperkiln.ir_sha256` is present but not a string equal to the digest of the embedded document,
+    or the embedded document has no digest (3.10).
+
+Recurrence (section 6.10; `tools/ir_recurrence.py` reports these as "IR_SPEC 6.10 (rule N)"):
+31. `index` is not a map of names to positive integers; `inputs` does not declare each value of `in`
+    (at least one); `weights` is not a map of declarations to tensor names; `update` is missing or
+    empty, `readout` is not one assignment; a declaration or a body does not parse (naming the body
+    and the column), uses `rowsum`, `rowmean`, `rowmax` or an unknown function; a name is not an
+    identifier, is reserved, or is declared twice.
+32. A body reads a name its section cannot read (6.10.2); a read has the wrong number of indices; an
+    index is not declared or not in scope; `sum` runs over an index already in scope; an assignment
+    repeats an index.
+33. The slot of a recurrence is not of op `recurrence`, is read by another node, or its tensors are
+    not the update's (names, shapes, and `init` `"body"` exactly for the tensors `init` assigns); an
+    `init` assigns a name that is not a state tensor, assigns one twice, or with other sizes than its
+    update.
+34. A weight whose tensor's element count is not its declaration's (container), or an input whose
+    width is not its declaration's (at load where the width is known, at the latest when the rows
+    arrive).
 
 ### 10.2 The schema and the validator
 
@@ -1146,8 +1437,10 @@ runs it and every other rule:
 
     python tools/ir_validate.py doc.ir.json [model.gguf ...]    # documents and GGUFs
     python tools/ir_validate.py --corpus                        # every stored document
+    python tools/ir_validate.py digest doc.ir.json|model.gguf   # the digest (section 3.10)
 
-It is standard library only. It evaluates the schema with its own evaluator for the keywords the
+It is standard library only (it checks recurrence nodes with `tools/ir_recurrence.py`'s parser, which
+is too). It evaluates the schema with its own evaluator for the keywords the
 schema uses, and with `jsonschema` too when that package is installed (`tests/test_ir_validate.py`
 checks they agree). `tools/ir_check.py` calls it for the semantic rules and keeps the container
 checks.
@@ -1173,6 +1466,12 @@ kind, profile, class and tolerance:
 - `models/`: whole models: a small document with F32 weights in a GGUF, prompts, expected greedy ids
   and log-probabilities (and depth traces under depth_route).
 - `refuse/`: documents (and GGUF metadata) every consumer must refuse, each with the rule it breaks.
+- `digest/vectors.json`: digest vectors (section 3.10).
+- `quant/blocks.json`: stored blocks of every storage type with their f32 values (section 4.7).
+- `grad/recurrence.json`: gradient cases of recurrence nodes (section 6.10.5).
+- `recurrence/`: suite models' documents with their hand-written recurrent ops rewritten as recurrences
+  (section 6.10.6), which the traces `state/<model>_recurrence.json` run in place of each file's own
+  document, against the original document's expected values.
 
 Expected values come from the numpy reference (`tools/ir_numpy.py`); paperkiln's `mtstudio` is
 checked against them wherever it has a path (section 11.4).
@@ -1203,6 +1502,18 @@ digit order (1.0 is `3f800000`). Integer arrays are plain JSON lists.
   per-token log-probabilities and `argmax` the reference's argmax at each continuation position.
   A paperkiln-trained model's directory also holds `<name>.safetensors` and `mtstudio.json` (its
   run's spec) so mtstudio can score it.
+- **trace with a document** (`state/<model>_recurrence.json`): a state trace with `"ir": "<path in the
+  suite>"`, the document the engine runs in place of the file's own (`open`'s `ir`).
+- **digest vectors** (`digest/vectors.json`): `{"vectors": [{"name", "text", "prose"?, "canonical",
+  "sha256"} | {"name", "text", "refused"}]}`. `text` is a JSON text; with `prose` true the `_` members
+  are kept (a test of the serialiser alone), otherwise `sha256` is the digest. A `refused` text has no
+  digest.
+- **dequantisation** (`quant/blocks.json`): `{"cases": [{"name", "type", "ggml_type", "rows", "n",
+  "bytes", "expect", "class"}]}`: `bytes` (hex) holds rows x n elements of the type, row-major; `expect`
+  is their f32 values [rows, n]; the class is EXACT.
+- **gradient** (`grad/recurrence.json`): `{"cases": [{"name", "node", "inputs", "weights", "out_grad",
+  "expect", "tol"}]}`: `expect` maps each value of `in` and each weight tensor to d sum(out * out_grad) /
+  d(it), central differences of the reference in float64.
 - **refusal** (`refuse/<name>.json`): `{"doc"?: <document>, "gguf": "<path in the suite>", "rule":
   <10.1 rule number>, "section": "<section>"}`. With `doc`, the engine loads the GGUF (a suite
   model) with that document in place of its own (as ember's `EMBER_IR` does); without it, the GGUF
@@ -1250,6 +1561,9 @@ session owns the ids it has seen, so it can re-prefill after a rewind (section 6
 | `restore` | `{"session", "tag": str, "report": [...]}` | `{"len": int, ...the reports}` |
 | `close` | `{"session"}` | `{}` |
 | `run_node` | `{"node", "inputs", "weights", "state"}` | `{"outputs", "state"}` |
+| `run_node_grad` | `{"node", "inputs", "weights", "out_grad"}` | `{"grads": {name: tensor}}` |
+| `digest` | `{"text": str, "prose": bool}` | `{"sha256", "canonical"?}` or `{"refused": str}` |
+| `dequantize` | `{"type": str, "n": int, "bytes": hex}` | `{"values": tensor [n]}` |
 
 - `ir` (optional) is a document that replaces the file's embedded one (ember's `EMBER_IR`).
 - `evict`: null runs the document as declared; false keeps every kv row even where the document
@@ -1276,9 +1590,15 @@ session owns the ids it has seen, so it can re-prefill after a rewind (section 6
 - `run_node` (op fixtures, optional): `node` is one IR node; `inputs` maps value names to tensors (a
   `list` value is a JSON list of tensors; `tokens` and `pos` are integer lists); `weights` maps
   tensor names to tensors; `state` is null or `{slot: {"decl": <slot>, "tensors": {name: tensor}}}`,
-  the slot's declaration and its tensors before the call. The node runs as application 0 of a
-  one-node block. The result maps every name in the node's `out` to a tensor, and gives the slots'
-  tensors after the call.
+  the slot's declaration and its tensors before the call (the suite passes null: every slot at its
+  initial value). The node runs as application 0 of a one-node block. The result maps every name in the
+  node's `out` to a tensor, and gives the slots' tensors after the call.
+- `run_node_grad` (gradient cases, optional; for training engines): the node runs as in `run_node`
+  from the initial state, and the result maps each value of `in` and each weight tensor's name to the
+  gradient of sum(out * out_grad).
+- `digest` (optional): the digest of the JSON text (section 3.10), and its canonical form when the
+  engine has it; `refused` when the text has no digest. `dequantize` (optional): the f32 values of n
+  elements of the storage type stored as the bytes (section 4.7).
 
 **Expectations the suite checks.**
 - Logits within the case's class and tolerance; greedy ids and depth traces identical. An EXACT case
@@ -1298,6 +1618,9 @@ session owns the ids it has seen, so it can re-prefill after a rewind (section 6
 - `recurrent`: within ROUNDING of the reference after prefill; equal bit for bit between a prefill
   and the token-by-token decode of the same ids in the same engine where section 4.5's condition
   holds, otherwise within ROUNDING.
+- Digest vectors: the sha256 equal (and the canonical form, when reported); a refused text refused.
+- Dequantisation: bit for bit on every backend (section 4.7).
+- Gradients: per tensor |a - b| <= tol * max(1, max|ref|), tol the case's (1e-4).
 
 **Environment.** The runner starts an engine's program with every `EMBER_*`, `MICROTORCH_*` and
 `MTSTUDIO_*` variable removed except those named with `--keep-env NAME` (an engine setting such as
@@ -1341,12 +1664,8 @@ stated, with the reason where it differs from ember's.
   ROUNDING of the recipe, because the stored third-party gate receipts were measured against it.
 - **Q4. Contraction.** Normative: every translation unit that computes an op whose text says
   "rounded" or "no fused multiply-add", EXACT or not, is built so that a * b + c is not contracted
-  (section 4.1). ember sets `-ffp-contract=off` on `graph_ir.cpp` and `utils.cpp` too (85e269e).
-  paperkiln's translation units do not pin the flag: on x86-64 without `-march` (every paperkiln build, the
-  wheel's core excepted) there is no FMA instruction to contract into, so they conform there; on an
-  FMA target they would not. Adding the flag is deferred to Jonathan (it is a compiler-flag change,
-  and the registered tiny-chat arms rely on HEAD reproducing their pinned commits bit for bit; on
-  x86-64 it changes no instruction). Listed in Appendix C.
+  (section 4.1). ember sets `-ffp-contract=off` on `graph_ir.cpp` and `utils.cpp` too (85e269e), and
+  paperkiln on every translation unit of its own (Q15, section 12.2).
 - **Q5. Per-layer scope.** Settled (section 3.8): every attribute may be per-layer except the
   structural keys. ember proposed an allow-list of the numeric attributes it implements (attention
   window and sinks, rope theta and freq_scale, affine scale and shift, depth_route step, slot window
@@ -1383,20 +1702,51 @@ stated, with the reason where it differs from ember's.
 - **More than one `{i}`** (C13): refused (section 3.7).
 - **kv dtype** (C14): only `"f32"` (the schema's enum).
 
-### 12.2 Open
+### 12.2 Settled in revision 1.1
 
-- **Q11. Digest.** A canonical serialisation and hash, so a paper can cite the exact document, is not
-  defined. Proposed: RFC 8785 canonical JSON of the document without `_` keys, then sha256.
-- **Q14. Quantised storage** (ember's C10). The dequantisation arithmetic per GGUF type is
-  unstated; the candidate is ggml's `dequantize_row_*` as the reference, with EXACT applying to ops
-  on the dequantised f32 values. Both engines dequantise per row to the same values as the f32 path
-  on the gated models; no gate compares dequantisation across engines bit for bit.
-- **Q15. Contraction in paperkiln** (from Q4): whether paperkiln adds `-ffp-contract=off` to its
-  translation units. Jonathan's decision.
+- **Q11. Digest.** Adopted as proposed (section 3.10): RFC 8785 serialisation of the document without
+  its `_` members, then SHA-256. One concrete problem was found and is handled by restriction, not by
+  departing from RFC 8785: the scheme writes -0 as `0`, while a negative zero is significant in an EXACT
+  op, so a document that holds one has no digest (no stored document does). Numbers are their binary64
+  values, so documents that spell a number differently are the same document, and documents whose
+  doubles differ but round to one f32 attribute are not. Member names sort by UTF-16 code units and
+  strings are not normalised (NFC), as names are matched byte for byte anyway. The digest is
+  implemented in `tools/ir_validate.py` (the reference, with a `digest` subcommand) and in paperkiln's
+  C++ (`ir::digest`), whose exporters write it as `paperkiln.ir_sha256`; container rule 30 refuses a
+  key that does not name the embedded document. Vectors: `spec/conformance/digest/`.
+- **Q14. Quantised storage** (ember's C10). Settled by section 4.7: ggml's scalar `dequantize_row_*`
+  (llama.cpp b6000) for F16, BF16, Q8_0, Q4_0, Q5_0, Q5_1, Q4_K, Q5_K and Q6_K, the types paperkiln's
+  exports and the gated third-party files hold. Every dequantised value is EXACT on every backend:
+  every product is exact in f32 and at most one rounding follows. `tools/ir_quant.py` is the
+  reference (bit for bit with gguf-py 0.19.0 on random blocks of every type); fixtures:
+  `spec/conformance/quant/`. EXACT then applies to ops on those values; an engine that multiplies
+  quantised blocks by quantised activations is ROUNDING by construction.
+- **Q15. Contraction in paperkiln** (from Q4). Decided yes (Jonathan delegated the decision to the main
+  session, 25 October 2026): paperkiln's own translation units are compiled with `-ffp-contract=off`
+  (GCC and Clang, `CMakeLists.txt`, every target paperkiln defines: the library, mtstudio, the tools,
+  tests and the Python extension); MSVC's default `/fp:precise` does not contract and paperkiln passes
+  neither `/fp:contract` nor `/fp:fast`. The vendored transformer_core keeps its own flags
+  (`-ffast-math`, Appendix A), and nvcc's device code its `--fmad=true`: both are ROUNDING already.
+  What the flag guarantees: no expression in paperkiln's code is contracted into a fused multiply-add,
+  whatever `-march` a build adds (arm64, where GCC and Clang contract by default; `-march=native`; the
+  wheels' x86-64-v3), so every statement this document makes about paperkiln's EXACT paths holds on
+  every build, not only on plain x86-64. On x86-64 without `-march` (every paperkiln build except the
+  wheels' core) there is no FMA instruction to contract into, so the flag changes no instruction
+  there. The gate (25 October 2026; paperkiln 86a978ca, GCC 13.3, x86-64 Release on WSL ext4): built with and
+without the flag from the same tree, all 75 object files of paperkiln's own targets, the 56 linked
+binaries (mtstudio, the tools and every test) and libmicrotorch.a are byte-identical, so the CPU
+Release build trains, tests and exports exactly as before (the precision gate's off path included),
+and transformer_core's compile flags carry no `-ffp-contract`. Builds that add `-march` with FMA, and
+arm64 builds, now keep the stated orders that they would otherwise have contracted.
+
+### 12.3 Open
+
+None. A question raised after revision 1.1 takes the next number, Q16.
 
 ## Appendix A. The `-ffast-math` audit
 
-*Informative. Audit of 25 October 2026 at paperkiln c3f5ef12. No compiler flag and no numerics
+*Informative. Audit of 25 October 2026 at paperkiln c3f5ef12, with revision 1.1's additions: the
+contraction flag (Q15) and the translation units of `Matrix`'s elementwise operators. No computed value
 changed.*
 
 **A.1 Flags.** `third_party/transformer_cpp/CMakeLists.txt` (identical in the sibling
@@ -1405,8 +1755,11 @@ use the vendored copy) compiles the static library `transformer_core` with
 `target_compile_options(transformer_core PRIVATE -O3 -march=native -ffast-math)` on GCC and Clang,
 and `/O2 /arch:AVX2 /fp:fast` (C++ only) on MSVC; the Python wheel replaces `-march=native` with
 `-march=x86-64-v3`. The options are PRIVATE: paperkiln's own library (`src/*.cpp`) and tools
-(`tools/mtstudio.cpp`) are built with the Release defaults only (GCC `-O3 -DNDEBUG`, no `-march`, no
-`-ffast-math`). paperkiln's CUDA sources use nvcc's defaults (`--fmad=true`).
+(`tools/mtstudio.cpp`) are built with the Release defaults (GCC `-O3 -DNDEBUG`, no `-march`, no
+`-ffast-math`) plus `-ffp-contract=off` (Q15, section 12.2), and no `-ffast-math` reaches a link line,
+so no executable links GCC's `crtfastmath.o` (which would set flush-to-zero at start-up; `nm` finds no
+`set_fast_math` in mtstudio, expr_eval or the tests). paperkiln's CUDA sources use nvcc's defaults
+(`--fmad=true`).
 
 **A.2 What paperkiln calls in those translation units.** `include/microtorch/primitives.hpp` is the
 whitelist: `matmul_optimized` (`src/matmul_optimized.cpp`), `Matrix::apply_gelu` and
@@ -1434,13 +1787,19 @@ whitelist: `matmul_optimized` (`src/matmul_optimized.cpp`), `Matrix::apply_gelu`
 | `depth_route` gate p, `moe_ffn` gates, gpt2 `attnres` `depth_attend` softmax (`nn::AttnResStack`) | `ops::softmax_row` -> `apply_softmax`; attnres logits by `ops::matmul` | transformer_core, fast-math | ROUNDING, as stated; their stated orders are reference orders (4.4) |
 | `depth_attend` of `llama_attnres` (`ops::depth_attend`) | scalar loops | `src/depth_attend.cpp` | follows the stated order |
 | `depth_route` routing (argmax, ties low) | loop in `Llama::forward` | `src/llama.cpp` | EXACT given the logits, as stated |
-| `embedding`, `pos_embedding`, `split`, `list`, `append`, `add`, `mul`, `sub`, `relu`, `affine`, `mul_col`, `scale`, `rope` rotation | `ops.cpp` | paperkiln | EXACT, as stated (A.5) |
+| `embedding`, `pos_embedding`, `split`, `list`, `append`, `mul`, `relu`, `affine`'s shift, `mul_col`, `scale`, `rope` rotation | `ops.cpp` (`Matrix::hadamard` is inline in the header) | paperkiln | EXACT, as stated (A.5) |
+| `add`, `sub`, `affine`'s product (`ops::add`, `ops::sub`, `ops::scale` on the host) | `Matrix` `operator+=`, `-=`, `*=` (float) | transformer_core's `components.cpp`, fast-math | EXACT, as stated: one IEEE operation per element on two runtime operands (A.5) |
 | `rmsnorm`, `layernorm`, `silu`, `sigmoid`, `rms_row`, `expr`, `linear_attention`, `ssm_scan` | `ops.cpp`, `expr.cpp`, `kimi_linear.cpp` | paperkiln | ROUNDING, as stated; orders followed |
+| `recurrence` (`ops::recurrence`) | `src/recurrence.cpp` (reads, ordered sums) and the elementwise ops of the rows above | both | EXACT bodies EXACT, the rest ROUNDING, as stated (6.10.4) |
 
 **A.5 Verdicts on the statements that claim bit identity.**
-- The EXACT ops run in paperkiln's own translation units: `-ffast-math` does not reach them, and
-  without `-march` an x86-64 build has no FMA instruction to contract into. They stay EXACT.
-  Contraction on FMA targets is question Q4.
+- The EXACT ops run in paperkiln's own translation units, compiled with `-ffp-contract=off` and
+  without `-ffast-math`, except `add`, `sub` and `affine`'s product, which loop over the elements in
+  transformer_core's `components.cpp`. There each element is one IEEE addition, subtraction or product
+  of two runtime operands: `-ffast-math` has nothing to reassociate, contract or fold in it (it enables
+  value-changing rewrites only across several operations or with constants), and with no
+  flush-to-zero at start-up (A.1) a vector lane computes what a scalar would. They stay EXACT, on every
+  build (Q15).
 - `rope`: the rotation is EXACT given the table; the table is ROUNDING (section 5.14, Q3). The
   earlier wording ("computed in double") described the numpy reference only.
 - Eviction (6.8.3): paperkiln's KV cache sums the visible keys in scalar ascending loops in
@@ -1475,6 +1834,12 @@ equal to dc29b5e6 bit for bit) and the pinned commits of the RunPod campaigns ar
 
 ## Appendix B. Changelog
 
+- **1.1** (25 October 2026). Additions, no change of meaning (section 2.2): the digest (section 3.10)
+  and the GGUF key `paperkiln.ir_sha256` (section 3.1, rule 30); the values of stored tensors (section
+  4.7); the `recurrence` profile (section 6.10, rules 31-34), with the recurrent slot op `recurrence`
+  and its `init` `"body"`; the conformance kinds digest, dequantisation and gradient, traces with a
+  document (section 11); Q11, Q14 and Q15 settled (section 12.2), with `-ffp-contract=off` on
+  paperkiln's translation units. Appendix A states where `add`, `sub` and `affine`'s product run.
 - **1.0** (25 October 2026). The normative text of `include/microtorch/ir.hpp`'s header comment
   (IR version 0) moved here and split into profiles; versioning (section 2), validation (section
   10), conformance (section 11) and the open questions (section 12) added. Clarifications: the
@@ -1503,17 +1868,29 @@ the engine has agreed to close, the specification already states the intended be
 
 | Engine and path | Profiles | Class met | Matrix products | Refuses (valid documents it does not run) |
 |---|---|---|---|---|
-| numpy reference (`tools/ir_numpy.py`) | core, state, recursion, chat, thirdparty | the reference (prefill only: no cache) | float32 numpy (BLAS order) | `rope_heads` "first" |
-| paperkiln `mtstudio`, CPU | the families it trains (section 9.2), from its own runs | EXACT ops EXACT on x86-64; eviction EXACT at equal chunking (Appendix A) | `matmul_optimized` (FMA, shape-dependent order) | documents it did not export (it runs its modules, not documents) |
+| numpy reference (`tools/ir_numpy.py`) | core, state, recursion, chat, thirdparty, recurrence | the reference (prefill only: no cache; no backward) | float32 numpy (BLAS order) | `rope_heads` "first" |
+| paperkiln `mtstudio`, CPU | the families it trains (section 9.2), from its own runs; recurrence nodes and their gradients through `ir_eval` | EXACT ops EXACT on every build (`-ffp-contract=off`); eviction EXACT at equal chunking (Appendix A) | `matmul_optimized` (FMA, shape-dependent order) | documents it did not export (it runs its modules, not documents); recurrence bodies with weights of their own in its training lane (the op takes them) |
 | paperkiln `mtstudio`, CUDA | as CPU | ROUNDING | cuBLAS FP32; TF32 opt-in | as CPU |
 | ember interpreter, CPU | core, state, recursion, chat, thirdparty | EXACT where this document says so | `dot_f32_as_f64`, a fixed 8-lane double order independent of T and threads | see below |
-| ember interpreter, CUDA | as CPU, ops with device kernels | ROUNDING by construction (tiles, flash2, nvcc's default `--fmad`) | cuBLAS FP32 (its own handle at default math) | documents with an op without a device kernel are served on the CPU automatically (turn_state and MoR documents among them); `EMBER_IR_DEVICE=cpu` forces the CPU for every document |
+| ember interpreter, CUDA | as CPU, ops with device kernels | ROUNDING by construction (tiles, flash2, nvcc's default `--fmad`) | cuBLAS FP32 (its own handle at default math) | documents with an op without a device kernel are served on the CPU automatically (MoR documents among them); `EMBER_IR_DEVICE=cpu` forces the CPU for every document. `mask: turn_state` and its lazy eviction run on the device, ROUNDING, from ember 210f3b8 (below) |
 | ember interpreter, WebAssembly | as CPU | as CPU (no FMA in the build) | as CPU | as CPU (4 GB heap for 0.5B models) |
 | ember tuned llama path, CPU and CUDA | llama | ROUNDING against the interpreter | CUDA: TF32 on by default (`EMBER_GEMM_TF32=0` gives FP32) | anything it is not selected for |
 
 **ember's tuned-path selection.** ember selects its tuned llama path by structural match (ember
 f2727c3): the node list against the canonical llama graph, with `family_hint` "llama" only as a
 pre-filter (section 9.1).
+
+**ember's CUDA builds and state tokens.** ember 210f3b8 or later serves state-token models on CUDA:
+the turn_state mask and its lazy eviction run on the device (ember aadeed2; the fallback prefill
+attention reduction pads head_dim to a power of two, with a barrier fix, kernel-tested at 12 head_dims,
+606e1d4), ROUNDING. On state4 on a T4 against ember's CPU: greedy 40/40, top-1 9264/9264, prefill logits
+within 6.2e-7; kv rows held equal the CPU's and mtstudio's on 40/40 prompts; rewinds into evicted turns
+80/80. MoR documents are still served on the CPU in CUDA builds.
+
+**ember and revision 1.1.** ember's interpreter refuses `recurrence` by name (an op it does not define)
+until it implements the profile, and does not yet check `paperkiln.ir_sha256` or answer `digest`,
+`dequantize` and `run_node_grad`; the contract it was sent is recorded in `LOCAL_LLM_STACK.md`
+section 10.
 
 **ember interpreter refusals** (capability, not validation; section 10.3): more than one kv slot per
 block; per-layer values other than attention window and sinks, rope theta and freq_scale, affine
@@ -1539,5 +1916,5 @@ documents and on 166 of 166 document-only checks.
 - *The version key with a substituted document* (resolved). Rule 24 compares the key with the
   embedded document in both (section 11.2).
 
-**paperkiln gaps:** `-ffp-contract=off` is not pinned (Q15); its numpy reference keeps the double
+**paperkiln gaps:** its numpy reference keeps the double
 RoPE table (Q3).

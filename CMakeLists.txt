@@ -73,6 +73,7 @@ add_library(microtorch STATIC
     src/autograd.cpp
     src/ops.cpp
     src/expr.cpp
+    src/recurrence.cpp
     src/nn.cpp
     src/device.cpp
     src/device_cache.cpp
@@ -266,6 +267,19 @@ target_link_libraries(test_expr PRIVATE microtorch)
 add_test(NAME expr COMMAND test_expr)
 add_executable(expr_eval tools/expr_eval.cpp)
 target_link_libraries(expr_eval PRIVATE microtorch nlohmann_json::nlohmann_json)
+
+# The IR's recurrence op (spec/IR_SPEC.md 6.10): bit equality with the hand-written
+# kimi and ssm_scan ops, prefill = decode, FD gradchecks, refusals. ir_eval answers the
+# conformance suite's node-level requests (digest, recurrence nodes and their gradients)
+# for tools/ir_conformance.py's mtstudio adapter; test_ir_digest checks the digest vectors.
+add_executable(test_recurrence_op tests/test_recurrence_op.cpp)
+target_link_libraries(test_recurrence_op PRIVATE microtorch)
+add_test(NAME recurrence_op COMMAND test_recurrence_op)
+add_executable(ir_eval tools/ir_eval.cpp)
+target_link_libraries(ir_eval PRIVATE microtorch nlohmann_json::nlohmann_json)
+add_executable(test_ir_digest tests/test_ir_digest.cpp)
+target_link_libraries(test_ir_digest PRIVATE microtorch nlohmann_json::nlohmann_json)
+add_test(NAME ir_digest COMMAND test_ir_digest ${CMAKE_CURRENT_SOURCE_DIR}/spec/conformance/digest/vectors.json)
 
 add_executable(test_swa tests/test_swa.cpp)
 target_link_libraries(test_swa PRIVATE microtorch)

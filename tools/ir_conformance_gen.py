@@ -64,11 +64,26 @@ def _recipes():
                                   "recursion": {"prelude": 1, "block": 1, "repeats": 2, "coda": 1,
                                                 "inject": "none"}}}, "recursion"),
         "pk_state": (dict(copy.deepcopy(llama), state_tokens={"k": 2, "mask": "turn_state"}), "state"),
+        # The recurrence lane (IR_SPEC 6.10): kimi's projections around a recurrence node whose body is a
+        # decayed elu+1 linear attention (no hand-written op computes it).
+        "pk_recurrence": (with_custom(gpt2, attention="recurrence", recurrence=DECAYED_LINEAR_ATTENTION), "recurrence"),
     }
     return r
 
 
-def build_models(out):
+# The pk_recurrence body: section 6.4's linear attention with the running sums decayed by 0.9375 per token.
+_PHI = "where({x}, {x} + 1, (exp(min(0, {x})) - 1) + 1)"
+DECAYED_LINEAR_ATTENTION = {
+    "index": {"h": H, "e": D // H}, "inputs": ["q[h,e]", "k[h,e]", "v[h,e]"],
+    "let": ["pk[h,e] = " + _PHI.format(x="k[h,e]")],
+    "update": ["num[h,e] = 0.9375 * num[h,e] + pk[h,e] * v[h,e]", "den[h,e] = 0.9375 * den[h,e] + pk[h,e]"],
+    "readout": "y[h,e] = (" + _PHI.format(x="q[h,e]") + " * num[h,e]) / max(den[h,e], 1e-08)"}
+# Models added after the suite's first release draw their prompts from a stream of their own, so the cases of
+# every earlier model stay byte-identical when the suite is regenerated.
+OWN_STREAM = {"pk_recurrence"}
+
+
+def build_models(out, only=None):
     sys.path.insert(0, str(ROOT / "tests"))
     from test_mtstudio_chat import BIN, write_vocab_gguf
     from test_mtstudio_moe import WORDS, corpus
@@ -85,6 +100,8 @@ def build_models(out):
     bpe.write_gguf(str(work / "vs.gguf"), bpe.train(text, 400))
     (work / "cs.txt").write_text(text, encoding="utf-8")
     for name, (arch, _) in _recipes().items():
+        if only and only not in name:
+            continue
         state = "state_tokens" in arch
         steps = 40 if name == "pk_mor" else 30
         spec = {"name": name, "arch": arch,
@@ -506,7 +523,103 @@ def op_cases():
                                    "d": "Dk", "channels": 3, "d_state": 2, "dt_softplus": True, "out": "y"},
         {"x": r(5, 3), "dt": np.concatenate([r(4, 3), np.array([[25.0, -3.0, 0.0]], np.float32)]), "B": r(5, 2),
          "C": r(5, 2)}, {"A": -np.exp(r(3, 2, s=0.5)), "Dk": r(3)}, "ROUNDING")
+    # recurrence (IR_SPEC 6.10): the four hand-written ops' rewrites on those ops' own fixtures (6.10.6), then
+    # bodies of their own: a learned initial state with an index offset, and an EXACT exponential average.
+    import ir_recurrence
+    from ir_conformance import dec
+    for op in ("linear_attention", "ssm_scan", "conv1d_causal", "selective_scan"):
+        hw = cases[op][0]
+        node = ir_recurrence.REWRITES[op](hw["node"])
+        ins = {k: dec(v) for k, v in hw["inputs"].items()}
+        add("recurrence", f"{op}_body", node, ins, {k: dec(v) for k, v in hw["weights"].items()},
+            "EXACT" if ir_recurrence.compile_node(node).exact else "ROUNDING")
+        cases["recurrence"][-1]["reproduces"] = f"op/{op}/{hw['name']}"
+    for name, node, ins, ws in recurrence_bodies(r):
+        add("recurrence", name, node, ins, ws, "EXACT" if ir_recurrence.compile_node(node).exact else "ROUNDING")
     return cases
+
+
+def recurrence_bodies(r):
+    """(name, node, inputs, weights): recurrences beyond the four rewrites, on draws of r."""
+    rnn = {"op": "recurrence", "in": ["x"], "state": "rnn", "index": {"i": 3, "j": 3}, "inputs": ["x[i]"],
+           "weights": {"W[i,j]": "W", "U[i,j]": "U", "h0[i]": "h0"}, "init": ["h[i] = h0[i]"],
+           "update": ["h[i] = tanh(sum(j, W[i,j] * h[j]) + sum(j, U[i,j] * x[j]))"],
+           "readout": "y[i] = h[i] + 0.5 * h[i - 1]", "out": "y"}
+    ema = {"op": "recurrence", "in": ["x", "g"], "state": "avg", "index": {"c": 4}, "inputs": ["x[c]", "g[c]"],
+           "weights": {"a[c]": "decay"},
+           "update": ["m[c] = a[c] * m[c] + (1 - a[c]) * (x[c] * g[c])", "n[c] = n[c] + 1"],
+           "readout": "y[c] = m[c] / (1 - a[c] ^ n[c]) + max(x[c], 0)", "out": "y"}
+    ema_exact = dict(ema, readout="y[c] = m[c] / n[c] + max(x[c], 0)")
+    return [("rnn_init_offset", rnn, {"x": r(6, 3)}, {"W": r(3, 3, s=0.5), "U": r(3, 3, s=0.5), "h0": r(3)}),
+            ("ema_bias_corrected", ema, {"x": r(5, 4), "g": r(5, 4)}, {"decay": np.full(4, 0.875, np.float32)}),
+            ("ema_exact", ema_exact, {"x": r(5, 4), "g": r(5, 4)}, {"decay": np.full(4, 0.875, np.float32)})]
+
+
+def grad_cases():
+    """Gradient cases for recurrence (IR_SPEC 6.10.5): d sum(out * out_grad) by central differences of the
+    reference in float64, for every input and weight, on small fixtures of their own."""
+    import ir_recurrence
+    rng = np.random.default_rng(6105)
+
+    def r(*sh, s=1.0):
+        return (s * rng.standard_normal(sh)).astype(np.float32)
+
+    hw = {"linear_attention": ({"op": "linear_attention", "in": ["q", "k", "v"], "state": "lin", "heads": 2,
+                                "head_dim": 2, "causal": True, "feature_map": "elu_plus_one", "den_floor": 1e-08,
+                                "out": "y"}, {"q": r(4, 4), "k": r(4, 4), "v": r(4, 4)}, {}),
+          "ssm_scan": ({"op": "ssm_scan", "in": ["u"], "state": "ssm", "n": 3, "a": "A", "b": "B", "c": "C",
+                        "d": "Dk", "out": "y"}, {"u": r(4, 3)}, {"A": r(3, 3, s=0.3), "B": r(3), "C": r(3), "Dk": r(1)}),
+          "conv1d_causal": ({"op": "conv1d_causal", "in": ["x"], "state": "conv", "weight": "w", "bias": "b",
+                             "channels": 2, "kernel": 3, "out": "y"}, {"x": r(5, 2)}, {"w": r(2, 3), "b": r(2)}),
+          "selective_scan": ({"op": "selective_scan", "in": ["x", "dt", "B", "C"], "state": "ssm", "a": "A", "d": "Dk",
+                              "channels": 2, "d_state": 2, "dt_softplus": True, "out": "y"},
+                             {"x": r(4, 2), "dt": r(4, 2), "B": r(4, 2), "C": r(4, 2)},
+                             {"A": -np.exp(r(2, 2, s=0.5)), "Dk": r(2)})}
+    items = [(f"{op}_body", ir_recurrence.REWRITES[op](nd), ins, ws) for op, (nd, ins, ws) in hw.items()]
+    items += recurrence_bodies(r)
+    out = []
+    for name, node, ins, ws in items:
+        prog = ir_recurrence.compile_node(node)
+        xs = [ins[n] for n in node["in"]]
+        wl = {local: ws[t] for local, _, t in prog.weights}
+        y, _ = ir_recurrence.run(prog, xs, wl)
+        g = r(*y.shape)
+        fd = ir_recurrence.fd_grads(prog, xs, wl, g)
+        expect = {}
+        for (local, _), value in zip(prog.inputs, node["in"]):
+            expect[value] = enc(fd[local].astype(np.float32))
+        for local, _, t in prog.weights:
+            expect[t] = enc(fd[local].reshape(np.shape(ws[t])).astype(np.float32))
+        out.append({"name": name, "node": node, "inputs": {k: enc(v) for k, v in ins.items()},
+                    "weights": {k: enc(v) for k, v in ws.items()}, "out_grad": enc(g), "expect": expect,
+                    "tol": 1e-4})
+    return {"_comment": "spec/IR_SPEC.md section 6.10.5: expect holds d sum(out * out_grad) / d(each input value "
+                        "and weight tensor), central differences of tools/ir_recurrence.py in float64 (h = 1e-5 "
+                        "relative). A case passes within tol * max(1, max|expect|) per tensor.", "cases": out}
+
+
+REC_MODELS = ("pk_kimi", "pk_srd", "pk_mamba", "tp_mamba1")
+
+
+def recurrence_traces():
+    """(name, rewritten document, trace case): each model of REC_MODELS with its hand-written recurrent ops
+    replaced by recurrences (IR_SPEC 6.10.6), run through prefill, token-by-token decode, a snapshot and
+    a restore, expected values from the ORIGINAL document (today's outputs)."""
+    import ir_recurrence
+    out = []
+    for name in REC_MODELS:
+        doc, W, meta, _ = load_model(SUITE / "models" / name)
+        rng = np.random.default_rng(sum(map(ord, name)) + 610)
+        V = doc["model"]["vocab"]
+        ids = [int(x) for x in rng.integers(1, V, 9)]
+        other = [int(x) for x in rng.integers(1, V, 3)]
+        steps = ([{"method": "forward", "ids": ids[:4]}, {"method": "snapshot", "tag": "p"}]
+                 + [{"method": "forward", "ids": [t]} for t in ids[4:]]
+                 + [{"method": "restore", "tag": "p"}, {"method": "forward", "ids": other}])
+        case = trace_case(name, doc, W, steps)
+        case["ir"] = f"recurrence/{name}.ir.json"
+        out.append((name, ir_recurrence.rewrite(doc), case))
+    return out
 
 
 # ---------------------------------------------------------------- refusals
@@ -603,6 +716,34 @@ def refusals():
     doc_case("two_state_weights", S, 17, "6.8.1", lambda d: d["embed"]["nodes"].append(dict(copy.deepcopy(
         d["embed"]["nodes"][0]), out="x2")))
     doc_case("state_weight_wrong_name", S, 28, "6.8.1", lambda d: d["embed"]["nodes"][0].update(state_weight="nope.weight"))
+    # recurrence (6.10): faults in pk_kimi and pk_mamba with their recurrent ops rewritten (6.10.6).
+    import ir_recurrence
+
+    def rec_case(name, base, rule, f):
+        def g(d):
+            d.clear()
+            d.update(ir_recurrence.rewrite(load_model(SUITE / "models" / base)[0]))
+            f(d)
+        doc_case(name, base, rule, "6.10", g)
+
+    def rec(d):
+        return node(d, "recurrence")
+
+    def rslot(d):
+        return [s for s in d["block"]["state"] if s.get("op") == "recurrence"][0]
+
+    rec_case("recurrence_body_does_not_parse", "pk_kimi", 31, lambda d: rec(d)["update"].__setitem__(1, "den[h,e] = den[h,e] +"))
+    rec_case("recurrence_name_twice", "pk_kimi", 31, lambda d: rec(d)["let"].append("num[h,e] = 1"))
+    rec_case("recurrence_rowsum", "pk_kimi", 31, lambda d: rec(d).update(readout="y[h,e] = rowsum(num[h,e])"))
+    rec_case("recurrence_index_size_zero", "pk_kimi", 31, lambda d: rec(d)["index"].update(e=0))
+    rec_case("recurrence_index_out_of_scope", "pk_kimi", 32, lambda d: rec(d).update(readout="y[h,e] = sum(h, num[h,e])"))
+    rec_case("recurrence_init_reads_input", "pk_kimi", 32, lambda d: rec(d).update(init=["num[h,e] = q[h,e]"]))
+    rec_case("recurrence_rank_mismatch", "pk_kimi", 32, lambda d: rec(d)["update"].__setitem__(1, "den[h,e] = den[h] + 1"))
+    rec_case("recurrence_index_undeclared", "pk_kimi", 32, lambda d: rec(d).update(readout="y[h,e] = num[h,f]"))
+    rec_case("recurrence_slot_shape", "pk_kimi", 33, lambda d: rslot(d)["tensors"][0].update(shape=[16]))
+    rec_case("recurrence_slot_missing_tensor", "pk_kimi", 33, lambda d: rslot(d)["tensors"].pop())
+    rec_case("recurrence_init_flag", "pk_kimi", 33, lambda d: rslot(d)["tensors"][0].update(init="body"))
+    rec_case("recurrence_weight_size", "pk_mamba", 34, lambda d: rec(d)["weights"].update({"A[r,j]": rec(d)["weights"]["B[r]"]}))
     # Container rules: GGUFs whose metadata breaks one rule.
     gg = []
 
@@ -636,6 +777,101 @@ def _patch_version_key(path, value):
     Path(path).write_bytes(bytes(raw))
 
 
+# ---------------------------------------------------------------- digest vectors (IR_SPEC 3.10)
+
+# RFC 8785 Appendix B's numbers (as IEEE doubles), with the forms ECMAScript writes; checked against
+# V8 (Node 24) when the vectors were made.
+RFC8785_NUMBERS = [
+    "0x0000000000000000", "0x0000000000000001", "0x8000000000000001", "0x7fefffffffffffff", "0xffefffffffffffff",
+    "0x4340000000000000", "0xc340000000000000", "0x4430000000000000", "0x44b52d02c7e14af5", "0x44b52d02c7e14af6",
+    "0x44b52d02c7e14af7", "0x444b1ae4d6e2ef4e", "0x444b1ae4d6e2ef4f", "0x444b1ae4d6e2ef50", "0x3eb0c6f7a0b5ed8c",
+    "0x3eb0c6f7a0b5ed8d", "0x41b3de4355555553", "0x41b3de4355555554", "0x41b3de4355555555", "0x41b3de4355555556",
+    "0x41b3de4355555557", "0xbecbf647612f3696", "0x43143ff3c1cb0959"]
+
+
+def digest_vectors():
+    """{"vectors": [{"name", "text", "canonical", "sha256"} | {"name", "text", "refused": reason}]}: the
+    serialiser on numbers, strings and member names (with prose=True: '_' keys kept, so the serialiser is
+    tested alone), the digest of every suite model's document, and texts that have no digest."""
+    import struct
+    vec = []
+
+    def ok(name, text, prose=False):
+        vec.append({"name": name, "text": text, "prose": prose, "canonical": ir_validate.canonical(text, prose),
+                    "sha256": ir_validate.digest(text, prose)})
+
+    def refused(name, text, why):
+        try:
+            ir_validate.digest(text)
+        except ir_validate.DigestError:
+            vec.append({"name": name, "text": text, "refused": why})
+            return
+        raise SystemExit(f"digest vector {name}: expected no digest")
+
+    for h in RFC8785_NUMBERS:
+        x = struct.unpack(">d", bytes.fromhex(h[2:]))[0]
+        ok(f"rfc8785_number_{h[2:]}", json.dumps(x), prose=True)
+    for name, x in (("f32_eps", 1e-05), ("f32_rope_theta", 10000.0), ("f32_scale", 0.3535533845424652),
+                    ("f32_den_floor", 1e-08), ("integer_2p53", 2 ** 53), ("negative_integer", -7),
+                    ("minus_zero_integer_form", "-0"), ("exponent_form", "1E+2")):
+        ok(name, x if isinstance(x, str) else json.dumps(x), prose=True)
+    strs = {"controls": "a\u0000b\u001f\u007f", "escapes": 'q"b\\ tab\tnl\ncr\rbs\bff\f', "line_separators":
+            "  ", "astral": "\U0001F600", "accents": "é é", "names": "blk.{i}.attn_q.weight"}
+    for name, s in strs.items():
+        ok(f"string_{name}", json.dumps(s, ensure_ascii=False), prose=True)
+        ok(f"string_{name}_escaped", json.dumps(s, ensure_ascii=True), prose=True)
+    ok("key_order_utf16", json.dumps({"": 1, "\U0001F600": 2, "b": 3, "a": 4, "A": 5, "é": 6, "": 7},
+                                     ensure_ascii=False), prose=True)
+    ok("nesting", '{"b": [1, {"d": true, "c": null}], "a": {"z": [], "y": {}}}', prose=True)
+    ok("prose_removed", '{"op": "relu", "_note": "dropped", "in": ["x"], "out": "y", "x": {"_a": 1, "b": 2}}')
+    ok("prose_kept_in_serialiser_test", '{"op": "relu", "_note": "kept", "in": ["x"]}', prose=True)
+    for md in model_dirs():
+        doc_text = ir_validate.document_text(md / f"{md.name}.gguf")
+        ok(f"document_{md.name}", doc_text)
+    refused("negative_zero", '{"op": "affine", "in": ["x"], "scale": 1, "shift": -0.0, "out": "y"}',
+            "a negative zero (RFC 8785 writes it as 0)")
+    refused("integer_beyond_2p53", "9007199254740993", "an integer beyond 2^53 (not I-JSON)")
+    refused("overflow", "1e400", "a number beyond the double range")
+    refused("duplicate_key", '{"op": "relu", "op": "silu"}', "a duplicate member name")
+    refused("lone_surrogate", '"\\ud800"', "a lone surrogate (not well-formed Unicode)")
+    refused("nan_literal", "NaN", "not JSON")
+    return {"_comment": "spec/IR_SPEC.md section 3.10: the IR digest. canonical is the RFC 8785 serialisation "
+                        "(with prose false, every '_' key removed first: the digest); sha256 is the digest of "
+                        "text. A refused text has no digest.", "vectors": vec}
+
+
+# ---------------------------------------------------------------- dequantisation fixtures (IR_SPEC 4.7)
+
+def quant_cases():
+    """Random blocks of every storage type tools/ir_quant.py defines (fp16 fields finite: normal, subnormal,
+    signed, zero, the largest), two rows of two blocks each, with their f32 values (EXACT)."""
+    import ir_quant
+    rng = np.random.default_rng(20261025)
+    halves = {"Q4_0": [0], "Q5_0": [0], "Q5_1": [0, 2], "Q8_0": [0], "Q4_K": [0, 2], "Q5_K": [0, 2], "Q6_K": [208]}
+    special = np.array([0.0, -0.0, 6e-08, -3e-05, 65504.0, 1e-04, -0.5], np.float64)
+    cases = []
+    for name, (gid, qk, size) in ir_quant.TYPES.items():
+        rows, per_row = 2, (2 * qk if qk > 1 else 8)
+        n = rows * per_row
+        if qk == 1:  # F32, F16, BF16: values, the special ones included
+            vals = np.concatenate([rng.standard_normal(n - len(special)) * 0.5, special]).astype(np.float32)
+            raw = (vals.astype("<f4") if name == "F32" else vals.astype("<f2") if name == "F16"
+                   else (vals.view(np.uint32) >> 16).astype("<u2")).tobytes()
+        else:
+            nb = n // qk
+            b = rng.integers(0, 256, (nb, size), dtype=np.uint8)
+            pool = np.concatenate([rng.standard_normal(16) * 0.05, special])
+            for at in halves[name]:
+                h = rng.choice(pool, nb).astype("<f2")
+                b[:, at:at + 2] = h.view(np.uint8).reshape(nb, 2)
+            raw = b.tobytes()
+        vals = ir_quant.dequantize(name, raw, n).reshape(rows, per_row)
+        cases.append({"name": name.lower(), "type": name, "ggml_type": gid, "rows": rows, "n": per_row,
+                      "bytes": raw.hex(), "expect": enc(vals), "class": "EXACT"})
+    return {"_comment": "spec/IR_SPEC.md section 4.7: each case's bytes are rows x n elements of the storage type, "
+                        "row-major; expect is their f32 values, EXACT on every backend.", "cases": cases}
+
+
 # ---------------------------------------------------------------- regenerate
 
 def regenerate():
@@ -654,11 +890,12 @@ def regenerate():
         errs = ir_validate.file_errors(path)
         if errs:
             raise SystemExit(f"{name}: the validator refuses the model: {errs[:3]}")
-        case = model_case(name, doc, W, rng)
+        mrng = np.random.default_rng(sum(map(ord, name))) if name in OWN_STREAM else rng
+        case = model_case(name, doc, W, mrng)
         (md / "case.json").write_text(json.dumps(case, indent=1) + "\n", encoding="utf-8")
         manifest.append({"id": f"model/{name}", "kind": "model", "file": f"models/{name}/case.json",
                          "model": f"models/{name}", "profile": _profile(name), "class": "ROUNDING"})
-        for tname, t in traces(name, doc, W, rng).items():
+        for tname, t in traces(name, doc, W, mrng).items():
             f = f"state/{name}_{tname}.json"
             (SUITE / f).write_text(json.dumps(t, indent=1) + "\n", encoding="utf-8")
             manifest.append({"id": f"trace/{name}_{tname}", "kind": "trace", "file": f, "model": f"models/{name}",
@@ -666,12 +903,36 @@ def regenerate():
     for op, cs in op_cases().items():
         f = f"ops/{op}.json"
         (SUITE / f).write_text(json.dumps({"op": op, "cases": cs}, indent=1) + "\n", encoding="utf-8")
-        manifest.append({"id": f"op/{op}", "kind": "op", "file": f, "profile": "core", "n": len(cs)})
+        manifest.append({"id": f"op/{op}", "kind": "op", "file": f, "profile": "recurrence" if op == "recurrence" else "core",
+                         "n": len(cs)})
     for name, case in refusals():
         f = f"refuse/{name}.json"
         (SUITE / f).write_text(json.dumps(case, indent=1) + "\n", encoding="utf-8")
         manifest.append({"id": f"refuse/{name}", "kind": "refuse", "file": f, "rule": case["rule"],
                          "section": case["section"]})
+    (SUITE / "digest").mkdir(exist_ok=True)
+    dv = digest_vectors()
+    (SUITE / "digest" / "vectors.json").write_text(json.dumps(dv, indent=1, ensure_ascii=False) + "\n",
+                                                    encoding="utf-8")
+    manifest.append({"id": "digest/vectors", "kind": "digest", "file": "digest/vectors.json", "profile": "core",
+                     "n": len(dv["vectors"])})
+    (SUITE / "quant").mkdir(exist_ok=True)
+    qc = quant_cases()
+    (SUITE / "quant" / "blocks.json").write_text(json.dumps(qc, indent=1) + "\n", encoding="utf-8")
+    manifest.append({"id": "dequant/blocks", "kind": "dequant", "file": "quant/blocks.json", "profile": "core",
+                     "n": len(qc["cases"])})
+    (SUITE / "grad").mkdir(exist_ok=True)
+    gc = grad_cases()
+    (SUITE / "grad" / "recurrence.json").write_text(json.dumps(gc, indent=1) + "\n", encoding="utf-8")
+    manifest.append({"id": "grad/recurrence", "kind": "grad", "file": "grad/recurrence.json", "profile": "recurrence",
+                     "n": len(gc["cases"])})
+    (SUITE / "recurrence").mkdir(exist_ok=True)
+    for name, doc, case in recurrence_traces():
+        (SUITE / "recurrence" / f"{name}.ir.json").write_text(json.dumps(doc, indent=1) + "\n", encoding="utf-8")
+        f = f"state/{name}_recurrence.json"
+        (SUITE / f).write_text(json.dumps(case, indent=1) + "\n", encoding="utf-8")
+        manifest.append({"id": f"trace/{name}_recurrence", "kind": "trace", "file": f, "model": f"models/{name}",
+                         "profile": "recurrence"})
     (SUITE / "manifest.json").write_text(json.dumps({
         "_comment": "spec/IR_SPEC.md section 11: the conformance suite's cases. Generated by tools/ir_conformance.py "
                     "--regenerate from the models in models/ (expected values: tools/ir_numpy.py).",

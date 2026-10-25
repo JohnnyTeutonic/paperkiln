@@ -1,43 +1,64 @@
 {
- "_comment": "Runs of the conformance suite (spec/IR_SPEC.md section 11.4) on its ir_version 1 models: one results file per engine, with every case's verdict and detail. SKIP means the engine has no path for the case (mtstudio: single ops other than expr, sessions, document loading; ember: single ops, its adapter has no run_node).",
+ "_comment": "Runs of the conformance suite (spec/IR_SPEC.md section 11.4): one results file per engine, with every case's verdict and detail. SKIP means the engine has no path for the case (the reference: the gradient cases, which are its own finite differences; mtstudio: single ops other than expr and recurrence, sessions, document loading, refusals, dequantisation; ember: single ops, its adapter has no run_node). ember's run is of the suite before revision 1.1 (157 cases).",
  "runs": [
   {
    "file": "ir_numpy.json",
-   "engine": "numpy reference, tools/ir_numpy.py (numpy 2.3.3, WSL Python 3.12.3)",
+   "engine": "numpy reference, tools/ir_numpy.py (numpy 2.3.3, WSL Python 3.12.3), spec revision 1.1",
    "date": "2026-10-25",
    "counts": {
-    "PASS": 157,
+    "PASS": 267,
     "FAIL": 0,
-    "SKIP": 0,
+    "SKIP": 7,
     "XFAIL": 0,
     "XPASS": 0
    },
    "by_kind": {
     "model": {
-     "PASS": 20,
+     "PASS": 21,
      "FAIL": 0,
      "SKIP": 0,
      "XFAIL": 0,
      "XPASS": 0
     },
     "trace": {
-     "PASS": 31,
+     "PASS": 37,
      "FAIL": 0,
      "SKIP": 0,
      "XFAIL": 0,
      "XPASS": 0
     },
     "op": {
-     "PASS": 46,
+     "PASS": 53,
      "FAIL": 0,
      "SKIP": 0,
      "XFAIL": 0,
      "XPASS": 0
     },
     "refuse": {
-     "PASS": 60,
+     "PASS": 72,
      "FAIL": 0,
      "SKIP": 0,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "digest": {
+     "PASS": 74,
+     "FAIL": 0,
+     "SKIP": 0,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "dequant": {
+     "PASS": 10,
+     "FAIL": 0,
+     "SKIP": 0,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "grad": {
+     "PASS": 0,
+     "FAIL": 0,
+     "SKIP": 7,
      "XFAIL": 0,
      "XPASS": 0
     }
@@ -45,18 +66,18 @@
   },
   {
    "file": "mtstudio.json",
-   "engine": "paperkiln mtstudio CPU at the ir_version 1 commit (ext4 snapshot of the working tree; vendored transformer_core, Release, GCC 13.3)",
+   "engine": "paperkiln mtstudio CPU, with ir_eval for recurrence nodes, their gradients and the digest, at spec revision 1.1 (ext4 build of HEAD 20898f37 plus revision 1.1; vendored transformer_core, Release, GCC 13.3, -ffp-contract=off)",
    "date": "2026-10-25",
    "counts": {
-    "PASS": 25,
+    "PASS": 114,
     "FAIL": 0,
-    "SKIP": 132,
+    "SKIP": 160,
     "XFAIL": 0,
     "XPASS": 0
    },
    "by_kind": {
     "model": {
-     "PASS": 15,
+     "PASS": 16,
      "FAIL": 0,
      "SKIP": 5,
      "XFAIL": 0,
@@ -65,12 +86,12 @@
     "trace": {
      "PASS": 6,
      "FAIL": 0,
-     "SKIP": 25,
+     "SKIP": 31,
      "XFAIL": 0,
      "XPASS": 0
     },
     "op": {
-     "PASS": 4,
+     "PASS": 11,
      "FAIL": 0,
      "SKIP": 42,
      "XFAIL": 0,
@@ -79,7 +100,28 @@
     "refuse": {
      "PASS": 0,
      "FAIL": 0,
-     "SKIP": 60,
+     "SKIP": 72,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "digest": {
+     "PASS": 74,
+     "FAIL": 0,
+     "SKIP": 0,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "dequant": {
+     "PASS": 0,
+     "FAIL": 0,
+     "SKIP": 10,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "grad": {
+     "PASS": 7,
+     "FAIL": 0,
+     "SKIP": 0,
      "XFAIL": 0,
      "XPASS": 0
     }

@@ -17,13 +17,17 @@
 #include "microtorch/mamba.hpp"
 #include "microtorch/nn.hpp"
 #include "microtorch/ops.hpp"
+#include "microtorch/recurrence.hpp"
 #include "microtorch/srd.hpp"
 
 namespace parity {
 
 using namespace microtorch;
 
-enum class AttnKind { EXACT, KIMI, SRD, SWA };
+// RECURRENCE: kimi's projections (same tensors, names and seeds) around an IR recurrence node
+// (IR_SPEC.md 6.10) over q, k, v [T, d] -> [T, d]; its body defaults to the linear_attention one
+// (ir::linear_attention_body), with which the lane computes the KIMI lane's model bit for bit.
+enum class AttnKind { EXACT, KIMI, SRD, SWA, RECURRENCE };
 
 // GPT-2 export helpers (gguf::export_gguf_gpt2 reads HF GPT-2 names, which
 // are also nn::GPT2's): one pre-LN block's tensors as h.<b>.*, copied.
@@ -132,8 +136,9 @@ inline void gpt2_ffn_ir(ir::json& n, const nn::LayerNorm& ln2, const nn::MLP& ml
 class ParityLM : public nn::Module {
 public:
     // swa_window/swa_sinks are read only for AttnKind::SWA (S1 baseline).
+    // recurrence_body (RECURRENCE only): the node's body (ir::recurrence's), null for the default.
     ParityLM(AttnKind kind, size_t vocab, size_t d, size_t n_heads, size_t n_ctx, unsigned seed,
-             size_t swa_window = 64, size_t swa_sinks = 1)
+             size_t swa_window = 64, size_t swa_sinks = 1, const ir::json* recurrence_body = nullptr)
         : kind_(kind) {
         wte = mod<nn::Embedding>("wte", vocab, d, seed + 1);
         wpe = mod<nn::Embedding>("wpe", n_ctx, d, seed + 2);
@@ -148,6 +153,7 @@ public:
                         mod<nn::CausalSelfAttention>("attn_" + std::to_string(b), d, n_heads, s));
                     break;
                 case AttnKind::KIMI:
+                case AttnKind::RECURRENCE:
                     kimi.push_back(
                         mod<nn::KimiLinearAttention>("attn_" + std::to_string(b), d, n_heads, s));
                     break;
@@ -163,6 +169,18 @@ public:
         }
         ln_f = mod<nn::LayerNorm>("ln_f", d);
         head = mod<nn::Linear>("head", d, vocab, false, seed + 99);
+        if (kind == AttnKind::RECURRENCE) {
+            rec_body = recurrence_body ? *recurrence_body : ir::linear_attention_body(n_heads, d / n_heads);
+            rec_node = ir::recurrence({"q", "k", "v"}, "rec", rec_body, "a");
+            rec = std::make_shared<Recurrence>(Recurrence::from_json(rec_node));
+            if (rec->inputs().size() != 3 || rec->output().numel != d || !rec->weights().empty())
+                throw std::runtime_error("attention recurrence: the body reads q, k and v and writes a row, each of "
+                                         "width d = " + std::to_string(d) + ", with no weights of its own");
+            for (const auto& t : rec->inputs())
+                if (t.numel != d)
+                    throw std::runtime_error("attention recurrence: input " + t.name + " has width " +
+                                             std::to_string(t.numel) + ", not d = " + std::to_string(d));
+        }
     }
 
     // seq_len 0 = one sequence; > 0 = stacked mini-batch. All three
@@ -183,6 +201,15 @@ public:
                 case AttnKind::KIMI:
                     a = kimi[b]->forward(n1, seq_len);
                     break;
+                case AttnKind::RECURRENCE: {
+                    // kimi's projections around the recurrence: q, k, v the thirds of qkv.
+                    const size_t d = wte->weight->data.cols();
+                    Var qkv = kimi[b]->c_attn->forward(n1);
+                    Var y = ops::recurrence(*rec, {ops::slice_cols(qkv, 0, d), ops::slice_cols(qkv, d, 2 * d),
+                                                   ops::slice_cols(qkv, 2 * d, 3 * d)}, {}, seq_len);
+                    a = kimi[b]->c_proj->forward(y);
+                    break;
+                }
                 case AttnKind::SRD:
                     a = srd[b]->forward(n1, seq_len);
                     break;
@@ -232,7 +259,7 @@ public:
     // the router's predictor is not a gpt2 tensor); nullopt for exact/swa,
     // which export through gpt2_state_dict/export_ir above.
     std::optional<FamilyExport> family_export() const {
-        if (kind_ != AttnKind::KIMI && kind_ != AttnKind::SRD) return std::nullopt;
+        if (kind_ != AttnKind::KIMI && kind_ != AttnKind::SRD && kind_ != AttnKind::RECURRENCE) return std::nullopt;
         const size_t vocab = wte->weight->data.rows(), d = wte->weight->data.cols();
         const size_t ctx = wpe->weight->data.rows();
         const std::string p = "blk.{i}.";
@@ -240,14 +267,19 @@ public:
         fx.d_ff = 4 * d;
         ir::json n = ir::json::array(), state = ir::json::array();
         n.push_back(ln1[0]->export_ir("x", "h", p + "attn_norm"));
-        if (kind_ == AttnKind::KIMI) {
+        if (kind_ == AttnKind::KIMI || kind_ == AttnKind::RECURRENCE) {
             const auto& a = *kimi[0];
             fx.heads = a.H;
             n.push_back(a.c_attn->export_ir("h", "qkv", p + "attn_qkv.weight"));
             n.push_back(ir::split("qkv", {d, d, d}, {"q", "k", "v"}));
-            n.push_back(ir::linear_attention("q", "k", "v", "lin", a.H, a.dk, "a"));
+            if (kind_ == AttnKind::KIMI) {
+                n.push_back(ir::linear_attention("q", "k", "v", "lin", a.H, a.dk, "a"));
+                state.push_back(ir::linear_attention_state("lin", a.H, a.dk));
+            } else {
+                n.push_back(rec_node);
+                state.push_back(ir::recurrence_state("rec", rec_node));
+            }
             n.push_back(a.c_proj->export_ir("a", "o", p + "attn_output.weight"));
-            state.push_back(ir::linear_attention_state("lin", a.H, a.dk));
         } else {
             // SurpriseRoutedAttention::forward, node for node: the router on
             // the normalised input, both paths on one qkv, the per-token blend.
@@ -276,15 +308,15 @@ public:
         }
         n.push_back(ir::binary("add", "x", "o", "x"));
         gpt2_ffn_ir(n, *ln2[0], *mlp[0]);
-        fx.ir = family_doc(kind_ == AttnKind::KIMI ? "kimi" : "srd", vocab, d, 2, ctx, /*positions=*/true,
-                           gpt2_embed_ir(*wte), state, n, gpt2_head_ir(*ln_f, *head));
-        if (kind_ == AttnKind::KIMI) {
+        fx.ir = family_doc(kind_ == AttnKind::KIMI ? "kimi" : kind_ == AttnKind::SRD ? "srd" : "recurrence", vocab, d,
+                           2, ctx, /*positions=*/true, gpt2_embed_ir(*wte), state, n, gpt2_head_ir(*ln_f, *head));
+        if (kind_ == AttnKind::KIMI || kind_ == AttnKind::RECURRENCE) {
             fx.arch = "gpt2";
             put_gpt2_shell(fx.gpt2_sd, *wte, *wpe, *ln_f, *head);
             for (int b = 0; b < 2; ++b) put_gpt2_block(fx.gpt2_sd, b, *ln1[b], *kimi[b], *ln2[b], *mlp[b]);
-            fx.warning =
-                "kimi linear attention lives in the embedded IR only: an engine reading the gpt2 tensors "
-                "without it (llama.cpp) computes softmax attention, a different model";
+            fx.warning = std::string(kind_ == AttnKind::KIMI ? "kimi linear attention" : "the recurrence") +
+                         " lives in the embedded IR only: an engine reading the gpt2 tensors without it "
+                         "(llama.cpp) computes softmax attention, a different model";
             return fx;
         }
         fx.arch = "paperkiln";
@@ -325,6 +357,9 @@ public:
     std::vector<std::shared_ptr<nn::SlidingWindowAttention>> swa;
     std::shared_ptr<nn::LayerNorm> ln_f;
     std::shared_ptr<nn::Linear> head;
+    // RECURRENCE: the body, the node (in q, k, v; state "rec"; out "a") and its compiled form.
+    ir::json rec_body, rec_node;
+    std::shared_ptr<Recurrence> rec;
 };
 
 // The AttnRes LM (TECH_TRANSFER item 1 as a trainable preset): the same

@@ -396,7 +396,9 @@ and WasmCert's mechanise-then-run-the-suite method
    that already pass. It is what an outside engine author would use.
 2. **B, the `recurrence` definition layer.** It is the reviewer's framing turned into a testable
    claim: four existing primitives re-expressed and reproduced bit for bit is a clean result. It
-   also opens the "arXiv for LLMs" phase safely.
+   also opens the "arXiv for LLMs" phase safely. Built as `spec/IR_SPEC.md` section 6.10 (revision
+   1.1): three of the four reproduce the hand-written ops bit for bit, selective_scan within ROUNDING
+   (log1p), and gradient cases are part of the suite.
 3. **C, the Lean core scoped to structural theorems.** No prior work exists on it, and it fits
    Jonathan's Lean experience. Floating point stays out of scope.
 

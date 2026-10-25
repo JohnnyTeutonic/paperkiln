@@ -209,6 +209,18 @@ class Adapter:
     def run_node(self, node, inputs, weights, state):
         raise NotImplementedError
 
+    def digest(self, text, prose=False):
+        """{"sha256", "canonical"?} of a JSON text (IR_SPEC 3.10), or {"refused": message} when it has none."""
+        raise NotImplementedError
+
+    def dequantize(self, type_name, n, raw):
+        """The f32 values [n] of n elements of a GGUF storage type stored as the bytes raw (IR_SPEC 4.7)."""
+        raise NotImplementedError
+
+    def run_node_grad(self, node, inputs, weights, out_grad):
+        """{value or tensor name: gradient} of sum(out * out_grad) for one node (IR_SPEC 6.10.5)."""
+        raise NotImplementedError
+
     def score(self, model_dir, prompt, cont, kv_cache=False, evict=False, kv_step=0):
         """Optional (mtstudio): {"logprobs", "argmax", "depth"?, "kv_rows"?}; the runner otherwise uses
         open/forward."""
@@ -219,7 +231,7 @@ class NumpyAdapter(Adapter):
     """The reference: tools/ir_numpy.py with no cache (a forward recomputes the whole prefix), and
     tools/ir_validate.py as its loader. It reports the kv rows the rules of IR_SPEC.md 6.8.3 and 7.5
     define (the eager count under eviction)."""
-    name, profiles = "ir_numpy", {"core", "state", "recursion", "chat", "thirdparty"}
+    name, profiles = "ir_numpy", {"core", "state", "recursion", "chat", "thirdparty", "recurrence"}
 
     def __init__(self):
         self.sessions, self.n = {}, 0
@@ -293,6 +305,19 @@ class NumpyAdapter(Adapter):
     def close(self, session):
         self.sessions.pop(session, None)
 
+    def digest(self, text, prose=False):
+        try:
+            return {"sha256": ir_validate.digest(text, prose), "canonical": ir_validate.canonical(text, prose)}
+        except ir_validate.DigestError as e:
+            return {"refused": str(e)}
+
+    def dequantize(self, type_name, n, raw):
+        import ir_quant
+        return ir_quant.dequantize(type_name, raw, n)
+
+    def run_node_grad(self, node, inputs, weights, out_grad):
+        raise NotImplementedError("the reference has no backward: the gradient cases are its finite differences")
+
     def run_node(self, node, inputs, weights, state):
         env = {}
         for k, v in inputs.items():
@@ -325,8 +350,9 @@ def _reference_kv(doc, ids, trace, evict, k):
 class MtstudioAdapter(Adapter):
     """paperkiln's C++ engine. It runs its own exports, not documents: model cases and forward-only
     traces of llama-family models go through `mtstudio score` (--kv-cache, --kv-step 1, --evict); op
-    cases of expr through expr_eval. Everything else is SKIP."""
-    name, profiles = "mtstudio", {"core", "state", "recursion", "chat"}
+    cases of expr through expr_eval; recurrence op and gradient cases and the digest vectors through
+    ir_eval. Everything else is SKIP."""
+    name, profiles = "mtstudio", {"core", "state", "recursion", "chat", "recurrence"}
 
     def __init__(self, binary=None):
         self.bin = binary or os.environ.get("MTSTUDIO_BIN") or str(ROOT / "build" / "mtstudio")
@@ -334,6 +360,30 @@ class MtstudioAdapter(Adapter):
             raise SystemExit(f"mtstudio adapter: no binary at {self.bin} (set MTSTUDIO_BIN)")
         ee = os.environ.get("EXPR_EVAL_BIN") or str(Path(self.bin).parent / "expr_eval")
         self.expr_eval = ee if Path(ee).is_file() else None
+        ie = os.environ.get("IR_EVAL_BIN") or str(Path(self.bin).parent / "ir_eval")
+        self.ir_eval = ie if Path(ie).is_file() else None
+
+    def _ir_eval(self, req):
+        if self.ir_eval is None:
+            raise NotImplementedError("no ir_eval binary beside mtstudio (set IR_EVAL_BIN)")
+        r = subprocess.run([self.ir_eval], input=json.dumps([req]), capture_output=True, text=True, timeout=600)
+        if r.returncode != 0:
+            raise RuntimeError(r.stderr[-500:])
+        got = json.loads(r.stdout)[0]
+        if "skip" in got:
+            raise NotImplementedError(got["skip"])
+        if "error" in got:
+            raise RuntimeError(got["error"])
+        return _decode_tensors(got)
+
+    def digest(self, text, prose=False):
+        return self._ir_eval({"method": "digest", "text": text, "prose": prose})
+
+    def run_node_grad(self, node, inputs, weights, out_grad):
+        if node["op"] != "recurrence":
+            raise NotImplementedError("ir_eval differentiates recurrence nodes")
+        return self._ir_eval({"method": "run_node_grad", "node": node, "inputs": _encode_tensors(inputs),
+                              "weights": _encode_tensors(weights), "out_grad": enc(out_grad)})["grads"]
 
     def score(self, model_dir, prompt, cont, kv_cache=False, evict=False, kv_step=0):
         d = Path(model_dir).resolve()
@@ -369,8 +419,12 @@ class MtstudioAdapter(Adapter):
         return out
 
     def run_node(self, node, inputs, weights, state):
+        if node["op"] == "recurrence":
+            got = self._ir_eval({"method": "run_node", "node": node, "inputs": _encode_tensors(inputs),
+                                 "weights": _encode_tensors(weights)})
+            return {"outputs": got["outputs"], "state": got["state"]}
         if node["op"] != "expr" or self.expr_eval is None:
-            raise NotImplementedError("mtstudio runs whole models; expr_eval runs expr nodes")
+            raise NotImplementedError("mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences")
         xs = [inputs[n] for n in node["in"]]
         case = {"expr": node["expr"], "inputs": [x.astype(np.float64).tolist() for x in xs]}
         r = subprocess.run([self.expr_eval], input=json.dumps([case]), capture_output=True, text=True, timeout=120)
@@ -435,6 +489,16 @@ class CmdAdapter(Adapter):
             self._call("close", {"session": session})
         except (NotImplementedError, RuntimeError):
             pass
+
+    def digest(self, text, prose=False):
+        return self._call("digest", {"text": text, "prose": prose})
+
+    def dequantize(self, type_name, n, raw):
+        return self._call("dequantize", {"type": type_name, "n": n, "bytes": raw.hex()})["values"]
+
+    def run_node_grad(self, node, inputs, weights, out_grad):
+        return self._call("run_node_grad", {"node": node, "inputs": _encode_tensors(inputs),
+                                            "weights": _encode_tensors(weights), "out_grad": enc(out_grad)})["grads"]
 
     def run_node(self, node, inputs, weights, state):
         enc_in = {k: (v if k in ("tokens", "pos") else _encode_tensors(v)) for k, v in inputs.items()}
@@ -525,6 +589,45 @@ def run_op_case(adapter, case, tol):
     return ok, "; ".join(msgs)
 
 
+def run_digest_case(adapter, v):
+    """IR_SPEC 3.10: the digest of v["text"] (the serialisation too, when the engine reports it), or a refusal
+    for a text that has none."""
+    res = adapter.digest(v["text"], v.get("prose", False))
+    if "refused" in v:
+        return "refused" in res, ("refused" if "refused" in res else f"digested to {res.get('sha256')}, but "
+                                  f"the text has no digest ({v['refused']})")
+    if "refused" in res:
+        return False, f"refused: {res['refused']}"
+    ok = res.get("sha256") == v["sha256"]
+    msg = "sha256 " + ("equal" if ok else f"{res.get('sha256')} != {v['sha256']}")
+    if res.get("canonical") is not None:
+        same = res["canonical"] == v["canonical"]
+        ok &= same
+        msg += "; canonical " + ("equal" if same else "DIFFERS")
+    return ok, msg
+
+
+def run_grad_case(adapter, c):
+    """IR_SPEC 6.10.5: the engine's gradients against central differences of the reference (float64)."""
+    inputs = {k: dec(v) for k, v in c["inputs"].items()}
+    weights = {k: dec(v) for k, v in c["weights"].items()}
+    got = adapter.run_node_grad(c["node"], inputs, weights, dec(c["out_grad"]))
+    ok, msgs = True, []
+    for name, want in c["expect"].items():
+        if name not in got:
+            return False, f"no gradient for {name}"
+        o, m = close(np.asarray(got[name], np.float32).reshape(dec(want).shape), dec(want), "ROUNDING", c["tol"])
+        ok &= o
+        msgs.append(f"d{name} {m}")
+    return ok, "; ".join(msgs)
+
+
+def run_dequant_case(adapter, c):
+    """IR_SPEC 4.7: the f32 values of stored blocks, bit for bit on every backend."""
+    got = np.asarray(adapter.dequantize(c["type"], c["rows"] * c["n"], bytes.fromhex(c["bytes"])), np.float32)
+    return close(got.reshape(c["rows"], c["n"]), dec(c["expect"]), "EXACT", 0.0)
+
+
 def run_model_case(adapter, case, model_dir, tol):
     banned = case.get("banned", [0])
     gguf = gguf_of(model_dir)
@@ -571,7 +674,7 @@ def run_trace(adapter, case, model_dir, tol):
     try:
         return _run_trace_sessions(adapter, case, model_dir, tol)
     except NotImplementedError:
-        if "score_form" not in case:
+        if "score_form" not in case or case.get("ir"):
             raise
     sf = case["score_form"]
     res = adapter.score(model_dir, sf["prompt"], sf["continuation"], kv_cache=True, evict=sf["evict"], kv_step=1)
@@ -596,7 +699,7 @@ def run_trace(adapter, case, model_dir, tol):
 
 def _run_trace_sessions(adapter, case, model_dir, tol):
     gguf = gguf_of(model_dir)
-    s = adapter.open(gguf, None, case.get("evict"))["session"]
+    s = adapter.open(gguf, SUITE / case["ir"] if case.get("ir") else None, case.get("evict"))["session"]
     ok, msgs = True, []
     try:
         for j, (step, want) in enumerate(zip(case["steps"], case["expect"])):
@@ -681,6 +784,10 @@ def run_suite(adapter, only=None, out_json=None):
         case = json.loads((SUITE / c["file"]).read_text(encoding="utf-8"))
         if c["kind"] == "op":
             sub = [(f"{c['id']}/{x['name']}", x) for x in case["cases"]]
+        elif c["kind"] == "digest":
+            sub = [(f"{c['id']}/{x['name']}", x) for x in case["vectors"]]
+        elif c["kind"] in ("dequant", "grad"):
+            sub = [(f"{c['id']}/{x['name']}", x) for x in case["cases"]]
         else:
             sub = [(c["id"], case)]
         for cid, x in sub:
@@ -691,6 +798,12 @@ def run_suite(adapter, only=None, out_json=None):
                     ok, msg = run_model_case(adapter, x, SUITE / c["model"], tol)
                 elif c["kind"] == "trace":
                     ok, msg = run_trace(adapter, x, SUITE / x["model"], tol)
+                elif c["kind"] == "digest":
+                    ok, msg = run_digest_case(adapter, x)
+                elif c["kind"] == "dequant":
+                    ok, msg = run_dequant_case(adapter, x)
+                elif c["kind"] == "grad":
+                    ok, msg = run_grad_case(adapter, x)
                 else:
                     ok, msg = run_refuse_case(adapter, x, c["file"])
                 verdict = "PASS" if ok else "FAIL"
@@ -730,7 +843,7 @@ def main(argv=None):
     a = ap.parse_args(argv)
     if a.build_models:
         import ir_conformance_gen
-        ir_conformance_gen.build_models(Path(a.build_models))
+        ir_conformance_gen.build_models(Path(a.build_models), a.only)
         return 0
     if a.regenerate:
         import ir_conformance_gen

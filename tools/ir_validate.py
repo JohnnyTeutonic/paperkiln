@@ -3,11 +3,13 @@
 
     python tools/ir_validate.py doc.ir.json [model.gguf ...]   # documents and GGUFs; exit 1 on a refusal
     python tools/ir_validate.py --corpus [--quiet]              # every stored document and gate GGUF
+    python tools/ir_validate.py digest doc.ir.json|model.gguf [--canonical]   # the IR digest (section 3.10)
 
-    doc_errors(doc)                     -> [message]   schema + document rules (10.1 rules 1-23)
-    gguf_errors(doc, meta, tensors)     -> [message]   container rules (24-28)
+    doc_errors(doc)                     -> [message]   schema + document rules (10.1 rules 1-23, 31-33)
+    gguf_errors(doc, meta, tensors)     -> [message]   container rules (24-28, 30, 34)
     file_errors(path)                   -> [message]   a .ir.json document or a GGUF with paperkiln.ir
     schema_errors(doc)                  -> [message]   the schema alone (this module's evaluator)
+    canonical(text_or_value) -> str; digest(text_or_value) -> 64 hex digits   (section 3.10; DigestError)
 
 Standard library only (the expr grammar is checked with tools/ir_expr.py when numpy is importable).
 The schema is evaluated by this module's own evaluator of the keywords spec/ir.schema.json uses;
@@ -28,24 +30,143 @@ HERE = Path(__file__).resolve().parent
 SCHEMA_PATH = HERE.parent / "spec" / "ir.schema.json"
 VERSIONS = (0, 1)  # section 2.1: version 0 documents are version 1 documents
 STATEFUL = {"attention": "kv", "linear_attention": "recurrent", "ssm_scan": "recurrent",
-            "conv1d_causal": "recurrent", "selective_scan": "recurrent"}
-RECURRENT_OPS = ("linear_attention", "ssm_scan", "conv1d_causal", "selective_scan")
+            "conv1d_causal": "recurrent", "selective_scan": "recurrent", "recurrence": "recurrent"}
+RECURRENT_OPS = ("linear_attention", "ssm_scan", "conv1d_causal", "selective_scan", "recurrence")
 # Rule 7: (exact input count or None, minimum, maximum) and the number of outputs.
 ARITY = {"embedding": 1, "pos_embedding": 2, "linear": 1, "scale": 1, "split": 1, "rmsnorm": 1, "layernorm": 1,
          "gelu": 1, "silu": 1, "sigmoid": 1, "relu": 1, "add": 2, "mul": 2, "sub": 2, "affine": 1, "mul_col": 2,
          "rms_row": 1, "rope": 3, "attention": 3, "moe_ffn": 1, "append": 2, "linear_attention": 3,
          "ssm_scan": 1, "conv1d_causal": 1, "selective_scan": 4, "depth_route": 1}
-AT_LEAST_ONE = {"list", "depth_attend", "expr"}
+AT_LEAST_ONE = {"list", "depth_attend", "expr", "recurrence"}
 TENSOR_KEYS = ("weight", "bias", "router", "state_weight", "tied_to")
 # Section 3.8: the structural keys, never per-layer (nodes, then slots).
 NOT_PER_LAYER = ("op", "in", "out", "state", "tensor_index", "sizes", "expr", "weight", "bias", "router", "experts",
-                 "state_weight", "tied_to", "a", "b", "c", "d")
+                 "state_weight", "tied_to", "a", "b", "c", "d", "index", "inputs", "weights", "init", "let", "update",
+                 "readout")
 SLOT_NOT_PER_LAYER = ("name", "kind", "op", "dtype", "tensors", "evict", "kv_rows")
 MARKERS = {"eot": "<|endoftext|>", "user": "<|user|>", "assistant": "<|assistant|>"}  # paperkiln/1
 
 
 def E(section, msg):
     return f"IR_SPEC {section}: {msg}"
+
+
+# ---------------------------------------------------------------- the digest (section 3.10)
+
+class DigestError(ValueError):
+    """The value has no digest (section 3.10): not I-JSON, a duplicate key, or a negative zero."""
+
+
+def _no_duplicates(pairs):
+    out = {}
+    for k, v in pairs:
+        if k in out:
+            raise DigestError(f"duplicate key {k!r}")
+        out[k] = v
+    return out
+
+
+def _es_number(x):
+    """ECMAScript Number::toString of a finite double (RFC 8785 section 3.2.2.3)."""
+    if x != x or x in (float("inf"), float("-inf")):
+        raise DigestError("a number is not finite")
+    if x == 0:
+        if str(x).startswith("-"):
+            raise DigestError("a negative zero (RFC 8785 writes it as 0, the digest would equal its +0 twin's)")
+        return "0"
+    if x < 0:
+        return "-" + _es_number(-x)
+    r = repr(x)  # the shortest round-tripping digits, the closest of them (David Gay's mode 0)
+    mant, _, exp = r.partition("e")
+    e = int(exp) if exp else 0
+    if "." in mant:
+        ip, fp = mant.split(".")
+    else:
+        ip, fp = mant, ""
+    digits = (ip + fp).lstrip("0")
+    lead = len(ip + fp) - len((ip + fp).lstrip("0"))
+    n = len(ip) + e - lead  # x = 0.digits * 10^n
+    digits = digits.rstrip("0")
+    k = len(digits)
+    if k <= n <= 21:
+        return digits + "0" * (n - k)
+    if 0 < n <= 21:
+        return digits[:n] + "." + digits[n:]
+    if -6 < n <= 0:
+        return "0." + "0" * (-n) + digits
+    sign = "+" if n - 1 >= 0 else "-"
+    return (digits if k == 1 else digits[0] + "." + digits[1:]) + "e" + sign + str(abs(n - 1))
+
+
+_ESC = {'"': '\\"', "\\": "\\\\", "\b": "\\b", "\t": "\\t", "\n": "\\n", "\f": "\\f", "\r": "\\r"}
+
+
+def _es_string(s):
+    """JSON.stringify of a string (RFC 8785 section 3.2.2.2): '"', '\\' and the controls escaped, the
+    rest as is; a lone surrogate is not well-formed Unicode and has no digest."""
+    out = ['"']
+    for ch in s:
+        if 0xD800 <= ord(ch) <= 0xDFFF:
+            raise DigestError("a string holds a lone surrogate")
+        if ch in _ESC:
+            out.append(_ESC[ch])
+        elif ord(ch) < 0x20:
+            out.append(f"\\u{ord(ch):04x}")
+        else:
+            out.append(ch)
+    out.append('"')
+    return "".join(out)
+
+
+def _canon(v):
+    if v is None:
+        return "null"
+    if v is True:
+        return "true"
+    if v is False:
+        return "false"
+    if isinstance(v, int):
+        if abs(v) > 2 ** 53:
+            raise DigestError(f"the integer {v} is outside I-JSON's exact range (2^53)")
+        return _es_number(float(v))
+    if isinstance(v, float):
+        return _es_number(v)
+    if isinstance(v, str):
+        return _es_string(v)
+    if isinstance(v, list):
+        return "[" + ",".join(_canon(x) for x in v) + "]"
+    if isinstance(v, dict):
+        keys = sorted(v, key=lambda k: k.encode("utf-16-be", errors="surrogatepass"))  # UTF-16 code units
+        return "{" + ",".join(_es_string(k) + ":" + _canon(v[k]) for k in keys) + "}"
+    raise DigestError(f"not a JSON value: {type(v).__name__}")
+
+
+def _strip_prose(v):
+    """Every member whose key starts with '_' removed, at any depth (section 3.2: prose)."""
+    if isinstance(v, dict):
+        return {k: _strip_prose(x) for k, x in v.items() if not k.startswith("_")}
+    if isinstance(v, list):
+        return [_strip_prose(x) for x in v]
+    return v
+
+
+def _parse_ijson(text):
+    def bad_constant(name):
+        raise DigestError(f"{name} is not JSON")
+    return json.loads(text, object_pairs_hook=_no_duplicates, parse_constant=bad_constant)
+
+
+def canonical(doc, prose=False):
+    """The RFC 8785 serialisation of a document (a JSON text, or a parsed value) with its '_' keys removed
+    (kept with prose=True, for testing the serialiser on arbitrary values). Raises DigestError."""
+    v = _parse_ijson(doc) if isinstance(doc, (str, bytes)) else doc
+    return _canon(v if prose else _strip_prose(v))
+
+
+def digest(doc, prose=False):
+    """The IR digest (section 3.10): sha256 of canonical(doc) in UTF-8, as 64 lowercase hex digits."""
+    import hashlib
+    return hashlib.sha256(canonical(doc, prose).encode("utf-8")).hexdigest()
 
 
 # ---------------------------------------------------------------- GGUF reading
@@ -243,6 +364,20 @@ def _tensor_names(node):
         for key, v in node["experts"].items():
             if isinstance(v, str):
                 yield "experts." + key, v
+    if node.get("op") == "recurrence" and isinstance(node.get("weights"), dict):
+        for key, v in node["weights"].items():
+            if isinstance(v, str):
+                yield "weights." + key, v
+
+
+def _recurrence():
+    sys.path.insert(0, str(HERE))
+    try:
+        import ir_recurrence  # noqa: PLC0415 (standard library only for parsing and checking)
+    finally:
+        if sys.path and sys.path[0] == str(HERE):
+            sys.path.pop(0)
+    return ir_recurrence
 
 
 def _expr_error(text, n_inputs):
@@ -296,6 +431,9 @@ def node_errors(doc):
                 errs.append(E("5.14", f"{where} writes {len(outs)} values, not [q, k]"))
         elif op is not None and not isinstance(outs, str):
             errs.append(E("10.1 rule 7", f"{where} writes one value"))
+        # Rules 31-33: a recurrence's declarations and bodies (6.10).
+        if op == "recurrence":
+            errs += [m.replace("IR_SPEC 6.10", f"IR_SPEC 6.10: {where}", 1) for m in _recurrence().errors(n)]
         # Rule 9: expr parses.
         if op == "expr" and isinstance(n.get("expr"), str):
             msg = _expr_error(n["expr"], max(1, len(ins)))
@@ -404,9 +542,12 @@ def state_errors(doc):
             if s.get("op") not in RECURRENT_OPS or s.get("dtype") != "f32" or not ts:
                 errs.append(E("6.3", f"recurrent state {name}: op (a recurrent op), dtype f32 and tensors required"))
             for t in ts if isinstance(ts, list) else []:
+                init_ok = isinstance(t, dict) and (t.get("init") == 0 or (t.get("init") == "body"
+                                                                          and s.get("op") == "recurrence"))
                 if not isinstance(t, dict) or not t.get("name") or not t.get("shape") or not isinstance(t["shape"], list) \
-                        or not all(isinstance(x, int) and x > 0 for x in t["shape"]) or t.get("init") != 0:
-                    errs.append(E("6.3", f"recurrent state {name}: tensor {t} needs name, shape and init 0"))
+                        or not all(isinstance(x, int) and x > 0 for x in t["shape"]) or not init_ok:
+                    errs.append(E("6.3", f"recurrent state {name}: tensor {t} needs name, shape and init 0 "
+                                         f"(or 'body', for a recurrence)"))
         else:
             errs.append(E("6.1", f"state slot {name}: unknown kind {s.get('kind')}"))
     used, readers = set(), {}
@@ -425,12 +566,14 @@ def state_errors(doc):
                                  + (f" of op {node['op']}" if want == "recurrent" else "")))
             continue
         used.add(node.get("state"))
-        if node["op"] == "attention":
+        if node["op"] in ("attention", "recurrence"):
             readers[node.get("state")] = readers.get(node.get("state"), 0) + 1
         errs += _slot_fit(node, slot, L)
     for name, n in readers.items():
-        if n > 1:
+        if n > 1 and slots.get(name, {}).get("kind") == "kv":
             errs.append(E("6.1", f"kv state {name} is read by {n} attention nodes (exactly one is defined)"))
+        elif n > 1:
+            errs.append(E("6.10", f"recurrence state {name} is read by {n} nodes (exactly one is defined)"))
     for name in slots:
         if name not in used:
             errs.append(E("6.1", f"state slot {name} is read by no node"))
@@ -451,6 +594,8 @@ def _slot_fit(node, slot, L):
                                           f"{slot.get('name')}'s {b[i]}" + (" (Q7)" if key in ("kv_heads", "head_dim") else "")))
                     break
         return errs
+    if op == "recurrence":
+        return [m for m in _recurrence().errors(node, slot) if "rule 33" in m]
     shapes = {t.get("name"): t.get("shape") for t in slot.get("tensors", []) if isinstance(t, dict)}
     if op == "linear_attention":
         want = {"num": [node.get("heads"), node.get("head_dim")], "den": [node.get("heads"), node.get("head_dim")]}
@@ -657,6 +802,15 @@ def gguf_report(doc, meta, tensors):
     if ver is None or ver[0] != 4 or ver[1] != emb_ver:
         errs.append(E("3.1", f"paperkiln.ir_version {ver} does not match the embedded document's ir_version "
                              f"{emb_ver}"))
+    sha = meta.get("paperkiln.ir_sha256")
+    if sha is not None:  # rule 30: the digest key names the embedded document (section 3.10)
+        try:
+            want = digest(embedded[1]) if embedded and embedded[0] == 8 else None
+        except DigestError as e:
+            want = f"none ({e})"
+        if sha[0] != 8 or sha[1] != want:
+            errs.append(E("3.10", f"paperkiln.ir_sha256 {sha[1]!r} is not the digest of the embedded document "
+                                  f"({want})"))
     have = {t[0] for t in tensors}
     dims = {t[0]: t[1] for t in tensors}
     refs = weight_refs(doc)
@@ -684,8 +838,36 @@ def gguf_report(doc, meta, tensors):
         bc = meta.get(f"{arch}.block_count", (None, None))[1]
         if bc != max(wmap) + 1:
             errs.append(E("7.1", f"{arch}.block_count {bc} != the {max(wmap) + 1} stored layers weight_index uses"))
+    errs += recurrence_gguf_errors(doc, dims)
     errs += state_token_gguf_errors(doc, meta, tensors)
     return errs, sorted(set(warns))
+
+
+def recurrence_gguf_errors(doc, dims):
+    """Rule 34 (container): each recurrence weight's tensor holds as many elements as its declaration."""
+    errs = []
+    blk = doc.get("block", {})
+    wmap = (blk.get("weight_index") or {}).get("per_layer") if isinstance(blk.get("weight_index"), dict) else None
+    for j, node in enumerate(blk.get("nodes", [])):
+        if not isinstance(node, dict) or node.get("op") != "recurrence":
+            continue
+        try:
+            prog = _recurrence().compile_node(node)
+        except ValueError:
+            continue  # reported by the document rules
+        for i in range(blk.get("repeat", 0) if isinstance(blk.get("repeat"), int) else 0):
+            m = wmap[i] if isinstance(wmap, list) and i < len(wmap) else i
+            t = i if node.get("tensor_index") == "application" else m
+            for name, _, tensor in prog.weights:
+                full = tensor.replace("{i}", str(t))
+                if full in dims:
+                    n = 1
+                    for x in dims[full]:
+                        n *= x
+                    if n != prog.numel(name):
+                        errs.append(E("6.10", f"(rule 34) block {i}[{j}] recurrence: weight {name} is {full}, "
+                                              f"{n} elements, its declaration {prog.numel(name)}"))
+    return sorted(set(errs))
 
 
 def gguf_errors(doc, meta, tensors):
@@ -772,7 +954,37 @@ def corpus():
     return sorted({f for p in pats for f in glob.glob(p, recursive=True) if Path(f).name != "v.gguf"})
 
 
+def document_text(path):
+    """The document a file holds, as its JSON text: a .json file's text, or a GGUF's paperkiln.ir."""
+    path = Path(path)
+    if path.suffix == ".gguf":
+        meta = read_gguf(path)[0]
+        if "paperkiln.ir" not in meta or meta["paperkiln.ir"][0] != 8:
+            raise ValueError(f"{path}: no string key paperkiln.ir")
+        return meta["paperkiln.ir"][1]
+    return path.read_text(encoding="utf-8")
+
+
+def digest_main(argv):
+    """`digest FILE... [--canonical]`: each file's IR digest (section 3.10), or why it has none."""
+    paths = [a for a in argv if not a.startswith("--")]
+    if not paths:
+        print(digest_main.__doc__)
+        return 2
+    bad = 0
+    for p in paths:
+        try:
+            text = document_text(p)
+            print(canonical(text) if "--canonical" in argv else f"{digest(text)}  {p}")
+        except (OSError, ValueError) as e:  # DigestError is a ValueError
+            bad += 1
+            print(f"NO DIGEST {p}: {e}")
+    return 1 if bad else 0
+
+
 def main(argv):
+    if argv[:1] == ["digest"]:
+        return digest_main(argv[1:])
     quiet = "--quiet" in argv
     paths = [a for a in argv if not a.startswith("--")]
     if "--corpus" in argv:
