@@ -1110,7 +1110,7 @@ per job rather than assuming it:
    power-of-two block: at d 192, 20m_L32's width, `cbdcb915d26a` dropped a third of the sum of squares, so 20m_L32's
    spot-check failed 0/40 and its post jobs generate with `mtstudio chat`, as rule 3 provides; every other width in
    the sweep is unaffected). Commits after 0c802f86 pin `aa50a6112dfd` (ember main on 25 Oct 2026, conformant with
-   `spec/IR_SPEC.md` v1: it reads `ir_version` 1, which paperkiln's exporters write from the next commit on, and
+   `spec/IR_SPEC.md` v1: it reads `ir_version` 1, which paperkiln's exporters write from 5349ee19 on, and
    which `69d7ca26d5cd` refuses). Its parity receipts are byte-identical to `69d7ca26d5cd`'s, so generation is
    unchanged, and the per-run spot-check still gates every run.
 2. *Server.* The SFT model's F32 GGUF (the SFT spec exports it; `mtstudio export` re-exports it when missing or not
