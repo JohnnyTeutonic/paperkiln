@@ -7,6 +7,16 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **The general chat model's next step: pk_sft_v1** (25 Oct; paperkiln 0ad646d5..91f47fec, one RunPod L4,
+  $3.19; `experiments/chat_general/RESULTS.md`). pk_base_v1 + lever 1's SFT set at T 512 as conversation rows
+  (`tools/lever1_conversations.py`: one row per dialogue, the per-turn file's 463,695 replies in 313,606 rows)
+  under `train.sft_loss` all, BF16 + flash, 18,620 steps, held-out loss 1.508: simple-QA 21/60 against big_sft
+  11, ctrl_sft and moe_sft 7, the live model 2; ember aa50a61 greedy parity 40/40 on CUDA and CPU. The winner
+  rule (PLAN.md, fixed before the results) names the live model as registered and pk_sft_v1 under its
+  amendment A1. Tooling: `bpe.load_vocab` (chat_eval, qa_eval, chat_sample_ember and sample_candidates read the
+  16k vocabulary), `tools/colab_chat/general_chat_v1.json`, `chat_eval_stage.py`, `ensure_ember_vm.py`,
+  `chat_parity_vm.py`, `pref_sample_vm.py`, `experiments/chat_general/winner.py`; chat_eval deletes its
+  reference-scoring runs (they filled a 40 GB volume).
 - **The IR's specification is keramos** (25 Oct). The spec text, schema, validator, numpy reference, conformance
   suite (with engines' receipts), worked documents and prior-art survey are the keramos repository
   (github.com/JohnnyTeutonic/keramos, private; tag v1.1.0 = revision 1.1, 322162ae), vendored at the pinned
