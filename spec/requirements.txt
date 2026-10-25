@@ -1,0 +1,6 @@
+numpy>=1.26
+pytest>=8
+# optional
+gguf>=0.19
+scipy>=1.11
+jsonschema>=4.18

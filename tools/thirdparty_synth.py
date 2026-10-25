@@ -2,7 +2,7 @@
 """Synthetic third-party gate (LOCAL_LLM_STACK.md section 7), for graph features no small official
 checkpoint exercises or that we cannot download: a tiny randomly initialised HF transformers model of
 the family, converted by llama.cpp's own convert_hf_to_gguf.py (f32; a placeholder vocabulary, since
-the graph is under test, not tokenisation), then tools/gguf_ir.py's IR on tools/ir_numpy.py against
+the graph is under test, not tokenisation), then spec/tools/gguf_ir.py's IR on spec/tools/ir_numpy.py against
 HF's PyTorch forward of the same random weights (eager attention, f32) on random token sequences
 longer than the attention window.
 
@@ -26,6 +26,7 @@ import sys
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "spec", "tools"))  # keramos
 import gguf_ir  # noqa: E402
 import ir_numpy  # noqa: E402
 import thirdparty_parity  # noqa: E402

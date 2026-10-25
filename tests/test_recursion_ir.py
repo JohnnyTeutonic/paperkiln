@@ -2,10 +2,10 @@
 
 Tiny recursed llama models (1 + [2] x 3 + 1, i.e. 8 applications of 4 stored layers, without and with
 inject "add"; and [2] x 4) train for 40 steps on CPU and export F32 and Q8_0 GGUFs. Checks: the files
-pass tools/ir_check.py; architecture "paperkiln" with block_count = the stored layers and tensors
+pass spec/tools/ir_check.py; architecture "paperkiln" with block_count = the stored layers and tensors
 blk.0..3 only (each shared layer stored once); the IR's block is the llama block (plus the injection
 affine and add) with repeat = n_layers = 8 applications and weight_index [0, 1, 2, 1, 2, 1, 2, 3];
-tools/ir_numpy.py's forward over the GGUF equals mtstudio's own forward (`mtstudio score`) on 40
+spec/tools/ir_numpy.py's forward over the GGUF equals mtstudio's own forward (`mtstudio score`) on 40
 prompts: log-probabilities of a greedy continuation within ROUNDING (1e-5 of max(1, max |ref|)) and
 mtstudio's argmax at every scored position equal to numpy's greedy token (40/40 greedy). Without the
 weight_index the IR names tensors the file does not have (ir_check fails), so the map is load-bearing.
@@ -24,12 +24,13 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tests"))
 sys.path.insert(0, str(ROOT / "tools"))
+sys.path.insert(0, str(ROOT / "spec" / "tools"))  # keramos (the IR reference)
 from test_mtstudio_chat import BIN, write_vocab_gguf  # noqa: E402
 from test_mtstudio_moe import WORDS, corpus, events, run  # noqa: E402
 import ir_check  # noqa: E402
 
 needs_bin = pytest.mark.skipif(BIN is None, reason="set MTSTUDIO_BIN to a built mtstudio")
-V0 = json.loads((ROOT / "ir" / "chat_sftfinal.ir.json").read_text(encoding="utf-8"))
+V0 = json.loads((ROOT / "spec" / "examples" / "chat_sftfinal.ir.json").read_text(encoding="utf-8"))
 REC = {"prelude": 1, "block": 2, "repeats": 3, "coda": 1}
 
 

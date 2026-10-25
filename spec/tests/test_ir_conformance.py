@@ -1,10 +1,8 @@
-"""The IR conformance suite (spec/conformance/, spec/IR_SPEC.md section 11) and its runner
+"""The IR conformance suite (conformance/, IR_SPEC.md section 11) and its runner
 (tools/ir_conformance.py): the tensor hex format round-trips bit for bit; the GGUF writer's files read back
 through tools/ir_validate.py; the eviction rule's legal row sets (6.8.3) on a worked sequence; every case
-passes against the numpy reference (a FAIL is a regression of the reference or of the suite); with
-MTSTUDIO_BIN, every case mtstudio can run passes and none fails."""
+passes against the numpy reference (a FAIL is a regression of the reference or of the suite)."""
 import json
-import os
 from pathlib import Path
 import sys
 
@@ -33,7 +31,7 @@ def test_exact_compares_bits_but_any_nan_matches():
 
 
 def test_gguf_writer_reads_back(tmp_path):
-    doc = json.loads((ROOT / "ir" / "chat_sftfinal.ir.json").read_text(encoding="utf-8"))
+    doc = json.loads((ROOT / "examples" / "chat_sftfinal.ir.json").read_text(encoding="utf-8"))
     W = {"a.weight": np.arange(6, dtype=np.float32).reshape(2, 3), "b": np.ones(5, np.float32)}
     p = tmp_path / "m.gguf"
     conf.write_gguf(p, {"general.architecture": (8, "paperkiln"), "x.n": (4, 7),
@@ -58,19 +56,13 @@ def test_eviction_rows_eager_and_lazy():
     assert allowed == [list(range(6))]
 
 
-@pytest.mark.skipif(not HAVE_SUITE, reason="spec/conformance has no manifest yet")
+@pytest.mark.skipif(not HAVE_SUITE, reason="conformance/ has no manifest yet")
 def test_suite_passes_against_the_reference():
     counts = conf.run_suite(conf.NumpyAdapter())
     assert counts["FAIL"] == 0 and counts["PASS"] > 0, counts
 
 
-@pytest.mark.skipif(not HAVE_SUITE or not os.environ.get("MTSTUDIO_BIN"), reason="set MTSTUDIO_BIN")
-def test_suite_passes_against_mtstudio():
-    counts = conf.run_suite(conf.MtstudioAdapter())
-    assert counts["FAIL"] == 0 and counts["PASS"] > 0, counts
-
-
-@pytest.mark.skipif(not HAVE_SUITE, reason="spec/conformance has no manifest yet")
+@pytest.mark.skipif(not HAVE_SUITE, reason="conformance/ has no manifest yet")
 def test_versions_0_and_1_read_alike(tmp_path):
     """IR_SPEC 2.1: a version 0 document is a version 1 document. A suite model written with each version
     validates and gives bit-identical reference logits."""

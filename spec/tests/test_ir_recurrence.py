@@ -1,4 +1,4 @@
-"""tools/ir_recurrence.py and the digest (spec/IR_SPEC.md 6.10 and 3.10): the four rewrites reproduce the
+"""tools/ir_recurrence.py and the digest (IR_SPEC.md 6.10 and 3.10): the four rewrites reproduce the
 hand-written ops (bit for bit where 6.10.6 says so), the validator's recurrence rules, finite-difference
 gradients against a closed form, and the canonical serialisation."""
 import copy
@@ -16,7 +16,7 @@ import ir_numpy  # noqa: E402
 import ir_recurrence as R  # noqa: E402
 import ir_validate as V  # noqa: E402
 
-SUITE = ROOT / "spec" / "conformance"
+SUITE = ROOT / "conformance"
 BITS = {"linear_attention": True, "ssm_scan": True, "conv1d_causal": True, "selective_scan": False}
 
 

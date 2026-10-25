@@ -1,18 +1,17 @@
-"""The IR conformance suite's runner and generator (spec/IR_SPEC.md section 11; suite in spec/conformance/).
+"""The IR conformance suite's runner and generator (IR_SPEC.md section 11; suite in conformance/).
 
     python tools/ir_conformance.py --adapter ir_numpy               # run the suite against the reference
-    MTSTUDIO_BIN=build/mtstudio python tools/ir_conformance.py --adapter mtstudio
     python tools/ir_conformance.py --adapter cmd:"engine --conformance"   # any engine, JSON Lines (11.3)
     python tools/ir_conformance.py --regenerate                     # expected values from tools/ir_numpy.py
-    MTSTUDIO_BIN=... python tools/ir_conformance.py --build-models OUT   # train the paperkiln models into OUT
 
 Options: --only SUBSTRING (cases whose id contains it), --json RESULTS.json (per-case results), --list.
 
 Kinds of case: op (one node on given inputs), model (prompts, greedy ids, log-probabilities, depth traces),
 trace (adapter sessions: prefill, incremental decode, truncate, snapshot and restore, with kv rows held,
 depths and recurrent tensors checked), refuse (documents and GGUFs every consumer must refuse).
-The adapter contract is section 11.3: NumpyAdapter, MtstudioAdapter and CmdAdapter below implement it.
-A case an adapter cannot run is SKIP, never PASS. Exit status 1 on any FAIL.
+The adapter contract is section 11.3: NumpyAdapter and CmdAdapter below implement it. An in-process
+adapter (a subclass of Adapter) runs through main(argv, adapters={name: factory}), as paperkiln's
+mtstudio adapter does. A case an adapter cannot run is SKIP, never PASS. Exit status 1 on any FAIL.
 """
 from __future__ import annotations
 
@@ -29,7 +28,7 @@ import numpy as np
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
-SUITE = ROOT / "spec" / "conformance"
+SUITE = ROOT / "conformance"
 sys.path.insert(0, str(HERE))
 import ir_numpy  # noqa: E402
 import ir_validate  # noqa: E402
@@ -181,6 +180,7 @@ class Adapter:
     """The contract's methods; anything not implemented raises NotImplementedError (reported SKIP)."""
     name, backend, exact = "?", "cpu", True
     profiles = set()
+    score_only = False  # True: model cases only through score (no open/forward fallback)
 
     def hello(self):
         return {"engine": self.name, "backend": self.backend, "exact": self.exact, "profiles": sorted(self.profiles)}
@@ -222,7 +222,7 @@ class Adapter:
         raise NotImplementedError
 
     def score(self, model_dir, prompt, cont, kv_cache=False, evict=False, kv_step=0):
-        """Optional (mtstudio): {"logprobs", "argmax", "depth"?, "kv_rows"?}; the runner otherwise uses
+        """Optional (an engine that scores, such as mtstudio): {"logprobs", "argmax", "depth"?, "kv_rows"?}; the runner otherwise uses
         open/forward."""
         raise NotImplementedError
 
@@ -347,97 +347,6 @@ def _reference_kv(doc, ids, trace, evict, k):
     return out
 
 
-class MtstudioAdapter(Adapter):
-    """paperkiln's C++ engine. It runs its own exports, not documents: model cases and forward-only
-    traces of llama-family models go through `mtstudio score` (--kv-cache, --kv-step 1, --evict); op
-    cases of expr through expr_eval; recurrence op and gradient cases and the digest vectors through
-    ir_eval. Everything else is SKIP."""
-    name, profiles = "mtstudio", {"core", "state", "recursion", "chat", "recurrence"}
-
-    def __init__(self, binary=None):
-        self.bin = binary or os.environ.get("MTSTUDIO_BIN") or str(ROOT / "build" / "mtstudio")
-        if not Path(self.bin).is_file():
-            raise SystemExit(f"mtstudio adapter: no binary at {self.bin} (set MTSTUDIO_BIN)")
-        ee = os.environ.get("EXPR_EVAL_BIN") or str(Path(self.bin).parent / "expr_eval")
-        self.expr_eval = ee if Path(ee).is_file() else None
-        ie = os.environ.get("IR_EVAL_BIN") or str(Path(self.bin).parent / "ir_eval")
-        self.ir_eval = ie if Path(ie).is_file() else None
-
-    def _ir_eval(self, req):
-        if self.ir_eval is None:
-            raise NotImplementedError("no ir_eval binary beside mtstudio (set IR_EVAL_BIN)")
-        r = subprocess.run([self.ir_eval], input=json.dumps([req]), capture_output=True, text=True, timeout=600)
-        if r.returncode != 0:
-            raise RuntimeError(r.stderr[-500:])
-        got = json.loads(r.stdout)[0]
-        if "skip" in got:
-            raise NotImplementedError(got["skip"])
-        if "error" in got:
-            raise RuntimeError(got["error"])
-        return _decode_tensors(got)
-
-    def digest(self, text, prose=False):
-        return self._ir_eval({"method": "digest", "text": text, "prose": prose})
-
-    def run_node_grad(self, node, inputs, weights, out_grad):
-        if node["op"] != "recurrence":
-            raise NotImplementedError("ir_eval differentiates recurrence nodes")
-        return self._ir_eval({"method": "run_node_grad", "node": node, "inputs": _encode_tensors(inputs),
-                              "weights": _encode_tensors(weights), "out_grad": enc(out_grad)})["grads"]
-
-    def score(self, model_dir, prompt, cont, kv_cache=False, evict=False, kv_step=0):
-        d = Path(model_dir).resolve()
-        mt = d / "mtstudio.json"
-        if not mt.is_file():
-            raise NotImplementedError("no mtstudio run record (not a paperkiln-trained model)")
-        spec = json.loads(mt.read_text(encoding="utf-8"))
-        with tempfile.TemporaryDirectory(prefix="irconf_") as tmp:
-            spec["out_dir"] = str(d)
-            spec.setdefault("data", {})["vocab"] = str(d / (d.name + ".gguf"))
-            spec["name"] = d.name
-            sp = Path(tmp) / "spec.json"
-            sp.write_text(json.dumps(spec), encoding="utf-8")
-            req, res = Path(tmp) / "in.jsonl", Path(tmp) / "out.jsonl"
-            req.write_text(json.dumps({"prompt_ids": list(prompt), "continuation_ids": list(cont)}) + "\n",
-                           encoding="utf-8")
-            cmd = [self.bin, "score", str(sp), "--in", str(req), "--out", str(res)]
-            if kv_cache:
-                cmd.append("--kv-cache")
-                if evict:
-                    cmd.append("--evict")
-                if kv_step:
-                    cmd += ["--kv-step", str(kv_step)]
-            r = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
-            if r.returncode != 0:
-                raise RuntimeError(r.stderr.strip()[-500:])
-            g = json.loads(res.read_text().splitlines()[0])
-        out = {"logprobs": g["logprobs"], "argmax": g["argmax"]}
-        if "depth" in g:
-            out["depth"] = g["depth"]
-        if "kv_rows" in g:
-            out["kv_rows"] = g["kv_rows"]
-        return out
-
-    def run_node(self, node, inputs, weights, state):
-        if node["op"] == "recurrence":
-            got = self._ir_eval({"method": "run_node", "node": node, "inputs": _encode_tensors(inputs),
-                                 "weights": _encode_tensors(weights)})
-            return {"outputs": got["outputs"], "state": got["state"]}
-        if node["op"] != "expr" or self.expr_eval is None:
-            raise NotImplementedError("mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences")
-        xs = [inputs[n] for n in node["in"]]
-        case = {"expr": node["expr"], "inputs": [x.astype(np.float64).tolist() for x in xs]}
-        r = subprocess.run([self.expr_eval], input=json.dumps([case]), capture_output=True, text=True, timeout=120)
-        if r.returncode != 0:
-            raise RuntimeError(r.stderr[-500:])
-        got = json.loads(r.stdout)[0]
-        if "error" in got:
-            raise RuntimeError(got["error"])
-        val = np.array([[float(v) if not isinstance(v, str) else float(v.replace("inf", "inf")) for v in row]
-                        for row in got["out"]], dtype=np.float32)
-        return {"outputs": {node["out"]: val}, "state": {}}
-
-
 class CmdAdapter(Adapter):
     """Any engine through a subprocess speaking section 11.3's JSON Lines."""
 
@@ -530,14 +439,16 @@ def _decode_tensors(x):
     return x
 
 
-def make_adapter(spec, keep_env=()):
+def make_adapter(spec, keep_env=(), adapters=None):
+    """ir_numpy, cmd:<program and arguments>, or a name in adapters {name: factory()}."""
+    adapters = dict(adapters or {})
+    if spec in adapters:
+        return adapters[spec]()
     if spec == "ir_numpy":
         return NumpyAdapter()
-    if spec == "mtstudio":
-        return MtstudioAdapter()
     if spec.startswith("cmd:"):
         return CmdAdapter(spec[4:], keep_env)
-    raise SystemExit(f"unknown adapter {spec} (ir_numpy, mtstudio, cmd:<program>)")
+    raise SystemExit(f"unknown adapter {spec} ({', '.join(['ir_numpy', *adapters, 'cmd:<program>'])})")
 
 
 # ---------------------------------------------------------------- running the suite
@@ -638,7 +549,7 @@ def run_model_case(adapter, case, model_dir, tol):
             res = adapter.score(model_dir, ids, cont)
             lp, am, dep = res["logprobs"], res["argmax"], res.get("depth")
         except NotImplementedError:
-            if isinstance(adapter, MtstudioAdapter):
+            if adapter.score_only:
                 raise
             s = adapter.open(gguf)["session"]
             r = adapter.forward(s, ids + cont[:-1], ["logits"] + (["depth"] if "depth" in pr else []))
@@ -694,7 +605,7 @@ def run_trace(adapter, case, model_dir, tol):
         good = res["kv_rows"] in sf["kv_rows"]
         ok &= good
         msgs.append(f"kv rows {res['kv_rows']} {'legal' if good else 'not among ' + str(sf['kv_rows'])}")
-    return ok, "; ".join(msgs) + " (via mtstudio score)"
+    return ok, "; ".join(msgs) + " (via the adapter's score)"
 
 
 def _run_trace_sessions(adapter, case, model_dir, tol):
@@ -831,20 +742,16 @@ def run_suite(adapter, only=None, out_json=None):
 
 # ---------------------------------------------------------------- generating the suite
 
-def main(argv=None):
+def main(argv=None, adapters=None):
+    """The command line; adapters {name: factory()} adds in-process adapters to --adapter's choices."""
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--adapter")
     ap.add_argument("--only")
     ap.add_argument("--json")
     ap.add_argument("--regenerate", action="store_true")
-    ap.add_argument("--build-models", metavar="OUT")
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--keep-env", action="append", default=[], help="an engine variable to pass through (repeatable)")
     a = ap.parse_args(argv)
-    if a.build_models:
-        import ir_conformance_gen
-        ir_conformance_gen.build_models(Path(a.build_models), a.only)
-        return 0
     if a.regenerate:
         import ir_conformance_gen
         ir_conformance_gen.regenerate()
@@ -856,7 +763,7 @@ def main(argv=None):
     if not a.adapter:
         ap.print_help()
         return 2
-    counts = run_suite(make_adapter(a.adapter, a.keep_env), a.only, a.json)
+    counts = run_suite(make_adapter(a.adapter, a.keep_env, adapters), a.only, a.json)
     return 1 if counts["FAIL"] else 0
 
 

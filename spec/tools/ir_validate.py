@@ -1,8 +1,8 @@
-"""The shared validator for the paperkiln IR (spec/IR_SPEC.md section 10): the JSON Schema
-(spec/ir.schema.json) and every refusal rule of section 10.1, each message naming its section.
+"""The shared validator for the paperkiln IR (IR_SPEC.md section 10): the JSON Schema
+(ir.schema.json) and every refusal rule of section 10.1, each message naming its section.
 
     python tools/ir_validate.py doc.ir.json [model.gguf ...]   # documents and GGUFs; exit 1 on a refusal
-    python tools/ir_validate.py --corpus [--quiet]              # every stored document and gate GGUF
+    python tools/ir_validate.py --corpus [--corpus-glob PAT ...] [--quiet]   # stored documents (corpus())
     python tools/ir_validate.py digest doc.ir.json|model.gguf [--canonical]   # the IR digest (section 3.10)
 
     doc_errors(doc)                     -> [message]   schema + document rules (10.1 rules 1-23, 31-33)
@@ -12,22 +12,21 @@
     canonical(text_or_value) -> str; digest(text_or_value) -> 64 hex digits   (section 3.10; DigestError)
 
 Standard library only (the expr grammar is checked with tools/ir_expr.py when numpy is importable).
-The schema is evaluated by this module's own evaluator of the keywords spec/ir.schema.json uses;
+The schema is evaluated by this module's own evaluator of the keywords ir.schema.json uses;
 tests/test_ir_validate.py checks it agrees with the `jsonschema` package where that is installed.
-Messages read "IR_SPEC <section>: <what>" (a section of spec/IR_SPEC.md); tools/ir_check.py calls this module for its semantic checks.
+Messages read "IR_SPEC <section>: <what>" (a section of IR_SPEC.md); tools/ir_check.py calls this module for its semantic checks.
 """
 from __future__ import annotations
 
 import glob
 import json
-import os
 from pathlib import Path
 import re
 import struct
 import sys
 
 HERE = Path(__file__).resolve().parent
-SCHEMA_PATH = HERE.parent / "spec" / "ir.schema.json"
+SCHEMA_PATH = HERE.parent / "ir.schema.json"
 VERSIONS = (0, 1)  # section 2.1: version 0 documents are version 1 documents
 STATEFUL = {"attention": "kv", "linear_attention": "recurrent", "ssm_scan": "recurrent",
             "conv1d_causal": "recurrent", "selective_scan": "recurrent", "recurrence": "recurrent"}
@@ -252,7 +251,7 @@ def _json_eq(a, b):
 
 def _eval(s, v, root, path, out):
     """Append (path, message) for every failure of instance v against schema s (the keywords
-    spec/ir.schema.json uses: $ref, type, enum, const, required, properties, patternProperties,
+    ir.schema.json uses: $ref, type, enum, const, required, properties, patternProperties,
     additionalProperties, items, minItems, minimum, minLength, allOf, anyOf, if/then)."""
     if s is True or s == {}:
         return
@@ -941,16 +940,16 @@ def file_errors(path):
 
 # ---------------------------------------------------------------- the corpus
 
-WORKSPACE = HERE.parents[1]
+REPO = HERE.parent
 
 
-def corpus():
-    """Every stored IR document and every gate GGUF: the worked documents, the experiment receipts of
-    both repositories, and C:/ml_artifacts (documents and the *_gate GGUFs)."""
-    pats = [str(HERE.parent / "ir" / "*.ir.json"), str(HERE.parent / "experiments" / "**" / "*.ir.json"),
-            str(WORKSPACE / "ember.cpp" / "experiments" / "**" / "*.ir.json")]
-    art = os.environ.get("ML_ARTIFACTS", "C:/ml_artifacts" if os.name == "nt" else "/mnt/c/ml_artifacts")
-    pats += [art + "/**/*.ir.json", art + "/*gate*/**/*.gguf"]
+def corpus(patterns=()):
+    """Every stored document of this repository that must be accepted (the worked documents, the suite's
+    models and its rewritten documents; refuse/ holds the ones that must not), and every file the glob
+    patterns name (recursive "**" allowed): an engine passes its own stores (documents, and GGUFs with an
+    embedded document) with --corpus-glob."""
+    pats = [str(REPO / "examples" / "*.ir.json"), str(REPO / "conformance" / "models" / "*" / "*.gguf"),
+            str(REPO / "conformance" / "recurrence" / "*.ir.json")] + list(patterns)
     return sorted({f for p in pats for f in glob.glob(p, recursive=True) if Path(f).name != "v.gguf"})
 
 
@@ -986,9 +985,16 @@ def main(argv):
     if argv[:1] == ["digest"]:
         return digest_main(argv[1:])
     quiet = "--quiet" in argv
-    paths = [a for a in argv if not a.startswith("--")]
-    if "--corpus" in argv:
-        paths = corpus() + paths
+    globs, rest = [], []
+    it = iter(argv)
+    for a in it:
+        if a == "--corpus-glob":
+            globs.append(next(it, ""))
+        else:
+            rest.append(a)
+    paths = [a for a in rest if not a.startswith("--")]
+    if "--corpus" in rest:
+        paths = corpus(globs) + paths
     if not paths:
         print(__doc__)
         return 2

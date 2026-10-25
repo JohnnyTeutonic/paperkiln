@@ -36,7 +36,7 @@ when its output already exists, so a run restarts where it stopped:
             a slot the flex family hosts (the FFN activation over one
             input; the norm over the row, e(x) * g + b with flex's learned
             per-feature g and b, a paper's own per-channel affine tail
-            mapped onto them) is parsed by tools/ir_expr.py, probed for
+            mapped onto them) is parsed by spec/tools/ir_expr.py, probed for
             finite f32 values and written as custom.activation / custom.norm
             = "expr:<e>" (mtstudio checks its gradient against finite
             differences before training; the GGUF's IR carries the expr
@@ -87,6 +87,7 @@ import urllib.request
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, os.path.join(ROOT, "papers"))
+sys.path.insert(0, os.path.join(ROOT, "spec", "tools"))  # keramos
 sys.path.insert(0, HERE)
 
 EXIT_REFUSED = 2
@@ -135,7 +136,7 @@ SPEC_KEY = {"norm": "norm", "activation": "activation", "positional": "position"
 EXPR_SLOTS = {"activation": 1, "norm": 1}
 # The flex family is pre-norm only.
 FLEX_NORM_PLACEMENT = "pre"
-# Where a hosted expr is probed (tools/ir_expr.py, f32): every value finite.
+# Where a hosted expr is probed (spec/tools/ir_expr.py, f32): every value finite.
 EXPR_PROBE = (-20.0, 20.0, 0.25)
 NEW_OP_CUE = re.compile(r"^new op (\S+) ")
 
@@ -289,7 +290,7 @@ def parse_asserts(items):
 
 
 def expr_host_check(expr, n_inputs):
-    """An expr the flex family is to host: parsed by tools/ir_expr.py (the
+    """An expr the flex family is to host: parsed by spec/tools/ir_expr.py (the
     grammar both engines implement) with n_inputs inputs, and finite in f32
     over EXPR_PROBE. Returns (canonical text, list of problems)."""
     import numpy as np
@@ -298,7 +299,7 @@ def expr_host_check(expr, n_inputs):
     try:
         node = ir_expr.parse(expr, n_inputs)
     except ir_expr.ExprError as e:
-        return expr, [f"does not parse in the IR grammar (tools/ir_expr.py): {e}"]
+        return expr, [f"does not parse in the IR grammar (spec/tools/ir_expr.py): {e}"]
     lo, hi, step = EXPR_PROBE
     xs = np.arange(lo, hi + step / 2, step, dtype=np.float32).reshape(1, -1)
     with np.errstate(all="ignore"):
@@ -432,7 +433,7 @@ def judge_new_ops(ext):
         lo, hi, step = EXPR_PROBE
         report.append(("EXPR", f"{k} = expr:{expr} (new op {name}, replaces {o.get('replaces') or k}; verified "
                                f"quote{where}: “{quote[:120]}”); parses in the IR grammar "
-                               f"(tools/ir_expr.py), finite in f32 on [{lo:g}, {hi:g}]; mtstudio checks its "
+                               f"(spec/tools/ir_expr.py), finite in f32 on [{lo:g}, {hi:g}]; mtstudio checks its "
                                "gradient against finite differences before training"))
         if k == "norm":
             pnames = [i.get("name") for i in inputs[1:]]

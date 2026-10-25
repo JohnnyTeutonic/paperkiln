@@ -41,6 +41,7 @@ results the methodology rests on.
 
 | file | subject |
 |---|---|
+| [`../spec/`](../spec/README.md) | keramos, the IR's specification (`IR_SPEC.md`), schema, reference tools and conformance suite, vendored at the tag in `spec/KERAMOS_PIN.json` (`tools/sync_keramos.sh`); never edited here |
 | [`DESIGN.md`](DESIGN.md) | paperkiln today in one table (tape, `expr`, families, studio, export with IR, reference tools, papers), then the original design record |
 | [`EVENTS_SPEC.md`](EVENTS_SPEC.md) | the `events.jsonl` contract. **The most portable thing here** — any trainer that emits it joins the toolchain |
 | [`CUDA_PHASE_B.md`](CUDA_PHASE_B.md) | Phase B1: device residency (complete) |

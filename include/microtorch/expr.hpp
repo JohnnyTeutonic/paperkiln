@@ -4,7 +4,7 @@
 // string in a closed grammar and run without recompiling. Expr parses the
 // string once; ops::expr builds the result from differentiable primitives
 // (ops.hpp) on the tape, so the backward comes from the primitives' own
-// backwards. tools/ir_expr.py is the numpy reference of the same grammar
+// backwards. spec/tools/ir_expr.py is the numpy reference of the same grammar
 // and semantics.
 //
 // Grammar (nothing else is accepted):

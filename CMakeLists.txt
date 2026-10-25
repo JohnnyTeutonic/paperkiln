@@ -260,8 +260,8 @@ target_link_libraries(test_gpt2_device PRIVATE microtorch)
 add_test(NAME gpt2_device COMMAND test_gpt2_device)
 
 # Runtime-defined ops (the IR's expr op): parser, primitives, gradients, a
-# flex run with an expr activation. expr_eval is the CLI tests/test_ir_expr.py
-# compares against the numpy reference (tools/ir_expr.py).
+# flex run with an expr activation. expr_eval is the CLI spec/tests/test_ir_expr.py
+# compares against the numpy reference (spec/tools/ir_expr.py).
 add_executable(test_expr tests/test_expr.cpp)
 target_link_libraries(test_expr PRIVATE microtorch)
 add_test(NAME expr COMMAND test_expr)
@@ -271,7 +271,7 @@ target_link_libraries(expr_eval PRIVATE microtorch nlohmann_json::nlohmann_json)
 # The IR's recurrence op (spec/IR_SPEC.md 6.10): bit equality with the hand-written
 # kimi and ssm_scan ops, prefill = decode, FD gradchecks, refusals. ir_eval answers the
 # conformance suite's node-level requests (digest, recurrence nodes and their gradients)
-# for tools/ir_conformance.py's mtstudio adapter; test_ir_digest checks the digest vectors.
+# for tools/ir_conformance_mtstudio.py (mtstudio's adapter); test_ir_digest checks the digest vectors.
 add_executable(test_recurrence_op tests/test_recurrence_op.cpp)
 target_link_libraries(test_recurrence_op PRIVATE microtorch)
 add_test(NAME recurrence_op COMMAND test_recurrence_op)

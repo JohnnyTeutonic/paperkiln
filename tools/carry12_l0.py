@@ -179,7 +179,7 @@ def cmd_run(a):
     flag = None
     if not good:
         flag = (f"{w} holds optimiser state, not weights (tiny_chat_run pick); forced choice by the IR scorer "
-                "on the GGUF (tools/ir_numpy.py)" + ("; ember generation without the mtstudio spot-check"
+                "on the GGUF (spec/tools/ir_numpy.py)" + ("; ember generation without the mtstudio spot-check"
                                                      if a.gen == "ember" else ""))
         if scorer == "mtstudio":
             sys.exit(flag.replace("forced choice by", "use --scorer ir or auto for"))

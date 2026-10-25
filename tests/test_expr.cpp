@@ -13,8 +13,8 @@
 //   5. flex: act "expr:relu(x)" equals act "relu" bit for bit, a squared-
 //      ReLU flex model trains (loss falls), its IR has the expr node, and a
 //      bad expression fails at construction
-// tests/test_ir_expr.py compares ops::expr with the numpy reference
-// (tools/ir_expr.py) through tools/expr_eval.cpp.
+// spec/tests/test_ir_expr.py compares ops::expr with the numpy reference
+// (spec/tools/ir_expr.py) through tools/expr_eval.cpp.
 #include <cmath>
 #include <cstdio>
 #include <functional>

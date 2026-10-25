@@ -1,5 +1,5 @@
 // ir_eval: paperkiln's C++ answers to the IR conformance suite's node-level requests (spec/IR_SPEC.md
-// section 11.3; tools/ir_conformance.py's mtstudio adapter). Reads a JSON array of requests on stdin and
+// section 11.3; tools/ir_conformance_mtstudio.py, mtstudio's adapter). Reads a JSON array of requests on stdin and
 // writes a JSON array of results, one per request, in order:
 //   {"method": "digest", "text": str, "prose": bool}
 //       -> {"sha256", "canonical"} | {"refused": message}          (section 3.10; ir::digest)

@@ -7,12 +7,12 @@ Tiny llama_attnres models train for 40 steps on CPU and export F32 and Q8_0 GGUF
   ar3n    3 layers, scale "none" (Kimi's convex mixture)
   ar_rec  1 + [2] x 2 + 1 fixed recursion, one pair of queries per application ("tensor_index":
           "application", not yet in ir.hpp: ahead of ember)
-Checks: the run logs the attn_res model event; the files pass tools/ir_check.py; architecture "paperkiln";
+Checks: the run logs the attn_res model event; the files pass spec/tools/ir_check.py; architecture "paperkiln";
 the pseudo-queries are [d] tensors stored F32 in both variants (blk.{i}.attnres_attn_q / attnres_ffn_q,
 attnres_out_q; rec_app.{i}.* under recursion), application 0's attention query written as zeros and the
 trained ones nonzero; the IR is embed + list, a block of depth_attend (+ affine S under "sources"),
 rmsnorm, the llama attention, append, depth_attend (+ affine), rmsnorm, SwiGLU, append, and a head of
-depth_attend (+ affine), output_norm, output; tools/ir_numpy.py's forward over the F32 GGUF against
+depth_attend (+ affine), output_norm, output; spec/tools/ir_numpy.py's forward over the F32 GGUF against
 `mtstudio score` on 40 prompts: log-probabilities of a greedy continuation within ROUNDING (1e-5 of
 max(1, max |ref|)) and greedy 40/40. At step 1 an attn_res run's loss equals the plain llama's of the same
 seed (zero queries; scale "sources"). Malformed specs are refused.
@@ -35,6 +35,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tests"))
 sys.path.insert(0, str(ROOT / "tools"))
+sys.path.insert(0, str(ROOT / "spec" / "tools"))  # keramos (the IR reference)
 from test_mtstudio_chat import BIN, write_vocab_gguf  # noqa: E402
 from test_mtstudio_moe import WORDS, corpus, events, run  # noqa: E402
 from test_recursion_ir import gguf_exports, parity  # noqa: E402
@@ -104,7 +105,7 @@ def write_gate(name, spec, res, custom):
                 "spec": json.loads(Path(spec).read_text()),
                 "numpy_vs_mtstudio": {"worst": worst, "agree": agree, "n": n},
                 "files": {f.name: sha256(out / f.name) for f in files},
-                "_note": "score_in.jsonl: prompt_ids and tools/ir_numpy.py's greedy continuation over the F32 GGUF; "
+                "_note": "score_in.jsonl: prompt_ids and spec/tools/ir_numpy.py's greedy continuation over the F32 GGUF; "
                          "score_out.jsonl: mtstudio score over the same ids (logprobs, argmax). ember gate: "
                          "greedy 40/40 and log-probabilities within ROUNDING on CPU, CUDA and WASM "
                          "(IR_SPEC_DRAFT section 5, gate 5)."}

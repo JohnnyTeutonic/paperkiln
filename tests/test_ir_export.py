@@ -1,10 +1,10 @@
 """The paperkiln IR in mtstudio's GGUF exports (microtorch/ir.hpp).
 
 Tiny dense and MoE llama models train for two steps and export F32 and Q8_0
-GGUFs. Checks (tools/ir_check.py): both keys present and after every other
+GGUFs. Checks (spec/tools/ir_check.py): both keys present and after every other
 key, every tensor the IR names exists in each file, the sidecar equals the
 embedded document; the dense IR is the hand-written v0 worked example
-(ir/chat_sftfinal.ir.json) with this model's dimensions; the MoE block has
+(spec/examples/chat_sftfinal.ir.json) with this model's dimensions; the MoE block has
 one moe_ffn node in place of the dense FFN's five. The gpt2 family exports
 in llama.cpp's gpt2 layout (shapes, metadata and bytes against the
 safetensors) with a layernorm / split / gelu IR, as does flex with the GPT-2
@@ -28,12 +28,13 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tests"))
 sys.path.insert(0, str(ROOT / "tools"))
+sys.path.insert(0, str(ROOT / "spec" / "tools"))  # keramos (the IR reference)
 from test_mtstudio_chat import BIN, write_vocab_gguf  # noqa: E402
 from test_mtstudio_moe import MOE, WORDS, corpus, events, run, setup  # noqa: E402
 import ir_check  # noqa: E402
 
 needs_bin = pytest.mark.skipif(BIN is None, reason="set MTSTUDIO_BIN to a built mtstudio")
-V0 = json.loads((ROOT / "ir" / "chat_sftfinal.ir.json").read_text(encoding="utf-8"))
+V0 = json.loads((ROOT / "spec" / "examples" / "chat_sftfinal.ir.json").read_text(encoding="utf-8"))
 
 
 def exports(spec):

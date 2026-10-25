@@ -163,7 +163,7 @@ advisory steps that cannot fail the build.
   norm, quoted from the paper, against a truth set that records the T5 baseline's RMSNorm: settle
   which Primer the truth means). Open: score the op graphs and sizes, not only the flavours
   (the bench's truth covers norm, activation and positions); check every `expr` with
-  `tools/ir_expr.py` (the parser both engines use; landed in 1159d63e); a studio button that runs it instead of `fetch.py` when a key
+  `spec/tools/ir_expr.py` (the parser both engines use; landed in 1159d63e); a studio button that runs it instead of `fetch.py` when a key
   is configured; prompt optimisation later.
 - **Two lexical gaps found while fixing the wrong assertions:** the GELU
   pattern does not match the spelling "GeLU" (Megatron, BART), and a

@@ -4,8 +4,8 @@
 // recognise a fixed architecture.
 //
 // The IR's semantics are specified in spec/IR_SPEC.md (IR version 1; schema
-// spec/ir.schema.json, validator tools/ir_validate.py, reference interpreter
-// tools/ir_numpy.py, conformance suite spec/conformance/). This header
+// spec/ir.schema.json, validator spec/tools/ir_validate.py, reference interpreter
+// spec/tools/ir_numpy.py, conformance suite spec/conformance/). This header
 // documents the C++ API that writes documents; where it and the specification
 // differ, the specification holds.
 //
@@ -52,7 +52,7 @@ double f32(float v);
 // document with every "_" key removed (canonical), and the sha256 of its UTF-8
 // bytes as 64 lowercase hex digits (digest). A value with no digest (a
 // negative zero, an integer beyond 2^53, a non-finite number, malformed
-// UTF-8) throws DigestError. tools/ir_validate.py's canonical() and digest()
+// UTF-8) throws DigestError. spec/tools/ir_validate.py's canonical() and digest()
 // are the reference; spec/conformance/digest/ holds the vectors.
 struct DigestError : std::runtime_error {
     using std::runtime_error::runtime_error;
@@ -110,7 +110,7 @@ json recurrence(const std::vector<std::string>& ins, const std::string& state, c
                 const std::string& out);
 json recurrence_state(const std::string& name, const json& node);
 // Section 6.4's elu+1 linear attention as a recurrence body (IR_SPEC.md 6.10.6), den_floor 1e-8,
-// over inputs q, k, v [heads, head_dim]: the text tools/ir_recurrence.py's rewrite writes.
+// over inputs q, k, v [heads, head_dim]: the text spec/tools/ir_recurrence.py's rewrite writes.
 json linear_attention_body(size_t heads, size_t head_dim);
 
 }  // namespace ir

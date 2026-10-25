@@ -2,7 +2,7 @@
 // The IR's recurrence op (spec/IR_SPEC.md section 6.10, profile recurrence):
 // a per-token state update declared in the document, with init, let, update
 // and readout bodies in an indexed extension of the expr grammar. Recurrence
-// parses and checks a node (the same rules as tools/ir_recurrence.py, the
+// parses and checks a node (the same rules as spec/tools/ir_recurrence.py, the
 // numpy reference); ops::recurrence runs it on the tape, token by token, so
 // its backward is the autograd of the unrolled bodies (backpropagation
 // through time over the sequential fold). Every primitive is computed in f32
@@ -10,7 +10,7 @@
 // index order from +0; a read outside a tensor is +0.
 //
 // The four hand-written stateful ops have recurrence forms (IR_SPEC.md
-// 6.10.5, tools/ir_recurrence.py's rewrites); on the CPU, ops::recurrence over
+// 6.10.5, spec/tools/ir_recurrence.py's rewrites); on the CPU, ops::recurrence over
 // the linear_attention body equals ops::kimi_attention bit for bit, and over
 // the ssm_scan body ops::ssm_scan (tests/test_recurrence_op.cpp).
 #include <cstddef>

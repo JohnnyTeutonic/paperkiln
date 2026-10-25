@@ -6,7 +6,7 @@ state every step). Ops: embedding, pos_embedding, linear, layernorm,
 rmsnorm, gelu, silu, relu, sigmoid, add, sub, mul, mul_col, affine, scale,
 rms_row, split, rope, moe_ffn, attention (causal, or a sliding window with
 sinks), linear_attention, list, append, depth_attend, ssm_scan, expr
-(tools/ir_expr.py); any other op stops with its name. 40/40 vs mtstudio on chat_sftfinal_v3, moe_tiny_v3
+(spec/tools/ir_expr.py); any other op stops with its name. 40/40 vs mtstudio on chat_sftfinal_v3, moe_tiny_v3
 and gpt2_tiny (20 Oct 2026), and swa_tiny with replies up to 200 tokens.
 
     python tools/ir_run.py model.gguf receipt.jsonl tools/ [out.jsonl]
@@ -39,6 +39,8 @@ for _a in _it:
         argv.append(_a)
 
 sys.path.insert(0, argv[2])
+from pathlib import Path  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "spec" / "tools"))  # keramos (the IR reference)
 import bpe  # noqa: E402
 import ir_check  # noqa: E402
 import ir_numpy  # noqa: E402  (the op kernels)

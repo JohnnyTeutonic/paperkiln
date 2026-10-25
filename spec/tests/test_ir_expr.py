@@ -1,9 +1,9 @@
 """The IR's expr op: the numpy reference (tools/ir_expr.py) on its own, and
-against paperkiln's ops::expr through tools/expr_eval.cpp.
+against an engine's expr evaluator (paperkiln's tools/expr_eval.cpp, say).
 
 The reference alone: the grammar (accepted and rejected strings, with the
 column a rejection names), hand-computed values, nearest-float literals. With
-the CLI (EXPR_EVAL_BIN, or ./build/expr_eval; skipped otherwise): random
+the CLI (EXPR_EVAL_BIN; skipped otherwise): random
 inputs through every primitive and the expressions papers use, the C++
 result within ROUNDING (|a - b| <= 1e-5 * max(1, max|ref|), the IR's CPU
 tolerance) of the reference, non-finite entries in the same places, and the
@@ -57,8 +57,8 @@ PARITY = [
 
 
 def _bin():
-    cand = os.environ.get("EXPR_EVAL_BIN") or str(ROOT / "build" / "expr_eval")
-    return cand if Path(cand).is_file() else None
+    cand = os.environ.get("EXPR_EVAL_BIN")
+    return cand if cand and Path(cand).is_file() else None
 
 
 BIN = _bin()
@@ -146,7 +146,7 @@ def test_inputs_checked():
         parse("x", 0)
 
 
-# ---- against paperkiln's ops::expr ----
+# ---- against an engine's evaluator (EXPR_EVAL_BIN) ----
 
 @needs_bin
 def test_cpp_matches_numpy_on_random_inputs():

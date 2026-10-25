@@ -1,20 +1,17 @@
-"""Builds spec/conformance/ (spec/IR_SPEC.md section 11): tools/ir_conformance.py --build-models / --regenerate.
+"""Builds conformance/ (IR_SPEC.md section 11): tools/ir_conformance.py --regenerate.
 
-build_models(out): trains the paperkiln models of the suite with mtstudio (MTSTUDIO_BIN; tiny word or BPE
-vocabularies, d 16, 30-40 steps, the gate tests' recipes) into out/<name>/ (<name>.gguf with the IR,
-<name>.safetensors and mtstudio.json, the run's spec). Copy them into spec/conformance/models/ and run
---regenerate, which needs numpy only: it writes the third-party models (random weights, documents from
-tools/gguf_ir.py's builders), every case's expected values from tools/ir_numpy.py, the refusal cases
-and manifest.json. Deterministic: the same models give the same files.
+The pk_ models (conformance/models/pk_*/) are paperkiln's: its tools/ir_conformance_mtstudio.py
+--build-models OUT trains them with mtstudio (tiny word or BPE vocabularies, d 16, 30-40 steps) into
+OUT/<name>/ (<name>.gguf with the IR, <name>.safetensors and mtstudio.json, the run's spec); copy them
+into conformance/models/. --regenerate needs numpy only: it writes the third-party models (random weights,
+documents from tools/gguf_ir.py's builders), every case's expected values from tools/ir_numpy.py, the
+refusal cases and manifest.json. Deterministic: the same models give the same files.
 """
 from __future__ import annotations
 
 import copy
 import json
-import os
 from pathlib import Path
-import shutil
-import subprocess
 import sys
 
 import numpy as np
@@ -27,109 +24,15 @@ import ir_numpy  # noqa: E402
 import ir_validate  # noqa: E402
 from ir_conformance import SUITE, enc, evict_allowed, load_model, logprobs_of, write_gguf  # noqa: E402
 
-D, H = 16, 2
-
-
-# ---------------------------------------------------------------- paperkiln models (mtstudio)
-
-def _recipes():
-    llama = {"preset": "llama-tiny", "custom": {"d": D, "layers": 2, "heads": H}}
-    gpt2 = {"preset": "gpt2-nano", "custom": {"d": D, "layers": 2, "heads": H}}
-
-    def with_custom(base, **kw):
-        a = copy.deepcopy(base)
-        a["custom"].update(kw)
-        return a
-
-    r = {
-        "pk_llama": (llama, "core"),
-        "pk_moe": (dict(copy.deepcopy(llama), moe={"experts": 4, "top_k": 2, "aux_loss": 0.01, "z_loss": 0.001}), "core"),
-        "pk_gpt2": (gpt2, "core"),
-        "pk_gpt2_swa": (with_custom(gpt2, attention="swa", window=4, sinks=2), "core"),
-        "pk_kimi": (with_custom(gpt2, attention="kimi"), "state"),
-        "pk_srd": (with_custom(gpt2, attention="srd"), "state"),
-        "pk_attnres": (with_custom(gpt2, attention="attnres"), "core"),
-        "pk_flex_highway": (with_custom(gpt2, activation="relu", residual="highway", attention="swa", window=4, sinks=2),
-                            "core"),
-        "pk_flex_expr": (with_custom(gpt2, norm="expr:(x - rowmean(x)) / sqrt(rowmean((x - rowmean(x))^2) + 1e-5)",
-                                     activation="expr:relu(x)^2", position="rope"), "core"),
-        "pk_mamba": ({"preset": "mamba-tiny", "custom": {"d": D, "layers": 2, "heads": H, "d_state": 8}}, "state"),
-        "pk_recursive": ({"preset": "llama-tiny", "custom": {"d": D, "heads": H, "recursion": {
-            "prelude": 1, "block": 1, "repeats": 2, "coda": 1, "inject": "add"}}}, "recursion"),
-        "pk_mor": ({"preset": "llama-tiny", "custom": {"d": D, "heads": H, "recursion": {
-            "prelude": 1, "block": 1, "repeats": 3, "coda": 1, "schedule": "mor", "inject": "none"}}}, "recursion"),
-        "pk_llama_attnres": (with_custom(llama, attn_res={"form": "full"}), "core"),
-        # llama_attnres under recursion: each application's own pseudo-queries, "tensor_index": "application".
-        "pk_llama_attnres_rec": ({"preset": "llama-tiny", "custom": {"d": D, "heads": H, "attn_res": {"form": "full"},
-                                  "recursion": {"prelude": 1, "block": 1, "repeats": 2, "coda": 1,
-                                                "inject": "none"}}}, "recursion"),
-        "pk_state": (dict(copy.deepcopy(llama), state_tokens={"k": 2, "mask": "turn_state"}), "state"),
-        # The recurrence lane (IR_SPEC 6.10): kimi's projections around a recurrence node whose body is a
-        # decayed elu+1 linear attention (no hand-written op computes it).
-        "pk_recurrence": (with_custom(gpt2, attention="recurrence", recurrence=DECAYED_LINEAR_ATTENTION), "recurrence"),
-    }
-    return r
-
-
-# The pk_recurrence body: section 6.4's linear attention with the running sums decayed by 0.9375 per token.
-_PHI = "where({x}, {x} + 1, (exp(min(0, {x})) - 1) + 1)"
-DECAYED_LINEAR_ATTENTION = {
-    "index": {"h": H, "e": D // H}, "inputs": ["q[h,e]", "k[h,e]", "v[h,e]"],
-    "let": ["pk[h,e] = " + _PHI.format(x="k[h,e]")],
-    "update": ["num[h,e] = 0.9375 * num[h,e] + pk[h,e] * v[h,e]", "den[h,e] = 0.9375 * den[h,e] + pk[h,e]"],
-    "readout": "y[h,e] = (" + _PHI.format(x="q[h,e]") + " * num[h,e]) / max(den[h,e], 1e-08)"}
+# The profile of each paperkiln model of the suite (IR_SPEC 2.4).
+PK_PROFILES = {
+    "pk_llama": "core", "pk_moe": "core", "pk_gpt2": "core", "pk_gpt2_swa": "core", "pk_kimi": "state",
+    "pk_srd": "state", "pk_attnres": "core", "pk_flex_highway": "core", "pk_flex_expr": "core",
+    "pk_mamba": "state", "pk_recursive": "recursion", "pk_mor": "recursion", "pk_llama_attnres": "core",
+    "pk_llama_attnres_rec": "recursion", "pk_state": "state", "pk_recurrence": "recurrence"}
 # Models added after the suite's first release draw their prompts from a stream of their own, so the cases of
 # every earlier model stay byte-identical when the suite is regenerated.
 OWN_STREAM = {"pk_recurrence"}
-
-
-def build_models(out, only=None):
-    sys.path.insert(0, str(ROOT / "tests"))
-    from test_mtstudio_chat import BIN, write_vocab_gguf
-    from test_mtstudio_moe import WORDS, corpus
-    import bpe
-    import test_state_tokens_ir as sti
-    if BIN is None:
-        raise SystemExit("--build-models needs MTSTUDIO_BIN")
-    out = Path(out)
-    work = out / "_work"
-    work.mkdir(parents=True, exist_ok=True)
-    write_vocab_gguf(work / "v.gguf", ["<unk>"] + WORDS)
-    (work / "c.txt").write_text(corpus(), encoding="utf-8")
-    text = sti.corpus()
-    bpe.write_gguf(str(work / "vs.gguf"), bpe.train(text, 400))
-    (work / "cs.txt").write_text(text, encoding="utf-8")
-    for name, (arch, _) in _recipes().items():
-        if only and only not in name:
-            continue
-        state = "state_tokens" in arch
-        steps = 40 if name == "pk_mor" else 30
-        spec = {"name": name, "arch": arch,
-                "data": {"vocab": str(work / ("vs.gguf" if state else "v.gguf")),
-                         "corpus": str(work / ("cs.txt" if state else "c.txt")), "T": 64 if state else 16,
-                         "max_tokens": 0},
-                "train": {"steps": steps, "lr": 0.003, "eval_every": 1000, "checkpoint_every": 1000, "batch": 2,
-                          "seed": 3, "gradmap_every": 0},
-                "export": {"formats": ["safetensors", "gguf"]}, "out_dir": str(work / name)}
-        sp = work / f"{name}.json"
-        sp.write_text(json.dumps(spec), encoding="utf-8")
-        r = subprocess.run([BIN, "run", str(sp)], capture_output=True, text=True, timeout=1800)
-        if r.returncode != 0:
-            raise SystemExit(f"{name}: mtstudio run failed\n{r.stderr[-2000:]}")
-        ev = [json.loads(x) for x in (work / name / "events.jsonl").read_text().splitlines() if x.strip()]
-        ex = {e["format"]: e["path"] for e in ev if e["event"] == "export"}
-        dst = out / name
-        dst.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(ex["gguf"], dst / f"{name}.gguf")
-        shutil.copyfile(ex["safetensors"], dst / f"{name}.safetensors")
-        rec = {k: v for k, v in spec.items() if k not in ("out_dir",)}
-        rec["data"] = {k: v for k, v in spec["data"].items() if k not in ("vocab", "corpus")}
-        if arch["preset"] == "llama-tiny":
-            rec["arch"] = dict(rec["arch"], rope_heads="all")
-        (dst / "mtstudio.json").write_text(json.dumps(rec, indent=1) + "\n", encoding="utf-8")
-        print(f"built {name}: {os.path.getsize(dst / (name + '.gguf'))} + "
-              f"{os.path.getsize(dst / (name + '.safetensors'))} bytes")
-    shutil.rmtree(work)
 
 
 # ---------------------------------------------------------------- third-party models (numpy)
@@ -253,10 +156,7 @@ def model_dirs():
 def _profile(name):
     if name.startswith("tp_"):
         return "thirdparty"
-    for n, (_, prof) in _recipes().items():
-        if n == name:
-            return prof
-    return "core"
+    return PK_PROFILES.get(name, "core")
 
 
 def _state_info(doc, W):

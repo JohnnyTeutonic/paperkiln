@@ -74,5 +74,8 @@ def error(ids, vocab, k, eot, user, assistant):
 
 def codes(ids, vocab, k):
     """ops::turn_state_codes for one sequence (ir.hpp attention mask turn_state)."""
+    import os
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "spec", "tools"))
     import ir_numpy
     return ir_numpy.turn_state_codes(ids, vocab, k)

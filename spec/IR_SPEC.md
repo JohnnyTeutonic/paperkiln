@@ -4,19 +4,27 @@
 engine interprets, rather than recognising a fixed architecture. IR version 1, specification revision
 1.1 (25 October 2026).*
 
-- Schema: `spec/ir.schema.json` (JSON Schema 2020-12, the document's structure).
+- Repository: keramos (`github.com/JohnnyTeutonic/keramos`), which holds this text, its schema, the
+  reference tools, the worked documents and the conformance suite. Paths in this document are
+  relative to it, except where the text names them as paperkiln's or ember.cpp's: `src/`,
+  `include/microtorch/` and the `tools/` and `tests/` files called paperkiln's are in paperkiln's
+  repository (`github.com/JohnnyTeutonic/paperkiln`).
+- Schema: `ir.schema.json` (JSON Schema 2020-12, the document's structure).
 - Validator: `tools/ir_validate.py` (the schema plus every refusal rule in section 10; its `digest`
   subcommand gives a document's digest, section 3.10).
 - Reference interpreter: `tools/ir_numpy.py`, with `tools/ir_expr.py` for `expr`,
   `tools/ir_recurrence.py` for `recurrence` (section 6.10) and `tools/ir_quant.py` for stored tensors
   (section 4.7).
-- Conformance suite: `spec/conformance/`, run by `tools/ir_conformance.py` (section 11).
+- Conformance suite: `conformance/`, run by `tools/ir_conformance.py` (section 11).
+- Worked documents: `examples/*.ir.json`.
 - Implementations: paperkiln (exporter, trainer and `mtstudio`; CPU and CUDA) and ember.cpp
   (`graph_ir.cpp`, `graph_ir_cuda.cu`; CPU, CUDA, WebAssembly).
-- Contracts between the repositories, the chat template record and the log of gates:
-  `LOCAL_LLM_STACK.md` at the workspace root (sections 3 to 5 and 10).
+- Contracts between paperkiln and ember.cpp, the chat template record and the log of gates:
+  `LOCAL_LLM_STACK.md`, the master document of the workspace that holds both engines (sections 3 to
+  5 and 10).
+- Revisions and the repository's tags: section 2.6.
 
-The C++ API that writes documents is `include/microtorch/ir.hpp`. That header documents functions,
+The C++ API that writes documents is paperkiln's `include/microtorch/ir.hpp`. That header documents functions,
 not semantics: when the header and this document differ, this document holds.
 
 ## Contents
@@ -142,6 +150,16 @@ A change reaches this document in this order: draft text reviewed by the other e
 reference; both engines passing the change's gates; then this document and Appendix B, in the
 commit that lands it. A draft is never normative.
 
+### 2.6 Revisions and tags
+
+Each revision of this document is a tag of the keramos repository, `vR.S.P`. R.S is the revision
+(section 2.2; R is the `ir_version` it defines), so `v1.1.0` is revision 1.1 of IR version 1. P
+counts later commits that change no normative statement, no part of `ir.schema.json` and no
+expected value of the suite: wording, paths, the tools' interfaces, tests and receipts. A new
+revision or major version starts at P = 0. An engine names the tag and the full commit it conforms
+to, in its receipt (`conformance/receipts/`); an engine that vendors this repository pins one tag
+and records its commit.
+
 ## 3. The document (core)
 
 ### 3.1 Container
@@ -213,7 +231,7 @@ Nodes run in order. A later write to a name replaces the earlier value. The embe
 `logits`.
 
 - **Required attributes.** The attributes each op's section names without a default are required,
-  and `spec/ir.schema.json` lists them (`required` of each `op_*` definition). They have no default:
+  and `ir.schema.json` lists them (`required` of each `op_*` definition). They have no default:
   a node that lacks one is refused, whatever value an engine would assume.
 - **Optional attributes and their defaults:** `linear.bias` and `scale.bias` null; `linear.tied_to`
   none; `embedding.state_weight` none; `rmsnorm.group` the row width and `rmsnorm.weight_offset` 0;
@@ -297,11 +315,11 @@ SHA-256 of the document's canonical form:
 - **Implementations.** `tools/ir_validate.py` (`canonical`, `digest`, and
   `python tools/ir_validate.py digest FILE`) is the reference; `ir::canonical` and `ir::digest` in
   `include/microtorch/ir.hpp` are paperkiln's C++, which the exporters use. The vectors are
-  `spec/conformance/digest/vectors.json` (section 11): RFC 8785's number table (Appendix B of the RFC),
+  `conformance/digest/vectors.json` (section 11): RFC 8785's number table (Appendix B of the RFC),
   strings and member names that exercise the escapes and the UTF-16 order, every suite model's
   document, and texts that have no digest. The reference serialiser agrees with V8's own
   `JSON.stringify` and member sort on 23,216 numbers (random binary64 patterns, every decimal exponent
-  from -330 to 308), on those strings and on all 24 stored documents of `ir/` and `experiments/`
+  from -330 to 308), on those strings and on all 24 documents then stored in `examples/` and paperkiln's `experiments/`
   (checked 25 October 2026), and on the 20 suite models' documents.
 
 ## 4. Numerics (core)
@@ -420,7 +438,7 @@ included); integers are converted to f32 exactly; the elements of a row are its 
 - **Reference and fixtures.** `tools/ir_quant.py` is the numpy reference; `tests/test_ir_quant.py`
   checks it bit for bit against gguf-py 0.19.0's `dequantize` on random blocks of every type (fp16
   fields normal, subnormal, signed, zero and 65504) and against the exact value of every element
-  computed in float64. `spec/conformance/quant/blocks.json` holds fixtures for every type (section
+  computed in float64. `conformance/quant/blocks.json` holds fixtures for every type (section
   11).
 - **What paperkiln writes.** `export.quant` (`include/microtorch/gguf.hpp`): `f32` writes F32 only;
   `q8_0`, `q8_0_out` and `q8_0_all` Q8_0 for the selected 2-D tensors and F32 for the rest; `q4_0`,
@@ -1166,7 +1184,7 @@ Agreed with ember (23 October 2026), binding on any implementation:
 The chat template travels in the model file as data: the GGUF string key `paperkiln.chat_template`
 holds the record as JSON. The record's fields, its rendering, `paperkiln/1`, the third-party
 records, resolution (`resolve()`, the same in every engine), export and the gates are specified in
-`LOCAL_LLM_STACK.md` section 3 point 3 (3a to 3h), with `tools/chat_template.py` and
+`LOCAL_LLM_STACK.md` section 3 point 3 (3a to 3h), with paperkiln's `tools/chat_template.py` and
 `include/microtorch/chat_template.hpp` as the implementations. They are part of this profile by
 reference and are not restated here.
 
@@ -1201,7 +1219,7 @@ reference and are not restated here.
 - *Informative:* training (paperkiln) inserts the same blocks in pretraining streams and SFT rows (a
   block that would end an SFT row is left out: no position reads it), with no loss where the target
   is a state id or the input is a state position. Reference: `nn::insert_state_ids`,
-  `nn::state_ids_error`, `ops::turn_state_codes` (`llama.hpp`, `ops.hpp`); `tools/state_tokens.py`.
+  `nn::state_ids_error`, `ops::turn_state_codes` (`llama.hpp`, `ops.hpp`); paperkiln's `tools/state_tokens.py`.
 
 ## 9. Families (informative)
 
@@ -1219,12 +1237,12 @@ feed_forward_length}`.
 A tensor that is the same thing as a gpt2 tensor keeps llama.cpp's gpt2 name: `token_embd`,
 `position_embd`, `blk.{i}.attn_norm`, `attn_qkv`, `attn_output`, `ffn_norm`, `ffn_up`, `ffn_down`,
 `output_norm`, `output` (each `.weight`, and `.bias` where the module has one); new tensors are
-`blk.{i}.<name>.weight` (and `.bias`). Worked documents: `ir/*.ir.json`.
+`blk.{i}.<name>.weight` (and `.bias`). Worked documents: `examples/*.ir.json`.
 
 - **gpt2, gpt2_swa**: as above (fused qkv split q | k | v, tanh GELU, learned positions);
   gpt2_swa adds a window and sinks.
 - **llama**: pre-RMSNorm (eps 1e-5), interleaved RoPE on every head, SwiGLU, no biases, tied output
-  (`ir/chat_sftfinal.ir.json`); with MoE, `moe_ffn` in place of the SwiGLU (`ir/moe_tiny.ir.json`).
+  (`examples/chat_sftfinal.ir.json`); with MoE, `moe_ffn` in place of the SwiGLU (`examples/moe_tiny.ir.json`).
 - **kimi**: gpt2 with `linear_attention` (slot "lin": num, den [heads, head_dim]) in place of
   attention; the gpt2 tensor set exactly (architecture gpt2: llama.cpp loads it but computes softmax
   attention, so only the IR reproduces the model).
@@ -1333,7 +1351,7 @@ A consumer refuses a document at load, naming the rule, when any of these holds.
 its section; `tools/ir_validate.py` reports every violation as `IR_SPEC <section>: <message>`.
 
 Document (section 3):
-1. It is not a JSON object matching `spec/ir.schema.json` (types, required keys, closed key sets).
+1. It is not a JSON object matching `ir.schema.json` (types, required keys, closed key sets).
 2. `ir_version` is not a version the consumer reads (2.3).
 3. `model.d`, `model.vocab`, `model.ctx` or `model.n_layers` is not a positive integer, or
    `block.repeat` != `model.n_layers` (3.3).
@@ -1432,18 +1450,20 @@ Recurrence (section 6.10; `tools/ir_recurrence.py` reports these as "IR_SPEC 6.1
 
 ### 10.2 The schema and the validator
 
-`spec/ir.schema.json` is the structural half (rules 1, 4 to 8 in part). `tools/ir_validate.py`
+`ir.schema.json` is the structural half (rules 1, 4 to 8 in part). `tools/ir_validate.py`
 runs it and every other rule:
 
     python tools/ir_validate.py doc.ir.json [model.gguf ...]    # documents and GGUFs
-    python tools/ir_validate.py --corpus                        # every stored document
+    python tools/ir_validate.py --corpus [--corpus-glob PAT]    # stored documents (below)
     python tools/ir_validate.py digest doc.ir.json|model.gguf   # the digest (section 3.10)
 
 It is standard library only (it checks recurrence nodes with `tools/ir_recurrence.py`'s parser, which
 is too). It evaluates the schema with its own evaluator for the keywords the
 schema uses, and with `jsonschema` too when that package is installed (`tests/test_ir_validate.py`
 checks they agree). `tools/ir_check.py` calls it for the semantic rules and keeps the container
-checks.
+checks. `--corpus` checks this repository's documents (`examples/`, the suite's models and rewritten
+documents) and every file an engine's `--corpus-glob` patterns name (documents, and GGUFs with an
+embedded document).
 
 ### 10.3 Engine capability refusals
 
@@ -1456,7 +1476,7 @@ capabilities are listed in Appendix C, outside the normative text.
 
 ### 11.1 Layout
 
-`spec/conformance/` holds the suite; `spec/conformance/manifest.json` lists every case with its
+`conformance/` holds the suite; `conformance/manifest.json` lists every case with its
 kind, profile, class and tolerance:
 
 - `ops/`: per-op fixtures: inputs, attributes, expected outputs (f32 bit patterns), class and
@@ -1524,10 +1544,12 @@ digit order (1.0 is `3f800000`). Integer arrays are plain JSON lists.
 
 ### 11.3 The adapter contract
 
-`tools/ir_conformance.py` drives an engine through an adapter. The adapters shipped are `ir_numpy`
-(the reference) and `mtstudio` (paperkiln's C++ engine, through `mtstudio score` and `expr_eval`).
-Any other engine joins with a program that speaks this protocol; the runner starts it once with
-`--adapter cmd:"<program and arguments>"`.
+`tools/ir_conformance.py` drives an engine through an adapter. The runner ships the `ir_numpy`
+adapter (the reference). Any engine joins with a program that speaks this protocol; the runner
+starts it once with `--adapter cmd:"<program and arguments>"`. An in-process Python adapter (a
+subclass of the runner's `Adapter`) joins through `ir_conformance.main(argv, adapters={name:
+factory})`; paperkiln's `mtstudio` adapter is one (paperkiln's `tools/ir_conformance_mtstudio.py`,
+through `mtstudio score`, `expr_eval` and `ir_eval`).
 
 **Transport.** JSON Lines: one request per line on the program's stdin, one reply per line on its
 stdout, in request order; stderr is free for logs. A request is `{"id": int, "method": str,
@@ -1637,7 +1659,7 @@ the whole prefix and reports the row counts and positions the rules above define
 ### 11.4 Running
 
     python tools/ir_conformance.py --adapter ir_numpy
-    MTSTUDIO_BIN=build/mtstudio python tools/ir_conformance.py --adapter mtstudio
+    MTSTUDIO_BIN=build/mtstudio python tools/ir_conformance_mtstudio.py   # in paperkiln
     python tools/ir_conformance.py --adapter cmd:"path/to/engine --conformance"
     python tools/ir_conformance.py --regenerate     # rebuild expected values from the reference
 
@@ -1713,13 +1735,13 @@ stated, with the reason where it differs from ember's.
   strings are not normalised (NFC), as names are matched byte for byte anyway. The digest is
   implemented in `tools/ir_validate.py` (the reference, with a `digest` subcommand) and in paperkiln's
   C++ (`ir::digest`), whose exporters write it as `paperkiln.ir_sha256`; container rule 30 refuses a
-  key that does not name the embedded document. Vectors: `spec/conformance/digest/`.
+  key that does not name the embedded document. Vectors: `conformance/digest/`.
 - **Q14. Quantised storage** (ember's C10). Settled by section 4.7: ggml's scalar `dequantize_row_*`
   (llama.cpp b6000) for F16, BF16, Q8_0, Q4_0, Q5_0, Q5_1, Q4_K, Q5_K and Q6_K, the types paperkiln's
   exports and the gated third-party files hold. Every dequantised value is EXACT on every backend:
   every product is exact in f32 and at most one rounding follows. `tools/ir_quant.py` is the
   reference (bit for bit with gguf-py 0.19.0 on random blocks of every type); fixtures:
-  `spec/conformance/quant/`. EXACT then applies to ops on those values; an engine that multiplies
+  `conformance/quant/`. EXACT then applies to ops on those values; an engine that multiplies
   quantised blocks by quantised activations is ROUNDING by construction.
 - **Q15. Contraction in paperkiln** (from Q4). Decided yes (Jonathan delegated the decision to the main
   session, 25 October 2026): paperkiln's own translation units are compiled with `-ffp-contract=off`
@@ -1904,7 +1926,7 @@ and 8 reductions, and serves larger expressions on the CPU).
 **ember's conformance.** At ember aa50a61 (`tensor_index` implemented, closed key sets and the
 load-time refusals of its review in place) its adapter passes the suite with 111 pass, 0 fail and 46
 skip, the skips being the single-op fixtures (no `run_node`); receipt
-`spec/conformance/receipts/ember_cpu.json`. ember's comparison of its load-time verdicts with
+`conformance/receipts/ember_cpu.json`. ember's comparison of its load-time verdicts with
 `tools/ir_validate.py`, made before revision 1.0's last two validator changes, agreed on 246 of 248
 documents and on 166 of 166 document-only checks.
 

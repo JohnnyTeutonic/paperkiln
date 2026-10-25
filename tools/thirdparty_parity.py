@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """The third-party architecture gate, reference leg (LOCAL_LLM_STACK.md section 7): a llama.cpp GGUF run
-through the IR that tools/gguf_ir.py builds from its metadata, on tools/ir_numpy.py, against HF
+through the IR that spec/tools/gguf_ir.py builds from its metadata, on spec/tools/ir_numpy.py, against HF
 transformers loading the same GGUF (gguf_file=..., dequantised to f32 by its own converter, an
 independent reading of the tensor layout). Both get the same token ids (HF's tokenizer and chat
 template), so this tests the graph, not tokenisation.
@@ -37,6 +37,7 @@ import time
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "spec", "tools"))  # keramos
 import gguf_ir  # noqa: E402
 import ir_numpy  # noqa: E402
 

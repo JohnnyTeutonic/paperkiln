@@ -1,6 +1,6 @@
 // The IR digest in C++ (spec/IR_SPEC.md 3.10; microtorch/ir.hpp): SHA-256 known answers, then every vector
 // of spec/conformance/digest/vectors.json (the path is argv[1]): the RFC 8785 serialisation and the sha256
-// equal the reference's (tools/ir_validate.py), and the texts that have no digest are refused.
+// equal the reference's (spec/tools/ir_validate.py), and the texts that have no digest are refused.
 #include <cstdio>
 #include <fstream>
 #include <iterator>

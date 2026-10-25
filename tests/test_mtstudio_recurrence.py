@@ -19,10 +19,11 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tests"))
 sys.path.insert(0, str(ROOT / "tools"))
+sys.path.insert(0, str(ROOT / "spec" / "tools"))  # keramos (the IR reference)
 from test_mtstudio_chat import BIN, write_vocab_gguf  # noqa: E402
 from test_mtstudio_moe import WORDS, corpus  # noqa: E402
 import ir_conformance  # noqa: E402
-import ir_conformance_gen  # noqa: E402
+import ir_conformance_mtstudio  # noqa: E402
 import ir_numpy  # noqa: E402
 import ir_recurrence  # noqa: E402
 import ir_validate  # noqa: E402
@@ -72,7 +73,7 @@ def test_default_body_trains_the_kimi_model(tmp_path):
     assert drift < 1e-3, drift
     doc_k = json.loads((tmp_path / "kimi" / "kimi.ir.json").read_text(encoding="utf-8"))
     doc_r = json.loads((tmp_path / "rec" / "rec.ir.json").read_text(encoding="utf-8"))
-    # The exported recurrence is tools/ir_recurrence.py's rewrite of the kimi node, slot name aside.
+    # The exported recurrence is spec/tools/ir_recurrence.py's rewrite of the kimi node, slot name aside.
     want = [n for n in ir_recurrence.rewrite(doc_k)["block"]["nodes"] if n["op"] == "recurrence"][0]
     got = [n for n in doc_r["block"]["nodes"] if n["op"] == "recurrence"][0]
     assert dict(got, state="lin") == want
@@ -80,7 +81,7 @@ def test_default_body_trains_the_kimi_model(tmp_path):
 
 @needs_bin
 def test_a_new_body_trains_exports_and_matches_the_reference(tmp_path):
-    body = ir_conformance_gen.DECAYED_LINEAR_ATTENTION
+    body = ir_conformance_mtstudio.DECAYED_LINEAR_ATTENTION
     spec, sp, ev = run(tmp_path, "decay", {"attention": "recurrence", "recurrence": body}, steps=30)
     ls = losses(ev)
     assert np.mean(ls[-5:]) < np.mean(ls[:5])

@@ -6,10 +6,10 @@ Tiny routed llama models train for 40 steps on CPU and export F32 and Q8_0 GGUFs
   mor2p0 0 + [3] x {1, 2} + 1, gate score (no prelude: the router reads the embedding; two steps of three)
   mor3n  1 + [2] x {1, 2, 3} + 1, gate none
 Checks: the run logs the router (depth fractions, mean depth, entropy, balance and z-loss on every step;
-depth fractions at every validation); the files pass tools/ir_check.py; architecture "paperkiln",
+depth fractions at every validation); the files pass spec/tools/ir_check.py; architecture "paperkiln",
 block_count the stored layers, rec.0.router.weight [d, R] stored F32 in both variants; the IR's block is
 depth_route then the llama block, family llama_mor, kv_rows active, weight_index over every application;
-tools/ir_numpy.py's forward over the F32 GGUF against `mtstudio score` on 40 prompts: log-probabilities of
+spec/tools/ir_numpy.py's forward over the F32 GGUF against `mtstudio score` on 40 prompts: log-probabilities of
 a greedy continuation within ROUNDING (1e-5 of max(1, max |ref|)), greedy 40/40, and the depth trace
 token for token (the smallest routing margin is reported). Malformed mor specs are refused.
 
@@ -30,6 +30,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tests"))
 sys.path.insert(0, str(ROOT / "tools"))
+sys.path.insert(0, str(ROOT / "spec" / "tools"))  # keramos (the IR reference)
 from test_mtstudio_chat import BIN  # noqa: E402
 from test_mtstudio_moe import events, run  # noqa: E402
 from test_recursion_ir import V0, gguf_exports, prompts, spec_of, weights  # noqa: E402
@@ -112,7 +113,7 @@ def write_gate(name, spec, res, rec):
                 "files": {f.name: sha256(out / f.name) for f in files},
                 "_note": "score_in.jsonl: prompt_ids and the numpy greedy continuation; score_out.jsonl: mtstudio "
                          "score (logprobs, argmax, depth per context position, depth_margin_min); "
-                         "depth_trace_numpy.jsonl: tools/ir_numpy.py's depths over the same contexts."}
+                         "depth_trace_numpy.jsonl: spec/tools/ir_numpy.py's depths over the same contexts."}
     (out / "manifest.json").write_text(json.dumps(manifest, indent=1) + "\n", encoding="utf-8")
 
 

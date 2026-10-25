@@ -1,7 +1,7 @@
 # The paperkiln IR conformance suite
 
 The cases every engine that runs paperkiln IR documents should pass. The normative description is
-[`spec/IR_SPEC.md`](../IR_SPEC.md) section 11: the fixture formats are in 11.2, the adapter contract in
+[`IR_SPEC.md`](../IR_SPEC.md) section 11: the fixture formats are in 11.2, the adapter contract in
 11.3 and the pass rules in 11.4. This page covers only how to run the suite and how to add an engine.
 
 ## Contents
@@ -22,12 +22,15 @@ trained by paperkiln's `mtstudio` (each directory also holds `<name>.safetensors
 so mtstudio can score it); `tp_` models are third-party graphs (`tools/gguf_ir.py`'s builders) with
 random weights. The expected values come from the numpy reference, `tools/ir_numpy.py`.
 
+Comments inside the fixtures (`_comment` members and the models' documents) name files by their paths
+in paperkiln, which vendors this repository at `spec/` (`spec/IR_SPEC.md` is `IR_SPEC.md` here).
+
 ## Running it
 
     python tools/ir_conformance.py --adapter ir_numpy                    # the reference
-    MTSTUDIO_BIN=build/mtstudio python tools/ir_conformance.py --adapter mtstudio
     python tools/ir_conformance.py --adapter cmd:"my_engine --conformance"
     python tools/ir_conformance.py --adapter ir_numpy --only trace/ --json results.json
+    MTSTUDIO_BIN=build/mtstudio python tools/ir_conformance_mtstudio.py  # paperkiln's adapter, in paperkiln
 
 Each case prints PASS, FAIL or SKIP; a case an engine cannot run is a SKIP, never a PASS. The exit
 status is 1 on any FAIL.
@@ -44,9 +47,10 @@ anything not built yet.
 
 ## Regenerating
 
-    MTSTUDIO_BIN=... python tools/ir_conformance.py --build-models OUT   # train the pk_ models into OUT
-    python tools/ir_conformance.py --regenerate                         # everything else, from numpy
+    python tools/ir_conformance.py --regenerate     # every expected value, from numpy
 
-Copy `OUT/<name>/` into `models/` before regenerating. Regeneration is deterministic: the same models
+The `pk_` models come from paperkiln (`MTSTUDIO_BIN=... python tools/ir_conformance_mtstudio.py
+--build-models OUT` there, the recipes beside it); copy `OUT/<name>/` into `models/` before
+regenerating. Regeneration is deterministic: the same models
 give the same files. Change expected values only by regenerating, in the commit that changes the
 reference or the specification.

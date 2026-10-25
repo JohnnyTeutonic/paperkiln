@@ -23,7 +23,7 @@ earns 1/(number tied), so the `uniform` scorer is exactly chance (0.25). Four hi
          set, so a noctx far from 0.25 means a prior the set's balance is cancelling).
 gold minus self is the cost of the model's own replies; twin minus gold is the carry-over gap.
 Backends: `mtstudio score` (tools/mtstudio.cpp: the spec's safetensors, the same forward pass as
-`mtstudio chat`) or `ir` (tools/ir_numpy.py on the GGUF's IR: slower, independent of mtstudio).
+`mtstudio chat`) or `ir` (spec/tools/ir_numpy.py on the GGUF's IR: slower, independent of mtstudio).
 
 GREEDY GENERATION. The model's argmax reply at the target turn through a /chat server (ember.cpp's
 server or `mtstudio chat`; LOCAL_LLM_STACK.md section 3), in the same four modes, matched against
@@ -57,6 +57,7 @@ import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
+sys.path.insert(0, os.path.join(ROOT, "spec", "tools"))  # keramos
 sys.path.insert(0, HERE)
 import bpe  # noqa: E402
 import chat_eval  # noqa: E402

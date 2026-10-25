@@ -458,14 +458,14 @@ can consume a run.
 | GGUF export | ✅ | `export_gguf_llama`: state_dict → .gguf for ember.cpp |
 | **Mixture of experts** | ✅ | Top-k routing (renorm or raw gates), load-balance + router z-loss, sparse upcycling from a dense checkpoint, CUDA routing kernels; GGUF in llama.cpp's expert layout (llama.cpp runs it 40/40 vs mtstudio) |
 | **Quantised GGUF export** | ✅ | q8_0 / q8_0_out / q8_0_all (byte-identical to ember's quantiser); q4_0 / q4_k_m / q4_k_s (tensor bytes identical to llama.cpp's quantiser, incl. its k-quant fallbacks) |
-| **IR export (any architecture)** | ✅ | Every GGUF carries the model graph (`paperkiln.ir`): llama, MoE, gpt2, gpt2_swa, kimi, srd, attnres, flex, mamba; `tools/ir_run.py` numpy reference interpreter (40/40 per family), `tools/ir_check.py`; ember.cpp runs every family from it |
+| **IR export (any architecture)** | ✅ | Every GGUF carries the model graph (`paperkiln.ir`): llama, MoE, gpt2, gpt2_swa, kimi, srd, attnres, flex, mamba; `tools/ir_run.py` numpy reference interpreter (40/40 per family), `spec/tools/ir_check.py`; ember.cpp runs every family from it |
 | Cross-entropy loss | ✅ | Fused softmax backward |
 | Python bindings | ✅ | pybind11, numpy interop: `pip install paperkiln` (Linux x86-64 wheels for Python 3.10–3.12; `import microtorch`), or build with `-DMICROTORCH_BUILD_PYTHON=ON` |
 | **Run studio** | ✅ | Declarative spec → train/eval/export/serve; `plan` dry-run; resume |
 | **Live dashboard** | ✅ | Loss + val + gate chart, per-module gradient glow, spec builder, SVG architecture diagram, in-page chat |
 | **Flex family (paper-faithful)** | ✅ | Any depth; d_ff, LayerNorm/RMSNorm, GELU/ReLU/SwiGLU or any `expr:<e>` activation, learned/sinusoidal all spec-real; bitwise equivalence pin at defaults (`test_flex`, 6 receipts) |
-| **Runtime-defined ops (`expr`)** | ✅ | A closed elementwise grammar with row reductions, parsed at runtime into differentiable primitives (`include/microtorch/expr.hpp`); finite-difference gradcheck per expression; exported as an IR `expr` node that ember.cpp runs; C++ vs the numpy reference (`tools/ir_expr.py`) within 1.19e-7 ([below](#the-ir-one-graph-any-architecture)) |
-| **Third-party GGUFs → IR** | ✅ | `tools/gguf_ir.py` builds the IR for llama.cpp GGUFs of qwen2, qwen3, gemma3, gpt2, gptneox, mamba and windowed llama/mistral; `tools/ir_numpy.py` runs it; gated against HF transformers (GPT-2 124M, Pythia-160m 40/40 greedy; Gemma 3 and Mistral sliding window on random tiny models); ember.cpp builds the same IR in C++ |
+| **Runtime-defined ops (`expr`)** | ✅ | A closed elementwise grammar with row reductions, parsed at runtime into differentiable primitives (`include/microtorch/expr.hpp`); finite-difference gradcheck per expression; exported as an IR `expr` node that ember.cpp runs; C++ vs the numpy reference (`spec/tools/ir_expr.py`) within 1.19e-7 ([below](#the-ir-one-graph-any-architecture)) |
+| **Third-party GGUFs → IR** | ✅ | `spec/tools/gguf_ir.py` builds the IR for llama.cpp GGUFs of qwen2, qwen3, gemma3, gpt2, gptneox, mamba and windowed llama/mistral; `spec/tools/ir_numpy.py` runs it; gated against HF transformers (GPT-2 124M, Pythia-160m 40/40 greedy; Gemma 3 and Mistral sliding window on random tiny models); ember.cpp builds the same IR in C++ |
 | **LLM extractor** | ✅ | `papers/llm_extract.py`: one Claude call per paper, IR op graph + `expr` for new ops + a verified quote per value; 40-paper bench 82 correct / 9 abstain / 1 wrong (rule-based: 72 / 20 / 0); feeds `tools/arxiv_to_chat.py` (paper → trained model → chat) |
 | **From-paper flow** | ✅ | Drag an arXiv link → scored extraction (rule-based: grouped AUROC 0.905, no wrong assertion in 92 verdicts on the 40-paper bench) → editable spec → ▶ train → artifact downloads → chat |
 | **Atlas experiment engine** | ✅ | `mtsweep` (grid/PB12/fold-over PB12f, linked factors, aliasing advisories, resumable, OMP-aware) + `atlas_analyze` (main effects + two-way interactions, seed-based SEs); Stages 2–3 findings published |
@@ -836,8 +836,8 @@ A paper's operations fall into three tiers:
    `selective_scan` were for Mamba-1.
 
 **Third-party models.** A llama.cpp GGUF with no `paperkiln.ir` gets its graph built from
-`general.architecture` and the metadata: `tools/gguf_ir.py` is the reference builder (qwen2,
-qwen3, gemma3, gpt2, gptneox, mamba, windowed llama/mistral), `tools/ir_numpy.py` the reference
+`general.architecture` and the metadata: `spec/tools/gguf_ir.py` is the reference builder (qwen2,
+qwen3, gemma3, gpt2, gptneox, mamba, windowed llama/mistral), `spec/tools/ir_numpy.py` the reference
 interpreter, and ember.cpp's C++ builder must produce the same IR field by field.
 
 ```bash

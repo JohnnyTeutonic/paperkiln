@@ -1,4 +1,4 @@
-"""tools/ir_validate.py, the shared validator (spec/IR_SPEC.md section 10): the worked documents and every
+"""tools/ir_validate.py, the shared validator (IR_SPEC.md section 10): the worked documents and every
 stored document pass; one-fault mutations of the worked documents are refused under the section the rule
 names; the schema evaluator agrees with the jsonschema package (where installed) on all of them; a version 0
 document is a version 1 document; tools/ir_check.py's semantic checks are the validator's.
@@ -15,11 +15,11 @@ sys.path.insert(0, str(ROOT / "tools"))
 import ir_check  # noqa: E402
 import ir_validate as v  # noqa: E402
 
-WORKED = sorted((ROOT / "ir").glob("*.ir.json"))
+WORKED = sorted((ROOT / "examples").glob("*.ir.json"))
 
 
 def load(name):
-    return json.loads((ROOT / "ir" / name).read_text(encoding="utf-8"))
+    return json.loads((ROOT / "examples" / name).read_text(encoding="utf-8"))
 
 
 @pytest.mark.parametrize("path", WORKED, ids=lambda p: p.name)
@@ -138,7 +138,7 @@ def test_ir_check_uses_the_validator():
     assert ir_check.depth_route_errors(bad) == v.depth_route_errors(bad) and v.depth_route_errors(bad)
 
 
-SUITE_MODEL = ROOT / "spec" / "conformance" / "models" / "pk_llama_attnres"
+SUITE_MODEL = ROOT / "conformance" / "models" / "pk_llama_attnres"
 
 
 @pytest.mark.skipif(not SUITE_MODEL.is_dir(), reason="the conformance suite's models are absent")

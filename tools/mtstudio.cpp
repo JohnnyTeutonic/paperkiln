@@ -1508,7 +1508,7 @@ void write_chat_modelfile(const Spec& s, const std::vector<std::string>& tokens,
 }
 
 // The IR document for a model's own export_ir(), with the vocabulary's
-// tokenizer section after "model" as in ir/*.ir.json, written beside the
+// tokenizer section after "model" as in spec/examples/*.ir.json, written beside the
 // GGUFs as <name>.ir.json; returns the compact dump the GGUFs embed.
 std::string write_ir_doc(const Spec& s, const ir::json& model_ir, const std::vector<std::string>& tokens,
                          const std::map<std::string, int>& vocab, const std::string& ir_path) {

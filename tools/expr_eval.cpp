@@ -1,6 +1,6 @@
 // expr_eval: ops::expr (microtorch/expr.hpp) on inputs from stdin, for
-// tests/test_ir_expr.py's comparison with the numpy reference
-// (tools/ir_expr.py).
+// spec/tests/test_ir_expr.py's comparison with the numpy reference
+// (spec/tools/ir_expr.py).
 //
 //   stdin:  [{"expr": "x*sigmoid(1.702*x)", "inputs": [[[row], ...], ...]},
 //            {"expr": "max(a,", "n_inputs": 2}, ...]

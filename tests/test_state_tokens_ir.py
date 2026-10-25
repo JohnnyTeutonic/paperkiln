@@ -8,10 +8,10 @@ rows), and exports F32 and Q8_0 GGUFs. Checks:
   - the serialiser: the state_tokens event's block counts equal tools/state_tokens.py's over the same
     stream (the early-stop rule included: one reply in the corpus has no <|endoftext|>), and an SFT run
     on segments rows and on a prompt/completion row whose history holds an unfinished reply;
-  - the files pass tools/ir_check.py; architecture paperkiln, paperkiln.state_tokens.k = 4,
+  - the files pass spec/tools/ir_check.py; architecture paperkiln, paperkiln.state_tokens.k = 4,
     state_embd.weight [d, 4] stored F32 in both variants; the IR's embedding carries state_weight,
     its attention mask turn_state, its kv slot evict turn_state, family llama_state;
-  - tools/ir_numpy.py's forward over the F32 GGUF against `mtstudio score` on 40 multi-turn prompts
+  - spec/tools/ir_numpy.py's forward over the F32 GGUF against `mtstudio score` on 40 multi-turn prompts
     whose ids hold the state blocks (prompt 7 holds a reply cut short, closed by the template):
     log-probabilities of numpy's greedy continuation within ROUNDING (1e-5 of max(1, max |ref|)) and
     greedy 40/40, for the full forward, the KV cache, the KV cache with eviction (prefill chunks that
@@ -45,6 +45,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tests"))
 sys.path.insert(0, str(ROOT / "tools"))
+sys.path.insert(0, str(ROOT / "spec" / "tools"))  # keramos (the IR reference)
 from test_mtstudio_chat import BIN  # noqa: E402
 import bpe  # noqa: E402
 import ir_check  # noqa: E402

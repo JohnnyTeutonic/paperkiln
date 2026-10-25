@@ -1,7 +1,7 @@
-"""Checks for the paperkiln IR embedded in a GGUF (spec/IR_SPEC.md).
+"""Checks for the paperkiln IR embedded in a GGUF (IR_SPEC.md).
 
     python tools/ir_check.py model.gguf                    container + specification checks
-    python tools/ir_check.py model.gguf --like ir/chat_sftfinal.ir.json
+    python tools/ir_check.py model.gguf --like examples/chat_sftfinal.ir.json
     python tools/ir_check.py model.gguf --tensors-as base.gguf
 
 Without options: the GGUF carries paperkiln.ir (string) and paperkiln.ir_version (uint32) agreeing

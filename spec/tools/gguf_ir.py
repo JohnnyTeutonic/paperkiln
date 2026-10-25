@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """A third-party GGUF's paperkiln IR, built from its llama.cpp metadata (general.architecture and the
-<arch>.* keys) and tensor names: the reference for ember's C++ builder (LOCAL_LLM_STACK.md section 7,
-"Third-party architectures via the IR"). A file with paperkiln.ir needs none of this.
+<arch>.* keys) and tensor names: the reference for ember.cpp's C++ builder (IR_SPEC.md section 9.3). A file with paperkiln.ir needs none of this.
 
     python tools/gguf_ir.py MODEL.gguf [OUT.ir.json]
 
@@ -35,7 +34,7 @@ where llama.cpp approximates):
                   state of kernel-1 inputs) + SiLU; x_proj -> dt | B | C; dt_proj (biased);
                   selective_scan (softplus(dt), A = ssm_a as stored = -exp(A_log), D skip); times
                   SiLU(z); out_proj; residual. Head RMSNorm, output or tied.
-Every other architecture stops with its name. The document has the shape include/microtorch/ir.hpp
+Every other architecture stops with its name. The document has the shape IR_SPEC.md
 describes; tools/ir_numpy.py runs it.
 """
 from __future__ import annotations
@@ -44,7 +43,7 @@ import json
 import math
 import sys
 
-IR_VERSION = 1  # spec/IR_SPEC.md section 2.3
+IR_VERSION = 1  # IR_SPEC.md section 2.3
 NEOX = {"qwen2", "qwen3"}  # llama.cpp LLAMA_ROPE_TYPE_NEOX for these
 LLAMA_LIKE = {"llama", "mistral", "qwen2", "qwen3"}
 WINDOWED_LLAMA = {"llama", "mistral"}  # read <arch>.attention.sliding_window

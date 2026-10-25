@@ -1,4 +1,4 @@
-"""The IR's `recurrence` op (spec/IR_SPEC.md section 6.10, profile recurrence): a per-token state update
+"""The IR's `recurrence` op (IR_SPEC.md section 6.10, profile recurrence): a per-token state update
 declared in the document, its bodies written in an indexed extension of the `expr` grammar.
 
     compile_node(node) -> Program          parse and check a recurrence node (RecurrenceError names the rule)

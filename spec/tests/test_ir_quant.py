@@ -1,4 +1,4 @@
-"""tools/ir_quant.py, the dequantisation reference (spec/IR_SPEC.md section 4.7): bit for bit with gguf-py's
+"""tools/ir_quant.py, the dequantisation reference (IR_SPEC.md section 4.7): bit for bit with gguf-py's
 dequantize (when installed) on random blocks of every type, and EXACT: every value equals the f32 rounding
 of the block's exact real value (computed in float64, where every product and sum here is exact)."""
 import os

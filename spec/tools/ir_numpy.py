@@ -1,12 +1,12 @@
-"""The paperkiln IR's numpy reference kernels (include/microtorch/ir.hpp), as a module: tools/ir_run.py
-runs paperkiln GGUFs with them, tools/thirdparty_parity.py runs third-party GGUFs whose IR
-tools/gguf_ir.py builds from llama.cpp metadata.
+"""The paperkiln IR's numpy reference kernels (IR_SPEC.md), as a module: engines' gates run GGUFs with
+embedded documents through them (paperkiln's tools/ir_run.py and tools/thirdparty_parity.py among them),
+and third-party GGUFs whose document tools/gguf_ir.py builds from llama.cpp metadata.
 
     run_nodes(nodes, env, W, i=None, no_window=False, wi=None, states=None)   # one embed / block / head node list
     forward(doc, W, ids, last_only=False, trace=None, states=None)   # logits [T, vocab] (or the last row only)
     load_weights(path)                                  # {name: f32 array [.., in]} from any GGUF type
 
-Every op computes in f32. Beyond the ops tools/ir_run.py documents:
+Every op computes in f32 (IR_SPEC.md sections 5 to 7). Notes on some of them:
   scale       y = (x * w) + b per feature, w and b [d] (b may be null): the product rounded to f32,
               then the sum, never fused; a weight or bias whose length is not x's width stops,
               naming the tensor.
@@ -21,24 +21,24 @@ For third-party graphs:
               (per-head q/k norm), weight [g] shared by every group; weight_offset c (default 0):
               the weight read as (w + c), rounded to f32 once (a load-time transform; Gemma's 1 + w).
   rope        freq_scale s (default 1): the angle is (pos * s) * theta^(-2j/n_rot) (linear scaling).
-  conv1d_causal, selective_scan  Mamba-1's ops (include/microtorch/ir.hpp).
-  recurrence  a per-token state update declared in the document (spec/IR_SPEC.md 6.10; tools/ir_recurrence.py).
+  conv1d_causal, selective_scan  Mamba-1's ops (IR_SPEC.md 6.6, 6.7).
+  recurrence  a per-token state update declared in the document (IR_SPEC.md 6.10; tools/ir_recurrence.py).
 Any attribute of a block node (and of a block state slot) may be {"per_layer": [v_0, .., v_{L-1}]}:
 block i reads v_i. The block's own key "weight_index" {"per_layer": [m_0, .., m_{L-1}]} (tied-block
 recursion) makes application i read its tensors from blk.{m_i}.* (run_nodes' wi); everything else,
 per-layer attributes and state included, stays indexed by i. A node with "tensor_index": "application"
 (llama_attnres under recursion: each application's own pseudo-queries) reads "{i}" as the application i
-instead (ir.hpp, family llama_attnres).
+instead (IR_SPEC.md 3.8, family llama_attnres).
 A block whose first node is depth_route (Mixture-of-Recursions, causal token choice; kv slots with
 kv_rows "active") routes at step 0's first application and runs each recursion step's applications on
 its active rows only (forward's trace receives the depths).
-Per-turn state tokens (ir.hpp): an embedding node with "state_weight"
+Per-turn state tokens (IR_SPEC.md 6.8): an embedding node with "state_weight"
 reads row v - vocab of that tensor for an id v >= vocab; an attention node with "mask": "turn_state" lets
 the query at p see the key at j <= p iff j is a state position or in p's segment (turn_state_codes below,
 from the token ids, k = the state_weight's rows). A kv slot's "evict" changes no value (the engine may
 drop rows no later query sees), so the prefill reference ignores it.
 states (a dict): each recurrent op records its slot's tensors after the last row, as
-states[slot][application] = {tensor: array} (the decode state a prefill leaves; spec/IR_SPEC.md 6.3).
+states[slot][application] = {tensor: array} (the decode state a prefill leaves; IR_SPEC.md 6.3).
 """
 from __future__ import annotations
 
@@ -237,7 +237,7 @@ def run_nodes(nodes, env, W, i=None, no_window=False, wi=None, states=None):
         elif op == "rms_row":
             y = np.sqrt((x * x).sum(axis=1, keepdims=True) / np.float32(x.shape[1]) + np.float32(nd["eps"]))
         elif op == "recurrence":
-            # spec/IR_SPEC.md 6.10: the declared per-token update, t = 0 .. T-1 from the initial state.
+            # IR_SPEC.md 6.10: the declared per-token update, t = 0 .. T-1 from the initial state.
             import ir_recurrence
             prog = ir_recurrence.compile_node(nd)
             y, st = ir_recurrence.run(prog, [env[n] for n in ins], {n: w(t) for n, _, t in prog.weights})

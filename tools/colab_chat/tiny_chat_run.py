@@ -284,7 +284,8 @@ def ensure_ember(log_path):
 
 def gguf_f32(path):
     """True when PATH is a GGUF whose tensors are all F32 (ggml type 0)."""
-    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    sys.path.insert(0, os.path.join(root, "spec", "tools"))  # keramos
     import ir_check
     try:
         _, tensors, *_ = ir_check.read_gguf(path)

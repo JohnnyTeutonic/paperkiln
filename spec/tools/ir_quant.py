@@ -1,4 +1,4 @@
-"""The IR's dequantisation reference (spec/IR_SPEC.md section 4.7): the f32 value of every element of a
+"""The IR's dequantisation reference (IR_SPEC.md section 4.7): the f32 value of every element of a
 stored GGUF tensor, per storage type, as ggml's scalar dequantize_row_* compute it (llama.cpp b6000,
 commit 4762ad7316dcdec20016ab5985fb46a27902204d, ggml/src/ggml-quants.c; block layouts in
 ggml/src/ggml-common.h).

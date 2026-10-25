@@ -9,7 +9,7 @@
 | Modules and families | `Module`/`Parameter`/`state_dict`; llama, gpt2, flex, sliding window with sinks, Kimi linear, Mamba-style SSM, SRD, attnres, highway, MoE | `include/microtorch/nn.hpp`, `llama.hpp`, `mamba.hpp` ... |
 | Studio | one JSON spec runs train, eval, export, serve (`mtstudio`); `.ids` corpora, annealing tail, KV-cached chat | `tools/mtstudio.cpp` |
 | Export | safetensors, HF folders, GGUF (f32, Q8_0, 4-bit) with the tokeniser and the model's graph as IR (`paperkiln.ir`) | `src/gguf.cpp`, `src/ir.cpp`, `include/microtorch/ir.hpp` |
-| Reference tools | numpy IR interpreter, the arch-to-IR builder for third-party GGUFs, the `expr` reference, gates against HF | `tools/ir_numpy.py`, `tools/gguf_ir.py`, `tools/ir_expr.py`, `tools/thirdparty_parity.py` |
+| Reference tools | from keramos (the IR's specification, vendored at `spec/`): validator, numpy IR interpreter, the arch-to-IR builder for third-party GGUFs, the `expr` reference, the conformance suite; paperkiln's gates against HF | `spec/tools/ir_numpy.py`, `spec/tools/gguf_ir.py`, `spec/tools/ir_expr.py`, `tools/thirdparty_parity.py` |
 | Papers | the LLM extractor (one Claude call, verified quotes, new ops as `expr` or `needs_new_primitive`) and the rule-based fetcher; paper to trained model to chat | `papers/llm_extract.py`, `papers/fetch.py`, `tools/arxiv_to_chat.py` |
 | Inference | ember.cpp runs every family from the IR (CPU, CUDA, WebAssembly) | sibling repo |
 
