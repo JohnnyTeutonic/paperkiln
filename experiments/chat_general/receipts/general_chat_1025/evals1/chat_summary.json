@@ -1,0 +1,54 @@
+{
+ "live": {
+  "clean_stop": 1.0,
+  "distinct2": 0.9992307692307691,
+  "repeat_frac": 0.0,
+  "prompt_overlap": 0.15459126984126986,
+  "ref_f1": 0.16232306841231786,
+  "words": 14.18,
+  "samples": 100,
+  "ref_bpb": 0.5645222058942223,
+  "ref_examples": 100,
+  "ref_truncated": 0,
+  "ref_dropped": 0
+ },
+ "ctrlsft": {
+  "clean_stop": 1.0,
+  "distinct2": 0.9920302470920891,
+  "repeat_frac": 0.05,
+  "prompt_overlap": 0.17980555555555555,
+  "ref_f1": 0.1224477320628436,
+  "words": 15.56,
+  "samples": 100,
+  "ref_bpb": 0.8311009695959112,
+  "ref_examples": 100,
+  "ref_truncated": 0,
+  "ref_dropped": 0
+ },
+ "moesft": {
+  "clean_stop": 1.0,
+  "distinct2": 0.9949758672699849,
+  "repeat_frac": 0.02,
+  "prompt_overlap": 0.15189285714285714,
+  "ref_f1": 0.10107016753456381,
+  "words": 14.76,
+  "samples": 100,
+  "ref_bpb": 0.8152138812881968,
+  "ref_examples": 100,
+  "ref_truncated": 0,
+  "ref_dropped": 0
+ },
+ "bigsft": {
+  "clean_stop": 1.0,
+  "distinct2": 0.9961057692307692,
+  "repeat_frac": 0.03,
+  "prompt_overlap": 0.22080158730158722,
+  "ref_f1": 0.10227451481356147,
+  "words": 14.95,
+  "samples": 100,
+  "ref_bpb": 0.7374267712990928,
+  "ref_examples": 100,
+  "ref_truncated": 0,
+  "ref_dropped": 0
+ }
+}

@@ -1,0 +1,83 @@
+{
+ "model": "pk_sft_v1",
+ "gguf": "/content/chat/sft/pk_sft_v1.gguf",
+ "gguf_sha256": "4d53c7ff236ecba3a2b34cd2d4769f08bdf0408bbc3655afa44b9ddc70929fdd",
+ "ember": {
+  "bin": "/content/ember/build/tinyllama_server",
+  "commit": "aa50a6112dfd706078e5c7849070f8ca5af620b4",
+  "repo": "https://github.com/JohnnyTeutonic/ember.cpp.git",
+  "cuda": true,
+  "cmake_args": [
+   "-DCMAKE_CUDA_ARCHITECTURES=89"
+  ],
+  "seconds": 92.2,
+  "built_here": false
+ },
+ "paperkiln_commit": "0ad646d508643c643f9aae10b32ad27c58ad1898",
+ "prompts": "/content/pk/corpus/eval/tinychat_hf_prompts_v1.jsonl",
+ "n": 40,
+ "max_new": 60,
+ "mtstudio": "CPU, full recompute",
+ "mtstudio_health": {
+  "attention": "exact",
+  "chat_template": {
+   "name": "paperkiln",
+   "version": 1
+  },
+  "context": 512,
+  "eos": true,
+  "family": "llama",
+  "model": "pk_sft_v1",
+  "params": 97536768,
+  "rope_heads": "all",
+  "state_tokens": 0,
+  "status": "ok",
+  "vocab": 16384
+ },
+ "cuda": {
+  "n": 40,
+  "health": {
+   "chat_template": {
+    "name": "paperkiln",
+    "version": 1
+   },
+   "chat_template_why": "declared",
+   "context": 512,
+   "hidden_size": 768,
+   "layers": 12,
+   "model": "/content/chat/sft/pk_sft_v1.gguf",
+   "status": "ok",
+   "tokenizer": "bpe",
+   "vocab_size": 16384
+  },
+  "seconds": 2602.3,
+  "reply_identical": 40,
+  "token_count": 40,
+  "stop_reason": 40,
+  "prompt_tokens": 40,
+  "distinct_replies": 40
+ },
+ "cpu": {
+  "n": 40,
+  "health": {
+   "chat_template": {
+    "name": "paperkiln",
+    "version": 1
+   },
+   "chat_template_why": "declared",
+   "context": 512,
+   "hidden_size": 768,
+   "layers": 12,
+   "model": "/content/chat/sft/pk_sft_v1.gguf",
+   "status": "ok",
+   "tokenizer": "bpe",
+   "vocab_size": 16384
+  },
+  "seconds": 22.4,
+  "reply_identical": 40,
+  "token_count": 40,
+  "stop_reason": 40,
+  "prompt_tokens": 40,
+  "distinct_replies": 40
+ }
+}

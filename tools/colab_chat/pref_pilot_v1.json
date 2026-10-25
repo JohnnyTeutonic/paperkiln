@@ -1,0 +1,9 @@
+{
+ "_comment": "Claude-judged preference pilot, step 1 (experiments/chat_general/PLAN.md, preference step; judge_pilot.sh is step 2, at home): candidates on the winner, pk_sft_v1 (C:/ml_artifacts/general_chat/sft, GGUF 4d53c7ff...), from ember's CUDA server (aa50a61, TF32 off) at T 512: 4 replies per prompt (temperatures 0.8/0.9/1.0/0.9, seeds recorded) for the first 200 eligible smol-smoltalk test-split prompts, 128 new tokens (pk_sft_v1 runs past 64 on 88% of chat_prompts_v1's ultrachat prompts, and a cut candidate trains a reply with no end). Uploads: pksft.gguf, pksft.safetensors (chat_eval_stage.py stages both), vocab_llama3_bpe.gguf. PREPARED, NOT LAUNCHED (Jonathan decides).",
+ "max_parallel": 1,
+ "jobs": [
+  {"name": "sample",
+   "cmd": ["python3", "tools/colab_chat/pref_sample_vm.py", "{out}", "pksft", "200", "128"],
+   "outputs": ["candidates.jsonl", "candidates.jsonl.skipped.jsonl", "sample_summary.json", "sample.log", "ember_build.json"]}
+ ]
+}

@@ -1,0 +1,158 @@
+{
+ "paperkiln_commit": "0ad646d508643c643f9aae10b32ad27c58ad1898",
+ "ember": {
+  "bin": "/content/ember/build/tinyllama_server",
+  "commit": "aa50a6112dfd706078e5c7849070f8ca5af620b4",
+  "repo": "https://github.com/JohnnyTeutonic/ember.cpp.git",
+  "cuda": true,
+  "cmake_args": [
+   "-DCMAKE_CUDA_ARCHITECTURES=89"
+  ],
+  "seconds": 92.2,
+  "built_here": true
+ },
+ "models": {
+  "live": {
+   "tag": "live",
+   "spec": "/content/eval/live/spec.json",
+   "name": "chat_sftfinal",
+   "arch": {
+    "preset": "llama-tiny",
+    "custom": {
+     "d": 384,
+     "layers": 6,
+     "heads": 6
+    },
+    "rope_heads": "all"
+   },
+   "vocab": "/content/chat/upload/tinychat_bpe8k.gguf",
+   "T": 256,
+   "gguf_sha256": "a9d5ba5e4f86e279e73df81fea69b5d342b9379ffd2e8741b277d02ef4b90c70",
+   "safetensors_sha256": "b29120f5b32544695ece8ce8380e37017dd5f767d6236df0bc3bd5faf7da4da3",
+   "files": {
+    "gguf": "/content/chat/upload/live.gguf",
+    "safetensors": "/content/chat/upload/live.safetensors"
+   }
+  },
+  "ctrlsft": {
+   "tag": "ctrlsft",
+   "spec": "/content/eval/ctrlsft/spec.json",
+   "name": "chat_fw_ctrl",
+   "arch": {
+    "preset": "llama-tiny",
+    "custom": {
+     "d": 384,
+     "layers": 6,
+     "heads": 6
+    },
+    "rope_heads": "all"
+   },
+   "vocab": "/content/chat/upload/fineweb_tinychat_bpe8k.gguf",
+   "T": 256,
+   "gguf_sha256": "c91045b98f113fd78e2d5bae77675d6edea2716cd88f36cc79862d4a36da47ed",
+   "safetensors_sha256": "1fddd00cf06d793c2fb44ff0e8cf149d606668edc65487c9a776c7249a98ac07",
+   "files": {
+    "gguf": "/content/chat/upload/ctrlsft.gguf",
+    "safetensors": "/content/chat/upload/ctrlsft.safetensors"
+   }
+  },
+  "moesft": {
+   "tag": "moesft",
+   "spec": "/content/eval/moesft/spec.json",
+   "name": "chat_fw_moe",
+   "arch": {
+    "preset": "llama-tiny",
+    "custom": {
+     "d": 384,
+     "layers": 6,
+     "heads": 6
+    },
+    "moe": {
+     "experts": 8,
+     "top_k": 2,
+     "gate": "renorm",
+     "aux_loss": 0.01,
+     "z_loss": 0.001
+    },
+    "rope_heads": "all"
+   },
+   "vocab": "/content/chat/upload/fineweb_tinychat_bpe8k.gguf",
+   "T": 256,
+   "gguf_sha256": "81d1b9f58aaf7b246075f18194e05a8e1847338af57fba47cb54d36cf1833f2f",
+   "safetensors_sha256": "66fbe9cb05bce2667881310c6c23c66be50d8993c8057b28168f35a32b36a500",
+   "files": {
+    "gguf": "/content/chat/upload/moesft.gguf",
+    "safetensors": "/content/chat/upload/moesft.safetensors"
+   }
+  },
+  "bigsft": {
+   "tag": "bigsft",
+   "spec": "/content/eval/bigsft/spec.json",
+   "name": "chat_fw_big",
+   "arch": {
+    "preset": "llama-tiny",
+    "custom": {
+     "d": 768,
+     "layers": 12,
+     "heads": 12,
+     "d_ff": 2048
+    },
+    "rope_heads": "all"
+   },
+   "vocab": "/content/chat/upload/fineweb_tinychat_bpe8k.gguf",
+   "T": 256,
+   "gguf_sha256": "49c7d7a3cfbe919e91e70aab07d6d2a9a100c4d488cbd9e93a79761ea11e8e95",
+   "safetensors_sha256": "8ff64cde1e9f9fb6f586aa82305dd7fec75932669b9529524795bd2c9692a824",
+   "files": {
+    "gguf": "/content/chat/upload/bigsft.gguf",
+    "safetensors": "/content/chat/upload/bigsft.safetensors"
+   }
+  }
+ },
+ "provenance": {
+  "provider": "runpod",
+  "pod_id": "t9nxhtrccne4fy",
+  "image": "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
+  "image_digest": "sha256:61a4aafb0094cd773f11eefa378929d5a687bd775febeb78eac62fc824141fb5",
+  "image_digest_source": "Docker Hub tag lookup when the pod was created",
+  "datacenter": "EU-RO-1",
+  "cloud": "SECURE",
+  "gpu_type_id": "NVIDIA L4",
+  "usd_per_hr": 0.59,
+  "volume": "p352o8v4mx",
+  "machine": {
+   "gpuTypeId": "NVIDIA L4",
+   "location": "RO",
+   "dataCenterId": "EU-RO-1",
+   "secureCloud": true,
+   "diskThroughputMBps": 6374,
+   "maxDownloadSpeedMbps": 1873,
+   "maxUploadSpeedMbps": 953
+  },
+  "memory_gb": 62,
+  "vcpu": 6,
+  "cgroup_cpus": 5.1,
+  "cgroup_mem_gb": 57.7,
+  "gpu": "NVIDIA L4",
+  "gpus": [
+   {
+    "name": "NVIDIA L4",
+    "driver": "595.91.07",
+    "memory": "23034 MiB",
+    "power_limit": "72.00 W",
+    "pci": "00000000:C4:00.0"
+   }
+  ],
+  "driver_version": "595.91.07",
+  "cuda_driver_api": "13.2",
+  "nvcc": "12.4",
+  "cpu": "AMD EPYC 9254 24-Core Processor",
+  "cpus": 48,
+  "mem_gb": 503.4,
+  "os": "Ubuntu 22.04.5 LTS",
+  "kernel": "6.8.0-138-generic",
+  "python": "3.11.10",
+  "paperkiln_commit": "0ad646d508643c643f9aae10b32ad27c58ad1898",
+  "written_at": "2026-10-25T05:31:19Z"
+ }
+}

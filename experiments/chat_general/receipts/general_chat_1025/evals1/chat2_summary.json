@@ -1,0 +1,166 @@
+{
+ "live": {
+  "clean_stop": 1.0,
+  "distinct2": 0.9970315904139434,
+  "repeat_frac": 0.011764705882352941,
+  "prompt_overlap": 0.007737541918305239,
+  "ref_f1": 0.02894312163005705,
+  "words": 14.958823529411765,
+  "samples": 170,
+  "ref_bpb": 2.6515244694443494,
+  "ref_examples": 178,
+  "ref_truncated": 68,
+  "ref_dropped": 22,
+  "by_source": {
+   "everyday": {
+    "clean_stop": 1.0,
+    "distinct2": 0.9962037037037038,
+    "repeat_frac": 0.01,
+    "prompt_overlap": 0.0,
+    "ref_f1": 0.040099029625345416,
+    "words": 14.78,
+    "samples": 100,
+    "ref_bpb": 2.011567460614708,
+    "ref_examples": 100,
+    "ref_truncated": 0,
+    "ref_dropped": 0
+   },
+   "ultrachat": {
+    "clean_stop": 1.0,
+    "distinct2": 0.9982142857142857,
+    "repeat_frac": 0.014285714285714285,
+    "prompt_overlap": 0.018791173230169864,
+    "ref_f1": 0.01300611020821655,
+    "words": 15.214285714285714,
+    "samples": 70,
+    "ref_bpb": 2.703267942986218,
+    "ref_examples": 78,
+    "ref_truncated": 68,
+    "ref_dropped": 22
+   }
+  }
+ },
+ "ctrlsft": {
+  "clean_stop": 0.8285714285714286,
+  "distinct2": 0.97686826053638,
+  "repeat_frac": 0.19428571428571428,
+  "prompt_overlap": 0.1517663805967768,
+  "ref_f1": 0.5979132673539425,
+  "words": 17.337142857142858,
+  "samples": 175,
+  "ref_bpb": 1.02663876783477,
+  "ref_examples": 182,
+  "ref_truncated": 70,
+  "ref_dropped": 18,
+  "by_source": {
+   "everyday": {
+    "clean_stop": 1.0,
+    "distinct2": 1.0,
+    "repeat_frac": 0.0,
+    "prompt_overlap": 0.15,
+    "ref_f1": 1.0,
+    "words": 7.0,
+    "samples": 100,
+    "ref_bpb": 0.004563362805197816,
+    "ref_examples": 100,
+    "ref_truncated": 0,
+    "ref_dropped": 0
+   },
+   "ultrachat": {
+    "clean_stop": 0.6,
+    "distinct2": 0.9460259412515531,
+    "repeat_frac": 0.4533333333333333,
+    "prompt_overlap": 0.1541215547258126,
+    "ref_f1": 0.06179762382586549,
+    "words": 31.12,
+    "samples": 75,
+    "ref_bpb": 1.0977989188242125,
+    "ref_examples": 82,
+    "ref_truncated": 70,
+    "ref_dropped": 18
+   }
+  }
+ },
+ "moesft": {
+  "clean_stop": 0.7942857142857143,
+  "distinct2": 0.9677360581629997,
+  "repeat_frac": 0.2342857142857143,
+  "prompt_overlap": 0.14872301658245257,
+  "ref_f1": 0.5964620530786755,
+  "words": 19.251428571428573,
+  "samples": 175,
+  "ref_bpb": 1.0283119282205777,
+  "ref_examples": 182,
+  "ref_truncated": 70,
+  "ref_dropped": 18,
+  "by_source": {
+   "everyday": {
+    "clean_stop": 1.0,
+    "distinct2": 1.0,
+    "repeat_frac": 0.0,
+    "prompt_overlap": 0.15,
+    "ref_f1": 1.0,
+    "words": 7.0,
+    "samples": 100,
+    "ref_bpb": 0.003593778111775039,
+    "ref_examples": 100,
+    "ref_truncated": 0,
+    "ref_dropped": 0
+   },
+   "ultrachat": {
+    "clean_stop": 0.52,
+    "distinct2": 0.924717469046999,
+    "repeat_frac": 0.5466666666666666,
+    "prompt_overlap": 0.1470203720257226,
+    "ref_f1": 0.05841145718357533,
+    "words": 35.586666666666666,
+    "samples": 75,
+    "ref_bpb": 1.0996560755550444,
+    "ref_examples": 82,
+    "ref_truncated": 70,
+    "ref_dropped": 18
+   }
+  }
+ },
+ "bigsft": {
+  "clean_stop": 0.7028571428571428,
+  "distinct2": 0.9732562475947548,
+  "repeat_frac": 0.2342857142857143,
+  "prompt_overlap": 0.1703579301279042,
+  "ref_f1": 0.6058025317091378,
+  "words": 20.34285714285714,
+  "samples": 175,
+  "ref_bpb": 0.8345564752188676,
+  "ref_examples": 182,
+  "ref_truncated": 70,
+  "ref_dropped": 18,
+  "by_source": {
+   "everyday": {
+    "clean_stop": 1.0,
+    "distinct2": 1.0,
+    "repeat_frac": 0.0,
+    "prompt_overlap": 0.15,
+    "ref_f1": 1.0,
+    "words": 7.0,
+    "samples": 100,
+    "ref_bpb": 0.0027570212057925155,
+    "ref_examples": 100,
+    "ref_truncated": 0,
+    "ref_dropped": 0
+   },
+   "ultrachat": {
+    "clean_stop": 0.30666666666666664,
+    "distinct2": 0.937597911054429,
+    "repeat_frac": 0.5466666666666666,
+    "prompt_overlap": 0.19750183696510995,
+    "ref_f1": 0.08020590732132045,
+    "words": 38.13333333333333,
+    "samples": 75,
+    "ref_bpb": 0.8924690073561549,
+    "ref_examples": 82,
+    "ref_truncated": 70,
+    "ref_dropped": 18
+   }
+  }
+ }
+}

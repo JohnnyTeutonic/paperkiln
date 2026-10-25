@@ -13,11 +13,11 @@ where one of those documents carries a plan, this file wins.*
    RunPod backend for `tools/colab_chat/runner_multi.py`, under validation); Carry-12 and its
    Stage L0 follow E5 and E1.
 1. **The chat model (LOCAL_LLM_STACK.md sections 8 and 11, item 2).**
-   - Evaluate moe_sft, big_sft and ctrl_sft against the live model (chat_eval on the frozen
-     prompts, chat_prompts_v1 per source, the simple-QA probe) on the GPU.
-   - pk_base_v1's SFT on lever 1's set at T 512.
-   - After SFT: the Claude-judge pilot (`experiments/chat_general/judge_pilot.sh`,
-     200 prompts, $100 cap), then DPO.
+   - Jonathan's pick between the winner rule's two verdicts (`experiments/chat_general/RESULTS.md`,
+     "The winner": live as registered, pk_sft_v1 under amendment A1).
+   - The Claude-judge pilot on pk_sft_v1, prepared, launch on Jonathan's go: candidates on a RunPod
+     L4 (`tools/colab_chat/pref_pilot_v1.json`), then `experiments/chat_general/judge_pilot.sh`
+     (200 prompts, $100 cap) at home; then the full ~3,000 prompts and DPO + NLL.
 2. **Conversation schema follow-ups** (LOCAL_LLM_STACK.md section 3 point 3; section 11, item 3):
    the evaluations it lacks (IF-tiny, a single-turn verifiable instruction set for tiny models;
    instruction compliance by turn distance; instruction placement, measurable on a v2 model), and

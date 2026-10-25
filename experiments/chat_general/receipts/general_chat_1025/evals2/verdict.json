@@ -1,0 +1,132 @@
+{
+ "rows": {
+  "live": {
+   "qa_correct": 2,
+   "qa_all": 0.03333333333333333,
+   "clean_stop": {
+    "frozen": 1.0,
+    "everyday": 1.0,
+    "ultrachat": 1.0
+   },
+   "protocol_fail": {
+    "frozen": 0.0,
+    "everyday": 0.0,
+    "ultrachat": 0.0
+   },
+   "gate_registered": true,
+   "gate_A1": true,
+   "ultrachat_ref_bpb": 2.703267942986218,
+   "ultrachat_ref_truncated": 68,
+   "ultrachat_ref_dropped": 22,
+   "ultrachat_repeat_frac": 0.014285714285714285,
+   "size": "{\"d\": 384, \"heads\": 6, \"layers\": 6}",
+   "moe": false
+  },
+  "ctrlsft": {
+   "qa_correct": 7,
+   "qa_all": 0.11666666666666667,
+   "clean_stop": {
+    "frozen": 1.0,
+    "everyday": 1.0,
+    "ultrachat": 0.6
+   },
+   "protocol_fail": {
+    "frozen": 0.0,
+    "everyday": 0.0,
+    "ultrachat": 0.0
+   },
+   "gate_registered": false,
+   "gate_A1": true,
+   "ultrachat_ref_bpb": 1.0977989188242125,
+   "ultrachat_ref_truncated": 70,
+   "ultrachat_ref_dropped": 18,
+   "ultrachat_repeat_frac": 0.4533333333333333,
+   "size": "{\"d\": 384, \"heads\": 6, \"layers\": 6}",
+   "moe": false
+  },
+  "moesft": {
+   "qa_correct": 7,
+   "qa_all": 0.11666666666666667,
+   "clean_stop": {
+    "frozen": 1.0,
+    "everyday": 1.0,
+    "ultrachat": 0.52
+   },
+   "protocol_fail": {
+    "frozen": 0.0,
+    "everyday": 0.0,
+    "ultrachat": 0.0
+   },
+   "gate_registered": false,
+   "gate_A1": true,
+   "ultrachat_ref_bpb": 1.0996560755550444,
+   "ultrachat_ref_truncated": 70,
+   "ultrachat_ref_dropped": 18,
+   "ultrachat_repeat_frac": 0.5466666666666666,
+   "size": "{\"d\": 384, \"heads\": 6, \"layers\": 6}",
+   "moe": true
+  },
+  "bigsft": {
+   "qa_correct": 11,
+   "qa_all": 0.18333333333333332,
+   "clean_stop": {
+    "frozen": 1.0,
+    "everyday": 1.0,
+    "ultrachat": 0.30666666666666664
+   },
+   "protocol_fail": {
+    "frozen": 0.0,
+    "everyday": 0.0,
+    "ultrachat": 0.0
+   },
+   "gate_registered": false,
+   "gate_A1": true,
+   "ultrachat_ref_bpb": 0.8924690073561549,
+   "ultrachat_ref_truncated": 70,
+   "ultrachat_ref_dropped": 18,
+   "ultrachat_repeat_frac": 0.5466666666666666,
+   "size": "{\"d\": 768, \"d_ff\": 2048, \"heads\": 12, \"layers\": 12}",
+   "moe": false
+  },
+  "pksft": {
+   "qa_correct": 21,
+   "qa_all": 0.35,
+   "clean_stop": {
+    "frozen": 1.0,
+    "everyday": 1.0,
+    "ultrachat": 0.11688311688311688
+   },
+   "protocol_fail": {
+    "frozen": 0.0,
+    "everyday": 0.0,
+    "ultrachat": 0.0
+   },
+   "gate_registered": false,
+   "gate_A1": true,
+   "ultrachat_ref_bpb": 0.6559120665688689,
+   "ultrachat_ref_truncated": 36,
+   "ultrachat_ref_dropped": 9,
+   "ultrachat_repeat_frac": 0.5584415584415584,
+   "size": "{\"d\": 768, \"d_ff\": 2048, \"heads\": 12, \"layers\": 12}",
+   "moe": false
+  }
+ },
+ "registered": {
+  "winner": "live",
+  "why": "the only model through the gate (simple-QA 2/60)",
+  "gated": [
+   "live"
+  ]
+ },
+ "A1": {
+  "winner": "pksft",
+  "why": "simple-QA 21/60, a lead of at least 4",
+  "gated": [
+   "live",
+   "ctrlsft",
+   "moesft",
+   "bigsft",
+   "pksft"
+  ]
+ }
+}

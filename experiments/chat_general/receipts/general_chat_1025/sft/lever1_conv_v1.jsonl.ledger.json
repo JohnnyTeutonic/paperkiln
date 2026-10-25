@@ -1,0 +1,24 @@
+{
+ "tool": "tools/lever1_conversations.py",
+ "schema": "paperkiln.conversation/1",
+ "template": "paperkiln/1",
+ "sft_loss": {
+  "turns": "all"
+ },
+ "source": "C:\\ml_artifacts\\next_base\\lever1\\lever1_sft_v1.jsonl",
+ "source_sha256": "7832ccc8de2b59ddf9fd3622868578facae806a9cea0b7ee571de34182f14047",
+ "out": "C:\\ml_artifacts\\next_base\\lever1_conv\\lever1_conv_v1.jsonl",
+ "out_sha256": "b7a43fb5d622537094f7fea1eb5df244c64007f967faed597f9324954a479a32",
+ "rows_read": 463695,
+ "dialogues": 313606,
+ "replies": 463695,
+ "dialogues_by_replies": {
+  "1": 240711,
+  "2": 36387,
+  "3": 6117,
+  "4": 20372,
+  "5": 9744,
+  "6": 274,
+  "7": 1
+ }
+}
