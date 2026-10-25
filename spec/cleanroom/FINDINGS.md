@@ -80,3 +80,10 @@ fold, dequantisation (§4.7 was complete without consulting ggml), and the adapt
 
 Not implemented: gradients, building documents for GGUFs that do not embed one (finding 6), sidecar
 documents (rule 29).
+
+## Answers
+
+Revision 1.2 (keramos v1.2.0) settles every finding: IR_SPEC section 12.3 gives each answer, by the
+numbers above. With the clean-room phase over, the Rust code was brought to 1.2 where the answers
+require it (duplicate member names refused, rule 36, steps in one run, `depth_attend` eps optional,
+`check` of a document alone); its receipt at v1.2.0 is `conformance/receipts/cleanroom.json`.

@@ -2239,6 +2239,9 @@ equal to dc29b5e6 bit for bit) and the pinned commits of the RunPod campaigns ar
 
 ## Appendix B. Changelog
 
+- **v1.2.1** (tag, 26 October 2026; documentation patch). Appendix C's ember WebGPU row: every interpreter
+  document except recurrence runs on a WGSL interpreter of the document (ember 36c61eb, gated 17b3999 on a
+  software adapter). No case, schema or expected value changes.
 - **v1.2.0** (tag, 26 October 2026; revision 1.2). The clean-room implementation's findings, settled
   (section 12.3). New refusals: duplicate member names (rule 35) and reads of values no node writes,
   an embed section without `x` and a head without `logits` (rule 36), neither of which a stored
@@ -2316,7 +2319,7 @@ the engine has agreed to close, the specification already states the intended be
 | ember interpreter, CPU | core, state, recursion, chat, thirdparty, recurrence | EXACT where this document says so | `dot_f32_as_f64`, a fixed 8-lane double order independent of T and threads | see below |
 | ember interpreter, CUDA | as CPU, ops with device kernels | ROUNDING by construction (tiles, flash2, nvcc's default `--fmad`) | cuBLAS FP32 (its own handle at default math) | documents with an op without a device kernel are served on the CPU automatically (documents with recurrence among them); `EMBER_IR_DEVICE=cpu` forces the CPU for every document. `mask: turn_state` and its lazy eviction run on the device, ROUNDING, from ember 210f3b8; depth_route with kv_rows: active runs on the device, ROUNDING, from ember 66c8b2c (below) |
 | ember interpreter, WebAssembly | as CPU | as CPU (no FMA in the build) | as CPU | as CPU (4 GB heap for 0.5B models) |
-| ember WebGPU (browser) | llama and llama.cpp-layout MoE GGUFs, f32 and Q8_0 kept quantised on the GPU | ROUNDING (WGSL) | — | every IR family (interpreter documents run in WebAssembly instead); gated greedy 40/40 against ember CPU (9c49286) |
+| ember WebGPU (browser) | llama and llama.cpp-layout MoE GGUFs on the tuned path's kernels; every other document ember's interpreter runs, all profiles except recurrence, on a WGSL interpreter of the document (ember 36c61eb); F32, F16, BF16 and Q8_0 matrices kept as stored | ROUNDING (WGSL; f32 accumulation, one invocation per output row) | f32, ascending columns per row | recurrence, rope_heads "first", forked lists, k-quant and Q4_0/Q5_x matrices, kv contexts past 4,096 positions (these run in WebAssembly); gated on a software adapter (SwiftShader) against ember CPU: greedy 40/40 and top-1 at every position (17b3999) |
 | ember tuned llama path, CPU and CUDA | llama | ROUNDING against the interpreter | CUDA: TF32 on by default (`EMBER_GEMM_TF32=0` gives FP32) | anything it is not selected for |
 
 **ember's tuned-path selection.** ember selects its tuned llama path by structural match (ember

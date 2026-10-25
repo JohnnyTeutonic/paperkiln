@@ -1,14 +1,13 @@
 {
  "spec": {
   "repository": "keramos",
-  "tag": "v1.1.2",
-  "commit": "33dff0348d4e2e1035acbbc933f1e7bb61f87ff1"
+  "tag": "v1.2.0",
+  "commit": "d4b880ae2a42865f4334b2c3ea27af6db02ffc84"
  },
  "engine": {
-  "name": "paperkiln mtstudio, CPU, with ir_eval (recurrence nodes, their gradients, the digest) and expr_eval",
-  "commit": "139168ad4f0a7f6d3dd6f59b5510244c82ec0de9",
-  "binary": "ext4 clean clone, Release, GCC 13.3, vendored transformer_core, -ffp-contract=off",
-  "run": "python3 tools/ir_conformance_mtstudio.py (keramos v1.1.2 vendored at spec/), 2026-10-25"
+  "name": "paperkiln mtstudio, CPU, with ir_eval (recurrence nodes and the thirdparty single ops, their gradients, the digest) and expr_eval",
+  "environment": "ext4 clean clone of paperkiln 8de00e576f43c4c9a42bb052f961701e6918b7a2 (keramos v1.2.0 vendored at spec/; includes 70638baf's thirdparty training ops), Release, GCC 13.3, vendored transformer_core, -ffp-contract=off; runner under CPython 3.12.3, numpy 2.3.3, WSL",
+  "run": "MTSTUDIO_BIN=build/mtstudio python3 tools/ir_conformance_mtstudio.py, 2026-10-26"
  },
  "adapter": {
   "engine": "mtstudio",
@@ -23,9 +22,9 @@
   ]
  },
  "counts": {
-  "PASS": 122,
+  "PASS": 139,
   "FAIL": 0,
-  "SKIP": 162,
+  "SKIP": 231,
   "XFAIL": 0,
   "XPASS": 0
  },
@@ -40,26 +39,26 @@
   "trace": {
    "PASS": 6,
    "FAIL": 0,
-   "SKIP": 31,
+   "SKIP": 33,
    "XFAIL": 0,
    "XPASS": 0
   },
   "op": {
-   "PASS": 12,
+   "PASS": 25,
    "FAIL": 0,
-   "SKIP": 42,
+   "SKIP": 34,
    "XFAIL": 0,
    "XPASS": 0
   },
   "refuse": {
    "PASS": 0,
    "FAIL": 0,
-   "SKIP": 74,
+   "SKIP": 83,
    "XFAIL": 0,
    "XPASS": 0
   },
   "digest": {
-   "PASS": 80,
+   "PASS": 84,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
@@ -76,6 +75,20 @@
    "PASS": 8,
    "FAIL": 0,
    "SKIP": 0,
+   "XFAIL": 0,
+   "XPASS": 0
+  },
+  "accept": {
+   "PASS": 0,
+   "FAIL": 0,
+   "SKIP": 34,
+   "XFAIL": 0,
+   "XPASS": 0
+  },
+  "chat": {
+   "PASS": 0,
+   "FAIL": 0,
+   "SKIP": 32,
    "XFAIL": 0,
    "XPASS": 0
   }
@@ -133,7 +146,7 @@
    "id": "model/pk_gpt2_swa",
    "kind": "model",
    "verdict": "PASS",
-   "detail": "log-probs worst 9.88e-08; greedy 4/4"
+   "detail": "log-probs worst 9.62e-08; greedy 4/4"
   },
   {
    "id": "trace/pk_gpt2_swa_decode",
@@ -409,229 +422,241 @@
    "id": "op/embedding/rows",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops"
   },
   {
    "id": "op/embedding/state_weight",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops"
   },
   {
    "id": "op/pos_embedding/rows",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops"
   },
   {
    "id": "op/linear/bias",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops"
   },
   {
    "id": "op/linear/no_bias",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops"
   },
   {
    "id": "op/linear/tied_to",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops"
   },
   {
    "id": "op/scale/bias",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops"
   },
   {
    "id": "op/scale/no_bias",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops"
   },
   {
    "id": "op/split/three",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops"
   },
   {
    "id": "op/rmsnorm/row",
    "kind": "op",
-   "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "verdict": "PASS",
+   "detail": "y worst 1.17e-08 of max(1, |ref|)"
   },
   {
    "id": "op/rmsnorm/group",
    "kind": "op",
-   "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "verdict": "PASS",
+   "detail": "y worst 2.33e-08 of max(1, |ref|)"
   },
   {
    "id": "op/rmsnorm/weight_offset",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "detail": "ir_eval: rmsnorm weight_offset (paperkiln trains none)"
   },
   {
    "id": "op/layernorm/row",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops"
   },
   {
    "id": "op/gelu/tanh",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops"
   },
   {
    "id": "op/gelu/none",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops"
   },
   {
    "id": "op/silu/x",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops"
   },
   {
    "id": "op/sigmoid/x",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops"
   },
   {
    "id": "op/relu/x",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops"
   },
   {
    "id": "op/add/ab",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops"
   },
   {
    "id": "op/mul/ab",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops"
   },
   {
    "id": "op/sub/ab",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops"
   },
   {
    "id": "op/affine/scale_shift",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops"
   },
   {
    "id": "op/mul_col/x_c",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops"
   },
   {
    "id": "op/rms_row/eps",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops"
   },
   {
    "id": "op/rope/interleaved",
    "kind": "op",
-   "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "verdict": "PASS",
+   "detail": "q worst 1.36e-08 of max(1, |ref|); k worst 1.25e-09 of max(1, |ref|)"
   },
   {
    "id": "op/rope/neox",
    "kind": "op",
-   "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "verdict": "PASS",
+   "detail": "q worst 3.17e-09 of max(1, |ref|); k worst 0.00e+00 of max(1, |ref|)"
   },
   {
    "id": "op/rope/neox_partial",
    "kind": "op",
-   "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "verdict": "PASS",
+   "detail": "q worst 0.00e+00 of max(1, |ref|); k worst 0.00e+00 of max(1, |ref|)"
   },
   {
    "id": "op/rope/freq_scale",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "detail": "ir_eval: rope freq_scale != 1 (paperkiln trains none)"
   },
   {
    "id": "op/rope/grouped_query",
    "kind": "op",
+   "verdict": "PASS",
+   "detail": "q worst 1.36e-08 of max(1, |ref|); k worst 4.88e-09 of max(1, |ref|)"
+  },
+  {
+   "id": "op/rope/first_head",
+   "kind": "op",
    "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "detail": "ir_eval: rope_heads first"
   },
   {
    "id": "op/attention/causal",
    "kind": "op",
-   "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "verdict": "PASS",
+   "detail": "a worst 3.52e-08 of max(1, |ref|)"
   },
   {
    "id": "op/attention/window_sinks",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "detail": "ir_eval: attention other than plain causal (the llama block's)"
   },
   {
    "id": "op/attention/grouped_query",
    "kind": "op",
-   "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "verdict": "PASS",
+   "detail": "a worst 9.89e-08 of max(1, |ref|)"
   },
   {
    "id": "op/moe_ffn/renorm",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops"
   },
   {
    "id": "op/moe_ffn/raw",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops"
   },
   {
    "id": "op/list/two",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops"
   },
   {
    "id": "op/append/one",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops"
   },
   {
    "id": "op/depth_attend/one_source",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops"
   },
   {
    "id": "op/depth_attend/three_sources",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops"
+  },
+  {
+   "id": "op/depth_attend/eps_default",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops"
   },
   {
    "id": "op/expr/gelu_sigmoid",
@@ -658,28 +683,40 @@
    "detail": "y worst 0.00e+00 of max(1, |ref|)"
   },
   {
+   "id": "op/expr/rowsum_constant",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/expr/depth_200",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
    "id": "op/linear_attention/two_heads",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops"
   },
   {
    "id": "op/ssm_scan/n4",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences and the thirdparty ops"
   },
   {
    "id": "op/conv1d_causal/k4",
    "kind": "op",
-   "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "verdict": "PASS",
+   "detail": "y worst 0.00e+00 of max(1, |ref|); state conv.x worst 0.00e+00 of max(1, |ref|)"
   },
   {
    "id": "op/selective_scan/d3n2",
    "kind": "op",
-   "verdict": "SKIP",
-   "detail": "mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences"
+   "verdict": "PASS",
+   "detail": "y worst 1.36e-07 of max(1, |ref|); state ssm.s worst 7.40e-08 of max(1, |ref|)"
   },
   {
    "id": "op/recurrence/linear_attention_body",
@@ -728,6 +765,12 @@
    "kind": "op",
    "verdict": "PASS",
    "detail": "y 0 values differ in their bits; state sq.h 0 values differ in their bits"
+  },
+  {
+   "id": "op/recurrence/read_beyond_declaration",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y 0 values differ in their bits; state pad.h 0 values differ in their bits"
   },
   {
    "id": "refuse/unknown_op",
@@ -1144,6 +1187,54 @@
    "detail": "not implemented"
   },
   {
+   "id": "refuse/reads_unwritten_value",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/embed_writes_no_x",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/head_writes_no_logits",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/mor_reads_outside_value",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/mor_step_gap",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/duplicate_member_top",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/duplicate_member_node",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/duplicate_member_prose",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
    "id": "refuse/version_key_mismatch",
    "kind": "refuse",
    "verdict": "SKIP",
@@ -1169,6 +1260,12 @@
   },
   {
    "id": "refuse/state_tokens_arch_llama",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/duplicate_member_embedded",
    "kind": "refuse",
    "verdict": "SKIP",
    "detail": "not implemented"
@@ -1654,6 +1751,30 @@
    "detail": "refused"
   },
   {
+   "id": "digest/vectors/fraction_form_beyond_2p53",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/exponent_form_1e300",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/negative_integer_2p53",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/negative_integer_beyond_2p53",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
    "id": "dequant/blocks/f32",
    "kind": "dequant",
    "verdict": "SKIP",
@@ -1782,6 +1903,414 @@
   {
    "id": "trace/tp_mamba1_recurrence",
    "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "trace/pk_srd_truncate",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "trace/tp_mamba1_truncate",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/model_pk_attnres",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/model_pk_flex_expr",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/model_pk_flex_highway",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/model_pk_gpt2",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/model_pk_gpt2_swa",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/model_pk_kimi",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/model_pk_llama",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/model_pk_llama_attnres",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/model_pk_llama_attnres_rec",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/model_pk_mamba",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/model_pk_moe",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/model_pk_mor",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/model_pk_recurrence",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/model_pk_recursive",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/model_pk_srd",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/model_pk_state",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/model_tp_gemma3",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/model_tp_gptneox",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/model_tp_mamba1",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/model_tp_mistral",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/model_tp_qwen3",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/rewritten_pk_kimi",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/rewritten_pk_srd",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/rewritten_pk_mamba",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/rewritten_tp_mamba1",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/example_attnres_tiny",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/example_chat_sftfinal",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/example_flex_highway_tiny",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/example_gpt2_tiny",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/example_kimi_tiny",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/example_mamba_tiny",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/example_moe_tiny",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/example_srd_tiny",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/example_swa_tiny",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/one user prompt",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/system folds into the first user turn",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/a lone system message",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/a system message with no user message",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/two system messages",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/a system message mid-conversation",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/the assistant first",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/two user messages in a row",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/a training conversation ending on a user message",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/a prompt ending on an assistant message",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/user content holding a role marker",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/system content holding end-of-text",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/assistant content holding a marker",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/<unk> text is ordinary content",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/newline-only user content",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/newline-only and empty replies in the history",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/the tool role is reserved",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/an unknown role",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/three exchanges with a system message",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/a training conversation with a system message",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/loss on a user message",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/unicode content",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/system mode none refuses a system message",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/system mode none without one",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/legacy word-level prompt",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/gemma3 trims and folds",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/gemma3 trims unicode edge whitespace",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/gemma3 trims unicode whitespace in system and history",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/gemma3 keeps inner unicode whitespace and zero-width space",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/qwen3 strips past reasoning",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/qwen2.5 writes its default system turn",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/qwen3 thinking off",
+   "kind": "chat",
    "verdict": "SKIP",
    "detail": "not implemented"
   }

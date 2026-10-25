@@ -1,12 +1,12 @@
 {
- "_comment": "Runs of the conformance suite (spec/IR_SPEC.md section 11.4): one results file per engine, with every case's verdict and detail. SKIP means the engine has no path for the case (the reference: the gradient cases, which are its own finite differences; mtstudio: single ops other than expr and recurrence, sessions, document loading, refusals, dequantisation; ember: single ops other than recurrence, whose run_node its adapter has, and the gradient cases, since it does not train). All three runs are of keramos v1.1.2 (284 cases).",
+ "_comment": "Runs of the conformance suite (spec/IR_SPEC.md section 11.4): one results file per engine, with every case's verdict and detail; each run names the keramos tag and commit it ran against. v1.2.0 has 370 cases. SKIP means the engine has no path for the case (the reference: the gradient cases, which are its own finite differences; mtstudio: the single ops it has no kernel path for, sessions other than its scored traces, document loading, refusals and acceptance, dequantisation, chat rendering; the clean-room Rust engine: the gradient cases and render_chat; ember at v1.1.2: single ops other than recurrence and the gradient cases). ember's v1.2.0 run is pending and replaces its v1.1.2 entry. reference_environment.json is the generating environment's receipt (IR_SPEC 4.6), not a run of an engine.",
  "runs": [
   {
    "file": "ir_numpy.json",
-   "engine": "numpy reference (tools/ir_numpy.py) (numpy 2.3.3, Python 3.12.3, WSL ext4), against keramos v1.1.2 (33dff0348d4e2e1035acbbc933f1e7bb61f87ff1)",
-   "date": "2026-10-25",
+   "engine": "numpy reference (tools/ir_numpy.py) (CPython 3.13.14, numpy 2.3.5, Windows 11 x86-64: the generating environment), against keramos v1.2.0 (d4b880ae2a42865f4334b2c3ea27af6db02ffc84)",
+   "date": "2026-10-26",
    "counts": {
-    "PASS": 276,
+    "PASS": 362,
     "FAIL": 0,
     "SKIP": 8,
     "XFAIL": 0,
@@ -21,28 +21,28 @@
      "XPASS": 0
     },
     "trace": {
-     "PASS": 37,
+     "PASS": 39,
      "FAIL": 0,
      "SKIP": 0,
      "XFAIL": 0,
      "XPASS": 0
     },
     "op": {
-     "PASS": 54,
+     "PASS": 59,
      "FAIL": 0,
      "SKIP": 0,
      "XFAIL": 0,
      "XPASS": 0
     },
     "refuse": {
-     "PASS": 74,
+     "PASS": 83,
      "FAIL": 0,
      "SKIP": 0,
      "XFAIL": 0,
      "XPASS": 0
     },
     "digest": {
-     "PASS": 80,
+     "PASS": 84,
      "FAIL": 0,
      "SKIP": 0,
      "XFAIL": 0,
@@ -61,17 +61,31 @@
      "SKIP": 8,
      "XFAIL": 0,
      "XPASS": 0
+    },
+    "accept": {
+     "PASS": 34,
+     "FAIL": 0,
+     "SKIP": 0,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "chat": {
+     "PASS": 32,
+     "FAIL": 0,
+     "SKIP": 0,
+     "XFAIL": 0,
+     "XPASS": 0
     }
    }
   },
   {
    "file": "mtstudio.json",
-   "engine": "paperkiln mtstudio, CPU, with ir_eval (recurrence nodes, their gradients, the digest) and expr_eval (ext4 clean clone, Release, GCC 13.3, vendored transformer_core, -ffp-contract=off), against keramos v1.1.2 (33dff0348d4e2e1035acbbc933f1e7bb61f87ff1)",
-   "date": "2026-10-25",
+   "engine": "paperkiln mtstudio, CPU, with ir_eval and expr_eval (ext4 clean clone of paperkiln 8de00e57, which includes 70638baf's thirdparty ops; Release, GCC 13.3, -ffp-contract=off), against keramos v1.2.0 (d4b880ae2a42865f4334b2c3ea27af6db02ffc84)",
+   "date": "2026-10-26",
    "counts": {
-    "PASS": 122,
+    "PASS": 139,
     "FAIL": 0,
-    "SKIP": 162,
+    "SKIP": 231,
     "XFAIL": 0,
     "XPASS": 0
    },
@@ -86,26 +100,26 @@
     "trace": {
      "PASS": 6,
      "FAIL": 0,
-     "SKIP": 31,
+     "SKIP": 33,
      "XFAIL": 0,
      "XPASS": 0
     },
     "op": {
-     "PASS": 12,
+     "PASS": 25,
      "FAIL": 0,
-     "SKIP": 42,
+     "SKIP": 34,
      "XFAIL": 0,
      "XPASS": 0
     },
     "refuse": {
      "PASS": 0,
      "FAIL": 0,
-     "SKIP": 74,
+     "SKIP": 83,
      "XFAIL": 0,
      "XPASS": 0
     },
     "digest": {
-     "PASS": 80,
+     "PASS": 84,
      "FAIL": 0,
      "SKIP": 0,
      "XFAIL": 0,
@@ -124,12 +138,103 @@
      "SKIP": 0,
      "XFAIL": 0,
      "XPASS": 0
+    },
+    "accept": {
+     "PASS": 0,
+     "FAIL": 0,
+     "SKIP": 34,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "chat": {
+     "PASS": 0,
+     "FAIL": 0,
+     "SKIP": 32,
+     "XFAIL": 0,
+     "XPASS": 0
+    }
+   }
+  },
+  {
+   "file": "cleanroom.json",
+   "engine": "keramos-cleanroom (Rust, cleanroom/rust at keramos 1d1fd377; rustc 1.98.1, release, no crates, WSL ext4), against keramos v1.2.0 (d4b880ae2a42865f4334b2c3ea27af6db02ffc84)",
+   "date": "2026-10-26",
+   "counts": {
+    "PASS": 330,
+    "FAIL": 0,
+    "SKIP": 40,
+    "XFAIL": 0,
+    "XPASS": 0
+   },
+   "by_kind": {
+    "model": {
+     "PASS": 21,
+     "FAIL": 0,
+     "SKIP": 0,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "trace": {
+     "PASS": 39,
+     "FAIL": 0,
+     "SKIP": 0,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "op": {
+     "PASS": 59,
+     "FAIL": 0,
+     "SKIP": 0,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "refuse": {
+     "PASS": 83,
+     "FAIL": 0,
+     "SKIP": 0,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "digest": {
+     "PASS": 84,
+     "FAIL": 0,
+     "SKIP": 0,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "dequant": {
+     "PASS": 10,
+     "FAIL": 0,
+     "SKIP": 0,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "grad": {
+     "PASS": 0,
+     "FAIL": 0,
+     "SKIP": 8,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "accept": {
+     "PASS": 34,
+     "FAIL": 0,
+     "SKIP": 0,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "chat": {
+     "PASS": 0,
+     "FAIL": 0,
+     "SKIP": 32,
+     "XFAIL": 0,
+     "XPASS": 0
     }
    }
   },
   {
    "file": "ember_cpu.json",
-   "engine": "ember.cpp ir_adapter, CPU interpreter, ember 39dcce94886fbac759c26c123007d7e106b84aed (/home/jonat/ember_adapter_39dcce9/build/ir_adapter (git archive of that commit, CPU only: HAS_CUDA off, Release, GCC 13.3, WSL ext4; the interpreter's IR translation units with -ffp-contract=off); hello: 'ir_adapter 2 (IR versions 0 and 1; spec revision 1.1)'), against keramos v1.1.2 (33dff0348d4e2e1035acbbc933f1e7bb61f87ff1)",
+   "engine": "ember.cpp ir_adapter, CPU interpreter, ember 39dcce94886fbac759c26c123007d7e106b84aed, against keramos v1.1.2 (33dff0348d4e2e1035acbbc933f1e7bb61f87ff1)",
    "date": "2026-10-25",
    "counts": {
     "PASS": 230,

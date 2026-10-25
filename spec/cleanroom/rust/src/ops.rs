@@ -617,7 +617,8 @@ pub fn exec(ctx: &Ctx, node: &Json, env: &mut Env, slots: &mut Slots) -> Result<
                 return put(env, node, s0);
             }
             let w = model.wa(node, "weight", app)?;
-            let eps = at_f32(node, "eps", a)?;
+            // IR_SPEC 5.18 (1.2): eps is optional, 1e-5 by default
+            let eps = if node.get("eps").is_some() { at_f32(node, "eps", a)? } else { 1e-5f32 };
             let (t_n, d) = (src[0].rows(), src[0].cols());
             if src.iter().any(|s| s.rows() != t_n || s.cols() != d) || w.numel() != d {
                 return Err("depth_attend: sources or pseudo-query of different shapes".into());

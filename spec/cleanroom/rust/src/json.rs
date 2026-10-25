@@ -141,6 +141,16 @@ pub fn parse_value(text: &str) -> Result<Json, String> {
     parse(text).map(|p| p.value)
 }
 
+/// A document's text (IR_SPEC 3.2): a duplicate member name anywhere, `_` members included, is refused
+/// (rule 35); the other I-JSON departures matter only to the digest.
+pub fn parse_document(text: &str) -> Result<Json, String> {
+    let p = parse(text).map_err(|e| format!("IR_SPEC 3.2 (rule 1): the document is not JSON: {}", e))?;
+    if let Some(d) = p.ijson_issues.iter().find(|m| m.starts_with("duplicate member name")) {
+        return Err(format!("IR_SPEC 3.2 (rule 35): {}", d));
+    }
+    Ok(p.value)
+}
+
 impl<'a> P<'a> {
     fn ws(&mut self) {
         while self.i < self.s.len() && matches!(self.s[self.i], b' ' | b'\t' | b'\n' | b'\r') {

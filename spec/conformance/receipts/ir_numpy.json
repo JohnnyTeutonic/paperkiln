@@ -1,13 +1,13 @@
 {
  "spec": {
   "repository": "keramos",
-  "tag": "v1.1.2",
-  "commit": "33dff0348d4e2e1035acbbc933f1e7bb61f87ff1"
+  "tag": "v1.2.0",
+  "commit": "d4b880ae2a42865f4334b2c3ea27af6db02ffc84"
  },
  "engine": {
   "name": "numpy reference (tools/ir_numpy.py)",
-  "environment": "numpy 2.3.3, Python 3.12.3, WSL ext4",
-  "run": "python3 spec/tools/ir_conformance.py --adapter ir_numpy, paperkiln 139168ad4f0a7f6d3dd6f59b5510244c82ec0de9 (keramos v1.1.2 vendored at spec/), 2026-10-25"
+  "environment": "CPython 3.13.14, numpy 2.3.5, Windows 11 x86-64 (the generating environment, IR_SPEC 4.6)",
+  "run": "python tools/ir_conformance.py --adapter ir_numpy, keramos working tree equal to v1.2.0 (d4b880ae), 2026-10-26"
  },
  "adapter": {
   "engine": "ir_numpy",
@@ -23,7 +23,7 @@
   ]
  },
  "counts": {
-  "PASS": 276,
+  "PASS": 362,
   "FAIL": 0,
   "SKIP": 8,
   "XFAIL": 0,
@@ -38,28 +38,28 @@
    "XPASS": 0
   },
   "trace": {
-   "PASS": 37,
+   "PASS": 39,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
    "XPASS": 0
   },
   "op": {
-   "PASS": 54,
+   "PASS": 59,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
    "XPASS": 0
   },
   "refuse": {
-   "PASS": 74,
+   "PASS": 83,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
    "XPASS": 0
   },
   "digest": {
-   "PASS": 80,
+   "PASS": 84,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
@@ -76,6 +76,20 @@
    "PASS": 0,
    "FAIL": 0,
    "SKIP": 8,
+   "XFAIL": 0,
+   "XPASS": 0
+  },
+  "accept": {
+   "PASS": 34,
+   "FAIL": 0,
+   "SKIP": 0,
+   "XFAIL": 0,
+   "XPASS": 0
+  },
+  "chat": {
+   "PASS": 32,
+   "FAIL": 0,
+   "SKIP": 0,
    "XFAIL": 0,
    "XPASS": 0
   }
@@ -361,7 +375,7 @@
    "id": "model/tp_mamba1",
    "kind": "model",
    "verdict": "PASS",
-   "detail": "log-probs worst 1.57e-07; greedy 4/4"
+   "detail": "log-probs worst 0.00e+00; greedy 4/4"
   },
   {
    "id": "trace/tp_mamba1_decode",
@@ -580,6 +594,12 @@
    "detail": "q worst 0.00e+00 of max(1, |ref|); k worst 0.00e+00 of max(1, |ref|)"
   },
   {
+   "id": "op/rope/first_head",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "q worst 0.00e+00 of max(1, |ref|); k worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
    "id": "op/attention/causal",
    "kind": "op",
    "verdict": "PASS",
@@ -634,6 +654,12 @@
    "detail": "h worst 0.00e+00 of max(1, |ref|)"
   },
   {
+   "id": "op/depth_attend/eps_default",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "h worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
    "id": "op/expr/gelu_sigmoid",
    "kind": "op",
    "verdict": "PASS",
@@ -653,6 +679,18 @@
   },
   {
    "id": "op/expr/layer_norm",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/expr/rowsum_constant",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/expr/depth_200",
    "kind": "op",
    "verdict": "PASS",
    "detail": "y worst 0.00e+00 of max(1, |ref|)"
@@ -679,7 +717,7 @@
    "id": "op/selective_scan/d3n2",
    "kind": "op",
    "verdict": "PASS",
-   "detail": "y worst 9.07e-08 of max(1, |ref|); state ssm.s worst 6.17e-09 of max(1, |ref|)"
+   "detail": "y worst 0.00e+00 of max(1, |ref|); state ssm.s worst 0.00e+00 of max(1, |ref|)"
   },
   {
    "id": "op/recurrence/linear_attention_body",
@@ -730,448 +768,508 @@
    "detail": "y 0 values differ in their bits; state sq.h 0 values differ in their bits"
   },
   {
+   "id": "op/recurrence/read_beyond_declaration",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y 0 values differ in their bits; state pad.h 0 values differ in their bits"
+  },
+  {
    "id": "refuse/unknown_op",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 10.1 rule 1)"
+   "detail": "refused (IR_SPEC 3.5 (rule 4))"
   },
   {
    "id": "refuse/unknown_attribute",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 10.1 rule 1)"
+   "detail": "refused (IR_SPEC 3.5 (rule 4))"
   },
   {
    "id": "refuse/unknown_top_key",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 10.1 rule 1)"
+   "detail": "refused (IR_SPEC 3.2 (rule 1))"
   },
   {
    "id": "refuse/version_2",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 2.3)"
+   "detail": "refused (IR_SPEC 2.3 (rule 2))"
   },
   {
    "id": "refuse/repeat_ne_n_layers",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 3.3)"
+   "detail": "refused (IR_SPEC 3.3 (rule 3))"
   },
   {
    "id": "refuse/model_ctx_missing",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 3.3)"
+   "detail": "refused (IR_SPEC 3.3 (rule 3))"
   },
   {
    "id": "refuse/per_layer_wrong_length",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 3.8)"
+   "detail": "refused (IR_SPEC 3.8 (rule 6))"
   },
   {
    "id": "refuse/per_layer_in_head",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 3.8)"
+   "detail": "refused (IR_SPEC 3.8 (rule 6))"
   },
   {
    "id": "refuse/add_one_input",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 10.1 rule 7)"
+   "detail": "refused (IR_SPEC 3.5 (rule 7))"
   },
   {
    "id": "refuse/rope_pairing_unknown",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 10.1 rule 1)"
+   "detail": "refused (IR_SPEC 5.14 (rule 5))"
   },
   {
    "id": "refuse/rope_n_rot_odd",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 5.14)"
+   "detail": "refused (IR_SPEC 5.14 (rule 10))"
   },
   {
    "id": "refuse/attention_not_causal",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 5.15)"
+   "detail": "refused (IR_SPEC 5.15 (rule 14))"
   },
   {
    "id": "refuse/attention_heads_not_multiple",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 5.15)"
+   "detail": "refused (IR_SPEC 5.15 (rule 10))"
   },
   {
    "id": "refuse/attention_window_differs",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 5.15)"
+   "detail": "refused (IR_SPEC 5.15 (rule 12))"
   },
   {
    "id": "refuse/slot_declared_twice",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 6.1)"
+   "detail": "refused (IR_SPEC 6.1 (rule 11))"
   },
   {
    "id": "refuse/slot_unread",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 6.1)"
+   "detail": "refused (IR_SPEC 6.1 (rule 11))"
   },
   {
    "id": "refuse/slot_unknown_kind",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 10.1 rule 1)"
+   "detail": "refused (IR_SPEC 6.1 (rule 11))"
   },
   {
    "id": "refuse/attention_no_slot",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 6.1)"
+   "detail": "refused (IR_SPEC 6.1 (rule 11))"
   },
   {
    "id": "refuse/kv_slot_field_missing",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 6.2)"
+   "detail": "refused (IR_SPEC 6.2 (rule 12))"
   },
   {
    "id": "refuse/tensor_index_without_weight_index",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 7.2)"
+   "detail": "refused (IR_SPEC 7.2 (rule 19))"
   },
   {
    "id": "refuse/name_with_i_outside_block",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 3.7)"
+   "detail": "refused (IR_SPEC 3.7 (rule 17a))"
   },
   {
    "id": "refuse/evict_on_causal",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 6.8.3)"
+   "detail": "refused (IR_SPEC 6.8.3 (rule 16))"
   },
   {
    "id": "refuse/missing_tensor",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 3.7)"
+   "detail": "refused (IR_SPEC 3.7 (rule 25))"
   },
   {
    "id": "refuse/gelu_approx_unknown",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 10.1 rule 1)"
+   "detail": "refused (IR_SPEC 5.8 (rule 5))"
   },
   {
    "id": "refuse/split_count",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 5.5)"
+   "detail": "refused (IR_SPEC 5.5 (rule 10))"
   },
   {
    "id": "refuse/expr_does_not_parse",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 5.19)"
+   "detail": "refused (IR_SPEC 5.19 (rule 9))"
   },
   {
    "id": "refuse/moe_top_k_too_large",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 5.16)"
+   "detail": "refused (IR_SPEC 5.16 (rule 10))"
   },
   {
    "id": "refuse/moe_gate_norm_unknown",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 10.1 rule 1)"
+   "detail": "refused (IR_SPEC 5.16 (rule 5))"
   },
   {
    "id": "refuse/recurrent_dtype_f16",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 10.1 rule 1)"
+   "detail": "refused (IR_SPEC 6.3 (rule 13))"
   },
   {
    "id": "refuse/recurrent_shape_mismatch",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 6.3)"
+   "detail": "refused (IR_SPEC 6.3 (rule 13))"
   },
   {
    "id": "refuse/recurrent_op_mismatch",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 6.1)"
+   "detail": "refused (IR_SPEC 6.3 (rule 13))"
   },
   {
    "id": "refuse/linear_attention_not_causal",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 6.4)"
+   "detail": "refused (IR_SPEC 6.4 (rule 14))"
   },
   {
    "id": "refuse/conv_kernel_one",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 6.6)"
+   "detail": "refused (IR_SPEC 6.6 (rule 10))"
   },
   {
    "id": "refuse/weight_index_wrong_length",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 7.1)"
+   "detail": "refused (IR_SPEC 7.1 (rule 18))"
   },
   {
    "id": "refuse/weight_index_unused_layer",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 7.1)"
+   "detail": "refused (IR_SPEC 7.1 (rule 18))"
   },
   {
    "id": "refuse/weight_index_negative",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 7.1)"
+   "detail": "refused (IR_SPEC 7.1 (rule 18))"
   },
   {
    "id": "refuse/mor_route_not_first",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 7.4)"
+   "detail": "refused (IR_SPEC 7.4 (rule 20))"
   },
   {
    "id": "refuse/mor_expert_choice",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 7.7)"
+   "detail": "refused (IR_SPEC 7.7 (rule 5))"
   },
   {
    "id": "refuse/mor_unequal_steps",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 7.4)"
+   "detail": "refused (IR_SPEC 7.4 (rule 20))"
   },
   {
    "id": "refuse/mor_steps_descending",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 7.4)"
+   "detail": "refused (IR_SPEC 7.4 (rule 20))"
   },
   {
    "id": "refuse/mor_step_length_wrong",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 7.4)"
+   "detail": "refused (IR_SPEC 3.8 (rule 6))"
   },
   {
    "id": "refuse/mor_no_kv_rows_active",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 7.5)"
+   "detail": "refused (IR_SPEC 7.5 (rule 21))"
   },
   {
    "id": "refuse/mor_kv_from",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 7.6)"
+   "detail": "refused (IR_SPEC 7.6 (rule 22))"
   },
   {
    "id": "refuse/mor_gate_unknown",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 7.4)"
+   "detail": "refused (IR_SPEC 7.4 (rule 5))"
   },
   {
    "id": "refuse/mor_router_with_i",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 7.7)"
+   "detail": "refused (IR_SPEC 7.7 (rule 20))"
   },
   {
    "id": "refuse/mor_kv_rows_shared",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 7.5)"
+   "detail": "refused (IR_SPEC 7.5 (rule 5))"
   },
   {
    "id": "refuse/mor_route_in_head",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 7.4)"
+   "detail": "refused (IR_SPEC 7.4 (rule 20))"
   },
   {
    "id": "refuse/turn_state_with_window",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 6.8.2)"
+   "detail": "refused (IR_SPEC 6.8.2 (rule 15))"
   },
   {
    "id": "refuse/turn_state_without_state_weight",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 6.8.2)"
+   "detail": "refused (IR_SPEC 6.8.2 (rule 15))"
   },
   {
    "id": "refuse/evict_without_mask",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 6.8.3)"
+   "detail": "refused (IR_SPEC 6.8.3 (rule 16))"
   },
   {
    "id": "refuse/evict_unknown",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 10.1 rule 1)"
+   "detail": "refused (IR_SPEC 6.8.3 (rule 5))"
   },
   {
    "id": "refuse/mask_unknown",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 10.1 rule 1)"
+   "detail": "refused (IR_SPEC 6.8.2 (rule 5))"
   },
   {
    "id": "refuse/state_weight_with_i",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 6.8.1)"
+   "detail": "refused (IR_SPEC 6.8.1 (rule 17))"
   },
   {
    "id": "refuse/two_state_weights",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 6.8.1)"
+   "detail": "refused (IR_SPEC 6.8.1 (rule 17))"
   },
   {
    "id": "refuse/state_weight_wrong_name",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 6.8.1)"
+   "detail": "refused (IR_SPEC 3.7 (rule 25))"
   },
   {
    "id": "refuse/recurrence_body_does_not_parse",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 6.10)"
+   "detail": "refused (IR_SPEC 6.10 (rule 31))"
   },
   {
    "id": "refuse/recurrence_name_twice",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 6.10)"
+   "detail": "refused (IR_SPEC 6.10 (rule 31))"
   },
   {
    "id": "refuse/recurrence_rowsum",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 6.10)"
+   "detail": "refused (IR_SPEC 6.10 (rule 31))"
   },
   {
    "id": "refuse/recurrence_index_size_zero",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 6.10)"
+   "detail": "refused (IR_SPEC 6.10 (rule 31))"
   },
   {
    "id": "refuse/recurrence_index_out_of_scope",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 6.10)"
+   "detail": "refused (IR_SPEC 6.10 (rule 32))"
   },
   {
    "id": "refuse/recurrence_init_reads_input",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 6.10)"
+   "detail": "refused (IR_SPEC 6.10 (rule 32))"
   },
   {
    "id": "refuse/recurrence_rank_mismatch",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 6.10)"
+   "detail": "refused (IR_SPEC 6.10 (rule 32))"
   },
   {
    "id": "refuse/recurrence_index_undeclared",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 6.10)"
+   "detail": "refused (IR_SPEC 6.10 (rule 32))"
   },
   {
    "id": "refuse/recurrence_slot_shape",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 6.10)"
+   "detail": "refused (IR_SPEC 6.10 (rule 33))"
   },
   {
    "id": "refuse/recurrence_slot_missing_tensor",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 6.10)"
+   "detail": "refused (IR_SPEC 6.10 (rule 33))"
   },
   {
    "id": "refuse/recurrence_init_flag",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 6.10)"
+   "detail": "refused (IR_SPEC 6.10 (rule 33))"
   },
   {
    "id": "refuse/recurrence_weight_size",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 6.10)"
+   "detail": "refused (IR_SPEC 6.10 (rule 34))"
   },
   {
    "id": "refuse/recurrence_assignment_repeats_index",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 6.10)"
+   "detail": "refused (IR_SPEC 6.10 (rule 32))"
   },
   {
    "id": "refuse/recurrence_bare_undeclared_name",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 6.10)"
+   "detail": "refused (IR_SPEC 6.10 (rule 32))"
+  },
+  {
+   "id": "refuse/reads_unwritten_value",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 3.5 (rule 36))"
+  },
+  {
+   "id": "refuse/embed_writes_no_x",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 3.5 (rule 36))"
+  },
+  {
+   "id": "refuse/head_writes_no_logits",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 3.4 (rule 36))"
+  },
+  {
+   "id": "refuse/mor_reads_outside_value",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 7.4 (rule 36))"
+  },
+  {
+   "id": "refuse/mor_step_gap",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 7.4 (rule 20))"
+  },
+  {
+   "id": "refuse/duplicate_member_top",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 3.2 (rule 35))"
+  },
+  {
+   "id": "refuse/duplicate_member_node",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 3.2 (rule 35))"
+  },
+  {
+   "id": "refuse/duplicate_member_prose",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 3.2 (rule 35))"
   },
   {
    "id": "refuse/version_key_mismatch",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 3.1)"
+   "detail": "refused (IR_SPEC 3.1 (rule 24))"
   },
   {
    "id": "refuse/state_tokens_k_mismatch",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 6.8.1)"
+   "detail": "refused (IR_SPEC 6.8.1 (rule 28))"
   },
   {
    "id": "refuse/state_template_not_v1",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 8.2)"
+   "detail": "refused (IR_SPEC 8.2 (rule 28))"
   },
   {
    "id": "refuse/weight_index_block_count",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 7.1)"
+   "detail": "refused (IR_SPEC 7.1 (rule 27))"
   },
   {
    "id": "refuse/state_tokens_arch_llama",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused (IR_SPEC 8.2)"
+   "detail": "refused (IR_SPEC 8.2 (rule 28))"
+  },
+  {
+   "id": "refuse/duplicate_member_embedded",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 3.2 (rule 35))"
   },
   {
    "id": "digest/vectors/rfc8785_number_0000000000000000",
@@ -1654,6 +1752,30 @@
    "detail": "refused"
   },
   {
+   "id": "digest/vectors/fraction_form_beyond_2p53",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/exponent_form_1e300",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/negative_integer_2p53",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/negative_integer_beyond_2p53",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
    "id": "dequant/blocks/f32",
    "kind": "dequant",
    "verdict": "PASS",
@@ -1784,6 +1906,414 @@
    "kind": "trace",
    "verdict": "PASS",
    "detail": "9 steps"
+  },
+  {
+   "id": "trace/pk_srd_truncate",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "3 steps"
+  },
+  {
+   "id": "trace/tp_mamba1_truncate",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "3 steps"
+  },
+  {
+   "id": "accept/documents/model_pk_attnres",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_pk_flex_expr",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_pk_flex_highway",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_pk_gpt2",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_pk_gpt2_swa",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_pk_kimi",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_pk_llama",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_pk_llama_attnres",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_pk_llama_attnres_rec",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_pk_mamba",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_pk_moe",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_pk_mor",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_pk_recurrence",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_pk_recursive",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_pk_srd",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_pk_state",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_tp_gemma3",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_tp_gptneox",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_tp_mamba1",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_tp_mistral",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_tp_qwen3",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/rewritten_pk_kimi",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/rewritten_pk_srd",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/rewritten_pk_mamba",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/rewritten_tp_mamba1",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/example_attnres_tiny",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/example_chat_sftfinal",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/example_flex_highway_tiny",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/example_gpt2_tiny",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/example_kimi_tiny",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/example_mamba_tiny",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/example_moe_tiny",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/example_srd_tiny",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/example_swa_tiny",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "chat/render/one user prompt",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/system folds into the first user turn",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/a lone system message",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/a system message with no user message",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/two system messages",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/a system message mid-conversation",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/the assistant first",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/two user messages in a row",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/a training conversation ending on a user message",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/a prompt ending on an assistant message",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/user content holding a role marker",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/system content holding end-of-text",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/assistant content holding a marker",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/<unk> text is ordinary content",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/newline-only user content",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/newline-only and empty replies in the history",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/the tool role is reserved",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/an unknown role",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/three exchanges with a system message",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/a training conversation with a system message",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/loss on a user message",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/unicode content",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/system mode none refuses a system message",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/system mode none without one",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/legacy word-level prompt",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/gemma3 trims and folds",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/gemma3 trims unicode edge whitespace",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/gemma3 trims unicode whitespace in system and history",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/gemma3 keeps inner unicode whitespace and zero-width space",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/qwen3 strips past reasoning",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/qwen2.5 writes its default system turn",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/qwen3 thinking off",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
   }
  ]
 }

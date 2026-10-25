@@ -67,7 +67,7 @@ fn load(gguf_path: &str, ir: Option<&str>) -> Result<(gguf::Gguf, Json, Vec<Stri
             }
         },
     };
-    let doc = json::parse_value(&text).map_err(|e| format!("IR_SPEC 10.1 (rule 1): the document is not JSON: {}", e))?;
+    let doc = json::parse_document(&text)?;
     let rep = validate::validate(&doc, Some(&g));
     if !rep.errors.is_empty() {
         return Err(rep.errors.join("; "));
@@ -223,16 +223,28 @@ impl Engine {
         Ok(match method {
             "hello" => Reply::Result(Json::obj(vec![
                 ("engine", Json::str(ENGINE)),
-                ("version", Json::str(concat!("0.1.0 (IR versions 0 and 1; spec revision 1.1, keramos v1.1.4)"))),
+                ("version", Json::str(concat!("0.1.0 (IR versions 0 and 1; spec revision 1.2, keramos v1.2.0)"))),
                 ("backend", Json::str("cpu")),
                 ("exact", Json::Bool(true)),
                 ("profiles", Json::Arr(PROFILES.iter().map(|s| Json::str(s)).collect())),
                 ("methods", Json::Arr(METHODS.iter().map(|s| Json::str(s)).collect())),
             ])),
             "check" => {
-                let gp = p_str(p, "gguf").ok_or("no gguf")?;
                 let ir = p_str(p, "ir");
-                let res = load(gp, ir).and_then(|(g, doc, _)| build_model(&g, &doc).map(|_| ()));
+                let res = match p_str(p, "gguf") {
+                    Some(gp) => load(gp, ir).and_then(|(g, doc, _)| build_model(&g, &doc).map(|_| ())),
+                    // IR_SPEC 11.3 (1.2): gguf null checks the document alone (no container rules)
+                    None => {
+                        let ip = ir.ok_or("check needs gguf or ir")?;
+                        std::fs::read_to_string(ip)
+                            .map_err(|e| format!("cannot read {}: {}", ip, e))
+                            .and_then(|t| json::parse_document(&t))
+                            .and_then(|doc| {
+                                let rep = validate::validate(&doc, None);
+                                if rep.errors.is_empty() { Ok(()) } else { Err(rep.errors.join("; ")) }
+                            })
+                    }
+                };
                 match res {
                     Ok(()) => Reply::Result(Json::obj(vec![("accepted", Json::Bool(true))])),
                     Err(e) => Reply::Result(Json::obj(vec![("accepted", Json::Bool(false)), ("message", Json::Str(e))])),

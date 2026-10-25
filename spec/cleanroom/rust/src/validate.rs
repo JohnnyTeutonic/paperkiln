@@ -134,6 +134,8 @@ fn semantic(doc: &Json, v: &mut V) {
     let slots: Vec<&Json> = block.and_then(|b| b.get("state")).and_then(|s| s.as_arr()).map(|a| a.iter().collect()).unwrap_or_default();
     let has_wi = block.and_then(|b| b.get("weight_index")).is_some();
 
+    reads(doc, v);
+
     // per-node rules
     for (sec, list) in [("embed", &embed), ("block", &blk), ("head", &head)] {
         let in_block = sec == "block";
@@ -583,10 +585,10 @@ fn semantic(doc: &Json, v: &mut V) {
                     }
                     let in_order = runs.iter().enumerate().all(|(i, (x, _))| *x == i as i64) && runs.len() as i64 == r;
                     let equal = runs.windows(2).all(|w| w[0].1 == w[1].1);
-                    // Each step's applications are consecutive (a run per step). Whether a -1 may sit
-                    // between two steps is not stated (7.4 calls -1 "prelude or coda"); it is accepted
-                    // here (FINDINGS.md).
-                    ok = in_order && equal;
+                    // IR_SPEC 7.4 (1.2): the steps' applications form one run, -1 only before and after.
+                    let inside: Vec<usize> = st.iter().enumerate().filter(|(_, &x)| x >= 0).map(|(i, _)| i).collect();
+                    let one_run = !inside.is_empty() && inside.last().unwrap() - inside[0] + 1 == inside.len();
+                    ok = in_order && equal && one_run;
                 }
                 if !ok {
                     v.e("20", "7.4", format!("step {:?} does not form the consecutive, ascending, equal steps 0 .. {}", st, r - 1));
@@ -631,6 +633,50 @@ fn semantic(doc: &Json, v: &mut V) {
             }
             _ => v.e("18", "7.1", "weight_index is not per_layer of block.repeat integers >= 0".into()),
         }
+    }
+}
+
+/// Rule 36 (IR_SPEC 3.5, 7.4; revision 1.2): every value a node reads is written before it (embed, the
+/// block as application 0, head); the embed writes x and the head logits; under depth_route the block's
+/// other nodes read x, pos and values of the same application, and the head x and the embed's values.
+fn reads(doc: &Json, v: &mut V) {
+    use std::collections::HashSet;
+    let embed = nodes(doc, "embed");
+    let blk = nodes(doc, "block");
+    let head = nodes(doc, "head");
+    let routed = blk.first().map(|n| op(n) == "depth_route").unwrap_or(false);
+    let walk = |sec: &str, list: &[&Json], have: &mut HashSet<String>, v: &mut V| {
+        for (j, n) in list.iter().enumerate() {
+            for (k, x) in ins(n).iter().enumerate() {
+                if !have.contains(x) {
+                    v.e("36", if routed && sec != "embed" { "7.4" } else { "3.5" },
+                        format!("{}[{}] {} reads {} (its input {}), which no earlier node writes", sec, j, op(n), x, k));
+                }
+            }
+            for o in outs(n) {
+                have.insert(o);
+            }
+        }
+    };
+    let mut have: HashSet<String> = ["tokens", "pos"].iter().map(|s| s.to_string()).collect();
+    walk("embed", &embed[..], &mut have, v);
+    if !have.contains("x") {
+        v.e("36", "3.5", "the embed section writes no x".into());
+    }
+    if routed {
+        let embed_have = have.clone();
+        walk("block", &blk[..1], &mut have, v);
+        let mut step: HashSet<String> = ["x", "pos"].iter().map(|s| s.to_string()).collect();
+        walk("block", &blk[1..], &mut step, v);
+        let mut h = embed_have;
+        h.insert("x".into());
+        walk("head", &head[..], &mut h, v);
+    } else {
+        walk("block", &blk[..], &mut have, v);
+        walk("head", &head[..], &mut have, v);
+    }
+    if !head.iter().any(|n| outs(n).iter().any(|o| o == "logits")) {
+        v.e("36", "3.4", "the head writes no logits".into());
     }
 }
 

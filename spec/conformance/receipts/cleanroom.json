@@ -1,0 +1,2318 @@
+{
+ "spec": {
+  "repository": "keramos",
+  "tag": "v1.2.0",
+  "commit": "d4b880ae2a42865f4334b2c3ea27af6db02ffc84"
+ },
+ "engine": {
+  "name": "keramos-cleanroom (Rust), kcr --conformance, built from keramos 1d1fd3773e82b6c03d263426fe95fa10fb1cae51 (cleanroom/rust; rustc 1.98.1, release, no crates, WSL ext4)",
+  "environment": "the runner under CPython 3.12.3, numpy 2.3.3, WSL",
+  "run": "python3 tools/ir_conformance.py --adapter cmd:kcr --conformance, keramos working tree equal to v1.2.0 (d4b880ae), 2026-10-26; skips: the 8 gradient cases (no training) and the 32 chat cases (render_chat not built)"
+ },
+ "adapter": {
+  "engine": "keramos-cleanroom (Rust)",
+  "backend": "cpu",
+  "exact": true,
+  "profiles": [
+   "core",
+   "recurrence",
+   "recursion",
+   "state",
+   "thirdparty"
+  ]
+ },
+ "counts": {
+  "PASS": 330,
+  "FAIL": 0,
+  "SKIP": 40,
+  "XFAIL": 0,
+  "XPASS": 0
+ },
+ "by_kind": {
+  "model": {
+   "PASS": 21,
+   "FAIL": 0,
+   "SKIP": 0,
+   "XFAIL": 0,
+   "XPASS": 0
+  },
+  "trace": {
+   "PASS": 39,
+   "FAIL": 0,
+   "SKIP": 0,
+   "XFAIL": 0,
+   "XPASS": 0
+  },
+  "op": {
+   "PASS": 59,
+   "FAIL": 0,
+   "SKIP": 0,
+   "XFAIL": 0,
+   "XPASS": 0
+  },
+  "refuse": {
+   "PASS": 83,
+   "FAIL": 0,
+   "SKIP": 0,
+   "XFAIL": 0,
+   "XPASS": 0
+  },
+  "digest": {
+   "PASS": 84,
+   "FAIL": 0,
+   "SKIP": 0,
+   "XFAIL": 0,
+   "XPASS": 0
+  },
+  "dequant": {
+   "PASS": 10,
+   "FAIL": 0,
+   "SKIP": 0,
+   "XFAIL": 0,
+   "XPASS": 0
+  },
+  "grad": {
+   "PASS": 0,
+   "FAIL": 0,
+   "SKIP": 8,
+   "XFAIL": 0,
+   "XPASS": 0
+  },
+  "accept": {
+   "PASS": 34,
+   "FAIL": 0,
+   "SKIP": 0,
+   "XFAIL": 0,
+   "XPASS": 0
+  },
+  "chat": {
+   "PASS": 0,
+   "FAIL": 0,
+   "SKIP": 32,
+   "XFAIL": 0,
+   "XPASS": 0
+  }
+ },
+ "results": [
+  {
+   "id": "model/pk_attnres",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 1.02e-07; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_attnres_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "model/pk_flex_expr",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 1.39e-07; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_flex_expr_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "model/pk_flex_highway",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 1.13e-07; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_flex_highway_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "model/pk_gpt2",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 1.09e-07; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_gpt2_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "model/pk_gpt2_swa",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 1.05e-07; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_gpt2_swa_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "model/pk_kimi",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 7.79e-08; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_kimi_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "trace/pk_kimi_snapshot",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "5 steps"
+  },
+  {
+   "id": "model/pk_llama",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 5.97e-08; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_llama_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "trace/pk_llama_truncate",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "3 steps"
+  },
+  {
+   "id": "model/pk_llama_attnres",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 1.03e-07; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_llama_attnres_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "model/pk_llama_attnres_rec",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 8.27e-08; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_llama_attnres_rec_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "model/pk_mamba",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 1.68e-07; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_mamba_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "trace/pk_mamba_snapshot",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "5 steps"
+  },
+  {
+   "id": "model/pk_moe",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 9.77e-08; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_moe_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "model/pk_mor",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 1.53e-07; greedy 4/4; depth traces 4/4"
+  },
+  {
+   "id": "trace/pk_mor_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "trace/pk_mor_truncate",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "3 steps"
+  },
+  {
+   "id": "model/pk_recurrence",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 9.12e-08; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_recurrence_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "trace/pk_recurrence_snapshot",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "5 steps"
+  },
+  {
+   "id": "model/pk_recursive",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 7.39e-08; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_recursive_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "model/pk_srd",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 1.15e-07; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_srd_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "trace/pk_srd_snapshot",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "5 steps"
+  },
+  {
+   "id": "model/pk_state",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 9.72e-08; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_state_evict_on",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "9 steps"
+  },
+  {
+   "id": "trace/pk_state_evict_off",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "9 steps"
+  },
+  {
+   "id": "trace/pk_state_rewind_evicted",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "3 steps"
+  },
+  {
+   "id": "trace/pk_state_rewind_current",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "3 steps"
+  },
+  {
+   "id": "trace/pk_state_rewind_at_block",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "3 steps"
+  },
+  {
+   "id": "model/tp_gemma3",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 1.30e-06; greedy 4/4"
+  },
+  {
+   "id": "trace/tp_gemma3_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "model/tp_gptneox",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 4.52e-07; greedy 4/4"
+  },
+  {
+   "id": "trace/tp_gptneox_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "model/tp_mamba1",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 4.77e-07; greedy 4/4"
+  },
+  {
+   "id": "trace/tp_mamba1_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "trace/tp_mamba1_snapshot",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "5 steps"
+  },
+  {
+   "id": "model/tp_mistral",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 3.73e-07; greedy 4/4"
+  },
+  {
+   "id": "trace/tp_mistral_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "model/tp_qwen3",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 3.45e-07; greedy 4/4"
+  },
+  {
+   "id": "trace/tp_qwen3_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "trace/tp_qwen3_truncate",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "3 steps"
+  },
+  {
+   "id": "op/embedding/rows",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "x 0 values differ in their bits"
+  },
+  {
+   "id": "op/embedding/state_weight",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "x 0 values differ in their bits"
+  },
+  {
+   "id": "op/pos_embedding/rows",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y 0 values differ in their bits"
+  },
+  {
+   "id": "op/linear/bias",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 3.98e-08 of max(1, |ref|)"
+  },
+  {
+   "id": "op/linear/no_bias",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 4.84e-08 of max(1, |ref|)"
+  },
+  {
+   "id": "op/linear/tied_to",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 5.04e-08 of max(1, |ref|)"
+  },
+  {
+   "id": "op/scale/bias",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y 0 values differ in their bits"
+  },
+  {
+   "id": "op/scale/no_bias",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y 0 values differ in their bits"
+  },
+  {
+   "id": "op/split/three",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "a 0 values differ in their bits; b 0 values differ in their bits; c 0 values differ in their bits"
+  },
+  {
+   "id": "op/rmsnorm/row",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/rmsnorm/group",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/rmsnorm/weight_offset",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/layernorm/row",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/gelu/tanh",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 6.06e-09 of max(1, |ref|)"
+  },
+  {
+   "id": "op/gelu/none",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/silu/x",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 7.45e-10 of max(1, |ref|)"
+  },
+  {
+   "id": "op/sigmoid/x",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 5.96e-08 of max(1, |ref|)"
+  },
+  {
+   "id": "op/relu/x",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y 0 values differ in their bits"
+  },
+  {
+   "id": "op/add/ab",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y 0 values differ in their bits"
+  },
+  {
+   "id": "op/mul/ab",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y 0 values differ in their bits"
+  },
+  {
+   "id": "op/sub/ab",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y 0 values differ in their bits"
+  },
+  {
+   "id": "op/affine/scale_shift",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y 0 values differ in their bits"
+  },
+  {
+   "id": "op/mul_col/x_c",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y 0 values differ in their bits"
+  },
+  {
+   "id": "op/rms_row/eps",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/rope/interleaved",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "q worst 1.36e-08 of max(1, |ref|); k worst 1.25e-09 of max(1, |ref|)"
+  },
+  {
+   "id": "op/rope/neox",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "q worst 3.17e-09 of max(1, |ref|); k worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/rope/neox_partial",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "q worst 0.00e+00 of max(1, |ref|); k worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/rope/freq_scale",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "q worst 1.73e-09 of max(1, |ref|); k worst 2.66e-09 of max(1, |ref|)"
+  },
+  {
+   "id": "op/rope/grouped_query",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "q worst 1.36e-08 of max(1, |ref|); k worst 4.88e-09 of max(1, |ref|)"
+  },
+  {
+   "id": "op/rope/first_head",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "q worst 8.75e-10 of max(1, |ref|); k worst 1.25e-09 of max(1, |ref|)"
+  },
+  {
+   "id": "op/attention/causal",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "a worst 7.04e-08 of max(1, |ref|)"
+  },
+  {
+   "id": "op/attention/window_sinks",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "a worst 7.04e-08 of max(1, |ref|)"
+  },
+  {
+   "id": "op/attention/grouped_query",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "a worst 9.89e-08 of max(1, |ref|)"
+  },
+  {
+   "id": "op/moe_ffn/renorm",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 3.17e-07 of max(1, |ref|)"
+  },
+  {
+   "id": "op/moe_ffn/raw",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 3.17e-07 of max(1, |ref|)"
+  },
+  {
+   "id": "op/list/two",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "L 0 values differ in their bits; L 0 values differ in their bits"
+  },
+  {
+   "id": "op/append/one",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "L2 0 values differ in their bits; L2 0 values differ in their bits"
+  },
+  {
+   "id": "op/depth_attend/one_source",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "h 0 values differ in their bits"
+  },
+  {
+   "id": "op/depth_attend/three_sources",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "h worst 6.71e-08 of max(1, |ref|)"
+  },
+  {
+   "id": "op/depth_attend/eps_default",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "h worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/expr/gelu_sigmoid",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 1.61e-08 of max(1, |ref|)"
+  },
+  {
+   "id": "op/expr/relu_squared",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/expr/where_rowmean",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/expr/layer_norm",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/expr/rowsum_constant",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/expr/depth_200",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/linear_attention/two_heads",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 4.89e-08 of max(1, |ref|); state lin.num worst 2.90e-08 of max(1, |ref|); state lin.den worst 5.87e-08 of max(1, |ref|)"
+  },
+  {
+   "id": "op/ssm_scan/n4",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 0.00e+00 of max(1, |ref|); state ssm.s worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/conv1d_causal/k4",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 0.00e+00 of max(1, |ref|); state conv.x worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/selective_scan/d3n2",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 1.36e-07 of max(1, |ref|); state ssm.s worst 7.40e-08 of max(1, |ref|)"
+  },
+  {
+   "id": "op/recurrence/linear_attention_body",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 4.89e-08 of max(1, |ref|); state lin.num worst 2.90e-08 of max(1, |ref|); state lin.den worst 5.87e-08 of max(1, |ref|)"
+  },
+  {
+   "id": "op/recurrence/ssm_scan_body",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y 0 values differ in their bits; state ssm.s 0 values differ in their bits"
+  },
+  {
+   "id": "op/recurrence/conv1d_causal_body",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y 0 values differ in their bits; state conv.x 0 values differ in their bits"
+  },
+  {
+   "id": "op/recurrence/selective_scan_body",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 1.81e-07 of max(1, |ref|); state ssm.s worst 2.47e-08 of max(1, |ref|)"
+  },
+  {
+   "id": "op/recurrence/rnn_init_offset",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 8.28e-08 of max(1, |ref|); state rnn.h worst 5.96e-08 of max(1, |ref|)"
+  },
+  {
+   "id": "op/recurrence/ema_bias_corrected",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 0.00e+00 of max(1, |ref|); state avg.m worst 0.00e+00 of max(1, |ref|); state avg.n worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/recurrence/ema_exact",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y 0 values differ in their bits; state avg.m 0 values differ in their bits; state avg.n 0 values differ in their bits"
+  },
+  {
+   "id": "op/recurrence/square_weight_declaration",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y 0 values differ in their bits; state sq.h 0 values differ in their bits"
+  },
+  {
+   "id": "op/recurrence/read_beyond_declaration",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y 0 values differ in their bits; state pad.h 0 values differ in their bits"
+  },
+  {
+   "id": "refuse/unknown_op",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[15].op: \"warp\" is not one of [\"embedding\",\"pos_embedding\",\"linear\",\"scale\",\"split\","
+  },
+  {
+   "id": "refuse/unknown_attribute",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[5]: key temperature is not defined"
+  },
+  {
+   "id": "refuse/unknown_top_key",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $: key profiles is not defined"
+  },
+  {
+   "id": "refuse/version_2",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 2.3 (rule 2): ir_version Some(2) is not a version this engine reads (it reads 0 and 1)"
+  },
+  {
+   "id": "refuse/repeat_ne_n_layers",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 3.3 (rule 3): block.repeat 3 != model.n_layers Some(2); IR_SPEC 3.7 (rule 25): rmsnorm: tensor blk.2.attn_norm.w"
+  },
+  {
+   "id": "refuse/model_ctx_missing",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.model: required key ctx is missing; IR_SPEC 3.3 (rule 3): model.ctx is not a positive integer"
+  },
+  {
+   "id": "refuse/per_layer_wrong_length",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 3.8 (rule 6): block.nodes[4] (rope): per_layer theta has 1 entries, block.repeat is 2"
+  },
+  {
+   "id": "refuse/per_layer_in_head",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 3.8 (rule 6): head.nodes[0] (rmsnorm): per_layer eps outside the block"
+  },
+  {
+   "id": "refuse/add_one_input",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 5 (rule 7): block.nodes[7] (add): reads 1 value(s)"
+  },
+  {
+   "id": "refuse/rope_pairing_unknown",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[4].pairing: \"halves\" matches no allowed form ($.block.nodes[4].pairing: \"halves\" is"
+  },
+  {
+   "id": "refuse/rope_n_rot_odd",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 5.14 (rule 10): block.nodes[4] (rope): n_rot 3 is not even and in 1 .. head_dim; IR_SPEC 5.14 (rule 10): block.n"
+  },
+  {
+   "id": "refuse/attention_not_causal",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 5.15 (rule 14): block.nodes[5] (attention): causal is not true; IR_SPEC 5.15 (rule 14): block.nodes[5] (attentio"
+  },
+  {
+   "id": "refuse/attention_heads_not_multiple",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 5.15 (rule 10): block.nodes[5] (attention): heads 3 is not a multiple of kv_heads 2; IR_SPEC 5.15 (rule 10): blo"
+  },
+  {
+   "id": "refuse/attention_window_differs",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 5.15 (rule 12): attention reading kv: window Some(4) differs from the slot's Some(0) (application 0); IR_SPEC 5."
+  },
+  {
+   "id": "refuse/slot_declared_twice",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.1 (rule 11): slot kv is declared twice"
+  },
+  {
+   "id": "refuse/slot_unread",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.1 (rule 11): slot kv2 is read by no node"
+  },
+  {
+   "id": "refuse/slot_unknown_kind",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.state[0].kind: \"paged\" is not one of [\"kv\",\"recurrent\"]; IR_SPEC 6.1 (rule 11): slot kv: "
+  },
+  {
+   "id": "refuse/attention_no_slot",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.1 (rule 11): slot kv is read by no node; IR_SPEC 6.1 (rule 11): block.nodes[5] (attention) names no declared s"
+  },
+  {
+   "id": "refuse/kv_slot_field_missing",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.state[0]: required key max_len is missing; IR_SPEC 6.2 (rule 12): kv slot kv lacks max_le"
+  },
+  {
+   "id": "refuse/tensor_index_without_weight_index",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 7.2 (rule 19): block.nodes[1] (linear): tensor_index in a block without weight_index"
+  },
+  {
+   "id": "refuse/name_with_i_outside_block",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 3.7 (rule 17a): head.nodes[0] (rmsnorm): weight \"blk.{i}.output_norm.weight\" holds {i} outside the block; IR_SPE"
+  },
+  {
+   "id": "refuse/evict_on_causal",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.8.3 (rule 16): evict turn_state on kv with an attention node whose mask is causal; IR_SPEC 6.8.3 (rule 16): ev"
+  },
+  {
+   "id": "refuse/missing_tensor",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 3.7 (rule 25): linear: tensor blk.0.nope.weight is not a tensor of the file; IR_SPEC 3.7 (rule 25): linear: tens"
+  },
+  {
+   "id": "refuse/gelu_approx_unknown",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[8].approx: \"sigmoid\" matches no allowed form ($.block.nodes[8].approx: \"sigmoid\" is"
+  },
+  {
+   "id": "refuse/split_count",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 5.5 (rule 10): block.nodes[2] (split): 2 sizes for 3 outputs; IR_SPEC 5.5 (rule 10): block.nodes[2] (split): 2 s"
+  },
+  {
+   "id": "refuse/expr_does_not_parse",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 5.19 (rule 9): block.nodes[0] (expr): the expression does not parse: column 7: unexpected end of expression"
+  },
+  {
+   "id": "refuse/moe_top_k_too_large",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 5.16 (rule 10): block.nodes[9] (moe_ffn): top_k 5 is not in 1 .. n_experts 4; IR_SPEC 5.16 (rule 10): block.node"
+  },
+  {
+   "id": "refuse/moe_gate_norm_unknown",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[9].gate_norm: \"topk\" matches no allowed form ($.block.nodes[9].gate_norm: \"topk\" is"
+  },
+  {
+   "id": "refuse/recurrent_dtype_f16",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.state[0].dtype: \"f16\" is not one of [\"f32\"]; IR_SPEC 6.3 (rule 13): recurrent slot lin: d"
+  },
+  {
+   "id": "refuse/recurrent_shape_mismatch",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.3 (rule 13): recurrent slot lin: tensors [(\"num\", [3, 8]), (\"den\", [2, 8])] do not fit linear_attention ([(\"nu"
+  },
+  {
+   "id": "refuse/recurrent_op_mismatch",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.1 (rule 13): recurrent slot lin has op ssm_scan but is read by linear_attention"
+  },
+  {
+   "id": "refuse/linear_attention_not_causal",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.4 (rule 14): block.nodes[3] (linear_attention): causal is not true; IR_SPEC 6.4 (rule 14): block.nodes[3] (lin"
+  },
+  {
+   "id": "refuse/conv_kernel_one",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.6 (rule 10): block.nodes[3] (conv1d_causal): channels < 1 or kernel < 2; IR_SPEC 6.6 (rule 10): block.nodes[3]"
+  },
+  {
+   "id": "refuse/weight_index_wrong_length",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 7.1 (rule 18): weight_index is not per_layer of block.repeat integers >= 0; IR_SPEC 3.7 (rule 25): rmsnorm: tens"
+  },
+  {
+   "id": "refuse/weight_index_unused_layer",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 7.1 (rule 18): weight_index leaves stored layer 1 unused; IR_SPEC 3.7 (rule 25): rmsnorm: tensor blk.3.attn_norm"
+  },
+  {
+   "id": "refuse/weight_index_negative",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 7.1 (rule 18): weight_index is not per_layer of block.repeat integers >= 0"
+  },
+  {
+   "id": "refuse/mor_route_not_first",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 7.4 (rule 20): block.nodes[1] (depth_route): depth_route must be the block's first node"
+  },
+  {
+   "id": "refuse/mor_expert_choice",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[0].route: \"expert_choice\" is not one of [\"token_choice\"]; IR_SPEC 7.7 (rule 20): ro"
+  },
+  {
+   "id": "refuse/mor_unequal_steps",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 7.4 (rule 20): step [-1, 0, 0, 1, -1] does not form the consecutive, ascending, equal steps 0 .. 2"
+  },
+  {
+   "id": "refuse/mor_steps_descending",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 7.4 (rule 20): step [-1, 2, 1, 0, -1] does not form the consecutive, ascending, equal steps 0 .. 2"
+  },
+  {
+   "id": "refuse/mor_step_length_wrong",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 3.8 (rule 6): block.nodes[0] (depth_route): per_layer step has 4 entries, block.repeat is 5; IR_SPEC 7.4 (rule 2"
+  },
+  {
+   "id": "refuse/mor_no_kv_rows_active",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 7.5 (rule 21): depth_route with a kv slot whose kv_rows is not active"
+  },
+  {
+   "id": "refuse/mor_kv_from",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 7.6 (rule 22): kv slot kv carries kv_from (reserved)"
+  },
+  {
+   "id": "refuse/mor_gate_unknown",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[0].gate: \"sigmoid\" is not one of [\"score\",\"none\"]; IR_SPEC 7.4 (rule 20): gate is n"
+  },
+  {
+   "id": "refuse/mor_router_with_i",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 7.7 (rule 20): the router's weight name holds '{'; IR_SPEC 3.7 (rule 25): depth_route: tensor rec.1.router.weigh"
+  },
+  {
+   "id": "refuse/mor_kv_rows_shared",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.state[0].kv_rows: \"shared\" is not one of [\"active\"]; IR_SPEC 7.5 (rule 21): depth_route w"
+  },
+  {
+   "id": "refuse/mor_route_in_head",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 3.8 (rule 6): head.nodes[0] (depth_route): per_layer step outside the block; IR_SPEC 7.4 (rule 20): head.nodes[0"
+  },
+  {
+   "id": "refuse/turn_state_with_window",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.8.2 (rule 15): mask turn_state with a window or sinks (application 0); IR_SPEC 6.8.2 (rule 15): mask turn_stat"
+  },
+  {
+   "id": "refuse/turn_state_without_state_weight",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.8.2 (rule 15): mask turn_state without an embedding state_weight; IR_SPEC 6.8.2 (rule 15): mask turn_state wit"
+  },
+  {
+   "id": "refuse/evict_without_mask",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.8.3 (rule 16): evict turn_state on kv with an attention node whose mask is causal; IR_SPEC 6.8.3 (rule 16): ev"
+  },
+  {
+   "id": "refuse/evict_unknown",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.state[0].evict: \"oldest\" is not one of [\"turn_state\"]"
+  },
+  {
+   "id": "refuse/mask_unknown",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[5].mask: \"sliding\" matches no allowed form ($.block.nodes[5].mask: \"sliding\" is not"
+  },
+  {
+   "id": "refuse/state_weight_with_i",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 3.7 (rule 17a): embed.nodes[0] (embedding): state_weight \"state_{i}.weight\" holds {i} outside the block; IR_SPEC"
+  },
+  {
+   "id": "refuse/two_state_weights",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.8.1 (rule 17): state_weight on more than one embedding"
+  },
+  {
+   "id": "refuse/state_weight_wrong_name",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 3.7 (rule 25): embedding: tensor nope.weight is not a tensor of the file; IR_SPEC 6.8.1 (rule 28): state_weight "
+  },
+  {
+   "id": "refuse/recurrence_body_does_not_parse",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.10 (rule 31): update body \"den[h,e] = den[h,e] +\" does not parse: column 22: unexpected end of expression"
+  },
+  {
+   "id": "refuse/recurrence_name_twice",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.10 (rule 31): num is declared twice"
+  },
+  {
+   "id": "refuse/recurrence_rowsum",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.10 (rule 31): readout \"y[h,e] = rowsum(num[h,e])\" does not parse: column 10: rowsum is not part of the recurre"
+  },
+  {
+   "id": "refuse/recurrence_index_size_zero",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[3].index.e: 0 is below 1; IR_SPEC 6.10 (rule 31): index e has size 0, not a positiv"
+  },
+  {
+   "id": "refuse/recurrence_index_out_of_scope",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.10 (rule 32): \"y[h,e] = sum(h, num[h,e])\": column 10: sum over h, already in scope"
+  },
+  {
+   "id": "refuse/recurrence_init_reads_input",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.10 (rule 32): \"num[h,e] = q[h,e]\": column 12: this body cannot read q"
+  },
+  {
+   "id": "refuse/recurrence_rank_mismatch",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.10 (rule 32): \"den[h,e] = den[h] + 1\": column 12: den has 2 dimension(s), read with 1 index(es)"
+  },
+  {
+   "id": "refuse/recurrence_index_undeclared",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.10 (rule 32): \"y[h,e] = num[h,f]\": column 10: index f is not declared"
+  },
+  {
+   "id": "refuse/recurrence_slot_shape",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.10 (rule 33): block.nodes[3]: slot lin's tensors are not the update's [(\"num\", [2, 8], false), (\"den\", [2, 8],"
+  },
+  {
+   "id": "refuse/recurrence_slot_missing_tensor",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.10 (rule 33): block.nodes[3]: slot lin's tensors are not the update's [(\"num\", [2, 8], false), (\"den\", [2, 8],"
+  },
+  {
+   "id": "refuse/recurrence_init_flag",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.10 (rule 33): block.nodes[3]: slot lin's tensors are not the update's [(\"num\", [2, 8], false), (\"den\", [2, 8],"
+  },
+  {
+   "id": "refuse/recurrence_weight_size",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.10 (rule 34): weight blk.0.ssm_b.weight holds 8 elements, its declaration 64; IR_SPEC 6.10 (rule 34): weight b"
+  },
+  {
+   "id": "refuse/recurrence_assignment_repeats_index",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.10 (rule 32): y[h,h] = num[h,h]: the assignment repeats index h"
+  },
+  {
+   "id": "refuse/recurrence_bare_undeclared_name",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.10 (rule 32): \"y[h,e] = num[h,e] + foo\": column 21: bare name foo is not an index in scope (a tensor is read w"
+  },
+  {
+   "id": "refuse/reads_unwritten_value",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 3.5 (rule 36): block[7] add reads nowhere (its input 1), which no earlier node writes"
+  },
+  {
+   "id": "refuse/embed_writes_no_x",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 3.5 (rule 36): the embed section writes no x; IR_SPEC 3.5 (rule 36): block[0] rmsnorm reads x (its input 0), whi"
+  },
+  {
+   "id": "refuse/head_writes_no_logits",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 3.4 (rule 36): the head writes no logits"
+  },
+  {
+   "id": "refuse/mor_reads_outside_value",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 7.4 (rule 36): block[0] add reads e (its input 1), which no earlier node writes"
+  },
+  {
+   "id": "refuse/mor_step_gap",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 7.4 (rule 20): step [-1, 0, -1, 1, 2] does not form the consecutive, ascending, equal steps 0 .. 2"
+  },
+  {
+   "id": "refuse/duplicate_member_top",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 3.2 (rule 35): duplicate member name \"family_hint\""
+  },
+  {
+   "id": "refuse/duplicate_member_node",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 3.2 (rule 35): duplicate member name \"causal\""
+  },
+  {
+   "id": "refuse/duplicate_member_prose",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 3.2 (rule 35): duplicate member name \"a\""
+  },
+  {
+   "id": "refuse/version_key_mismatch",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 3.1 (rule 24): paperkiln.ir_version U32(7) is not a uint32 equal to the embedded document's ir_version Some(1)"
+  },
+  {
+   "id": "refuse/state_tokens_k_mismatch",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.8.1 (rule 28): state_weight's ne [16, 2] is not {d, k} = [16, 3]"
+  },
+  {
+   "id": "refuse/state_template_not_v1",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 8.2 (rule 28): a declared paperkiln.chat_template other than paperkiln/1 with state tokens"
+  },
+  {
+   "id": "refuse/weight_index_block_count",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 7.1 (rule 27): paperkiln.block_count 9 differs from the 3 stored layers"
+  },
+  {
+   "id": "refuse/state_tokens_arch_llama",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 8.2 (rule 28): state tokens in a file of architecture \"llama\", not paperkiln"
+  },
+  {
+   "id": "refuse/duplicate_member_embedded",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 3.2 (rule 35): duplicate member name \"ctx\""
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_0000000000000000",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_0000000000000001",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_8000000000000001",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_7fefffffffffffff",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_ffefffffffffffff",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_4340000000000000",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_c340000000000000",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_4430000000000000",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_44b52d02c7e14af5",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_44b52d02c7e14af6",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_44b52d02c7e14af7",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_444b1ae4d6e2ef4e",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_444b1ae4d6e2ef4f",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_444b1ae4d6e2ef50",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_3eb0c6f7a0b5ed8c",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_3eb0c6f7a0b5ed8d",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_41b3de4355555553",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_41b3de4355555554",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_41b3de4355555555",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_41b3de4355555556",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_41b3de4355555557",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_becbf647612f3696",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_43143ff3c1cb0959",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/f32_eps",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/f32_rope_theta",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/f32_scale",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/f32_den_floor",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/integer_2p53",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/negative_integer",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/minus_zero_integer_form",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/exponent_form",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_controls",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_controls_escaped",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_escapes",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_escapes_escaped",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_line_separators",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_line_separators_escaped",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_astral",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_astral_escaped",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_accents",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_accents_escaped",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_names",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_names_escaped",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/key_order_utf16",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/nesting",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/prose_removed",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/prose_kept_in_serialiser_test",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_attnres",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_flex_expr",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_flex_highway",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_gpt2",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_gpt2_swa",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_kimi",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_llama",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_llama_attnres",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_llama_attnres_rec",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_mamba",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_moe",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_mor",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_recurrence",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_recursive",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_srd",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_state",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_tp_gemma3",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_tp_gptneox",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_tp_mamba1",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_tp_mistral",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_tp_qwen3",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/negative_zero",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "digest/vectors/integer_beyond_2p53",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "digest/vectors/overflow",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "digest/vectors/duplicate_key",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "digest/vectors/lone_surrogate",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "digest/vectors/nan_literal",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "digest/vectors/prose_overflow",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "digest/vectors/prose_negative_zero",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "digest/vectors/prose_integer_beyond_2p53",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "digest/vectors/prose_lone_surrogate",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "digest/vectors/prose_key_lone_surrogate",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "digest/vectors/prose_duplicate_key",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "digest/vectors/fraction_form_beyond_2p53",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/exponent_form_1e300",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/negative_integer_2p53",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/negative_integer_beyond_2p53",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "dequant/blocks/f32",
+   "kind": "dequant",
+   "verdict": "PASS",
+   "detail": "0 values differ in their bits"
+  },
+  {
+   "id": "dequant/blocks/f16",
+   "kind": "dequant",
+   "verdict": "PASS",
+   "detail": "0 values differ in their bits"
+  },
+  {
+   "id": "dequant/blocks/q4_0",
+   "kind": "dequant",
+   "verdict": "PASS",
+   "detail": "0 values differ in their bits"
+  },
+  {
+   "id": "dequant/blocks/q5_0",
+   "kind": "dequant",
+   "verdict": "PASS",
+   "detail": "0 values differ in their bits"
+  },
+  {
+   "id": "dequant/blocks/q5_1",
+   "kind": "dequant",
+   "verdict": "PASS",
+   "detail": "0 values differ in their bits"
+  },
+  {
+   "id": "dequant/blocks/q8_0",
+   "kind": "dequant",
+   "verdict": "PASS",
+   "detail": "0 values differ in their bits"
+  },
+  {
+   "id": "dequant/blocks/q4_k",
+   "kind": "dequant",
+   "verdict": "PASS",
+   "detail": "0 values differ in their bits"
+  },
+  {
+   "id": "dequant/blocks/q5_k",
+   "kind": "dequant",
+   "verdict": "PASS",
+   "detail": "0 values differ in their bits"
+  },
+  {
+   "id": "dequant/blocks/q6_k",
+   "kind": "dequant",
+   "verdict": "PASS",
+   "detail": "0 values differ in their bits"
+  },
+  {
+   "id": "dequant/blocks/bf16",
+   "kind": "dequant",
+   "verdict": "PASS",
+   "detail": "0 values differ in their bits"
+  },
+  {
+   "id": "grad/recurrence/linear_attention_body",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "gradients are not implemented (this engine does not train)"
+  },
+  {
+   "id": "grad/recurrence/ssm_scan_body",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "gradients are not implemented (this engine does not train)"
+  },
+  {
+   "id": "grad/recurrence/conv1d_causal_body",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "gradients are not implemented (this engine does not train)"
+  },
+  {
+   "id": "grad/recurrence/selective_scan_body",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "gradients are not implemented (this engine does not train)"
+  },
+  {
+   "id": "grad/recurrence/rnn_init_offset",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "gradients are not implemented (this engine does not train)"
+  },
+  {
+   "id": "grad/recurrence/ema_bias_corrected",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "gradients are not implemented (this engine does not train)"
+  },
+  {
+   "id": "grad/recurrence/ema_exact",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "gradients are not implemented (this engine does not train)"
+  },
+  {
+   "id": "grad/recurrence/square_weight_declaration",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "gradients are not implemented (this engine does not train)"
+  },
+  {
+   "id": "trace/pk_kimi_recurrence",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "9 steps"
+  },
+  {
+   "id": "trace/pk_srd_recurrence",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "9 steps"
+  },
+  {
+   "id": "trace/pk_mamba_recurrence",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "9 steps"
+  },
+  {
+   "id": "trace/tp_mamba1_recurrence",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "9 steps"
+  },
+  {
+   "id": "trace/pk_srd_truncate",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "3 steps"
+  },
+  {
+   "id": "trace/tp_mamba1_truncate",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "3 steps"
+  },
+  {
+   "id": "accept/documents/model_pk_attnres",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_pk_flex_expr",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_pk_flex_highway",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_pk_gpt2",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_pk_gpt2_swa",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_pk_kimi",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_pk_llama",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_pk_llama_attnres",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_pk_llama_attnres_rec",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_pk_mamba",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_pk_moe",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_pk_mor",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_pk_recurrence",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_pk_recursive",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_pk_srd",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_pk_state",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_tp_gemma3",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_tp_gptneox",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_tp_mamba1",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_tp_mistral",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_tp_qwen3",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/rewritten_pk_kimi",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/rewritten_pk_srd",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/rewritten_pk_mamba",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/rewritten_tp_mamba1",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/example_attnres_tiny",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/example_chat_sftfinal",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/example_flex_highway_tiny",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/example_gpt2_tiny",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/example_kimi_tiny",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/example_mamba_tiny",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/example_moe_tiny",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/example_srd_tiny",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/example_swa_tiny",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "chat/render/one user prompt",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "method render_chat is not implemented"
+  },
+  {
+   "id": "chat/render/system folds into the first user turn",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "method render_chat is not implemented"
+  },
+  {
+   "id": "chat/render/a lone system message",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "method render_chat is not implemented"
+  },
+  {
+   "id": "chat/render/a system message with no user message",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "method render_chat is not implemented"
+  },
+  {
+   "id": "chat/render/two system messages",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "method render_chat is not implemented"
+  },
+  {
+   "id": "chat/render/a system message mid-conversation",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "method render_chat is not implemented"
+  },
+  {
+   "id": "chat/render/the assistant first",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "method render_chat is not implemented"
+  },
+  {
+   "id": "chat/render/two user messages in a row",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "method render_chat is not implemented"
+  },
+  {
+   "id": "chat/render/a training conversation ending on a user message",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "method render_chat is not implemented"
+  },
+  {
+   "id": "chat/render/a prompt ending on an assistant message",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "method render_chat is not implemented"
+  },
+  {
+   "id": "chat/render/user content holding a role marker",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "method render_chat is not implemented"
+  },
+  {
+   "id": "chat/render/system content holding end-of-text",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "method render_chat is not implemented"
+  },
+  {
+   "id": "chat/render/assistant content holding a marker",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "method render_chat is not implemented"
+  },
+  {
+   "id": "chat/render/<unk> text is ordinary content",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "method render_chat is not implemented"
+  },
+  {
+   "id": "chat/render/newline-only user content",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "method render_chat is not implemented"
+  },
+  {
+   "id": "chat/render/newline-only and empty replies in the history",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "method render_chat is not implemented"
+  },
+  {
+   "id": "chat/render/the tool role is reserved",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "method render_chat is not implemented"
+  },
+  {
+   "id": "chat/render/an unknown role",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "method render_chat is not implemented"
+  },
+  {
+   "id": "chat/render/three exchanges with a system message",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "method render_chat is not implemented"
+  },
+  {
+   "id": "chat/render/a training conversation with a system message",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "method render_chat is not implemented"
+  },
+  {
+   "id": "chat/render/loss on a user message",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "method render_chat is not implemented"
+  },
+  {
+   "id": "chat/render/unicode content",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "method render_chat is not implemented"
+  },
+  {
+   "id": "chat/render/system mode none refuses a system message",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "method render_chat is not implemented"
+  },
+  {
+   "id": "chat/render/system mode none without one",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "method render_chat is not implemented"
+  },
+  {
+   "id": "chat/render/legacy word-level prompt",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "method render_chat is not implemented"
+  },
+  {
+   "id": "chat/render/gemma3 trims and folds",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "method render_chat is not implemented"
+  },
+  {
+   "id": "chat/render/gemma3 trims unicode edge whitespace",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "method render_chat is not implemented"
+  },
+  {
+   "id": "chat/render/gemma3 trims unicode whitespace in system and history",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "method render_chat is not implemented"
+  },
+  {
+   "id": "chat/render/gemma3 keeps inner unicode whitespace and zero-width space",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "method render_chat is not implemented"
+  },
+  {
+   "id": "chat/render/qwen3 strips past reasoning",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "method render_chat is not implemented"
+  },
+  {
+   "id": "chat/render/qwen2.5 writes its default system turn",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "method render_chat is not implemented"
+  },
+  {
+   "id": "chat/render/qwen3 thinking off",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "method render_chat is not implemented"
+  }
+ ]
+}
