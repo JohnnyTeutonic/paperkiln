@@ -14,8 +14,10 @@
 //    appends, 32-byte offsets and file end, and every stored tensor equal to
 //    the matching quantize_* of its source. Also with tied embeddings
 //    (token_embd takes output.weight's type).
-// 3. Refusals: a tensor llama.cpp would store as a k-quant (ne0 = 256), MoE,
-//    and wrong block lengths.
+// 3. Refusals: MoE and wrong block lengths.
+// 4. Real k-quant blocks: an 8-layer export at d = 256, d_ff = 512 (no
+//    fallback anywhere), llama.cpp's types (Q4_K, Q5_K, Q6_K) and every tensor
+//    equal to quantize_q4_k / q5_k / q6_k of its source.
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
@@ -385,33 +387,6 @@ int main() {
         return msg;
     };
     {
-        // d = 256: llama.cpp would write output.weight as Q6_K.
-        std::map<std::string, Matrix> wide;
-        const uint32_t W = 256;
-        wide.emplace("embed_tokens.weight", filled(V_, W, 1.0f));
-        const std::string p = "layers.0.";
-        for (const char* n : {"self_attn.q_proj", "self_attn.k_proj", "self_attn.v_proj", "self_attn.o_proj"})
-            wide.emplace(p + n + ".weight", filled(W, W, 2.0f));
-        wide.emplace(p + "mlp.gate_proj.weight", filled(FF, W, 3.0f));
-        wide.emplace(p + "mlp.up_proj.weight", filled(FF, W, 4.0f));
-        wide.emplace(p + "mlp.down_proj.weight", filled(W, FF, 5.0f));
-        wide.emplace(p + "input_layernorm.weight", filled(1, W, 6.0f));
-        wide.emplace(p + "post_attention_layernorm.weight", filled(1, W, 7.0f));
-        wide.emplace("norm.weight", filled(1, W, 8.0f));
-        wide.emplace("lm_head.weight", filled(V_, W, 9.0f));
-        gguf::LlamaExportConfig c = cfg;
-        c.embedding_length = W;
-        c.block_count = 1;
-        c.head_count = 4;
-        for (const std::string quant : {"q4_0", "q4_k_m", "q4_k_s"}) {
-            c.quant = quant;
-            const std::string msg = refusal(wide, c);
-            CHECK(msg.find("output.weight") != std::string::npos && msg.find("k-quant") != std::string::npos);
-        }
-        c.quant = "q8_0_out";  // the Q8_0 variants are unaffected
-        CHECK(refusal(wide, c).empty());
-    }
-    {
         gguf::LlamaExportConfig c = cfg;
         c.quant = "q4_0";
         c.expert_count = 4;
@@ -436,7 +411,179 @@ int main() {
         const std::string msg = refusal(bad, c);
         CHECK(msg.find("blk.0.ffn_down.weight") != std::string::npos && msg.find("Q8_0") != std::string::npos);
     }
-    printf("  k-quant tensor (ne0 = 256), MoE, unknown quant and ne0 %% 32 != 0 refused\n");
+    printf("  MoE, unknown quant and ne0 %% 32 != 0 refused\n");
+
+    printf("=== real k-quant blocks (d = 256, d_ff = 512, 8 layers) ===\n");
+    {
+        // Every ne0 a multiple of 256, so nothing falls back: llama.cpp's types
+        // stand as llama_tensor_get_type chooses them (output.weight Q6_K under
+        // every ftype, q4_0's included), and each stored tensor must equal the
+        // k-quant block function of its source (whose bytes against llama.cpp
+        // b6000 are checked below and on pk_base_v1's tensors, CHANGELOG).
+        const uint32_t W = 256, WF = 512, LW = 8;
+        std::map<std::string, Matrix> wide;
+        std::map<std::string, const Matrix*> wsrc;
+        float b2 = 100.0f;
+        wide.emplace("embed_tokens.weight", filled(V_, W, b2++));
+        for (uint32_t l = 0; l < LW; ++l) {
+            const std::string p = "layers." + std::to_string(l) + ".";
+            for (const char* n : {"self_attn.q_proj", "self_attn.k_proj", "self_attn.v_proj", "self_attn.o_proj"})
+                wide.emplace(p + n + ".weight", filled(W, W, b2++));
+            wide.emplace(p + "mlp.gate_proj.weight", filled(WF, W, b2++));
+            wide.emplace(p + "mlp.up_proj.weight", filled(WF, W, b2++));
+            wide.emplace(p + "mlp.down_proj.weight", filled(W, WF, b2++));
+            wide.emplace(p + "input_layernorm.weight", filled(1, W, b2++));
+            wide.emplace(p + "post_attention_layernorm.weight", filled(1, W, b2++));
+        }
+        wide.emplace("norm.weight", filled(1, W, b2++));
+        wide.emplace("lm_head.weight", filled(V_, W, b2++));
+        wsrc = {{"token_embd.weight", &wide.at("embed_tokens.weight")}, {"output.weight", &wide.at("lm_head.weight")},
+                {"output_norm.weight", &wide.at("norm.weight")}};
+        for (uint32_t l = 0; l < LW; ++l) {
+            const std::string p = "layers." + std::to_string(l) + ".", g = "blk." + std::to_string(l) + ".";
+            for (const auto& [hf, gg] : std::map<std::string, std::string>{{"self_attn.q_proj", "attn_q"},
+                                                                           {"self_attn.k_proj", "attn_k"},
+                                                                           {"self_attn.v_proj", "attn_v"},
+                                                                           {"self_attn.o_proj", "attn_output"},
+                                                                           {"input_layernorm", "attn_norm"},
+                                                                           {"mlp.gate_proj", "ffn_gate"},
+                                                                           {"mlp.up_proj", "ffn_up"},
+                                                                           {"mlp.down_proj", "ffn_down"},
+                                                                           {"post_attention_layernorm", "ffn_norm"}})
+                wsrc[g + gg + ".weight"] = &wide.at(p + hf + ".weight");
+        }
+        constexpr uint32_t Q4_K = 12, Q5_K = 13, Q6_K = 14;
+        auto kt = [&](const std::string& quant, const std::string& name) -> uint32_t {
+            if (name.find("norm") != std::string::npos) return F32;
+            if (name == "output.weight") return Q6_K;
+            const uint32_t base_t = quant == "q4_0" ? Q4_0 : Q4_K;
+            if (name == "token_embd.weight") return base_t;
+            const int l = std::atoi(name.c_str() + 4);
+            const bool more = l == 0 || l == 3 || l == 6 || l == 7;  // use_more_bits(l, 8)
+            if (name.find("attn_v") != std::string::npos) {
+                if (quant == "q4_k_m" && more) return Q6_K;
+                if (quant == "q4_k_s" && l < 4) return Q5_K;
+            }
+            if (name.find("ffn_down") != std::string::npos) {
+                if (quant == "q4_k_m" && more) return Q6_K;
+                if (quant == "q4_k_s" && l < 1) return Q5_K;
+            }
+            return base_t;
+        };
+        auto bytes_of = [](uint32_t t, size_t n) -> size_t {
+            return t == F32 ? n * 4 : t == Q4_K ? n / 256 * 144 : t == Q5_K ? n / 256 * 176 : t == Q6_K ? n / 256 * 210
+                                                                                                  : n / 32 * block_bytes(t);
+        };
+        auto quant_of = [](uint32_t t) -> QuantFn {
+            return t == Q4_K ? gguf::quantize_q4_k : t == Q5_K ? gguf::quantize_q5_k : t == Q6_K ? gguf::quantize_q6_k
+                                                                                               : quantizer(t);
+        };
+        gguf::LlamaExportConfig c = cfg;
+        c.embedding_length = W;
+        c.feed_forward_length = WF;
+        c.block_count = LW;
+        c.head_count = 4;
+        for (const std::string quant : {"q4_0", "q4_k_m", "q4_k_s"}) {
+            c.quant = quant;
+            const std::string path = tmp + "/gguf_q4_test_k_" + quant + ".gguf";
+            gguf::export_gguf_llama(path, wide, c);
+            const ParsedGGUF g = parse_gguf(path);
+            CHECK((g.data_start % 32) == 0 && (g.bytes.size() % 32) == 0);
+            std::map<uint32_t, int> count;
+            for (size_t k = 0; k < g.tensors.size(); ++k) {
+                const ParsedTensor& t = g.tensors[k];
+                const Matrix& m = *wsrc.at(t.name);
+                const size_t n = m.rows() * m.cols();
+                const uint32_t wt = kt(quant, t.name);
+                if (t.type != wt) std::fprintf(stderr, "%s %s: type %u, want %u\n", quant.c_str(), t.name.c_str(), t.type, wt);
+                CHECK(t.type == wt);
+                ++count[t.type];
+                const size_t bytes = bytes_of(wt, n);
+                const uint64_t end = (t.offset + bytes + 31) & ~uint64_t(31);
+                CHECK(k + 1 < g.tensors.size() ? g.tensors[k + 1].offset == end
+                                               : g.data_start + end == g.bytes.size());
+                const uint8_t* at = g.bytes.data() + g.data_start + t.offset;
+                if (wt == F32) {
+                    CHECK(std::memcmp(at, &m(0, 0), bytes) == 0);
+                } else {
+                    std::vector<uint8_t> q(bytes);
+                    quant_of(wt)(&m(0, 0), n, q.data());
+                    CHECK(std::memcmp(at, q.data(), bytes) == 0);
+                }
+                for (size_t z = bytes; z < end - t.offset; ++z) CHECK(at[z] == 0);
+            }
+            std::remove(path.c_str());
+            printf("  %-6s F32 %d, Q4_0 %d, Q4_K %d, Q5_K %d, Q6_K %d: types/offsets/bytes ok\n", quant.c_str(),
+                   count[F32], count[Q4_0], count[Q4_K], count[Q5_K], count[Q6_K]);
+        }
+        // llama.cpp b6000's own quantize_row_q4_K_ref / q5_K_ref / q6_K_ref (ggml-base, linked by a
+        // harness, 25 Oct 2026) on nine 512-value patterns: FNV-1a 64 of its bytes. The patterns use
+        // exact float operations only (an int over 2^23, then one product), so every compiler
+        // reproduces the inputs: zeros, a constant, small noise, all negative, all positive, two
+        // spikes, 1e-6 noise (fp16-subnormal scales), seven magnitudes 1e-3..1e3, one large value
+        // per 32.
+        const uint64_t want_k[9][3] = {
+            {0x32a0e76575209103ULL, 0x412c9745d2f7d403ULL, 0x3aacd66e1b043cb3ULL},
+            {0x78581d3d146ac967ULL, 0x1c30f887c624bf93ULL, 0x261842a96e237997ULL},
+            {0xf14c6db94f6d2bbfULL, 0x21ea962042c3d524ULL, 0xa5e8c386b9900b49ULL},
+            {0x32fcab1a69b209fcULL, 0x6801e6ce1fa16113ULL, 0x352835165525cee3ULL},
+            {0x11e77dceb534954bULL, 0x8200545ff5c8d801ULL, 0xcef17161dca14c73ULL},
+            {0x4679f33e3f405766ULL, 0x7b496dd07df6a59cULL, 0x4890532fb22838faULL},
+            {0x772d36e7961d19d6ULL, 0xd63f0cbb286afce7ULL, 0x75c4af55b11bc2eeULL},
+            {0x83f72aebd59d7444ULL, 0xf829e25fa8f0e1d8ULL, 0x1dc0113a08cc0339ULL},
+            {0x6f5bef5589e16202ULL, 0xd2afa311efa37f3eULL, 0x93cb0d493bf71bb4ULL}};
+        auto fnv = [](const uint8_t* b, size_t n) {
+            uint64_t h = 1469598103934665603ULL;
+            for (size_t i = 0; i < n; ++i) {
+                h ^= b[i];
+                h *= 1099511628211ULL;
+            }
+            return h;
+        };
+        const float scale7[7] = {0.001f, 0.01f, 0.1f, 1.0f, 10.0f, 100.0f, 1000.0f};
+        for (int p = 0; p < 9; ++p) {
+            std::vector<float> x(512);
+            uint32_t s = 12345u + 7919u * static_cast<uint32_t>(p);
+            for (int i = 0; i < 512; ++i) {
+                s = s * 1664525u + 1013904223u;
+                const float r = static_cast<float>(static_cast<int32_t>(s >> 8) - 8388608) / 8388608.0f;
+                switch (p) {
+                    case 0: x[i] = 0.0f; break;
+                    case 1: x[i] = 0.7f; break;
+                    case 2: x[i] = r * 0.02f; break;
+                    case 3: x[i] = (r < 0 ? r : -r) * 0.05f; break;
+                    case 4: x[i] = (r > 0 ? r : -r) * 0.05f; break;
+                    case 5: x[i] = i == 37 ? 5.0f : i == 300 ? -3.0f : 0.0f; break;
+                    case 6: x[i] = r * 1e-6f; break;
+                    case 7: x[i] = r * scale7[i % 7]; break;
+                    default: x[i] = (i % 32 == 0) ? r * 4.0f : r * 0.01f; break;
+                }
+            }
+            const QuantFn fns[3] = {gguf::quantize_q4_k, gguf::quantize_q5_k, gguf::quantize_q6_k};
+            const size_t bb[3] = {144, 176, 210};
+            for (int t = 0; t < 3; ++t) {
+                std::vector<uint8_t> q(2 * bb[t]);
+                fns[t](x.data(), x.size(), q.data());
+                const uint64_t h = fnv(q.data(), q.size());
+                if (h != want_k[p][t])
+                    std::fprintf(stderr, "pattern %d type %d: fnv %016llx, llama.cpp %016llx\n", p, t,
+                                 static_cast<unsigned long long>(h), static_cast<unsigned long long>(want_k[p][t]));
+                CHECK(h == want_k[p][t]);
+            }
+        }
+        printf("  Q4_K / Q5_K / Q6_K: 9 patterns x 2 super-blocks equal llama.cpp b6000's reference rows\n");
+        for (QuantFn fn : {gguf::quantize_q4_k, gguf::quantize_q5_k, gguf::quantize_q6_k}) {
+            bool threw = false;
+            try {
+                std::vector<float> x(288, 1.0f);
+                std::vector<uint8_t> out(512);
+                fn(x.data(), x.size(), out.data());
+            } catch (const std::runtime_error&) {
+                threw = true;
+            }
+            CHECK(threw);  // n % 256 != 0
+        }
+    }
 
     printf("\n[PASS] GGUF 4-bit export\n");
     return 0;

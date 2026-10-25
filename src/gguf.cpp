@@ -185,14 +185,354 @@ void quantize_q5_1(const float* x, size_t n, uint8_t* out) {
     }
 }
 
+// ---- k-quants: 256-value super-blocks (ggml-quants.c, llama.cpp b6000 = 4762ad73) ----
+// quantize_row_q4_K_ref / _q5_K_ref / _q6_K_ref and their helpers nearest_int,
+// make_qkx2_quants and make_qx_quants, statement for statement: the code
+// llama.cpp's quantiser runs for these types without an importance matrix
+// (quantize_q4_K & co. call the _ref rows when quant_weights is null). ggml
+// builds ggml-quants.c in ggml-base without -march flags, so its float
+// operations are these, unfused; the pragma above keeps them unfused here.
+namespace {
+
+constexpr int kQK_K = 256;
+
+// ggml's nearest_int: round half to even through the float mantissa.
+int nearest_int(float fval) {
+    float val = fval + 12582912.f;
+    int i;
+    std::memcpy(&i, &val, sizeof(int));
+    return (i & 0x007fffff) - 0x00400000;
+}
+
+float fp16_to_fp32(uint16_t h) {
+    const uint32_t sign = static_cast<uint32_t>(h & 0x8000u) << 16;
+    const uint32_t e = (h >> 10) & 0x1fu, m = h & 0x3ffu;
+    uint32_t x;
+    if (e == 0) {
+        if (m == 0) {
+            x = sign;
+        } else {  // subnormal: normalise
+            int k = -1;
+            uint32_t mm = m;
+            do {
+                ++k;
+                mm <<= 1;
+            } while ((mm & 0x400u) == 0);
+            x = sign | ((112u - static_cast<uint32_t>(k)) << 23) | ((mm & 0x3ffu) << 13);
+        }
+    } else if (e == 31) {
+        x = sign | 0x7f800000u | (m << 13);
+    } else {
+        x = sign | ((e + 112u) << 23) | (m << 13);
+    }
+    float f;
+    std::memcpy(&f, &x, 4);
+    return f;
+}
+
+float make_qkx2_quants(int n, int nmax, const float* x, const float* weights, uint8_t* L, float* the_min,
+                       uint8_t* Laux, float rmin, float rdelta, int nstep, bool use_mad) {
+    float min = x[0];
+    float max = x[0];
+    float sum_w = weights[0];
+    float sum_x = sum_w * x[0];
+    for (int i = 1; i < n; ++i) {
+        if (x[i] < min) min = x[i];
+        if (x[i] > max) max = x[i];
+        float w = weights[i];
+        sum_w += w;
+        sum_x += w * x[i];
+    }
+    if (min > 0) min = 0;
+    if (max == min) {
+        for (int i = 0; i < n; ++i) L[i] = 0;
+        *the_min = -min;
+        return 0.f;
+    }
+    float iscale = nmax / (max - min);
+    float scale = 1 / iscale;
+    float best_error = 0;
+    for (int i = 0; i < n; ++i) {
+        int l = nearest_int(iscale * (x[i] - min));
+        L[i] = static_cast<uint8_t>(std::max(0, std::min(nmax, l)));
+        float diff = scale * L[i] + min - x[i];
+        diff = use_mad ? std::fabs(diff) : diff * diff;
+        float w = weights[i];
+        best_error += w * diff;
+    }
+    if (nstep < 1) {
+        *the_min = -min;
+        return scale;
+    }
+    for (int is = 0; is <= nstep; ++is) {
+        iscale = (rmin + rdelta * is + nmax) / (max - min);
+        float sum_l = 0, sum_l2 = 0, sum_xl = 0;
+        for (int i = 0; i < n; ++i) {
+            int l = nearest_int(iscale * (x[i] - min));
+            l = std::max(0, std::min(nmax, l));
+            Laux[i] = static_cast<uint8_t>(l);
+            float w = weights[i];
+            sum_l += w * l;
+            sum_l2 += w * l * l;
+            sum_xl += w * l * x[i];
+        }
+        float D = sum_w * sum_l2 - sum_l * sum_l;
+        if (D > 0) {
+            float this_scale = (sum_w * sum_xl - sum_x * sum_l) / D;
+            float this_min = (sum_l2 * sum_x - sum_l * sum_xl) / D;
+            if (this_min > 0) {
+                this_min = 0;
+                this_scale = sum_xl / sum_l2;
+            }
+            float cur_error = 0;
+            for (int i = 0; i < n; ++i) {
+                float diff = this_scale * Laux[i] + this_min - x[i];
+                diff = use_mad ? std::fabs(diff) : diff * diff;
+                float w = weights[i];
+                cur_error += w * diff;
+            }
+            if (cur_error < best_error) {
+                for (int i = 0; i < n; ++i) L[i] = Laux[i];
+                best_error = cur_error;
+                scale = this_scale;
+                min = this_min;
+            }
+        }
+    }
+    *the_min = -min;
+    return scale;
+}
+
+// make_qx_quants with rmse_type 1 and no importance weights (the only call q6_K makes).
+float make_qx_quants_rmse1(int n, int nmax, const float* x, int8_t* L) {
+    float max = 0;
+    float amax = 0;
+    for (int i = 0; i < n; ++i) {
+        float ax = std::fabs(x[i]);
+        if (ax > amax) {
+            amax = ax;
+            max = x[i];
+        }
+    }
+    if (amax < 1e-15f) {  // GROUP_MAX_EPS: all zero
+        for (int i = 0; i < n; ++i) L[i] = 0;
+        return 0.f;
+    }
+    float iscale = -nmax / max;
+    float sumlx = 0;
+    float suml2 = 0;
+    for (int i = 0; i < n; ++i) {
+        int l = nearest_int(iscale * x[i]);
+        l = std::max(-nmax, std::min(nmax - 1, l));
+        L[i] = static_cast<int8_t>(l + nmax);
+        float w = x[i] * x[i];
+        sumlx += w * x[i] * l;
+        suml2 += w * l * l;
+    }
+    float scale = suml2 ? sumlx / suml2 : 0.0f;
+    float best = scale * sumlx;
+    for (int is = -9; is <= 9; ++is) {
+        if (is == 0) continue;
+        iscale = -(nmax + 0.1f * is) / max;
+        sumlx = suml2 = 0;
+        for (int i = 0; i < n; ++i) {
+            int l = nearest_int(iscale * x[i]);
+            l = std::max(-nmax, std::min(nmax - 1, l));
+            float w = x[i] * x[i];
+            sumlx += w * x[i] * l;
+            suml2 += w * l * l;
+        }
+        if (suml2 > 0 && sumlx * sumlx > best * suml2) {
+            for (int i = 0; i < n; ++i) {
+                int l = nearest_int(iscale * x[i]);
+                L[i] = static_cast<int8_t>(nmax + std::max(-nmax, std::min(nmax - 1, l)));
+            }
+            scale = sumlx / suml2;
+            best = scale * sumlx;
+        }
+    }
+    return scale;
+}
+
+void get_scale_min_k4(int j, const uint8_t* q, uint8_t* d, uint8_t* m) {
+    if (j < 4) {
+        *d = q[j] & 63;
+        *m = q[j + 4] & 63;
+    } else {
+        *d = (q[j + 4] & 0xF) | ((q[j - 4] >> 6) << 4);
+        *m = (q[j + 4] >> 4) | ((q[j - 0] >> 6) << 4);
+    }
+}
+
+void check_k(const float* x, size_t n, const char* who) {
+    if (n % kQK_K != 0) throw std::runtime_error(std::string(who) + ": n must be a multiple of 256");
+    for (size_t i = 0; i < n; ++i)
+        if (!std::isfinite(x[i])) throw std::runtime_error(std::string(who) + ": non-finite input");
+}
+
+// The shared part of q4_K and q5_K: 8 sub-blocks of 32 with a 6-bit scale and
+// min each, packed into 12 bytes, the fp16 super-scales d and dmin, and the
+// final levels L (0 .. nmax) against the quantised scales.
+void kx_superblock(const float* x, int nmax, float rmin, int nstep, uint8_t* dm4, uint8_t* scales12, uint8_t* L) {
+    uint8_t Laux[32];
+    float weights[32];
+    float mins[kQK_K / 32];
+    float scales[kQK_K / 32];
+    float max_scale = 0;  // as we are deducting the min, scales are always positive
+    float max_min = 0;
+    for (int j = 0; j < kQK_K / 32; ++j) {
+        float sum_x2 = 0;
+        for (int l = 0; l < 32; ++l) sum_x2 += x[32 * j + l] * x[32 * j + l];
+        float av_x = std::sqrt(sum_x2 / 32);
+        for (int l = 0; l < 32; ++l) weights[l] = av_x + std::fabs(x[32 * j + l]);
+        scales[j] = make_qkx2_quants(32, nmax, x + 32 * j, weights, L + 32 * j, &mins[j], Laux, rmin, 0.1f, nstep,
+                                     false);
+        float scale = scales[j];
+        if (scale > max_scale) max_scale = scale;
+        float min = mins[j];
+        if (min > max_min) max_min = min;
+    }
+    float inv_scale = max_scale > 0 ? 63.f / max_scale : 0.f;
+    float inv_min = max_min > 0 ? 63.f / max_min : 0.f;
+    for (int j = 0; j < kQK_K / 32; ++j) {
+        uint8_t ls = static_cast<uint8_t>(nearest_int(inv_scale * scales[j]));
+        uint8_t lm = static_cast<uint8_t>(nearest_int(inv_min * mins[j]));
+        ls = std::min<uint8_t>(63, ls);
+        lm = std::min<uint8_t>(63, lm);
+        if (j < 4) {
+            scales12[j] = ls;
+            scales12[j + 4] = lm;
+        } else {
+            scales12[j + 4] = static_cast<uint8_t>((ls & 0xF) | ((lm & 0xF) << 4));
+            scales12[j - 4] |= static_cast<uint8_t>((ls >> 4) << 6);
+            scales12[j - 0] |= static_cast<uint8_t>((lm >> 4) << 6);
+        }
+    }
+    const uint16_t d16 = fp32_to_fp16(max_scale / 63.f), dmin16 = fp32_to_fp16(max_min / 63.f);
+    std::memcpy(dm4, &d16, 2);
+    std::memcpy(dm4 + 2, &dmin16, 2);
+    for (int j = 0; j < kQK_K / 32; ++j) {
+        uint8_t sc, m;
+        get_scale_min_k4(j, scales12, &sc, &m);
+        const float d = fp16_to_fp32(d16) * sc;
+        if (!d) continue;
+        const float dm = fp16_to_fp32(dmin16) * m;
+        for (int ii = 0; ii < 32; ++ii) {
+            int l = nearest_int((x[32 * j + ii] + dm) / d);
+            L[32 * j + ii] = static_cast<uint8_t>(std::max(0, std::min(nmax, l)));
+        }
+    }
+}
+
+}  // namespace
+
+void quantize_q4_k(const float* x, size_t n, uint8_t* out) {
+    check_k(x, n, "quantize_q4_k");
+    uint8_t L[kQK_K];
+    for (size_t b = 0; b < n / kQK_K; ++b, x += kQK_K, out += 144) {
+        // block_q4_K: d, dmin (fp16), scales[12], qs[128]
+        kx_superblock(x, 15, -1.f, 20, out, out + 4, L);
+        uint8_t* q = out + 16;
+        for (int j = 0; j < kQK_K; j += 64) {
+            for (int l = 0; l < 32; ++l) q[l] = static_cast<uint8_t>(L[j + l] | (L[j + l + 32] << 4));
+            q += 32;
+        }
+    }
+}
+
+void quantize_q5_k(const float* x, size_t n, uint8_t* out) {
+    check_k(x, n, "quantize_q5_k");
+    uint8_t L[kQK_K];
+    for (size_t b = 0; b < n / kQK_K; ++b, x += kQK_K, out += 176) {
+        // block_q5_K: d, dmin (fp16), scales[12], qh[32], qs[128]
+        kx_superblock(x, 31, -0.5f, 15, out, out + 4, L);
+        uint8_t* qh = out + 16;
+        uint8_t* ql = out + 48;
+        std::memset(qh, 0, kQK_K / 8);
+        uint8_t m1 = 1, m2 = 2;
+        for (int nn = 0; nn < kQK_K; nn += 64) {
+            for (int j = 0; j < 32; ++j) {
+                int l1 = L[nn + j];
+                if (l1 > 15) {
+                    l1 -= 16;
+                    qh[j] |= m1;
+                }
+                int l2 = L[nn + j + 32];
+                if (l2 > 15) {
+                    l2 -= 16;
+                    qh[j] |= m2;
+                }
+                ql[j] = static_cast<uint8_t>(l1 | (l2 << 4));
+            }
+            m1 = static_cast<uint8_t>(m1 << 2);
+            m2 = static_cast<uint8_t>(m2 << 2);
+            ql += 32;
+        }
+    }
+}
+
+void quantize_q6_k(const float* x, size_t n, uint8_t* out) {
+    check_k(x, n, "quantize_q6_k");
+    int8_t L[kQK_K];
+    float scales[kQK_K / 16];
+    for (size_t b = 0; b < n / kQK_K; ++b, x += kQK_K, out += 210) {
+        // block_q6_K: ql[128], qh[64], scales[16] (int8), d (fp16)
+        uint8_t* ql = out;
+        uint8_t* qh = out + 128;
+        int8_t* sc = reinterpret_cast<int8_t*>(out + 192);
+        float max_scale = 0;
+        float max_abs_scale = 0;
+        for (int ib = 0; ib < kQK_K / 16; ++ib) {
+            const float scale = make_qx_quants_rmse1(16, 32, x + 16 * ib, L + 16 * ib);
+            scales[ib] = scale;
+            const float abs_scale = std::fabs(scale);
+            if (abs_scale > max_abs_scale) {
+                max_abs_scale = abs_scale;
+                max_scale = scale;
+            }
+        }
+        if (max_abs_scale < 1e-15f) {  // GROUP_MAX_EPS
+            std::memset(out, 0, 210);
+            continue;  // d = fp16(0) = 0x0000
+        }
+        float iscale = -128.f / max_scale;
+        const uint16_t d16 = fp32_to_fp16(1 / iscale);
+        std::memcpy(out + 208, &d16, 2);
+        for (int ib = 0; ib < kQK_K / 16; ++ib)
+            sc[ib] = static_cast<int8_t>(std::min(127, nearest_int(iscale * scales[ib])));
+        for (int j = 0; j < kQK_K / 16; ++j) {
+            float d = fp16_to_fp32(d16) * sc[j];
+            if (!d) continue;
+            for (int ii = 0; ii < 16; ++ii) {
+                int l = nearest_int(x[16 * j + ii] / d);
+                l = std::max(-32, std::min(31, l));
+                L[16 * j + ii] = static_cast<int8_t>(l + 32);
+            }
+        }
+        for (int j = 0; j < kQK_K; j += 128) {
+            for (int l = 0; l < 32; ++l) {
+                const uint8_t q1 = L[j + l + 0] & 0xF;
+                const uint8_t q2 = L[j + l + 32] & 0xF;
+                const uint8_t q3 = L[j + l + 64] & 0xF;
+                const uint8_t q4 = L[j + l + 96] & 0xF;
+                ql[l + 0] = static_cast<uint8_t>(q1 | (q3 << 4));
+                ql[l + 32] = static_cast<uint8_t>(q2 | (q4 << 4));
+                qh[l] = static_cast<uint8_t>((L[j + l] >> 4) | ((L[j + l + 32] >> 4) << 2) |
+                                             ((L[j + l + 64] >> 4) << 4) | ((L[j + l + 96] >> 4) << 6));
+            }
+            ql += 64;
+            qh += 32;
+        }
+    }
+}
+
 #if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC pop_options
 #endif
 
 namespace {
 
-// ggml type ids of the k-quants llama.cpp's mixes ask for; this exporter
-// stores none of them (see LlamaExportConfig::quant).
+// ggml type ids of the k-quants llama.cpp's mixes ask for (quantize_q4_k & co.).
 constexpr uint32_t kQ4_K = 12, kQ5_K = 13, kQ6_K = 14;
 
 // llama.cpp's use_more_bits (llama-quant.cpp): the first and last eighth of
@@ -337,14 +677,17 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
 
     write_tokenizer(writer, cfg);
     if (lcpp) {
-        // llama.cpp's quantiser copies the source keys and appends these two
-        // (GGML_QNT_VERSION, and the llama_ftype: MOSTLY_Q4_0 = 2,
-        // MOSTLY_Q4_K_S = 14, MOSTLY_Q4_K_M = 15).
+        // llama.cpp's quantiser copies every source key (the IR keys of the F32
+        // file included) and then appends these two (GGML_QNT_VERSION, and the
+        // llama_ftype: MOSTLY_Q4_0 = 2, MOSTLY_Q4_K_S = 14, MOSTLY_Q4_K_M = 15),
+        // so here they follow the IR keys.
+        write_ir(writer, cfg.ir, "export_gguf_llama");
         writer.write_metadata_uint32("general.quantization_version", 2);
         writer.write_metadata_uint32("general.file_type",
                                      cfg.quant == "q4_0" ? 2u : cfg.quant == "q4_k_s" ? 14u : 15u);
+    } else {
+        write_ir(writer, cfg.ir, "export_gguf_llama");
     }
-    write_ir(writer, cfg.ir, "export_gguf_llama");
 
     // ---- tensors ----
     // Keep-alive for transposed copies: GGUFWriter buffers raw pointers
@@ -539,23 +882,27 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
     // unchanged while the extra bytes stay inside that padding (checked).
     std::vector<std::unique_ptr<std::vector<uint8_t>>> owned_q;
     auto store = [&](TensorExportInfo info, GGMLType type) {
-        size_t block = 0;
+        size_t block = 0, per = 32;  // bytes per block of `per` values
         void (*quantize)(const float*, size_t, uint8_t*) = nullptr;
         const char* tname = "";
-        switch (type) {
-            case GGMLType::Q4_0: block = 18, quantize = quantize_q4_0, tname = "Q4_0"; break;
-            case GGMLType::Q5_0: block = 22, quantize = quantize_q5_0, tname = "Q5_0"; break;
-            case GGMLType::Q5_1: block = 24, quantize = quantize_q5_1, tname = "Q5_1"; break;
-            case GGMLType::Q8_0: block = 34, quantize = quantize_q8_0, tname = "Q8_0"; break;
+        switch (static_cast<uint32_t>(type)) {
+            case static_cast<uint32_t>(GGMLType::Q4_0): block = 18, quantize = quantize_q4_0, tname = "Q4_0"; break;
+            case static_cast<uint32_t>(GGMLType::Q5_0): block = 22, quantize = quantize_q5_0, tname = "Q5_0"; break;
+            case static_cast<uint32_t>(GGMLType::Q5_1): block = 24, quantize = quantize_q5_1, tname = "Q5_1"; break;
+            case static_cast<uint32_t>(GGMLType::Q8_0): block = 34, quantize = quantize_q8_0, tname = "Q8_0"; break;
+            case kQ4_K: block = 144, per = 256, quantize = quantize_q4_k, tname = "Q4_K"; break;
+            case kQ5_K: block = 176, per = 256, quantize = quantize_q5_k, tname = "Q5_K"; break;
+            case kQ6_K: block = 210, per = 256, quantize = quantize_q6_k, tname = "Q6_K"; break;
             default:
                 throw std::runtime_error("export_gguf_llama: " + info.name + ": no quantiser for ggml type " +
                                          std::to_string(static_cast<uint32_t>(type)));
         }
         const uint64_t ne0 = info.shape.back();  // the writer reverses: last entry is ne0
-        if (ne0 % 32 != 0)
+        if (ne0 % per != 0)
             throw std::runtime_error("export_gguf_llama: " + info.name + " has ne0 = " + std::to_string(ne0) +
-                                     ", not a multiple of 32, so it cannot be stored as " + tname);
-        const size_t bytes = info.num_elements / 32 * block;
+                                     ", not a multiple of " + std::to_string(per) + ", so it cannot be stored as " +
+                                     tname);
+        const size_t bytes = info.num_elements / per * block;
         const size_t unit = gguf_export::ggml_type_size(type);
         const size_t units = (bytes + unit - 1) / unit;
         if (((bytes + 31) & ~size_t(31)) != ((units * unit + 31) & ~size_t(31)))
@@ -591,10 +938,6 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
             }
             const uint32_t type = llamacpp_type(cfg.quant, t.name, t.shape.back(), has_output, i_attn_v, n_attn_v,
                                                 i_ffn_down, static_cast<int>(cfg.block_count));
-            if (type == kQ4_K || type == kQ5_K || type == kQ6_K)
-                throw std::runtime_error("export_gguf_llama: llama.cpp's " + cfg.quant + " stores " + t.name +
-                                         " as a k-quant (its ne0 = " + std::to_string(t.shape.back()) +
-                                         " is a multiple of 256), which this exporter does not implement");
             store(t, static_cast<GGMLType>(type));
         }
     } else {

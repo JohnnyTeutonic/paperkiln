@@ -126,10 +126,10 @@ struct LlamaExportConfig {
     // first eighth; the ftype's type for the rest. A k-quant (Q4_K, Q5_K,
     // Q6_K) needs ne0 to be a multiple of 256; where it is not, llama.cpp
     // falls back to Q5_0, Q5_1 and Q8_0 respectively, and so does this
-    // exporter. The k-quant blocks themselves are not implemented: a tensor
-    // that llama.cpp would store as one throws, naming it. (On a d = 384,
-    // d_ff = 1152 model q4_k_m and q4_k_s therefore contain no Q4_K at all,
-    // as with llama.cpp.) Dense models only: MoE throws.
+    // exporter; otherwise the tensor is stored in real k-quant blocks
+    // (quantize_q4_k / q5_k / q6_k). (On a d = 384, d_ff = 1152 model q4_k_m
+    // and q4_k_s contain no Q4_K at all, as with llama.cpp; at d = 768,
+    // d_ff = 2048 every 2-D tensor is a k-quant.) Dense models only: MoE throws.
     std::string quant = "f32";
 
     // The model's paperkiln IR (microtorch/ir.hpp; nn::Llama::export_ir), a
@@ -164,6 +164,20 @@ void quantize_q8_0(const float* x, size_t n, uint8_t* out);
 void quantize_q4_0(const float* x, size_t n, uint8_t* out);
 void quantize_q5_0(const float* x, size_t n, uint8_t* out);
 void quantize_q5_1(const float* x, size_t n, uint8_t* out);
+
+// The k-quants: ggml-quants.c's quantize_row_q4_K_ref / q5_K_ref / q6_K_ref of
+// llama.cpp b6000 (4762ad73), ported statement for statement (make_qkx2_quants,
+// make_qx_quants, nearest_int's round-half-even), bit for bit; n a multiple of
+// 256, finite inputs, else they throw. Per 256-value super-block:
+//   Q4_K (144 bytes): fp16 d and dmin, 12 bytes of 6-bit scales and mins for
+//     the eight 32-value sub-blocks, 128 bytes of 4-bit levels.
+//   Q5_K (176 bytes): as Q4_K plus 32 bytes of fifth bits (qh) before the
+//     levels' low nibbles.
+//   Q6_K (210 bytes): 128 bytes of low nibbles, 64 of high bit pairs, sixteen
+//     int8 scales (one per 16 values), fp16 d.
+void quantize_q4_k(const float* x, size_t n, uint8_t* out);
+void quantize_q5_k(const float* x, size_t n, uint8_t* out);
+void quantize_q6_k(const float* x, size_t n, uint8_t* out);
 
 // Export a state_dict with HF-Llama naming to GGUF:
 //   model.embed_tokens.weight            -> token_embd.weight
