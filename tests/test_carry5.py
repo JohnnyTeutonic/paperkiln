@@ -89,6 +89,58 @@ def test_uniform_scorer_is_exactly_chance():
     assert s["fc"]["acc_norm"]["noctx"]["all"]["mean"] == 0.25
 
 
+FAKE_SCORE = """import json, os, sys
+state = sys.argv[-5] + ".n"
+n = int(open(state).read()) + 1 if os.path.exists(state) else 1
+open(state, "w").write(str(n))
+if n <= int(os.environ["FAKE_FAILS"]):
+    sys.stderr.write("CUDA error at matrix_ops.cu:44: out of memory" + chr(10))
+    sys.exit(1)
+out = sys.argv[sys.argv.index("--out") + 1]
+with open(out, "w") as f:
+    for line in open(sys.argv[sys.argv.index("--in") + 1]):
+        r = json.loads(line)
+        lp = [-1.0] * len(r["continuation_ids"])
+        f.write(json.dumps({"key": r["key"], "over_ctx": False, "logprobs": lp, "argmax": r["continuation_ids"],
+                            "sum": sum(lp)}) + chr(10))
+"""
+
+
+@pytest.mark.parametrize("fails", [0, 1, 2])
+def test_mtstudio_score_failure_keeps_stderr_and_retries_once(tmp_path, monkeypatch, fails):
+    """A failed `mtstudio score` attempt is rerun once; its stderr is kept beside the chunk and ends
+    the exit message (a rung's score died on 25 Oct 2026 with exit 1 and nothing kept)."""
+    fake = tmp_path / "fake_mtstudio.py"
+    fake.write_text(FAKE_SCORE, encoding="utf-8")
+    spec = tmp_path / "spec.json"
+    spec.write_text("{}", encoding="utf-8")
+    monkeypatch.setenv("FAKE_FAILS", str(fails))
+    # The argv carry5_eval builds is [mtstudio, "score", SPEC, ...]: run the fake through a wrapper.
+    wrap = tmp_path / ("mtstudio.cmd" if os.name == "nt" else "mtstudio")
+    if os.name == "nt":
+        wrap.write_text(f'@"{sys.executable}" "{fake}" %*\n', encoding="utf-8")
+    else:
+        wrap.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{fake}" "$@"\n', encoding="utf-8")
+        wrap.chmod(0o755)
+
+    class A:
+        scorer, mtstudio = "mtstudio", str(wrap)
+
+    reqs = [(f"k{i}", [1, 2, 3], [4, 5]) for i in range(3)]
+    log = tmp_path / "score" / "chunk0000.json.out.jsonl.stderr.txt"
+    if fails >= 2:
+        with pytest.raises(SystemExit) as e:
+            ce.score_all(A, reqs, str(spec), None, str(tmp_path))
+        assert "out of memory" in str(e.value) and "failed 2 times" in str(e.value)
+        assert log.read_text(encoding="utf-8").count("out of memory") == 2
+        return
+    res = ce.score_all(A, reqs, str(spec), None, str(tmp_path))
+    assert set(res) == {"k0", "k1", "k2"} and res["k1"]["sum"] == -2.0
+    assert log.exists() == (fails == 1)
+    if fails == 1:
+        assert "attempt 1: rc 1" in log.read_text(encoding="utf-8")
+
+
 def test_template_is_the_served_chat_format():
     assert ce.template([("Hi", "Hello!")], "Bye") == "<|user|>Hi<|assistant|>Hello!<|endoftext|><|user|>Bye<|assistant|>"
 

@@ -28,6 +28,13 @@
 
 #include "microtorch/device_cache.hpp"
 
+// transformer_core's shared cuBLAS handle (src/cuda/matrix_ops.cu, namespace
+// cuda; loss_kernels.cu declares it the same way). pooled_matmul runs its
+// GEMM on this handle, so it computes what cuda::matmul computed.
+namespace cuda {
+cublasHandle_t get_cublas_handle();
+}
+
 namespace microtorch {
 namespace device {
 
@@ -702,6 +709,41 @@ bool resident_matmul(const Matrix& a, const Matrix& b, Matrix& c) {
     if (own_a) pool::dfree(dA);
     if (own_b) pool::dfree(dB);
     return true;
+}
+
+namespace {
+// A pool block for one call, returned on every exit (a throw included).
+struct PoolBlock {
+    float* p = nullptr;
+    ~PoolBlock() { pool::dfree(p); }
+};
+}  // namespace
+
+void pooled_matmul(const Matrix& a, const Matrix& b, Matrix& c) {
+    if (a.cols() != b.rows() || c.rows() != a.rows() || c.cols() != b.cols())
+        throw std::runtime_error("pooled_matmul: shapes disagree");
+    // cuda::matmul's call, argument for argument: C^T = B^T A^T in cuBLAS's
+    // column-major view (m = C.cols, n = C.rows, k = A.cols; ld B.cols,
+    // A.cols, C.cols), alpha 1, beta 0, on transformer_core's handle.
+    const size_t nA = a.rows() * a.cols(), nB = b.rows() * b.cols(), nC = c.rows() * c.cols();
+    PoolBlock dA, dB, dC;
+    cuda_check(pool::dmalloc(&dA.p, nA * sizeof(float)), "malloc pooled_matmul A");
+    cuda_check(pool::dmalloc(&dB.p, nB * sizeof(float)), "malloc pooled_matmul B");
+    cuda_check(pool::dmalloc(&dC.p, nC * sizeof(float)), "malloc pooled_matmul C");
+    cuda_check(cudaMemcpy(dA.p, a.get_data(), nA * sizeof(float), cudaMemcpyHostToDevice), "H2D pooled_matmul A");
+    cuda_check(cudaMemcpy(dB.p, b.get_data(), nB * sizeof(float), cudaMemcpyHostToDevice), "H2D pooled_matmul B");
+    cublasHandle_t h = ::cuda::get_cublas_handle();
+    cudaStream_t prev = nullptr;
+    cublasGetStream(h, &prev);
+    cublasSetStream(h, nullptr);  // the default stream, as every op in this library
+    const float alpha = 1.0f, beta = 0.0f;
+    const cublasStatus_t s =
+        cublasSgemm(h, CUBLAS_OP_N, CUBLAS_OP_N, static_cast<int>(c.cols()), static_cast<int>(c.rows()),
+                    static_cast<int>(a.cols()), &alpha, dB.p, static_cast<int>(b.cols()), dA.p,
+                    static_cast<int>(a.cols()), &beta, dC.p, static_cast<int>(c.cols()));
+    cublasSetStream(h, prev);
+    if (s != CUBLAS_STATUS_SUCCESS) throw std::runtime_error("pooled_matmul: cublasSgemm failed: " + std::to_string(s));
+    cuda_check(cudaMemcpy(c.get_data(), dC.p, nC * sizeof(float), cudaMemcpyDeviceToHost), "D2H pooled_matmul");
 }
 
 }  // namespace device

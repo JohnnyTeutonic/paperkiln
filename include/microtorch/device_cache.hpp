@@ -33,6 +33,19 @@ size_t resident_count();              // table size (diagnostics)
 // the rest, downloads C. Returns false (doing nothing) when residency is
 // disabled, so the caller can fall through to the Phase A path.
 bool resident_matmul(const Matrix& a, const Matrix& b, Matrix& c);
+// Phase A matmul (every GEMM outside a step window when residency is off:
+// score, chat, eval, sample), host in and out, through this library's
+// device pool: transformer_core's cuda::matmul call (its cuBLAS handle,
+// cublasSgemm, the same operands and leading dimensions, so the same
+// floats), but its buffers come from pool::dmalloc. cuda::matmul's own
+// buffer cache keeps one block per exact element count for the life of
+// the process, outside MICROTORCH_POOL_MB, and exit(1)s on a failed
+// cudaMalloc with no unwinding; a score run over many context lengths
+// (and a MoR model's per-step active-row counts) grew it to ~1 GB per
+// process, and beside a training job on the same L4 that ended a rung's
+// `mtstudio score` mid-chunk (25 Oct 2026). Here the cache is capped and
+// returned to the driver before a retry, and a failure throws.
+void pooled_matmul(const Matrix& a, const Matrix& b, Matrix& c);
 #endif
 
 // ---- Phase B2.0: training-step residency plumbing (docs/CUDA_PHASE_B2.md)

@@ -112,7 +112,9 @@ Matrix matmul(const Matrix& a, const Matrix& b) {
         if (resident_matmul(a, b, c)) return c;
         // Phase A: host-resident tensors, per-call round trip. Correctness
         // is gradcheck-gated (the same suite runs under either device).
-        cuda::matmul(a, b, c);
+        // cuda::matmul's arithmetic through this library's pool
+        // (device_cache.hpp pooled_matmul).
+        pooled_matmul(a, b, c);
         return c;
     }
 #endif
@@ -139,7 +141,7 @@ Matrix gemm(const Matrix& A, DevState** devA, Trans tA, const Matrix& B, DevStat
         zero_if_uninit(C);
         auto run = [&C](const Matrix& a, const Matrix& b) {
             if (resident_matmul(a, b, C)) return;
-            cuda::matmul(a, b, C);
+            pooled_matmul(a, b, C);
         };
         if (tA == Trans::N && tB == Trans::N)
             run(A, B);

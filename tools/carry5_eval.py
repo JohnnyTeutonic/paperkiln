@@ -337,6 +337,25 @@ class IrBackend:
         return {"over_ctx": False, "logprobs": lp, "argmax": [int(x) for x in rb.argmax(axis=1)], "sum": sum(lp)}
 
 
+def mtstudio_score(binary, spec_path, inp, raw, attempts=2):
+    """`mtstudio score` on one chunk. A failed attempt's stderr is kept beside the chunk
+    (RAW.stderr.txt, appended) and printed, and its tail ends the exit message, so a failure
+    explains itself: a rung's score died mid-chunk on 25 Oct 2026 with exit 1 and nothing kept.
+    A failed attempt is rerun once (a fresh process: GPU memory a job beside it held may be free
+    again)."""
+    log = raw + ".stderr.txt"
+    for k in range(1, attempts + 1):
+        r = subprocess.run([binary, "score", spec_path, "--in", inp, "--out", raw], capture_output=True, text=True)
+        if r.returncode == 0:
+            return
+        with open(log, "a", encoding="utf-8") as f:
+            f.write(f"--- attempt {k}: rc {r.returncode}\n{r.stderr}")
+        print(f"mtstudio score failed on {os.path.basename(inp)} (attempt {k}, rc {r.returncode}): "
+              f"{r.stderr.strip()[-400:]}", file=sys.stderr, flush=True)
+    sys.exit(f"mtstudio score failed {attempts} times on {inp} (rc {r.returncode}; stderr in {log}): "
+             f"{r.stderr.strip()[-1000:]}")
+
+
 def score_all(a, reqs, spec_path, gguf, work):
     """{key: result}: chunks of CHUNK requests, each written atomically, skipped when already present."""
     res = {}
@@ -359,8 +378,7 @@ def score_all(a, reqs, spec_path, gguf, work):
             with open(inp, "w", encoding="utf-8", newline="\n") as f:
                 for k, p, c in part:
                     f.write(json.dumps({"key": k, "prompt_ids": p, "continuation_ids": c}) + "\n")
-            subprocess.run([a.mtstudio, "score", spec_path, "--in", inp, "--out", raw], check=True,
-                           capture_output=True)
+            mtstudio_score(a.mtstudio, spec_path, inp, raw)
             got = {r["key"]: {x: r[x] for x in ("over_ctx", "logprobs", "argmax", "sum") if x in r}
                    for r in read_jsonl(raw)}
             os.remove(inp)
