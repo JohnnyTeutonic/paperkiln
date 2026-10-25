@@ -1,0 +1,97 @@
+{
+ "_comment": "Tiny-chat rungs lost to VM replacement (PREREGISTRATION.md amendment 1: 'A rung lost to a replaced VM is recorded as lost and never imputed'). Before paperkiln 11fc9317 (25 Oct 2026 09:49 +1100) rung snapshots lived only on the VM that took them, so a replacement VM failed every unscored rung job of a run it resumed. Each of these has no rung.json; analyze.py's rung_analysis counts it as missing (the INCOMPLETE rule: fewer than max(8, 80%) runs with the rung). From 11fc9317 on, snapshots come home and go back to a replacement VM.",
+ "lost_before": "11fc931727e98ea2814ab9f5981ef97f825c2935",
+ "n": 10,
+ "rungs": [
+  {
+   "block": "e1",
+   "rung_job": "rung_e1_L16_r1_s1000",
+   "pretraining_job": "pt_e1_L16_r1",
+   "step": 1000,
+   "recorded": "2026-10-25T09:20+11:00",
+   "log": "C:/ml_artifacts/tiny_chat/e1/rung_e1_L16_r1_s1000/rung_e1_L16_r1_s1000_train.log",
+   "log_text": "rung lost: no snapshot of {'job': 'pt_e1_L16_r1', 'step': 1000} on this VM"
+  },
+  {
+   "block": "e1",
+   "rung_job": "rung_e1_L16_r1_s2500",
+   "pretraining_job": "pt_e1_L16_r1",
+   "step": 2500,
+   "recorded": "2026-10-25T09:20+11:00",
+   "log": "C:/ml_artifacts/tiny_chat/e1/rung_e1_L16_r1_s2500/rung_e1_L16_r1_s2500_train.log",
+   "log_text": "rung lost: no snapshot of {'job': 'pt_e1_L16_r1', 'step': 2500} on this VM"
+  },
+  {
+   "block": "e1",
+   "rung_job": "rung_e1_L16_r1_s5000",
+   "pretraining_job": "pt_e1_L16_r1",
+   "step": 5000,
+   "recorded": "2026-10-25T09:20+11:00",
+   "log": "C:/ml_artifacts/tiny_chat/e1/rung_e1_L16_r1_s5000/rung_e1_L16_r1_s5000_train.log",
+   "log_text": "rung lost: no snapshot of {'job': 'pt_e1_L16_r1', 'step': 5000} on this VM"
+  },
+  {
+   "block": "e1_60m",
+   "rung_job": "rung_e1_60m_L32_r1_s2500",
+   "pretraining_job": "pt_e1_60m_L32_r1",
+   "step": 2500,
+   "recorded": "2026-10-25T06:24+11:00",
+   "log": "C:/ml_artifacts/tiny_chat/e1_60m/rung_e1_60m_L32_r1_s2500/rung_e1_60m_L32_r1_s2500_train.log",
+   "log_text": "rung lost: no snapshot of {'job': 'pt_e1_60m_L32_r1', 'step': 2500} on this VM"
+  },
+  {
+   "block": "e1_60m",
+   "rung_job": "rung_e1_60m_L32_r1_s5000",
+   "pretraining_job": "pt_e1_60m_L32_r1",
+   "step": 5000,
+   "recorded": "2026-10-25T06:24+11:00",
+   "log": "C:/ml_artifacts/tiny_chat/e1_60m/rung_e1_60m_L32_r1_s5000/rung_e1_60m_L32_r1_s5000_train.log",
+   "log_text": "rung lost: no snapshot of {'job': 'pt_e1_60m_L32_r1', 'step': 5000} on this VM"
+  },
+  {
+   "block": "e5",
+   "rung_job": "rung_e5_s17_r2_s1000",
+   "pretraining_job": "pt_e5_s17_r2",
+   "step": 1000,
+   "recorded": "2026-10-25T09:47+11:00",
+   "log": "C:/ml_artifacts/tiny_chat/e5/rung_e5_s17_r2_s1000/rung_e5_s17_r2_s1000_train.log",
+   "log_text": "rung lost: no snapshot of {'job': 'pt_e5_s17_r2', 'step': 1000} on this VM"
+  },
+  {
+   "block": "e5",
+   "rung_job": "rung_e5_s17_r2_s2500",
+   "pretraining_job": "pt_e5_s17_r2",
+   "step": 2500,
+   "recorded": "2026-10-25T09:47+11:00",
+   "log": "C:/ml_artifacts/tiny_chat/e5/rung_e5_s17_r2_s2500/rung_e5_s17_r2_s2500_train.log",
+   "log_text": "rung lost: no snapshot of {'job': 'pt_e5_s17_r2', 'step': 2500} on this VM"
+  },
+  {
+   "block": "e5",
+   "rung_job": "rung_e5_s17_r2_s5000",
+   "pretraining_job": "pt_e5_s17_r2",
+   "step": 5000,
+   "recorded": "2026-10-25T09:47+11:00",
+   "log": "C:/ml_artifacts/tiny_chat/e5/rung_e5_s17_r2_s5000/rung_e5_s17_r2_s5000_train.log",
+   "log_text": "rung lost: no snapshot of {'job': 'pt_e5_s17_r2', 'step': 5000} on this VM"
+  },
+  {
+   "block": "e5",
+   "rung_job": "rung_e5_s35_r2_s1000",
+   "pretraining_job": "pt_e5_s35_r2",
+   "step": 1000,
+   "recorded": "2026-10-25T09:47+11:00",
+   "log": "C:/ml_artifacts/tiny_chat/e5/rung_e5_s35_r2_s1000/rung_e5_s35_r2_s1000_train.log",
+   "log_text": "rung lost: no snapshot of {'job': 'pt_e5_s35_r2', 'step': 1000} on this VM"
+  },
+  {
+   "block": "e5",
+   "rung_job": "rung_e5_s35_r2_s500",
+   "pretraining_job": "pt_e5_s35_r2",
+   "step": 500,
+   "recorded": "2026-10-25T09:47+11:00",
+   "log": "C:/ml_artifacts/tiny_chat/e5/rung_e5_s35_r2_s500/rung_e5_s35_r2_s500_train.log",
+   "log_text": "rung lost: no snapshot of {'job': 'pt_e5_s35_r2', 'step': 500} on this VM"
+  }
+ ]
+}
