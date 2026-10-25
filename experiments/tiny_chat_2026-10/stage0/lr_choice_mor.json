@@ -1,0 +1,229 @@
+{
+ "rule": "The registered screen rule, per shape: among screens that did not diverge, the lowest final validation loss; any screen within SCREEN_TIE nats of it counts as tied and the smallest tied lr wins. A shape whose screens all diverged stops the programme (no rate is chosen). Amendment 2: a FAILED screen (screen_status: a crash with finite losses) is no evidence about its rate and is rerun unchanged; --art may be given several times (the first attempt, then its reruns) and each screen is read from the one folder that holds it FINISHED or DIVERGED. A shape is chosen only when all its screens are FINISHED or DIVERGED; otherwise nothing is written.",
+ "tie_nats": 0.01,
+ "lr": {
+  "20m_MC2": 0.001,
+  "20m_MC3": 0.001,
+  "20m_MoR3": 0.001
+ },
+ "screens": {
+  "20m_MC2": [
+   {
+    "lr": 0.00025,
+    "final_val": 4.725187124684453,
+    "status": "FINISHED",
+    "first_loss": 9.856341361999512,
+    "last_loss": 4.821242809295654,
+    "tok_per_s_steady": 23707.31365933927,
+    "job": "screen_20m_MC2_lr0",
+    "art": "C:/ml_artifacts/tiny_chat/s0_mor",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_mor",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   },
+   {
+    "lr": 0.0005,
+    "final_val": 4.371954001486301,
+    "status": "FINISHED",
+    "first_loss": 9.856341361999512,
+    "last_loss": 4.475101470947266,
+    "tok_per_s_steady": 23644.511632957383,
+    "job": "screen_20m_MC2_lr1",
+    "art": "C:/ml_artifacts/tiny_chat/s0_mor",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_mor",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   },
+   {
+    "lr": 0.001,
+    "final_val": 4.167726198211312,
+    "status": "FINISHED",
+    "first_loss": 9.856341361999512,
+    "last_loss": 4.254034996032715,
+    "tok_per_s_steady": 23652.520711619625,
+    "job": "screen_20m_MC2_lr2",
+    "art": "C:/ml_artifacts/tiny_chat/s0_mor",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_mor",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   },
+   {
+    "lr": 0.002,
+    "final_val": 4.5084069352597,
+    "status": "FINISHED",
+    "first_loss": 9.856341361999512,
+    "last_loss": 4.641791820526123,
+    "tok_per_s_steady": 23722.376911460495,
+    "job": "screen_20m_MC2_lr3",
+    "art": "C:/ml_artifacts/tiny_chat/s0_mor",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_mor",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   }
+  ],
+  "20m_MC3": [
+   {
+    "lr": 0.00025,
+    "final_val": 4.744542928412557,
+    "status": "FINISHED",
+    "first_loss": 9.854802131652832,
+    "last_loss": 4.833993911743164,
+    "tok_per_s_steady": 18769.599120638926,
+    "job": "screen_20m_MC3_lr0",
+    "art": "C:/ml_artifacts/tiny_chat/s0_mor",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_mor",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   },
+   {
+    "lr": 0.0005,
+    "final_val": 4.398192945867777,
+    "status": "FINISHED",
+    "first_loss": 9.854802131652832,
+    "last_loss": 4.5037360191345215,
+    "tok_per_s_steady": 18731.09918808333,
+    "job": "screen_20m_MC3_lr1",
+    "art": "C:/ml_artifacts/tiny_chat/s0_mor",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_mor",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   },
+   {
+    "lr": 0.001,
+    "final_val": 4.203027991577983,
+    "status": "FINISHED",
+    "first_loss": 9.854802131652832,
+    "last_loss": 4.289943695068359,
+    "tok_per_s_steady": 18785.66676936525,
+    "job": "screen_20m_MC3_lr2",
+    "art": "C:/ml_artifacts/tiny_chat/s0_mor",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_mor",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   },
+   {
+    "lr": 0.002,
+    "final_val": 4.480232767760754,
+    "status": "FINISHED",
+    "first_loss": 9.854802131652832,
+    "last_loss": 4.598475456237793,
+    "tok_per_s_steady": 18783.75143386221,
+    "job": "screen_20m_MC3_lr3",
+    "art": "C:/ml_artifacts/tiny_chat/s0_mor",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_mor",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   }
+  ],
+  "20m_MoR3": [
+   {
+    "lr": 0.00025,
+    "final_val": 4.704887352883816,
+    "status": "FINISHED",
+    "first_loss": 9.859418869018555,
+    "last_loss": 4.801816940307617,
+    "tok_per_s_steady": 15285.02703955226,
+    "job": "screen_20m_MoR3_lr0",
+    "art": "C:/ml_artifacts/tiny_chat/s0_mor",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_mor",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   },
+   {
+    "lr": 0.0005,
+    "final_val": 4.298502933233976,
+    "status": "FINISHED",
+    "first_loss": 9.859418869018555,
+    "last_loss": 4.398569107055664,
+    "tok_per_s_steady": 15476.182681612203,
+    "job": "screen_20m_MoR3_lr1",
+    "art": "C:/ml_artifacts/tiny_chat/s0_mor",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_mor",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   },
+   {
+    "lr": 0.001,
+    "final_val": 4.14305298961699,
+    "status": "FINISHED",
+    "first_loss": 9.859418869018555,
+    "last_loss": 4.216769218444824,
+    "tok_per_s_steady": 15668.516724407986,
+    "job": "screen_20m_MoR3_lr2",
+    "art": "C:/ml_artifacts/tiny_chat/s0_mor",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_mor",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   },
+   {
+    "lr": 0.002,
+    "final_val": 4.484801897779107,
+    "status": "FINISHED",
+    "first_loss": 9.859418869018555,
+    "last_loss": 4.606616973876953,
+    "tok_per_s_steady": 15447.10181341387,
+    "job": "screen_20m_MoR3_lr3",
+    "art": "C:/ml_artifacts/tiny_chat/s0_mor",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_mor",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   }
+  ]
+ },
+ "grid": [
+  0.00025,
+  0.0005,
+  0.001,
+  0.002
+ ],
+ "dropped": {},
+ "rule_rec": "A3.3: the same rule over the four-rate grid; a cell whose screens all diverged is dropped and reported"
+}
