@@ -34,6 +34,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("results")
     ap.add_argument("--out")
+    ap.add_argument("--markdown", help="write the result tables (markdown) here")
     ap.add_argument("--prompts2", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..",
                                                        "corpus", "eval", "chat_prompts_v1.jsonl"))
     a = ap.parse_args(argv)
@@ -84,6 +85,25 @@ def main(argv=None):
     print(json.dumps({k: res[k] for k in ("registered", "A1")}, indent=1))
     if a.out:
         json.dump(res, open(a.out, "w"), indent=1)
+    if a.markdown:
+        kinds = ("fact", "science", "arith", "turn")
+        L = ["Simple-QA (`simple_qa_v1`, 60 questions, greedy):", "",
+             "| model | correct | all | " + " | ".join(kinds) + " |", "|---|---:|---:|" + "---:|" * len(kinds)]
+        for t in qa:
+            L.append(f"| {t} | {rows[t]['qa_correct']}/60 | {qa[t]['all']:.3f} | "
+                     + " | ".join(f"{qa[t].get(k, 0):.2f}" for k in kinds) + " |")
+        L += ["", "Chat (temperature 0.7, 64 new tokens; per prompt set and source):", "",
+              "| model | set | samples | clean stop | length stops | protocol fails | repeats | ref F1 | "
+              "prompt overlap | words | ref bits/byte (cut, dropped) |", "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|"]
+        for t in qa:
+            sets = [("frozen", chat[t])] + [(s, chat2[t]["by_source"][s]) for s in sources]
+            for name, m in sets:
+                L.append(f"| {t} | {name} | {m['samples']} | {m['clean_stop']:.3f} | "
+                         f"{1 - m['clean_stop'] - rows[t]['protocol_fail'][name]:.3f} | "
+                         f"{rows[t]['protocol_fail'][name]:.3f} | {m['repeat_frac']:.3f} | {m['ref_f1']:.3f} | "
+                         f"{m['prompt_overlap']:.3f} | {m['words']:.1f} | {m['ref_bpb']:.3f} "
+                         f"({m['ref_truncated']}, {m['ref_dropped']}) |")
+        open(a.markdown, "w", encoding="utf-8", newline="\n").write("\n".join(L) + "\n")
 
 
 if __name__ == "__main__":

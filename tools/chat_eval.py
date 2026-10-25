@@ -152,6 +152,11 @@ def ref_bpb(mtstudio, spec_path, prompts, work, tag):
     subprocess.run([mtstudio, "run", sp], check=True, capture_output=True)
     evs = [json.loads(x) for x in open(os.path.join(ev["out_dir"], "events.jsonl"), encoding="utf-8")]
     nats = next(e["val_loss"] for e in evs if e["event"] == "eval")
+    # The 1-step run saves weights, a checkpoint and optimiser state (3x the model; 1.4 GB at d768):
+    # four of them per model filled a 40 GB RunPod volume on 25 Oct 2026. Only the loss is needed.
+    import shutil
+    shutil.copy(os.path.join(ev["out_dir"], "events.jsonl"), os.path.join(work, f"{tag}_refeval_events.jsonl"))
+    shutil.rmtree(ev["out_dir"], ignore_errors=True)
     held = ex
     toks = sum(len(tok.encode(e["completion"])) + 1 for e in held)
     byts = sum(len(e["completion"].encode()) + 1 for e in held)
