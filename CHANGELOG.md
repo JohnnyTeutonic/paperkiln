@@ -24,6 +24,14 @@ Notable changes to microtorch. Format loosely follows
   - Tooling: `x5/bitid.py`, `analyze_x5.py` (in `analyze.py` as E1_x5_20m), `tools/carry5_attnres_trace.py` (the
     depth-attention weights at the answer token, through keramos's interpreter), and `tiny_chat_run.py gate
     --need-ok`.
+  - Stage 0 (585206a8, one RunPod L4; A5.12):
+    - CUDA gate 22/22;
+    - X5 at 17,378 tokens/s against plain 20m_L16's 26,007 (0.668x, +15% peak memory);
+    - a 500-step replay of E1's pt_e1_L16_r1 bit-identical to E1's log;
+    - the smoke model numpy-vs-mtstudio 1.9e-6, greedy 40/40.
+  - Ember e115fd3 is the post jobs' pin (`post --ember-commit`): ar_x5 40/40 on CPU, CUDA and WASM, and the
+    control's model generated exactly as at cbdcb915.
+  - The three seeds run on their own RunPod L4s, beside the control's re-run.
 
 - **The general chat model's next step: pk_sft_v1** (25 Oct; paperkiln 0ad646d5..91f47fec, one RunPod L4,
   $3.19; `experiments/chat_general/RESULTS.md`). pk_base_v1 + lever 1's SFT set at T 512 as conversation rows

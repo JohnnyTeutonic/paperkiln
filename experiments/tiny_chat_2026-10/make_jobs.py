@@ -1018,8 +1018,8 @@ X5_BITID = f"{REL}/x5/plain_bitid.json"                 # x5/bitid.py: the plain
 X5_EMBER = f"{REL}/x5/ember_gate.json"                  # ember's gate receipt on the X5-shaped models
 X5_CONTROL_SEEDS_ART = "/mnt/c/ml_artifacts/tiny_chat/e1"   # E1's home pretraining runs (the re-run's inputs)
 # A5.4: the ember commit X5's and the re-run's post jobs generate with (post --ember-commit), the one ember's
-# gate receipt (x5/ember_gate.json) names; None until that receipt is home, and then neither file launches.
-X5_EMBER_COMMIT = None
+# gate receipt (x5/ember_gate.json) names.
+X5_EMBER_COMMIT = "e115fd3d23ad5cee1ab7fb3bd0c8bb249ef69555"  # ember d74e052 receipts, x5/ember_gate.json
 
 
 def x5_gen():

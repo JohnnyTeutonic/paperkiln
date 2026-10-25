@@ -1,0 +1,56 @@
+{
+ "_comment": "Amendment 5, A5.4/A5.12: ember's gate receipt for arm X5's post jobs. ok is true when ar_x5 passed on CPU, CUDA and WASM, the control's SFT model generates at the pin exactly as at cbdcb915, and Stage 0's smoke model passed on CPU. Receipts: ember.cpp/experiments/attnres_x5_2026-10-25/ (ember d74e052).",
+ "ok": true,
+ "ember_commit": "e115fd3d23ad5cee1ab7fb3bd0c8bb249ef69555",
+ "control_ember_commit": "cbdcb915d26a66a276919328b8d808a450d51307",
+ "receipts": "ember d74e052, experiments/attnres_x5_2026-10-25/",
+ "ar_x5": {
+  "files": "C:/ml_artifacts/attnres_gate_x5/ar_x5 (manifest sha256s 7/7 matched)",
+  "cpu": {
+   "greedy": "40/40",
+   "logprob_worst": 5.6e-07,
+   "decode_vs_prefill": "bit-equal"
+  },
+  "wasm": {
+   "greedy": "40/40",
+   "logprob_worst": 5.6e-07,
+   "decode_vs_prefill": "bit-equal"
+  },
+  "cuda": {
+   "device": "Colab T4 (no L4 free)",
+   "greedy": "40/40",
+   "logprob_worst": 6.7e-07,
+   "decode_vs_prefill": "2.4e-7 of the range"
+  },
+  "q8_0": {
+   "cpu_logprob_worst": 7.1e-05,
+   "cuda_logprob_worst": 7.2e-05,
+   "greedy": "40/40"
+  },
+  "unused_query_nan": "logits bit-equal (blk.0.attnres_attn_q never read)",
+  "engine_change": false
+ },
+ "control_generation_path": {
+  "model": "C:/ml_artifacts/tiny_chat/e1/pick_e1_L16/model.gguf (seed 1; sha256 96f6afdc...)",
+  "requests": 360,
+  "env": "EMBER_GEMM_TF32=0, gpu_layers -1 on CUDA",
+  "cpu": "bit-identical at all 4,599 sampled positions; replies and ids 360/360",
+  "cuda": "replies and ids 360/360; first-token logits bit-equal; decode logits within 1e-5, the size of each build's own run-to-run spread (e115fd3 8.6e-6, cbdcb915 1.3e-5): ember's CUDA decode uses atomics",
+  "deterministic_mode": "not enabled (the control did not have it)"
+ },
+ "smoke_20m_X5": {
+  "files": "C:/ml_artifacts/attnres_gate_x5/smoke_20m_X5 (sha256s 5/5 matched; embedded IR = ir.json)",
+  "cpu": {
+   "greedy": "40/40",
+   "logprob_worst": 1.6e-06,
+   "decode_vs_prefill": "bit-equal",
+   "argmax_eq_mtstudio": "40/40",
+   "positions_scored": 320
+  },
+  "cpu_chat_server": "tinyllama_server on the spot-check items: prompt ids 40/40, ids 40/40, logits bit-equal to ir_logits decode 40/40",
+  "unused_query_nan": "logits bit-equal",
+  "receipts": "ember.cpp/experiments/attnres_x5_2026-10-25/smoke/x5s_gate_cpu.json, x5s_chat_cpu.json",
+  "cuda": "on the L4: each X5 run's 40-item spot-check (A5.4)"
+ },
+ "sm89_build": "e115fd3 compiled with ensure_ember's command for sm_89 (receipts/s1_pin_build.json), not run on an L4 by ember; the first X5 post job's spot-check is that build's gate"
+}

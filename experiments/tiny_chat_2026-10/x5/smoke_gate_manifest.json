@@ -1,0 +1,48 @@
+{
+ "model": "tc_smoke_20m_X5",
+ "family_hint": "llama_attnres",
+ "ir_version": 1,
+ "arch_custom": {
+  "d": 320,
+  "layers": 16,
+  "heads": 5,
+  "d_ff": 864,
+  "attn_res": {
+   "form": "full",
+   "scale": "sources"
+  }
+ },
+ "train": {
+  "steps": 300,
+  "lr": 0.001,
+  "batch": 16,
+  "accum": 2,
+  "clip": 1.0,
+  "eval_every": 100,
+  "eval_windows": 32,
+  "checkpoint_every": 100,
+  "gradmap_every": 0,
+  "seed": 101,
+  "optimizer": "adamw",
+  "lr_schedule": {
+   "warmup_steps": 30,
+   "decay": "cosine",
+   "min_lr_frac": 0.1
+  }
+ },
+ "vocab": "/mnt/c/ml_artifacts/capacity/vocab/vocab_llama3_bpe.gguf",
+ "prompts": "Carry-5 items 0, 26, ..., 1014: the target user turn with gold history, served template",
+ "numpy_vs_mtstudio": {
+  "worst": 1.9377381517304678e-06,
+  "agree": 40,
+  "n": 40
+ },
+ "files": {
+  "tc_smoke_20m_X5.gguf": "3735ee54aa9cae30febb6669ee91b102b200c7d62e0114df846867dde468365d",
+  "tc_smoke_20m_X5.ir.json": "67d1d837518e03caa62506bc47b469b8301af132c906474198e855ca5020dd8b",
+  "score_in.jsonl": "1c901ad957f358fb444aa82c0d5757504ddb482bee2f260a329b5e3549413422",
+  "score_out.jsonl": "392e8e4fefa8e6e67f00d9481cf02174a24e392e5bde099e96627dfde002b032",
+  "spec.json": "9d1ce97157940c345995b3d9e8416fcf4b47184ce4ced25351c6fb7c69e4189e"
+ },
+ "_note": "score_in.jsonl: prompt_ids and keramos ir_numpy's greedy continuation over the F32 GGUF; score_out.jsonl: mtstudio score over the same ids. Ember gate: greedy n/40 and log-probabilities within ROUNDING on CPU, CUDA and WASM."
+}

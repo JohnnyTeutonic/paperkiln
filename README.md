@@ -207,7 +207,8 @@ larger models, no distillation), pre-registered hypotheses, seeds and analysis
   conversation (single-turn twin accuracy 0.53, chance 0.25, gate 0.35). E5, E1 at 20M and the
   recursion arm run on Colab; E1 at 60M runs on RunPod. The same pilot run on both providers
   matches bit for bit in pretraining. Arm X5 (attention residuals on the 20m_L16 llama, Jonathan's
-  cross-layer idea, amendment 5) starts on RunPod with its Stage 0. Results land in the
+  cross-layer idea, amendment 5) runs on RunPod: it trains at 0.67x the plain model's speed, and the
+  plain path at its commit is bit-identical to E1's. Results land in the
   pre-registration's folder with their receipts.
 
 ## Research: what the methodology found

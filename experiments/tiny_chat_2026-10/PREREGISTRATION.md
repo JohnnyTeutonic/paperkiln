@@ -1182,8 +1182,10 @@ mtstudio for the whole run otherwise.
 - **The pin.** One ember commit for both files, written into every post command (`post --ember-commit`, from
   `make_jobs.py`'s `X5_EMBER_COMMIT`). It is the commit named by ember's gate receipt, `x5/ember_gate.json`.
 - **What the receipt must show at that commit:**
-  - the X5-shaped models (`ar_x5`, and Stage 0's smoke model on the real vocabulary) pass greedy 40/40 against
-    mtstudio, with log-probabilities against `mtstudio score`, on CPU, CUDA and WASM;
+  - the X5-shaped model `ar_x5` passes greedy 40/40 against mtstudio, with log-probabilities against
+    `mtstudio score`, on CPU, CUDA and WASM;
+  - Stage 0's smoke model (the real vocabulary) passes the same on CPU. Its CUDA leg on an L4 is each X5 run's
+    own 40-item spot-check, which falls back to mtstudio for the whole run on any difference;
   - on the control's own SFT model (E1's pick, `pick_e1_L16/model.gguf`, seed 1), the commit generates exactly
     as ember cbdcb915d26a did. E1's L16 posts were generated at cbdcb915d26a (all three summaries'
     `gen_engine`: TF32 off, all layers on the GPU).
@@ -1269,6 +1271,51 @@ gap effect from a main effect.
 - `x5/bitid.py`; `analyze_x5.py`; `tools/carry5_attnres_trace.py` (A5.7).
 - Tests: `tests/test_tiny_chat_x5.py`, `tests/test_llama_attnres_reference.py` and the `ar_x5` case of
   `tests/test_llama_attnres_ir.py`.
+
+**A5.12 Stage 0's receipts and the pin** (26 Oct 2026, before any X5 run; Stage 0 `pk-tc-x5-s0` at paperkiln
+585206a8, one RunPod L4 in EU-RO-1, 00:30-01:17 AEDT). The arm's runs launch from the commit that adds this
+section.
+- **CUDA gate:** 22/22 legs of `tools/colab_cuda_validate.sh` on the L4 (`x5/cuda_gate_x5.json`). The
+  `test_llama_attnres` device leg: depth_attend at S 33, T 64, d 320, kernels against the host loop, output
+  3.4e-6, gradients 1.5e-5; four device training steps against the host, losses within 7.0e-7.
+- **Throughput** (`x5/stage0/`, 300-step probes alone on the GPU, steady rate from step 50):
+  - 20m_L16 26,007 tokens/s, peak 6,604 MiB;
+  - 20m_X5 17,378 tokens/s, peak 7,568 MiB;
+  - **X5/L16 = 0.668** (above A5.2's 0.3), and +15% peak memory.
+  - X5's pretraining is about 2.6 h a run.
+- **The plain path** (`x5/plain_bitid.json`): the replay of pt_e1_L16_r1 at 585206a8 equals E1's log at dc29b5e6
+  in all 500 step records (loss, gradient norm, learning rate) and in the step-500 validation loss,
+  5.281066030263901. The specs are equal but steps, and the model events are equal. **Bit-identical.**
+- **The smoke run** (seed 101, 300 steps): loss 9.769 to 5.676, validation 5.601. Its F32 GGUF and IR pass keramos
+  v1.1.3's validator, and paperkiln's numpy interpreter against `mtstudio score` on the 40 spot-check items is
+  within 1.9e-6, greedy 40/40 (`x5/smoke_gate_manifest.json`).
+- **A5.4's pin: ember e115fd3d23ad5cee1ab7fb3bd0c8bb249ef69555** (receipts ember d74e052,
+  `ember.cpp/experiments/attnres_x5_2026-10-25/`; `x5/ember_gate.json`). No engine change was needed.
+  - **ar_x5:** worst log-probability error against `mtstudio score`:
+    - CPU 40/40, 5.6e-7, decode equal to prefill bit for bit;
+    - WASM 40/40, 5.6e-7;
+    - CUDA 40/40, 6.7e-7 (on a T4, as no L4 was free);
+    - Q8_0 40/40, 7.1e-5;
+    - the never-read query set to NaN leaves the logits bit-equal.
+  - **The control's generation path:** e115fd3 against cbdcb915 on the control's own SFT GGUF
+    (`pick_e1_L16/model.gguf`, seed 1, sha256 96f6afdc), TF32 off, 360 requests (40 chat prompts and the 40
+    Carry-5 spot-check items):
+    - CPU: bit-identical at all 4,599 sampled positions; replies and ids 360/360.
+    - CUDA: replies and ids 360/360, and first-token logits bit-equal. Decode logits differ by up to 1e-5. That
+      is each build's own run-to-run spread (8.6e-6 for e115fd3, 1.3e-5 for cbdcb915): ember's CUDA decode uses
+      atomics and is not bit-reproducible run to run, at about 1e-5, in both builds.
+    - The control's posts were generated under the same property, so the comparison stays symmetric, and every
+      run's 40-item spot-check guards it. Ember's planned deterministic mode is not enabled for X5, because the
+      control did not have it.
+  - **The smoke model, on ember's CPU:** greedy 40/40, worst 1.6e-6, decode equal to prefill bit for bit, and
+    the chat server's path on the spot-check items 40/40 with logits bit-equal to `ir_logits`
+    (`smoke/x5s_gate_cpu.json`, `x5s_chat_cpu.json`).
+  - e115fd3's first build for the L4 (sm_89, `ensure_ember`'s command) is the first X5 post job's own; its
+    spot-check is that build's gate.
+- **Commits:** the runs' commit differs from 585206a8 only in documents (this file, README, ROADMAP,
+  CHANGELOG), the files under `x5/` (the receipts and `smoke_gate.py`), the pin in `make_jobs.py`, and the
+  regenerated `tiny_chat_e1_x5.json` and `tiny_chat_e1_x5_ctl.json` (`git diff --stat 585206a8`). Nothing under
+  `src/`, `include/`, `tests/` or `tools/` changes except those two jobs files.
 
 ## Implementation notes
 

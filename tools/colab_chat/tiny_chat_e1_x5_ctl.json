@@ -89,7 +89,9 @@
     "--carry5-items",
     "corpus/eval/carry5_v1.jsonl",
     "--gen",
-    "ember"
+    "ember",
+    "--ember-commit",
+    "e115fd3d23ad5cee1ab7fb3bd0c8bb249ef69555"
    ],
    "outputs": [
     "summary.json",
@@ -130,7 +132,9 @@
     "--carry5-items",
     "corpus/eval/carry5_v1.jsonl",
     "--gen",
-    "ember"
+    "ember",
+    "--ember-commit",
+    "e115fd3d23ad5cee1ab7fb3bd0c8bb249ef69555"
    ],
    "outputs": [
     "summary.json",
@@ -171,7 +175,9 @@
     "--carry5-items",
     "corpus/eval/carry5_v1.jsonl",
     "--gen",
-    "ember"
+    "ember",
+    "--ember-commit",
+    "e115fd3d23ad5cee1ab7fb3bd0c8bb249ef69555"
    ],
    "outputs": [
     "summary.json",

@@ -12,14 +12,13 @@ where one of those documents carries a plan, this file wins.*
    E5, E1 and the recursion arm run on Colab; E1 at 60M waits for an L4 (first use of the
    RunPod backend for `tools/colab_chat/runner_multi.py`, under validation); Carry-12 and its
    Stage L0 follow E5 and E1.
-   - Arm X5 (amendment 5, Attention Residuals on 20m_L16, Jonathan's cross-layer idea): its Stage 0
-     (`pk-tc-x5-s0`) runs on a RunPod L4. At home:
-     - copy Stage 0's CUDA gate, probes and the smoke model's files;
-     - write `x5/plain_bitid.json` (`x5/bitid.py`) and `x5/ember_gate.json` (ember's receipt on ar_x5 and the
-       smoke model);
-     - commit (with A5.4's ember pin), enable `pk-tc-x5-ctl` and `pk-tc-x5-r1`..`r3`;
-     - when the three post jobs are home, run the pick (`tiny_chat_run.py pick`), the traces
-       (`tools/carry5_attnres_trace.py`) and `analyze.py`.
+   - Arm X5 (amendment 5, Attention Residuals on 20m_L16, Jonathan's cross-layer idea): the three seeds
+     (`pk-tc-x5-r1`..`r3`) and the L16 control's re-run (`pk-tc-x5-ctl`) run on RunPod L4s (Stage 0's receipts:
+     A5.12). When the post jobs are home:
+     - the pick at home (`tiny_chat_run.py pick --out ART/e1_x5/pick_e1_x5_X5 --run` each seed's post folder);
+     - the traces (`tools/carry5_attnres_trace.py` on each post's `sft/tc_sft_X5_r{s}.gguf`);
+     - `analyze.py`;
+     - Stage L0 on the pick.
 1. **The chat model (LOCAL_LLM_STACK.md sections 8 and 11, item 2).**
    - Jonathan's pick between the winner rule's two verdicts (`experiments/chat_general/RESULTS.md`,
      "The winner": live as registered, pk_sft_v1 under amendment A1).
