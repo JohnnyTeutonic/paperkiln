@@ -185,10 +185,10 @@ def test_scale_refuses_a_weight_of_the_wrong_width():
     W = {"blk.1.g.weight": np.ones(4, np.float32), "blk.1.g.bias": np.zeros(3, np.float32),
          "blk.1.h.weight": np.ones(3, np.float32)}
     x = np.ones((2, 3), np.float32)
-    with pytest.raises(SystemExit, match=r"blk\.1\.g\.weight has length 4, not the width 3"):
+    with pytest.raises(ir_numpy.WidthError, match=r"\(rule 37\): scale tensor blk\.1\.g\.weight has length 4, not the width 3"):
         ir_numpy.run_nodes([{"op": "scale", "in": ["x"], "weight": "blk.{i}.g.weight", "bias": None, "out": "y"}],
                            {"x": x}, W, i=1)
-    with pytest.raises(SystemExit, match=r"blk\.1\.g\.bias has length 3, not the width 2"):
+    with pytest.raises(ir_numpy.WidthError, match=r"blk\.1\.g\.bias has length 3, not the width 2"):
         ir_numpy.run_nodes([{"op": "scale", "in": ["x"], "weight": "blk.{i}.g.bias", "bias": "blk.{i}.g.bias",
                              "out": "y"}], {"x": x[:, :2]}, W, i=1)
 

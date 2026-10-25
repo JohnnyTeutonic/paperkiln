@@ -254,7 +254,8 @@ def test_export_and_ir(model):
     bad = json.loads(json.dumps(doc))
     bad["embed"]["nodes"][0]["state_weight"] = "nope.weight"
     meta, tensors, *_ = ir_check.read_gguf(ex["gguf"])
-    assert ir_check.state_token_errors(bad, meta, tensors)
+    # keramos 1.2: a named tensor the file lacks is rule 25 (container), reported once, not again as rule 28.
+    assert any("(rule 25)" in e and "nope.weight" in e for e in ir_check.ir_validate.gguf_errors(bad, meta, tensors))
     bad = json.loads(json.dumps(doc))
     del bad["block"]["nodes"][[n["op"] for n in bad["block"]["nodes"]].index("attention")]["mask"]
     assert ir_check.state_token_errors(bad, meta, tensors)  # evict without the mask
