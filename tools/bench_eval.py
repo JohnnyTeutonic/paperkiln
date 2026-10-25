@@ -81,6 +81,19 @@ def wilson(k, n, z=1.96):
     return [max(0.0, round(c - h, 4)), min(1.0, round(c + h, 4))]
 
 
+def unique_ids(items):
+    """Every item its own id, so every request key names one request. bench_v1.jsonl gives 433 ids to two
+    HellaSwag items each (the validation split's `ind` is not unique): the second item's results replaced the
+    first's under the shared key, so the first was credited with the second's scores, and a cross-check that
+    sampled the first compared it with the second (HellaSwag 17234, 26 Oct 2026; experiments/tiny_chat_2026-10/
+    SCORE_AUDIT_2026-10-26.md). The n-th item (n >= 2) under an id becomes id#n; first ones keep their id."""
+    seen, out = {}, []
+    for it in items:
+        n = seen[it["id"]] = seen.get(it["id"], 0) + 1
+        out.append(it if n == 1 else {**it, "id": f"{it['id']}#{n}"})
+    return out
+
+
 def select(items, sets, every, blimp_per):
     out, seen = [], {}
     for it in items:
@@ -159,6 +172,13 @@ def requests(items, tok):
             add(f"{it['id']}|0", it["context"], it["target"], s)
         else:
             sys.exit(f"{it['id']}: unknown kind {it['kind']}")
+    seen = {}
+    for k, _, _ in out:
+        seen[k] = seen.get(k, 0) + 1
+    dup = sorted(k for k, n in seen.items() if n > 1)
+    if dup:
+        sys.exit(f"{len(dup)} request keys name more than one request (e.g. {dup[:3]}): pass the items "
+                 "through unique_ids")
     return out, trunc
 
 
@@ -301,7 +321,7 @@ ENGINES = {"mtstudio": MtstudioEngine, "ir": IrEngine, "ember": EmberEngine, "hf
 
 # ---------------------------------------------------------------- run
 def cmd_run(a):
-    items_all = read_jsonl(a.items)
+    items_all = unique_ids(read_jsonl(a.items))
     items_sha = sha256(a.items)
     sets = a.sets.split(",") if a.sets else list(SETS)
     items = select(items_all, sets, a.every, a.blimp_per)
@@ -489,6 +509,14 @@ def cmd_compare(a):
     keys = sorted(set(A) & set(B))
     if not keys:
         sys.exit("no common requests")
+    # The same key must be the same request: a continuation of another length is another request (a
+    # zip over the two would compare the shorter's positions with the other's first ones, as the 17234
+    # cross-check did). Continuations differ in length only when the items differ.
+    other = [k for k in keys if not (A[k].get("over_ctx") or B[k].get("over_ctx"))
+             and len(A[k]["logprobs"]) != len(B[k]["logprobs"])]
+    if other:
+        sys.exit(f"{len(other)} keys name requests of different lengths in the two runs, so not the same requests "
+                 f"(e.g. {other[:4]}); rescore both from one items file")
     worst = 0.0
     tok_n = arg_eq = arg_n = 0
     sums = []
