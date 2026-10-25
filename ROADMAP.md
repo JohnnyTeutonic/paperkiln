@@ -44,8 +44,9 @@ where one of those documents carries a plan, this file wins.*
 - The tiny-chat MoR block's nine runs (amendment 4, A4.7: his confirmation of the measured
   total) and R8 if A3.3's rule fires.
 - Carry-12's MSC rulings (licence unstated; an episode as one conversation; ConvAI2 duplicates).
-- Whether paperkiln's translation units pin `-ffp-contract=off` (spec/IR_SPEC.md Q15; on x86-64 it
-  changes no instruction; it is a compiler-flag change).
+
+Settled on 25 Oct 2026 (the main session, under Jonathan's delegation): paperkiln's own translation
+units are compiled with `-ffp-contract=off` (spec/IR_SPEC.md Q15; fc96e602).
 
 Settled on 22 Oct 2026: up to four Colab sessions at once, one named session per job, each
 driver under the Windows watchdog. Settled on 16 Oct 2026: the post-training and corpus charter
