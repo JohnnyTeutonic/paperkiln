@@ -1,0 +1,136 @@
+{
+ "n": 40,
+ "max_new": 60,
+ "prompts": "/content/pk/corpus/eval/tinychat_hf_prompts_v1.jsonl",
+ "cuda_env": {
+  "MICROTORCH_DEVICE": "cuda",
+  "MICROTORCH_DEVICE_OPS": "1",
+  "MICROTORCH_STEP_RESIDENCY": "1",
+  "MICROTORCH_DEFER_DOWNLOADS": "1",
+  "MICROTORCH_CUBLAS": "1",
+  "MICROTORCH_ATTN_BLOCKED": "1"
+ },
+ "models": {
+  "live": {
+   "spec": "/content/eval/live/spec.json",
+   "health_cuda": {
+    "attention": "exact",
+    "chat_template": {
+     "name": "paperkiln",
+     "version": 1
+    },
+    "context": 256,
+    "eos": true,
+    "family": "llama",
+    "model": "chat_sftfinal",
+    "params": 14652288,
+    "rope_heads": "all",
+    "state_tokens": 0,
+    "status": "ok",
+    "vocab": 8192
+   },
+   "greedy_identical": 40,
+   "logits": {
+    "scored": 40,
+    "positions": 676,
+    "top1_equal": 676,
+    "logit_err_max": 7.377279346351307e-07,
+    "logit_err_median": 3.1224783340265536e-07,
+    "logprob_diff_max": 7.904409003112178e-06,
+    "cpu_min_top1_margin_rel": 0.00010676187230274081,
+    "argmax_cont_cpu": 676
+   },
+   "sft": {
+    "examples": 40,
+    "val_cpu": 2.4147412465846565,
+    "val_cuda": 2.414768165583974,
+    "rel": 1.1147777988920774e-05,
+    "cuda_eval_device": true,
+    "cuda_eval_s": 0.172027285
+   },
+   "ok": false,
+   "seconds": 163.9
+  },
+  "big": {
+   "spec": "/content/eval/big/spec.json",
+   "health_cuda": {
+    "attention": "exact",
+    "chat_template": {
+     "name": "paperkiln",
+     "version": 1
+    },
+    "context": 256,
+    "eos": true,
+    "family": "llama",
+    "model": "chat_fw_big",
+    "params": 91245312,
+    "rope_heads": "all",
+    "state_tokens": 0,
+    "status": "ok",
+    "vocab": 8192
+   },
+   "greedy_identical": 40,
+   "logits": {
+    "scored": 40,
+    "positions": 677,
+    "top1_equal": 677,
+    "logit_err_max": 7.219248248449947e-07,
+    "logit_err_median": 3.476099322545048e-07,
+    "logprob_diff_max": 8.658412577133845e-06,
+    "cpu_min_top1_margin_rel": 1.6099173080874607e-05,
+    "argmax_cont_cpu": 677
+   },
+   "sft": {
+    "examples": 40,
+    "val_cpu": 2.966195792562506,
+    "val_cuda": 2.9662204040570206,
+    "rel": 8.297326351852066e-06,
+    "cuda_eval_device": true,
+    "cuda_eval_s": 0.563005695
+   },
+   "ok": true,
+   "seconds": 3663.1
+  },
+  "fwmoe": {
+   "spec": "/content/eval/fwmoe/spec.json",
+   "health_cuda": {
+    "attention": "exact",
+    "chat_template": {
+     "name": "paperkiln",
+     "version": 1
+    },
+    "context": 256,
+    "eos": true,
+    "family": "llama",
+    "model": "fw_moe",
+    "params": 70409088,
+    "rope_heads": "all",
+    "state_tokens": 0,
+    "status": "ok",
+    "vocab": 8192
+   },
+   "greedy_identical": 40,
+   "logits": {
+    "scored": 40,
+    "positions": 1592,
+    "top1_equal": 1592,
+    "logit_err_max": 1.1471636607919651e-06,
+    "logit_err_median": 5.219305871422693e-07,
+    "logprob_diff_max": 9.509055471257355e-06,
+    "cpu_min_top1_margin_rel": 2.8867962100775912e-05,
+    "argmax_cont_cpu": 1561
+   },
+   "sft": {
+    "examples": 40,
+    "val_cpu": 4.610637205638243,
+    "val_cuda": 4.610650812909844,
+    "rel": 2.9512778807245992e-06,
+    "cuda_eval_device": true,
+    "cuda_eval_s": 0.375564525
+   },
+   "ok": true,
+   "seconds": 702.2
+  }
+ },
+ "ok": false
+}

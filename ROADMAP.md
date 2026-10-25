@@ -14,9 +14,7 @@ where one of those documents carries a plan, this file wins.*
    Stage L0 follow E5 and E1.
 1. **The chat model (LOCAL_LLM_STACK.md sections 8 and 11, item 2).**
    - Evaluate moe_sft, big_sft and ctrl_sft against the live model (chat_eval on the frozen
-     prompts, chat_prompts_v1 per source, the simple-QA probe), on the GPU once the current
-     CUDA mtstudio build is checked against the CPU build (the old build could not load MoE
-     weights).
+     prompts, chat_prompts_v1 per source, the simple-QA probe) on the GPU.
    - pk_base_v1's SFT on lever 1's set at T 512.
    - After SFT: the Claude-judge pilot (`experiments/chat_general/judge_pilot.sh`,
      200 prompts, $100 cap), then DPO.

@@ -7,6 +7,14 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **The CUDA mtstudio checked against the CPU build on trained models** (25 Oct; paperkiln ff00d60a,
+  `tools/cpu_cuda_parity.py`, `tools/colab_chat/cpu_cuda_parity_vm.sh`, RunPod L4). Two builds of one
+  commit, the CUDA one under the production environment, on the live chat model (dense, 14.7M), big_sft
+  (dense, d768 L12, 91M) and fw_moe (MoE, E 8 top-2, 70M): `mtstudio chat` greedy on the 40 frozen
+  prompts identical 40/40 on each (text, token count, stop reason); `mtstudio score --logits` on the
+  CPU's replies: top-1 equal at every scored position (676, 677, 1,592), largest |dlogit| 7.4e-7,
+  7.2e-7 and 1.15e-6 of the logit range, |dlogprob| under 1e-5; the reference-bits/byte SFT
+  evaluation (on CUDA, the device evaluation) within 1.1e-5, 8.3e-6 and 3.0e-6 relative.
 - **SFT evaluation on the device; deferred downloads for the gpt2 family (defect D1 fixed)** (25 Oct;
   paperkiln ff00d60a). When a run's own steps defer (CUDA, device op set, step residency, deferred
   downloads), mtstudio's SFT evaluation runs its forwards inside one step window: the parameters
