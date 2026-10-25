@@ -20,12 +20,18 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-14        # Apple silicon, arm64
+          # macOS: the vendored core includes <omp.h> and Apple clang has no OpenMP, so Homebrew's
+          # libomp is installed and found through OpenMP_ROOT; delocate copies it into the wheel, so
+          # the deployment target is the runner's macOS (Homebrew builds libomp for it).
+          - os: macos-14          # Apple silicon (M1: -march=native is the oldest Apple core)
             archs: arm64
-          - os: macos-13        # Intel, x86_64
+            target: "14.0"
+          - os: macos-15-intel    # Intel; pyproject's -march becomes x86-64-v3 (CMakeLists.txt)
             archs: x86_64
-          - os: windows-latest  # x64 (win32 is skipped in pyproject.toml)
+            target: "15.0"
+          - os: windows-latest    # x64 (win32 is skipped in pyproject.toml)
             archs: AMD64
+            target: ""
 
     steps:
       - uses: actions/checkout@v4
@@ -37,7 +43,8 @@ jobs:
         env:
           CIBW_ARCHS: ${{ matrix.archs }}
           CIBW_BUILD_VERBOSITY: 1
-          MACOSX_DEPLOYMENT_TARGET: ${{ matrix.archs == 'arm64' && '11.0' || '10.15' }}
+          CIBW_BEFORE_ALL_MACOS: brew install libomp
+          CIBW_ENVIRONMENT_MACOS: OpenMP_ROOT=$(brew --prefix libomp) MACOSX_DEPLOYMENT_TARGET=${{ matrix.target }}
 
       # A failed build's log is readable only when signed in; its first compiler errors and its tail are
       # also written as annotations, which the public API serves to anyone.
@@ -46,6 +53,8 @@ jobs:
         shell: bash
         run: |
           PY=$(command -v python3 || command -v python)
+          if [ "$RUNNER_OS" = "macOS" ]; then brew install libomp > /dev/null 2>&1 || true
+            export OpenMP_ROOT=$(brew --prefix libomp) MACOSX_DEPLOYMENT_TARGET=${{ matrix.target }}; fi
           "$PY" -m pip wheel . --no-deps -v > build.log 2>&1 || true
           { grep -n -i -E "error|fatal" build.log | head -40; echo "----- tail -----"; tail -40 build.log; } > report.txt
           split -l 20 report.txt part_
