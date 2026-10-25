@@ -1,14 +1,14 @@
 {
- "_comment": "Runs of the conformance suite (spec/IR_SPEC.md section 11.4): one results file per engine, with every case's verdict and detail. SKIP means the engine has no path for the case (the reference: the gradient cases, which are its own finite differences; mtstudio: single ops other than expr and recurrence, sessions, document loading, refusals, dequantisation; ember: single ops other than recurrence, whose run_node its adapter has, and the gradient cases, since it does not train). The numpy and mtstudio runs are of revision 1.1 as first released (274 cases); ember's is of keramos v1.1.1 (284 cases).",
+ "_comment": "Runs of the conformance suite (spec/IR_SPEC.md section 11.4): one results file per engine, with every case's verdict and detail. SKIP means the engine has no path for the case (the reference: the gradient cases, which are its own finite differences; mtstudio: single ops other than expr and recurrence, sessions, document loading, refusals, dequantisation; ember: single ops other than recurrence, whose run_node its adapter has, and the gradient cases, since it does not train). All three runs are of keramos v1.1.2 (284 cases).",
  "runs": [
   {
    "file": "ir_numpy.json",
-   "engine": "numpy reference, tools/ir_numpy.py (numpy 2.3.3, WSL Python 3.12.3), spec revision 1.1",
+   "engine": "numpy reference (tools/ir_numpy.py) (numpy 2.3.3, Python 3.12.3, WSL ext4), against keramos v1.1.2 (33dff0348d4e2e1035acbbc933f1e7bb61f87ff1)",
    "date": "2026-10-25",
    "counts": {
-    "PASS": 267,
+    "PASS": 276,
     "FAIL": 0,
-    "SKIP": 7,
+    "SKIP": 8,
     "XFAIL": 0,
     "XPASS": 0
    },
@@ -28,21 +28,21 @@
      "XPASS": 0
     },
     "op": {
-     "PASS": 53,
+     "PASS": 54,
      "FAIL": 0,
      "SKIP": 0,
      "XFAIL": 0,
      "XPASS": 0
     },
     "refuse": {
-     "PASS": 72,
+     "PASS": 74,
      "FAIL": 0,
      "SKIP": 0,
      "XFAIL": 0,
      "XPASS": 0
     },
     "digest": {
-     "PASS": 74,
+     "PASS": 80,
      "FAIL": 0,
      "SKIP": 0,
      "XFAIL": 0,
@@ -58,7 +58,7 @@
     "grad": {
      "PASS": 0,
      "FAIL": 0,
-     "SKIP": 7,
+     "SKIP": 8,
      "XFAIL": 0,
      "XPASS": 0
     }
@@ -66,12 +66,12 @@
   },
   {
    "file": "mtstudio.json",
-   "engine": "paperkiln mtstudio CPU, with ir_eval for recurrence nodes, their gradients and the digest, at spec revision 1.1 (ext4 build of HEAD 20898f37 plus revision 1.1; vendored transformer_core, Release, GCC 13.3, -ffp-contract=off)",
+   "engine": "paperkiln mtstudio, CPU, with ir_eval (recurrence nodes, their gradients, the digest) and expr_eval (ext4 clean clone, Release, GCC 13.3, vendored transformer_core, -ffp-contract=off), against keramos v1.1.2 (33dff0348d4e2e1035acbbc933f1e7bb61f87ff1)",
    "date": "2026-10-25",
    "counts": {
-    "PASS": 114,
+    "PASS": 122,
     "FAIL": 0,
-    "SKIP": 160,
+    "SKIP": 162,
     "XFAIL": 0,
     "XPASS": 0
    },
@@ -91,7 +91,7 @@
      "XPASS": 0
     },
     "op": {
-     "PASS": 11,
+     "PASS": 12,
      "FAIL": 0,
      "SKIP": 42,
      "XFAIL": 0,
@@ -100,12 +100,12 @@
     "refuse": {
      "PASS": 0,
      "FAIL": 0,
-     "SKIP": 72,
+     "SKIP": 74,
      "XFAIL": 0,
      "XPASS": 0
     },
     "digest": {
-     "PASS": 74,
+     "PASS": 80,
      "FAIL": 0,
      "SKIP": 0,
      "XFAIL": 0,
@@ -119,7 +119,7 @@
      "XPASS": 0
     },
     "grad": {
-     "PASS": 7,
+     "PASS": 8,
      "FAIL": 0,
      "SKIP": 0,
      "XFAIL": 0,
@@ -129,7 +129,7 @@
   },
   {
    "file": "ember_cpu.json",
-   "engine": "ember.cpp ir_adapter, CPU interpreter, ember 39dcce94886fbac759c26c123007d7e106b84aed (/home/jonat/ember_adapter_39dcce9/build/ir_adapter (git archive of that commit, CPU only: HAS_CUDA off, Release, GCC 13.3, WSL ext4; the interpreter's IR translation units with -ffp-contract=off); hello: 'ir_adapter 2 (IR versions 0 and 1; spec revision 1.1)'), against keramos v1.1.1 (6170ee052cf20d65687428a25288843148646c1e)",
+   "engine": "ember.cpp ir_adapter, CPU interpreter, ember 39dcce94886fbac759c26c123007d7e106b84aed (/home/jonat/ember_adapter_39dcce9/build/ir_adapter (git archive of that commit, CPU only: HAS_CUDA off, Release, GCC 13.3, WSL ext4; the interpreter's IR translation units with -ffp-contract=off); hello: 'ir_adapter 2 (IR versions 0 and 1; spec revision 1.1)'), against keramos v1.1.2 (33dff0348d4e2e1035acbbc933f1e7bb61f87ff1)",
    "date": "2026-10-25",
    "counts": {
     "PASS": 230,

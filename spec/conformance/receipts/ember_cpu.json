@@ -1,15 +1,15 @@
 {
  "spec": {
   "repository": "keramos",
-  "tag": "v1.1.1",
-  "commit": "6170ee052cf20d65687428a25288843148646c1e"
+  "tag": "v1.1.2",
+  "commit": "33dff0348d4e2e1035acbbc933f1e7bb61f87ff1"
  },
  "engine": {
   "name": "ember.cpp",
   "commit": "39dcce94886fbac759c26c123007d7e106b84aed",
   "binary": "/home/jonat/ember_adapter_39dcce9/build/ir_adapter (git archive of that commit, CPU only: HAS_CUDA off, Release, GCC 13.3, WSL ext4; the interpreter's IR translation units with -ffp-contract=off)",
   "hello": "ir_adapter 2 (IR versions 0 and 1; spec revision 1.1)",
-  "run": "python3 tools/ir_conformance.py --adapter cmd:\"<binary> --conformance\" from keramos/ at v1.1.1, no EMBER_* variable kept, 2026-10-25"
+  "run": "python3 tools/ir_conformance.py --adapter cmd:\"<binary> --conformance\" from keramos/ at v1.1.2 (checkout 21bbac8 = the tag plus receipts only), no EMBER_* variable kept, 2026-10-25"
  },
  "_notes": [
   "The digest (section 3.10) and the recurrence op (section 6.10) were written for ember from the specification text; no paperkiln source (src/ir.cpp, recurrence.hpp/.cpp) was read. tools/ir_validate.py was run as a black-box oracle only (probes of the digest's edge cases, a stress comparison on 260,616 number spellings and 1,600 string objects, all equal).",

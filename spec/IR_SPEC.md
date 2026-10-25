@@ -1851,8 +1851,7 @@ stated, with the reason where it differs from ember's.
 - **Q13. The latest time to evict.** The bound is closed (section 6.8.3): eager or lazy; a longer
   hold is eviction off for the whole sequence.
 - **Defaults** (ember's C1). Required attributes have no defaults; the optional attributes and their
-  defaults are listed in section 3.5. ember defaults several required attributes today and refuses
-  their absence from now on.
+  defaults are listed in section 3.5. ember refuses their absence (e358153).
 - **One attention node per kv slot** (C2), section 6.1. Several kv slots per block stay defined;
   ember serves one (Appendix C).
 - **max_len** (C3), section 6.2: the slot's capacity; positions >= max_len are refused.
@@ -1999,6 +1998,9 @@ equal to dc29b5e6 bit for bit) and the pinned commits of the RunPod campaigns ar
 
 ## Appendix B. Changelog
 
+- **v1.1.3** (tag, 25 October 2026; section 2.6). Documentation: ember's corrections to section 12.1
+  (it refuses a missing required attribute, e358153) and Appendix C (its v1.1.2 conformance, the
+  WebGPU row), and every engine's receipt naming v1.1.2.
 - **v1.1.2** (tag, 25 October 2026; section 2.6). Documentation: the chat profile's normative text
   (conversations, loss policy, the template record, resolution, export, v2, gates) is section 8.1,
   where it had been included by reference from `LOCAL_LLM_STACK.md` section 3 point 3, with the same
@@ -2052,6 +2054,7 @@ the engine has agreed to close, the specification already states the intended be
 | ember interpreter, CPU | core, state, recursion, chat, thirdparty, recurrence | EXACT where this document says so | `dot_f32_as_f64`, a fixed 8-lane double order independent of T and threads | see below |
 | ember interpreter, CUDA | as CPU, ops with device kernels | ROUNDING by construction (tiles, flash2, nvcc's default `--fmad`) | cuBLAS FP32 (its own handle at default math) | documents with an op without a device kernel are served on the CPU automatically (documents with recurrence among them); `EMBER_IR_DEVICE=cpu` forces the CPU for every document. `mask: turn_state` and its lazy eviction run on the device, ROUNDING, from ember 210f3b8; depth_route with kv_rows: active runs on the device, ROUNDING, from ember 66c8b2c (below) |
 | ember interpreter, WebAssembly | as CPU | as CPU (no FMA in the build) | as CPU | as CPU (4 GB heap for 0.5B models) |
+| ember WebGPU (browser) | llama and llama.cpp-layout MoE GGUFs, f32 and Q8_0 kept quantised on the GPU | ROUNDING (WGSL) | — | every IR family (interpreter documents run in WebAssembly instead); gated greedy 40/40 against ember CPU (9c49286) |
 | ember tuned llama path, CPU and CUDA | llama | ROUNDING against the interpreter | CUDA: TF32 on by default (`EMBER_GEMM_TF32=0` gives FP32) | anything it is not selected for |
 
 **ember's tuned-path selection.** ember selects its tuned llama path by structural match (ember
@@ -2087,8 +2090,8 @@ recurrent state or a windowed slot; `mask: turn_state` with `kv_rows: active`; e
 state; `expr` nested deeper than 200 (the CUDA expr kernel takes up to 96 instructions, a stack of 16
 and 8 reductions, and serves larger expressions on the CPU).
 
-**ember's conformance.** At ember 39dcce9 its adapter passes keramos v1.1.1 with 230 pass, 0 fail and
-54 skip, the skips being the single-op fixtures of ops other than `recurrence` (its `run_node` runs
+**ember's conformance.** At ember 39dcce9 its adapter passes keramos v1.1.2 (as v1.1.1) with 230 pass, 0
+fail and 54 skip, the skips being the single-op fixtures of ops other than `recurrence` (its `run_node` runs
 recurrence nodes) and the gradient cases; receipt `conformance/receipts/ember_cpu.json`. ember's
 comparison of its load-time verdicts with `tools/ir_validate.py` finds no disagreement at v1.1.1.
 

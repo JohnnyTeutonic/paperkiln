@@ -1,4 +1,14 @@
 {
+ "spec": {
+  "repository": "keramos",
+  "tag": "v1.1.2",
+  "commit": "33dff0348d4e2e1035acbbc933f1e7bb61f87ff1"
+ },
+ "engine": {
+  "name": "numpy reference (tools/ir_numpy.py)",
+  "environment": "numpy 2.3.3, Python 3.12.3, WSL ext4",
+  "run": "python3 spec/tools/ir_conformance.py --adapter ir_numpy, paperkiln 139168ad4f0a7f6d3dd6f59b5510244c82ec0de9 (keramos v1.1.2 vendored at spec/), 2026-10-25"
+ },
  "adapter": {
   "engine": "ir_numpy",
   "backend": "cpu",
@@ -13,9 +23,9 @@
   ]
  },
  "counts": {
-  "PASS": 267,
+  "PASS": 276,
   "FAIL": 0,
-  "SKIP": 7,
+  "SKIP": 8,
   "XFAIL": 0,
   "XPASS": 0
  },
@@ -35,21 +45,21 @@
    "XPASS": 0
   },
   "op": {
-   "PASS": 53,
+   "PASS": 54,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
    "XPASS": 0
   },
   "refuse": {
-   "PASS": 72,
+   "PASS": 74,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
    "XPASS": 0
   },
   "digest": {
-   "PASS": 74,
+   "PASS": 80,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
@@ -65,7 +75,7 @@
   "grad": {
    "PASS": 0,
    "FAIL": 0,
-   "SKIP": 7,
+   "SKIP": 8,
    "XFAIL": 0,
    "XPASS": 0
   }
@@ -714,6 +724,12 @@
    "detail": "y 0 values differ in their bits; state avg.m 0 values differ in their bits; state avg.n 0 values differ in their bits"
   },
   {
+   "id": "op/recurrence/square_weight_declaration",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y 0 values differ in their bits; state sq.h 0 values differ in their bits"
+  },
+  {
    "id": "refuse/unknown_op",
    "kind": "refuse",
    "verdict": "PASS",
@@ -1111,6 +1127,18 @@
   },
   {
    "id": "refuse/recurrence_weight_size",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 6.10)"
+  },
+  {
+   "id": "refuse/recurrence_assignment_repeats_index",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 6.10)"
+  },
+  {
+   "id": "refuse/recurrence_bare_undeclared_name",
    "kind": "refuse",
    "verdict": "PASS",
    "detail": "refused (IR_SPEC 6.10)"
@@ -1590,6 +1618,42 @@
    "detail": "refused"
   },
   {
+   "id": "digest/vectors/prose_overflow",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "digest/vectors/prose_negative_zero",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "digest/vectors/prose_integer_beyond_2p53",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "digest/vectors/prose_lone_surrogate",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "digest/vectors/prose_key_lone_surrogate",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "digest/vectors/prose_duplicate_key",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
    "id": "dequant/blocks/f32",
    "kind": "dequant",
    "verdict": "PASS",
@@ -1687,6 +1751,12 @@
   },
   {
    "id": "grad/recurrence/ema_exact",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "the reference has no backward: the gradient cases are its finite differences"
+  },
+  {
+   "id": "grad/recurrence/square_weight_declaration",
    "kind": "grad",
    "verdict": "SKIP",
    "detail": "the reference has no backward: the gradient cases are its finite differences"
