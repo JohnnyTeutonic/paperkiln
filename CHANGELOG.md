@@ -7,6 +7,13 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **The build uses the vendored transformer_core by default** (25 Oct). `third_party/transformer_cpp`
+  is canonical; a sibling `../coalfire.cpp` or `../transformer_cpp` is used only with
+  `-DMICROTORCH_TCPP_SIBLING=ON` (or `-DMICROTORCH_TCPP_DIR=<path>`). A fresh configure from the
+  workspace checkout had picked the lagging sibling and failed in `src/gguf.cpp`
+  (`GGUFWriter::write_metadata_int32_array`); so had a clone placed in a home directory holding a
+  stale `transformer_cpp`. `tools/sync_vendor.sh` refuses to overwrite the vendored copy while
+  the two differ.
 - **One conversation schema for instruction tuning and chat** (24 Oct; LOCAL_LLM_STACK.md section
   3, points 3-5). A conversation is `{"messages": [{role system | user | assistant, content,
   loss?}]}` (one leading system message, strict alternation, tool reserved); an instruction is a

@@ -15,10 +15,11 @@ make -j$(nproc)
 ctest --output-on-failure
 ```
 
-The trainer core (`transformer_core`) resolves from a sibling
-`../transformer_cpp` checkout if present, otherwise from the vendored copy in
-`third_party/transformer_cpp` (refresh with `tools/sync_vendor.sh`). A clone
-builds with no siblings.
+The trainer core (`transformer_core`) builds from the vendored copy in
+`third_party/transformer_cpp`, which is canonical. A sibling checkout is used
+only on request: `-DMICROTORCH_TCPP_SIBLING=ON` (`../coalfire.cpp`, else
+`../transformer_cpp`) or `-DMICROTORCH_TCPP_DIR=<path>`. `tools/sync_vendor.sh`
+copies a sibling over the vendored copy and refuses while the two differ.
 
 `-DMICROTORCH_CUDA=ON` routes `device::matmul` through the CUDA kernel tree
 (needs the CUDA toolkit; validated on T4).

@@ -69,13 +69,7 @@ Settled on 10 Oct 2026:
 
 ## 3. Broken now
 
-- A fresh configure from the workspace checkout picks up the sibling `coalfire.cpp`
-  before the vendored `third_party/transformer_cpp`, and fails in `src/gguf.cpp`
-  (`GGUFWriter::write_metadata_int32_array` is only in the vendored copy). Workaround:
-  `-DMICROTORCH_TCPP_DIR=<paperkiln>/third_party/transformer_cpp`. Fix: prefer the
-  vendored copy, or add the method to coalfire.cpp.
-
-Otherwise nothing known. CI is green on all three workflows (Code Quality, the test
+Nothing known. CI is green on all three workflows (Code Quality, the test
 suite with its Python suites and the fetcher drift check, and the wheel
 build with its smoke test), and the chat-v1 release serves the quickstart's
 ready-made model. One open choice: cppcheck and Valgrind still run as
@@ -83,10 +77,6 @@ advisory steps that cannot fail the build.
 
 ## 3b. Environment traps found 17 Oct 2026
 
-- A clone placed directly in `~` builds against the stale `~/transformer_cpp`
-  (CMake prefers a sibling to the vendored copy) and fails on missing headers.
-  Put clean clones in their own parent directory, or add a CMake switch that
-  forces `third_party/transformer_cpp`.
 - WSL git reports ~238 files modified in the OneDrive checkout (CRLF), so
   `--require-clean` runs must come from an ext4 clone.
 

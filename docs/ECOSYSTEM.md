@@ -22,7 +22,10 @@ top.*
 The build system already tells the truth: paperkiln's CMake links
 `transformer_core` as a static library, `MICROTORCH_CUDA` routes every
 `device::matmul` through coalfire's kernels, and `tools/sync_vendor.sh`
-exists to keep the vendored copy fresh. Four roles, all structural:
+copies coalfire over the vendored copy. (Since 25 Oct 2026 the vendored copy
+is canonical and the build uses a sibling only with `-DMICROTORCH_TCPP_SIBLING=ON`:
+paperkiln's transformer_core changes had landed there first and the sibling
+lagged.) Four roles, all structural:
 
 1. **Kernel authority.** New CUDA work — phase B resident tensors, fp16
    on the tape, and eventually sparse kernels — lands in coalfire's
