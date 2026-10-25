@@ -1,0 +1,50 @@
+{
+ "ollama": "0.40.11",
+ "model": "/mnt/c/ml_artifacts/general_chat/sft/pk_sft_v1.gguf",
+ "sha256": "4d53c7ff236ecba3a2b34cd2d4769f08bdf0408bbc3655afa44b9ddc70929fdd",
+ "modelfile_sha256": "b7721339212facfa7a51ce8740198d87b27a5ed6c122005168bdb2fd95b33faf",
+ "show_template": "{{ $first := true }}{{ range .Messages }}{{ if eq .Role \"user\" }}<|user|>{{ if and $first $.System }}{{ $.System }}\n\n{{ end }}{{ $first = false }}{{ .Content }}{{ else if eq .Role \"assistant\" }}<|assi",
+ "show_parameters": "stop                           \"<|endoftext|>\"\nstop                           \"<|user|>\"\nstop                           \"<|assistant|>\"",
+ "show_details": {
+  "parent_model": "pk_sft_v1.gguf",
+  "format": "gguf",
+  "family": "llama",
+  "families": [
+   "llama"
+  ],
+  "parameter_size": "110.12M",
+  "quantization_level": "unknown",
+  "runner": "llamacpp"
+ },
+ "options": {
+  "temperature": 0.0,
+  "top_k": 1,
+  "top_p": 1.0,
+  "min_p": 0.0,
+  "repeat_penalty": 1.0,
+  "num_ctx": 512,
+  "seed": 0,
+  "num_thread": 2
+ },
+ "template": {
+  "n": 60,
+  "with_system": 20,
+  "prompt_length_identical": 60,
+  "chat_equals_raw_render": 59,
+  "chat_prompt_eval_count_equals_paperkiln_tokens": 60,
+  "differ": [
+   24
+  ]
+ },
+ "chat": {
+  "n": 40,
+  "reply_identical": 40,
+  "prompt_tokens_identical": 40,
+  "eval_count_identical": 0,
+  "eval_count_identical_less_eos": 40,
+  "done_reasons": [
+   "stop"
+  ],
+  "differ": []
+ }
+}

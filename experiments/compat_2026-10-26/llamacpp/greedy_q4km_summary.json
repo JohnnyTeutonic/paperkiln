@@ -1,0 +1,30 @@
+{
+ "model": "/mnt/c/ml_artifacts/next_base/base/pk_base_v1_q4_k_m.gguf",
+ "sha256": "78b3482f3ba3bc050ba1c6d019803b898f6c480d5773e2b75a552613d2e8272f",
+ "ref": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/ember.cpp/experiments/kquant_2026-10-25/q4_k_m_replies.jsonl",
+ "ref_key": "reply",
+ "server_extra": [
+  "-ctk",
+  "f32",
+  "-ctv",
+  "f32"
+ ],
+ "n": 40,
+ "reply_identical": 29,
+ "token_count_identical": 30,
+ "stop_identical": 35,
+ "prompt_tokens_identical": 40,
+ "differ": [
+  0,
+  5,
+  10,
+  11,
+  15,
+  23,
+  27,
+  28,
+  30,
+  34,
+  36
+ ]
+}

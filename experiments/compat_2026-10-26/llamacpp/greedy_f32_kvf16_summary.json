@@ -1,0 +1,13 @@
+{
+ "model": "/mnt/c/ml_artifacts/next_base/base/pk_base_v1.gguf",
+ "sha256": "510d288cf10ead4d3902247e3d898b6fa39e1d31d7465d3a8b6820761d6c9178",
+ "ref": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/ember.cpp/experiments/pk_base_v1_2026-10-24/pk_base_v1_parity.jsonl",
+ "ref_key": "ember",
+ "server_extra": [],
+ "n": 40,
+ "reply_identical": 40,
+ "token_count_identical": 40,
+ "stop_identical": 40,
+ "prompt_tokens_identical": 40,
+ "differ": []
+}

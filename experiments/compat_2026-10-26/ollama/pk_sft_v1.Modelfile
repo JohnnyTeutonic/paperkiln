@@ -1,0 +1,8 @@
+# Ollama Modelfile for pk_sft_v1.gguf: chat template paperkiln/1 (LOCAL_LLM_STACK.md section 3, point 3).
+FROM ./pk_sft_v1.gguf
+TEMPLATE """{{ $first := true }}{{ range .Messages }}{{ if eq .Role "user" }}<|user|>{{ if and $first $.System }}{{ $.System }}
+
+{{ end }}{{ $first = false }}{{ .Content }}{{ else if eq .Role "assistant" }}<|assistant|>{{ .Content }}<|endoftext|>{{ end }}{{ end }}<|assistant|>"""
+PARAMETER stop "<|endoftext|>"
+PARAMETER stop "<|user|>"
+PARAMETER stop "<|assistant|>"

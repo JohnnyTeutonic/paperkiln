@@ -1,0 +1,18 @@
+{
+ "model": "/home/jonat/cp_compat/out/pk_base_v1_q4_k_m_dequant_f32.gguf",
+ "sha256": "4c08862d0817b5abee6df218046814e7f2d90c33331da89dc45b289cb9816bf3",
+ "ref": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/ember.cpp/experiments/kquant_2026-10-25/q4_k_m_replies.jsonl",
+ "ref_key": "reply",
+ "server_extra": [
+  "-ctk",
+  "f32",
+  "-ctv",
+  "f32"
+ ],
+ "n": 40,
+ "reply_identical": 40,
+ "token_count_identical": 40,
+ "stop_identical": 40,
+ "prompt_tokens_identical": 40,
+ "differ": []
+}

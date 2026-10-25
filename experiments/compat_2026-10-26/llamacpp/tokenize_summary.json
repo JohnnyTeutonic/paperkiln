@@ -1,0 +1,56 @@
+{
+ "vocab": "/mnt/c/ml_artifacts/next_base/base/pk_base_v1.gguf",
+ "by_source": {
+  "tinychat_hf_prompts_v1": {
+   "records": 200,
+   "tokens": 3128,
+   "llamacpp_eq_py": 200,
+   "cpp_eq_py": 200,
+   "detok_roundtrip": 200
+  },
+  "ultrachat40": {
+   "records": 40,
+   "tokens": 6846,
+   "llamacpp_eq_py": 40,
+   "cpp_eq_py": 40,
+   "detok_roundtrip": 40
+  },
+  "fineweb200": {
+   "records": 200,
+   "tokens": 67500,
+   "llamacpp_eq_py": 200,
+   "cpp_eq_py": 200,
+   "detok_roundtrip": 200
+  },
+  "oasst100": {
+   "records": 100,
+   "tokens": 3477,
+   "llamacpp_eq_py": 100,
+   "cpp_eq_py": 100,
+   "detok_roundtrip": 100
+  },
+  "edge": {
+   "records": 54,
+   "tokens": 455,
+   "llamacpp_eq_py": 54,
+   "cpp_eq_py": 54,
+   "detok_roundtrip": 54
+  },
+  "rendered_paperkiln1": {
+   "records": 200,
+   "tokens": 3528,
+   "llamacpp_eq_py": 200,
+   "cpp_eq_py": 200,
+   "detok_roundtrip": 200
+  }
+ },
+ "total": {
+  "records": 794,
+  "tokens": 84934,
+  "llamacpp_eq_py": 794,
+  "cpp_eq_py": 794,
+  "detok_roundtrip": 794
+ },
+ "reference": "tools/llama3_bpe.py (HF tokenizers configured as llama.cpp encodes); tools/llama3_encode (llama3_tokenizer.hpp) built here",
+ "llamacpp": "/tokenize, parse_special on, add_special off"
+}

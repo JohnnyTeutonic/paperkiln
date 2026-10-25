@@ -1,0 +1,19 @@
+{
+ "model": "/mnt/c/ml_artifacts/general_chat/sft/pk_sft_v1.gguf",
+ "sha256": "4d53c7ff236ecba3a2b34cd2d4769f08bdf0408bbc3655afa44b9ddc70929fdd",
+ "server": "llama-server --jinja -ctk f32 -ctv f32",
+ "chat_template_in_props": "{%- if messages and messages[0]['role'] == 'system' -%}{%- set sys = messages[0]['content'] -%}{%- set msgs = messages[1",
+ "apply_template": {
+  "n": 60,
+  "identical": 60,
+  "ids_identical": 60
+ },
+ "chat": {
+  "n": 40,
+  "reply_identical": 40,
+  "prompt_tokens_identical": 40,
+  "completion_tokens_identical_less_eos": 40,
+  "finish_stop_vs_eos": 40,
+  "differ": []
+ }
+}
