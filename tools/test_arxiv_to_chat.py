@@ -282,11 +282,11 @@ def test_llm_expr_bad_expressions_refused():
         A.build_spec(llm_ext("sqrt(x)"), SIZE)
     with pytest.raises(A.Refused, match="non-finite"):
         A.build_spec(llm_ext("exp(x^2)"), SIZE)
-    # A two-input (gated) form: flex's expr activation reads only the up-projection.
-    with pytest.raises(A.Refused, match="reads 2 inputs"):
+    # A second input whose role is unknown ("m", no role): neither a gate nor a learned input.
+    with pytest.raises(A.Refused, match="reads 2 inputs.*a = m \\(other\\)"):
         A.build_spec(llm_ext("relu(a)*x", inputs=("x", "a")), SIZE)
-    # A norm expr whose extra inputs are not learned per-channel vectors (here "m").
-    with pytest.raises(A.Refused, match="not all learned per-channel vectors"):
+    # A norm expr whose extra input is neither learned nor the row (here "m").
+    with pytest.raises(A.Refused, match="reads 2 inputs.*the row \\(input\\) and learned"):
         A.build_spec(llm_ext("(x-rowmean(x))*a", slot="norm", inputs=("x", "a"),
                              stated={"activation": "gelu", "positional": "learned"}), SIZE)
     # An expr value with no new-op record behind it (a hand-written extraction).
@@ -316,12 +316,20 @@ def test_llm_expr_norm_hosted_on_flex():
     assert fam == "flex" and arch["custom"]["position"] == "rope"
     assert arch["custom"]["norm"] == "expr:((x-rowmean(x))/sqrt(abs(rowmean((x*(x-rowmean(x)))))))"
     assert any(b == "NORM-AFFINE" and "(core + a)*g" in d for b, d in rep)
-    # A learned vector inside the row expression is not a trailing affine.
+    # A learned vector inside the row expression stays one of its inputs (flex norm_inputs); the trailing
+    # gain b is flex's gain.
     ext = llm_ext("(x-rowmean(x)*a)*b", slot="norm", inputs=("x", "a", "b"), stated={"activation": "gelu",
                                                                                     "positional": "learned"})
     for i in ext["llm"]["verification"]["new_ops"][0]["inputs"][1:]:
         i["meaning"] = "learned per-channel vector"
-    with pytest.raises(A.Refused, match="trailing"):
+    fam, arch, rep = A.build_spec(ext, SIZE)
+    assert arch["custom"]["norm"] == "expr:(x-(rowmean(x)*a))"
+    assert arch["custom"]["norm_inputs"] == ["row", {"kind": "channel", "init": 1.0}]
+    assert any(b == "NORM-AFFINE" and "core*g" in d and "bias b" in d for b, d in rep)
+    # A learned vector both inside the expression and in its affine tail cannot be split.
+    ext = llm_ext("(x*b)*b", slot="norm", inputs=("x", "b"), stated={"activation": "gelu", "positional": "learned"})
+    ext["llm"]["verification"]["new_ops"][0]["inputs"][1]["meaning"] = "learned per-channel vector"
+    with pytest.raises(A.Refused, match="also enters the row expression"):
         A.build_spec(ext, SIZE)
 
 
@@ -336,11 +344,14 @@ def test_llm_expr_activation_with_rope_is_flex():
                                                            "status": "stated", "where": "Sec. 3"}
     with pytest.raises(A.Refused, match="rope_theta = 500000"):
         A.build_spec(ext, SIZE)
-    # So does a stated norm placement other than pre-norm.
+    # A stated post-norm builds on flex (both sublayers); a placement flex does not build refuses.
     ext = llm_ext("relu(x)^2", stated={"norm": "rmsnorm", "positional": "rope"})
     ext["llm"]["verification"]["flavours"]["norm_placement"] = {"value": "post", "check": "quote_only",
                                                                "status": "stated", "where": "Sec. 3"}
-    with pytest.raises(A.Refused, match="norm placement = post"):
+    fam, arch, rep = A.build_spec(ext, SIZE)
+    assert fam == "flex" and arch["custom"]["norm_placement"] == "post"
+    ext["llm"]["verification"]["flavours"]["norm_placement"]["value"] = "other:between the two sublayers"
+    with pytest.raises(A.Refused, match="norm_placement = other:between.*no family here builds that placement"):
         A.build_spec(ext, SIZE)
 
 
@@ -362,7 +373,9 @@ def test_primer_receipt_refused_with_every_reason(tmp_path):
     reasons = " | ".join(r.value.args[0])
     assert "causal_depthwise_conv3 needs a new primitive" in reasons
     assert "relative" in reasons  # T5's relative attention positions: no engine support
-    assert "norm placement" in reasons  # no norm before the FFN, the FFN output normalised
+    # The cached reply (22 Oct 2026) describes the placement in free text ("other:..."), which nothing builds;
+    # a reply with the per-sublayer fields builds it (test_primer_placement_builds_from_per_sublayer_fields).
+    assert "norm_placement = other:" in reasons
     # Its norm and squared ReLU are hostable now; the paper is refused for the rest.
     assert "primer_norm" not in reasons and "squared_relu" not in reasons
 
@@ -389,6 +402,179 @@ def test_ancestor_fill_needs_a_verified_inheritance_the_reply_uses():
     ext["llm"]["verification"]["inherits"] = dict(inh, quote_found=False)
     with pytest.raises(A.Refused, match="positional is unresolved"):
         A.build_spec(ext, SIZE)
+
+
+# --------------------------------------------------------------------------
+# LOCAL_LLM_STACK 11 item 4.2 (26 Oct 2026): expr inputs, placements, T5's bias, q/k norm, Mamba-1
+
+def with_roles(ext, *roles, inits=None):
+    """Give the extraction's one new op its inputs' roles (and stated, verified inits)."""
+    for k, (i, r) in enumerate(zip(ext["llm"]["verification"]["new_ops"][0]["inputs"], roles)):
+        i["role"] = r
+        v = (inits or {}).get(i["name"])
+        if v is not None:
+            i["init"] = {"value": str(v), "status": "stated", "quote": f"we initialise it to {v}", "where": "Sec. 3"}
+            i["init_check"] = "verified"
+    return ext
+
+
+def test_gated_and_parameterised_activations_build_on_flex():
+    # A gate projection: ReGLU as relu(a) * x.
+    ext = with_roles(llm_ext("relu(a)*x", inputs=("x", "a")), "input", "gate")
+    fam, arch, rep = A.build_spec(ext, SIZE)
+    assert fam == "flex" and arch["custom"]["activation"] == "expr:(relu(a)*x)"
+    assert arch["custom"]["activation_inputs"] == ["up", "gate"]
+    assert any(b == "EXPR-INPUTS" and "mlp.c_gate" in d for b, d in rep)
+    # A learned scalar inside the expression (Swish-beta), its stated init kept.
+    ext = with_roles(llm_ext("x*sigmoid(a*x)", inputs=("x", "a")), "input", "learned_scalar", inits={"a": 1.5})
+    fam, arch, rep = A.build_spec(ext, SIZE)
+    assert arch["custom"]["activation_inputs"] == ["up", {"kind": "scalar", "init": 1.5}]
+    # Unstated: 1.0, reported.
+    ext = with_roles(llm_ext("x*sigmoid(a*x)", inputs=("x", "a")), "input", "learned_scalar")
+    _, arch, rep = A.build_spec(ext, SIZE)
+    assert arch["custom"]["activation_inputs"][1] == {"kind": "scalar", "init": 1.0}
+    assert any(b == "EXPR-INPUTS" and "not stated: 1.0" in d for b, d in rep)
+    # Two up-projections, or an input of role other, refuse.
+    with pytest.raises(A.Refused, match="reads 2 inputs"):
+        A.build_spec(with_roles(llm_ext("x*a", inputs=("x", "a")), "input", "input"), SIZE)
+    with pytest.raises(A.Refused, match="reads 2 inputs"):
+        A.build_spec(with_roles(llm_ext("x*a", inputs=("x", "a")), "input", "other"), SIZE)
+    # The probe holds a learned input at its init: x^a at a = 0.5 is not finite for x < 0.
+    with pytest.raises(A.Refused, match="non-finite.*learned inputs at their init"):
+        A.build_spec(with_roles(llm_ext("x^a", inputs=("x", "a")), "input", "learned_scalar", inits={"a": 0.5}),
+                     SIZE)
+
+
+def test_dyt_norm_builds_with_its_learned_alpha():
+    # DyT (arXiv 2503.10622): gamma * tanh(alpha x) + beta; alpha a learned scalar, gamma and beta per channel.
+    ext = llm_ext("tanh(a*x)*g+b", slot="norm", inputs=("x", "a", "g", "b"),
+                  stated={"activation": "gelu", "positional": "learned"})
+    with_roles(ext, "input", "learned_scalar", "learned_vector", "learned_vector", inits={"a": 0.5})
+    fam, arch, rep = A.build_spec(ext, SIZE)
+    assert fam == "flex" and arch["custom"]["norm"] == "expr:tanh((a*x))"
+    assert arch["custom"]["norm_inputs"] == ["row", {"kind": "scalar", "init": 0.5}]
+    assert any(b == "NORM-AFFINE" and "core*g + a" in d and "the same form" in d for b, d in rep)
+
+
+TONIGHT = os.path.join(os.path.dirname(HERE), "experiments", "arxiv_chain_2026-10-26")
+
+
+def tonight(pid):
+    with open(os.path.join(TONIGHT, f"{pid}.extraction.json"), encoding="utf-8") as f:
+        return json.load(f)
+
+
+def test_dyt_receipt_builds_with_per_place_alpha_and_the_embedding_scalar():
+    # arXiv 2503.10622 (26 Oct 2026): DyT on LLaMA, alpha 0.8 in the attention sublayer's norm, 0.2 in
+    # the FFN's and the head's (a second new op, the same expression), a learned scalar after the
+    # embedding initialised to sqrt(d). Its activation is inherited without a quote naming LLaMA.
+    ext = tonight("2503.10622")
+    with pytest.raises(A.Refused, match="activation = swiglu has verdict 'unverified'"):
+        A.build_spec(ext, SIZE)
+    fam, arch, rep = A.build_spec(ext, SIZE, A.parse_asserts(["activation=swiglu"]))
+    c = arch["custom"]
+    assert fam == "flex" and c["norm"] == "expr:tanh((a*x))" and c["activation"] == "swiglu" and c["position"] == "rope"
+    assert c["norm_inputs"] == ["row", {"kind": "scalar", "init": 0.8, "init_ffn": 0.2, "init_final": 0.2}]
+    assert c["embed"] == "expr:(x*a)" and c["embed_inputs"] == ["row", {"kind": "scalar", "init": 8.0}]  # sqrt(64)
+    assert any(b == "NORM-VARIANT" and "dyt_other" in d for b, d in rep)
+
+
+def test_tonights_other_receipts_refuse_by_name():
+    reasons = {}
+    for pid in ("2109.08668", "2312.00752", "2505.09388", "1710.05941"):
+        with pytest.raises(A.Refused) as r:
+            A.build_spec(tonight(pid), SIZE)
+        reasons[pid] = " | ".join(r.value.args[0])
+    # Primer: its placement and norm build now; its depthwise convolutions and relative positions do not.
+    assert "block op conv1d_causal" in reasons["2109.08668"] and "positional = relative" in reasons["2109.08668"]
+    assert "norm_placement" not in reasons["2109.08668"] and "primer_layernorm" not in reasons["2109.08668"]
+    # Mamba: built as Mamba-1 from N = 16 and E = 2, but the conv width is not stated and the paper's own
+    # block adds a LayerNorm the block here lacks.
+    assert "d_conv is unresolved" in reasons["2312.00752"] and "LayerNorm" in reasons["2312.00752"]
+    assert "state-space model" not in reasons["2312.00752"].split("Optional")[0]
+    # Qwen3: the headline is the MoE model; its QK-norm's width is not stated.
+    assert "mixture of experts" in reasons["2505.09388"] and "does not say over which width" in reasons["2505.09388"]
+    # Swish: hosted on convolutional networks (BatchNorm), outside every family here.
+    assert "BatchNorm" in reasons["1710.05941"] or "convolutional" in reasons["1710.05941"]
+
+
+def test_norm_placements_per_sublayer():
+    # Primer's: normalisation before attention, the second one after the FFN (inside its branch).
+    ext = llm_ext("relu(x)^2", stated={"norm": "layernorm", "positional": "learned"})
+    fl = ext["llm"]["verification"]["flavours"]
+    fl["norm_placement"] = {"value": "other:pre attention, after the FFN", "check": "quote_only", "status": "stated"}
+    fl["norm_placement_attn"] = {"value": "pre", "check": "quote_only", "status": "stated", "where": "Sec. 2"}
+    fl["norm_placement_ffn"] = {"value": "branch_post", "check": "quote_only", "status": "stated", "where": "Sec. 2"}
+    fam, arch, rep = A.build_spec(ext, SIZE)
+    assert fam == "flex" and arch["custom"]["norm_placement"] == {"attn": "pre", "ffn": "branch_post"}
+    # The llama block's flavours with a sandwich placement are flex, not llama.
+    ext = ext_with(norm="rmsnorm", activation="swiglu", positional="rope")
+    ext["llm"] = {"verification": {"flavours": {"norm_placement": {"value": "sandwich", "check": "verified",
+                                                                   "status": "stated"}}}}
+    fam, arch, _ = A.build_spec(ext, SIZE)
+    assert fam == "flex" and arch["custom"]["norm_placement"] == "sandwich"
+
+
+def test_t5_relative_bias_refused_until_keramos_has_it():
+    ext = ext_with(norm="layernorm", activation="relu", positional="t5_bias")
+    with pytest.raises(A.Refused, match="t5_bias.*keramos v1.2.0 has no IR op"):
+        A.build_spec(ext, SIZE)
+
+
+def qk_ext(value, positional="rope"):
+    ext = ext_with(norm="rmsnorm", activation="swiglu", positional=positional)
+    ext["llm"] = {"verification": {"flavours": {"qk_norm": {"value": value, "check": "verified", "status": "stated",
+                                                            "where": "Sec. 2"}}}}
+    return ext
+
+
+def test_qk_norm_builds_on_llama():
+    fam, arch, rep = A.build_spec(qk_ext("per_head"), SIZE)
+    assert fam == "llama" and arch["custom"]["qk_norm"] is True
+    assert any(b == "MATCHED" and "qk_norm = per_head" in d for b, d in rep)
+    with pytest.raises(A.Refused, match="does not say over which width.*--assert qk_norm=per_head"):
+        A.build_spec(qk_ext("unspecified"), SIZE)
+    fam, arch, rep = A.build_spec(qk_ext("unspecified"), SIZE, A.parse_asserts(["qk_norm=per_head"]))
+    assert arch["custom"]["qk_norm"] is True and any("by the operator" in d for _, d in rep)
+    with pytest.raises(A.Refused, match="whole width"):
+        A.build_spec(qk_ext("full"), SIZE)
+    fam, arch, _ = A.build_spec(qk_ext("none"), SIZE)
+    assert "qk_norm" not in arch["custom"]
+    # On flex (learned positions here) only the llama family builds it.
+    with pytest.raises(A.Refused, match="qk_norm = per_head.*only the llama family builds it"):
+        A.build_spec(qk_ext("per_head", positional="learned"), SIZE)
+
+
+def mamba_ext(**sizes):
+    ext = ext_with()
+    ext["mechanism_scan"] = [{"mechanism": "state-space model", "where": "title/abstract", "blocking": True,
+                              "evidence": "Mamba: linear-time sequence modelling with selective state spaces"}]
+    fl = {"ssm": {"value": "mamba1", "check": "verified", "status": "stated", "quote": "selective SSM"}}
+    for k, v in sizes.items():
+        fl[k] = {"value": str(v), "check": "verified", "status": "stated", "quote": f"{k} {v}"}
+    ext["llm"] = {"verification": {"family": {"value": "state_space", "check": "verified"}, "flavours": fl}}
+    return ext
+
+
+def test_mamba1_builds_from_its_sizes():
+    fam, arch, rep = A.build_spec(mamba_ext(d_state=16, d_conv=4, expand=2, dt_rank="ceil(d_model/16)"), SIZE)
+    assert fam == "mamba" and arch["preset"] == "mamba-tiny"
+    assert arch["custom"] == {"ssm": "mamba1", "d": 64, "layers": 2, "d_state": 16, "d_conv": 4, "expand": 2,
+                              "dt_rank": 4}
+    assert any(b == "NOTED" and "built as Mamba-1" in d for b, d in rep)
+    # The Mamba paper states N and E but not the conv width: refused until asserted; dt_rank by default.
+    with pytest.raises(A.Refused, match="d_conv is unresolved.*--assert d_conv=VALUE"):
+        A.build_spec(mamba_ext(d_state=16, expand=2), SIZE)
+    fam, arch, rep = A.build_spec(mamba_ext(d_state=16, expand=2), SIZE, A.parse_asserts(["d_conv=4"]))
+    assert arch["custom"]["d_conv"] == 4 and "dt_rank" not in arch["custom"]
+    assert any(b == "DEFAULT" and d.startswith("dt_rank = ceil(d/16)") for b, d in rep)
+    # A stated norm other than the block's RMSNorm refuses.
+    ext = mamba_ext(d_state=16, d_conv=4, expand=2)
+    ext["fields"]["norm"] = {"value": "layernorm", "evidence": "we choose LayerNorm", "verdict": "used"}
+    with pytest.raises(A.Refused, match="normalises with RMSNorm"):
+        A.build_spec(ext, SIZE)
+    with pytest.raises(SystemExit, match="positive integer"):
+        A.parse_asserts(["d_conv=four"])
 
 
 # --------------------------------------------------------------------------

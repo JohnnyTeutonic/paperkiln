@@ -48,8 +48,21 @@ when its output already exists, so a run restarts where it stopped:
             attention at the paper's ratio of query to key/value heads,
             multi-query as one kv head; custom.kv_heads), a stated
             rope_theta, NEOX pairing and a partial rotary fraction
-            (custom.rope_theta, rope_pairing, rope_dims); flex refuses
-            them by name.
+            (custom.rope_theta, rope_pairing, rope_dims) and a per-head
+            q/k norm (custom.qk_norm); flex refuses them by name.
+            Since 26 Oct 2026 (LOCAL_LLM_STACK.md 11 item 4.2) flex also
+            hosts an expr over more inputs, by the extraction's input roles
+            (a gate projection; learned scalars or per-channel vectors, with
+            their stated inits, per norm place where the paper gives one;
+            custom.activation_inputs / norm_inputs), an expr on the embed
+            output (custom.embed), and a stated norm placement per sublayer
+            (pre, post, sandwich, branch_post, none; custom.norm_placement).
+            A state-space paper with ssm mamba1 builds the mamba preset from
+            its d_state, d_conv, expand and dt_rank (custom.ssm "mamba1");
+            --assert settles a size or a q/k norm width the paper leaves out.
+            T5's relative bias refuses until keramos has its op, and a
+            structural op in the block graph that no family wires there
+            (conv1d_causal on q, k, v, a moe_ffn, ...) refuses by name.
   pretrain  mtstudio run, objective lm on --corpus -> pretrain/
   sft       mtstudio run, objective sft on --sft-examples (the first
             --sft-limit examples that fit T; longer ones are dropped and
@@ -80,6 +93,7 @@ import argparse
 import gzip
 import hashlib
 import json
+import math
 import os
 import re
 import shutil
@@ -136,12 +150,26 @@ SPEC_KEY = {"norm": "norm", "activation": "activation", "positional": "position"
 # over this many inputs: the FFN activation over the up-projection, the norm
 # over the row (e(x) * g + b with a learned per-feature gain g and bias b,
 # tools/parity_model.hpp FlexConfig; a norm the paper writes with its own
-# per-channel parameters is hosted when they form only a trailing affine,
-# see norm_core). Anything else an expr replaces (a gate with learned
-# parameters, an attention score) is refused: no family here builds it.
-EXPR_SLOTS = {"activation": 1, "norm": 1}
-# The flex family is pre-norm only.
+# per-channel parameters keeps them as flex's gain and bias when they form a
+# trailing affine, see split_norm). Since 26 Oct 2026 an expr may read more
+# inputs, by role (the extraction's new_ops inputs): the activation a gate
+# projection and learned scalars or per-channel vectors, the norm learned
+# scalars or vectors inside the row expression (DyT's alpha); flex hosts them
+# as arch.custom.activation_inputs / norm_inputs. Anything else an expr
+# replaces (an attention score, a routing rule) is refused: no family here
+# builds it.
+EXPR_SLOTS = {"activation": 1, "norm": 1, "embed": 1}
+# What each input role is in flex's activation_inputs / norm_inputs.
+ROLE_KINDS = {"activation": {"input": "up", "gate": "gate", "learned_scalar": "scalar", "learned_vector": "channel"},
+              "norm": {"input": "row", "learned_scalar": "scalar", "learned_vector": "channel"},
+              "embed": {"input": "row", "learned_scalar": "scalar", "learned_vector": "channel"}}
+# The flex family's norm placements (parity::FlexConfig place_attn / place_ffn); the llama family is pre-norm.
+FLEX_PLACEMENTS = ("pre", "post", "sandwich", "branch_post", "none")
 FLEX_NORM_PLACEMENT = "pre"
+# Block-graph ops (papers/llm_extract.py IR_OPS) that no flavour field carries: their presence in an
+# extraction's block_ops refuses (build_spec), except Mamba-1's conv1d_causal and selective_scan on Mamba-1.
+GRAPH_ONLY_OPS = {"conv1d_causal", "selective_scan", "ssm_scan", "linear_attention", "moe_ffn", "depth_attend",
+                  "list", "append", "mul_col", "rms_row", "unsupported"}
 # Where a hosted expr is probed (spec/tools/ir_expr.py, f32): every value finite.
 EXPR_PROBE = (-20.0, 20.0, 0.25)
 NEW_OP_CUE = re.compile(r"^new op (\S+) ")
@@ -285,20 +313,98 @@ def stage_extract(a, run):
 # --------------------------------------------------------------------------
 # spec
 
+# Beyond the flavours: the operator may settle a q/k norm's width and Mamba-1's sizes the paper leaves out.
+ASSERTABLE = {**{k: None for k in LEGAL}, "qk_norm": ("per_head", "none"), "d_state": int, "d_conv": int,
+              "expand": int, "dt_rank": int}
+
+
 def parse_asserts(items):
     out = {}
     for it in items or []:
         k, sep, v = it.partition("=")
-        if not sep or k not in LEGAL:
-            raise SystemExit(f"--assert wants FIELD=VALUE with FIELD in {sorted(LEGAL)}, got {it!r}")
+        if not sep or k not in ASSERTABLE:
+            raise SystemExit(f"--assert wants FIELD=VALUE with FIELD in {sorted(ASSERTABLE)}, got {it!r}")
+        rule = ASSERTABLE[k]
+        if rule is int:
+            if not v.isdigit() or int(v) < 1:
+                raise SystemExit(f"--assert {k} wants a positive integer, got {v!r}")
+        elif rule and v not in rule:
+            raise SystemExit(f"--assert {k} wants one of {', '.join(rule)}, got {v!r}")
         out[k] = v
     return out
 
 
-def expr_host_check(expr, n_inputs):
+def mamba_spec(fields, llm_ver, size, asserts, placement, refusals, report):
+    """A Mamba-1 paper on the mamba preset (arch.custom.ssm "mamba1", parity::Mamba1Block: pre-RMSNorm,
+    in_proj, the causal depthwise conv, the selective scan, out_proj, the residual). d_state, d_conv and
+    expand are the paper's (stated, verified) or the operator's (--assert); dt_rank is the paper's rule
+    ceil(d_model / K), its number scaled to this run's width, the operator's, or by default Mamba's own
+    ceil(d / 16). The block's norm is RMSNorm, pre-norm: another stated norm or placement refuses."""
+    ok = ("verified", "quote_only")
+    custom = {"ssm": "mamba1", "d": size["d"], "layers": size["layers"]}
+    for k in ("d_state", "d_conv", "expand"):
+        r = llm_ver.get(k) or {}
+        if k in asserts:
+            custom[k] = int(asserts[k])
+            report.append(("ASSERTED", f"{k} = {custom[k]} (by the operator, --assert; paper: "
+                                       f"{r.get('value') or 'not stated'})"))
+        elif r.get("check") in ok and (r.get("value") or "").strip():
+            v = float(r["value"])
+            if v != int(v) or v < 1:
+                refusals.append(f"{k} = {r['value']} is not a positive integer")
+                continue
+            custom[k] = int(v)
+            report.append(("MATCHED", f"{k} = {custom[k]} (“{' '.join((r.get('quote') or '').split())[:120]}”)"))
+        else:
+            refusals.append(f"{k} is unresolved: the paper does not state Mamba-1's {k} "
+                            f"({r.get('check') or 'not_stated'}); assert it with --assert {k}=VALUE if you know it")
+    r = llm_ver.get("dt_rank") or {}
+    v = (r.get("value") or "").replace(" ", "")
+    if "dt_rank" in asserts:
+        custom["dt_rank"] = int(asserts["dt_rank"])
+        report.append(("ASSERTED", f"dt_rank = {custom['dt_rank']} (by the operator, --assert)"))
+    elif r.get("check") in ok and v:
+        import llm_extract as lx
+        rule = lx.DT_RANK_RULE.match(v)
+        if rule:
+            custom["dt_rank"] = max(1, -(-size["d"] // int(rule.group(1))))
+            report.append(("MATCHED", f"dt_rank = ceil(d/{rule.group(1)}) = {custom['dt_rank']} at this run's d"))
+        else:
+            dm = fields.get("d_model")
+            if not dm:
+                refusals.append(f"dt_rank = {v} without the paper's d_model: it cannot be scaled to this run")
+            else:
+                custom["dt_rank"] = max(1, round(float(v) * size["d"] / float(dm["value"])))
+                report.append(("SCALED", f"dt_rank {v} of d_model {dm['value']} -> {custom['dt_rank']} at d = "
+                                         f"{size['d']} (the paper's ratio)"))
+    else:
+        report.append(("DEFAULT", f"dt_rank = ceil(d/16) = {-(-size['d'] // 16)}: not stated by the paper; "
+                                  "Mamba-1's own rule (parity::Mamba1Config dt_rank 0)"))
+    nf = fields.get("norm")
+    if nf and nf.get("verdict") in ("used", "inherited") and nf["value"] != "rmsnorm":
+        refusals.append(f"norm = {nf['value']} ({nf.get('evidence', '')[:120]}): the Mamba-1 block here normalises "
+                        "with RMSNorm, so training it would silently approximate the paper")
+    if any(p != FLEX_NORM_PLACEMENT for p in placement.values()):
+        refusals.append(f"norm placement {placement}: the Mamba-1 block here is pre-norm")
+    for k in ("activation", "positional", "attention"):
+        f = fields.get(k)
+        if f:
+            report.append(("NOTED", f"{k} = {f['value']} ({f.get('verdict')}): the Mamba-1 block is fixed (SiLU "
+                                    "gate, no positions, no attention); not a knob here"))
+    if refusals:
+        raise Refused(refusals)
+    paper = {k: fields[k]["value"] for k in ("d_model", "n_layers") if k in fields}
+    report.append(("SIZED", f"d={size['d']} layers={size['layers']} T={size['T']} chosen for this run "
+                            f"(paper: {paper or 'no dims extracted'}); the mechanism is the paper's"))
+    return "mamba", {"preset": "mamba-tiny", "custom": custom}, report
+
+
+def expr_host_check(expr, n_inputs, values=None):
     """An expr the flex family is to host: parsed by spec/tools/ir_expr.py (the
     grammar both engines implement) with n_inputs inputs, and finite in f32
-    over EXPR_PROBE. Returns (canonical text, list of problems)."""
+    over EXPR_PROBE. values: per input, None (the probe row: the slot's own
+    rows and a gate) or a number (a learned input, held at its init). Returns
+    (canonical text, list of problems)."""
     import numpy as np
     import ir_expr
 
@@ -308,40 +414,88 @@ def expr_host_check(expr, n_inputs):
         return expr, [f"does not parse in the IR grammar (spec/tools/ir_expr.py): {e}"]
     lo, hi, step = EXPR_PROBE
     xs = np.arange(lo, hi + step / 2, step, dtype=np.float32).reshape(1, -1)
+    values = values or [None] * n_inputs
+    ins = [xs if v is None else np.full_like(xs, np.float32(v)) for v in values]
     with np.errstate(all="ignore"):
-        y = ir_expr.evaluate(node, [xs] * n_inputs)
+        y = ir_expr.evaluate(node, ins)
     bad = xs[~np.isfinite(y)]
     if bad.size:
         return expr, [f"non-finite in f32 at x = {', '.join(f'{v:g}' for v in bad[:6])}"
-                      f"{' ...' if bad.size > 6 else ''} (probe [{lo:g}, {hi:g}] step {step:g})"]
+                      f"{' ...' if bad.size > 6 else ''} (probe [{lo:g}, {hi:g}] step {step:g}"
+                      + (", learned inputs at their init" if any(v is not None for v in values) else "") + ")"]
     return expr, []
 
 
-LEARNED_PARAM = re.compile(r"\blearn(?:ed|able|t)\b|\bparameter\b|tf\.Variable|nn\.Parameter", re.IGNORECASE)
+LEARNED_PARAM = re.compile(r"\blearn(?:ed|able|t)\b|\bparameter\b|\btrain(?:ed|able)\b|tf\.Variable|nn\.Parameter",
+                           re.IGNORECASE)
 PER_CHANNEL = re.compile(r"per[- ](?:channel|feature|dimension|element)|\bvector\b|\bchannel", re.IGNORECASE)
+SCALAR = re.compile(r"\bscalar\b|\bsingle\b", re.IGNORECASE)
+GATE = re.compile(r"\bgat(?:e|ing)\b", re.IGNORECASE)
 
 
-def norm_core(expr, inputs):
-    """A norm expr over the row x and the paper's own learned per-channel
-    vectors (inputs after x), split into its row expression core(x) and a
-    trailing affine on those vectors: core*g, (core + a)*g, core*g + a, core
-    + a (either operand order). flex's expr norm is core(x) * g + b with g,
-    b learned per feature, the same family of functions ((core + a) * g =
-    core * g + a * g; core alone gains a scale/shift the paper's form may
-    lack, reported). Returns (core canonical, how) or (None, reason)."""
+def input_roles(inputs):
+    """Each new-op input's role: the extraction's role (papers/llm_extract.py
+    INPUT_ROLES, since 26 Oct 2026), or for an older extraction read from its
+    meaning: the first input is the tensor the op stands on (x), a learned
+    per-channel vector or scalar, a gate projection, else other."""
+    import llm_extract as lx
+
+    roles = []
+    for k, i in enumerate(inputs):
+        r = (i.get("role") or "").strip()
+        if r in lx.INPUT_ROLES:
+            roles.append(r)
+            continue
+        m = i.get("meaning") or ""
+        if k == 0:
+            roles.append("input")
+        elif LEARNED_PARAM.search(m) and PER_CHANNEL.search(m):
+            roles.append("learned_vector")
+        elif LEARNED_PARAM.search(m) and SCALAR.search(m):
+            roles.append("learned_scalar")
+        elif GATE.search(m):
+            roles.append("gate")
+        else:
+            roles.append("other")
+    return roles
+
+
+def input_init(i, d=None):
+    """(init, how) of a learned input: its stated init when the extraction
+    verified it (a number in its own quote, or sqrt(d_model) at this run's
+    width d), else 1.0 by default."""
+    import llm_extract as lx
+
+    init = i.get("init") or {}
+    if (i.get("init_check") in ("verified", "quote_only") and d
+            and lx.INIT_SQRT_D.match((init.get("value") or "").replace(" ", ""))):
+        return math.sqrt(d), f"stated as sqrt(d_model): {math.sqrt(d):g} at this run's d = {d}"
+    if i.get("init_check") in ("verified", "quote_only"):
+        v = lx.parse_number(init.get("value") or "")
+        if v is not None and math.isfinite(v):
+            return float(v), f"stated ({' '.join((init.get('quote') or '').split())[:80]!r})"
+    return 1.0, "not stated: 1.0 (paperkiln's default)"
+
+
+def split_norm(expr, inputs, roles):
+    """A norm expr over the row and the paper's own learned inputs, split into
+    its row expression core and a trailing affine on learned per-channel
+    vectors: core*g, (core + a)*g, core*g + a, core + a (either operand
+    order). flex's expr norm is core * g + b with g, b learned per feature,
+    the same family of functions ((core + a) * g = core * g + a * g; core
+    alone gains a scale/shift the paper's form may lack, reported). Learned
+    inputs left inside the core (a scalar such as DyT's alpha, or a vector)
+    stay the core's inputs, renamed x, a, b, ... in order. Returns (core
+    canonical, [(role, input)] of the core in its input order, form) or
+    (None, reason, None)."""
     import llm_extract as lx
 
     names = [i.get("name") for i in inputs]
-    params = names[1:]
-    bad = [f"{i.get('name')} = {i.get('meaning')}" for i in inputs[1:]
-           if not (LEARNED_PARAM.search(i.get("meaning") or "") and PER_CHANNEL.search(i.get("meaning") or ""))]
-    if bad:
-        return None, ("its inputs after the row are not all learned per-channel vectors (" + "; ".join(bad) +
-                      "), so it is not a norm over the row with a per-feature affine")
+    vec = {n for n, r in zip(names, roles) if r == "learned_vector"}
     node = lx.parse_expr(expr)
 
     def is_param(n):
-        return n[0] == "var" and n[1] in params
+        return n[0] == "var" and n[1] in vec
 
     def split_add(n):  # core + a, a + core -> (core, a)
         if n[0] == "bin" and n[1] == "+":
@@ -366,29 +520,87 @@ def norm_core(expr, inputs):
         inner, pre = split_add(core)
         if pre is not None:
             core, shift, inside = inner, pre, True
+    if gain is not None and gain == shift:
+        return None, f"its learned {gain} is both the gain and the shift", None
     form = ("(core + a)*g" if inside else "core*g + a") if gain and shift else \
         "core*g" if gain else "core + a" if shift else "core"
-    used = [p for p in (gain, shift) if p]
-    if len(set(used)) != len(used) or sorted(used) != sorted(params):
-        return None, (f"its learned inputs {', '.join(params)} are not exactly one trailing per-channel gain and "
-                      "shift, so flex's e(x) * g + b does not state it")
-    if lx.expr_vars(core) - {"x"}:
-        return None, "its learned inputs enter inside the row expression, not only in a trailing affine"
-    return lx.expr_canonical(core), form
+    used = lx.expr_vars(core)
+    tail = {p for p in (gain, shift) if p}
+    if tail & used:
+        return None, "a learned vector of its affine tail also enters the row expression", None
+    row = [n for n, r in zip(names, roles) if r == "input"]
+    if len(row) != 1 or row[0] not in used:
+        return None, "it has no single row input inside its expression", None
+    keep = [n for n in names if n in used]
+    rename = {n: ("x" if k == 0 else chr(ord("a") + k - 1)) for k, n in enumerate(keep)}
+
+    def sub(n):
+        kind = n[0]
+        if kind == "var":
+            return ("var", rename[n[1]])
+        if kind == "neg":
+            return ("neg", sub(n[1]))
+        if kind == "bin":
+            return ("bin", n[1], sub(n[2]), sub(n[3]))
+        if kind == "call":
+            return ("call", n[1], [sub(a) for a in n[2]])
+        return n
+
+    return lx.expr_canonical(sub(core)), [(roles[names.index(n)], inputs[names.index(n)]) for n in keep], form
 
 
-def judge_new_ops(ext):
+def judge_new_ops(ext, size=None):
     """The new operations of an LLM extraction (papers/llm_extract.py), each
     hosted or refused. Returns (hosted {flavour: expr}, refusals, report,
     names judged, the extracted value each hosted expr replaces {flavour:
-    "expr:<canonical>"}). A rule-based extraction has none."""
+    "expr:<canonical>"}, the hosted expr's inputs {flavour: flex
+    activation_inputs / norm_inputs}, only for an expr over more than its own
+    row). A rule-based extraction has none."""
     llm = ext.get("llm") or {}
     ver = llm.get("verification") or {}
     ops = ver.get("new_ops") or []
     flav = ver.get("flavours") or {}
-    hosted, replaces, refusals, report = {}, {}, [], []
+    hosted, replaces, slot_inputs, refusals, report = {}, {}, {}, [], []
+    d = (size or {}).get("d")
+    # Where each new op sits in the extraction's block graph: the embed section, the attention
+    # sublayer's norm (before the first attention), the FFN's (after it) or the head's.
+    nodes = ver.get("block_ops") or []
+    first_attn = next((n["i"] for n in nodes if n.get("subgraph") == "block" and n.get("op") == "attention"), None)
+
+    def slots_of(nm):
+        out = set()
+        for n in nodes:
+            if n.get("new_op") != nm:
+                continue
+            sub = n.get("subgraph")
+            out.add("final" if sub == "head" else "embed" if sub == "embed" else
+                    "attn" if first_attn is not None and n["i"] < first_attn else "ffn")
+        return out
+
+    by_name = {o.get("name"): o for o in ops}
+    used = {(r.get("value") or "")[7:] for r in flav.values() if (r.get("value") or "").startswith("new_op:")}
+    nv = (flav.get("norm") or {}).get("value") or ""
+    norm_op = nv[7:] if nv.startswith("new_op:") else None
+    # A norm's variants (DyT on LLaMA: one alpha init in the attention sublayer's norm, another in the
+    # FFN's and the head's): the same expression over the same input roles, used by no flavour, only at
+    # norm places of the graph. They are the norm op, with their own inits where they sit.
+    variants = {}
+    base = by_name.get(norm_op)
+    for o in ops:
+        nm = o.get("name")
+        if base is None or nm == norm_op or nm in used or o.get("kind") != "expr":
+            continue
+        same = ((o.get("expr_check") or {}).get("canonical") == (base.get("expr_check") or {}).get("canonical")
+                and input_roles(o.get("inputs") or []) == input_roles(base.get("inputs") or []))
+        if same and slots_of(nm) and slots_of(nm) <= {"attn", "ffn", "final"}:
+            variants[nm] = sorted(slots_of(nm))
     for o in ops:
         name, kind = o.get("name", ""), o.get("kind")
+        if name in variants:
+            report.append(("NORM-VARIANT", f"new op {name}: the norm {norm_op}'s expression at the "
+                                           f"{', '.join(variants[name])} norm(s) of the block graph, with its own "
+                                           "inits (flex norm_inputs init_<place>)"))
+            continue
         where = f" ({o['where']})" if o.get("where") else ""
         quote = " ".join((o.get("quote") or "").split())[:200]
         if kind == "needs_new_primitive":
@@ -405,6 +617,8 @@ def judge_new_ops(ext):
                             + "; ".join(o.get("errors") or ["no passing expr check"]))
             continue
         users = sorted(k for k, r in flav.items() if (r.get("value") or "") == f"new_op:{name}")
+        if not users and slots_of(name) == {"embed"}:
+            users = ["embed"]  # an expr on the embed output (DyT's learned scalar after the embedding)
         slot = [k for k in users if k in EXPR_SLOTS]
         if not users or users != slot or len(slot) != 1:
             refusals.append(f"new op {name} = {chk['canonical']} (expr, replaces "
@@ -414,48 +628,84 @@ def judge_new_ops(ext):
             continue
         k = slot[0]
         inputs = o.get("inputs") or []
-        n_in = len(inputs)
-        built, how = chk["canonical"], None
-        if k == "norm" and n_in > 1:
-            core, how = norm_core(chk["canonical"], inputs)
-            if core is None:
-                refusals.append(f"new op {name} = {chk['canonical']} (expr in the norm slot): {how}")
+        roles = input_roles(inputs)
+        meanings = "; ".join(f"{i.get('name')} = {i.get('meaning')} ({r})" for i, r in zip(inputs, roles))
+        built, how, core_inputs = chk["canonical"], None, list(zip(roles, inputs))
+        if k == "norm" and len(inputs) > 1:
+            built, core_inputs, how = split_norm(chk["canonical"], inputs, roles)
+            if built is None:
+                refusals.append(f"new op {name} = {chk['canonical']} (expr in the norm slot): {core_inputs} "
+                                f"(inputs: {meanings})")
                 continue
-            built = core
-        elif n_in != EXPR_SLOTS[k]:
-            meanings = "; ".join(f"{i.get('name')} = {i.get('meaning')}" for i in inputs)
-            refusals.append(f"new op {name} = {chk['canonical']} reads {n_in} inputs ({meanings}): the flex "
-                            f"{k} hosts an expr over {EXPR_SLOTS[k]} (the FFN up-projection), so a gated or "
-                            "parameterised form is not built")
+        kinds = [ROLE_KINDS[k].get(r) for r, _ in core_inputs]
+        own = "up" if k == "activation" else "row"  # norm, embed
+        if None in kinds or kinds.count(own) != 1 or kinds.count("gate") > 1:
+            allowed = ("the up-projection (input), one gate projection (gate), learned scalars and learned "
+                       "per-channel vectors" if k == "activation" else
+                       "the row (input) and learned scalars or per-channel vectors")
+            refusals.append(f"new op {name} = {chk['canonical']} reads {len(inputs)} inputs ({meanings}): the flex "
+                            f"{k} hosts an expr over {allowed}, so this form is not built")
             continue
-        if flav[k].get("check") not in ("verified", "quote_only"):
+        if k != "embed" and flav[k].get("check") not in ("verified", "quote_only"):
             continue  # the flavour's own verdict refuses it, by name, below
-        expr, problems = expr_host_check(built, 1)
+        spec_inputs, values, init_notes = [], [], []
+        for (r, i), kd in zip(core_inputs, kinds):
+            if kd in ("scalar", "channel"):
+                v, how_init = input_init(i, d)
+                entry = {"kind": kd, "init": v}
+                if k == "norm" and variants:
+                    # Per place: this op's init where it sits, each variant's where it sits.
+                    j = inputs.index(i)
+                    for nm, places in [(name, sorted(slots_of(name)))] + list(variants.items()):
+                        src = (by_name[nm].get("inputs") or [])[j]
+                        pv, _ = input_init(src, d)
+                        for pl in places:
+                            if pv != v:
+                                entry[f"init_{pl}"] = pv
+                    how_init += "; " + ", ".join(f"{key[5:]} {val:g}" for key, val in entry.items()
+                                                 if key.startswith("init_")) if len(entry) > 2 else ""
+                spec_inputs.append(entry)
+                values.append(v)
+                init_notes.append(f"{i.get('name')} ({kd}, init {v:g}: {how_init})")
+            else:
+                spec_inputs.append(kd)
+                values.append(None)
+        expr, problems = expr_host_check(built, len(core_inputs), values)
         if problems:
             refusals.append(f"new op {name} = {expr}: " + "; ".join(problems))
             continue
         hosted[k] = expr
         replaces[k] = "expr:" + chk["canonical"]
+        if len(core_inputs) > 1:
+            slot_inputs[k] = spec_inputs
         lo, hi, step = EXPR_PROBE
         report.append(("EXPR", f"{k} = expr:{expr} (new op {name}, replaces {o.get('replaces') or k}; verified "
                                f"quote{where}: “{quote[:120]}”); parses in the IR grammar "
                                f"(spec/tools/ir_expr.py), finite in f32 on [{lo:g}, {hi:g}]; mtstudio checks its "
                                "gradient against finite differences before training"))
-        if k == "norm":
-            pnames = [i.get("name") for i in inputs[1:]]
+        if len(core_inputs) > 1:
+            gate_note = " and a gate projection d -> d_ff (mlp.c_gate, biased as flex's linears)" if "gate" in kinds else ""
+            report.append(("EXPR-INPUTS", f"{k}_inputs = {json.dumps(spec_inputs)}: the expr's inputs in order"
+                                          f"{gate_note}" + (f"; learned: {', '.join(init_notes)}" if init_notes
+                                                            else "")))
+        if k == "norm" and len(inputs) > 1:
+            tail = [i.get("name") for i, r in zip(inputs, roles) if r == "learned_vector"
+                    and i not in [ci for _, ci in core_inputs]]
             report.append(("NORM-AFFINE", (
-                f"norm: the paper's {chk['canonical']} is {how} over the row expression with its learned "
-                f"per-channel {', '.join(pnames)}; flex computes expr(x) * gain + bias, both learned per feature "
-                "(init 1, 0): " + {
+                f"norm: the paper's {chk['canonical']} is {how} over the row expression"
+                + (f" with its learned per-channel {', '.join(tail)}" if tail else "")
+                + "; flex computes expr(...) * gain + bias, both learned per feature (init 1, 0): " + {
                     "(core + a)*g": "(core + a) * g = core * g + a * g (gain g, bias a * g), the same functions, another "
                                     "parametrisation",
                     "core*g + a": "the same form",
                     "core*g": "the same form plus a per-feature bias b the paper's form does not have",
-                    "core + a": "the same form plus a per-feature gain g the paper's form does not have"}[how])
-                if how else
-                "norm: flex computes expr(x) * gain + bias, both learned per feature (init 1, 0), as layernorm's "
-                "affine; the paper's expr states the row expression only"))
-    return hosted, refusals, report, {o.get("name", "") for o in ops}, replaces
+                    "core + a": "the same form plus a per-feature gain g the paper's form does not have",
+                    "core": "a per-feature gain and bias the paper's form does not have"}[how])))
+        elif k == "norm":
+            report.append(("NORM-AFFINE", "norm: flex computes expr(x) * gain + bias, both learned per feature "
+                                          "(init 1, 0), as layernorm's affine; the paper's expr states the row "
+                                          "expression only"))
+    return hosted, refusals, report, {o.get("name", "") for o in ops}, replaces, slot_inputs
 
 
 def ancestor_fill(ext):
@@ -504,19 +754,37 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
 
     # New operations (LLM extraction): an expr in a slot the flex family
     # hosts is built; every other new op refuses with its reason.
-    hosted, op_refusals, op_report, op_names, op_replaces = judge_new_ops(ext)
+    hosted, op_refusals, op_report, op_names, op_replaces, op_inputs = judge_new_ops(ext, size)
     refusals += op_refusals
     report += op_report
     llm_out = (ext.get("llm") or {}).get("output") or {}
     llm_flav = llm_out.get("flavours") or {}
-    llm_ver = ((ext.get("llm") or {}).get("verification") or {}).get("flavours") or {}
+    llm_all = (ext.get("llm") or {}).get("verification") or {}
+    llm_ver = llm_all.get("flavours") or {}
+    ok_checks = ("verified", "quote_only")
 
-    # flex is pre-norm: a stated (verified or quoted) other placement would be
-    # trained as pre-norm, a silent approximation.
-    np_ = llm_ver.get("norm_placement") or {}
-    if np_.get("check") in ("verified", "quote_only") and (np_.get("value") or "") not in ("", FLEX_NORM_PLACEMENT):
-        refusals.append(f"norm placement = {np_['value']} ({np_.get('where') or 'no location'}): every family "
-                        f"here is {FLEX_NORM_PLACEMENT}-norm, so training it would silently approximate the paper")
+    # Norm placement per sublayer: a stated (verified or quoted) placement the flex family builds
+    # (parity::FlexConfig place_attn / place_ffn); the per-sublayer fields win over the shared one.
+    # Anything else would be trained as pre-norm, a silent approximation, so it refuses. Unstated: pre.
+    placement = {}
+    for sub, key in (("attn", "norm_placement_attn"), ("ffn", "norm_placement_ffn"), ("attn", "norm_placement"),
+                     ("ffn", "norm_placement")):
+        r = llm_ver.get(key) or {}
+        v = (r.get("value") or "").strip()
+        if sub in placement or not v or r.get("check") not in ok_checks:
+            continue
+        placement[sub] = v
+        where = f"{key} = {v} ({r.get('where') or 'no location'})"
+        if v not in FLEX_PLACEMENTS:
+            if sub == "ffn" and key == "norm_placement" and placement.get("attn") == v:
+                continue  # the shared field, refused once
+            refusals.append(f"{where}: no family here builds that placement (flex takes "
+                            f"{', '.join(FLEX_PLACEMENTS)} per sublayer), so training it would silently "
+                            "approximate the paper")
+        else:
+            report.append(("MATCHED", f"norm placement, {'attention' if sub == 'attn' else 'FFN'} sublayer: {where}"))
+    placement = {sub: placement.get(sub, FLEX_NORM_PLACEMENT) for sub in ("attn", "ffn")}
+    non_pre = any(v != FLEX_NORM_PLACEMENT for v in placement.values())
     # Projection biases are not a knob: flex's linears carry biases, llama's do not.
     for k in ("qkv_bias", "mlp_bias"):
         r = llm_ver.get(k) or {}
@@ -538,10 +806,20 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
     # What only the llama family builds (mtstudio's arch.custom.kv_heads, rope_pairing, rope_dims, rope_theta):
     # (reason, custom key, value or a function of the run's head count). A flex model refuses them below.
     llama_only = []
+    # Mamba-1 (a state-space family with ssm mamba1, both verified): the mamba preset's selective scan
+    # (arch.custom.ssm "mamba1" with the paper's d_state, d_conv, expand, dt_rank) builds it.
+    fam = llm_all.get("family") or {}
+    ssm = llm_ver.get("ssm") or {}
+    mamba1 = (fam.get("check") in ok_checks and fam.get("value") == "state_space" and
+              ssm.get("check") in ok_checks and ssm.get("value") == "mamba1")
     for h in scan or []:
         m = NEW_OP_CUE.match(h.get("mechanism", ""))
         if m and m.group(1) in op_names:
             continue  # judged above from the extraction's verified new-op record
+        if h["blocking"] and h.get("mechanism") == "state-space model" and mamba1:
+            report.append(("NOTED", f"{h['mechanism']}: {h['where']}, {h['evidence'][:160]} (built as Mamba-1: "
+                                    "the extraction's ssm = mamba1)"))
+            continue
         if h["blocking"] and h.get("mechanism") == "grouped or multi-query attention" and gqa:
             # The extracted n_kv_heads builds it (below); without the field it still refuses.
             report.append(("NOTED", f"{h['mechanism']}: {h['where']}, {h['evidence']} (built from n_kv_heads)"))
@@ -552,6 +830,26 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
                             "extracted flavours alone would silently approximate the paper")
         else:
             report.append(("NOTED", f"{h['mechanism']}: {h['where']}, {h['evidence']}"))
+
+    # Structural ops in the extraction's block graph that the flavours do not carry (Primer's depthwise
+    # convolutions on q, k and v as conv1d_causal nodes, 26 Oct 2026): no family below builds them there,
+    # so a graph that has them refuses rather than trains without them. Mamba-1's own two are its block.
+    seen_ops = set()
+    for n in llm_all.get("block_ops") or []:
+        op = n.get("op")
+        if op not in GRAPH_ONLY_OPS or (mamba1 and op in ("conv1d_causal", "selective_scan")) or \
+                (op == "unsupported" and n.get("new_op") in op_names):
+            continue
+        key = (op, n.get("role", ""))
+        if key in seen_ops:
+            continue
+        seen_ops.add(key)
+        refusals.append(f"block op {op} ({n.get('role') or 'no role'}, {n.get('subgraph')} subgraph) in the paper's "
+                        "block graph: no family here builds it in that place, and training the extracted flavours "
+                        "without it would silently approximate the paper")
+
+    if mamba1:
+        return mamba_spec(fields, llm_ver, size, asserts, placement, refusals, report)
 
     flav = {}
     for k in ("norm", "activation", "positional", "residual", "attention"):
@@ -621,7 +919,12 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
                 refusals.append(f"{k} = {v}: an expr with no verified new-op record that the flex family "
                                 "hosts (papers/llm_extract.py writes one); not built")
             continue
-        if v not in LEGAL[k]:
+        if k == "positional" and v == "t5_bias":
+            refusals.append("positional = t5_bias (T5's bucketed relative position bias): paperkiln trains it (the flex "
+                            "family's position t5_relative, ops::relpos_attention), but keramos v1.2.0 has no IR op "
+                            "for a relative bias in attention, so no engine could run the model; refused until "
+                            "keramos specifies it (proposal: LOCAL_LLM_STACK.md section 10, 26 Oct 2026)")
+        elif v not in LEGAL[k]:
             refusals.append(f"{k} = {v} has no engine support (mtstudio takes {sorted(LEGAL[k])})")
 
     if nkv and nh is None:
@@ -634,14 +937,35 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
             llama_only.append((f"n_kv_heads = {kv_heads} of n_heads = {q_heads} (grouped/multi-query attention)",
                                "kv_heads", ("kv", q_heads, kv_heads)))
 
+    # Q/K norm (the llama family's per-head RMSNorm on q and k, arch.custom.qk_norm): per_head builds it;
+    # full width and an unstated width refuse (llama's is per head), unless the operator settles it.
+    r = llm_ver.get("qk_norm") or {}
+    qk = asserts.get("qk_norm") or ((r.get("value") or "").strip() if r.get("check") in ok_checks else "")
+    if qk:
+        where = (f"qk_norm = {qk} (by the operator, --assert)" if "qk_norm" in asserts else
+                 f"qk_norm = {qk} ({r.get('where') or 'no location'})")
+        if qk == "per_head":
+            llama_only.append((where, "qk_norm", True))
+        elif qk == "full":
+            refusals.append(f"{where}: the queries and keys normalised over their whole width; the llama "
+                            "family's q/k norm is per head, so nothing here builds it")
+        elif qk == "unspecified":
+            refusals.append(f"{where}: the paper normalises the queries and keys but does not say over which "
+                            "width; the llama family builds a per-head norm: settle it with --assert "
+                            "qk_norm=per_head if that is the paper's")
+        elif qk != "none":
+            refusals.append(f"{where}: not a q/k norm the chain knows (per_head, full, unspecified, none)")
+
     family, custom = None, {}
     # RoPE with the llama block's flavours (rmsnorm, swiglu, residual stream,
-    # exact attention) is the llama family; RoPE with any other flavour the
-    # flex family hosts (an expr activation or norm, layernorm, gelu, relu,
-    # highway, swa) is flex with position rope, every head rotated as in
-    # the llama block (tools/parity_model.hpp FlexConfig).
+    # exact attention, pre-norm) is the llama family; RoPE with any other
+    # flavour the flex family hosts (an expr activation or norm, layernorm,
+    # gelu, relu, highway, swa, another norm placement) is flex with position
+    # rope, every head rotated as in the llama block (tools/parity_model.hpp
+    # FlexConfig).
     llama_block = all(flav.get(k, want) == want for k, want in (
-        ("norm", "rmsnorm"), ("activation", "swiglu"), ("residual", "residual"), ("attention", "exact")))
+        ("norm", "rmsnorm"), ("activation", "swiglu"), ("residual", "residual"), ("attention", "exact"))) \
+        and not non_pre and "embed" not in hosted
     if flav.get("positional") == "rope":
         # flex rotates every head with interleaved pairs and theta 10000; the llama family takes a stated theta,
         # NEOX pairs and a partial rotary fraction (arch.custom.rope_theta, rope_pairing, rope_dims).
@@ -699,6 +1023,21 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
         family = "flex"
         for k in ("norm", "activation", "positional", "residual", "attention"):
             custom[SPEC_KEY[k]] = flav[k]
+        for k, ins in op_inputs.items():
+            if k != "embed" and custom.get(SPEC_KEY[k]) == "expr:" + hosted[k]:
+                custom[f"{k}_inputs"] = ins
+        if "embed" in hosted:
+            custom["embed"] = "expr:" + hosted["embed"]
+            if "embed" in op_inputs:
+                custom["embed_inputs"] = op_inputs["embed"]
+            report.append(("MATCHED", f"embed = expr:{hosted['embed']} on the embed output, before the first "
+                                      "block (parity::FlexConfig embed_expr)"))
+        if non_pre:
+            custom["norm_placement"] = (placement["attn"] if placement["attn"] == placement["ffn"] else
+                                        {"attn": placement["attn"], "ffn": placement["ffn"]})
+            report.append(("MATCHED", f"norm_placement = {json.dumps(custom['norm_placement'])} on the flex family "
+                                      "(parity::FlexConfig place_attn / place_ffn); the norm before the head stays "
+                                      "unless both sublayers are post-norm"))
         if flav.get("positional") == "rope":
             report.append(("MATCHED", "position = rope on the flex family (the paper's other flavours are not the "
                                       "llama block's): every head rotated, interleaved pairs, theta 10000, as "

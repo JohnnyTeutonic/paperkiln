@@ -3,7 +3,9 @@
 // srd_needle.cpp): 2 pre-LN blocks, learned positional embeddings,
 // attention flavor pluggable. Kept identical across experiments so results
 // compare across runs.
+#include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <map>
 #include <memory>
 #include <optional>
@@ -534,9 +536,9 @@ private:
 // bit-for-bit — same seed layout, same modules, same tape.
 struct FlexConfig {
     size_t vocab = 0, d = 128, n_layers = 2, n_heads = 4, d_ff = 512, n_ctx = 128;
-    std::string norm = "layernorm";  // layernorm | rmsnorm | expr:<e> (e over x, row reductions allowed)
-    std::string act = "gelu";        // gelu | relu | swiglu | expr:<e> (e over x)
-    std::string pos = "learned";     // learned | sinusoidal | rope
+    std::string norm = "layernorm";  // layernorm | rmsnorm | expr:<e> (e over the row, row reductions allowed)
+    std::string act = "gelu";        // gelu | relu | swiglu | expr:<e>
+    std::string pos = "learned";     // learned | sinusoidal | rope | t5_relative
     float rope_theta = 10000.0f;     // pos == "rope" (the llama block's default)
     // Registry #0001 (Highway Networks, arXiv 1505.00387): how each
     // sublayer's output combines with its input stream.
@@ -551,6 +553,131 @@ struct FlexConfig {
     // flavors reproduces ParityLM(SWA) bitwise (tests/test_deep_swa.cpp).
     std::string attention = "exact";  // exact | swa
     size_t window = 64, sinks = 1;    // read only when attention == "swa"
+    // The inputs of an expr activation or norm, in the expression's order (x, then a, b, ...;
+    // LOCAL_LLM_STACK.md section 11 item 4.2). Activation: "up" (the up-projection, exactly once)
+    // and "gate" (a second projection d -> d_ff, at most once: a gated unit). Norm: "row" (the
+    // row, exactly once). Either slot: "scalar" (one learned number, as DyT's alpha) or
+    // "channel" (a learned vector over the slot's width: d_ff for the activation, d for the
+    // norm), each starting at init. Empty = the one input (up, row). Each norm has its own
+    // learned inputs (a block's norms, the head's); the activation's are per block.
+    // A norm's learned input may start differently by where the norm sits (DyT on LLaMA: alpha 0.8 in
+    // the attention sublayer's norms, 0.2 in the FFN's and the head's): init_attn / init_ffn /
+    // init_final, NaN = init.
+    struct ExprInput {
+        std::string kind;
+        float init = 1.0f;
+        float init_attn = NAN, init_ffn = NAN, init_final = NAN;
+        float init_at(const std::string& where) const {
+            const float v = where == "attn" ? init_attn : where == "ffn" ? init_ffn : where == "final" ? init_final : NAN;
+            return std::isnan(v) ? init : v;
+        }
+    };
+    std::vector<ExprInput> act_inputs, norm_inputs;
+    // An expr on the embed section's output before the first block (DyT on LLaMA: a learned scalar
+    // times the token embedding): "" none, else "expr:<e>" over embed_inputs ("row" once, learned
+    // scalars and channels of width d).
+    std::string embed_expr;
+    std::vector<ExprInput> embed_inputs;
+    // Where each sublayer's norm n sits, f the sublayer: pre x + f(n(x)) (the default); post
+    // n(x + f(x)) (the original Transformer); sandwich x + n'(f(n(x))) (a second norm on the
+    // output, Gemma 2); branch_post x + n(f(x)) (Primer's FFN: the norm after the
+    // transformation, inside the residual branch); none x + f(x).
+    std::string place_attn = "pre", place_ffn = "pre";
+    // The norm before the head: -1 = present unless both sublayers are post-norm (the stream
+    // then leaves the last block normalised, as in the original Transformer); 0 absent; 1 present.
+    int final_norm = -1;
+    bool has_final_norm() const {
+        return final_norm < 0 ? !(place_attn == "post" && place_ffn == "post") : final_norm == 1;
+    }
+    // position "t5_relative" (Raffel et al. 2020, section 2.1): no position table; every head adds
+    // a learned bias, by bucketed query-key distance, to its attention scores
+    // (ops::relpos_attention), from one table [rel_buckets, heads] shared by every layer. Trains;
+    // keramos v1.2.0 has no IR for it, so the GGUF export refuses (FlexLM::family_export).
+    size_t rel_buckets = 32, rel_max_distance = 128;
+    // What is wrong with this configuration, or "" (mtstudio and the tests refuse with it).
+    std::string problem() const;
+};
+
+inline bool flex_placement_ok(const std::string& p) {
+    return p == "pre" || p == "post" || p == "sandwich" || p == "branch_post" || p == "none";
+}
+inline bool flex_pre_like(const std::string& p) { return p == "pre" || p == "sandwich"; }
+
+inline std::string FlexConfig::problem() const {
+    if (!flex_placement_ok(place_attn) || !flex_placement_ok(place_ffn))
+        return "norm_placement must be pre, post, sandwich, branch_post or none (attention: " + place_attn +
+               ", ffn: " + place_ffn + ")";
+    auto check_inputs = [](const std::vector<ExprInput>& ins, const std::string& own, const std::string& slot,
+                           bool gate_ok) -> std::string {
+        size_t n_own = 0, n_gate = 0;
+        for (const auto& i : ins) {
+            if (i.kind == own) ++n_own;
+            else if (i.kind == "gate" && gate_ok) ++n_gate;
+            else if (i.kind != "scalar" && i.kind != "channel")
+                return slot + "_inputs: unknown input \"" + i.kind + "\" (" + own + (gate_ok ? ", gate" : "") +
+                       ", scalar, channel)";
+            if (!std::isfinite(i.init)) return slot + "_inputs: an init is not finite";
+        }
+        if (ins.size() > Expr::kMaxInputs) return slot + "_inputs: more than 23 inputs";
+        if (n_own != 1) return slot + "_inputs must name \"" + own + "\" exactly once";
+        if (n_gate > 1) return slot + "_inputs: at most one gate";
+        return "";
+    };
+    if (!act_inputs.empty()) {
+        if (act.rfind("expr:", 0) != 0) return "activation_inputs need an expr activation";
+        const std::string e = check_inputs(act_inputs, "up", "activation", true);
+        if (!e.empty()) return e;
+    }
+    if (!norm_inputs.empty()) {
+        if (norm.rfind("expr:", 0) != 0) return "norm_inputs need an expr norm";
+        const std::string e = check_inputs(norm_inputs, "row", "norm", false);
+        if (!e.empty()) return e;
+    }
+    if (!embed_expr.empty() && embed_expr.rfind("expr:", 0) != 0) return "embed must be expr:<e>";
+    if (!embed_inputs.empty()) {
+        if (embed_expr.empty()) return "embed_inputs need an embed expr";
+        const std::string e = check_inputs(embed_inputs, "row", "embed", false);
+        if (!e.empty()) return e;
+    }
+    if (pos == "t5_relative") {
+        if (attention != "exact") return "position t5_relative needs exact attention";
+        if (rel_buckets < 2 || rel_max_distance <= rel_buckets / 2)
+            return "position t5_relative needs rel_buckets >= 2 and rel_max_distance > rel_buckets / 2";
+    }
+    return "";
+}
+
+// A learned expr input as the expression's [T, w] operand: 1 * p, p a [1, 1] scalar or a [1, w]
+// vector broadcast over the rows (exact; the IR's scale node over a row of ones computes the same).
+inline Var flex_param_row(const Var& p, size_t T, size_t w) {
+    const Var r = p->data.cols() == 1 && w != 1 ? ops::broadcast_cols(p, w) : p;
+    return ops::mul_row(make_var(Matrix(T, w, 1.0f)), r);
+}
+
+// The expr's operands in its input order: `own` (the row, the up-projection) and `gate` where the
+// inputs name them, each learned input as flex_param_row. No inputs listed = {own}.
+inline std::vector<Var> flex_expr_args(const std::vector<FlexConfig::ExprInput>& ins, const Var& own,
+                                       const Var& gate, const std::vector<Var>& params) {
+    if (ins.empty()) return {own};
+    std::vector<Var> args;
+    size_t k = 0;
+    const size_t T = own->data.rows(), w = own->data.cols();
+    for (const auto& i : ins) {
+        if (i.kind == "up" || i.kind == "row") args.push_back(own);
+        else if (i.kind == "gate") args.push_back(gate);
+        else args.push_back(flex_param_row(params.at(k++), T, w));
+    }
+    return args;
+}
+
+// One norm of a flex block or head: layernorm (ln), rmsnorm (w), or the expr norm
+// e(row, learned inputs) * w + b (the gain w and bias b per feature, then the expr's own learned
+// inputs in its order). Unused = none of them set.
+struct FlexNorm {
+    std::shared_ptr<nn::LayerNorm> ln;
+    Var w, b;
+    std::vector<Var> params;
+    bool on() const { return ln || w; }
 };
 
 // The expr norm: e(x) * g + b (FlexConfig, norm "expr:<e>").
@@ -558,10 +685,28 @@ inline Var flex_expr_norm(const Var& x, const Expr& e, const Var& g, const Var& 
     return ops::add_bias(ops::mul_row(ops::expr({x}, e), g), b);
 }
 
+inline Var flex_norm_forward(const FlexNorm& n, const Var& x, const Expr* e,
+                             const std::vector<FlexConfig::ExprInput>& ins) {
+    if (n.ln) return n.ln->forward(x);
+    if (!e) return ops::rmsnorm(x, n.w);
+    if (ins.empty()) return flex_expr_norm(x, *e, n.w, n.b);
+    return ops::add_bias(ops::mul_row(ops::expr(flex_expr_args(ins, x, nullptr, n.params), *e), n.w), n.b);
+}
+
+// The expr's input letters (x, a, b, ...), for parameter and tensor names.
+inline std::string flex_input_letter(size_t i) { return i == 0 ? "x" : std::string(1, char('a' + i - 1)); }
+
+// T5's relative position bias for FlexBlock::attend: the shared table and the bucket of each distance.
+struct FlexRelPos {
+    Var table;
+    const std::vector<int>* buckets = nullptr;
+};
+
 class FlexBlock : public nn::Module {
 public:
     FlexBlock(const FlexConfig& c, unsigned s)
-        : norm_(c.norm), act_(c.act), residual_(c.residual), rope_(c.pos == "rope"), rope_theta_(c.rope_theta) {
+        : norm_(c.norm), act_(c.act), residual_(c.residual), place_attn_(c.place_attn), place_ffn_(c.place_ffn),
+          rope_(c.pos == "rope"), rope_theta_(c.rope_theta), act_in_(c.act_inputs), norm_in_(c.norm_inputs) {
         if (residual_ == "highway") {
             // One gate per sublayer, T(x) on the raw stream. Seeds are far
             // from the existing layout so the equivalence pin's seed map
@@ -573,16 +718,29 @@ public:
                 gate_m->b->data(0, j) = c.gate_bias_init;
             }
         }
+        // Norm slots: 0 the attention sublayer's, 1 the FFN's, 2 and 3 their sandwich output norms.
+        // Registered in that order (the default pre-norm block registers exactly as before).
+        const bool on[4] = {c.place_attn != "none", c.place_ffn != "none", c.place_attn == "sandwich",
+                            c.place_ffn == "sandwich"};
+        static const char* ln_names[4] = {"ln_1", "ln_2", "ln_1_out", "ln_2_out"};
+        static const char* n_names[4] = {"norm1", "norm2", "norm1_out", "norm2_out"};
         if (norm_ == "layernorm") {
-            ln1 = mod<nn::LayerNorm>("ln_1", c.d);
-            ln2 = mod<nn::LayerNorm>("ln_2", c.d);
+            for (int i = 0; i < 4; ++i)
+                if (on[i]) ns[i].ln = mod<nn::LayerNorm>(ln_names[i], c.d);
         } else {
-            n1_w = reg("norm1.weight", Matrix(1, c.d, 1.0f));
-            n2_w = reg("norm2.weight", Matrix(1, c.d, 1.0f));
-            if (norm_.rfind("expr:", 0) == 0) {  // e(x) * g + b: the gain above, a bias here
-                norm_expr = std::make_shared<const Expr>(Expr::parse(norm_.substr(5), 1));
-                n1_b = reg("norm1.bias", Matrix(1, c.d, 0.0f));
-                n2_b = reg("norm2.bias", Matrix(1, c.d, 0.0f));
+            for (int i = 0; i < 4; ++i)
+                if (on[i]) ns[i].w = reg(std::string(n_names[i]) + ".weight", Matrix(1, c.d, 1.0f));
+            if (norm_.rfind("expr:", 0) == 0) {  // e(x, ...) * g + b: the gain above, a bias here
+                norm_expr = std::make_shared<const Expr>(
+                    Expr::parse(norm_.substr(5), std::max<size_t>(1, norm_in_.size())));
+                for (int i = 0; i < 4; ++i)
+                    if (on[i]) ns[i].b = reg(std::string(n_names[i]) + ".bias", Matrix(1, c.d, 0.0f));
+                for (int i = 0; i < 4; ++i)
+                    for (size_t j = 0; on[i] && j < norm_in_.size(); ++j)
+                        if (norm_in_[j].kind != "row")
+                            ns[i].params.push_back(reg(std::string(n_names[i]) + ".p_" + flex_input_letter(j),
+                                                       Matrix(1, norm_in_[j].kind == "scalar" ? 1 : c.d,
+                                                              norm_in_[j].init_at(i % 2 == 0 ? "attn" : "ffn"))));
             }
         }
         if (c.attention == "swa")
@@ -598,9 +756,17 @@ public:
             mlp = mod<nn::MLP>("mlp", c.d, c.d_ff, s + 3);  // ParityLM's exact layout
         } else {  // relu or expr: nn::MLP's Linears (same seeds), the activation in between
             if (act_.rfind("expr:", 0) == 0)
-                act_expr = std::make_shared<const Expr>(Expr::parse(act_.substr(5), 1));
+                act_expr = std::make_shared<const Expr>(
+                    Expr::parse(act_.substr(5), std::max<size_t>(1, act_in_.size())));
             fc = mod<nn::Linear>("mlp.c_fc", c.d, c.d_ff, true, s + 3 + 17);
             proj = mod<nn::Linear>("mlp.c_proj", c.d_ff, c.d, true, s + 3 + 19);
+            for (size_t j = 0; j < act_in_.size(); ++j) {
+                if (act_in_[j].kind == "gate")
+                    fc_gate = mod<nn::Linear>("mlp.c_gate", c.d, c.d_ff, true, s + 3 + 18);
+                else if (act_in_[j].kind != "up")
+                    act_params.push_back(reg("mlp.p_" + flex_input_letter(j),
+                                             Matrix(1, act_in_[j].kind == "scalar" ? 1 : c.d_ff, act_in_[j].init)));
+            }
         }
     }
 
@@ -619,72 +785,98 @@ public:
     // The attention sublayer. Without rope, the module's own forward. With
     // rope, CausalSelfAttention/SlidingWindowAttention::forward with
     // ops::apply_rope (all heads) between the fused qkv projection and the
-    // per-head attention, as LlamaBlock::forward places it.
-    Var attend(const Var& n, size_t seq_len) const {
-        if (!rope_) return attn ? attn->forward(n, seq_len) : swa_attn->forward(n, seq_len);
+    // per-head attention, as LlamaBlock::forward places it. With T5's
+    // relative bias, ops::relpos_attention per head on the same projections.
+    Var attend(const Var& n, size_t seq_len, const FlexRelPos* rel = nullptr) const {
+        if (!rope_ && !rel) return attn ? attn->forward(n, seq_len) : swa_attn->forward(n, seq_len);
         const nn::Linear& c_attn = attn ? *attn->c_attn : *swa_attn->c_attn;
         const nn::Linear& c_proj = attn ? *attn->c_proj : *swa_attn->c_proj;
         const size_t H = attn ? attn->H : swa_attn->H, dk = attn ? attn->dk : swa_attn->dk, d = H * dk;
         const size_t rows = n->data.rows(), sl = seq_len == 0 ? rows : seq_len;
-        std::vector<int> pos(rows);
-        for (size_t i = 0; i < rows; ++i) pos[i] = static_cast<int>(i % sl);
-        const Var qkv = ops::apply_rope(c_attn.forward(n), pos, rope_theta_, dk, /*all_heads=*/true);
+        Var qkv = c_attn.forward(n);
+        if (rope_) {
+            std::vector<int> pos(rows);
+            for (size_t i = 0; i < rows; ++i) pos[i] = static_cast<int>(i % sl);
+            qkv = ops::apply_rope(qkv, pos, rope_theta_, dk, /*all_heads=*/true);
+        }
         const float sc = 1.0f / std::sqrt(static_cast<float>(dk));
         std::vector<Var> heads;
         for (size_t h = 0; h < H; ++h) {
             Var q = ops::slice_cols(qkv, h * dk, (h + 1) * dk);
             Var k = ops::slice_cols(qkv, d + h * dk, d + (h + 1) * dk);
             Var v = ops::slice_cols(qkv, 2 * d + h * dk, 2 * d + (h + 1) * dk);
-            heads.push_back(attn ? ops::fused_attention(q, k, v, sc, seq_len, attn->causal)
-                                 : ops::swa_attention(q, k, v, sc, swa_attn->window, swa_attn->sinks, seq_len));
+            if (rel)
+                heads.push_back(ops::relpos_attention(q, k, v, rel->table, h, *rel->buckets, sc, seq_len));
+            else
+                heads.push_back(attn ? ops::fused_attention(q, k, v, sc, seq_len, attn->causal)
+                                     : ops::swa_attention(q, k, v, sc, swa_attn->window, swa_attn->sinks, seq_len));
         }
         return c_proj.forward(ops::concat_cols(heads));
     }
 
-    Var forward(const Var& x, size_t seq_len = 0) const {
-        auto norm1 = [&](const Var& v) {
-            return ln1 ? ln1->forward(v) : norm_expr ? flex_expr_norm(v, *norm_expr, n1_w, n1_b) : ops::rmsnorm(v, n1_w);
-        };
-        auto norm2 = [&](const Var& v) {
-            return ln2 ? ln2->forward(v) : norm_expr ? flex_expr_norm(v, *norm_expr, n2_w, n2_b) : ops::rmsnorm(v, n2_w);
-        };
-        Var a_out = attend(norm1(x), seq_len);
+    Var norm(int slot, const Var& v) const { return flex_norm_forward(ns[slot], v, norm_expr.get(), norm_in_); }
+
+    // The FFN's activation over its up-projection u (and the gate's projection of n).
+    Var activate(const Var& n, const Var& u) const {
+        if (!act_expr) return ops::relu(u);
+        if (act_in_.empty()) return ops::expr({u}, *act_expr);
+        const Var g = fc_gate ? fc_gate->forward(n) : nullptr;
+        return ops::expr(flex_expr_args(act_in_, u, g, act_params), *act_expr);
+    }
+
+    Var forward(const Var& x, size_t seq_len = 0, const FlexRelPos* rel = nullptr) const {
+        Var a_out = attend(flex_pre_like(place_attn_) ? norm(0, x) : x, seq_len, rel);
+        if (place_attn_ == "sandwich") a_out = norm(2, a_out);
+        if (place_attn_ == "branch_post") a_out = norm(0, a_out);
         Var h = combine(x, a_out, gate_a);
-        Var n = norm2(h);
+        if (place_attn_ == "post") h = norm(0, h);
+        const Var n = flex_pre_like(place_ffn_) ? norm(1, h) : h;
         Var f;
         if (mlp) {
             f = mlp->forward(n);
         } else if (gate) {
             f = down->forward(ops::mul(ops::silu(gate->forward(n)), up->forward(n)));
         } else {
-            const Var u = fc->forward(n);
-            f = proj->forward(act_expr ? ops::expr({u}, *act_expr) : ops::relu(u));
+            f = proj->forward(activate(n, fc->forward(n)));
         }
-        return combine(h, f, gate_m);
+        if (place_ffn_ == "sandwich") f = norm(3, f);
+        if (place_ffn_ == "branch_post") f = norm(1, f);
+        Var y = combine(h, f, gate_m);
+        if (place_ffn_ == "post") y = norm(1, y);
+        return y;
     }
 
-    std::string norm_, act_, residual_;
+    std::string norm_, act_, residual_, place_attn_, place_ffn_;
     bool rope_ = false;
     float rope_theta_ = 10000.0f;
-    std::shared_ptr<nn::LayerNorm> ln1, ln2;
-    Var n1_w, n2_w;
-    Var n1_b, n2_b;                         // norm "expr:<e>" only
+    std::vector<FlexConfig::ExprInput> act_in_, norm_in_;
+    FlexNorm ns[4];                         // the attention's, the FFN's, their sandwich output norms
     std::shared_ptr<const Expr> norm_expr;  // norm "expr:<e>", parsed once
     std::shared_ptr<nn::CausalSelfAttention> attn;
     std::shared_ptr<nn::SlidingWindowAttention> swa_attn;  // attention="swa"
     std::shared_ptr<nn::MLP> mlp;
     std::shared_ptr<nn::Linear> gate, up, down, fc, proj;
+    std::shared_ptr<nn::Linear> fc_gate;         // activation_inputs with a "gate"
+    std::vector<Var> act_params;                 // activation_inputs' learned scalars and channels
     std::shared_ptr<nn::Linear> gate_a, gate_m;  // highway only
     std::shared_ptr<const Expr> act_expr;        // act "expr:<e>", parsed once
 };
 
+// The keramos refusal of an export with T5's relative bias: no IR op until keramos specifies one.
+inline const char* kFlexT5Refusal =
+    "position t5_relative: keramos v1.2.0 has no relative position bias in attention, so no engine can run "
+    "this model's IR (paperkiln trains it; the op is proposed to keramos, LOCAL_LLM_STACK.md section 10, "
+    "26 Oct 2026). Export safetensors only.";
+
 class FlexLM : public nn::Module {
 public:
     FlexLM(const FlexConfig& c, unsigned seed) : cfg(c) {
+        const std::string bad = c.problem();
+        if (!bad.empty()) throw std::runtime_error("flex: " + bad);
         wte = mod<nn::Embedding>("wte", c.vocab, c.d, seed + 1);
         if (c.pos == "learned") {
             wpe = mod<nn::Embedding>("wpe", c.n_ctx, c.d, seed + 2);
-        } else if (c.pos != "rope") {  // sinusoidal: the Vaswani fixed table, not a parameter
+        } else if (c.pos == "sinusoidal") {  // the Vaswani fixed table, not a parameter
             sin_table = Matrix(c.n_ctx, c.d);
             for (size_t p = 0; p < c.n_ctx; ++p)
                 for (size_t i = 0; i < c.d; ++i) {
@@ -692,17 +884,53 @@ public:
                     sin_table(p, i) =
                         static_cast<float>(i % 2 == 0 ? std::sin(angle) : std::cos(angle));
                 }
+        } else if (c.pos != "rope" && c.pos != "t5_relative") {
+            throw std::runtime_error("flex: unknown position " + c.pos + " (learned | sinusoidal | rope | t5_relative)");
         }
         for (size_t b = 0; b < c.n_layers; ++b)
             blocks.push_back(mod<FlexBlock>("layers." + std::to_string(b), c,
                                             seed + 10 * static_cast<unsigned>(b + 1)));
-        ln_f_ln = c.norm == "layernorm" ? mod<nn::LayerNorm>("ln_f", c.d) : nullptr;
-        if (!ln_f_ln) ln_f_w = reg("norm.weight", Matrix(1, c.d, 1.0f));
+        if (c.has_final_norm()) {
+            if (c.norm == "layernorm") {
+                ln_f_ln = mod<nn::LayerNorm>("ln_f", c.d);
+                fn.ln = ln_f_ln;
+            } else {
+                ln_f_w = reg("norm.weight", Matrix(1, c.d, 1.0f));
+                fn.w = ln_f_w;
+            }
+        }
         if (c.norm.rfind("expr:", 0) == 0) {
-            norm_expr = std::make_shared<const Expr>(Expr::parse(c.norm.substr(5), 1));
-            ln_f_b = reg("norm.bias", Matrix(1, c.d, 0.0f));
+            norm_expr = std::make_shared<const Expr>(Expr::parse(c.norm.substr(5), std::max<size_t>(1, c.norm_inputs.size())));
+            if (c.has_final_norm()) {
+                ln_f_b = reg("norm.bias", Matrix(1, c.d, 0.0f));
+                fn.b = ln_f_b;
+                for (size_t j = 0; j < c.norm_inputs.size(); ++j)
+                    if (c.norm_inputs[j].kind != "row")
+                        fn.params.push_back(reg("norm.p_" + flex_input_letter(j),
+                                                Matrix(1, c.norm_inputs[j].kind == "scalar" ? 1 : c.d,
+                                                       c.norm_inputs[j].init_at("final"))));
+            }
         }
         head = mod<nn::Linear>("head", c.d, c.vocab, false, seed + 99);
+        if (!c.embed_expr.empty()) {
+            embed_expr = std::make_shared<const Expr>(
+                Expr::parse(c.embed_expr.substr(5), std::max<size_t>(1, c.embed_inputs.size())));
+            for (size_t j = 0; j < c.embed_inputs.size(); ++j)
+                if (c.embed_inputs[j].kind != "row")
+                    embed_params.push_back(reg("embed.p_" + flex_input_letter(j),
+                                               Matrix(1, c.embed_inputs[j].kind == "scalar" ? 1 : c.d,
+                                                      c.embed_inputs[j].init)));
+        }
+        if (c.pos == "t5_relative") {
+            // T5 initialises its bias table like an embedding; small normal values, seeded.
+            Matrix t(c.rel_buckets, c.n_heads);
+            std::mt19937 g(seed + 7);
+            std::normal_distribution<float> nd(0.0f, 0.02f);
+            for (size_t i = 0; i < t.rows(); ++i)
+                for (size_t j = 0; j < t.cols(); ++j) t(i, j) = nd(g);
+            rel_bias = reg("rel_bias.weight", std::move(t));
+            rel_buckets = ops::t5_position_buckets(c.rel_buckets, c.rel_max_distance);
+        }
     }
 
     Var forward(const std::vector<int>& ids, size_t seq_len = 0) const {
@@ -712,7 +940,7 @@ public:
         Var h;
         if (wpe) {
             h = ops::add(wte->forward(ids), wpe->forward(pos));
-        } else if (cfg.pos == "rope") {  // positions enter in each block's attention
+        } else if (cfg.pos == "rope" || cfg.pos == "t5_relative") {  // positions enter in each block's attention
             h = wte->forward(ids);
         } else {
             Matrix pe(ids.size(), cfg.d);
@@ -720,17 +948,17 @@ public:
                 for (size_t j = 0; j < cfg.d; ++j) pe(r, j) = sin_table(pos[r], j);
             h = ops::add(wte->forward(ids), make_var(std::move(pe), false));
         }
-        for (auto& b : blocks) h = b->forward(h, seq_len);
-        Var n = ln_f_ln       ? ln_f_ln->forward(h)
-                : norm_expr ? flex_expr_norm(h, *norm_expr, ln_f_w, ln_f_b)
-                            : ops::rmsnorm(h, ln_f_w);
+        if (embed_expr) h = ops::expr(flex_expr_args(cfg.embed_inputs, h, nullptr, embed_params), *embed_expr);
+        FlexRelPos rel{rel_bias, &rel_buckets};
+        for (auto& b : blocks) h = b->forward(h, seq_len, rel_bias ? &rel : nullptr);
+        const Var n = fn.on() ? flex_norm_forward(fn, h, norm_expr.get(), cfg.norm_inputs) : h;
         return head->forward(n);
     }
 
     // GPT-2 export: only the GPT-2 flavour (the equivalence pin's config at
     // any depth and d_ff): layernorm, gelu, learned positions, residual,
     // exact or sliding-window attention (the window and sinks travel in
-    // the IR). "" when exportable, else the reason.
+    // the IR), pre-norm with the final norm. "" when exportable, else the reason.
     std::string gpt2_export_blocker() const {
         if (cfg.norm != "layernorm") return "norm " + cfg.norm + " (gpt2 export needs layernorm)";
         if (cfg.act != "gelu") return "activation " + cfg.act + " (gpt2 export needs gelu)";
@@ -738,6 +966,9 @@ public:
         if (cfg.residual != "residual") return "residual " + cfg.residual + " (gpt2 export needs residual)";
         if (cfg.attention != "exact" && cfg.attention != "swa")
             return "attention " + cfg.attention + " (gpt2 export needs exact or swa)";
+        if (!cfg.embed_expr.empty()) return "embed " + cfg.embed_expr + " (gpt2 export has no embed expr)";
+        if (cfg.place_attn != "pre" || cfg.place_ffn != "pre" || !cfg.has_final_norm())
+            return "norm placement " + cfg.place_attn + "/" + cfg.place_ffn + " (gpt2 export needs pre-norm)";
         return "";
     }
     bool windowed() const { return cfg.attention == "swa"; }
@@ -745,8 +976,8 @@ public:
         if (!gpt2_export_blocker().empty()) throw std::runtime_error("FlexLM export_ir: " + gpt2_export_blocker());
         std::vector<ir::json> irs;
         for (const auto& b : blocks)
-            irs.push_back(b->swa_attn ? nn::gpt2_block_ir(*b->ln1, *b->swa_attn, *b->ln2, *b->mlp, cfg.n_ctx)
-                                      : nn::gpt2_block_ir(*b->ln1, *b->attn, *b->ln2, *b->mlp, cfg.n_ctx));
+            irs.push_back(b->swa_attn ? nn::gpt2_block_ir(*b->ns[0].ln, *b->swa_attn, *b->ns[1].ln, *b->mlp, cfg.n_ctx)
+                                      : nn::gpt2_block_ir(*b->ns[0].ln, *b->attn, *b->ns[1].ln, *b->mlp, cfg.n_ctx));
         return nn::gpt2_ir(*wte, *wpe, irs, *ln_f_ln, head.get());
     }
     std::map<std::string, Matrix> gpt2_state_dict() const {
@@ -759,25 +990,50 @@ public:
     std::optional<FamilyExport> family_export() const {
         if (gpt2_export_blocker().empty()) return std::nullopt;
         const auto& c = cfg;
+        const char* unratified = std::getenv("PAPERKILN_IR_UNRATIFIED");
+        const bool t5 = c.pos == "t5_relative";
+        // The unratified attribute (attention.position_bias) is written only for paperkiln's own test of
+        // the keramos proposal (tests/test_flex_ir.py); no engine reads it.
+        if (t5 && !(unratified && std::string(unratified).find("t5_relative") != std::string::npos))
+            throw std::runtime_error(kFlexT5Refusal);
         const std::string p = "blk.{i}.";
         const auto& b0 = *blocks[0];
-        const bool rms = c.norm == "rmsnorm", plain = c.residual == "plain", highway = c.residual == "highway";
+        const bool plain = c.residual == "plain", highway = c.residual == "highway";
         const bool rope = c.pos == "rope";
         const size_t H = b0.attn ? b0.attn->H : b0.swa_attn->H, dk = c.d / H;
         ir::json n = ir::json::array();
-        // The expr norm: its expr node, then the gain g and bias b [d] as a
-        // scale node (FlexConfig; ir.hpp, Families: flex).
-        auto expr_norm = [&](ir::json& nodes, const std::string& in, const std::string& out, const std::string& name) {
-            nodes.push_back(ir::expr({in}, norm_expr->text(), out));
+        // A norm (slot n of a block, or the head's): layernorm, rmsnorm, or the expr norm: its learned
+        // inputs as rows (a ones row from the expr "1", then a scale node per input over it), the expr
+        // node, then the gain g and bias b [d] as a scale node (FlexConfig; ir.hpp, Families: flex).
+        auto emit_norm = [&](ir::json& nodes, const FlexNorm& nm, const std::string& in, const std::string& out,
+                             const std::string& name) {
+            if (nm.ln) {
+                nodes.push_back(nm.ln->export_ir(in, out, name));
+                return;
+            }
+            if (!norm_expr) {
+                nodes.push_back(ir::rmsnorm(in, name + ".weight", ops::kRmsNormEps, out));
+                return;
+            }
+            std::vector<std::string> ins;
+            if (c.norm_inputs.empty()) {
+                ins = {in};
+            } else {
+                bool ones = false;
+                for (size_t j = 0; j < c.norm_inputs.size(); ++j) {
+                    if (c.norm_inputs[j].kind == "row") {
+                        ins.push_back(in);
+                        continue;
+                    }
+                    if (!ones) nodes.push_back(ir::expr({in}, "1", "one"));
+                    ones = true;
+                    const std::string v = "p_" + flex_input_letter(j);
+                    nodes.push_back(ir::scale("one", name + "_p_" + flex_input_letter(j) + ".weight", "", v));
+                    ins.push_back(v);
+                }
+            }
+            nodes.push_back(ir::expr(ins, norm_expr->text(), out));
             nodes.push_back(ir::scale(out, name + "_gain.weight", name + "_gain.bias", out));
-        };
-        auto norm = [&](const std::shared_ptr<nn::LayerNorm>& ln, const std::string& in, const std::string& out,
-                        const std::string& name) {
-            if (norm_expr)
-                expr_norm(n, in, out, name);
-            else
-                n.push_back(rms ? ir::rmsnorm(in, name + ".weight", ops::kRmsNormEps, out)
-                                : ln->export_ir(in, out, name));
         };
         // FlexBlock::combine of the stream x with the sublayer output f.
         auto combine = [&](const std::string& f, const std::shared_ptr<nn::Linear>& gate, const std::string& name) {
@@ -791,54 +1047,101 @@ public:
         };
         // plain: the sublayer's last node writes the stream itself.
         const std::string o = plain ? "x" : "o", f = plain ? "x" : "f";
-        norm(b0.ln1, "x", "h", p + "attn_norm");
-        auto attn = b0.attn ? b0.attn->export_ir("h", o, p + "attn_qkv.weight", p + "attn_output.weight", "kv")
-                            : b0.swa_attn->export_ir("h", o, p + "attn_qkv.weight", p + "attn_output.weight", "kv");
-        if (rope) {  // FlexBlock::attend: the rope node between split and attention, as LlamaBlock's
-            ir::json with_rope = ir::json::array();
-            for (const auto& node : attn) {
-                if (node["op"] == "attention") with_rope.push_back(ir::rope("q", "k", "pos", H, dk, c.rope_theta, true));
-                with_rope.push_back(node);
+        const bool pre_a = flex_pre_like(c.place_attn), pre_f = flex_pre_like(c.place_ffn);
+        // A norm on the sublayer's output (sandwich, branch_post) runs on o / f before the combine;
+        // with plain residuals o and f are the stream itself, which nothing reads again.
+        if (pre_a) emit_norm(n, b0.ns[0], "x", "h", p + "attn_norm");
+        auto attn = b0.attn ? b0.attn->export_ir(pre_a ? "h" : "x", o, p + "attn_qkv.weight", p + "attn_output.weight", "kv")
+                            : b0.swa_attn->export_ir(pre_a ? "h" : "x", o, p + "attn_qkv.weight", p + "attn_output.weight", "kv");
+        if (rope || t5) {  // FlexBlock::attend: the rope node between split and attention, as LlamaBlock's
+            ir::json edited = ir::json::array();
+            for (auto node : attn) {
+                if (rope && node["op"] == "attention") edited.push_back(ir::rope("q", "k", "pos", H, dk, c.rope_theta, true));
+                if (t5 && node["op"] == "attention")
+                    node["position_bias"] = {{"weight", "rel_pos_bias.weight"}, {"buckets", rel_buckets}};
+                edited.push_back(node);
             }
-            attn = with_rope;
+            attn = edited;
         }
         for (const auto& node : attn) n.push_back(node);
+        if (c.place_attn == "sandwich") emit_norm(n, b0.ns[2], o, o, p + "attn_post_norm");
+        if (c.place_attn == "branch_post") emit_norm(n, b0.ns[0], o, o, p + "attn_norm");
         combine(o, b0.gate_a, "highway_attn");
-        norm(b0.ln2, "x", "h2", p + "ffn_norm");
+        if (c.place_attn == "post") emit_norm(n, b0.ns[0], "x", "x", p + "attn_norm");
+        if (pre_f) emit_norm(n, b0.ns[1], "x", "h2", p + "ffn_norm");
+        const std::string fin = pre_f ? "h2" : "x";
         if (b0.mlp) {
-            for (const auto& node : b0.mlp->export_ir("h2", f, p + "ffn_up.weight", p + "ffn_down.weight"))
+            for (const auto& node : b0.mlp->export_ir(fin, f, p + "ffn_up.weight", p + "ffn_down.weight"))
                 n.push_back(node);
         } else if (b0.gate) {  // swiglu: down(silu(gate h2) * up h2)
-            n.push_back(b0.gate->export_ir("h2", "g", p + "ffn_gate.weight"));
+            n.push_back(b0.gate->export_ir(fin, "g", p + "ffn_gate.weight"));
             n.push_back(ir::unary("silu", "g", "g"));
-            n.push_back(b0.up->export_ir("h2", "u", p + "ffn_up.weight"));
+            n.push_back(b0.up->export_ir(fin, "u", p + "ffn_up.weight"));
             n.push_back(ir::binary("mul", "g", "u", "g"));
             n.push_back(b0.down->export_ir("g", f, p + "ffn_down.weight"));
-        } else {  // relu, or the runtime-defined activation
-            n.push_back(b0.fc->export_ir("h2", "u", p + "ffn_up.weight"));
-            n.push_back(b0.act_expr ? ir::expr({"u"}, b0.act_expr->text(), "u")
-                                    : ir::unary("relu", "u", "u"));
+        } else {  // relu, or the runtime-defined activation (its gate and learned inputs first)
+            n.push_back(b0.fc->export_ir(fin, "u", p + "ffn_up.weight"));
+            if (!b0.act_expr) {
+                n.push_back(ir::unary("relu", "u", "u"));
+            } else if (c.act_inputs.empty()) {
+                n.push_back(ir::expr({"u"}, b0.act_expr->text(), "u"));
+            } else {
+                std::vector<std::string> ins;
+                bool ones = false;
+                for (size_t j = 0; j < c.act_inputs.size(); ++j) {
+                    const auto& k = c.act_inputs[j].kind;
+                    if (k == "up") {
+                        ins.push_back("u");
+                    } else if (k == "gate") {
+                        n.push_back(b0.fc_gate->export_ir(fin, "g", p + "ffn_gate.weight"));
+                        ins.push_back("g");
+                    } else {
+                        if (!ones) n.push_back(ir::expr({"u"}, "1", "one"));
+                        ones = true;
+                        const std::string v = "p_" + flex_input_letter(j);
+                        n.push_back(ir::scale("one", p + "ffn_act_p_" + flex_input_letter(j) + ".weight", "", v));
+                        ins.push_back(v);
+                    }
+                }
+                n.push_back(ir::expr(ins, b0.act_expr->text(), "u"));
+            }
             n.push_back(b0.proj->export_ir("u", f, p + "ffn_down.weight"));
         }
+        if (c.place_ffn == "sandwich") emit_norm(n, b0.ns[3], f, f, p + "ffn_post_norm");
+        if (c.place_ffn == "branch_post") emit_norm(n, b0.ns[1], f, f, p + "ffn_norm");
         combine(f, b0.gate_m, "highway_ffn");
+        if (c.place_ffn == "post") emit_norm(n, b0.ns[1], "x", "x", p + "ffn_norm");
         const size_t window = b0.swa_attn ? c.window : 0, sinks = b0.swa_attn ? c.sinks : 0;
         const ir::json state = ir::json::array({ir::kv_state("kv", H, H, dk, c.n_ctx, window, sinks)});
         ir::json head_nodes = ir::json::array();
-        if (norm_expr)
-            expr_norm(head_nodes, "x", "h", "output_norm");
-        else
-            head_nodes.push_back(rms ? ir::rmsnorm("x", "output_norm.weight", ops::kRmsNormEps, "h")
-                                     : ln_f_ln->export_ir("x", "h", "output_norm"));
-        head_nodes.push_back(head->export_ir("h", "logits", "output.weight"));
+        if (fn.on())
+            emit_norm(head_nodes, fn, "x", "h", "output_norm");
+        head_nodes.push_back(head->export_ir(fn.on() ? "h" : "x", "logits", "output.weight"));
         FamilyExport fx;
         fx.heads = H;
         fx.d_ff = c.d_ff;
+        ir::json embed_nodes = rope || t5 ? ir::json::array({wte->export_ir("tokens", "x", "token_embd.weight")})
+                                          : gpt2_embed_ir(*wte);
+        if (embed_expr) {  // the expr on the embed output: its learned inputs as scale nodes over a ones row
+            std::vector<std::string> ins;
+            bool ones = false;
+            for (size_t j = 0; j < std::max<size_t>(1, c.embed_inputs.size()); ++j) {
+                if (c.embed_inputs.empty() || c.embed_inputs[j].kind == "row") {
+                    ins.push_back("x");
+                    continue;
+                }
+                if (!ones) embed_nodes.push_back(ir::expr({"x"}, "1", "one"));
+                ones = true;
+                const std::string v = "p_" + flex_input_letter(j);
+                embed_nodes.push_back(ir::scale("one", "embd_p_" + flex_input_letter(j) + ".weight", "", v));
+                ins.push_back(v);
+            }
+            embed_nodes.push_back(ir::expr(ins, embed_expr->text(), "x"));
+        }
         fx.ir = family_doc(c.residual == "residual" ? "flex" : "flex_" + c.residual, c.vocab, c.d, c.n_layers,
-                           c.n_ctx, /*positions=*/true,
-                           rope ? ir::json::array({wte->export_ir("tokens", "x", "token_embd.weight")})
-                                : gpt2_embed_ir(*wte),
-                           state, n, head_nodes);
-        if (c.norm == "layernorm" && c.act == "gelu" && c.pos == "learned" && plain) {
+                           c.n_ctx, /*positions=*/true, embed_nodes, state, n, head_nodes);
+        if (c.norm == "layernorm" && c.act == "gelu" && c.pos == "learned" && plain && c.place_attn == "pre" &&
+            c.place_ffn == "pre" && c.has_final_norm()) {
             // llama.cpp's gpt2 tensors exactly, but no gpt2 graph computes
             // a block without its skip connections.
             fx.arch = "gpt2";
@@ -851,33 +1154,40 @@ public:
         fx.arch = "paperkiln";
         using L = gguf::NamedTensor::Layout;
         put_tensor(fx.tensors, "token_embd.weight", wte->weight->data, L::ROWS);
-        // Sinusoidal positions: the fixed table, as the model adds it. RoPE: no table.
-        if (!rope) put_tensor(fx.tensors, "position_embd.weight", wpe ? wpe->weight->data : sin_table, L::ROWS);
-        fx.constants = wpe || rope ? 0 : 1;
-        auto put_expr_norm = [&](const std::string& name, const Var& g, const Var& b) {
-            put_tensor(fx.tensors, name + "_gain.weight", g->data, L::VEC);
-            put_tensor(fx.tensors, name + "_gain.bias", b->data, L::VEC);
+        // Sinusoidal positions: the fixed table, as the model adds it. RoPE and T5's bias: no table.
+        if (!rope && !t5) put_tensor(fx.tensors, "position_embd.weight", wpe ? wpe->weight->data : sin_table, L::ROWS);
+        fx.constants = wpe || rope || t5 ? 0 : 1;
+        // A learned expr input [1, 1] or [1, w] as its [w] tensor (a scalar repeated: the IR's scale
+        // over a row of ones then gives 1 * p at every entry).
+        auto put_param = [&](const std::string& name, const Var& v, size_t w) {
+            Matrix m(1, w);
+            for (size_t j = 0; j < w; ++j) m(0, j) = v->data(0, v->data.cols() == 1 ? 0 : j);
+            put_tensor(fx.tensors, name, m, L::VEC);
+        };
+        auto put_norm = [&](const std::string& name, const FlexNorm& nm) {
+            if (nm.ln) {
+                put_layernorm(fx.tensors, name, *nm.ln);
+            } else if (!norm_expr) {
+                put_tensor(fx.tensors, name + ".weight", nm.w->data, L::VEC);
+            } else {
+                put_tensor(fx.tensors, name + "_gain.weight", nm.w->data, L::VEC);
+                put_tensor(fx.tensors, name + "_gain.bias", nm.b->data, L::VEC);
+                for (size_t j = 0, k = 0; j < c.norm_inputs.size(); ++j)
+                    if (c.norm_inputs[j].kind != "row")
+                        put_param(name + "_p_" + flex_input_letter(j) + ".weight", nm.params[k++], c.d);
+            }
         };
         for (size_t b = 0; b < blocks.size(); ++b) {
             const std::string g = "blk." + std::to_string(b) + ".";
             const auto& k = *blocks[b];
-            if (norm_expr)
-                put_expr_norm(g + "attn_norm", k.n1_w, k.n1_b);
-            else if (rms)
-                put_tensor(fx.tensors, g + "attn_norm.weight", k.n1_w->data, L::VEC);
-            else
-                put_layernorm(fx.tensors, g + "attn_norm", *k.ln1);
+            if (k.ns[0].on()) put_norm(g + "attn_norm", k.ns[0]);
             const nn::Linear& qkv = k.attn ? *k.attn->c_attn : *k.swa_attn->c_attn;
             const nn::Linear& out = k.attn ? *k.attn->c_proj : *k.swa_attn->c_proj;
             put_linear(fx.tensors, g + "attn_qkv", qkv);
             put_linear(fx.tensors, g + "attn_output", out);
+            if (k.ns[2].on()) put_norm(g + "attn_post_norm", k.ns[2]);
             if (highway) put_linear(fx.tensors, g + "highway_attn", *k.gate_a);
-            if (norm_expr)
-                put_expr_norm(g + "ffn_norm", k.n2_w, k.n2_b);
-            else if (rms)
-                put_tensor(fx.tensors, g + "ffn_norm.weight", k.n2_w->data, L::VEC);
-            else
-                put_layernorm(fx.tensors, g + "ffn_norm", *k.ln2);
+            if (k.ns[1].on()) put_norm(g + "ffn_norm", k.ns[1]);
             if (k.mlp) {
                 put_linear(fx.tensors, g + "ffn_up", *k.mlp->c_fc);
                 put_linear(fx.tensors, g + "ffn_down", *k.mlp->c_proj);
@@ -888,16 +1198,20 @@ public:
             } else {
                 put_linear(fx.tensors, g + "ffn_up", *k.fc);
                 put_linear(fx.tensors, g + "ffn_down", *k.proj);
+                if (k.fc_gate) put_linear(fx.tensors, g + "ffn_gate", *k.fc_gate);
+                for (size_t j = 0, q = 0; j < c.act_inputs.size(); ++j)
+                    if (c.act_inputs[j].kind == "scalar" || c.act_inputs[j].kind == "channel")
+                        put_param(g + "ffn_act_p_" + flex_input_letter(j) + ".weight", k.act_params[q++], c.d_ff);
             }
+            if (k.ns[3].on()) put_norm(g + "ffn_post_norm", k.ns[3]);
             if (highway) put_linear(fx.tensors, g + "highway_ffn", *k.gate_m);
         }
-        if (norm_expr)
-            put_expr_norm("output_norm", ln_f_w, ln_f_b);
-        else if (rms)
-            put_tensor(fx.tensors, "output_norm.weight", ln_f_w->data, L::VEC);
-        else
-            put_layernorm(fx.tensors, "output_norm", *ln_f_ln);
+        if (fn.on()) put_norm("output_norm", fn);
         put_linear(fx.tensors, "output", *head);
+        if (t5) put_tensor(fx.tensors, "rel_pos_bias.weight", rel_bias->data, L::ROWS);
+        for (size_t j = 0, k = 0; j < c.embed_inputs.size(); ++j)
+            if (c.embed_inputs[j].kind != "row")
+                put_param("embd_p_" + flex_input_letter(j) + ".weight", embed_params[k++], c.d);
         return fx;
     }
 
@@ -908,9 +1222,9 @@ private:
         for (size_t b = 0; b < blocks.size(); ++b) {
             const auto& k = *blocks[b];
             if (k.swa_attn)
-                put_gpt2_block(sd, b, *k.ln1, *k.swa_attn, *k.ln2, *k.mlp);
+                put_gpt2_block(sd, b, *k.ns[0].ln, *k.swa_attn, *k.ns[1].ln, *k.mlp);
             else
-                put_gpt2_block(sd, b, *k.ln1, *k.attn, *k.ln2, *k.mlp);
+                put_gpt2_block(sd, b, *k.ns[0].ln, *k.attn, *k.ns[1].ln, *k.mlp);
         }
         return sd;
     }
@@ -924,8 +1238,13 @@ public:
     std::shared_ptr<nn::LayerNorm> ln_f_ln;
     Var ln_f_w;
     Var ln_f_b;                             // norm "expr:<e>" only
+    FlexNorm fn;                            // the norm before the head (cfg.has_final_norm())
     std::shared_ptr<const Expr> norm_expr;  // norm "expr:<e>", parsed once
     std::shared_ptr<nn::Linear> head;
+    std::shared_ptr<const Expr> embed_expr; // cfg.embed_expr, parsed once
+    std::vector<Var> embed_params;          // its learned inputs
+    Var rel_bias;                           // position t5_relative: [rel_buckets, heads], every layer's
+    std::vector<int> rel_buckets;           // its bucket by distance (ops::t5_position_buckets)
 };
 
 // Mamba-1 (Gu and Dao 2023; llama.cpp's mamba graph, keramos IR_SPEC 6.6-6.7 and tools/gguf_ir.py's

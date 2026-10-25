@@ -69,6 +69,17 @@ struct Spec {
     // Paper-faithful flavor knobs (the flex family; empty = family default).
     std::string norm, activation, position;
     std::string residual;           // "" = family default | residual | highway | plain
+    // flex only (parity::FlexConfig; LOCAL_LLM_STACK 11 item 4.2): arch.custom.activation_inputs and
+    // norm_inputs (an expr slot's inputs in order: "up" / "gate" / "row" / "scalar" / "channel", or
+    // {"kind": ..., "init": v}); norm_placement ("pre" | "post" | "sandwich" | "branch_post" | "none",
+    // or {"attn": .., "ffn": ..}); final_norm (true / false; unset = parity::FlexConfig's rule);
+    // position "t5_relative" with rel_buckets and rel_max_distance.
+    std::vector<parity::FlexConfig::ExprInput> act_inputs, norm_inputs, embed_inputs;
+    std::string embed_expr;  // arch.custom.embed "expr:<e>" (parity::FlexConfig embed_expr)
+    std::string place_attn = "pre", place_ffn = "pre";
+    int final_norm = -1;
+    size_t rel_buckets = 32, rel_max_distance = 128;
+    bool flex_only_keys = false;  // any of the above given
     float gate_bias_init = -2.0f;   // highway only (registry #0001)
     size_t d_ff = 0;                // 0 = family default (4d gpt2/flex, 3d llama)
     size_t window = 64, sinks = 1;  // swa lane only (S1 baseline)
@@ -296,6 +307,66 @@ Spec parse_spec(const std::string& path) {
         s.activation = c.value("activation", s.activation);
         s.position = c.value("position", s.position);
         s.residual = c.value("residual", s.residual);
+        auto expr_inputs = [&](const char* key, std::vector<parity::FlexConfig::ExprInput>& out) {
+            if (!c.contains(key)) return;
+            if (!c[key].is_array() || c[key].empty())
+                throw std::runtime_error(std::string("arch.custom.") + key + " must be a non-empty array");
+            for (const auto& e : c[key]) {
+                parity::FlexConfig::ExprInput in;
+                if (e.is_string()) {
+                    in.kind = e.get<std::string>();
+                } else if (e.is_object() && e.contains("kind")) {
+                    in.kind = e["kind"].get<std::string>();
+                    in.init = e.value("init", in.init);
+                    in.init_attn = e.value("init_attn", in.init_attn);
+                    in.init_ffn = e.value("init_ffn", in.init_ffn);
+                    in.init_final = e.value("init_final", in.init_final);
+                    for (const auto& [k, v] : e.items())
+                        if (k != "kind" && k != "init" && k != "init_attn" && k != "init_ffn" && k != "init_final" &&
+                            k.rfind("_", 0) != 0)
+                            throw std::runtime_error(std::string("arch.custom.") + key + ": unknown key " + k +
+                                                     " (kind, init, init_attn, init_ffn, init_final)");
+                } else {
+                    throw std::runtime_error(std::string("arch.custom.") + key +
+                                             " entries are a kind or {\"kind\": .., \"init\": ..}");
+                }
+                out.push_back(in);
+            }
+            s.flex_only_keys = true;
+        };
+        expr_inputs("activation_inputs", s.act_inputs);
+        expr_inputs("norm_inputs", s.norm_inputs);
+        expr_inputs("embed_inputs", s.embed_inputs);
+        if (c.contains("embed")) {
+            s.embed_expr = c["embed"].get<std::string>();
+            s.flex_only_keys = true;
+        }
+        if (c.contains("norm_placement")) {
+            const json& p = c["norm_placement"];
+            if (p.is_string()) {
+                s.place_attn = s.place_ffn = p.get<std::string>();
+            } else if (p.is_object()) {
+                for (const auto& [k, v] : p.items())
+                    if (k != "attn" && k != "ffn" && k.rfind("_", 0) != 0)
+                        throw std::runtime_error("arch.custom.norm_placement: unknown key " + k + " (attn, ffn)");
+                s.place_attn = p.value("attn", s.place_attn);
+                s.place_ffn = p.value("ffn", s.place_ffn);
+            } else {
+                throw std::runtime_error("arch.custom.norm_placement must be a placement or {\"attn\": .., \"ffn\": ..}");
+            }
+            if (!parity::flex_placement_ok(s.place_attn) || !parity::flex_placement_ok(s.place_ffn))
+                throw std::runtime_error("arch.custom.norm_placement must be pre, post, sandwich, branch_post or none");
+            s.flex_only_keys = s.flex_only_keys || s.place_attn != "pre" || s.place_ffn != "pre";
+        }
+        if (c.contains("final_norm")) {
+            s.final_norm = c["final_norm"].get<bool>() ? 1 : 0;
+            s.flex_only_keys = true;
+        }
+        if (c.contains("rel_buckets") || c.contains("rel_max_distance")) {
+            s.rel_buckets = c.value("rel_buckets", s.rel_buckets);
+            s.rel_max_distance = c.value("rel_max_distance", s.rel_max_distance);
+            s.flex_only_keys = true;
+        }
         s.gate_bias_init = c.value("gate_bias_init", s.gate_bias_init);
         s.d_ff = c.value("d_ff", s.d_ff);
         s.window = c.value("window", s.window);
@@ -408,13 +479,14 @@ Spec parse_spec(const std::string& path) {
     // and every other flavor combination, is the flex family — the
     // paper-faithful decoder (rope on every head, as the llama block).
     if (s.family == "mamba" && (!s.norm.empty() || !s.activation.empty() || !s.position.empty() ||
-                                !s.residual.empty() || s.attention != "exact"))
+                                !s.residual.empty() || s.attention != "exact" || s.flex_only_keys))
         throw std::runtime_error("the mamba preset takes no flavor knobs or attention kind (d, layers, d_state)");
     if (s.family == "mamba") {
     } else if (s.position == "rope") {
         const bool llama_block = (s.norm.empty() || s.norm == "rmsnorm") &&
                                  (s.activation.empty() || s.activation == "swiglu") &&
-                                 (s.residual.empty() || s.residual == "residual") && s.attention == "exact";
+                                 (s.residual.empty() || s.residual == "residual") && s.attention == "exact" &&
+                                 !s.flex_only_keys;
         if (llama_block) {
             s.family = "llama";
         } else {
@@ -427,7 +499,7 @@ Spec parse_spec(const std::string& path) {
             s.family = "flex";
         }
     } else if (!s.norm.empty() || !s.activation.empty() || !s.position.empty() ||
-               !s.residual.empty()) {
+               !s.residual.empty() || s.flex_only_keys) {
         if (s.attention != "exact" && s.attention != "swa")
             throw std::runtime_error(
                 "flavor knobs (norm/activation/position/residual) require "
@@ -448,6 +520,9 @@ Spec parse_spec(const std::string& path) {
                 "kimi/srd/recurrence are 2-block parity models (layers must be 2)");
     }
 
+    if (s.flex_only_keys && s.family != "flex")
+        throw std::runtime_error("arch.custom.activation_inputs, norm_inputs, embed, embed_inputs, norm_placement, final_norm and "
+                                 "rel_buckets / rel_max_distance need the flex family");
     if (s.attn_res && s.family != "llama")
         throw std::runtime_error("arch.custom.attn_res needs the llama family (rmsnorm, swiglu, rope, exact attention); "
                                  "the gpt2 attnres preset is its own family");
@@ -1834,50 +1909,71 @@ void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama, 
 // and gradient finite on x in [-20, 20] step 0.25. A failure throws: a
 // wrong or non-finite gradient would train silently. The event is the
 // receipt (worst error, the probe).
-json expr_gradcheck(const std::string& text, const std::string& slot = "activation") {
-    const Expr e = Expr::parse(text, 1);
+json expr_gradcheck(const std::string& text, const std::string& slot = "activation",
+                    const std::vector<parity::FlexConfig::ExprInput>& ins = {}) {
+    // Several inputs (a gate, learned scalars or channels; parity::FlexConfig): every input is
+    // checked. The slot's own rows and the gate are random as x is; a learned input is its init
+    // plus noise (finite differences around where training starts), and its probe value is its init.
+    const size_t n_in = std::max<size_t>(1, ins.size());
+    auto learned = [&](size_t k) { return k < ins.size() && (ins[k].kind == "scalar" || ins[k].kind == "channel"); };
+    const Expr e = Expr::parse(text, n_in);
     const size_t T = 4, w = 8;
     std::mt19937 gen(20261023);
     std::normal_distribution<float> nd(0.0f, 1.0f);
-    Matrix X(T, w), R(T, w);
+    std::vector<Var> xs;
+    Matrix R(T, w);
+    for (size_t k = 0; k < n_in; ++k) {
+        Matrix X(T, w);
+        for (size_t i = 0; i < T; ++i)
+            for (size_t j = 0; j < w; ++j) {
+                const float v = nd(gen);
+                X(i, j) = learned(k) ? ins[k].init + 0.3f * v : (v < 0 ? -0.2f : 0.2f) + v;
+            }
+        xs.push_back(make_var(X, true));
+    }
     for (size_t i = 0; i < T; ++i)
-        for (size_t j = 0; j < w; ++j) {
-            const float v = nd(gen);
-            X(i, j) = (v < 0 ? -0.2f : 0.2f) + v;
-            R(i, j) = nd(gen);
-        }
-    const Var x = make_var(X, true);
+        for (size_t j = 0; j < w; ++j) R(i, j) = nd(gen);
     const Var r = make_var(R);
     auto loss_of = [&]() {
-        return ops::scale(ops::mean(ops::mul(ops::expr({x}, e), r)), static_cast<float>(T * w));
+        return ops::scale(ops::mean(ops::mul(ops::expr(xs, e), r)), static_cast<float>(T * w));
     };
     backward(loss_of());
     const float h = 1e-2f;
     double worst = 0;
-    for (size_t i = 0; i < T; ++i)
-        for (size_t j = 0; j < w; ++j) {
-            const float keep = x->data(i, j);
-            NoGrad ng;
-            x->data(i, j) = keep + h;
-            const double up = loss_of()->data(0, 0);
-            x->data(i, j) = keep - h;
-            const double dn = loss_of()->data(0, 0);
-            x->data(i, j) = keep;
-            const double fd = (up - dn) / (2.0 * h), a = x->grad(i, j);
-            const double rel = std::abs(a - fd) / (1.0 + std::max(std::abs(a), std::abs(fd)));
-            worst = std::isfinite(rel) ? std::max(worst, rel) : INFINITY;
-        }
+    for (const Var& x : xs)
+        for (size_t i = 0; i < T; ++i)
+            for (size_t j = 0; j < w; ++j) {
+                const float keep = x->data(i, j);
+                NoGrad ng;
+                x->data(i, j) = keep + h;
+                const double up = loss_of()->data(0, 0);
+                x->data(i, j) = keep - h;
+                const double dn = loss_of()->data(0, 0);
+                x->data(i, j) = keep;
+                const double fd = (up - dn) / (2.0 * h), a = x->grad(i, j);
+                const double rel = std::abs(a - fd) / (1.0 + std::max(std::abs(a), std::abs(fd)));
+                worst = std::isfinite(rel) ? std::max(worst, rel) : INFINITY;
+            }
     const size_t n = 161;  // -20 .. 20 step 0.25
     Matrix P(1, n);
     for (size_t j = 0; j < n; ++j) P(0, j) = -20.0f + 0.25f * static_cast<float>(j);
-    const Var p = make_var(P, true);
-    const Var y = ops::expr({p}, e);
+    std::vector<Var> ps;
+    for (size_t k = 0; k < n_in; ++k) ps.push_back(make_var(learned(k) ? Matrix(1, n, ins[k].init) : P, true));
+    const Var y = ops::expr(ps, e);
     backward(ops::scale(ops::mean(y), static_cast<float>(n)));
     std::vector<float> bad;
-    for (size_t j = 0; j < n; ++j)
-        if (!std::isfinite(y->data(0, j)) || !std::isfinite(p->grad(0, j))) bad.push_back(P(0, j));
-    json ev = {{"event", "expr_gradcheck"}, {"expr", text}, {"fd_points", T * w}, {"fd_h", h},
-               {"fd_worst_rel", worst}, {"fd_tol", 2e-3}, {"probe", "x in [-20, 20] step 0.25"},
+    for (size_t j = 0; j < n; ++j) {
+        bool ok = std::isfinite(y->data(0, j));
+        for (const Var& q : ps) ok = ok && std::isfinite(q->grad(0, j));
+        if (!ok) bad.push_back(P(0, j));
+    }
+    json kinds = json::array();
+    for (size_t k = 0; k < n_in; ++k)
+        kinds.push_back(k < ins.size() ? json{{"kind", ins[k].kind}, {"init", ins[k].init}} : json("x"));
+    json ev = {{"event", "expr_gradcheck"}, {"expr", text}, {"inputs", kinds}, {"fd_points", T * w * n_in},
+               {"fd_h", h}, {"fd_worst_rel", worst}, {"fd_tol", 2e-3},
+               {"probe", n_in > 1 ? "rows in [-20, 20] step 0.25, learned inputs at their init"
+                                  : "x in [-20, 20] step 0.25"},
                {"probe_nonfinite", bad.size()}, {"pass", worst <= 2e-3 && bad.empty()}};
     if (!(worst <= 2e-3))
         throw std::runtime_error("expr " + slot + " \"" + text + "\": autograd gradient disagrees with finite "
@@ -1887,6 +1983,37 @@ json expr_gradcheck(const std::string& text, const std::string& slot = "activati
                                  std::to_string(bad[0]) + " (" + std::to_string(bad.size()) +
                                  " of 161 probe points in [-20, 20])");
     return ev;
+}
+
+// The flex family's configuration from a spec (training, export --from and chat build the same model).
+parity::FlexConfig flex_config(const Spec& s, size_t vocab) {
+    parity::FlexConfig fc;
+    fc.vocab = vocab;
+    fc.d = s.d;
+    fc.n_layers = s.layers;
+    fc.n_heads = s.heads;
+    fc.d_ff = s.d_ff ? s.d_ff : 4 * s.d;
+    fc.n_ctx = s.T;
+    if (!s.norm.empty()) fc.norm = s.norm;
+    if (!s.activation.empty()) fc.act = s.activation;
+    if (!s.position.empty()) fc.pos = s.position;
+    if (!s.residual.empty()) fc.residual = s.residual;
+    fc.gate_bias_init = s.gate_bias_init;
+    fc.attention = s.attention;
+    fc.window = s.window;
+    fc.sinks = s.sinks;
+    fc.act_inputs = s.act_inputs;
+    fc.norm_inputs = s.norm_inputs;
+    fc.embed_expr = s.embed_expr;
+    fc.embed_inputs = s.embed_inputs;
+    fc.place_attn = s.place_attn;
+    fc.place_ffn = s.place_ffn;
+    fc.final_norm = s.final_norm;
+    fc.rel_buckets = s.rel_buckets;
+    fc.rel_max_distance = s.rel_max_distance;
+    const std::string bad = fc.problem();
+    if (!bad.empty()) throw std::runtime_error("arch.custom: " + bad);
+    return fc;
 }
 
 int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
@@ -2117,44 +2244,37 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     } else if (s.family == "flex") {
         // The paper-faithful decoder: every extracted flavor is
         // constructor-real (norm/activation/position/d_ff/depth).
-        parity::FlexConfig fc;
-        fc.vocab = tokens.size();
-        fc.d = s.d;
-        fc.n_layers = s.layers;
-        fc.n_heads = s.heads;
-        fc.d_ff = s.d_ff ? s.d_ff : 4 * s.d;
-        fc.n_ctx = s.T;
-        if (!s.norm.empty()) fc.norm = s.norm;
-        if (!s.activation.empty()) fc.act = s.activation;
-        if (!s.position.empty()) fc.pos = s.position;
-        if (!s.residual.empty()) fc.residual = s.residual;
-        fc.gate_bias_init = s.gate_bias_init;
-        fc.attention = s.attention;
-        fc.window = s.window;
-        fc.sinks = s.sinks;
+        parity::FlexConfig fc = flex_config(s, tokens.size());
         if (fc.norm.rfind("expr:", 0) == 0) {
             // A runtime-defined norm (e(x) * g + b, parity_model.hpp
             // FlexConfig): its expr gradient-checked before training, as an
             // expr activation's is.
-            json gc = expr_gradcheck(fc.norm.substr(5), "norm");
+            json gc = expr_gradcheck(fc.norm.substr(5), "norm", fc.norm_inputs);
             gc["slot"] = "norm";
             ev.emit(gc);
             std::printf("expr norm %s: gradient vs finite differences worst rel %.2e, finite on [-20, 20]\n",
                         fc.norm.substr(5).c_str(), gc["fd_worst_rel"].get<double>());
         } else if (fc.norm != "layernorm" && fc.norm != "rmsnorm")
             throw std::runtime_error("unknown norm " + fc.norm);
+        if (!fc.embed_expr.empty()) {
+            json gc = expr_gradcheck(fc.embed_expr.substr(5), "embed", fc.embed_inputs);
+            gc["slot"] = "embed";
+            ev.emit(gc);
+            std::printf("expr embed %s: gradient vs finite differences worst rel %.2e\n", fc.embed_expr.substr(5).c_str(),
+                        gc["fd_worst_rel"].get<double>());
+        }
         if (fc.act.rfind("expr:", 0) == 0) {
             // A runtime-defined activation: parse (throws naming the column),
             // then its gradient against finite differences before training.
-            json gc = expr_gradcheck(fc.act.substr(5), "activation");
+            json gc = expr_gradcheck(fc.act.substr(5), "activation", fc.act_inputs);
             gc["slot"] = "activation";
             ev.emit(gc);
             std::printf("expr activation %s: gradient vs finite differences worst rel %.2e, finite on "
                         "[-20, 20]\n", fc.act.substr(5).c_str(), gc["fd_worst_rel"].get<double>());
         } else if (fc.act != "gelu" && fc.act != "relu" && fc.act != "swiglu")
             throw std::runtime_error("unknown activation " + fc.act);
-        if (fc.pos != "learned" && fc.pos != "sinusoidal" && fc.pos != "rope")
-            throw std::runtime_error("unknown position " + fc.pos + " (learned | sinusoidal | rope)");
+        if (fc.pos != "learned" && fc.pos != "sinusoidal" && fc.pos != "rope" && fc.pos != "t5_relative")
+            throw std::runtime_error("unknown position " + fc.pos + " (learned | sinusoidal | rope | t5_relative)");
         if (fc.residual != "residual" && fc.residual != "highway" && fc.residual != "plain")
             throw std::runtime_error("unknown residual " + fc.residual +
                                      " (residual | highway | plain)");
@@ -2222,6 +2342,9 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                      {"position", r_pos},
                      {"residual", flex ? flex->cfg.residual : "residual"},
                      {"gate_bias_init", flex ? flex->cfg.gate_bias_init : -2.0f},
+                     {"norm_placement", flex ? json{{"attn", flex->cfg.place_attn}, {"ffn", flex->cfg.place_ffn}}
+                                             : json("pre")},
+                     {"final_norm", flex ? flex->cfg.has_final_norm() : true},
                      {"window", s.window},
                      {"sinks", s.sinks},
                      {"d_ff", r_dff},
@@ -2232,6 +2355,22 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                      {"seed", s.seed},
                      {"checkpoint_activations", s.ckpt_act},
                      {"params", n_params}};
+    if (flex && (!flex->cfg.act_inputs.empty() || !flex->cfg.norm_inputs.empty())) {
+        auto kinds = [](const std::vector<parity::FlexConfig::ExprInput>& v) {
+            json a = json::array();
+            for (const auto& i : v) a.push_back({{"kind", i.kind}, {"init", i.init}});
+            return a;
+        };
+        model_ev["activation_inputs"] = kinds(flex->cfg.act_inputs);
+        model_ev["norm_inputs"] = kinds(flex->cfg.norm_inputs);
+    }
+    if (flex && !flex->cfg.embed_expr.empty()) {
+        json a = json::array();
+        for (const auto& i : flex->cfg.embed_inputs) a.push_back({{"kind", i.kind}, {"init", i.init}});
+        model_ev["embed"] = {{"expr", flex->cfg.embed_expr}, {"inputs", a}};
+    }
+    if (flex && flex->cfg.pos == "t5_relative")
+        model_ev["t5_relative"] = {{"buckets", flex->cfg.rel_buckets}, {"max_distance", flex->cfg.rel_max_distance}};
     if (s.lr_warmup > 0 || s.lr_decay != "none")
         model_ev["lr_schedule"] = {
             {"warmup_steps", s.lr_warmup}, {"decay", s.lr_decay}, {"min_lr_frac", s.lr_min_frac}};
@@ -3235,21 +3374,7 @@ struct LoadedLM {
         if (s.family == "mamba") {
             mamba = std::make_shared<parity::MambaLM>(tokens.size(), s.d, s.layers, s.d_state, s.seed, s.mamba1());
         } else if (s.family == "flex") {
-            parity::FlexConfig fc;
-            fc.vocab = tokens.size();
-            fc.d = s.d;
-            fc.n_layers = s.layers;
-            fc.n_heads = s.heads;
-            fc.d_ff = s.d_ff ? s.d_ff : 4 * s.d;
-            fc.n_ctx = s.T;
-            if (!s.norm.empty()) fc.norm = s.norm;
-            if (!s.activation.empty()) fc.act = s.activation;
-            if (!s.position.empty()) fc.pos = s.position;
-            if (!s.residual.empty()) fc.residual = s.residual;
-            fc.gate_bias_init = s.gate_bias_init;
-            fc.attention = s.attention;
-            fc.window = s.window;
-            fc.sinks = s.sinks;
+            const parity::FlexConfig fc = flex_config(s, tokens.size());
             flex = std::make_shared<parity::FlexLM>(fc, s.seed);
         } else if (s.attention == "attnres") {
             attnres = std::make_shared<parity::AttnResLM>(tokens.size(), s.d, s.heads, s.T, s.seed,

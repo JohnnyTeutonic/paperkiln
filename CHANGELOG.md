@@ -7,6 +7,43 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **The extractor's gaps, closed or refused by name** (26 Oct; LOCAL_LLM_STACK.md section 11 item 4.2, formerly 4.3).
+  - **Flex options** (`tools/parity_model.hpp` FlexConfig, mtstudio `arch.custom`):
+    - An expr activation or norm may read more inputs (`activation_inputs` / `norm_inputs`): a gate projection
+      (`mlp.c_gate`), learned scalars and per-channel vectors with their inits. A norm's inits can differ by
+      place (`init_attn`, `init_ffn`, `init_final`).
+    - An expr on the embed output (`embed`, `embed_inputs`).
+    - Norm placement per sublayer (`norm_placement`: pre, post, sandwich, branch_post, none, or
+      `{"attn": .., "ffn": ..}`), with no output norm when both sublayers are post-norm unless `final_norm`.
+    - `position: "t5_relative"`: T5's bucketed relative bias (`rel_buckets`, `rel_max_distance`).
+  - **IR**: the learned inputs export as `scale` nodes over a row of ones (`expr` "1"), with tensors
+    `blk.{i}.<slot>_p_<letter>.weight`, `embd_p_<letter>.weight` and `output_norm_p_<letter>.weight`. The
+    sandwich norms are `attn_post_norm` and `ffn_post_norm`. None of this needs a keramos change.
+    T5's bias has no keramos op: its GGUF export refuses by name. Only with
+    `PAPERKILN_IR_UNRATIFIED=t5_relative` does the export write the proposed
+    `attention.position_bias {weight, buckets}`, and only for the test of the proposal.
+  - **Ops**: `ops::t5_position_buckets` (T5's causal table, equal to HF's f32 computation at five
+    configurations) and `ops::relpos_attention` (forward and backward). At their defaults the options give the
+    old model bit for bit (test_flex's equivalence pin).
+  - **Checks**: `tests/test_flex.cpp` 9-11 cover gradient checks of every new input, every one of the 25
+    placement pairs against the block composed by hand, and the bias op against causal attention and finite
+    differences. `tests/test_flex_ir.py` runs ten models through ir_check, and the numpy IR matches
+    `mtstudio score` within 2.7e-7 to 3.2e-7, greedy 40/40. The T5 model is checked against the proposed
+    numpy lines.
+  - **Extractor** (`papers/llm_extract.py`): new fields `norm_placement_attn` / `_ffn` (with `branch_post`),
+    `qk_norm` (per_head, full, unspecified, none), positional `t5_bias` with `rel_buckets` and
+    `rel_max_distance`, `ssm` (mamba1, s4) with `d_state`, `d_conv`, `expand` and `dt_rank`, and each new op
+    input's role and init. The IR ops list gains conv1d_causal and selective_scan. Older replies read the new
+    fields as not stated.
+  - **Chain** (`tools/arxiv_to_chat.py`): it builds the above from the roles, including a norm's variants with
+    other inits at other places. A per-head q/k norm builds on the llama family, and Mamba-1 builds from its
+    sizes on the mamba preset. `--assert` takes `qk_norm`, `d_state`, `d_conv`, `expand` and `dt_rank`. A
+    structural op in the block graph that no family wires there now refuses: Primer's conv1d_causal on q, k
+    and v used to pass silently.
+  - **Scoring** (`papers/bench_score.py`, `papers/bench_truth_structure.json`): sizes and the block graph by
+    data flow, against labels read off the 40 papers' LaTeX. `flavor_bench.TRUTH` now gives Primer's norm as
+    its modified layer norm (out of lattice), no longer the T5 baseline's RMSNorm.
+
 - **The third-party ops train here** (26 Oct; LOCAL_LLM_STACK.md section 11 item 4.4, which this closes). The
   ops of the keramos thirdparty profile that paperkiln had only in numpy now have forward and backward passes in
   its autograd. A model that uses them trains, exports its GGUF with its IR, and runs in ember.

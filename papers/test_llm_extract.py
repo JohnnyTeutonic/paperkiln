@@ -408,6 +408,84 @@ def test_grouped_query_and_moe_block():
 
 
 # --------------------------------------------------------------------------
+# the fields of 26 Oct 2026 (LOCAL_LLM_STACK 11 item 4.2)
+
+NEW_TEX = r"""
+\section{Model}
+We apply RMSNorm to the queries and keys of each attention head before the dot product.
+The second normalization is applied after the feed forward transformation, not before it.
+The SSM state dimension is $N=16$ and we always fix the expansion factor to $E=2$; the local
+convolution has width 4, and the rank of the $\Delta$ projection is $\lceil D/16 \rceil$.
+We replace every normalization layer with DyT$(x) = \gamma \tanh(\alpha x) + \beta$, where the
+learnable scalar $\alpha$ is initialized to $\alpha_0 = 0.5$.
+Attention adds a learned scalar bias per head from 32 relative position buckets, as in T5.
+"""
+
+
+def test_old_replies_read_the_new_fields_as_not_stated():
+    out = llama_output()
+    for k in L.LATER_FIELDS:
+        out["flavours"].pop(k, None)
+    rep = L.verify(out, src(LLAMA_TEX))
+    assert rep["summary"]["unverified"] == []
+    assert all(rep["flavours"][k]["check"] == "not_stated" for k in L.LATER_FIELDS)
+
+
+def test_qk_norm_ssm_sizes_placement_and_t5_bias_verify():
+    out = base_output()
+    q_qk = "We apply RMSNorm to the queries and keys of each attention head before the dot product."
+    q_ssm = r"The SSM state dimension is $N=16$ and we always fix the expansion factor to $E=2$"
+    q_conv = "the local convolution has width 4"
+    q_dt = r"the rank of the $\Delta$ projection is $\lceil D/16 \rceil$"
+    q_ffn = "The second normalization is applied after the feed forward transformation, not before it."
+    q_t5 = "Attention adds a learned scalar bias per head from 32 relative position buckets, as in T5."
+    out["flavours"].update(
+        qk_norm=ev("per_head", "stated", q_qk, "Sec. Model"),
+        ssm=ev("mamba1", "stated", "selective " + q_ssm, ""),
+        d_state=ev("16", "stated", q_ssm, ""), expand=ev("2", "stated", q_ssm, ""),
+        d_conv=ev("4", "stated", q_conv, ""), dt_rank=ev("ceil(d_model/16)", "stated", q_dt, ""),
+        norm_placement_ffn=ev("branch_post", "stated", q_ffn, ""),
+        positional=ev("t5_bias", "stated", q_t5, ""), rel_buckets=ev("32", "stated", q_t5, ""))
+    f = L.verify(out, src(NEW_TEX))["flavours"]
+    assert f["qk_norm"]["check"] == "verified"
+    assert f["ssm"]["check"] == "unverified"  # "selective" + the quote is not one span of the source
+    for k in ("d_state", "expand", "d_conv", "dt_rank", "positional", "rel_buckets"):
+        assert f[k]["check"] == "verified", (k, f[k])
+    assert f["norm_placement_ffn"]["check"] == "quote_only"
+    # per_head needs a quote naming the heads; a number or rule not in its quote fails.
+    out["flavours"]["qk_norm"] = ev("per_head", "stated", "The SSM state dimension is $N=16$", "")
+    out["flavours"]["dt_rank"] = ev("ceil(d_model/8)", "stated", q_dt, "")
+    out["flavours"]["d_conv"] = ev("3", "stated", q_conv, "")
+    f = L.verify(out, src(NEW_TEX))["flavours"]
+    assert f["qk_norm"]["check"] == f["dt_rank"]["check"] == f["d_conv"]["check"] == "unverified"
+    out["flavours"]["dt_rank"] = ev("auto", "stated", q_dt, "")
+    assert "neither a number nor" in L.verify(out, src(NEW_TEX))["flavours"]["dt_rank"]["reasons"][0]
+
+
+def test_new_op_inputs_carry_roles_and_verified_inits():
+    q = r"We replace every normalization layer with DyT$(x) = \gamma \tanh(\alpha x) + \beta$, where the"
+    q_init = r"learnable scalar $\alpha$ is initialized to $\alpha_0 = 0.5$"
+    out = base_output()
+    out["flavours"]["norm"] = ev("new_op:dyt", "stated", q, "")
+    out["new_ops"] = [{"name": "dyt", "kind": "expr", "expr": "tanh(a*x)*g + b", "replaces": "every norm",
+                       "reason": "", "quote": q, "where": "",
+                       "inputs": [{"name": "x", "meaning": "the row", "role": "input", "init": ev()},
+                                  {"name": "a", "meaning": "alpha", "role": "learned_scalar",
+                                   "init": ev("0.5", "stated", q_init, "")},
+                                  {"name": "g", "meaning": "gamma", "role": "learned_vector", "init": ev()},
+                                  {"name": "b", "meaning": "beta", "role": "learned_vector",
+                                   "init": ev("0.25", "stated", q_init, "")}]}]
+    rep = L.verify(out, src(NEW_TEX))
+    ins = rep["new_ops"][0]["inputs"]
+    assert [i["init_check"] for i in ins] == ["not_stated", "verified", "not_stated", "unverified"]
+    assert rep["new_ops"][0]["check"] == "verified"
+    # The reply schema carries role and init; every listed property stays required.
+    item = L.SCHEMA["properties"]["new_ops"]["items"]["properties"]["inputs"]["items"]
+    assert item["properties"]["role"]["enum"] == L.INPUT_ROLES and item["required"] == ["name", "meaning", "role", "init"]
+    assert "conv1d_causal" in L.IR_OPS and "t5_bias" in L.ENUMS["positional"]
+
+
+# --------------------------------------------------------------------------
 # the API path, mocked
 
 class FakeStream:
@@ -586,10 +664,11 @@ def test_compare_with_rule_based():
     out = primer_output()
     cmp = L.compare("2109.08668", PRIMER_TEX, L.verify(out, src(PRIMER_TEX)))
     rows = {r["field"]: r for r in cmp["rows"]}
-    # truth: activation outside the lattice (squared ReLU), norm rmsnorm
+    # truth: activation and norm both outside the lattice (squared ReLU; Primer's modified layer norm,
+    # flavor_bench.TRUTH since 26 Oct 2026): a reply that states no norm abstains, which is correct here
     assert rows["activation"]["llm_score"] == "correct"
     assert rows["activation"]["llm"] == "new_op:squared_relu"
-    assert rows["norm"]["llm_score"] == "abstain"
+    assert rows["norm"]["truth"] is None and rows["norm"]["llm_score"] == "correct"
     assert L.score("gelu", "relu") == "WRONG" and L.score(L.OUT, "rope") == "WRONG"
     assert L.score(("family", "gated-glu"), "swiglu") == "correct"
 

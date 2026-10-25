@@ -35,6 +35,16 @@ prompt that describes the IR (include/microtorch/ir.hpp) and the closed
   (c) for every value a verbatim quote from the LaTeX and the equation or
       section it sits in, or status "not_stated". Never a guess.
 
+Fields since 26 Oct 2026 (LOCAL_LLM_STACK.md 11 item 4.2; a reply made before
+them reads them as not_stated): norm_placement_attn / _ffn (branch_post: the
+norm on a sublayer's output inside its residual branch), qk_norm (per_head,
+full, unspecified, none), positional t5_bias with rel_buckets and
+rel_max_distance, ssm (mamba1, s4) with d_state, d_conv, expand and dt_rank
+(a number or ceil(d_model/K)), and each new op input's role (input, gate,
+learned_scalar, learned_vector, other) and init (an evidence object; a
+number in its quote, or sqrt(d_model) named by it). papers/bench_score.py
+scores sizes and the block graph against papers/bench_truth_structure.json.
+
 Nothing the model says is trusted. A deterministic verifier (no API) checks
 that every quote occurs in the source (whitespace-normalised), that a stated
 number occurs in its own quote, that a flavour's quote names it, that an
@@ -409,28 +419,44 @@ def check_expr(expr: str, inputs: list[str]) -> dict:
 STATUS = ["stated", "inherited", "not_stated"]
 CONFIG_FIELDS = ["d_model", "n_layers", "n_heads", "n_kv_heads", "head_dim", "d_ff",
                  "vocab_size", "context_length"]
-FLAVOUR_FIELDS = ["norm", "norm_placement", "norm_eps", "activation", "positional", "rope_pairing",
+FLAVOUR_FIELDS = ["norm", "norm_placement", "norm_placement_attn", "norm_placement_ffn", "norm_eps",
+                  "activation", "positional", "rel_buckets", "rel_max_distance", "rope_pairing",
                   "rope_theta", "rope_fraction", "residual", "parallel_block", "attention",
-                  "window_size", "n_sinks", "qkv_bias", "mlp_bias", "tied_embeddings", "moe",
-                  "n_experts", "top_k", "moe_gate_norm"]
+                  "window_size", "n_sinks", "qkv_bias", "mlp_bias", "qk_norm", "tied_embeddings", "moe",
+                  "n_experts", "top_k", "moe_gate_norm", "ssm", "d_state", "d_conv", "expand", "dt_rank"]
 NUMERIC_FLAVOURS = {"norm_eps", "rope_theta", "rope_fraction", "window_size", "n_sinks",
-                    "n_experts", "top_k"}
+                    "n_experts", "top_k", "rel_buckets", "rel_max_distance", "d_state", "d_conv", "expand"}
 BOOL_FLAVOURS = {"parallel_block", "qkv_bias", "mlp_bias", "tied_embeddings", "moe"}
+# Fields added on 26 Oct 2026 (LOCAL_LLM_STACK.md 11 item 4.2): a reply made before them (a cached
+# extraction) lacks them, and a missing field reads as not_stated, never as an unverified value.
+LATER_FIELDS = {"norm_placement_attn", "norm_placement_ffn", "rel_buckets", "rel_max_distance", "qk_norm",
+                "ssm", "d_state", "d_conv", "expand", "dt_rank"}
+_PLACEMENTS = ["pre", "post", "sandwich", "branch_post", "none"]
 ENUMS = {
     "family": ["decoder_only", "encoder_only", "encoder_decoder", "state_space", "hybrid"],
     "norm": ["layernorm", "rmsnorm", "nonparametric_layernorm", "none"],
-    "norm_placement": ["pre", "post", "sandwich", "none"],
+    "norm_placement": _PLACEMENTS,
+    "norm_placement_attn": _PLACEMENTS,
+    "norm_placement_ffn": _PLACEMENTS,
     "activation": ["relu", "gelu", "gelu_tanh", "silu", "swiglu", "geglu", "reglu"],
-    "positional": ["learned", "sinusoidal", "rope", "alibi", "relative", "none"],
+    "positional": ["learned", "sinusoidal", "rope", "alibi", "t5_bias", "relative", "none"],
     "rope_pairing": ["interleaved", "neox"],
     "residual": ["residual", "highway", "plain"],
     "attention": ["exact", "swa", "linear", "sparse"],
     "moe_gate_norm": ["renorm", "raw"],
+    "ssm": ["mamba1", "s4", "none"],
+    "qk_norm": ["per_head", "full", "unspecified", "none"],
 }
+# A new op's inputs: what each one is (the chain builds an expr only from roles it can wire).
+INPUT_ROLES = ["input", "gate", "learned_scalar", "learned_vector", "other"]
+# dt_rank as Mamba states it: a number, or "ceil(d_model/16)" (the divisor in the quote).
+DT_RANK_RULE = re.compile(r"^ceil\(\s*d_model\s*/\s*(\d+)\s*\)$")
+# A learned input's init stated as the square root of the width (DyT's embedding scalar on LLaMA).
+INIT_SQRT_D = re.compile(r"^sqrt\((?:d|d_model)\)$")
 IR_OPS = ["embedding", "pos_embedding", "linear", "split", "rmsnorm", "layernorm", "gelu", "silu",
           "relu", "sigmoid", "add", "mul", "sub", "affine", "scale", "mul_col", "rms_row", "rope", "attention",
-          "linear_attention", "moe_ffn", "ssm_scan", "list", "append", "depth_attend", "expr",
-          "unsupported"]
+          "linear_attention", "moe_ffn", "ssm_scan", "conv1d_causal", "selective_scan", "list", "append",
+          "depth_attend", "expr", "unsupported"]
 
 
 def _obj(props: dict) -> dict:
@@ -465,7 +491,9 @@ SCHEMA = {
             "name": _S,
             "kind": {"type": "string", "enum": ["expr", "needs_new_primitive"]},
             "expr": _S,
-            "inputs": {"type": "array", "items": _obj({"name": _S, "meaning": _S})},
+            "inputs": {"type": "array", "items": _obj({"name": _S, "meaning": _S,
+                                                       "role": {"type": "string", "enum": INPUT_ROLES},
+                                                       "init": _EV})},
             "replaces": _S, "reason": _S, "quote": _S, "where": _S})},
         "mechanisms_outside_ir": {"type": "array", "items": _obj({"mechanism": _S, "quote": _S,
                                                                   "where": _S})},
@@ -486,13 +514,16 @@ SYSTEM_PROMPT = """You read the LaTeX source of a machine-learning paper and ext
 - Enumerated fields take one of the listed names; anything outside the list is "new_op:<name>" when you define it under new_ops, or "other:<short description>" otherwise.
   family: decoder_only, encoder_only, encoder_decoder, state_space, hybrid
   norm: layernorm (with learned weight and bias), rmsnorm, nonparametric_layernorm (no learned affine parameters), none
-  norm_placement: pre (normalise each sublayer's input), post (normalise after the residual add), sandwich, none
+  norm_placement: pre (normalise each sublayer's input: x + f(norm(x))), post (normalise after the residual add: norm(x + f(x))), sandwich (normalise the sublayer's input and its output: x + norm(f(norm(x)))), branch_post (normalise the sublayer's output inside the residual branch, not its input: x + norm(f(x))), none
+  norm_placement_attn, norm_placement_ffn: the same names, for the attention sublayer and the FFN sublayer, ONLY when the paper places the two differently (then norm_placement is "other:<short description>"); otherwise not_stated
   activation (of the FFN): relu, gelu (exact erf form), gelu_tanh (tanh approximation), silu, swiglu, geglu, reglu
-  positional: learned (absolute, trained table), sinusoidal, rope, alibi, relative, none
+  positional: learned (absolute, trained table), sinusoidal, rope, alibi, t5_bias (T5's learned scalar bias per head, by bucketed relative distance, added to the attention logits; give rel_buckets and rel_max_distance when stated), relative (any other relative scheme, e.g. Shaw et al.'s relative embeddings, Transformer-XL's), none
   rope_pairing: interleaved (adjacent pairs x[2j], x[2j+1]), neox (first half with second half)
   residual: residual (x + f(x)), highway (gated carry), plain (no skip)
   attention: exact (full causal softmax attention), swa (sliding window; give window_size and n_sinks), linear, sparse
   moe_gate_norm: renorm (softmax over the selected top-k logits), raw (the full softmax's selected entries)
+  qk_norm (a norm on the queries and keys before the attention product, QK-norm): per_head (each head's queries and keys normalised on their own), full (the whole query and key projections), unspecified (the paper normalises them but does not say over which width), none (the paper says it does not)
+  ssm (for a state-space model's layer): mamba1 (Mamba's selective scan, input-dependent dt, B, C), s4 (a time-invariant structured state space), none; with d_state (the state size N per channel), d_conv (the causal depthwise convolution's width), expand (the inner width over d_model, E) and dt_rank (the rank of dt's projection: a number, or "ceil(d_model/16)" when the paper gives that rule, with the divisor as written) when stated
 - rope_fraction is the fraction of each head's dimensions that is rotated (partial rotary), when stated.
 - configs: every size configuration of the paper's own models that it states, in the order the paper lists them (usually smallest first), each with all eight size fields as evidence objects. primary_config = the name of the configuration a reader would build first (the smallest the paper reports, unless the paper singles one out).
 
@@ -508,6 +539,7 @@ The network is three subgraphs: embed -> block (repeated n_layers times) -> head
   rope (rope_heads: "all"; pairing: interleaved/neox; n_rot: rotated dims per head; theta)
   attention (heads, kv_heads, head_dim, scale, causal, window: 0 = unbounded, sinks)
   linear_attention (heads, head_dim, feature_map), moe_ffn (n_experts, top_k, gate_norm, activation), ssm_scan (n)
+  conv1d_causal (a causal depthwise convolution over time: kernel, bias), selective_scan (Mamba's selective scan: d_state)
   list, append, depth_attend (attention over depth, Attention Residuals)
   expr: an elementwise or row operation the list above lacks, defined under new_ops; set new_op to its name
   unsupported: an operation neither the list nor an expr can state; define it under new_ops with kind needs_new_primitive and set new_op
@@ -520,7 +552,10 @@ For each operation the IR list lacks:
     + - * / and ^ (power; right-associative; binds tighter than unary minus, so -x^2 is -(x^2)); unary minus; parentheses;
     exp log sqrt tanh sigmoid erf abs relu (one argument); max(a, b), min(a, b); where(c, a, b) = a where c > 0, else b;
     rowsum rowmean rowmax (reduce over the features of one token's row, broadcast back).
-  No other functions, names, comparisons or constants. inputs lists each input with its meaning (e.g. x = "the up-projection output", a = "the gate projection output", or a learned per-channel vector). Example: squared ReLU is relu(x)^2 with inputs [x]; ReGLU is relu(a)*x with inputs [x, a]; a softmax over features is exp(x - rowmax(x)) / rowsum(exp(x - rowmax(x))).
+  No other functions, names, comparisons or constants. inputs lists each input with its meaning (e.g. x = "the up-projection output", a = "the gate projection output", or a learned per-channel vector), its role and its init:
+    role: input (the tensor the op replaces the standard component on: the FFN's up-projection output for an activation, the row for a norm), gate (a second projection of the same sublayer input, as in a gated linear unit), learned_scalar (one trained number, e.g. a learned temperature or slope), learned_vector (a trained per-channel vector), other (anything else).
+    init: for a learned input, its initial value as an evidence object (stated with a quote, or not_stated); for the others not_stated.
+  A learned parameter inside the expression is an input like any other (do not inline its value). Examples: squared ReLU is relu(x)^2 with inputs [x: input]; ReGLU is relu(a)*x with inputs [x: input (up-projection), a: gate]; a norm tanh(a*x)*g + b with a learned scalar a and per-channel g, b has inputs [x: input, a: learned_scalar, g: learned_vector, b: learned_vector]; a softmax over features is exp(x - rowmax(x)) / rowsum(exp(x - rowmax(x))).
 - kind "needs_new_primitive" when no such expression states it (anything that mixes tokens, such as a convolution over time, a recurrence or scan, a new attention or routing rule): expr "", and reason says precisely what primitive is missing and its shape.
 - replaces names the standard component it stands in for (e.g. "FFN activation"); quote and where as in the evidence rules (quote the sentence or equation that defines it).
 - Reference the op from the flavour that uses it ("new_op:<name>") and from block_ops (op "expr" or "unsupported", new_op = name).
@@ -973,7 +1008,8 @@ def merge_outputs(parts: list[dict]) -> dict:
         if not out["inherits"].get("ancestor") and p["inherits"].get("ancestor"):
             out["inherits"] = p["inherits"]
         for k in FLAVOUR_FIELDS:
-            out["flavours"][k] = _better(out["flavours"][k], p["flavours"][k])
+            out["flavours"][k] = _better(out["flavours"].get(k) or {"status": "not_stated"},
+                                         p["flavours"].get(k) or {"status": "not_stated"})
         by_name = {c["name"]: c for c in out["configs"]}
         for c in p["configs"]:
             if c["name"] in by_name:
@@ -1063,7 +1099,10 @@ FLAVOUR_CUES = {
                    "reglu": r"ReGLU|gated[- ]?ReLU"},
     "positional": {"rope": r"RoPE|rotary", "alibi": r"ALiBi|linear bias",
                    "sinusoidal": r"sinusoid|\\sin|\\cos|sine", "learned": r"learn|trainable|absolute",
-                   "relative": r"relative", "none": r"\bno\b|without|NoPE"},
+                   "t5_bias": r"T5|bucket", "relative": r"relative", "none": r"\bno\b|without|NoPE"},
+    "ssm": {"mamba1": r"selective|selection|Mamba|S6|input[- ]dependent|functions? of the input","s4": r"\bS4\b|structured state|time[- ]invariant"},
+    "qk_norm": {"per_head": r"(?s)(?=.*(?:QK|quer|\bkeys?\b))(?=.*head)", "full": r"QK|quer|\bkeys?\b",
+                "unspecified": r"QK|quer|\bkeys?\b"},
     "attention": {"swa": r"window|local", "linear": r"linear", "sparse": r"sparse"},
     "residual": {"highway": r"highway|gate|carry", "residual": r"residual|skip"},
     "rope_pairing": {"interleaved": r"interleav|adjacent|pair", "neox": r"half|neox|rotate_half"},
@@ -1154,6 +1193,21 @@ class Verifier:
             if val not in ("true", "false"):
                 r["reasons"].append(f"value {val!r} is not true/false")
                 checks.append(False)
+        elif kind == "dt_rank":
+            rule = DT_RANK_RULE.match(val.replace(" ", ""))
+            num = parse_number(val) if not rule else None
+            if rule:
+                ok = number_in_quote(float(rule.group(1)), quote)
+                checks.append(ok)
+                if not ok:
+                    r["reasons"].append(f"the divisor {rule.group(1)} does not occur in its quote")
+            elif num is not None:
+                checks.append(number_in_quote(num, quote))
+                if not checks[-1]:
+                    r["reasons"].append(f"{val} does not occur in its quote")
+            else:
+                r["reasons"].append(f"dt_rank {val!r} is neither a number nor ceil(d_model/K)")
+                checks.append(False)
         elif kind == "enum":
             allowed = ENUMS.get(field, [])
             if val in allowed:
@@ -1214,8 +1268,10 @@ def verify(output: dict, source: str) -> dict:
     fl = output.get("flavours") or {}
     rep["flavours"] = {}
     for k in FLAVOUR_FIELDS:
-        kind = "number" if k in NUMERIC_FLAVOURS else "bool" if k in BOOL_FLAVOURS else "enum"
-        rep["flavours"][k] = V.evidence(fl.get(k) or {}, kind, k, ancestor)
+        kind = ("number" if k in NUMERIC_FLAVOURS else "bool" if k in BOOL_FLAVOURS else
+                "dt_rank" if k == "dt_rank" else "enum")
+        e = fl.get(k) or ({"value": "", "status": "not_stated", "quote": "", "where": ""} if k in LATER_FIELDS else {})
+        rep["flavours"][k] = V.evidence(e, kind, k, ancestor)
     f = rep["flavours"]
     if f["window_size"]["check"] == "verified" and rep["primary_config"]:
         pc = next(c for c in rep["configs"] if c["name"] == rep["primary_config"])
@@ -1235,6 +1291,18 @@ def verify(output: dict, source: str) -> dict:
               "inputs": o.get("inputs") or [], "errors": []}
         op_names.add(ro["name"])
         ro["quote_found"] = V.quote_found(ro["quote"])
+        # A learned input's stated init is a number in its own quote, like a size, or sqrt(d_model) named
+        # by its quote (DyT's embedding scalar).
+        def init_check(i):
+            init = i.get("init") or {}
+            if (init.get("status") or "not_stated") == "not_stated":
+                return "not_stated"
+            if INIT_SQRT_D.match((init.get("value") or "").replace(" ", "")):
+                ok = V.quote_found(init.get("quote") or "") and re.search(r"\\sqrt|square root",
+                                                                          init.get("quote") or "", re.IGNORECASE)
+                return "verified" if ok else "unverified"
+            return V.evidence(init, "number", "init", None)["check"]
+        ro["inputs"] = [dict(i, init_check=init_check(i)) for i in ro["inputs"]]
         if not ro["quote_found"]:
             ro["errors"].append("quote not found in the source")
         if ro["kind"] == "expr":

@@ -161,13 +161,17 @@ advisory steps that cannot fail the build.
 
 ## 5. Extractor
 
-- **The LLM extractor is the main path** (`papers/llm_extract.py`; 40-paper bench 82 correct /
-  9 abstain / 1 wrong vs the rule-based 72 / 20 / 0; the wrong one is Primer's modified layer
-  norm, quoted from the paper, against a truth set that records the T5 baseline's RMSNorm: settle
-  which Primer the truth means). Open: score the op graphs and sizes, not only the flavours
-  (the bench's truth covers norm, activation and positions); check every `expr` with
-  `spec/tools/ir_expr.py` (the parser both engines use; landed in 1159d63e); a studio button that runs it instead of `fetch.py` when a key
-  is configured; prompt optimisation later.
+- **The LLM extractor is the main path** (`papers/llm_extract.py`; on the 40-paper bench's cached replies,
+  flavours 83 correct / 9 abstain / 0 wrong vs the rule-based 73 / 19 / 0; sizes 580 correct / 0 wrong / 62
+  abstain vs the rule-based 136 / 8 / 498; block graph 91 / 2 wrong / 2 abstain; `papers/bench_score.py`
+  against `papers/bench_truth_structure.json`). Open: re-extract the 40 under the 26 Oct prompt (its new
+  fields: per-sublayer placement, q/k norm, Mamba-1 sizes, T5's bias, new-op input roles and inits; about
+  $18); check every `expr` with `spec/tools/ir_expr.py` (the parser both engines use; landed in 1159d63e); a
+  studio button that runs it instead of `fetch.py` when a key is configured; prompt optimisation later.
+- **Chain gaps still refusing** (LOCAL_LLM_STACK.md section 11 item 4.2): Primer's MDHA (conv1d_causal on q, k, v:
+  the op exists, flex does not wire it) and Shaw-style relative positions; T5's bucketed bias trains
+  (flex `position: "t5_relative"`) but exports only once keramos has the op; a q/k norm on flex or over the
+  full width; Mamba-1's inner LayerNorm (the paper's optional norm); MoE headline models.
 - **Two lexical gaps found while fixing the wrong assertions:** the GELU
   pattern does not match the spelling "GeLU" (Megatron, BART), and a
   vetoed runner-up still marks a field as contested.

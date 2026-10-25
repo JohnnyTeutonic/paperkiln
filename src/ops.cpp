@@ -2711,5 +2711,114 @@ Var broadcast_cols(const Var& c, size_t n) {
     });
 }
 
+std::vector<int> t5_position_buckets(size_t num_buckets, size_t max_distance) {
+    const size_t exact = num_buckets / 2;
+    if (num_buckets < 2 || max_distance <= exact)
+        throw std::runtime_error("t5_position_buckets: need num_buckets >= 2 and max_distance > num_buckets / 2");
+    std::vector<int> b(max_distance + 1);
+    const double span = std::log(double(max_distance) / double(exact));
+    for (size_t n = 0; n <= max_distance; ++n) {
+        if (n < exact) {
+            b[n] = static_cast<int>(n);
+            continue;
+        }
+        const double v = std::log(double(n) / double(exact)) / span * double(num_buckets - exact);
+        b[n] = static_cast<int>(std::min<double>(double(num_buckets - 1), double(exact) + std::floor(v)));
+    }
+    return b;
+}
+
+Var relpos_attention(const Var& q, const Var& k, const Var& v, const Var& table, size_t head,
+                     const std::vector<int>& buckets, float scale, size_t seq_len) {
+    const size_t T = q->data.rows(), dk = q->data.cols(), dv = v->data.cols();
+    if (k->data.rows() != T || v->data.rows() != T || k->data.cols() != dk)
+        throw std::runtime_error("relpos_attention: shape mismatch");
+    if (head >= table->data.cols() || buckets.empty())
+        throw std::runtime_error("relpos_attention: head outside the bias table, or no buckets");
+    for (int b : buckets)
+        if (b < 0 || static_cast<size_t>(b) >= table->data.rows())
+            throw std::runtime_error("relpos_attention: a bucket outside the bias table's rows");
+    const size_t sl = seq_len == 0 ? T : seq_len;
+    if (T % sl != 0) throw std::runtime_error("relpos_attention: rows not a multiple of seq_len");
+    for (const Var* m : {&q, &k, &v, &table}) device::materialize((*m)->data);
+    const size_t D = buckets.size();
+    auto bucket = [&](size_t i, size_t j) { return static_cast<size_t>(buckets[std::min(i - j, D - 1)]); };
+    auto A = std::make_shared<Matrix>(T, T);  // zeros: masked entries stay exactly 0
+    for (size_t i = 0; i < T; ++i) {
+        const size_t b0 = (i / sl) * sl;
+        float mx = -INFINITY;
+        for (size_t j = b0; j <= i; ++j) {
+            float dot = 0.0f;
+            for (size_t c = 0; c < dk; ++c) dot += q->data(i, c) * k->data(j, c);
+            const float s = dot * scale;
+            (*A)(i, j) = s + table->data(bucket(i, j), head);
+            mx = std::max(mx, (*A)(i, j));
+        }
+        float z = 0.0f;
+        for (size_t j = b0; j <= i; ++j) {
+            (*A)(i, j) = std::exp((*A)(i, j) - mx);
+            z += (*A)(i, j);
+        }
+        for (size_t j = b0; j <= i; ++j) (*A)(i, j) /= z;
+    }
+    Matrix y(T, dv);
+    for (size_t i = 0; i < T; ++i)
+        for (size_t j = (i / sl) * sl; j <= i; ++j) {
+            const float a = (*A)(i, j);
+            for (size_t c = 0; c < dv; ++c) y(i, c) += a * v->data(j, c);
+        }
+    return record(std::move(y), {q, k, v, table}, [A, head, buckets, scale, sl](Variable* self) {
+        const Var& q = self->parents[0];
+        const Var& k = self->parents[1];
+        const Var& v = self->parents[2];
+        const Var& tb = self->parents[3];
+        device::materialize(self->grad);
+        const Matrix& dy = self->grad;
+        const size_t T = q->data.rows(), dk = q->data.cols(), dv = v->data.cols(), D = buckets.size();
+        if (v->requires_grad) {
+            Matrix dvm(T, dv);
+            for (size_t i = 0; i < T; ++i)
+                for (size_t j = (i / sl) * sl; j <= i; ++j)
+                    for (size_t c = 0; c < dv; ++c) dvm(j, c) += (*A)(i, j) * dy(i, c);
+            v->accumulate(std::move(dvm));
+        }
+        if (!q->requires_grad && !k->requires_grad && !tb->requires_grad) return;
+        // dS = A .* (dA - rowsum(dA .* A)), dA = dY V^T over the visible keys.
+        Matrix ds(T, T);
+        for (size_t i = 0; i < T; ++i) {
+            const size_t b0 = (i / sl) * sl;
+            float dot = 0.0f;
+            for (size_t j = b0; j <= i; ++j) {
+                float da = 0.0f;
+                for (size_t c = 0; c < dv; ++c) da += dy(i, c) * v->data(j, c);
+                ds(i, j) = da;
+                dot += da * (*A)(i, j);
+            }
+            for (size_t j = b0; j <= i; ++j) ds(i, j) = (*A)(i, j) * (ds(i, j) - dot);
+        }
+        if (q->requires_grad) {
+            Matrix dq(T, dk);
+            for (size_t i = 0; i < T; ++i)
+                for (size_t j = (i / sl) * sl; j <= i; ++j)
+                    for (size_t c = 0; c < dk; ++c) dq(i, c) += scale * ds(i, j) * k->data(j, c);
+            q->accumulate(std::move(dq));
+        }
+        if (k->requires_grad) {
+            Matrix dkm(T, dk);
+            for (size_t i = 0; i < T; ++i)
+                for (size_t j = (i / sl) * sl; j <= i; ++j)
+                    for (size_t c = 0; c < dk; ++c) dkm(j, c) += scale * ds(i, j) * q->data(i, c);
+            k->accumulate(std::move(dkm));
+        }
+        if (tb->requires_grad) {
+            Matrix dt(tb->data.rows(), tb->data.cols());
+            for (size_t i = 0; i < T; ++i)
+                for (size_t j = (i / sl) * sl; j <= i; ++j)
+                    dt(static_cast<size_t>(buckets[std::min(i - j, D - 1)]), head) += ds(i, j);
+            tb->accumulate(std::move(dt));
+        }
+    });
+}
+
 }  // namespace ops
 }  // namespace microtorch

@@ -66,8 +66,17 @@ TRUTH: dict[str, dict[str, str | None]] = {
                    "positional": "rope"},                # LLaMA
     "2104.09864": {"positional": "rope"},                # RoFormer
     "2108.12409": {"positional": "alibi"},               # ALiBi
-    "2109.08668": {"norm": "rmsnorm",
+    "2109.08668": {"norm": None,
                    "activation": None},                  # Primer (squared ReLU)
+    # ^ norm: Primer's own modified layer norm, outside the lattice (26 Oct 2026; was rmsnorm, the T5
+    # baseline's). Sec. Primer, Other Modifications: "\modelname uses a modified version of layer
+    # normalization~\cite{Ba2016LayerN} that uses $x(x - \mu)$ instead of $(x-\mu)^2$, but we find
+    # this is not always effective." The same list excludes only two modifications from the model
+    # ("For this reason we do not include this modification when referencing \modelname or
+    # \modelnamelite", the 12X bottleneck; "we do not include this modification in \modelname for our
+    # experiments", post-softmax spatial gating), and Sec. 4.4 trains "a full \modelname without shared
+    # QK representations": the custom norm stays in Primer. Primer-EZ (squared ReLU and MDHA only)
+    # keeps its codebase's norm, but the benchmark scores Primer.
     "2204.02311": {"activation": "swiglu",
                    "positional": "rope"},                # PaLM
     "2211.05100": {"norm": "layernorm", "activation": "gelu",

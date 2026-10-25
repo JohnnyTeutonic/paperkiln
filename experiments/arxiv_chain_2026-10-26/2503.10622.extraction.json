@@ -1,0 +1,2305 @@
+{
+ "arxiv_id": "2503.10622",
+ "title": "Transformers without Normalization",
+ "fields": {
+  "d_model": {
+   "value": 4096,
+   "evidence": "LLaMA 7B & 4096 & 32 & 0.8/0.2 [Table alpha_init_llama]",
+   "verdict": "used"
+  },
+  "n_layers": {
+   "value": 32,
+   "evidence": "LLaMA 7B & 4096 & 32 & 0.8/0.2 [Table alpha_init_llama]",
+   "verdict": "used"
+  },
+  "norm": {
+   "value": "expr:((tanh((a*x))*g)+b)",
+   "evidence": "\\mathrm{DyT}(\\vx) = \\bm{\\gamma} * \\tanh(\\alpha \\vx) + \\bm{\\beta} [Sec. Dynamic Tanh (DyT)]",
+   "verdict": "used"
+  },
+  "activation": {
+   "value": "swiglu",
+   "evidence": "this study only uses it to replace normalization layers without altering any parts of the activation functions in the original architectures, such as GELU or ReLU. [Sec. Dynamic Tanh (DyT)]",
+   "verdict": "unverified",
+   "reasons": [
+    "the inheritance quote does not name the ancestor"
+   ]
+  },
+  "positional": {
+   "value": "rope",
+   "evidence": "In our implementation of LLaMA models~\\citep{touvron2023llama, touvron2023llama2, dubey2024llama} with DyT, we introduce an additional learnable scalar parameter immediately after the embedding layer, before any Transformer blocks. [Appendix A, Large Language Models]",
+   "verdict": "inherited"
+  },
+  "residual": {
+   "value": "residual",
+   "evidence": "In our implementation of LLaMA models~\\citep{touvron2023llama, touvron2023llama2, dubey2024llama} with DyT, we introduce an additional learnable scalar parameter immediately after the embedding layer, before any Transformer blocks. [Appendix A, Large Language Models]",
+   "verdict": "unverified",
+   "reasons": [
+    "inherited from llama, whose curated entry has no residual"
+   ]
+  },
+  "attention": {
+   "value": "exact",
+   "evidence": "In our implementation of LLaMA models~\\citep{touvron2023llama, touvron2023llama2, dubey2024llama} with DyT, we introduce an additional learnable scalar parameter immediately after the embedding layer, before any Transformer blocks. [Appendix A, Large Language Models]",
+   "verdict": "unverified",
+   "reasons": [
+    "inherited from llama, whose curated entry has no attention"
+   ]
+  }
+ },
+ "unresolved": [
+  "n_heads",
+  "n_kv_heads",
+  "d_ff",
+  "vocab_size",
+  "context_length"
+ ],
+ "unverified": [
+  {
+   "field": "activation",
+   "reasons": [
+    "the inheritance quote does not name the ancestor"
+   ]
+  },
+  {
+   "field": "residual",
+   "reasons": [
+    "inherited from llama, whose curated entry has no residual"
+   ]
+  },
+  {
+   "field": "attention",
+   "reasons": [
+    "inherited from llama, whose curated entry has no attention"
+   ]
+  }
+ ],
+ "mentions": {},
+ "inherits": {
+  "ancestor": "llama",
+  "evidence": "In our implementation of LLaMA models~\\citep{touvron2023llama, touvron2023llama2, dubey2024llama} with DyT, we introduce an additional learnable scalar parameter immediately after the embedding layer, before any Transformer blocks.",
+  "section": "Appendix A, Large Language Models"
+ },
+ "variants": [
+  {
+   "d_model": 4096,
+   "n_layers": 32
+  },
+  {
+   "d_model": 5120,
+   "n_layers": 40
+  },
+  {
+   "d_model": 8196,
+   "n_layers": 48
+  },
+  {
+   "d_model": 8196,
+   "n_layers": 80
+  }
+ ],
+ "mechanism_scan": [
+  {
+   "mechanism": "new op dyt_attn = ((tanh((a*x))*g)+b) (expr)",
+   "where": "llm extraction, verified quote, Sec. Dynamic Tanh (DyT)",
+   "blocking": true,
+   "evidence": "\\mathrm{DyT}(\\vx) = \\bm{\\gamma} * \\tanh(\\alpha \\vx) + \\bm{\\beta}"
+  },
+  {
+   "mechanism": "new op dyt_other = ((tanh((a*x))*g)+b) (expr)",
+   "where": "llm extraction, verified quote, Sec. Initialization of alpha for LLMs",
+   "blocking": true,
+   "evidence": "initializing $\\alpha$ with higher values for DyT layers in attention blocks and lower values for DyT layers in other locations (i.e., within FFN blocks or before the final linear projection) improves performance."
+  },
+  {
+   "mechanism": "new op embed_scale = (x*a) (expr)",
+   "where": "llm extraction, verified quote, Appendix A, Large Language Models",
+   "blocking": true,
+   "evidence": "we introduce an additional learnable scalar parameter immediately after the embedding layer, before any Transformer blocks."
+  }
+ ],
+ "source": {
+  "tex_sha256": "d535d5a7a6e704468fca14f49c09891eda926ceb37eb2c47f9bed59c946bd2ca",
+  "sent_sha256": "e36db076a4218de3e7f77f24b6e271bc58b744a105d6650836daa288ebfe48c9",
+  "from": "https://arxiv.org/e-print/2503.10622",
+  "extractor": "papers/llm_extract.py",
+  "extractor_sha256": "9dc4f304205a2b85751dd5cd694a21509253cba08c7cb072e5bd2dcc1a9359af",
+  "model": "claude-opus-5-5",
+  "effort": "high",
+  "prompt_sha256": "e6c6c5052b656885910d1539b8c320ba4ecb9262a6079252b852f1ff637b03ef",
+  "n_calls": 1,
+  "cost_usd": 0.0,
+  "request_ids": [
+   "req_011CgPL98qeJPXqFbrzXFVPv"
+  ]
+ },
+ "llm": {
+  "output": {
+   "title": "Transformers without Normalization",
+   "model_name": "LLaMA with DyT (Dynamic Tanh replacing RMSNorm)",
+   "family": {
+    "value": "decoder_only",
+    "status": "inherited",
+    "quote": "We pretrain LLaMA 7B, 13B, 34B, and 70B models~\\citep{touvron2023llama, touvron2023llama2, dubey2024llama} to assess DyT performance relative to RMSNorm \\citep{zhang2019root}, the default normalization layer used in LLaMA.",
+    "where": "Sec. Experiments, Large Language Models"
+   },
+   "inherits": {
+    "ancestor": "LLaMA (LLaMA 2 recipe)",
+    "quote": "In our implementation of LLaMA models~\\citep{touvron2023llama, touvron2023llama2, dubey2024llama} with DyT, we introduce an additional learnable scalar parameter immediately after the embedding layer, before any Transformer blocks.",
+    "where": "Appendix A, Large Language Models"
+   },
+   "configs": [
+    {
+     "name": "LLaMA 7B",
+     "d_model": {
+      "value": "4096",
+      "status": "stated",
+      "quote": "LLaMA 7B & 4096 & 32 & 0.8/0.2",
+      "where": "Table alpha_init_llama"
+     },
+     "n_layers": {
+      "value": "32",
+      "status": "stated",
+      "quote": "LLaMA 7B & 4096 & 32 & 0.8/0.2",
+      "where": "Table alpha_init_llama"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     }
+    },
+    {
+     "name": "LLaMA 13B",
+     "d_model": {
+      "value": "5120",
+      "status": "stated",
+      "quote": "LLaMA 13B & 5120 & 40 & 0.6/0.15",
+      "where": "Table alpha_init_llama"
+     },
+     "n_layers": {
+      "value": "40",
+      "status": "stated",
+      "quote": "LLaMA 13B & 5120 & 40 & 0.6/0.15",
+      "where": "Table alpha_init_llama"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     }
+    },
+    {
+     "name": "LLaMA 34B",
+     "d_model": {
+      "value": "8196",
+      "status": "stated",
+      "quote": "LLaMA 34B & 8196 & 48 & 0.2/0.05",
+      "where": "Table alpha_init_llama"
+     },
+     "n_layers": {
+      "value": "48",
+      "status": "stated",
+      "quote": "LLaMA 34B & 8196 & 48 & 0.2/0.05",
+      "where": "Table alpha_init_llama"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     }
+    },
+    {
+     "name": "LLaMA 70B",
+     "d_model": {
+      "value": "8196",
+      "status": "stated",
+      "quote": "LLaMA 70B & 8196 & 80 &  0.2/0.05",
+      "where": "Table alpha_init_llama"
+     },
+     "n_layers": {
+      "value": "80",
+      "status": "stated",
+      "quote": "LLaMA 70B & 8196 & 80 &  0.2/0.05",
+      "where": "Table alpha_init_llama"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     }
+    }
+   ],
+   "primary_config": "LLaMA 7B",
+   "flavours": {
+    "norm": {
+     "value": "new_op:dyt_attn",
+     "status": "stated",
+     "quote": "\\mathrm{DyT}(\\vx) = \\bm{\\gamma} * \\tanh(\\alpha \\vx) + \\bm{\\beta}",
+     "where": "Sec. Dynamic Tanh (DyT)"
+    },
+    "norm_placement": {
+     "value": "pre",
+     "status": "inherited",
+     "quote": "Integrating DyT layers into an existing architecture is straightforward: one DyT layer replaces one normalization layer (see Figure~\\ref{figure:before_after}).",
+     "where": "Sec. Dynamic Tanh (DyT)"
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "activation": {
+     "value": "swiglu",
+     "status": "inherited",
+     "quote": "this study only uses it to replace normalization layers without altering any parts of the activation functions in the original architectures, such as GELU or ReLU.",
+     "where": "Sec. Dynamic Tanh (DyT)"
+    },
+    "positional": {
+     "value": "rope",
+     "status": "inherited",
+     "quote": "In our implementation of LLaMA models~\\citep{touvron2023llama, touvron2023llama2, dubey2024llama} with DyT, we introduce an additional learnable scalar parameter immediately after the embedding layer, before any Transformer blocks.",
+     "where": "Appendix A, Large Language Models"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_theta": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "residual": {
+     "value": "residual",
+     "status": "inherited",
+     "quote": "In our implementation of LLaMA models~\\citep{touvron2023llama, touvron2023llama2, dubey2024llama} with DyT, we introduce an additional learnable scalar parameter immediately after the embedding layer, before any Transformer blocks.",
+     "where": "Appendix A, Large Language Models"
+    },
+    "parallel_block": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "attention": {
+     "value": "exact",
+     "status": "inherited",
+     "quote": "In our implementation of LLaMA models~\\citep{touvron2023llama, touvron2023llama2, dubey2024llama} with DyT, we introduce an additional learnable scalar parameter immediately after the embedding layer, before any Transformer blocks.",
+     "where": "Appendix A, Large Language Models"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "qkv_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "tied_embeddings": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "moe": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    }
+   },
+   "block_ops": [
+    {
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "e",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "embed",
+     "op": "expr",
+     "role": "learnable scalar after embedding",
+     "inputs": [
+      "e"
+     ],
+     "output": "x",
+     "attributes": [],
+     "new_op": "embed_scale"
+    },
+    {
+     "subgraph": "block",
+     "op": "expr",
+     "role": "DyT before attention (replaces RMSNorm)",
+     "inputs": [
+      "x"
+     ],
+     "output": "h",
+     "attributes": [],
+     "new_op": "dyt_attn"
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "q projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "q",
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "k projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "k",
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "v projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "v",
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary on q",
+     "inputs": [
+      "q"
+     ],
+     "output": "qr",
+     "attributes": [
+      {
+       "name": "theta",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "pairing",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary on k",
+     "inputs": [
+      "k"
+     ],
+     "output": "kr",
+     "attributes": [
+      {
+       "name": "theta",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "pairing",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "attention",
+     "role": "causal self-attention",
+     "inputs": [
+      "qr",
+      "kr",
+      "v"
+     ],
+     "output": "a",
+     "attributes": [
+      {
+       "name": "heads",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "kv_heads",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "head_dim",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "o",
+     "attributes": [
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual",
+     "inputs": [
+      "x",
+      "o"
+     ],
+     "output": "x1",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "expr",
+     "role": "DyT before FFN (replaces RMSNorm)",
+     "inputs": [
+      "x1"
+     ],
+     "output": "h2",
+     "attributes": [],
+     "new_op": "dyt_other"
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN gate",
+     "inputs": [
+      "h2"
+     ],
+     "output": "g",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN up",
+     "inputs": [
+      "h2"
+     ],
+     "output": "u",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "silu",
+     "role": "gate activation",
+     "inputs": [
+      "g"
+     ],
+     "output": "gs",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "mul",
+     "role": "gating",
+     "inputs": [
+      "gs",
+      "u"
+     ],
+     "output": "m",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN down",
+     "inputs": [
+      "m"
+     ],
+     "output": "f",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual",
+     "inputs": [
+      "x1",
+      "f"
+     ],
+     "output": "x_out",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "expr",
+     "role": "final DyT before output projection",
+     "inputs": [
+      "x"
+     ],
+     "output": "hn",
+     "attributes": [],
+     "new_op": "dyt_other"
+    },
+    {
+     "subgraph": "head",
+     "op": "linear",
+     "role": "LM head",
+     "inputs": [
+      "hn"
+     ],
+     "output": "logits",
+     "attributes": [
+      {
+       "name": "tied_to",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    }
+   ],
+   "new_ops": [
+    {
+     "name": "dyt_attn",
+     "kind": "expr",
+     "expr": "tanh(a*x)*g + b",
+     "inputs": [
+      {
+       "name": "x",
+       "meaning": "the row the norm is applied to",
+       "role": "input",
+       "init": {
+        "value": "",
+        "status": "not_stated",
+        "quote": "",
+        "where": ""
+       }
+      },
+      {
+       "name": "a",
+       "meaning": "learnable scalar alpha (attention-block DyT)",
+       "role": "learned_scalar",
+       "init": {
+        "value": "0.8",
+        "status": "stated",
+        "quote": "LLaMA 7B & 4096 & 32 & 0.8/0.2",
+        "where": "Table alpha_init_llama"
+       }
+      },
+      {
+       "name": "g",
+       "meaning": "per-channel gamma",
+       "role": "learned_vector",
+       "init": {
+        "value": "1",
+        "status": "stated",
+        "quote": "We always simply initialize $\\bm{\\gamma}$ to an all-one vector and $\\bm{\\beta}$ to an all-zero vector following normalization layers.",
+        "where": "Sec. DyT, On scaling parameters"
+       }
+      },
+      {
+       "name": "b",
+       "meaning": "per-channel beta",
+       "role": "learned_vector",
+       "init": {
+        "value": "0",
+        "status": "stated",
+        "quote": "We always simply initialize $\\bm{\\gamma}$ to an all-one vector and $\\bm{\\beta}$ to an all-zero vector following normalization layers.",
+        "where": "Sec. DyT, On scaling parameters"
+       }
+      }
+     ],
+     "replaces": "RMSNorm in attention block",
+     "reason": "",
+     "quote": "\\mathrm{DyT}(\\vx) = \\bm{\\gamma} * \\tanh(\\alpha \\vx) + \\bm{\\beta}",
+     "where": "Sec. Dynamic Tanh (DyT)"
+    },
+    {
+     "name": "dyt_other",
+     "kind": "expr",
+     "expr": "tanh(a*x)*g + b",
+     "inputs": [
+      {
+       "name": "x",
+       "meaning": "the row the norm is applied to",
+       "role": "input",
+       "init": {
+        "value": "",
+        "status": "not_stated",
+        "quote": "",
+        "where": ""
+       }
+      },
+      {
+       "name": "a",
+       "meaning": "learnable scalar alpha (FFN-block and final DyT)",
+       "role": "learned_scalar",
+       "init": {
+        "value": "0.2",
+        "status": "stated",
+        "quote": "LLaMA 7B & 4096 & 32 & 0.8/0.2",
+        "where": "Table alpha_init_llama"
+       }
+      },
+      {
+       "name": "g",
+       "meaning": "per-channel gamma",
+       "role": "learned_vector",
+       "init": {
+        "value": "1",
+        "status": "stated",
+        "quote": "We always simply initialize $\\bm{\\gamma}$ to an all-one vector and $\\bm{\\beta}$ to an all-zero vector following normalization layers.",
+        "where": "Sec. DyT, On scaling parameters"
+       }
+      },
+      {
+       "name": "b",
+       "meaning": "per-channel beta",
+       "role": "learned_vector",
+       "init": {
+        "value": "0",
+        "status": "stated",
+        "quote": "We always simply initialize $\\bm{\\gamma}$ to an all-one vector and $\\bm{\\beta}$ to an all-zero vector following normalization layers.",
+        "where": "Sec. DyT, On scaling parameters"
+       }
+      }
+     ],
+     "replaces": "RMSNorm in FFN block and final norm",
+     "reason": "",
+     "quote": "initializing $\\alpha$ with higher values for DyT layers in attention blocks and lower values for DyT layers in other locations (i.e., within FFN blocks or before the final linear projection) improves performance.",
+     "where": "Sec. Initialization of alpha for LLMs"
+    },
+    {
+     "name": "embed_scale",
+     "kind": "expr",
+     "expr": "x*a",
+     "inputs": [
+      {
+       "name": "x",
+       "meaning": "token embedding output",
+       "role": "input",
+       "init": {
+        "value": "",
+        "status": "not_stated",
+        "quote": "",
+        "where": ""
+       }
+      },
+      {
+       "name": "a",
+       "meaning": "learnable scalar after the embedding layer",
+       "role": "learned_scalar",
+       "init": {
+        "value": "sqrt(d_model)",
+        "status": "stated",
+        "quote": "We initialize it to the square root of the model embedding dimension $\\sqrt{d}$.",
+        "where": "Appendix A, Large Language Models"
+       }
+      }
+     ],
+     "replaces": "none (added after embedding)",
+     "reason": "",
+     "quote": "we introduce an additional learnable scalar parameter immediately after the embedding layer, before any Transformer blocks.",
+     "where": "Appendix A, Large Language Models"
+    }
+   ],
+   "mechanisms_outside_ir": [],
+   "notes": "The paper applies DyT to many architectures (ViT, ConvNeXt, DiT, wav2vec 2.0, HyenaDNA, Caduceus, LLaMA). I describe LLaMA with DyT because it is the decoder-only language model the IR targets. The paper gives only width and depth for each size. It writes the 34B/70B width as 8196, likely a typo for 8192; I kept it as written. The DyT alpha init for 7B is 0.8 in attention blocks and 0.2 elsewhere (13B: 0.6/0.15; 34B/70B: 0.2/0.05); non-LLM models use 0.5. Base LLaMA details (pre-norm, SwiGLU, RoPE, residual, exact attention) are marked inherited from LLaMA, but the paper cites LLaMA 1, 2 and 3 without choosing one. I left heads, kv_heads, d_ff, vocab, context length, rope theta and tying not_stated."
+  },
+  "verification": {
+   "errors": [],
+   "warnings": [],
+   "inherits": {
+    "ancestor": "LLaMA (LLaMA 2 recipe)",
+    "resolved": "llama",
+    "quote": "In our implementation of LLaMA models~\\citep{touvron2023llama, touvron2023llama2, dubey2024llama} with DyT, we introduce an additional learnable scalar parameter immediately after the embedding layer, before any Transformer blocks.",
+    "where": "Appendix A, Large Language Models",
+    "quote_found": true
+   },
+   "family": {
+    "value": "decoder_only",
+    "status": "inherited",
+    "quote": "We pretrain LLaMA 7B, 13B, 34B, and 70B models~\\citep{touvron2023llama, touvron2023llama2, dubey2024llama} to assess DyT performance relative to RMSNorm \\citep{zhang2019root}, the default normalization layer used in LLaMA.",
+    "where": "Sec. Experiments, Large Language Models",
+    "reasons": [
+     "inherited from llama, whose curated entry has no family"
+    ],
+    "check": "unverified"
+   },
+   "configs": [
+    {
+     "name": "LLaMA 7B",
+     "d_model": {
+      "value": "4096",
+      "status": "stated",
+      "quote": "LLaMA 7B & 4096 & 32 & 0.8/0.2",
+      "where": "Table alpha_init_llama",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "32",
+      "status": "stated",
+      "quote": "LLaMA 7B & 4096 & 32 & 0.8/0.2",
+      "where": "Table alpha_init_llama",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "consistency": []
+    },
+    {
+     "name": "LLaMA 13B",
+     "d_model": {
+      "value": "5120",
+      "status": "stated",
+      "quote": "LLaMA 13B & 5120 & 40 & 0.6/0.15",
+      "where": "Table alpha_init_llama",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "40",
+      "status": "stated",
+      "quote": "LLaMA 13B & 5120 & 40 & 0.6/0.15",
+      "where": "Table alpha_init_llama",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "consistency": []
+    },
+    {
+     "name": "LLaMA 34B",
+     "d_model": {
+      "value": "8196",
+      "status": "stated",
+      "quote": "LLaMA 34B & 8196 & 48 & 0.2/0.05",
+      "where": "Table alpha_init_llama",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "48",
+      "status": "stated",
+      "quote": "LLaMA 34B & 8196 & 48 & 0.2/0.05",
+      "where": "Table alpha_init_llama",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "consistency": []
+    },
+    {
+     "name": "LLaMA 70B",
+     "d_model": {
+      "value": "8196",
+      "status": "stated",
+      "quote": "LLaMA 70B & 8196 & 80 &  0.2/0.05",
+      "where": "Table alpha_init_llama",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "80",
+      "status": "stated",
+      "quote": "LLaMA 70B & 8196 & 80 &  0.2/0.05",
+      "where": "Table alpha_init_llama",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "d_ff": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "vocab_size": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "consistency": []
+    }
+   ],
+   "primary_config": "LLaMA 7B",
+   "flavours": {
+    "norm": {
+     "value": "new_op:dyt_attn",
+     "status": "stated",
+     "quote": "\\mathrm{DyT}(\\vx) = \\bm{\\gamma} * \\tanh(\\alpha \\vx) + \\bm{\\beta}",
+     "where": "Sec. Dynamic Tanh (DyT)",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "norm_placement": {
+     "value": "pre",
+     "status": "inherited",
+     "quote": "Integrating DyT layers into an existing architecture is straightforward: one DyT layer replaces one normalization layer (see Figure~\\ref{figure:before_after}).",
+     "where": "Sec. Dynamic Tanh (DyT)",
+     "reasons": [
+      "inherited from llama, whose curated entry has no norm_placement",
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "activation": {
+     "value": "swiglu",
+     "status": "inherited",
+     "quote": "this study only uses it to replace normalization layers without altering any parts of the activation functions in the original architectures, such as GELU or ReLU.",
+     "where": "Sec. Dynamic Tanh (DyT)",
+     "reasons": [
+      "the inheritance quote does not name the ancestor"
+     ],
+     "check": "unverified"
+    },
+    "positional": {
+     "value": "rope",
+     "status": "inherited",
+     "quote": "In our implementation of LLaMA models~\\citep{touvron2023llama, touvron2023llama2, dubey2024llama} with DyT, we introduce an additional learnable scalar parameter immediately after the embedding layer, before any Transformer blocks.",
+     "where": "Appendix A, Large Language Models",
+     "reasons": [],
+     "check": "verified"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_theta": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "residual": {
+     "value": "residual",
+     "status": "inherited",
+     "quote": "In our implementation of LLaMA models~\\citep{touvron2023llama, touvron2023llama2, dubey2024llama} with DyT, we introduce an additional learnable scalar parameter immediately after the embedding layer, before any Transformer blocks.",
+     "where": "Appendix A, Large Language Models",
+     "reasons": [
+      "inherited from llama, whose curated entry has no residual"
+     ],
+     "check": "unverified"
+    },
+    "parallel_block": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "attention": {
+     "value": "exact",
+     "status": "inherited",
+     "quote": "In our implementation of LLaMA models~\\citep{touvron2023llama, touvron2023llama2, dubey2024llama} with DyT, we introduce an additional learnable scalar parameter immediately after the embedding layer, before any Transformer blocks.",
+     "where": "Appendix A, Large Language Models",
+     "reasons": [
+      "inherited from llama, whose curated entry has no attention"
+     ],
+     "check": "unverified"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "qkv_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "tied_embeddings": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "moe": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    }
+   },
+   "new_ops": [
+    {
+     "name": "dyt_attn",
+     "kind": "expr",
+     "replaces": "RMSNorm in attention block",
+     "reason": "",
+     "quote": "\\mathrm{DyT}(\\vx) = \\bm{\\gamma} * \\tanh(\\alpha \\vx) + \\bm{\\beta}",
+     "where": "Sec. Dynamic Tanh (DyT)",
+     "inputs": [
+      {
+       "name": "x",
+       "meaning": "the row the norm is applied to",
+       "role": "input",
+       "init": {
+        "value": "",
+        "status": "not_stated",
+        "quote": "",
+        "where": ""
+       },
+       "init_check": "not_stated"
+      },
+      {
+       "name": "a",
+       "meaning": "learnable scalar alpha (attention-block DyT)",
+       "role": "learned_scalar",
+       "init": {
+        "value": "0.8",
+        "status": "stated",
+        "quote": "LLaMA 7B & 4096 & 32 & 0.8/0.2",
+        "where": "Table alpha_init_llama"
+       },
+       "init_check": "verified"
+      },
+      {
+       "name": "g",
+       "meaning": "per-channel gamma",
+       "role": "learned_vector",
+       "init": {
+        "value": "1",
+        "status": "stated",
+        "quote": "We always simply initialize $\\bm{\\gamma}$ to an all-one vector and $\\bm{\\beta}$ to an all-zero vector following normalization layers.",
+        "where": "Sec. DyT, On scaling parameters"
+       },
+       "init_check": "verified"
+      },
+      {
+       "name": "b",
+       "meaning": "per-channel beta",
+       "role": "learned_vector",
+       "init": {
+        "value": "0",
+        "status": "stated",
+        "quote": "We always simply initialize $\\bm{\\gamma}$ to an all-one vector and $\\bm{\\beta}$ to an all-zero vector following normalization layers.",
+        "where": "Sec. DyT, On scaling parameters"
+       },
+       "init_check": "verified"
+      }
+     ],
+     "errors": [],
+     "quote_found": true,
+     "expr_check": {
+      "expr": "tanh(a*x)*g + b",
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "canonical": "((tanh((a*x))*g)+b)",
+      "samples": {
+       "inputs": {
+        "x": [
+         -2.0,
+         -0.5,
+         0.0,
+         0.5,
+         2.0
+        ],
+        "a": [
+         1.5,
+         0.75,
+         0.0,
+         -0.75,
+         -1.5
+        ],
+        "g": [
+         0.75,
+         0.0,
+         -0.75,
+         -1.5,
+         1.5
+        ],
+        "b": [
+         0.75,
+         0.0,
+         -0.75,
+         -1.5,
+         1.5
+        ]
+       },
+       "output": [
+        0.0037089347349521518,
+        0.0,
+        -0.75,
+        -0.9624639024738211,
+        0.0074178694699043035
+       ]
+      }
+     },
+     "check": "verified"
+    },
+    {
+     "name": "dyt_other",
+     "kind": "expr",
+     "replaces": "RMSNorm in FFN block and final norm",
+     "reason": "",
+     "quote": "initializing $\\alpha$ with higher values for DyT layers in attention blocks and lower values for DyT layers in other locations (i.e., within FFN blocks or before the final linear projection) improves performance.",
+     "where": "Sec. Initialization of alpha for LLMs",
+     "inputs": [
+      {
+       "name": "x",
+       "meaning": "the row the norm is applied to",
+       "role": "input",
+       "init": {
+        "value": "",
+        "status": "not_stated",
+        "quote": "",
+        "where": ""
+       },
+       "init_check": "not_stated"
+      },
+      {
+       "name": "a",
+       "meaning": "learnable scalar alpha (FFN-block and final DyT)",
+       "role": "learned_scalar",
+       "init": {
+        "value": "0.2",
+        "status": "stated",
+        "quote": "LLaMA 7B & 4096 & 32 & 0.8/0.2",
+        "where": "Table alpha_init_llama"
+       },
+       "init_check": "verified"
+      },
+      {
+       "name": "g",
+       "meaning": "per-channel gamma",
+       "role": "learned_vector",
+       "init": {
+        "value": "1",
+        "status": "stated",
+        "quote": "We always simply initialize $\\bm{\\gamma}$ to an all-one vector and $\\bm{\\beta}$ to an all-zero vector following normalization layers.",
+        "where": "Sec. DyT, On scaling parameters"
+       },
+       "init_check": "verified"
+      },
+      {
+       "name": "b",
+       "meaning": "per-channel beta",
+       "role": "learned_vector",
+       "init": {
+        "value": "0",
+        "status": "stated",
+        "quote": "We always simply initialize $\\bm{\\gamma}$ to an all-one vector and $\\bm{\\beta}$ to an all-zero vector following normalization layers.",
+        "where": "Sec. DyT, On scaling parameters"
+       },
+       "init_check": "verified"
+      }
+     ],
+     "errors": [],
+     "quote_found": true,
+     "expr_check": {
+      "expr": "tanh(a*x)*g + b",
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "canonical": "((tanh((a*x))*g)+b)",
+      "samples": {
+       "inputs": {
+        "x": [
+         -2.0,
+         -0.5,
+         0.0,
+         0.5,
+         2.0
+        ],
+        "a": [
+         1.5,
+         0.75,
+         0.0,
+         -0.75,
+         -1.5
+        ],
+        "g": [
+         0.75,
+         0.0,
+         -0.75,
+         -1.5,
+         1.5
+        ],
+        "b": [
+         0.75,
+         0.0,
+         -0.75,
+         -1.5,
+         1.5
+        ]
+       },
+       "output": [
+        0.0037089347349521518,
+        0.0,
+        -0.75,
+        -0.9624639024738211,
+        0.0074178694699043035
+       ]
+      }
+     },
+     "check": "verified"
+    },
+    {
+     "name": "embed_scale",
+     "kind": "expr",
+     "replaces": "none (added after embedding)",
+     "reason": "",
+     "quote": "we introduce an additional learnable scalar parameter immediately after the embedding layer, before any Transformer blocks.",
+     "where": "Appendix A, Large Language Models",
+     "inputs": [
+      {
+       "name": "x",
+       "meaning": "token embedding output",
+       "role": "input",
+       "init": {
+        "value": "",
+        "status": "not_stated",
+        "quote": "",
+        "where": ""
+       },
+       "init_check": "not_stated"
+      },
+      {
+       "name": "a",
+       "meaning": "learnable scalar after the embedding layer",
+       "role": "learned_scalar",
+       "init": {
+        "value": "sqrt(d_model)",
+        "status": "stated",
+        "quote": "We initialize it to the square root of the model embedding dimension $\\sqrt{d}$.",
+        "where": "Appendix A, Large Language Models"
+       },
+       "init_check": "verified"
+      }
+     ],
+     "errors": [],
+     "quote_found": true,
+     "expr_check": {
+      "expr": "x*a",
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "canonical": "(x*a)",
+      "samples": {
+       "inputs": {
+        "x": [
+         -2.0,
+         -0.5,
+         0.0,
+         0.5,
+         2.0
+        ],
+        "a": [
+         1.5,
+         0.75,
+         0.0,
+         -0.75,
+         -1.5
+        ]
+       },
+       "output": [
+        -3.0,
+        -0.375,
+        0.0,
+        -0.375,
+        -3.0
+       ]
+      }
+     },
+     "check": "verified"
+    }
+   ],
+   "block_ops": [
+    {
+     "i": 0,
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "e",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 1,
+     "subgraph": "embed",
+     "op": "expr",
+     "role": "learnable scalar after embedding",
+     "inputs": [
+      "e"
+     ],
+     "output": "x",
+     "new_op": "embed_scale",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 2,
+     "subgraph": "block",
+     "op": "expr",
+     "role": "DyT before attention (replaces RMSNorm)",
+     "inputs": [
+      "x"
+     ],
+     "output": "h",
+     "new_op": "dyt_attn",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 3,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "q projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "q",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 4,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "k projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "k",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 5,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "v projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "v",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 6,
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary on q",
+     "inputs": [
+      "q"
+     ],
+     "output": "qr",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "theta"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "pairing"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 7,
+     "subgraph": "block",
+     "op": "rope",
+     "role": "rotary on k",
+     "inputs": [
+      "k"
+     ],
+     "output": "kr",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "theta"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "pairing"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 8,
+     "subgraph": "block",
+     "op": "attention",
+     "role": "causal self-attention",
+     "inputs": [
+      "qr",
+      "kr",
+      "v"
+     ],
+     "output": "a",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "heads"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "kv_heads"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "head_dim"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 9,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "o",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 10,
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual",
+     "inputs": [
+      "x",
+      "o"
+     ],
+     "output": "x1",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 11,
+     "subgraph": "block",
+     "op": "expr",
+     "role": "DyT before FFN (replaces RMSNorm)",
+     "inputs": [
+      "x1"
+     ],
+     "output": "h2",
+     "new_op": "dyt_other",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 12,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN gate",
+     "inputs": [
+      "h2"
+     ],
+     "output": "g",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 13,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN up",
+     "inputs": [
+      "h2"
+     ],
+     "output": "u",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "out"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 14,
+     "subgraph": "block",
+     "op": "silu",
+     "role": "gate activation",
+     "inputs": [
+      "g"
+     ],
+     "output": "gs",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 15,
+     "subgraph": "block",
+     "op": "mul",
+     "role": "gating",
+     "inputs": [
+      "gs",
+      "u"
+     ],
+     "output": "m",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 16,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN down",
+     "inputs": [
+      "m"
+     ],
+     "output": "f",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 17,
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual",
+     "inputs": [
+      "x1",
+      "f"
+     ],
+     "output": "x_out",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 18,
+     "subgraph": "head",
+     "op": "expr",
+     "role": "final DyT before output projection",
+     "inputs": [
+      "x"
+     ],
+     "output": "hn",
+     "new_op": "dyt_other",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 19,
+     "subgraph": "head",
+     "op": "linear",
+     "role": "LM head",
+     "inputs": [
+      "hn"
+     ],
+     "output": "logits",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "tied_to"
+      }
+     ],
+     "errors": []
+    }
+   ],
+   "mechanisms_outside_ir": [],
+   "summary": {
+    "counts": {
+     "verified": 9,
+     "quote_only": 1,
+     "unverified": 5,
+     "not_stated": 62
+    },
+    "unverified": [
+     {
+      "field": "family",
+      "reasons": [
+       "inherited from llama, whose curated entry has no family"
+      ]
+     },
+     {
+      "field": "flavours.norm_placement",
+      "reasons": [
+       "inherited from llama, whose curated entry has no norm_placement",
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.activation",
+      "reasons": [
+       "the inheritance quote does not name the ancestor"
+      ]
+     },
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "inherited from llama, whose curated entry has no residual"
+      ]
+     },
+     {
+      "field": "flavours.attention",
+      "reasons": [
+       "inherited from llama, whose curated entry has no attention"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 3,
+    "n_block_ops": 20
+   }
+  }
+ }
+}

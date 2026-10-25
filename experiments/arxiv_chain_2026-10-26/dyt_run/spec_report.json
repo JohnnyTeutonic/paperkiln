@@ -1,0 +1,62 @@
+{
+ "name": "arxiv_2503_10622",
+ "family": "flex",
+ "report": [
+  [
+   "EXPR",
+   "norm = expr:tanh((a*x)) (new op dyt_attn, replaces RMSNorm in attention block; verified quote (Sec. Dynamic Tanh (DyT)): \u201c\\mathrm{DyT}(\\vx) = \\bm{\\gamma} * \\tanh(\\alpha \\vx) + \\bm{\\beta}\u201d); parses in the IR grammar (spec/tools/ir_expr.py), finite in f32 on [-20, 20]; mtstudio checks its gradient against finite differences before training"
+  ],
+  [
+   "EXPR-INPUTS",
+   "norm_inputs = [\"row\", {\"kind\": \"scalar\", \"init\": 0.8, \"init_ffn\": 0.2, \"init_final\": 0.2}]: the expr's inputs in order; learned: a (scalar, init 0.8: stated ('LLaMA 7B & 4096 & 32 & 0.8/0.2'); ffn 0.2, final 0.2)"
+  ],
+  [
+   "NORM-AFFINE",
+   "norm: the paper's ((tanh((a*x))*g)+b) is core*g + a over the row expression with its learned per-channel g, b; flex computes expr(...) * gain + bias, both learned per feature (init 1, 0): the same form"
+  ],
+  [
+   "NORM-VARIANT",
+   "new op dyt_other: the norm dyt_attn's expression at the ffn, final norm(s) of the block graph, with its own inits (flex norm_inputs init_<place>)"
+  ],
+  [
+   "EXPR",
+   "embed = expr:(x*a) (new op embed_scale, replaces none (added after embedding); verified quote (Appendix A, Large Language Models): \u201cwe introduce an additional learnable scalar parameter immediately after the embedding layer, before any Transformer bloc\u201d); parses in the IR grammar (spec/tools/ir_expr.py), finite in f32 on [-20, 20]; mtstudio checks its gradient against finite differences before training"
+  ],
+  [
+   "EXPR-INPUTS",
+   "embed_inputs = [\"row\", {\"kind\": \"scalar\", \"init\": 8.0}]: the expr's inputs in order; learned: a (scalar, init 8: stated as sqrt(d_model): 8 at this run's d = 64)"
+  ],
+  [
+   "MATCHED",
+   "norm = expr:((tanh((a*x))*g)+b) (used: \u201c\\mathrm{DyT}(\\vx) = \\bm{\\gamma} * \\tanh(\\alpha \\vx) + \\bm{\\beta} [Sec. Dynamic Tanh (DyT)]\u201d)"
+  ],
+  [
+   "ASSERTED",
+   "activation = swiglu (by the operator, --assert; paper: swiglu)"
+  ],
+  [
+   "MATCHED",
+   "positional = rope (inherited: \u201cIn our implementation of LLaMA models~\\citep{touvron2023llama, touvron2023llama2, dubey2024llama} with DyT, we introduce\u201d)"
+  ],
+  [
+   "DEFAULT",
+   "residual = residual: not stated by the paper (the extraction marks it inherited, unverified: inherited from llama, whose curated entry has no residual); a highway or plain stream would be a stated departure"
+  ],
+  [
+   "DEFAULT",
+   "attention = exact: not stated by the paper (the extraction marks it inherited, unverified: inherited from llama, whose curated entry has no attention); windowed, linear or sparse attention would be a stated departure"
+  ],
+  [
+   "MATCHED",
+   "embed = expr:(x*a) on the embed output, before the first block (parity::FlexConfig embed_expr)"
+  ],
+  [
+   "MATCHED",
+   "position = rope on the flex family (the paper's other flavours are not the llama block's): every head rotated, interleaved pairs, theta 10000, as the llama block and the IR rope node"
+  ],
+  [
+   "SIZED",
+   "d=64 layers=2 heads=4 T=64 chosen for this run (paper: {'d_model': 4096, 'n_layers': 32}); the mechanism is the paper's"
+  ]
+ ]
+}

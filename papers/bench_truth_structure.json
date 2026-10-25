@@ -1,0 +1,4073 @@
+{
+ "_about": "Truth labels for the extractor benchmark's sizes and block structure (papers/bench_score.py), 40 papers = flavor_bench.TRUTH's. Read off each paper's LaTeX (papers/.cache/<id>.tex) on 26 Oct 2026 by four Claude agents that saw only the LaTeX and the protocol below, never an extraction; every quote is verbatim in the source and every number inside its quote (checked by script). configs: every size configuration of the paper's own models the paper states; a field the paper does not state is null. structure: norm_placement (pre, post, sandwich, or per sublayer {attn, ffn} with branch_post = the norm on the sublayer's output inside the residual branch), parallel_block, ffn_gated; null = not stated. A label changes only when the source shows it wrong, never to make an extractor pass.",
+ "protocol": "Truth labels for the arXiv extractor's benchmark: sizes and block structure, read off the LaTeX.\n\nSource: the paper's LaTeX, cached at\n  C:\\Users\\jonat\\OneDrive\\Documents\\research_portfolio_complete\\microtorch\\papers\\.cache\\<arxiv_id>.tex\nRead ONLY that file for each paper (Grep and Read with offsets; some files are large). Do NOT open anything\nunder microtorch\\papers\\llm_extract_receipts, microtorch\\experiments, microtorch\\papers\\.cache\\llm, or any\n*.extraction.json: the labels must be independent of the extractor being scored. Do not use your own memory\nof the model: a value the LaTeX does not state is null, even if you \"know\" it.\n\nFor each paper, label what the paper states about ITS OWN model(s) (not baselines, not related work, not\nmodels it only compares against, not rejected ablations, not future work).\n\n1. configs: every size configuration of the paper's own models that the paper states (usually a table:\n   one row per model size). For each config give:\n     name            the paper's name for it (e.g. \"7B\", \"BERT-base\", \"125M\")\n     d_model         hidden width\n     n_layers        number of layers (blocks). For encoder-decoder models: layers per stack, and say so in notes.\n     n_heads         attention (query) heads\n     n_kv_heads      key/value heads, ONLY when the paper states grouped-query / multi-query (else null)\n     d_ff            FFN inner width\n     vocab_size      vocabulary size, when stated for the model (a global statement applies to every config)\n     context_length  the model's training context / sequence length, when stated (a global statement applies to every config)\n   Each field: {\"value\": <number>, \"quote\": \"<verbatim span from the LaTeX that contains the number>\"} or null.\n   A quote is ONE contiguous span copied character for character from the .tex (LaTeX commands, &, $ and all),\n   e.g. a table row \"6.7B & 32 & 4096 & 32 & 128\". Numbers as plain integers (4K -> 4096 only if the paper\n   means 4096; \"2048\" stays 2048). If the paper gives head_dim and heads but not d_model, do not compute\n   d_model: null.\n2. structure (each {\"value\": ..., \"quote\": \"<verbatim span>\"} or null when the paper does not state it):\n     norm_placement  \"pre\" (each sublayer's input is normalised: x + f(norm(x))), \"post\" (norm after the\n                     residual add: norm(x + f(x))), \"sandwich\" (norm on the sublayer's input and output),\n                     or \"other:<short description>\" (e.g. different per sublayer). An explicit statement\n                     that the model follows a named model's placement counts only if it names the\n                     placement (\"pre-normalization as in GPT-2\").\n     parallel_block  true when attention and FFN run in parallel on the same input (\"parallel\n                     formulation\", y = x + attn(ln(x)) + mlp(ln(x))), false only when the paper says so\n                     explicitly or its equations/figure show the sequential block; else null.\n     ffn_gated       true when the FFN is a gated linear unit (SwiGLU, GeGLU, ReGLU, GLU, \"gated-GELU\"),\n                     false when the paper states a plain two-matrix FFN (ReLU/GeLU between two linears).\n3. notes: one or two sentences: which model you took as the paper's own, anything ambiguous.\n\nWrite ONE JSON file (UTF-8, valid JSON, no comments): a list of objects\n  {\"arxiv_id\": \"...\", \"model\": \"...\", \"configs\": [...], \"structure\": {\"norm_placement\": ..., \"parallel_block\": ...,\n   \"ffn_gated\": ...}, \"notes\": \"...\"}\nin the order you were given the ids. Before writing, re-check that every quote occurs verbatim in that paper's\n.tex (use Grep with a distinctive fixed substring of the quote) and that each number occurs inside its quote.\n",
+ "adjudicated": [
+  {
+   "arxiv_id": "2311.16867",
+   "field": "structure.norm_placement",
+   "now": null,
+   "why": "the label's quote (merging two layer norms into the next linear) implies, but does not state, a placement"
+  },
+  {
+   "arxiv_id": "2403.17297",
+   "field": "structure.ffn_gated",
+   "now": null,
+   "why": "the label's quote is the paper's description of LLaMA, not of InternLM2 (flavor_bench.py omits its activation for the same reason)"
+  },
+  {
+   "arxiv_id": "2309.16609",
+   "field": "configs.1.8B.vocab_size",
+   "now": null,
+   "why": "\"approximately 152K\" is not an exact size"
+  },
+  {
+   "arxiv_id": "2309.16609",
+   "field": "configs.7B.vocab_size",
+   "now": null,
+   "why": "\"approximately 152K\" is not an exact size"
+  },
+  {
+   "arxiv_id": "2309.16609",
+   "field": "configs.14B.vocab_size",
+   "now": null,
+   "why": "\"approximately 152K\" is not an exact size"
+  },
+  {
+   "arxiv_id": "2004.05150",
+   "field": "structure.norm_placement",
+   "now": null,
+   "why": "the label's quote (\"Layernorm Location & pre-layernorm\") is the character-level models' table; the benchmark scores Longformer's headline model (pretrained from RoBERTa, flavor_bench.TRUTH), whose placement the paper does not state"
+  },
+  {
+   "arxiv_id": "2402.00838",
+   "field": "configs[1B, 7B].vocab_size",
+   "accept": [
+    50280,
+    50304
+   ],
+   "why": "the paper states both: \"The final vocabulary size is 50,280\" and \"we increase the size of the corresponding embedding matrix in our model to 50,304\" (the embedding's rows, an IR's vocab)"
+  },
+  {
+   "arxiv_id": "2403.17297",
+   "field": "configs[1.8B, 7B, 20B].context_length",
+   "accept": [
+    32768,
+    32000
+   ],
+   "why": "the paper writes \"32k\", which reads either way"
+  },
+  {
+   "arxiv_id": "2109.08668",
+   "field": "structure.norm_placement",
+   "now": {
+    "attn": "pre",
+    "ffn": "branch_post"
+   },
+   "why": "the labeller's free-text placement, written per sublayer in the scorer's names"
+  }
+ ],
+ "papers": {
+  "1706.03762": {
+   "model": "Transformer",
+   "configs": [
+    {
+     "name": "base",
+     "d_model": {
+      "value": 512,
+      "quote": "base & 6 & 512 & 2048 & 8"
+     },
+     "n_layers": {
+      "value": 6,
+      "quote": "base & 6 & 512 & 2048 & 8"
+     },
+     "n_heads": {
+      "value": 8,
+      "quote": "base & 6 & 512 & 2048 & 8"
+     },
+     "n_kv_heads": null,
+     "d_ff": {
+      "value": 2048,
+      "quote": "base & 6 & 512 & 2048 & 8"
+     },
+     "vocab_size": null,
+     "context_length": null
+    },
+    {
+     "name": "big",
+     "d_model": {
+      "value": 1024,
+      "quote": "big & 6 & 1024 & 4096 & 16"
+     },
+     "n_layers": {
+      "value": 6,
+      "quote": "big & 6 & 1024 & 4096 & 16"
+     },
+     "n_heads": {
+      "value": 16,
+      "quote": "big & 6 & 1024 & 4096 & 16"
+     },
+     "n_kv_heads": null,
+     "d_ff": {
+      "value": 4096,
+      "quote": "big & 6 & 1024 & 4096 & 16"
+     },
+     "vocab_size": null,
+     "context_length": null
+    }
+   ],
+   "structure": {
+    "norm_placement": {
+     "value": "post",
+     "quote": "the output of each sub-layer is $\\mathrm{LayerNorm}(x + \\mathrm{Sublayer}(x))$"
+    },
+    "parallel_block": {
+     "value": false,
+     "quote": "The first is a multi-head self-attention mechanism, and the second is a simple, position-wise fully connected feed-forward network."
+    },
+    "ffn_gated": {
+     "value": false,
+     "quote": "This consists of two linear transformations with a ReLU activation in between."
+    }
+   },
+   "notes": "Encoder-decoder; n_layers is per stack (N=6 for encoder and decoder). Vocabulary is task-specific (about 37000 shared BPE for EN-DE, 32000 word-piece for EN-FR), so vocab_size is null; no training context length stated. Table 3 rows (A)-(E) are ablations and the 4-layer d_model=1024 parsing model is a side application; both excluded."
+  },
+  "1810.04805": {
+   "model": "BERT",
+   "configs": [
+    {
+     "name": "BERT-BASE",
+     "d_model": {
+      "value": 768,
+      "quote": "{\\bf \\bertbase} (L=12, H=768, A=12, Total Parameters=110M)"
+     },
+     "n_layers": {
+      "value": 12,
+      "quote": "{\\bf \\bertbase} (L=12, H=768, A=12, Total Parameters=110M)"
+     },
+     "n_heads": {
+      "value": 12,
+      "quote": "{\\bf \\bertbase} (L=12, H=768, A=12, Total Parameters=110M)"
+     },
+     "n_kv_heads": null,
+     "d_ff": {
+      "value": 3072,
+      "quote": "3072 for the $H=768$"
+     },
+     "vocab_size": {
+      "value": 30000,
+      "quote": "We use WordPiece embeddings \\cite{wu-etal:2016:_googl} with a 30,000 token vocabulary."
+     },
+     "context_length": {
+      "value": 512,
+      "quote": "They are sampled such that the combined length is $\\le$ 512 tokens."
+     }
+    },
+    {
+     "name": "BERT-LARGE",
+     "d_model": {
+      "value": 1024,
+      "quote": "{\\bf \\bertlarge} (L=24, H=1024, A=16, Total Parameters=340M)"
+     },
+     "n_layers": {
+      "value": 24,
+      "quote": "{\\bf \\bertlarge} (L=24, H=1024, A=16, Total Parameters=340M)"
+     },
+     "n_heads": {
+      "value": 16,
+      "quote": "{\\bf \\bertlarge} (L=24, H=1024, A=16, Total Parameters=340M)"
+     },
+     "n_kv_heads": null,
+     "d_ff": {
+      "value": 4096,
+      "quote": "4096 for the $H=1024$"
+     },
+     "vocab_size": {
+      "value": 30000,
+      "quote": "We use WordPiece embeddings \\cite{wu-etal:2016:_googl} with a 30,000 token vocabulary."
+     },
+     "context_length": {
+      "value": 512,
+      "quote": "They are sampled such that the combined length is $\\le$ 512 tokens."
+     }
+    }
+   ],
+   "structure": {
+    "norm_placement": null,
+    "parallel_block": null,
+    "ffn_gated": null
+   },
+   "notes": "BERT-BASE and BERT-LARGE are the paper's models; the model-size ablation table (other L/H/A) is excluded. The paper only says the implementation is almost identical to the original Transformer, so norm placement and block structure are not stated; GELU is stated but not an explicit two-matrix FFN."
+  },
+  "1901.02860": {
+   "model": "Transformer-XL",
+   "configs": [
+    {
+     "name": "12L Transformer-XL",
+     "d_model": null,
+     "n_layers": {
+      "value": 12,
+      "quote": "Ours - 12L Transformer-XL & 41M"
+     },
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": null
+    },
+    {
+     "name": "18L Transformer-XL",
+     "d_model": null,
+     "n_layers": {
+      "value": 18,
+      "quote": "Ours - 18L Transformer-XL & 88M"
+     },
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 784,
+      "quote": "With the attention length 784 during training and 3,800 during evaluation"
+     }
+    },
+    {
+     "name": "24L Transformer-XL",
+     "d_model": null,
+     "n_layers": {
+      "value": 24,
+      "quote": "Ours - 24L Transformer-XL & 277M"
+     },
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 784,
+      "quote": "With the attention length 784 during training and 3,800 during evaluation"
+     }
+    }
+   ],
+   "structure": {
+    "norm_placement": {
+     "value": "post",
+     "quote": "\\rvo_{\\tau}^{n} =&\\, \\text{LayerNorm}(\\text{Linear}(\\rva_{\\tau}^{n}) + \\rvh_{\\tau}^{n-1})"
+    },
+    "parallel_block": {
+     "value": false,
+     "quote": "\\rvh_{\\tau}^{n} =&\\, \\text{Positionwise-Feed-Forward}(\\rvo_{\\tau}^{n})"
+    },
+    "ffn_gated": null
+   },
+   "notes": "The LaTeX gives no width/head/FFN hyperparameters; only layer counts for the enwik8 models (12L, 18L, 24L). The 784 'attention length during training' is stated after the 18L/24L sentence and is taken as their training context (ambiguous: memory/attention span, not segment length). WT103 Standard/Large, LM1B Base/Large and PTB models are named only by parameter count and are omitted; the 20-layer LM1B ablation model is excluded. Post-norm is shown for the attention sublayer only; the FFN's internal norm is not spelled out."
+  },
+  "1906.08237": {
+   "model": "XLNet",
+   "configs": [
+    {
+     "name": "XLNet-Large",
+     "d_model": {
+      "value": 1024,
+      "quote": "Hidden size & 1024"
+     },
+     "n_layers": {
+      "value": 24,
+      "quote": "Number of layers & 24"
+     },
+     "n_heads": {
+      "value": 16,
+      "quote": "Number of attention heads & 16"
+     },
+     "n_kv_heads": null,
+     "d_ff": {
+      "value": 4096,
+      "quote": "FFN inner hidden size & 4096"
+     },
+     "vocab_size": null,
+     "context_length": {
+      "value": 512,
+      "quote": "During pretraining, we always use a full sequence length of 512."
+     }
+    }
+   ],
+   "structure": {
+    "norm_placement": {
+     "value": "post",
+     "quote": "\\text{LayerNorm}\\rbr{ \\hat{h}_{z_t}^{(m)} +"
+    },
+    "parallel_block": {
+     "value": false,
+     "quote": "attention with relative positional encoding and position-wise feed-forward are consecutively employed"
+    },
+    "ffn_gated": null
+   },
+   "notes": "Only XLNet-Large has stated hyperparameters (pretraining table). XLNet-Base(-wikibooks) is used for ablations but its dimensions are stated only in commented-out text, so it is omitted. Vocabulary size not stated (SentencePiece only)."
+  },
+  "1907.11692": {
+   "model": "RoBERTa",
+   "configs": [
+    {
+     "name": "RoBERTa-large",
+     "d_model": {
+      "value": 1024,
+      "quote": "Hidden size & 1024 & 768"
+     },
+     "n_layers": {
+      "value": 24,
+      "quote": "Number of Layers & 24 & 12"
+     },
+     "n_heads": {
+      "value": 16,
+      "quote": "Attention heads & 16 & 12"
+     },
+     "n_kv_heads": null,
+     "d_ff": {
+      "value": 4096,
+      "quote": "FFN inner hidden size & 4096 & 3072"
+     },
+     "vocab_size": {
+      "value": 50000,
+      "quote": "we instead consider training BERT with a larger byte-level BPE vocabulary containing 50K subword units"
+     },
+     "context_length": {
+      "value": 512,
+      "quote": "We pretrain with sequences of at most $T=512$ tokens."
+     }
+    },
+    {
+     "name": "RoBERTa-base",
+     "d_model": {
+      "value": 768,
+      "quote": "Hidden size & 1024 & 768"
+     },
+     "n_layers": {
+      "value": 12,
+      "quote": "Number of Layers & 24 & 12"
+     },
+     "n_heads": {
+      "value": 12,
+      "quote": "Attention heads & 16 & 12"
+     },
+     "n_kv_heads": null,
+     "d_ff": {
+      "value": 3072,
+      "quote": "FFN inner hidden size & 4096 & 3072"
+     },
+     "vocab_size": {
+      "value": 50000,
+      "quote": "we instead consider training BERT with a larger byte-level BPE vocabulary containing 50K subword units"
+     },
+     "context_length": {
+      "value": 512,
+      "quote": "We pretrain with sequences of at most $T=512$ tokens."
+     }
+    }
+   ],
+   "structure": {
+    "norm_placement": null,
+    "parallel_block": null,
+    "ffn_gated": null
+   },
+   "notes": "Configs from the pretraining hyperparameter table (large, base). Vocabulary is stated as '50K' units, recorded as 50000. The paper does not describe norm placement, block structure or FFN form (it defers to the standard Transformer/BERT)."
+  },
+  "1909.08053": {
+   "model": "Megatron-LM (GPT-2 and BERT)",
+   "configs": [
+    {
+     "name": "GPT-2 355M",
+     "d_model": {
+      "value": 1024,
+      "quote": "355M & 24 &  1024 &\t16 & 64  &  64  & 0.86"
+     },
+     "n_layers": {
+      "value": 24,
+      "quote": "355M & 24 &  1024 &\t16 & 64  &  64  & 0.86"
+     },
+     "n_heads": {
+      "value": 16,
+      "quote": "355M & 24 &  1024 &\t16 & 64  &  64  & 0.86"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 51200,
+      "quote": "resulting in a padded vocabulary size of 51,200"
+     },
+     "context_length": {
+      "value": 1024,
+      "quote": "all training is performed with sequences of 1024 subword units"
+     }
+    },
+    {
+     "name": "GPT-2 2.5B",
+     "d_model": {
+      "value": 1920,
+      "quote": "2.5B &  54 & 1920 & 20 & 96  &  128 & 2.27"
+     },
+     "n_layers": {
+      "value": 54,
+      "quote": "2.5B &  54 & 1920 & 20 & 96  &  128 & 2.27"
+     },
+     "n_heads": {
+      "value": 20,
+      "quote": "2.5B &  54 & 1920 & 20 & 96  &  128 & 2.27"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 51200,
+      "quote": "resulting in a padded vocabulary size of 51,200"
+     },
+     "context_length": {
+      "value": 1024,
+      "quote": "all training is performed with sequences of 1024 subword units"
+     }
+    },
+    {
+     "name": "GPT-2 8.3B",
+     "d_model": {
+      "value": 3072,
+      "quote": "8.3B & 72 & 3072 &  24 &  128 & 512 & 2.10   \\\\ \\hline"
+     },
+     "n_layers": {
+      "value": 72,
+      "quote": "8.3B & 72 & 3072 &  24 &  128 & 512 & 2.10   \\\\ \\hline"
+     },
+     "n_heads": {
+      "value": 24,
+      "quote": "8.3B & 72 & 3072 &  24 &  128 & 512 & 2.10   \\\\ \\hline"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 51200,
+      "quote": "resulting in a padded vocabulary size of 51,200"
+     },
+     "context_length": {
+      "value": 1024,
+      "quote": "all training is performed with sequences of 1024 subword units"
+     }
+    },
+    {
+     "name": "GPT-2 1.2B (scaling study)",
+     "d_model": {
+      "value": 1536,
+      "quote": "1536 &\t16\t& 40\t& 1.2\t& 1\t& 64"
+     },
+     "n_layers": {
+      "value": 40,
+      "quote": "1536 &\t16\t& 40\t& 1.2\t& 1\t& 64"
+     },
+     "n_heads": {
+      "value": 16,
+      "quote": "1536 &\t16\t& 40\t& 1.2\t& 1\t& 64"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 51200,
+      "quote": "resulting in a padded vocabulary size of 51,200"
+     },
+     "context_length": {
+      "value": 1024,
+      "quote": "all training is performed with sequences of 1024 subword units"
+     }
+    },
+    {
+     "name": "GPT-2 4.2B (scaling study)",
+     "d_model": {
+      "value": 2304,
+      "quote": "2304\t&24\t&64\t&4.2\t&4\t&256"
+     },
+     "n_layers": {
+      "value": 64,
+      "quote": "2304\t&24\t&64\t&4.2\t&4\t&256"
+     },
+     "n_heads": {
+      "value": 24,
+      "quote": "2304\t&24\t&64\t&4.2\t&4\t&256"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 51200,
+      "quote": "resulting in a padded vocabulary size of 51,200"
+     },
+     "context_length": {
+      "value": 1024,
+      "quote": "all training is performed with sequences of 1024 subword units"
+     }
+    },
+    {
+     "name": "Megatron-336M (BERT)",
+     "d_model": {
+      "value": 1024,
+      "quote": "336M      & 24     & 1024   & 16        & 128"
+     },
+     "n_layers": {
+      "value": 24,
+      "quote": "336M      & 24     & 1024   & 16        & 128"
+     },
+     "n_heads": {
+      "value": 16,
+      "quote": "336M      & 24     & 1024   & 16        & 128"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 30522,
+      "quote": "We use the original BERT dictionary with vocab size of 30,522."
+     },
+     "context_length": null
+    },
+    {
+     "name": "Megatron-1.3B (BERT)",
+     "d_model": {
+      "value": 2048,
+      "quote": "1.3B      & 24     & 2048   & 32        & 256"
+     },
+     "n_layers": {
+      "value": 24,
+      "quote": "1.3B      & 24     & 2048   & 32        & 256"
+     },
+     "n_heads": {
+      "value": 32,
+      "quote": "1.3B      & 24     & 2048   & 32        & 256"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 30522,
+      "quote": "We use the original BERT dictionary with vocab size of 30,522."
+     },
+     "context_length": null
+    },
+    {
+     "name": "Megatron-3.9B (BERT)",
+     "d_model": {
+      "value": 2560,
+      "quote": "3.9B      & 48     & 2560   & 40        & 512   \\\\ \\hline"
+     },
+     "n_layers": {
+      "value": 48,
+      "quote": "3.9B      & 48     & 2560   & 40        & 512   \\\\ \\hline"
+     },
+     "n_heads": {
+      "value": 40,
+      "quote": "3.9B      & 48     & 2560   & 40        & 512   \\\\ \\hline"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 30522,
+      "quote": "We use the original BERT dictionary with vocab size of 30,522."
+     },
+     "context_length": null
+    }
+   ],
+   "structure": {
+    "norm_placement": {
+     "value": "pre",
+     "quote": "layer normalization \\citep{layernorm} to the input of the multi-head attention and feed forward layers"
+    },
+    "parallel_block": {
+     "value": false,
+     "quote": "A transformer layer consists of a self attention block followed by a two-layer, multi-layer perceptron (MLP)"
+    },
+    "ffn_gated": {
+     "value": false,
+     "quote": "The first part of the block is a GEMM followed by a GeLU nonlinearity"
+    }
+   },
+   "notes": "Own models: the trained GPT-2 (355M, 2.5B, 8.3B) and BERT (336M, 1.3B, 3.9B) configurations; the 1.2B and 4.2B rows come from the weak-scaling study table (that table's 2.5B duplicates the trained one, and its 8.3B differs only in using 32 heads, so both are left out). The padded 51,200 vocabulary is stated in the scaling section and applied to all GPT-2 configs. d_ff is never stated. The pre-norm quote describes GPT-2/BERT input-side layer norm; the BERT models use the rearranged layer-norm/residual order of a figure not described further in text."
+  },
+  "1909.11942": {
+   "model": "ALBERT",
+   "configs": [
+    {
+     "name": "ALBERT-base",
+     "d_model": {
+      "value": 768,
+      "quote": "\\multirow{4}{*}{ALBERT}  &base\t    &12M     &12 & 768  & 128  & True"
+     },
+     "n_layers": {
+      "value": 12,
+      "quote": "\\multirow{4}{*}{ALBERT}  &base\t    &12M     &12 & 768  & 128  & True"
+     },
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 30000,
+      "quote": "we use a vocabulary size of 30,000"
+     },
+     "context_length": {
+      "value": 512,
+      "quote": "We always limit the maximum input length to 512"
+     }
+    },
+    {
+     "name": "ALBERT-large",
+     "d_model": {
+      "value": 1024,
+      "quote": "&large\t    &18M\t &24 & 1024 & 128  & True"
+     },
+     "n_layers": {
+      "value": 24,
+      "quote": "&large\t    &18M\t &24 & 1024 & 128  & True"
+     },
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 30000,
+      "quote": "we use a vocabulary size of 30,000"
+     },
+     "context_length": {
+      "value": 512,
+      "quote": "We always limit the maximum input length to 512"
+     }
+    },
+    {
+     "name": "ALBERT-xlarge",
+     "d_model": {
+      "value": 2048,
+      "quote": "&xlarge\t&60M\t &24 & 2048 & 128  & True"
+     },
+     "n_layers": {
+      "value": 24,
+      "quote": "&xlarge\t&60M\t &24 & 2048 & 128  & True"
+     },
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 30000,
+      "quote": "we use a vocabulary size of 30,000"
+     },
+     "context_length": {
+      "value": 512,
+      "quote": "We always limit the maximum input length to 512"
+     }
+    },
+    {
+     "name": "ALBERT-xxlarge",
+     "d_model": {
+      "value": 4096,
+      "quote": "&xxlarge\t&235M\t &12 & 4096 & 128  & True"
+     },
+     "n_layers": {
+      "value": 12,
+      "quote": "&xxlarge\t&235M\t &12 & 4096 & 128  & True"
+     },
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 30000,
+      "quote": "we use a vocabulary size of 30,000"
+     },
+     "context_length": {
+      "value": 512,
+      "quote": "We always limit the maximum input length to 512"
+     }
+    }
+   ],
+   "structure": {
+    "norm_placement": null,
+    "parallel_block": null,
+    "ffn_gated": null
+   },
+   "notes": "Configs from the compiled model-setup table (embedding size E=128, parameter sharing). The paper gives heads and FFN only as rules ('the number of attention heads to be $H/64$', 'feed-forward/filter size to be $4H$'), so n_heads and d_ff are null rather than computed; a table with explicit head counts sits in an uncompiled section marked 'DO NOT WRITE HERE' and was not used. A 24-layer ALBERT-xxlarge variant is discussed but the 12-layer one is the reported model."
+  },
+  "1910.10683": {
+   "model": "T5",
+   "configs": [
+    {
+     "name": "Small",
+     "d_model": {
+      "value": 512,
+      "quote": "using $d_{\\mathrm{model}} = 512$, $d_{\\mathrm{ff}} = 2{,}048$, $8$-headed attention, and only $6$ layers each in the encoder and decoder"
+     },
+     "n_layers": {
+      "value": 6,
+      "quote": "using $d_{\\mathrm{model}} = 512$, $d_{\\mathrm{ff}} = 2{,}048$, $8$-headed attention, and only $6$ layers each in the encoder and decoder"
+     },
+     "n_heads": {
+      "value": 8,
+      "quote": "using $d_{\\mathrm{model}} = 512$, $d_{\\mathrm{ff}} = 2{,}048$, $8$-headed attention, and only $6$ layers each in the encoder and decoder"
+     },
+     "n_kv_heads": null,
+     "d_ff": {
+      "value": 2048,
+      "quote": "using $d_{\\mathrm{model}} = 512$, $d_{\\mathrm{ff}} = 2{,}048$, $8$-headed attention, and only $6$ layers each in the encoder and decoder"
+     },
+     "vocab_size": {
+      "value": 32000,
+      "quote": "we use a vocabulary of $32{,}000$ wordpieces"
+     },
+     "context_length": {
+      "value": 512,
+      "quote": "We use a maximum sequence length of $512$"
+     }
+    },
+    {
+     "name": "Base",
+     "d_model": {
+      "value": 768,
+      "quote": "All other sub-layers and embeddings have a dimensionality of $d_{\\mathrm{model}} = 768$"
+     },
+     "n_layers": {
+      "value": 12,
+      "quote": "both the encoder and decoder consist of $12$ blocks"
+     },
+     "n_heads": {
+      "value": 12,
+      "quote": "all attention mechanisms have $12$ heads"
+     },
+     "n_kv_heads": null,
+     "d_ff": {
+      "value": 3072,
+      "quote": "$d_{\\mathrm{ff}} = 3072$"
+     },
+     "vocab_size": {
+      "value": 32000,
+      "quote": "we use a vocabulary of $32{,}000$ wordpieces"
+     },
+     "context_length": {
+      "value": 512,
+      "quote": "We use a maximum sequence length of $512$"
+     }
+    },
+    {
+     "name": "Large",
+     "d_model": {
+      "value": 1024,
+      "quote": "$d_{\\mathrm{model}} = 1{,}024$, $d_{\\mathrm{ff}} = 4{,}096$, $d_{\\mathrm{kv}} = 64$, $16$-headed attention, and $24$ layers each in the encoder and decoder"
+     },
+     "n_layers": {
+      "value": 24,
+      "quote": "$d_{\\mathrm{model}} = 1{,}024$, $d_{\\mathrm{ff}} = 4{,}096$, $d_{\\mathrm{kv}} = 64$, $16$-headed attention, and $24$ layers each in the encoder and decoder"
+     },
+     "n_heads": {
+      "value": 16,
+      "quote": "$d_{\\mathrm{model}} = 1{,}024$, $d_{\\mathrm{ff}} = 4{,}096$, $d_{\\mathrm{kv}} = 64$, $16$-headed attention, and $24$ layers each in the encoder and decoder"
+     },
+     "n_kv_heads": null,
+     "d_ff": {
+      "value": 4096,
+      "quote": "$d_{\\mathrm{model}} = 1{,}024$, $d_{\\mathrm{ff}} = 4{,}096$, $d_{\\mathrm{kv}} = 64$, $16$-headed attention, and $24$ layers each in the encoder and decoder"
+     },
+     "vocab_size": {
+      "value": 32000,
+      "quote": "we use a vocabulary of $32{,}000$ wordpieces"
+     },
+     "context_length": {
+      "value": 512,
+      "quote": "We use a maximum sequence length of $512$"
+     }
+    },
+    {
+     "name": "3B",
+     "d_model": {
+      "value": 1024,
+      "quote": "we use $d_{\\mathrm{model}} = 1024$, a $24$ layer encoder and decoder"
+     },
+     "n_layers": {
+      "value": 24,
+      "quote": "we use $d_{\\mathrm{model}} = 1024$, a $24$ layer encoder and decoder"
+     },
+     "n_heads": {
+      "value": 32,
+      "quote": "we use $d_{\\mathrm{ff}} = 16{,}384$ with $32$-headed attention"
+     },
+     "n_kv_heads": null,
+     "d_ff": {
+      "value": 16384,
+      "quote": "we use $d_{\\mathrm{ff}} = 16{,}384$ with $32$-headed attention"
+     },
+     "vocab_size": {
+      "value": 32000,
+      "quote": "we use a vocabulary of $32{,}000$ wordpieces"
+     },
+     "context_length": {
+      "value": 512,
+      "quote": "We use a maximum sequence length of $512$"
+     }
+    },
+    {
+     "name": "11B",
+     "d_model": {
+      "value": 1024,
+      "quote": "we use $d_{\\mathrm{model}} = 1024$, a $24$ layer encoder and decoder"
+     },
+     "n_layers": {
+      "value": 24,
+      "quote": "we use $d_{\\mathrm{model}} = 1024$, a $24$ layer encoder and decoder"
+     },
+     "n_heads": {
+      "value": 128,
+      "quote": "we use $d_{\\mathrm{ff}} = 65{,}536$ with $128$-headed attention"
+     },
+     "n_kv_heads": null,
+     "d_ff": {
+      "value": 65536,
+      "quote": "we use $d_{\\mathrm{ff}} = 65{,}536$ with $128$-headed attention"
+     },
+     "vocab_size": {
+      "value": 32000,
+      "quote": "we use a vocabulary of $32{,}000$ wordpieces"
+     },
+     "context_length": {
+      "value": 512,
+      "quote": "We use a maximum sequence length of $512$"
+     }
+    }
+   ],
+   "structure": {
+    "norm_placement": {
+     "value": "pre",
+     "quote": "Layer normalization \\citep{ba2016layer} is applied to the input of each subcomponent."
+    },
+    "parallel_block": {
+     "value": false,
+     "quote": "a self-attention layer followed by a small feed-forward network"
+    },
+    "ffn_gated": {
+     "value": false,
+     "quote": "a dense layer with an output dimensionality of $d_{\\mathrm{ff}} = 3072$ followed by a ReLU nonlinearity and another dense layer"
+    }
+   },
+   "notes": "Encoder-decoder; n_layers is per stack. 3B and 11B share the d_model/layer sentence. The 32,000 vocabulary ('for all experiments') and 512 maximum sequence length are stated in the baseline setup and applied to all sizes. Layer norm is RMS-style (rescale only, no bias)."
+  },
+  "1910.13461": {
+   "model": "BART",
+   "configs": [
+    {
+     "name": "BART-base",
+     "d_model": {
+      "value": 768,
+      "quote": "base-size models (6 encoder and 6 decoder layers, with a hidden size of 768)"
+     },
+     "n_layers": {
+      "value": 6,
+      "quote": "For our base model, we use 6 layers in the encoder and decoder"
+     },
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": null
+    },
+    {
+     "name": "BART-large",
+     "d_model": {
+      "value": 1024,
+      "quote": "We pre-train a large model with 12 layers in each of the encoder and decoder, and a hidden size of 1024."
+     },
+     "n_layers": {
+      "value": 12,
+      "quote": "We pre-train a large model with 12 layers in each of the encoder and decoder, and a hidden size of 1024."
+     },
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": null
+    }
+   ],
+   "structure": {
+    "norm_placement": null,
+    "parallel_block": null,
+    "ffn_gated": null
+   },
+   "notes": "Encoder-decoder; n_layers is per stack. Heads, FFN width, vocabulary size (GPT-2 BPE, size not given) and context length are not stated. The paper says it uses the standard Transformer with ReLU changed to GeLU, without naming norm placement or spelling out the FFN."
+  },
+  "2004.05150": {
+   "model": "Longformer",
+   "configs": [
+    {
+     "name": "char-LM small",
+     "d_model": {
+      "value": 512,
+      "quote": "Small model config & 12 layers, 8 heads, 512 hidden size"
+     },
+     "n_layers": {
+      "value": 12,
+      "quote": "Small model config & 12 layers, 8 heads, 512 hidden size"
+     },
+     "n_heads": {
+      "value": 8,
+      "quote": "Small model config & 12 layers, 8 heads, 512 hidden size"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 23040,
+      "quote": "Phase 5 sequence length & 23,040"
+     }
+    },
+    {
+     "name": "char-LM large",
+     "d_model": {
+      "value": 512,
+      "quote": "Large model config & 30 layers, 8 heads, 512 hidden size"
+     },
+     "n_layers": {
+      "value": 30,
+      "quote": "Large model config & 30 layers, 8 heads, 512 hidden size"
+     },
+     "n_heads": {
+      "value": 8,
+      "quote": "Large model config & 30 layers, 8 heads, 512 hidden size"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 23040,
+      "quote": "Phase 5 sequence length & 23,040"
+     }
+    },
+    {
+     "name": "Longformer-base",
+     "d_model": null,
+     "n_layers": null,
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 4096,
+      "quote": "The resulting model can process sequences up to 4,096 tokens long"
+     }
+    },
+    {
+     "name": "Longformer-large",
+     "d_model": null,
+     "n_layers": null,
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 4096,
+      "quote": "The resulting model can process sequences up to 4,096 tokens long"
+     }
+    },
+    {
+     "name": "LED-base",
+     "d_model": null,
+     "n_layers": {
+      "value": 6,
+      "quote": "LED-base and LED-large, which respectively have 6 and 12 layers in both encoder and decoder stacks"
+     },
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 16384,
+      "quote": "we extend position embedding to 16K tokens"
+     }
+    },
+    {
+     "name": "LED-large",
+     "d_model": null,
+     "n_layers": {
+      "value": 12,
+      "quote": "LED-base and LED-large, which respectively have 6 and 12 layers in both encoder and decoder stacks"
+     },
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 16384,
+      "quote": "we extend position embedding to 16K tokens"
+     }
+    }
+   ],
+   "structure": {
+    "norm_placement": null,
+    "parallel_block": null,
+    "ffn_gated": null
+   },
+   "notes": "Three own model families: character-level LMs (small/large; context is the final-phase training length, staged from 2,048 to 23,040), Longformer-base/large continued from RoBERTa checkpoints (dimensions not restated; 4,096 positions), and LED-base/large following BART's layers and widths (16K positions, read as 16384 since BART's 1K is copied 16 times). Pre-layernorm is stated only for the char-LM models; the RoBERTa/BART-initialised models inherit those architectures, which the paper does not describe."
+  },
+  "2005.14165": {
+   "model": "GPT-3",
+   "configs": [
+    {
+     "name": "GPT-3 Small",
+     "d_model": {
+      "value": 768,
+      "quote": "GPT-3 Small & 125M & 12 & 768 & 12 & 64"
+     },
+     "n_layers": {
+      "value": 12,
+      "quote": "GPT-3 Small & 125M & 12 & 768 & 12 & 64"
+     },
+     "n_heads": {
+      "value": 12,
+      "quote": "GPT-3 Small & 125M & 12 & 768 & 12 & 64"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 2048,
+      "quote": "All models use a context window of $n_{\\mathrm{ctx}}=2048$ tokens."
+     }
+    },
+    {
+     "name": "GPT-3 Medium",
+     "d_model": {
+      "value": 1024,
+      "quote": "GPT-3 Medium & 350M & 24 & 1024 & 16 & 64"
+     },
+     "n_layers": {
+      "value": 24,
+      "quote": "GPT-3 Medium & 350M & 24 & 1024 & 16 & 64"
+     },
+     "n_heads": {
+      "value": 16,
+      "quote": "GPT-3 Medium & 350M & 24 & 1024 & 16 & 64"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 2048,
+      "quote": "All models use a context window of $n_{\\mathrm{ctx}}=2048$ tokens."
+     }
+    },
+    {
+     "name": "GPT-3 Large",
+     "d_model": {
+      "value": 1536,
+      "quote": "GPT-3 Large & 760M & 24 & 1536 & 16 & 96"
+     },
+     "n_layers": {
+      "value": 24,
+      "quote": "GPT-3 Large & 760M & 24 & 1536 & 16 & 96"
+     },
+     "n_heads": {
+      "value": 16,
+      "quote": "GPT-3 Large & 760M & 24 & 1536 & 16 & 96"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 2048,
+      "quote": "All models use a context window of $n_{\\mathrm{ctx}}=2048$ tokens."
+     }
+    },
+    {
+     "name": "GPT-3 XL",
+     "d_model": {
+      "value": 2048,
+      "quote": "GPT-3 XL & 1.3B & 24 & 2048 & 24 & 128"
+     },
+     "n_layers": {
+      "value": 24,
+      "quote": "GPT-3 XL & 1.3B & 24 & 2048 & 24 & 128"
+     },
+     "n_heads": {
+      "value": 24,
+      "quote": "GPT-3 XL & 1.3B & 24 & 2048 & 24 & 128"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 2048,
+      "quote": "All models use a context window of $n_{\\mathrm{ctx}}=2048$ tokens."
+     }
+    },
+    {
+     "name": "GPT-3 2.7B",
+     "d_model": {
+      "value": 2560,
+      "quote": "GPT-3 2.7B   & 2.7B & 32 & 2560 & 32 & 80"
+     },
+     "n_layers": {
+      "value": 32,
+      "quote": "GPT-3 2.7B   & 2.7B & 32 & 2560 & 32 & 80"
+     },
+     "n_heads": {
+      "value": 32,
+      "quote": "GPT-3 2.7B   & 2.7B & 32 & 2560 & 32 & 80"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 2048,
+      "quote": "All models use a context window of $n_{\\mathrm{ctx}}=2048$ tokens."
+     }
+    },
+    {
+     "name": "GPT-3 6.7B",
+     "d_model": {
+      "value": 4096,
+      "quote": "GPT-3 6.7B   & 6.7B & 32 & 4096 & 32 & 128"
+     },
+     "n_layers": {
+      "value": 32,
+      "quote": "GPT-3 6.7B   & 6.7B & 32 & 4096 & 32 & 128"
+     },
+     "n_heads": {
+      "value": 32,
+      "quote": "GPT-3 6.7B   & 6.7B & 32 & 4096 & 32 & 128"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 2048,
+      "quote": "All models use a context window of $n_{\\mathrm{ctx}}=2048$ tokens."
+     }
+    },
+    {
+     "name": "GPT-3 13B",
+     "d_model": {
+      "value": 5140,
+      "quote": "GPT-3 13B  & 13.0B & 40 & 5140 & 40 & 128"
+     },
+     "n_layers": {
+      "value": 40,
+      "quote": "GPT-3 13B  & 13.0B & 40 & 5140 & 40 & 128"
+     },
+     "n_heads": {
+      "value": 40,
+      "quote": "GPT-3 13B  & 13.0B & 40 & 5140 & 40 & 128"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 2048,
+      "quote": "All models use a context window of $n_{\\mathrm{ctx}}=2048$ tokens."
+     }
+    },
+    {
+     "name": "GPT-3 175B",
+     "d_model": {
+      "value": 12288,
+      "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128"
+     },
+     "n_layers": {
+      "value": 96,
+      "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128"
+     },
+     "n_heads": {
+      "value": 96,
+      "quote": "GPT-3 175B or ``GPT-3'' & 175.0B & 96 & 12288 & 96 & 128"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 2048,
+      "quote": "All models use a context window of $n_{\\mathrm{ctx}}=2048$ tokens."
+     }
+    }
+   ],
+   "structure": {
+    "norm_placement": {
+     "value": "pre",
+     "quote": "including the modified initialization, pre-normalization, and reversible tokenization described therein"
+    },
+    "parallel_block": null,
+    "ffn_gated": null
+   },
+   "notes": "The eight GPT-3 sizes from the architecture table. d_ff is only given as a rule (d_ff = 4 * d_model), never as a number, so it is null; no vocabulary size is stated. The 13B row's d_model is 5140 as printed in the table."
+  },
+  "2006.03654": {
+   "model": "DeBERTa",
+   "configs": [
+    {
+     "name": "DeBERTa-1.5B",
+     "d_model": {
+      "value": 1536,
+      "quote": "Hidden size&1536 &1024 &768 &768"
+     },
+     "n_layers": {
+      "value": 48,
+      "quote": "Number of Layers& 48& 24 &12 &12"
+     },
+     "n_heads": {
+      "value": 24,
+      "quote": "Attention Heads &24 & 16 & 12 & 12"
+     },
+     "n_kv_heads": null,
+     "d_ff": {
+      "value": 6144,
+      "quote": "FNN inner hidden size & 6144& 4096 & 3072& 3072"
+     },
+     "vocab_size": {
+      "value": 128000,
+      "quote": "with a new vocabulary of size 128K constructed using the dataset"
+     },
+     "context_length": null
+    },
+    {
+     "name": "DeBERTa-large",
+     "d_model": {
+      "value": 1024,
+      "quote": "Hidden size&1536 &1024 &768 &768"
+     },
+     "n_layers": {
+      "value": 24,
+      "quote": "Number of Layers& 48& 24 &12 &12"
+     },
+     "n_heads": {
+      "value": 16,
+      "quote": "Attention Heads &24 & 16 & 12 & 12"
+     },
+     "n_kv_heads": null,
+     "d_ff": {
+      "value": 4096,
+      "quote": "FNN inner hidden size & 6144& 4096 & 3072& 3072"
+     },
+     "vocab_size": null,
+     "context_length": null
+    },
+    {
+     "name": "DeBERTa-base",
+     "d_model": {
+      "value": 768,
+      "quote": "Hidden size&1536 &1024 &768 &768"
+     },
+     "n_layers": {
+      "value": 12,
+      "quote": "Number of Layers& 48& 24 &12 &12"
+     },
+     "n_heads": {
+      "value": 12,
+      "quote": "Attention Heads &24 & 16 & 12 & 12"
+     },
+     "n_kv_heads": null,
+     "d_ff": {
+      "value": 3072,
+      "quote": "FNN inner hidden size & 6144& 4096 & 3072& 3072"
+     },
+     "vocab_size": null,
+     "context_length": null
+    }
+   ],
+   "structure": {
+    "norm_placement": null,
+    "parallel_block": null,
+    "ffn_gated": null
+   },
+   "notes": "Encoder-only; configs from the pre-training hyper-parameter table (the base-ablation column has the same shape as base and is omitted). The 1.5B vocabulary is stated only as '128K' (taken as 128000); large/base use the GPT-2 BPE vocabulary with no size given. No training sequence length is stated (512 is the maximum relative distance k, not the context). Post-LN equations appear only in commented-out LaTeX, so norm placement is null."
+  },
+  "2104.09864": {
+   "model": "RoFormer",
+   "configs": [
+    {
+     "name": "RoFormer (WMT14 En-De, Transformer-base with RoPE)",
+     "d_model": null,
+     "n_layers": null,
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 37000,
+      "quote": "with a vocabulary of 37k based on a joint source and target byte pair encoding(BPE)"
+     },
+     "context_length": null
+    },
+    {
+     "name": "RoFormer (BERT-base with RoPE, English pre-training)",
+     "d_model": null,
+     "n_layers": null,
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 512,
+      "quote": "We train both BERT and RoFormer with batch size 64 and maximum sequence length  of 512 for 100k steps."
+     }
+    },
+    {
+     "name": "PerFormer + RoPE (Enwik8)",
+     "d_model": {
+      "value": 768,
+      "quote": "We incorporate RoPE into the 12 layer char-based PerFormer with 768 dimensions and 12 heads"
+     },
+     "n_layers": {
+      "value": 12,
+      "quote": "We incorporate RoPE into the 12 layer char-based PerFormer with 768 dimensions and 12 heads"
+     },
+     "n_heads": {
+      "value": 12,
+      "quote": "We incorporate RoPE into the 12 layer char-based PerFormer with 768 dimensions and 12 heads"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 1024,
+      "quote": "a fixed maximum sequence length of 1024"
+     }
+    }
+   ],
+   "structure": {
+    "norm_placement": null,
+    "parallel_block": null,
+    "ffn_gated": null
+   },
+   "notes": "RoFormer is RoPE dropped into existing architectures; the paper gives no size table. Its MT model (fairseq Transformer-base) and English model (bert-base-uncased) dimensions are given only by reference, so only vocabulary/sequence length are labelled; the Enwik8 PerFormer+RoPE is the one variant with explicit dimensions. The Chinese RoFormer (WoBERT-based) is omitted: no dimensions and a multi-stage sequence length (128 to 1536)."
+  },
+  "2108.12409": {
+   "model": "ALiBi (Train Short, Test Long)",
+   "configs": [
+    {
+     "name": "247M (WikiText-103, Baevski & Auli architecture with ALiBi)",
+     "d_model": {
+      "value": 1024,
+      "quote": "The  model has $16$ transformer layers of dimension $1024$, with $8$ heads, and a feedforward inner dimension of $4096$."
+     },
+     "n_layers": {
+      "value": 16,
+      "quote": "The  model has $16$ transformer layers of dimension $1024$, with $8$ heads, and a feedforward inner dimension of $4096$."
+     },
+     "n_heads": {
+      "value": 8,
+      "quote": "The  model has $16$ transformer layers of dimension $1024$, with $8$ heads, and a feedforward inner dimension of $4096$."
+     },
+     "n_kv_heads": null,
+     "d_ff": {
+      "value": 4096,
+      "quote": "The  model has $16$ transformer layers of dimension $1024$, with $8$ heads, and a feedforward inner dimension of $4096$."
+     },
+     "vocab_size": null,
+     "context_length": null
+    },
+    {
+     "name": "1.3B (CC100+RoBERTa)",
+     "d_model": {
+      "value": 2048,
+      "quote": "Our models for this dataset have 25 transformer layers with 16 heads and a dimension of 2048, with an 8192 hidden dimension of the feedforward sublayers."
+     },
+     "n_layers": {
+      "value": 25,
+      "quote": "Our models for this dataset have 25 transformer layers with 16 heads and a dimension of 2048, with an 8192 hidden dimension of the feedforward sublayers."
+     },
+     "n_heads": {
+      "value": 16,
+      "quote": "Our models for this dataset have 25 transformer layers with 16 heads and a dimension of 2048, with an 8192 hidden dimension of the feedforward sublayers."
+     },
+     "n_kv_heads": null,
+     "d_ff": {
+      "value": 8192,
+      "quote": "Our models for this dataset have 25 transformer layers with 16 heads and a dimension of 2048, with an 8192 hidden dimension of the feedforward sublayers."
+     },
+     "vocab_size": null,
+     "context_length": null
+    }
+   ],
+   "structure": {
+    "norm_placement": null,
+    "parallel_block": null,
+    "ffn_gated": null
+   },
+   "notes": "The paper's own models are ALiBi versions of the Baevski & Auli WikiText-103 LM and a 1.3B CC100+RoBERTa LM. Context length is null because each is trained at several lengths (L from 64 to 3072 on WikiText-103; 512/1024 and more for the 1.3B). The Toronto BookCorpus runs reuse the WikiText-103 shape with BERT's '29K' vocabulary and are not listed as a separate size; no vocabulary is stated for the two listed configs."
+  },
+  "2109.08668": {
+   "model": "Primer",
+   "configs": [
+    {
+     "name": "Primer 110M (T5, C4/PG19)",
+     "d_model": {
+      "value": 768,
+      "quote": "each decoder is 110M parameters ($d_{model}=768$, $d_{ff}=3072$, $L=12$)"
+     },
+     "n_layers": {
+      "value": 12,
+      "quote": "each decoder is 110M parameters ($d_{model}=768$, $d_{ff}=3072$, $L=12$)"
+     },
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": {
+      "value": 3072,
+      "quote": "each decoder is 110M parameters ($d_{model}=768$, $d_{ff}=3072$, $L=12$)"
+     },
+     "vocab_size": null,
+     "context_length": {
+      "value": 512,
+      "quote": "the sequence lengths are a longer 512"
+     }
+    },
+    {
+     "name": "Primer 537M (full T5 regime)",
+     "d_model": {
+      "value": 1024,
+      "quote": "537M parameters ($d_{model}=1024$, $d_{ff}=8192$, $L=24$)"
+     },
+     "n_layers": {
+      "value": 24,
+      "quote": "537M parameters ($d_{model}=1024$, $d_{ff}=8192$, $L=24$)"
+     },
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": {
+      "value": 8192,
+      "quote": "537M parameters ($d_{model}=1024$, $d_{ff}=8192$, $L=24$)"
+     },
+     "vocab_size": null,
+     "context_length": {
+      "value": 512,
+      "quote": "For C4 and PG19, we use the T5 default of a max sequence length of 512."
+     }
+    },
+    {
+     "name": "Primer 1.9B (one-shot, Lingvo)",
+     "d_model": null,
+     "n_layers": null,
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 1024,
+      "quote": "For one-shot pretraining, we use a max sequence length of 1024."
+     }
+    }
+   ],
+   "structure": {
+    "norm_placement": {
+     "value": {
+      "attn": "pre",
+      "ffn": "branch_post"
+     },
+     "quote": "\\modelname uses normalization before self-attention but applies the second normalization \\textit{after} the feed forward transformation."
+    },
+    "parallel_block": null,
+    "ffn_gated": {
+     "value": false,
+     "quote": "The most effective modification is the improvement from a ReLU activation to a squared ReLU activation in the Transformer's feed forward block."
+    }
+   },
+   "notes": "Decoder-only Primer at the sizes with explicit dimensions; heads and vocabulary are never stated. The 1.9B dimensions (d_model=2048, d_ff=12288, L=24) are attached in the text to the baseline Transformer, not to Primer, so they are left null. The 27-model scaling grid (L in {6,9,12}, d_model in {384,512,1024}) and the ~35M LM1B search models are not listed. The pre-attention/post-FFN norm placement belongs to full Primer (not Primer-EZ) and the paper calls it helpful only in some cases; squared ReLU is a plain (non-gated) activation, which the paper contrasts with GLU variants."
+  },
+  "2112.11446": {
+   "model": "Gopher",
+   "configs": [
+    {
+     "name": "44M",
+     "d_model": {
+      "value": 512,
+      "quote": "44M & 8 & 16 & 32 & 512"
+     },
+     "n_layers": {
+      "value": 8,
+      "quote": "44M & 8 & 16 & 32 & 512"
+     },
+     "n_heads": {
+      "value": 16,
+      "quote": "44M & 8 & 16 & 32 & 512"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 32000,
+      "quote": "with a vocabulary of 32,000 and use a byte-level backoff"
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "We train all models for 300 billion tokens with a 2048 token context window"
+     }
+    },
+    {
+     "name": "117M",
+     "d_model": {
+      "value": 768,
+      "quote": "117M & 12 &  12 & 64 & 768"
+     },
+     "n_layers": {
+      "value": 12,
+      "quote": "117M & 12 &  12 & 64 & 768"
+     },
+     "n_heads": {
+      "value": 12,
+      "quote": "117M & 12 &  12 & 64 & 768"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 32000,
+      "quote": "with a vocabulary of 32,000 and use a byte-level backoff"
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "We train all models for 300 billion tokens with a 2048 token context window"
+     }
+    },
+    {
+     "name": "417M",
+     "d_model": {
+      "value": 1536,
+      "quote": "417M & 12 & 12 & 128 & 1,536"
+     },
+     "n_layers": {
+      "value": 12,
+      "quote": "417M & 12 & 12 & 128 & 1,536"
+     },
+     "n_heads": {
+      "value": 12,
+      "quote": "417M & 12 & 12 & 128 & 1,536"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 32000,
+      "quote": "with a vocabulary of 32,000 and use a byte-level backoff"
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "We train all models for 300 billion tokens with a 2048 token context window"
+     }
+    },
+    {
+     "name": "1.4B",
+     "d_model": {
+      "value": 2048,
+      "quote": "1.4B & 24 & 16 & 128 & 2,048"
+     },
+     "n_layers": {
+      "value": 24,
+      "quote": "1.4B & 24 & 16 & 128 & 2,048"
+     },
+     "n_heads": {
+      "value": 16,
+      "quote": "1.4B & 24 & 16 & 128 & 2,048"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 32000,
+      "quote": "with a vocabulary of 32,000 and use a byte-level backoff"
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "We train all models for 300 billion tokens with a 2048 token context window"
+     }
+    },
+    {
+     "name": "7.1B",
+     "d_model": {
+      "value": 4096,
+      "quote": "7.1B & 32 & 32 & 128 & 4,096"
+     },
+     "n_layers": {
+      "value": 32,
+      "quote": "7.1B & 32 & 32 & 128 & 4,096"
+     },
+     "n_heads": {
+      "value": 32,
+      "quote": "7.1B & 32 & 32 & 128 & 4,096"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 32000,
+      "quote": "with a vocabulary of 32,000 and use a byte-level backoff"
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "We train all models for 300 billion tokens with a 2048 token context window"
+     }
+    },
+    {
+     "name": "Gopher 280B",
+     "d_model": {
+      "value": 16384,
+      "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384"
+     },
+     "n_layers": {
+      "value": 80,
+      "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384"
+     },
+     "n_heads": {
+      "value": 128,
+      "quote": "\\gopher 280B & 80 & 128 & 128 & 16,384"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 32000,
+      "quote": "with a vocabulary of 32,000 and use a byte-level backoff"
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "We train all models for 300 billion tokens with a 2048 token context window"
+     }
+    }
+   ],
+   "structure": {
+    "norm_placement": null,
+    "parallel_block": null,
+    "ffn_gated": null
+   },
+   "notes": "The six Gopher-family models from the architecture table. d_ff is only stated as a rule (4 * d_model), so null. The paper says it uses RMSNorm in place of LayerNorm in the GPT-2 architecture but never names the placement. The .tex contains the paper body twice; quotes come from the first copy."
+  },
+  "2201.08239": {
+   "model": "LaMDA",
+   "configs": [
+    {
+     "name": "2B",
+     "d_model": {
+      "value": 2560,
+      "quote": "2B &   10 & 2560 & 40"
+     },
+     "n_layers": {
+      "value": 10,
+      "quote": "2B &   10 & 2560 & 40"
+     },
+     "n_heads": {
+      "value": 40,
+      "quote": "2B &   10 & 2560 & 40"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 32000,
+      "quote": "with a vocabulary of 32K tokens"
+     },
+     "context_length": null
+    },
+    {
+     "name": "8B",
+     "d_model": {
+      "value": 4096,
+      "quote": "8B &  16 & 4096 & 64"
+     },
+     "n_layers": {
+      "value": 16,
+      "quote": "8B &  16 & 4096 & 64"
+     },
+     "n_heads": {
+      "value": 64,
+      "quote": "8B &  16 & 4096 & 64"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 32000,
+      "quote": "with a vocabulary of 32K tokens"
+     },
+     "context_length": null
+    },
+    {
+     "name": "137B",
+     "d_model": {
+      "value": 8192,
+      "quote": "The Transformer has 64 layers, $d_{model}=8192$, $d_{ff}=65536$, $h=128$"
+     },
+     "n_layers": {
+      "value": 64,
+      "quote": "The Transformer has 64 layers, $d_{model}=8192$, $d_{ff}=65536$, $h=128$"
+     },
+     "n_heads": {
+      "value": 128,
+      "quote": "The Transformer has 64 layers, $d_{model}=8192$, $d_{ff}=65536$, $h=128$"
+     },
+     "n_kv_heads": null,
+     "d_ff": {
+      "value": 65536,
+      "quote": "The Transformer has 64 layers, $d_{model}=8192$, $d_{ff}=65536$, $h=128$"
+     },
+     "vocab_size": {
+      "value": 32000,
+      "quote": "with a vocabulary of 32K tokens"
+     },
+     "context_length": null
+    }
+   ],
+   "structure": {
+    "norm_placement": null,
+    "parallel_block": null,
+    "ffn_gated": {
+     "value": true,
+     "quote": "and gated-GELU activation as described in Raffel et al.~\\cite{shazeer2020glu}"
+    }
+   },
+   "notes": "Decoder-only LaMDA pre-trained models (2B, 8B, 137B; hyper-parameter table plus the 137B text). Vocabulary is stated as '32K' (taken as 32000); d_ff is stated only for 137B; no training sequence length is given."
+  },
+  "2204.02311": {
+   "model": "PaLM",
+   "configs": [
+    {
+     "name": "PaLM 8B",
+     "d_model": {
+      "value": 4096,
+      "quote": "\\ournameshort{}~8B & $32$ & $16$  & $4096$"
+     },
+     "n_layers": {
+      "value": 32,
+      "quote": "\\ournameshort{}~8B & $32$ & $16$  & $4096$"
+     },
+     "n_heads": {
+      "value": 16,
+      "quote": "\\ournameshort{}~8B & $32$ & $16$  & $4096$"
+     },
+     "n_kv_heads": {
+      "value": 1,
+      "quote": "the key/value projections are shared for each head, i.e. ``key'' and ``value'' are projected to $[1, h]$"
+     },
+     "d_ff": null,
+     "vocab_size": {
+      "value": 256000,
+      "quote": "We use a SentencePiece \\citep{kudo2018sentencepiece} vocabulary with 256k tokens"
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "A sequence length of 2048 was used for all models."
+     }
+    },
+    {
+     "name": "PaLM 62B",
+     "d_model": {
+      "value": 8192,
+      "quote": "\\ournameshort{}~62B & $64$ & $32$  & $8192$"
+     },
+     "n_layers": {
+      "value": 64,
+      "quote": "\\ournameshort{}~62B & $64$ & $32$  & $8192$"
+     },
+     "n_heads": {
+      "value": 32,
+      "quote": "\\ournameshort{}~62B & $64$ & $32$  & $8192$"
+     },
+     "n_kv_heads": {
+      "value": 1,
+      "quote": "the key/value projections are shared for each head, i.e. ``key'' and ``value'' are projected to $[1, h]$"
+     },
+     "d_ff": null,
+     "vocab_size": {
+      "value": 256000,
+      "quote": "We use a SentencePiece \\citep{kudo2018sentencepiece} vocabulary with 256k tokens"
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "A sequence length of 2048 was used for all models."
+     }
+    },
+    {
+     "name": "PaLM 540B",
+     "d_model": {
+      "value": 18432,
+      "quote": "\\ournameshort{}~540B & $118$ & $48$ & $18432$"
+     },
+     "n_layers": {
+      "value": 118,
+      "quote": "\\ournameshort{}~540B & $118$ & $48$ & $18432$"
+     },
+     "n_heads": {
+      "value": 48,
+      "quote": "\\ournameshort{}~540B & $118$ & $48$ & $18432$"
+     },
+     "n_kv_heads": {
+      "value": 1,
+      "quote": "the key/value projections are shared for each head, i.e. ``key'' and ``value'' are projected to $[1, h]$"
+     },
+     "d_ff": null,
+     "vocab_size": {
+      "value": 256000,
+      "quote": "We use a SentencePiece \\citep{kudo2018sentencepiece} vocabulary with 256k tokens"
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "A sequence length of 2048 was used for all models."
+     }
+    }
+   ],
+   "structure": {
+    "norm_placement": {
+     "value": "pre",
+     "quote": "\\[y = x + \\textrm{MLP}(\\textrm{LayerNorm}(x)) + \\textrm{Attention}(\\textrm{LayerNorm}(x))\\]"
+    },
+    "parallel_block": {
+     "value": true,
+     "quote": "We use a ``parallel'' formulation in each Transformer block~\\citep{gpt-j}, rather than the standard ``serialized'' formulation."
+    },
+    "ffn_gated": {
+     "value": true,
+     "quote": "We use SwiGLU activations ($\\textrm{Swish}(xW) \\cdot xV$) for the MLP intermediate activations"
+    }
+   },
+   "notes": "The three PaLM sizes. Multi-query attention (one shared key/value head) is stated globally. d_ff only as a rule (4 * d_model), so null. Vocabulary is stated as '256k' (taken as 256000). Pre-norm is read off the parallel-block equation."
+  },
+  "2204.06745": {
+   "model": "GPT-NeoX-20B",
+   "configs": [
+    {
+     "name": "GPT-NeoX-20B",
+     "d_model": {
+      "value": 6144,
+      "quote": "Our model has 44 layers, a hidden dimension size of 6144, and 64 heads."
+     },
+     "n_layers": {
+      "value": 44,
+      "quote": "Our model has 44 layers, a hidden dimension size of 6144, and 64 heads."
+     },
+     "n_heads": {
+      "value": 64,
+      "quote": "Our model has 44 layers, a hidden dimension size of 6144, and 64 heads."
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 50257,
+      "quote": "with the same total vocabulary size of 50257"
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "seq-length & 2048"
+     }
+    }
+   ],
+   "structure": {
+    "norm_placement": {
+     "value": "pre",
+     "quote": "\\[x + \\Attn(\\LN_1(x)) + \\FF(\\LN_2(x)).\\]"
+    },
+    "parallel_block": {
+     "value": true,
+     "quote": "We compute the Attention and Feed-Forward (FF) layers in parallel"
+    },
+    "ffn_gated": null
+   },
+   "notes": "Single 20B model. Parallel attention+FF with untied pre-sublayer LayerNorms (the as-trained equation). No d_ff is stated, and the FFN type is stated only indirectly (a 'bias-gelu-fusion' config flag), so ffn_gated is null. The .tex contains two versions of the paper; quotes come from the first."
+  },
+  "2205.01068": {
+   "model": "OPT",
+   "configs": [
+    {
+     "name": "125M",
+     "d_model": {
+      "value": 768,
+      "quote": "125M    & 12 & 12 & 768"
+     },
+     "n_layers": {
+      "value": 12,
+      "quote": "125M    & 12 & 12 & 768"
+     },
+     "n_heads": {
+      "value": 12,
+      "quote": "125M    & 12 & 12 & 768"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 2048,
+      "quote": "all models are trained with ReLU activation and a sequence length of 2048"
+     }
+    },
+    {
+     "name": "350M",
+     "d_model": {
+      "value": 1024,
+      "quote": "350M    & 24 & 16 & 1024"
+     },
+     "n_layers": {
+      "value": 24,
+      "quote": "350M    & 24 & 16 & 1024"
+     },
+     "n_heads": {
+      "value": 16,
+      "quote": "350M    & 24 & 16 & 1024"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 2048,
+      "quote": "all models are trained with ReLU activation and a sequence length of 2048"
+     }
+    },
+    {
+     "name": "1.3B",
+     "d_model": {
+      "value": 2048,
+      "quote": "1.3B    & 24 & 32 & 2048"
+     },
+     "n_layers": {
+      "value": 24,
+      "quote": "1.3B    & 24 & 32 & 2048"
+     },
+     "n_heads": {
+      "value": 32,
+      "quote": "1.3B    & 24 & 32 & 2048"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 2048,
+      "quote": "all models are trained with ReLU activation and a sequence length of 2048"
+     }
+    },
+    {
+     "name": "2.7B",
+     "d_model": {
+      "value": 2560,
+      "quote": "2.7B    & 32 & 32 & 2560"
+     },
+     "n_layers": {
+      "value": 32,
+      "quote": "2.7B    & 32 & 32 & 2560"
+     },
+     "n_heads": {
+      "value": 32,
+      "quote": "2.7B    & 32 & 32 & 2560"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 2048,
+      "quote": "all models are trained with ReLU activation and a sequence length of 2048"
+     }
+    },
+    {
+     "name": "6.7B",
+     "d_model": {
+      "value": 4096,
+      "quote": "6.7B    & 32 & 32 & 4096"
+     },
+     "n_layers": {
+      "value": 32,
+      "quote": "6.7B    & 32 & 32 & 4096"
+     },
+     "n_heads": {
+      "value": 32,
+      "quote": "6.7B    & 32 & 32 & 4096"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 2048,
+      "quote": "all models are trained with ReLU activation and a sequence length of 2048"
+     }
+    },
+    {
+     "name": "13B",
+     "d_model": {
+      "value": 5120,
+      "quote": "13B     & 40 & 40 & 5120"
+     },
+     "n_layers": {
+      "value": 40,
+      "quote": "13B     & 40 & 40 & 5120"
+     },
+     "n_heads": {
+      "value": 40,
+      "quote": "13B     & 40 & 40 & 5120"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 2048,
+      "quote": "all models are trained with ReLU activation and a sequence length of 2048"
+     }
+    },
+    {
+     "name": "30B",
+     "d_model": {
+      "value": 7168,
+      "quote": "30B     & 48 & 56 & 7168"
+     },
+     "n_layers": {
+      "value": 48,
+      "quote": "30B     & 48 & 56 & 7168"
+     },
+     "n_heads": {
+      "value": 56,
+      "quote": "30B     & 48 & 56 & 7168"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 2048,
+      "quote": "all models are trained with ReLU activation and a sequence length of 2048"
+     }
+    },
+    {
+     "name": "66B",
+     "d_model": {
+      "value": 9216,
+      "quote": "66B     & 64 & 72 & 9216"
+     },
+     "n_layers": {
+      "value": 64,
+      "quote": "66B     & 64 & 72 & 9216"
+     },
+     "n_heads": {
+      "value": 72,
+      "quote": "66B     & 64 & 72 & 9216"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 2048,
+      "quote": "all models are trained with ReLU activation and a sequence length of 2048"
+     }
+    },
+    {
+     "name": "175B",
+     "d_model": {
+      "value": 12288,
+      "quote": "175B    & 96 & 96 & 12288"
+     },
+     "n_layers": {
+      "value": 96,
+      "quote": "175B    & 96 & 96 & 12288"
+     },
+     "n_heads": {
+      "value": 96,
+      "quote": "175B    & 96 & 96 & 12288"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 2048,
+      "quote": "all models are trained with ReLU activation and a sequence length of 2048"
+     }
+    }
+   ],
+   "structure": {
+    "norm_placement": null,
+    "parallel_block": null,
+    "ffn_gated": {
+     "value": false,
+     "quote": "all models are trained with ReLU activation and a sequence length of 2048"
+    }
+   },
+   "notes": "The nine uncommented rows of the OPT size table (the text says 'eight' models; a 760M row is commented out and excluded). Vocabulary is the GPT-2 BPE tokenizer with no size stated; no d_ff stated. ffn_gated=false rests on the plain 'ReLU activation' statement."
+  },
+  "2211.05100": {
+   "model": "BLOOM",
+   "configs": [
+    {
+     "name": "BLOOM-560M",
+     "d_model": {
+      "value": 1024,
+      "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336"
+     },
+     "n_layers": {
+      "value": 24,
+      "quote": "Layers   & 24 & 24 & 24 & 30 & 30 & 70"
+     },
+     "n_heads": {
+      "value": 16,
+      "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 250680,
+      "quote": "Vocab size & \\multicolumn{5}{c|}{250,680} & 250,680"
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "Sequence length & \\multicolumn{5}{c|}{2048} & 2048"
+     }
+    },
+    {
+     "name": "BLOOM-1.1B",
+     "d_model": {
+      "value": 1536,
+      "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336"
+     },
+     "n_layers": {
+      "value": 24,
+      "quote": "Layers   & 24 & 24 & 24 & 30 & 30 & 70"
+     },
+     "n_heads": {
+      "value": 16,
+      "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 250680,
+      "quote": "Vocab size & \\multicolumn{5}{c|}{250,680} & 250,680"
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "Sequence length & \\multicolumn{5}{c|}{2048} & 2048"
+     }
+    },
+    {
+     "name": "BLOOM-1.7B",
+     "d_model": {
+      "value": 2048,
+      "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336"
+     },
+     "n_layers": {
+      "value": 24,
+      "quote": "Layers   & 24 & 24 & 24 & 30 & 30 & 70"
+     },
+     "n_heads": {
+      "value": 16,
+      "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 250680,
+      "quote": "Vocab size & \\multicolumn{5}{c|}{250,680} & 250,680"
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "Sequence length & \\multicolumn{5}{c|}{2048} & 2048"
+     }
+    },
+    {
+     "name": "BLOOM-3B",
+     "d_model": {
+      "value": 2560,
+      "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336"
+     },
+     "n_layers": {
+      "value": 30,
+      "quote": "Layers   & 24 & 24 & 24 & 30 & 30 & 70"
+     },
+     "n_heads": {
+      "value": 32,
+      "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 250680,
+      "quote": "Vocab size & \\multicolumn{5}{c|}{250,680} & 250,680"
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "Sequence length & \\multicolumn{5}{c|}{2048} & 2048"
+     }
+    },
+    {
+     "name": "BLOOM-7.1B",
+     "d_model": {
+      "value": 4096,
+      "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336"
+     },
+     "n_layers": {
+      "value": 30,
+      "quote": "Layers   & 24 & 24 & 24 & 30 & 30 & 70"
+     },
+     "n_heads": {
+      "value": 32,
+      "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 250680,
+      "quote": "Vocab size & \\multicolumn{5}{c|}{250,680} & 250,680"
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "Sequence length & \\multicolumn{5}{c|}{2048} & 2048"
+     }
+    },
+    {
+     "name": "BLOOM",
+     "d_model": {
+      "value": 14336,
+      "quote": "Hidden dim. & 1024 & 1536 & 2048 & 2560 & 4096 & 14336"
+     },
+     "n_layers": {
+      "value": 70,
+      "quote": "Layers   & 24 & 24 & 24 & 30 & 30 & 70"
+     },
+     "n_heads": {
+      "value": 112,
+      "quote": "Attention heads & 16 & 16 & 16 & 32 & 32 & 112"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 250680,
+      "quote": "Vocab size & \\multicolumn{5}{c|}{250,680} & 250,680"
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "Sequence length & \\multicolumn{5}{c|}{2048} & 2048"
+     }
+    }
+   ],
+   "structure": {
+    "norm_placement": null,
+    "parallel_block": null,
+    "ffn_gated": {
+     "value": false,
+     "quote": "Activation & \\multicolumn{5}{c|}{\\texttt{GELU}} & \\texttt{GELU}"
+    }
+   },
+   "notes": "Six BLOOM sizes from the hyperparameter table (BLOOM = 176B); BLOOMZ shares these shapes. No FFN width or norm placement in the LaTeX (architecture is only a figure); ffn_gated=false rests on the stated GELU activation and the paper adopting only ALiBi and embedding LayerNorm as deviations, not an explicit two-matrix statement."
+  },
+  "2211.09085": {
+   "model": "Galactica",
+   "configs": [
+    {
+     "name": "GAL 125M",
+     "d_model": {
+      "value": 768,
+      "quote": "GAL 125M & 125M & 12 & 768 & 12 & 64"
+     },
+     "n_layers": {
+      "value": 12,
+      "quote": "GAL 125M & 125M & 12 & 768 & 12 & 64"
+     },
+     "n_heads": {
+      "value": 12,
+      "quote": "GAL 125M & 125M & 12 & 768 & 12 & 64"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 50000,
+      "quote": "we construct a vocabulary of 50k tokens using BPE"
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "we use a 2048 length context window for all model sizes"
+     }
+    },
+    {
+     "name": "GAL 1.3B",
+     "d_model": {
+      "value": 2048,
+      "quote": "GAL 1.3B & 1.3B & 24 & 2,048 & 32 & 64"
+     },
+     "n_layers": {
+      "value": 24,
+      "quote": "GAL 1.3B & 1.3B & 24 & 2,048 & 32 & 64"
+     },
+     "n_heads": {
+      "value": 32,
+      "quote": "GAL 1.3B & 1.3B & 24 & 2,048 & 32 & 64"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 50000,
+      "quote": "we construct a vocabulary of 50k tokens using BPE"
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "we use a 2048 length context window for all model sizes"
+     }
+    },
+    {
+     "name": "GAL 6.7B",
+     "d_model": {
+      "value": 4096,
+      "quote": "GAL 6.7B & 6.7B & 32 & 4,096 & 32 & 128"
+     },
+     "n_layers": {
+      "value": 32,
+      "quote": "GAL 6.7B & 6.7B & 32 & 4,096 & 32 & 128"
+     },
+     "n_heads": {
+      "value": 32,
+      "quote": "GAL 6.7B & 6.7B & 32 & 4,096 & 32 & 128"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 50000,
+      "quote": "we construct a vocabulary of 50k tokens using BPE"
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "we use a 2048 length context window for all model sizes"
+     }
+    },
+    {
+     "name": "GAL 30B",
+     "d_model": {
+      "value": 7168,
+      "quote": "GAL 30B & 30.0B & 48 & 7,168 & 56 & 128"
+     },
+     "n_layers": {
+      "value": 48,
+      "quote": "GAL 30B & 30.0B & 48 & 7,168 & 56 & 128"
+     },
+     "n_heads": {
+      "value": 56,
+      "quote": "GAL 30B & 30.0B & 48 & 7,168 & 56 & 128"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 50000,
+      "quote": "we construct a vocabulary of 50k tokens using BPE"
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "we use a 2048 length context window for all model sizes"
+     }
+    },
+    {
+     "name": "GAL 120B",
+     "d_model": {
+      "value": 10240,
+      "quote": "GAL 120B & 120.0B & 96 & 10,240 & 80 & 128"
+     },
+     "n_layers": {
+      "value": 96,
+      "quote": "GAL 120B & 120.0B & 96 & 10,240 & 80 & 128"
+     },
+     "n_heads": {
+      "value": 80,
+      "quote": "GAL 120B & 120.0B & 96 & 10,240 & 80 & 128"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 50000,
+      "quote": "we construct a vocabulary of 50k tokens using BPE"
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "we use a 2048 length context window for all model sizes"
+     }
+    }
+   ],
+   "structure": {
+    "norm_placement": null,
+    "parallel_block": null,
+    "ffn_gated": {
+     "value": false,
+     "quote": "we use GeLU activations for all model sizes"
+    }
+   },
+   "notes": "Five GAL sizes from the models table. Vocabulary is stated only as '50k' (recorded as 50000, approximate). d_ff and norm placement not stated; ffn_gated=false rests on the stated GeLU activation, not an explicit two-matrix statement."
+  },
+  "2302.13971": {
+   "model": "LLaMA",
+   "configs": [
+    {
+     "name": "7B",
+     "d_model": {
+      "value": 4096,
+      "quote": "6.7B  & 4096 & 32 & 32"
+     },
+     "n_layers": {
+      "value": 32,
+      "quote": "6.7B  & 4096 & 32 & 32"
+     },
+     "n_heads": {
+      "value": 32,
+      "quote": "6.7B  & 4096 & 32 & 32"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": null
+    },
+    {
+     "name": "13B",
+     "d_model": {
+      "value": 5120,
+      "quote": "13.0B & 5120 & 40 & 40"
+     },
+     "n_layers": {
+      "value": 40,
+      "quote": "13.0B & 5120 & 40 & 40"
+     },
+     "n_heads": {
+      "value": 40,
+      "quote": "13.0B & 5120 & 40 & 40"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": null
+    },
+    {
+     "name": "33B",
+     "d_model": {
+      "value": 6656,
+      "quote": "32.5B & 6656 & 52 & 60"
+     },
+     "n_layers": {
+      "value": 60,
+      "quote": "32.5B & 6656 & 52 & 60"
+     },
+     "n_heads": {
+      "value": 52,
+      "quote": "32.5B & 6656 & 52 & 60"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": null
+    },
+    {
+     "name": "65B",
+     "d_model": {
+      "value": 8192,
+      "quote": "65.2B & 8192 & 64 & 80"
+     },
+     "n_layers": {
+      "value": 80,
+      "quote": "65.2B & 8192 & 64 & 80"
+     },
+     "n_heads": {
+      "value": 64,
+      "quote": "65.2B & 8192 & 64 & 80"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": null
+    }
+   ],
+   "structure": {
+    "norm_placement": {
+     "value": "pre",
+     "quote": "we normalize the input of each transformer sub-layer, instead of normalizing the output"
+    },
+    "parallel_block": null,
+    "ffn_gated": {
+     "value": true,
+     "quote": "We replace the ReLU non-linearity by the SwiGLU activation function"
+    }
+   },
+   "notes": "Four LLaMA sizes; the table lists them as 6.7B/13.0B/32.5B/65.2B, text names them 7B/13B/33B/65B. d_ff given only as 2/3*4d (no number, so null); vocabulary size and context length not stated in the LaTeX."
+  },
+  "2304.01373": {
+   "model": "Pythia",
+   "configs": [
+    {
+     "name": "70M",
+     "d_model": {
+      "value": 512,
+      "quote": "70 M  &     18,915,328   &  6     &  512      &  8"
+     },
+     "n_layers": {
+      "value": 6,
+      "quote": "70 M  &     18,915,328   &  6     &  512      &  8"
+     },
+     "n_heads": {
+      "value": 8,
+      "quote": "70 M  &     18,915,328   &  6     &  512      &  8"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 2048,
+      "quote": "we use a batch size of 1024 samples with a sequence length of 2048"
+     }
+    },
+    {
+     "name": "160M",
+     "d_model": {
+      "value": 768,
+      "quote": "160 M  &     85,056,000   & 12     &  768      & 12"
+     },
+     "n_layers": {
+      "value": 12,
+      "quote": "160 M  &     85,056,000   & 12     &  768      & 12"
+     },
+     "n_heads": {
+      "value": 12,
+      "quote": "160 M  &     85,056,000   & 12     &  768      & 12"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 2048,
+      "quote": "we use a batch size of 1024 samples with a sequence length of 2048"
+     }
+    },
+    {
+     "name": "410M",
+     "d_model": {
+      "value": 1024,
+      "quote": "410 M  &    302,311,424   & 24     & 1024      & 16"
+     },
+     "n_layers": {
+      "value": 24,
+      "quote": "410 M  &    302,311,424   & 24     & 1024      & 16"
+     },
+     "n_heads": {
+      "value": 16,
+      "quote": "410 M  &    302,311,424   & 24     & 1024      & 16"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 2048,
+      "quote": "we use a batch size of 1024 samples with a sequence length of 2048"
+     }
+    },
+    {
+     "name": "1.0B",
+     "d_model": {
+      "value": 2048,
+      "quote": "1.0 B  &    805,736,448   & 16     & 2048      &  8"
+     },
+     "n_layers": {
+      "value": 16,
+      "quote": "1.0 B  &    805,736,448   & 16     & 2048      &  8"
+     },
+     "n_heads": {
+      "value": 8,
+      "quote": "1.0 B  &    805,736,448   & 16     & 2048      &  8"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 2048,
+      "quote": "we use a batch size of 1024 samples with a sequence length of 2048"
+     }
+    },
+    {
+     "name": "1.4B",
+     "d_model": {
+      "value": 2048,
+      "quote": "1.4 B  &  1,208,602,624   & 24     & 2048      & 16"
+     },
+     "n_layers": {
+      "value": 24,
+      "quote": "1.4 B  &  1,208,602,624   & 24     & 2048      & 16"
+     },
+     "n_heads": {
+      "value": 16,
+      "quote": "1.4 B  &  1,208,602,624   & 24     & 2048      & 16"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 2048,
+      "quote": "we use a batch size of 1024 samples with a sequence length of 2048"
+     }
+    },
+    {
+     "name": "2.8B",
+     "d_model": {
+      "value": 2560,
+      "quote": "2.8 B  &  2,517,652,480   & 32     & 2560      & 32"
+     },
+     "n_layers": {
+      "value": 32,
+      "quote": "2.8 B  &  2,517,652,480   & 32     & 2560      & 32"
+     },
+     "n_heads": {
+      "value": 32,
+      "quote": "2.8 B  &  2,517,652,480   & 32     & 2560      & 32"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 2048,
+      "quote": "we use a batch size of 1024 samples with a sequence length of 2048"
+     }
+    },
+    {
+     "name": "6.9B",
+     "d_model": {
+      "value": 4096,
+      "quote": "6.9 B  &  6,444,163,072   & 32     & 4096      & 32"
+     },
+     "n_layers": {
+      "value": 32,
+      "quote": "6.9 B  &  6,444,163,072   & 32     & 4096      & 32"
+     },
+     "n_heads": {
+      "value": 32,
+      "quote": "6.9 B  &  6,444,163,072   & 32     & 4096      & 32"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 2048,
+      "quote": "we use a batch size of 1024 samples with a sequence length of 2048"
+     }
+    },
+    {
+     "name": "12B",
+     "d_model": {
+      "value": 5120,
+      "quote": "12 B  & 11,327,027,200   & 36     & 5120      & 40"
+     },
+     "n_layers": {
+      "value": 36,
+      "quote": "12 B  & 11,327,027,200   & 36     & 5120      & 40"
+     },
+     "n_heads": {
+      "value": 40,
+      "quote": "12 B  & 11,327,027,200   & 36     & 5120      & 40"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 2048,
+      "quote": "we use a batch size of 1024 samples with a sequence length of 2048"
+     }
+    }
+   ],
+   "structure": {
+    "norm_placement": null,
+    "parallel_block": {
+     "value": true,
+     "quote": "We use the parallelized attention and feedforward technique"
+    },
+    "ffn_gated": null
+   },
+   "notes": "Eight Pythia sizes (each trained on the Pile and the deduplicated Pile, same shapes). Vocabulary given only as a tokenizer file (20B-tokenizer.json), so null; d_ff, norm placement and FFN form not stated (only a bias-gelu-fusion config key)."
+  },
+  "2304.03208": {
+   "model": "Cerebras-GPT",
+   "configs": [
+    {
+     "name": "111M",
+     "d_model": {
+      "value": 768,
+      "quote": "111M       & 768      & 10        & 64      & 3072"
+     },
+     "n_layers": {
+      "value": 10,
+      "quote": "111M       & 768      & 10        & 64      & 3072"
+     },
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": {
+      "value": 3072,
+      "quote": "111M       & 768      & 10        & 64      & 3072"
+     },
+     "vocab_size": {
+      "value": 50257,
+      "quote": "the GPT-2 vocabulary of size 50257"
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "All models are trained with a maximum sequence length of 2048 tokens"
+     }
+    },
+    {
+     "name": "256M",
+     "d_model": {
+      "value": 1088,
+      "quote": "256M       & 1088     & 14        & 64      & 4352"
+     },
+     "n_layers": {
+      "value": 14,
+      "quote": "256M       & 1088     & 14        & 64      & 4352"
+     },
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": {
+      "value": 4352,
+      "quote": "256M       & 1088     & 14        & 64      & 4352"
+     },
+     "vocab_size": {
+      "value": 50257,
+      "quote": "the GPT-2 vocabulary of size 50257"
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "All models are trained with a maximum sequence length of 2048 tokens"
+     }
+    },
+    {
+     "name": "590M",
+     "d_model": {
+      "value": 1536,
+      "quote": "590M       & 1536     & 18        & 128     & 6144"
+     },
+     "n_layers": {
+      "value": 18,
+      "quote": "590M       & 1536     & 18        & 128     & 6144"
+     },
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": {
+      "value": 6144,
+      "quote": "590M       & 1536     & 18        & 128     & 6144"
+     },
+     "vocab_size": {
+      "value": 50257,
+      "quote": "the GPT-2 vocabulary of size 50257"
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "All models are trained with a maximum sequence length of 2048 tokens"
+     }
+    },
+    {
+     "name": "1.3B",
+     "d_model": {
+      "value": 2048,
+      "quote": "1.3B       & 2048     & 24        & 128     & 8192"
+     },
+     "n_layers": {
+      "value": 24,
+      "quote": "1.3B       & 2048     & 24        & 128     & 8192"
+     },
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": {
+      "value": 8192,
+      "quote": "1.3B       & 2048     & 24        & 128     & 8192"
+     },
+     "vocab_size": {
+      "value": 50257,
+      "quote": "the GPT-2 vocabulary of size 50257"
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "All models are trained with a maximum sequence length of 2048 tokens"
+     }
+    },
+    {
+     "name": "2.7B",
+     "d_model": {
+      "value": 2560,
+      "quote": "2.7B       & 2560     & 32        & 80      & 10240"
+     },
+     "n_layers": {
+      "value": 32,
+      "quote": "2.7B       & 2560     & 32        & 80      & 10240"
+     },
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": {
+      "value": 10240,
+      "quote": "2.7B       & 2560     & 32        & 80      & 10240"
+     },
+     "vocab_size": {
+      "value": 50257,
+      "quote": "the GPT-2 vocabulary of size 50257"
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "All models are trained with a maximum sequence length of 2048 tokens"
+     }
+    },
+    {
+     "name": "6.7B",
+     "d_model": {
+      "value": 4096,
+      "quote": "6.7B       & 4096     & 32        & 128     & 16384"
+     },
+     "n_layers": {
+      "value": 32,
+      "quote": "6.7B       & 4096     & 32        & 128     & 16384"
+     },
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": {
+      "value": 16384,
+      "quote": "6.7B       & 4096     & 32        & 128     & 16384"
+     },
+     "vocab_size": {
+      "value": 50257,
+      "quote": "the GPT-2 vocabulary of size 50257"
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "All models are trained with a maximum sequence length of 2048 tokens"
+     }
+    },
+    {
+     "name": "13B",
+     "d_model": {
+      "value": 5120,
+      "quote": "13B        & 5120     & 40        & 128     & 20480"
+     },
+     "n_layers": {
+      "value": 40,
+      "quote": "13B        & 5120     & 40        & 128     & 20480"
+     },
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": {
+      "value": 20480,
+      "quote": "13B        & 5120     & 40        & 128     & 20480"
+     },
+     "vocab_size": {
+      "value": 50257,
+      "quote": "the GPT-2 vocabulary of size 50257"
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "All models are trained with a maximum sequence length of 2048 tokens"
+     }
+    }
+   ],
+   "structure": {
+    "norm_placement": null,
+    "parallel_block": {
+     "value": false,
+     "quote": "OPT and Cerebras-GPT models use the standard GPT-2 transformer block, which orders attention sequentially before the feed forward layers"
+    },
+    "ffn_gated": {
+     "value": false,
+     "quote": "ffn = 8 * d_model**2 + 5 * d_model"
+    }
+   },
+   "notes": "Seven standard-parameterisation sizes; the five muP variants (111M-2.7B) have identical shapes and are not listed separately. The table gives d_head, not head count, so n_heads is null. ffn_gated=false from the parameter-count code (two d x 4d matrices with biases) and the GeLU FLOP comment; norm placement not named beyond 'standard GPT-2 transformer block'."
+  },
+  "2307.09288": {
+   "model": "Llama 2",
+   "configs": [
+    {
+     "name": "7B",
+     "d_model": null,
+     "n_layers": null,
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 32000,
+      "quote": "The total vocabulary size is 32k tokens"
+     },
+     "context_length": {
+      "value": 4096,
+      "quote": "We expand the context window for \\cinnamon from 2048 tokens to 4096 tokens"
+     }
+    },
+    {
+     "name": "13B",
+     "d_model": null,
+     "n_layers": null,
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 32000,
+      "quote": "The total vocabulary size is 32k tokens"
+     },
+     "context_length": {
+      "value": 4096,
+      "quote": "We expand the context window for \\cinnamon from 2048 tokens to 4096 tokens"
+     }
+    },
+    {
+     "name": "34B",
+     "d_model": null,
+     "n_layers": null,
+     "n_heads": null,
+     "n_kv_heads": {
+      "value": 8,
+      "quote": "a grouped-query attention variant with 8 KV projections"
+     },
+     "d_ff": null,
+     "vocab_size": {
+      "value": 32000,
+      "quote": "The total vocabulary size is 32k tokens"
+     },
+     "context_length": {
+      "value": 4096,
+      "quote": "We expand the context window for \\cinnamon from 2048 tokens to 4096 tokens"
+     }
+    },
+    {
+     "name": "70B",
+     "d_model": null,
+     "n_layers": null,
+     "n_heads": null,
+     "n_kv_heads": {
+      "value": 8,
+      "quote": "a grouped-query attention variant with 8 KV projections"
+     },
+     "d_ff": null,
+     "vocab_size": {
+      "value": 32000,
+      "quote": "The total vocabulary size is 32k tokens"
+     },
+     "context_length": {
+      "value": 4096,
+      "quote": "We expand the context window for \\cinnamon from 2048 tokens to 4096 tokens"
+     }
+    }
+   ],
+   "structure": {
+    "norm_placement": {
+     "value": "pre",
+     "quote": "apply pre-normalization using RMSNorm"
+    },
+    "parallel_block": null,
+    "ffn_gated": {
+     "value": true,
+     "quote": "use the SwiGLU activation function"
+    }
+   },
+   "notes": "Four Llama 2 sizes (Llama 2-Chat shares them); no width/depth/head table. Vocabulary stated as '32k' (recorded 32000). n_kv_heads=8 for 34B and 70B combines the table's GQA marks with the appendix's 'GQA variant with 8 KV projections'; 7B and 13B use MHA, so null."
+  },
+  "2308.12950": {
+   "model": "Code Llama",
+   "configs": [
+    {
+     "name": "7B",
+     "d_model": null,
+     "n_layers": null,
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 16384,
+      "quote": "presented with sequences of 16384 tokens, compared to the 4096-token sequences used in the initial training stage"
+     }
+    },
+    {
+     "name": "13B",
+     "d_model": null,
+     "n_layers": null,
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 16384,
+      "quote": "presented with sequences of 16384 tokens, compared to the 4096-token sequences used in the initial training stage"
+     }
+    },
+    {
+     "name": "34B",
+     "d_model": null,
+     "n_layers": null,
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 16384,
+      "quote": "presented with sequences of 16384 tokens, compared to the 4096-token sequences used in the initial training stage"
+     }
+    },
+    {
+     "name": "70B",
+     "d_model": null,
+     "n_layers": null,
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 16384,
+      "quote": "presented with sequences of 16384 tokens, compared to the 4096-token sequences used in the initial training stage"
+     }
+    }
+   ],
+   "structure": {
+    "norm_placement": null,
+    "parallel_block": null,
+    "ffn_gated": null
+   },
+   "notes": "Four sizes (7B/13B/34B/70B; Python and Instruct variants share them), initialised from Llama 2; the paper states no shapes, vocabulary size or block structure. Context is ambiguous: 4096 in the initial code training, 16384 in long-context fine-tuning (recorded 16384; Python/Instruct 70B skipped LCFT)."
+  },
+  "2309.16609": {
+   "model": "Qwen",
+   "configs": [
+    {
+     "name": "1.8B",
+     "d_model": {
+      "value": 2048,
+      "quote": "1.8B     & 2048        & 16      & 24"
+     },
+     "n_layers": {
+      "value": 24,
+      "quote": "1.8B     & 2048        & 16      & 24"
+     },
+     "n_heads": {
+      "value": 16,
+      "quote": "1.8B     & 2048        & 16      & 24"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 2048,
+      "quote": "We train models with context lengths of \\num{2048}"
+     }
+    },
+    {
+     "name": "7B",
+     "d_model": {
+      "value": 4096,
+      "quote": "7B       & 4096        & 32      & 32"
+     },
+     "n_layers": {
+      "value": 32,
+      "quote": "7B       & 4096        & 32      & 32"
+     },
+     "n_heads": {
+      "value": 32,
+      "quote": "7B       & 4096        & 32      & 32"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 2048,
+      "quote": "We train models with context lengths of \\num{2048}"
+     }
+    },
+    {
+     "name": "14B",
+     "d_model": {
+      "value": 5120,
+      "quote": "14B      & 5120        & 40      & 40"
+     },
+     "n_layers": {
+      "value": 40,
+      "quote": "14B      & 5120        & 40      & 40"
+     },
+     "n_heads": {
+      "value": 40,
+      "quote": "14B      & 5120        & 40      & 40"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 2048,
+      "quote": "We train models with context lengths of \\num{2048}"
+     }
+    }
+   ],
+   "structure": {
+    "norm_placement": {
+     "value": "pre",
+     "quote": "\\textbf{Pre-Norm \\& RMSNorm}. In modern Transformer models, pre-normalization is the most widely used approach"
+    },
+    "parallel_block": null,
+    "ffn_gated": {
+     "value": true,
+     "quote": "We have selected SwiGLU~\\citep{noamglu} as our activation function"
+    }
+   },
+   "notes": "Three base Qwen sizes from the model-size table (Chat/Code/Math variants built on them). Vocabulary is 'approximately 152K' (recorded 152000, approximate). d_ff given only as 8/3 of hidden size (no number, null). Code-Qwen trains to 8192 context, not used here."
+  },
+  "2311.16867": {
+   "model": "Falcon",
+   "configs": [
+    {
+     "name": "Falcon-7B",
+     "d_model": {
+      "value": 4544,
+      "quote": "$d_\\text{model}$     & 4,544              & 8,192                 & 14,848"
+     },
+     "n_layers": {
+      "value": 32,
+      "quote": "$n_\\text{layer}$     & 32                 & 60                    & 80"
+     },
+     "n_heads": {
+      "value": 71,
+      "quote": "$n_\\text{q}$         & 71                 & 128                   & 232"
+     },
+     "n_kv_heads": {
+      "value": 1,
+      "quote": "$n_\\text{kv}$        & 1                  & 8                     & 8"
+     },
+     "d_ff": null,
+     "vocab_size": {
+      "value": 65024,
+      "quote": "$d_\\text{vocab}$     & \\multicolumn{3}{c}{65,024}"
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "train for a fixed sequence length of 2,048"
+     }
+    },
+    {
+     "name": "Falcon-40B",
+     "d_model": {
+      "value": 8192,
+      "quote": "$d_\\text{model}$     & 4,544              & 8,192                 & 14,848"
+     },
+     "n_layers": {
+      "value": 60,
+      "quote": "$n_\\text{layer}$     & 32                 & 60                    & 80"
+     },
+     "n_heads": {
+      "value": 128,
+      "quote": "$n_\\text{q}$         & 71                 & 128                   & 232"
+     },
+     "n_kv_heads": {
+      "value": 8,
+      "quote": "$n_\\text{kv}$        & 1                  & 8                     & 8"
+     },
+     "d_ff": null,
+     "vocab_size": {
+      "value": 65024,
+      "quote": "$d_\\text{vocab}$     & \\multicolumn{3}{c}{65,024}"
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "train for a fixed sequence length of 2,048"
+     }
+    },
+    {
+     "name": "Falcon-180B",
+     "d_model": {
+      "value": 14848,
+      "quote": "$d_\\text{model}$     & 4,544              & 8,192                 & 14,848"
+     },
+     "n_layers": {
+      "value": 80,
+      "quote": "$n_\\text{layer}$     & 32                 & 60                    & 80"
+     },
+     "n_heads": {
+      "value": 232,
+      "quote": "$n_\\text{q}$         & 71                 & 128                   & 232"
+     },
+     "n_kv_heads": {
+      "value": 8,
+      "quote": "$n_\\text{kv}$        & 1                  & 8                     & 8"
+     },
+     "d_ff": null,
+     "vocab_size": {
+      "value": 65024,
+      "quote": "$d_\\text{vocab}$     & \\multicolumn{3}{c}{65,024}"
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "train for a fixed sequence length of 2,048"
+     }
+    }
+   ],
+   "structure": {
+    "norm_placement": null,
+    "parallel_block": {
+     "value": true,
+     "quote": "we use parallel attention and MLP blocks"
+    },
+    "ffn_gated": {
+     "value": false,
+     "quote": "we do not use GLU \\citep{shazeer2020glu} because of the increased memory footprint, and use vanilla GeLU instead"
+    }
+   },
+   "notes": "Three Falcon sizes from the shape table (n_q taken as n_heads; multiquery for 7B, multigroup for 40B/180B). d_ff not stated. norm_placement 'pre' is inferred (layer norms feed the subsequent linear layer in the parallel block), not named; 40B/180B use two separate layer norms, 7B a single one."
+  },
+  "2401.02385": {
+   "model": "TinyLlama",
+   "configs": [
+    {
+     "name": "TinyLlama-1.1B",
+     "d_model": {
+      "value": 2048,
+      "quote": "2,048      & 5,632  & 2,048       & 32    & 22  & 32,000"
+     },
+     "n_layers": {
+      "value": 22,
+      "quote": "2,048      & 5,632  & 2,048       & 32    & 22  & 32,000"
+     },
+     "n_heads": {
+      "value": 32,
+      "quote": "2,048      & 5,632  & 2,048       & 32    & 22  & 32,000"
+     },
+     "n_kv_heads": {
+      "value": 4,
+      "quote": "We have 32 heads for query attention and use 4 groups of key-value heads."
+     },
+     "d_ff": {
+      "value": 5632,
+      "quote": "2,048      & 5,632  & 2,048       & 32    & 22  & 32,000"
+     },
+     "vocab_size": {
+      "value": 32000,
+      "quote": "2,048      & 5,632  & 2,048       & 32    & 22  & 32,000"
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "2,048      & 5,632  & 2,048       & 32    & 22  & 32,000"
+     }
+    }
+   ],
+   "structure": {
+    "norm_placement": {
+     "value": "pre",
+     "quote": "we adopt pre-norm, i.e., normalize the inputs of each sub-layer in Transformer,"
+    },
+    "parallel_block": null,
+    "ffn_gated": {
+     "value": true,
+     "quote": "we follow Llama~\\citep{touvron2023llama,touvron2023llama2} and adopt SwiGLU"
+    }
+   },
+   "notes": "Single 1.1B configuration (v1.1 variants share it). '4 groups of key-value heads' read as n_kv_heads=4."
+  },
+  "2401.02954": {
+   "model": "DeepSeek LLM",
+   "configs": [
+    {
+     "name": "7B",
+     "d_model": {
+      "value": 4096,
+      "quote": "7B  & 30 & 4096 & 32 & 32 & 4096 & 2304 & 4.2e-4 & 2.0T \\\\"
+     },
+     "n_layers": {
+      "value": 30,
+      "quote": "7B  & 30 & 4096 & 32 & 32 & 4096 & 2304 & 4.2e-4 & 2.0T \\\\"
+     },
+     "n_heads": {
+      "value": 32,
+      "quote": "7B  & 30 & 4096 & 32 & 32 & 4096 & 2304 & 4.2e-4 & 2.0T \\\\"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 102400,
+      "quote": "we configured the model's vocabulary size to 102400 for training"
+     },
+     "context_length": {
+      "value": 4096,
+      "quote": "7B  & 30 & 4096 & 32 & 32 & 4096 & 2304 & 4.2e-4 & 2.0T \\\\"
+     }
+    },
+    {
+     "name": "67B",
+     "d_model": {
+      "value": 8192,
+      "quote": "67B & 95 & 8192 & 64 & 8  & 4096 & 4608 & 3.2e-4 & 2.0T \\\\"
+     },
+     "n_layers": {
+      "value": 95,
+      "quote": "67B & 95 & 8192 & 64 & 8  & 4096 & 4608 & 3.2e-4 & 2.0T \\\\"
+     },
+     "n_heads": {
+      "value": 64,
+      "quote": "67B & 95 & 8192 & 64 & 8  & 4096 & 4608 & 3.2e-4 & 2.0T \\\\"
+     },
+     "n_kv_heads": {
+      "value": 8,
+      "quote": "67B & 95 & 8192 & 64 & 8  & 4096 & 4608 & 3.2e-4 & 2.0T \\\\"
+     },
+     "d_ff": null,
+     "vocab_size": {
+      "value": 102400,
+      "quote": "we configured the model's vocabulary size to 102400 for training"
+     },
+     "context_length": {
+      "value": 4096,
+      "quote": "67B & 95 & 8192 & 64 & 8  & 4096 & 4608 & 3.2e-4 & 2.0T \\\\"
+     }
+    }
+   ],
+   "structure": {
+    "norm_placement": {
+     "value": "pre",
+     "quote": "adopting a Pre-Norm structure with RMSNorm"
+    },
+    "parallel_block": null,
+    "ffn_gated": {
+     "value": true,
+     "quote": "using SwiGLU~\\citep{shazeer2020glu} as the activation function for the Feed-Forward Network (FFN)"
+    }
+   },
+   "notes": "DeepSeek LLM 7B and 67B (Table tab:architecture). Only the 67B uses GQA; the 7B row lists 32 KV heads but is stated to be MHA, so n_kv_heads is null for 7B. d_ff is given only as 8/3 d_model (not a number), so null."
+  },
+  "2401.04088": {
+   "model": "Mixtral 8x7B",
+   "configs": [
+    {
+     "name": "Mixtral 8x7B",
+     "d_model": {
+      "value": 4096,
+      "quote": "\\texttt{dim}             & $4096$           \\\\"
+     },
+     "n_layers": {
+      "value": 32,
+      "quote": "\\texttt{n\\_layers}       & $32$             \\\\"
+     },
+     "n_heads": {
+      "value": 32,
+      "quote": "\\texttt{n\\_heads}        & $32$             \\\\"
+     },
+     "n_kv_heads": {
+      "value": 8,
+      "quote": "\\texttt{n\\_kv\\_heads}    & $8$              \\\\"
+     },
+     "d_ff": {
+      "value": 14336,
+      "quote": "\\texttt{hidden\\_dim}     & $14336$          \\\\"
+     },
+     "vocab_size": {
+      "value": 32000,
+      "quote": "\\texttt{vocab\\_size}     & $32000$          \\\\"
+     },
+     "context_length": {
+      "value": 32768,
+      "quote": "\\texttt{context\\_len} & $32768$           \\\\"
+     }
+    }
+   ],
+   "structure": {
+    "norm_placement": null,
+    "parallel_block": null,
+    "ffn_gated": {
+     "value": true,
+     "quote": "For \\mixtral we use the same SwiGLU architecture as the expert function $E_i(x)$"
+    }
+   },
+   "notes": "Single size, Mixtral 8x7B (8 experts, top-2); hidden_dim 14336 is each expert's FFN width. n_kv_heads=8 is stated only as a table entry (no explicit 'grouped-query' wording); norm placement is deferred to Mistral 7B and not stated."
+  },
+  "2402.00838": {
+   "model": "OLMo",
+   "configs": [
+    {
+     "name": "1B",
+     "d_model": {
+      "value": 2048,
+      "quote": "1B & 16 & 2048 & 16 & 2T & \\texttt{4.0E-4} & 2000 steps & yes & $\\sim$4M \\\\"
+     },
+     "n_layers": {
+      "value": 16,
+      "quote": "1B & 16 & 2048 & 16 & 2T & \\texttt{4.0E-4} & 2000 steps & yes & $\\sim$4M \\\\"
+     },
+     "n_heads": {
+      "value": 16,
+      "quote": "1B & 16 & 2048 & 16 & 2T & \\texttt{4.0E-4} & 2000 steps & yes & $\\sim$4M \\\\"
+     },
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 50280,
+      "quote": "The final vocabulary size is 50,280.",
+      "accept": [
+       50280,
+       50304
+      ]
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "each with a sequence length of 2048 tokens"
+     }
+    },
+    {
+     "name": "7B",
+     "d_model": {
+      "value": 4096,
+      "quote": "Dimension & 4096 & 4096 & 4096 & 4544 & 4096 \\\\"
+     },
+     "n_layers": {
+      "value": 32,
+      "quote": "7B & 32 & 4086 & 32 & 2.46T & \\texttt{3.0E-4} & 5000 steps & no & $\\sim$4M \\\\"
+     },
+     "n_heads": {
+      "value": 32,
+      "quote": "7B & 32 & 4086 & 32 & 2.46T & \\texttt{3.0E-4} & 5000 steps & no & $\\sim$4M \\\\"
+     },
+     "n_kv_heads": null,
+     "d_ff": {
+      "value": 11008,
+      "quote": "(e.g. 11,008 for our 7B model)"
+     },
+     "vocab_size": {
+      "value": 50280,
+      "quote": "The final vocabulary size is 50,280.",
+      "accept": [
+       50280,
+       50304
+      ]
+     },
+     "context_length": {
+      "value": 2048,
+      "quote": "each with a sequence length of 2048 tokens"
+     }
+    }
+   ],
+   "structure": {
+    "norm_placement": null,
+    "parallel_block": {
+     "value": false,
+     "quote": "Block type & sequential & sequential & sequential & parallel & parallel \\\\"
+    },
+    "ffn_gated": {
+     "value": true,
+     "quote": "we use the SwiGLU activation function \\citep{Shazeer2020GLUVI} instead of ReLU"
+    }
+   },
+   "notes": "OLMo-1B and OLMo-7B. The main table gives 7B D as 4086 (typo); the appendix architecture table gives 4096, used here. Vocabulary is 50,280; the embedding matrix is padded to 50,304. 1B FFN width not stated. Norm is non-parametric LayerNorm but its placement is not stated."
+  },
+  "2402.14905": {
+   "model": "MobileLLM",
+   "configs": [
+    {
+     "name": "MobileLLM-125M",
+     "d_model": {
+      "value": 576,
+      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M \\\\"
+     },
+     "n_layers": {
+      "value": 30,
+      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M \\\\"
+     },
+     "n_heads": {
+      "value": 9,
+      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M \\\\"
+     },
+     "n_kv_heads": {
+      "value": 3,
+      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M \\\\"
+     },
+     "d_ff": {
+      "value": 1536,
+      "quote": "$\\ours{}$-125M & 30 & 9 & 3 & 576 & 1536 & 124.6M \\\\"
+     },
+     "vocab_size": null,
+     "context_length": null
+    },
+    {
+     "name": "MobileLLM-350M",
+     "d_model": {
+      "value": 960,
+      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560 & 345.3M \\\\"
+     },
+     "n_layers": {
+      "value": 32,
+      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560 & 345.3M \\\\"
+     },
+     "n_heads": {
+      "value": 15,
+      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560 & 345.3M \\\\"
+     },
+     "n_kv_heads": {
+      "value": 5,
+      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560 & 345.3M \\\\"
+     },
+     "d_ff": {
+      "value": 2560,
+      "quote": "$\\ours{}$-350M & 32 & 15 & 5 & 960 & 2560 & 345.3M \\\\"
+     },
+     "vocab_size": null,
+     "context_length": null
+    }
+   ],
+   "structure": {
+    "norm_placement": null,
+    "parallel_block": null,
+    "ffn_gated": {
+     "value": true,
+     "quote": "Therefore, we use SwiGLU in FFN for the experiments afterward."
+    }
+   },
+   "notes": "MobileLLM-125M/350M from the appendix architecture table (GQA stated). MobileLLM-LS variants share these widths with adjacent-block weight sharing (2x effective depth) and are not listed separately. The only vocabulary mention (32k) is an illustrative example in the embedding-sharing discussion, and no sequence length is stated, so both are null."
+  },
+  "2403.04652": {
+   "model": "Yi",
+   "configs": [
+    {
+     "name": "6B",
+     "d_model": {
+      "value": 4096,
+      "quote": "6B&  4096&  32&  4&  32&  4096& $3\\times10^{-4}$\\\\"
+     },
+     "n_layers": {
+      "value": 32,
+      "quote": "6B&  4096&  32&  4&  32&  4096& $3\\times10^{-4}$\\\\"
+     },
+     "n_heads": {
+      "value": 32,
+      "quote": "6B&  4096&  32&  4&  32&  4096& $3\\times10^{-4}$\\\\"
+     },
+     "n_kv_heads": {
+      "value": 4,
+      "quote": "6B&  4096&  32&  4&  32&  4096& $3\\times10^{-4}$\\\\"
+     },
+     "d_ff": null,
+     "vocab_size": {
+      "value": 64000,
+      "quote": "The vocabulary size of Yi is set to 64,000 to balance computational efficiency and word comprehension."
+     },
+     "context_length": {
+      "value": 4096,
+      "quote": "6B&  4096&  32&  4&  32&  4096& $3\\times10^{-4}$\\\\"
+     }
+    },
+    {
+     "name": "34B",
+     "d_model": {
+      "value": 7168,
+      "quote": "34B&  7168&  56&  8&  60&  4096& $1.5\\times10^{-4}$\\\\"
+     },
+     "n_layers": {
+      "value": 60,
+      "quote": "34B&  7168&  56&  8&  60&  4096& $1.5\\times10^{-4}$\\\\"
+     },
+     "n_heads": {
+      "value": 56,
+      "quote": "34B&  7168&  56&  8&  60&  4096& $1.5\\times10^{-4}$\\\\"
+     },
+     "n_kv_heads": {
+      "value": 8,
+      "quote": "34B&  7168&  56&  8&  60&  4096& $1.5\\times10^{-4}$\\\\"
+     },
+     "d_ff": null,
+     "vocab_size": {
+      "value": 64000,
+      "quote": "The vocabulary size of Yi is set to 64,000 to balance computational efficiency and word comprehension."
+     },
+     "context_length": {
+      "value": 4096,
+      "quote": "34B&  7168&  56&  8&  60&  4096& $1.5\\times10^{-4}$\\\\"
+     }
+    },
+    {
+     "name": "9B",
+     "d_model": null,
+     "n_layers": {
+      "value": 48,
+      "quote": "to a 9B model named the Yi-9B base model, featuring 48 layers"
+     },
+     "n_heads": null,
+     "n_kv_heads": null,
+     "d_ff": null,
+     "vocab_size": {
+      "value": 64000,
+      "quote": "The vocabulary size of Yi is set to 64,000 to balance computational efficiency and word comprehension."
+     },
+     "context_length": null
+    }
+   ],
+   "structure": {
+    "norm_placement": null,
+    "parallel_block": null,
+    "ffn_gated": {
+     "value": true,
+     "quote": "We use SwiGLU~\\citep{swiglu} as Yi's post-attention layer"
+    }
+   },
+   "notes": "Yi-6B and Yi-34B (Table tab:model_config), plus the depth-upscaled Yi-9B (48 layers, other widths not restated). The 200K long-context variants keep the same sizes. FFN width given only as 8/3 h, so null."
+  },
+  "2403.08295": {
+   "model": "Gemma",
+   "configs": [
+    {
+     "name": "2B",
+     "d_model": {
+      "value": 2048,
+      "quote": "\\textit{d}\\_{model} & 2048 & 3072 \\\\"
+     },
+     "n_layers": {
+      "value": 18,
+      "quote": "Layers & 18 & 28 \\\\"
+     },
+     "n_heads": {
+      "value": 8,
+      "quote": "Num heads & 8 & 16 \\\\"
+     },
+     "n_kv_heads": {
+      "value": 1,
+      "quote": "Num KV heads & 1 & 16 \\\\"
+     },
+     "d_ff": {
+      "value": 32768,
+      "quote": "Feedforward hidden dims & 32768 & 49152 \\\\"
+     },
+     "vocab_size": {
+      "value": 256128,
+      "quote": "Vocab size & 256128 & 256128 \\\\"
+     },
+     "context_length": {
+      "value": 8192,
+      "quote": "Models are trained on a context length of 8192 tokens."
+     }
+    },
+    {
+     "name": "7B",
+     "d_model": {
+      "value": 3072,
+      "quote": "\\textit{d}\\_{model} & 2048 & 3072 \\\\"
+     },
+     "n_layers": {
+      "value": 28,
+      "quote": "Layers & 18 & 28 \\\\"
+     },
+     "n_heads": {
+      "value": 16,
+      "quote": "Num heads & 8 & 16 \\\\"
+     },
+     "n_kv_heads": null,
+     "d_ff": {
+      "value": 49152,
+      "quote": "Feedforward hidden dims & 32768 & 49152 \\\\"
+     },
+     "vocab_size": {
+      "value": 256128,
+      "quote": "Vocab size & 256128 & 256128 \\\\"
+     },
+     "context_length": {
+      "value": 8192,
+      "quote": "Models are trained on a context length of 8192 tokens."
+     }
+    }
+   ],
+   "structure": {
+    "norm_placement": {
+     "value": "pre",
+     "quote": "We normalize the input of each transformer sub-layer, the attention layer and the feedforward layer, with RMSNorm"
+    },
+    "parallel_block": null,
+    "ffn_gated": {
+     "value": true,
+     "quote": "The standard ReLU non-linearity is replaced by the approximated version of the GeGLU activation function."
+    }
+   },
+   "notes": "Gemma 2B and 7B. 2B uses multi-query attention (1 KV head); 7B is multi-head, so n_kv_heads null. 'Feedforward hidden dims' values are taken as stated (they count both GeGLU input projections)."
+  },
+  "2403.17297": {
+   "model": "InternLM2",
+   "configs": [
+    {
+     "name": "1.8B",
+     "d_model": {
+      "value": 2048,
+      "quote": "1.8B &  24&  2048&  8&  2& 3e-4 & 4M \\\\"
+     },
+     "n_layers": {
+      "value": 24,
+      "quote": "1.8B &  24&  2048&  8&  2& 3e-4 & 4M \\\\"
+     },
+     "n_heads": null,
+     "n_kv_heads": {
+      "value": 8,
+      "quote": "1.8B &  24&  2048&  8&  2& 3e-4 & 4M \\\\"
+     },
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 32768,
+      "quote": "has been additionally trained on up to 32k contexts",
+      "accept": [
+       32768,
+       32000
+      ]
+     }
+    },
+    {
+     "name": "7B",
+     "d_model": {
+      "value": 4096,
+      "quote": "7B &  32&  4096&  8&  4& 3e-4 & 4M \\\\"
+     },
+     "n_layers": {
+      "value": 32,
+      "quote": "7B &  32&  4096&  8&  4& 3e-4 & 4M \\\\"
+     },
+     "n_heads": null,
+     "n_kv_heads": {
+      "value": 8,
+      "quote": "7B &  32&  4096&  8&  4& 3e-4 & 4M \\\\"
+     },
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 32768,
+      "quote": "has been additionally trained on up to 32k contexts",
+      "accept": [
+       32768,
+       32000
+      ]
+     }
+    },
+    {
+     "name": "20B",
+     "d_model": {
+      "value": 6144,
+      "quote": "20B &  48&  6144&  8&  6& 3e-4 & 5M \\\\"
+     },
+     "n_layers": {
+      "value": 48,
+      "quote": "20B &  48&  6144&  8&  6& 3e-4 & 5M \\\\"
+     },
+     "n_heads": null,
+     "n_kv_heads": {
+      "value": 8,
+      "quote": "20B &  48&  6144&  8&  6& 3e-4 & 5M \\\\"
+     },
+     "d_ff": null,
+     "vocab_size": null,
+     "context_length": {
+      "value": 32768,
+      "quote": "has been additionally trained on up to 32k contexts",
+      "accept": [
+       32768,
+       32000
+      ]
+     }
+    }
+   ],
+   "structure": {
+    "norm_placement": null,
+    "parallel_block": null,
+    "ffn_gated": null
+   },
+   "notes": "InternLM2 1.8B/7B/20B. The table gives n_kv_heads and n_q_per_head (2/4/6) but not the query-head count, so n_heads is null (not computed). Vocabulary size is described only as a sum of token groups, not stated as a number. Context: ~90% of pre-training at 4096 tokens, then a 32k phase; 32768 recorded. SwiGLU is stated for LLaMA, which InternLM2 says it adheres to; RMSNorm placement not stated."
+  },
+  "2405.04434": {
+   "model": "DeepSeek-V2",
+   "configs": [
+    {
+     "name": "DeepSeek-V2",
+     "d_model": {
+      "value": 5120,
+      "quote": "We set the number of Transformer layers to 60 and the hidden dimension to 5120."
+     },
+     "n_layers": {
+      "value": 60,
+      "quote": "We set the number of Transformer layers to 60 and the hidden dimension to 5120."
+     },
+     "n_heads": {
+      "value": 128,
+      "quote": "we set the number of attention heads $n_h$ to 128"
+     },
+     "n_kv_heads": null,
+     "d_ff": {
+      "value": 1536,
+      "quote": "where the intermediate hidden dimension of each expert is 1536"
+     },
+     "vocab_size": null,
+     "context_length": {
+      "value": 4096,
+      "quote": "We set the maximum sequence length to 4K"
+     }
+    },
+    {
+     "name": "DeepSeek-V2-Lite",
+     "d_model": {
+      "value": 2048,
+      "quote": "\\dsviilite{} has 27 layers and a hidden dimension of 2048."
+     },
+     "n_layers": {
+      "value": 27,
+      "quote": "\\dsviilite{} has 27 layers and a hidden dimension of 2048."
+     },
+     "n_heads": {
+      "value": 16,
+      "quote": "has 16 attention heads"
+     },
+     "n_kv_heads": null,
+     "d_ff": {
+      "value": 1408,
+      "quote": "where the intermediate hidden dimension of each expert is 1408"
+     },
+     "vocab_size": null,
+     "context_length": {
+      "value": 4096,
+      "quote": "we set the maximum sequence length to 4K"
+     }
+    }
+   ],
+   "structure": {
+    "norm_placement": null,
+    "parallel_block": null,
+    "ffn_gated": null
+   },
+   "notes": "DeepSeek-V2 (236B total / 21B active) and DeepSeek-V2-Lite (15.7B / 2.4B). Attention is MLA, not GQA, so n_kv_heads null. d_ff is each routed/shared expert's intermediate width (the first layer is a dense FFN of unstated width). Vocabulary given only as '100K'; pre-training sequence length 4K, later extended to 128K with YaRN (32K training). Norm and activation deferred to DeepSeek 67B without naming them."
+  },
+  "2407.10671": {
+   "model": "Qwen2",
+   "configs": [
+    {
+     "name": "0.5B",
+     "d_model": {
+      "value": 896,
+      "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584 \\\\"
+     },
+     "n_layers": {
+      "value": 24,
+      "quote": "\\# Layers & 24 & 28 & 28  & 80 & 28 \\\\"
+     },
+     "n_heads": {
+      "value": 14,
+      "quote": "\\# Query Heads & 14 & 12 & 28  & 64 & 28 \\\\"
+     },
+     "n_kv_heads": {
+      "value": 2,
+      "quote": "\\# KV Heads  & 2 & 2 & 4 & 8  & 4 \\\\"
+     },
+     "d_ff": {
+      "value": 4864,
+      "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560\\\\"
+     },
+     "vocab_size": {
+      "value": 151646,
+      "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646 \\\\"
+     },
+     "context_length": {
+      "value": 32768,
+      "quote": "we augmented the context length from 4,096 tokens to 32,768 tokens during the concluding phase of pre-training"
+     }
+    },
+    {
+     "name": "1.5B",
+     "d_model": {
+      "value": 1536,
+      "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584 \\\\"
+     },
+     "n_layers": {
+      "value": 28,
+      "quote": "\\# Layers & 24 & 28 & 28  & 80 & 28 \\\\"
+     },
+     "n_heads": {
+      "value": 12,
+      "quote": "\\# Query Heads & 14 & 12 & 28  & 64 & 28 \\\\"
+     },
+     "n_kv_heads": {
+      "value": 2,
+      "quote": "\\# KV Heads  & 2 & 2 & 4 & 8  & 4 \\\\"
+     },
+     "d_ff": {
+      "value": 8960,
+      "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560\\\\"
+     },
+     "vocab_size": {
+      "value": 151646,
+      "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646 \\\\"
+     },
+     "context_length": {
+      "value": 32768,
+      "quote": "we augmented the context length from 4,096 tokens to 32,768 tokens during the concluding phase of pre-training"
+     }
+    },
+    {
+     "name": "7B",
+     "d_model": {
+      "value": 3584,
+      "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584 \\\\"
+     },
+     "n_layers": {
+      "value": 28,
+      "quote": "\\# Layers & 24 & 28 & 28  & 80 & 28 \\\\"
+     },
+     "n_heads": {
+      "value": 28,
+      "quote": "\\# Query Heads & 14 & 12 & 28  & 64 & 28 \\\\"
+     },
+     "n_kv_heads": {
+      "value": 4,
+      "quote": "\\# KV Heads  & 2 & 2 & 4 & 8  & 4 \\\\"
+     },
+     "d_ff": {
+      "value": 18944,
+      "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560\\\\"
+     },
+     "vocab_size": {
+      "value": 151646,
+      "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646 \\\\"
+     },
+     "context_length": {
+      "value": 32768,
+      "quote": "we augmented the context length from 4,096 tokens to 32,768 tokens during the concluding phase of pre-training"
+     }
+    },
+    {
+     "name": "72B",
+     "d_model": {
+      "value": 8192,
+      "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584 \\\\"
+     },
+     "n_layers": {
+      "value": 80,
+      "quote": "\\# Layers & 24 & 28 & 28  & 80 & 28 \\\\"
+     },
+     "n_heads": {
+      "value": 64,
+      "quote": "\\# Query Heads & 14 & 12 & 28  & 64 & 28 \\\\"
+     },
+     "n_kv_heads": {
+      "value": 8,
+      "quote": "\\# KV Heads  & 2 & 2 & 4 & 8  & 4 \\\\"
+     },
+     "d_ff": {
+      "value": 29568,
+      "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560\\\\"
+     },
+     "vocab_size": {
+      "value": 151646,
+      "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646 \\\\"
+     },
+     "context_length": {
+      "value": 32768,
+      "quote": "we augmented the context length from 4,096 tokens to 32,768 tokens during the concluding phase of pre-training"
+     }
+    },
+    {
+     "name": "57B-A14B",
+     "d_model": {
+      "value": 3584,
+      "quote": "Hidden Size & 896 & 1,536 & 3,584  & 8,192 & 3,584 \\\\"
+     },
+     "n_layers": {
+      "value": 28,
+      "quote": "\\# Layers & 24 & 28 & 28  & 80 & 28 \\\\"
+     },
+     "n_heads": {
+      "value": 28,
+      "quote": "\\# Query Heads & 14 & 12 & 28  & 64 & 28 \\\\"
+     },
+     "n_kv_heads": {
+      "value": 4,
+      "quote": "\\# KV Heads  & 2 & 2 & 4 & 8  & 4 \\\\"
+     },
+     "d_ff": {
+      "value": 2560,
+      "quote": "Intermediate Size & 4,864 & 8,960 & 18,944 & 29,568 & 2,560\\\\"
+     },
+     "vocab_size": {
+      "value": 151646,
+      "quote": "Vocabulary Size & 151,646 & 151,646 & 151,646 & 151,646 & 151,646 \\\\"
+     },
+     "context_length": {
+      "value": 32768,
+      "quote": "we augmented the context length from 4,096 tokens to 32,768 tokens during the concluding phase of pre-training"
+     }
+    }
+   ],
+   "structure": {
+    "norm_placement": {
+     "value": "pre",
+     "quote": "RMSNorm~\\citep{rmsnorm} and pre-normalization for training stability"
+    },
+    "parallel_block": null,
+    "ffn_gated": {
+     "value": true,
+     "quote": "we follow Qwen with the usage of SwiGLU~\\citep{glu} for activation"
+    }
+   },
+   "notes": "Qwen2 dense 0.5B/1.5B/7B/72B and MoE 57B-A14B (Table tab:to_sota); the MoE intermediate size is per expert (64 routed, 8 activated, 8 shared). Context raised from 4,096 to 32,768 in the final pre-training phase; 32768 recorded."
+  },
+  "2408.00118": {
+   "model": "Gemma 2",
+   "configs": [
+    {
+     "name": "2B",
+     "d_model": {
+      "value": 2304,
+      "quote": "\\textit{d}\\_{model} & 2304 & 3584 & 4608 \\\\"
+     },
+     "n_layers": {
+      "value": 26,
+      "quote": "Layers & 26 & 42 & 46  \\\\"
+     },
+     "n_heads": {
+      "value": 8,
+      "quote": "Num heads & 8 & 16 & 32 \\\\"
+     },
+     "n_kv_heads": {
+      "value": 4,
+      "quote": "Num KV heads & 4 & 8 & 16  \\\\"
+     },
+     "d_ff": {
+      "value": 18432,
+      "quote": "Feedforward dim & 18432 & 28672 & 73728  \\\\"
+     },
+     "vocab_size": {
+      "value": 256128,
+      "quote": "Vocab size & 256128 & 256128 & 256128 \\\\"
+     },
+     "context_length": {
+      "value": 8192,
+      "quote": "a context length of 8192 tokens"
+     }
+    },
+    {
+     "name": "9B",
+     "d_model": {
+      "value": 3584,
+      "quote": "\\textit{d}\\_{model} & 2304 & 3584 & 4608 \\\\"
+     },
+     "n_layers": {
+      "value": 42,
+      "quote": "Layers & 26 & 42 & 46  \\\\"
+     },
+     "n_heads": {
+      "value": 16,
+      "quote": "Num heads & 8 & 16 & 32 \\\\"
+     },
+     "n_kv_heads": {
+      "value": 8,
+      "quote": "Num KV heads & 4 & 8 & 16  \\\\"
+     },
+     "d_ff": {
+      "value": 28672,
+      "quote": "Feedforward dim & 18432 & 28672 & 73728  \\\\"
+     },
+     "vocab_size": {
+      "value": 256128,
+      "quote": "Vocab size & 256128 & 256128 & 256128 \\\\"
+     },
+     "context_length": {
+      "value": 8192,
+      "quote": "a context length of 8192 tokens"
+     }
+    },
+    {
+     "name": "27B",
+     "d_model": {
+      "value": 4608,
+      "quote": "\\textit{d}\\_{model} & 2304 & 3584 & 4608 \\\\"
+     },
+     "n_layers": {
+      "value": 46,
+      "quote": "Layers & 26 & 42 & 46  \\\\"
+     },
+     "n_heads": {
+      "value": 32,
+      "quote": "Num heads & 8 & 16 & 32 \\\\"
+     },
+     "n_kv_heads": {
+      "value": 16,
+      "quote": "Num KV heads & 4 & 8 & 16  \\\\"
+     },
+     "d_ff": {
+      "value": 73728,
+      "quote": "Feedforward dim & 18432 & 28672 & 73728  \\\\"
+     },
+     "vocab_size": {
+      "value": 256128,
+      "quote": "Vocab size & 256128 & 256128 & 256128 \\\\"
+     },
+     "context_length": {
+      "value": 8192,
+      "quote": "a context length of 8192 tokens"
+     }
+    }
+   ],
+   "structure": {
+    "norm_placement": {
+     "value": "sandwich",
+     "quote": "we use RMSNorm~\\citep{rmsnorm} to normalize the input and output of each transformer sub-layer"
+    },
+    "parallel_block": null,
+    "ffn_gated": {
+     "value": true,
+     "quote": "Non-linearity & GeGLU & GeGLU & GeGLU \\\\"
+    }
+   },
+   "notes": "Gemma 2 2B/9B/27B. Attention alternates local sliding-window (4096) and global (8192) layers; context 8192. Feedforward dim taken as stated in the table."
+  }
+ }
+}

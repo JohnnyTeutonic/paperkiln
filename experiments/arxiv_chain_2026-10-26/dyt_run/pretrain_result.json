@@ -1,0 +1,21 @@
+{
+  "T": 64,
+  "accum": 1,
+  "attention": "exact",
+  "batch": 4,
+  "best_val": 6.306790351867676,
+  "checkpoint_activations": false,
+  "d": 64,
+  "early_stopped": false,
+  "family": "flex",
+  "final_step": 60,
+  "heads": 4,
+  "layers": 2,
+  "lr": 0.003000000026077032,
+  "name": "arxiv_2503_10622_base",
+  "params": 1180806,
+  "seed": 1,
+  "steps_requested": 60,
+  "tokens_per_second": 165.44289495425008,
+  "wall_seconds": 92.841702294
+}

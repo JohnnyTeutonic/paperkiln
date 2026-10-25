@@ -378,5 +378,22 @@ Var rowmax(const Var& x);  // [T, w] -> [T, 1]; the gradient goes to the
 Var broadcast_cols(const Var& c, size_t n);  // [T, 1] -> [T, n] copies;
                                              // dc = rowsum(dy)
 
+// ---- T5's relative position bias (LOCAL_LLM_STACK 11 item 4.2; the flex family's
+// position "t5_relative") ----
+// T5's causal bucketing of the distance n = query position - key position >= 0 (HF
+// _relative_position_bucket with bidirectional=False): n itself below num_buckets / 2, then
+// logarithmically spaced up to max_distance, num_buckets - 1 from there. The table has
+// max_distance + 1 entries; entry max_distance covers every larger distance. Computed once in
+// binary64 (the table, not the logarithm, is what a model and an IR carry).
+std::vector<int> t5_position_buckets(size_t num_buckets, size_t max_distance);
+// One head of causal softmax attention with T5's additive bias: score(i, j) = (q_i . k_j) * scale
+// + table(buckets[min(i - j, D - 1)], head), the product rounded, then the sum; keys after the
+// query (and outside its seq_len block) are masked to exactly 0. q, k [T, dk], v [T, dv], table
+// [num_buckets, heads] (HF's and llama.cpp's attn_rel_b layout), shared by every layer. Backward:
+// the softmax-attention gradient plus d table(b, head) = the sum of d score over the pairs in
+// bucket b. Host loops; FD-checked in test_flex.
+Var relpos_attention(const Var& q, const Var& k, const Var& v, const Var& table, size_t head,
+                     const std::vector<int>& buckets, float scale, size_t seq_len = 0);
+
 }  // namespace ops
 }  // namespace microtorch

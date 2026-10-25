@@ -1,0 +1,321 @@
+{
+ "arxiv_id": "2503.10622",
+ "stages": {
+  "gate": {
+   "at": "2026-10-26T06:03:34",
+   "verdict": "in_scope",
+   "passes": true,
+   "reason": "Proposes Dynamic Tanh, an element-wise operation that replaces normalization layers in Transformers, which is a buildable architectural component.",
+   "architecture_kind": "normalization replacement",
+   "evidence": "as a drop-in replacement for normalization layers in Transformers",
+   "evidence_found": true,
+   "gate": {
+    "model": "claude-opus-5-5",
+    "served_by": "claude-opus-5-5",
+    "effort": "low",
+    "max_tokens": 3000,
+    "prompt_sha256": "c14d094a07ba3f62d99ba57195c8f64c9e255aaf6b8dd3c27d875920a193a418",
+    "request_id": "req_011CgLvPbsC8vRiAoDZpV9h5",
+    "cache_hit": true,
+    "input_tokens": 1001,
+    "output_tokens": 111,
+    "cost_usd": 0.0,
+    "original_cost_usd": 0.006224,
+    "tag": "relevance_gate",
+    "extractor_sha256": "9d5951b0f11c920aaf075abead17d7d4e619d37402d47690ba452de15620e921"
+   }
+  },
+  "extract": {
+   "at": "2026-10-26T06:03:34",
+   "extraction_sha256": "f3842f56602b926a081535acb9e52aeea202745cfae576c5d1870a0863fb48bd",
+   "source": {
+    "tex_sha256": "d535d5a7a6e704468fca14f49c09891eda926ceb37eb2c47f9bed59c946bd2ca",
+    "sent_sha256": "e36db076a4218de3e7f77f24b6e271bc58b744a105d6650836daa288ebfe48c9",
+    "from": "https://arxiv.org/e-print/2503.10622",
+    "extractor": "papers/llm_extract.py",
+    "extractor_sha256": "9dc4f304205a2b85751dd5cd694a21509253cba08c7cb072e5bd2dcc1a9359af",
+    "model": "claude-opus-5-5",
+    "effort": "high",
+    "prompt_sha256": "e6c6c5052b656885910d1539b8c320ba4ecb9262a6079252b852f1ff637b03ef",
+    "n_calls": 1,
+    "cost_usd": 0.0,
+    "request_ids": [
+     "req_011CgPL98qeJPXqFbrzXFVPv"
+    ],
+    "cached_from": "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/experiments/arxiv_chain_2026-10-26/2503.10622.extraction.json"
+   },
+   "mechanism_scan": [
+    {
+     "mechanism": "new op dyt_attn = ((tanh((a*x))*g)+b) (expr)",
+     "where": "llm extraction, verified quote, Sec. Dynamic Tanh (DyT)",
+     "blocking": true,
+     "evidence": "\\mathrm{DyT}(\\vx) = \\bm{\\gamma} * \\tanh(\\alpha \\vx) + \\bm{\\beta}"
+    },
+    {
+     "mechanism": "new op dyt_other = ((tanh((a*x))*g)+b) (expr)",
+     "where": "llm extraction, verified quote, Sec. Initialization of alpha for LLMs",
+     "blocking": true,
+     "evidence": "initializing $\\alpha$ with higher values for DyT layers in attention blocks and lower values for DyT layers in other locations (i.e., within FFN blocks or before the final linear projection) improves performance."
+    },
+    {
+     "mechanism": "new op embed_scale = (x*a) (expr)",
+     "where": "llm extraction, verified quote, Appendix A, Large Language Models",
+     "blocking": true,
+     "evidence": "we introduce an additional learnable scalar parameter immediately after the embedding layer, before any Transformer blocks."
+    }
+   ]
+  },
+  "spec": {
+   "at": "2026-10-26T06:03:35",
+   "family": "flex",
+   "name": "arxiv_2503_10622",
+   "report": [
+    [
+     "EXPR",
+     "norm = expr:tanh((a*x)) (new op dyt_attn, replaces RMSNorm in attention block; verified quote (Sec. Dynamic Tanh (DyT)): \u201c\\mathrm{DyT}(\\vx) = \\bm{\\gamma} * \\tanh(\\alpha \\vx) + \\bm{\\beta}\u201d); parses in the IR grammar (spec/tools/ir_expr.py), finite in f32 on [-20, 20]; mtstudio checks its gradient against finite differences before training"
+    ],
+    [
+     "EXPR-INPUTS",
+     "norm_inputs = [\"row\", {\"kind\": \"scalar\", \"init\": 0.8, \"init_ffn\": 0.2, \"init_final\": 0.2}]: the expr's inputs in order; learned: a (scalar, init 0.8: stated ('LLaMA 7B & 4096 & 32 & 0.8/0.2'); ffn 0.2, final 0.2)"
+    ],
+    [
+     "NORM-AFFINE",
+     "norm: the paper's ((tanh((a*x))*g)+b) is core*g + a over the row expression with its learned per-channel g, b; flex computes expr(...) * gain + bias, both learned per feature (init 1, 0): the same form"
+    ],
+    [
+     "NORM-VARIANT",
+     "new op dyt_other: the norm dyt_attn's expression at the ffn, final norm(s) of the block graph, with its own inits (flex norm_inputs init_<place>)"
+    ],
+    [
+     "EXPR",
+     "embed = expr:(x*a) (new op embed_scale, replaces none (added after embedding); verified quote (Appendix A, Large Language Models): \u201cwe introduce an additional learnable scalar parameter immediately after the embedding layer, before any Transformer bloc\u201d); parses in the IR grammar (spec/tools/ir_expr.py), finite in f32 on [-20, 20]; mtstudio checks its gradient against finite differences before training"
+    ],
+    [
+     "EXPR-INPUTS",
+     "embed_inputs = [\"row\", {\"kind\": \"scalar\", \"init\": 8.0}]: the expr's inputs in order; learned: a (scalar, init 8: stated as sqrt(d_model): 8 at this run's d = 64)"
+    ],
+    [
+     "MATCHED",
+     "norm = expr:((tanh((a*x))*g)+b) (used: \u201c\\mathrm{DyT}(\\vx) = \\bm{\\gamma} * \\tanh(\\alpha \\vx) + \\bm{\\beta} [Sec. Dynamic Tanh (DyT)]\u201d)"
+    ],
+    [
+     "ASSERTED",
+     "activation = swiglu (by the operator, --assert; paper: swiglu)"
+    ],
+    [
+     "MATCHED",
+     "positional = rope (inherited: \u201cIn our implementation of LLaMA models~\\citep{touvron2023llama, touvron2023llama2, dubey2024llama} with DyT, we introduce\u201d)"
+    ],
+    [
+     "DEFAULT",
+     "residual = residual: not stated by the paper (the extraction marks it inherited, unverified: inherited from llama, whose curated entry has no residual); a highway or plain stream would be a stated departure"
+    ],
+    [
+     "DEFAULT",
+     "attention = exact: not stated by the paper (the extraction marks it inherited, unverified: inherited from llama, whose curated entry has no attention); windowed, linear or sparse attention would be a stated departure"
+    ],
+    [
+     "MATCHED",
+     "embed = expr:(x*a) on the embed output, before the first block (parity::FlexConfig embed_expr)"
+    ],
+    [
+     "MATCHED",
+     "position = rope on the flex family (the paper's other flavours are not the llama block's): every head rotated, interleaved pairs, theta 10000, as the llama block and the IR rope node"
+    ],
+    [
+     "SIZED",
+     "d=64 layers=2 heads=4 T=64 chosen for this run (paper: {'d_model': 4096, 'n_layers': 32}); the mechanism is the paper's"
+    ]
+   ],
+   "pretrain_spec": {
+    "name": "arxiv_2503_10622_base",
+    "arch": {
+     "custom": {
+      "norm": "expr:tanh((a*x))",
+      "activation": "swiglu",
+      "position": "rope",
+      "residual": "residual",
+      "attention": "exact",
+      "norm_inputs": [
+       "row",
+       {
+        "kind": "scalar",
+        "init": 0.8,
+        "init_ffn": 0.2,
+        "init_final": 0.2
+       }
+      ],
+      "embed": "expr:(x*a)",
+      "embed_inputs": [
+       "row",
+       {
+        "kind": "scalar",
+        "init": 8.0
+       }
+      ],
+      "d": 64,
+      "layers": 2,
+      "heads": 4
+     }
+    },
+    "data": {
+     "vocab": "/home/jonat/arxiv_chain_runs/inputs/fineweb_tinychat_bpe8k.gguf",
+     "vocab_cap": 8192,
+     "T": 64,
+     "corpus": "/home/jonat/arxiv_chain_runs/inputs/pretrain_train.txt",
+     "max_tokens": 400000
+    },
+    "train": {
+     "steps": 60,
+     "lr": 0.003,
+     "batch": 4,
+     "eval_every": 15,
+     "checkpoint_every": 30,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw"
+    },
+    "export": {
+     "formats": [
+      "safetensors"
+     ]
+    },
+    "out_dir": "/home/jonat/ex_runs/dyt/pretrain"
+   },
+   "sft_spec": {
+    "name": "arxiv_2503_10622",
+    "arch": {
+     "custom": {
+      "norm": "expr:tanh((a*x))",
+      "activation": "swiglu",
+      "position": "rope",
+      "residual": "residual",
+      "attention": "exact",
+      "norm_inputs": [
+       "row",
+       {
+        "kind": "scalar",
+        "init": 0.8,
+        "init_ffn": 0.2,
+        "init_final": 0.2
+       }
+      ],
+      "embed": "expr:(x*a)",
+      "embed_inputs": [
+       "row",
+       {
+        "kind": "scalar",
+        "init": 8.0
+       }
+      ],
+      "d": 64,
+      "layers": 2,
+      "heads": 4
+     }
+    },
+    "data": {
+     "vocab": "/home/jonat/arxiv_chain_runs/inputs/fineweb_tinychat_bpe8k.gguf",
+     "vocab_cap": 8192,
+     "T": 64,
+     "sft_examples": "/home/jonat/ex_runs/dyt/sft_examples.jsonl"
+    },
+    "train": {
+     "steps": 20,
+     "lr": 0.001,
+     "batch": 4,
+     "eval_every": 10,
+     "checkpoint_every": 20,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "objective": "sft",
+     "init_from": "/home/jonat/ex_runs/dyt/pretrain/arxiv_2503_10622_base.safetensors"
+    },
+    "export": {
+     "formats": [
+      "safetensors"
+     ]
+    },
+    "out_dir": "/home/jonat/ex_runs/dyt/sft"
+   }
+  },
+  "pretrain": {
+   "at": "2026-10-26T06:05:11",
+   "corpus": "/home/jonat/arxiv_chain_runs/inputs/pretrain_train.txt",
+   "corpus_sha256": "f6a7ccbaed0e5018f9ade0a1f0ce6a3027e046f176d2b8f7ff7f5efedfaedb76",
+   "max_tokens": 400000,
+   "vocab_sha256": "c79eec5b5ec2036b7f398061e9901c34014b54096db64f9dce6f030532e75b23",
+   "weights_sha256": "d45b233ed3bf4d82545f8f8b43ff9216755aa63772d2d18ab88d0e3201becc59",
+   "result": {
+    "T": 64,
+    "accum": 1,
+    "attention": "exact",
+    "batch": 4,
+    "best_val": 6.306790351867676,
+    "checkpoint_activations": false,
+    "d": 64,
+    "early_stopped": false,
+    "family": "flex",
+    "final_step": 60,
+    "heads": 4,
+    "layers": 2,
+    "lr": 0.003000000026077032,
+    "name": "arxiv_2503_10622_base",
+    "params": 1180806,
+    "seed": 1,
+    "steps_requested": 60,
+    "tokens_per_second": 165.44289495425008,
+    "wall_seconds": 92.841702294
+   }
+  },
+  "sft": {
+   "at": "2026-10-26T06:05:41",
+   "sft_source": "/home/jonat/arxiv_chain_runs/inputs/sft_tinychat_fit64.jsonl",
+   "sft_limit": 500,
+   "sft_fit": {
+    "source": "/home/jonat/arxiv_chain_runs/inputs/sft_tinychat_fit64.jsonl",
+    "T": 64,
+    "limit": 500,
+    "seen": 500,
+    "kept": 500,
+    "dropped_longer_than_T": 0,
+    "longest_kept_tokens": 60,
+    "longest_dropped_tokens": 0,
+    "rule": "len(prompt) + len(completion) + 1 end token <= T + 1 (mtstudio load_sft), file order"
+   },
+   "sft_slice_sha256": "ea3d1e3812169ccf3543d775dd26b1d5c756da489e0dc40bef36df121f8ecef8",
+   "weights_sha256": "8fb8d2986dc783e23da1107c2703c828bba900cf29b70baddf159017604b7e34",
+   "result": {
+    "T": 64,
+    "accum": 1,
+    "attention": "exact",
+    "batch": 4,
+    "best_val": 5.956594467163086,
+    "checkpoint_activations": false,
+    "d": 64,
+    "early_stopped": false,
+    "family": "flex",
+    "final_step": 20,
+    "heads": 4,
+    "layers": 2,
+    "lr": 0.0010000000474974513,
+    "name": "arxiv_2503_10622",
+    "params": 1180806,
+    "seed": 1,
+    "steps_requested": 20,
+    "tokens_per_second": 171.64144674066006,
+    "wall_seconds": 29.829625054
+   }
+  },
+  "export": {
+   "at": "2026-10-26T06:05:41",
+   "gguf": "/home/jonat/ex_runs/dyt/export/arxiv_2503_10622.gguf",
+   "gguf_sha256": "eee098d254c9768c17b44b9c0ce5925f80f5f7edec2bb19898df49d9b5b31e48",
+   "ir_sha256": "578e6cbbdb52baa6fb7f85535a56683d744d2ab7b27a2686fc05766fd05d374a",
+   "family_hint": "flex",
+   "rope_heads": "all"
+  }
+ },
+ "relevance_gate": "in_scope",
+ "title": "Transformers without Normalization"
+}

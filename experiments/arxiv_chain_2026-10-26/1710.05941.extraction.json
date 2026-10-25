@@ -1,0 +1,695 @@
+{
+ "arxiv_id": "1710.05941",
+ "title": "Searching for Activation Functions",
+ "fields": {
+  "activation": {
+   "value": "expr:(x*sigmoid((a*x)))",
+   "evidence": "The best discovered activation function, which we call \\emph{Swish}, is $f(x) = x \\cdot \\text{sigmoid}(\\beta x)$, where $\\beta$ is a constant or trainable parameter. [Sec. 1 Introduction]",
+   "verdict": "used"
+  }
+ },
+ "unresolved": [
+  "d_model",
+  "n_layers",
+  "n_heads",
+  "n_kv_heads",
+  "d_ff",
+  "vocab_size",
+  "context_length",
+  "norm",
+  "positional",
+  "residual",
+  "attention"
+ ],
+ "unverified": [],
+ "mentions": {},
+ "inherits": null,
+ "variants": [],
+ "mechanism_scan": [
+  {
+   "mechanism": "new op swish = (x*sigmoid((a*x))) (expr)",
+   "where": "llm extraction, verified quote, Sec. 4 Swish",
+   "blocking": true,
+   "evidence": "To recap, Swish is defined as $x\\cdot\\sigma(\\beta x)$, where $\\sigma(z) = (1 + \\exp(-z))^{-1}$ is the sigmoid function and $\\beta$ is either a constant or a trainable parameter."
+  },
+  {
+   "mechanism": "Swish is evaluated by substituting it into existing convolutional networks (Inception-ResNet-v2, Inception-v4/v3, MobileNet, Mobile NASNet-A, ResNet-164, WRN, DenseNet); these CNN hosts are not transformer blocks and are not specified in the paper",
+   "where": "llm extraction, verified quote, Sec. 5.3 ImageNet",
+   "blocking": true,
+   "evidence": "We again replace the ReLU activation function with different activation functions and train for a fixed number of steps, determined by the convergence of the ReLU baseline."
+  },
+  {
+   "mechanism": "BatchNorm scale parameter must be enabled with Swish",
+   "where": "llm extraction, verified quote, Sec. 4 Swish",
+   "blocking": true,
+   "evidence": "As a cautionary note, if BatchNorm \\citep{ioffe2015batch} is used, the scale parameter should be set."
+  }
+ ],
+ "source": {
+  "tex_sha256": "a4fa2928cd0dae9c372d99fb625e4deef99d54552a3579a0ab35d2660b6f311c",
+  "sent_sha256": "f7d8fe31812741384b58a273445112adbc000dc93fd23d82524b5d6cd6df6cc9",
+  "from": "https://arxiv.org/e-print/1710.05941",
+  "extractor": "papers/llm_extract.py",
+  "extractor_sha256": "9dc4f304205a2b85751dd5cd694a21509253cba08c7cb072e5bd2dcc1a9359af",
+  "model": "claude-opus-5-5",
+  "effort": "high",
+  "prompt_sha256": "e6c6c5052b656885910d1539b8c320ba4ecb9262a6079252b852f1ff637b03ef",
+  "n_calls": 1,
+  "cost_usd": 0.0,
+  "request_ids": [
+   "req_011CgPLRAL8ueJETv7bHtdre"
+  ]
+ },
+ "llm": {
+  "output": {
+   "title": "Searching for Activation Functions",
+   "model_name": "Swish (activation function; applied to existing networks in place of ReLU)",
+   "family": {
+    "value": "",
+    "status": "not_stated",
+    "quote": "",
+    "where": ""
+   },
+   "inherits": {
+    "ancestor": "",
+    "quote": "",
+    "where": ""
+   },
+   "configs": [],
+   "primary_config": "",
+   "flavours": {
+    "norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "activation": {
+     "value": "new_op:swish",
+     "status": "stated",
+     "quote": "The best discovered activation function, which we call \\emph{Swish}, is $f(x) = x \\cdot \\text{sigmoid}(\\beta x)$, where $\\beta$ is a constant or trainable parameter.",
+     "where": "Sec. 1 Introduction"
+    },
+    "positional": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_theta": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "residual": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "parallel_block": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "attention": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "qkv_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "tied_embeddings": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "moe": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    }
+   },
+   "block_ops": [
+    {
+     "subgraph": "block",
+     "op": "expr",
+     "role": "activation (replaces every ReLU of the host network)",
+     "inputs": [
+      "h"
+     ],
+     "output": "h_act",
+     "attributes": [],
+     "new_op": "swish"
+    }
+   ],
+   "new_ops": [
+    {
+     "name": "swish",
+     "kind": "expr",
+     "expr": "x * sigmoid(a * x)",
+     "inputs": [
+      {
+       "name": "x",
+       "meaning": "the layer preactivation (input the ReLU would receive)",
+       "role": "input",
+       "init": {
+        "value": "",
+        "status": "not_stated",
+        "quote": "",
+        "where": ""
+       }
+      },
+      {
+       "name": "a",
+       "meaning": "beta, the trainable parameter (per-channel in the search space; Swish-1 fixes it to 1)",
+       "role": "learned_vector",
+       "init": {
+        "value": "",
+        "status": "not_stated",
+        "quote": "",
+        "where": ""
+       }
+      }
+     ],
+     "replaces": "ReLU activation",
+     "reason": "",
+     "quote": "To recap, Swish is defined as $x\\cdot\\sigma(\\beta x)$, where $\\sigma(z) = (1 + \\exp(-z))^{-1}$ is the sigmoid function and $\\beta$ is either a constant or a trainable parameter.",
+     "where": "Sec. 4 Swish"
+    }
+   ],
+   "mechanisms_outside_ir": [
+    {
+     "mechanism": "Swish is evaluated by substituting it into existing convolutional networks (Inception-ResNet-v2, Inception-v4/v3, MobileNet, Mobile NASNet-A, ResNet-164, WRN, DenseNet); these CNN hosts are not transformer blocks and are not specified in the paper",
+     "quote": "We again replace the ReLU activation function with different activation functions and train for a fixed number of steps, determined by the convergence of the ReLU baseline.",
+     "where": "Sec. 5.3 ImageNet"
+    },
+    {
+     "mechanism": "BatchNorm scale parameter must be enabled with Swish",
+     "quote": "As a cautionary note, if BatchNorm \\citep{ioffe2015batch} is used, the scale parameter should be set.",
+     "where": "Sec. 4 Swish"
+    }
+   ],
+   "notes": "The paper's contribution is an activation function, not a network architecture: Swish f(x)=x*sigmoid(beta*x) with trainable beta (Swish-1 = fixed beta=1, equivalent to SiLU). It is dropped into existing ReLU networks (CNNs and a 12-layer Base Transformer reusing the original hyperparameters) whose sizes and structure the paper does not restate, so family, configs and all structural flavours are left not_stated. beta is described as per-channel only in the search-space definition. Its initial value is not stated. The LaTeX source is duplicated in the input."
+  },
+  "verification": {
+   "errors": [],
+   "warnings": [],
+   "inherits": null,
+   "family": {
+    "value": "",
+    "status": "not_stated",
+    "quote": "",
+    "where": "",
+    "reasons": [],
+    "check": "not_stated"
+   },
+   "configs": [],
+   "primary_config": null,
+   "flavours": {
+    "norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "activation": {
+     "value": "new_op:swish",
+     "status": "stated",
+     "quote": "The best discovered activation function, which we call \\emph{Swish}, is $f(x) = x \\cdot \\text{sigmoid}(\\beta x)$, where $\\beta$ is a constant or trainable parameter.",
+     "where": "Sec. 1 Introduction",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "positional": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_max_distance": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_theta": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "residual": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "parallel_block": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "attention": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "qkv_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "tied_embeddings": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "moe": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    }
+   },
+   "new_ops": [
+    {
+     "name": "swish",
+     "kind": "expr",
+     "replaces": "ReLU activation",
+     "reason": "",
+     "quote": "To recap, Swish is defined as $x\\cdot\\sigma(\\beta x)$, where $\\sigma(z) = (1 + \\exp(-z))^{-1}$ is the sigmoid function and $\\beta$ is either a constant or a trainable parameter.",
+     "where": "Sec. 4 Swish",
+     "inputs": [
+      {
+       "name": "x",
+       "meaning": "the layer preactivation (input the ReLU would receive)",
+       "role": "input",
+       "init": {
+        "value": "",
+        "status": "not_stated",
+        "quote": "",
+        "where": ""
+       },
+       "init_check": "not_stated"
+      },
+      {
+       "name": "a",
+       "meaning": "beta, the trainable parameter (per-channel in the search space; Swish-1 fixes it to 1)",
+       "role": "learned_vector",
+       "init": {
+        "value": "",
+        "status": "not_stated",
+        "quote": "",
+        "where": ""
+       },
+       "init_check": "not_stated"
+      }
+     ],
+     "errors": [],
+     "quote_found": true,
+     "expr_check": {
+      "expr": "x * sigmoid(a * x)",
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "canonical": "(x*sigmoid((a*x)))",
+      "samples": {
+       "inputs": {
+        "x": [
+         -2.0,
+         -0.5,
+         0.0,
+         0.5,
+         2.0
+        ],
+        "a": [
+         1.5,
+         0.75,
+         0.0,
+         -0.75,
+         -1.5
+        ]
+       },
+       "output": [
+        -0.09485174635513356,
+        -0.20366670002296514,
+        0.0,
+        0.20366670002296514,
+        0.09485174635513356
+       ]
+      }
+     },
+     "check": "verified"
+    }
+   ],
+   "block_ops": [
+    {
+     "i": 0,
+     "subgraph": "block",
+     "op": "expr",
+     "role": "activation (replaces every ReLU of the host network)",
+     "inputs": [
+      "h"
+     ],
+     "output": "h_act",
+     "new_op": "swish",
+     "attributes": [],
+     "errors": []
+    }
+   ],
+   "mechanisms_outside_ir": [
+    {
+     "mechanism": "Swish is evaluated by substituting it into existing convolutional networks (Inception-ResNet-v2, Inception-v4/v3, MobileNet, Mobile NASNet-A, ResNet-164, WRN, DenseNet); these CNN hosts are not transformer blocks and are not specified in the paper",
+     "quote": "We again replace the ReLU activation function with different activation functions and train for a fixed number of steps, determined by the convergence of the ReLU baseline.",
+     "where": "Sec. 5.3 ImageNet",
+     "check": "verified"
+    },
+    {
+     "mechanism": "BatchNorm scale parameter must be enabled with Swish",
+     "quote": "As a cautionary note, if BatchNorm \\citep{ioffe2015batch} is used, the scale parameter should be set.",
+     "where": "Sec. 4 Swish",
+     "check": "verified"
+    }
+   ],
+   "summary": {
+    "counts": {
+     "verified": 0,
+     "quote_only": 1,
+     "unverified": 0,
+     "not_stated": 30
+    },
+    "unverified": [],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 1,
+    "n_block_ops": 1
+   }
+  }
+ }
+}
