@@ -641,10 +641,10 @@ def _patch_version_key(path, value):
 def regenerate():
     (SUITE / "models").mkdir(parents=True, exist_ok=True)
     for sub in ("ops", "state", "refuse"):
-        d = SUITE / sub
-        if d.exists():
-            shutil.rmtree(d)
-        d.mkdir(parents=True)
+        d = SUITE / sub  # emptied file by file (OneDrive can hold a directory handle open)
+        d.mkdir(parents=True, exist_ok=True)
+        for f in d.iterdir():
+            f.unlink()
     build_tp_models()
     manifest = []
     rng = np.random.default_rng(11)

@@ -1486,8 +1486,8 @@ void write_chat_modelfile(const Spec& s, const std::vector<std::string>& tokens,
 std::string write_ir_doc(const Spec& s, const ir::json& model_ir, const std::vector<std::string>& tokens,
                          const std::map<std::string, int>& vocab, const std::string& ir_path) {
     ir::json doc = {{"_comment", "paperkiln IR v" + std::to_string(ir::kVersion) + " for " + s.name +
-                                     ", exported by mtstudio. Schema and semantics: microtorch/ir.hpp "
-                                     "and LOCAL_LLM_STACK.md section 4."}};
+                                     ", exported by mtstudio. Schema and semantics: microtorch/spec/IR_SPEC.md "
+                                     "(schema spec/ir.schema.json)."}};
     for (const auto& [k, v] : model_ir.items()) {
         doc[k] = v;
         if (k == "model") doc["tokenizer"] = ir_tokenizer(tokens, vocab);

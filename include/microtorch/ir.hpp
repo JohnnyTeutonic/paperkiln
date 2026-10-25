@@ -19,9 +19,9 @@
 // slot) of IR_SPEC.md sections 5 to 7, attributes in the order op, in,
 // attributes, out.
 //
-// kVersion is the ir_version exporters write. It stays 0 until every engine
-// reads 1 (IR_SPEC.md section 2.3: a version 0 document is a version 1
-// document). GGUF: the compact dump is the string key kGGUFKey and the version
+// kVersion is the ir_version exporters write: 1, the version IR_SPEC.md
+// specifies (section 2.3; a version 0 document is a version 1 document, and
+// ember reads both from ce41ffb on). GGUF: the compact dump is the string key kGGUFKey and the version
 // the uint32 key kGGUFVersionKey, written after every other metadata key
 // (IR_SPEC.md section 3.1).
 #include <cstdint>
@@ -36,7 +36,7 @@ namespace ir {
 // Insertion-ordered, so a node reads op, in, attributes, out.
 using json = nlohmann::ordered_json;
 
-constexpr uint32_t kVersion = 0;
+constexpr uint32_t kVersion = 1;
 constexpr const char* kGGUFKey = "paperkiln.ir";
 constexpr const char* kGGUFVersionKey = "paperkiln.ir_version";
 

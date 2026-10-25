@@ -1,6 +1,6 @@
 {
  "doc": {
-  "_comment": "paperkiln IR v0 for pk_llama, exported by mtstudio. Schema and semantics: microtorch/ir.hpp and LOCAL_LLM_STACK.md section 4.",
+  "_comment": "paperkiln IR v1 for pk_llama, exported by mtstudio. Schema and semantics: microtorch/spec/IR_SPEC.md (schema spec/ir.schema.json).",
   "ir_version": 2,
   "family_hint": "llama",
   "model": {

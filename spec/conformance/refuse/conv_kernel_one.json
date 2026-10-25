@@ -1,7 +1,7 @@
 {
  "doc": {
   "_comment": "built by tools/gguf_ir.py from general.architecture = mamba and its metadata",
-  "ir_version": 0,
+  "ir_version": 1,
   "family_hint": "mamba",
   "model": {
    "vocab": 24,

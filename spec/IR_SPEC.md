@@ -39,9 +39,9 @@ not semantics: when the header and this document differ, this document holds.
 
 This document is version 1 of the IR. It states the semantics that `include/microtorch/ir.hpp`'s
 header comment stated under the number 0, reorganised into profiles, with the numerics made
-consistent with what the reference build computes (section 4 and Appendix A). Every IR document
-written so far carries `"ir_version": 0` and is a version 1 document (section 2.1). Exporters write 0
-today and may write 1 under the rule of section 2.3.
+consistent with what the reference build computes (section 4 and Appendix A). The IR documents
+that paperkiln up to b5048dd3 exported carry `"ir_version": 0` and are version 1 documents (section
+2.1); later exports carry 1 (section 2.3).
 
 ember.cpp reviewed this text against its engine (25 October 2026). Where the engine and this document
 differ, this document states the intended semantics and the engine changes. Section 12 records each
@@ -103,8 +103,11 @@ version and the versions it reads. An engine that implements version 1 reads 0 a
 An exporter writes a version number only once every engine it targets reads it.
 - ember.cpp reads 0 and 1 as the same document and refuses any other version from ce41ffb on;
   earlier ember commits read 0 only (`IR version N is not supported (ember reads 0)`).
-- paperkiln's exporters (`ir::kVersion`) and `tools/gguf_ir.py` (`IR_VERSION`) write 0 today. They
-  may write 1 now that ember ce41ffb reads it; ember's C++ builder follows.
+- paperkiln's exporters (`ir::kVersion`) and `tools/gguf_ir.py` (`IR_VERSION`) write 1 from the
+  commit after b5048dd3; earlier commits write 0. ember's C++ builder follows.
+- Campaigns pinned to earlier paperkiln commits keep exporting 0 with their own code, so nothing
+  running changes. Tiny-chat post jobs from b5048dd3 on generate with ember aa50a6112dfd, which
+  reads 1.
 - A pinned deployment runs its own pinned exports. A campaign or Space pinned to an ember commit
   that reads 0 only (69d7ca2 or earlier) serves the files that its pinned paperkiln commit exported,
   which carry 0, so a later exporter writing 1 does not reach it. A file written with 1 must not be

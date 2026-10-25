@@ -44,7 +44,7 @@ import json
 import math
 import sys
 
-IR_VERSION = 0
+IR_VERSION = 1  # spec/IR_SPEC.md section 2.3
 NEOX = {"qwen2", "qwen3"}  # llama.cpp LLAMA_ROPE_TYPE_NEOX for these
 LLAMA_LIKE = {"llama", "mistral", "qwen2", "qwen3"}
 WINDOWED_LLAMA = {"llama", "mistral"}  # read <arch>.attention.sliding_window

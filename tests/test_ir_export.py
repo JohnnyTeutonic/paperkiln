@@ -70,11 +70,12 @@ def test_dense_ir_is_v0_at_this_size(tmp_path):
         assert ir_check.check(e["path"]) == []
         assert Path(e["ir"]).is_file()
     doc = embedded(exports(spec)[0]["path"])
-    assert doc["ir_version"] == 0
+    assert doc["ir_version"] == 1  # spec/IR_SPEC.md section 2.3 (the worked example is a version 0 document)
     # A word-level vocabulary: only the tokenizer section is the model's own.
     assert doc["tokenizer"] == {"type": "word", "source": "gguf", "specials": {"unk": 0}, "bos": None}
     want = v0_scaled(15, 32, 2, 2, 16)
     want["tokenizer"] = doc["tokenizer"]
+    want["ir_version"] = 1  # a version 0 document is a version 1 document
     assert ir_check.strip(doc) == ir_check.strip(want)
 
 

@@ -11,25 +11,25 @@
   ]
  },
  "counts": {
-  "PASS": 95,
-  "FAIL": 13,
+  "PASS": 111,
+  "FAIL": 0,
   "SKIP": 46,
-  "XFAIL": 3,
+  "XFAIL": 0,
   "XPASS": 0
  },
  "by_kind": {
   "model": {
-   "PASS": 19,
+   "PASS": 20,
    "FAIL": 0,
    "SKIP": 0,
-   "XFAIL": 1,
+   "XFAIL": 0,
    "XPASS": 0
   },
   "trace": {
-   "PASS": 30,
+   "PASS": 31,
    "FAIL": 0,
    "SKIP": 0,
-   "XFAIL": 1,
+   "XFAIL": 0,
    "XPASS": 0
   },
   "op": {
@@ -40,10 +40,10 @@
    "XPASS": 0
   },
   "refuse": {
-   "PASS": 46,
-   "FAIL": 13,
+   "PASS": 60,
+   "FAIL": 0,
    "SKIP": 0,
-   "XFAIL": 1,
+   "XFAIL": 0,
    "XPASS": 0
   }
  },
@@ -159,14 +159,14 @@
   {
    "id": "model/pk_llama_attnres_rec",
    "kind": "model",
-   "verdict": "XFAIL",
-   "detail": "log-probs worst 7.57e-03; greedy 4/4 [expected to fail: ember accepts tensor_index silently and reads blk.{m_i} names in tagged nodes (I]"
+   "verdict": "PASS",
+   "detail": "log-probs worst 8.42e-08; greedy 4/4"
   },
   {
    "id": "trace/pk_llama_attnres_rec_decode",
    "kind": "trace",
-   "verdict": "XFAIL",
-   "detail": "6 steps; step 0 logits worst 5.81e-02 of max(1, |ref|); step 1 logits worst 6.23e-02 of max(1, |ref|); step 2 logits worst 9.23e-03 of max(1, |ref|); step 3 logits worst 9.81e-03 of max(1, |ref|); step 4 logits worst 2.41e-02 of max(1, |ref|); step 5 logits worst 2.04e-02 of max(1, |ref|) [expected to fail: ember accepts tensor_index silently and reads blk.{m_i} names in tagged nodes (I]"
+   "verdict": "PASS",
+   "detail": "6 steps"
   },
   {
    "id": "model/pk_mamba",
@@ -639,14 +639,14 @@
   {
    "id": "refuse/unknown_attribute",
    "kind": "refuse",
-   "verdict": "FAIL",
-   "detail": "accepted"
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 rule 1: doc.block.nodes[5] (attention) has the key 'temperature', which its specification does not define"
   },
   {
    "id": "refuse/unknown_top_key",
    "kind": "refuse",
-   "verdict": "FAIL",
-   "detail": "accepted"
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 rule 1: doc has the key 'profiles', which its specification does not define"
   },
   {
    "id": "refuse/version_2",
@@ -663,8 +663,8 @@
   {
    "id": "refuse/model_ctx_missing",
    "kind": "refuse",
-   "verdict": "FAIL",
-   "detail": "accepted"
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 rule 1: doc.model lacks the required key 'ctx'; IR_SPEC 3.3: model.ctx missing or not a positive integer"
   },
   {
    "id": "refuse/per_layer_wrong_length",
@@ -681,8 +681,8 @@
   {
    "id": "refuse/add_one_input",
    "kind": "refuse",
-   "verdict": "FAIL",
-   "detail": "accepted"
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 rule 7: block[7] add reads 1 value(s), not 2"
   },
   {
    "id": "refuse/rope_pairing_unknown",
@@ -711,20 +711,20 @@
   {
    "id": "refuse/attention_window_differs",
    "kind": "refuse",
-   "verdict": "FAIL",
-   "detail": "accepted"
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 5.15: attention window 4 (application 0) differs from its kv state kv's 0"
   },
   {
    "id": "refuse/slot_declared_twice",
    "kind": "refuse",
-   "verdict": "FAIL",
-   "detail": "accepted"
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.1: state slot kv declared twice"
   },
   {
    "id": "refuse/slot_unread",
    "kind": "refuse",
-   "verdict": "FAIL",
-   "detail": "accepted"
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.1: state slot kv2 is read by no node"
   },
   {
    "id": "refuse/slot_unknown_kind",
@@ -735,20 +735,20 @@
   {
    "id": "refuse/attention_no_slot",
    "kind": "refuse",
-   "verdict": "FAIL",
-   "detail": "accepted"
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.1: block: attention reads state 'nowhere', not a declared kv slot; IR_SPEC 6.1: state slot kv is read by no no"
   },
   {
    "id": "refuse/kv_slot_field_missing",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused: [json.exception.out_of_range.403] key 'max_len' not found"
+   "detail": "refused: IR_SPEC 10.1 rule 1: doc.block.state[0] lacks the required key 'max_len'; IR_SPEC 6.2: kv state kv: max_len missing"
   },
   {
    "id": "refuse/tensor_index_without_weight_index",
    "kind": "refuse",
-   "verdict": "XFAIL",
-   "detail": "accepted [expected to fail: ember accepts tensor_index silently and reads blk.{m_i} names in tagged nodes (I]"
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 7.2: block[1] linear: tensor_index needs a block with weight_index"
   },
   {
    "id": "refuse/name_with_i_outside_block",
@@ -777,8 +777,8 @@
   {
    "id": "refuse/split_count",
    "kind": "refuse",
-   "verdict": "FAIL",
-   "detail": "accepted"
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 5.5: block[2] split: 2 sizes for 3 outputs"
   },
   {
    "id": "refuse/expr_does_not_parse",
@@ -789,8 +789,8 @@
   {
    "id": "refuse/moe_top_k_too_large",
    "kind": "refuse",
-   "verdict": "FAIL",
-   "detail": "accepted"
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 5.16: block[9] moe_ffn: top_k 5 is not in 1 .. n_experts 4"
   },
   {
    "id": "refuse/moe_gate_norm_unknown",
@@ -963,8 +963,8 @@
   {
    "id": "refuse/version_key_mismatch",
    "kind": "refuse",
-   "verdict": "FAIL",
-   "detail": "accepted"
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 3.1: paperkiln.ir_version 7 does not match the document's ir_version 1"
   },
   {
    "id": "refuse/state_tokens_k_mismatch",
@@ -975,8 +975,8 @@
   {
    "id": "refuse/state_template_not_v1",
    "kind": "refuse",
-   "verdict": "FAIL",
-   "detail": "accepted"
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 8.2: state tokens are defined over paperkiln/1 only, not paperkiln/2"
   },
   {
    "id": "refuse/weight_index_block_count",
@@ -987,8 +987,8 @@
   {
    "id": "refuse/state_tokens_arch_llama",
    "kind": "refuse",
-   "verdict": "FAIL",
-   "detail": "accepted"
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 8.2: state tokens need architecture paperkiln, not llama"
   }
  ]
 }

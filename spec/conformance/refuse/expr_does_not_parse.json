@@ -1,7 +1,7 @@
 {
  "doc": {
-  "_comment": "paperkiln IR v0 for pk_flex_expr, exported by mtstudio. Schema and semantics: microtorch/ir.hpp and LOCAL_LLM_STACK.md section 4.",
-  "ir_version": 0,
+  "_comment": "paperkiln IR v1 for pk_flex_expr, exported by mtstudio. Schema and semantics: microtorch/spec/IR_SPEC.md (schema spec/ir.schema.json).",
+  "ir_version": 1,
   "family_hint": "flex",
   "model": {
    "vocab": 15,

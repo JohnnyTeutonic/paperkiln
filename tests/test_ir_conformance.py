@@ -68,3 +68,23 @@ def test_suite_passes_against_the_reference():
 def test_suite_passes_against_mtstudio():
     counts = conf.run_suite(conf.MtstudioAdapter())
     assert counts["FAIL"] == 0 and counts["PASS"] > 0, counts
+
+
+@pytest.mark.skipif(not HAVE_SUITE, reason="spec/conformance has no manifest yet")
+def test_versions_0_and_1_read_alike(tmp_path):
+    """IR_SPEC 2.1: a version 0 document is a version 1 document. A suite model written with each version
+    validates and gives bit-identical reference logits."""
+    import ir_numpy
+    doc, W, meta, _ = conf.load_model(conf.SUITE / "models" / "pk_llama")
+    ids = [1, 4, 2, 7, 3]
+    out = {}
+    for ver in (0, 1):
+        d = dict(doc, ir_version=ver)
+        p = tmp_path / f"v{ver}" / f"v{ver}.gguf"
+        p.parent.mkdir()
+        conf.write_gguf(p, meta, W, d)
+        assert ir_validate.file_errors(p) == []
+        d2, W2, _, _ = conf.load_model(p.parent)
+        assert d2["ir_version"] == ver
+        out[ver] = ir_numpy.forward(d2, W2, ids)
+    assert np.array_equal(out[0].view(np.uint32), out[1].view(np.uint32))
