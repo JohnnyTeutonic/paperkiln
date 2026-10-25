@@ -184,6 +184,10 @@ advisory steps that cannot fail the build.
 ## 6. Engine
 
 - **CUDA** (records: `docs/CUDA_PHASE_B2.md`):
+  - The third-party ops' device legs (queued until the RunPod top-up): root `scripts/colab_driver.json`
+    entry pk-tp-cuda, `tools/colab_chat/thirdparty_cuda_v1.json` (the CUDA gate with
+    `tests/test_thirdparty_ops.cpp`, and `tests/test_thirdparty_ir.py`'s five models trained with the device
+    op set against numpy's IR).
   - Wire `MT_DEVCHECK_HOST_READ` at real call sites; today it is defined
     and never called.
   - Coalesce loads in the transposed GEMM paths.
