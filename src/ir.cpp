@@ -158,6 +158,12 @@ void canon(const json& v, std::string& out, bool keep_prose) {
 
 std::string canonical(const json& doc, bool keep_prose) {
     std::string out;
+    if (!keep_prose) {
+        // IR_SPEC 3.10 step 1 runs on the whole document, its "_" members included: a value there that
+        // has no digest (non-finite, beyond 2^53, malformed UTF-8, a floating -0) takes the digest away.
+        canon(doc, out, true);
+        out.clear();
+    }
     canon(doc, out, keep_prose);
     return out;
 }

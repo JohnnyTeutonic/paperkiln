@@ -301,11 +301,13 @@ struct Compiler {
         if (kind.count(name)) refuse(31, name + " is declared twice (" + kind[name] + " and " + k + ")");
         kind[name] = k;
     }
-    std::vector<size_t> sizes(const std::vector<std::string>& idx, const std::string& where) const {
+    // declaration: inputs and weights may repeat an index (W[c,c], IR_SPEC 6.10.1); assignments may not.
+    std::vector<size_t> sizes(const std::vector<std::string>& idx, const std::string& where,
+                              bool declaration = false) const {
         std::vector<size_t> out;
         for (size_t a = 0; a < idx.size(); ++a) {
-            for (size_t b = 0; b < a; ++b)
-                if (idx[a] == idx[b]) refuse(32, where + ": an index repeats in its declaration");
+            for (size_t b = 0; b < a && !declaration; ++b)
+                if (idx[a] == idx[b]) refuse(32, where + ": an assignment repeats an index");
             auto it = index.find(idx[a]);
             if (it == index.end()) refuse(32, where + ": " + idx[a] + " is not a declared index");
             out.push_back(it->second);
@@ -616,7 +618,7 @@ Recurrence Recurrence::from_json(const json& nd) {
         Tensor t;
         t.name = name;
         t.index = idx;
-        t.shape = c.sizes(idx, where);
+        t.shape = c.sizes(idx, where, true);
         for (size_t s : t.shape) t.numel *= s;
         return t;
     };

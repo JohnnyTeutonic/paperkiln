@@ -33,7 +33,6 @@ import ir_conformance  # noqa: E402
 D, H = 16, 2
 
 
-
 def _recipes():
     llama = {"preset": "llama-tiny", "custom": {"d": D, "layers": 2, "heads": H}}
     gpt2 = {"preset": "gpt2-nano", "custom": {"d": D, "layers": 2, "heads": H}}

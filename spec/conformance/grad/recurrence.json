@@ -668,6 +668,73 @@
     }
    },
    "tol": 0.0001
+  },
+  {
+   "name": "square_weight_declaration",
+   "node": {
+    "op": "recurrence",
+    "in": [
+     "x"
+    ],
+    "state": "sq",
+    "index": {
+     "c": 3,
+     "j": 3
+    },
+    "inputs": [
+     "x[c]"
+    ],
+    "weights": {
+     "W[c,c]": "W"
+    },
+    "update": [
+     "h[c] = sum(j, W[c,j] * h[j]) + x[c]"
+    ],
+    "readout": "y[c] = h[c]",
+    "out": "y"
+   },
+   "inputs": {
+    "x": {
+     "shape": [
+      5,
+      3
+     ],
+     "f32": "3f858488be102f9b3e644f644009826fbf47e6aa3fca87273d2c7d653f186760bf0e08593fada8aabf44ecf0be3116fabfb22a533ea0662a3f8dcf8b"
+    }
+   },
+   "weights": {
+    "W": {
+     "shape": [
+      3,
+      3
+     ],
+     "f32": "bd5d615c3f8e855bbde15d3f3ea7a5fe3ebfee563f4a1789bd963fd6bf1467d43f450d8c"
+    }
+   },
+   "out_grad": {
+    "shape": [
+     5,
+     3
+    ],
+    "f32": "be91985bbfafd2903fd621fabf4fe931bf887c11be7ad95b3e489fcbbf9179aebf1aae06bf0068a93e0086c33d827d453fb581ac3f99edd03f15bb60"
+   },
+   "expect": {
+    "x": {
+     "shape": [
+      5,
+      3
+     ],
+     "f32": "bf537e16c06c6e733e951df9bfbbcad6bff42c0cbd4609513f34fcb5bfbbbcf43fee2c08be68d66a3fe877253fa7530d3fb581ac3f99edd03f15bb60"
+    },
+    "W": {
+     "shape": [
+      3,
+      3
+     ],
+     "f32": "40b761613e9f4d7dbf15f12fbf7fcdba40c07a6dc025950840a2f9934042d1554074a362"
+    }
+   },
+   "tol": 0.0001
   }
  ]
 }

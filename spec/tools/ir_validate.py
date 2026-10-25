@@ -159,7 +159,10 @@ def canonical(doc, prose=False):
     """The RFC 8785 serialisation of a document (a JSON text, or a parsed value) with its '_' keys removed
     (kept with prose=True, for testing the serialiser on arbitrary values). Raises DigestError."""
     v = _parse_ijson(doc) if isinstance(doc, (str, bytes)) else doc
-    return _canon(v if prose else _strip_prose(v))
+    if prose:
+        return _canon(v)
+    _canon(v)  # step 1 on the whole document, its '_' members included: no digest if any check fails
+    return _canon(_strip_prose(v))
 
 
 def digest(doc, prose=False):

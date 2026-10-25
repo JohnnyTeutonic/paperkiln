@@ -1,48 +1,87 @@
 {
+ "spec": {
+  "repository": "keramos",
+  "tag": "v1.1.0",
+  "commit": "322162aea13deba0039fc4c8e421fa72078c5b27"
+ },
+ "engine": {
+  "name": "ember.cpp",
+  "commit": "39dcce94886fbac759c26c123007d7e106b84aed",
+  "binary": "/home/jonat/ember_adapter_39dcce9/build/ir_adapter (git archive of that commit, CPU only: HAS_CUDA off, Release, GCC 13.3, WSL ext4; the interpreter's IR translation units with -ffp-contract=off)",
+  "hello": "ir_adapter 2 (IR versions 0 and 1; spec revision 1.1)",
+  "run": "python3 tools/ir_conformance.py --adapter cmd:\"<binary> --conformance\" from keramos/ at v1.1.0, no EMBER_* variable kept, 2026-10-25"
+ },
+ "_notes": [
+  "The digest (section 3.10) and the recurrence op (section 6.10) were written for ember from the specification text; no paperkiln source (src/ir.cpp, recurrence.hpp/.cpp) was read. tools/ir_validate.py was run as a black-box oracle only (probes of the digest's edge cases, a stress comparison on 260,616 number spellings and 1,600 string objects, all equal).",
+  "SKIP: op 46 = the single-op fixtures of ops other than recurrence (the adapter's run_node runs recurrence nodes; every other op is checked through whole models and traces); grad 7 = run_node_grad (ember is an inference engine, section 6.10.5 is for training engines).",
+  "Dequantisation is ember's interpreter route (dequant_span_to_f32), the routine every CPU, CUDA (weights are dequantised on the host and uploaded as f32) and WebAssembly path reads; the blocks are also bit-equal in the WebAssembly build (ember experiments/ir_rev11_2026-10-25)."
+ ],
  "adapter": {
   "engine": "ember.cpp",
   "backend": "cpu",
   "exact": true,
   "profiles": [
    "core",
+   "recurrence",
    "recursion",
    "state",
    "thirdparty"
   ]
  },
  "counts": {
-  "PASS": 111,
+  "PASS": 221,
   "FAIL": 0,
-  "SKIP": 46,
+  "SKIP": 53,
   "XFAIL": 0,
   "XPASS": 0
  },
  "by_kind": {
   "model": {
-   "PASS": 20,
+   "PASS": 21,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
    "XPASS": 0
   },
   "trace": {
-   "PASS": 31,
+   "PASS": 37,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
    "XPASS": 0
   },
   "op": {
-   "PASS": 0,
+   "PASS": 7,
    "FAIL": 0,
    "SKIP": 46,
    "XFAIL": 0,
    "XPASS": 0
   },
   "refuse": {
-   "PASS": 60,
+   "PASS": 72,
    "FAIL": 0,
    "SKIP": 0,
+   "XFAIL": 0,
+   "XPASS": 0
+  },
+  "digest": {
+   "PASS": 74,
+   "FAIL": 0,
+   "SKIP": 0,
+   "XFAIL": 0,
+   "XPASS": 0
+  },
+  "dequant": {
+   "PASS": 10,
+   "FAIL": 0,
+   "SKIP": 0,
+   "XFAIL": 0,
+   "XPASS": 0
+  },
+  "grad": {
+   "PASS": 0,
+   "FAIL": 0,
+   "SKIP": 7,
    "XFAIL": 0,
    "XPASS": 0
   }
@@ -217,6 +256,24 @@
    "detail": "3 steps"
   },
   {
+   "id": "model/pk_recurrence",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 9.10e-08; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_recurrence_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "trace/pk_recurrence_snapshot",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "5 steps"
+  },
+  {
    "id": "model/pk_recursive",
    "kind": "model",
    "verdict": "PASS",
@@ -358,277 +415,319 @@
    "id": "op/embedding/rows",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/embedding/state_weight",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/pos_embedding/rows",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/linear/bias",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/linear/no_bias",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/linear/tied_to",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/scale/bias",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/scale/no_bias",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/split/three",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/rmsnorm/row",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/rmsnorm/group",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/rmsnorm/weight_offset",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/layernorm/row",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/gelu/tanh",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/gelu/none",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/silu/x",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/sigmoid/x",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/relu/x",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/add/ab",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/mul/ab",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/sub/ab",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/affine/scale_shift",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/mul_col/x_c",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/rms_row/eps",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/rope/interleaved",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/rope/neox",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/rope/neox_partial",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/rope/freq_scale",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/rope/grouped_query",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/attention/causal",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/attention/window_sinks",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/attention/grouped_query",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/moe_ffn/renorm",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/moe_ffn/raw",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/list/two",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/append/one",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/depth_attend/one_source",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/depth_attend/three_sources",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/expr/gelu_sigmoid",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/expr/relu_squared",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/expr/where_rowmean",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/expr/layer_norm",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/linear_attention/two_heads",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/ssm_scan/n4",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/conv1d_causal/k4",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
   },
   {
    "id": "op/selective_scan/d3n2",
    "kind": "op",
    "verdict": "SKIP",
-   "detail": "run_node is not implemented by ember's adapter (whole-model methods only)"
+   "detail": "run_node: ember's adapter runs recurrence nodes only (whole-model methods for the other ops)"
+  },
+  {
+   "id": "op/recurrence/linear_attention_body",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 4.89e-08 of max(1, |ref|); state lin.num worst 2.90e-08 of max(1, |ref|); state lin.den worst 5.87e-08 of max(1, |ref|)"
+  },
+  {
+   "id": "op/recurrence/ssm_scan_body",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y 0 values differ in their bits; state ssm.s 0 values differ in their bits"
+  },
+  {
+   "id": "op/recurrence/conv1d_causal_body",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y 0 values differ in their bits; state conv.x 0 values differ in their bits"
+  },
+  {
+   "id": "op/recurrence/selective_scan_body",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 1.81e-07 of max(1, |ref|); state ssm.s worst 2.47e-08 of max(1, |ref|)"
+  },
+  {
+   "id": "op/recurrence/rnn_init_offset",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 8.28e-08 of max(1, |ref|); state rnn.h worst 5.96e-08 of max(1, |ref|)"
+  },
+  {
+   "id": "op/recurrence/ema_bias_corrected",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y worst 0.00e+00 of max(1, |ref|); state avg.m worst 0.00e+00 of max(1, |ref|); state avg.n worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/recurrence/ema_exact",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y 0 values differ in their bits; state avg.m 0 values differ in their bits; state avg.n 0 values differ in their bits"
   },
   {
    "id": "refuse/unknown_op",
@@ -961,6 +1060,78 @@
    "detail": "refused: IR weight 'nope.weight' is not in the GGUF"
   },
   {
+   "id": "refuse/recurrence_body_does_not_parse",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.10 (rule 31): update[1] does not parse: expected an operand at column 22"
+  },
+  {
+   "id": "refuse/recurrence_name_twice",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.10 (rule 31): the name 'num' is declared twice"
+  },
+  {
+   "id": "refuse/recurrence_rowsum",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.10 (rule 31): readout uses rowsum at column 10 (the row reductions are not part of a recurrence body; sum repl"
+  },
+  {
+   "id": "refuse/recurrence_index_size_zero",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.10 (rule 31): index 'e' has size 0, not a positive integer"
+  },
+  {
+   "id": "refuse/recurrence_index_out_of_scope",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.10 (rule 32): readout: sum over index 'h' at column 14, which is already in scope"
+  },
+  {
+   "id": "refuse/recurrence_init_reads_input",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.10 (rule 32): init[0] reads 'q' at column 12, which its section cannot read"
+  },
+  {
+   "id": "refuse/recurrence_rank_mismatch",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.10 (rule 32): update[1] reads 'den' at column 12 with 1 index(es); it has 2 dimension(s)"
+  },
+  {
+   "id": "refuse/recurrence_index_undeclared",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.10 (rule 32): readout: index 'f' at column 16 is not declared"
+  },
+  {
+   "id": "refuse/recurrence_slot_shape",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.10 (rule 33): the slot \"lin\"'s tensor 'num' has shape [16], the update's is [2,8]"
+  },
+  {
+   "id": "refuse/recurrence_slot_missing_tensor",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.10 (rule 33): the slot \"lin\" has no tensor 'den' (the update assigns it)"
+  },
+  {
+   "id": "refuse/recurrence_init_flag",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.10 (rule 33): the slot \"lin\"'s tensor 'num' has init \"body\", not 0 (the node's init does not assign it)"
+  },
+  {
+   "id": "refuse/recurrence_weight_size",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.10 (rule 34): recurrence weight A reads 'blk.0.ssm_b.weight', which has 8 elements; its declaration has 64"
+  },
+  {
    "id": "refuse/version_key_mismatch",
    "kind": "refuse",
    "verdict": "PASS",
@@ -989,6 +1160,576 @@
    "kind": "refuse",
    "verdict": "PASS",
    "detail": "refused: IR_SPEC 8.2: state tokens need architecture paperkiln, not llama"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_0000000000000000",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_0000000000000001",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_8000000000000001",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_7fefffffffffffff",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_ffefffffffffffff",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_4340000000000000",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_c340000000000000",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_4430000000000000",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_44b52d02c7e14af5",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_44b52d02c7e14af6",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_44b52d02c7e14af7",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_444b1ae4d6e2ef4e",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_444b1ae4d6e2ef4f",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_444b1ae4d6e2ef50",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_3eb0c6f7a0b5ed8c",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_3eb0c6f7a0b5ed8d",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_41b3de4355555553",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_41b3de4355555554",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_41b3de4355555555",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_41b3de4355555556",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_41b3de4355555557",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_becbf647612f3696",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_43143ff3c1cb0959",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/f32_eps",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/f32_rope_theta",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/f32_scale",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/f32_den_floor",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/integer_2p53",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/negative_integer",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/minus_zero_integer_form",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/exponent_form",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_controls",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_controls_escaped",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_escapes",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_escapes_escaped",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_line_separators",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_line_separators_escaped",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_astral",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_astral_escaped",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_accents",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_accents_escaped",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_names",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/string_names_escaped",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/key_order_utf16",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/nesting",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/prose_removed",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/prose_kept_in_serialiser_test",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_attnres",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_flex_expr",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_flex_highway",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_gpt2",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_gpt2_swa",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_kimi",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_llama",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_llama_attnres",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_llama_attnres_rec",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_mamba",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_moe",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_mor",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_recurrence",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_recursive",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_srd",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_pk_state",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_tp_gemma3",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_tp_gptneox",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_tp_mamba1",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_tp_mistral",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_tp_qwen3",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/negative_zero",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "digest/vectors/integer_beyond_2p53",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "digest/vectors/overflow",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "digest/vectors/duplicate_key",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "digest/vectors/lone_surrogate",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "digest/vectors/nan_literal",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "dequant/blocks/f32",
+   "kind": "dequant",
+   "verdict": "PASS",
+   "detail": "0 values differ in their bits"
+  },
+  {
+   "id": "dequant/blocks/f16",
+   "kind": "dequant",
+   "verdict": "PASS",
+   "detail": "0 values differ in their bits"
+  },
+  {
+   "id": "dequant/blocks/q4_0",
+   "kind": "dequant",
+   "verdict": "PASS",
+   "detail": "0 values differ in their bits"
+  },
+  {
+   "id": "dequant/blocks/q5_0",
+   "kind": "dequant",
+   "verdict": "PASS",
+   "detail": "0 values differ in their bits"
+  },
+  {
+   "id": "dequant/blocks/q5_1",
+   "kind": "dequant",
+   "verdict": "PASS",
+   "detail": "0 values differ in their bits"
+  },
+  {
+   "id": "dequant/blocks/q8_0",
+   "kind": "dequant",
+   "verdict": "PASS",
+   "detail": "0 values differ in their bits"
+  },
+  {
+   "id": "dequant/blocks/q4_k",
+   "kind": "dequant",
+   "verdict": "PASS",
+   "detail": "0 values differ in their bits"
+  },
+  {
+   "id": "dequant/blocks/q5_k",
+   "kind": "dequant",
+   "verdict": "PASS",
+   "detail": "0 values differ in their bits"
+  },
+  {
+   "id": "dequant/blocks/q6_k",
+   "kind": "dequant",
+   "verdict": "PASS",
+   "detail": "0 values differ in their bits"
+  },
+  {
+   "id": "dequant/blocks/bf16",
+   "kind": "dequant",
+   "verdict": "PASS",
+   "detail": "0 values differ in their bits"
+  },
+  {
+   "id": "grad/recurrence/linear_attention_body",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "ember is an inference engine: no backward (IR_SPEC 6.10.5 is for training engines)"
+  },
+  {
+   "id": "grad/recurrence/ssm_scan_body",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "ember is an inference engine: no backward (IR_SPEC 6.10.5 is for training engines)"
+  },
+  {
+   "id": "grad/recurrence/conv1d_causal_body",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "ember is an inference engine: no backward (IR_SPEC 6.10.5 is for training engines)"
+  },
+  {
+   "id": "grad/recurrence/selective_scan_body",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "ember is an inference engine: no backward (IR_SPEC 6.10.5 is for training engines)"
+  },
+  {
+   "id": "grad/recurrence/rnn_init_offset",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "ember is an inference engine: no backward (IR_SPEC 6.10.5 is for training engines)"
+  },
+  {
+   "id": "grad/recurrence/ema_bias_corrected",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "ember is an inference engine: no backward (IR_SPEC 6.10.5 is for training engines)"
+  },
+  {
+   "id": "grad/recurrence/ema_exact",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "ember is an inference engine: no backward (IR_SPEC 6.10.5 is for training engines)"
+  },
+  {
+   "id": "trace/pk_kimi_recurrence",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "9 steps"
+  },
+  {
+   "id": "trace/pk_srd_recurrence",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "9 steps"
+  },
+  {
+   "id": "trace/pk_mamba_recurrence",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "9 steps"
+  },
+  {
+   "id": "trace/tp_mamba1_recurrence",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "9 steps"
   }
  ]
 }

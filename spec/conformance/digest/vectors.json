@@ -506,6 +506,36 @@
    "name": "nan_literal",
    "text": "NaN",
    "refused": "not JSON"
+  },
+  {
+   "name": "prose_overflow",
+   "text": "{\"op\": \"relu\", \"_a\": 1e400}",
+   "refused": "a number beyond the double range under a '_' key"
+  },
+  {
+   "name": "prose_negative_zero",
+   "text": "{\"op\": \"relu\", \"_a\": -0.0}",
+   "refused": "a negative zero under a '_' key"
+  },
+  {
+   "name": "prose_integer_beyond_2p53",
+   "text": "{\"op\": \"relu\", \"_a\": 9007199254740993}",
+   "refused": "an integer beyond 2^53 under a '_' key"
+  },
+  {
+   "name": "prose_lone_surrogate",
+   "text": "{\"op\": \"relu\", \"_a\": \"\\ud800\"}",
+   "refused": "a lone surrogate under a '_' key"
+  },
+  {
+   "name": "prose_key_lone_surrogate",
+   "text": "{\"op\": \"relu\", \"_\\ud800\": 1}",
+   "refused": "a lone surrogate in a '_' key's name"
+  },
+  {
+   "name": "prose_duplicate_key",
+   "text": "{\"op\": \"relu\", \"_a\": 1, \"_a\": 2}",
+   "refused": "a duplicate '_' member name"
   }
  ]
 }

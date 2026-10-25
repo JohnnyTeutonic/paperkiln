@@ -67,7 +67,8 @@ def node(**kw):
     ({"update": ["x[i] = x[i]"]}, 31), ({"readout": "y[i] = rowsum(m[i])"}, 31), ({"index": {"sum": 2}}, 31),
     ({"readout": "y[i] = m[j]"}, 32), ({"readout": "y[i] = sum(i, m[i])"}, 32), ({"readout": "y[i] = m[i, i]"}, 32),
     ({"init": ["m[i] = x[i]"]}, 32), ({"let": ["t[i] = t[i]"]}, 32), ({"init": ["z[i] = 1"]}, 33),
-    ({"init": ["m[i] = 1", "m[i] = 2"]}, 33)])
+    ({"init": ["m[i] = 1", "m[i] = 2"]}, 33), ({"readout": "y[i] = m[i] + foo"}, 32),
+    ({"readout": "y[i] = m[i] + m"}, 32), ({"readout": "y[i, i] = m[i]"}, 32)])
 def test_refusals(kw, rule):
     errs = R.errors(node(**kw))
     assert errs and f"(rule {rule})" in errs[0], errs
@@ -84,6 +85,18 @@ def test_reads_and_scope_that_are_legal():
     m2 = np.diag(W) * m1 + 1 + np.arange(3)
     assert np.array_equal(st["m"], m2)
     assert np.array_equal(y[1], np.array([m2[1], m2[2], 0]) + m2[0])
+
+
+def test_a_declaration_may_repeat_an_index():
+    # IR_SPEC 6.10.1 (v1.1.1): W[i,i] declares a square weight over i, read here as W[i,j].
+    n = node(index={"i": 3, "j": 3}, weights={"W[i,i]": "w"}, update=["m[i] = sum(j, W[i,j] * m[j]) + x[i]"])
+    p = R.compile_node(n)
+    assert p.shapes["W"] == [3, 3]
+    W = np.arange(9, dtype=np.float32).reshape(3, 3) / 8
+    x = np.ones((2, 3), np.float32)
+    y, st = R.run(p, [x], {"W": W})
+    assert np.array_equal(y[0], x[0]) and np.allclose(y[1], W @ x[0] + x[1])
+    assert R.errors(node(inputs=["x[i, i]"], update=["m[i] = m[i] + x[i, i]"])) == []
 
 
 def test_validator_slot_rules():
@@ -124,7 +137,8 @@ def test_digest_canonical_form():
     assert V.canonical('{"b": 1e-05, "a": [1.0, 2.5E+16, "x\\u0001"], "_note": 1}') == \
         '{"a":[1,25000000000000000,"x\\u0001"],"b":0.00001}'
     assert V.digest('{"a": 1}') == V.digest('{ "a" : 1.0, "_c": "prose" }')
-    for bad in ('{"x": -0.0}', '{"a": 1, "a": 2}', '9007199254740993', '"\\ud800"'):
+    for bad in ('{"x": -0.0}', '{"a": 1, "a": 2}', '9007199254740993', '"\\ud800"', '{"_a": 1e400}',
+                '{"_a": -0.0}', '{"_a": 9007199254740993}', '{"_a": "\\ud800"}', '{"_a": 1, "_a": 2}'):
         with pytest.raises(V.DigestError):
             V.digest(bad)
     vec = json.loads((SUITE / "digest" / "vectors.json").read_text(encoding="utf-8"))["vectors"]

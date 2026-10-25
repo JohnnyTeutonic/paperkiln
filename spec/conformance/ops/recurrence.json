@@ -590,6 +590,70 @@
      }
     }
    }
+  },
+  {
+   "name": "square_weight_declaration",
+   "node": {
+    "op": "recurrence",
+    "in": [
+     "x"
+    ],
+    "state": "sq",
+    "index": {
+     "c": 3,
+     "j": 3
+    },
+    "inputs": [
+     "x[c]"
+    ],
+    "weights": {
+     "W[c,c]": "W"
+    },
+    "update": [
+     "h[c] = sum(j, W[c,j] * h[j]) + x[c]"
+    ],
+    "readout": "y[c] = h[c]",
+    "out": "y"
+   },
+   "inputs": {
+    "x": {
+     "shape": [
+      5,
+      3
+     ],
+     "f32": "3fbba50cbeb0d4b7bf6e022cc01951ce3f7ab2fdbf5a10a33eeafe79bfe6233f3f52dceebe81cc79bfc12a80bed45d50bf67decfbefcecd3bf6b2261"
+    }
+   },
+   "weights": {
+    "W": {
+     "shape": [
+      3,
+      3
+     ],
+     "f32": "3e0d72253f5ee0e9bf40d7debf2bcddcbf035080bf2f58fcbdac9bd0bf0904d83f161ced"
+    }
+   },
+   "expect": {
+    "y": {
+     "shape": [
+      5,
+      3
+     ],
+     "f32": "3fbba50cbeb0d4b7bf6e022cbfe590023f4f3727bfaaf7be3ff607dcbdc1ddd0be7769603de484dcc02570d0bf2af3eac028d2963f9b74993d834898"
+    }
+   },
+   "class": "EXACT",
+   "tol": 1e-05,
+   "expect_state": {
+    "sq": {
+     "h": {
+      "shape": [
+       3
+      ],
+      "f32": "c028d2963f9b74993d834898"
+     }
+    }
+   }
   }
  ]
 }

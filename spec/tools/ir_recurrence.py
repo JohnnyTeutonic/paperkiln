@@ -337,9 +337,9 @@ def compile_node(nd):
             raise RecurrenceError(31, f"index {k}: size {v!r} is not a positive integer")
     shapes = {}
 
-    def sizes(idx, where):
-        if len(set(idx)) != len(idx):
-            raise RecurrenceError(32, f"{where}: an index repeats in {idx}")
+    def sizes(idx, where, declaration=False):
+        if not declaration and len(set(idx)) != len(idx):  # 6.10.1: a declaration may repeat an index
+            raise RecurrenceError(32, f"{where}: an assignment repeats an index in {idx}")
         for i in idx:
             if i not in index:
                 raise RecurrenceError(32, f"{where}: {i} is not a declared index")
@@ -354,7 +354,7 @@ def compile_node(nd):
             raise RecurrenceError(31, f"inputs[{j}] is not a declaration string")
         name, idx = parse_decl(t, f"inputs[{j}]")
         declare(name, "input")
-        shapes[name] = sizes(idx, f"inputs[{j}]")
+        shapes[name] = sizes(idx, f"inputs[{j}]", declaration=True)
         inputs.append((name, idx))
     weights = []
     w = nd.get("weights", {})
@@ -365,7 +365,7 @@ def compile_node(nd):
         declare(name, "weight")
         if not isinstance(tensor, str) or not tensor:
             raise RecurrenceError(31, f"weight {name}: the tensor name must be a string")
-        shapes[name] = sizes(idx, f"weights {t!r}")
+        shapes[name] = sizes(idx, f"weights {t!r}", declaration=True)
         weights.append((name, idx, tensor))
 
     def defs(key, required=False):

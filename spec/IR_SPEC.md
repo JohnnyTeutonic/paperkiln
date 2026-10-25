@@ -154,9 +154,10 @@ commit that lands it. A draft is never normative.
 
 Each revision of this document is a tag of the keramos repository, `vR.S.P`. R.S is the revision
 (section 2.2; R is the `ir_version` it defines), so `v1.1.0` is revision 1.1 of IR version 1. P
-counts later commits that change no normative statement, no part of `ir.schema.json` and no
-expected value of the suite: wording, paths, the tools' interfaces, tests and receipts. A new
-revision or major version starts at P = 0. An engine names the tag and the full commit it conforms
+counts later commits that change no valid document's meaning, no part of `ir.schema.json` and no
+expected value of an existing case: wording, clarifications that state what the text already
+requires, a fix that brings the reference into line with the text, new cases for such statements,
+paths, the tools' interfaces, tests and receipts. A new revision or major version starts at P = 0. An engine names the tag and the full commit it conforms
 to, in its receipt (`conformance/receipts/`); an engine that vendors this repository pins one tag
 and records its commit.
 
@@ -287,8 +288,10 @@ its recurrent slot (section 6.3).
 A document's digest identifies it exactly, so a paper can cite the document it used. It is the
 SHA-256 of the document's canonical form:
 
-1. The document is parsed as I-JSON (RFC 7493): no duplicate member names, every number a finite
-   IEEE binary64 value, every integer within -2^53 .. 2^53, every string well-formed Unicode.
+1. The whole document, its `_` members included, is parsed as I-JSON (RFC 7493): no duplicate member
+   names, every number a finite IEEE binary64 value, every integer within -2^53 .. 2^53, every
+   string and member name well-formed Unicode, and no negative zero in floating form (below). A
+   document that fails any of these checks has no digest, whatever its `_` members hold.
 2. Every member whose name starts with `_`, at any depth, is removed (prose, section 3.2).
 3. What remains is serialised by the JSON Canonicalization Scheme, RFC 8785: no whitespace, member
    names sorted by their UTF-16 code units, strings as ECMAScript's `JSON.stringify` writes them
@@ -304,9 +307,12 @@ SHA-256 of the document's canonical form:
   and its version 1 re-export (section 2.1) have different digests. A number is its binary64 value: two
   documents whose doubles differ but round to the same f32 attribute are different documents
   (paperkiln's exporters write each f32 attribute as the shortest decimal of the float, `ir::f32`).
-- **Documents without a digest.** RFC 8785 writes -0 as `0`, while -0 and +0 are different values of an
-  EXACT op (an `affine` shift of -0 keeps the sign of a zero product, +0 does not; section 4.2). A
-  document that holds a negative zero therefore has no digest, nor does one outside I-JSON. Such a
+- **Documents without a digest.** RFC 8785 writes a negative zero as `0`, in integer form (`-0`) or in
+  floating form (`-0.0`, `-0e0`). The integer form is the integer zero: it serialises as `0` and the
+  document has a digest (vector `minus_zero_integer_form`). In floating form, -0 and +0 are different
+  values of an EXACT op (an `affine` shift of -0 keeps the sign of a zero product, +0 does not;
+  section 4.2), so a document that holds a floating negative zero has no digest, nor does one outside
+  I-JSON (step 1). Such a
   document stays valid; it is refused only as the subject of a digest (`DigestError`), and no
   paperkiln exporter writes one (every stored document has a digest).
 - **Container.** `paperkiln.ir_sha256` (section 3.1) is the digest of the document embedded in the
@@ -929,6 +935,9 @@ cell contract with decode-state semantics, numerics classes and a gradient check
 - `weights` (optional): declarations to tensor names. The tensor (`{i}` replaced as in section 3.7,
   `tensor_index` allowed) holds as many elements as its declaration, read row-major in numpy order
   (section 3.7); its stored shape is otherwise free (a [1] tensor is declared `D[o]` with o of size 1).
+- A declaration (`inputs`, `weights`) may repeat an index: `W[c,c]` declares a square tensor over c,
+  of sizes [size(c), size(c)], and a read gives it any indices of those sizes (`W[c,j]`). An
+  assignment (`init`, `let`, `update`, `readout`) may not repeat an index (rule 32).
 - `update` (required): one assignment per state tensor, `name[i1, ..., ik] = body`; the names are
   the state's tensors and their index sizes the tensors' shapes. `init` (optional): an assignment for
   a state tensor whose initial value is a body (a learned initial state, read from weights); every
@@ -955,7 +964,8 @@ A body is an `expr` (section 5.19) with these changes; nothing else is accepted:
     fn         := exp log sqrt tanh erf abs sigmoid relu max min where
 
 - `name[...]` reads a tensor (an input, a weight, a state tensor or a let), one `ix` per dimension. A
-  bare index name is that index's value at the point: an integer, as f32 (exact).
+  bare index name is that index's value at the point: an integer, as f32 (exact). Any other bare name
+  (an undeclared name, or a tensor written without its indices) is refused (rule 32).
 - `sum(j, e)` adds e over j = 0 .. size(j) - 1. j must be declared and not already in scope.
 - The functions and operators are `expr`'s, with the same definitions (`max`, `min`, `where`, `relu`,
   `sigmoid`, `^`). The row reductions `rowsum`, `rowmean` and `rowmax` are not part of this grammar
@@ -1438,8 +1448,8 @@ Recurrence (section 6.10; `tools/ir_recurrence.py` reports these as "IR_SPEC 6.1
     and the column), uses `rowsum`, `rowmean`, `rowmax` or an unknown function; a name is not an
     identifier, is reserved, or is declared twice.
 32. A body reads a name its section cannot read (6.10.2); a read has the wrong number of indices; an
-    index is not declared or not in scope; `sum` runs over an index already in scope; an assignment
-    repeats an index.
+    index is not declared or not in scope; a bare name is not an index in scope; `sum` runs over an
+    index already in scope; an assignment repeats an index (a declaration may, 6.10.1).
 33. The slot of a recurrence is not of op `recurrence`, is read by another node, or its tensors are
     not the update's (names, shapes, and `init` `"body"` exactly for the tensors `init` assigns); an
     `init` assigns a name that is not a state tensor, assigns one twice, or with other sizes than its
@@ -1856,6 +1866,14 @@ equal to dc29b5e6 bit for bit) and the pinned commits of the RunPod campaigns ar
 
 ## Appendix B. Changelog
 
+- **v1.1.1** (tag, 25 October 2026; section 2.6). Clarifications from ember.cpp's implementation of
+  1.1, ruled by the specification's owner: the integer token `-0` serialises as `0` and has a digest
+  (section 3.10); every I-JSON check runs on the whole document before the `_` members are removed,
+  and the reference now does so (it checked only duplicate names before the removal); a declaration
+  may repeat an index, an assignment may not (6.10.1); a bare name that is not an index in scope is
+  rule 32 (6.10.2). New cases: six digest texts refused for what their `_` members hold, a
+  recurrence over a square weight `W[c,c]` (op and gradient), and two refusals. No valid document's
+  digest or meaning moves.
 - **1.1** (25 October 2026). Additions, no change of meaning (section 2.2): the digest (section 3.10)
   and the GGUF key `paperkiln.ir_sha256` (section 3.1, rule 30); the values of stored tensors (section
   4.7); the `recurrence` profile (section 6.10, rules 31-34), with the recurrent slot op `recurrence`

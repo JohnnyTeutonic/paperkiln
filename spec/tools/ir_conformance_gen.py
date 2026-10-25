@@ -439,7 +439,7 @@ def op_cases():
     return cases
 
 
-def recurrence_bodies(r):
+def recurrence_bodies(r, square=True):
     """(name, node, inputs, weights): recurrences beyond the four rewrites, on draws of r."""
     rnn = {"op": "recurrence", "in": ["x"], "state": "rnn", "index": {"i": 3, "j": 3}, "inputs": ["x[i]"],
            "weights": {"W[i,j]": "W", "U[i,j]": "U", "h0[i]": "h0"}, "init": ["h[i] = h0[i]"],
@@ -450,9 +450,14 @@ def recurrence_bodies(r):
            "update": ["m[c] = a[c] * m[c] + (1 - a[c]) * (x[c] * g[c])", "n[c] = n[c] + 1"],
            "readout": "y[c] = m[c] / (1 - a[c] ^ n[c]) + max(x[c], 0)", "out": "y"}
     ema_exact = dict(ema, readout="y[c] = m[c] / n[c] + max(x[c], 0)")
+    # 6.10.1 (v1.1.1): a declaration may repeat an index; W[c,c] is a square weight, read as W[c,j].
+    sq = {"op": "recurrence", "in": ["x"], "state": "sq", "index": {"c": 3, "j": 3}, "inputs": ["x[c]"],
+              "weights": {"W[c,c]": "W"}, "update": ["h[c] = sum(j, W[c,j] * h[j]) + x[c]"],
+              "readout": "y[c] = h[c]", "out": "y"}
     return [("rnn_init_offset", rnn, {"x": r(6, 3)}, {"W": r(3, 3, s=0.5), "U": r(3, 3, s=0.5), "h0": r(3)}),
             ("ema_bias_corrected", ema, {"x": r(5, 4), "g": r(5, 4)}, {"decay": np.full(4, 0.875, np.float32)}),
-            ("ema_exact", ema_exact, {"x": r(5, 4), "g": r(5, 4)}, {"decay": np.full(4, 0.875, np.float32)})]
+            ("ema_exact", ema_exact, {"x": r(5, 4), "g": r(5, 4)}, {"decay": np.full(4, 0.875, np.float32)}),
+            ] + ([("square_weight_declaration", sq, {"x": r(5, 3)}, {"W": r(3, 3, s=0.5)})] if square else [])
 
 
 def grad_cases():
@@ -476,9 +481,10 @@ def grad_cases():
                              {"x": r(4, 2), "dt": r(4, 2), "B": r(4, 2), "C": r(4, 2)},
                              {"A": -np.exp(r(2, 2, s=0.5)), "Dk": r(2)})}
     items = [(f"{op}_body", ir_recurrence.REWRITES[op](nd), ins, ws) for op, (nd, ins, ws) in hw.items()]
-    items += recurrence_bodies(r)
+    items += recurrence_bodies(r, square=False)
     out = []
-    for name, node, ins, ws in items:
+
+    def case(name, node, ins, ws):
         prog = ir_recurrence.compile_node(node)
         xs = [ins[n] for n in node["in"]]
         wl = {local: ws[t] for local, _, t in prog.weights}
@@ -493,6 +499,11 @@ def grad_cases():
         out.append({"name": name, "node": node, "inputs": {k: enc(v) for k, v in ins.items()},
                     "weights": {k: enc(v) for k, v in ws.items()}, "out_grad": enc(g), "expect": expect,
                     "tol": 1e-4})
+
+    for it in items:
+        case(*it)
+    # Cases added after the first release draw after every earlier one, so those stay byte-identical.
+    case(*[b for b in recurrence_bodies(r) if b[0] == "square_weight_declaration"][0])
     return {"_comment": "spec/IR_SPEC.md section 6.10.5: expect holds d sum(out * out_grad) / d(each input value "
                         "and weight tensor), central differences of tools/ir_recurrence.py in float64 (h = 1e-5 "
                         "relative). A case passes within tol * max(1, max|expect|) per tensor.", "cases": out}
@@ -644,6 +655,9 @@ def refusals():
     rec_case("recurrence_slot_missing_tensor", "pk_kimi", 33, lambda d: rslot(d)["tensors"].pop())
     rec_case("recurrence_init_flag", "pk_kimi", 33, lambda d: rslot(d)["tensors"][0].update(init="body"))
     rec_case("recurrence_weight_size", "pk_mamba", 34, lambda d: rec(d)["weights"].update({"A[r,j]": rec(d)["weights"]["B[r]"]}))
+    # v1.1.1 (6.10.1, 6.10.2): an assignment that repeats an index; a bare name that is not an index in scope.
+    rec_case("recurrence_assignment_repeats_index", "pk_kimi", 32, lambda d: rec(d).update(readout="y[h,h] = num[h,h]"))
+    rec_case("recurrence_bare_undeclared_name", "pk_kimi", 32, lambda d: rec(d).update(readout="y[h,e] = num[h,e] + foo"))
     # Container rules: GGUFs whose metadata breaks one rule.
     gg = []
 
@@ -735,6 +749,13 @@ def digest_vectors():
     refused("duplicate_key", '{"op": "relu", "op": "silu"}', "a duplicate member name")
     refused("lone_surrogate", '"\\ud800"', "a lone surrogate (not well-formed Unicode)")
     refused("nan_literal", "NaN", "not JSON")
+    # Step 1 runs on the whole document: what a '_' member holds can take the digest away (v1.1.1).
+    refused("prose_overflow", '{"op": "relu", "_a": 1e400}', "a number beyond the double range under a '_' key")
+    refused("prose_negative_zero", '{"op": "relu", "_a": -0.0}', "a negative zero under a '_' key")
+    refused("prose_integer_beyond_2p53", '{"op": "relu", "_a": 9007199254740993}', "an integer beyond 2^53 under a '_' key")
+    refused("prose_lone_surrogate", '{"op": "relu", "_a": "\\ud800"}', "a lone surrogate under a '_' key")
+    refused("prose_key_lone_surrogate", '{"op": "relu", "_\\ud800": 1}', "a lone surrogate in a '_' key's name")
+    refused("prose_duplicate_key", '{"op": "relu", "_a": 1, "_a": 2}', "a duplicate '_' member name")
     return {"_comment": "spec/IR_SPEC.md section 3.10: the IR digest. canonical is the RFC 8785 serialisation "
                         "(with prose false, every '_' key removed first: the digest); sha256 is the digest of "
                         "text. A refused text has no digest.", "vectors": vec}

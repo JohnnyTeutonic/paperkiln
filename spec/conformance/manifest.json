@@ -602,7 +602,7 @@
    "kind": "op",
    "file": "ops/recurrence.json",
    "profile": "recurrence",
-   "n": 7
+   "n": 8
   },
   {
    "id": "refuse/unknown_op",
@@ -1074,6 +1074,20 @@
    "section": "6.10"
   },
   {
+   "id": "refuse/recurrence_assignment_repeats_index",
+   "kind": "refuse",
+   "file": "refuse/recurrence_assignment_repeats_index.json",
+   "rule": 32,
+   "section": "6.10"
+  },
+  {
+   "id": "refuse/recurrence_bare_undeclared_name",
+   "kind": "refuse",
+   "file": "refuse/recurrence_bare_undeclared_name.json",
+   "rule": 32,
+   "section": "6.10"
+  },
+  {
    "id": "refuse/version_key_mismatch",
    "kind": "refuse",
    "file": "refuse/version_key_mismatch.json",
@@ -1113,7 +1127,7 @@
    "kind": "digest",
    "file": "digest/vectors.json",
    "profile": "core",
-   "n": 74
+   "n": 80
   },
   {
    "id": "dequant/blocks",
@@ -1127,7 +1141,7 @@
    "kind": "grad",
    "file": "grad/recurrence.json",
    "profile": "recurrence",
-   "n": 7
+   "n": 8
   },
   {
    "id": "trace/pk_kimi_recurrence",
