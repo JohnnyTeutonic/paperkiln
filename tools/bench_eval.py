@@ -125,8 +125,12 @@ class HfTok:
 
 
 # ---------------------------------------------------------------- requests
+UNFIT = set()  # request keys whose continuation alone does not fit the context (filled by requests())
+
+
 def requests(items, tok):
-    """[(key, prompt_ids, continuation_ids)] and per-set truncation counts."""
+    """[(key, prompt_ids, continuation_ids)] and per-set truncation counts. A continuation longer than the
+    context is cut to fit and its key goes in UNFIT: the item then earns chance credit (item_records)."""
     out, trunc = [], {}
     limit = tok.ctx + 1
 
@@ -136,7 +140,9 @@ def requests(items, tok):
         if len(p) + len(c) > limit:
             keep = limit - len(c) - 1
             if keep < 0:
-                sys.exit(f"{key}: the continuation alone ({len(c)} ids) exceeds the context")
+                UNFIT.add(key)
+                p, c = [tok.eot], c[:limit - 1]
+                keep = 0
             p = [tok.eot] + (p[len(p) - keep:] if keep else [])
             trunc[s] = trunc.get(s, 0) + 1
         out.append((key, p, c))
@@ -283,6 +289,7 @@ def cmd_run(a):
         os.makedirs(os.path.join(work, "score"), exist_ok=True)
         tok = PkTok(src) if kind == "pk" else HfTok(src)
         a.spec_path = src if kind == "pk" else None
+        UNFIT.clear()
         reqs, trunc = requests(items, tok)
         eng = None
         t0, timing = time.time(), []
@@ -308,7 +315,7 @@ def cmd_run(a):
         meta = {"tag": tag, "source": src, "scorer": a.scorer, "items": os.path.basename(a.items),
                 "items_sha256": items_sha, "sets": sets, "every": a.every, "blimp_per": a.blimp_per,
                 "n_items": len(items), "n_requests": len(reqs), "tokeniser": tok.desc, "ctx": tok.ctx,
-                "prefix": "end-of-text id", "truncated": trunc, "seconds_this_run": round(time.time() - t0, 1),
+                "prefix": "end-of-text id", "truncated": trunc, "unfit_items": sorted({k.rsplit("|", 1)[0] for k in UNFIT}), "seconds_this_run": round(time.time() - t0, 1),
                 "chunk_timing_this_run": timing}
         if eng is not None and hasattr(eng, "desc"):
             meta["engine"] = eng.desc
@@ -340,6 +347,17 @@ def item_records(items, res, conts):
         r = {"id": it["id"], "set": it["set"]}
         if it["set"] == "blimp":
             r["paradigm"] = it["paradigm"]
+        n_req = len(it["choices"]) if it["kind"] == "mc" else len(it["contexts"]) if it["kind"] == "partial" else 1
+        if any(f"{it['id']}|{k}" in UNFIT for k in range(n_req)):
+            # a choice longer than the model's context cannot be scored: chance credit, counted in meta.json
+            ch = 1.0 / n_req if it["kind"] != "lastword" else 0.0
+            r.update(acc=ch, chance=ch, unfit=True)
+            if it["kind"] == "mc" and it["set"] != "blimp":
+                r["acc_norm"] = ch
+            if it["kind"] == "lastword":
+                r["sum"] = res[f"{it['id']}|0"]["sum"]
+            recs.append(r)
+            continue
         if it["kind"] == "mc":
             sums = [res[f"{it['id']}|{k}"]["sum"] for k in range(len(it["choices"]))]
             lens = [max(len(ch[1:] if ch.startswith(" ") else ch), 1) for ch in it["choices"]]
@@ -373,7 +391,8 @@ def summarise(work, items, res, meta, conts):
         if not rs:
             continue
         n = len(rs)
-        d = {"n": n, "chance": round(sum(r["chance"] for r in rs) / n, 4)}
+        d = {"n": n, "chance": round(sum(r["chance"] for r in rs) / n, 4),
+             "unfit": sum(1 for r in rs if r.get("unfit"))}
         for m in ("acc", "acc_norm"):
             if m in rs[0]:
                 k = sum(r[m] for r in rs)

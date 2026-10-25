@@ -1,0 +1,73 @@
+{
+ "tag": "live",
+ "source": "experiments/chat_general/eval_specs/live.spec.json",
+ "scorer": "ir",
+ "items": "bench_v1.jsonl",
+ "items_sha256": "978548d1c64f9a361c2e3d210e889955061bd7f71a496ab6a7734caf3969033c",
+ "sets": [
+  "hellaswag",
+  "arc_easy",
+  "arc_challenge",
+  "piqa",
+  "winogrande",
+  "lambada",
+  "blimp"
+ ],
+ "every": 400,
+ "blimp_per": null,
+ "n_items": 223,
+ "n_requests": 501,
+ "tokeniser": {
+  "kind": "paperkiln",
+  "vocab": "chat_sftfinal.gguf",
+  "vocab_sha256": "a9d5ba5e4f86e279e73df81fea69b5d342b9379ffd2e8741b277d02ef4b90c70"
+ },
+ "ctx": 256,
+ "prefix": "end-of-text id",
+ "truncated": {},
+ "seconds_this_run": 17.9,
+ "chunk_timing_this_run": [
+  [
+   0,
+   64,
+   3.78
+  ],
+  [
+   1,
+   64,
+   5.94
+  ],
+  [
+   2,
+   64,
+   2.33
+  ],
+  [
+   3,
+   64,
+   1.14
+  ],
+  [
+   4,
+   64,
+   1.04
+  ],
+  [
+   5,
+   64,
+   1.02
+  ],
+  [
+   6,
+   64,
+   1.11
+  ],
+  [
+   7,
+   53,
+   1.04
+  ]
+ ],
+ "gguf": "chat_sftfinal.gguf",
+ "safetensors_sha256": "b29120f5b32544695ece8ce8380e37017dd5f767d6236df0bc3bd5faf7da4da3"
+}

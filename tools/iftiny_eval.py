@@ -209,6 +209,31 @@ def parity(a, spec_path, work, gens):
             "examples": bad}
 
 
+def check_prompts(spec_path, gens):
+    """The server's prompt ids against this side's rendering (tools/chat_template.py, schema v1: the system
+    message folded into the first user message) for every reply whose history was not cut: a server that
+    ignored the `system` field (ember before the contract's system message) is caught here."""
+    import carry5_eval
+    import chat_template
+    _, _, vocab = carry5_eval.model_paths(spec_path)
+    tok = carry5_eval.Tok(vocab)
+    n = bad = sysn = 0
+    ex = []
+    for k, g in gens.items():
+        system, history, user = json.loads(k)
+        if g.get("prompt_ids") is None or g["history_used"] < len(history):
+            continue
+        want = tok.encode(chat_template.prompt([tuple(h) for h in history], user, system=system))
+        n += 1
+        sysn += bool(system)
+        if want != g["prompt_ids"]:
+            bad += 1
+            if len(ex) < 5:
+                ex.append({"system": bool(system), "user": user[:60], "server": len(g["prompt_ids"]),
+                           "expected": len(want)})
+    return {"checked": n, "with_system": sysn, "mismatched": bad, "examples": ex}
+
+
 # ---------------------------------------------------------------- scoring
 def rate(vals):
     n = len(vals)
@@ -307,6 +332,8 @@ def cmd_run(a):
                                  "iftiny_verdict_flips": flips,
                                  "examples": [{"prompt": json.loads(k)[2][:80], "pass1": gens[k]["reply"][:80],
                                                "pass2": g2[k]["reply"][:80]} for k in diff[:8]]}
+        if kind == "pk":
+            summary["prompt_check"] = check_prompts(src, gens)
         if a.mtstudio and kind == "pk":
             summary["parity"] = parity(a, src, work, gens)
         write_atomic(os.path.join(work, "summary.json"), json.dumps(summary, indent=1, ensure_ascii=False))
@@ -359,6 +386,10 @@ def cmd_report(a):
             L.append(f"| {tag} | {c} | " + " | ".join(cells) + " |")
     L += ["", "| model | replay identical | verdict flips | parity (replies equal / checked) | stops eos/turn/length |",
           "|---|---|---|---|---|"]
+    bad = [(t, r["prompt_check"]) for t, r in rows if r.get("prompt_check", {}).get("mismatched")]
+    if bad:
+        L.insert(0, "WARNING: server prompt ids differ from the schema v1 rendering: " +
+                 ", ".join(f"{t} {c['mismatched']}/{c['checked']}" for t, c in bad) + "\n")
     for tag, r in rows:
         rp, pa, s = r.get("replay"), r.get("parity"), r.get("stops", {})
         L.append(f"| {tag} | {rp['replies_identical']}/{rp['prompts'] if rp else '-'} | "

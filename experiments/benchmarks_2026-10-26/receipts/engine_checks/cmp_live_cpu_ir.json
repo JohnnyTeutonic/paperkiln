@@ -1,0 +1,11 @@
+{
+ "a": "/home/jonat/bn_bench/t_mt/live",
+ "b": "/home/jonat/bn_bench/t_ir/live",
+ "requests": 501,
+ "tokens": 8518,
+ "max_abs_logprob_diff": 1.7802138536637813e-05,
+ "median_abs_sum_diff": 4.7370908902166775e-06,
+ "max_abs_sum_diff": 6.29022463272122e-05,
+ "argmax_agree": "8518/8518",
+ "choice_agree": "210/210"
+}

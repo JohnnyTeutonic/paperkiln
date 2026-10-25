@@ -1,0 +1,48 @@
+{
+ "tag": "pksft",
+ "source": "/home/jonat/bn_bench/specs/pksft.spec.json",
+ "scorer": "ir",
+ "items": "bench_v1.jsonl",
+ "items_sha256": "978548d1c64f9a361c2e3d210e889955061bd7f71a496ab6a7734caf3969033c",
+ "sets": [
+  "hellaswag",
+  "arc_easy",
+  "arc_challenge",
+  "piqa",
+  "winogrande",
+  "lambada",
+  "blimp"
+ ],
+ "every": 1000,
+ "blimp_per": 100,
+ "n_items": 29,
+ "n_requests": 81,
+ "tokeniser": {
+  "kind": "paperkiln",
+  "vocab": "pk_sft_v1.gguf",
+  "vocab_sha256": "4d53c7ff236ecba3a2b34cd2d4769f08bdf0408bbc3655afa44b9ddc70929fdd"
+ },
+ "ctx": 512,
+ "prefix": "end-of-text id",
+ "truncated": {},
+ "seconds_this_run": 102.5,
+ "chunk_timing_this_run": [
+  [
+   0,
+   32,
+   38.55
+  ],
+  [
+   1,
+   32,
+   45.03
+  ],
+  [
+   2,
+   17,
+   13.14
+  ]
+ ],
+ "gguf": "pk_sft_v1.gguf",
+ "safetensors_sha256": "eae61755dc6625eb87c54ce3152774596ed4299c65c0462ed3831b0f9d7ee80e"
+}

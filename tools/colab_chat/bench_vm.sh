@@ -25,10 +25,18 @@ export MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 MICROTORCH_ATTN_BLOCKED=1 
   MICROTORCH_STEP_RESIDENCY=1 MICROTORCH_DEFER_DOWNLOADS=1
 MT=/content/pk/build_cuda/mtstudio
 hf_deps() {
+  # One pip at a time on the VM: two jobs installing at once broke huggingface_hub on 26 Oct 2026
+  # ("invalid distribution ~uggingface-hub"); every pip in this script runs under /content/bench_pip.lock.
+  exec 9> /content/bench_pip.lock
+  flock 9
+  python3 -c "import huggingface_hub" 2>/dev/null || \
+    python3 -m pip -q install --root-user-action=ignore --force-reinstall "huggingface_hub==0.26.2" \
+      > "$OUT/pip_hub.log" 2>&1 || true
   python3 -c "import transformers" 2>/dev/null || \
     python3 -m pip -q install --root-user-action=ignore "transformers==4.46.3" > "$OUT/pip.log" 2>&1
   python3 -c "import torch, transformers; print(torch.__version__, transformers.__version__, torch.cuda.is_available())" \
     > "$OUT/hf_versions.txt"
+  flock -u 9
 }
 case "$CMD" in
   items)
@@ -79,7 +87,9 @@ case "$CMD" in
     REV=${1#*@}
     hf_deps
     [ -d /content/llamacpp_b6000 ] || git clone -q --depth 1 --branch b6000 https://github.com/ggml-org/llama.cpp       /content/llamacpp_b6000
+    flock 9
     python3 -m pip -q install --root-user-action=ignore /content/llamacpp_b6000/gguf-py sentencepiece > "$OUT/pip_gguf.log" 2>&1
+    flock -u 9
     python3 -c "from huggingface_hub import snapshot_download as s; import sys; print(s(sys.argv[1], revision=sys.argv[2], local_dir='/content/hf_smollm2'))"       "$REPO" "$REV" > "$OUT/download.log" 2>&1
     python3 /content/llamacpp_b6000/convert_hf_to_gguf.py /content/hf_smollm2 --outtype f32       --outfile "$OUT/SmolLM2-135M-f32.gguf" > "$OUT/convert.log" 2>&1
     python3 -c "import hashlib, json, sys; print(json.dumps({'repo': sys.argv[1], 'revision': sys.argv[2], 'converter': 'llama.cpp b6000 convert_hf_to_gguf.py --outtype f32', 'sha256': hashlib.sha256(open(sys.argv[3], 'rb').read()).hexdigest()}))"       "$REPO" "$REV" "$OUT/SmolLM2-135M-f32.gguf" > "$OUT/smolgguf.json"

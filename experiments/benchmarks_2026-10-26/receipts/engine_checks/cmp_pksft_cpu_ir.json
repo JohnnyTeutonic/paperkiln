@@ -1,0 +1,11 @@
+{
+ "a": "/home/jonat/bn_bench/x_mt/pksft",
+ "b": "/home/jonat/bn_bench/x_ir/pksft",
+ "requests": 81,
+ "tokens": 1467,
+ "max_abs_logprob_diff": 1.4212026666626798e-05,
+ "median_abs_sum_diff": 4.541223646015169e-06,
+ "max_abs_sum_diff": 5.315163073760232e-05,
+ "argmax_agree": "1467/1467",
+ "choice_agree": "24/24"
+}
