@@ -518,16 +518,19 @@ def modelfile(gguf_name, tmpl=V1):
     def go(s):
         return s.replace("{{", "{{ \"{{\" }}")
 
-    msgs = ("{{- range $i, $m := .Messages }}"
-            "{{- if eq $m.Role \"user\" }}" + go(u["open"]))
+    # No action trims whitespace ({{- / -}}): the record's text is emitted exactly. Ollama keeps a system
+    # message in .Messages as well as in .System, so the fold goes to the first user message, which is
+    # .Messages[1] then, not to index 0 (that index test dropped every system message, 26 Oct 2026).
+    msgs = ("{{ $first := true }}{{ range .Messages }}"
+            "{{ if eq .Role \"user\" }}" + go(u["open"]))
     if sysm["mode"] == "fold":
-        msgs += "{{- if and $.System (eq $i 0) }}{{ $.System }}" + go(sysm.get("join", "")) + "{{ end }}"
-    msgs += ("{{ $m.Content }}" + go(u["close"]) +
-             "{{- else if eq $m.Role \"assistant\" }}" + go(a["open"]) + "{{ $m.Content }}" + go(a["close"]) +
-             "{{- end }}{{- end }}" + go(t["generation_prompt"]))
+        msgs += "{{ if and $first $.System }}{{ $.System }}" + go(sysm.get("join", "")) + "{{ end }}"
+    msgs += ("{{ $first = false }}{{ .Content }}" + go(u["close"]) +
+             "{{ else if eq .Role \"assistant\" }}" + go(a["open"]) + "{{ .Content }}" + go(a["close"]) +
+             "{{ end }}{{ end }}" + go(t["generation_prompt"]))
     head = go(t.get("bos", ""))
     if sysm["mode"] == "turn":
-        head += "{{- if .System }}" + go(sysm.get("open", "")) + "{{ .System }}" + go(sysm.get("close", "")) + "{{ end }}"
+        head += "{{ if .System }}" + go(sysm.get("open", "")) + "{{ .System }}" + go(sysm.get("close", "")) + "{{ end }}"
     lines = [f"# Ollama Modelfile for {gguf_name}: chat template {rid(t)} (LOCAL_LLM_STACK.md section 3, point 3).",
              f"FROM ./{gguf_name}", 'TEMPLATE """' + head + msgs + '"""']
     for s in t["stop"]["eos"] + t["stop"]["turn"]:
