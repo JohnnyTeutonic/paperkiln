@@ -1209,3 +1209,27 @@ A4.7's 31-hour estimate). Above 47, or with a dropped cell, the runs wait for Jo
 **R8.** If `analyze.py --rec-decision` writes `run_r8: true` (A3.3's rule on R2 and R4), R8's Stage 0 and its three
 runs launch without a further confirmation, though the arm then exceeds 80 L4 VM-hours (about 81); the decision file
 is committed before any R8 job, as A3.3 requires.
+
+### 25 Oct 2026, with E1 at 60M and E1-R under way: arms split by cell across machines
+
+An implementation note, not an amendment: no hypothesis, metric, cell, seed, item, threshold or analysis changes.
+
+**What changes.** On Jonathan's go, an arm may run on several L4 machines at once, divided by cell. A machine owns
+whole cells: each cell's three pretraining runs, their rungs and post jobs, and its pick, so a pick's inputs all live
+on the machine that picks. Every machine runs the arm's own jobs file at the arm's pinned commit and builds its own
+`data` and `gate`; a machine skips the cells it does not own (its runner records them as run elsewhere). Split on
+25 Oct 2026, at about 19:30 AEDT:
+- E1 at 60M (`tiny_chat_e1_60m.json`, a90ec0e2): L32 stays on its RunPod L4 (`pk-tc-e1-60m`); L16, L8 and L4 each
+  run on their own RunPod L4 (`pk-tc-e1-60m-L16`, `-L8`, `-L4`). No job of L16, L8 or L4 had started.
+- E1-R (`tiny_chat_e1_rec.json`, 11c5baf0): R4 and MC7 stay on Colab (`pk-tc-e1-rec`); R2 runs on a RunPod L4
+  (`pk-tc-e1-rec-R2`). No job of R2 had started.
+
+**Why the registered quantities carry over.** Each machine's data job runs the same command at the same commit; its
+`data.ledger.json` (corpus and panel hashes) is compared with the arm's first data build before that machine's
+results are analysed, and a mismatch holds the cell's results for Jonathan. Everything else follows the provider
+note of 24 Oct: the L4 is the study GPU on either provider, and wall-clock measures carry each run's provider.
+
+**Provenance.** E1-R's pinned commit predates the `provenance` stamp in result and summary files, on Colab and RunPod
+alike, so for E1-R each run's provider and GPU come from its runner's ledger (RunPod pod records) or Colab session
+log; the analysis records them beside S9 and S10. Each cell's artefacts come home to their own directory
+(`/mnt/c/ml_artifacts/tiny_chat/e1_60m_<cell>`, `.../e1_rec_R2`) and join the arm's directory before analysis.
