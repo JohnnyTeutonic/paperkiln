@@ -56,11 +56,14 @@ paradigm, are in `receipts/bench/<model>/summary.json`; per-item records in `ite
 - **Cross-checks**:
   - hfgguf against `mtstudio score`, pk_sft_v1, the first 1,371 HellaSwag requests (pod): max |dlogprob|
     3.2e-5, argmax 20,581/20,581 (`receipts/engine_checks/cmp_pksft_mtstudio_cuda_vs_hfgguf_pod.json`).
-  - On every 400th item (199 requests per model), the pod's CUDA `mtstudio score` disagreed with hfgguf on the
-    four requests of one HellaSwag item (17234) in all five models, by up to 12 nats, and agreed within 2e-5 on
-    the other 195. On that item alone, the CPU mtstudio and the numpy IR both give hfgguf's numbers to 4
-    decimals. So the CUDA `mtstudio score` returned wrong log-probabilities for that item
-    (`receipts/bench/xcheck/compare_*.json`; see Open items).
+  - On every 400th item (199 requests per model), the pod's CUDA `mtstudio score` agreed with hfgguf within
+    2e-5 on 195 requests. The other four, HellaSwag `hellaswag/17234`, compared two different items: HellaSwag
+    validation's `ind` is not unique (433 ids name two items), and the stored results kept the second item
+    under the first's key. Against the right item, CUDA `mtstudio score` agrees with the numpy IR within 1.2e-5
+    (`../tiny_chat_2026-10/SCORE_AUDIT_2026-10-26.md`; `receipts/bench/xcheck/compare_*.json` records the
+    mismatched comparison). The same collision makes every model's HellaSwag in the table above read 0.003-0.005
+    low in acc and 0.004-0.011 low in acc_norm; `tools/bench_eval.py` is fixed (fafc4750) and pk-bench2
+    rescores HellaSwag.
   - mtstudio (CPU) against the numpy IR on samples: live 501 requests, max |dlogprob| 1.8e-5, argmax
     8,518/8,518; pk_sft_v1 81 requests, 1.4e-5, 1,467/1,467 (`receipts/engine_checks/`).
 - **ember's POST /score** (gated at ember 580e108) is wired in as `--scorer ember`; it runs in pk-bench2 (Open
@@ -197,9 +200,8 @@ The paired differences over the 84 (family, sequence) pairs, with 95% intervals,
 
 ## Open items
 
-- **CUDA `mtstudio score`.** It returned wrong log-probabilities for one HellaSwag item (17234) in all five
-  models, consistently in one request sequence. The CPU build and the numpy IR are right on it. Not yet
-  diagnosed.
+- **HellaSwag rescoring.** The table's HellaSwag columns carry the duplicate-id offset above until pk-bench2
+  (repinned to paperkiln master, which has the fix) rescores them.
 - **mtstudio score is slow.** It scores one request at a time on the host: ~75 ms each for the 14.6M live model
   on the pod, with the GPU near idle. Batching it would let it carry the full sets.
 - **ember's POST /score** (gated at ember 580e108) and the picks home after pk-bench (pick_e1_L4,
@@ -208,4 +210,4 @@ The paired differences over the 84 (family, sequence) pairs, with 95% intervals,
   - The picks get hfgguf and IF-tiny.
   - ember's /score runs the full sets for pk_sft_v1, the live model and those picks. Compare it at home with
     `bench_eval.py compare` against hfgguf (`C:/ml_artifacts/benchmarks/runs/score_hfgguf/x/bench/`) and the
-    live model's mtstudio scores (`runs/score_live/x/bench/`). That also settles HellaSwag 17234.
+    live model's mtstudio scores (`runs/score_live/x/bench/`).

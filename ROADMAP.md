@@ -69,11 +69,11 @@ Settled on 10 Oct 2026:
 
 ## 3. Broken now
 
-- **CUDA `mtstudio score`** returned wrong log-probabilities for the four requests of HellaSwag item 17234 (up
-  to 12 nats) in all five models of the benchmarks cross-check sample, inside one 128-request process on a
-  RunPod L4. The other 195 requests agree with the batched hfgguf engine within 2e-5. The item alone on the CPU
-  build and in the numpy IR matches hfgguf (`experiments/benchmarks_2026-10-26/RESULTS.md`, Engines; receipts
-  `receipts/bench/xcheck/`). Undiagnosed. Carry-5 and Stage L0 also score through `mtstudio score`.
+- **The benchmarks' HellaSwag scores** read 0.003-0.005 low in acc and 0.004-0.011 low in acc_norm: HellaSwag
+  validation's `ind` is not unique (433 ids name two items), so `bench_v1.jsonl` stored the second item's
+  results over the first's. `tools/bench_eval.py` is fixed (fafc4750: repeated ids become `id#n`, colliding
+  keys refused); the published table is rescored by pk-bench2 (repinned to master). `mtstudio score` itself is
+  correct on CUDA (`experiments/tiny_chat_2026-10/SCORE_AUDIT_2026-10-26.md`).
 
 CI is green on all three workflows (Code Quality, the test
 suite with its Python suites and the fetcher drift check, and the wheel
