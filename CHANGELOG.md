@@ -19,12 +19,15 @@ Notable changes to microtorch. Format loosely follows
   reference-scoring runs (they filled a 40 GB volume).
 - **The IR's specification is keramos** (25 Oct). The spec text, schema, validator, numpy reference, conformance
   suite (with engines' receipts), worked documents and prior-art survey are the keramos repository
-  (github.com/JohnnyTeutonic/keramos, private; tag v1.1.0 = revision 1.1, 322162ae), vendored at the pinned
-  tag in `spec/`: `spec/IR_SPEC.md`, `spec/conformance/`, the tools in `spec/tools/`, the worked documents
-  in `spec/examples/`. `spec/KERAMOS_PIN.json` records the tag, its commit and the commit's manifest;
+  (github.com/JohnnyTeutonic/keramos, private; tags vR.S.P, IR_SPEC 2.6), vendored at the pinned tag in
+  `spec/`, now v1.1.1 (6170ee05: revision 1.1 with the rulings on ember's review points):
+  `spec/IR_SPEC.md`, `spec/conformance/`, the tools in `spec/tools/`, the worked documents in
+  `spec/examples/`. `spec/KERAMOS_PIN.json` records the tag, its commit and the commit's manifest;
   `tests/test_keramos_pin.py` fails on any local edit and `tools/sync_keramos.sh TAG` refuses to overwrite
   one. paperkiln's side of the suite is `tools/ir_conformance_mtstudio.py` (mtstudio's adapter and the
   training of the pk_ models) and `tools/ir_corpus.py` (both repositories' stored documents).
+  paperkiln's C++ follows v1.1.1: `ir::canonical` runs every digest check on the whole document before
+  removing its `_` members, and `ops::recurrence` accepts a repeated index in a declaration (`W[c,c]`).
 - **The CUDA mtstudio checked against the CPU build on trained models** (25 Oct; paperkiln ff00d60a,
   `tools/cpu_cuda_parity.py`, `tools/colab_chat/cpu_cuda_parity_vm.sh`, RunPod L4). Two builds of one
   commit, the CUDA one under the production environment, on the live chat model (dense, 14.7M), big_sft
