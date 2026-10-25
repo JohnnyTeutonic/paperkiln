@@ -85,3 +85,40 @@ the same pipeline then scales up unchanged.
 - Judge: $100 cap, enforced by the tool.
 - My work before launch: fetcher + vocab + QA probe + listwise judge tool,
   about 3 hours, none of it touching Colab.
+
+## Choosing the winner (rule fixed 25 Oct 2026, before any result was read)
+
+Fixed before reading any number from moe_sft, big_sft, pk_base_v1's SFT or
+the 23 Oct Colab run (`C:/ml_artifacts/chat_eval_1023`, which finished but was
+never read). The winner is the model the preference stage starts from.
+
+- **Candidates:** the live model (chat_sftfinal), ctrl_sft, moe_sft and
+  big_sft (chat_fw_big); then pk_base_v1's SFT on lever 1's set at T 512.
+- **Measurements of record:** one run of `tools/colab_chat/chat_eval_vm.sh`
+  (one paperkiln commit, one ember build, every candidate in the same run)
+  on a cloud L4: chat_eval on the 100 frozen TinyChat prompts
+  (`tinychat_hf_prompts_v1`) and on the 200 prompts of `chat_prompts_v1` per
+  source, and qa_eval on `simple_qa_v1` (60 questions, greedy). When
+  pk_base_v1's SFT arrives, the run is repeated with all five models, and
+  that run decides.
+- **Gate, the turn protocol:** clean stop at least 0.90 on the frozen
+  prompts and on each source of `chat_prompts_v1`. A model below it cannot
+  win.
+- **Primary, Q&A:** simple-QA `all`. The gated model with the most correct
+  answers wins if it leads every other gated model by at least 4 of the 60
+  questions (0.067; at these rates one standard error is ~0.045).
+- **Tie** (another gated model within 3 questions of the top): among the
+  tied models, the lowest reference bits per byte on `chat_prompts_v1`'s
+  ultrachat source (Q&A references, not the everyday greetings repeated in
+  training) wins. If two are within 0.01 bits/byte, the lower repeat
+  fraction on that source wins, then the smaller model.
+- **Comparability:** bits per byte do not depend on the vocabulary, but
+  chat_eval cuts each reference to fit the model's T, so a T 512 model scores
+  more of each long reference than a T 256 one; the counts of cut and dropped
+  references are reported beside every bits-per-byte figure. Sampling skips
+  a prompt when prompt + 64 new tokens exceeds 256 tokens for every model
+  (`chat_sample_ember.py --ctx` default), so the sampled prompt sets match
+  up to tokenisation.
+- The other metrics (reference F1, prompt overlap, repeats, words) are
+  reported, not used. The preference stage's own gates (PLAN above: no more
+  repetition than its SFT start, the ember side-by-side) are unchanged.
