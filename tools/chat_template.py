@@ -28,7 +28,7 @@ import json
 import os
 import sys
 
-# Jonathan's decisions pending (design of 24 Oct 2026): each default sits behind one constant.
+# v1's defaults, each behind one constant shared with include/microtorch/chat_template.hpp.
 SYSTEM_MODE_V1 = "fold"        # "fold" (the system text opens the first user turn) or "none" (refused)
 DEFAULT_SFT_TURNS = "all"      # train.sft_loss.turns default: "all", "final" or "each"
 

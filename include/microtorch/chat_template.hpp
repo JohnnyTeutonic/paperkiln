@@ -33,9 +33,9 @@
 // `architectures` hold general.architecture (llama.cpp b6000's Gemma 3 GGUF has no
 // tokenizer.chat_template); (5) no chat mode, with the reason.
 //
-// Jonathan's decisions pending (24 Oct 2026), each behind one constant: kSystemModeV1 (fold or
-// none) here and in tools/chat_template.py (SYSTEM_MODE_V1); the default loss policy
-// (DEFAULT_SFT_TURNS there, kDefaultSftTurns here).
+// v1's defaults, each behind one constant shared with tools/chat_template.py: a system message
+// folds into the first user message (kSystemModeV1, SYSTEM_MODE_V1 there), and the SFT loss
+// covers every assistant turn (kDefaultSftTurns, DEFAULT_SFT_TURNS there).
 #include <array>
 #include <cstdint>
 #include <cstdio>
