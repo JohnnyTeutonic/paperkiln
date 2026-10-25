@@ -1057,8 +1057,11 @@ def emit_jobs(a, run, name, path):
             "init_job": f"base_{short}", "spec": jobs[1]}]
     if extra:
         new[0]["after"] = extra
-    if read_json(os.path.join(run, "spec_report.json"))["family"] != "llama":
-        for j in new:  # gpt2/flex on CUDA: deferred downloads corrupt them (capacity_v2.json)
+    # Deferred downloads: validated for llama, and for gpt2 and flex since defect D1's fix (25 Oct 2026,
+    # tests/test_gpt2_device.cpp; deferred runs bit-identical to write-through in tools/device_eval_gate.py).
+    # The other families keep them off until they are gated.
+    if read_json(os.path.join(run, "spec_report.json"))["family"] not in ("llama", "gpt2", "flex"):
+        for j in new:
             j["env"] = {"MICROTORCH_DEFER_DOWNLOADS": 0}
     doc["jobs"] += new
     write_json(path, doc)

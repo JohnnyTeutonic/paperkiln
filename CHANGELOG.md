@@ -7,6 +7,21 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **SFT evaluation on the device; deferred downloads for the gpt2 family (defect D1 fixed)** (25 Oct;
+  paperkiln ff00d60a). When a run's own steps defer (CUDA, device op set, step residency, deferred
+  downloads), mtstudio's SFT evaluation runs its forwards inside one step window: the parameters
+  upload once per evaluation, and activations, logits and the softmax stay on the device. CUDA
+  eval events carry `eval_device` and `eval_s`; `MICROTORCH_DEVICE_EVAL=0` keeps the windowless
+  path; CPU builds and deferral-off runs are unchanged. D1 was LayerNorm's `xhat` forward cache
+  dying stale inside the window (docs/CUDA_PHASE_B2.md, record D1); it is now a self-discarding
+  cache, so gpt2-family and layernorm-flex runs can defer (`tools/arxiv_to_chat.py` no longer turns
+  deferral off for them). Gates on an L4 (`tools/device_eval_gate.py`, `tests/test_gpt2_device.cpp`):
+  val_loss identical to the windowless evaluation on llama (eval_batch 1 and 4), gpt2 and flex, and
+  training losses bit-identical; 100 held-out examples of ~370 tokens evaluate in 0.55 s instead of
+  8.37 s at d384 L6 and in 2.58 s instead of 40.0 s at d768 L12 (about 15x); gpt2 exact, swa, kimi,
+  srd and 4-layer flex train 60 steps under deferral with glibc's heap checks on, every training and
+  validation loss bit-identical to write-through. `mtstudio score --logits FILE` writes each scored
+  position's logits row (float32), for the CUDA-vs-CPU gate.
 - **Real k-quant blocks in the 4-bit exports** (25 Oct; paperkiln 255c9561). `gguf::quantize_q4_k`,
   `quantize_q5_k`, `quantize_q6_k` are llama.cpp b6000's (4762ad73) `quantize_row_q*_K_ref` with
   `make_qkx2_quants`, `make_qx_quants` and `nearest_int`, statement for statement, so `gguf_q4_k_m`,

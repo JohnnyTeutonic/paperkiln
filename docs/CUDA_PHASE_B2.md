@@ -25,14 +25,11 @@
 > is what the study runs on. `test_cuda_ops` leg 8 asserts flat memory
 > over 200 tapes.
 >
-> Two caveats stand. **(1)** Full deferral still corrupts the heap in
-> mtstudio at step 1 (defect record D1, open) — the 21x/30.5x were measured WITH
-> deferral, so those specific numbers still describe a configuration
-> that cannot complete a run. A defensible speedup claim must be
-> re-measured on the op-set config over a real duration. **(2)** The
-> endurance leg covers the composed tape, not mtstudio's own loop,
-> which is where D1 hides. Endurance is now checked one level up from
-> where it was; it is not yet checked at the application level.
+> One caveat stands: the 21x/30.5x were measured over nine steps with
+> deferral on; a defensible speedup claim must be re-measured over a real
+> duration. Defect D1 (deferral crashing mtstudio) is fixed (25 Oct 2026,
+> record below), and mtstudio's own loop now runs under deferral in the
+> device gates (tools/device_eval_gate.py).
 
 *Status: B2.0 VALIDATED on Colab T4, 13 Aug 2026 — full
 gradcheck/nn/lora/resident-parity suites plus test_step_residency all
@@ -484,7 +481,35 @@ measures.
 
 *Moved here from the retired backlog; open work is tracked in [`../ROADMAP.md`](../ROADMAP.md).*
 
-### D1. DEFER_DOWNLOADS crashes mtstudio (open; found 31 Aug 2026)
+### D1. ~~DEFER_DOWNLOADS crashes mtstudio~~ — FIXED 25 Oct 2026 (`ff00d60a`)
+
+**Root cause: LayerNorm's forward cache.** `ops::layernorm` kept its
+normalised input `xhat` for the backward in a plain `std::shared_ptr<Matrix>`,
+and the device kernel writes `xhat` as a deferred output. The tape drops it
+inside the step window (after the backward of each micro-step, and at once
+under NoGrad), so its value-cache entry outlived its host storage: the dying
+-temporary class for the fourth time. `step_end()`'s `materialize_all()` then
+wrote into freed memory, and a later matrix allocated at the recycled address
+read as device-fresh. The llama family never hit it: its norm is `ops::rmsnorm`,
+whose cache already went through `cached()` (the self-discarding deleter);
+every gpt2-family model and layernorm flex uses `layernorm`. Fix: `xhat` is a
+`cached()` matrix (and the host backward materialises it). SRD's shuffle mode
+also read a deferred input on the host; it now materialises it.
+
+**The leg that was missing now exists.** `tests/test_gpt2_device.cpp` (in
+`tools/colab_cuda_validate.sh`, under `MALLOC_CHECK_=3 MALLOC_PERTURB_=85`):
+NoGrad forwards inside a deferring window against the same forward outside one
+for ParityLM exact, swa, kimi and srd, layernorm flex and llama, with
+`device::stale_count()` required to be 0 once the forward's Vars have died
+(the signature of this class), and four training steps under deferral against
+the host path. On an L4 (`ff00d60a`): eval loss within 1.1e-7, logits 7.9e-7,
+no stale entry; training losses 6.6e-8, step-1 gradients 7.6e-6. End to end,
+`tools/device_eval_gate.py` trains each gpt2-family preset 60 steps in mtstudio
+with deferral on and off under the heap checks: no failure, and every training
+and validation loss bit-identical between the two.
+
+<details>
+<summary>Original report (kept for the record)</summary>
 
 **Symptom.** With `MICROTORCH_DEFER_DOWNLOADS=1`, `mtstudio run` dies at
 step 1 with `malloc(): unsorted double linked list corrupted` — SIGSEGV
@@ -521,6 +546,8 @@ dies inside the window. The four existing enforcement points
 never pass through any of them. Then add a leg that runs a real
 mtstudio-shaped model end to end under defer, because the absence of one
 is what let this through.
+
+</details>
 
 ### D2. ~~The device op set leaks device memory~~ — FIXED 31 Aug 2026 (`697e281`)
 

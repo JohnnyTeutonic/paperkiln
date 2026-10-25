@@ -1,0 +1,774 @@
+{
+ "ok": false,
+ "failed": [
+  "lm_gpt2_exact",
+  "lm_gpt2_kimi",
+  "lm_gpt2_srd",
+  "lm_flex4"
+ ],
+ "bin": "/content/pk/build_cuda/mtstudio",
+ "legs": [
+  {
+   "leg": "sft",
+   "name": "sft_llama",
+   "arch": {
+    "preset": "llama-tiny",
+    "custom": {
+     "d": 64,
+     "layers": 2,
+     "heads": 4
+    }
+   },
+   "train": {
+    "steps": 40,
+    "lr": 0.003,
+    "batch": 4,
+    "eval_every": 20,
+    "checkpoint_every": 1000
+   },
+   "examples": 400,
+   "rc": [
+    0,
+    0
+   ],
+   "seconds": [
+    0.8,
+    0.7
+   ],
+   "evals": 2,
+   "val_loss_host": [
+    3.941972725531634,
+    3.909114933013916
+   ],
+   "val_loss_device": [
+    3.941972725531634,
+    3.909114933013916
+   ],
+   "val_rel_max": 0.0,
+   "eval_device_flags": [
+    [
+     false,
+     false
+    ],
+    [
+     true,
+     true
+    ]
+   ],
+   "eval_s_host": [
+    0.043620849,
+    0.040993679
+   ],
+   "eval_s_device": [
+    0.008725497,
+    0.008631656
+   ],
+   "train_losses_bitwise_equal": true,
+   "steps": 40,
+   "env": [
+    {
+     "MICROTORCH_STEP_RESIDENCY": "1",
+     "MICROTORCH_ATTN_BLOCKED": "1",
+     "MICROTORCH_CUBLAS": "1",
+     "MICROTORCH_DEVICE": "cuda",
+     "MICROTORCH_DEVICE_OPS": "1",
+     "MICROTORCH_DEFER_DOWNLOADS": "1",
+     "MICROTORCH_DEVICE_EVAL": "0"
+    },
+    {
+     "MICROTORCH_STEP_RESIDENCY": "1",
+     "MICROTORCH_ATTN_BLOCKED": "1",
+     "MICROTORCH_CUBLAS": "1",
+     "MICROTORCH_DEVICE": "cuda",
+     "MICROTORCH_DEVICE_OPS": "1",
+     "MICROTORCH_DEFER_DOWNLOADS": "1"
+    }
+   ],
+   "ok": true
+  },
+  {
+   "leg": "sft",
+   "name": "sft_llama_eb4",
+   "arch": {
+    "preset": "llama-tiny",
+    "custom": {
+     "d": 64,
+     "layers": 2,
+     "heads": 4
+    }
+   },
+   "train": {
+    "steps": 40,
+    "lr": 0.003,
+    "batch": 4,
+    "eval_every": 20,
+    "checkpoint_every": 1000,
+    "eval_batch": 4
+   },
+   "examples": 400,
+   "rc": [
+    0,
+    0
+   ],
+   "seconds": [
+    0.7,
+    0.7
+   ],
+   "evals": 2,
+   "val_loss_host": [
+    3.941972787239972,
+    3.9091148755129645
+   ],
+   "val_loss_device": [
+    3.941972787239972,
+    3.9091148755129645
+   ],
+   "val_rel_max": 0.0,
+   "eval_device_flags": [
+    [
+     false,
+     false
+    ],
+    [
+     true,
+     true
+    ]
+   ],
+   "eval_s_host": [
+    0.008874814,
+    0.007074666
+   ],
+   "eval_s_device": [
+    0.001752685,
+    0.001717873
+   ],
+   "train_losses_bitwise_equal": true,
+   "steps": 40,
+   "env": [
+    {
+     "MICROTORCH_STEP_RESIDENCY": "1",
+     "MICROTORCH_ATTN_BLOCKED": "1",
+     "MICROTORCH_CUBLAS": "1",
+     "MICROTORCH_DEVICE": "cuda",
+     "MICROTORCH_DEVICE_OPS": "1",
+     "MICROTORCH_DEFER_DOWNLOADS": "1",
+     "MICROTORCH_DEVICE_EVAL": "0"
+    },
+    {
+     "MICROTORCH_STEP_RESIDENCY": "1",
+     "MICROTORCH_ATTN_BLOCKED": "1",
+     "MICROTORCH_CUBLAS": "1",
+     "MICROTORCH_DEVICE": "cuda",
+     "MICROTORCH_DEVICE_OPS": "1",
+     "MICROTORCH_DEFER_DOWNLOADS": "1"
+    }
+   ],
+   "ok": true
+  },
+  {
+   "leg": "sft",
+   "name": "sft_gpt2",
+   "arch": {
+    "preset": "gpt2-nano",
+    "custom": {
+     "d": 64,
+     "heads": 4
+    }
+   },
+   "train": {
+    "steps": 40,
+    "lr": 0.003,
+    "batch": 4,
+    "eval_every": 20,
+    "checkpoint_every": 1000
+   },
+   "examples": 400,
+   "rc": [
+    0,
+    0
+   ],
+   "seconds": [
+    0.9,
+    0.8
+   ],
+   "evals": 2,
+   "val_loss_host": [
+    4.039106310115141,
+    3.9857781774857464
+   ],
+   "val_loss_device": [
+    4.039106310115141,
+    3.9857781774857464
+   ],
+   "val_rel_max": 0.0,
+   "eval_device_flags": [
+    [
+     false,
+     false
+    ],
+    [
+     true,
+     true
+    ]
+   ],
+   "eval_s_host": [
+    0.041960914,
+    0.039718267
+   ],
+   "eval_s_device": [
+    0.018071917,
+    0.017447029
+   ],
+   "train_losses_bitwise_equal": true,
+   "steps": 40,
+   "env": [
+    {
+     "MICROTORCH_STEP_RESIDENCY": "1",
+     "MICROTORCH_ATTN_BLOCKED": "1",
+     "MICROTORCH_CUBLAS": "1",
+     "MICROTORCH_DEVICE": "cuda",
+     "MICROTORCH_DEVICE_OPS": "1",
+     "MICROTORCH_DEFER_DOWNLOADS": "1",
+     "MICROTORCH_DEVICE_EVAL": "0"
+    },
+    {
+     "MICROTORCH_STEP_RESIDENCY": "1",
+     "MICROTORCH_ATTN_BLOCKED": "1",
+     "MICROTORCH_CUBLAS": "1",
+     "MICROTORCH_DEVICE": "cuda",
+     "MICROTORCH_DEVICE_OPS": "1",
+     "MICROTORCH_DEFER_DOWNLOADS": "1"
+    }
+   ],
+   "ok": true
+  },
+  {
+   "leg": "sft",
+   "name": "sft_flex",
+   "arch": {
+    "preset": "gpt2-small",
+    "custom": {
+     "d": 64,
+     "heads": 4
+    }
+   },
+   "train": {
+    "steps": 40,
+    "lr": 0.003,
+    "batch": 4,
+    "eval_every": 20,
+    "checkpoint_every": 1000
+   },
+   "examples": 400,
+   "rc": [
+    0,
+    0
+   ],
+   "seconds": [
+    1.1,
+    1.0
+   ],
+   "evals": 2,
+   "val_loss_host": [
+    4.02933684797848,
+    4.044445044854108
+   ],
+   "val_loss_device": [
+    4.02933684797848,
+    4.044445044854108
+   ],
+   "val_rel_max": 0.0,
+   "eval_device_flags": [
+    [
+     false,
+     false
+    ],
+    [
+     true,
+     true
+    ]
+   ],
+   "eval_s_host": [
+    0.079339037,
+    0.077302892
+   ],
+   "eval_s_device": [
+    0.033235056,
+    0.032943745
+   ],
+   "train_losses_bitwise_equal": true,
+   "steps": 40,
+   "env": [
+    {
+     "MICROTORCH_STEP_RESIDENCY": "1",
+     "MICROTORCH_ATTN_BLOCKED": "1",
+     "MICROTORCH_CUBLAS": "1",
+     "MICROTORCH_DEVICE": "cuda",
+     "MICROTORCH_DEVICE_OPS": "1",
+     "MICROTORCH_DEFER_DOWNLOADS": "1",
+     "MICROTORCH_DEVICE_EVAL": "0"
+    },
+    {
+     "MICROTORCH_STEP_RESIDENCY": "1",
+     "MICROTORCH_ATTN_BLOCKED": "1",
+     "MICROTORCH_CUBLAS": "1",
+     "MICROTORCH_DEVICE": "cuda",
+     "MICROTORCH_DEVICE_OPS": "1",
+     "MICROTORCH_DEFER_DOWNLOADS": "1"
+    }
+   ],
+   "ok": true
+  },
+  {
+   "leg": "lm",
+   "name": "lm_gpt2_exact",
+   "arch": {
+    "preset": "gpt2-nano",
+    "custom": {
+     "d": 64,
+     "heads": 4
+    }
+   },
+   "rc": [
+    0,
+    0
+   ],
+   "seconds": [
+    1.1,
+    0.9
+   ],
+   "steps": [
+    60,
+    60
+   ],
+   "step_rel_max_first10": 0.0,
+   "val_rel_max": 0.0,
+   "loss_first_last": [
+    [
+     4.167765140533447,
+     4.171870231628418
+    ],
+    [
+     4.167765140533447,
+     4.171870231628418
+    ]
+   ],
+   "env": [
+    {
+     "MICROTORCH_STEP_RESIDENCY": "1",
+     "MICROTORCH_ATTN_BLOCKED": "1",
+     "MICROTORCH_CUBLAS": "1",
+     "MICROTORCH_DEVICE": "cuda",
+     "MICROTORCH_DEVICE_OPS": "1",
+     "MICROTORCH_DEFER_DOWNLOADS": "0",
+     "MALLOC_CHECK_": "3",
+     "MALLOC_PERTURB_": "85"
+    },
+    {
+     "MICROTORCH_STEP_RESIDENCY": "1",
+     "MICROTORCH_ATTN_BLOCKED": "1",
+     "MICROTORCH_CUBLAS": "1",
+     "MICROTORCH_DEVICE": "cuda",
+     "MICROTORCH_DEVICE_OPS": "1",
+     "MICROTORCH_DEFER_DOWNLOADS": "1",
+     "MALLOC_CHECK_": "3",
+     "MALLOC_PERTURB_": "85"
+    }
+   ],
+   "ok": false,
+   "tails": [
+    "",
+    ""
+   ]
+  },
+  {
+   "leg": "lm",
+   "name": "lm_gpt2_swa",
+   "arch": {
+    "preset": "swa-tiny",
+    "custom": {
+     "d": 64,
+     "heads": 4,
+     "window": 8
+    }
+   },
+   "rc": [
+    0,
+    0
+   ],
+   "seconds": [
+    1.3,
+    1.0
+   ],
+   "steps": [
+    60,
+    60
+   ],
+   "step_rel_max_first10": 0.0,
+   "val_rel_max": 0.0,
+   "loss_first_last": [
+    [
+     4.168200492858887,
+     4.16683292388916
+    ],
+    [
+     4.168200492858887,
+     4.16683292388916
+    ]
+   ],
+   "env": [
+    {
+     "MICROTORCH_STEP_RESIDENCY": "1",
+     "MICROTORCH_ATTN_BLOCKED": "1",
+     "MICROTORCH_CUBLAS": "1",
+     "MICROTORCH_DEVICE": "cuda",
+     "MICROTORCH_DEVICE_OPS": "1",
+     "MICROTORCH_DEFER_DOWNLOADS": "0",
+     "MALLOC_CHECK_": "3",
+     "MALLOC_PERTURB_": "85"
+    },
+    {
+     "MICROTORCH_STEP_RESIDENCY": "1",
+     "MICROTORCH_ATTN_BLOCKED": "1",
+     "MICROTORCH_CUBLAS": "1",
+     "MICROTORCH_DEVICE": "cuda",
+     "MICROTORCH_DEVICE_OPS": "1",
+     "MICROTORCH_DEFER_DOWNLOADS": "1",
+     "MALLOC_CHECK_": "3",
+     "MALLOC_PERTURB_": "85"
+    }
+   ],
+   "ok": true
+  },
+  {
+   "leg": "lm",
+   "name": "lm_gpt2_kimi",
+   "arch": {
+    "preset": "kimi-tiny",
+    "custom": {
+     "d": 64,
+     "heads": 4
+    }
+   },
+   "rc": [
+    0,
+    0
+   ],
+   "seconds": [
+    1.3,
+    1.1
+   ],
+   "steps": [
+    60,
+    60
+   ],
+   "step_rel_max_first10": 0.0,
+   "val_rel_max": 0.0,
+   "loss_first_last": [
+    [
+     4.16514778137207,
+     4.174016952514648
+    ],
+    [
+     4.16514778137207,
+     4.174016952514648
+    ]
+   ],
+   "env": [
+    {
+     "MICROTORCH_STEP_RESIDENCY": "1",
+     "MICROTORCH_ATTN_BLOCKED": "1",
+     "MICROTORCH_CUBLAS": "1",
+     "MICROTORCH_DEVICE": "cuda",
+     "MICROTORCH_DEVICE_OPS": "1",
+     "MICROTORCH_DEFER_DOWNLOADS": "0",
+     "MALLOC_CHECK_": "3",
+     "MALLOC_PERTURB_": "85"
+    },
+    {
+     "MICROTORCH_STEP_RESIDENCY": "1",
+     "MICROTORCH_ATTN_BLOCKED": "1",
+     "MICROTORCH_CUBLAS": "1",
+     "MICROTORCH_DEVICE": "cuda",
+     "MICROTORCH_DEVICE_OPS": "1",
+     "MICROTORCH_DEFER_DOWNLOADS": "1",
+     "MALLOC_CHECK_": "3",
+     "MALLOC_PERTURB_": "85"
+    }
+   ],
+   "ok": false,
+   "tails": [
+    "",
+    ""
+   ]
+  },
+  {
+   "leg": "lm",
+   "name": "lm_gpt2_srd",
+   "arch": {
+    "preset": "srd-tiny",
+    "custom": {
+     "d": 64,
+     "heads": 4
+    }
+   },
+   "rc": [
+    0,
+    0
+   ],
+   "seconds": [
+    1.5,
+    1.3
+   ],
+   "steps": [
+    60,
+    60
+   ],
+   "step_rel_max_first10": 0.0,
+   "val_rel_max": 0.0,
+   "loss_first_last": [
+    [
+     4.167640686035156,
+     4.168159484863281
+    ],
+    [
+     4.167640686035156,
+     4.168159484863281
+    ]
+   ],
+   "env": [
+    {
+     "MICROTORCH_STEP_RESIDENCY": "1",
+     "MICROTORCH_ATTN_BLOCKED": "1",
+     "MICROTORCH_CUBLAS": "1",
+     "MICROTORCH_DEVICE": "cuda",
+     "MICROTORCH_DEVICE_OPS": "1",
+     "MICROTORCH_DEFER_DOWNLOADS": "0",
+     "MALLOC_CHECK_": "3",
+     "MALLOC_PERTURB_": "85"
+    },
+    {
+     "MICROTORCH_STEP_RESIDENCY": "1",
+     "MICROTORCH_ATTN_BLOCKED": "1",
+     "MICROTORCH_CUBLAS": "1",
+     "MICROTORCH_DEVICE": "cuda",
+     "MICROTORCH_DEVICE_OPS": "1",
+     "MICROTORCH_DEFER_DOWNLOADS": "1",
+     "MALLOC_CHECK_": "3",
+     "MALLOC_PERTURB_": "85"
+    }
+   ],
+   "ok": false,
+   "tails": [
+    "",
+    ""
+   ]
+  },
+  {
+   "leg": "lm",
+   "name": "lm_flex4",
+   "arch": {
+    "preset": "gpt2-small",
+    "custom": {
+     "d": 64,
+     "heads": 4
+    }
+   },
+   "rc": [
+    0,
+    0
+   ],
+   "seconds": [
+    1.7,
+    1.3
+   ],
+   "steps": [
+    60,
+    60
+   ],
+   "step_rel_max_first10": 0.0,
+   "val_rel_max": 0.0,
+   "loss_first_last": [
+    [
+     4.153144836425781,
+     4.171903610229492
+    ],
+    [
+     4.153144836425781,
+     4.171903610229492
+    ]
+   ],
+   "env": [
+    {
+     "MICROTORCH_STEP_RESIDENCY": "1",
+     "MICROTORCH_ATTN_BLOCKED": "1",
+     "MICROTORCH_CUBLAS": "1",
+     "MICROTORCH_DEVICE": "cuda",
+     "MICROTORCH_DEVICE_OPS": "1",
+     "MICROTORCH_DEFER_DOWNLOADS": "0",
+     "MALLOC_CHECK_": "3",
+     "MALLOC_PERTURB_": "85"
+    },
+    {
+     "MICROTORCH_STEP_RESIDENCY": "1",
+     "MICROTORCH_ATTN_BLOCKED": "1",
+     "MICROTORCH_CUBLAS": "1",
+     "MICROTORCH_DEVICE": "cuda",
+     "MICROTORCH_DEVICE_OPS": "1",
+     "MICROTORCH_DEFER_DOWNLOADS": "1",
+     "MALLOC_CHECK_": "3",
+     "MALLOC_PERTURB_": "85"
+    }
+   ],
+   "ok": false,
+   "tails": [
+    "",
+    ""
+   ]
+  },
+  {
+   "leg": "sft",
+   "name": "timing_d384",
+   "arch": {
+    "preset": "llama-tiny",
+    "custom": {
+     "d": 384,
+     "layers": 6,
+     "heads": 6
+    }
+   },
+   "train": {
+    "steps": 2,
+    "lr": 0.001,
+    "batch": 2,
+    "eval_every": 2,
+    "checkpoint_every": 1000
+   },
+   "examples": 2000,
+   "rc": [
+    0,
+    0
+   ],
+   "seconds": [
+    13.6,
+    5.5
+   ],
+   "evals": 1,
+   "val_loss_host": [
+    8.994839027259095
+   ],
+   "val_loss_device": [
+    8.994839027259095
+   ],
+   "val_rel_max": 0.0,
+   "eval_device_flags": [
+    [
+     false
+    ],
+    [
+     true
+    ]
+   ],
+   "eval_s_host": [
+    8.374359929
+   ],
+   "eval_s_device": [
+    0.552561695
+   ],
+   "train_losses_bitwise_equal": true,
+   "steps": 2,
+   "env": [
+    {
+     "MICROTORCH_STEP_RESIDENCY": "1",
+     "MICROTORCH_ATTN_BLOCKED": "1",
+     "MICROTORCH_CUBLAS": "1",
+     "MICROTORCH_DEVICE": "cuda",
+     "MICROTORCH_DEVICE_OPS": "1",
+     "MICROTORCH_DEFER_DOWNLOADS": "1",
+     "MICROTORCH_DEVICE_EVAL": "0"
+    },
+    {
+     "MICROTORCH_STEP_RESIDENCY": "1",
+     "MICROTORCH_ATTN_BLOCKED": "1",
+     "MICROTORCH_CUBLAS": "1",
+     "MICROTORCH_DEVICE": "cuda",
+     "MICROTORCH_DEVICE_OPS": "1",
+     "MICROTORCH_DEFER_DOWNLOADS": "1"
+    }
+   ],
+   "ok": true
+  },
+  {
+   "leg": "sft",
+   "name": "timing_d768",
+   "arch": {
+    "preset": "llama-tiny",
+    "custom": {
+     "d": 768,
+     "layers": 12,
+     "heads": 12
+    }
+   },
+   "train": {
+    "steps": 2,
+    "lr": 0.001,
+    "batch": 2,
+    "eval_every": 2,
+    "checkpoint_every": 1000
+   },
+   "examples": 2000,
+   "rc": [
+    0,
+    0
+   ],
+   "seconds": [
+    68.6,
+    31.9
+   ],
+   "evals": 1,
+   "val_loss_host": [
+    9.856407929584284
+   ],
+   "val_loss_device": [
+    9.856407929584284
+   ],
+   "val_rel_max": 0.0,
+   "eval_device_flags": [
+    [
+     false
+    ],
+    [
+     true
+    ]
+   ],
+   "eval_s_host": [
+    40.006363578
+   ],
+   "eval_s_device": [
+    2.577078415
+   ],
+   "train_losses_bitwise_equal": true,
+   "steps": 2,
+   "env": [
+    {
+     "MICROTORCH_STEP_RESIDENCY": "1",
+     "MICROTORCH_ATTN_BLOCKED": "1",
+     "MICROTORCH_CUBLAS": "1",
+     "MICROTORCH_DEVICE": "cuda",
+     "MICROTORCH_DEVICE_OPS": "1",
+     "MICROTORCH_DEFER_DOWNLOADS": "1",
+     "MICROTORCH_DEVICE_EVAL": "0"
+    },
+    {
+     "MICROTORCH_STEP_RESIDENCY": "1",
+     "MICROTORCH_ATTN_BLOCKED": "1",
+     "MICROTORCH_CUBLAS": "1",
+     "MICROTORCH_DEVICE": "cuda",
+     "MICROTORCH_DEVICE_OPS": "1",
+     "MICROTORCH_DEFER_DOWNLOADS": "1"
+    }
+   ],
+   "ok": true
+  }
+ ]
+}

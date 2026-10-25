@@ -332,8 +332,8 @@ def main():
                 restore(name)
                 deferred.discard(name)
             log = open(f"{C}/{name}_train.log", "a")
-            # A job's "env" overrides the fast defaults (e.g. gpt2-family runs
-            # need MICROTORCH_DEFER_DOWNLOADS=0: deferral corrupts them).
+            # A job's "env" overrides the fast defaults (e.g. a family whose
+            # deferred-download path is not gated runs with MICROTORCH_DEFER_DOWNLOADS=0).
             env = {**os.environ, **ENV, **{k: str(v) for k, v in jobs[name].get("env", {}).items()}}
             if "cmd" in jobs[name]:
                 # A data job (corpus build, decontamination, tokenising) on the

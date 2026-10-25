@@ -27,8 +27,7 @@ where one of those documents carries a plan, this file wins.*
    three decisions sit behind one constant each: v1's system mode (`SYSTEM_MODE_V1` /
    `kSystemModeV1`, fold or none), the default loss policy (`DEFAULT_SFT_TURNS` /
    `kDefaultSftTurns`), and when v2 is built.
-3. **Engine:** BF16 mixed precision and a fused attention backward (opt-in; building);
-   device-side SFT evaluation in the step window.
+3. **Engine:** BF16 mixed precision and a fused attention backward (opt-in; building).
 4. **The redesign (LOCAL_LLM_STACK.md section 5): any paper, any architecture.**
    Training-side support for the third-party ops paperkiln only references in numpy today
    (grouped-query attention, NEOX rotary, per-head RMSNorm, Mamba-1's conv1d_causal and
@@ -184,13 +183,6 @@ advisory steps that cannot fail the build.
 ## 6. Engine
 
 - **CUDA** (records: `docs/CUDA_PHASE_B2.md`):
-  - Fix the `MICROTORCH_DEFER_DOWNLOADS` crash for the gpt2 family (defect
-    record D1; deferral works for llama runs and every production run
-    uses it), and add an end-to-end mtstudio leg under deferral.
-  - SFT evaluation is the slow part of a fine-tune: on the Colab L4 an
-    `objective: sft` run spends ~10-20 minutes at each `eval_every`
-    checkpoint with the process on the CPU (capacity session, 20 Oct 2026),
-    while its training steps are fast. Put the SFT eval on the device path.
   - Wire `MT_DEVCHECK_HOST_READ` at real call sites; today it is defined
     and never called.
   - Coalesce loads in the transposed GEMM paths.

@@ -69,11 +69,17 @@ def sft_data(d, words, n, plen, clen, seed):
 
 
 def lm_corpus(d, words, n_tokens, seed):
+    # A skewed unigram (word i drawn with weight 1 / (i + 1)) and a fixed successor for half the
+    # words: 60 steps learn it. (A uniform unigram, the first version of this leg on 25 Oct 2026,
+    # left every run at ln 64 on both paths: nothing to learn without induction.)
     rng = random.Random(seed)
     k, out = len(words), []
-    while len(out) < n_tokens:  # short repeated motifs: a text the model can learn in 60 steps
-        m = [rng.randrange(k) for _ in range(rng.randint(3, 8))]
-        out += m * rng.randint(2, 4)
+    wts = [1.0 / (i + 1) for i in range(k)]
+    while len(out) < n_tokens:
+        w = rng.choices(range(k), weights=wts)[0]
+        out.append(w)
+        if w % 2 == 0:
+            out.append((w * 7 + 3) % k)
     with open(os.path.join(d, "corpus.txt"), "w", encoding="utf-8") as f:
         f.write(" ".join(words[i] for i in out) + "\n")
 
