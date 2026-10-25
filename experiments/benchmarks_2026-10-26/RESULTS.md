@@ -63,7 +63,8 @@ paradigm, are in `receipts/bench/<model>/summary.json`; per-item records in `ite
     (`receipts/bench/xcheck/compare_*.json`; see Open items).
   - mtstudio (CPU) against the numpy IR on samples: live 501 requests, max |dlogprob| 1.8e-5, argmax
     8,518/8,518; pk_sft_v1 81 requests, 1.4e-5, 1,467/1,467 (`receipts/engine_checks/`).
-- **ember's POST /score** (agreed with ember, being built) is wired in as `--scorer ember` and is not used here.
+- **ember's POST /score** (gated at ember 580e108) is wired in as `--scorer ember`; it runs in pk-bench2 (Open
+  items).
 
 ### Tiny-chat picks' weights
 
@@ -201,5 +202,10 @@ The paired differences over the 84 (family, sequence) pairs, with 95% intervals,
   diagnosed.
 - **mtstudio score is slow.** It scores one request at a time on the host: ~75 ms each for the 14.6M live model
   on the pod, with the GPU near idle. Batching it would let it carry the full sets.
-- **ember's POST /score** (being built by ember): once gated, cross-check it against hfgguf and mtstudio with
-  `bench_eval.py compare`, including the live model and SmolLM2-135M.
+- **ember's POST /score** (gated at ember 580e108) and the picks home after pk-bench (pick_e1_L4,
+  pick_e1_60m_L32, pick_e5_s0): both are in pk-bench2 (`tools/colab_chat/bench_v2.json`; root
+  `scripts/colab_driver.json`, disabled until the RunPod top-up, $3 cap).
+  - The picks get hfgguf and IF-tiny.
+  - ember's /score runs the full sets for pk_sft_v1, the live model and those picks. Compare it at home with
+    `bench_eval.py compare` against hfgguf (`C:/ml_artifacts/benchmarks/runs/score_hfgguf/x/bench/`) and the
+    live model's mtstudio scores (`runs/score_live/x/bench/`). That also settles HellaSwag 17234.

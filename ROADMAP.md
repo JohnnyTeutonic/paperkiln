@@ -193,12 +193,13 @@ advisory steps that cannot fail the build.
 ## 6. Engine
 
 - **Benchmarks** (`experiments/benchmarks_2026-10-26/`):
-  - pk-bench2 (`tools/colab_chat/bench_v2.json`; root `scripts/colab_driver.json`, disabled) scores the picks
-    that came home after pk-bench (pick_e1_L4, pick_e1_60m_L32, pick_e5_s0). It launches once RunPod is topped
-    up.
+  - pk-bench2 (`tools/colab_chat/bench_v2.json`; root `scripts/colab_driver.json`, disabled until the RunPod
+    top-up):
+    - scores the picks that came home after pk-bench (pick_e1_L4, pick_e1_60m_L32, pick_e5_s0);
+    - runs ember 580e108's POST /score on the full sets for pk_sft_v1, live and those picks, for
+      `tools/bench_eval.py compare` at home.
   - Batch `mtstudio score`: it scores one request at a time on the host (~75 ms each for the 14.6M live model on
     an L4).
-  - Cross-check ember's POST /score with `tools/bench_eval.py compare` once it is gated.
 - **CUDA** (records: `docs/CUDA_PHASE_B2.md`):
   - The third-party ops' device legs (queued until the RunPod top-up): root `scripts/colab_driver.json`
     entry pk-tp-cuda, `tools/colab_chat/thirdparty_cuda_v1.json` (the CUDA gate with
