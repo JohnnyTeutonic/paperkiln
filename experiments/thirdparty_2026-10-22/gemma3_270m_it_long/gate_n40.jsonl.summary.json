@@ -1,0 +1,12 @@
+{
+ "family": "gemma3",
+ "gguf": "gemma-3-270m-it-f32.gguf",
+ "prompts": 40,
+ "top1_same": 40,
+ "greedy_same": 40,
+ "worst_first_rel": 4.554437354325981e-06,
+ "max_new": 32,
+ "raw": false,
+ "hf_weights": "gguf",
+ "hf_greedy": "argmax of HF's forward with its KV cache (no generate)"
+}
