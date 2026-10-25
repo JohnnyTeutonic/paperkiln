@@ -57,6 +57,18 @@ message(STATUS "transformer_core from: ${MICROTORCH_TCPP_DIR}")
 add_subdirectory(${MICROTORCH_TCPP_DIR}
                  ${CMAKE_BINARY_DIR}/transformer_cpp EXCLUDE_FROM_ALL)
 
+# IR_SPEC.md section 4.1 (Q15): paperkiln's own translation units never
+# contract a * b + c into a fused multiply-add, whatever -march a build adds
+# (arm64, -march=native, the x86-64-v3 wheels), so the specification's EXACT
+# statements hold on every build. Added after transformer_core's directory,
+# so the vendored core keeps its own flags (-ffast-math: ROUNDING, IR_SPEC.md
+# Appendix A). C++ only: nvcc's device code keeps --fmad=true (the CUDA paths
+# are ROUNDING). MSVC's default /fp:precise does not contract (no /fp:contract
+# or /fp:fast is passed to paperkiln's targets).
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-ffp-contract=off>)
+endif()
+
 add_library(microtorch STATIC
     src/autograd.cpp
     src/ops.cpp
