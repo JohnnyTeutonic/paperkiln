@@ -1223,6 +1223,8 @@ on the machine that picks. Every machine runs the arm's own jobs file at the arm
   run on their own RunPod L4 (`pk-tc-e1-60m-L16`, `-L8`, `-L4`). No job of L16, L8 or L4 had started.
 - E1-R (`tiny_chat_e1_rec.json`, 11c5baf0): R4 and MC7 stay on Colab (`pk-tc-e1-rec`); R2 runs on a RunPod L4
   (`pk-tc-e1-rec-R2`). No job of R2 had started.
+- The MoR block (`tiny_chat_e1_mor.json`, 86a978ca): MoR3 and MC3 stay on their RunPod L4 (`pk-tc-e1-mor`); MC2
+  runs on its own RunPod L4 (`pk-tc-e1-mor-MC2`). No job of MC2 had started.
 
 **Why the registered quantities carry over.** Each machine's data job runs the same command at the same commit; its
 `data.ledger.json` (corpus and panel hashes) is compared with the arm's first data build before that machine's
