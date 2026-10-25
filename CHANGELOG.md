@@ -7,6 +7,53 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **The third-party ops train here** (26 Oct; LOCAL_LLM_STACK.md section 11 item 4.4, which this closes). The
+  ops of the keramos thirdparty profile that paperkiln had only in numpy now have forward and backward passes in
+  its autograd. A model that uses them trains, exports its GGUF with its IR, and runs in ember.
+  - **Ops** (`include/microtorch/ops.hpp`):
+    - `ops::apply_rope` takes `pairing` (interleaved, or NEOX's (x[j], x[j + n_rot/2])) and `n_rot` (partial
+      rotary). At its defaults it is the original loop, statement for statement.
+    - `ops::rmsnorm_group`: a per-head RMSNorm with a weight shared by every group.
+    - `ops::repeat_heads`: grouped-query attention's kv sharing. The backward sums each group in ascending
+      head order.
+    - Mamba-1's `ops::conv1d_causal` and `ops::selective_scan`: the backward runs through time over the kept
+      states, and every sequence of a stacked batch starts from a zero state.
+  - **CUDA**: the rope kernel takes the pairing and the rotated width, still rounding as the host does.
+    repeat_heads has kernels that are bit-exact with the host. rmsnorm_group runs the rmsnorm kernels over
+    rows of the group's width. The two Mamba ops run on the host; paperkiln's CUDA path has no recurrent
+    kernels.
+  - **Checks** (`tests/test_thirdparty_ops.cpp`, ctest `thirdparty_ops`):
+    - Every op against a float64 statement of its IR_SPEC formula: 1.0e-7 to 2.3e-7.
+    - Every input's gradient against central finite differences: worst 3.5e-4.
+    - RoPE equals a float re-statement of the host loop bit for bit, and rmsnorm_group over the whole row
+      equals ops::rmsnorm bit for bit.
+    - The llama options at their default values give the plain block bit for bit.
+    - A grouped-query model equals the multi-head model whose k and v columns repeat, bit for bit.
+    - KV-cached decode is within 6.0e-8 of the full forward, and a Mamba-1 batch equals its sequences bit for
+      bit.
+  - **Numpy agreement.** `tools/ir_eval` runs rope, rmsnorm, attention, conv1d_causal and selective_scan
+    nodes through these training ops, and mtstudio's conformance adapter routes them there. Every keramos
+    single-op case they express passes against numpy's expected values: rope interleaved, neox, neox_partial
+    and grouped_query; rmsnorm row and group; attention causal and grouped_query; conv1d_causal; selective_scan.
+    That is 10 pass, 0 fail. Three cases are skipped (freq_scale, weight_offset, a window), none of which
+    paperkiln trains.
+  - **mtstudio**:
+    - The llama family takes `arch.custom.kv_heads`, `rope_pairing`, `rope_dims`, `qk_norm` and `rope_theta`.
+      Each left out gives the plain model, unchanged, with an unchanged model event.
+    - The mamba preset takes `arch.custom.ssm: "mamba1"` with `d_state`, `d_conv`, `expand` and `dt_rank`.
+      The graph is keramos `tools/gguf_ir.py`'s mamba graph node for node, with llama.cpp's tensor names and
+      A stored as the forward's -exp(A_log).
+    - GQA alone exports architecture llama with head_count_kv. NEOX, partial rotary and q/k norms export as
+      "paperkiln".
+    - muon refuses grouped-query attention, because its per-head split assumes one kv head per query head.
+      attn_res refuses the options, because llama_attnres runs its own attention.
+  - **End to end** (`tests/test_thirdparty_ir.py`): five models train 40 steps on CPU and export.
+    - The models: tp_gqa (4 q / 2 kv heads); tp_qwen (GQA + NEOX + q/k norms, theta 1e6); tp_mqa_partial (one
+      kv head, rope_dims 4 of 8); tp_neox_partial; tp_mamba1.
+    - keramos's checker accepts every file. Numpy IR against `mtstudio score` is within 2.5e-7 to 4.3e-7 of
+      max(1, |ref|), greedy 40/40 on each.
+    - The gate files for ember are in `C:/ml_artifacts/thirdparty_train_gate/`.
+
 - **The host GELU gives the same bits at every OpenMP thread count** (26 Oct). `ops::gelu` on the CPU runs
   the vendored `Matrix::apply_gelu` on one thread (`apply_gelu_one_chunk`, src/ops.cpp). The core compiles that
   loop with -O3 -march=native -ffast-math, so GCC vectorises it with libmvec's tanhf: 8 lanes over each thread's

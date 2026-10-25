@@ -18,19 +18,40 @@ LlamaBlock::LlamaBlock(const LlamaConfig& cfg, unsigned seed)
     : H(cfg.n_heads),
       dk(cfg.d / cfg.n_heads),
       n_ctx(cfg.n_ctx),
+      KV(cfg.kv_heads()),
+      rope_dims_(cfg.rope_dims ? cfg.rope_dims : cfg.d / cfg.n_heads),
       rope_theta_(cfg.rope_theta),
       rms_eps_(cfg.rms_eps),
       rope_all_heads_(cfg.rope_all_heads) {
     turn_state = cfg.turn_state();
     if (cfg.d % cfg.n_heads != 0) throw std::runtime_error("llama: d must divide by n_heads");
+    if (KV == 0 || cfg.n_heads % KV != 0)
+        throw std::runtime_error("llama: kv_heads " + std::to_string(KV) + " must divide n_heads " +
+                                 std::to_string(cfg.n_heads));
+    if (cfg.rope_pairing != "interleaved" && cfg.rope_pairing != "neox")
+        throw std::runtime_error("llama: rope_pairing must be interleaved or neox, got " + cfg.rope_pairing);
+    rope_neox_ = cfg.rope_pairing == "neox";
+    if (rope_dims_ == 0 || rope_dims_ % 2 != 0 || rope_dims_ > dk)
+        throw std::runtime_error("llama: rope_dims " + std::to_string(rope_dims_) + " must be even and <= head_dim " +
+                                 std::to_string(dk));
+    if (cfg.thirdparty() && !cfg.rope_all_heads)
+        throw std::runtime_error("llama: kv_heads, rope_pairing, rope_dims and qk_norm need rope_heads all");
+    if (cfg.thirdparty() && cfg.attn_res.on)
+        throw std::runtime_error("llama: kv_heads, rope_pairing, rope_dims and qk_norm are not wired with attn_res "
+                                 "(llama_attnres runs its own attention)");
     // HF names throughout; Linear registers its matrix as "weight", so the
     // collected dotted paths match LlamaForCausalLM exactly.
     ln1_w = reg("input_layernorm.weight", Matrix(1, cfg.d, 1.0f));
     ln2_w = reg("post_attention_layernorm.weight", Matrix(1, cfg.d, 1.0f));
     q_proj = mod<Linear>("self_attn.q_proj", cfg.d, cfg.d, false, seed + 1);
-    k_proj = mod<Linear>("self_attn.k_proj", cfg.d, cfg.d, false, seed + 2);
-    v_proj = mod<Linear>("self_attn.v_proj", cfg.d, cfg.d, false, seed + 3);
+    k_proj = mod<Linear>("self_attn.k_proj", cfg.d, KV * dk, false, seed + 2);
+    v_proj = mod<Linear>("self_attn.v_proj", cfg.d, KV * dk, false, seed + 3);
     o_proj = mod<Linear>("self_attn.o_proj", cfg.d, cfg.d, false, seed + 4);
+    if (cfg.qk_norm) {
+        // Qwen3's names; ones, as every RMSNorm gamma here.
+        q_norm_w = reg("self_attn.q_norm.weight", Matrix(1, dk, 1.0f));
+        k_norm_w = reg("self_attn.k_norm.weight", Matrix(1, dk, 1.0f));
+    }
     if (cfg.moe.experts > 0) {
         // Registered as "mlp": layers.N.mlp.router.weight,
         // layers.N.mlp.experts.{e}.{gate,up,down}_proj.weight. Expert 0 takes
@@ -47,23 +68,7 @@ Var LlamaBlock::forward(const Var& x, const std::vector<int>& pos, size_t seq_le
                         const std::vector<int>* ts_code) const {
     // ---- attention sublayer (pre-RMSNorm) ----
     Var h = ops::rmsnorm(x, ln1_w);
-    Var q = q_proj->forward(h);
-    Var k = k_proj->forward(h);
-    Var v = v_proj->forward(h);
-    // ops::apply_rope expects the fused [T, 3d] qkv layout; build it, rotate
-    // each head's q/k columns (head 0 only under the legacy rope_heads =
-    // "first"), attend per head. concat is a tape op, so gradients flow.
-    //
-    // Memory: the tape keeps every node until the step ends, but the
-    // projections and their concat are read by no backward (concat and
-    // rope backwards touch gradients only) and by no later forward op once
-    // copied onward, so their device copies are released as soon as the
-    // next op has run (device::release; no-op unless deferring); bit for
-    // bit the same step.
-    Var qkv_in = ops::concat_cols({q, k, v});
-    for (const Var* t : {&q, &k, &v}) device::release((*t)->data);
-    Var qkv = ops::apply_rope(qkv_in, pos, rope_theta_, dk, rope_all_heads_);
-    device::release(qkv_in->data);
+    Var qkv = attn_qkv(h, pos);
 
     // Fused multi-head attention: causal within each sequence,
     // block-isolated across a stacked batch, no mask materialization
@@ -87,6 +92,43 @@ Var LlamaBlock::forward(const Var& x, const std::vector<int>& pos, size_t seq_le
     return out;
 }
 
+Var LlamaBlock::attn_qkv(const Var& h, const std::vector<int>& pos) const {
+    Var q = q_proj->forward(h);
+    Var k = k_proj->forward(h);
+    Var v = v_proj->forward(h);
+    // Per-head q/k RMSNorm (qk_norm), then grouped-query attention's kv
+    // repeat: k and v to H heads, so the fused layout and the attention
+    // below are the multi-head ones (query head h reads kv head h / (H /
+    // KV)). RoPE on the repeated k rotates each copy the same, so its
+    // values are those of rotating the KV heads.
+    if (q_norm_w) {
+        q = ops::rmsnorm_group(q, q_norm_w, dk);
+        k = ops::rmsnorm_group(k, k_norm_w, dk);
+    }
+    if (KV != H) {
+        k = ops::repeat_heads(k, KV, H / KV, dk);
+        v = ops::repeat_heads(v, KV, H / KV, dk);
+    }
+    // ops::apply_rope expects the fused [T, 3d] qkv layout; build it, rotate
+    // each head's q/k columns (head 0 only under the legacy rope_heads =
+    // "first"), attend per head. concat is a tape op, so gradients flow.
+    //
+    // Memory: the tape keeps every node until the step ends, but the
+    // projections and their concat are read by no backward (concat, repeat
+    // and rope backwards touch gradients only; the q/k norms read their
+    // inputs, which are not these) and by no later forward op once copied
+    // onward, so their device copies are released as soon as the next op
+    // has run (device::release; no-op unless deferring); bit for bit the
+    // same step.
+    Var qkv_in = ops::concat_cols({q, k, v});
+    for (const Var* t : {&q, &k, &v}) device::release((*t)->data);
+    Var qkv = ops::apply_rope(qkv_in, pos, rope_theta_, dk, rope_all_heads_,
+                              rope_neox_ ? ops::RopePairing::Neox : ops::RopePairing::Interleaved,
+                              rope_dims_ == dk ? 0 : rope_dims_);
+    device::release(qkv_in->data);
+    return qkv;
+}
+
 Var LlamaBlock::forward_rows(const Var& x, const std::vector<int>& pos,
                              const std::vector<std::pair<size_t, size_t>>& segs) const {
     // forward() with the attention run per range (one sequence's active
@@ -101,13 +143,7 @@ Var LlamaBlock::forward_rows(const Var& x, const std::vector<int>& pos,
     }
     if (covered != n) throw std::runtime_error("llama: forward_rows ranges must tile the rows");
     Var h = ops::rmsnorm(x, ln1_w);
-    Var q = q_proj->forward(h);
-    Var k = k_proj->forward(h);
-    Var v = v_proj->forward(h);
-    Var qkv_in = ops::concat_cols({q, k, v});
-    for (const Var* t : {&q, &k, &v}) device::release((*t)->data);
-    Var qkv = ops::apply_rope(qkv_in, pos, rope_theta_, dk, rope_all_heads_);
-    device::release(qkv_in->data);
+    Var qkv = attn_qkv(h, pos);
     const float sc = 1.0f / std::sqrt(static_cast<float>(dk));
     Var heads_cat;
     if (segs.size() == 1) {
@@ -155,8 +191,15 @@ Var LlamaBlock::forward_cached_rows(const Var& x, const std::vector<int>& pos, s
         throw std::runtime_error("llama: kv cache past the context length");
     const size_t base = kc.size() / d;  // rows cached before these
     Var h = ops::rmsnorm(x, ln1_w);
-    Var qkv_in = ops::concat_cols({q_proj->forward(h), k_proj->forward(h), v_proj->forward(h)});
-    Var qkv = ops::apply_rope(qkv_in, pos, rope_theta_, dk, rope_all_heads_);
+    // The cache holds k and v after the kv repeat ([rows, d], as without
+    // grouped-query attention): the same values a kv-head cache would give.
+    Var qkv;
+    if (KV != H || rope_neox_ || rope_dims_ != dk || q_norm_w) {
+        qkv = attn_qkv(h, pos);
+    } else {
+        Var qkv_in = ops::concat_cols({q_proj->forward(h), k_proj->forward(h), v_proj->forward(h)});
+        qkv = ops::apply_rope(qkv_in, pos, rope_theta_, dk, rope_all_heads_);
+    }
     device::materialize(qkv->data);
     const Matrix& m = qkv->data;  // [n, 3d]: q | k | v
     for (size_t i = 0; i < n; ++i)
@@ -239,8 +282,32 @@ ir::json LlamaBlock::export_ir() const {
     n.push_back(q_proj->export_ir("h", "q", p + "attn_q.weight"));
     n.push_back(k_proj->export_ir("h", "k", p + "attn_k.weight"));
     n.push_back(v_proj->export_ir("h", "v", p + "attn_v.weight"));
-    n.push_back(ir::rope("q", "k", "pos", H, dk, rope_theta_, rope_all_heads_));
-    ir::json att = ir::attention("q", "k", "v", "kv", H, H, dk, sc, /*causal=*/true, 0, 0, "a");
+    if (q_norm_w) {
+        // Per-head q/k RMSNorm (IR_SPEC 5.6 group), before RoPE.
+        for (const char* t : {"q", "k"}) {
+            ir::json nd = ir::rmsnorm(t, p + "attn_" + t + "_norm.weight", ops::kRmsNormEps, t);
+            nd.erase("out");
+            nd["group"] = dk;
+            nd["out"] = t;
+            n.push_back(nd);
+        }
+    }
+    ir::json rope = ir::rope("q", "k", "pos", H, dk, rope_theta_, rope_all_heads_);
+    if (KV != H || rope_neox_ || rope_dims_ != dk) {
+        // IR_SPEC 5.14's thirdparty attributes: k's head count, the rotated
+        // dims, the pairing; the plain block writes none of them.
+        rope.erase("out");
+        rope.erase("_note");
+        if (KV != H) rope["kv_heads"] = KV;
+        if (rope_dims_ != dk) rope["n_rot"] = rope_dims_;
+        rope["pairing"] = rope_neox_ ? "neox" : "interleaved";
+        rope["_note"] = std::string(rope_neox_ ? "pairs (x[j], x[j + n_rot/2])" : "adjacent pairs (x[2j], x[2j+1])") +
+                        " within each head's first n_rot dims, angle pos * theta^(-2j/n_rot); products rounded "
+                        "separately (no FMA)";
+        rope["out"] = ir::json::array({"q", "k"});
+    }
+    n.push_back(rope);
+    ir::json att = ir::attention("q", "k", "v", "kv", H, KV, dk, sc, /*causal=*/true, 0, 0, "a");
     if (turn_state) {
         // ir.hpp attention "mask": "turn_state" (absent = causal), before "out".
         att.erase("out");
@@ -261,7 +328,7 @@ ir::json LlamaBlock::export_ir() const {
         n.push_back(down_proj->export_ir("gu", "f", p + "ffn_down.weight"));
     }
     n.push_back(ir::binary("add", "x", "f", "x"));
-    ir::json kv = ir::kv_state("kv", H, H, dk, n_ctx, 0, 0);
+    ir::json kv = ir::kv_state("kv", H, KV, dk, n_ctx, 0, 0);
     // Finished turns' text rows may be dropped (ir.hpp kv "evict").
     if (turn_state) kv["evict"] = "turn_state";
     return {{"state", ir::json::array({kv})}, {"nodes", n}};

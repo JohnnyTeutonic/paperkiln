@@ -33,11 +33,7 @@ where one of those documents carries a plan, this file wins.*
    `kSystemModeV1`, fold or none), the default loss policy (`DEFAULT_SFT_TURNS` /
    `kDefaultSftTurns`), and when v2 is built.
 3. **Engine:** BF16 mixed precision and a fused attention backward (opt-in; building).
-4. **The redesign (LOCAL_LLM_STACK.md section 5): any paper, any architecture.**
-   Training-side support for the third-party ops paperkiln only references in numpy today
-   (grouped-query attention, NEOX rotary, per-head RMSNorm, Mamba-1's conv1d_causal and
-   selective_scan), so an extracted paper using them can train here, not only run in ember.
-5. **Colab runner: a re-provisioned driver pushes stale checkpoints over
+4. **Colab runner: a re-provisioned driver pushes stale checkpoints over
    finished runs** (`tools/colab_transfer_runner.py`). In Study 3 it
    overwrote four M25 event logs at step ~2900; the runs were re-run
    (execution clarification 1). Fix: never relay a checkpoint into a run
@@ -202,7 +198,8 @@ advisory steps that cannot fail the build.
   [tokens, vocab] logits) if the head and loss classes dominate, and launch-count work (CUDA
   graphs or fused elementwise ops) if the idle share does; BF16 inside the attention products
   only if attention shows up.
-- **Mamba:** a selective SSM (input-dependent A and B) and a parallel scan.
+- **Mamba:** a parallel scan and device kernels for Mamba-1's `ops::conv1d_causal` and
+  `ops::selective_scan` (sequential, host only; the mamba preset's `ssm: "mamba1"`).
 - **int4/NF4 quantisation.**
 - **Kimi linear attention:** the non-causal backward (`src/ops.cpp:658`
   throws).

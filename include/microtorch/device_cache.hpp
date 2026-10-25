@@ -442,14 +442,22 @@ bool rmsnorm_bwd(const Matrix& dY, const Matrix& x, const Matrix& rms_inv, const
                  Matrix* dw, bool want_dx, Matrix* dx);
 // The llama block's head plumbing (ops::apply_rope / slice_cols /
 // concat_cols are the reference). RoPE runs over the fused [T, 3d] qkv
-// layout: heads h < n_rot_heads of q and k rotate, v is copied; the
-// backward is the inverse rotation. Slice/concat/place are exact copies.
+// layout: heads h < n_rot_heads of q and k rotate their first n_rot_dims
+// dims (0 = head_dim) in adjacent pairs, or in NEOX pairs (j, j +
+// n_rot_dims / 2) when neox; v is copied; the backward is the inverse
+// rotation. Slice/concat/place are exact copies.
 // place_cols writes g into columns [c0, c0 + g.cols()) of dx and zeros
 // everywhere else (slice_cols' backward).
 bool rope_fwd(const Matrix& x, const std::vector<int>& pos, size_t head_dim, size_t n_rot_heads, float base,
-              Matrix& y);
+              Matrix& y, bool neox = false, size_t n_rot_dims = 0);
 bool rope_bwd(const Matrix& dy, const std::vector<int>& pos, size_t head_dim, size_t n_rot_heads, float base,
-              Matrix& dx);
+              Matrix& dx, bool neox = false, size_t n_rot_dims = 0);
+// ops::rmsnorm_group (rms_inv [rows * groups, 1]) and ops::repeat_heads.
+bool rmsnorm_group_fwd(const Matrix& x, const Matrix& w, size_t group, float eps, Matrix& y, Matrix& rms_inv);
+bool rmsnorm_group_bwd(const Matrix& dY, const Matrix& x, const Matrix& rms_inv, const Matrix& w, size_t group,
+                       bool want_dw, Matrix* dw, bool want_dx, Matrix* dx);
+bool repeat_heads_fwd(const Matrix& x, size_t heads, size_t group, size_t head_dim, Matrix& y);
+bool repeat_heads_bwd(const Matrix& dy, size_t heads, size_t group, size_t head_dim, Matrix& dx);
 bool slice_cols(const Matrix& x, size_t c0, size_t n, Matrix& y);
 bool place_cols(const Matrix& g, size_t c0, Matrix& dx);
 bool concat_cols(const std::vector<const Matrix*>& xs, Matrix& y);

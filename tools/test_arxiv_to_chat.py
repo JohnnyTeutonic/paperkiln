@@ -93,9 +93,43 @@ def test_contested_and_unsupported_refused():
     # RoPE with flavours the llama block lacks: flex with position rope.
     fam, arch, _ = A.build_spec(ext_with(norm="layernorm", activation="gelu", positional="rope"), SIZE)
     assert fam == "flex" and arch["custom"]["position"] == "rope" and "rope_heads" not in arch
-    with pytest.raises(A.Refused, match="n_kv_heads"):
+    # Grouped-query attention: the llama family keeps the paper's ratio when the run's heads allow it.
+    with pytest.raises(A.Refused, match="n_kv_heads = 8 of n_heads = 32.*multiple of 4"):
         A.build_spec(ext_with(norm="rmsnorm", activation="swiglu", positional="rope", n_heads=32,
                               n_kv_heads=8), SIZE)
+
+
+def test_grouped_query_and_rope_variants_build_on_llama():
+    ext = ext_with(norm="rmsnorm", activation="swiglu", positional="rope", n_heads=32, n_kv_heads=8)
+    ext["mechanism_scan"] = [{"mechanism": "grouped or multi-query attention", "where": "abstract", "blocking": True,
+                              "evidence": "we use grouped-query attention"}]
+    fam, arch, rep = A.build_spec(ext, dict(SIZE, heads=8))
+    assert fam == "llama" and arch["custom"]["kv_heads"] == 2
+    assert any(b == "NOTED" and "built from n_kv_heads" in d for b, d in rep)
+    # Multi-query (one kv head) stays one at any head count.
+    fam, arch, _ = A.build_spec(ext_with(norm="rmsnorm", activation="swiglu", positional="rope", n_heads=16,
+                                         n_kv_heads=1), SIZE)
+    assert arch["custom"]["kv_heads"] == 1
+    # The GQA cue without n_kv_heads cannot be sized: still refused.
+    ext = ext_with(norm="rmsnorm", activation="swiglu", positional="rope")
+    ext["mechanism_scan"] = [{"mechanism": "grouped or multi-query attention", "where": "abstract", "blocking": True,
+                              "evidence": "we use grouped-query attention"}]
+    with pytest.raises(A.Refused, match="grouped or multi-query attention"):
+        A.build_spec(ext, SIZE)
+    # A stated theta, NEOX pairs and a partial rotary fraction on the llama family.
+    ext = ext_with(norm="rmsnorm", activation="swiglu", positional="rope")
+    ext["llm"] = {"output": {"flavours": {}}, "verification": {"flavours": {
+        "rope_theta": {"value": "500000", "check": "verified", "status": "stated", "where": "Sec. 3"},
+        "rope_pairing": {"value": "neox", "check": "quote_only", "status": "stated", "where": "Sec. 3"},
+        "rope_fraction": {"value": "0.25", "check": "verified", "status": "stated", "where": "Table 1"}}}}
+    fam, arch, rep = A.build_spec(ext, dict(SIZE, d=128, heads=4))
+    assert fam == "llama"
+    c = arch["custom"]
+    assert (c["rope_theta"], c["rope_pairing"], c["rope_dims"]) == (500000.0, "neox", 8)
+    # flex rotates interleaved with theta 10000 only: the same statements refuse there.
+    ext["fields"]["norm"]["value"] = "layernorm"
+    with pytest.raises(A.Refused, match="only the llama family builds it"):
+        A.build_spec(ext, dict(SIZE, d=128, heads=4))
 
 
 def test_swa_window_scaled_and_sinks_explicit():

@@ -25,6 +25,31 @@ struct LlamaConfig {
     // the legacy rotation of head 0 only ("first"), which every llama run
     // recorded without a rope_heads field was trained with.
     bool rope_all_heads = true;
+    // Third-party attention options (keramos IR_SPEC thirdparty profile;
+    // LOCAL_LLM_STACK.md section 11 item 4.4: Qwen/Gemma-style blocks). Each
+    // default is the plain llama block, constructed and computed exactly as
+    // before.
+    //   n_kv_heads (0 = n_heads): grouped-query attention, k_proj and v_proj
+    //     [d, n_kv_heads * head_dim]; query head h reads kv head h / (n_heads
+    //     / n_kv_heads) (ops::repeat_heads, then the fused attention).
+    //   rope_pairing "interleaved" (adjacent pairs) | "neox" (x[j], x[j +
+    //     rope_dims / 2]); rope_dims (0 = head_dim): partial rotary, only each
+    //     head's first rope_dims dims rotate (ops::apply_rope).
+    //   qk_norm: a per-head RMSNorm on q and on k before RoPE (Qwen3, Gemma
+    //     3; ops::rmsnorm_group with group head_dim), weights
+    //     self_attn.q_norm.weight and self_attn.k_norm.weight [1, head_dim],
+    //     GGUF blk.{i}.attn_q_norm.weight / attn_k_norm.weight.
+    // Not wired with attn_res (llama_attnres runs its own attention).
+    size_t n_kv_heads = 0;
+    std::string rope_pairing = "interleaved";
+    size_t rope_dims = 0;
+    bool qk_norm = false;
+    size_t kv_heads() const { return n_kv_heads ? n_kv_heads : n_heads; }
+    // Any of the options above away from its default.
+    bool thirdparty() const {
+        return kv_heads() != n_heads || rope_pairing != "interleaved" || (rope_dims && rope_dims != d / n_heads) ||
+               qk_norm;
+    }
     // Mixture-of-experts FFN (moe.hpp). experts == 0 (the default) is the
     // dense SwiGLU block, constructed exactly as before.
     MoEConfig moe;
@@ -233,9 +258,19 @@ public:
     std::shared_ptr<Linear> q_proj, k_proj, v_proj, o_proj;
     std::shared_ptr<Linear> gate_proj, up_proj, down_proj;  // dense FFN (null under MoE)
     std::shared_ptr<MoEFFN> moe;                             // MoE FFN (null when dense)
+    Var q_norm_w, k_norm_w;  // qk_norm's [1, dk] weights (null otherwise)
     size_t H, dk, n_ctx;
+    size_t KV;          // kv heads (LlamaConfig::kv_heads())
+    size_t rope_dims_;  // rotated dims per head (dk unless partial)
     float rope_theta_, rms_eps_;
     bool rope_all_heads_;
+    bool rope_neox_ = false;
+
+    // The attention's fused [T, 3d] qkv after RoPE (k and v repeated to H
+    // heads under grouped-query attention): q/k/v projections of h, the
+    // per-head q/k norms, the kv repeat, concat, RoPE. Without the
+    // thirdparty options it is the original sequence of ops, bit for bit.
+    Var attn_qkv(const Var& h, const std::vector<int>& pos) const;
 };
 
 class Llama : public Module {

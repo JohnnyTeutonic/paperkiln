@@ -144,6 +144,11 @@ add_test(NAME highway COMMAND test_highway)
 add_executable(test_deep_swa tests/test_deep_swa.cpp)
 target_link_libraries(test_deep_swa PRIVATE microtorch)
 add_test(NAME deep_swa COMMAND test_deep_swa)
+
+# Third-party ops in training (GQA, NEOX/partial RoPE, per-head RMSNorm, Mamba-1's conv and scan).
+add_executable(test_thirdparty_ops tests/test_thirdparty_ops.cpp)
+target_link_libraries(test_thirdparty_ops PRIVATE microtorch)
+add_test(NAME thirdparty_ops COMMAND test_thirdparty_ops)
 add_test(NAME nn COMMAND test_nn)
 
 add_executable(test_kimi_linear tests/test_kimi_linear.cpp)

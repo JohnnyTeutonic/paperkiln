@@ -671,7 +671,9 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
     writer.write_metadata_float32(a + ".attention.layer_norm_rms_epsilon", cfg.rms_eps);
     writer.write_metadata_uint32(a + ".vocab_size", cfg.vocab_size);
     writer.write_metadata_float32(a + ".rope.freq_base", cfg.rope_freq_base);
-    writer.write_metadata_uint32(a + ".rope.dimension_count", head_dim);
+    // Partial rotary writes the rotated dims (llama.cpp's n_rot); 0 = the head width.
+    writer.write_metadata_uint32(a + ".rope.dimension_count",
+                                 cfg.rope_dimension_count ? cfg.rope_dimension_count : head_dim);
     if (cfg.expert_count > 0) {
         if (cfg.expert_used_count == 0 || cfg.expert_used_count > cfg.expert_count)
             throw std::runtime_error("export_gguf_llama: expert_used_count must be in [1, expert_count]");
@@ -843,6 +845,11 @@ void export_gguf_llama(const std::string& path, const std::map<std::string, Matr
         add_proj(require(hf + "self_attn.k_proj.weight"), gg + "attn_k.weight");
         add_proj(require(hf + "self_attn.v_proj.weight"), gg + "attn_v.weight");
         add_proj(require(hf + "self_attn.o_proj.weight"), gg + "attn_output.weight");
+        // Per-head q/k RMSNorm weights (Qwen3 / Gemma 3; llama.cpp's names), when the model has them.
+        if (find(state_dict, hf + "self_attn.q_norm.weight")) {
+            add_norm(require(hf + "self_attn.q_norm.weight"), gg + "attn_q_norm.weight");
+            add_norm(require(hf + "self_attn.k_norm.weight"), gg + "attn_k_norm.weight");
+        }
         add_norm(require(hf + "input_layernorm.weight"), gg + "attn_norm.weight");
         if (cfg.expert_count > 0) {
             add_router(hf, gg + "ffn_gate_inp.weight");

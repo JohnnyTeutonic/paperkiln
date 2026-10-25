@@ -1,0 +1,20 @@
+{
+ "_comment": "The third-party ops' device legs (LOCAL_LLM_STACK.md section 11 item 4.4, 26 Oct 2026), on one RunPod L4: cuda_gate runs every leg of tools/colab_cuda_validate.sh, now with tests/test_thirdparty_ops.cpp on the device (RoPE NEOX/partial and repeat_heads kernels bit for bit against the host loops, rmsnorm_group's, gradchecks, the llama block with the options). tp_device trains tests/test_thirdparty_ir.py's five models with the CUDA mtstudio and its device op set, exports, and checks numpy's IR forward over each GGUF against the device mtstudio's score (ROUNDING, greedy 40/40), so a model trained on the device reproduces in the IR. Independent jobs, run in order.",
+ "max_parallel": 1,
+ "jobs": [
+  {
+   "name": "cuda_gate",
+   "cmd": ["python3", "tools/colab_chat/tiny_chat_run.py", "cuda_gate", "--out", "{out}"],
+   "outputs": ["cuda_gate.json", "cuda_gate.log"]
+  },
+  {
+   "name": "tp_device",
+   "cmd": [
+    "bash",
+    "-c",
+    "python3 -m pip install -q pytest numpy > {out}/pip.log 2>&1; mkdir -p build_cuda && cd build_cuda && cmake .. -DCMAKE_BUILD_TYPE=Release -DMICROTORCH_CUDA=ON > {out}/tp_configure.log 2>&1 && make mtstudio ir_eval -j\"$(nproc)\" > {out}/tp_build.log 2>&1 && cd .. && MTSTUDIO_BIN=$PWD/build_cuda/mtstudio MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 python3 -m pytest -q -s tests/test_thirdparty_ir.py -k export_and_numpy > {out}/tp_device.log 2>&1"
+   ],
+   "outputs": ["tp_device.log", "tp_build.log"]
+  }
+ ]
+}

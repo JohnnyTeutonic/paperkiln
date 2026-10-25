@@ -156,12 +156,13 @@ class MtstudioAdapter(Adapter):
         return out
 
     def run_node(self, node, inputs, weights, state):
-        if node["op"] == "recurrence":
+        if node["op"] in ("recurrence", "rope", "rmsnorm", "attention", "conv1d_causal", "selective_scan"):
             got = self._ir_eval({"method": "run_node", "node": node, "inputs": _encode_tensors(inputs),
                                  "weights": _encode_tensors(weights)})
             return {"outputs": got["outputs"], "state": got["state"]}
         if node["op"] != "expr" or self.expr_eval is None:
-            raise NotImplementedError("mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences")
+            raise NotImplementedError("mtstudio runs whole models; expr_eval runs expr nodes, ir_eval recurrences "
+                                      "and the thirdparty ops")
         xs = [inputs[n] for n in node["in"]]
         case = {"expr": node["expr"], "inputs": [x.astype(np.float64).tolist() for x in xs]}
         r = subprocess.run([self.expr_eval], input=json.dumps([case]), capture_output=True, text=True, timeout=120)

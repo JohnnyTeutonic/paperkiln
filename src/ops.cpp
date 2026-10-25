@@ -909,8 +909,44 @@ Var rmsnorm(const Var& x, const Var& w) {
     });
 }
 
+namespace {
+// One RoPE pass over the fused [T, 3d] qkv in place: q and k heads h <
+// n_heads rotate the first n_rot dims of each head by sign * angle (sign -1:
+// the inverse rotation, the backward). Pair j: the columns (2j, 2j + 1)
+// (Interleaved) or (j, j + n_rot / 2) (Neox) of the head. The angle of pair j
+// at row i is pos[i] * inv_freq_j, inv_freq_j = 1 / pow(theta, f32(2j) /
+// n_rot), every step a rounded f32 operation (keramos IR_SPEC 5.14's table);
+// Interleaved with n_rot = head_dim is the original loop, statement for
+// statement, so the same floats.
+void rope_rotate(Matrix& m, const std::vector<int>& pos, float theta_base, size_t head_dim, size_t d,
+                 size_t n_heads, RopePairing pairing, size_t n_rot, float sign) {
+    const size_t T = m.rows(), half = n_rot / 2;
+    const bool neox = pairing == RopePairing::Neox;
+    for (size_t i = 0; i < T; ++i) {
+        const float mpos = static_cast<float>(pos[i]);
+        for (size_t dim = 0; dim < n_rot; dim += 2) {
+            const float inv_freq = 1.0f / std::pow(theta_base, static_cast<float>(dim) / n_rot);
+            const float theta = sign < 0.0f ? -mpos * inv_freq : mpos * inv_freq;
+            const float cos_t = std::cos(theta);
+            const float sin_t = std::sin(theta);
+            // q heads (cols 0..d) and k heads (cols d..2d); v untouched.
+            for (size_t start = 0; start < 2 * d; start += d) {
+                for (size_t h = 0; h < n_heads; ++h) {
+                    const size_t c0 = start + h * head_dim + (neox ? dim / 2 : dim);
+                    const size_t c1 = neox ? c0 + half : c0 + 1;
+                    const float x0 = m(i, c0);
+                    const float x1 = m(i, c1);
+                    m(i, c0) = x0 * cos_t - x1 * sin_t;
+                    m(i, c1) = x0 * sin_t + x1 * cos_t;
+                }
+            }
+        }
+    }
+}
+}  // namespace
+
 Var apply_rope(const Var& qk, const std::vector<int>& pos, float theta_base, size_t head_dim,
-               bool all_heads) {
+               bool all_heads, RopePairing pairing, size_t n_rot_dims) {
     const size_t T = qk->data.rows(), d3 = qk->data.cols();
     if (d3 % 3 != 0) {
         throw std::runtime_error("apply_rope: cols must be divisible by 3");
@@ -923,76 +959,298 @@ Var apply_rope(const Var& qk, const std::vector<int>& pos, float theta_base, siz
         throw std::runtime_error("apply_rope: d must be a multiple of head_dim");
     }
     if (pos.size() != T) throw std::runtime_error("apply_rope: one position per row");
+    const size_t nr = n_rot_dims == 0 ? head_dim : n_rot_dims;
+    if (nr % 2 != 0 || nr > head_dim) throw std::runtime_error("apply_rope: n_rot must be even and <= head_dim");
     // all_heads: every head h rotates its own columns [h*head_dim,
     // (h+1)*head_dim) of q and of k with the same per-head frequency basis.
     // Legacy (all_heads=false): only head 0's columns, the behaviour every
     // llama-family run before arch.rope_heads was trained with.
-    const size_t n_rot = all_heads ? d / head_dim : 1;
+    const size_t n_heads = all_heads ? d / head_dim : 1;
+    const bool neox = pairing == RopePairing::Neox;
     auto pos_cache = std::make_shared<std::vector<int>>(pos);
     Matrix out = device::out_matrix(T, d3);
     // Device seam (cuda_ops.cu): the same rotation from a host-built
-    // cos/sin table; false -> the host loop below.
-    const bool on_dev = device::devops::rope_fwd(qk->data, pos, head_dim, n_rot, theta_base, out);
+    // cos/sin table; false -> the host loop.
+    const bool on_dev = device::devops::rope_fwd(qk->data, pos, head_dim, n_heads, theta_base, out, neox, nr);
     if (!on_dev) {
         device::materialize(qk->data);
         out = qk->data;
-    }
-    // Adjacent pairs (x[2j], x[2j+1]) within a head, rotated as complex
-    // numbers by pos * theta^(-2j/head_dim) (the GGUF/GPT-J interleaved
-    // convention).
-    for (size_t i = 0; i < (on_dev ? 0 : T); ++i) {
-        const float m = static_cast<float>(pos[i]);
-        for (size_t dim = 0; dim < head_dim; dim += 2) {
-            const float inv_freq = 1.0f / std::pow(theta_base, static_cast<float>(dim) / head_dim);
-            const float theta = m * inv_freq;
-            const float cos_t = std::cos(theta);
-            const float sin_t = std::sin(theta);
-            // q heads (cols 0..d) and k heads (cols d..2d); v untouched.
-            for (size_t start = 0; start < 2 * d; start += d) {
-                for (size_t h = 0; h < n_rot; ++h) {
-                    const size_t c = start + h * head_dim + dim;
-                    const float x0 = out(i, c);
-                    const float x1 = out(i, c + 1);
-                    out(i, c) = x0 * cos_t - x1 * sin_t;
-                    out(i, c + 1) = x0 * sin_t + x1 * cos_t;
-                }
-            }
-        }
+        rope_rotate(out, pos, theta_base, head_dim, d, n_heads, pairing, nr, 1.0f);
     }
     return record(std::move(out), {qk},
-                  [pos_cache, theta_base, head_dim, d3, n_rot](Variable* self) {
+                  [pos_cache, theta_base, head_dim, d3, n_heads, pairing, neox, nr](Variable* self) {
                       const Var& qk = self->parents[0];
                       if (!qk->requires_grad) return;
-                      const size_t T = self->grad.rows(), d = d3 / 3;
+                      const size_t T = self->grad.rows();
                       Matrix dqk = device::out_matrix(T, d3);
-                      if (device::devops::rope_bwd(self->grad, *pos_cache, head_dim, n_rot, theta_base, dqk)) {
+                      if (device::devops::rope_bwd(self->grad, *pos_cache, head_dim, n_heads, theta_base, dqk, neox,
+                                                   nr)) {
                           qk->accumulate(std::move(dqk));
                           return;
                       }
                       device::materialize(self->grad);  // B2.3c: host-read below
                       dqk = self->grad;
                       // Backward: the transpose of a rotation is the inverse rotation.
-                      for (size_t i = 0; i < T; ++i) {
-                          const float m = static_cast<float>((*pos_cache)[i]);
-                          for (size_t dim = 0; dim < head_dim; dim += 2) {
-                              const float inv_freq =
-                                  1.0f / std::pow(theta_base, static_cast<float>(dim) / head_dim);
-                              const float theta = -m * inv_freq;
-                              const float cos_t = std::cos(theta);
-                              const float sin_t = std::sin(theta);
-                              for (size_t start = 0; start < 2 * d; start += d) {
-                                  for (size_t h = 0; h < n_rot; ++h) {
-                                      const size_t c = start + h * head_dim + dim;
-                                      const float dy0 = dqk(i, c);
-                                      const float dy1 = dqk(i, c + 1);
-                                      dqk(i, c) = dy0 * cos_t - dy1 * sin_t;
-                                      dqk(i, c + 1) = dy0 * sin_t + dy1 * cos_t;
-                                  }
-                              }
-                          }
-                      }
+                      rope_rotate(dqk, *pos_cache, theta_base, head_dim, d3 / 3, n_heads, pairing, nr, -1.0f);
                       qk->accumulate(std::move(dqk));
                   });
+}
+
+Var rmsnorm_group(const Var& x, const Var& w, size_t group, float eps) {
+    const size_t R = x->data.rows(), C = x->data.cols();
+    if (group == 0 || C % group != 0) throw std::runtime_error("rmsnorm_group: group must divide cols(x)");
+    if (w->data.rows() != 1 || w->data.cols() != group)
+        throw std::runtime_error("rmsnorm_group: w must be [1, group]");
+    const size_t G = C / group, g = group;
+    // 1 / RMS per (row, group), as an [R * G, 1] matrix (rmsnorm's reasons).
+    auto rms_inv = cached(device::out_matrix(R * G, 1));
+    Matrix out = device::out_matrix(R, C);
+    if (!device::devops::rmsnorm_group_fwd(x->data, w->data, g, eps, out, *rms_inv)) {
+        device::materialize(x->data);
+        for (size_t i = 0; i < R; ++i)
+            for (size_t q = 0; q < G; ++q) {
+                const size_t o = q * g;
+                float rms_sq = 0.0f;
+                for (size_t j = 0; j < g; ++j) rms_sq += x->data(i, o + j) * x->data(i, o + j);
+                rms_sq /= static_cast<float>(g);
+                const float ri = 1.0f / std::sqrt(rms_sq + eps);
+                (*rms_inv)(i * G + q, 0) = ri;
+                for (size_t j = 0; j < g; ++j) out(i, o + j) = x->data(i, o + j) * ri * w->data(0, j);
+            }
+    }
+    return record(std::move(out), {x, w}, [rms_inv, g, G](Variable* self) {
+        const Var& x = self->parents[0];
+        const Var& w = self->parents[1];
+        const size_t R = self->grad.rows(), C = self->grad.cols();
+        Matrix dw(1, g), dx = device::out_matrix(R, C);
+        const bool on_dev = device::devops::rmsnorm_group_bwd(self->grad, x->data, *rms_inv, w->data, g,
+                                                              w->requires_grad, &dw, x->requires_grad, &dx);
+        if (!on_dev) {
+            device::materialize(self->grad);  // B2.3c: host-read below
+            device::materialize(*rms_inv);
+            device::materialize(x->data);
+        }
+        if (w->requires_grad) {
+            if (!on_dev) {
+                for (size_t i = 0; i < R; ++i)
+                    for (size_t q = 0; q < G; ++q)
+                        for (size_t j = 0; j < g; ++j)
+                            dw(0, j) += self->grad(i, q * g + j) * x->data(i, q * g + j) * (*rms_inv)(i * G + q, 0);
+            }
+            w->accumulate(std::move(dw));
+        }
+        if (!x->requires_grad) return;
+        if (!on_dev) {
+            const float n_inv = 1.0f / static_cast<float>(g);
+            for (size_t i = 0; i < R; ++i)
+                for (size_t q = 0; q < G; ++q) {
+                    const size_t o = q * g;
+                    float term = 0.0f;
+                    for (size_t j = 0; j < g; ++j) term += self->grad(i, o + j) * w->data(0, j) * x->data(i, o + j);
+                    const float ri = (*rms_inv)(i * G + q, 0);
+                    const float ri2 = ri * ri;
+                    for (size_t j = 0; j < g; ++j)
+                        dx(i, o + j) = ri * (self->grad(i, o + j) * w->data(0, j) - x->data(i, o + j) * ri2 * term * n_inv);
+                }
+        }
+        x->accumulate(std::move(dx));
+    });
+}
+
+Var repeat_heads(const Var& x, size_t heads, size_t group, size_t head_dim) {
+    const size_t T = x->data.rows();
+    if (heads == 0 || group == 0 || head_dim == 0 || x->data.cols() != heads * head_dim)
+        throw std::runtime_error("repeat_heads: x must be [T, heads * head_dim] with heads, group >= 1");
+    if (group == 1) return x;
+    const size_t W = heads * group * head_dim;
+    Matrix out = device::out_matrix(T, W);
+    if (!device::devops::repeat_heads_fwd(x->data, heads, group, head_dim, out)) {
+        device::materialize(x->data);
+        for (size_t i = 0; i < T; ++i)
+            for (size_t h = 0; h < heads * group; ++h)
+                for (size_t c = 0; c < head_dim; ++c) out(i, h * head_dim + c) = x->data(i, (h / group) * head_dim + c);
+    }
+    return record(std::move(out), {x}, [heads, group, head_dim](Variable* self) {
+        const Var& x = self->parents[0];
+        if (!x->requires_grad) return;
+        const size_t T = self->grad.rows();
+        Matrix dx = device::out_matrix(T, heads * head_dim);
+        if (!device::devops::repeat_heads_bwd(self->grad, heads, group, head_dim, dx)) {
+            device::materialize(self->grad);  // B2.3c: host-read below
+            for (size_t i = 0; i < T; ++i)
+                for (size_t k = 0; k < heads; ++k)
+                    for (size_t c = 0; c < head_dim; ++c) {
+                        float acc = self->grad(i, (k * group) * head_dim + c);
+                        for (size_t r = 1; r < group; ++r) acc += self->grad(i, (k * group + r) * head_dim + c);
+                        dx(i, k * head_dim + c) = acc;
+                    }
+        }
+        x->accumulate(std::move(dx));
+    });
+}
+
+// ---- Mamba-1 (keramos IR_SPEC 6.6, 6.7; LOCAL_LLM_STACK.md section 11 item 4.4) ----
+namespace {
+// llama.cpp ggml_ssm_scan's softplus: v <= 20 ? log1p(exp(v)) : v.
+float softplus20(float v) { return v <= 20.0f ? std::log1p(std::exp(v)) : v; }
+size_t seq_rows(size_t T, size_t seq_len, const char* what) {
+    const size_t sl = seq_len == 0 ? T : seq_len;
+    if (sl == 0 || T % sl != 0) throw std::runtime_error(std::string(what) + ": rows must be a multiple of seq_len");
+    return sl;
+}
+}  // namespace
+
+Var conv1d_causal(const Var& x, const Var& w, const Var& bias, size_t seq_len) {
+    const size_t T = x->data.rows(), C = x->data.cols(), K = w->data.cols();
+    if (w->data.rows() != C || K < 2) throw std::runtime_error("conv1d_causal: w must be [cols(x), K] with K >= 2");
+    if (bias && (bias->data.rows() != 1 || bias->data.cols() != C))
+        throw std::runtime_error("conv1d_causal: bias must be [1, cols(x)]");
+    const size_t sl = seq_rows(T, seq_len, "conv1d_causal");
+    device::materialize(x->data);
+    device::materialize(w->data);
+    if (bias) device::materialize(bias->data);
+    Matrix out(T, C);
+    for (size_t r0 = 0; r0 < T; r0 += sl)
+        for (size_t t = 0; t < sl; ++t)
+            for (size_t c = 0; c < C; ++c) {
+                float acc = 0.0f;
+                for (size_t k = 0; k < K; ++k) {
+                    // xx[t + k] = x[t + k - (K - 1)], zero before the sequence.
+                    const float xv = t + k + 1 >= K ? x->data(r0 + t + k + 1 - K, c) : 0.0f;
+                    acc = acc + w->data(c, k) * xv;
+                }
+                out(t + r0, c) = bias ? acc + bias->data(0, c) : acc;
+            }
+    std::vector<Var> parents = {x, w};
+    if (bias) parents.push_back(bias);
+    return record(std::move(out), parents, [sl, K](Variable* self) {
+        const Var& x = self->parents[0];
+        const Var& w = self->parents[1];
+        const Var* b = self->parents.size() > 2 ? &self->parents[2] : nullptr;
+        device::materialize(self->grad);
+        const Matrix& dy = self->grad;
+        const size_t T = dy.rows(), C = dy.cols();
+        if (x->requires_grad) {
+            Matrix dx(T, C);
+            for (size_t r0 = 0; r0 < T; r0 += sl)
+                for (size_t u = 0; u < sl; ++u)
+                    for (size_t c = 0; c < C; ++c) {
+                        float acc = 0.0f;
+                        // out[t] reads x[u] through tap k = u - t + K - 1, t = u - k + K - 1 in [0, sl).
+                        for (size_t k = 0; k < K; ++k) {
+                            const size_t t = u + K - 1 - k;
+                            if (t < sl) acc += dy(r0 + t, c) * w->data(c, k);
+                        }
+                        dx(r0 + u, c) = acc;
+                    }
+            x->accumulate(std::move(dx));
+        }
+        if (w->requires_grad) {
+            Matrix dw(C, K);
+            for (size_t r0 = 0; r0 < T; r0 += sl)
+                for (size_t t = 0; t < sl; ++t)
+                    for (size_t c = 0; c < C; ++c)
+                        for (size_t k = 0; k < K; ++k)
+                            if (t + k + 1 >= K) dw(c, k) += dy(r0 + t, c) * x->data(r0 + t + k + 1 - K, c);
+            w->accumulate(std::move(dw));
+        }
+        if (b && (*b)->requires_grad) {
+            Matrix db(1, C);
+            for (size_t t = 0; t < T; ++t)
+                for (size_t c = 0; c < C; ++c) db(0, c) += dy(t, c);
+            (*b)->accumulate(std::move(db));
+        }
+    });
+}
+
+Var selective_scan(const Var& x, const Var& dt, const Var& B, const Var& C, const Var& A, const Var& Dskip,
+                   bool dt_softplus, size_t seq_len) {
+    const size_t T = x->data.rows(), D = x->data.cols(), N = A->data.cols();
+    if (dt->data.rows() != T || dt->data.cols() != D) throw std::runtime_error("selective_scan: dt must be x's shape");
+    if (A->data.rows() != D || N == 0) throw std::runtime_error("selective_scan: A must be [cols(x), N]");
+    if (B->data.rows() != T || B->data.cols() != N || C->data.rows() != T || C->data.cols() != N)
+        throw std::runtime_error("selective_scan: B and C must be [rows(x), N]");
+    if (Dskip && (Dskip->data.rows() != 1 || Dskip->data.cols() != D))
+        throw std::runtime_error("selective_scan: Dskip must be [1, cols(x)]");
+    const size_t sl = seq_rows(T, seq_len, "selective_scan");
+    for (const Var* v : {&x, &dt, &B, &C, &A}) device::materialize((*v)->data);
+    if (Dskip) device::materialize(Dskip->data);
+    // States after every row, per sequence: S[(t + 1) D N] is s after row t,
+    // S[0..D N) the zero start (the backward reads s_{t-1} and s_t).
+    auto S = std::make_shared<std::vector<float>>((T + T / sl) * D * N, 0.0f);
+    auto delta = std::make_shared<Matrix>(T, D);
+    Matrix y(T, D);
+    const size_t DN = D * N;
+    for (size_t r0 = 0, q = 0; r0 < T; r0 += sl, ++q) {
+        float* base = S->data() + (r0 + q) * DN;  // sequence q's sl + 1 states
+        for (size_t t = 0; t < sl; ++t) {
+            const size_t row = r0 + t;
+            const float* sp = base + t * DN;
+            float* sn = base + (t + 1) * DN;
+            for (size_t c = 0; c < D; ++c) {
+                const float dl = dt_softplus ? softplus20(dt->data(row, c)) : dt->data(row, c);
+                (*delta)(row, c) = dl;
+                const float xd = x->data(row, c) * dl;
+                float acc = 0.0f;
+                for (size_t n = 0; n < N; ++n) {
+                    const float a = std::exp(dl * A->data(c, n));
+                    const float s = sp[c * N + n] * a + B->data(row, n) * xd;
+                    sn[c * N + n] = s;
+                    acc = acc + s * C->data(row, n);
+                }
+                y(row, c) = Dskip ? acc + x->data(row, c) * Dskip->data(0, c) : acc;
+            }
+        }
+    }
+    std::vector<Var> parents = {x, dt, B, C, A};
+    if (Dskip) parents.push_back(Dskip);
+    return record(std::move(y), parents, [S, delta, sl, dt_softplus](Variable* self) {
+        const Var &x = self->parents[0], &dt = self->parents[1], &B = self->parents[2], &C = self->parents[3],
+                  &A = self->parents[4];
+        const Var* Dk = self->parents.size() > 5 ? &self->parents[5] : nullptr;
+        device::materialize(self->grad);
+        const Matrix& dy = self->grad;
+        const size_t T = dy.rows(), D = dy.cols(), N = A->data.cols(), DN = D * N;
+        Matrix dx(T, D), ddt(T, D), dB(T, N), dC(T, N), dA(D, N), dD(1, D);
+        std::vector<float> G(DN);  // d loss / d s_t through s_{t+1}: g_{t+1} * a_{t+1}
+        for (size_t r0 = 0, q = 0; r0 < T; r0 += sl, ++q) {
+            const float* base = S->data() + (r0 + q) * DN;
+            std::fill(G.begin(), G.end(), 0.0f);
+            for (size_t t = sl; t-- > 0;) {
+                const size_t row = r0 + t;
+                const float* sp = base + t * DN;
+                const float* sn = base + (t + 1) * DN;
+                for (size_t c = 0; c < D; ++c) {
+                    const float dl = (*delta)(row, c), xv = x->data(row, c), dyv = dy(row, c);
+                    float ddelta = 0.0f, dxd = 0.0f;
+                    for (size_t n = 0; n < N; ++n) {
+                        const size_t i = c * N + n;
+                        const float g = dyv * C->data(row, n) + G[i];  // d / d s_t
+                        dC(row, n) += dyv * sn[i];
+                        const float Acn = A->data(c, n);
+                        const float a = std::exp(dl * Acn);
+                        const float dpre = g * sp[i] * a;  // d / d (delta A)
+                        dA(c, n) += dpre * dl;
+                        ddelta += dpre * Acn;
+                        dB(row, n) += g * (xv * dl);
+                        dxd += g * B->data(row, n);
+                        G[i] = g * a;
+                    }
+                    ddelta += dxd * xv;
+                    dx(row, c) = dxd * dl + (Dk ? dyv * (*Dk)->data(0, c) : 0.0f);
+                    if (Dk) dD(0, c) += dyv * xv;
+                    const float v = dt->data(row, c);
+                    ddt(row, c) = dt_softplus && v <= 20.0f ? ddelta * (1.0f / (1.0f + std::exp(-v))) : ddelta;
+                }
+            }
+        }
+        if (x->requires_grad) x->accumulate(std::move(dx));
+        if (dt->requires_grad) dt->accumulate(std::move(ddt));
+        if (B->requires_grad) B->accumulate(std::move(dB));
+        if (C->requires_grad) C->accumulate(std::move(dC));
+        if (A->requires_grad) A->accumulate(std::move(dA));
+        if (Dk && (*Dk)->requires_grad) (*Dk)->accumulate(std::move(dD));
+    });
 }
 
 // Phase 3a: Kimi Linear attention (O(n*d²) vs O(n²*d) standard attention)

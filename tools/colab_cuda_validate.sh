@@ -21,7 +21,7 @@ cmake .. -DCMAKE_BUILD_TYPE=Release -DMICROTORCH_CUDA=ON
 echo "== 2/3 build =="
 make microtorch test_gradcheck test_nn test_lora_quant test_resident_parity \
      test_step_residency test_cuda_ops test_recursion test_mor test_state_tokens test_llama_attnres test_mixed_precision \
-     test_pooled_gemm test_gpt2_device -j"$(nproc)"
+     test_pooled_gemm test_gpt2_device test_thirdparty_ops -j"$(nproc)"
 
 echo "== 3/3 run gradchecks on CUDA =="
 # device::set(CUDA) is process-wide; MICROTORCH_DEVICE=cuda is read by the
@@ -92,4 +92,8 @@ MICROTORCH_DEVICE=cuda ./test_mixed_precision
 # training steps under deferral vs the host. glibc's checks turn a write into freed memory (D1's
 # symptom) into an abort.
 MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 MALLOC_CHECK_=3 MALLOC_PERTURB_=85 ./test_gpt2_device
-echo "CUDA validation PASSED (Phase A + B1 + B2.0 + B2.1a op set + B2.1b deferred downloads + masked CE + bf16/flash + pooled Phase A GEMM + gpt2 family under deferral)"
+# The third-party ops (26 Oct 2026): RoPE with NEOX pairs and partial rotary, repeat_heads and
+# rmsnorm_group through their device kernels (RoPE and repeat_heads bit for bit against the host
+# loops, rmsnorm_group as rmsnorm), gradchecks and the llama block with the options; Mamba-1 on the host.
+MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 ./test_thirdparty_ops
+echo "CUDA validation PASSED (Phase A + B1 + B2.0 + B2.1a op set + B2.1b deferred downloads + masked CE + bf16/flash + pooled Phase A GEMM + gpt2 family under deferral + third-party ops)"

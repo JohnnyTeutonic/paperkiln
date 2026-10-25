@@ -154,16 +154,64 @@ constexpr float kRmsNormEps = 1e-5f;
 Var rmsnorm(const Var& x, const Var& w);  // RMS normalization: x / RMS(x) * w
                                           // (no bias, no mean centering);
                                           // w: [1, d], learned scale per feature
+// RoPE pairing (keramos IR_SPEC 5.14): Interleaved rotates adjacent pairs
+// (x[2j], x[2j+1]) within a head (paperkiln's own models, llama.cpp NORM);
+// Neox rotates (x[j], x[j + n_rot/2]) (llama.cpp NEOX, HF rotate_half;
+// Qwen, Gemma, GPT-NeoX).
+enum class RopePairing { Interleaved, Neox };
 Var apply_rope(const Var& qk, const std::vector<int>& pos, float theta_base, size_t head_dim,
-               bool all_heads);
+               bool all_heads, RopePairing pairing = RopePairing::Interleaved, size_t n_rot = 0);
 // Rotary embeddings to query/key rows.
 // qk: [T, 3*d] (fused qkv); returns
-// [T, 3*d]. Adjacent pairs (2j, 2j+1)
-// of each head rotate by
-// pos * theta^(-2j/head_dim).
+// [T, 3*d]. Pair j of each head (by
+// `pairing`) rotates by
+// pos * theta^(-2j/n_rot).
 // all_heads: every head of q and k
 // (d/head_dim of them); false: head 0
-// only (legacy, arch.rope_heads=first)
+// only (legacy, arch.rope_heads=first).
+// n_rot (0 = head_dim; even, <= head_dim):
+// only each head's first n_rot dims
+// rotate, the rest pass through (partial
+// rotary). The defaults are the original
+// op, the same floats.
+
+// ---- third-party graph ops (keramos thirdparty profile; LOCAL_LLM_STACK.md section 11 item 4.4) ----
+// Per-group RMSNorm (IR_SPEC 5.6 rmsnorm `group`): each consecutive `group`
+// columns of a row normalised on their own, x / RMS * w with the weight w
+// [1, group] shared by every group (per-head q/k norm: Qwen3, Gemma 3).
+// group == cols(x) is ops::rmsnorm. Same epsilon (kRmsNormEps) and order of
+// operations as rmsnorm, per group: the squares summed in ascending column,
+// divided by group, 1/sqrt(. + eps), then x * inv * w. Backward per group as
+// rmsnorm's; dw sums every (row, group) in row-major order. On CUDA the
+// rmsnorm kernels over the same buffer read as [rows * groups, group].
+Var rmsnorm_group(const Var& x, const Var& w, size_t group, float eps = kRmsNormEps);
+// Grouped-query attention's key/value sharing (IR_SPEC 5.15): x [T, heads *
+// head_dim] -> [T, heads * group * head_dim], output head h a copy of input
+// head h / group. Backward: input head k's gradient is the sum of output
+// heads k * group .. k * group + group - 1, added in that order (host and
+// device alike, so bit for bit). attention_heads over q and the repeated k
+// and v is query head h reading kv head h / group, the reference's grouped
+// attention.
+Var repeat_heads(const Var& x, size_t heads, size_t group, size_t head_dim);
+// Mamba-1's depthwise causal convolution (IR_SPEC 6.6): x [T, C], w [C, K]
+// (K >= 2), bias [1, C] or null. out[t, c] = sum over k ascending of w[c, k]
+// * xx[t + k, c], xx = K - 1 zero rows then x (each sequence of seq_len rows
+// starts from a zero state; 0 = one sequence), then + bias[c] on the finished
+// sum; each product and sum a rounded f32 operation, so the numpy
+// reference's floats. Backward: dx[u] = sum_k dy[u - k + K - 1] w[k] (rows
+// inside the sequence), dw[c, k] = sum_t dy[t, c] xx[t + k, c], dbias = the
+// column sums. Host only (the device copies come home).
+Var conv1d_causal(const Var& x, const Var& w, const Var& bias, size_t seq_len = 0);
+// Mamba-1's selective scan (IR_SPEC 6.7, ggml_ssm_scan): x, dt [T, D], B, C
+// [T, N], A [D, N], Dskip [1, D] or null. Per sequence of seq_len rows (0 =
+// one), from s = 0: delta = softplus(dt) (dt <= 20 ? log1p(exp(dt)) : dt; dt
+// itself when !dt_softplus), s[c, n] = s[c, n] * exp(delta A[c, n]) + B[t, n]
+// (x[t, c] delta), y[t, c] = sum over n ascending of s[c, n] C[t, n], then +
+// Dskip[c] x[t, c]. Backward through time over the kept states (T + 1 of
+// them per sequence, [D, N] each); A, B, C, Dskip, x and dt all get
+// gradients. Host only.
+Var selective_scan(const Var& x, const Var& dt, const Var& B, const Var& C, const Var& A, const Var& Dskip,
+                   bool dt_softplus = true, size_t seq_len = 0);
 
 // ---- state-space scan (Mamba/S4, phase 3c completion) ----
 Var ssm_scan(const Var& u, const Var& A, const Var& B, const Var& C, const Var& D);

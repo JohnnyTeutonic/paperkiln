@@ -73,6 +73,31 @@ struct Spec {
     size_t d_ff = 0;                // 0 = family default (4d gpt2/flex, 3d llama)
     size_t window = 64, sinks = 1;  // swa lane only (S1 baseline)
     size_t d_state = 64;            // mamba family: the S4 scan's state width
+    // mamba family: arch.custom.ssm "s4" (the S4-style scan, mamba::MambaBlock) or "mamba1" (Mamba-1's
+    // selective scan, parity::Mamba1Block: d_conv, expand, dt_rank; d_state its N).
+    std::string ssm = "s4";
+    size_t d_conv = 4, expand = 2, dt_rank = 0;
+    parity::Mamba1Config mamba1() const {
+        parity::Mamba1Config m;
+        m.on = ssm == "mamba1";
+        m.d_conv = d_conv;
+        m.expand = expand;
+        m.dt_rank = dt_rank;
+        return m;
+    }
+    // llama family, the thirdparty attention options (nn::LlamaConfig; keramos
+    // IR_SPEC thirdparty profile): arch.custom.kv_heads (0 = heads; grouped-
+    // query attention), rope_pairing "interleaved" | "neox", rope_dims (0 =
+    // head_dim; partial rotary), qk_norm (per-head q/k RMSNorm), rope_theta.
+    // Each left out = the plain llama block, untouched.
+    size_t kv_heads = 0, rope_dims = 0;
+    std::string rope_pairing = "interleaved";
+    bool qk_norm = false;
+    float rope_theta = 10000.0f;
+    bool thirdparty() const {
+        return (kv_heads && kv_heads != heads) || rope_pairing != "interleaved" ||
+               (rope_dims && rope_dims != d / heads) || qk_norm;
+    }
     // llama family: RoPE on "all" heads or, legacy, the "first" head only.
     // Empty = not stated: a new run gets "all"; resuming or loading a run
     // takes what the run recorded, and a run that recorded nothing is
@@ -276,6 +301,26 @@ Spec parse_spec(const std::string& path) {
         s.window = c.value("window", s.window);
         s.sinks = c.value("sinks", s.sinks);
         s.d_state = c.value("d_state", s.d_state);
+        s.ssm = c.value("ssm", s.ssm);
+        s.d_conv = c.value("d_conv", s.d_conv);
+        s.expand = c.value("expand", s.expand);
+        s.dt_rank = c.value("dt_rank", s.dt_rank);
+        if (s.ssm != "s4" && s.ssm != "mamba1") throw std::runtime_error("arch.custom.ssm must be s4 or mamba1, got " + s.ssm);
+        if ((c.contains("ssm") || c.contains("d_conv") || c.contains("expand") || c.contains("dt_rank")) &&
+            s.family != "mamba")
+            throw std::runtime_error("arch.custom.ssm, d_conv, expand and dt_rank need the mamba preset");
+        if (s.ssm != "mamba1" && (c.contains("d_conv") || c.contains("expand") || c.contains("dt_rank")))
+            throw std::runtime_error("arch.custom.d_conv, expand and dt_rank need ssm mamba1");
+        if (s.ssm == "mamba1" && (s.d_conv < 2 || s.expand < 1))
+            throw std::runtime_error("arch.custom.d_conv must be >= 2 and expand >= 1");
+        s.kv_heads = c.value("kv_heads", s.kv_heads);
+        s.rope_pairing = c.value("rope_pairing", s.rope_pairing);
+        s.rope_dims = c.value("rope_dims", s.rope_dims);
+        s.qk_norm = c.value("qk_norm", s.qk_norm);
+        s.rope_theta = c.value("rope_theta", s.rope_theta);
+        if (s.rope_pairing != "interleaved" && s.rope_pairing != "neox")
+            throw std::runtime_error("arch.custom.rope_pairing must be interleaved or neox, got " + s.rope_pairing);
+        if (!(s.rope_theta > 0.0f)) throw std::runtime_error("arch.custom.rope_theta must be positive");
         if (c.contains("recursion")) {
             // {"block": B, "repeats": R, "prelude": P, "coda": C, "schedule": "fixed"}:
             // B stored layers applied R times between P and C unshared ones.
@@ -408,6 +453,22 @@ Spec parse_spec(const std::string& path) {
                                  "the gpt2 attnres preset is its own family");
     if (s.rec_block > 0 && s.family != "llama")
         throw std::runtime_error("arch.custom.recursion needs the llama family (rmsnorm, swiglu, rope, exact attention)");
+    if ((s.thirdparty() || s.rope_theta != 10000.0f) && s.family != "llama")
+        throw std::runtime_error("arch.custom.kv_heads, rope_pairing, rope_dims, qk_norm and rope_theta need the llama "
+                                 "family (rmsnorm, swiglu, rope, exact attention)");
+    if (s.thirdparty()) {
+        const size_t kv = s.kv_heads ? s.kv_heads : s.heads, hd = s.heads ? s.d / s.heads : 0;
+        if (kv == 0 || s.heads % kv != 0)
+            throw std::runtime_error("arch.custom.kv_heads " + std::to_string(kv) + " must divide heads " +
+                                     std::to_string(s.heads));
+        if (s.rope_dims && (s.rope_dims % 2 != 0 || s.rope_dims > hd))
+            throw std::runtime_error("arch.custom.rope_dims must be even and at most the head width " +
+                                     std::to_string(hd));
+        if (s.attn_res)
+            throw std::runtime_error("arch.custom.kv_heads, rope_pairing, rope_dims and qk_norm are not wired with "
+                                     "attn_res (llama_attnres runs its own attention)");
+        if (s.rope_heads == "first") throw std::runtime_error("arch.custom.kv_heads etc. need arch.rope_heads all");
+    }
     if (arch.contains("moe")) {
         // {"experts": E, "top_k": k, "gate": "renorm"|"raw", "aux_loss": a, "z_loss": z}
         const json m = arch["moe"];
@@ -645,6 +706,16 @@ Spec parse_spec(const std::string& path) {
 void apply_attn_res(nn::LlamaConfig& lc, const Spec& s) {
     lc.attn_res.on = s.attn_res;
     lc.attn_res.scale = s.attn_res_scale;
+}
+
+// The spec's thirdparty attention options and RoPE base onto a llama config
+// (no-op at the defaults).
+void apply_thirdparty(nn::LlamaConfig& lc, const Spec& s) {
+    lc.n_kv_heads = s.kv_heads;
+    lc.rope_pairing = s.rope_pairing;
+    lc.rope_dims = s.rope_dims;
+    lc.qk_norm = s.qk_norm;
+    lc.rope_theta = s.rope_theta;
 }
 
 // The spec's MoE settings onto a llama config (no-op for a dense spec).
@@ -1594,6 +1665,15 @@ void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama, 
             for (const auto& kv : nn::attnres_gguf_names(*llama)) gc.extra_vec.push_back(kv);
         }
         gc.head_count = (uint32_t)s.heads;
+        gc.head_count_kv = (uint32_t)llama->cfg.kv_heads();
+        gc.rope_freq_base = s.rope_theta;
+        if (s.rope_dims) gc.rope_dimension_count = (uint32_t)s.rope_dims;
+        // NEOX pairs, partial rotary and per-head q/k norms are not llama.cpp's
+        // llama graph (interleaved RoPE over the whole head, no q/k norm): the
+        // file is "paperkiln" and only the IR reproduces it. Grouped-query
+        // attention alone is llama's (head_count_kv).
+        if (s.rope_pairing != "interleaved" || (s.rope_dims && s.rope_dims != s.d / s.heads) || s.qk_norm)
+            gc.architecture = "paperkiln";
         // The model's real FFN width. Exports before 19 Oct 2026 wrote 3d
         // whatever arch.custom.d_ff said; llama.cpp checks ffn tensor
         // shapes against this value.
@@ -2031,7 +2111,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     std::shared_ptr<parity::FlexLM> flex;
     std::shared_ptr<parity::MambaLM> mamba;
     if (s.family == "mamba") {
-        mamba = std::make_shared<parity::MambaLM>(tokens.size(), s.d, s.layers, s.d_state, s.seed);
+        mamba = std::make_shared<parity::MambaLM>(tokens.size(), s.d, s.layers, s.d_state, s.seed, s.mamba1());
         if (s.ckpt_act)
             throw std::runtime_error("train.checkpoint_activations requires the llama family for now");
     } else if (s.family == "flex") {
@@ -2106,6 +2186,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         apply_attn_res(lc, s);
         apply_recursion(lc, s);
         apply_state(lc, s);
+        apply_thirdparty(lc, s);
         llama = std::make_shared<nn::Llama>(lc, s.seed);
         llama->checkpoint_blocks = s.ckpt_act;
     } else {
@@ -2155,6 +2236,15 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         model_ev["lr_schedule"] = {
             {"warmup_steps", s.lr_warmup}, {"decay", s.lr_decay}, {"min_lr_frac", s.lr_min_frac}};
     if (llama) model_ev["rope_heads"] = rope_heads;
+    // Absent at the defaults: the plain llama's model event is unchanged.
+    if (llama && s.thirdparty())
+        model_ev["thirdparty"] = {{"kv_heads", llama->cfg.kv_heads()}, {"rope_pairing", s.rope_pairing},
+                                  {"rope_dims", s.rope_dims ? s.rope_dims : s.d / s.heads}, {"qk_norm", s.qk_norm}};
+    if (llama && s.rope_theta != 10000.0f) model_ev["rope_theta"] = s.rope_theta;
+    // Absent for the S4-style mamba: its model event is unchanged.
+    if (mamba && s.ssm == "mamba1")
+        model_ev["ssm"] = {{"kind", "mamba1"}, {"d_state", s.d_state}, {"d_conv", s.d_conv}, {"expand", s.expand},
+                           {"dt_rank", mamba->m1blocks.at(0)->R}};
     // Absent without state tokens: the model event is unchanged.
     if (s.state_k > 0)
         model_ev["state_tokens"] = {{"k", s.state_k}, {"mask", s.state_mask}, {"params", s.state_k * s.d}};
@@ -2251,6 +2341,9 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             else
                 rest.push_back(p);
         }
+        if (s.kv_heads && s.kv_heads != s.heads)
+            throw std::runtime_error("optimizer muon: its per-head qkv split assumes one kv head per query head; "
+                                     "grouped-query attention (arch.custom.kv_heads) is not wired with it");
         const size_t nh = s.family == "llama" ? s.heads : 3 * s.heads;
         if (!qkv.empty()) opt.muon.emplace_back(qkv, s.muon_lr, 0.95f, true, 5, nh);
         if (!hidden.empty()) opt.muon.emplace_back(hidden, s.muon_lr);
@@ -3140,7 +3233,7 @@ struct LoadedLM {
         eos = wordtok::eos_id(vocab);
 
         if (s.family == "mamba") {
-            mamba = std::make_shared<parity::MambaLM>(tokens.size(), s.d, s.layers, s.d_state, s.seed);
+            mamba = std::make_shared<parity::MambaLM>(tokens.size(), s.d, s.layers, s.d_state, s.seed, s.mamba1());
         } else if (s.family == "flex") {
             parity::FlexConfig fc;
             fc.vocab = tokens.size();
@@ -3182,6 +3275,7 @@ struct LoadedLM {
             apply_attn_res(lc, s);
             apply_recursion(lc, s);
             apply_state(lc, s);
+            apply_thirdparty(lc, s);
             llama = std::make_shared<nn::Llama>(lc, s.seed);
         } else {
             gpt = make_parity(s, tokens.size());

@@ -34,6 +34,7 @@ struct LlamaExportConfig {
     uint32_t vocab_size = 0;           // required
     float rms_eps = 1e-6f;
     float rope_freq_base = 10000.0f;
+    uint32_t rope_dimension_count = 0;  // rotated dims per head; 0 -> head width (d / head_count)
     // Vectors, state-dict key -> GGUF name, each a [1, n] row written as the
     // 1-D tensor {n} after output_norm (and after extra_proj), F32 in every
     // variant: the pseudo-queries of llama_attnres (blk.{i}.attnres_attn_q,

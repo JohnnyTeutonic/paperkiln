@@ -221,12 +221,19 @@ bool rmsnorm_fwd(const Matrix&, const Matrix&, float, Matrix&, Matrix&) {
 bool rmsnorm_bwd(const Matrix&, const Matrix&, const Matrix&, const Matrix&, bool, Matrix*, bool, Matrix*) {
     return false;
 }
-bool rope_fwd(const Matrix&, const std::vector<int>&, size_t, size_t, float, Matrix&) {
+bool rope_fwd(const Matrix&, const std::vector<int>&, size_t, size_t, float, Matrix&, bool, size_t) {
     return false;
 }
-bool rope_bwd(const Matrix&, const std::vector<int>&, size_t, size_t, float, Matrix&) {
+bool rope_bwd(const Matrix&, const std::vector<int>&, size_t, size_t, float, Matrix&, bool, size_t) {
     return false;
 }
+bool rmsnorm_group_fwd(const Matrix&, const Matrix&, size_t, float, Matrix&, Matrix&) { return false; }
+bool rmsnorm_group_bwd(const Matrix&, const Matrix&, const Matrix&, const Matrix&, size_t, bool, Matrix*, bool,
+                       Matrix*) {
+    return false;
+}
+bool repeat_heads_fwd(const Matrix&, size_t, size_t, size_t, Matrix&) { return false; }
+bool repeat_heads_bwd(const Matrix&, size_t, size_t, size_t, Matrix&) { return false; }
 bool slice_cols(const Matrix&, size_t, size_t, Matrix&) {
     return false;
 }

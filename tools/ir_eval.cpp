@@ -4,11 +4,13 @@
 //   {"method": "digest", "text": str, "prose": bool}
 //       -> {"sha256", "canonical"} | {"refused": message}          (section 3.10; ir::digest)
 //   {"method": "run_node", "node", "inputs": {value: tensor}, "weights": {tensor name: tensor}}
-//       -> {"outputs": {out: tensor}, "state": {slot: {tensor: tensor}}}   (a recurrence node, 6.10)
+//       -> {"outputs": {out: tensor}, "state": {slot: {tensor: tensor}}}   (a recurrence node, 6.10; and
+//          rope, rmsnorm, attention, conv1d_causal, selective_scan through paperkiln's training ops)
 //   {"method": "run_node_grad", "node", "inputs", "weights", "out_grad": tensor}
 //       -> {"grads": {value or tensor name: tensor}}   d sum(out * out_grad) by paperkiln's autograd
 // A tensor is {"shape": [...], "f32": hex} (section 11.2). A failure is {"error": message}; a request this
 // tool has no path for is {"skip": reason}.
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -85,6 +87,103 @@ Run prepare(const json& req, bool grad) {
     return run;
 }
 
+// The thirdparty-profile single ops through the ops paperkiln trains with (LOCAL_LLM_STACK.md section 11
+// item 4.4): rope (pairing, n_rot, kv_heads; freq_scale 1 only), rmsnorm (group; weight_offset 0 only),
+// causal attention (kv_heads <= heads, no window or sinks), conv1d_causal, selective_scan. Anything else
+// these ops do not express is a skip naming the attribute.
+json run_op(const json& req) {
+    NoGrad ng;
+    const json& nd = req.at("node");
+    const std::string op = nd.at("op").get<std::string>();
+    auto in = [&](size_t k) { return decode(req.at("inputs").at(nd.at("in").at(k).get<std::string>())); };
+    auto weight = [&](const char* key) -> Var {
+        if (!nd.contains(key) || nd[key].is_null()) return nullptr;
+        return make_var(decode(req.at("weights").at(nd[key].get<std::string>())));
+    };
+    if (op == "rope") {
+        if (nd.value("freq_scale", 1.0) != 1.0) throw std::domain_error("ir_eval: rope freq_scale != 1 (paperkiln trains none)");
+        if (nd.at("rope_heads") != "all") throw std::domain_error("ir_eval: rope_heads first");
+        const size_t H = nd.at("heads"), hd = nd.at("head_dim"), KV = nd.value("kv_heads", H);
+        const size_t n_rot = nd.value("n_rot", hd);
+        const std::string pairing = nd.at("pairing");
+        const auto pr = pairing == "neox" ? ops::RopePairing::Neox : ops::RopePairing::Interleaved;
+        const std::vector<int> pos = req.at("inputs").at(nd.at("in").at(2).get<std::string>()).get<std::vector<int>>();
+        json outs = json::object();
+        const Matrix q = in(0), k = in(1);
+        size_t j = 0;
+        for (const Matrix* t : {&q, &k}) {
+            if (t->cols() != (j == 0 ? H : KV) * hd) throw std::runtime_error("ir_eval: rope input width");
+            // The fused [T, 3w] layout apply_rope takes, the tensor in its q part.
+            Var v = make_var(*t);
+            Var y = ops::apply_rope(ops::concat_cols({v, v, v}), pos, nd.at("theta").get<float>(), hd, true, pr,
+                                    n_rot == hd ? 0 : n_rot);
+            outs[nd.at("out").at(j).get<std::string>()] = encode(ops::slice_cols(y, 0, t->cols())->data);
+            ++j;
+        }
+        return {{"outputs", outs}, {"state", json::object()}};
+    }
+    if (op == "rmsnorm") {
+        if (nd.value("weight_offset", 0.0) != 0.0) throw std::domain_error("ir_eval: rmsnorm weight_offset (paperkiln trains none)");
+        const Matrix x = in(0);
+        const size_t g = nd.value("group", x.cols());
+        Var y = ops::rmsnorm_group(make_var(x), weight("weight"), g, nd.at("eps").get<float>());
+        return {{"outputs", {{nd.at("out").get<std::string>(), encode(y->data)}}}, {"state", json::object()}};
+    }
+    if (op == "attention") {
+        if (!nd.at("causal").get<bool>() || nd.value("window", 0) != 0 || nd.value("sinks", 0) != 0 ||
+            nd.value("mask", std::string("causal")) != "causal")
+            throw std::domain_error("ir_eval: attention other than plain causal (the llama block's)");
+        const size_t H = nd.at("heads"), KV = nd.at("kv_heads"), hd = nd.at("head_dim");
+        if (KV == 0 || H % KV != 0) throw std::runtime_error("ir_eval: kv_heads must divide heads");
+        Var q = make_var(in(0)), k = make_var(in(1)), v = make_var(in(2));
+        k = ops::repeat_heads(k, KV, H / KV, hd);
+        v = ops::repeat_heads(v, KV, H / KV, hd);
+        Var y = ops::attention_heads(ops::concat_cols({q, k, v}), H, nd.at("scale").get<float>(), 0, true);
+        return {{"outputs", {{nd.at("out").get<std::string>(), encode(y->data)}}}, {"state", json::object()}};
+    }
+    if (op == "conv1d_causal") {
+        const Matrix x = in(0);
+        const size_t K = nd.at("kernel"), C = nd.at("channels");
+        Var w = weight("weight");
+        if (!w || w->data.rows() * w->data.cols() != C * K) throw std::runtime_error("ir_eval: conv1d weight");
+        Matrix wk(C, K);
+        for (size_t i = 0; i < C * K; ++i) wk(i / K, i % K) = w->data(i / w->data.cols(), i % w->data.cols());
+        Var y = ops::conv1d_causal(make_var(x), make_var(wk), weight("bias"));
+        // The state: the last K - 1 rows of (K - 1 zero rows, then x).
+        Matrix st(K - 1, C);
+        for (size_t r = 0; r + 1 < K; ++r) {
+            const long src = static_cast<long>(x.rows()) - static_cast<long>(K - 1) + static_cast<long>(r);
+            for (size_t c = 0; c < C; ++c) st(r, c) = src >= 0 ? x(static_cast<size_t>(src), c) : 0.0f;
+        }
+        return {{"outputs", {{nd.at("out").get<std::string>(), encode(y->data)}}},
+                {"state", {{nd.at("state").get<std::string>(), {{"x", encode(st)}}}}}};
+    }
+    if (op == "selective_scan") {
+        const size_t D = nd.at("channels"), N = nd.at("d_state");
+        Var A = weight("a");
+        if (!A || A->data.rows() * A->data.cols() != D * N) throw std::runtime_error("ir_eval: selective_scan a");
+        Matrix a(D, N);
+        for (size_t i = 0; i < D * N; ++i) a(i / N, i % N) = A->data(i / A->data.cols(), i % A->data.cols());
+        Var y = ops::selective_scan(make_var(in(0)), make_var(in(1)), make_var(in(2)), make_var(in(3)), make_var(a),
+                                    weight("d"), nd.value("dt_softplus", true));
+        // The state after the last row: rerun the recurrence's last state from the op's own floats.
+        // selective_scan keeps it internally; recompute here with the same expressions.
+        const Matrix x = in(0), dt = in(1), Bm = in(2);
+        Matrix s(D, N);
+        for (size_t t = 0; t < x.rows(); ++t)
+            for (size_t c = 0; c < D; ++c) {
+                const float v = dt(t, c);
+                const float dl = nd.value("dt_softplus", true) ? (v <= 20.0f ? std::log1p(std::exp(v)) : v) : v;
+                const float xd = x(t, c) * dl;
+                for (size_t n = 0; n < N; ++n) s(c, n) = s(c, n) * std::exp(dl * a(c, n)) + Bm(t, n) * xd;
+            }
+        return {{"outputs", {{nd.at("out").get<std::string>(), encode(y->data)}}},
+                {"state", {{nd.at("state").get<std::string>(), {{"s", encode(s)}}}}}};
+    }
+    throw std::domain_error("ir_eval runs recurrence nodes and the thirdparty ops (rope, rmsnorm, attention, "
+                            "conv1d_causal, selective_scan) only, not " + op);
+}
+
 json handle(const json& req) {
     const std::string m = req.value("method", "");
     if (m == "digest") {
@@ -97,6 +196,7 @@ json handle(const json& req) {
             return {{"refused", e.what()}};
         }
     }
+    if (m == "run_node" && req.at("node").value("op", "") != "recurrence") return run_op(req);
     if (m == "run_node") {
         NoGrad ng;
         Run run = prepare(req, false);

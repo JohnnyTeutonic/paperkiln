@@ -1300,6 +1300,47 @@ bool rmsnorm_bwd(const Matrix& dY, const Matrix& x, const Matrix& rms_inv, const
     return true;
 }
 
+// ops::rmsnorm_group: the rmsnorm kernels over the same row-major buffer
+// read as [rows * groups, group] (a group is a contiguous run of a row).
+bool rmsnorm_group_fwd(const Matrix& x, const Matrix& w, size_t group, float eps, Matrix& y, Matrix& rms_inv) {
+    if (!active()) return false;
+    if (group == 0 || x.cols() % group != 0 || w.cols() != group) return false;
+    const size_t n = x.rows() * x.cols(), Rg = n / group;
+    if (rms_inv.rows() != Rg || rms_inv.cols() != 1) return false;
+    In dx(x.get_data(), n), dw(w.get_data(), group);
+    Out dy(y.get_data(), n), dri(rms_inv.get_data(), Rg);
+    k_rmsnorm_fwd<<<static_cast<int>(Rg), ROW_THREADS, ROW_THREADS * sizeof(float)>>>(dx.d, dw.d, eps, dy.d, dri.d,
+                                                                                         static_cast<int>(group));
+    cuda_check(cudaGetLastError(), "rmsnorm_group_fwd");
+    dy.finish();
+    dri.finish();
+    return true;
+}
+
+bool rmsnorm_group_bwd(const Matrix& dY, const Matrix& x, const Matrix& rms_inv, const Matrix& w, size_t group,
+                       bool want_dw, Matrix* dw, bool want_dx, Matrix* dx) {
+    if (!active()) return false;
+    if (group == 0 || dY.cols() % group != 0 || w.cols() != group) return false;
+    const size_t n = dY.rows() * dY.cols(), Rg = n / group;
+    if (rms_inv.rows() != Rg || rms_inv.cols() != 1) return false;
+    In ddy(dY.get_data(), n), dxi(x.get_data(), n), dri(rms_inv.get_data(), Rg);
+    const int R = static_cast<int>(Rg), C = static_cast<int>(group);
+    if (want_dw) {
+        Out ddw(dw->get_data(), group, false, "rmsnorm_group_bwd");
+        k_rmsnorm_bwd_dw<<<(C + NTHREADS - 1) / NTHREADS, NTHREADS>>>(ddy.d, dxi.d, dri.d, ddw.d, R, C);
+        cuda_check(cudaGetLastError(), "rmsnorm_group_bwd dw");
+        ddw.finish();
+    }
+    if (want_dx) {
+        In dwv(w.get_data(), group);
+        Out ddx(dx->get_data(), n, false, "rmsnorm_group_bwd");
+        k_rmsnorm_bwd_dx<<<R, ROW_THREADS, ROW_THREADS * sizeof(float)>>>(ddy.d, dxi.d, dri.d, dwv.d, ddx.d, C);
+        cuda_check(cudaGetLastError(), "rmsnorm_group_bwd dx");
+        ddx.finish();
+    }
+    return true;
+}
+
 bool rmsnorm_bwd(const Matrix& dY, const Matrix& x,
                  const std::vector<float>& rms_inv, const Matrix& w,
                  bool want_dw, Matrix* dw, bool want_dx, Matrix* dx) {
@@ -1787,6 +1828,8 @@ struct RopeTable {
 
 // One live table; rebuilt when the key changes. Held for the process
 // (never freed at exit: a static dtor may run after context teardown).
+// head_dim here is the rotated width n_rot (the head width unless partial):
+// the angle of pair j is pos * 1 / pow(base, f32(2j) / n_rot).
 const float* rope_table(const std::vector<int>& pos, size_t head_dim, float base) {
     static RopeTable t;
     if (t.d && t.pos == pos && t.head_dim == head_dim && t.base == base) return t.d;
@@ -1810,27 +1853,53 @@ const float* rope_table(const std::vector<int>& pos, size_t head_dim, float base
 }
 
 // y = rotate(x) over the [T, 3d] fused qkv layout: q cols [0, d), k cols
-// [d, 2d), v untouched; heads h < n_rot rotate adjacent pairs
-// (x[2j], x[2j+1]) by the table angle (sign = -1: the inverse rotation).
+// [d, 2d), v untouched; heads h < n_rot rotate the first rot dims of the
+// head (rot = head_dim unless partial) in adjacent pairs (x[2j], x[2j+1]),
+// or with neox in the pairs (x[j], x[j + rot/2]), by the table angle (sign
+// = -1: the inverse rotation); the other dims are copied.
 __global__ void k_rope(const float* x, float* y, const float* tab, size_t T, size_t d3, size_t d,
-                       size_t head_dim, size_t n_rot, float sign) {
-    const size_t n = T * d3, half = head_dim / 2;
+                       size_t head_dim, size_t n_rot, float sign, size_t rot, bool neox) {
+    const size_t n = T * d3, half = rot / 2;
     for (size_t idx = blockIdx.x * blockDim.x + threadIdx.x; idx < n; idx += gridDim.x * blockDim.x) {
         const size_t i = idx / d3, c = idx % d3;
         const size_t cc = c % d;
-        if (c >= 2 * d || cc / head_dim >= n_rot) {
+        const size_t off = cc % head_dim;
+        if (c >= 2 * d || cc / head_dim >= n_rot || off >= rot) {
             y[idx] = x[idx];
             continue;
         }
-        const size_t off = cc % head_dim, p = off / 2;
-        const size_t c0 = c - (off & 1);
-        const float x0 = x[i * d3 + c0], x1 = x[i * d3 + c0 + 1];
+        const bool second = neox ? off >= half : (off & 1) != 0;
+        const size_t p = neox ? off % half : off / 2;
+        const size_t c0 = neox ? c - (second ? half : 0) : c - (off & 1);
+        const size_t c1 = neox ? c0 + half : c0 + 1;
+        const float x0 = x[i * d3 + c0], x1 = x[i * d3 + c1];
         const float ct = tab[i * half + p], st = sign * tab[T * half + i * half + p];
         // Explicitly rounded products and sum: the host loop (ops.cpp,
         // built without -march, so no FMA) rounds each product, and nvcc
         // would otherwise contract to FMA. This makes RoPE bit for bit.
-        y[idx] = (off & 1) ? __fadd_rn(__fmul_rn(x0, st), __fmul_rn(x1, ct))
-                           : __fsub_rn(__fmul_rn(x0, ct), __fmul_rn(x1, st));
+        y[idx] = second ? __fadd_rn(__fmul_rn(x0, st), __fmul_rn(x1, ct))
+                        : __fsub_rn(__fmul_rn(x0, ct), __fmul_rn(x1, st));
+    }
+}
+
+// ops::repeat_heads: out head h = in head h / group.
+__global__ void k_repeat_heads(const float* x, float* y, size_t T, size_t heads, size_t group, size_t hd) {
+    const size_t W = heads * group * hd, n = T * W;
+    for (size_t idx = blockIdx.x * blockDim.x + threadIdx.x; idx < n; idx += gridDim.x * blockDim.x) {
+        const size_t i = idx / W, c = idx % W;
+        y[idx] = x[i * heads * hd + (c / hd / group) * hd + c % hd];
+    }
+}
+
+// Its backward: in head k = the sum of out heads k*group .. k*group+group-1,
+// in that order (as the host loop), each sum rounded.
+__global__ void k_repeat_heads_bwd(const float* dy, float* dx, size_t T, size_t heads, size_t group, size_t hd) {
+    const size_t w = heads * hd, W = w * group, n = T * w;
+    for (size_t idx = blockIdx.x * blockDim.x + threadIdx.x; idx < n; idx += gridDim.x * blockDim.x) {
+        const size_t i = idx / w, c = idx % w, k = c / hd, e = c % hd;
+        float acc = dy[i * W + (k * group) * hd + e];
+        for (size_t r = 1; r < group; ++r) acc = __fadd_rn(acc, dy[i * W + (k * group + r) * hd + e]);
+        dx[idx] = acc;
     }
 }
 
@@ -1856,16 +1925,18 @@ __global__ void k_put_cols(const float* src, float* dst, size_t R, size_t w, siz
 }
 
 bool rope_launch(const Matrix& x, const std::vector<int>& pos, size_t head_dim, size_t n_rot, float base,
-                 float sign, Matrix& y, const char* what) {
+                 float sign, Matrix& y, const char* what, bool neox, size_t rot) {
     const size_t T = x.rows(), d3 = x.cols();
     if (d3 == 0 || d3 % 3 != 0 || pos.size() != T || head_dim == 0 || head_dim % 2 != 0) return false;
     const size_t d = d3 / 3;
+    if (rot == 0) rot = head_dim;
+    if (rot % 2 != 0 || rot > head_dim) return false;
     if (n_rot == 0 || n_rot * head_dim > d || y.rows() != T || y.cols() != d3) return false;
-    const float* tab = rope_table(pos, head_dim, base);
+    const float* tab = rope_table(pos, rot, base);
     const size_t n = T * d3;
     In dx(x.get_data(), n);
     Out dy(y.get_data(), n);
-    k_rope<<<ew_grid(n), NTHREADS>>>(dx.d, dy.d, tab, T, d3, d, head_dim, n_rot, sign);
+    k_rope<<<ew_grid(n), NTHREADS>>>(dx.d, dy.d, tab, T, d3, d, head_dim, n_rot, sign, rot, neox);
     cuda_check(cudaGetLastError(), what);
     dy.finish();
     return true;
@@ -1874,15 +1945,39 @@ bool rope_launch(const Matrix& x, const std::vector<int>& pos, size_t head_dim, 
 }  // namespace
 
 bool rope_fwd(const Matrix& x, const std::vector<int>& pos, size_t head_dim, size_t n_rot_heads, float base,
-              Matrix& y) {
+              Matrix& y, bool neox, size_t n_rot_dims) {
     if (!active()) return false;
-    return rope_launch(x, pos, head_dim, n_rot_heads, base, 1.0f, y, "rope_fwd");
+    return rope_launch(x, pos, head_dim, n_rot_heads, base, 1.0f, y, "rope_fwd", neox, n_rot_dims);
 }
 
 bool rope_bwd(const Matrix& dy, const std::vector<int>& pos, size_t head_dim, size_t n_rot_heads, float base,
-              Matrix& dx) {
+              Matrix& dx, bool neox, size_t n_rot_dims) {
     if (!active()) return false;
-    return rope_launch(dy, pos, head_dim, n_rot_heads, base, -1.0f, dx, "rope_bwd");
+    return rope_launch(dy, pos, head_dim, n_rot_heads, base, -1.0f, dx, "rope_bwd", neox, n_rot_dims);
+}
+
+bool repeat_heads_fwd(const Matrix& x, size_t heads, size_t group, size_t head_dim, Matrix& y) {
+    if (!active()) return false;
+    const size_t T = x.rows();
+    if (x.cols() != heads * head_dim || y.rows() != T || y.cols() != heads * group * head_dim) return false;
+    In ix(x.get_data(), T * heads * head_dim);
+    Out oy(y.get_data(), T * heads * group * head_dim);
+    k_repeat_heads<<<ew_grid(T * heads * group * head_dim), NTHREADS>>>(ix.d, oy.d, T, heads, group, head_dim);
+    cuda_check(cudaGetLastError(), "repeat_heads_fwd");
+    oy.finish();
+    return true;
+}
+
+bool repeat_heads_bwd(const Matrix& dy, size_t heads, size_t group, size_t head_dim, Matrix& dx) {
+    if (!active()) return false;
+    const size_t T = dy.rows();
+    if (dy.cols() != heads * group * head_dim || dx.rows() != T || dx.cols() != heads * head_dim) return false;
+    In idy(dy.get_data(), T * heads * group * head_dim);
+    Out odx(dx.get_data(), T * heads * head_dim);
+    k_repeat_heads_bwd<<<ew_grid(T * heads * head_dim), NTHREADS>>>(idy.d, odx.d, T, heads, group, head_dim);
+    cuda_check(cudaGetLastError(), "repeat_heads_bwd");
+    odx.finish();
+    return true;
 }
 
 bool slice_cols(const Matrix& x, size_t c0, size_t n, Matrix& y) {

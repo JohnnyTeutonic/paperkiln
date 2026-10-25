@@ -43,7 +43,13 @@ when its output already exists, so a run restarts where it stopped:
             node ember runs). A needs_new_primitive op, an unverified one,
             or an expr in any other slot refuses. RoPE with the llama
             block's flavours is the llama family; RoPE with any other
-            flavour flex hosts is flex with position rope.
+            flavour flex hosts is flex with position rope. The llama
+            family also builds an extracted n_kv_heads (grouped-query
+            attention at the paper's ratio of query to key/value heads,
+            multi-query as one kv head; custom.kv_heads), a stated
+            rope_theta, NEOX pairing and a partial rotary fraction
+            (custom.rope_theta, rope_pairing, rope_dims); flex refuses
+            them by name.
   pretrain  mtstudio run, objective lm on --corpus -> pretrain/
   sft       mtstudio run, objective sft on --sft-examples (the first
             --sft-limit examples that fit T; longer ones are dropped and
@@ -527,10 +533,19 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
             refusals.append("the extraction carries no mechanism scan (a cached file made without the "
                             "source); re-extract from the LaTeX (--tex or a fetch), or pass "
                             "--skip-mechanism-scan to accept that explicitly")
+    nkv, nh = fields.get("n_kv_heads"), fields.get("n_heads")
+    gqa = bool(nkv and nh and nkv["value"] != nh["value"])
+    # What only the llama family builds (mtstudio's arch.custom.kv_heads, rope_pairing, rope_dims, rope_theta):
+    # (reason, custom key, value or a function of the run's head count). A flex model refuses them below.
+    llama_only = []
     for h in scan or []:
         m = NEW_OP_CUE.match(h.get("mechanism", ""))
         if m and m.group(1) in op_names:
             continue  # judged above from the extraction's verified new-op record
+        if h["blocking"] and h.get("mechanism") == "grouped or multi-query attention" and gqa:
+            # The extracted n_kv_heads builds it (below); without the field it still refuses.
+            report.append(("NOTED", f"{h['mechanism']}: {h['where']}, {h['evidence']} (built from n_kv_heads)"))
+            continue
         if h["blocking"]:
             refusals.append(f"mechanism outside the extractor's lattice: {h['mechanism']} ({h['where']}: "
                             f"\u201c{h['evidence']}\u201d); no family here builds it, and training the "
@@ -609,10 +624,15 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
         if v not in LEGAL[k]:
             refusals.append(f"{k} = {v} has no engine support (mtstudio takes {sorted(LEGAL[k])})")
 
-    nkv, nh = fields.get("n_kv_heads"), fields.get("n_heads")
-    if nkv and (nh is None or nkv["value"] != nh["value"]):
-        refusals.append(f"n_kv_heads = {nkv['value']} (grouped/multi-query attention): mtstudio's "
-                        "attention has one key/value head per query head")
+    if nkv and nh is None:
+        refusals.append(f"n_kv_heads = {nkv['value']} without n_heads: the key/value sharing cannot be sized")
+    elif gqa:
+        q_heads, kv_heads = int(nh["value"]), int(nkv["value"])
+        if kv_heads < 1 or q_heads % kv_heads:
+            refusals.append(f"n_kv_heads = {kv_heads} does not divide n_heads = {q_heads}")
+        else:
+            llama_only.append((f"n_kv_heads = {kv_heads} of n_heads = {q_heads} (grouped/multi-query attention)",
+                               "kv_heads", ("kv", q_heads, kv_heads)))
 
     family, custom = None, {}
     # RoPE with the llama block's flavours (rmsnorm, swiglu, residual stream,
@@ -623,25 +643,59 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
     llama_block = all(flav.get(k, want) == want for k, want in (
         ("norm", "rmsnorm"), ("activation", "swiglu"), ("residual", "residual"), ("attention", "exact")))
     if flav.get("positional") == "rope":
-        # Both rope families rotate every head, interleaved pairs, theta 10000.
-        for k, ok in (("rope_theta", lambda v: float(v) == 10000.0), ("rope_pairing", lambda v: v == "interleaved"),
-                      ("rope_fraction", lambda v: float(v) == 1.0)):
+        # flex rotates every head with interleaved pairs and theta 10000; the llama family takes a stated theta,
+        # NEOX pairs and a partial rotary fraction (arch.custom.rope_theta, rope_pairing, rope_dims).
+        for k, ok, key in (("rope_theta", lambda v: float(v) == 10000.0, "rope_theta"),
+                           ("rope_pairing", lambda v: v == "interleaved", "rope_pairing"),
+                           ("rope_fraction", lambda v: float(v) == 1.0, "rope_dims")):
             r = llm_ver.get(k) or {}
             v = (r.get("value") or "").strip()
             if v and r.get("check") in ("verified", "quote_only"):
                 try:
                     good = ok(v)
+                    val = float(v) if k != "rope_pairing" else v
                 except ValueError:
-                    good = False
+                    good, val = False, None
                 if not good:
-                    refusals.append(f"{k} = {v} ({r.get('where') or 'no location'}): the rope families here rotate "
-                                    "every head with interleaved pairs and theta 10000")
+                    where = f"{k} = {v} ({r.get('where') or 'no location'})"
+                    if val is None or (k == "rope_pairing" and v != "neox") or \
+                            (k == "rope_fraction" and not 0.0 < val < 1.0) or (k == "rope_theta" and val <= 0):
+                        refusals.append(f"{where}: no rope here builds it")
+                    else:
+                        llama_only.append((where, key, ("frac", val) if k == "rope_fraction" else val))
     if refusals:
         raise Refused(refusals)
     if flav.get("positional") == "rope" and llama_block:
         family = "llama"
         custom["position"] = "rope"
+        hd = size["d"] // size["heads"] if size["heads"] else 0
+        for why, key, val in llama_only:
+            if key == "kv_heads":
+                _, q_heads, kv_heads = val
+                if kv_heads == 1:  # multi-query: one key/value head at any width
+                    custom["kv_heads"] = 1
+                    report.append(("MATCHED", f"{why}: kv_heads = 1 (multi-query attention)"))
+                    continue
+                if (size["heads"] * kv_heads) % q_heads:
+                    raise Refused([f"{why}: this run's {size['heads']} heads cannot keep the paper's ratio of "
+                                   f"{q_heads // kv_heads} query heads per key/value head; choose --heads as a "
+                                   f"multiple of {q_heads // kv_heads}"])
+                custom["kv_heads"] = size["heads"] * kv_heads // q_heads
+                report.append(("MATCHED", f"{why}: kv_heads = {custom['kv_heads']} of this run's {size['heads']} "
+                                          "heads (the paper's ratio)"))
+            elif key == "rope_dims":
+                dims = int(round(val[1] * hd / 2.0)) * 2
+                if dims < 2 or dims > hd:
+                    raise Refused([f"{why}: {val[1]} of this run's head width {hd} is no even rotated width"])
+                custom["rope_dims"] = dims
+                report.append(("MATCHED", f"{why}: rope_dims = {dims} of the head width {hd}"))
+            else:
+                custom[key] = val
+                report.append(("MATCHED", f"{why}: {key} = {val} (the llama family)"))
     else:
+        if llama_only:
+            raise Refused([f"{why}: only the llama family builds it (rmsnorm, swiglu, rope, exact attention, "
+                           "residual stream); this paper's flavours make it flex" for why, _, _ in llama_only])
         family = "flex"
         for k in ("norm", "activation", "positional", "residual", "attention"):
             custom[SPEC_KEY[k]] = flav[k]

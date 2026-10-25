@@ -7,6 +7,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <random>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -927,15 +928,130 @@ public:
     std::shared_ptr<nn::Linear> head;
 };
 
+// Mamba-1 (Gu and Dao 2023; llama.cpp's mamba graph, keramos IR_SPEC 6.6-6.7 and tools/gguf_ir.py's
+// mamba builder, node for node): a pre-RMSNorm block, in_proj d -> 2 Di (x | z), the depthwise causal
+// conv1d (kernel K, biased) and SiLU on x, x_proj Di -> R + 2 N (dt | B | C), dt_proj R -> Di (biased),
+// the selective scan (softplus(dt), A = -exp(A_log), the D skip), times SiLU(z), out_proj Di -> d, the
+// residual. Di = expand * d, R = dt_rank. LOCAL_LLM_STACK.md section 11 item 4.4.
+struct Mamba1Config {
+    bool on = false;
+    size_t d_conv = 4, expand = 2, dt_rank = 0;  // dt_rank 0 = ceil(d / 16)
+};
+
+class Mamba1Block : public nn::Module {
+public:
+    // Mamba's initialisation: in/x/out projections as nn::Linear's; conv1d weight and bias uniform in
+    // +-1/sqrt(K) (torch's Conv1d at fan-in K); dt_proj's weight uniform in +-R^-1/2 and its bias the
+    // inverse softplus of a log-uniform dt in [1e-3, 1e-1]; A_log[c, n] = log(n + 1); D = 1.
+    Mamba1Block(size_t d, size_t d_state, const Mamba1Config& c, unsigned seed)
+        : d_(d), N(d_state), K(c.d_conv), Di(c.expand * d), R(c.dt_rank ? c.dt_rank : (d + 15) / 16) {
+        if (K < 2 || Di == 0 || N == 0) throw std::runtime_error("mamba1: d_conv >= 2, expand >= 1, d_state >= 1");
+        norm_w = reg("norm.weight", Matrix(1, d, 1.0f));
+        in_proj = mod<nn::Linear>("in_proj", d, 2 * Di, false, seed + 1);
+        std::mt19937 g(seed + 2);
+        const float cb = 1.0f / std::sqrt(static_cast<float>(K));
+        std::uniform_real_distribution<float> uc(-cb, cb);
+        Matrix cw(Di, K), cbias(1, Di);
+        for (size_t i = 0; i < Di; ++i)
+            for (size_t k = 0; k < K; ++k) cw(i, k) = uc(g);
+        for (size_t i = 0; i < Di; ++i) cbias(0, i) = uc(g);
+        conv_w = reg("conv1d.weight", cw);
+        conv_b = reg("conv1d.bias", cbias);
+        x_proj = mod<nn::Linear>("x_proj", Di, R + 2 * N, false, seed + 3);
+        dt_proj = mod<nn::Linear>("dt_proj", R, Di, true, seed + 4);
+        std::mt19937 g2(seed + 5);
+        const float ds = 1.0f / std::sqrt(static_cast<float>(R));
+        std::uniform_real_distribution<float> ud(-ds, ds), u01(0.0f, 1.0f);
+        for (size_t i = 0; i < R; ++i)
+            for (size_t j = 0; j < Di; ++j) dt_proj->W->data(i, j) = ud(g2);
+        for (size_t j = 0; j < Di; ++j) {
+            const double dt = std::exp(u01(g2) * (std::log(0.1) - std::log(0.001)) + std::log(0.001));
+            dt_proj->b->data(0, j) = static_cast<float>(dt + std::log(-std::expm1(-dt)));  // softplus^-1
+        }
+        Matrix al(Di, N);
+        for (size_t i = 0; i < Di; ++i)
+            for (size_t n = 0; n < N; ++n) al(i, n) = std::log(static_cast<float>(n + 1));
+        A_log = reg("A_log", al);
+        Dskip = reg("D", Matrix(1, Di, 1.0f));
+        out_proj = mod<nn::Linear>("out_proj", Di, d, false, seed + 6);
+    }
+
+    // A = -exp(A_log), the matrix the scan reads and the GGUF stores (ssm_a).
+    Var A() const { return ops::scale(ops::exp(A_log), -1.0f); }
+
+    // x [rows, d]: sequences of seq_len rows (0 = one), each scanned from a zero state.
+    Var forward(const Var& x, size_t seq_len) const {
+        Var h = ops::rmsnorm(x, norm_w);
+        Var xz = in_proj->forward(h);
+        Var xs = ops::slice_cols(xz, 0, Di), z = ops::slice_cols(xz, Di, 2 * Di);
+        xs = ops::silu(ops::conv1d_causal(xs, conv_w, conv_b, seq_len));
+        Var xdb = x_proj->forward(xs);
+        Var dt = dt_proj->forward(ops::slice_cols(xdb, 0, R));
+        Var Bm = ops::slice_cols(xdb, R, R + N), Cm = ops::slice_cols(xdb, R + N, R + 2 * N);
+        Var y = ops::selective_scan(xs, dt, Bm, Cm, A(), Dskip, /*dt_softplus=*/true, seq_len);
+        y = ops::mul(y, ops::silu(z));
+        return ops::add(x, out_proj->forward(y));
+    }
+
+    // The block's IR nodes (tools/gguf_ir.py mamba) and its two recurrent slots.
+    ir::json export_nodes() const {
+        const std::string p = "blk.{i}.";
+        ir::json n = ir::json::array();
+        n.push_back(ir::rmsnorm("x", p + "attn_norm.weight", ops::kRmsNormEps, "h"));
+        n.push_back(in_proj->export_ir("h", "xz", p + "ssm_in.weight"));
+        n.push_back(ir::split("xz", {Di, Di}, {"xs", "z"}));
+        n.push_back({{"op", "conv1d_causal"}, {"in", ir::json::array({"xs"})}, {"state", "conv"},
+                     {"weight", p + "ssm_conv1d.weight"}, {"bias", p + "ssm_conv1d.bias"}, {"channels", Di},
+                     {"kernel", K}, {"out", "xs"}});
+        n.push_back(ir::unary("silu", "xs", "xs"));
+        n.push_back(x_proj->export_ir("xs", "xdb", p + "ssm_x.weight"));
+        n.push_back(ir::split("xdb", {R, N, N}, {"dt", "bm", "cm"}));
+        n.push_back(dt_proj->export_ir("dt", "dt", p + "ssm_dt.weight"));
+        n.push_back({{"op", "selective_scan"}, {"in", ir::json::array({"xs", "dt", "bm", "cm"})}, {"state", "ssm"},
+                     {"a", p + "ssm_a"}, {"d", p + "ssm_d"}, {"channels", Di}, {"d_state", N},
+                     {"dt_softplus", true}, {"out", "y"}});
+        n.push_back(ir::unary("silu", "z", "z"));
+        n.push_back(ir::binary("mul", "y", "z", "y"));
+        n.push_back(out_proj->export_ir("y", "o", p + "ssm_out.weight"));
+        n.push_back(ir::binary("add", "x", "o", "x"));
+        return n;
+    }
+    ir::json export_state() const {
+        return ir::json::array(
+            {{{"name", "conv"}, {"kind", "recurrent"}, {"op", "conv1d_causal"}, {"dtype", "f32"},
+              {"tensors", ir::json::array({{{"name", "x"}, {"shape", ir::json::array({K - 1, Di})}, {"init", 0}}})}},
+             {{"name", "ssm"}, {"kind", "recurrent"}, {"op", "selective_scan"}, {"dtype", "f32"},
+              {"tensors", ir::json::array({{{"name", "s"}, {"shape", ir::json::array({Di, N})}, {"init", 0}}})}}});
+    }
+
+    size_t d_, N, K, Di, R;
+    Var norm_w, conv_w, conv_b, A_log, Dskip;
+    std::shared_ptr<nn::Linear> in_proj, x_proj, dt_proj, out_proj;
+};
+
 // The Mamba-style SSM LM (mamba::MambaModel's stack, same names and seeds)
 // as an mtstudio family: token embedding, no positions, mamba::MambaBlock x
 // L (pre-LN, S4 scan with ops::ssm_scan, gelu output gates, skip), final
 // LayerNorm, biased head. MambaModel::forward takes token ids as a float
 // column; this one takes ids, and runs a stacked mini-batch one sequence at
 // a time so no scan state crosses a sequence boundary.
+//
+// With m1.on (arch.custom.ssm "mamba1"): Mamba1Block x L instead (above), a
+// final RMSNorm and an unbiased head; a stacked mini-batch runs as one graph,
+// each sequence's conv and scan starting from a zero state.
 class MambaLM : public nn::Module {
 public:
-    MambaLM(size_t vocab, size_t d, size_t n_layers, size_t d_state, unsigned seed) : d_state(d_state) {
+    MambaLM(size_t vocab, size_t d, size_t n_layers, size_t d_state, unsigned seed, const Mamba1Config& m1 = {})
+        : d_state(d_state), m1cfg(m1) {
+        if (m1.on) {
+            embed = mod<nn::Embedding>("embed", vocab, d);
+            for (size_t i = 0; i < n_layers; ++i)
+                m1blocks.push_back(mod<Mamba1Block>("layers." + std::to_string(i), d, d_state, m1,
+                                                    seed + 100 * static_cast<unsigned>(i + 1)));
+            norm_f = reg("norm_f.weight", Matrix(1, d, 1.0f));
+            lm_head = mod<nn::Linear>("lm_head", d, vocab, false, seed + 21);
+            return;
+        }
         embed = mod<nn::Embedding>("embed", vocab, d);
         norm_final = mod<nn::LayerNorm>("norm_final", d);
         lm_head = mod<nn::Linear>("lm_head", d, vocab, true, seed + 21);
@@ -947,6 +1063,11 @@ public:
     Var forward(const std::vector<int>& ids, size_t seq_len = 0) const {
         const size_t sl = seq_len == 0 ? ids.size() : seq_len;
         if (sl == 0 || ids.size() % sl != 0) throw std::runtime_error("MambaLM: rows not a multiple of seq_len");
+        if (m1cfg.on) {
+            Var h = embed->forward(ids);
+            for (const auto& b : m1blocks) h = b->forward(h, sl);
+            return lm_head->forward(ops::rmsnorm(h, norm_f));
+        }
         if (sl == ids.size()) return one(ids);
         Var out;
         for (size_t b = 0; b < ids.size() / sl; ++b) {
@@ -960,6 +1081,7 @@ public:
 
     // microtorch/ir.hpp, Families: mamba (paperkiln).
     std::optional<FamilyExport> family_export(size_t ctx) const {
+        if (m1cfg.on) return mamba1_export(ctx);
         const size_t vocab = embed->weight->data.rows(), d = embed->weight->data.cols(), n = d_state;
         const std::string p = "blk.{i}.";
         const auto& b0 = *blocks[0];
@@ -1003,7 +1125,44 @@ public:
         return fx;
     }
 
+    // Mamba-1 (keramos tools/gguf_ir.py's mamba graph): llama.cpp's mamba tensor names, A stored as
+    // -exp(A_log) computed by the op the forward runs (so the file holds the forward's floats).
+    FamilyExport mamba1_export(size_t ctx) const {
+        const size_t vocab = embed->weight->data.rows(), d = embed->weight->data.cols();
+        const auto& b0 = *m1blocks.at(0);
+        FamilyExport fx;
+        fx.arch = "paperkiln";
+        const ir::json embed_nodes = ir::json::array({embed->export_ir("tokens", "x", "token_embd.weight")});
+        const ir::json head_nodes =
+            ir::json::array({ir::rmsnorm("x", "output_norm.weight", ops::kRmsNormEps, "h"),
+                             lm_head->export_ir("h", "logits", "output.weight")});
+        fx.ir = family_doc("mamba1", vocab, d, m1blocks.size(), ctx, /*positions=*/false, embed_nodes,
+                           b0.export_state(), b0.export_nodes(), head_nodes);
+        using L = gguf::NamedTensor::Layout;
+        put_tensor(fx.tensors, "token_embd.weight", embed->weight->data, L::ROWS);
+        NoGrad ng;
+        for (size_t b = 0; b < m1blocks.size(); ++b) {
+            const std::string g = "blk." + std::to_string(b) + ".";
+            const auto& k = *m1blocks[b];
+            put_tensor(fx.tensors, g + "attn_norm.weight", k.norm_w->data, L::VEC);
+            put_linear(fx.tensors, g + "ssm_in", *k.in_proj);
+            put_tensor(fx.tensors, g + "ssm_conv1d.weight", k.conv_w->data, L::ROWS);  // [Di, K]
+            put_tensor(fx.tensors, g + "ssm_conv1d.bias", k.conv_b->data, L::VEC);
+            put_linear(fx.tensors, g + "ssm_x", *k.x_proj);
+            put_linear(fx.tensors, g + "ssm_dt", *k.dt_proj);
+            put_tensor(fx.tensors, g + "ssm_a", k.A()->data, L::ROWS);  // [Di, N]
+            put_tensor(fx.tensors, g + "ssm_d", k.Dskip->data, L::VEC);
+            put_linear(fx.tensors, g + "ssm_out", *k.out_proj);
+        }
+        put_tensor(fx.tensors, "output_norm.weight", norm_f->data, L::VEC);
+        put_linear(fx.tensors, "output", *lm_head);
+        return fx;
+    }
+
     size_t d_state;
+    Mamba1Config m1cfg;
+    std::vector<std::shared_ptr<Mamba1Block>> m1blocks;
+    Var norm_f;
     std::shared_ptr<nn::Embedding> embed;
     std::vector<std::shared_ptr<mamba::MambaBlock>> blocks;
     std::shared_ptr<nn::LayerNorm> norm_final;
