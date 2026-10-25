@@ -42,7 +42,8 @@ was pulled from or pushed to Ollama's registry or Hugging Face.
 | llama-server /v1/chat/completions, pk_sft_v1, vs ember and mtstudio | **40/40** replies and prompt tokens; finish "stop" where ember stopped at end-of-text, 40/40; completion tokens equal less the end-of-text token llama.cpp counts, 40/40 |
 | Ollama v0.40.11: paperkiln's Modelfile, /api/chat vs ember and mtstudio | **40/40** (section below) |
 
-**The Q4_K_M differences are llama.cpp's activation quantisation, not the weights.** llama.cpp's CPU
+**The Q4_K_M differences are an expected difference between the engines, not a defect: llama.cpp quantises
+the activations, ember does not.** llama.cpp's CPU
 kernels multiply Q4_K and Q6_K blocks by activations quantised to Q8_K (`ggml_vec_dot_q4_K_q8_K`);
 ember multiplies the stored blocks' f32 values (ggml's `dequantize_row_*`, IR_SPEC 4.7). With the
 activation quantisation taken out (the same file dequantised to F32 and run in llama.cpp), llama.cpp gives
@@ -76,6 +77,8 @@ whitespace-trimming action, so the record's text is emitted exactly; the C++ twi
 `chat_template.hpp` is changed the same way (byte-identical, tests/test_chat_template.cpp), and the
 rendering, the Jinja and the resolution are unchanged. The tables above are the fixed Modelfile's.
 llama.cpp's `--jinja` path was never affected (the Jinja handles the system message itself, 60/60 above).
+ember re-vendored the header at 33c45899 (ember 5ad59b0; its chat_template_check passes the updated
+cases file); its /chat, OpenAI and WebAssembly rendering does not use `modelfile()`.
 
 ## Commands
 
