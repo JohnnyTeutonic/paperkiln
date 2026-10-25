@@ -1,5 +1,5 @@
 {
- "_comment": "Second benchmarks campaign (experiments/benchmarks_2026-10-26/RESULTS.md): the tiny-chat picks that came home after pk-bench (pick_e1_L4, pick_e1_60m_L32, pick_e5_s0; weights rebuilt from each model.gguf by rebuild_weights.py), descriptive only, through the same jobs as bench_v1.json: hfgguf on the full sets with mtstudio on every 400th item, then IF-tiny and the turn-distance set through ember fe01b35 with EMBER_DETERMINISTIC=1, two passes and mtstudio parity. Uploads: TAG.safetensors for the three picks; vocab_llama3_bpe.gguf.",
+ "_comment": "Second benchmarks campaign (experiments/benchmarks_2026-10-26/RESULTS.md): the tiny-chat picks that came home after pk-bench (pick_e1_L4, pick_e1_60m_L32, pick_e5_s0; weights rebuilt from each model.gguf by rebuild_weights.py), descriptive only, through the same jobs as bench_v1.json: hfgguf on the full sets with mtstudio on every 400th item, then IF-tiny and the turn-distance set through ember fe01b35 with EMBER_DETERMINISTIC=1, two passes and mtstudio parity. Uploads: TAG.safetensors for the three picks; vocab_llama3_bpe.gguf. ember_score: ember 580e108's POST /score (gated by ember 26 Oct 2026, receipts ember experiments/score_2026-10-26; EMBER_DETERMINISTIC=1) on the full sets for pk_sft_v1, the live model and the three picks, compared at home with bench_eval.py compare against hfgguf (pk_sft_v1 and the picks) and against the pod's mtstudio score (live). Uploads also: pksft.safetensors, live.safetensors, tinychat_bpe8k.gguf.",
  "max_parallel": 2,
  "jobs": [
   {
@@ -45,6 +45,30 @@
     "tools/colab_chat/bench_vm.sh",
     "iftiny",
     "{out}",
+    "pick_e1_L4",
+    "pick_e1_60m_L32",
+    "pick_e5_s0"
+   ],
+   "outputs": [
+    "results.tar.gz"
+   ]
+  },
+  {
+   "name": "ember_score",
+   "after": "iftiny",
+   "after_terminal": true,
+   "cmd": [
+    "env",
+    "BENCH_SCORE_COMMIT=580e1089e7efbaaa82b857fd8fe05c283d9596b2",
+    "EMBER_DETERMINISTIC=1",
+    "bash",
+    "tools/colab_chat/bench_vm.sh",
+    "ember",
+    "{out}",
+    "100",
+    "1",
+    "pksft",
+    "live",
     "pick_e1_L4",
     "pick_e1_60m_L32",
     "pick_e5_s0"

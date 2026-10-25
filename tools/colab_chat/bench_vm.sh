@@ -80,6 +80,36 @@ case "$CMD" in
     done
     cp /content/eval/staged.jsonl "$OUT/" 2>/dev/null || true
     ;;
+  ember)
+    # ember's POST /score (BENCH_SCORE_COMMIT, gated by ember on 26 Oct 2026; CUDA scoring runs FP32 GEMMs;
+    # EMBER_DETERMINISTIC from the job) on each model's GGUF, every EVERY-th item; its own build directory, so
+    # the iftiny job's ember build at another commit is left alone.
+    BP=$1
+    EVERY=$2
+    shift 2
+    TINY_CHAT_EMBER_DIR=/content/ember_score python3 tools/colab_chat/ensure_ember_vm.py "$OUT/ember_build.json" \
+      "$OUT/ember_build.log" "${BENCH_SCORE_COMMIT:-}"
+    BIN=$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["bin"])' "$OUT/ember_build.json")
+    export EMBER_GPU_LAYERS=-1
+    mkdir -p "$OUT/ember_cwd" "$OUT/www"
+    ln -sf /dev/null "$OUT/ember_cwd/debugging.log"
+    for t in "$@"; do
+      SPEC=$(python3 tools/colab_chat/bench_stage.py "$t" --gguf)
+      G=$(python3 -c 'import json, os, sys; s = json.load(open(sys.argv[1])); print(os.path.join(s["out_dir"], s["name"] + ".gguf"))' "$SPEC")
+      (cd "$OUT/ember_cwd" && exec "$BIN" "$G" 8097 127.0.0.1 "$OUT/www" -1) 2>> "$OUT/ember_server_$t.log" &
+      SRV=$!
+      for _ in $(seq 1 300); do
+        python3 -c 'import sys, urllib.request; sys.stdout.write(urllib.request.urlopen("http://127.0.0.1:8097/health", timeout=2).read().decode())' \
+          > "$OUT/health_$t.json" 2>/dev/null && break
+        sleep 1
+      done
+      python3 tools/bench_eval.py run --items $ITEMS --out "$OUT/bench" --scorer ember --ember-url http://127.0.0.1:8097 \
+        --model "$t=$SPEC" --blimp-per "$BP" --every "$EVERY" >> "$OUT/ember_$t.log" 2>&1 || { kill $SRV; exit 1; }
+      kill $SRV
+      wait $SRV 2>/dev/null || true
+    done
+    cp /content/eval/staged.jsonl "$OUT/" 2>/dev/null || true
+    ;;
   hf)
     BP=$1
     shift
