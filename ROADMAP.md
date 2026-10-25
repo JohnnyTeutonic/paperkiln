@@ -28,7 +28,7 @@ where one of those documents carries a plan, this file wins.*
    `kSystemModeV1`, fold or none), the default loss policy (`DEFAULT_SFT_TURNS` /
    `kDefaultSftTurns`), and when v2 is built.
 3. **Engine:** BF16 mixed precision and a fused attention backward (opt-in; building);
-   device-side SFT evaluation in the step window; real k-quants (pk_base_v1's d768 qualifies).
+   device-side SFT evaluation in the step window.
 4. **The redesign (LOCAL_LLM_STACK.md section 5): any paper, any architecture.**
    Training-side support for the third-party ops paperkiln only references in numpy today
    (grouped-query attention, NEOX rotary, per-head RMSNorm, Mamba-1's conv1d_causal and

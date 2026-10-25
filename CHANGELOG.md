@@ -7,6 +7,20 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Real k-quant blocks in the 4-bit exports** (25 Oct; paperkiln 255c9561). `gguf::quantize_q4_k`,
+  `quantize_q5_k`, `quantize_q6_k` are llama.cpp b6000's (4762ad73) `quantize_row_q*_K_ref` with
+  `make_qkx2_quants`, `make_qx_quants` and `nearest_int`, statement for statement, so `gguf_q4_k_m`,
+  `gguf_q4_k_s` and `gguf_q4_0` store Q4_K / Q5_K / Q6_K wherever ne0 is a multiple of 256 instead of
+  refusing (llama.cpp's fallbacks below 256 are unchanged). The 4-bit variants now write the IR keys
+  before `general.quantization_version` and `general.file_type`, as llama.cpp's quantiser does (it
+  copies the source keys, then appends those two): since the IR went into the GGUF the files had
+  differed from llama.cpp's in that order alone. Gates: on pk_base_v1 (d 768, d_ff 2048, 12 layers)
+  every one of the 111 tensors of q4_k_m (73 Q4_K, 13 Q6_K), q4_k_s (80 Q4_K, 5 Q5_K, 1 Q6_K) and q4_0
+  is byte-identical to llama.cpp b6000's `llama-quantize` (built with GGML_NATIVE off) run on
+  paperkiln's own F32 export, and so are the three whole files (sha256 78b3482f..., 7980aa54...,
+  89d8581c...; `C:/ml_artifacts/next_base/base/pk_base_v1_q4_k_{m,s}.gguf`); `tests/test_gguf_q4.cpp` checks an 8-layer d 256 export's
+  types and bytes and 9 patterns x 2 super-blocks per type against llama.cpp b6000's own reference
+  rows (hashes of its bytes).
 - **The build uses the vendored transformer_core by default** (25 Oct). `third_party/transformer_cpp`
   is canonical; a sibling `../coalfire.cpp` or `../transformer_cpp` is used only with
   `-DMICROTORCH_TCPP_SIBLING=ON` (or `-DMICROTORCH_TCPP_DIR=<path>`). A fresh configure from the
