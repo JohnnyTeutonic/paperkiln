@@ -122,3 +122,16 @@ never read). The winner is the model the preference stage starts from.
 - The other metrics (reference F1, prompt overlap, repeats, words) are
   reported, not used. The preference stage's own gates (PLAN above: no more
   repetition than its SFT start, the ember side-by-side) are unchanged.
+
+**Amendment A1 (25 Oct 2026, written after reading the 23 Oct run, before the
+run of record).** The 23 Oct run shows the gate above measures reply length,
+not the turn protocol: on `chat_prompts_v1`'s ultrachat source every reply
+that did not stop cleanly hit the 64-token budget (`stop` "length": ctrl_sft
+27, moe_sft 38, big_sft 52 of 75), and no reply of any model ended on a
+generated role marker (`stop` "turn"). Under A1 the gate counts protocol
+failures only: a reply fails it when it ends on a generated role marker or
+contains one; a reply cut by the budget does not. The gate is then a
+protocol-failure share of at most 0.10 on each prompt set and source. Both
+verdicts are reported: the rule as first registered, and under A1. A1 was
+written knowing the 23 Oct simple-QA numbers too, so it is a post-hoc
+change, and Jonathan chooses which verdict stands.
