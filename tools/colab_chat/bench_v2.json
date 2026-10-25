@@ -1,0 +1,57 @@
+{
+ "_comment": "Second benchmarks campaign (experiments/benchmarks_2026-10-26/RESULTS.md): the tiny-chat picks that came home after pk-bench (pick_e1_L4, pick_e1_60m_L32, pick_e5_s0; weights rebuilt from each model.gguf by rebuild_weights.py), descriptive only, through the same jobs as bench_v1.json: hfgguf on the full sets with mtstudio on every 400th item, then IF-tiny and the turn-distance set through ember fe01b35 with EMBER_DETERMINISTIC=1, two passes and mtstudio parity. Uploads: TAG.safetensors for the three picks; vocab_llama3_bpe.gguf.",
+ "max_parallel": 2,
+ "jobs": [
+  {
+   "name": "items",
+   "light": true,
+   "cmd": [
+    "bash",
+    "tools/colab_chat/bench_vm.sh",
+    "items",
+    "{out}"
+   ],
+   "outputs": [
+    "items_build.json",
+    "fetch.log"
+   ]
+  },
+  {
+   "name": "score_hfgguf",
+   "after": "items",
+   "cmd": [
+    "bash",
+    "tools/colab_chat/bench_vm.sh",
+    "hfgguf",
+    "{out}",
+    "100",
+    "400",
+    "pick_e1_L4",
+    "pick_e1_60m_L32",
+    "pick_e5_s0"
+   ],
+   "outputs": [
+    "results.tar.gz"
+   ]
+  },
+  {
+   "name": "iftiny",
+   "after": "items",
+   "cmd": [
+    "env",
+    "BENCH_EMBER_COMMIT=fe01b35e3e50a049a7f1f5c9a5712d80c3be48b1",
+    "EMBER_DETERMINISTIC=1",
+    "bash",
+    "tools/colab_chat/bench_vm.sh",
+    "iftiny",
+    "{out}",
+    "pick_e1_L4",
+    "pick_e1_60m_L32",
+    "pick_e5_s0"
+   ],
+   "outputs": [
+    "results.tar.gz"
+   ]
+  }
+ ]
+}
