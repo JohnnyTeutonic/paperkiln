@@ -399,6 +399,17 @@ transformer_core, compiled with `-ffast-math`, for its matrix product, `gelu` an
 Appendix A lists which ops reach those translation units and why no EXACT statement in this
 document depends on them.
 
+**The generating environment.** The stored expected values of the conformance suite (section 11)
+are the reference run under CPython 3.13.14 and numpy 2.3.5 on Windows 11 x86-64
+(`requirements-reference.txt`); `--regenerate` there reproduces all 228 generated files (JSON by
+value, the rest byte for byte). Another numpy build can round a ROUNDING value differently: numpy
+2.3.3 on Linux x86-64 (CPython 3.12.3, WSL) changes 5 of the 228, the `selective_scan` op fixture by
+at most 2 ulp and the `tp_mamba1` model case and its three traces, which carry that difference
+through the network, by at most 7.1e-7 of section 11.4's scale against their tolerance of 1e-5
+(`conformance/receipts/reference_environment.json`). Such a build passes the suite, and its values
+are not stored: expected values are regenerated only in the named environment, and a change of
+environment that moves a stored value is a regeneration, made at a revision (section 2.6).
+
 ### 4.7 Stored tensors
 
 A tensor stored in a GGUF type other than F32 has, element by element, the f32 values below; every op
@@ -1998,6 +2009,10 @@ equal to dc29b5e6 bit for bit) and the pinned commits of the RunPod campaigns ar
 
 ## Appendix B. Changelog
 
+- **v1.1.4** (tag, 26 October 2026; section 2.6). Documentation: the environment that generated the
+  suite's stored expected values (section 4.6; `requirements-reference.txt`), with the receipt of
+  its reproduction and of a Linux numpy 2.3.3 regeneration (`conformance/receipts/
+  reference_environment.json`). No expected value changes.
 - **v1.1.3** (tag, 25 October 2026; section 2.6). Documentation: ember's corrections to section 12.1
   (it refuses a missing required attribute, e358153) and Appendix C (its v1.1.2 conformance, the
   WebGPU row), and every engine's receipt naming v1.1.2.

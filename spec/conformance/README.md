@@ -53,4 +53,7 @@ The `pk_` models come from paperkiln (`MTSTUDIO_BIN=... python tools/ir_conforma
 --build-models OUT` there, the recipes beside it); copy `OUT/<name>/` into `models/` before
 regenerating. Regeneration is deterministic: the same models
 give the same files. Change expected values only by regenerating, in the commit that changes the
-reference or the specification.
+reference or the specification, and only in the environment that generated them
+(`../requirements-reference.txt`: CPython 3.13.14, numpy 2.3.5, Windows 11 x86-64; IR_SPEC section 4.6).
+Another numpy build passes the suite but can move ROUNDING values by an ulp
+(`receipts/reference_environment.json`).

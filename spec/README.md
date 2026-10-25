@@ -34,7 +34,8 @@ that exports documents) and ember.cpp (the inference engine: CPU, CUDA and WebAs
 Python 3.10 or later. The validator is standard library only. The reference interpreter, the runner
 and the tests need numpy; `pip install -r requirements.txt` adds pytest and the optional packages
 (gguf-py for reading quantised GGUFs and for the dequantisation test, scipy for `erf`, jsonschema
-for a second evaluation of the schema).
+for a second evaluation of the schema). `requirements-reference.txt` names the environment that generated the conformance
+suite's expected values, the only one to regenerate them in (IR_SPEC section 4.6).
 
 ## Validating a document
 

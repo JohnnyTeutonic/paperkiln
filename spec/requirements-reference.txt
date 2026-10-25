@@ -1,0 +1,4 @@
+# The environment that generated the stored expected values of conformance/ (IR_SPEC.md section 4.6):
+# CPython 3.13.14, numpy 2.3.5, Windows 11 x86-64. Regenerate (python tools/ir_conformance.py --regenerate)
+# only in this environment; running the suite needs requirements.txt alone.
+numpy==2.3.5
