@@ -236,6 +236,32 @@ def read_gguf(path):
     return BPE(kv["tokenizer.ggml.tokens"], merges)
 
 
+class _Llama3Vocab:
+    """tools/llama3_bpe.py's tokenizer (HF tokenizers, configured as llama.cpp encodes) behind
+    BPE's encode(text) -> ids and decode(ids) -> str; special tokens in text map to their ids."""
+
+    def __init__(self, path):
+        import llama3_bpe
+        self._t = llama3_bpe.from_gguf(path)
+
+    def encode(self, text):
+        return self._t.encode(text, add_special_tokens=False).ids
+
+    def decode(self, ids):
+        return self._t.decode(ids, skip_special_tokens=False)
+
+
+def load_vocab(path):
+    """The GGUF's own encoder: BPE for paperkiln's "bpe" vocabularies (read_gguf, standard library),
+    tools/llama3_bpe.py for the Llama 3-scheme "gpt2"/"llama-bpe" vocabulary (needs tokenizers).
+    Raises unless the GGUF carries one of the two."""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import llama3_bpe
+    if llama3_bpe.read_gguf_kv(path, {"tokenizer.ggml.model"}).get("tokenizer.ggml.model") == "gpt2":
+        return _Llama3Vocab(path)
+    return read_gguf(path)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)

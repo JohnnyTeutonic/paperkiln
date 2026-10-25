@@ -109,7 +109,7 @@ def ref_bpb(mtstudio, spec_path, prompts, work, tag):
     spec = json.load(open(spec_path, encoding="utf-8"))
     ck = os.path.join(spec["out_dir"], spec["name"] + ".safetensors")
     vocab = spec["data"]["vocab"]
-    tok = bpe.read_gguf(vocab)
+    tok = bpe.load_vocab(vocab)
     # mtstudio refuses an example longer than data.T + 1 tokens (prompt +
     # reference + end-of-text). Long references (chat_prompts_v1's UltraChat
     # half) are cut to the longest token prefix that fits and still decodes to
@@ -177,7 +177,7 @@ def sample_ember(ember_bin, port, spec_path, prompts, n, temp, max_new, out, gre
     import urllib.request
     spec = json.load(open(spec_path, encoding="utf-8"))
     gguf = os.path.join(spec["out_dir"], spec["name"] + ".gguf")
-    bpe.read_gguf(gguf)  # raises unless the GGUF carries the BPE tokenizer
+    bpe.load_vocab(gguf)  # raises unless the GGUF carries a tokenizer ("bpe" or the 16k Llama 3 scheme)
     www = os.path.join(os.path.dirname(out), "www")
     os.makedirs(www, exist_ok=True)
     url = f"http://127.0.0.1:{port}"

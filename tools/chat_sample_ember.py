@@ -68,7 +68,7 @@ def main(argv=None):
     ap.add_argument("--repeat-penalty", type=float, default=1.0, help="contract repetition penalty (1.0 = off)")
     ap.add_argument("--repeat-last-n", type=int, default=64)
     a = ap.parse_args(argv)
-    tok = bpe.read_gguf(a.vocab)
+    tok = bpe.load_vocab(a.vocab)
     stops, skipped = {}, 0
     with open(a.examples, encoding="utf-8") as f, open(a.out, "w", encoding="utf-8", newline="\n") as g:
         for i, line in enumerate(f):

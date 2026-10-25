@@ -1,0 +1,38 @@
+{
+ "_comment": "The general chat model (LOCAL_LLM_STACK.md section 11, item 2; experiments/chat_general/PLAN.md, 'Choosing the winner'), one RunPod L4, one GPU job at a time. evals1: chat_eval + qa_eval of the live model (chat_sftfinal_v3), ctrl_sft, moe_sft and big_sft (chat_fw_big). sft: pk_base_v1 (d768 L12, 16k Llama 3-scheme vocabulary) + lever 1's SFT set at T 512 as conversation rows (tools/lever1_conversations.py; 313,606 dialogues, 463,695 replies, sha256 b7a43fb5...) under train.sft_loss all, BF16 GEMMs + flash attention (gated 25 Oct 2026), 18,620 steps x 16 = one pass in expectation over the 297,926 training rows, lr 1e-4 (big_sft's), warmup 200, cosine to 0.1. evals2: the same evals with all five models (the run of record for the winner). parity: ember (aa50a61, CUDA and CPU) vs mtstudio chat on the CPU, greedy, 40 frozen prompts. Uploads: TAG.gguf / TAG.safetensors for live, ctrlsft, moesft, bigsft; the two 8k vocabularies; vocab_llama3_bpe.gguf; pk_base_v1.safetensors; lever1_conv_v1.jsonl.gz.",
+ "max_parallel": 1,
+ "jobs": [
+  {"name": "evals1",
+   "cmd": ["bash", "tools/colab_chat/chat_eval_vm.sh", "{out}", "live", "ctrlsft", "moesft", "bigsft"],
+   "outputs": ["chat_eval_results.tar.gz"]},
+  {"name": "lever1c",
+   "light": true,
+   "cmd": ["sh", "-c", "gunzip -c {upload}/lever1_conv_v1.jsonl.gz > {out}/lever1_conv_v1.jsonl.tmp && echo 'b7a43fb5d622537094f7fea1eb5df244c64007f967faed597f9324954a479a32  {out}/lever1_conv_v1.jsonl.tmp' | sha256sum -c - > {out}/sha256_ok.txt && mv {out}/lever1_conv_v1.jsonl.tmp {out}/lever1_conv_v1.jsonl"],
+   "outputs": ["sha256_ok.txt"]},
+  {"name": "sft",
+   "model_name": "pk_sft_v1",
+   "after": ["lever1c", "evals1"],
+   "after_terminal": true,
+   "init_file": "pk_base_v1.safetensors",
+   "relay_every_steps": 5000,
+   "spec": {
+    "arch": {"preset": "llama-tiny", "custom": {"d": 768, "layers": 12, "heads": 12, "d_ff": 2048}},
+    "data": {"vocab": "/content/chat/upload/vocab_llama3_bpe.gguf", "vocab_cap": 16384, "T": 512,
+             "sft_examples": "/content/chat/lever1c/lever1_conv_v1.jsonl"},
+    "train": {"steps": 18620, "lr": 0.0001, "batch": 16, "eval_every": 2000, "eval_examples": 512, "eval_batch": 16,
+              "checkpoint_every": 1000, "gradmap_every": 0, "seed": 1, "optimizer": "adamw", "objective": "sft",
+              "sft_loss": {"turns": "all"}, "precision": "bf16", "attention_kernel": "flash",
+              "lr_schedule": {"warmup_steps": 200, "decay": "cosine", "min_lr_frac": 0.1}},
+    "export": {"formats": ["safetensors", "gguf", "gguf_q8_0_all"]}
+   }},
+  {"name": "evals2",
+   "after": "sft",
+   "cmd": ["bash", "tools/colab_chat/chat_eval_vm.sh", "{out}", "live", "ctrlsft", "moesft", "bigsft", "pksft@sft"],
+   "outputs": ["chat_eval_results.tar.gz"]},
+  {"name": "parity",
+   "after": ["sft", "evals2"],
+   "after_terminal": true,
+   "cmd": ["python3", "tools/colab_chat/chat_parity_vm.py", "{out}", "sft", "40"],
+   "outputs": ["parity_summary.json", "parity_cuda.jsonl", "parity_cpu.jsonl", "chat_parity_cuda.log", "mtstudio.log"]}
+ ]
+}
