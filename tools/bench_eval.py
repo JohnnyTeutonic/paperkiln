@@ -229,13 +229,18 @@ class HfEngine:
         from transformers import AutoModelForCausalLM
         self.torch = torch
         self.dev = a.device
-        self.m = AutoModelForCausalLM.from_pretrained(tok.repo, revision=tok.rev, torch_dtype=torch.float32)
+        self.m = self.load(AutoModelForCausalLM, tok, torch)
         self.m.to(self.dev).eval()
-        ban = [x for x in (tok.t.unk_token_id, tok.t.pad_token_id) if x is not None and x != tok.eot]
-        self.ban = sorted(set(ban))
+        self.ban = self.banned(tok)
         self.desc = {"torch": torch.__version__, "transformers": __import__("transformers").__version__,
                      "dtype": "float32", "banned_argmax": self.ban,
-                     "tf32": bool(torch.backends.cuda.matmul.allow_tf32)}
+                     "tf32": bool(torch.backends.cuda.matmul.allow_tf32), "engine": self.name}
+
+    def load(self, cls, tok, torch):
+        return cls.from_pretrained(tok.repo, revision=tok.rev, torch_dtype=torch.float32)
+
+    def banned(self, tok):
+        return sorted({x for x in (tok.t.unk_token_id, tok.t.pad_token_id) if x is not None and x != tok.eot})
 
     def score(self, part, work, n, max_tokens=16384):
         torch = self.torch
@@ -271,7 +276,27 @@ class HfEngine:
         return got
 
 
-ENGINES = {"mtstudio": MtstudioEngine, "ir": IrEngine, "ember": EmberEngine, "hf": HfEngine}
+class HfGgufEngine(HfEngine):
+    """A paperkiln llama GGUF through transformers' GGUF loader (LlamaForCausalLM, float32), batched like the hf
+    engine. paperkiln's llama exports are llama.cpp-convention files (LOCAL_LLM_STACK.md section 3, point 2:
+    llama.cpp matches mtstudio greedy 40/40 given ids), which the loader maps back to HF's layout. The ids come
+    from paperkiln's own tokeniser (the GGUF's is not one transformers can read); the argmax leaves out the
+    specials mtstudio score leaves out. Accepted only against mtstudio score on the same requests
+    (`compare`)."""
+    name = "hfgguf"
+
+    def load(self, cls, tok, torch):
+        return cls.from_pretrained(os.path.dirname(os.path.abspath(tok.gguf)), gguf_file=os.path.basename(tok.gguf),
+                                   torch_dtype=torch.float32)
+
+    def banned(self, tok):
+        import llama3_bpe
+        toks = llama3_bpe.read_gguf_kv(tok.gguf, ["tokenizer.ggml.tokens"])["tokenizer.ggml.tokens"]
+        names = {"<unk>", "<s>", "</s>", "<pad>"}
+        return sorted(i for i, t in enumerate(toks) if (t.decode("latin-1") if isinstance(t, bytes) else t) in names)
+
+
+ENGINES = {"mtstudio": MtstudioEngine, "ir": IrEngine, "ember": EmberEngine, "hf": HfEngine, "hfgguf": HfGgufEngine}
 
 
 # ---------------------------------------------------------------- run

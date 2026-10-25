@@ -55,6 +55,31 @@ case "$CMD" in
     done
     cp /content/eval/staged.jsonl "$OUT/" 2>/dev/null || true
     ;;
+  hfgguf)
+    # paperkiln models through transformers' GGUF loader, batched (tools/bench_eval.py hfgguf), and `mtstudio
+    # score` on every EVERY-th item of the same requests as the cross-check (mtstudio scores one request at a
+    # time: ~75 ms each for the 14.6M live model on an L4, so it cannot carry the full sets for every model).
+    BP=$1
+    EVERY=$2
+    shift 2
+    hf_deps
+    flock 9
+    [ -d /content/llamacpp_b6000 ] || git clone -q --depth 1 --branch b6000 https://github.com/ggml-org/llama.cpp \
+      /content/llamacpp_b6000
+    python3 -c "import gguf, accelerate" 2>/dev/null || python3 -m pip -q install --root-user-action=ignore \
+      /content/llamacpp_b6000/gguf-py "accelerate==1.1.1" > "$OUT/pip_gguf.log" 2>&1
+    flock -u 9
+    for t in "$@"; do
+      SPEC=$(python3 tools/colab_chat/bench_stage.py "$t" --gguf)
+      python3 tools/bench_eval.py run --items $ITEMS --out "$OUT/bench" --scorer hfgguf --model "$t=$SPEC" \
+        --blimp-per "$BP" >> "$OUT/hfgguf_$t.log" 2>&1
+      python3 tools/bench_eval.py run --items $ITEMS --out "$OUT/xcheck_mtstudio" --scorer mtstudio --mtstudio $MT \
+        --model "$t=$SPEC" --blimp-per "$BP" --every "$EVERY" --chunk 128 >> "$OUT/xcheck_$t.log" 2>&1
+      python3 tools/bench_eval.py compare "$OUT/xcheck_mtstudio/$t" "$OUT/bench/$t" \
+        --json "$OUT/compare_${t}_mtstudio_vs_hfgguf.json" >> "$OUT/xcheck_$t.log" 2>&1
+    done
+    cp /content/eval/staged.jsonl "$OUT/" 2>/dev/null || true
+    ;;
   hf)
     BP=$1
     shift
