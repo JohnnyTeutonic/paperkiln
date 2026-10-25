@@ -161,7 +161,7 @@ def main(argv=None):
         raise SystemExit("--k must be 2-8 (chat_judge.py ranks 2-8 candidates)")
     import bpe
     import judge_sidecar
-    tok = bpe.read_gguf(a.vocab)
+    tok = bpe.load_vocab(a.vocab)  # "bpe" or the 16k Llama 3-scheme vocabulary
     temps = [float(t) for t in a.temps.split(",")]
     config = {"model_sha256": a.model_sha256, "vocab_sha256": judge_sidecar.sha256_bytes(open(a.vocab, "rb").read()),
               "ember_commit": a.ember_commit, "k": a.k, "temps": temps, "seed": a.seed, "max_new_tokens": a.max_new,
