@@ -148,7 +148,12 @@ Notable changes to microtorch. Format loosely follows
     - the smoke model numpy-vs-mtstudio 1.9e-6, greedy 40/40.
   - Ember e115fd3 is the post jobs' pin (`post --ember-commit`): ar_x5 40/40 on CPU, CUDA and WASM, and the
     control's model generated exactly as at cbdcb915.
-  - The three seeds run on their own RunPod L4s, beside the control's re-run.
+  - Result (`experiments/tiny_chat_2026-10/x5/RESULTS.md`): **HX5-main EQUIVALENT**. D = Y(X5) - Y(L16) =
+    -0.0101, 90% [-0.0299, +0.0096], over 2,664 item-level pairs; both cells pass the gate. X5 lowers every loss
+    by 0.03-0.05 nats and raises twin accuracy 2.8 points, and its Y sits on the plain 20M runs' loss-to-Y line
+    (mean residual -0.0006): a general language-model gain with no carry-over gain. The control's re-runs
+    reproduce E1's L16 summaries exactly, and the score audit leaves every Y unchanged. The pick (seed 3) ran at
+    home.
 
 - **The general chat model's next step: pk_sft_v1** (25 Oct; paperkiln 0ad646d5..91f47fec, one RunPod L4,
   $3.19; `experiments/chat_general/RESULTS.md`). pk_base_v1 + lever 1's SFT set at T 512 as conversation rows
