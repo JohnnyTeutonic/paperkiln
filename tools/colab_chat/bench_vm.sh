@@ -4,9 +4,10 @@
 #   bash bench_vm.sh items OUT                 fetch the pinned benchmark files, build and check the item file
 #   bash bench_vm.sh score OUT BLIMP_PER TAG... tools/bench_eval.py with the CUDA mtstudio score on uploaded models
 #   bash bench_vm.sh hf OUT BLIMP_PER TAG=REPO@REV...   tools/bench_eval.py with HF transformers (float32)
-#   bash bench_vm.sh iftiny OUT TAG...         tools/iftiny_eval.py: ember (CUDA, BENCH_EMBER_COMMIT) greedy, two
+#   bash bench_vm.sh iftiny OUT TAG...         tools/iftiny_eval.py: ember (CUDA, BENCH_EMBER_COMMIT; EMBER_DETERMINISTIC from the job) greedy, two
 #                                              passes, the mtstudio parity check
 #   bash bench_vm.sh iftiny_hf OUT TAG=REPO@REV...   tools/iftiny_eval.py with HF generate (one pass)
+#   bash bench_vm.sh smolgguf OUT REPO@REV     SmolLM2-135M as an F32 GGUF (llama.cpp b6000's converter)
 # Every subcommand resumes (the tools write per chunk / per reply on the VM's volume) and ends with
 # OUT/results.tar.gz, which the runner brings home; a failure still packs what there is.
 set -euo pipefail
@@ -16,7 +17,8 @@ shift 2
 mkdir -p "$OUT"
 cd /content/pk
 ITEMS=/content/bench/bench_v1.jsonl
-pack() { tar -czf /tmp/bench_results.tar.gz -C "$OUT" --exclude='*.tar.gz' --exclude=www --exclude='ember_cwd' . \
+pack() { cp /content/chat/provenance.json "$OUT/" 2>/dev/null || true; nvidia-smi -L > "$OUT/gpu.txt" 2>&1 || true
+  tar -czf /tmp/bench_results.tar.gz -C "$OUT" --exclude='*.tar.gz' --exclude='*.gguf' --exclude=www --exclude='ember_cwd' . \
   && mv /tmp/bench_results.tar.gz "$OUT/results.tar.gz"; }
 trap 'pack || true' ERR
 export MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 MICROTORCH_ATTN_BLOCKED=1 MICROTORCH_CUBLAS=1 \
@@ -70,6 +72,17 @@ case "$CMD" in
     for m in "$@"; do
       python3 tools/iftiny_eval.py run --gen hf --hf "$m" --out "$OUT/iftiny" >> "$OUT/iftiny_hf_${m%%=*}.log" 2>&1
     done
+    ;;
+  smolgguf)
+    # SmolLM2-135M as an F32 GGUF (llama.cpp b6000's converter and gguf-py), for ember's /score gate.
+    REPO=${1%@*}
+    REV=${1#*@}
+    hf_deps
+    [ -d /content/llamacpp_b6000 ] || git clone -q --depth 1 --branch b6000 https://github.com/ggml-org/llama.cpp       /content/llamacpp_b6000
+    python3 -m pip -q install --root-user-action=ignore /content/llamacpp_b6000/gguf-py sentencepiece > "$OUT/pip_gguf.log" 2>&1
+    python3 -c "from huggingface_hub import snapshot_download as s; import sys; print(s(sys.argv[1], revision=sys.argv[2], local_dir='/content/hf_smollm2'))"       "$REPO" "$REV" > "$OUT/download.log" 2>&1
+    python3 /content/llamacpp_b6000/convert_hf_to_gguf.py /content/hf_smollm2 --outtype f32       --outfile "$OUT/SmolLM2-135M-f32.gguf" > "$OUT/convert.log" 2>&1
+    python3 -c "import hashlib, json, sys; print(json.dumps({'repo': sys.argv[1], 'revision': sys.argv[2], 'converter': 'llama.cpp b6000 convert_hf_to_gguf.py --outtype f32', 'sha256': hashlib.sha256(open(sys.argv[3], 'rb').read()).hexdigest()}))"       "$REPO" "$REV" "$OUT/SmolLM2-135M-f32.gguf" > "$OUT/smolgguf.json"
     ;;
   *)
     echo "unknown subcommand $CMD" >&2
