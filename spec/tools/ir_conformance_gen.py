@@ -436,6 +436,22 @@ def op_cases():
         cases["recurrence"][-1]["reproduces"] = f"op/{op}/{hw['name']}"
     for name, node, ins, ws in recurrence_bodies(r):
         add("recurrence", name, node, ins, ws, "EXACT" if ir_recurrence.compile_node(node).exact else "ROUNDING")
+    # v1.2 (cases added after the first release draw after every earlier one, so those stay byte-identical):
+    # rope_heads "first" (5.14: head 0 of q and of k); depth_attend without eps (5.18: 1e-5); a row
+    # reduction of a constant (5.19: w additions); an expression exactly 200 deep (5.19); a recurrence read
+    # whose index is larger than the declared dimension (6.10.3: +0 outside).
+    add("rope", "first_head", dict(rope, rope_heads="first"), {"q": q8, "k": k8, "pos": pos}, {}, "ROUNDING")
+    add("depth_attend", "eps_default", {"op": "depth_attend", "in": ["L", "x"], "weight": "q", "out": "h"},
+        {"L": s3, "x": x}, {"q": r(6)}, "ROUNDING")
+    add("expr", "rowsum_constant", {"op": "expr", "in": ["x"], "expr": "rowsum(0.1)", "out": "y"},
+        {"x": np.zeros((1, 2048), np.float32)}, {}, "ROUNDING")
+    add("expr", "depth_200", {"op": "expr", "in": ["x"], "expr": "(" * 39 + "-x" + ")" * 39, "out": "y"},
+        {"x": x}, {}, "ROUNDING")
+    pad = {"op": "recurrence", "in": ["x"], "state": "pad", "index": {"c": 3, "j": 4}, "inputs": ["x[j]"],
+           "weights": {"W[c,c]": "W"}, "update": ["h[c] = h[c] + sum(j, W[c,j] * x[j])"],
+           "readout": "y[c] = h[c]", "out": "y"}
+    add("recurrence", "read_beyond_declaration", pad, {"x": r(5, 4)}, {"W": r(3, 3, s=0.5)},
+        "EXACT" if ir_recurrence.compile_node(pad).exact else "ROUNDING")
     return cases
 
 
@@ -552,41 +568,41 @@ def refusals():
         return [s for s in doc["block"]["state"] if s["kind"] == "kv"][0]
 
     L = "pk_llama"
-    doc_case("unknown_op", L, 4, "10.1 rule 1", lambda d: d["block"]["nodes"].append({"op": "warp", "in": ["x"], "out": "x"}))
-    doc_case("unknown_attribute", L, 4, "10.1 rule 1", lambda d: node(d, "attention").update(temperature=2.0))
-    doc_case("unknown_top_key", L, 1, "10.1 rule 1", lambda d: d.update(profiles=["core"]))
+    doc_case("unknown_op", L, 4, "3.5", lambda d: d["block"]["nodes"].append({"op": "warp", "in": ["x"], "out": "x"}))
+    doc_case("unknown_attribute", L, 4, "3.5", lambda d: node(d, "attention").update(temperature=2.0))
+    doc_case("unknown_top_key", L, 1, "3.2", lambda d: d.update(profiles=["core"]))
     doc_case("version_2", L, 2, "2.3", lambda d: d.update(ir_version=2))
     doc_case("repeat_ne_n_layers", L, 3, "3.3", lambda d: d["block"].update(repeat=3))
     doc_case("model_ctx_missing", L, 3, "3.3", lambda d: d["model"].pop("ctx"))
     doc_case("per_layer_wrong_length", L, 6, "3.8", lambda d: node(d, "rope").update(theta={"per_layer": [10000.0]}))
     doc_case("per_layer_in_head", L, 6, "3.8", lambda d: d["head"]["nodes"][0].update(eps={"per_layer": [1e-5, 1e-5]}))
-    doc_case("add_one_input", L, 7, "10.1 rule 7", lambda d: node(d, "add").update(**{"in": ["x"]}))
-    doc_case("rope_pairing_unknown", L, 5, "10.1 rule 1", lambda d: node(d, "rope").update(pairing="halves"))
+    doc_case("add_one_input", L, 7, "3.5", lambda d: node(d, "add").update(**{"in": ["x"]}))
+    doc_case("rope_pairing_unknown", L, 5, "5.14", lambda d: node(d, "rope").update(pairing="halves"))
     doc_case("rope_n_rot_odd", L, 10, "5.14", lambda d: node(d, "rope").update(n_rot=3))
     doc_case("attention_not_causal", L, 14, "5.15", lambda d: node(d, "attention").update(causal=False))
     doc_case("attention_heads_not_multiple", L, 10, "5.15", lambda d: node(d, "attention").update(heads=3))
     doc_case("attention_window_differs", L, 12, "5.15", lambda d: node(d, "attention").update(window=4))
     doc_case("slot_declared_twice", L, 11, "6.1", lambda d: d["block"]["state"].append(copy.deepcopy(kv(d))))
     doc_case("slot_unread", L, 11, "6.1", lambda d: d["block"]["state"].append(dict(copy.deepcopy(kv(d)), name="kv2")))
-    doc_case("slot_unknown_kind", L, 11, "10.1 rule 1", lambda d: kv(d).update(kind="paged"))
+    doc_case("slot_unknown_kind", L, 11, "6.1", lambda d: kv(d).update(kind="paged"))
     doc_case("attention_no_slot", L, 11, "6.1", lambda d: node(d, "attention").update(state="nowhere"))
     doc_case("kv_slot_field_missing", L, 12, "6.2", lambda d: kv(d).pop("max_len"))
     doc_case("tensor_index_without_weight_index", L, 19, "7.2",
              lambda d: node(d, "linear").update(tensor_index="application"))
-    doc_case("name_with_i_outside_block", L, 9, "3.7",
+    doc_case("name_with_i_outside_block", L, "17a", "3.7",
              lambda d: d["head"]["nodes"][0].update(weight="blk.{i}.output_norm.weight"))
     doc_case("evict_on_causal", L, 16, "6.8.3", lambda d: kv(d).update(evict="turn_state"))
     doc_case("missing_tensor", L, 25, "3.7", lambda d: node(d, "linear").update(weight="blk.{i}.nope.weight"))
-    doc_case("gelu_approx_unknown", "pk_gpt2", 5, "10.1 rule 1", lambda d: node(d, "gelu").update(approx="sigmoid"))
+    doc_case("gelu_approx_unknown", "pk_gpt2", 5, "5.8", lambda d: node(d, "gelu").update(approx="sigmoid"))
     doc_case("split_count", "pk_gpt2", 10, "5.5", lambda d: node(d, "split").update(sizes=[16, 32]))
     doc_case("expr_does_not_parse", "pk_flex_expr", 9, "5.19", lambda d: node(d, "expr").update(expr="max(x,"))
     doc_case("moe_top_k_too_large", "pk_moe", 10, "5.16", lambda d: node(d, "moe_ffn").update(top_k=5))
-    doc_case("moe_gate_norm_unknown", "pk_moe", 5, "10.1 rule 1", lambda d: node(d, "moe_ffn").update(gate_norm="topk"))
-    doc_case("recurrent_dtype_f16", "pk_kimi", 13, "10.1 rule 1",
+    doc_case("moe_gate_norm_unknown", "pk_moe", 5, "5.16", lambda d: node(d, "moe_ffn").update(gate_norm="topk"))
+    doc_case("recurrent_dtype_f16", "pk_kimi", 13, "6.3",
              lambda d: [s for s in d["block"]["state"] if s["kind"] == "recurrent"][0].update(dtype="f16"))
     doc_case("recurrent_shape_mismatch", "pk_kimi", 13, "6.3",
              lambda d: [s for s in d["block"]["state"] if s["kind"] == "recurrent"][0]["tensors"][0].update(shape=[3, 8]))
-    doc_case("recurrent_op_mismatch", "pk_kimi", 13, "6.1",
+    doc_case("recurrent_op_mismatch", "pk_kimi", 13, "6.3",
              lambda d: [s for s in d["block"]["state"] if s["kind"] == "recurrent"][0].update(op="ssm_scan"))
     doc_case("linear_attention_not_causal", "pk_kimi", 14, "6.4",
              lambda d: node(d, "linear_attention").update(causal=False))
@@ -600,7 +616,7 @@ def refusals():
     # The nine malformed MoR documents ember refuses (ember experiments/recursion_2026-10-23/mor_refusals.py).
     M = "pk_mor"
     doc_case("mor_route_not_first", M, 20, "7.4", lambda d: d["block"]["nodes"].insert(0, d["block"]["nodes"].pop(1)))
-    doc_case("mor_expert_choice", M, 20, "7.7", lambda d: node(d, "depth_route").update(route="expert_choice"))
+    doc_case("mor_expert_choice", M, 5, "7.7", lambda d: node(d, "depth_route").update(route="expert_choice"))
 
     def steps(d):
         return node(d, "depth_route")["step"]["per_layer"]
@@ -609,24 +625,24 @@ def refusals():
         step={"per_layer": [-1, 0, 0, 1, -1]}))
     doc_case("mor_steps_descending", M, 20, "7.4", lambda d: node(d, "depth_route").update(
         step={"per_layer": [-1, 2, 1, 0, -1]}))
-    doc_case("mor_step_length_wrong", M, 20, "7.4", lambda d: steps(d).pop())
+    doc_case("mor_step_length_wrong", M, 6, "3.8", lambda d: steps(d).pop())
     doc_case("mor_no_kv_rows_active", M, 21, "7.5", lambda d: kv(d).pop("kv_rows"))
     doc_case("mor_kv_from", M, 22, "7.6", lambda d: kv(d).update(kv_from={"per_layer": list(range(d["block"]["repeat"]))}))
-    doc_case("mor_gate_unknown", M, 20, "7.4", lambda d: node(d, "depth_route").update(gate="sigmoid"))
+    doc_case("mor_gate_unknown", M, 5, "7.4", lambda d: node(d, "depth_route").update(gate="sigmoid"))
     doc_case("mor_router_with_i", M, 20, "7.7", lambda d: node(d, "depth_route").update(weight="rec.{i}.router.weight"))
-    doc_case("mor_kv_rows_shared", M, 21, "7.5", lambda d: kv(d).update(kv_rows="shared"))
+    doc_case("mor_kv_rows_shared", M, 5, "7.5", lambda d: kv(d).update(kv_rows="shared"))
     doc_case("mor_route_in_head", M, 20, "7.4", lambda d: d["head"]["nodes"].insert(0, copy.deepcopy(node(d, "depth_route"))))
     S = "pk_state"
     doc_case("turn_state_with_window", S, 15, "6.8.2", lambda d: (node(d, "attention").update(window=4),
                                                                     kv(d).update(window=4)))
     doc_case("turn_state_without_state_weight", S, 15, "6.8.2", lambda d: d["embed"]["nodes"][0].pop("state_weight"))
     doc_case("evict_without_mask", S, 16, "6.8.3", lambda d: node(d, "attention").pop("mask"))
-    doc_case("evict_unknown", S, 5, "10.1 rule 1", lambda d: kv(d).update(evict="oldest"))
-    doc_case("mask_unknown", S, 5, "10.1 rule 1", lambda d: node(d, "attention").update(mask="sliding"))
+    doc_case("evict_unknown", S, 5, "6.8.3", lambda d: kv(d).update(evict="oldest"))
+    doc_case("mask_unknown", S, 5, "6.8.2", lambda d: node(d, "attention").update(mask="sliding"))
     doc_case("state_weight_with_i", S, 17, "6.8.1", lambda d: d["embed"]["nodes"][0].update(state_weight="state_{i}.weight"))
     doc_case("two_state_weights", S, 17, "6.8.1", lambda d: d["embed"]["nodes"].append(dict(copy.deepcopy(
         d["embed"]["nodes"][0]), out="x2")))
-    doc_case("state_weight_wrong_name", S, 28, "6.8.1", lambda d: d["embed"]["nodes"][0].update(state_weight="nope.weight"))
+    doc_case("state_weight_wrong_name", S, 25, "3.7", lambda d: d["embed"]["nodes"][0].update(state_weight="nope.weight"))
     # recurrence (6.10): faults in pk_kimi and pk_mamba with their recurrent ops rewritten (6.10.6).
     import ir_recurrence
 
@@ -658,6 +674,26 @@ def refusals():
     # v1.1.1 (6.10.1, 6.10.2): an assignment that repeats an index; a bare name that is not an index in scope.
     rec_case("recurrence_assignment_repeats_index", "pk_kimi", 32, lambda d: rec(d).update(readout="y[h,h] = num[h,h]"))
     rec_case("recurrence_bare_undeclared_name", "pk_kimi", 32, lambda d: rec(d).update(readout="y[h,e] = num[h,e] + foo"))
+    # v1.2: rule 36 (reads of values no node writes, 3.5 and 7.4) and rule 20's contiguous steps (7.4).
+    doc_case("reads_unwritten_value", L, 36, "3.5", lambda d: node(d, "add")["in"].__setitem__(1, "nowhere"))
+    doc_case("embed_writes_no_x", L, 36, "3.5", lambda d: d["embed"]["nodes"][0].update(out="h"))
+    doc_case("head_writes_no_logits", L, 36, "3.4", lambda d: d["head"]["nodes"][-1].update(out="y"))
+
+    def mor_outside(d):
+        d["embed"]["nodes"].append({"op": "affine", "in": ["x"], "scale": 1.0, "shift": 0.0, "out": "e"})
+        d["block"]["nodes"].insert(1, {"op": "add", "in": ["x", "e"], "out": "x"})
+    doc_case("mor_reads_outside_value", M, 36, "7.4", mor_outside)
+    doc_case("mor_step_gap", M, 20, "7.4", lambda d: node(d, "depth_route").update(
+        step={"per_layer": [-1, 0, -1, 1, 2]}))
+    # v1.2: rule 35 (3.2), a duplicate member name at any depth; the documents as JSON texts.
+    base = json.dumps(load_model(SUITE / "models" / L)[0])
+
+    def text_case(name, text):
+        out.append((name, {"text": text, "gguf": f"models/{L}/{L}.gguf", "rule": 35, "section": "3.2"}))
+    text_case("duplicate_member_top", base[:-1] + ', "family_hint": "llama"}')
+    assert base.count('{"op": "attention", ') == 1
+    text_case("duplicate_member_node", base.replace('{"op": "attention", ', '{"op": "attention", "causal": true, ', 1))
+    text_case("duplicate_member_prose", base[:-1] + ', "_note": {"a": 1, "a": 2}}')
     # Container rules: GGUFs whose metadata breaks one rule.
     gg = []
 
@@ -677,6 +713,14 @@ def refusals():
     gguf_case("weight_index_block_count", "pk_recursive", 27, "7.1",
               lambda m, d: m.__setitem__("paperkiln.block_count", (4, 9)))
     gguf_case("state_tokens_arch_llama", S, 28, "8.2", lambda m, d: m.__setitem__("general.architecture", (8, "llama")))
+    # v1.2: an embedded document holding a duplicate member name (rule 35).
+    doc, W, meta, _ = load_model(SUITE / "models" / L)
+    text = json.dumps(doc, separators=(",", ":"))
+    assert text.count('"model":{') == 1
+    write_gguf(SUITE / "refuse" / "duplicate_member_embedded.gguf", dict(meta), W,
+               ir_text=text.replace('"model":{', '"model":{"ctx":64,', 1))
+    gg.append(("duplicate_member_embedded", {"gguf": "refuse/duplicate_member_embedded.gguf", "rule": 35,
+                                             "section": "3.2"}))
     # version_key_mismatch: rewrite the version key by hand (write_gguf derives it from the document).
     _patch_version_key(SUITE / "refuse" / "version_key_mismatch.gguf", 7)
     return out + gg
@@ -756,6 +800,12 @@ def digest_vectors():
     refused("prose_lone_surrogate", '{"op": "relu", "_a": "\\ud800"}', "a lone surrogate under a '_' key")
     refused("prose_key_lone_surrogate", '{"op": "relu", "_\\ud800": 1}', "a lone surrogate in a '_' key's name")
     refused("prose_duplicate_key", '{"op": "relu", "_a": 1, "_a": 2}', "a duplicate '_' member name")
+    # v1.2 (3.10 step 1): the integer range is judged by the number's lexical form. A number with a fraction or
+    # an exponent is its nearest binary64 value; only an integer token must lie within -2^53 .. 2^53.
+    ok("fraction_form_beyond_2p53", "9007199254740993.0", prose=True)
+    ok("exponent_form_1e300", "1e300", prose=True)
+    ok("negative_integer_2p53", "-9007199254740992", prose=True)
+    refused("negative_integer_beyond_2p53", "-9007199254740993", "an integer beyond -2^53 (not I-JSON)")
     return {"_comment": "spec/IR_SPEC.md section 3.10: the IR digest. canonical is the RFC 8785 serialisation "
                         "(with prose false, every '_' key removed first: the digest); sha256 is the digest of "
                         "text. A refused text has no digest.", "vectors": vec}
@@ -791,6 +841,61 @@ def quant_cases():
                       "bytes": raw.hex(), "expect": enc(vals), "class": "EXACT"})
     return {"_comment": "spec/IR_SPEC.md section 4.7: each case's bytes are rows x n elements of the storage type, "
                         "row-major; expect is their f32 values, EXACT on every backend.", "cases": cases}
+
+
+# ---------------------------------------------------------------- v1.2: accept, chat and truncate cases
+
+def accept_cases():
+    """IR_SPEC 11.2: the documents every consumer must accept: each suite model with its own document, each
+    rewritten document in place of its model's, and each worked document alone (examples/, no GGUF)."""
+    cases = [{"name": f"model_{md.name}", "gguf": f"models/{md.name}/{md.name}.gguf"} for md in model_dirs()]
+    cases += [{"name": f"rewritten_{n}", "gguf": f"models/{n}/{n}.gguf", "ir": f"recurrence/{n}.ir.json"}
+              for n in REC_MODELS]
+    cases += [{"name": f"example_{p.name[:-len('.ir.json')]}", "ir": f"../examples/{p.name}"}
+              for p in sorted((ROOT / "examples").glob("*.ir.json"))]
+    for c in cases:
+        errs = ir_validate.check_errors(SUITE / c["gguf"] if "gguf" in c else None,
+                                        SUITE / c["ir"] if "ir" in c else None)
+        if errs:
+            raise SystemExit(f"accept case {c['name']}: the reference refuses it: {errs[:2]}")
+    return {"_comment": "spec/IR_SPEC.md section 11.2: documents every consumer must accept (check returns "
+                        "accepted). gguf is a suite model; ir, when present, is read in place of its own document, "
+                        "or alone when there is no gguf (the document rules only).", "cases": cases}
+
+
+def chat_cases():
+    """IR_SPEC 8.1.3: chat/render.json's conversations and records (paperkiln's tests/chat_template_cases.json,
+    the hand-written cases of gate G5), each case's expected text or refusal from tools/ir_chat.py."""
+    import ir_chat
+    src = json.loads((SUITE / "chat" / "render.json").read_text(encoding="utf-8"))
+    cases = []
+    for c in src["cases"]:
+        c = {k: v for k, v in c.items() if k not in ("expect", "refused")}
+        rec = src["records"][c["record"]] if isinstance(c["record"], str) else c["record"]
+        try:
+            c["expect"] = ir_chat.render(rec, c["messages"], c.get("generation_prompt", False), c.get("thinking"))
+        except ir_chat.ChatError:
+            c["refused"] = True
+        cases.append(c)
+    return {"_comment": "spec/IR_SPEC.md section 8.1.3: render_chat(record, messages, generation_prompt, thinking) "
+                        "gives expect, or refuses where refused is true. A case's record is a key of records or a "
+                        "record itself. Inputs: paperkiln's tests/chat_template_cases.json (gate G5).",
+            "records": src["records"], "cases": cases}
+
+
+def extra_traces():
+    """v1.2 (IR_SPEC 6.9): truncate on models with recurrent state (a fresh run's state over the first n tokens:
+    a snapshot or a run from the start). Each draws from a stream of its own."""
+    out = []
+    for name in ("pk_srd", "tp_mamba1"):
+        doc, W, meta, _ = load_model(SUITE / "models" / name)
+        rng = np.random.default_rng(sum(map(ord, name)) + 1200)
+        V = doc["model"]["vocab"]
+        ids = [int(x) for x in rng.integers(1, V, 9)]
+        out.append((f"{name}_truncate", trace_case(name, doc, W, [
+            {"method": "forward", "ids": ids}, {"method": "truncate", "n": 5},
+            {"method": "forward", "ids": [int(x) for x in rng.integers(1, V, 2)]}])))
+    return out
 
 
 # ---------------------------------------------------------------- regenerate
@@ -854,6 +959,20 @@ def regenerate():
         (SUITE / f).write_text(json.dumps(case, indent=1) + "\n", encoding="utf-8")
         manifest.append({"id": f"trace/{name}_recurrence", "kind": "trace", "file": f, "model": f"models/{name}",
                          "profile": "recurrence"})
+    for name, case in extra_traces():
+        f = f"state/{name}.json"
+        (SUITE / f).write_text(json.dumps(case, indent=1) + "\n", encoding="utf-8")
+        manifest.append({"id": f"trace/{name}", "kind": "trace", "file": f, "model": case["model"],
+                         "profile": "state"})
+    (SUITE / "accept").mkdir(exist_ok=True)
+    ac = accept_cases()
+    (SUITE / "accept" / "documents.json").write_text(json.dumps(ac, indent=1) + "\n", encoding="utf-8")
+    manifest.append({"id": "accept/documents", "kind": "accept", "file": "accept/documents.json", "profile": "core",
+                     "n": len(ac["cases"])})
+    cc = chat_cases()
+    (SUITE / "chat" / "render.json").write_text(json.dumps(cc, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    manifest.append({"id": "chat/render", "kind": "chat", "file": "chat/render.json", "profile": "chat",
+                     "n": len(cc["cases"])})
     (SUITE / "manifest.json").write_text(json.dumps({
         "_comment": "spec/IR_SPEC.md section 11: the conformance suite's cases. Generated by tools/ir_conformance.py "
                     "--regenerate from the models in models/ (expected values: tools/ir_numpy.py).",

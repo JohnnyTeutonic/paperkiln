@@ -243,6 +243,105 @@ json parse_ijson(const std::string& text) {
 
 std::string digest_text(const std::string& text) { return digest(parse_ijson(text)); }
 
+json parse_document(const std::string& text) {
+    std::vector<std::vector<std::string>> keys;  // the member names seen, per open object
+    std::string dup;
+    json::parser_callback_t cb = [&](int, json::parse_event_t ev, json& parsed) {
+        if (ev == json::parse_event_t::object_start) {
+            keys.emplace_back();
+        } else if (ev == json::parse_event_t::object_end) {
+            if (!keys.empty()) keys.pop_back();
+        } else if (ev == json::parse_event_t::key && !keys.empty()) {
+            const std::string k = parsed.get<std::string>();
+            auto& seen = keys.back();
+            if (dup.empty() && std::find(seen.begin(), seen.end(), k) != seen.end()) dup = k;
+            seen.push_back(k);
+        }
+        return true;
+    };
+    json v;
+    try {
+        v = json::parse(text, cb);
+    } catch (const json::exception& e) {
+        throw DocumentError(std::string("IR_SPEC 3.2 (rule 1): not a JSON text (") + e.what() + ")");
+    }
+    if (!dup.empty())
+        throw DocumentError("IR_SPEC 3.2 (rule 35): the member name \"" + dup +
+                            "\" occurs twice in one object (refused at any depth, '_' members included)");
+    return v;
+}
+
+namespace {
+
+std::vector<std::string> node_outs(const json& n) {
+    std::vector<std::string> out;
+    if (!n.contains("out")) return out;
+    const json& o = n["out"];
+    if (o.is_string()) out.push_back(o.get<std::string>());
+    if (o.is_array())
+        for (const auto& x : o)
+            if (x.is_string()) out.push_back(x.get<std::string>());
+    return out;
+}
+
+const json* section_nodes(const json& doc, const char* sec) {
+    if (!doc.contains(sec) || !doc[sec].is_object() || !doc[sec].contains("nodes") || !doc[sec]["nodes"].is_array())
+        return nullptr;
+    return &doc[sec]["nodes"];
+}
+
+}  // namespace
+
+std::vector<std::string> read_errors(const json& doc) {
+    std::vector<std::string> errs;
+    const json* embed = section_nodes(doc, "embed");
+    const json* block = section_nodes(doc, "block");
+    const json* head = section_nodes(doc, "head");
+    if (!embed || !block || !head) return errs;  // rule 1
+    const bool routed = !block->empty() && (*block)[0].is_object() && (*block)[0].value("op", "") == "depth_route";
+    using Set = std::vector<std::string>;
+    auto has = [](const Set& s, const std::string& x) { return std::find(s.begin(), s.end(), x) != s.end(); };
+    auto walk = [&](const char* sec, const json& nodes, size_t from, size_t to, Set& have) {
+        for (size_t j = from; j < to && j < nodes.size(); ++j) {
+            const json& n = nodes[j];
+            if (!n.is_object()) continue;
+            if (n.contains("in") && n["in"].is_array())
+                for (size_t k = 0; k < n["in"].size(); ++k) {
+                    if (!n["in"][k].is_string()) continue;
+                    const std::string x = n["in"][k].get<std::string>();
+                    if (!has(have, x))
+                        errs.push_back(std::string("IR_SPEC ") + (routed && std::string(sec) != "embed" ? "7.4" : "3.5") +
+                                       " (rule 36): " + sec + "[" + std::to_string(j) + "] " + n.value("op", "?") +
+                                       " reads '" + x + "' (its input " + std::to_string(k) +
+                                       "), which no earlier node writes");
+                }
+            for (const auto& o : node_outs(n))
+                if (!has(have, o)) have.push_back(o);
+        }
+    };
+    Set have = {"tokens", "pos"};
+    walk("embed", *embed, 0, embed->size(), have);
+    if (!has(have, "x")) errs.push_back("IR_SPEC 3.5 (rule 36): the embed section writes no x");
+    if (routed) {
+        Set embed_have = have;
+        walk("block", *block, 0, 1, have);
+        Set step = {"x", "pos"};
+        walk("block", *block, 1, block->size(), step);
+        Set h = embed_have;
+        if (!has(h, "x")) h.push_back("x");
+        walk("head", *head, 0, head->size(), h);
+    } else {
+        walk("block", *block, 0, block->size(), have);
+        walk("head", *head, 0, head->size(), have);
+    }
+    bool logits = false;
+    for (const auto& n : *head)
+        if (n.is_object())
+            for (const auto& o : node_outs(n)) logits |= o == "logits";
+    if (!logits) errs.push_back("IR_SPEC 3.4 (rule 36): the head writes no logits");
+    return errs;
+}
+
 json rmsnorm(const std::string& in, const std::string& weight, float eps, const std::string& out) {
     return {{"op", "rmsnorm"}, {"in", json::array({in})}, {"weight", weight}, {"eps", f32(eps)}, {"out", out}};
 }

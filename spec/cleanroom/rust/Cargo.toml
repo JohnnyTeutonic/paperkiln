@@ -1,0 +1,16 @@
+[package]
+name = "keramos-cleanroom"
+version = "0.1.0"
+edition = "2021"
+description = "A clean-room implementation of the keramos IR (version 1, revision 1.1) from its specification text"
+publish = false
+
+[[bin]]
+name = "kcr"
+path = "src/main.rs"
+
+[dependencies]
+
+[profile.release]
+opt-level = 3
+debug = false

@@ -287,7 +287,7 @@ def evaluate(expr, inputs) -> np.ndarray:
         inputs = [inputs]
     xs = [np.asarray(v, dtype=F32) for v in inputs]
     if not xs or any(v.ndim != 2 or v.shape != xs[0].shape for v in xs):
-        raise ExprError("expr: every input must have one shape [T, w]")
+        raise ExprError("IR_SPEC 5.19 (rule 37): expr: every input must have one shape [T, w]")
     node = parse(expr, len(xs)) if isinstance(expr, str) else expr
     T, w = xs[0].shape
     with np.errstate(all="ignore"):

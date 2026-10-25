@@ -308,6 +308,67 @@
    },
    "class": "ROUNDING",
    "tol": 1e-05
+  },
+  {
+   "name": "first_head",
+   "node": {
+    "op": "rope",
+    "in": [
+     "q",
+     "k",
+     "pos"
+    ],
+    "heads": 2,
+    "head_dim": 4,
+    "theta": 10000.0,
+    "rope_heads": "first",
+    "pairing": "interleaved",
+    "out": [
+     "q",
+     "k"
+    ]
+   },
+   "inputs": {
+    "q": {
+     "shape": [
+      4,
+      8
+     ],
+     "f32": "3cbf41e83f44c29b3fe3181c3ea4d80a3fc9d784bea367c9bea845643ff692afbe8216c43f73dadd3f2089c83e60babf3e88138bbfaaf6a7bf876afcbeec62793f0db752bf94c9fdbc90f6a8bcb41f79c008407f3f09c6c93f8be7f23fa4ee943ef3692d3f61d296bf416037bf87611abf3fd13c3f60fb6b3fc3846d3e5a959f"
+    },
+    "k": {
+     "shape": [
+      4,
+      8
+     ],
+     "f32": "bfc38e183f6d2de6bfac8dcd3c3496afbf8fd60dbf6dd6403e71d025401e65913eda1bdc3fde327d3f1403d83f3d76483f03a0ddbf4900013de138e33f80f6333f305e643f378b0dbf68ddcb3d8aee283f2cd086bfd00346bf6a31284025fdd3c02deacebf9db472bf2b380bbe9138263e8d4c463f5a3fdb3e1056b43f488cae"
+    },
+    "pos": [
+     0,
+     1,
+     5,
+     9
+    ]
+   },
+   "weights": {},
+   "expect": {
+    "q": {
+     "shape": [
+      4,
+      8
+     ],
+     "f32": "3cbf41e83f44c29b3fe3181c3ea4d80a3fc9d784bea367c9bea845643ff692afbf70572c3e9a0b703f1ff7e73e6723c03e88138bbfaaf6a7bf876afcbeec6279bf7527c2bf5c4e80bc87c7aabcbb249cc008407f3f09c6c93f8be7f23fa4ee94bf4bf486bf1b98c4bf284200bf8f8585bf3fd13c3f60fb6b3fc3846d3e5a959f"
+    },
+    "k": {
+     "shape": [
+      4,
+      8
+     ],
+     "f32": "bfc38e183f6d2de6bfac8dcd3c3496afbf8fd60dbf6dd6403e71d025401e6591bf9d82e63fa5efcd3f121cef3f3eeec43f03a0ddbf4900013de138e33f80f6333f62087cbeea1eb6bf69717d3cb698803f2cd086bfd00346bf6a31284025fdd3403ef5303b2e6c00bf23fffabeaf68cf3e8d4c463f5a3fdb3e1056b43f488cae"
+    }
+   },
+   "class": "ROUNDING",
+   "tol": 1e-05
   }
  ]
 }

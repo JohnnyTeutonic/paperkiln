@@ -114,6 +114,15 @@ def _rope(x, pos, heads, hd, n_rot, theta, pairing, freq_scale=1.0):
     return out.reshape(len(pos), heads * hd).astype(np.float32)
 
 
+class WidthError(ValueError):
+    """IR_SPEC 10.1 rule 37: a value's width does not fit the node reading it (a run-time refusal)."""
+
+
+def _width(cond, section, msg):
+    if not cond:
+        raise WidthError(f"IR_SPEC {section} (rule 37): {msg}")
+
+
 def weight_index(doc, i):
     """The stored layer whose tensors block application i reads (ir.hpp weight_index; i when absent)."""
     wmap = doc["block"].get("weight_index")
@@ -169,9 +178,9 @@ def run_nodes(nodes, env, W, i=None, no_window=False, wi=None, states=None):
             wt = w(nd["weight"]).reshape(-1)
             bias = w(nd["bias"]).reshape(-1) if nd.get("bias") else None
             for tname, t in ((nd["weight"], wt), (nd.get("bias"), bias)):
-                if t is not None and t.shape[0] != x.shape[1]:
-                    raise SystemExit(f"ir_numpy: scale tensor {name(tname)} has length {t.shape[0]}, "
-                                     f"not the width {x.shape[1]} of {ins[0]}")
+                if t is not None:
+                    _width(t.shape[0] == x.shape[1], "5.4", f"scale tensor {name(tname)} has length "
+                           f"{t.shape[0]}, not the width {x.shape[1]} of {ins[0]}")
             y = (x * wt).astype(np.float32)
             if bias is not None:
                 y = (y + bias).astype(np.float32)
@@ -184,6 +193,7 @@ def run_nodes(nodes, env, W, i=None, no_window=False, wi=None, states=None):
             y = (x - mu) / np.sqrt(var + np.float32(nd["eps"])) * w(nd["weight"]) + w(nd["bias"])
         elif op == "rmsnorm":
             g = nd.get("group") or x.shape[1]
+            _width(x.shape[1] % g == 0, "5.6", f"rmsnorm group {g} does not divide the width {x.shape[1]} of {ins[0]}")
             t = x.reshape(x.shape[0], x.shape[1] // g, g)
             wt = w(nd["weight"])
             if nd.get("weight_offset"):
@@ -225,6 +235,8 @@ def run_nodes(nodes, env, W, i=None, no_window=False, wi=None, states=None):
         elif op == "silu":
             y = x / (1 + np.exp(-x))
         elif op in ("add", "mul", "sub"):
+            _width(np.shape(x) == np.shape(env[ins[1]]), "5.10", f"{op} reads {ins[0]} {list(np.shape(x))} and "
+                   f"{ins[1]} {list(np.shape(env[ins[1]]))}, not one shape")
             y = x + env[ins[1]] if op == "add" else x * env[ins[1]] if op == "mul" else x - env[ins[1]]
         elif op == "relu":
             y = np.where(x > np.float32(0), x, np.float32(0))  # IR_SPEC 5.9: relu(-0) = relu(NaN) = +0
@@ -233,6 +245,8 @@ def run_nodes(nodes, env, W, i=None, no_window=False, wi=None, states=None):
         elif op == "affine":
             y = (x * np.float32(nd["scale"])).astype(np.float32) + np.float32(nd["shift"])
         elif op == "mul_col":
+            _width(np.shape(env[ins[1]]) == (x.shape[0], 1), "5.12", f"mul_col's {ins[1]} is "
+                   f"{list(np.shape(env[ins[1]]))}, not [{x.shape[0]}, 1]")
             y = x * env[ins[1]]  # [T, w] * [T, 1]
         elif op == "rms_row":
             y = np.sqrt((x * x).sum(axis=1, keepdims=True) / np.float32(x.shape[1]) + np.float32(nd["eps"]))
@@ -268,9 +282,10 @@ def run_nodes(nodes, env, W, i=None, no_window=False, wi=None, states=None):
             if len(src) == 1:
                 y = src[0]
             else:
-                wq, eps = w(nd["weight"]), np.float32(nd["eps"])
+                wq, eps = w(nd["weight"]), np.float32(nd.get("eps", 1e-05))  # IR_SPEC 5.18: eps defaults to 1e-5
                 logits = []
                 for s in src:
+                    _width(s.shape == src[0].shape, "5.18", "depth_attend's sources are not of one shape")
                     r = np.float32(1) / np.sqrt((s * s).sum(axis=1, keepdims=True) / np.float32(s.shape[1]) + eps)
                     logits.append(((s * r) * wq).sum(axis=1))
                 lg = np.stack(logits, axis=1)
@@ -289,20 +304,28 @@ def run_nodes(nodes, env, W, i=None, no_window=False, wi=None, states=None):
             keep(nd, s=s)
         elif op == "split":
             outs, at = [], 0
+            _width(sum(nd["sizes"]) == x.shape[1], "5.5", f"split sizes {nd['sizes']} do not sum to the width "
+                   f"{x.shape[1]} of {ins[0]}")
             for s in nd["sizes"]:
                 outs.append(x[:, at:at + s])
                 at += s
-            assert at == x.shape[1]
             for o, v in zip(nd["out"], outs):
                 env[o] = v
             continue
         elif op == "rope":
-            if nd["rope_heads"] != "all":
-                raise SystemExit("ir_numpy: rope_heads other than 'all'")
             H, hd, pos = nd["heads"], nd["head_dim"], env[ins[2]]
             n_rot = nd.get("n_rot") or hd
             for o, src, heads in zip(nd["out"], ins[:2], (H, nd.get("kv_heads") or H)):
-                env[o] = _rope(env[src], pos, heads, hd, n_rot, nd["theta"], nd["pairing"], nd.get("freq_scale", 1.0))
+                _width(env[src].shape[1] == heads * hd, "5.14", f"rope's {src} has width {env[src].shape[1]}, not "
+                       f"{heads} heads of {hd}")
+                if nd["rope_heads"] == "first":  # IR_SPEC 5.14: head 0 of q and of k rotates, the rest pass through
+                    out = env[src].copy()
+                    out[:, :hd] = _rope(env[src][:, :hd], pos, 1, hd, n_rot, nd["theta"], nd["pairing"],
+                                        nd.get("freq_scale", 1.0))
+                    env[o] = out
+                else:
+                    env[o] = _rope(env[src], pos, heads, hd, n_rot, nd["theta"], nd["pairing"],
+                                   nd.get("freq_scale", 1.0))
             continue
         elif op == "moe_ffn":
             # Softmax over the k selected router logits (= renormalised top-k

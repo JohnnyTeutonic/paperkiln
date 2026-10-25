@@ -246,5 +246,5 @@
  },
  "gguf": "models/pk_llama/pk_llama.gguf",
  "rule": 1,
- "section": "10.1 rule 1"
+ "section": "3.2"
 }

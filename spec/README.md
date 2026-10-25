@@ -21,6 +21,7 @@ that exports documents) and ember.cpp (the inference engine: CPU, CUDA and WebAs
 | `ir.schema.json` | the JSON Schema (2020-12) of a document's structure |
 | `tools/ir_validate.py` | the validator: the schema and every refusal rule; the digest |
 | `tools/ir_numpy.py` | the reference interpreter (numpy), with `ir_expr.py` (the `expr` op), `ir_recurrence.py` (the `recurrence` op) and `ir_quant.py` (stored tensor types) |
+| `tools/ir_chat.py` | renders chat templates (the chat profile, IR_SPEC section 8.1.3) |
 | `tools/ir_check.py` | checks a GGUF's embedded document and its container |
 | `tools/gguf_ir.py` | builds the document of a third-party GGUF (Qwen, Gemma 3, GPT-2, Pythia, Mistral, Mamba-1) from its llama.cpp metadata |
 | `tools/ir_conformance.py` | the conformance runner (and, with `ir_conformance_gen.py`, the suite's generator) |
@@ -45,7 +46,7 @@ suite's expected values, the only one to regenerate them in (IR_SPEC section 4.6
     python tools/ir_validate.py --corpus                 # every stored document of this repository
     python tools/ir_validate.py --corpus --corpus-glob "my_models/**/*.gguf"
 
-Each refusal names the rule it breaks and its section (`IR_SPEC 10.1 ...`); the exit status is 1 on
+Each refusal names its section and the rule of IR_SPEC section 10.1 it breaks (`IR_SPEC 3.7 (rule 25): ...`); the exit status is 1 on
 any refusal. From Python, `ir_validate.file_errors(path)` and `ir_validate.doc_errors(doc)` return
 the messages.
 
@@ -69,7 +70,7 @@ A Python engine can instead subclass `ir_conformance.Adapter` and call
 ## Versions
 
 A document carries `ir_version` (now 1). The specification has revisions within a version (1.0,
-1.1), which add without changing meaning (IR_SPEC 2.2). Each revision is a tag `vR.S.P` of this
+1.1, 1.2), which add without changing meaning (IR_SPEC 2.2). Each revision is a tag `vR.S.P` of this
 repository: `v1.1.0` is revision 1.1, and P counts later commits that change no normative statement,
 no part of the schema and no expected value (wording, paths, tool interfaces, tests, receipts;
 IR_SPEC 2.6). An engine pins a tag, records the tag and its full commit, and names both in its

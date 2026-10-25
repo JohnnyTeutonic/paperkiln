@@ -248,6 +248,6 @@
   }
  },
  "gguf": "models/pk_state/pk_state.gguf",
- "rule": 28,
- "section": "6.8.1"
+ "rule": 25,
+ "section": "3.7"
 }

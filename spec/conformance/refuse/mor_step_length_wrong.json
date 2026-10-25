@@ -285,6 +285,6 @@
   }
  },
  "gguf": "models/pk_mor/pk_mor.gguf",
- "rule": 20,
- "section": "7.4"
+ "rule": 6,
+ "section": "3.8"
 }

@@ -280,7 +280,7 @@
       "patternProperties": {"^_": true}, "additionalProperties": false
     },
     "op_depth_attend": {
-      "required": ["weight", "eps"],
+      "required": ["weight"],
       "properties": {"op": true, "in": true, "out": {"$ref": "#/$defs/name"}, "tensor_index": {"enum": ["application"]},
                      "weight": {"$ref": "#/$defs/name"}, "eps": {"$ref": "#/$defs/num_or_layers"}},
       "patternProperties": {"^_": true}, "additionalProperties": false

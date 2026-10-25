@@ -1,0 +1,145 @@
+{
+ "_comment": "spec/IR_SPEC.md section 11.2: documents every consumer must accept (check returns accepted). gguf is a suite model; ir, when present, is read in place of its own document, or alone when there is no gguf (the document rules only).",
+ "cases": [
+  {
+   "name": "model_pk_attnres",
+   "gguf": "models/pk_attnres/pk_attnres.gguf"
+  },
+  {
+   "name": "model_pk_flex_expr",
+   "gguf": "models/pk_flex_expr/pk_flex_expr.gguf"
+  },
+  {
+   "name": "model_pk_flex_highway",
+   "gguf": "models/pk_flex_highway/pk_flex_highway.gguf"
+  },
+  {
+   "name": "model_pk_gpt2",
+   "gguf": "models/pk_gpt2/pk_gpt2.gguf"
+  },
+  {
+   "name": "model_pk_gpt2_swa",
+   "gguf": "models/pk_gpt2_swa/pk_gpt2_swa.gguf"
+  },
+  {
+   "name": "model_pk_kimi",
+   "gguf": "models/pk_kimi/pk_kimi.gguf"
+  },
+  {
+   "name": "model_pk_llama",
+   "gguf": "models/pk_llama/pk_llama.gguf"
+  },
+  {
+   "name": "model_pk_llama_attnres",
+   "gguf": "models/pk_llama_attnres/pk_llama_attnres.gguf"
+  },
+  {
+   "name": "model_pk_llama_attnres_rec",
+   "gguf": "models/pk_llama_attnres_rec/pk_llama_attnres_rec.gguf"
+  },
+  {
+   "name": "model_pk_mamba",
+   "gguf": "models/pk_mamba/pk_mamba.gguf"
+  },
+  {
+   "name": "model_pk_moe",
+   "gguf": "models/pk_moe/pk_moe.gguf"
+  },
+  {
+   "name": "model_pk_mor",
+   "gguf": "models/pk_mor/pk_mor.gguf"
+  },
+  {
+   "name": "model_pk_recurrence",
+   "gguf": "models/pk_recurrence/pk_recurrence.gguf"
+  },
+  {
+   "name": "model_pk_recursive",
+   "gguf": "models/pk_recursive/pk_recursive.gguf"
+  },
+  {
+   "name": "model_pk_srd",
+   "gguf": "models/pk_srd/pk_srd.gguf"
+  },
+  {
+   "name": "model_pk_state",
+   "gguf": "models/pk_state/pk_state.gguf"
+  },
+  {
+   "name": "model_tp_gemma3",
+   "gguf": "models/tp_gemma3/tp_gemma3.gguf"
+  },
+  {
+   "name": "model_tp_gptneox",
+   "gguf": "models/tp_gptneox/tp_gptneox.gguf"
+  },
+  {
+   "name": "model_tp_mamba1",
+   "gguf": "models/tp_mamba1/tp_mamba1.gguf"
+  },
+  {
+   "name": "model_tp_mistral",
+   "gguf": "models/tp_mistral/tp_mistral.gguf"
+  },
+  {
+   "name": "model_tp_qwen3",
+   "gguf": "models/tp_qwen3/tp_qwen3.gguf"
+  },
+  {
+   "name": "rewritten_pk_kimi",
+   "gguf": "models/pk_kimi/pk_kimi.gguf",
+   "ir": "recurrence/pk_kimi.ir.json"
+  },
+  {
+   "name": "rewritten_pk_srd",
+   "gguf": "models/pk_srd/pk_srd.gguf",
+   "ir": "recurrence/pk_srd.ir.json"
+  },
+  {
+   "name": "rewritten_pk_mamba",
+   "gguf": "models/pk_mamba/pk_mamba.gguf",
+   "ir": "recurrence/pk_mamba.ir.json"
+  },
+  {
+   "name": "rewritten_tp_mamba1",
+   "gguf": "models/tp_mamba1/tp_mamba1.gguf",
+   "ir": "recurrence/tp_mamba1.ir.json"
+  },
+  {
+   "name": "example_attnres_tiny",
+   "ir": "../examples/attnres_tiny.ir.json"
+  },
+  {
+   "name": "example_chat_sftfinal",
+   "ir": "../examples/chat_sftfinal.ir.json"
+  },
+  {
+   "name": "example_flex_highway_tiny",
+   "ir": "../examples/flex_highway_tiny.ir.json"
+  },
+  {
+   "name": "example_gpt2_tiny",
+   "ir": "../examples/gpt2_tiny.ir.json"
+  },
+  {
+   "name": "example_kimi_tiny",
+   "ir": "../examples/kimi_tiny.ir.json"
+  },
+  {
+   "name": "example_mamba_tiny",
+   "ir": "../examples/mamba_tiny.ir.json"
+  },
+  {
+   "name": "example_moe_tiny",
+   "ir": "../examples/moe_tiny.ir.json"
+  },
+  {
+   "name": "example_srd_tiny",
+   "ir": "../examples/srd_tiny.ir.json"
+  },
+  {
+   "name": "example_swa_tiny",
+   "ir": "../examples/swa_tiny.ir.json"
+  }
+ ]
+}

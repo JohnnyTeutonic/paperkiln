@@ -1,0 +1,5 @@
+{
+ "gguf": "refuse/duplicate_member_embedded.gguf",
+ "rule": 35,
+ "section": "3.2"
+}

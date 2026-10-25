@@ -536,6 +536,32 @@
    "name": "prose_duplicate_key",
    "text": "{\"op\": \"relu\", \"_a\": 1, \"_a\": 2}",
    "refused": "a duplicate '_' member name"
+  },
+  {
+   "name": "fraction_form_beyond_2p53",
+   "text": "9007199254740993.0",
+   "prose": true,
+   "canonical": "9007199254740992",
+   "sha256": "c681da39d7273a6a24c15c9cac3a75526ff2ecf8ba4ee60346a0c70c8163bdb2"
+  },
+  {
+   "name": "exponent_form_1e300",
+   "text": "1e300",
+   "prose": true,
+   "canonical": "1e+300",
+   "sha256": "2b0de494c41db4c1bf0b41b0a3483db71f2b53a5e37caf5a61abee2d4169a935"
+  },
+  {
+   "name": "negative_integer_2p53",
+   "text": "-9007199254740992",
+   "prose": true,
+   "canonical": "-9007199254740992",
+   "sha256": "83e109bfd7fb4984b47a46f363627c18dbbd7e57e36b05a04cd162d304df72e9"
+  },
+  {
+   "name": "negative_integer_beyond_2p53",
+   "text": "-9007199254740993",
+   "refused": "an integer beyond -2^53 (not I-JSON)"
   }
  ]
 }

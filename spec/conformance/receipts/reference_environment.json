@@ -1,21 +1,21 @@
 {
- "_comment": "IR_SPEC.md section 4.6: the environment that generated conformance/'s stored expected values. Each run is `python tools/ir_conformance.py --regenerate` on a git archive of the commit below, compared with the stored files (JSON by value, other files byte for byte; README.md, which is not generated, left out; receipts/ excluded). For a differing file: its differing leaves, the largest f32 ulp distance among them, the largest |a - b| / max(1, max|stored|) (section 11.4's scale) and, for decimal log-probabilities, the largest |a - b|.",
- "keramos_commit": "02751772051494dff3a971be9669be35fcf4943e",
- "tag_of_commit": "v1.1.3",
+ "_comment": "IR_SPEC.md section 4.6: the environment that generated conformance/'s stored expected values. Each run is `python tools/ir_conformance.py --regenerate` on the tree tagged v1.2.0 (its commit is receipts/index.json's), compared with the stored files (JSON by value, other files byte for byte; README.md, which is not generated, left out; receipts/ excluded). For a differing file: its differing leaves, the largest f32 ulp distance among them, the largest |a - b| / max(1, max|stored|) (section 11.4's scale) and, for decimal log-probabilities, the largest |a - b|.",
+ "tag": "v1.2.0",
  "date": "2026-10-26",
  "runs": [
   {
    "environment": "CPython 3.13.14, numpy 2.3.5, Windows 11 x86-64 (10.0.26200)",
    "role": "the generating environment",
-   "generated_files": 228,
-   "identical": 228,
-   "differ": {}
+   "generated_files": 242,
+   "identical": 242,
+   "differ": {},
+   "note": "regenerated twice: the second run reproduced the first's files"
   },
   {
    "environment": "CPython 3.12.3, numpy 2.3.3, Linux 6.18.54.1-microsoft-standard-WSL2 x86-64 (glibc 2.39), WSL ext4",
    "role": "another build",
-   "generated_files": 228,
-   "identical": 223,
+   "generated_files": 242,
+   "identical": 236,
    "differ": {
     "models/tp_mamba1/case.json": {
      "leaves": 24,
@@ -56,10 +56,17 @@
      "max_rel_of_case_rule": 3.825402508851981e-07,
      "float_leaves": 0,
      "max_float_abs_diff": null
+    },
+    "state/tp_mamba1_truncate.json": {
+     "leaves": 11,
+     "f32_leaves": 11,
+     "max_f32_ulp": 512,
+     "max_rel_of_case_rule": 2.2108511759340537e-07,
+     "float_leaves": 0,
+     "max_float_abs_diff": null
     }
    },
-   "suite_on_its_own_values": "276 pass, 0 fail, 8 skip",
-   "suite_on_the_stored_values": "276 pass, 0 fail, 8 skip (receipts/ir_numpy.json, v1.1.2)"
+   "suite_on_its_own_values": "362 pass, 0 fail, 8 skip"
   }
  ]
 }

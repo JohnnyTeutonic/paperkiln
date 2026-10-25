@@ -249,5 +249,5 @@
  },
  "gguf": "models/pk_state/pk_state.gguf",
  "rule": 5,
- "section": "10.1 rule 1"
+ "section": "6.8.3"
 }

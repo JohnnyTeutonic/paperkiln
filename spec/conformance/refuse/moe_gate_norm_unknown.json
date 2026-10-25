@@ -220,5 +220,5 @@
  },
  "gguf": "models/pk_moe/pk_moe.gguf",
  "rule": 5,
- "section": "10.1 rule 1"
+ "section": "5.16"
 }

@@ -218,5 +218,5 @@
  },
  "gguf": "models/pk_gpt2/pk_gpt2.gguf",
  "rule": 5,
- "section": "10.1 rule 1"
+ "section": "5.8"
 }

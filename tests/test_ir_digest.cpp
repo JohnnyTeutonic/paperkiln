@@ -51,6 +51,54 @@ int main(int argc, char** argv) {
         ++ok;
     }
     std::printf("2. digest vectors: %zu serialised and hashed as the reference does, %zu refused\n", ok, refused);
+
+    // 3. Documents (IR_SPEC 3.2, 3.5; keramos 1.2): the suite's refusals under rules 35 and 36 are refused
+    // by ir::parse_document and ir::read_errors, and every document text the suite says to accept passes both.
+    const std::string vp = argv[1];
+    const size_t at = vp.rfind("digest");
+    CHECK(at != std::string::npos);
+    const std::string suite = vp.substr(0, at);  // .../conformance/
+    auto slurp = [](const std::string& p) {
+        std::ifstream in(p, std::ios::binary);
+        return std::string((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+    };
+    const auto manifest = ir::json::parse(slurp(suite + "manifest.json"));
+    size_t r35 = 0, r36 = 0, accepted = 0;
+    for (const auto& c : manifest["cases"]) {
+        if (c.value("kind", "") != "refuse" || !c.contains("rule") || !c["rule"].is_number()) continue;
+        const int rule = c["rule"].get<int>();
+        if (rule != 35 && rule != 36) continue;
+        const auto rc = ir::json::parse(slurp(suite + c["file"].get<std::string>()));
+        if (rule == 35 && rc.contains("text")) {
+            bool threw = false;
+            try {
+                ir::parse_document(rc["text"].get<std::string>());
+            } catch (const ir::DocumentError& e) {
+                threw = std::string(e.what()).find("(rule 35)") != std::string::npos;
+            }
+            CHECK(threw);
+            ++r35;
+        } else if (rule == 36) {
+            const auto errs = ir::read_errors(ir::parse_document(rc["doc"].dump()));
+            bool hit = false;
+            for (const auto& e : errs) hit |= e.find("(rule 36)") != std::string::npos;
+            if (!hit) std::fprintf(stderr, "refusal %s: read_errors finds no rule 36 fault\n", c["id"].get<std::string>().c_str());
+            CHECK(hit);
+            ++r36;
+        }
+    }
+    const auto acc = ir::json::parse(slurp(suite + "accept/documents.json"));
+    for (const auto& c : acc["cases"]) {
+        if (!c.contains("ir")) continue;
+        const auto doc = ir::parse_document(slurp(suite + c["ir"].get<std::string>()));
+        const auto errs = ir::read_errors(doc);
+        if (!errs.empty()) std::fprintf(stderr, "accept %s: %s\n", c["name"].get<std::string>().c_str(), errs[0].c_str());
+        CHECK(errs.empty());
+        ++accepted;
+    }
+    CHECK(r35 >= 3 && r36 >= 4 && accepted >= 13);
+    std::printf("3. documents: %zu duplicate-member texts refused (rule 35), %zu unwritten reads refused (rule 36), "
+                "%zu documents to accept pass both\n", r35, r36, accepted);
     std::printf("ir_digest: all checks passed\n");
     return 0;
 }

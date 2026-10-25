@@ -1,0 +1,802 @@
+{
+ "_comment": "spec/IR_SPEC.md section 8.1.3: render_chat(record, messages, generation_prompt, thinking) gives expect, or refuses where refused is true. A case's record is a key of records or a record itself. Inputs: paperkiln's tests/chat_template_cases.json (gate G5).",
+ "records": {
+  "paperkiln/1": {
+   "name": "paperkiln",
+   "version": 1,
+   "bos": "",
+   "content": "raw",
+   "system": {
+    "mode": "fold",
+    "join": "\n\n"
+   },
+   "user": {
+    "open": "<|user|>",
+    "close": ""
+   },
+   "assistant": {
+    "open": "<|assistant|>",
+    "close": "<|endoftext|>"
+   },
+   "generation_prompt": "<|assistant|>",
+   "stop": {
+    "eos": [
+     "<|endoftext|>"
+    ],
+    "turn": [
+     "<|user|>",
+     "<|assistant|>"
+    ]
+   },
+   "past_assistant": "keep",
+   "reserved": [
+    "<|endoftext|>",
+    "<|user|>",
+    "<|assistant|>"
+   ]
+  },
+  "paperkiln/legacy-word": {
+   "name": "paperkiln",
+   "version": "legacy-word",
+   "bos": "",
+   "content": "raw",
+   "system": {
+    "mode": "fold",
+    "join": "\n\n"
+   },
+   "user": {
+    "open": "user: ",
+    "close": " "
+   },
+   "assistant": {
+    "open": "assistant: ",
+    "close": " "
+   },
+   "generation_prompt": "assistant:",
+   "stop": {
+    "eos": [],
+    "turn": [
+     "user:",
+     "assistant:"
+    ]
+   },
+   "past_assistant": "keep",
+   "reserved": []
+  },
+  "chatml-qwen2.5/1": {
+   "name": "chatml-qwen2.5",
+   "version": 1,
+   "bos": "",
+   "content": "raw",
+   "system": {
+    "mode": "turn",
+    "open": "<|im_start|>system\n",
+    "close": "<|im_end|>\n"
+   },
+   "user": {
+    "open": "<|im_start|>user\n",
+    "close": "<|im_end|>\n"
+   },
+   "assistant": {
+    "open": "<|im_start|>assistant\n",
+    "close": "<|im_end|>\n"
+   },
+   "generation_prompt": "<|im_start|>assistant\n",
+   "stop": {
+    "eos": [
+     "<|im_end|>",
+     "<|endoftext|>"
+    ],
+    "turn": []
+   },
+   "past_assistant": "keep",
+   "reserved": [
+    "<|im_start|>",
+    "<|im_end|>",
+    "<|endoftext|>"
+   ],
+   "markers": [
+    "<|im_start|>",
+    "<|im_end|>"
+   ],
+   "default_system": "You are Qwen, created by Alibaba Cloud. You are a helpful assistant.",
+   "match": [
+    "d5495a1e5db0611132a97e46a65dbb64a642a499421228b9c8b93229097fa9a4"
+   ],
+   "architectures": [
+    "qwen2"
+   ]
+  },
+  "chatml-qwen3/1": {
+   "name": "chatml-qwen3",
+   "version": 1,
+   "bos": "",
+   "content": "raw",
+   "system": {
+    "mode": "turn",
+    "open": "<|im_start|>system\n",
+    "close": "<|im_end|>\n"
+   },
+   "user": {
+    "open": "<|im_start|>user\n",
+    "close": "<|im_end|>\n"
+   },
+   "assistant": {
+    "open": "<|im_start|>assistant\n",
+    "close": "<|im_end|>\n"
+   },
+   "generation_prompt": "<|im_start|>assistant\n",
+   "stop": {
+    "eos": [
+     "<|im_end|>",
+     "<|endoftext|>"
+    ],
+    "turn": []
+   },
+   "past_assistant": "strip_think",
+   "reserved": [
+    "<|im_start|>",
+    "<|im_end|>",
+    "<|endoftext|>"
+   ],
+   "markers": [
+    "<|im_start|>",
+    "<|im_end|>"
+   ],
+   "generation_prompt_nothink": "<|im_start|>assistant\n<think>\n\n</think>\n\n",
+   "match": [
+    "57f1fd00f0013a2be96aa79b857391f27e23df5b5f847072b524c897e24d0361"
+   ],
+   "architectures": [
+    "qwen3"
+   ]
+  },
+  "gemma3/1": {
+   "name": "gemma3",
+   "version": 1,
+   "bos": "<bos>",
+   "content": "trim",
+   "system": {
+    "mode": "fold",
+    "join": "\n\n"
+   },
+   "user": {
+    "open": "<start_of_turn>user\n",
+    "close": "<end_of_turn>\n"
+   },
+   "assistant": {
+    "open": "<start_of_turn>model\n",
+    "close": "<end_of_turn>\n"
+   },
+   "generation_prompt": "<start_of_turn>model\n",
+   "stop": {
+    "eos": [
+     "<end_of_turn>",
+     "<eos>"
+    ],
+    "turn": []
+   },
+   "past_assistant": "keep",
+   "reserved": [
+    "<start_of_turn>",
+    "<end_of_turn>",
+    "<bos>",
+    "<eos>"
+   ],
+   "markers": [
+    "<start_of_turn>",
+    "<end_of_turn>"
+   ],
+   "match": [
+    "7de1c58e208eda46e9c7f86397df37ec49883aeece39fb961e0a6b24088dd3c4"
+   ],
+   "architectures": [
+    "gemma3"
+   ]
+  }
+ },
+ "cases": [
+  {
+   "name": "one user prompt",
+   "record": "paperkiln/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Hi"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": "<|user|>Hi<|assistant|>"
+  },
+  {
+   "name": "system folds into the first user turn",
+   "record": "paperkiln/1",
+   "messages": [
+    {
+     "role": "system",
+     "content": "Be brief."
+    },
+    {
+     "role": "user",
+     "content": "Hi"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": "<|user|>Be brief.\n\nHi<|assistant|>"
+  },
+  {
+   "name": "a lone system message",
+   "record": "paperkiln/1",
+   "messages": [
+    {
+     "role": "system",
+     "content": "Be brief."
+    }
+   ],
+   "generation_prompt": true,
+   "refused": true
+  },
+  {
+   "name": "a system message with no user message",
+   "record": "paperkiln/1",
+   "messages": [
+    {
+     "role": "system",
+     "content": "Be brief."
+    },
+    {
+     "role": "assistant",
+     "content": "Ok"
+    }
+   ],
+   "generation_prompt": false,
+   "refused": true
+  },
+  {
+   "name": "two system messages",
+   "record": "paperkiln/1",
+   "messages": [
+    {
+     "role": "system",
+     "content": "a"
+    },
+    {
+     "role": "system",
+     "content": "b"
+    },
+    {
+     "role": "user",
+     "content": "Hi"
+    }
+   ],
+   "generation_prompt": true,
+   "refused": true
+  },
+  {
+   "name": "a system message mid-conversation",
+   "record": "paperkiln/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Hi"
+    },
+    {
+     "role": "assistant",
+     "content": "Hello"
+    },
+    {
+     "role": "system",
+     "content": "Now be rude."
+    },
+    {
+     "role": "user",
+     "content": "Bye"
+    }
+   ],
+   "generation_prompt": true,
+   "refused": true
+  },
+  {
+   "name": "the assistant first",
+   "record": "paperkiln/1",
+   "messages": [
+    {
+     "role": "assistant",
+     "content": "Hello"
+    },
+    {
+     "role": "user",
+     "content": "Hi"
+    }
+   ],
+   "generation_prompt": true,
+   "refused": true
+  },
+  {
+   "name": "two user messages in a row",
+   "record": "paperkiln/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "a"
+    },
+    {
+     "role": "user",
+     "content": "b"
+    }
+   ],
+   "generation_prompt": true,
+   "refused": true
+  },
+  {
+   "name": "a training conversation ending on a user message",
+   "record": "paperkiln/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Hi"
+    }
+   ],
+   "generation_prompt": false,
+   "refused": true
+  },
+  {
+   "name": "a prompt ending on an assistant message",
+   "record": "paperkiln/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Hi"
+    },
+    {
+     "role": "assistant",
+     "content": "Hello"
+    }
+   ],
+   "generation_prompt": true,
+   "refused": true
+  },
+  {
+   "name": "user content holding a role marker",
+   "record": "paperkiln/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "say <|user|> now"
+    }
+   ],
+   "generation_prompt": true,
+   "refused": true
+  },
+  {
+   "name": "system content holding end-of-text",
+   "record": "paperkiln/1",
+   "messages": [
+    {
+     "role": "system",
+     "content": "stop at <|endoftext|>"
+    },
+    {
+     "role": "user",
+     "content": "Hi"
+    }
+   ],
+   "generation_prompt": true,
+   "refused": true
+  },
+  {
+   "name": "assistant content holding a marker",
+   "record": "paperkiln/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Hi"
+    },
+    {
+     "role": "assistant",
+     "content": "<|assistant|>x"
+    },
+    {
+     "role": "user",
+     "content": "y"
+    }
+   ],
+   "generation_prompt": true,
+   "refused": true
+  },
+  {
+   "name": "<unk> text is ordinary content",
+   "record": "paperkiln/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "the <unk> token"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": "<|user|>the <unk> token<|assistant|>"
+  },
+  {
+   "name": "newline-only user content",
+   "record": "paperkiln/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "\n"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": "<|user|>\n<|assistant|>"
+  },
+  {
+   "name": "newline-only and empty replies in the history",
+   "record": "paperkiln/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "a"
+    },
+    {
+     "role": "assistant",
+     "content": "\n"
+    },
+    {
+     "role": "user",
+     "content": "b"
+    },
+    {
+     "role": "assistant",
+     "content": ""
+    },
+    {
+     "role": "user",
+     "content": "c"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": "<|user|>a<|assistant|>\n<|endoftext|><|user|>b<|assistant|><|endoftext|><|user|>c<|assistant|>"
+  },
+  {
+   "name": "the tool role is reserved",
+   "record": "paperkiln/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Hi"
+    },
+    {
+     "role": "tool",
+     "content": "42"
+    }
+   ],
+   "generation_prompt": true,
+   "refused": true
+  },
+  {
+   "name": "an unknown role",
+   "record": "paperkiln/1",
+   "messages": [
+    {
+     "role": "narrator",
+     "content": "Once"
+    }
+   ],
+   "generation_prompt": true,
+   "refused": true
+  },
+  {
+   "name": "three exchanges with a system message",
+   "record": "paperkiln/1",
+   "messages": [
+    {
+     "role": "system",
+     "content": "Be kind."
+    },
+    {
+     "role": "user",
+     "content": "a"
+    },
+    {
+     "role": "assistant",
+     "content": "b"
+    },
+    {
+     "role": "user",
+     "content": "c"
+    },
+    {
+     "role": "assistant",
+     "content": "d"
+    },
+    {
+     "role": "user",
+     "content": "e"
+    },
+    {
+     "role": "assistant",
+     "content": "f"
+    },
+    {
+     "role": "user",
+     "content": "g"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": "<|user|>Be kind.\n\na<|assistant|>b<|endoftext|><|user|>c<|assistant|>d<|endoftext|><|user|>e<|assistant|>f<|endoftext|><|user|>g<|assistant|>"
+  },
+  {
+   "name": "a training conversation with a system message",
+   "record": "paperkiln/1",
+   "messages": [
+    {
+     "role": "system",
+     "content": "S"
+    },
+    {
+     "role": "user",
+     "content": "a"
+    },
+    {
+     "role": "assistant",
+     "content": "b"
+    },
+    {
+     "role": "user",
+     "content": "c"
+    },
+    {
+     "role": "assistant",
+     "content": "d"
+    }
+   ],
+   "generation_prompt": false,
+   "expect": "<|user|>S\n\na<|assistant|>b<|endoftext|><|user|>c<|assistant|>d<|endoftext|>"
+  },
+  {
+   "name": "loss on a user message",
+   "record": "paperkiln/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Hi",
+     "loss": true
+    }
+   ],
+   "generation_prompt": true,
+   "refused": true
+  },
+  {
+   "name": "unicode content",
+   "record": "paperkiln/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Grüße, 東京, 🙂"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": "<|user|>Grüße, 東京, 🙂<|assistant|>"
+  },
+  {
+   "name": "system mode none refuses a system message",
+   "record": {
+    "name": "paperkiln",
+    "version": 1,
+    "bos": "",
+    "content": "raw",
+    "system": {
+     "mode": "none"
+    },
+    "user": {
+     "open": "<|user|>",
+     "close": ""
+    },
+    "assistant": {
+     "open": "<|assistant|>",
+     "close": "<|endoftext|>"
+    },
+    "generation_prompt": "<|assistant|>",
+    "stop": {
+     "eos": [
+      "<|endoftext|>"
+     ],
+     "turn": [
+      "<|user|>",
+      "<|assistant|>"
+     ]
+    },
+    "past_assistant": "keep",
+    "reserved": [
+     "<|endoftext|>",
+     "<|user|>",
+     "<|assistant|>"
+    ]
+   },
+   "messages": [
+    {
+     "role": "system",
+     "content": "S"
+    },
+    {
+     "role": "user",
+     "content": "Hi"
+    }
+   ],
+   "generation_prompt": true,
+   "refused": true
+  },
+  {
+   "name": "system mode none without one",
+   "record": {
+    "name": "paperkiln",
+    "version": 1,
+    "bos": "",
+    "content": "raw",
+    "system": {
+     "mode": "none"
+    },
+    "user": {
+     "open": "<|user|>",
+     "close": ""
+    },
+    "assistant": {
+     "open": "<|assistant|>",
+     "close": "<|endoftext|>"
+    },
+    "generation_prompt": "<|assistant|>",
+    "stop": {
+     "eos": [
+      "<|endoftext|>"
+     ],
+     "turn": [
+      "<|user|>",
+      "<|assistant|>"
+     ]
+    },
+    "past_assistant": "keep",
+    "reserved": [
+     "<|endoftext|>",
+     "<|user|>",
+     "<|assistant|>"
+    ]
+   },
+   "messages": [
+    {
+     "role": "user",
+     "content": "Hi"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": "<|user|>Hi<|assistant|>"
+  },
+  {
+   "name": "legacy word-level prompt",
+   "record": "paperkiln/legacy-word",
+   "messages": [
+    {
+     "role": "user",
+     "content": "hi"
+    },
+    {
+     "role": "assistant",
+     "content": "hello"
+    },
+    {
+     "role": "user",
+     "content": "how are you"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": "user: hi assistant: hello user: how are you assistant:"
+  },
+  {
+   "name": "gemma3 trims and folds",
+   "record": "gemma3/1",
+   "messages": [
+    {
+     "role": "system",
+     "content": " Be brief. "
+    },
+    {
+     "role": "user",
+     "content": "  Hi \n"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": "<bos><start_of_turn>user\n Be brief. \n\nHi<end_of_turn>\n<start_of_turn>model\n"
+  },
+  {
+   "name": "gemma3 trims unicode edge whitespace",
+   "record": "gemma3/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": " 　Hi there \n"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": "<bos><start_of_turn>user\nHi there<end_of_turn>\n<start_of_turn>model\n"
+  },
+  {
+   "name": "gemma3 trims unicode whitespace in system and history",
+   "record": "gemma3/1",
+   "messages": [
+    {
+     "role": "system",
+     "content": " Be brief. "
+    },
+    {
+     "role": "user",
+     "content": " Q1"
+    },
+    {
+     "role": "assistant",
+     "content": " A1 "
+    },
+    {
+     "role": "user",
+     "content": "\u001cQ2\u001f"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": "<bos><start_of_turn>user\n Be brief. \n\nQ1<end_of_turn>\n<start_of_turn>model\nA1<end_of_turn>\n<start_of_turn>user\nQ2<end_of_turn>\n<start_of_turn>model\n"
+  },
+  {
+   "name": "gemma3 keeps inner unicode whitespace and zero-width space",
+   "record": "gemma3/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "​A B​"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": "<bos><start_of_turn>user\n​A B​<end_of_turn>\n<start_of_turn>model\n"
+  },
+  {
+   "name": "qwen3 strips past reasoning",
+   "record": "chatml-qwen3/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "a"
+    },
+    {
+     "role": "assistant",
+     "content": "<think>\nr\n</think>\n\nb"
+    },
+    {
+     "role": "user",
+     "content": "c"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": "<|im_start|>user\na<|im_end|>\n<|im_start|>assistant\nb<|im_end|>\n<|im_start|>user\nc<|im_end|>\n<|im_start|>assistant\n"
+  },
+  {
+   "name": "qwen2.5 writes its default system turn",
+   "record": "chatml-qwen2.5/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Hi"
+    }
+   ],
+   "generation_prompt": true,
+   "expect": "<|im_start|>system\nYou are Qwen, created by Alibaba Cloud. You are a helpful assistant.<|im_end|>\n<|im_start|>user\nHi<|im_end|>\n<|im_start|>assistant\n"
+  },
+  {
+   "name": "qwen3 thinking off",
+   "record": "chatml-qwen3/1",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Hi"
+    }
+   ],
+   "generation_prompt": true,
+   "thinking": false,
+   "expect": "<|im_start|>user\nHi<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
+  }
+ ]
+}

@@ -58,61 +58,84 @@ def mor(doc):
 
 
 LLAMA = "chat_sftfinal.ir.json"
-CASES = [  # (name, base, mutation, section the refusal must name)
-    ("unknown op", LLAMA, lambda d: d["block"]["nodes"].append({"op": "warp", "in": ["x"], "out": "x"}), "10.1 rule 1"),
-    ("unknown attribute", LLAMA, lambda d: node(d, "attention").update(temperature=2.0), "10.1 rule 1"),
-    ("unknown top-level key", LLAMA, lambda d: d.update(profiles=["core"]), "10.1 rule 1"),
+CASES = [  # (name, base, mutation, (section, rule) the refusal must name)
+    ("unknown op", LLAMA, lambda d: d["block"]["nodes"].append({"op": "warp", "in": ["x"], "out": "x"}), ("3.5", 4)),
+    ("unknown attribute", LLAMA, lambda d: node(d, "attention").update(temperature=2.0), ("3.5", 4)),
+    ("unknown top-level key", LLAMA, lambda d: d.update(profiles=["core"]), ("3.2", 1)),
     ("prose keys are free", LLAMA, lambda d: d.update(_anything={"x": 1}), None),
-    ("version 2", LLAMA, lambda d: d.update(ir_version=2), "2.3"),
-    ("repeat != n_layers", LLAMA, lambda d: d["block"].update(repeat=3), "3.3"),
-    ("required attribute missing", LLAMA, lambda d: node(d, "rope").pop("pairing"), "10.1 rule 1"),
-    ("per-layer wrong length", LLAMA, lambda d: node(d, "rope").update(theta={"per_layer": [1.0]}), "3.8"),
+    ("version 2", LLAMA, lambda d: d.update(ir_version=2), ("2.3", 2)),
+    ("repeat != n_layers", LLAMA, lambda d: d["block"].update(repeat=3), ("3.3", 3)),
+    ("required attribute missing", LLAMA, lambda d: node(d, "rope").pop("pairing"), ("3.5", 8)),
+    ("per-layer wrong length", LLAMA, lambda d: node(d, "rope").update(theta={"per_layer": [1.0]}), ("3.8", 6)),
     ("per-layer structural", LLAMA, lambda d: node(d, "linear").update(
-        weight={"per_layer": ["a"] * d["block"]["repeat"]}), "3.8"),
-    ("per-layer in the head", LLAMA, lambda d: d["head"]["nodes"][0].update(eps={"per_layer": [1e-5]}), "3.8"),
-    ("add with one input", LLAMA, lambda d: node(d, "add").update(**{"in": ["x"]}), "10.1 rule 7"),
-    ("rope n_rot odd", LLAMA, lambda d: node(d, "rope").update(n_rot=3), "5.14"),
-    ("rope reads another position", LLAMA, lambda d: node(d, "rope")["in"].__setitem__(2, "p2"), "3.5"),
-    ("a node writes pos", LLAMA, lambda d: node(d, "add").update(out="pos"), "3.5"),
-    ("attention not causal", LLAMA, lambda d: node(d, "attention").update(causal=False), "5.15"),
-    ("attention window differs from its slot", LLAMA, lambda d: node(d, "attention").update(window=4), "5.15"),
-    ("attention kv_heads differs from its slot", LLAMA, lambda d: node(d, "attention").update(kv_heads=3), "5.15"),
-    ("slot declared twice", LLAMA, lambda d: d["block"]["state"].append(copy.deepcopy(kv(d))), "6.1"),
+        weight={"per_layer": ["a"] * d["block"]["repeat"]}), ("3.8", 6)),
+    ("per-layer in the head", LLAMA, lambda d: d["head"]["nodes"][0].update(eps={"per_layer": [1e-5]}), ("3.8", 6)),
+    ("add with one input", LLAMA, lambda d: node(d, "add").update(**{"in": ["x"]}), ("3.5", 7)),
+    ("rope n_rot odd", LLAMA, lambda d: node(d, "rope").update(n_rot=3), ("5.14", 10)),
+    ("rope reads another position", LLAMA, lambda d: node(d, "rope")["in"].__setitem__(2, "p2"), ("3.5", "17a")),
+    ("a node writes pos", LLAMA, lambda d: node(d, "add").update(out="pos"), ("3.5", "17a")),
+    ("attention not causal", LLAMA, lambda d: node(d, "attention").update(causal=False), ("5.15", 14)),
+    ("attention window differs from its slot", LLAMA, lambda d: node(d, "attention").update(window=4), ("5.15", 12)),
+    ("attention kv_heads differs from its slot", LLAMA, lambda d: node(d, "attention").update(kv_heads=3), ("5.15", 12)),
+    ("slot declared twice", LLAMA, lambda d: d["block"]["state"].append(copy.deepcopy(kv(d))), ("6.1", 11)),
     ("slot read by no node", LLAMA, lambda d: d["block"]["state"].append(dict(copy.deepcopy(kv(d)), name="kv2")),
-     "6.1"),
+     ("6.1", 11)),
     ("two attention nodes on one slot", LLAMA, lambda d: d["block"]["nodes"].append(
-        copy.deepcopy(node(d, "attention"))), "6.1"),
-    ("evict under the causal mask", LLAMA, lambda d: kv(d).update(evict="turn_state"), "6.8.3"),
-    ("turn_state without state_weight", LLAMA, lambda d: node(d, "attention").update(mask="turn_state"), "6.8.2"),
+        copy.deepcopy(node(d, "attention"))), ("6.1", "17a")),
+    ("evict under the causal mask", LLAMA, lambda d: kv(d).update(evict="turn_state"), ("6.8.3", 16)),
+    ("turn_state without state_weight", LLAMA, lambda d: node(d, "attention").update(mask="turn_state"), ("6.8.2", 15)),
     ("tensor_index without weight_index", LLAMA, lambda d: node(d, "linear").update(tensor_index="application"),
-     "7.2"),
-    ("{i} outside the block", LLAMA, lambda d: d["head"]["nodes"][0].update(weight="blk.{i}.x"), "3.7"),
-    ("{i} twice", LLAMA, lambda d: node(d, "linear").update(weight="blk.{i}.{i}.w"), "3.7"),
-    ("kv_from", LLAMA, lambda d: kv(d).update(kv_from={"per_layer": [0] * d["block"]["repeat"]}), "7.6"),
+     ("7.2", 19)),
+    ("{i} outside the block", LLAMA, lambda d: d["head"]["nodes"][0].update(weight="blk.{i}.x"), ("3.7", "17a")),
+    ("{i} twice", LLAMA, lambda d: node(d, "linear").update(weight="blk.{i}.{i}.w"), ("3.7", "17a")),
+    ("kv_from", LLAMA, lambda d: kv(d).update(kv_from={"per_layer": [0] * d["block"]["repeat"]}), ("7.6", 22)),
     ("weight_index unused layer", LLAMA, lambda d: d["block"].update(weight_index={"per_layer": [0, 2, 2, 2, 2, 2]}),
-     "7.1"),
+     ("7.1", 18)),
     ("mor is valid", "mor", lambda d: None, None),
-    ("mor route not first", "mor", lambda d: d["block"]["nodes"].insert(0, d["block"]["nodes"].pop(1)), "7.4"),
-    ("mor expert choice", "mor", lambda d: node(d, "depth_route").update(route="expert_choice"), "7.7"),
+    ("mor route not first", "mor", lambda d: d["block"]["nodes"].insert(0, d["block"]["nodes"].pop(1)), ("7.4", 20)),
+    ("mor expert choice", "mor", lambda d: node(d, "depth_route").update(route="expert_choice"), ("7.7", 5)),
     ("mor unequal steps", "mor", lambda d: node(d, "depth_route").update(step={"per_layer": [-1, 0, 0, 1, -1]}),
-     "7.4"),
-    ("mor no kv_rows", "mor", lambda d: kv(d).pop("kv_rows"), "7.5"),
-    ("mor router with {i}", "mor", lambda d: node(d, "depth_route").update(weight="rec.{i}.router.weight"), "7.7"),
-    ("mor out read", "mor", lambda d: node(d, "add").update(**{"in": ["x", "rec_depth"]}), "7.4"),
+     ("7.4", 20)),
+    ("mor no kv_rows", "mor", lambda d: kv(d).pop("kv_rows"), ("7.5", 21)),
+    ("mor router with {i}", "mor", lambda d: node(d, "depth_route").update(weight="rec.{i}.router.weight"), ("7.7", 20)),
+    ("mor out read", "mor", lambda d: node(d, "add").update(**{"in": ["x", "rec_depth"]}), ("7.4", "17a")),
     ("mor with lists", "mor", lambda d: d["embed"]["nodes"].append({"op": "list", "in": ["x"], "out": "bank"}),
-     "7.4"),
+     ("7.4", 23)),
+    # v1.2: rule 36 (3.5, 7.4) and rule 20's contiguous steps.
+    ("a read of a value nothing writes", LLAMA, lambda d: node(d, "add")["in"].__setitem__(1, "nowhere"), ("3.5", 36)),
+    ("the head writes no logits", LLAMA, lambda d: d["head"]["nodes"][-1].update(out="y"), ("3.4", 36)),
+    ("mor reads an embed value", "mor", lambda d: (d["embed"]["nodes"].append(
+        {"op": "affine", "in": ["x"], "scale": 1.0, "shift": 0.0, "out": "e"}),
+        d["block"]["nodes"].insert(1, {"op": "add", "in": ["x", "e"], "out": "x"})), ("7.4", 36)),
+    ("mor steps with a gap", "mor", lambda d: node(d, "depth_route").update(step={"per_layer": [-1, 0, -1, 1, 2]}),
+     ("7.4", 20)),
 ]
 
 
-@pytest.mark.parametrize("name,base,f,section", CASES, ids=[c[0] for c in CASES])
-def test_one_fault_is_refused_under_its_section(name, base, f, section):
+@pytest.mark.parametrize("name,base,f,cited", CASES, ids=[c[0] for c in CASES])
+def test_one_fault_is_refused_under_its_rule(name, base, f, cited):
     doc = mor(load(LLAMA)) if base == "mor" else load(base)
     f(doc)
     errs = v.doc_errors(doc)
-    if section is None:
+    if cited is None:
         assert errs == []
     else:
-        assert any(e.startswith(f"IR_SPEC {section}:") for e in errs), errs
+        section, rule = cited
+        assert any(e.startswith(f"IR_SPEC {section} (rule {rule}):") for e in errs), errs
+
+
+@pytest.mark.parametrize("text", ['{"a": 1, "a": 1}', '{"x": {"b": [1, {"c": 0, "c": 1}]}}', '{"_n": {"a": 1, "a": 2}}'])
+def test_duplicate_member_names_are_refused(text):
+    """IR_SPEC 3.2, rule 35: at any depth, '_' members included, whatever the members hold."""
+    errs = v.text_errors(text)
+    assert len(errs) == 1 and errs[0].startswith("IR_SPEC 3.2 (rule 35):"), errs
+    with pytest.raises(v.DocumentError):
+        v.load_document(text)
+
+
+def test_every_worked_document_reads_as_a_text():
+    for p in WORKED:
+        assert v.text_errors(p.read_text(encoding="utf-8")) == []
 
 
 def test_schema_agrees_with_jsonschema():
@@ -153,7 +176,7 @@ def test_s1_pseudo_query_absent_is_an_exporter_warning(tmp_path):
         conf.write_gguf(p, meta, {k: a for k, a in W.items() if k != name}, doc)
         errs, warns = v.file_report(p)
         if refused:
-            assert any(name in e and e.startswith("IR_SPEC 3.7") for e in errs), errs
+            assert any(name in e and e.startswith("IR_SPEC 3.7 (rule 25)") for e in errs), errs
         else:
             assert errs == [] and len(warns) == 1 and "exporter rule" in warns[0] and name in warns[0], (errs, warns)
 
@@ -168,4 +191,4 @@ def test_version_key_follows_the_embedded_document():
     meta2, tensors, *_ = v.read_gguf(path)
     assert v.gguf_errors(sub, meta2, tensors) == [] and v.doc_errors(sub) == []
     bad = dict(meta2, **{"paperkiln.ir_version": (4, 7)})
-    assert any(e.startswith("IR_SPEC 3.1") for e in v.gguf_errors(sub, bad, tensors))
+    assert any(e.startswith("IR_SPEC 3.1 (rule 24)") for e in v.gguf_errors(sub, bad, tensors))

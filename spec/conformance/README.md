@@ -12,9 +12,11 @@ The cases every engine that runs paperkiln IR documents should pass. The normati
 | `models/<name>/` | one model case each | a small document with F32 weights (`<name>.gguf`), prompts, the reference's greedy continuation, log-probabilities, argmax and (under `depth_route`) depth traces |
 | `state/` | traces | sessions of prefill, incremental decode, truncate, snapshot and restore: logits, kv rows held (eager and lazy eviction), depths and recurrent tensors |
 | `refuse/` | one fault each | documents and GGUFs every consumer must refuse, each with the rule of IR_SPEC section 10.1 it breaks |
+| `accept/` | `documents.json` | the documents every consumer must accept: every suite model, every rewritten document, every worked document of `../examples/` |
 | `digest/` | `vectors.json` | the IR digest (IR_SPEC 3.10): RFC 8785 serialisations and sha256 of numbers, strings, member names and every suite model's document, and texts that have no digest |
 | `quant/` | `blocks.json` | stored blocks of every GGUF storage type and their f32 values (IR_SPEC 4.7), bit for bit on every backend |
 | `grad/` | `recurrence.json` | gradients of recurrence nodes (IR_SPEC 6.10.5) against central differences of the reference in float64 |
+| `chat/` | `render.json` | chat template records and conversations: the rendered text or the refusal (IR_SPEC 8.1.3) |
 | `recurrence/` | rewritten documents | suite models with their hand-written recurrent ops written as recurrences (IR_SPEC 6.10.6); the traces `state/<model>_recurrence.json` run them in place of each file's own document and expect the original document's values |
 
 `manifest.json` lists every case with its kind and profile. Models whose names start with `pk_` were
@@ -39,10 +41,11 @@ status is 1 on any FAIL.
 
 Write a program that reads one JSON request per line on stdin and writes one JSON reply per line on
 stdout (IR_SPEC section 11.3). Start with `hello`, `check`, `open`, `forward` (with the `logits`
-report) and `close`: that covers the model cases and the refusals. The state traces then need the
+report) and `close`: that covers the model cases, the refusals and the acceptance cases (`check` with `gguf`
+null checks a document alone). The state traces then need the
 `kv_rows`, `kv_positions`, `depth` and `recurrent` reports and `truncate`, `snapshot` and `restore`;
 the op cases need `run_node`. The digest vectors need `digest`, the stored blocks `dequantize`, and
-the gradient cases (for engines that train) `run_node_grad`. Reply `{"id": n, "skip": "..."}` to
+the gradient cases (for engines that train) `run_node_grad`, and the chat cases `render_chat`. Reply `{"id": n, "skip": "..."}` to
 anything not built yet.
 
 ## Regenerating

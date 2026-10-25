@@ -65,6 +65,20 @@ std::string sha256_hex(const std::string& bytes);
 json parse_ijson(const std::string& text);
 std::string digest_text(const std::string& text);
 
+// A document's JSON text (IR_SPEC.md 3.2): parsed, refusing a malformed text (rule 1) and a member
+// name that occurs twice in one object, at any depth, "_" members included (rule 35), with
+// DocumentError naming the rule. Every reader of a document's text uses it, never a parser that
+// keeps the first or the last of two members.
+struct DocumentError : std::runtime_error {
+    using std::runtime_error::runtime_error;
+};
+json parse_document(const std::string& text);
+// Rule 36 (IR_SPEC.md 3.4, 3.5, 7.4): every value a node reads is written before it (embed, the
+// block as application 0, head; tokens and pos excepted); the embed section writes x and the head
+// logits; under depth_route the block's other nodes read x, pos and values of the same application,
+// and the head x and the embed section's values. One "IR_SPEC <section> (rule 36): ..." per fault.
+std::vector<std::string> read_errors(const json& doc);
+
 // Nodes for the ops that no module owns.
 json rmsnorm(const std::string& in, const std::string& weight, float eps, const std::string& out);
 json rope(const std::string& q, const std::string& k, const std::string& pos, size_t heads, size_t head_dim,

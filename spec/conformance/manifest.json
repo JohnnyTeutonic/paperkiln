@@ -525,7 +525,7 @@
    "kind": "op",
    "file": "ops/rope.json",
    "profile": "core",
-   "n": 5
+   "n": 6
   },
   {
    "id": "op/attention",
@@ -560,14 +560,14 @@
    "kind": "op",
    "file": "ops/depth_attend.json",
    "profile": "core",
-   "n": 2
+   "n": 3
   },
   {
    "id": "op/expr",
    "kind": "op",
    "file": "ops/expr.json",
    "profile": "core",
-   "n": 4
+   "n": 6
   },
   {
    "id": "op/linear_attention",
@@ -602,28 +602,28 @@
    "kind": "op",
    "file": "ops/recurrence.json",
    "profile": "recurrence",
-   "n": 8
+   "n": 9
   },
   {
    "id": "refuse/unknown_op",
    "kind": "refuse",
    "file": "refuse/unknown_op.json",
    "rule": 4,
-   "section": "10.1 rule 1"
+   "section": "3.5"
   },
   {
    "id": "refuse/unknown_attribute",
    "kind": "refuse",
    "file": "refuse/unknown_attribute.json",
    "rule": 4,
-   "section": "10.1 rule 1"
+   "section": "3.5"
   },
   {
    "id": "refuse/unknown_top_key",
    "kind": "refuse",
    "file": "refuse/unknown_top_key.json",
    "rule": 1,
-   "section": "10.1 rule 1"
+   "section": "3.2"
   },
   {
    "id": "refuse/version_2",
@@ -665,14 +665,14 @@
    "kind": "refuse",
    "file": "refuse/add_one_input.json",
    "rule": 7,
-   "section": "10.1 rule 7"
+   "section": "3.5"
   },
   {
    "id": "refuse/rope_pairing_unknown",
    "kind": "refuse",
    "file": "refuse/rope_pairing_unknown.json",
    "rule": 5,
-   "section": "10.1 rule 1"
+   "section": "5.14"
   },
   {
    "id": "refuse/rope_n_rot_odd",
@@ -721,7 +721,7 @@
    "kind": "refuse",
    "file": "refuse/slot_unknown_kind.json",
    "rule": 11,
-   "section": "10.1 rule 1"
+   "section": "6.1"
   },
   {
    "id": "refuse/attention_no_slot",
@@ -748,7 +748,7 @@
    "id": "refuse/name_with_i_outside_block",
    "kind": "refuse",
    "file": "refuse/name_with_i_outside_block.json",
-   "rule": 9,
+   "rule": "17a",
    "section": "3.7"
   },
   {
@@ -770,7 +770,7 @@
    "kind": "refuse",
    "file": "refuse/gelu_approx_unknown.json",
    "rule": 5,
-   "section": "10.1 rule 1"
+   "section": "5.8"
   },
   {
    "id": "refuse/split_count",
@@ -798,14 +798,14 @@
    "kind": "refuse",
    "file": "refuse/moe_gate_norm_unknown.json",
    "rule": 5,
-   "section": "10.1 rule 1"
+   "section": "5.16"
   },
   {
    "id": "refuse/recurrent_dtype_f16",
    "kind": "refuse",
    "file": "refuse/recurrent_dtype_f16.json",
    "rule": 13,
-   "section": "10.1 rule 1"
+   "section": "6.3"
   },
   {
    "id": "refuse/recurrent_shape_mismatch",
@@ -819,7 +819,7 @@
    "kind": "refuse",
    "file": "refuse/recurrent_op_mismatch.json",
    "rule": 13,
-   "section": "6.1"
+   "section": "6.3"
   },
   {
    "id": "refuse/linear_attention_not_causal",
@@ -867,7 +867,7 @@
    "id": "refuse/mor_expert_choice",
    "kind": "refuse",
    "file": "refuse/mor_expert_choice.json",
-   "rule": 20,
+   "rule": 5,
    "section": "7.7"
   },
   {
@@ -888,8 +888,8 @@
    "id": "refuse/mor_step_length_wrong",
    "kind": "refuse",
    "file": "refuse/mor_step_length_wrong.json",
-   "rule": 20,
-   "section": "7.4"
+   "rule": 6,
+   "section": "3.8"
   },
   {
    "id": "refuse/mor_no_kv_rows_active",
@@ -909,7 +909,7 @@
    "id": "refuse/mor_gate_unknown",
    "kind": "refuse",
    "file": "refuse/mor_gate_unknown.json",
-   "rule": 20,
+   "rule": 5,
    "section": "7.4"
   },
   {
@@ -923,7 +923,7 @@
    "id": "refuse/mor_kv_rows_shared",
    "kind": "refuse",
    "file": "refuse/mor_kv_rows_shared.json",
-   "rule": 21,
+   "rule": 5,
    "section": "7.5"
   },
   {
@@ -959,14 +959,14 @@
    "kind": "refuse",
    "file": "refuse/evict_unknown.json",
    "rule": 5,
-   "section": "10.1 rule 1"
+   "section": "6.8.3"
   },
   {
    "id": "refuse/mask_unknown",
    "kind": "refuse",
    "file": "refuse/mask_unknown.json",
    "rule": 5,
-   "section": "10.1 rule 1"
+   "section": "6.8.2"
   },
   {
    "id": "refuse/state_weight_with_i",
@@ -986,8 +986,8 @@
    "id": "refuse/state_weight_wrong_name",
    "kind": "refuse",
    "file": "refuse/state_weight_wrong_name.json",
-   "rule": 28,
-   "section": "6.8.1"
+   "rule": 25,
+   "section": "3.7"
   },
   {
    "id": "refuse/recurrence_body_does_not_parse",
@@ -1088,6 +1088,62 @@
    "section": "6.10"
   },
   {
+   "id": "refuse/reads_unwritten_value",
+   "kind": "refuse",
+   "file": "refuse/reads_unwritten_value.json",
+   "rule": 36,
+   "section": "3.5"
+  },
+  {
+   "id": "refuse/embed_writes_no_x",
+   "kind": "refuse",
+   "file": "refuse/embed_writes_no_x.json",
+   "rule": 36,
+   "section": "3.5"
+  },
+  {
+   "id": "refuse/head_writes_no_logits",
+   "kind": "refuse",
+   "file": "refuse/head_writes_no_logits.json",
+   "rule": 36,
+   "section": "3.4"
+  },
+  {
+   "id": "refuse/mor_reads_outside_value",
+   "kind": "refuse",
+   "file": "refuse/mor_reads_outside_value.json",
+   "rule": 36,
+   "section": "7.4"
+  },
+  {
+   "id": "refuse/mor_step_gap",
+   "kind": "refuse",
+   "file": "refuse/mor_step_gap.json",
+   "rule": 20,
+   "section": "7.4"
+  },
+  {
+   "id": "refuse/duplicate_member_top",
+   "kind": "refuse",
+   "file": "refuse/duplicate_member_top.json",
+   "rule": 35,
+   "section": "3.2"
+  },
+  {
+   "id": "refuse/duplicate_member_node",
+   "kind": "refuse",
+   "file": "refuse/duplicate_member_node.json",
+   "rule": 35,
+   "section": "3.2"
+  },
+  {
+   "id": "refuse/duplicate_member_prose",
+   "kind": "refuse",
+   "file": "refuse/duplicate_member_prose.json",
+   "rule": 35,
+   "section": "3.2"
+  },
+  {
    "id": "refuse/version_key_mismatch",
    "kind": "refuse",
    "file": "refuse/version_key_mismatch.json",
@@ -1123,11 +1179,18 @@
    "section": "8.2"
   },
   {
+   "id": "refuse/duplicate_member_embedded",
+   "kind": "refuse",
+   "file": "refuse/duplicate_member_embedded.json",
+   "rule": 35,
+   "section": "3.2"
+  },
+  {
    "id": "digest/vectors",
    "kind": "digest",
    "file": "digest/vectors.json",
    "profile": "core",
-   "n": 80
+   "n": 84
   },
   {
    "id": "dequant/blocks",
@@ -1170,6 +1233,34 @@
    "file": "state/tp_mamba1_recurrence.json",
    "model": "models/tp_mamba1",
    "profile": "recurrence"
+  },
+  {
+   "id": "trace/pk_srd_truncate",
+   "kind": "trace",
+   "file": "state/pk_srd_truncate.json",
+   "model": "models/pk_srd",
+   "profile": "state"
+  },
+  {
+   "id": "trace/tp_mamba1_truncate",
+   "kind": "trace",
+   "file": "state/tp_mamba1_truncate.json",
+   "model": "models/tp_mamba1",
+   "profile": "state"
+  },
+  {
+   "id": "accept/documents",
+   "kind": "accept",
+   "file": "accept/documents.json",
+   "profile": "core",
+   "n": 34
+  },
+  {
+   "id": "chat/render",
+   "kind": "chat",
+   "file": "chat/render.json",
+   "profile": "chat",
+   "n": 32
   }
  ]
 }

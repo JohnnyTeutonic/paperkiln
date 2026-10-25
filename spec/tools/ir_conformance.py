@@ -8,7 +8,8 @@ Options: --only SUBSTRING (cases whose id contains it), --json RESULTS.json (per
 
 Kinds of case: op (one node on given inputs), model (prompts, greedy ids, log-probabilities, depth traces),
 trace (adapter sessions: prefill, incremental decode, truncate, snapshot and restore, with kv rows held,
-depths and recurrent tensors checked), refuse (documents and GGUFs every consumer must refuse).
+depths and recurrent tensors checked), refuse (documents and GGUFs every consumer must refuse), accept (the
+documents every consumer must accept), digest, dequant, grad and chat (template rendering, section 8.1).
 The adapter contract is section 11.3: NumpyAdapter and CmdAdapter below implement it. An in-process
 adapter (a subclass of Adapter) runs through main(argv, adapters={name: factory}), as paperkiln's
 mtstudio adapter does. A case an adapter cannot run is SKIP, never PASS. Exit status 1 on any FAIL.
@@ -108,13 +109,14 @@ def _gguf_value(v):
     return struct.pack(ir_validate._SCALAR[t], x)
 
 
-def write_gguf(path, meta, W, ir_doc=None):
+def write_gguf(path, meta, W, ir_doc=None, ir_text=None):
     """A GGUF v3 with the metadata meta {key: (type, value)} (paperkiln.ir and its version written last
-    when ir_doc is given) and the F32 tensors W {name: numpy-order array}."""
+    when ir_doc, or the document's JSON text ir_text, is given) and the F32 tensors W {name: numpy-order array}."""
     meta = {k: v for k, v in meta.items() if k not in ("paperkiln.ir", "paperkiln.ir_version")}
-    if ir_doc is not None:
-        meta["paperkiln.ir"] = (8, json.dumps(ir_doc, separators=(",", ":")))
-        meta["paperkiln.ir_version"] = (4, int(ir_doc["ir_version"]))
+    if ir_doc is not None or ir_text is not None:
+        text = ir_text if ir_text is not None else json.dumps(ir_doc, separators=(",", ":"))
+        meta["paperkiln.ir"] = (8, text)
+        meta["paperkiln.ir_version"] = (4, int(json.loads(text)["ir_version"]))
     align = 32
     out = bytearray(b"GGUF" + struct.pack("<IQQ", 3, len(W), len(meta)))
     for k, v in meta.items():
@@ -221,6 +223,10 @@ class Adapter:
         """{value or tensor name: gradient} of sum(out * out_grad) for one node (IR_SPEC 6.10.5)."""
         raise NotImplementedError
 
+    def render_chat(self, record, messages, generation_prompt=False, thinking=None):
+        """{"text": the rendered conversation} or {"refused": message} (IR_SPEC 8.1.3)."""
+        raise NotImplementedError
+
     def score(self, model_dir, prompt, cont, kv_cache=False, evict=False, kv_step=0):
         """Optional (an engine that scores, such as mtstudio): {"logprobs", "argmax", "depth"?, "kv_rows"?}; the runner otherwise uses
         open/forward."""
@@ -237,24 +243,19 @@ class NumpyAdapter(Adapter):
         self.sessions, self.n = {}, 0
 
     def check(self, gguf, ir):
-        if ir is not None:
-            doc = json.loads(Path(ir).read_text(encoding="utf-8")) if not isinstance(ir, dict) else ir
-            errs = ir_validate.doc_errors(doc)
-            if gguf is not None:
-                meta, tensors, *_ = ir_validate.read_gguf(gguf)
-                errs += ir_validate.gguf_errors(doc, meta, tensors)
-        else:
-            errs = ir_validate.file_errors(gguf)
+        errs = ir_validate.check_errors(gguf, ir)
         return {"accepted": not errs, "message": errs[0] if errs else "", "errors": errs}
 
     def open(self, gguf, ir=None, evict=None):
         doc, W, meta, _ = load_model(Path(gguf).parent)
         if ir is not None:
-            doc = json.loads(Path(ir).read_text(encoding="utf-8"))
+            doc = ir_validate.load_document(Path(ir).read_bytes())
         k = 0
         for n in doc["embed"]["nodes"]:
             if n["op"] == "embedding" and n.get("state_weight"):
                 k = W[n["state_weight"]].shape[0]
+        if evict is True and not any(s.get("evict") for s in doc["block"].get("state", [])):
+            raise RuntimeError("evict true on a document that declares no eviction (IR_SPEC 11.3)")
         self.n += 1
         sid = f"s{self.n}"
         self.sessions[sid] = {"doc": doc, "W": W, "ids": [], "snap": {}, "k": k, "evict": evict is not False}
@@ -269,38 +270,52 @@ class NumpyAdapter(Adapter):
         lg = ir_numpy.forward(doc, W, ids, trace=trace, states=states)
         if "logits" in report and n_new:
             out["logits"] = lg[-n_new:]
-        if "depth" in report and trace:
-            out["depth"] = trace[-n_new:] if n_new else []
+        if "depth" in report:  # [] without depth_route (IR_SPEC 11.3)
+            out["depth"] = trace[-n_new:] if trace and n_new else []
         if "kv_rows" in report or "kv_positions" in report:
             kv = _reference_kv(doc, ids, trace, s["evict"], s["k"])
             if "kv_rows" in report:
                 out["kv_rows"] = {sl: [len(a[0]) for a in apps] for sl, apps in kv.items()}
             if "kv_positions" in report:
                 out["kv_positions"] = {sl: [a[0] for a in apps] for sl, apps in kv.items()}
-        if "recurrent" in report and states:
+        if "recurrent" in report:  # {} without recurrent slots (IR_SPEC 11.3)
             L = doc["block"]["repeat"]
             out["recurrent"] = {sl: [per[i] for i in range(L)] for sl, per in states.items()}
         return out
 
+    def _step(self, s, ids, report, n_new):
+        """Run the session at ids; it takes them only when the call succeeds (an error leaves the session as it
+        was before the call, IR_SPEC 11.3)."""
+        old = s["ids"]
+        s["ids"] = ids
+        try:
+            return self._report(s, report, n_new)
+        except Exception:
+            s["ids"] = old
+            raise
+
     def forward(self, session, ids, report):
         s = self.sessions[session]
-        s["ids"] = s["ids"] + list(ids)
-        return self._report(s, report, len(ids))
+        if not ids:
+            raise RuntimeError("forward: ids is empty (IR_SPEC 11.3)")
+        return self._step(s, s["ids"] + list(ids), report, len(ids))
 
     def truncate(self, session, n, report):
         s = self.sessions[session]
-        s["ids"] = s["ids"][:n]
-        return self._report(s, [r for r in report if r != "logits"], 0)
+        if not 0 <= n <= len(s["ids"]):
+            raise RuntimeError(f"truncate to {n}, outside 0 .. len {len(s['ids'])} (IR_SPEC 11.3)")
+        return self._step(s, s["ids"][:n], [r for r in report if r != "logits"], 0)
 
     def snapshot(self, session, tag):
         s = self.sessions[session]
-        s["snap"][tag] = list(s["ids"])
+        s["snap"][tag] = list(s["ids"])  # a tag in use is replaced (IR_SPEC 11.3)
         return {"len": len(s["ids"])}
 
     def restore(self, session, tag, report):
         s = self.sessions[session]
-        s["ids"] = list(s["snap"][tag])
-        return self._report(s, [r for r in report if r != "logits"], 0)
+        if tag not in s["snap"]:
+            raise RuntimeError(f"restore: no snapshot {tag!r} in this session")
+        return self._step(s, list(s["snap"][tag]), [r for r in report if r != "logits"], 0)
 
     def close(self, session):
         self.sessions.pop(session, None)
@@ -317,6 +332,13 @@ class NumpyAdapter(Adapter):
 
     def run_node_grad(self, node, inputs, weights, out_grad):
         raise NotImplementedError("the reference has no backward: the gradient cases are its finite differences")
+
+    def render_chat(self, record, messages, generation_prompt=False, thinking=None):
+        import ir_chat
+        try:
+            return {"text": ir_chat.render(record, messages, generation_prompt, thinking)}
+        except ir_chat.ChatError as e:
+            return {"refused": str(e)}
 
     def run_node(self, node, inputs, weights, state):
         env = {}
@@ -404,6 +426,10 @@ class CmdAdapter(Adapter):
 
     def dequantize(self, type_name, n, raw):
         return self._call("dequantize", {"type": type_name, "n": n, "bytes": raw.hex()})["values"]
+
+    def render_chat(self, record, messages, generation_prompt=False, thinking=None):
+        return self._call("render_chat", {"record": record, "messages": messages,
+                                          "generation_prompt": generation_prompt, "thinking": thinking})
 
     def run_node_grad(self, node, inputs, weights, out_grad):
         return self._call("run_node_grad", {"node": node, "inputs": _encode_tensors(inputs),
@@ -661,20 +687,44 @@ def _run_trace_sessions(adapter, case, model_dir, tol):
 
 
 def run_refuse_case(adapter, case, path):
+    """IR_SPEC 11.2: the document (doc, or text: a JSON text, for faults a parsed value cannot hold) in place of
+    the GGUF's own, or the GGUF alone, must be refused; the reference must report the cited rule."""
     gguf = SUITE / case["gguf"] if case.get("gguf") else None
     with tempfile.TemporaryDirectory(prefix="irconf_") as tmp:
         ir = None
-        if "doc" in case:
+        if "doc" in case or "text" in case:
             ir = Path(tmp) / "doc.ir.json"
-            ir.write_text(json.dumps(case["doc"]), encoding="utf-8")
+            ir.write_bytes((case["text"] if "text" in case else json.dumps(case["doc"])).encode("utf-8"))
         r = adapter.check(gguf, ir)
     if r["accepted"]:
         return False, "accepted"
     if isinstance(adapter, NumpyAdapter):
-        tag = f"IR_SPEC {case['section']}"
+        tag = f"IR_SPEC {case['section']} (rule {case['rule']})"
         hit = any(e.startswith(tag) for e in r["errors"])
         return hit, (f"refused ({tag})" if hit else f"refused, but not under {tag}: {r['errors'][:2]}")
     return True, "refused: " + r.get("message", "")[:120]
+
+
+def run_accept_case(adapter, c):
+    """IR_SPEC 11.2: a document every consumer must accept (a suite model, a rewritten document in place of
+    its model's own, or a worked document alone)."""
+    r = adapter.check(SUITE / c["gguf"] if c.get("gguf") else None, SUITE / c["ir"] if c.get("ir") else None)
+    if r["accepted"]:
+        return True, "accepted"
+    return False, "refused: " + r.get("message", "")[:160]
+
+
+def run_chat_case(adapter, c, records):
+    """IR_SPEC 8.1.3: the rendered text of a conversation under a template record, or a refusal."""
+    rec = records[c["record"]] if isinstance(c["record"], str) else c["record"]
+    res = adapter.render_chat(rec, c["messages"], c.get("generation_prompt", False), c.get("thinking"))
+    if c.get("refused"):
+        return "refused" in res, ("refused" if "refused" in res
+                                  else f"rendered {res.get('text')!r}, expected a refusal")
+    if "refused" in res:
+        return False, f"refused: {res['refused']}"
+    ok = res.get("text") == c["expect"]
+    return ok, "text equal" if ok else f"text {res.get('text')!r} != {c['expect']!r}"
 
 
 def run_suite(adapter, only=None, out_json=None):
@@ -697,7 +747,7 @@ def run_suite(adapter, only=None, out_json=None):
             sub = [(f"{c['id']}/{x['name']}", x) for x in case["cases"]]
         elif c["kind"] == "digest":
             sub = [(f"{c['id']}/{x['name']}", x) for x in case["vectors"]]
-        elif c["kind"] in ("dequant", "grad"):
+        elif c["kind"] in ("dequant", "grad", "accept", "chat"):
             sub = [(f"{c['id']}/{x['name']}", x) for x in case["cases"]]
         else:
             sub = [(c["id"], case)]
@@ -715,6 +765,10 @@ def run_suite(adapter, only=None, out_json=None):
                     ok, msg = run_dequant_case(adapter, x)
                 elif c["kind"] == "grad":
                     ok, msg = run_grad_case(adapter, x)
+                elif c["kind"] == "accept":
+                    ok, msg = run_accept_case(adapter, x)
+                elif c["kind"] == "chat":
+                    ok, msg = run_chat_case(adapter, x, case["records"])
                 else:
                     ok, msg = run_refuse_case(adapter, x, c["file"])
                 verdict = "PASS" if ok else "FAIL"

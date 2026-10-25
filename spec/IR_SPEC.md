@@ -2,7 +2,7 @@
 
 *Normative specification of the paperkiln model IR: a versioned JSON graph of a language model that an
 engine interprets, rather than recognising a fixed architecture. IR version 1, specification revision
-1.1 (25 October 2026).*
+1.2 (26 October 2026).*
 
 - Repository: keramos (`github.com/JohnnyTeutonic/keramos`), which holds this text, its schema, the
   reference tools, the worked documents and the conformance suite. Paths in this document are
@@ -14,7 +14,7 @@ engine interprets, rather than recognising a fixed architecture. IR version 1, s
   subcommand gives a document's digest, section 3.10).
 - Reference interpreter: `tools/ir_numpy.py`, with `tools/ir_expr.py` for `expr`,
   `tools/ir_recurrence.py` for `recurrence` (section 6.10) and `tools/ir_quant.py` for stored tensors
-  (section 4.7).
+  (section 4.7); `tools/ir_chat.py` renders chat templates (section 8.1.3).
 - Conformance suite: `conformance/`, run by `tools/ir_conformance.py` (section 11).
 - Worked documents: `examples/*.ir.json`.
 - Implementations: paperkiln (exporter, trainer and `mtstudio`; CPU and CUDA) and ember.cpp
@@ -48,11 +48,17 @@ not semantics: when the header and this document differ, this document holds.
 
 ## 0. Status
 
-This document is version 1 of the IR, revision 1.1. It states the semantics that
+This document is version 1 of the IR, revision 1.2. It states the semantics that
 `include/microtorch/ir.hpp`'s header comment stated under the number 0, reorganised into profiles,
 with the numerics made consistent with what the reference build computes (section 4 and Appendix A).
 Revision 1.1 adds the digest (section 3.10), the values of stored tensors (section 4.7) and the
-`recurrence` profile (section 6.10), and settles the questions that were open in 1.0 (section 12). The IR documents
+`recurrence` profile (section 6.10), and settles the questions that were open in 1.0 (section 12).
+Revision 1.2 states what a third implementation, written in Rust from this text alone (`cleanroom/`),
+found the text left to the reference: the container (section 3.1), duplicate member names and reads of
+values nothing writes (refused, rules 35 and 36), what is checked at load and what when the rows arrive
+(section 10.1.1), the lexical rules of `expr`, the defaults of the adapter's single-node runs, and the
+adapter's edge cases; its suite adds the documents every consumer must accept and the chat profile's
+rendering (section 11). The IR documents
 that paperkiln commits before 5349ee19 exported carry `"ir_version": 0` and are version 1 documents
 (section 2.1); later exports carry 1 (section 2.3).
 
@@ -104,6 +110,9 @@ document's `ir_version` (section 3.1).
   It does not change `ir_version`. A document that uses an addition is refused by an older engine
   through the closed-set rules (section 10.1: unknown ops, attributes and values are refused by
   name), so no revision number is needed inside the document. Revisions are listed in Appendix B.
+  A revision may also refuse a document that has no defined meaning: one whose meaning depends on
+  which of two equal member names a parser keeps (rule 35), or one that reads a value no node writes
+  (rule 36). No meaning changes, since there was none to keep, and no stored document is of either kind.
 - **A major version** (`ir_version` + 1) is needed for any change that alters the meaning of a
   document that was valid before: a changed default, a changed evaluation order of an EXACT op, a
   changed tie rule, a removed op or attribute, or a changed name rule.
@@ -172,12 +181,30 @@ and records its commit.
   of its embedded document is refused (rule 30). paperkiln's exporters write it.
 - A sidecar `<stem>.ir.json` beside the GGUF may hold the same document. When present, it must be
   the embedded document; a consumer that reads sidecars refuses one that differs.
-- A third-party GGUF without `paperkiln.ir` gets a document built from its `general.architecture`
-  and metadata (section 9.3).
+- **The GGUF file.** The container is GGUF version 3, little-endian (version 2 has the same layout, and
+  a reader may accept it): the magic `GGUF`, the uint32 version, the uint64 tensor count and the
+  uint64 metadata count; each metadata key (a string), its uint32 value type (0 to 12, as ggml's
+  `gguf_type`) and value; then each tensor's name, uint32 dimension count, uint64 dimensions (ne0
+  first), uint32 ggml type and uint64 offset. A string is a uint64 byte length and that many bytes:
+  a byte string, which need not be UTF-8 (tokenizer vocabularies hold invalid sequences, as
+  `pk_state.gguf` does); only `paperkiln.ir` must be UTF-8, being a JSON text. The alignment is the
+  uint32 key `general.alignment`, or 32 when it is absent. The tensor data section starts at the first
+  multiple of the alignment at or after the end of the tensor infos, and a tensor's offset counts
+  from the start of that section (each a multiple of the alignment). A tensor's values are section
+  4.7's for its type.
+- **A GGUF without `paperkiln.ir`** (a third-party file) holds no document. Building one from its
+  `general.architecture` and metadata is a capability (section 10.3): an engine may refuse such a
+  file at load, naming the capability. What an engine that builds one runs is the built document, as
+  it would run any document; `tools/gguf_ir.py` is the reference builder (informative: section 9.3
+  lists the graphs, and the conformance suite tests none, since every suite model embeds its
+  document).
 
 ### 3.2 Top-level keys
 
-A document is a JSON object with these keys:
+A document is a JSON text (RFC 8259) of one object, in UTF-8. No object in it, at any depth and `_`
+members included, holds a member name twice: a document with a duplicate member name is refused
+(rule 35), whatever the two members hold and whichever of them a parser would keep, so every engine
+reads one graph from one text. The object has these keys:
 
 | Key | Required | Meaning |
 |---|---|---|
@@ -215,7 +242,7 @@ An engine loading a document that is not a llama graph needs `model.d`, `model.v
   prefill 0 .. T-1, decode = tokens seen so far). Either a list of names or a list of
   `{name, kind, note}` objects. The block reads positions as the value `pos`.
 - `outputs`: `logits` (a list of names or of `{name, kind}`). The head must write the value
-  `logits`, [T, vocab].
+  `logits`, [T, vocab] (rule 36).
 - `modes`: prose describing prefill and decode; informative.
 
 ### 3.5 Sections and nodes
@@ -228,8 +255,16 @@ The graph is three node lists: `embed` (run once), `block` (run `block.repeat` t
 - the op's attributes. A node in the block names its slot, if it has one, in `state`.
 
 Nodes run in order. A later write to a name replaces the earlier value. The embed section reads
-`tokens` and must write `x`; each application reads and writes `x`; the head reads `x` and writes
-`logits`.
+`tokens` and must write `x`; the applications carry the residual stream (`x`, or under attention
+residuals a list value, section 9.2); the head writes `logits`.
+
+- **Reads.** A value stays readable, by later nodes, later applications and later sections, until a
+  node writes its name again: the head reads the last application's values. Every value a node reads
+  is written before it (or is `tokens` or `pos`): the sections are checked in order, embed, block and
+  head, with the block as application 0, which reads nothing an application before it wrote. A node
+  that reads a value no earlier node writes, an embed section that writes no `x` and a head that
+  writes no `logits` are refused at load (rule 36). Under `depth_route` the scope is narrower
+  (section 7.4(b)).
 
 - **Required attributes.** The attributes each op's section names without a default are required,
   and `ir.schema.json` lists them (`required` of each `op_*` definition). They have no default:
@@ -237,8 +272,15 @@ Nodes run in order. A later write to a name replaces the earlier value. The embe
 - **Optional attributes and their defaults:** `linear.bias` and `scale.bias` null; `linear.tied_to`
   none; `embedding.state_weight` none; `rmsnorm.group` the row width and `rmsnorm.weight_offset` 0;
   `rope.kv_heads` = heads, `rope.n_rot` = head_dim and `rope.freq_scale` 1; `attention.mask`
-  `"causal"`; `conv1d_causal.bias` none; `selective_scan.d` none and `selective_scan.dt_softplus`
-  true; a kv slot's `dtype` `"f32"`, `evict` and `kv_rows` absent.
+  `"causal"`; `depth_attend.eps` 1e-5; `conv1d_causal.bias` none; `selective_scan.d` none and
+  `selective_scan.dt_softplus` true; a kv slot's `dtype` `"f32"`, `evict` and `kv_rows` absent.
+- **Numbers.** A float attribute (`eps`, `theta`, `scale`, `shift`, `freq_scale`, `den_floor`,
+  `weight_offset`, ...) is the JSON number's binary64 value (its nearest double, as JSON readers
+  parse it) rounded once to the nearest f32, ties to even; an integer attribute is that integer.
+  The rounding from decimal through binary64 to f32 can differ from rounding the decimal to f32
+  directly in rare halfway cases; the two-step value is the attribute's (paperkiln's exporters
+  write the shortest decimal of each f32, `ir::f32`, which both readings return exactly). A number
+  inside `expr` and recurrence bodies is read differently: directly as the nearest f32 (section 5.19).
 - **The graph inputs.** `tokens` is read by `embedding` nodes only, and `pos` only as `rope`'s third
   input and `pos_embedding`'s second; no node writes either name. Positions are always the absolute
   positions of section 3.4.
@@ -291,13 +333,26 @@ SHA-256 of the document's canonical form:
 1. The whole document, its `_` members included, is parsed as I-JSON (RFC 7493): no duplicate member
    names, every number a finite IEEE binary64 value, every integer within -2^53 .. 2^53, every
    string and member name well-formed Unicode, and no negative zero in floating form (below). A
-   document that fails any of these checks has no digest, whatever its `_` members hold.
+   document that fails any of these checks has no digest, whatever its `_` members hold. (A
+   document with a duplicate member name is refused as a document as well, rule 35.) The integer
+   range is judged by the number's lexical form: an integer is a number token written without a
+   fraction or an exponent (`-7`, `9007199254740993`), and it must lie within -2^53 .. 2^53. A token
+   with a fraction or an exponent is its nearest binary64 value and need only be finite, so
+   `9007199254740993.0` is the double 9007199254740992 and has a digest, as does `1e300` (vectors
+   `fraction_form_beyond_2p53`, `exponent_form_1e300`).
 2. Every member whose name starts with `_`, at any depth, is removed (prose, section 3.2).
 3. What remains is serialised by the JSON Canonicalization Scheme, RFC 8785: no whitespace, member
    names sorted by their UTF-16 code units, strings as ECMAScript's `JSON.stringify` writes them
    (only `"`, `\` and the controls U+0000 .. U+001F escaped), numbers as ECMAScript's
    `Number.prototype.toString` writes the binary64 value (shortest round-trip digits; `1e-05` is
-   written `0.00001`, `1e21` as `1e+21`).
+   written `0.00001`, `1e21` as `1e+21`). The digits are those of ECMA-262 (15th edition, 2024)
+   section 6.1.6.1.20, Number::toString, with the alternative step 5 of its Note 2, which V8 and
+   every engine RFC 8785 tests follow: the fewest digits k whose value rounds to the double; among
+   those, the digit string s whose value s x 10^(n-k) is closest to the double; and when two are
+   equally close, the one whose s is even. A double that lies exactly halfway between two shortest
+   forms is therefore written with the even last digit, where a formatter that rounds halves up
+   writes the odd one (vector `rfc8785_number_43143ff3c1cb0959`: the double 1424953923781206.25 is
+   written `1424953923781206.2`, not `1424953923781206.3`).
 4. The digest is the SHA-256 (FIPS 180-4) of that text's UTF-8 bytes, written as 64 lowercase hex
    digits. A citation may prefix it with `sha256:`.
 
@@ -401,10 +456,10 @@ document depends on them.
 
 **The generating environment.** The stored expected values of the conformance suite (section 11)
 are the reference run under CPython 3.13.14 and numpy 2.3.5 on Windows 11 x86-64
-(`requirements-reference.txt`); `--regenerate` there reproduces all 228 generated files (JSON by
+(`requirements-reference.txt`); `--regenerate` there reproduces all 242 generated files (JSON by
 value, the rest byte for byte). Another numpy build can round a ROUNDING value differently: numpy
-2.3.3 on Linux x86-64 (CPython 3.12.3, WSL) changes 5 of the 228, the `selective_scan` op fixture by
-at most 2 ulp and the `tp_mamba1` model case and its three traces, which carry that difference
+2.3.3 on Linux x86-64 (CPython 3.12.3, WSL) changes 6 of the 242, the `selective_scan` op fixture by
+at most 2 ulp and the `tp_mamba1` model case and its four traces, which carry that difference
 through the network, by at most 7.1e-7 of section 11.4's scale against their tolerance of 1e-5
 (`conformance/receipts/reference_environment.json`). Such a build passes the suite, and its values
 are not stored: expected values are regenerated only in the named environment, and a change of
@@ -497,14 +552,15 @@ w and b [d] tensors (`blk.{i}.` names in a block), d the width of x:
     y[t][j] = (x[t][j] * w[j]) + b[j]      (x[t][j] * w[j] with no bias)
 
 The product rounded to f32, then the sum, with no fused multiply-add. Row by row (the head may run
-it on the last row only). A weight or bias whose length is not x's width is refused at load,
-naming the tensor. EXACT (against the same order of operations).
+it on the last row only). A weight or bias whose length is not x's width is refused, naming the
+tensor (rule 37, checked when x's width is known: section 10.1.1). EXACT (against the same order of
+operations).
 
 ### 5.5 split
 
 `in [x]`, `sizes [s0, s1, ...]` summing to x's width, `out [o0, o1, ...]`: o_k = the s_k consecutive
 columns of x after the first s0 + ... + s_{k-1} (a fused qkv projection read as q, k, v). Copies.
-EXACT.
+Sizes that do not sum to x's width are refused (rule 37). EXACT.
 
 ### 5.6 rmsnorm
 
@@ -512,8 +568,8 @@ x / sqrt(mean(x^2) + eps) * weight, over each row. ROUNDING.
 
 *thirdparty profile:*
 - `group` g (default the row width): each consecutive g columns are normalised on their own, with
-  weight [g] shared by every group (per-head q/k norm: qwen3, gemma3). g must be positive and divide
-  the width.
+  weight [g] shared by every group (per-head q/k norm: qwen3, gemma3). g must be positive (rule 10)
+  and divide the width (rule 37).
 - `weight_offset` c (default 0): the weight is read as w + c, rounded to f32 once at load (a
   load-time transform; Gemma's (1 + w), needed only when a file holds HF's raw w: llama.cpp's
   convert already stores 1 + w).
@@ -527,7 +583,9 @@ mean of squared deviations; weight and bias [d]. ROUNDING.
 
 `approx` `"tanh"`: 0.5 x (1 + tanh(sqrt(2/pi) (x + 0.044715 x^3))) (GPT-2's, and what paperkiln
 trains with); `"none"`: the exact 0.5 x (1 + erf(x / sqrt(2))). An engine must not substitute one
-for the other. Another value is refused. ROUNDING.
+for the other. Another value is refused. ROUNDING. (*Informative:* erf is the f32 libm `erff`;
+a language whose standard library has none, Rust's for one, supplies its own, which is ROUNDING like
+any libm's.)
 
 ### 5.9 silu, sigmoid, relu
 
@@ -538,7 +596,8 @@ for the other. Another value is refused. ROUNDING.
 
 ### 5.10 add, mul, sub
 
-Elementwise over two inputs of one shape; `sub` is `in [a, b]`: a - b. EXACT.
+Elementwise over two inputs of one shape (two shapes are refused, rule 37: there is no
+broadcasting); `sub` is `in [a, b]`: a - b. EXACT.
 
 ### 5.11 affine
 
@@ -558,7 +617,9 @@ Elementwise over two inputs of one shape; `sub` is `in [a, b]`: a - b. EXACT.
 
 Rotates q and k: `in [q, k, pos]`, `out [q', k']`. Attributes `heads`, `head_dim` (even), `theta`,
 `rope_heads` and `pairing`, all required.
-- `rope_heads`: `"all"` (every head) or `"first"` (head 0 only, legacy runs).
+- `rope_heads`: `"all"` (every head) or `"first"` (legacy runs): head 0 of q and head 0 of k
+  rotate (the first head_dim columns of each), and every other column of both passes through
+  unchanged (paperkiln's `ops::apply_rope` with all_heads false; op case `rope/first_head`).
 - `pairing` `"interleaved"`: adjacent pairs (x[2j], x[2j+1]) within a head.
 - The angle of pair j at position pos is pos * theta^(-2j/head_dim); each rotated element is
   x0 * cos - x1 * sin (or x0 * sin + x1 * cos), both products rounded, then the sum or difference,
@@ -637,7 +698,8 @@ ROUNDING.
 ### 5.18 depth_attend
 
 Attention over depth (Attention Residuals, block form; `nn::AttnResStack::depth_attend` and
-`ops::depth_attend`): `in [L, x1, ...]` -> [T, d], `weight` the pseudo-query [d], `eps`. The
+`ops::depth_attend`): `in [L, x1, ...]` -> [T, d], `weight` the pseudo-query [d], `eps` (optional,
+default 1e-5: the attribute governs, and every stored document writes 1e-5). The
 sources s_0 .. s_{S-1} are L's tensors in order, then x1, ... in order. S = 1: out = s_0 bit for
 bit and `weight` is not read. S >= 2, each row t on its own (decode needs nothing but the current
 token's sources).
@@ -652,7 +714,7 @@ Under `weight_index`, S at application i counts application i's entries, whichev
 binds. For S >= 2:
 
     r_i  = 1 / sqrt(ss_i / d + eps), ss_i = sum of s_i[t, j]^2 in ascending j
-           (ops::rmsnorm with unit weight; eps 1e-5)
+           (ops::rmsnorm with unit weight; eps the node's eps)
     l_i  = sum over j of (s_i[t, j] * r_i) * w[j], both products rounded; the sum is a
            matmul reduction
     a    = softmax over i of l_i: e_i = exp(l_i - max_i l_i), z = e_0 + e_1 + ... in
@@ -679,6 +741,20 @@ closed grammar (nothing else is accepted; spaces and tabs are ignored):
 
 So `^` binds tightest and is right-associative (2^3^2 = 2^(3^2), -x^2 = -(x^2), x^-1 is allowed).
 
+- **Tokens.** The text is read left to right into tokens, each the longest match at its place;
+  between tokens only spaces and tabs may stand, and they are skipped (any other character outside a
+  token, a newline included, is an error naming its column):
+
+      number := digits ('.' digits?)? exponent? | '.' digits exponent?
+      exponent := ('e' | 'E') ('+' | '-')? digits
+      name   := [A-Za-z_] [A-Za-z0-9_]*
+      operator and punctuation := + - * / ^ ( ) ,
+
+  digits are ASCII 0-9. An `e` or `E` directly after a number's digits begins its exponent, which
+  must have digits: `2e`, `2e+` and `1.5E` are errors, never the number 2 followed by the name e.
+  A number directly followed by a name (`2x`) is two tokens, which the grammar then refuses (no
+  operator between them). Names are ASCII; a name is a function only when `(` follows it (a
+  function name without `(` is an error, and any other name followed by `(` is an unknown function).
 - **Numbers** are decimal or scientific (1, 0.5, .5, 2., 1e-5, 1.5E+3), read as the nearest float
   (strtof in the C locale: the decimal point is "."), and must be finite. `pi` is the nearest float
   to pi.
@@ -699,7 +775,10 @@ So `^` binds tightest and is right-associative (2^3^2 = 2^(3^2), -x^2 = -(x^2), 
   The row reductions broadcast back to [T, w]. `+ - * /` are elementwise and `^` is pow (powf).
 - **Numerics.** Every primitive is computed in f32 and rounded to f32 after it, with no fused
   multiply-add. A subexpression without inputs is folded in f32 with the same operations
-  (`where(c, ...)` on constants included), and a result without inputs fills [T, w]. The rows are
+  (`where(c, ...)` on constants included), and a result without inputs fills [T, w]. A row reduction
+  of a constant keeps its own operations: `rowsum(c)` is c added w times in ascending column order from
+  0, never c * w, `rowmean(c)` that sum divided by w, and `rowmax(c)` is c (op case
+  `expr/rowsum_constant`: `rowsum(0.1)` over 2048 columns is 204.8033, not 204.8). The rows are
   independent, so decode (T = 1) is prefill's last row.
 - **Gradients** (for training engines) come from the primitives: max, min and where pass the
   gradient to the chosen operand, none to where's condition; rowmax to the row's first largest
@@ -708,6 +787,15 @@ So `^` binds tightest and is right-associative (2^3^2 = 2^(3^2), -x^2 = -(x^2), 
   expressions nested up to 200 deep (the reference parser's limit, `MAX_DEPTH` in
   `tools/ir_expr.py`, which ember's vendored parser shares); a deeper one may be refused. An engine
   that cannot run an expression refuses it at load, naming the function.
+- **Depth** counts the grammar's rules as a parser enters them: the whole text is an `expr` at depth
+  0, and each `term`, `unary`, `power`, `primary` or `expr` that a rule's right-hand side names is
+  one deeper than that rule (the operands of a chain of `+` or `*` share one depth; a function's
+  arguments and a parenthesised `expr` are one deeper than their `primary`; the operand of a unary
+  minus and the exponent of `^` are one deeper than their rule). An expression is within the limit
+  when no rule is entered deeper than 200. So a name alone reaches depth 4, each pair of parentheses
+  around it adds 5, each unary minus 1: 39 nested parentheses around `-x` reach exactly 200 (op case
+  `expr/depth_200`, which every engine must accept), 40 around `x` reach 204, and 196 minus signs
+  before `x` reach 200. A recurrence body (section 6.10.2) counts the same way from its `expr`.
 
 ROUNDING (libm transcendentals differ by an ulp between platforms).
 
@@ -914,7 +1002,10 @@ those n tokens would leave. Per slot:
 - **recurrent:** a recurrence cannot drop tokens. Prefix reuse keeps a snapshot of the slot's
   tensors taken after the prefix's last token; rewinding means restoring a snapshot or running again
   from the start. A snapshot is the slot's tensors, nothing else. A recurrence's slot is such a slot
-  (section 6.10.5).
+  (section 6.10.5). Truncating a session whose model has recurrent state is defined like any other
+  truncation, and an engine's session (and its adapter's `truncate`) does not refuse it: it restores a
+  snapshot taken at n when it holds one, and otherwise runs the first n tokens again from the start
+  (traces `pk_srd_truncate`, a kv and a recurrent slot, and `tp_mamba1_truncate`).
 
 ### 6.10 recurrence (recurrence profile)
 
@@ -947,8 +1038,11 @@ cell contract with decode-state semantics, numerics classes and a gradient check
   `tensor_index` allowed) holds as many elements as its declaration, read row-major in numpy order
   (section 3.7); its stored shape is otherwise free (a [1] tensor is declared `D[o]` with o of size 1).
 - A declaration (`inputs`, `weights`) may repeat an index: `W[c,c]` declares a square tensor over c,
-  of sizes [size(c), size(c)], and a read gives it any indices of those sizes (`W[c,j]`). An
-  assignment (`init`, `let`, `update`, `readout`) may not repeat an index (rule 32).
+  of sizes [size(c), size(c)]. The declaration fixes the tensor's shape only: a read gives it any
+  indices of the right number (`W[c,j]`), whatever their sizes, and a coordinate beyond a dimension
+  reads +0 (section 6.10.3's zero padding), so `W[c,j]` with size(j) = 4 > size(c) = 3 reads +0 at
+  j = 3 (op case `recurrence/read_beyond_declaration`). An assignment (`init`, `let`, `update`,
+  `readout`) may not repeat an index (rule 32).
 - `update` (required): one assignment per state tensor, `name[i1, ..., ik] = body`; the names are
   the state's tensors and their index sizes the tensors' shapes. `init` (optional): an assignment for
   a state tensor whose initial value is a body (a learned initial state, read from weights); every
@@ -1126,7 +1220,9 @@ FIRST node (and occurs nowhere else), and it changes which rows the rest of the 
 - s_i = -1: application i is outside the recursion (prelude or coda): the node does nothing and the
   block runs on every row as usual. s_i = k in 0 .. R-1: application i belongs to recursion step k.
   The applications of step k are consecutive, the steps appear in ascending order 0 .. R-1, and
-  every step has the same number of applications. `n_rec` R >= 1.
+  every step has the same number of applications. The steps' applications form one run: -1 stands
+  only before step 0 (the prelude) and after step R-1 (the coda), never between two steps
+  (`[-1, 0, -1, 1, 2]` is refused, rule 20; refusal `mor_step_gap`). `n_rec` R >= 1.
 - **(a) Routing**, at the first application of step 0: logits = x W^T, W = `weight` [R, d] (a matmul
   reduction, as linear), [T, R]. Each token's depth n_t = 1 + j*, j* the index of the largest logit,
   ties to the LOWER index; p = softmax over the row (e_j = exp(l_j - max), z summed in ascending j,
@@ -1136,7 +1232,14 @@ FIRST node (and occurs nowhere else), and it changes which rows the rest of the 
   tokens are those with n_t > k. Every application of step k runs the block's other nodes on the
   active rows only: the rows of active tokens, in order, with their absolute positions (pos), so for
   those nodes T is the number of active tokens. Rows of inactive tokens are not computed and stay as
-  they are.
+  they are. **What a step sees.** A step's applications start from two values alone, x_in's active
+  rows (as `x`) and their positions (`pos`); the values the step's nodes write are local to the step
+  (they persist from one of its applications to the next) and only x leaves it, through (c). So the
+  block's nodes after depth_route read only `x`, `pos` and values written before them in the same
+  application, in every application, the prelude's and the coda's included, since all share one node
+  list; and the head reads `x` and the embed section's values, not the block's other values. A
+  document that reads anything else (an injection `e` from the embed section, say) is refused at
+  load (rule 36; refusal `mor_reads_outside_value`).
 - **(c)** After the last application of step k, for each active token: gate `"score"`:
   x = x_in + g (x - x_in), the difference rounded, then the product, then the sum (no fused
   multiply-add); gate `"none"`: x stays the step's output. Inactive tokens keep x_in.
@@ -1255,14 +1358,24 @@ refuse it, because their rendering fixes their loss.
 
 The GGUF string key `paperkiln.chat_template` holds the record as JSON.
 
-- **Fields:** `name`, `version`, `bos`, `content` (`raw`, or `trim`: ASCII whitespace stripped from
-  each message's own text), `system` (`fold` with `join`, `turn` with `open`/`close`, or `none`),
+- **Fields:** `name`, `version`, `bos`, `content` (`raw`, or `trim`: whitespace stripped from both
+  ends of each message's own text, the whitespace of Python's `str.strip()` and HF's Jinja `trim`:
+  U+0009 to U+000D, U+001C to U+001F, U+0020, U+0085, U+00A0, U+1680, U+2000 to U+200A, U+2028,
+  U+2029, U+202F, U+205F and U+3000, and nothing else, so U+200B stays; under `fold` the system text
+  is not trimmed), `system` (`fold` with `join`, `turn` with `open`/`close`, or `none`),
   `user` and `assistant` `{open, close}`, `generation_prompt`, optional `generation_prompt_nothink`,
   `stop` `{eos, turn}`, `past_assistant` (`keep` or `strip_think`), optional `default_system`, and
   `reserved`. Third-party records add `markers`, `match` and `architectures`.
 - **Rendering:** a conversation renders as bos, then each message as open + content + close, then
-  the generation prompt when a reply is wanted. Content holding a `reserved` string is refused, in
-  both languages and by `parse` alike, so no text can forge a turn. `<unk>` is ordinary text.
+  the generation prompt when a reply is wanted. The system message renders by its mode: `turn` as
+  its own open + content + close; `fold` as no turn of its own, its text plus `join` opening the
+  first user message's content; `none` refuses it. A record's `default_system` stands in when the
+  conversation has no system message. Content holding a `reserved` string is refused, in
+  both languages and by `parse` alike, so no text can forge a turn. `<unk>` is ordinary text. A field
+  or field value the renderer does not implement, a conversation that breaks section 8.1.1's structure
+  and a reserved role are refused, never rendered. `tools/ir_chat.py` is the reference renderer; the
+  suite's chat cases (`conformance/chat/render.json`, the adapter method `render_chat`, section 11.3)
+  check it on every record below.
 - **paperkiln/1** is this section's template byte for byte:
   - `<|user|>U<|assistant|>A<|endoftext|>` per exchange, then `<|user|>U<|assistant|>`;
   - no BOS; ids 0-3 are `<unk>`, `<|endoftext|>`, `<|user|>` and `<|assistant|>`;
@@ -1341,7 +1454,8 @@ appended to an existing vocabulary (`<|system|>`, `<|tool|>`, `<|tool_result|>`,
   - ember vs mtstudio 40/40 on a system-prompt set;
   - the generated Jinja equals the record under jinja2;
   - third-party records equal HF's templates;
-  - the hand-written cases in paperkiln's `tests/chat_template_cases.json` pass in both languages.
+  - the hand-written cases in paperkiln's `tests/chat_template_cases.json` pass in both languages;
+    the same 32 cases are the conformance suite's chat cases, so any engine can show them.
 
 ### 8.2 The state-token template contract
 
@@ -1475,10 +1589,11 @@ A tensor that is the same thing as a gpt2 tensor keeps llama.cpp's gpt2 name: `t
 
 ### 9.3 Third-party families
 
-An engine builds the document of a llama.cpp GGUF without `paperkiln.ir` from
-`general.architecture` and its metadata, as `tools/gguf_ir.py` does (the reference; its docstring
-has each graph; `tools/ir_numpy.py` runs it). family_hint = general.architecture; llama.cpp's
-tensor names.
+An engine that has the capability (section 3.1) builds the document of a llama.cpp GGUF without
+`paperkiln.ir` from `general.architecture` and its metadata, as `tools/gguf_ir.py` does (the
+reference builder; its docstring has each graph; `tools/ir_numpy.py` runs it). family_hint =
+general.architecture; llama.cpp's tensor names. The graphs below describe that builder; they are not
+normative, and an engine without the capability refuses such a file.
 
 - **llama, mistral**: pre-RMSNorm, interleaved RoPE, grouped-query attention, SwiGLU;
   `<arch>.attention.sliding_window` w sets window w, sinks 0 (HF Mistral's mask; llama.cpp b6000
@@ -1501,11 +1616,26 @@ tensor names.
 
 ### 10.1 What a consumer refuses
 
-A consumer refuses a document at load, naming the rule, when any of these holds. Each rule names
-its section; `tools/ir_validate.py` reports every violation as `IR_SPEC <section>: <message>`.
+A consumer refuses a document, naming the rule, when any of these holds: at load, except for the
+rules section 10.1.1 lists as checked when the rows arrive. Each rule names its section;
+`tools/ir_validate.py` reports every violation as `IR_SPEC <section> (rule <n>): <message>`, the
+rule a single fault breaks under exactly one number (a fault can still break a second rule as a
+consequence: a wrong `block.repeat` names tensors the file lacks). Rule numbers are never reused or
+moved: a rule added by a later revision takes the next free number (35 to 37 in 1.2) and is listed
+with its section's rules.
 
 Document (section 3):
-1. It is not a JSON object matching `ir.schema.json` (types, required keys, closed key sets).
+1. The text is not a JSON object, or it does not match `ir.schema.json` in a respect that no other
+   rule names: the types of values, the closed key sets of the document, its sections and its slots,
+   and the required sections. (The version, the model's fields, an op, an attribute, an attribute's
+   value, an arity, a required attribute, a slot's kind and fields and a recurrence's declarations are
+   rules 2 to 13 and 31.)
+35. An object of the text holds a member name twice, at any depth, `_` members included (3.2).
+36. A node reads a value that no node before it writes (in the order of 3.5: embed, the block as
+   application 0, head; `tokens` and `pos` excepted); the embed section writes no `x`; the head
+   writes no `logits`; under `depth_route`, a block node after it reads anything but `x`, `pos` and
+   values written before it in the same application, or the head reads a block value other than `x`
+   (3.4, 3.5, 7.4).
 2. `ir_version` is not a version the consumer reads (2.3).
 3. `model.d`, `model.vocab`, `model.ctx` or `model.n_layers` is not a positive integer, or
    `block.repeat` != `model.n_layers` (3.3).
@@ -1514,7 +1644,7 @@ Document (section 3):
 5. An attribute value is outside its op's closed set: `gelu.approx`, `rope.pairing`,
    `rope.rope_heads`, `attention.mask`, `moe_ffn.gate_norm`, `moe_ffn.activation`,
    `linear_attention.feature_map`, `depth_route.route`, `depth_route.gate`, `kv.evict`,
-   `kv.kv_rows`, `tensor_index` (sections 5 to 7).
+   `kv.kv_rows`, `kv.dtype`, `tensor_index` (sections 5 to 7).
 6. A `per_layer` list outside the block, on a structural key, or of a length other than
    `block.repeat` (3.8).
 7. A node's arity is wrong: one output except `split` and `rope`; `sub`, `add`, `mul`,
@@ -1554,13 +1684,12 @@ State (section 6):
 Recursion (section 7):
 18. `weight_index` is not `{per_layer: [block.repeat integers >= 0]}`, or leaves a stored layer
     0 .. max unused (7.1).
-19. `tensor_index` in a block without `weight_index`, or with a value other than `"application"`
-    (7.2).
+19. `tensor_index` outside a block, or in a block without `weight_index` (7.2; its value is rule 5).
 20. `depth_route` is not the block's first node, occurs more than once or outside the block; its
-    `n_rec` is not an integer >= 1; its `step` is not a `per_layer` list of block.repeat integers
-    forming the consecutive, ascending, equal-length steps 0 .. R-1 with -1 elsewhere; its `route`
-    is not token_choice, its gate not score or none; its weight holds `{`; it has no `out` (7.4,
-    7.7).
+    `n_rec` is not an integer >= 1; its `step` is not a `per_layer` list of integers forming the
+    consecutive, ascending, equal-length steps 0 .. R-1 in one run, with -1 only before and after
+    them (the list's length is rule 6); its weight holds `{`; it has no `out` (7.4, 7.7; its `route`
+    and `gate` values are rule 5).
 21. `depth_route` with a kv slot whose `kv_rows` is not `"active"`, or with no kv slot (7.5).
 22. A kv slot carries `kv_from` (7.6).
 23. `depth_route` together with `mask: turn_state` (9.2, llama_state), or with `list`, `append` or
@@ -1602,6 +1731,23 @@ Recurrence (section 6.10; `tools/ir_recurrence.py` reports these as "IR_SPEC 6.1
     width is not its declaration's (at load where the width is known, at the latest when the rows
     arrive).
 
+Widths (sections 5 and 10.1.1):
+37. A value's width does not fit the node that reads it: a `scale` weight or bias whose length is not
+    the input's width (5.4); `split` sizes that do not sum to it (5.5); an `rmsnorm` group that does
+    not divide it (5.6); `add`, `mul` or `sub` operands of two shapes (5.10); a `mul_col` column that
+    is not [T, 1] (5.12); a `rope` input whose width is not its heads times head_dim (5.14);
+    `depth_attend` sources of two shapes (5.18); `expr` inputs of two shapes (5.19).
+
+### 10.1.1 At load and when the rows arrive
+
+Every rule is checked at load, from the document and the file, except those that need a value's
+width: rule 37 and rule 34's input widths. The IR does not declare widths (a value's width follows
+from the tensors and the ops that make it), so this specification defines no width inference: an
+engine that infers widths may make those checks at load, and every engine makes them at the latest
+when the rows arrive, refusing the call (an adapter's `error`) and naming the rule, never computing a
+value from a misfit. The validator infers no widths and makes neither check; the reference
+interpreter makes both when it runs; the suite's refusal cases test only the load-time rules.
+
 ### 10.2 The schema and the validator
 
 `ir.schema.json` is the structural half (rules 1, 4 to 8 in part). `tools/ir_validate.py`
@@ -1640,6 +1786,11 @@ kind, profile, class and tolerance:
 - `models/`: whole models: a small document with F32 weights in a GGUF, prompts, expected greedy ids
   and log-probabilities (and depth traces under depth_route).
 - `refuse/`: documents (and GGUF metadata) every consumer must refuse, each with the rule it breaks.
+- `accept/documents.json`: the documents every consumer must accept (every suite model, every
+  rewritten document in place of its model's own, every worked document of `examples/`), so a
+  validator that refuses everything fails the suite.
+- `chat/render.json`: chat template records and conversations with their rendered text or refusal
+  (section 8.1.3).
 - `digest/vectors.json`: digest vectors (section 3.10).
 - `quant/blocks.json`: stored blocks of every storage type with their f32 values (section 4.7).
 - `grad/recurrence.json`: gradient cases of recurrence nodes (section 6.10.5).
@@ -1661,7 +1812,14 @@ digit order (1.0 is `3f800000`). Integer arrays are plain JSON lists.
   "class", "tol"}]}`. `node` is an IR node; the engine runs it alone as application 0 of a one-node
   block, recurrent slots starting at their initial value, and `expect_state` gives a recurrent
   slot's tensors after the last row. A `list` value is a JSON list of tensors; `tokens` and `pos`
-  are integer lists.
+  are integer lists. What a one-node block lacks takes these values, which the fixtures' expected
+  values assume: an `attention` node reads a kv slot made from its own `heads`, `kv_heads`,
+  `head_dim`, `window` and `sinks`, empty at the start, with room for the rows, and its rows sit at
+  positions 0 .. T-1 (the mask of section 5.15 at those positions; mask `"causal"`, as no fixture
+  has ids); a recurrent op reads a slot of its own op whose tensors are those sections 6.4 to 6.7 and
+  6.10 give, at their initial values; an `embedding` with `state_weight` takes vocab as the row count
+  of its `weight` (ids vocab .. vocab + k - 1 read the state rows); a node with `{i}` in a tensor name
+  reads it with i = 0.
 - **state trace** (`state/<name>.json`): `{"model": "models/<name>", "evict": null | false,
   "steps": [{"method": "forward" | "truncate" | "snapshot" | "restore", ...its params}],
   "expect": [one object per step], "score_form"?: {...}}`. Steps are the adapter methods of
@@ -1688,13 +1846,24 @@ digit order (1.0 is `3f800000`). Integer arrays are plain JSON lists.
 - **gradient** (`grad/recurrence.json`): `{"cases": [{"name", "node", "inputs", "weights", "out_grad",
   "expect", "tol"}]}`: `expect` maps each value of `in` and each weight tensor to d sum(out * out_grad) /
   d(it), central differences of the reference in float64.
-- **refusal** (`refuse/<name>.json`): `{"doc"?: <document>, "gguf": "<path in the suite>", "rule":
-  <10.1 rule number>, "section": "<section>"}`. With `doc`, the engine loads the GGUF (a suite
-  model) with that document in place of its own (as ember's `EMBER_IR` does); without it, the GGUF
-  (`refuse/<name>.gguf`) breaks a container rule. The version that governs is that of the document
-  actually read, the one in place of the file's own; the file's `paperkiln.ir_version` must still
-  match the document embedded in it (rule 24). A consumer passes when it refuses; the reference
-  adapter must also report a violation under `section`.
+- **refusal** (`refuse/<name>.json`): `{"doc"?: <document>, "text"?: <JSON text>, "gguf": "<path in
+  the suite>", "rule": <10.1 rule number>, "section": "<section>"}`. With `doc` or `text` (the
+  document as a JSON text, written byte for byte, for a fault a parsed value cannot hold: a duplicate
+  member name), the engine loads the GGUF (a suite model) with that document in place of its own (as
+  ember's `EMBER_IR` does); without either, the GGUF (`refuse/<name>.gguf`) breaks a container rule.
+  The version that governs is that of the document actually read, the one in place of the file's own;
+  the file's `paperkiln.ir_version` must still match the document embedded in it (rule 24). `rule` is
+  the rule the fault breaks (a consequence it also breaks is not cited). A consumer passes when it
+  refuses; the reference adapter must also report a violation of `rule` under `section`
+  (`IR_SPEC <section> (rule <rule>)`).
+- **acceptance** (`accept/documents.json`): `{"cases": [{"name", "gguf"?, "ir"?}]}`, paths in the
+  suite (`../examples/...` for the worked documents). The engine checks the GGUF with its own document,
+  or with `ir` in its place, or `ir` alone when there is no `gguf` (the document rules only); it passes
+  when it accepts.
+- **chat** (`chat/render.json`): `{"records": {id: record}, "cases": [{"name", "record": id or a record,
+  "messages", "generation_prompt", "thinking"?, "expect": str} | {..., "refused": true}]}`: the
+  rendering of section 8.1.3, or a refusal. The conversations and records are paperkiln's
+  `tests/chat_template_cases.json` (gate G5); the expected texts come from `tools/ir_chat.py`.
 
 ### 11.3 The adapter contract
 
@@ -1717,6 +1886,13 @@ stdout, in request order; stderr is free for logs. A request is `{"id": int, "me
 1-D; section 11.2: 8 hex digits per value, the binary32 bit pattern, row-major). Ids and positions
 are JSON integer lists.
 
+**Paths** (`gguf`, `ir`) are absolute paths of the runner's own platform, passed as the runner has
+them; the engine opens them as given. The runner and the engine therefore run on one platform: a
+Linux engine is driven by a runner on Linux (WSL included), a Windows engine by one on Windows.
+
+**Errors.** An `error` reply leaves the session as it was before the call (its ids, state and
+snapshots), as a `skip` does; the next call sees the pre-call session.
+
 **Skips.** A `skip` covers the whole call: there is no per-report skip. The engine decides it before
 running anything, so a skipped call leaves the session as it was.
 
@@ -1729,7 +1905,7 @@ session owns the ids it has seen, so it can re-prefill after a rewind (section 6
 | Method | params | result |
 |---|---|---|
 | `hello` | `{}` | `{"engine", "version", "backend", "exact": bool, "profiles", "methods"}` |
-| `check` | `{"gguf": path, "ir": path or null}` | `{"accepted": true}` or `{"accepted": false, "message": str}`: load only; a refusal is a result, not an error |
+| `check` | `{"gguf": path or null, "ir": path or null}` | `{"accepted": true}` or `{"accepted": false, "message": str}`: load only; a refusal is a result, not an error. `gguf` null checks the document `ir` alone (the document rules, no container rules) |
 | `open` | `{"gguf": path, "ir": path or null, "evict": true / false / null}` | `{"session": str, "vocab": int, "applications": int, "state_k": int}` |
 | `forward` | `{"session", "ids": [...], "report": [...]}` | `{"len": int, ...the reports}` |
 | `truncate` | `{"session", "n": int, "report": [...]}` | `{"len": n, ...the reports}` |
@@ -1740,16 +1916,20 @@ session owns the ids it has seen, so it can re-prefill after a rewind (section 6
 | `run_node_grad` | `{"node", "inputs", "weights", "out_grad"}` | `{"grads": {name: tensor}}` |
 | `digest` | `{"text": str, "prose": bool}` | `{"sha256", "canonical"?}` or `{"refused": str}` |
 | `dequantize` | `{"type": str, "n": int, "bytes": hex}` | `{"values": tensor [n]}` |
+| `render_chat` | `{"record": object, "messages": [...], "generation_prompt": bool, "thinking": bool or null}` | `{"text": str}` or `{"refused": str}` |
 
 - `ir` (optional) is a document that replaces the file's embedded one (ember's `EMBER_IR`).
 - `evict`: null runs the document as declared; false keeps every kv row even where the document
   declares `evict: turn_state` (the comparison run of section 6.8.3); true requires the declaration,
   and is an `error` on a document without it (a request the session cannot honour).
-- A snapshot lives until its session is closed and can be restored any number of times.
+- A snapshot lives until its session is closed and can be restored any number of times. A
+  `snapshot` under a tag already in use replaces the earlier one; `restore` of a tag the session has
+  not snapshotted is an `error`.
 - `forward` appends `ids` at positions len .. len + n - 1: on a fresh session it is a prefill, later
-  an incremental step (n = 1 is token-by-token decode); any chunking is allowed. `truncate` applies
-  section 6.9 to the first n tokens. `restore` returns the session to the ids and state of a
-  `snapshot`.
+  an incremental step (n = 1 is token-by-token decode); any chunking is allowed. `ids` is not empty
+  (an empty list is an `error`). `truncate` applies section 6.9 to the first n tokens, 0 <= n <= len:
+  n = len changes nothing, and n > len (past the end) or n < 0 is an `error`. `restore` returns the
+  session to the ids and state of a `snapshot`.
 - `report` lists what to return after the call. `forward` may ask for any of them; `truncate` and
   `restore` only for `kv_rows`, `kv_positions` and `recurrent` (they run no rows, so `logits` and
   `depth` there are a runner error, and the suite never asks). An engine that cannot give a report
@@ -1760,21 +1940,31 @@ session owns the ids it has seen, so it can re-prefill after a rewind (section 6
 | `logits` | tensor [n, vocab] | the logits of the rows this call ran (`forward` only) |
 | `kv_rows` | `{slot: [rows per application]}` | k/v rows each application's instance of each kv slot holds after the call (after any eviction the call allows); `{}` for a document without kv slots |
 | `kv_positions` | `{slot: [[positions] per application]}` | the absolute positions of those rows, ascending |
-| `depth` | `[int per id of this call]` | under `depth_route`: each new token's depth, 1 .. R |
-| `recurrent` | `{slot: [{tensor: tensor} per application]}` | every recurrent slot's tensors after the call |
+| `depth` | `[int per id of this call]` | under `depth_route`: each new token's depth, 1 .. R; `[]` for a document without `depth_route` |
+| `recurrent` | `{slot: [{tensor: tensor} per application]}` | every recurrent slot's tensors after the call; `{}` for a document without recurrent slots |
 
 - `run_node` (op fixtures, optional): `node` is one IR node; `inputs` maps value names to tensors (a
   `list` value is a JSON list of tensors; `tokens` and `pos` are integer lists); `weights` maps
   tensor names to tensors; `state` is null or `{slot: {"decl": <slot>, "tensors": {name: tensor}}}`,
   the slot's declaration and its tensors before the call (the suite passes null: every slot at its
-  initial value). The node runs as application 0 of a one-node block. The result maps every name in the
-  node's `out` to a tensor, and gives the slots' tensors after the call.
+  initial value, with section 11.2's defaults for what the one-node block lacks). The node runs as
+  application 0 of a one-node block. The result's `outputs` maps every name in the node's `out` to a
+  tensor (a list value to a JSON list of tensors), and its `state` is `{slot: {tensor: tensor}}`: each
+  recurrent slot's tensors after the last row, each in its declared shape (`expect_state`'s form; a kv
+  slot is not reported, and a node without a recurrent slot gives `{}`). In `inputs`, `tokens` and
+  `pos` are integer lists and every other JSON list is a list value; `[]` is a list value with no
+  tensors, which no document makes (`list` reads at least one value), so the suite never passes one
+  and an engine may reply `error` to it.
 - `run_node_grad` (gradient cases, optional; for training engines): the node runs as in `run_node`
   from the initial state, and the result maps each value of `in` and each weight tensor's name to the
   gradient of sum(out * out_grad).
 - `digest` (optional): the digest of the JSON text (section 3.10), and its canonical form when the
   engine has it; `refused` when the text has no digest. `dequantize` (optional): the f32 values of n
   elements of the storage type stored as the bytes (section 4.7).
+- `render_chat` (optional, the chat profile): the text a conversation renders to under a template
+  record (section 8.1.3), with the generation prompt when `generation_prompt` is true and, when
+  `thinking` is false, the record's `generation_prompt_nothink`; `refused` where section 8.1 refuses
+  (an unimplemented field or value, a conversation of the wrong structure, a reserved role or text).
 
 **Expectations the suite checks.**
 - Logits within the case's class and tolerance; greedy ids and depth traces identical. An EXACT case
@@ -1795,6 +1985,7 @@ session owns the ids it has seen, so it can re-prefill after a rewind (section 6
   and the token-by-token decode of the same ids in the same engine where section 4.5's condition
   holds, otherwise within ROUNDING.
 - Digest vectors: the sha256 equal (and the canonical form, when reported); a refused text refused.
+- Acceptance: `check` accepts. Chat: the rendered text equal, or a refusal where the case refuses.
 - Dequantisation: bit for bit on every backend (section 4.7).
 - Gradients: per tensor |a - b| <= tol * max(1, max|ref|), tol the case's (1e-4).
 
@@ -1914,9 +2105,48 @@ Release build trains, tests and exports exactly as before (the precision gate's 
 and transformer_core's compile flags carry no `-ffp-contract`. Builds that add `-march` with FMA, and
 arm64 builds, now keep the stated orders that they would otherwise have contracted.
 
-### 12.3 Open
+### 12.3 Settled in revision 1.2
 
-None. A question raised after revision 1.1 takes the next number, Q16.
+The findings of the clean-room implementation (`cleanroom/FINDINGS.md`, numbered there), each with the
+answer adopted. Where the reference already behaved one way, that behaviour is now the text.
+
+- **F1. Ties in number serialisation.** ECMA-262 section 6.1.6.1.20's closest-then-even digits
+  (section 3.10 step 3); vector `rfc8785_number_43143ff3c1cb0959` kept.
+- **F2. Duplicate member names.** Refused at load, at any depth, `_` members included (section 3.2,
+  rule 35); refusals `duplicate_member_top`, `_node`, `_prose` and `_embedded` (a GGUF).
+- **F3. The GGUF container.** Specified (section 3.1): version 3, `general.alignment` or 32, offsets
+  from the data section's start, strings as byte strings that need not be UTF-8.
+- **F4, F5. Single-node runs.** The defaults the fixtures assume (section 11.2) and the shape of
+  `run_node`'s `state` (section 11.3).
+- **F6. Documents for third-party GGUFs.** A capability an engine may refuse (section 3.1);
+  `tools/gguf_ir.py` the informative reference builder (section 9.3).
+- **F7. Checks that need widths.** Rule 37 and rule 34's input widths are checked when the rows
+  arrive at the latest (section 10.1.1); the IR defines no width inference.
+- **F8. Reads of unwritten values.** Refused (rule 36), with persistence across nodes, applications
+  and sections stated (section 3.5).
+- **F9. Mixture-of-Recursions' active rows.** A step sees `x` and `pos` alone and only `x` leaves it,
+  the reference's rule; reads of other values are refused (section 7.4(b), rule 36).
+- **F10. depth_attend's eps.** The attribute governs; it is optional with default 1e-5 (section 5.18).
+- **F11. The lexical rules and depth of `expr`.** In section 5.19, from `tools/ir_expr.py`.
+- **F12. Rule numbers.** Each refusal case cites the rule its fault breaks; rule 1 no longer covers
+  what rules 2 to 13 and 31 name, nor rules 19 and 20 what rule 5 names; the reference reports every
+  refusal with its rule and the runner checks it (section 10.1).
+- **F13. Must-accept cases.** `accept/documents.json` (section 11.2).
+- **F14. The I-JSON integer range.** By lexical form (section 3.10 step 1).
+- **F15. truncate with recurrent state.** Defined; a snapshot or a run from the start (section 6.9).
+- **F16. depth_route steps with a gap.** Refused, as the reference did (section 7.4, rule 20).
+- **F17. rope_heads "first".** Head 0 of q and of k; the reference implements it (section 5.14).
+- **F18. A read with an index of another size.** Zero padding, as the reference and paperkiln do
+  (section 6.10.1).
+- **F19. A row reduction of a constant.** Its w additions (section 5.19).
+- **F20. Attributes to f32.** The binary64 value rounded once (section 3.5).
+- **F21. The chat profile's conformance.** The adapter method `render_chat` and 32 chat cases.
+- **F22. The adapter's edge cases.** Paths, the post-error state and the edge cases (section 11.3).
+- **F23. erf in other languages.** An informative note (section 5.8).
+
+### 12.4 Open
+
+None. A question raised after revision 1.2 takes the number Q16.
 
 ## Appendix A. The `-ffast-math` audit
 
@@ -2009,6 +2239,22 @@ equal to dc29b5e6 bit for bit) and the pinned commits of the RunPod campaigns ar
 
 ## Appendix B. Changelog
 
+- **v1.2.0** (tag, 26 October 2026; revision 1.2). The clean-room implementation's findings, settled
+  (section 12.3). New refusals: duplicate member names (rule 35) and reads of values no node writes,
+  an embed section without `x` and a head without `logits` (rule 36), neither of which a stored
+  document holds (section 2.2); the width checks numbered and placed when the rows arrive (rule 37,
+  section 10.1.1). Schema: `depth_attend.eps` optional, default 1e-5. Stated from the reference: the
+  GGUF container and third-party documents as a capability (3.1), ties in number serialisation and
+  the integer range by lexical form (3.10), persistence of values (3.5), attribute numbers (3.5),
+  `rope_heads` "first" (5.14, now in the reference), `expr`'s tokens, depth and constant row
+  reductions (5.19), truncation with recurrent state (6.9), reads beyond a declaration (6.10.1),
+  MoR's step scope and contiguous steps (7.4), trim's whitespace (8.1.3), the adapter's paths, error
+  state, edge cases and single-node defaults (11.2, 11.3). Rule citations corrected: every refusal
+  case cites the rule its fault breaks, and the reference reports `IR_SPEC <section> (rule <n>)`
+  (the runner checks the rule). Suite: 83 refusals (9 new), an acceptance kind (34 documents), a
+  chat kind (32 cases, adapter method `render_chat`), 5 op cases, 2 traces and 4 digest vectors added,
+  370 cases in all; every earlier expected value unchanged; regenerated in the named environment
+  (section 4.6), where the reference passes 362 and skips the 8 gradient cases.
 - **v1.1.4** (tag, 26 October 2026; section 2.6). Documentation: the environment that generated the
   suite's stored expected values (section 4.6; `requirements-reference.txt`), with the receipt of
   its reproduction and of a Linux numpy 2.3.3 regeneration (`conformance/receipts/
@@ -2063,7 +2309,8 @@ the engine has agreed to close, the specification already states the intended be
 
 | Engine and path | Profiles | Class met | Matrix products | Refuses (valid documents it does not run) |
 |---|---|---|---|---|
-| numpy reference (`tools/ir_numpy.py`) | core, state, recursion, chat, thirdparty, recurrence | the reference (prefill only: no cache; no backward) | float32 numpy (BLAS order) | `rope_heads` "first" |
+| numpy reference (`tools/ir_numpy.py`) | core, state, recursion, chat, thirdparty, recurrence | the reference (prefill only: no cache; no backward) | float32 numpy (BLAS order) | none |
+| clean-room Rust engine (`cleanroom/rust`, `kcr`; informative: a third implementation written from this text alone, not a product) | core, state, recursion, thirdparty, recurrence | EXACT where this document says so (CPU) | scalar f32, ascending | GGUFs without a document (section 3.1), sidecars, `run_node_grad` |
 | paperkiln `mtstudio`, CPU | the families it trains (section 9.2), from its own runs; recurrence nodes and their gradients through `ir_eval` | EXACT ops EXACT on every build (`-ffp-contract=off`); eviction EXACT at equal chunking (Appendix A) | `matmul_optimized` (FMA, shape-dependent order) | documents it did not export (it runs its modules, not documents); recurrence bodies with weights of their own in its training lane (the op takes them) |
 | paperkiln `mtstudio`, CUDA | as CPU | ROUNDING | cuBLAS FP32; TF32 opt-in | as CPU |
 | ember interpreter, CPU | core, state, recursion, chat, thirdparty, recurrence | EXACT where this document says so | `dot_f32_as_f64`, a fixed 8-lane double order independent of T and threads | see below |
