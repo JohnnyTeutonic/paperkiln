@@ -97,7 +97,9 @@ through `mtstudio chat` and ember). Forced choice (raw summed log-prob, `acc`; p
 history modes: gold, self, near, near_self (the near rendering with the model's own replies), twin and noctx;
 a rendering beyond the model's context is `over_ctx` (0 credit in `acc`, out of `acc_fit`, counted). Greedy
 generation through ember's server after a spot-check against `mtstudio chat` (ember only on N/N identical
-items, otherwise mtstudio for the whole run, as the tiny-chat post job), `EMBER_GEMM_TF32=0`, every
+items, otherwise mtstudio for the whole run, as the tiny-chat post job), `EMBER_GEMM_TF32=0`,
+`EMBER_DETERMINISTIC=1` at ember fe01b35 or later (decode bit-identical run to run on one GPU model and build;
+ember df43463; every run's GPU model recorded, and all of a cell's generations on L4s), every
 generated reply scored again by `mtstudio score` (the parity gate); self history played to the target
 (`--self-scope target`, Stage L0) or the whole conversation. Curves by distance, target turn, interference,
 distractor window, correction kind and family x distance, the self conversation by turn to 14, the HL0
