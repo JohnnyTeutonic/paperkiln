@@ -216,6 +216,8 @@ def tok_per_s(s):
     time per token interpolated linearly in log2(layers) (the ASHA-only depths 3, 6, 12); the old
     model only where no probe exists. A recursed shape (A3.3): its own probe once home (stage0/rec/), else its base shape's
     probe scaled by training FLOPs per token (the literature check's extrapolation)."""
+    if "attn_res" in s:  # amendment 5: X5's own probe once home (x5/stage0/), else L16's at the build's estimate
+        return X5_PROBES.get(s["sid"]) or tok_per_s(s["base"]) * X5_RATIO_EST
     if "recursion" in s:
         if s["sid"] in REC_PROBES:
             return REC_PROBES[s["sid"]]
@@ -264,6 +266,8 @@ def pt_spec(sid, s, corpus, lr, seed, steps=STEPS, warmup=500):
         custom["recursion"] = dict(s["recursion"], schedule=s.get("schedule", "fixed"), inject="none")
         if s.get("mor"):  # amendment 4: causal token-choice MoR
             custom["recursion"]["mor"] = dict(s["mor"])
+    if "attn_res" in s:  # amendment 5: Attention Residuals on the llama block (llama_attnres)
+        custom["attn_res"] = dict(s["attn_res"])
     return {"name": f"tc_{sid}",
             "arch": {"preset": "llama-tiny", "rope_heads": "all", "custom": custom},
             "data": {"corpus": corpus, "vocab": VOCAB, "vocab_cap": V, "T": T, "max_tokens": 0},
@@ -313,6 +317,8 @@ def corpus_of(share):
 def spec_path(sid):
     if sid.split("_", 1)[-1] in REC_CELLS or sid.split("_", 1)[-1] in MOR_CELLS:
         return f"{REL}/recursion/specs/shape_{sid}.json"
+    if sid.split("_", 1)[-1] in X5_CELLS:
+        return f"{REL}/x5/specs/shape_{sid}.json"
     return f"{REL}/specs/shape_{sid}.json"
 
 
@@ -414,7 +420,8 @@ def run_jobs(tag, cells, sh, lrs, provisional, seeds=SEEDS, gate_extra=(), choic
                                   "--pt-dir", f"{C}/{name}", "--sft-template", f"{REL}/specs/sft.json",
                                   "--seed", str(seed), "--cell", cell, "--share", str(share), *PANELS, *ITEMS,
                                   *gen],
-                          "outputs": ["summary.json", *(MOR_POST_OUTPUTS if s.get("schedule") == "mor" else [])]})
+                          "outputs": ["summary.json", *(MOR_POST_OUTPUTS if s.get("schedule") == "mor" else []),
+                                      *(x5_post_outputs(cell, seed) if "attn_res" in s else [])]})
             for st in rung_steps():
                 rungs.append({"name": f"rung_{tag}_{cell}_r{seed}_s{st}", "after": "data", "light": True,
                               "rung_of": {"job": name, "step": st}, "env": {"MICROTORCH_POOL_MB": LIGHT_POOL_MB},
@@ -996,6 +1003,187 @@ def budget_mor(sh):
     return chr(10).join(out)
 
 
+# ---------------------------------------------------------------- amendment 5: arm X5 (Attention Residuals)
+X5_CELLS = {"X5": "20m_L16"}          # cell: the plain shape it adds full sublayer-level AttnRes to (E1's L16)
+X5_ATTN_RES = {"form": "full", "scale": "sources"}
+X5_RATIO_EST = 0.65                   # X5 / L16 tokens/s, the build's bandwidth estimate (0.6-0.7) until the probe
+X5_REPLAY_STEPS = 500                 # = the warmup: the lr schedule up to here does not depend on train.steps
+X5_SMOKE_STEPS = 300
+X5_DIR = os.path.join(HERE, "x5")
+X5_SPECS = os.path.join(X5_DIR, "specs")
+X5_STAGE0_DIR = os.path.join(X5_DIR, "stage0")           # the X5 Stage 0's probe receipts once home
+X5_CHOICE = f"{REL}/stage0/lr_choice_x5.json"            # E1 L16's chosen lr for X5 (A5: no screen)
+X5_CUDA_GATE = f"{REL}/x5/cuda_gate_x5.json"            # the X5 Stage 0's cuda_gate.json, copied home
+X5_BITID = f"{REL}/x5/plain_bitid.json"                 # x5/bitid.py: the plain replay against E1's log
+X5_EMBER = f"{REL}/x5/ember_gate.json"                  # ember's gate receipt on the X5-shaped models
+X5_CONTROL_SEEDS_ART = "/mnt/c/ml_artifacts/tiny_chat/e1"   # E1's home pretraining runs (the re-run's inputs)
+# A5.4: the ember commit X5's and the re-run's post jobs generate with (post --ember-commit), the one ember's
+# gate receipt (x5/ember_gate.json) names; None until that receipt is home, and then neither file launches.
+X5_EMBER_COMMIT = None
+
+
+def x5_gen():
+    return [*POST_GEN, "--ember-commit", X5_EMBER_COMMIT] if X5_EMBER_COMMIT else list(POST_GEN)
+
+
+def x5_probes():
+    out = {}
+    for n in sorted(os.listdir(X5_STAGE0_DIR)) if os.path.isdir(X5_STAGE0_DIR) else []:
+        p = os.path.join(X5_STAGE0_DIR, n, "summary.json")
+        if n.startswith("probe_20m_X") and os.path.exists(p):
+            with open(p, encoding="utf-8") as f:
+                d = json.load(f)
+            if d.get("rc") == 0 and d.get("tok_per_s_steady"):
+                out[n[len("probe_"):]] = d["tok_per_s_steady"]
+    return out
+
+
+X5_PROBES = x5_probes()
+
+
+def x5_shapes(sh):
+    """{sid: shape} for arm X5: E1's shape plus full Attention Residuals at sublayer level (2L + 1 depth sources;
+    2L zero-initialised pseudo-queries of d read, application 0's attention query never read)."""
+    out = {}
+    for cell, base in X5_CELLS.items():
+        b = sh[base]
+        q = 2 * b["layers"] * b["d"]
+        out[f"20m_{cell}"] = {**b, "sid": f"20m_{cell}", "cell": cell, "base": b, "attn_res": dict(X5_ATTN_RES),
+                              "query_params": q, "sources": 2 * b["layers"] + 1, "nonemb": b["nonemb"] + q,
+                              "total": b["total"] + q}
+    return out
+
+
+def x5_lr(lrs):
+    """Amendment 5: X5 trains at the plain cell's chosen rate (Kimi's convention), so no screen."""
+    return {f"20m_{c}": lrs[b] for c, b in X5_CELLS.items() if b in lrs}
+
+
+def x5_spec(sid, s, lr):
+    spec = pt_spec(sid, s, corpus_of(E1_SHARE), lr, SEEDS[0])
+    spec["_shape"] = {**{k: s[k] for k in ("size", "nonemb", "emb", "total")}, "base": f"20m_L{s['layers']}",
+                      "attn_res_query_params": s["query_params"], "depth_sources": s["sources"]}
+    return spec
+
+
+def x5_post_outputs(cell, seed):
+    """The X5 post job's extra files home: the per-item records (HX5-main is item-level), the replies, and the
+    SFT model (safetensors, F32 GGUF, spec): the seeds run on separate machines, so the cell's pick runs at home
+    (`tiny_chat_run.py pick` over the home post folders), and the depth-attention traces run on the GGUFs."""
+    return ["carry5/m/items.jsonl", "carry5/m/gen.jsonl", "sft_spec.json", f"sft/tc_sft_{cell}_r{seed}.safetensors",
+            f"sft/tc_sft_{cell}_r{seed}.gguf"]
+
+
+X5_PRE_GATE = [*PILOT_GATE, "--need-pilot", "PASS"]
+
+
+def s0_x5_doc(sh, xs, lrs):
+    """X5's Stage 0 (amendment 5): the CUDA gate first and alone (tools/colab_cuda_validate.sh, the
+    test_llama_attnres device leg among its legs), the gate (design, the floor pilot's PASS), the data job,
+    300-step probes of 20m_L16 and 20m_X5 alone on the GPU, the plain replay (E1's pt_e1_L16_r1 spec at this
+    commit for its first 500 steps, a training job as E1's were) and the 300-step smoke run of X5 (exported, so
+    its F32 GGUF and IR come home for ember's gate)."""
+    name = "tiny_chat_s0_x5.json"
+    gate = {"name": "gate", "cmd": ["python3", RUN, "gate", "--out", "{out}", "--stage0", "--jobs",
+                                    f"tools/colab_chat/{name}", "--design", f"{REL}/design.json", *X5_PRE_GATE],
+            "outputs": ["gate.json"]}
+    cuda = {"name": "cuda_gate", "cmd": ["python3", RUN, "cuda_gate", "--out", "{out}"],
+            "outputs": ["cuda_gate.json", "cuda_gate.log"]}
+    jobs = [cuda, gate, {**data_job([E1_SHARE]), "after": "gate"}]
+    after = ["data", "cuda_gate"]
+    pre = ["--cuda-gate", f"{C}/cuda_gate", "--data-job", f"tools/colab_chat/{name}"]
+    for sid in ["20m_L16", *xs]:
+        jobs.append({"name": f"probe_{sid}", "after": after,
+                     "cmd": ["python3", RUN, "probe", "--out", "{out}", "--spec", spec_path(sid),
+                             "--corpus", corpus_of(E1_SHARE), "--steps", str(PROBE_STEPS), *pre],
+                     "outputs": ["summary.json"]})
+    rep = pt_spec("20m_L16", sh["20m_L16"], corpus_of(E1_SHARE), lrs["20m_L16"], 1, steps=X5_REPLAY_STEPS)
+    jobs.append({"name": "replay_e1_L16_r1", "model_name": "tc_e1_L16_r1", "after": after, "spec": rep})
+    for sid, s in xs.items():
+        sm = pt_spec(sid, s, corpus_of(E1_SHARE), x5_lr(lrs)[sid], SCREEN_SEED, steps=X5_SMOKE_STEPS, warmup=30)
+        sm["train"].update({"eval_every": 100, "checkpoint_every": 100})
+        jobs.append({"name": f"smoke_{sid}", "model_name": f"tc_smoke_{sid}", "after": after, "spec": sm})
+    est = (CUDA_GATE_H + DATA_H + hours(sh["20m_L16"], PROBE_STEPS + X5_REPLAY_STEPS)
+           + sum(hours(s, PROBE_STEPS + X5_SMOKE_STEPS) for s in xs.values()))
+    doc = {"_comment": f"tiny-chat arm X5, Stage 0 ({REL}/PREREGISTRATION.md amendment 5): the CUDA gate (every device "
+                       f"leg of tools/colab_cuda_validate.sh, test_llama_attnres's included), the gate (design, the floor "
+                       f"pilot's PASS), the {E1_SHARE}% data job, {PROBE_STEPS}-step probes of 20m_L16 and "
+                       f"{', '.join(xs)} alone on the GPU (the X5/L16 tokens/s ratio), the plain replay "
+                       f"(replay_e1_L16_r1: E1's pt_e1_L16_r1 spec at this commit, {X5_REPLAY_STEPS} steps, compared at "
+                       f"home step by step with E1's events by x5/bitid.py) and a {X5_SMOKE_STEPS}-step X5 smoke run "
+                       f"(seed {SCREEN_SEED}, warmup 30, exported: its GGUF and IR go to ember's gate). One GPU job at a "
+                       f"time. Estimated {est:.1f} L4 VM-hours. Afterwards, at home: copy ART/cuda_gate/cuda_gate.json "
+                       f"to {X5_CUDA_GATE} and the probe folders to {REL}/x5/stage0/, run x5/bitid.py, commit, rerun "
+                       f"make_jobs.py. Upload vocab_llama3_bpe.gguf with the runner's --upload." + DESIGN_NOTE,
+           "max_parallel": GPU_JOBS_PER_VM, "jobs": jobs}
+    return name, doc
+
+
+def ctl_x5_doc(sh):
+    """tiny_chat_e1_x5_ctl.json (amendment 5): E1's three L16 post jobs re-run at this commit from E1's home
+    pretrained weights (uploaded), bringing home the per-item records HX5-main pairs with X5's (E1's post
+    jobs kept them on their VMs). The same command as E1's post jobs otherwise; analyze_x5.py compares each
+    re-run with its home summary."""
+    name = "tiny_chat_e1_x5_ctl.json"
+    gate = {"name": "gate", "cmd": ["python3", RUN, "gate", "--out", "{out}", "--jobs", f"tools/colab_chat/{name}",
+                                    "--choice", f"{REL}/stage0/lr_choice.json", "--design", f"{REL}/design.json",
+                                    *X5_PRE_GATE], "outputs": ["gate.json"]}
+    posts = []
+    for seed in SEEDS:
+        w = f"tc_e1_L16_r{seed}.safetensors"
+        posts.append({"name": f"post_e1_x5_ctl_L16_r{seed}", "after": ["data", "gate"],
+                      "cmd": ["python3", RUN, "post", "--out", "{out}", "--spec", spec_path("20m_L16"),
+                              "--pt-weights", f"{C}/upload/{w}", "--pt-dir", f"{C}/upload/no_pt_dir_r{seed}",
+                              "--sft-template", f"{REL}/specs/sft.json", "--seed", str(seed), "--cell", "L16",
+                              "--share", str(E1_SHARE), *PANELS, *ITEMS, *x5_gen()],
+                      "outputs": ["summary.json", "carry5/m/items.jsonl", "carry5/m/gen.jsonl"]})
+    est = DATA_H + len(SEEDS) * (hours(sh["20m_L16"], SFT_STEPS) + POST_EVAL_H)
+    ups = " ".join(f"--upload tc_e1_L16_r{s}.safetensors={X5_CONTROL_SEEDS_ART}/pt_e1_L16_r{s}/tc_e1_L16_r{s}.safetensors"
+                   for s in SEEDS)
+    doc = {"_comment": f"tiny-chat arm X5, the control's item records ({REL}/PREREGISTRATION.md amendment 5): E1's "
+                       f"post_e1_L16_r1-3 re-run at this commit from E1's home pretrained weights (SFT, panels, Carry-5 "
+                       f"with ember generation, base-model Carry-5), outputs including carry5/m/items.jsonl. Estimated "
+                       f"{est:.1f} L4 VM-hours. Upload vocab_llama3_bpe.gguf and the three weights with the runner's "
+                       f"--upload: {ups}." + GEN_NOTE + DESIGN_NOTE,
+           "max_parallel": GPU_JOBS_PER_VM, "jobs": [data_job([E1_SHARE]), gate, *posts]}
+    return name, doc
+
+
+X5_NOTE = (" Arm X5 (amendment 5): the gate refuses unless the floor pilot PASSED, the X5 Stage 0's CUDA gate passed "
+           f"({X5_CUDA_GATE}), the plain replay is bit-identical to E1's log ({X5_BITID}), ember's gate on the "
+           f"X5-shaped models passed ({X5_EMBER}) and every pretraining job's lr is {X5_CHOICE}'s (E1 L16's chosen "
+           "rate; no screen). Post jobs also bring home Carry-5's per-item records and replies and the SFT model's F32 "
+           "GGUF (the depth-attention traces).")
+
+
+def e1_x5_doc(sh, xs, lrs):
+    gate = [*X5_PRE_GATE, "--need-cuda-gate", X5_CUDA_GATE, "--need-ok", X5_BITID, "--need-ok", X5_EMBER]
+    cells = [(xs[k]["cell"], k, E1_SHARE) for k in xs]
+    xl = x5_lr(lrs)
+    return e_doc("e1_x5", cells, {**sh, **xs}, xl, not xl, [E1_SHARE],
+                 "arm X5 at 20M (amendment 5): Attention Residuals on 20m_L16", gate_extra=gate, note=X5_NOTE,
+                 lr_note=f"learning rate from {X5_CHOICE}: " + ", ".join(f"{k} {v:g}" for k, v in xl.items()),
+                 choice=X5_CHOICE, gen=x5_gen())
+
+
+def budget_x5(sh):
+    xs, u = x5_shapes(sh), UNITS_PER_L4_HOUR
+    lrs, _ = lr_table()
+    _, s0 = s0_x5_doc(sh, xs, lrs)
+    est0 = float(s0["_comment"].split("Estimated ")[1].split(" L4")[0])
+    rows = [("X5 Stage 0: CUDA gate, data, 2 probes, plain replay, smoke", est0),
+            ("L16 control re-run (3 post jobs)", DATA_H + len(SEEDS) * (hours(sh["20m_L16"], SFT_STEPS) + POST_EVAL_H)),
+            ("X5 x 3 seeds", DATA_H + sum(len(SEEDS) * run_hours(s) for s in xs.values()))]
+    tot = sum(h for _, h in rows)
+    out = ["| arm X5 (amendment 5) | L4 VM-hours | compute units |", "|---|---|---|"]
+    out += [f"| {n} | {h:.1f} | {h * u:.0f} |" for n, h in rows]
+    out.append(f"| arm X5 | {tot:.1f} | {tot * u:.0f} |")
+    src = "X5's probe" if X5_PROBES else f"20m_L16's probe x {X5_RATIO_EST} (the build's estimate)"
+    out.append(chr(10) + "rate from " + src + ": " + ", ".join(f"{k} {tok_per_s(s) / 1e3:.1f}k tok/s"
+                                                             for k, s in xs.items()))
+    return chr(10).join(out)
+
+
 def tables(sh):
     rows = ["| shape | layers | d | heads | d_ff | d_ff/d | non-emb | emb (V x d) | total | emb share | "
             "tok/s (probe) | PT h | SFT h |", "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
@@ -1084,6 +1272,8 @@ def main(argv=None):
         print(budget_rec(sh))
         print()
         print(budget_mor(sh))
+        print()
+        print(budget_x5(sh))
         return 0
     global SHARES, E1_SHARE, DESIGN_NOTE
     if a.dialogue_pt_bytes is not None:
@@ -1169,11 +1359,26 @@ def main(argv=None):
     n, doc = s0_mor_doc(ms)
     write(os.path.join(COLAB, n), doc)
     write(os.path.join(COLAB, "tiny_chat_e1_mor.json"), e1_mor_doc(sh, ms))
+    # Amendment 5: arm X5 (llama_attnres at 20m_L16), at E1 L16's chosen rate.
+    xs = x5_shapes(sh)
+    xl = x5_lr(lrs)
+    os.makedirs(X5_SPECS, exist_ok=True)
+    for sid, sx in xs.items():
+        write(os.path.join(X5_SPECS, f"shape_{sid}.json"), x5_spec(sid, sx, xl.get(sid, PROVISIONAL_LR)))
+    if xl:
+        write(os.path.join(ROOT, X5_CHOICE), {
+            "rule": "PREREGISTRATION.md amendment 5: each X cell trains at its plain shape's rate in "
+                    "stage0/lr_choice.json (Kimi's convention, conservative against the arm); no screen",
+            "plain": {f"20m_{c}": b for c, b in X5_CELLS.items()}, "lr": xl})
+    for n, doc in (s0_x5_doc(sh, xs, lrs), ctl_x5_doc(sh)):
+        write(os.path.join(COLAB, n), doc)
+    write(os.path.join(COLAB, "tiny_chat_e1_x5.json"), e1_x5_doc(sh, xs, lrs))
     print("\nwrote specs/, asha_plan.json, tiny_chat_s0.json, tiny_chat_s0_60m.json, tiny_chat_e5.json, "
           "tiny_chat_e1.json, tiny_chat_e1_60m.json, tiny_chat_asha.json, the Stage 0 rerun files, "
           "tiny_chat_pilot.json, tiny_chat_e5_60m.json, recursion/specs/, tiny_chat_s0_rec.json, "
           "tiny_chat_s0_rec_r8.json, tiny_chat_e1_rec.json, tiny_chat_e1_rec_r8.json, tiny_chat_s0_mor.json, "
-          "tiny_chat_e1_mor.json"
+          "tiny_chat_e1_mor.json, x5/specs/, stage0/lr_choice_x5.json, tiny_chat_s0_x5.json, "
+          "tiny_chat_e1_x5_ctl.json, tiny_chat_e1_x5.json"
           + (" (PROVISIONAL learning rates)" if provisional else ""))
     print()
     print(budget(sh))
@@ -1183,6 +1388,8 @@ def main(argv=None):
     print(budget_rec(sh))
     print()
     print(budget_mor(sh))
+    print()
+    print(budget_x5(sh))
     return 0
 
 

@@ -1086,6 +1086,190 @@ depth fractions and the router losses; `mtstudio score` writes each prompt's per
 `depth_route` node and the kv slot's `kv_rows: "active"`, normative from the implementing commit. Jobs:
 `tiny_chat_s0_mor.json`, `tiny_chat_e1_mor.json`. Analysis: `analyze.py` MoR block, as A4.6 says.
 
+### Amendment 5 (25 Oct 2026, before any X5 run): arm X5, Attention Residuals on the llama base, on Carry-5
+
+Written after Jonathan approved arm X on 25 Oct 2026 ("execute the plan to completion"): his cross-layer idea, that
+tokens should choose which earlier activations to strengthen beyond the fixed residual sum, run on Carry-5 as a
+main-effect read. When it was written no X5 job had run and no llama_attnres model had been trained on the
+programme's data. E1's three 20m_L16 runs were home (`INTERIM_2026-10-25.md`). Sections 0-12 and amendments 1-4
+stand. This amendment adds one arm and changes nothing registered for any other. Sources:
+`../tiny_chat_long_2026-10/CROSSLAYER_LITCHECK.md` (sections 2, 4, 5) and the X cell of
+`../tiny_chat_long_2026-10/PREREGISTRATION_DRAFT.md` (sections 6 and 8).
+
+**A5.1 The mechanism: `llama_attnres`** (paperkiln c48ca962; normative in the IR as keramos v1.1.3's family
+`llama_attnres`, IR_SPEC section 9). The llama block of section 1 (RMSNorm, RoPE on every head, SwiGLU, tied
+embedding) with Attention Residuals (Kimi, arXiv 2603.15031) in full form at sublayer level:
+- **Sources:** the token embedding and every attention output and every FFN output, in order: 2L + 1 = 33 at
+  20m_L16. Each sublayer's input, and the head's, is a softmax over the sources it can see, with one head,
+  computed by `ops::depth_attend`. The logits are a pseudo-query (one [d] vector per sublayer, plus one for the
+  head) dotted with the parameter-free RMSNormed sources. The values are the raw sources.
+- **Scale "sources":** each mixture is multiplied by its source count S (the IR's `depth_attend` followed by
+  `affine(S, 0)`). Under the following RMSNorm this is Kimi's convex mixture with epsilon eps / S^2.
+- **Zero-initialised queries:** the uniform mixture times S is the plain residual stream, so at initialisation
+  the model is the plain llama of the same seed to rounding. The queries draw no random numbers, so every other
+  tensor starts bit for bit as in E1's L16 run of that seed. 32 queries of d 320 add 10,240 parameters (0.05%).
+  Application 0's attention query sees one source and is never read (exported as zeros).
+- **`block_size`, resolved from the code:** in `nn::AttnResStack`, `block_size` 0 is the full form and
+  `block_size` 1 equals it exactly (each block is one layer; `tests/test_attn_res.cpp` and
+  `python/attn_res_reference.py` pin Block(S = 1) == Full). `llama_attnres` has no `block_size`:
+  `arch.custom.attn_res` = {"form": "full", "scale": "sources"} applies the full form over the 2L sublayers.
+  That is AttnResStack's `block_size` 0 with the sublayers as its layers, equivalently `block_size` 1 counted in
+  sublayers. The literature check's two wordings name the same function. mtstudio's GPT-2 `AttnResLM` is
+  different: `block_size` 2, one source per transformer block.
+- **Checks on CPU before this amendment** (`tests/test_llama_attnres.cpp`, `tests/test_llama_attnres_reference.py`,
+  `tests/test_llama_attnres_ir.py`):
+  - The zero-init equivalence: logits within 3.0e-7 relative of the plain llama's at 16 layers, plain-parameter
+    gradients within 1.1e-6, and the step-1 loss equal to 7 digits.
+  - Finite-difference gradchecks of the op and of 3-layer and recursed models (worst 6.6e-3 at a step of 1e-2).
+  - The fused op against python/attn_res_reference.py's `_depth_attend` under torch autograd in float64: output,
+    query and source gradients within 7.1e-6 of the largest magnitude, the worst case at S 33 and d 320.
+  - Decode against prefill: 3.1e-6.
+  - The arm's exact shape (`ar_x5`: d 320, 16 layers, 5 heads, d_ff 864, RoPE on every head), trained 40 steps:
+    keramos's numpy interpreter over its F32 GGUF against `mtstudio score` within 2.7e-6, greedy 40/40, and its
+    IR (`ir_version` 1, only `embedding`, `list`, `depth_attend`, `affine`, `rmsnorm`, the llama attention and
+    SwiGLU, `append`) accepted by keramos v1.1.3's `ir_validate.py` with both GGUFs.
+  - The CUDA kernels against the host loop on an L4: the `test_llama_attnres` leg of
+    `tools/colab_cuda_validate.sh` passed at paperkiln 86a978ca (21/21 legs). X5's Stage 0 repeats the gate at this
+    amendment's commit.
+  - No keramos change was needed.
+
+**A5.2 Arm X5.** One cell, **X5 = 20m_L16 + llama_attnres**, seeds 1-3, everything else E1's L16 cell's:
+- the 35% mix (s35), 10,000 steps x 16,384 tokens (batch 16 x 2), the same data order (`train.seed`), the same
+  SFT recipe and set, Carry-5, the panels, the rungs, the post job and its generation path (A5.4);
+- **learning rate:** E1 L16's chosen rate, 1e-3 (`stage0/lr_choice.json`; written for X5 to
+  `stage0/lr_choice_x5.json`). This is Kimi's convention and conservative against the arm. There is no screen.
+- `tests/test_tiny_chat_x5.py` checks that every X5 pretraining spec equals E1's L16 spec of its seed except
+  `arch.custom.attn_res` and the job names, and that every post command is E1's except its spec path and names.
+
+**Stage 0** (`tools/colab_chat/tiny_chat_s0_x5.json`, one RunPod L4), in order, one GPU job at a time:
+1. the CUDA gate (every leg of `tools/colab_cuda_validate.sh`);
+2. the gate (design, the floor pilot's PASS) and the data job;
+3. 300-step probes of 20m_L16 and 20m_X5 alone on the GPU (tokens/s);
+4. the plain replay (A5.3);
+5. a 300-step X5 smoke run (seed 101, warmup 30, exported), whose F32 GGUF goes to ember's gate at the real
+   vocabulary.
+
+**The runs launch only when** Stage 0's CUDA gate passed (`x5/cuda_gate_x5.json`), the plain replay is
+bit-identical (`x5/plain_bitid.json`), ember's gate passed (`x5/ember_gate.json`), and the probe's X5/L16
+tokens/s ratio is at least 0.3 (the draft's costing). Below 0.3, Jonathan decides. The gate job of
+`tiny_chat_e1_x5.json` refuses without the first three receipts.
+
+**A5.3 The control.** E1's three home 20m_L16 runs (`ART/e1`, paperkiln dc29b5e6), paired by seed.
+- **The plain path at this amendment's commit.** E1's pt_e1_L16_r1 spec trains again for its first 500 steps.
+  500 steps is the warmup, so the learning rate up to there does not depend on `train.steps`. It runs as a
+  training job in Stage 0 (`replay_e1_L16_r1`, the job environment E1's runs had). `x5/bitid.py` compares it
+  with E1's log and passes only if:
+  - the specs are equal except steps, name and out_dir;
+  - the model events are equal;
+  - every step record (loss, gradient norm, learning rate) and the step-500 validation loss equal E1's exactly.
+  The floor pilot showed pretraining bit-identical across L4 providers and commits.
+  The arm's runs launch from a later commit that adds Stage 0's receipts. `git diff` between the two commits
+  touches no file under `src/`, `include/` or `tests/`, no CMake file, and no tool except the jobs files.
+- **The control's item records.** HX5-main is item-level, and E1's post jobs kept their per-item records on
+  their VMs. So E1's three L16 post jobs are re-run at the arm's commit from E1's home pretrained weights
+  (`tiny_chat_e1_x5_ctl.json`). The command is E1's post command, but for where the weights are uploaded, and the
+  outputs include `carry5/m/items.jsonl`.
+  - `analyze_x5.py` compares each re-run with its home summary: the pretrained weights' sha256, every Carry-5
+    pool, Y, Y_all, the SFT weights' sha256 and the panels.
+  - The test pairs X5's items with the re-runs' records whether or not a re-run reproduces exactly: the same
+    pretrained model, through the post pipeline X5's runs use at the same commit. Each seed's reproduction is
+    reported beside the verdict.
+  - The validity gate reads E1's home summaries, as registered for E1's cell.
+
+**A5.4 Generation.** Carry-5's self-history replies for X5's and the re-run's post jobs are generated by ember
+under the implementation note of 24 Oct 2026: the per-run 40-item spot-check against `mtstudio chat`, and
+mtstudio for the whole run otherwise.
+- **The pin.** One ember commit for both files, written into every post command (`post --ember-commit`, from
+  `make_jobs.py`'s `X5_EMBER_COMMIT`). It is the commit named by ember's gate receipt, `x5/ember_gate.json`.
+- **What the receipt must show at that commit:**
+  - the X5-shaped models (`ar_x5`, and Stage 0's smoke model on the real vocabulary) pass greedy 40/40 against
+    mtstudio, with log-probabilities against `mtstudio score`, on CPU, CUDA and WASM;
+  - on the control's own SFT model (E1's pick, `pick_e1_L16/model.gguf`, seed 1), the commit generates exactly
+    as ember cbdcb915d26a did. E1's L16 posts were generated at cbdcb915d26a (all three summaries'
+    `gen_engine`: TF32 off, all layers on the GPU).
+- **If that check fails,** nothing launches until Jonathan or the main session decides.
+- The commit and the receipt are recorded here, in the commit that adds `x5/ember_gate.json`, before any X5
+  run. `tests/test_tiny_chat_x5.py` requires the jobs files' pin to equal the receipt's.
+
+**A5.5 The registered prediction, HX5-main (Jonathan's hypothesis).** Y(X5) - Y(L16) > 0 beyond the SESOI of 3
+points. Y is the primary metric as amended (A2.5): forced choice, self history, multi-turn minus twin, over the
+888 items of the recall, correction, topic-return and knowledge families.
+- **Test:** the item-level paired differences d(i, s) = [self(X5) - twin(X5)] - [self(L16) - twin(L16)] for the
+  same item i and seed s, pooled over the three seeds (3 x 888 = 2,664). Their mean is Y(X5) - Y(L16) averaged
+  over seeds. The test reports the mean with normal-approximation 95% and 90% intervals.
+- **Verdicts, as in Stage L0:**
+  - SUPPORTED: the 95% lower bound > 0 and the difference >= 0.03;
+  - SIGNIFICANT_BELOW_SESOI: the 95% lower bound > 0 and the difference < 0.03;
+  - CONTRADICTED: the 95% upper bound < 0;
+  - EQUIVALENT: the 90% interval inside +-0.03;
+  - otherwise NOT_RESOLVED.
+- **The validity gate** (A2.5) applies to both cells on their means over seeds. A FLOOR cell ends the contrast as
+  FLOOR.
+- No extension rule: the unit is the item, and three seeds are registered.
+- The programme's seed-level t (section 7) is printed beside it, labelled DESCRIPTIVE.
+- `experiments/tiny_chat_2026-10/analyze_x5.py` (run by `analyze.py` as `E1_x5_20m`) implements it.
+  `tests/test_tiny_chat_x5.py` tests it on synthetic summaries and items, for each verdict, FLOOR, the
+  reproduction report, incomplete inputs and items that do not belong to their summary.
+- `analyze_x5.py` refuses when a machine's data ledger differs from E1's build (the split note of 25 Oct).
+
+**A5.6 The registered counter-hypothesis (the literature's default).** Any gain is a general language-model
+improvement. At matched FineWeb panel loss, X5 sits on the plain cells' loss-to-Y line. This is the isoplot,
+descriptive and reported beside the verdict:
+- the run-level OLS line of Y on the FineWeb panel loss through all home plain 20M runs (E5's four mixes and E1's
+  depths), and through the s35 runs alone (the arm's own mix);
+- X5's residual per seed and its mean, with extrapolations flagged.
+Reading: a positive HX5-main with residuals near zero is the counter-hypothesis's pattern. A positive residual
+beyond the plain runs' residual spread is the pattern of an arm-specific gain.
+
+**A5.7 Descriptive (no verdicts).**
+- Y with gold history, as a paired item-level difference.
+- The paired difference by family and by distance.
+- Panel losses (FineWeb, dialogue) and SFT loss, X5 minus L16 per seed.
+- Tokens/s from Stage 0's probes (X5 against 20m_L16 on the same L4) and Y per L4-hour.
+- **Depth-attention weights at the answer token** against their mean over the other assistant positions,
+  singling out the embedding and the early sources: the direct test of "selective strengthening". Also the
+  **routing entropy per mixture** (the collapse check: near-uniform weights are the plain model). Both come from
+  `tools/carry5_attnres_trace.py`, which runs at home on the post jobs' SFT GGUFs, teacher-forced with gold
+  history over Carry-5's context families. It is written and tested before any X5 post job is home.
+- Stage L0 on X5's pick, as on the E picks (`STAGE_L0.md`; descriptive here).
+
+**A5.8 What this arm does not test.** The gap hypothesis (HX: a benefit that grows with distance) stays in the
+Carry-12 pre-registration (`../tiny_chat_long_2026-10/PREREGISTRATION_DRAFT.md`), where distances 6-13 exist.
+Within Carry-5 the cost of carry-over does not grow with distance (INTERIM point 4), so Carry-5 cannot separate a
+gap effect from a main effect.
+
+**A5.9 Failure rules.**
+- Section 8 applies: a divergence reruns once at half the rate; resumes are recorded.
+- A reclaimed post job reruns from the pretrained weights.
+- A Stage 0 failure (CUDA gate, replay, smoke) stops the arm before any run, and the cause is reported. No
+  design choice is changed to make it pass.
+
+**A5.10 Schedule and budget.**
+- **Machines:** separate RunPod L4s. The seeds run on three machines at once (`pk-tc-x5-r1`, `-r2`, `-r3`):
+  - Each machine runs `tiny_chat_e1_x5.json` at the arm's commit, builds its own data and gate, and owns one
+    seed's pretraining, rungs and post job. The 25 Oct split note's pattern is applied by seed rather than by
+    cell.
+  - The cell's pick does not run on a machine. It runs at home: `tiny_chat_run.py pick --out ART/e1_x5/pick_e1_x5_X5
+    --run ART/e1_x5_r1/post_e1_x5_X5_r1 --run ... r2 --run ... r3`. The pick's rule is unchanged, and it checks
+    the copied weights against the summary's sha256.
+  - X5's post jobs bring home their SFT model (safetensors, F32 GGUF, spec) for that pick, plus the per-item
+    records and the replies. `tests/test_tiny_chat_x5.py` tests the home pick.
+  - Stage 0 (`pk-tc-x5-s0`) runs on its own L4 first. The control re-run (`pk-tc-x5-ctl`) runs on another L4
+    beside the seeds, from the same commit, once A5.4's pin is fixed.
+- **Estimates:** Stage 0 about 1.5 L4 VM-hours. The re-run about 5 (E1's L16 post jobs took 1.4-1.6 h each).
+  X5 about 4.5-5 per seed at the build's estimated 0.65x throughput (pretraining 3.1 h, post 1.6 h). In all,
+  about 21 L4 VM-hours.
+- **Caps:** per-campaign dollar caps on RunPod: Stage 0 $3, the re-run $5, each seed $6.
+
+**A5.11 Interfaces.**
+- `make_jobs.py`: `x5_shapes`, `x5_lr`, `x5_spec`, `s0_x5_doc`, `ctl_x5_doc`, `e1_x5_doc`, `budget_x5`; the
+  files `x5/specs/shape_20m_X5.json`, `stage0/lr_choice_x5.json`, `tools/colab_chat/tiny_chat_s0_x5.json`,
+  `tiny_chat_e1_x5_ctl.json` and `tiny_chat_e1_x5.json`.
+- `tiny_chat_run.py gate --need-ok FILE`.
+- `x5/bitid.py`; `analyze_x5.py`; `tools/carry5_attnres_trace.py` (A5.7).
+- Tests: `tests/test_tiny_chat_x5.py`, `tests/test_llama_attnres_reference.py` and the `ar_x5` case of
+  `tests/test_llama_attnres_ir.py`.
+
 ## Implementation notes
 
 ### 24 Oct 2026, before any E5, E1, recursion, MoR or successive-halving post job: Carry-5's generation engine

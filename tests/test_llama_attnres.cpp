@@ -18,10 +18,17 @@
 //      (the depth_attend kernels included) with step residency and deferred
 //      downloads against the host path; on a CPU build host vs host (bit for
 //      bit). CUDA correctness is validated on Colab (tools/colab_cuda_validate.sh).
+//   7. ATTNRES_REF_DUMP=FILE: the fused op's inputs, output and gradients on
+//      fixed cases (unscaled and scale S, near-uniform and peaked queries)
+//      written as JSON for tests/test_llama_attnres_reference.py, which
+//      recomputes them through python/attn_res_reference.py's _depth_attend
+//      with torch autograd in float64.
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
+#include <fstream>
 #include <map>
 #include <random>
 #include <string>
@@ -31,6 +38,7 @@
 #include "microtorch/depth_attend.hpp"
 #include "microtorch/device.hpp"
 #include "microtorch/device_cache.hpp"
+#include "microtorch/ir.hpp"
 #include "microtorch/llama.hpp"
 #include "microtorch/llama_attnres.hpp"
 
@@ -450,6 +458,54 @@ void test_device_op() {
     }
 }
 
+// Section 7: cases for the Python reference (python/attn_res_reference.py's _depth_attend).
+ir::json to_json(const Matrix& m) {
+    ir::json rows = ir::json::array();
+    for (size_t i = 0; i < m.rows(); ++i) {
+        ir::json r = ir::json::array();
+        for (size_t j = 0; j < m.cols(); ++j) r.push_back(static_cast<double>(m(i, j)));
+        rows.push_back(r);
+    }
+    return rows;
+}
+
+void dump_reference_cases(const char* path) {
+    ir::json cases = ir::json::array();
+    struct Case {
+        size_t S, T, d;
+        float qscale, scale;
+        unsigned seed;
+    };
+    // (S, T, d, query scale, mixture scale, seed): zero-adjacent and peaked queries, scale 1 and S,
+    // and the arm's width (d 320) with S 33 (the head's mixture at 20m_L16).
+    const Case cs[] = {{2, 4, 8, 0.05f, 1.0f, 1}, {5, 6, 16, 0.7f, 1.0f, 2}, {5, 6, 16, 0.7f, 5.0f, 3},
+                       {9, 3, 12, 2.0f, 9.0f, 4}, {33, 4, 320, 0.3f, 33.0f, 5}};
+    for (const auto& c : cs) {
+        std::mt19937 g(c.seed);
+        std::vector<Var> src;
+        for (size_t i = 0; i < c.S; ++i) src.push_back(make_var(rnd(c.T, c.d, g, 0.3f + 0.2f * (i % 3)), true));
+        Var w = make_var(rnd(1, c.d, g, c.qscale), true);
+        const Matrix wt = rnd(c.T, c.d, g, 1.0f);
+        Var out = ops::depth_attend(src, w, ops::kRmsNormEps, c.scale);
+        backward(ops::mean(ops::mul(out, make_var(wt))));  // loss = mean(out .* cotangent)
+        ir::json e = {{"S", c.S}, {"T", c.T}, {"d", c.d}, {"scale", c.scale}, {"eps", ops::kRmsNormEps},
+                      {"w", to_json(w->data)}, {"cotangent", to_json(wt)}, {"out", to_json(out->data)},
+                      {"grad_w", to_json(w->grad)}};
+        ir::json s = ir::json::array(), gs = ir::json::array();
+        for (const auto& v : src) {
+            s.push_back(to_json(v->data));
+            gs.push_back(to_json(v->grad));
+        }
+        e["sources"] = s;
+        e["grad_sources"] = gs;
+        cases.push_back(e);
+    }
+    std::ofstream f(path);
+    f << cases.dump() << "\n";
+    CHECK(f.good());
+    std::printf("  wrote %zu reference cases to %s\n", cases.size(), path);
+}
+
 void test_refusals() {
     auto refused = [](nn::LlamaConfig c, const char* what) {
         try {
@@ -477,6 +533,11 @@ void test_refusals() {
 
 int main() {
     device::set_from_env();
+    if (const char* p = std::getenv("ATTNRES_REF_DUMP")) {  // section 7 only
+        device::set_device_ops(false);
+        dump_reference_cases(p);
+        return 0;
+    }
     std::printf("attention residuals on the llama block (llama_attnres)\n");
     test_fused_vs_composed(1.0f);
     test_fused_vs_composed(5.0f);

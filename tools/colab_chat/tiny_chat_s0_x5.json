@@ -1,0 +1,236 @@
+{
+ "_comment": "tiny-chat arm X5, Stage 0 (experiments/tiny_chat_2026-10/PREREGISTRATION.md amendment 5): the CUDA gate (every device leg of tools/colab_cuda_validate.sh, test_llama_attnres's included), the gate (design, the floor pilot's PASS), the 35% data job, 300-step probes of 20m_L16 and 20m_X5 alone on the GPU (the X5/L16 tokens/s ratio), the plain replay (replay_e1_L16_r1: E1's pt_e1_L16_r1 spec at this commit, 500 steps, compared at home step by step with E1's events by x5/bitid.py) and a 300-step X5 smoke run (seed 101, warmup 30, exported: its GGUF and IR go to ember's gate). One GPU job at a time. Estimated 0.9 L4 VM-hours. Afterwards, at home: copy ART/cuda_gate/cuda_gate.json to experiments/tiny_chat_2026-10/x5/cuda_gate_x5.json and the probe folders to experiments/tiny_chat_2026-10/x5/stage0/, run x5/bitid.py, commit, rerun make_jobs.py. Upload vocab_llama3_bpe.gguf with the runner's --upload. Dialogue levels [0, 17, 35, 70]% (copies), E1 at 35% (design.json final).",
+ "max_parallel": 1,
+ "jobs": [
+  {
+   "name": "cuda_gate",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "cuda_gate",
+    "--out",
+    "{out}"
+   ],
+   "outputs": [
+    "cuda_gate.json",
+    "cuda_gate.log"
+   ]
+  },
+  {
+   "name": "gate",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "gate",
+    "--out",
+    "{out}",
+    "--stage0",
+    "--jobs",
+    "tools/colab_chat/tiny_chat_s0_x5.json",
+    "--design",
+    "experiments/tiny_chat_2026-10/design.json",
+    "--pilot-verdict",
+    "experiments/tiny_chat_2026-10/pilot/verdict.json",
+    "--need-pilot",
+    "PASS"
+   ],
+   "outputs": [
+    "gate.json"
+   ]
+  },
+  {
+   "name": "data",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_data.py",
+    "--out",
+    "{out}",
+    "--vocab",
+    "/content/chat/upload/vocab_llama3_bpe.gguf",
+    "--fineweb",
+    "corpus/data/fineweb_edu_shard0_v1",
+    "--shares",
+    "35",
+    "--mix-bytes",
+    "800000000",
+    "--max-epochs",
+    "4",
+    "--T",
+    "512",
+    "--seed",
+    "1",
+    "--human-fetch",
+    "python3 corpus/fetchers/human_dialogue.py oasst,convai2,wow,bst,taskmaster,multiwoz,self_dialogue,topical_chat,dolly,quac,empathetic,dailydialog,no_robots --allow-sa --allow-nc --out-dir {human}",
+    "--sources",
+    "oasst,convai2,wow,bst,taskmaster,multiwoz,self_dialogue,topical_chat,dolly,quac,empathetic,dailydialog,no_robots",
+    "--require-pinned"
+   ],
+   "outputs": [
+    "data.ledger.json"
+   ],
+   "after": "gate"
+  },
+  {
+   "name": "probe_20m_L16",
+   "after": [
+    "data",
+    "cuda_gate"
+   ],
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "probe",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L16.json",
+    "--corpus",
+    "/content/chat/data/mix_s35.ids",
+    "--steps",
+    "300",
+    "--cuda-gate",
+    "/content/chat/cuda_gate",
+    "--data-job",
+    "tools/colab_chat/tiny_chat_s0_x5.json"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "probe_20m_X5",
+   "after": [
+    "data",
+    "cuda_gate"
+   ],
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "probe",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/x5/specs/shape_20m_X5.json",
+    "--corpus",
+    "/content/chat/data/mix_s35.ids",
+    "--steps",
+    "300",
+    "--cuda-gate",
+    "/content/chat/cuda_gate",
+    "--data-job",
+    "tools/colab_chat/tiny_chat_s0_x5.json"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "replay_e1_L16_r1",
+   "model_name": "tc_e1_L16_r1",
+   "after": [
+    "data",
+    "cuda_gate"
+   ],
+   "spec": {
+    "name": "tc_20m_L16",
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 320,
+      "layers": 16,
+      "heads": 5,
+      "d_ff": 864
+     }
+    },
+    "data": {
+     "corpus": "/content/chat/data/mix_s35.ids",
+     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+     "vocab_cap": 16384,
+     "T": 512,
+     "max_tokens": 0
+    },
+    "train": {
+     "steps": 500,
+     "lr": 0.001,
+     "batch": 16,
+     "accum": 2,
+     "clip": 1.0,
+     "eval_every": 500,
+     "eval_windows": 32,
+     "checkpoint_every": 500,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 500,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   }
+  },
+  {
+   "name": "smoke_20m_X5",
+   "model_name": "tc_smoke_20m_X5",
+   "after": [
+    "data",
+    "cuda_gate"
+   ],
+   "spec": {
+    "name": "tc_20m_X5",
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 320,
+      "layers": 16,
+      "heads": 5,
+      "d_ff": 864,
+      "attn_res": {
+       "form": "full",
+       "scale": "sources"
+      }
+     }
+    },
+    "data": {
+     "corpus": "/content/chat/data/mix_s35.ids",
+     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+     "vocab_cap": 16384,
+     "T": 512,
+     "max_tokens": 0
+    },
+    "train": {
+     "steps": 300,
+     "lr": 0.001,
+     "batch": 16,
+     "accum": 2,
+     "clip": 1.0,
+     "eval_every": 100,
+     "eval_windows": 32,
+     "checkpoint_every": 100,
+     "gradmap_every": 0,
+     "seed": 101,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 30,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   }
+  }
+ ]
+}

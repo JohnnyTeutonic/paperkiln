@@ -55,8 +55,9 @@ class Fake:
         self.calls = []
         self.spots = spots
 
-        def ensure_ember(log):
-            return {"error": build_error} if build_error else {"bin": "/x/tinyllama_server", "commit": TCR.EMBER_COMMIT,
+        def ensure_ember(log, commit=None):
+            return {"error": build_error} if build_error else {"bin": "/x/tinyllama_server",
+                                                               "commit": commit or TCR.EMBER_COMMIT,
                                                                "cuda": cuda, "built_here": True}
 
         def spot_check(spec, items, work, ember, env, tag):

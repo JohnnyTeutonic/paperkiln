@@ -20,6 +20,9 @@ Amendment 4 (A4.5) adds the MoR block, E1_mor_20m (ART/e1_mor: MoR3, MC2, MC3): 
 the fixed line interpolated between MC2 and MC3 at MoR3's realised depth m_s), H-MoR2a/2b from each MoR3
 seed's depth trace (tools/carry5_depth.py, run in its post job), H-MoR0 (routing collapse), FLOPs per token
 (MoR3's at its realised depth fractions) and Y per L4-hour.
+Amendment 5 adds arm X5, E1_x5_20m (ART/e1_x5: Attention Residuals on 20m_L16 against E1's L16 cell; the
+analysis lives in analyze_x5.py beside this file): HX5-main on item-level paired differences, the L16 re-runs'
+reproduction of E1's home summaries, the isoplot over the plain 20M runs, and the descriptive rest.
 """
 from __future__ import annotations
 
@@ -907,6 +910,10 @@ def main(argv=None):
     mor = e1_mor(a.art, a.partial, a.mor_choice)  # amendment 4: the MoR block (MoR3, MC2, MC3)
     if mor is not None:
         res["E1_mor_20m"] = mor
+    import analyze_x5  # amendment 5: arm X5 (its own module; it imports this one)
+    x5 = analyze_x5.x5(a.art, a.partial)
+    if x5 is not None:
+        res["E1_x5_20m"] = x5
     # Early ranking (amendment 1): read only for complete blocks unless --partial.
     g5, g1, g60 = load_rungs(a.art, "e5"), load_rungs(a.art, "e1"), load_rungs(a.art, "e1_60m")
     for (cell, seed, step), s in list(g5.items()):  # E1's L8 cell is E5's dE1 cell: the same runs

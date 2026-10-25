@@ -1,0 +1,9 @@
+{
+ "rule": "PREREGISTRATION.md amendment 5: each X cell trains at its plain shape's rate in stage0/lr_choice.json (Kimi's convention, conservative against the arm); no screen",
+ "plain": {
+  "20m_X5": "20m_L16"
+ },
+ "lr": {
+  "20m_X5": 0.001
+ }
+}

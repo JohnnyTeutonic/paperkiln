@@ -1,0 +1,183 @@
+{
+ "_comment": "tiny-chat arm X5, the control's item records (experiments/tiny_chat_2026-10/PREREGISTRATION.md amendment 5): E1's post_e1_L16_r1-3 re-run at this commit from E1's home pretrained weights (SFT, panels, Carry-5 with ember generation, base-model Carry-5), outputs including carry5/m/items.jsonl. Estimated 2.0 L4 VM-hours. Upload vocab_llama3_bpe.gguf and the three weights with the runner's --upload: --upload tc_e1_L16_r1.safetensors=/mnt/c/ml_artifacts/tiny_chat/e1/pt_e1_L16_r1/tc_e1_L16_r1.safetensors --upload tc_e1_L16_r2.safetensors=/mnt/c/ml_artifacts/tiny_chat/e1/pt_e1_L16_r2/tc_e1_L16_r2.safetensors --upload tc_e1_L16_r3.safetensors=/mnt/c/ml_artifacts/tiny_chat/e1/pt_e1_L16_r3/tc_e1_L16_r3.safetensors. Carry-5 generation (24 Oct 2026, PREREGISTRATION.md implementation note): ember.cpp's CUDA server at aa50a6112dfd (cloned and built once per VM by the first post job, under a lock), on the SFT model's F32 GGUF; every post job first generates 40 fixed items with ember and with mtstudio chat and lets ember generate only on 40/40 identical replies, else mtstudio for the whole run (gen_flag in its summary.json). Forced-choice scoring stays with mtstudio score. Dialogue levels [0, 17, 35, 70]% (copies), E1 at 35% (design.json final).",
+ "max_parallel": 1,
+ "jobs": [
+  {
+   "name": "data",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_data.py",
+    "--out",
+    "{out}",
+    "--vocab",
+    "/content/chat/upload/vocab_llama3_bpe.gguf",
+    "--fineweb",
+    "corpus/data/fineweb_edu_shard0_v1",
+    "--shares",
+    "35",
+    "--mix-bytes",
+    "800000000",
+    "--max-epochs",
+    "4",
+    "--T",
+    "512",
+    "--seed",
+    "1",
+    "--human-fetch",
+    "python3 corpus/fetchers/human_dialogue.py oasst,convai2,wow,bst,taskmaster,multiwoz,self_dialogue,topical_chat,dolly,quac,empathetic,dailydialog,no_robots --allow-sa --allow-nc --out-dir {human}",
+    "--sources",
+    "oasst,convai2,wow,bst,taskmaster,multiwoz,self_dialogue,topical_chat,dolly,quac,empathetic,dailydialog,no_robots",
+    "--require-pinned"
+   ],
+   "outputs": [
+    "data.ledger.json"
+   ]
+  },
+  {
+   "name": "gate",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "gate",
+    "--out",
+    "{out}",
+    "--jobs",
+    "tools/colab_chat/tiny_chat_e1_x5_ctl.json",
+    "--choice",
+    "experiments/tiny_chat_2026-10/stage0/lr_choice.json",
+    "--design",
+    "experiments/tiny_chat_2026-10/design.json",
+    "--pilot-verdict",
+    "experiments/tiny_chat_2026-10/pilot/verdict.json",
+    "--need-pilot",
+    "PASS"
+   ],
+   "outputs": [
+    "gate.json"
+   ]
+  },
+  {
+   "name": "post_e1_x5_ctl_L16_r1",
+   "after": [
+    "data",
+    "gate"
+   ],
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "post",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L16.json",
+    "--pt-weights",
+    "/content/chat/upload/tc_e1_L16_r1.safetensors",
+    "--pt-dir",
+    "/content/chat/upload/no_pt_dir_r1",
+    "--sft-template",
+    "experiments/tiny_chat_2026-10/specs/sft.json",
+    "--seed",
+    "1",
+    "--cell",
+    "L16",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl",
+    "--gen",
+    "ember"
+   ],
+   "outputs": [
+    "summary.json",
+    "carry5/m/items.jsonl",
+    "carry5/m/gen.jsonl"
+   ]
+  },
+  {
+   "name": "post_e1_x5_ctl_L16_r2",
+   "after": [
+    "data",
+    "gate"
+   ],
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "post",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L16.json",
+    "--pt-weights",
+    "/content/chat/upload/tc_e1_L16_r2.safetensors",
+    "--pt-dir",
+    "/content/chat/upload/no_pt_dir_r2",
+    "--sft-template",
+    "experiments/tiny_chat_2026-10/specs/sft.json",
+    "--seed",
+    "2",
+    "--cell",
+    "L16",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl",
+    "--gen",
+    "ember"
+   ],
+   "outputs": [
+    "summary.json",
+    "carry5/m/items.jsonl",
+    "carry5/m/gen.jsonl"
+   ]
+  },
+  {
+   "name": "post_e1_x5_ctl_L16_r3",
+   "after": [
+    "data",
+    "gate"
+   ],
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "post",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/specs/shape_20m_L16.json",
+    "--pt-weights",
+    "/content/chat/upload/tc_e1_L16_r3.safetensors",
+    "--pt-dir",
+    "/content/chat/upload/no_pt_dir_r3",
+    "--sft-template",
+    "experiments/tiny_chat_2026-10/specs/sft.json",
+    "--seed",
+    "3",
+    "--cell",
+    "L16",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl",
+    "--gen",
+    "ember"
+   ],
+   "outputs": [
+    "summary.json",
+    "carry5/m/items.jsonl",
+    "carry5/m/gen.jsonl"
+   ]
+  }
+ ]
+}

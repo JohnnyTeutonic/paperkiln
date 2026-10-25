@@ -7,6 +7,24 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Tiny chat, arm X5: Attention Residuals on the llama base** (26 Oct; `experiments/tiny_chat_2026-10/PREREGISTRATION.md`
+  amendment 5). Jonathan's cross-layer idea on Carry-5. The arm is 20m_L16 with `llama_attnres` (full form at
+  sublayer level: 33 depth sources, zero-initialised pseudo-queries, scale "sources"), against E1's three home L16
+  runs paired by seed, at E1 L16's learning rate. HX5-main is an item-level paired test (3 x 888 items) with Stage
+  L0's verdicts. The isoplot against the plain 20M runs is reported beside it.
+  - The port's checks: `tests/test_llama_attnres_reference.py` (the fused op against
+    `python/attn_res_reference.py` under torch autograd, worst 7.1e-6), and the `ar_x5` case of
+    `tests/test_llama_attnres_ir.py` (the arm's exact shape: numpy IR vs mtstudio 2.7e-6, greedy 40/40, keramos
+    v1.1.3's validator accepts it). The ember gate files are in `C:/ml_artifacts/attnres_gate_x5/`.
+  - Jobs: `tools/colab_chat/tiny_chat_s0_x5.json` (CUDA gate, probes, a 500-step plain replay of E1's
+    pt_e1_L16_r1 and an X5 smoke run), `tiny_chat_e1_x5_ctl.json` (E1's L16 post jobs re-run from their home
+    weights for their per-item records) and `tiny_chat_e1_x5.json` (the gate needs the Stage 0 receipts; its post
+    jobs bring home items, replies and the SFT model, so the pick runs at home when the seeds run on separate
+    machines).
+  - Tooling: `x5/bitid.py`, `analyze_x5.py` (in `analyze.py` as E1_x5_20m), `tools/carry5_attnres_trace.py` (the
+    depth-attention weights at the answer token, through keramos's interpreter), and `tiny_chat_run.py gate
+    --need-ok`.
+
 - **The general chat model's next step: pk_sft_v1** (25 Oct; paperkiln 0ad646d5..91f47fec, one RunPod L4,
   $3.19; `experiments/chat_general/RESULTS.md`). pk_base_v1 + lever 1's SFT set at T 512 as conversation rows
   (`tools/lever1_conversations.py`: one row per dialogue, the per-turn file's 463,695 replies in 313,606 rows)

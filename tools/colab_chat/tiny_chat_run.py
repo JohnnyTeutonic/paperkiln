@@ -218,12 +218,13 @@ def ember_family(custom):
     return "llama_recursive" if custom.get("recursion") else "llama"
 
 
-def ensure_ember(log_path):
+def ensure_ember(log_path, commit=None):
     """ember.cpp's server at EMBER_COMMIT, built once per VM in EMBER_DIR/build (cloned into
     EMBER_DIR/src; Boost.Regex from apt when missing). An exclusive lock on EMBER_DIR/.lock makes post
     jobs that start together wait for one build. Returns the build's record (EMBER_DIR/build/
     ember_build.json: bin, commit, cuda, seconds) plus built_here, or {"error"} when it cannot be built."""
     import fcntl  # POSIX: the VM, and WSL for the CPU test
+    commit = commit or EMBER_COMMIT  # a jobs file may pin its own (post --ember-commit; amendment 5)
     src, build = os.path.join(EMBER_DIR, "src"), os.path.join(EMBER_DIR, "build")
     marker = os.path.join(build, "ember_build.json")
     binary = os.path.join(build, "tinyllama_server")
@@ -232,7 +233,7 @@ def ensure_ember(log_path):
         fcntl.flock(lk, fcntl.LOCK_EX)
         if os.path.exists(marker) and os.path.exists(binary):
             m = jload(marker)
-            if m.get("commit") == EMBER_COMMIT:
+            if m.get("commit") == commit:
                 return {**m, "built_here": False}
         t0 = time.time()
         log = open(log_path, "a", encoding="utf-8")
@@ -260,10 +261,10 @@ def ensure_ember(log_path):
                 p = sh(["git", "clone", "-q", "--filter=blob:none", "--no-checkout", EMBER_REPO, src])
                 if p.returncode != 0:
                     return {"error": f"git clone {EMBER_REPO} failed (rc {p.returncode}): {p.stderr[-400:]}"}
-            p = sh(["git", "-C", src, "checkout", "-q", "--detach", EMBER_COMMIT])
+            p = sh(["git", "-C", src, "checkout", "-q", "--detach", commit])
             got = sh(["git", "-C", src, "rev-parse", "HEAD"]).stdout.strip()
-            if p.returncode != 0 or got != EMBER_COMMIT:
-                return {"error": f"ember checkout of {EMBER_COMMIT} failed (HEAD {got!r}): {p.stderr[-400:]}"}
+            if p.returncode != 0 or got != commit:
+                return {"error": f"ember checkout of {commit} failed (HEAD {got!r}): {p.stderr[-400:]}"}
             p = sh(["cmake", "-S", src, "-B", build, "-DCMAKE_BUILD_TYPE=Release", *EMBER_CMAKE])
             if p.returncode != 0:
                 return {"error": f"ember cmake failed (rc {p.returncode}): {p.stderr[-400:]}"}
@@ -384,7 +385,7 @@ def read_items(p):
         return [json.loads(x) for x in f if x.strip()]
 
 
-def choose_engine(spec_path, weights, items, out, custom):
+def choose_engine(spec_path, weights, items, out, custom, commit=None):
     """OUT/gen_engine.json: the generation engine for this run's Carry-5 and why. ember when its build
     works, the F32 GGUF exists and the spot-check is N/N (for llama_recursive a failed spot-check on
     ember's CUDA interpreter is retried with EMBER_IR_DEVICE=cpu, recorded and flagged); otherwise
@@ -394,10 +395,11 @@ def choose_engine(spec_path, weights, items, out, custom):
     if os.path.exists(path):
         return jload(path)
     fam = ember_family(custom)
-    d = {"engine": "mtstudio", "family": fam, "ember_commit_pinned": EMBER_COMMIT, "ember_env": dict(EMBER_ENV),
+    commit = commit or EMBER_COMMIT
+    d = {"engine": "mtstudio", "family": fam, "ember_commit_pinned": commit, "ember_env": dict(EMBER_ENV),
          "flag": None, "ir_device": None}
     t0 = time.time()
-    ember = ensure_ember(os.path.join(out, "ember_build.log"))
+    ember = ensure_ember(os.path.join(out, "ember_build.log"), commit)
     d["ember_build"] = ember
     if "error" in ember:
         d["flag"] = f"ember unavailable ({ember['error'][:300]}); generated with mtstudio"
@@ -972,7 +974,7 @@ def cmd_post(a):
     c5 = os.path.join(a.out, "carry5")
     env, ember = dict(os.environ), None
     if a.gen == "ember":
-        eng = choose_engine(sd + "_spec.json", sw, a.carry5_items, a.out, custom)
+        eng = choose_engine(sd + "_spec.json", sw, a.carry5_items, a.out, custom, a.ember_commit)
         s["gen_engine"] = eng
         if eng["flag"]:
             s["gen_flag"] = eng["flag"]
@@ -1238,6 +1240,10 @@ def cmd_gate(a):
         if not g.get("ok"):
             problems.append(f"{a.need_cuda_gate}: no passed CUDA gate (Stage 0's cuda_gate.json, copied home and "
                             "committed)")
+    for f in a.need_ok or []:  # amendment 5: home receipts (the plain replay's bit-identity, ember's gate)
+        r = jload(f) if os.path.exists(f) else {}
+        if r.get("ok") is not True:
+            problems.append(f"{f}: ok is {r.get('ok')}; this block needs that receipt passed and committed")
     if a.need_rec_r8:  # A3.3's R8 rule, read at home (analyze.py --rec-decision) and committed
         d = jload(a.need_rec_r8) if os.path.exists(a.need_rec_r8) else {}
         if d.get("run_r8") is not True:
@@ -1454,6 +1460,8 @@ def main(argv=None):
     p.add_argument("--gen", choices=["ember", "mtstudio"], default="mtstudio",
                    help="Carry-5's generation: ember = ember.cpp's server at EMBER_COMMIT when the per-run spot-check "
                         "against mtstudio chat is N/N, else mtstudio for the whole run (flagged)")
+    p.add_argument("--ember-commit", default=None,
+                   help="the ember commit to generate with (default EMBER_COMMIT; amendment 5 pins its own in the jobs file)")
     p = sub.add_parser("pick")
     p.add_argument("--out", required=True)
     p.add_argument("--run", action="append", required=True)
@@ -1472,6 +1480,8 @@ def main(argv=None):
                    help="amendment 3: refuse unless the pilot verdict is this")
     p.add_argument("--need-cuda-gate", default="", help="A3.3: refuse unless this cuda_gate.json passed")
     p.add_argument("--need-rec-r8", default="", help="A3.3: refuse unless this rec_decision.json has run_r8 true")
+    p.add_argument("--need-ok", action="append", default=[],
+                   help="amendment 5: refuse unless this JSON receipt has ok true (repeatable)")
     p = sub.add_parser("cuda_gate")
     p.add_argument("--out", required=True)
     p.add_argument("--script", default=CUDA_SCRIPT)

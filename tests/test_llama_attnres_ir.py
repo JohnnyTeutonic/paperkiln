@@ -7,6 +7,8 @@ Tiny llama_attnres models train for 40 steps on CPU and export F32 and Q8_0 GGUF
   ar3n    3 layers, scale "none" (Kimi's convex mixture)
   ar_rec  1 + [2] x 2 + 1 fixed recursion, one pair of queries per application ("tensor_index":
           "application", not yet in ir.hpp: ahead of ember)
+  ar_x5   the arm's shape (tiny-chat amendment 5, cell X5): 20m_L16, d 320, 16 layers, 5 heads, d_ff 864,
+          rope on every head, scale "sources" (33 depth sources), on the toy vocabulary
 Checks: the run logs the attn_res model event; the files pass spec/tools/ir_check.py; architecture "paperkiln";
 the pseudo-queries are [d] tensors stored F32 in both variants (blk.{i}.attnres_attn_q / attnres_ffn_q,
 attnres_out_q; rec_app.{i}.* under recursion), application 0's attention query written as zeros and the
@@ -18,7 +20,7 @@ max(1, max |ref|)) and greedy 40/40. At step 1 an attn_res run's loss equals the
 seed (zero queries; scale "sources"). Malformed specs are refused.
 
 ATTNRES_GATE_DIR=DIR also writes the gate files for ember (F32 GGUF, IR, Q8_0 GGUF, vocabulary,
-score_in/score_out, spec and a manifest with sha256) for ar3 into DIR/<name>/, the layout of
+score_in/score_out, spec and a manifest with sha256) for ar3 and ar_x5 into DIR/<name>/, the layout of
 tests/test_mor_ir.py's MOR_GATE_DIR.
 Needs MTSTUDIO_BIN (or ./build/mtstudio); skipped otherwise.
 """
@@ -48,8 +50,11 @@ CASES = {
     "ar3n": {"layers": 3, "attn_res": {"form": "full", "scale": "none"}},
     "ar_rec": {"attn_res": {"form": "full"},
                "recursion": {"prelude": 1, "block": 2, "repeats": 2, "coda": 1, "inject": "none"}},
+    "ar_x5": {"layers": 16, "d": 320, "heads": 5, "d_ff": 864, "attn_res": {"form": "full"}},
 }
+EXTRA = {"ar_x5": {"rope_heads": "all"}}  # the arm's arch (make_jobs.pt_spec)
 D = 32
+GATES = ("ar3", "ar_x5")
 
 
 def spec_of(tmp, name, custom, steps=40, formats=("safetensors", "gguf", "gguf_q8_0"), extra=None, train=None):
@@ -116,13 +121,14 @@ def write_gate(name, spec, res, custom):
 @pytest.mark.parametrize("name", list(CASES))
 def test_attnres_export_and_numpy_parity(tmp_path, name):
     custom = CASES[name]
-    spec = spec_of(tmp_path, name, custom)
+    d = custom.get("d", D)
+    spec = spec_of(tmp_path, name, custom, extra=EXTRA.get(name))
     run(spec)
     ev = events(spec)
     model = next(e for e in ev if e["event"] == "model")
     A = applications(custom)
     scale = custom["attn_res"].get("scale", "sources")
-    assert model["attn_res"] == {"form": "full", "scale": scale, "sources": 2 * A + 1, "query_params": 2 * A * D}
+    assert model["attn_res"] == {"form": "full", "scale": scale, "sources": 2 * A + 1, "query_params": 2 * A * d}
     steps = [e["loss"] for e in ev if e["event"] == "step"]
     assert steps[-1] < steps[0] - 0.3, steps  # it trains
     ex = gguf_exports(spec)
@@ -136,7 +142,7 @@ def test_attnres_export_and_numpy_parity(tmp_path, name):
         assert meta["general.architecture"][1] == "paperkiln"
         q = {t[0]: t for t in tensors if "attnres_" in t[0]}
         assert set(q) == qnames
-        assert all(t[1] == [D] and t[2] == 0 for t in q.values())  # [d], F32 in every variant
+        assert all(t[1] == [d] and t[2] == 0 for t in q.values())  # [d], F32 in every variant
     f32 = next(e["path"] for e in ex if e["format"] == "gguf")
     assert set(tensor_values(f32, f"{qpre}0.attnres_attn_q.weight")) == {0.0}
     for nm in sorted(qnames - {f"{qpre}0.attnres_attn_q.weight"}):
@@ -163,7 +169,7 @@ def test_attnres_export_and_numpy_parity(tmp_path, name):
     print(f"{name} {custom}: numpy IR vs mtstudio log-probs worst {worst:.2e} of max(1, |ref|); greedy {agree}/{n}")
     assert n == 40 and agree == 40
     assert worst <= 1e-5
-    if os.environ.get("ATTNRES_GATE_DIR") and name == "ar3":
+    if os.environ.get("ATTNRES_GATE_DIR") and name in GATES:
         write_gate(name, spec, (worst, agree, n), custom)
 
 
