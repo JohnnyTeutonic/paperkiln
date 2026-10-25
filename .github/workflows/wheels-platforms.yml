@@ -45,8 +45,8 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          python -m pip install -q scikit-build-core pybind11
-          python -m pip wheel . --no-deps --no-build-isolation -v > build.log 2>&1 || true
+          PY=$(command -v python3 || command -v python)
+          "$PY" -m pip wheel . --no-deps -v > build.log 2>&1 || true
           { grep -n -i -E "error|fatal" build.log | head -40; echo "----- tail -----"; tail -40 build.log; } > report.txt
           split -l 20 report.txt part_
           for f in part_*; do echo "::error title=build ${{ matrix.os }} ${f}::$(sed -e 's/%/%25/g' "$f" | awk 'BEGIN{ORS="%0A"} {print}')"; done
