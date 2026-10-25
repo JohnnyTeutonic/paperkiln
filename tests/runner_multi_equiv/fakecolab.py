@@ -92,6 +92,55 @@ def take_snapshots(jobs):
                 shutil.copyfile(os.path.join(out, f), os.path.join(dst, f))
 
 
+def fake_post(d, jobs, j, out, log):
+    """tiny_chat_run.py post (run_picks.py): a summary.json with a primary already in OUT finishes it at once
+    (cmd_post's "present"); otherwise SFT from the init job's final weights (missing: FAILED) writes the SFT
+    model's own files (deterministic, as SFT is), an optimiser file beside them, sft_spec.json and the
+    summary, and the run is counted in FAKE_ROOT/sft_runs.log."""
+    n, fp = j["name"], j["fake_post"]
+    sp = os.path.join(out, "summary.json")
+    if os.path.exists(sp) and json.load(open(sp)).get("primary") is not None:
+        open(log, "a").write(f"{sp}: present" + chr(10))
+        set_status(n, "FINISHED")
+        return
+    parent = next(x for x in jobs if x["name"] == j["init_job"])
+    ptw = os.path.join(CHAT, parent["name"], parent.get("model_name", parent["name"]) + ".safetensors")
+    if not os.path.exists(ptw):
+        open(log, "a").write(f"pretrained weights not found: {ptw}" + chr(10))
+        set_status(n, "FAILED")
+        return
+    model = f"sft_{n}"
+    sd = os.path.join(out, "sft")
+    os.makedirs(sd, exist_ok=True)
+    w = blob((n, "sft"), 3000)
+    open(os.path.join(sd, model + ".safetensors"), "wb").write(w)
+    open(os.path.join(sd, model + ".gguf"), "wb").write(blob((n, "sftg"), 2000))
+    open(os.path.join(sd, "optim.safetensors"), "wb").write(blob((n, "opt"), 1000))
+    open(sd + "_spec.json", "w").write(json.dumps({"name": model}))
+    open(sp, "w").write(json.dumps({"mode": "post", "seed": fp["seed"], "primary": fp["primary"],
+                                    "pt_weights_sha256": hashlib.sha256(open(ptw, "rb").read()).hexdigest(),
+                                    "sft_weights_sha256": hashlib.sha256(w).hexdigest()}))
+    with open(os.path.join(ROOT, "sft_runs.log"), "a") as f:
+        f.write(f"{d['launches']} {n}" + chr(10))
+    open(log, "a").write(f"{n} done" + chr(10))
+    set_status(n, "FINISHED")
+
+
+def is_pick(j):
+    cmd = j.get("cmd") or []
+    return any(a.endswith("tiny_chat_run.py") for a in cmd) and "pick" in cmd
+
+
+def fake_pick(j, out, log):
+    """tiny_chat_run.py pick, for real: the copy beside the jobs file, on the fake VM's paths."""
+    tool = os.path.join(os.path.dirname(os.environ["FAKE_JOBS"]), "tiny_chat_run.py")
+    argv = [a.replace("{out}", out).replace("/content/", VM + "/") for a in j["cmd"]]
+    argv = argv[argv.index("pick"):]
+    p = subprocess.run([sys.executable, tool, *argv], capture_output=True, text=True)
+    open(log, "a").write(p.stdout + p.stderr)
+    set_status(j["name"], "FINISHED" if p.returncode == 0 else "FAILED")
+
+
 def sim_step(d):
     jobs = json.load(open(os.environ["FAKE_JOBS"]))["jobs"]
     take_snapshots(jobs)
@@ -136,9 +185,17 @@ def sim_step(d):
             open(log, "a").write(f"{n} done\n")
             set_status(n, "FINISHED")
             return
+        if s != "RUNNING" and d.get("status_calls", 0) < j.get("fake_start_at", 0):
+            continue  # held (run_picks.py: a job that must not start before a reclaim)
         if s != "RUNNING":
             set_status(n, "RUNNING")
             open(log, "a").write(f"{n} started\n")
+            return
+        if j.get("fake_post"):
+            fake_post(d, jobs, j, out, log)
+            return
+        if is_pick(j):
+            fake_pick(j, out, log)
             return
         if j.get("fake_fail"):
             open(log, "a").write(f"{n} failed" + chr(10))

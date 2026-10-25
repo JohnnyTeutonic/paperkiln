@@ -38,6 +38,14 @@ the step; a copy already on a RunPod volume is used as it is); the home copy is 
 rung job of that snapshot is home and FINISHED (its rung.json records the weights' sha256). A rung
 job that failed "rung lost" while its snapshot is home is rerun after reset_lost_rungs.py, applied
 when the runner next starts. A campaign without rung jobs makes exactly the calls it made before.
+
+Picks (25 Oct 2026). A tiny_chat_run.py pick reads every post job's summary.json and only the best run's
+SFT model, and a post job's files live only on the VM that ran it, so a replacement VM reran every home
+post an unfinished pick waits for (E5: six, ~1.4 L4 hours each, ahead of its pretraining). prepare() now
+reruns, per pick, only the home post that pick's own rule (tiny_chat_run.pick_best over the home
+summaries) can still choose; every other home post gets its home summary.json at the path pick reads and
+is marked FINISHED without running (spared_posts). Posts not yet home run anyway. A campaign without pick
+jobs makes exactly the calls it made before (tests/runner_multi_equiv: run_eq.py, run_picks.py).
 """
 from __future__ import annotations
 
@@ -730,6 +738,66 @@ def volume_has(pend, finals):
     return on_volume, placed
 
 
+def job_needs(j):
+    """The jobs j waits for or starts from: its "after" (a name or a list) and its "init_job"."""
+    after = j.get("after") or []
+    after = [after] if isinstance(after, str) else list(after)
+    return after + ([j["init_job"]] if j.get("init_job") else [])
+
+
+def pick_inputs(j, by):
+    """The post jobs of a `tiny_chat_run.py pick` job (its --run /content/chat/<post> dirs, each a data job it
+    waits for), or None for any other job."""
+    cmd = j.get("cmd") or []
+    if not any(a.endswith("tiny_chat_run.py") and cmd[i + 1:i + 2] == ["pick"] for i, a in enumerate(cmd)):
+        return None
+    runs = [cmd[i + 1] for i, a in enumerate(cmd[:-1]) if a == "--run"]
+    posts = [r[len("/content/chat/"):] for r in runs if r.startswith("/content/chat/")]
+    if (not runs or len(posts) != len(runs) or len(set(posts)) != len(posts)
+            or any(p not in by or "cmd" not in by[p] for p in posts) or not set(posts) <= set(job_needs(j))):
+        return None
+    return posts
+
+
+def spared_posts(st, jobs, by, needed, failed):
+    """prepare() on a replacement VM (25 Oct 2026: E5's replacement reran six home post jobs, ~1.4 L4 hours
+    each, before its pretraining). A post job's files live only on the VM that ran it; its pick reads, of
+    every run, summary.json's seed and primary, and only of the best run its SFT model. So a home post job
+    that its unfinished pick can never choose is not rerun: tiny_chat_run.pick_best (pick's own rule) over
+    the home summaries of the pick's home posts names the one post that can still be chosen; it reruns, and
+    each other home post gets its home summary.json at the VM path pick reads and is marked FINISHED. A
+    post not yet home runs anyway, so a pick never reruns more than one home post, and whatever pick
+    chooses on the VM has its SFT model there. (Deferring the rerun until every post is home would need a
+    hold state jobs_vm.py at the campaigns' pinned commits does not have: pick starts within a manager tick
+    of its last post.) A post is spared only when every job that waits for it is an unfinished pick that
+    cannot choose it, or a home job nothing unfinished needs; a pick with a FAILED input fails on the VM
+    whatever happens, so none of its home inputs reruns. Returns {post: home summary.json}."""
+    picks = {j["name"]: pick_inputs(j, by) for j in jobs if "cmd" in j and not st.job(j["name"])["home"]}
+    picks = {k: v for k, v in picks.items() if v}
+    if not picks:
+        return {}
+    import tiny_chat_run  # the rule pick runs on the VM (unchanged since 24151f80, so the same at every pinned commit)
+    verdict = {}  # post -> [can never be chosen, per pick]
+    for pk, posts in picks.items():
+        rows = {p: tiny_chat_run.pick_row(os.path.join(ART, p)) for p in posts
+                if st.job(p)["home"] and p not in failed}
+        rows = {p: r for p, r in rows.items() if r["summary"]}
+        if any(p in failed for p in posts) and not by[pk].get("after_terminal"):
+            for p in rows:  # the pick fails on the VM: nothing of it is chosen
+                verdict.setdefault(p, []).append(True)
+            continue
+        best = tiny_chat_run.pick_best(list(rows.values()))
+        for p, r in rows.items():
+            verdict.setdefault(p, []).append(r is not best)
+    spare = {}
+    for p, v in verdict.items():
+        deps = [j["name"] for j in jobs if p in job_needs(j)]
+        if p in needed and all(v) and all(
+                (d in picks and p in picks[d]) or (st.job(d)["home"] and d not in needed) for d in deps):
+            spare[p] = os.path.join(ART, p, "summary.json")
+    return spare
+
+
 def prepare(st, commit, jobs_rel, jobs, uploads):
     """Inputs, relayed checkpoints and the boot onto a session that is up but
     not yet booted. Retried every tick until it succeeds (st.d["booted"]), so
@@ -748,24 +816,33 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
     # (On a persistent volume the data job's STATUS and files are still there, so it is not rerun.)
     by = {j["name"]: j for j in jobs}
 
-    def needs(j):
-        after = j.get("after") or []
-        after = [after] if isinstance(after, str) else list(after)
-        return after + ([j["init_job"]] if j.get("init_job") else [])
+    def closure(stop=()):
+        needed, todo = set(), [n for j in jobs if not st.job(j["name"])["home"] for n in job_needs(j)]
+        while todo:
+            n = todo.pop()
+            if n in by and n not in needed:
+                needed.add(n)
+                # Followed through home training jobs too: a job that runs after one often reads that
+                # job's own inputs without declaring them (24 Oct 2026: the pilot's post job read
+                # data/panel_fineweb.ids on a replacement VM, after only its pretraining job), so every
+                # data job upstream of unfinished work runs again. Training jobs never rerun. A spared
+                # post job (below) never runs here, so nothing is needed for it.
+                if n not in stop:
+                    todo.extend(job_needs(by[n]))
+        return needed
 
-    needed, todo = set(), [n for j in jobs if not st.job(j["name"])["home"] for n in needs(j)]
-    while todo:
-        n = todo.pop()
-        if n in by and n not in needed:
-            needed.add(n)
-            # Followed through home training jobs too: a job that runs after one often reads that
-            # job's own inputs without declaring them (24 Oct 2026: the pilot's post job read
-            # data/panel_fineweb.ids on a replacement VM, after only its pretraining job), so every
-            # data job upstream of unfinished work runs again. Training jobs never rerun.
-            todo.extend(needs(by[n]))
+    needed = closure()
     failed = [j["name"] for j in jobs if st.job(j["name"])["home"] and st.job(j["name"]).get("status") == "FAILED"]
+    # Home post jobs their unfinished pick can never choose: their summary.json goes up instead of a rerun.
+    try:
+        spare = spared_posts(st, jobs, by, needed, failed)
+    except (OSError, ValueError, KeyError, TypeError, ImportError) as e:  # never let it stall a launch
+        log(f"prepare: post jobs not checked against their picks ({e!r}); home posts rerun")
+        spare = {}
+    if spare:
+        needed = closure(spare)
     rerun = [j["name"] for j in jobs if st.job(j["name"])["home"] and "cmd" in j and j["name"] in needed
-             and j["name"] not in failed]
+             and j["name"] not in failed and j["name"] not in spare]
     finished = [j["name"] for j in jobs if st.job(j["name"])["home"] and j["name"] not in failed + rerun]
     rc, out = exec_py(f"for n in {finished!r}: open('/content/chat/STATUS_' + n, 'w').write('FINISHED\\n')\n"
                       f"for n in {failed!r}: open('/content/chat/STATUS_' + n, 'w').write('FAILED\\n')\n"
@@ -775,6 +852,10 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
         return False
     if rerun:
         log(f"prepare: data jobs rerun on this VM for unfinished dependants: {rerun}")
+    if spare:
+        log(f"prepare: post jobs their pick can never choose are not rerun (FINISHED, summary.json from home): "
+            f"{sorted(spare)}")
+    spare_up = [(f"{p}__summary.json", src, f"/content/chat/{p}/summary.json") for p, src in sorted(spare.items())]
     # An unfinished job that starts from, or runs after, a home training job needs that job's final
     # weights on the fresh VM: uploaded as a whole-file input and moved into its out_dir below.
     finals = []
@@ -821,6 +902,8 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
             mb = sum(os.path.getsize(src) for _, src, _ in rung_up) / 1e6
             log(f"prepare: {len(snaps)} rung snapshots uploaded from home ({mb:.0f} MB, "
                 f"{(time.time() - t0) / 60:.1f} min): {snaps}")
+        for key, src, _ in spare_up:
+            upload_file(src, f"/content/chat/upload/{key}")
         # The first resume checkpoint goes up before the boot;
         # the rest one per tick while the VM trains (upload_pending), and jobs_vm.py holds each job
         # until its READY marker. Weights, step and events only: no optimiser state (22 Oct 2026,
@@ -838,8 +921,8 @@ def prepare(st, commit, jobs_rel, jobs, uploads):
         log(str(e))
         return False
     # Reassemble the whole-file inputs; a home parent's final weights then move into its out_dir.
-    names = [k for k, _ in uploads] + [k for k, _, _ in finals] + [k for k, _, _ in rung_up]
-    moves = [(k, dst) for k, _, dst in finals] + [(k, dst) for k, _, dst in rung_up]
+    names = [k for k, _ in uploads] + [k for k, _, _ in finals] + [k for k, _, _ in rung_up + spare_up]
+    moves = [(k, dst) for k, _, dst in finals] + [(k, dst) for k, _, dst in rung_up + spare_up]
     rc, out = exec_py(
         "import os, shutil\n"
         f"for k in {names!r}:\n"

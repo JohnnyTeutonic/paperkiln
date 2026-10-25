@@ -1011,16 +1011,28 @@ def cmd_post(a):
     return 0
 
 
-def cmd_pick(a):
-    rows = []
-    for d in a.run:
-        p = os.path.join(d, "summary.json")
-        sm = jload(p) if os.path.exists(p) else {}
-        rows.append({"run": d, "seed": sm.get("seed"), "primary": sm.get("primary"), "summary": os.path.exists(p)})
+PICK_RULE = "highest primary metric (forced choice, self history, multi minus twin); tie -> lower seed"
+
+
+def pick_row(d):
+    """What pick reads of a post job's run directory d: its summary.json's seed and primary, nothing else."""
+    p = os.path.join(d, "summary.json")
+    sm = jload(p) if os.path.exists(p) else {}
+    return {"run": d, "seed": sm.get("seed"), "primary": sm.get("primary"), "summary": os.path.exists(p)}
+
+
+def pick_best(rows):
+    """PICK_RULE over pick_row rows: the highest primary, a tie to the lower seed; None when no row has a
+    primary. runner_multi.py applies this function to the home summaries on a replacement VM, so only the
+    post job pick can still choose is rerun there (the others' summary.json goes up instead)."""
     ok = [r for r in rows if r["primary"] is not None]
-    best = max(ok, key=lambda r: (r["primary"], -r["seed"])) if ok else None
-    out = {"rule": "highest primary metric (forced choice, self history, multi minus twin); tie -> lower seed",
-           "runs": rows, "best": best}
+    return max(ok, key=lambda r: (r["primary"], -r["seed"])) if ok else None
+
+
+def cmd_pick(a):
+    rows = [pick_row(d) for d in a.run]
+    best = pick_best(rows)
+    out = {"rule": PICK_RULE, "runs": rows, "best": best}
     rc = 1
     if best:
         sd = os.path.join(best["run"], "sft")
