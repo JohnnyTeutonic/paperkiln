@@ -714,6 +714,16 @@ void state_loss_mask(const std::vector<int>& x, std::vector<int>& y, std::vector
 // schedule "mor": per-token depth (nn::LlamaConfig::MoR).
 bool routed(const Spec& s) { return s.rec_block > 0 && s.rec_schedule == "mor"; }
 
+// SFT evaluation inside a step window: exactly when the training steps defer
+// (so the forward is one this run already runs under deferral), unless
+// MICROTORCH_DEVICE_EVAL=0. Always false on a CPU build.
+bool sft_eval_on_device() {
+    const char* v = std::getenv("MICROTORCH_DEVICE_EVAL");
+    if (v && std::strcmp(v, "0") == 0) return false;
+    return device::get() == device::Device::CUDA && device::device_ops_enabled() &&
+           device::step_residency_enabled() && device::defer_downloads_enabled();
+}
+
 // Layer applications per forward: prelude + block * repeats + coda, or layers.
 size_t effective_layers(const Spec& s) {
     return s.rec_block > 0 ? s.rec_prelude + s.rec_block * s.rec_repeats + s.rec_coda : s.layers;
@@ -2762,9 +2772,24 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                 if (ev_depth.empty()) ev_depth.assign(s.rec_repeats, 0.0);
                 for (int d : llama->last_depth) ev_depth[static_cast<size_t>(d - 1)] += 1.0;
             };
+            bool dev_eval = false;
+            const auto t_eval = std::chrono::steady_clock::now();
             if (sft) {
                 // Every held-out example, the masked mean over all their
                 // completion targets (each example weighted by its targets).
+                // On the device (25 Oct 2026): when the run's own steps defer
+                // (CUDA, device op set, step residency, deferred downloads),
+                // the evaluation forwards run inside one step window too, so
+                // the parameters upload once per evaluation and activations,
+                // logits and the softmax stay on the device; only each loss
+                // scalar comes home. Outside a window every GEMM uploaded its
+                // weight and transposed it on the host, once per example: 10-20
+                // minutes per eval_every on an L4. The same kernels compute the
+                // loss either way (fp32 tolerance, test_cuda_ops leg 9's bound);
+                // MICROTORCH_DEVICE_EVAL=0 keeps the windowless path. Nothing
+                // changes on a CPU build or with deferral off.
+                dev_eval = sft_eval_on_device();
+                if (dev_eval) device::step_begin();
                 double sum = 0.0;
                 size_t kept = 0;
                 const size_t end = s.eval_examples ? std::min(sd.x.size(), sd.val_start + s.eval_examples) : sd.x.size();
@@ -2786,6 +2811,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                     sum += static_cast<double>(ops::cross_entropy_masked(lg, y, m)->data(0, 0)) * k;
                     kept += k;
                 }
+                if (dev_eval) device::step_end();
                 vl = sum / static_cast<double>(kept);
             } else {
                 const int NV = s.eval_windows;
@@ -2807,6 +2833,12 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             }
             model_ref.train();
             json eve = {{"event", "eval"}, {"step", step}, {"val_loss", vl}};
+            if (sft && device::get() == device::Device::CUDA) {
+                // Device runs only (CPU events are unchanged): which path ran
+                // and its wall time, for the device-evaluation receipts.
+                eve["eval_device"] = dev_eval;
+                eve["eval_s"] = std::chrono::duration<double>(std::chrono::steady_clock::now() - t_eval).count();
+            }
             if (!ev_depth.empty()) {
                 double tot = 0, mean = 0;
                 for (double c : ev_depth) tot += c;
@@ -4100,8 +4132,12 @@ int chat_cmd(const std::string& target, const std::string& host, int port, bool 
 // text rows as it goes (turn_state only), with the same logits bit for bit
 // (llama.hpp LlamaKV). Records then carry kv_rows (rows per layer held after
 // the context) and state_blocks (complete blocks in the context).
+// --logits FILE (25 Oct 2026, the CUDA-vs-CPU gate): every scored position's
+// whole logits row (V float32, little-endian), appended in record order, so a
+// record's rows are its continuation positions in order; each record then
+// carries logits_rows. Nothing else changes.
 int score_cmd(const std::string& target, const std::string& in_path, const std::string& out_path, bool kv_cache,
-              bool evict, size_t kv_step) {
+              bool evict, size_t kv_step, const std::string& logits_path = "") {
     const Spec s = resolve_chat_spec(target);
     LoadedLM lm(s);
     if (kv_cache && !lm.llama) throw std::runtime_error("score --kv-cache: only the llama family has a KV cache");
@@ -4111,6 +4147,11 @@ int score_cmd(const std::string& target, const std::string& in_path, const std::
     if (!in) throw std::runtime_error("cannot open " + in_path);
     std::ofstream out(out_path, std::ios::trunc);
     if (!out) throw std::runtime_error("cannot write " + out_path);
+    std::ofstream lout;
+    if (!logits_path.empty()) {
+        lout.open(logits_path, std::ios::binary | std::ios::trunc);
+        if (!lout) throw std::runtime_error("cannot write " + logits_path);
+    }
     const size_t V = lm.tokens.size();
     std::vector<char> banned(V, 0);
     for (const char* sp : {"<unk>", "<s>", "</s>", "<pad>"}) {
@@ -4236,7 +4277,13 @@ int score_cmd(const std::string& target, const std::string& in_path, const std::
             lp.push_back(l);
             am.push_back(best);
             sum += l;
+            if (lout.is_open()) {
+                std::vector<float> rowv(V);
+                for (size_t k = 0; k < V; ++k) rowv[k] = logits->data(row, k);
+                lout.write(reinterpret_cast<const char*>(rowv.data()), static_cast<std::streamsize>(V * sizeof(float)));
+            }
         }
+        if (lout.is_open()) rec["logits_rows"] = c.size();
         rec["over_ctx"] = false;
         rec["logprobs"] = lp;
         rec["argmax"] = am;
@@ -4371,7 +4418,7 @@ int main(int argc, char** argv) {
             return sft_dump_cmd(parse_spec(argv[2]), out_path);
         }
         if (cmd == "score" && argc >= 3) {
-            std::string in_path, out_path;
+            std::string in_path, out_path, logits_path;
             bool kv_cache = false, evict = false;
             size_t kv_step = 0;
             for (int i = 3; i < argc; ++i) {
@@ -4380,11 +4427,12 @@ int main(int argc, char** argv) {
                 else if (k == "--evict") evict = true;
                 else if (i + 1 < argc && k == "--in") in_path = argv[++i];
                 else if (i + 1 < argc && k == "--out") out_path = argv[++i];
+                else if (i + 1 < argc && k == "--logits") logits_path = argv[++i];
                 else if (i + 1 < argc && k == "--kv-step") kv_step = static_cast<size_t>(std::atoll(argv[++i]));
                 else throw std::runtime_error("score: unknown option " + k);
             }
             if (in_path.empty() || out_path.empty()) throw std::runtime_error("score needs --in and --out");
-            return score_cmd(argv[2], in_path, out_path, kv_cache, evict, kv_step);
+            return score_cmd(argv[2], in_path, out_path, kv_cache, evict, kv_step, logits_path);
         }
     } catch (const std::exception& e) {
         std::fprintf(stderr, "mtstudio: %s\n", e.what());
@@ -4403,7 +4451,7 @@ int main(int argc, char** argv) {
                  "overrides the index.html path)\n"
                  "       mtstudio chat <out_dir|spec.json> [--port 8080] [--host 127.0.0.1] [--kv-cache [--evict]]\n"
                  "       mtstudio score <out_dir|spec.json> --in REQ.jsonl --out RES.jsonl [--kv-cache [--evict] "
-                 "[--kv-step N]]   (per-token log-probs of {prompt | messages, continuation})\n"
+                 "[--kv-step N]] [--logits ROWS.f32]   (per-token log-probs of {prompt | messages, continuation})\n"
                  "       mtstudio sft-dump spec.json --out ROWS.jsonl   (the SFT rows the spec trains on)\n");
     return 2;
 }

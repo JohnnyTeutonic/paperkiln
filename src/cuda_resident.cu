@@ -450,6 +450,12 @@ void materialize_all() {
     }
 }
 
+size_t stale_count() {
+    size_t n = 0;
+    for (const auto& kv : g_vcache) n += kv.second.stale ? 1 : 0;
+    return n;
+}
+
 void discard(const Matrix& m) {
     auto it = g_vcache.find(m.get_data());
     if (it == g_vcache.end()) return;

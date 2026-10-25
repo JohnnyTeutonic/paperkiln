@@ -240,6 +240,12 @@ add_executable(test_flex tests/test_flex.cpp)
 target_link_libraries(test_flex PRIVATE microtorch)
 add_test(NAME flex COMMAND test_flex)
 
+# The gpt2 family under deferred downloads (defect D1) and NoGrad forwards in
+# a step window (the device SFT evaluation); host vs host on a CPU build.
+add_executable(test_gpt2_device tests/test_gpt2_device.cpp)
+target_link_libraries(test_gpt2_device PRIVATE microtorch)
+add_test(NAME gpt2_device COMMAND test_gpt2_device)
+
 # Runtime-defined ops (the IR's expr op): parser, primitives, gradients, a
 # flex run with an expr activation. expr_eval is the CLI tests/test_ir_expr.py
 # compares against the numpy reference (tools/ir_expr.py).

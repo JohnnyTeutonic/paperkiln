@@ -72,6 +72,9 @@ bool host_stale(const Matrix&) {
 }
 void materialize(const Matrix&) {}
 void materialize_all() {}
+size_t stale_count() {
+    return 0;
+}
 void discard(const Matrix&) {}
 void release(const Matrix&) {}
 void devcheck_host_read(const Matrix&, const char*) {}

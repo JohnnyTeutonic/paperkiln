@@ -5,6 +5,8 @@
 #include <random>
 #include <stdexcept>
 
+#include "microtorch/device_cache.hpp"
+
 namespace microtorch {
 namespace nn {
 
@@ -34,6 +36,7 @@ Var SurpriseRoutedAttention::forward(const Var& x, size_t seq_len) const {
         for (size_t i = 0; i < T; ++i) perm[i] = i;
         std::shuffle(perm.begin(), perm.end(), rng);
         Matrix pm(T, d);
+        device::materialize(x->data);  // a deferred activation under deferral
         for (size_t i = 0; i < T; ++i)
             for (size_t j = 0; j < d; ++j) pm(i, j) = x->data(perm[i], j);
         pred_in = make_var(std::move(pm));

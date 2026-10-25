@@ -1,0 +1,59 @@
+{
+ "_comment": "Engine items of LOCAL_LLM_STACK.md section 11 on one RunPod L4 (25 Oct 2026): every leg of tools/colab_cuda_validate.sh (now with test_gpt2_device: the gpt2 family under deferred downloads, defect D1, and NoGrad forwards in a step window); tools/device_eval_gate.py (item 5.2, the device SFT evaluation vs the windowless one, and item 5.4, mtstudio end to end on the gpt2 family under deferral); tools/colab_chat/cpu_cuda_parity_vm.sh (item 4.1, the CUDA mtstudio vs the CPU build of the same commit on the live dense model, big_sft and the fw_moe MoE base). Uploads: live/big/fwmoe .safetensors and .spec.json (experiments/engine_2026-10-25/specs), tinychat_bpe8k.gguf. The jobs are independent (no 'after'): one failure does not stop the others; max_parallel 1 runs them in order. cpu_tests (light, beside the GPU jobs): the pushed commit's CPU build of test_gguf_q4 (k-quants vs llama.cpp b6000), test_gguf_export, test_gguf_q8, test_gpt2_device (host vs host bit for bit) and tests/test_mtstudio_sft.py.",
+ "max_parallel": 1,
+ "jobs": [
+  {
+   "name": "cuda_gate",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "cuda_gate",
+    "--out",
+    "{out}"
+   ],
+   "outputs": [
+    "cuda_gate.json",
+    "cuda_gate.log"
+   ]
+  },
+  {
+   "name": "device_eval_gate",
+   "cmd": [
+    "bash",
+    "-c",
+    "python3 tools/device_eval_gate.py --out {out}/gate > {out}/device_eval_gate.log 2>&1; rc=$?; cp {out}/gate/device_eval_gate.json {out}/ || true; tar -czf /tmp/deg_logs.tar.gz -C {out}/gate --exclude='*.safetensors' --exclude='*.gguf' --exclude='ex.jsonl' --exclude='corpus.txt' . && mv /tmp/deg_logs.tar.gz {out}/device_eval_logs.tar.gz; exit $rc"
+   ],
+   "outputs": [
+    "device_eval_gate.json",
+    "device_eval_gate.log",
+    "device_eval_logs.tar.gz"
+   ]
+  },
+  {
+   "name": "cpu_cuda_parity",
+   "cmd": [
+    "bash",
+    "-c",
+    "bash tools/colab_chat/cpu_cuda_parity_vm.sh {out}/par live big fwmoe > {out}/cpu_cuda_parity.log 2>&1; rc=$?; cp {out}/par/cpu_cuda_parity.json {out}/ || true; tar -czf /tmp/par_logs.tar.gz -C {out}/par --exclude='*.safetensors' --exclude='*.f32' --exclude='refeval_*' . && mv /tmp/par_logs.tar.gz {out}/cpu_cuda_parity_logs.tar.gz; exit $rc"
+   ],
+   "outputs": [
+    "cpu_cuda_parity.json",
+    "cpu_cuda_parity.log",
+    "cpu_cuda_parity_logs.tar.gz"
+   ]
+  },
+  {
+   "name": "cpu_tests",
+   "light": true,
+   "cmd": [
+    "bash",
+    "-c",
+    "f=0; cmake -S . -B build_cpu_t -DCMAKE_BUILD_TYPE=Release > {out}/cfg.log 2>&1 || f=1; make -C build_cpu_t -j4 mtstudio test_gguf_q4 test_gguf_export test_gguf_q8 test_gpt2_device > {out}/make.log 2>&1 || f=1; tail -c 20000 {out}/make.log > {out}/make_tail.log; for t in test_gguf_q4 test_gguf_export test_gguf_q8 test_gpt2_device; do (cd build_cpu_t && ./$t) >> {out}/cpu_tests.log 2>&1 || { f=1; echo FAILED $t >> {out}/cpu_tests.log; }; done; pip -q install pytest > /dev/null 2>&1; MTSTUDIO_BIN=build_cpu_t/mtstudio python3 -m pytest -q tests/test_mtstudio_sft.py >> {out}/cpu_tests.log 2>&1 || f=1; exit $f"
+   ],
+   "outputs": [
+    "cpu_tests.log",
+    "make_tail.log"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,12 @@
+{
+ "family": "gpt2",
+ "gguf": "gpt2-124m-f32.gguf",
+ "prompts": 40,
+ "top1_same": 40,
+ "greedy_same": 40,
+ "worst_first_rel": 4.2261398016437805e-06,
+ "max_new": 32,
+ "raw": true,
+ "hf_weights": "gguf",
+ "hf_greedy": "argmax of HF's forward with its KV cache (no generate)"
+}

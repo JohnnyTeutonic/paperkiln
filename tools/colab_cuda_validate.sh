@@ -21,7 +21,7 @@ cmake .. -DCMAKE_BUILD_TYPE=Release -DMICROTORCH_CUDA=ON
 echo "== 2/3 build =="
 make microtorch test_gradcheck test_nn test_lora_quant test_resident_parity \
      test_step_residency test_cuda_ops test_recursion test_mor test_state_tokens test_llama_attnres test_mixed_precision \
-     test_pooled_gemm -j"$(nproc)"
+     test_pooled_gemm test_gpt2_device -j"$(nproc)"
 
 echo "== 3/3 run gradchecks on CUDA =="
 # device::set(CUDA) is process-wide; MICROTORCH_DEVICE=cuda is read by the
@@ -86,4 +86,10 @@ MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 ./test_state_tokens
 # (the Phase A emulation and the host flash loops on a CUDA build).
 MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 ./test_mixed_precision
 MICROTORCH_DEVICE=cuda ./test_mixed_precision
-echo "CUDA validation PASSED (Phase A + B1 + B2.0 + B2.1a op set + B2.1b deferred downloads + masked CE + bf16/flash + pooled Phase A GEMM)"
+# The gpt2 family under deferred downloads (defect D1, 25 Oct 2026) and NoGrad forwards in a step
+# window (mtstudio's device SFT evaluation): eval forwards in a window vs outside on ParityLM exact,
+# swa, kimi, srd, flex and llama (loss 1e-6, logits 1e-5, no value-cache entry left stale), then
+# training steps under deferral vs the host. glibc's checks turn a write into freed memory (D1's
+# symptom) into an abort.
+MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 MALLOC_CHECK_=3 MALLOC_PERTURB_=85 ./test_gpt2_device
+echo "CUDA validation PASSED (Phase A + B1 + B2.0 + B2.1a op set + B2.1b deferred downloads + masked CE + bf16/flash + pooled Phase A GEMM + gpt2 family under deferral)"

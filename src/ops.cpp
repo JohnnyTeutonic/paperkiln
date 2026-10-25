@@ -360,7 +360,13 @@ Var layernorm(const Var& x, const Var& gamma, const Var& beta, float eps) {
     }
     // Cache xhat and 1/std for the backward -- same normalisation the
     // canonical layer_norm_stats_kernel/layer_norm_kernel pair computes.
-    auto xhat = std::make_shared<Matrix>(R, C);
+    // cached(): under deferral the device writes xhat as a deferred output,
+    // and the tape (or, under NoGrad, record() at once) drops it inside the
+    // step window. A plain shared_ptr left its stale entry keyed by freed
+    // storage, so step_end()'s materialize_all wrote into freed memory and a
+    // later matrix at the recycled address read as device-fresh: defect D1
+    // (docs/CUDA_PHASE_B2.md), the gpt2 family's deferral crash.
+    auto xhat = cached(Matrix(R, C));
     auto rstd = std::make_shared<std::vector<float>>(R);
     Matrix out(R, C);
     // B2.1a seam: one kernel computes out/xhat/rstd; the caches land on
@@ -398,7 +404,10 @@ Var layernorm(const Var& x, const Var& gamma, const Var& beta, float eps) {
         Matrix dg(1, C), db(1, C), dx(R, C);
         const bool on_dev = device::devops::layernorm_bwd(dY, *xhat, *rstd, g->data, want_dgb, &dg,
                                                           &db, x->requires_grad, &dx);
-        if (!on_dev) device::materialize(self->grad);  // B2.3c: host-read below
+        if (!on_dev) {
+            device::materialize(self->grad);  // B2.3c: host-read below
+            device::materialize(*xhat);       // the forward may have deferred it
+        }
 
         if (want_dgb) {
             if (!on_dev) {

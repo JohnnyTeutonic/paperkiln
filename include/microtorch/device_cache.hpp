@@ -273,6 +273,12 @@ bool host_stale(const Matrix& m);
 void materialize(const Matrix& m);
 // Download every stale buffer (step boundary, eval, checkpoint sweep).
 void materialize_all();
+// Value-cache entries holding a device-fresher copy than host storage right
+// now (diagnostics; 0 on CPU builds). After a NoGrad forward inside a
+// deferring window, once every Var of it has died, this is 0: any entry
+// left is a forward cache that died without discard(), the dying-temporary
+// class behind defect D1 (tests/test_gpt2_device.cpp).
+size_t stale_count();
 // Drop m's value-cache entry WITHOUT downloading — for a deferred
 // output that will never be read on host and is about to be destroyed.
 // A stale entry keyed by a freed host pointer makes step_end()'s
