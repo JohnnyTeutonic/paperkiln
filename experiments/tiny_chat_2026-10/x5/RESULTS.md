@@ -87,16 +87,40 @@ replies equal to `mtstudio score`'s argmax.
 
 ## Depth-attention weights (A5.7, descriptive)
 
-Queued on the laptop's CPU budget (job "arm X5: depth-attention traces", one core):
-`tools/carry5_attnres_trace.py` on each seed's SFT GGUF, gold history over the 828 context-family items, to
-`ART/e1_x5/trace_X5_r{s}/attnres_trace.json`. `analyze_x5.py` reads them into `depth_traces`.
+`tools/carry5_attnres_trace.py` on each seed's SFT GGUF, gold history, Carry-5's 828 context-family items
+(`traces_x5.json`). The weights are read where keramos's interpreter computes them. Source 0 is the
+embedding; source 2i + 1 is layer i's attention output and 2i + 2 its FFN output.
+
+| seed | 1 | 2 | 3 |
+|---|---:|---:|---:|
+| mean normalised routing entropy over the 32 mixtures that see 2+ sources | 0.878 | 0.887 | 0.875 |
+| mixtures near uniform (entropy > 0.95) | 3 | 1 | 3 |
+| embedding weight at answer positions, mean over mixtures (uniform would be 0.097) | 0.164 | 0.161 | 0.160 |
+| embedding weight, answer minus other assistant positions | +0.010 | +0.008 | +0.003 |
+| sources 0-2 (embedding, layer 0's outputs), answer minus other | +0.014 | +0.013 | +0.0003 |
+
+- **No collapse.** The routing is far from uniform in most mixtures, unlike the deep-layer collapse reported
+  for AttnRes at scale (2605.18855). The most decided mixture is layer 0's FFN input, which chooses between the
+  embedding and layer 0's attention output (entropy 0.02-0.05). The attention inputs of layers 2-4 are among
+  the closest to uniform.
+- **"Selective strengthening" of early activations at the answer is small.** The answer positions give the
+  embedding 0.3-1.0 points more weight than the other assistant positions do, and the early sources 0-1.4
+  points more. By fact distance (1-4) the embedding's and the early sources' answer-position weights are flat
+  to within 0.003.
+- **The head's mixture reads one mid-depth attention output more at the answer.** At answer positions its
+  largest weight goes to layer 5's attention output in seeds 1 and 3 (0.10 and 0.11, against 0.02 at the other
+  assistant positions) and to layer 8's in seed 2 (0.11 against 0.05). The embedding's head weight moves
+  0.002-0.005.
+- Read beside HX5-main: the model routes depth by content, but that routing does not improve carry-over on
+  Carry-5.
 
 ## Stage L0 on X5's pick (descriptive)
 
 The pick is seed 3 (Y -0.0507; the home pick over the three seeds' post folders, `ART/e1_x5/pick_e1_x5_X5`).
 
-Queued on the CPU budget (`tools/carry12_l0.py run --gen none`, four cores, into `ART/l0/pick_e1_x5_X5`),
-behind Stage L0 on pick_e1_60m_L32.
+Not yet scored: Stage L0 (`tools/carry12_l0.py run --gen none`, into `ART/l0/pick_e1_x5_X5`) holds 13 of its 91
+score chunks and resumes from them. CPU `mtstudio score` on this model runs at about 4.5 min per chunk, against
+about 0.8 for plain 20m_L16's pick (ROADMAP section 3), so the run waits behind the main session's queue.
 
 ## What this does and does not show
 

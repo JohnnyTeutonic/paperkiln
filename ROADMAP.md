@@ -12,9 +12,8 @@ where one of those documents carries a plan, this file wins.*
    E5, E1 and the recursion arm run on Colab; E1 at 60M waits for an L4 (first use of the
    RunPod backend for `tools/colab_chat/runner_multi.py`, under validation); Carry-12 and its
    Stage L0 follow E5 and E1.
-   - Arm X5 (amendment 5): HX5-main EQUIVALENT (`experiments/tiny_chat_2026-10/x5/RESULTS.md`). Left:
-     - the depth-attention traces (`tools/carry5_attnres_trace.py`, queued on the CPU budget);
-     - Stage L0 on `pick_e1_x5_X5` (queued behind pick_e1_60m_L32).
+   - Arm X5 (amendment 5): HX5-main EQUIVALENT (`experiments/tiny_chat_2026-10/x5/RESULTS.md`). Left: Stage L0
+     on `pick_e1_x5_X5` (13 of 91 chunks; it resumes; behind the main session's CPU queue).
 1. **The chat model (LOCAL_LLM_STACK.md sections 8 and 11, item 2).**
    - Jonathan's pick between the winner rule's two verdicts (`experiments/chat_general/RESULTS.md`,
      "The winner": live as registered, pk_sft_v1 under amendment A1).
@@ -70,6 +69,10 @@ Settled on 10 Oct 2026:
   results over the first's. `tools/bench_eval.py` is fixed (fafc4750: repeated ids become `id#n`, colliding
   keys refused); the published table is rescored by pk-bench2 (repinned to master). `mtstudio score` itself is
   correct on CUDA (`experiments/tiny_chat_2026-10/SCORE_AUDIT_2026-10-26.md`).
+- **`mtstudio score` on CPU is slow for `llama_attnres`.** Stage L0 on pick_e1_x5_X5 (20m_L16 + Attention
+  Residuals) scored about 4.5 min per chunk, against about 0.8 min for plain 20m_L16's pick on the same laptop
+  build (`~/pk_state_build/mtstudio`, four slots; the process sat at ~210% CPU). Not diagnosed. On the L4, training
+  runs at 0.67x plain.
 
 CI is green on all three workflows (Code Quality, the test
 suite with its Python suites and the fetcher drift check, and the wheel
