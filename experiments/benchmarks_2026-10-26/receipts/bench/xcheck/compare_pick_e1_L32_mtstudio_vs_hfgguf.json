@@ -1,0 +1,11 @@
+{
+ "a": "/content/chat/score_hfgguf/xcheck_mtstudio/pick_e1_L32",
+ "b": "/content/chat/score_hfgguf/bench/pick_e1_L32",
+ "requests": 199,
+ "tokens": 3827,
+ "max_abs_logprob_diff": 9.433514432469854,
+ "median_abs_sum_diff": 4.8194344941521194e-06,
+ "max_abs_sum_diff": 172.86207111620848,
+ "argmax_agree": "3787/3827",
+ "choice_agree": "58/59"
+}

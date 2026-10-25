@@ -1,0 +1,11 @@
+{
+ "a": "/content/chat/score_hfgguf/xcheck_mtstudio/pksft",
+ "b": "/content/chat/score_hfgguf/bench/pksft",
+ "requests": 199,
+ "tokens": 3827,
+ "max_abs_logprob_diff": 12.176017354707918,
+ "median_abs_sum_diff": 1.007671599495552e-05,
+ "max_abs_sum_diff": 137.5863171530721,
+ "argmax_agree": "3787/3827",
+ "choice_agree": "58/59"
+}

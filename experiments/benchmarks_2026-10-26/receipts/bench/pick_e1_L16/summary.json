@@ -1,0 +1,179 @@
+{
+ "meta": {
+  "tag": "pick_e1_L16",
+  "scorer": "hfgguf",
+  "items_sha256": "978548d1c64f9a361c2e3d210e889955061bd7f71a496ab6a7734caf3969033c",
+  "n_items": 28548,
+  "ctx": 512,
+  "truncated": {}
+ },
+ "sets": {
+  "hellaswag": {
+   "n": 10042,
+   "chance": 0.25,
+   "unfit": 0,
+   "acc": 0.2618,
+   "acc_ci95": [
+    0.2533,
+    0.2705
+   ],
+   "acc_norm": 0.2617,
+   "acc_norm_ci95": [
+    0.2532,
+    0.2704
+   ],
+   "headline": "acc_norm"
+  },
+  "arc_easy": {
+   "n": 2376,
+   "chance": 0.2502,
+   "unfit": 0,
+   "acc": 0.3577,
+   "acc_ci95": [
+    0.3387,
+    0.3772
+   ],
+   "acc_norm": 0.3413,
+   "acc_norm_ci95": [
+    0.3225,
+    0.3606
+   ],
+   "headline": "acc"
+  },
+  "arc_challenge": {
+   "n": 1172,
+   "chance": 0.2502,
+   "unfit": 0,
+   "acc": 0.1766,
+   "acc_ci95": [
+    0.1559,
+    0.1995
+   ],
+   "acc_norm": 0.1971,
+   "acc_norm_ci95": [
+    0.1753,
+    0.2208
+   ],
+   "headline": "acc_norm"
+  },
+  "piqa": {
+   "n": 1838,
+   "chance": 0.5,
+   "unfit": 0,
+   "acc": 0.5577,
+   "acc_ci95": [
+    0.5349,
+    0.5802
+   ],
+   "acc_norm": 0.5577,
+   "acc_norm_ci95": [
+    0.5349,
+    0.5802
+   ],
+   "headline": "acc"
+  },
+  "winogrande": {
+   "n": 1267,
+   "chance": 0.5,
+   "unfit": 0,
+   "acc": 0.4949,
+   "acc_ci95": [
+    0.4674,
+    0.5224
+   ],
+   "headline": "acc"
+  },
+  "lambada": {
+   "n": 5153,
+   "chance": 0.0,
+   "unfit": 0,
+   "acc": 0.1362,
+   "acc_ci95": [
+    0.1271,
+    0.1459
+   ],
+   "ppl": 972.287,
+   "headline": "acc"
+  },
+  "blimp": {
+   "n": 6700,
+   "chance": 0.5,
+   "unfit": 0,
+   "acc": 0.7034,
+   "acc_ci95": [
+    0.6924,
+    0.7143
+   ],
+   "per_paradigm": {
+    "adjunct_island": 0.6,
+    "anaphor_gender_agreement": 0.72,
+    "anaphor_number_agreement": 0.88,
+    "animate_subject_passive": 0.62,
+    "animate_subject_trans": 0.7,
+    "causative": 0.61,
+    "complex_NP_island": 0.48,
+    "coordinate_structure_constraint_complex_left_branch": 0.46,
+    "coordinate_structure_constraint_object_extraction": 0.72,
+    "determiner_noun_agreement_1": 0.94,
+    "determiner_noun_agreement_2": 0.94,
+    "determiner_noun_agreement_irregular_1": 0.85,
+    "determiner_noun_agreement_irregular_2": 0.91,
+    "determiner_noun_agreement_with_adj_2": 0.9,
+    "determiner_noun_agreement_with_adj_irregular_1": 0.82,
+    "determiner_noun_agreement_with_adj_irregular_2": 0.84,
+    "determiner_noun_agreement_with_adjective_1": 0.9,
+    "distractor_agreement_relational_noun": 0.63,
+    "distractor_agreement_relative_clause": 0.66,
+    "drop_argument": 0.7,
+    "ellipsis_n_bar_1": 0.75,
+    "ellipsis_n_bar_2": 0.7,
+    "existential_there_object_raising": 0.72,
+    "existential_there_quantifiers_1": 0.98,
+    "existential_there_quantifiers_2": 0.13,
+    "existential_there_subject_raising": 0.75,
+    "expletive_it_object_raising": 0.78,
+    "inchoative": 0.55,
+    "intransitive": 0.65,
+    "irregular_past_participle_adjectives": 0.6,
+    "irregular_past_participle_verbs": 0.79,
+    "irregular_plural_subject_verb_agreement_1": 0.88,
+    "irregular_plural_subject_verb_agreement_2": 0.78,
+    "left_branch_island_echo_question": 0.41,
+    "left_branch_island_simple_question": 0.6,
+    "matrix_question_npi_licensor_present": 0.59,
+    "npi_present_1": 0.59,
+    "npi_present_2": 0.68,
+    "only_npi_licensor_present": 0.17,
+    "only_npi_scope": 0.33,
+    "passive_1": 0.7,
+    "passive_2": 0.76,
+    "principle_A_c_command": 0.62,
+    "principle_A_case_1": 1.0,
+    "principle_A_case_2": 0.86,
+    "principle_A_domain_1": 0.97,
+    "principle_A_domain_2": 0.7,
+    "principle_A_domain_3": 0.55,
+    "principle_A_reconstruction": 0.47,
+    "regular_plural_subject_verb_agreement_1": 0.8,
+    "regular_plural_subject_verb_agreement_2": 0.81,
+    "sentential_negation_npi_licensor_present": 1.0,
+    "sentential_negation_npi_scope": 0.62,
+    "sentential_subject_island": 0.35,
+    "superlative_quantifiers_1": 0.58,
+    "superlative_quantifiers_2": 0.94,
+    "tough_vs_raising_1": 0.69,
+    "tough_vs_raising_2": 0.77,
+    "transitive": 0.69,
+    "wh_island": 0.77,
+    "wh_questions_object_gap": 0.75,
+    "wh_questions_subject_gap": 0.89,
+    "wh_questions_subject_gap_long_distance": 0.88,
+    "wh_vs_that_no_gap": 0.94,
+    "wh_vs_that_no_gap_long_distance": 0.98,
+    "wh_vs_that_with_gap": 0.54,
+    "wh_vs_that_with_gap_long_distance": 0.19
+   },
+   "headline": "acc"
+  }
+ }
+}

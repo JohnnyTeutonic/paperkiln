@@ -1,0 +1,11 @@
+{
+ "a": "/content/chat/score_hfgguf/xcheck_mtstudio/pick_pilot_s35",
+ "b": "/content/chat/score_hfgguf/bench/pick_pilot_s35",
+ "requests": 199,
+ "tokens": 3827,
+ "max_abs_logprob_diff": 10.147613166384902,
+ "median_abs_sum_diff": 9.588875059307611e-06,
+ "max_abs_sum_diff": 206.23533773440738,
+ "argmax_agree": "3787/3827",
+ "choice_agree": "58/59"
+}

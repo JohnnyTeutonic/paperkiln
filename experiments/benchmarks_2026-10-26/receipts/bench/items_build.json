@@ -1,0 +1,1 @@
+{"items": "/content/bench/bench_v1.jsonl", "sha256": "978548d1c64f9a361c2e3d210e889955061bd7f71a496ab6a7734caf3969033c", "counts": {"hellaswag": 10042, "arc_easy": 2376, "arc_challenge": 1172, "piqa": 1838, "winogrande": 1267, "lambada": 5153, "blimp": 67000}}

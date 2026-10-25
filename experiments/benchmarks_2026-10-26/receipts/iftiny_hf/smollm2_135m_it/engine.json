@@ -1,0 +1,9 @@
+{
+ "engine": "hf",
+ "repo": "HuggingFaceTB/SmolLM2-135M-Instruct",
+ "revision": "12fd25f77366fa6b3b4b768ec3050bf629380bac",
+ "torch": "2.4.1+cu124",
+ "transformers": "4.46.3",
+ "dtype": "float32",
+ "system": "native system turn of the model's chat template"
+}

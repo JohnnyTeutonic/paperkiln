@@ -1,0 +1,11 @@
+{
+ "a": "/content/chat/score_hfgguf/xcheck_mtstudio/pkbase",
+ "b": "/content/chat/score_hfgguf/bench/pkbase",
+ "requests": 199,
+ "tokens": 3827,
+ "max_abs_logprob_diff": 11.20884421425648,
+ "median_abs_sum_diff": 8.418531706411159e-06,
+ "max_abs_sum_diff": 128.78686812828118,
+ "argmax_agree": "3787/3827",
+ "choice_agree": "58/59"
+}

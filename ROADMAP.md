@@ -26,9 +26,8 @@ where one of those documents carries a plan, this file wins.*
      L4 (`tools/colab_chat/pref_pilot_v1.json`), then `experiments/chat_general/judge_pilot.sh`
      (200 prompts, $100 cap) at home; then the full ~3,000 prompts and DPO + NLL.
 2. **Conversation schema follow-ups** (LOCAL_LLM_STACK.md section 3 point 3; section 11, item 3):
-   the evaluations it lacks (IF-tiny, a single-turn verifiable instruction set for tiny models;
-   instruction compliance by turn distance; instruction placement, measurable on a v2 model), and
-   v2 (a reserved control-token block appended to the vocabulary) when Jonathan decides. His
+   instruction placement, measurable on a v2 model, and v2 (a reserved control-token block
+   appended to the vocabulary) when Jonathan decides. His
    three decisions sit behind one constant each: v1's system mode (`SYSTEM_MODE_V1` /
    `kSystemModeV1`, fold or none), the default loss policy (`DEFAULT_SFT_TURNS` /
    `kDefaultSftTurns`), and when v2 is built.
@@ -69,6 +68,12 @@ Settled on 10 Oct 2026:
   `atlas/PAPER_PLAN.md` stays as reference.
 
 ## 3. Broken now
+
+- **CUDA `mtstudio score`** returned wrong log-probabilities for the four requests of HellaSwag item 17234 (up
+  to 12 nats) in all five models of the benchmarks cross-check sample, inside one 128-request process on a
+  RunPod L4. The other 195 requests agree with the batched hfgguf engine within 2e-5. The item alone on the CPU
+  build and in the numpy IR matches hfgguf (`experiments/benchmarks_2026-10-26/RESULTS.md`, Engines; receipts
+  `receipts/bench/xcheck/`). Undiagnosed. Carry-5 and Stage L0 also score through `mtstudio score`.
 
 CI is green on all three workflows (Code Quality, the test
 suite with its Python suites and the fetcher drift check, and the wheel
@@ -187,6 +192,13 @@ advisory steps that cannot fail the build.
 
 ## 6. Engine
 
+- **Benchmarks** (`experiments/benchmarks_2026-10-26/`):
+  - pk-bench2 (`tools/colab_chat/bench_v2.json`; root `scripts/colab_driver.json`, disabled) scores the picks
+    that came home after pk-bench (pick_e1_L4, pick_e1_60m_L32, pick_e5_s0). It launches once RunPod is topped
+    up.
+  - Batch `mtstudio score`: it scores one request at a time on the host (~75 ms each for the 14.6M live model on
+    an L4).
+  - Cross-check ember's POST /score with `tools/bench_eval.py compare` once it is gated.
 - **CUDA** (records: `docs/CUDA_PHASE_B2.md`):
   - The third-party ops' device legs (queued until the RunPod top-up): root `scripts/colab_driver.json`
     entry pk-tp-cuda, `tools/colab_chat/thirdparty_cuda_v1.json` (the CUDA gate with

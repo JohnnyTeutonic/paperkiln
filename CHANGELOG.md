@@ -7,6 +7,24 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **Standard small benchmarks, IF-tiny and compliance by turn distance** (26 Oct;
+  `experiments/benchmarks_2026-10-26/RESULTS.md`).
+  - `tools/bench_build.py` builds HellaSwag, ARC-Easy/Challenge, PIQA, WinoGrande, LAMBADA and BLiMP from
+    pinned revisions; `sources.json` holds the licences and the sha256s, and the data are never committed.
+  - `tools/bench_eval.py` scores log-prob forced choice in lm-evaluation-harness's zero-shot formats, with
+    Wilson intervals and chance. Its engines are `mtstudio score`, HF transformers, `hfgguf` (a paperkiln GGUF
+    through transformers' GGUF loader, batched; within 3.2e-5 of mtstudio, argmax 20,581/20,581), ember's
+    POST /score and the numpy IR. `compare` holds two engines against each other on the same requests.
+  - On the benchmarks, pk_base_v1 is level with Pythia-160m except on LAMBADA and BLiMP (HellaSwag 0.292, ARC-E
+    0.437, PIQA 0.612).
+  - IF-tiny v1 (`corpus/eval/iftiny_v1.jsonl`, 574 items, 15 families) and turn distance v1
+    (`corpus/eval/ifdist_v1.jsonl`, 1,344 conversations) come from `tools/iftiny_build.py`. Their checkers are
+    `tools/iftiny_checks.py`, with 64 unit tests in `tests/test_iftiny_checks.py`.
+  - `tools/iftiny_eval.py` generates greedily through ember's /chat or HF. It replays a second pass, checks
+    replies against mtstudio's argmax, and checks the server's prompt ids against schema v1.
+  - On IF-tiny our models sit near their base rates (pk_sft_v1 macro 0.123, bare 0.062). Over distance their
+    compliance rises with the compliant history, not the instruction.
+
 - **The extractor's gaps, closed or refused by name** (26 Oct; LOCAL_LLM_STACK.md section 11 item 4.2, formerly 4.3).
   - **Flex options** (`tools/parity_model.hpp` FlexConfig, mtstudio `arch.custom`):
     - An expr activation or norm may read more inputs (`activation_inputs` / `norm_inputs`): a gate projection

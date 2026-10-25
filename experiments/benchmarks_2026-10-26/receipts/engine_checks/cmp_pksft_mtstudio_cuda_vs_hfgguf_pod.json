@@ -1,0 +1,7 @@
+{
+ "requests": 1371,
+ "max_abs_logprob_diff": 3.171290655323844e-05,
+ "median_abs_sum_diff": 1.196137353076665e-05,
+ "max_abs_sum_diff": 6.708709780411937e-05,
+ "argmax_agree": "20581/20581"
+}
