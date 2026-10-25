@@ -1309,7 +1309,9 @@ section.
       control did not have it.
   - **The smoke model, on ember's CPU:** greedy 40/40, worst 1.6e-6, decode equal to prefill bit for bit, and
     the chat server's path on the spot-check items 40/40 with logits bit-equal to `ir_logits`
-    (`smoke/x5s_gate_cpu.json`, `x5s_chat_cpu.json`).
+    (`smoke/x5s_gate_cpu.json`, `x5s_chat_cpu.json`). Ember's WASM leg finished after the runs launched:
+    40/40, 1.7e-6, top-1 3,699/3,699 (ember cfc5c1c, `smoke/`). Ember's later EMBER_DETERMINISTIC option
+    (fe01b35) is not in the pin.
   - e115fd3's first build for the L4 (sm_89, `ensure_ember`'s command) is the first X5 post job's own; its
     spot-check is that build's gate.
 - **Commits:** the runs' commit differs from 585206a8 only in documents (this file, README, ROADMAP,

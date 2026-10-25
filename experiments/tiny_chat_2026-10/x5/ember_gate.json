@@ -49,8 +49,13 @@
   },
   "cpu_chat_server": "tinyllama_server on the spot-check items: prompt ids 40/40, ids 40/40, logits bit-equal to ir_logits decode 40/40",
   "unused_query_nan": "logits bit-equal",
-  "receipts": "ember.cpp/experiments/attnres_x5_2026-10-25/smoke/x5s_gate_cpu.json, x5s_chat_cpu.json",
-  "cuda": "on the L4: each X5 run's 40-item spot-check (A5.4)"
+  "receipts": "ember cfc5c1c, experiments/attnres_x5_2026-10-25/smoke/",
+  "cuda": "on the L4: each X5 run's 40-item spot-check (A5.4)",
+  "wasm": {
+   "greedy": "40/40",
+   "logprob_worst": 1.7e-06,
+   "top1": "3699/3699"
+  }
  },
  "sm89_build": "e115fd3 compiled with ensure_ember's command for sm_89 (receipts/s1_pin_build.json), not run on an L4 by ember; the first X5 post job's spot-check is that build's gate"
 }
