@@ -243,8 +243,8 @@ Any attribute of a block node, and any field of a block state slot, may be
 structural keys: a node's `op`, `in`, `out`, `state`, `tensor_index`, `sizes`, `expr` and its
 tensor names (`weight`, `bias`, `router`, `experts`, `state_weight`, `tied_to`, `a`, `b`, `c`, `d`),
 and a slot's `name`, `kind`, `op`, `dtype`, `tensors`, `evict` and `kv_rows` (`kv_from`, reserved, is
-per-layer by definition). An attribute not given per layer is the same in every application. (Examples: gemma3's attention window and kv window, 512
-on local layers and 0 on global ones; RoPE theta 10000 / 1e6; `depth_route`'s `step`; the injection
+per-layer by definition). An attribute not given per layer is the same in every application.
+(Examples: gemma3's attention window and kv window, 512 on local layers and 0 on global ones; RoPE theta 10000 / 1e6; `depth_route`'s `step`; the injection
 `affine`'s `scale`.) A `per_layer` list whose length is not `block.repeat` is refused, as is a
 `per_layer` value outside the block.
 
@@ -1341,8 +1341,8 @@ stated, with the reason where it differs from ember's.
   ROUNDING of the recipe, because the stored third-party gate receipts were measured against it.
 - **Q4. Contraction.** Normative: every translation unit that computes an op whose text says
   "rounded" or "no fused multiply-add", EXACT or not, is built so that a * b + c is not contracted
-  (section 4.1). ember extends `-ffp-contract=off` to `graph_ir.cpp` and `utils.cpp`. paperkiln's
-  translation units do not pin the flag: on x86-64 without `-march` (every paperkiln build, the
+  (section 4.1). ember sets `-ffp-contract=off` on `graph_ir.cpp` and `utils.cpp` too (85e269e).
+  paperkiln's translation units do not pin the flag: on x86-64 without `-march` (every paperkiln build, the
   wheel's core excepted) there is no FMA instruction to contract into, so they conform there; on an
   FMA target they would not. Adding the flag is deferred to Jonathan (it is a compiler-flag change,
   and the registered tiny-chat arms rely on HEAD reproducing their pinned commits bit for bit; on
@@ -1463,7 +1463,8 @@ not contract without `/fp:contract`). Its EXACT results rest on sequential ascen
 no contraction. The rope rotation (`graph_ir.cpp`, `utils.cpp`), `linear_attention` and `ssm_scan`
 (`graph_ir.cpp`), whose text says "rounded", run outside those three files: safe on x86-64 (no
 `-march`) and WebAssembly (no FMA), not on arm64 (Apple clang contracts by default; GCC aarch64 in
-gnu++17 too), so ember extends the flag to `graph_ir.cpp` and `utils.cpp` (Q4). ember's `linear`
+gnu++17 too), so ember sets the flag on `graph_ir.cpp` and `utils.cpp` too (ember 85e269e, which
+changes no x86-64 instruction; Q4). ember's `linear`
 (`dot_f32_as_f64`) sums in a fixed 8-lane double order independent of T and of threads, so its
 whole-model prefill equals token-by-token decode bit for bit (section 4.5). Its CUDA paths are
 ROUNDING by construction (tiles, flash2, nvcc's default `--fmad`); its interpreter's cuBLAS runs
@@ -1510,10 +1511,9 @@ the engine has agreed to close, the specification already states the intended be
 | ember interpreter, WebAssembly | as CPU | as CPU (no FMA in the build) | as CPU | as CPU (4 GB heap for 0.5B models) |
 | ember tuned llama path, CPU and CUDA | llama | ROUNDING against the interpreter | CUDA: TF32 on by default (`EMBER_GEMM_TF32=0` gives FP32) | anything it is not selected for |
 
-**ember's tuned-path selection.** ember selects its tuned llama path today by `family_hint` "llama"
-with no window and no state tokens. Section 9.1 forbids deriving semantics from `family_hint`;
-ember is adding a structural check (the node list against the canonical llama graph) before
-selecting the path.
+**ember's tuned-path selection.** ember selects its tuned llama path by structural match (ember
+f2727c3): the node list against the canonical llama graph, with `family_hint` "llama" only as a
+pre-filter (section 9.1).
 
 **ember interpreter refusals** (capability, not validation; section 10.3): more than one kv slot per
 block; per-layer values other than attention window and sinks, rope theta and freq_scale, affine

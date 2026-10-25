@@ -33,9 +33,7 @@ where one of those documents carries a plan, this file wins.*
    Training-side support for the third-party ops paperkiln only references in numpy today
    (grouped-query attention, NEOX rotary, per-head RMSNorm, Mamba-1's conv1d_causal and
    selective_scan), so an extracted paper using them can train here, not only run in ember.
-5. **The IR as a specification (`spec/IR_SPEC.md`; LOCAL_LLM_STACK.md section 11, item 8).**
-   Exporters write `ir_version` 1 (ember ce41ffb reads it).
-6. **Colab runner: a re-provisioned driver pushes stale checkpoints over
+5. **Colab runner: a re-provisioned driver pushes stale checkpoints over
    finished runs** (`tools/colab_transfer_runner.py`). In Study 3 it
    overwrote four M25 event logs at step ~2900; the runs were re-run
    (execution clarification 1). Fix: never relay a checkpoint into a run
@@ -46,6 +44,8 @@ where one of those documents carries a plan, this file wins.*
 - The tiny-chat MoR block's nine runs (amendment 4, A4.7: his confirmation of the measured
   total) and R8 if A3.3's rule fires.
 - Carry-12's MSC rulings (licence unstated; an episode as one conversation; ConvAI2 duplicates).
+- Whether paperkiln's translation units pin `-ffp-contract=off` (spec/IR_SPEC.md Q15; on x86-64 it
+  changes no instruction; it is a compiler-flag change).
 
 Settled on 22 Oct 2026: up to four Colab sessions at once, one named session per job, each
 driver under the Windows watchdog. Settled on 16 Oct 2026: the post-training and corpus charter
