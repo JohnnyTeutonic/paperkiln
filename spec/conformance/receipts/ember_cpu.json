@@ -1,19 +1,19 @@
 {
  "spec": {
   "repository": "keramos",
-  "tag": "v1.1.0",
-  "commit": "322162aea13deba0039fc4c8e421fa72078c5b27"
+  "tag": "v1.1.1",
+  "commit": "6170ee052cf20d65687428a25288843148646c1e"
  },
  "engine": {
   "name": "ember.cpp",
   "commit": "39dcce94886fbac759c26c123007d7e106b84aed",
   "binary": "/home/jonat/ember_adapter_39dcce9/build/ir_adapter (git archive of that commit, CPU only: HAS_CUDA off, Release, GCC 13.3, WSL ext4; the interpreter's IR translation units with -ffp-contract=off)",
   "hello": "ir_adapter 2 (IR versions 0 and 1; spec revision 1.1)",
-  "run": "python3 tools/ir_conformance.py --adapter cmd:\"<binary> --conformance\" from keramos/ at v1.1.0, no EMBER_* variable kept, 2026-10-25"
+  "run": "python3 tools/ir_conformance.py --adapter cmd:\"<binary> --conformance\" from keramos/ at v1.1.1, no EMBER_* variable kept, 2026-10-25"
  },
  "_notes": [
   "The digest (section 3.10) and the recurrence op (section 6.10) were written for ember from the specification text; no paperkiln source (src/ir.cpp, recurrence.hpp/.cpp) was read. tools/ir_validate.py was run as a black-box oracle only (probes of the digest's edge cases, a stress comparison on 260,616 number spellings and 1,600 string objects, all equal).",
-  "SKIP: op 46 = the single-op fixtures of ops other than recurrence (the adapter's run_node runs recurrence nodes; every other op is checked through whole models and traces); grad 7 = run_node_grad (ember is an inference engine, section 6.10.5 is for training engines).",
+  "SKIP: op 46 = the single-op fixtures of ops other than recurrence (the adapter's run_node runs recurrence nodes; every other op is checked through whole models and traces); grad 8 = run_node_grad (ember is an inference engine, section 6.10.5 is for training engines).",
   "Dequantisation is ember's interpreter route (dequant_span_to_f32), the routine every CPU, CUDA (weights are dequantised on the host and uploaded as f32) and WebAssembly path reads; the blocks are also bit-equal in the WebAssembly build (ember experiments/ir_rev11_2026-10-25)."
  ],
  "adapter": {
@@ -29,9 +29,9 @@
   ]
  },
  "counts": {
-  "PASS": 221,
+  "PASS": 230,
   "FAIL": 0,
-  "SKIP": 53,
+  "SKIP": 54,
   "XFAIL": 0,
   "XPASS": 0
  },
@@ -51,21 +51,21 @@
    "XPASS": 0
   },
   "op": {
-   "PASS": 7,
+   "PASS": 8,
    "FAIL": 0,
    "SKIP": 46,
    "XFAIL": 0,
    "XPASS": 0
   },
   "refuse": {
-   "PASS": 72,
+   "PASS": 74,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
    "XPASS": 0
   },
   "digest": {
-   "PASS": 74,
+   "PASS": 80,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
@@ -81,7 +81,7 @@
   "grad": {
    "PASS": 0,
    "FAIL": 0,
-   "SKIP": 7,
+   "SKIP": 8,
    "XFAIL": 0,
    "XPASS": 0
   }
@@ -730,6 +730,12 @@
    "detail": "y 0 values differ in their bits; state avg.m 0 values differ in their bits; state avg.n 0 values differ in their bits"
   },
   {
+   "id": "op/recurrence/square_weight_declaration",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "y 0 values differ in their bits; state sq.h 0 values differ in their bits"
+  },
+  {
    "id": "refuse/unknown_op",
    "kind": "refuse",
    "verdict": "PASS",
@@ -1130,6 +1136,18 @@
    "kind": "refuse",
    "verdict": "PASS",
    "detail": "refused: IR_SPEC 6.10 (rule 34): recurrence weight A reads 'blk.0.ssm_b.weight', which has 8 elements; its declaration has 64"
+  },
+  {
+   "id": "refuse/recurrence_assignment_repeats_index",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.10 (rule 32): readout[0]: the assignment repeats index 'h' at column 5"
+  },
+  {
+   "id": "refuse/recurrence_bare_undeclared_name",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 6.10 (rule 32): readout: 'foo' at column 21 is not declared"
   },
   {
    "id": "refuse/version_key_mismatch",
@@ -1606,6 +1624,42 @@
    "detail": "refused"
   },
   {
+   "id": "digest/vectors/prose_overflow",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "digest/vectors/prose_negative_zero",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "digest/vectors/prose_integer_beyond_2p53",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "digest/vectors/prose_lone_surrogate",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "digest/vectors/prose_key_lone_surrogate",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "digest/vectors/prose_duplicate_key",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
    "id": "dequant/blocks/f32",
    "kind": "dequant",
    "verdict": "PASS",
@@ -1703,6 +1757,12 @@
   },
   {
    "id": "grad/recurrence/ema_exact",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "ember is an inference engine: no backward (IR_SPEC 6.10.5 is for training engines)"
+  },
+  {
+   "id": "grad/recurrence/square_weight_declaration",
    "kind": "grad",
    "verdict": "SKIP",
    "detail": "ember is an inference engine: no backward (IR_SPEC 6.10.5 is for training engines)"

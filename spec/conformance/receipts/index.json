@@ -1,5 +1,5 @@
 {
- "_comment": "Runs of the conformance suite (spec/IR_SPEC.md section 11.4): one results file per engine, with every case's verdict and detail. SKIP means the engine has no path for the case (the reference: the gradient cases, which are its own finite differences; mtstudio: single ops other than expr and recurrence, sessions, document loading, refusals, dequantisation; ember: single ops, its adapter has no run_node). ember's run is of the suite before revision 1.1 (157 cases).",
+ "_comment": "Runs of the conformance suite (spec/IR_SPEC.md section 11.4): one results file per engine, with every case's verdict and detail. SKIP means the engine has no path for the case (the reference: the gradient cases, which are its own finite differences; mtstudio: single ops other than expr and recurrence, sessions, document loading, refusals, dequantisation; ember: single ops other than recurrence, whose run_node its adapter has, and the gradient cases, since it does not train). The numpy and mtstudio runs are of revision 1.1 as first released (274 cases); ember's is of keramos v1.1.1 (284 cases).",
  "runs": [
   {
    "file": "ir_numpy.json",
@@ -129,41 +129,62 @@
   },
   {
    "file": "ember_cpu.json",
-   "engine": "ember.cpp ir_adapter, CPU interpreter, ember aa50a6112dfd706078e5c7849070f8ca5af620b4 (/home/jonat/ember_adapter_aa50a61/build/ir_adapter, a clean checkout; hello: 'ir_adapter 1 (IR versions 0 and 1)')",
+   "engine": "ember.cpp ir_adapter, CPU interpreter, ember 39dcce94886fbac759c26c123007d7e106b84aed (/home/jonat/ember_adapter_39dcce9/build/ir_adapter (git archive of that commit, CPU only: HAS_CUDA off, Release, GCC 13.3, WSL ext4; the interpreter's IR translation units with -ffp-contract=off); hello: 'ir_adapter 2 (IR versions 0 and 1; spec revision 1.1)'), against keramos v1.1.1 (6170ee052cf20d65687428a25288843148646c1e)",
    "date": "2026-10-25",
    "counts": {
-    "PASS": 111,
+    "PASS": 230,
     "FAIL": 0,
-    "SKIP": 46,
+    "SKIP": 54,
     "XFAIL": 0,
     "XPASS": 0
    },
    "by_kind": {
     "model": {
-     "PASS": 20,
+     "PASS": 21,
      "FAIL": 0,
      "SKIP": 0,
      "XFAIL": 0,
      "XPASS": 0
     },
     "trace": {
-     "PASS": 31,
+     "PASS": 37,
      "FAIL": 0,
      "SKIP": 0,
      "XFAIL": 0,
      "XPASS": 0
     },
     "op": {
-     "PASS": 0,
+     "PASS": 8,
      "FAIL": 0,
      "SKIP": 46,
      "XFAIL": 0,
      "XPASS": 0
     },
     "refuse": {
-     "PASS": 60,
+     "PASS": 74,
      "FAIL": 0,
      "SKIP": 0,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "digest": {
+     "PASS": 80,
+     "FAIL": 0,
+     "SKIP": 0,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "dequant": {
+     "PASS": 10,
+     "FAIL": 0,
+     "SKIP": 0,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "grad": {
+     "PASS": 0,
+     "FAIL": 0,
+     "SKIP": 8,
      "XFAIL": 0,
      "XPASS": 0
     }

@@ -19,7 +19,7 @@ engine interprets, rather than recognising a fixed architecture. IR version 1, s
 - Worked documents: `examples/*.ir.json`.
 - Implementations: paperkiln (exporter, trainer and `mtstudio`; CPU and CUDA) and ember.cpp
   (`graph_ir.cpp`, `graph_ir_cuda.cu`; CPU, CUDA, WebAssembly).
-- Contracts between paperkiln and ember.cpp, the chat template record and the log of gates:
+- Contracts between paperkiln and ember.cpp (outside this specification) and the log of gates:
   `LOCAL_LLM_STACK.md`, the master document of the workspace that holds both engines (sections 3 to
   5 and 10).
 - Revisions and the repository's tags: section 2.6.
@@ -1189,19 +1189,152 @@ Agreed with ember (23 October 2026), binding on any implementation:
 
 ## 8. The chat profile
 
-### 8.1 The template record and resolution
+### 8.1 Conversations and the template record
 
 The chat template travels in the model file as data: the GGUF string key `paperkiln.chat_template`
-holds the record as JSON. The record's fields, its rendering, `paperkiln/1`, the third-party
-records, resolution (`resolve()`, the same in every engine), export and the gates are specified in
-`LOCAL_LLM_STACK.md` section 3 point 3 (3a to 3h), with paperkiln's `tools/chat_template.py` and
-`include/microtorch/chat_template.hpp` as the implementations. They are part of this profile by
-reference and are not restated here.
+holds the record as JSON. One schema serves instruction tuning and chat alike. The implementations
+are paperkiln's `tools/chat_template.py` and its C++ twin `include/microtorch/chat_template.hpp`,
+which ember vendors.
+
+*Why (informative).* This avoids four common failures. Base, instruct and chat checkpoints are not
+three formats: an instruction is a one-exchange conversation. System prompts are not handled
+differently in every engine or silently dropped: the template declares its system mode. Single-turn
+SFT does not quietly erode multi-turn behaviour: the loss policy is declared and recorded. Templates
+do not drift between a tokenizer config, per-engine code and Jinja: one record, rendered by every
+engine and gated.
+
+#### 8.1.1 Schema
+
+A conversation is `{"messages": [{"role": "system" | "user" | "assistant", "content": str, "loss":
+bool?}], "uri", ...}`.
+
+- At most one system message, and only first. After it, user and assistant alternate, starting with
+  the user.
+- A training conversation ends on an assistant message; a prompt conversation ends on a user message.
+- An instruction example is a conversation with one exchange.
+- `loss` (assistant messages only) overrides the loss policy for that message; `false` keeps the reply
+  as context only.
+- The `tool` role is reserved: it is refused until a template version defines it.
+- Every pinned `corpus/data/<id>/dialogues.jsonl` of paperkiln is already in this form, so nothing is
+  converted and no hash changes. paperkiln's v1 fetchers drop or strip system messages
+  (`_common.normalise_dialogue`), and that rule stays in every v1 corpus.
+- `{"prompt", "completion"}`, `{"segments"}` and the pretraining text (`render_document`: the
+  rendered exchanges plus "\n") are rendered v1 forms. mtstudio still reads them, and new data is
+  stored as conversations. `chat_template.py parse` turns a rendered file back into conversations,
+  refusing any row that does not round-trip, and writes a ledger with the source and output sha256.
+- The evaluation sets keep their item schemas and convert at read time (`from_carry_item`,
+  `from_prompt`).
+
+#### 8.1.2 Loss policy
+
+`train.sft_loss`: `{"turns": "all" | "final" | "each"}` applies to conversation rows; legacy rows
+refuse it, because their rendering fixes their loss.
+
+- `all` (the default, behind `DEFAULT_SFT_TURNS` / `kDefaultSftTurns`) trains every reply; `final`
+  trains the last reply kept; `each` gives one row per reply.
+- A reply's trained tokens are its content plus the template's assistant close (v1: the
+  `<|endoftext|>` after it).
+- Markers, user and system text, padding, state ids and state positions never carry loss. State
+  blocks are inserted after rendering, as before.
+- A row keeps the longest prefix of whole exchanges that fits T + 1 (`each`: a reply whose prefix
+  does not fit is dropped); a reply is never cut.
+- Runs log a `sft_conversations` event with the template, the policy and the counts.
+
+#### 8.1.3 The template record
+
+The GGUF string key `paperkiln.chat_template` holds the record as JSON.
+
+- **Fields:** `name`, `version`, `bos`, `content` (`raw`, or `trim`: ASCII whitespace stripped from
+  each message's own text), `system` (`fold` with `join`, `turn` with `open`/`close`, or `none`),
+  `user` and `assistant` `{open, close}`, `generation_prompt`, optional `generation_prompt_nothink`,
+  `stop` `{eos, turn}`, `past_assistant` (`keep` or `strip_think`), optional `default_system`, and
+  `reserved`. Third-party records add `markers`, `match` and `architectures`.
+- **Rendering:** a conversation renders as bos, then each message as open + content + close, then
+  the generation prompt when a reply is wanted. Content holding a `reserved` string is refused, in
+  both languages and by `parse` alike, so no text can forge a turn. `<unk>` is ordinary text.
+- **paperkiln/1** is this section's template byte for byte:
+  - `<|user|>U<|assistant|>A<|endoftext|>` per exchange, then `<|user|>U<|assistant|>`;
+  - no BOS; ids 0-3 are `<unk>`, `<|endoftext|>`, `<|user|>` and `<|assistant|>`;
+  - stops at end-of-text (`eos`) or a generated role marker (`turn`, marker dropped);
+  - reserved: the three markers;
+  - system `fold`: the system text plus "\n\n" opens the first user message in the rendered window.
+    No token is spent and no vocabulary changes (Gemma's convention). `none` is implemented too;
+    the mode is `SYSTEM_MODE_V1` / `kSystemModeV1`, `fold` for v1.
+- **paperkiln/legacy-word** is the word-level `user: U assistant: A ` form, prompting with
+  `assistant:`, which ember serves in chat mode for those models.
+- **Third-party records (ember owns and gates them):** `chatml-qwen2.5/1` (default system message),
+  `chatml-qwen3/1` and `gemma3/1`.
+  - `chatml-qwen3/1` has `strip_think` and `thinking`: HF's `enable_thinking=False` appends
+    `<think>\n\n</think>\n\n` to the generation prompt, while the default (thinking on) appends
+    nothing.
+  - `gemma3/1`: bos `<bos>`, trim, fold with "\n\n", user and model turns between `<start_of_turn>`
+    and `<end_of_turn>\n`, stops `<end_of_turn>` and `<eos>`.
+  - `strip_think` applies only to content containing `</think>`:
+    `content.split("</think>")[-1].lstrip("\n")` for each assistant message before the last user
+    message. Prompt conversations always end on a user message, so HF's re-wrapping of replies after
+    it never arises and is not implemented.
+  - ChatML's assistant close is `<|im_end|>\n`, and its stop is `<|im_end|>`. A close's trailing text
+    is rendered in the next prompt and never generated, and both engines re-render the history every
+    turn: no stop set holds "\n".
+  - Engines never inject a system message that neither the client nor the record supplies.
+
+#### 8.1.4 Resolution
+
+`resolve()`, the same in every engine:
+
+1. a declared `paperkiln.chat_template`; a field value the engine does not implement is refused by
+   name, never guessed;
+2. ids 0-3 with exactly the v1 specials' texts gives `paperkiln/1` (the 8k `bpe` and the 16k
+   `llama3_bpe` vocabularies both qualify, tested), so every file exported before the declaration
+   resolves to v1 and is never rewritten;
+3. `tokenizer.ggml.model` "word" gives `paperkiln/legacy-word`;
+4. a third-party record, matched by the sha256 of the file's exact `tokenizer.chat_template`, else
+   by the marker check (each of its `markers` a single token and `general.architecture` in its
+   `architectures`; llama.cpp b6000's Gemma 3 GGUF carries no `tokenizer.chat_template`);
+5. otherwise no chat mode, with the reason logged.
+
+An engine older than the template work resolves any file with the v1 specials as v1 by step 2. That
+is supported only without system messages.
+
+#### 8.1.5 Export
+
+Every GGUF of a model whose vocabulary has the v1 specials (or whose spec names `chat.template`)
+carries the record and `tokenizer.chat_template`, after the tokenizer block, in every variant.
+`tokenizer.chat_template` is the Jinja generated from the record, equal to the record's rendering,
+for llama.cpp `--jinja`, LM Studio and Ollama's import. A `<name>.Modelfile` sits beside the F32
+GGUF: Ollama's TEMPLATE in Go syntax, plus `PARAMETER stop` per stop string. Third-party tools stop
+at `tokenizer.ggml.eos_token_id`; only paperkiln's and ember's engines also stop at a generated role
+marker (GGUF has no key for a second stop set). Word-level vocabularies write no keys.
+
+State tokens are defined over `paperkiln/1` only (section 8.2).
+
+#### 8.1.6 v2
+
+v2 (designed, not built) gives the system role its own token: a reserved block of 8 control tokens
+appended to an existing vocabulary (`<|system|>`, `<|tool|>`, `<|tool_result|>`, 5 spares).
+
+- Merges and text ids are unchanged, so every `.ids` corpus stays valid.
+- Bases gain embedding and head rows (mean-of-rows initialisation), and state ids shift.
+- It needs this specification to pin system rows under eviction. It is built when a model is to
+  train on system prompts; the tiny-chat programme stays v1.
+
+#### 8.1.7 Gates
+
+- **G1, v1 bit identity:** today's strings and ids on every frozen prompt set, Carry-5 and Carry-12
+  item, and pinned corpus.
+- **G2, SFT rows:** conversation rows equal the rendered rows, with and without state tokens.
+- **G3:** state-token insertion unchanged.
+- **G4, declared vs absent:** a v1 GGUF with and without the keys gives the same /chat prompt ids,
+  replies and stop reasons, 40/40 in mtstudio and ember (ember 69d7ca2, the tiny-chat pin, included).
+- **G5, template parity:**
+  - ember vs mtstudio 40/40 on a system-prompt set;
+  - the generated Jinja equals the record under jinja2;
+  - third-party records equal HF's templates;
+  - the hand-written cases in paperkiln's `tests/chat_template_cases.json` pass in both languages.
 
 ### 8.2 The state-token template contract
 
-`paperkiln.state_tokens.k` = k > 0 (GGUF metadata, uint32, absent = 0; `LOCAL_LLM_STACK.md` section
-3 point 3f) declares the state ids S_0 .. S_{k-1} (section 6.8).
+`paperkiln.state_tokens.k` = k > 0 (GGUF metadata, uint32, absent = 0) declares the state ids S_0 .. S_{k-1} (section 6.8).
 
 - They are defined over the chat template `paperkiln/1` only: a file that declares another
   `paperkiln.chat_template` with k > 0 is refused. A file with state tokens has architecture
@@ -1866,6 +1999,11 @@ equal to dc29b5e6 bit for bit) and the pinned commits of the RunPod campaigns ar
 
 ## Appendix B. Changelog
 
+- **v1.1.2** (tag, 25 October 2026; section 2.6). Documentation: the chat profile's normative text
+  (conversations, loss policy, the template record, resolution, export, v2, gates) is section 8.1,
+  where it had been included by reference from `LOCAL_LLM_STACK.md` section 3 point 3, with the same
+  meaning; Appendix C states ember's revision 1.1 and its CUDA path for Mixture-of-Recursions (ember
+  66c8b2c).
 - **v1.1.1** (tag, 25 October 2026; section 2.6). Clarifications from ember.cpp's implementation of
   1.1, ruled by the specification's owner: the integer token `-0` serialises as `0` and has a digest
   (section 3.10); every I-JSON check runs on the whole document before the `_` members are removed,
@@ -1911,8 +2049,8 @@ the engine has agreed to close, the specification already states the intended be
 | numpy reference (`tools/ir_numpy.py`) | core, state, recursion, chat, thirdparty, recurrence | the reference (prefill only: no cache; no backward) | float32 numpy (BLAS order) | `rope_heads` "first" |
 | paperkiln `mtstudio`, CPU | the families it trains (section 9.2), from its own runs; recurrence nodes and their gradients through `ir_eval` | EXACT ops EXACT on every build (`-ffp-contract=off`); eviction EXACT at equal chunking (Appendix A) | `matmul_optimized` (FMA, shape-dependent order) | documents it did not export (it runs its modules, not documents); recurrence bodies with weights of their own in its training lane (the op takes them) |
 | paperkiln `mtstudio`, CUDA | as CPU | ROUNDING | cuBLAS FP32; TF32 opt-in | as CPU |
-| ember interpreter, CPU | core, state, recursion, chat, thirdparty | EXACT where this document says so | `dot_f32_as_f64`, a fixed 8-lane double order independent of T and threads | see below |
-| ember interpreter, CUDA | as CPU, ops with device kernels | ROUNDING by construction (tiles, flash2, nvcc's default `--fmad`) | cuBLAS FP32 (its own handle at default math) | documents with an op without a device kernel are served on the CPU automatically (MoR documents among them); `EMBER_IR_DEVICE=cpu` forces the CPU for every document. `mask: turn_state` and its lazy eviction run on the device, ROUNDING, from ember 210f3b8 (below) |
+| ember interpreter, CPU | core, state, recursion, chat, thirdparty, recurrence | EXACT where this document says so | `dot_f32_as_f64`, a fixed 8-lane double order independent of T and threads | see below |
+| ember interpreter, CUDA | as CPU, ops with device kernels | ROUNDING by construction (tiles, flash2, nvcc's default `--fmad`) | cuBLAS FP32 (its own handle at default math) | documents with an op without a device kernel are served on the CPU automatically (documents with recurrence among them); `EMBER_IR_DEVICE=cpu` forces the CPU for every document. `mask: turn_state` and its lazy eviction run on the device, ROUNDING, from ember 210f3b8; depth_route with kv_rows: active runs on the device, ROUNDING, from ember 66c8b2c (below) |
 | ember interpreter, WebAssembly | as CPU | as CPU (no FMA in the build) | as CPU | as CPU (4 GB heap for 0.5B models) |
 | ember tuned llama path, CPU and CUDA | llama | ROUNDING against the interpreter | CUDA: TF32 on by default (`EMBER_GEMM_TF32=0` gives FP32) | anything it is not selected for |
 
@@ -1925,12 +2063,20 @@ the turn_state mask and its lazy eviction run on the device (ember aadeed2; the 
 attention reduction pads head_dim to a power of two, with a barrier fix, kernel-tested at 12 head_dims,
 606e1d4), ROUNDING. On state4 on a T4 against ember's CPU: greedy 40/40, top-1 9264/9264, prefill logits
 within 6.2e-7; kv rows held equal the CPU's and mtstudio's on 40/40 prompts; rewinds into evicted turns
-80/80. MoR documents are still served on the CPU in CUDA builds.
+80/80.
 
-**ember and revision 1.1.** ember's interpreter refuses `recurrence` by name (an op it does not define)
-until it implements the profile, and does not yet check `paperkiln.ir_sha256` or answer `digest`,
-`dequantize` and `run_node_grad`; the contract it was sent is recorded in `LOCAL_LLM_STACK.md`
-section 10.
+**ember's CUDA builds and Mixture-of-Recursions.** ember 66c8b2c or later serves MoR documents on CUDA.
+The router logits come from the device and each token's depth and gate from the CPU's routing code on
+the host, so a depth is EXACT given its logits; each recursion step runs over its active tokens at
+their absolute positions into each application's compact kv cache, and decode runs per launch.
+ROUNDING. On a T4 against ember's CPU on mor3 and mor2p0: greedy 40/40, top-1 1299/1299, logits within
+2.0e-7, depth traces 40/40 in prefill and decode, kv rows held per application equal to the CPU's,
+rewinds 160/160. A pos_embedding inside a MoR block keeps the document on the CPU.
+
+**ember and revision 1.1.** ember 39dcce9 or later implements revision 1.1 on its CPU interpreter,
+written from this text: it checks `paperkiln.ir_sha256` at load (rule 30), answers `digest` and
+`dequantize` (one dequantisation routine, which its CUDA and WebAssembly paths read too) and runs
+`recurrence` (rules 31-34). It does not answer `run_node_grad`, as it does not train.
 
 **ember interpreter refusals** (capability, not validation; section 10.3): more than one kv slot per
 block; per-layer values other than attention window and sinks, rope theta and freq_scale, affine
@@ -1941,12 +2087,10 @@ recurrent state or a windowed slot; `mask: turn_state` with `kv_rows: active`; e
 state; `expr` nested deeper than 200 (the CUDA expr kernel takes up to 96 instructions, a stack of 16
 and 8 reductions, and serves larger expressions on the CPU).
 
-**ember's conformance.** At ember aa50a61 (`tensor_index` implemented, closed key sets and the
-load-time refusals of its review in place) its adapter passes the suite with 111 pass, 0 fail and 46
-skip, the skips being the single-op fixtures (no `run_node`); receipt
-`conformance/receipts/ember_cpu.json`. ember's comparison of its load-time verdicts with
-`tools/ir_validate.py`, made before revision 1.0's last two validator changes, agreed on 246 of 248
-documents and on 166 of 166 document-only checks.
+**ember's conformance.** At ember 39dcce9 its adapter passes keramos v1.1.1 with 230 pass, 0 fail and
+54 skip, the skips being the single-op fixtures of ops other than `recurrence` (its `run_node` runs
+recurrence nodes) and the gradient cases; receipt `conformance/receipts/ember_cpu.json`. ember's
+comparison of its load-time verdicts with `tools/ir_validate.py` finds no disagreement at v1.1.1.
 
 **Differences between the validator and ember at load:**
 - *Two kv slots in one block* (expected, remains). Valid (section 6.1); ember refuses them as a
