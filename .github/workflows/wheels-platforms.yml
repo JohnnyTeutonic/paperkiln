@@ -1,0 +1,47 @@
+name: Wheels (macOS, Windows)
+
+# Builds the macOS and Windows wheels with cibuildwheel and keeps them as workflow artifacts.
+# Nothing here publishes: no PyPI upload, no release. Runs on a push to the `wheels` branch
+# (LOCAL_LLM_STACK.md section 11 item 6) or by hand; the Linux wheels stay in wheels.yml.
+
+on:
+  push:
+    branches: [ wheels ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  wheels:
+    name: Build wheels (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14        # Apple silicon, arm64
+            archs: arm64
+          - os: macos-13        # Intel, x86_64
+            archs: x86_64
+          - os: windows-latest  # x64 (win32 is skipped in pyproject.toml)
+            archs: AMD64
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.21
+        env:
+          CIBW_ARCHS: ${{ matrix.archs }}
+          CIBW_BUILD_VERBOSITY: 1
+          MACOSX_DEPLOYMENT_TARGET: ${{ matrix.archs == 'arm64' && '11.0' || '10.15' }}
+
+      - name: Upload wheel artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.os }}-${{ matrix.archs }}
+          path: wheelhouse/*.whl
+          if-no-files-found: error
