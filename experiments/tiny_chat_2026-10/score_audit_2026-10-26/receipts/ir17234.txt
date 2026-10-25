@@ -1,0 +1,9 @@
+selected items with a duplicated id: ['hellaswag/17234']
+copy 0 hellaswag/17234|0 len 15: IR vs CUDA xcheck 6.032452977144942e-06, IR vs hfgguf None; lens cuda 15 hf 30
+copy 0 hellaswag/17234|1 len 8: IR vs CUDA xcheck 1.0486821823363357e-05, IR vs hfgguf None; lens cuda 8 hf 34
+copy 0 hellaswag/17234|2 len 12: IR vs CUDA xcheck 1.1955015102316224e-05, IR vs hfgguf None; lens cuda 12 hf 56
+copy 0 hellaswag/17234|3 len 6: IR vs CUDA xcheck 3.154037510721963e-06, IR vs hfgguf None; lens cuda 6 hf 45
+copy 1 hellaswag/17234|0 len 30: IR vs CUDA xcheck None, IR vs hfgguf 7.666420870133805e-06; lens cuda 15 hf 30
+copy 1 hellaswag/17234|1 len 34: IR vs CUDA xcheck None, IR vs hfgguf 1.284218832875439e-05; lens cuda 8 hf 34
+copy 1 hellaswag/17234|2 len 56: IR vs CUDA xcheck None, IR vs hfgguf 1.2052240550453064e-05; lens cuda 12 hf 56
+copy 1 hellaswag/17234|3 len 45: IR vs CUDA xcheck None, IR vs hfgguf 1.265179731824162e-05; lens cuda 6 hf 45

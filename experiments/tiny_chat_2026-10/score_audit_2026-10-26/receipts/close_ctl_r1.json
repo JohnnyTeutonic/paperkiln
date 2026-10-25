@@ -1,0 +1,34 @@
+[
+ {
+  "id": "carry5_v1:recall:0182",
+  "mode": "twin",
+  "gap_stored": 0.0012434005013410854,
+  "max_abs_sum_diff": 1.5506156440636687e-05,
+  "choice_stored": 2,
+  "choice_ir": 2
+ },
+ {
+  "id": "carry5_v1:recall:0316",
+  "mode": "twin",
+  "gap_stored": 0.00014087238386650824,
+  "max_abs_sum_diff": 1.1591644245356747e-05,
+  "choice_stored": 0,
+  "choice_ir": 0
+ },
+ {
+  "id": "carry5_v1:correction:0200",
+  "mode": "self",
+  "gap_stored": 0.00020113434666058083,
+  "max_abs_sum_diff": 1.1418966685994292e-05,
+  "choice_stored": 3,
+  "choice_ir": 3
+ },
+ {
+  "id": "carry5_v1:knowledge:0037",
+  "mode": "twin",
+  "gap_stored": 0.005951110469677445,
+  "max_abs_sum_diff": 7.782208957252124e-06,
+  "choice_stored": 0,
+  "choice_ir": 0
+ }
+]

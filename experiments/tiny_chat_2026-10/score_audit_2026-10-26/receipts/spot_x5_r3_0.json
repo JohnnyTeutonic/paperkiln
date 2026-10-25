@@ -1,0 +1,109 @@
+{
+ "run": "x5_r3",
+ "engine": "numpy IR (spec/tools/ir_numpy.py) on the GGUF",
+ "every": 111,
+ "offset": 0,
+ "items": 8,
+ "requests": 64,
+ "max_abs_sum_diff": 1.3063082732855946e-05,
+ "choice_differs": 0,
+ "seconds": 20.5,
+ "rows": [
+  {
+   "id": "carry5_v1:recall:0001",
+   "mode": "self",
+   "max_abs_sum_diff": 4.40426821413098e-06,
+   "same_choice": true
+  },
+  {
+   "id": "carry5_v1:recall:0001",
+   "mode": "twin",
+   "max_abs_sum_diff": 1.0346692988605355e-05,
+   "same_choice": true
+  },
+  {
+   "id": "carry5_v1:recall:0112",
+   "mode": "self",
+   "max_abs_sum_diff": 3.2262811124894597e-06,
+   "same_choice": true
+  },
+  {
+   "id": "carry5_v1:recall:0112",
+   "mode": "twin",
+   "max_abs_sum_diff": 1.0297441392026485e-05,
+   "same_choice": true
+  },
+  {
+   "id": "carry5_v1:recall:0223",
+   "mode": "self",
+   "max_abs_sum_diff": 6.446029992446256e-06,
+   "same_choice": true
+  },
+  {
+   "id": "carry5_v1:recall:0223",
+   "mode": "twin",
+   "max_abs_sum_diff": 7.768360944737651e-06,
+   "same_choice": true
+  },
+  {
+   "id": "carry5_v1:recall:0334",
+   "mode": "self",
+   "max_abs_sum_diff": 3.91642610964027e-06,
+   "same_choice": true
+  },
+  {
+   "id": "carry5_v1:recall:0334",
+   "mode": "twin",
+   "max_abs_sum_diff": 1.2606637657341935e-05,
+   "same_choice": true
+  },
+  {
+   "id": "carry5_v1:correction:0013",
+   "mode": "self",
+   "max_abs_sum_diff": 9.866616762721492e-06,
+   "same_choice": true
+  },
+  {
+   "id": "carry5_v1:correction:0013",
+   "mode": "twin",
+   "max_abs_sum_diff": 1.1349206836541725e-05,
+   "same_choice": true
+  },
+  {
+   "id": "carry5_v1:correction:0124",
+   "mode": "self",
+   "max_abs_sum_diff": 1.3063082732855946e-05,
+   "same_choice": true
+  },
+  {
+   "id": "carry5_v1:correction:0124",
+   "mode": "twin",
+   "max_abs_sum_diff": 1.0218340076306731e-05,
+   "same_choice": true
+  },
+  {
+   "id": "carry5_v1:topic:0019",
+   "mode": "self",
+   "max_abs_sum_diff": 1.1311987648809918e-05,
+   "same_choice": true
+  },
+  {
+   "id": "carry5_v1:topic:0019",
+   "mode": "twin",
+   "max_abs_sum_diff": 6.259631767591145e-06,
+   "same_choice": true
+  },
+  {
+   "id": "carry5_v1:topic:0130",
+   "mode": "self",
+   "max_abs_sum_diff": 1.0609411400963609e-05,
+   "same_choice": true
+  },
+  {
+   "id": "carry5_v1:topic:0130",
+   "mode": "twin",
+   "max_abs_sum_diff": 5.006624213876876e-06,
+   "same_choice": true
+  }
+ ]
+}

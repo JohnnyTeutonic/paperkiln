@@ -1,0 +1,1 @@
+pod CUDA mtstudio score (xcheck chunk 0, pick_e1_L16, 128 requests incl. hellaswag/17234 rows 12-15) vs numpy IR at home: max |dlogprob| 1.86e-05, argmax 3176/3176

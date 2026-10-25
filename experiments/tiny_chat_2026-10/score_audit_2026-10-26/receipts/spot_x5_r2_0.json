@@ -1,0 +1,109 @@
+{
+ "run": "x5_r2",
+ "engine": "numpy IR (spec/tools/ir_numpy.py) on the GGUF",
+ "every": 111,
+ "offset": 0,
+ "items": 8,
+ "requests": 64,
+ "max_abs_sum_diff": 1.694367621318804e-05,
+ "choice_differs": 0,
+ "seconds": 21.8,
+ "rows": [
+  {
+   "id": "carry5_v1:recall:0001",
+   "mode": "self",
+   "max_abs_sum_diff": 3.533901582919441e-06,
+   "same_choice": true
+  },
+  {
+   "id": "carry5_v1:recall:0001",
+   "mode": "twin",
+   "max_abs_sum_diff": 1.2226938194359604e-05,
+   "same_choice": true
+  },
+  {
+   "id": "carry5_v1:recall:0112",
+   "mode": "self",
+   "max_abs_sum_diff": 1.585157102113044e-05,
+   "same_choice": true
+  },
+  {
+   "id": "carry5_v1:recall:0112",
+   "mode": "twin",
+   "max_abs_sum_diff": 6.836824663736252e-06,
+   "same_choice": true
+  },
+  {
+   "id": "carry5_v1:recall:0223",
+   "mode": "self",
+   "max_abs_sum_diff": 6.908712066433509e-06,
+   "same_choice": true
+  },
+  {
+   "id": "carry5_v1:recall:0223",
+   "mode": "twin",
+   "max_abs_sum_diff": 1.2848630703388153e-05,
+   "same_choice": true
+  },
+  {
+   "id": "carry5_v1:recall:0334",
+   "mode": "self",
+   "max_abs_sum_diff": 1.694367621318804e-05,
+   "same_choice": true
+  },
+  {
+   "id": "carry5_v1:recall:0334",
+   "mode": "twin",
+   "max_abs_sum_diff": 6.037325668728499e-06,
+   "same_choice": true
+  },
+  {
+   "id": "carry5_v1:correction:0013",
+   "mode": "self",
+   "max_abs_sum_diff": 9.517976481632218e-06,
+   "same_choice": true
+  },
+  {
+   "id": "carry5_v1:correction:0013",
+   "mode": "twin",
+   "max_abs_sum_diff": 9.212086776955175e-06,
+   "same_choice": true
+  },
+  {
+   "id": "carry5_v1:correction:0124",
+   "mode": "self",
+   "max_abs_sum_diff": 1.1376349366543081e-05,
+   "same_choice": true
+  },
+  {
+   "id": "carry5_v1:correction:0124",
+   "mode": "twin",
+   "max_abs_sum_diff": 1.475595247324435e-05,
+   "same_choice": true
+  },
+  {
+   "id": "carry5_v1:topic:0019",
+   "mode": "self",
+   "max_abs_sum_diff": 8.732048183190955e-06,
+   "same_choice": true
+  },
+  {
+   "id": "carry5_v1:topic:0019",
+   "mode": "twin",
+   "max_abs_sum_diff": 4.5752389681297245e-06,
+   "same_choice": true
+  },
+  {
+   "id": "carry5_v1:topic:0130",
+   "mode": "self",
+   "max_abs_sum_diff": 6.574587075647287e-06,
+   "same_choice": true
+  },
+  {
+   "id": "carry5_v1:topic:0130",
+   "mode": "twin",
+   "max_abs_sum_diff": 1.1216484338660848e-05,
+   "same_choice": true
+  }
+ ]
+}

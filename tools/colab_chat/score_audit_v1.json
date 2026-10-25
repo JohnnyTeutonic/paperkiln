@@ -1,0 +1,11 @@
+{
+ "_comment": "The CUDA leg of the score audit (experiments/tiny_chat_2026-10/SCORE_AUDIT_2026-10-26.md), one RunPod L4, ~15 min: tools/colab_chat/score_audit_vm.sh runs the pod's CUDA mtstudio score, in the post jobs' environment, on the benchmarks cross-check's chunk 0 plus HellaSwag 17234's second item (pick_e1_L16) and on Carry-5 chunk 0 of arm X's control seed 1 and X5 seed 1: in order, reversed, one request per process, and against the home CPU build's outputs. Uploads: see the driver entry (C:/ml_artifacts/score_audit/inputs and the two weights files).",
+ "max_parallel": 1,
+ "jobs": [
+  {
+   "name": "score_audit",
+   "cmd": ["bash", "tools/colab_chat/score_audit_vm.sh", "{out}"],
+   "outputs": ["results.tar.gz"]
+  }
+ ]
+}
