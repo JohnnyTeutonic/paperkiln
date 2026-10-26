@@ -1,13 +1,13 @@
 {
  "spec": {
   "repository": "keramos",
-  "tag": "v1.3.0",
-  "commit": "da9ead6175925aa6b19758aa828cdc42236a45a6"
+  "tag": "v1.3.1",
+  "commit": "c898414cc1b569b50e0a2061d01ac269edce2d30"
  },
  "engine": {
   "name": "keramos-cleanroom (Rust), kcr --conformance, built from keramos 1d1fd3773e82b6c03d263426fe95fa10fb1cae51 (cleanroom/rust; rustc 1.98.1, release, no crates, WSL ext4)",
   "environment": "the runner under CPython 3.12.3, numpy 2.3.3, WSL",
-  "run": "python3 tools/ir_conformance.py --adapter cmd:kcr --conformance, keramos working tree equal to v1.3.0 (da9ead61), 2026-10-27, the engine unchanged since 1d1fd377 (revision 1.2, a black box here); skips: the 8 gradient cases and the 32 chat cases; XFAIL: the 7 revision-1.3 cases expected_fail.json lists (its run_node ignores attention.position_bias; rule 38 is not built)"
+  "run": "python3 tools/ir_conformance.py --adapter cmd:kcr --conformance, keramos working tree equal to v1.3.1 (c898414c), 2026-10-27, the engine unchanged since 1d1fd377 (revision 1.2, a black box here); skips: the 8 gradient cases and the 32 chat cases; XFAIL: the 8 revision-1.3 cases expected_fail.json lists (its run_node ignores attention.position_bias; rule 38 is not built)"
  },
  "adapter": {
   "engine": "keramos-cleanroom (Rust)",
@@ -22,10 +22,10 @@
   ]
  },
  "counts": {
-  "PASS": 357,
+  "PASS": 360,
   "FAIL": 0,
   "SKIP": 40,
-  "XFAIL": 7,
+  "XFAIL": 8,
   "XPASS": 0
  },
  "by_kind": {
@@ -51,10 +51,10 @@
    "XPASS": 0
   },
   "refuse": {
-   "PASS": 87,
+   "PASS": 89,
    "FAIL": 0,
    "SKIP": 0,
-   "XFAIL": 4,
+   "XFAIL": 5,
    "XPASS": 0
   },
   "digest": {
@@ -79,7 +79,7 @@
    "XPASS": 0
   },
   "accept": {
-   "PASS": 34,
+   "PASS": 35,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
@@ -1235,6 +1235,18 @@
    "detail": "refused: IR_SPEC 7.4 (rule 20): step [-1, 0, -1, 1, 2] does not form the consecutive, ascending, equal steps 0 .. 2"
   },
   {
+   "id": "refuse/mor_reads_tokens",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 7.4 (rule 36): block[0] add reads tokens (its input 1), which no earlier node writes; IR_SPEC 3.5 (rule 17a): bl"
+  },
+  {
+   "id": "refuse/mor_reads_route_out",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 7.4 (rule 36): block[0] add reads rec_depth (its input 1), which no earlier node writes; IR_SPEC 7.4 (rule 17a):"
+  },
+  {
    "id": "refuse/position_bias_bucket_negative",
    "kind": "refuse",
    "verdict": "PASS",
@@ -1332,6 +1344,12 @@
   },
   {
    "id": "refuse/architecture_without_graph",
+   "kind": "refuse",
+   "verdict": "XFAIL",
+   "detail": "accepted [expected to fail: revision 1.3's rule 38 (IR_SPEC 3.1): not in the clean-room engine (revision 1.2]"
+  },
+  {
+   "id": "refuse/architecture_substituted_document",
    "kind": "refuse",
    "verdict": "XFAIL",
    "detail": "accepted [expected to fail: revision 1.3's rule 38 (IR_SPEC 3.1): not in the clean-room engine (revision 1.2]"
@@ -2322,6 +2340,12 @@
   },
   {
    "id": "accept/documents/example_swa_tiny",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/substituted_over_duplicate_embedded",
    "kind": "accept",
    "verdict": "PASS",
    "detail": "accepted"

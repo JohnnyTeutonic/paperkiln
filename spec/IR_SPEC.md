@@ -2,7 +2,7 @@
 
 *Normative specification of the paperkiln model IR: a versioned JSON graph of a language model that an
 engine interprets, rather than recognising a fixed architecture. IR version 1, specification revision
-1.3 (27 October 2026; v1.3.1).*
+1.3 (27 October 2026; v1.3.3).*
 
 - Repository: keramos (`github.com/JohnnyTeutonic/keramos`), which holds this text, its schema, the
   reference tools, the worked documents and the conformance suite. Paths in this document are
@@ -2313,9 +2313,9 @@ extractor's proposal of T5's bias (paperkiln, 26 October 2026). Each with the an
   composes with windows, sinks, `turn_state` and grouped-query attention; it is structural; rule 39.
   The proposal's numpy lines matched `mtstudio score` on paperkiln's gate model within 2.62e-7 of
   max(1, |ref|), greedy 40/40, and the reference's lines give its values bit for bit on the three op
-  cases. The suite has the three op cases and four refusals; the whole-model case `pk_flex_t5`
-  (paperkiln's gate recipe) follows at v1.3.2, a new case that moves no existing value (section 2.6).
-  ember refuses the attribute by name until it implements it (Appendix C).
+  cases. The suite has the three op cases, four refusals and, from v1.3.2, the whole-model case
+  `pk_flex_t5` (paperkiln's gate recipe), a new case that moves no existing value (section 2.6).
+  ember runs it on its CPU interpreter (1ab6a252; the op cases within 1.6e-7 at v1.3.0).
 
 - **transformers' findings** (`adapters/hf/FINDINGS.txt`, H1 to H6, keramos f1b7b49). H1: a
   multi-id forward over an existing state is now a case of its own for every model (traces
@@ -2431,6 +2431,14 @@ equal to dc29b5e6 bit for bit) and the pinned commits of the RunPod campaigns ar
 
 ## Appendix B. Changelog
 
+- **v1.3.3** (tag, 27 October 2026; section 2.6). The runner: an expected failure (`expected_fail.json`) covers a case the engine fails with an error as well as one it fails on values, so the clean-room engine's refusal of `position_bias` at load reports XFAIL. No case or expected value changes.
+- **v1.3.2** (tag, 27 October 2026; section 2.6). The whole-model case of T5's relative bias, `pk_flex_t5`
+  (paperkiln's recipe in its `tools/ir_conformance_mtstudio.py`: flex, rmsnorm, relu, `position:
+  "t5_relative"` with 8 buckets up to distance 12, so the 16-token contexts reach the last bucket; trained by
+  mtstudio at paperkiln 5c2e5064), with its decode and chunks traces, its accept case and its digest
+  vector: 413 cases, no existing value moves. Appendix C and 12.4: ember runs `position_bias` on its CPU
+  interpreter (1ab6a252). The clean-room engine's 4 cases of the model are expected failures (its 1.2
+  build refuses the attribute).
 - **v1.3.1** (tag, 27 October 2026; section 2.6). ember's five questions on revision 1.3, settled by
   stating what the reference does (section 12.4): rules 35 and 38 under substitution (3.2, 3.1), rules 17a
   and 36 under depth_route (10.1), rule 38's comparison of carried values and `rmsnorm.group` (3.1),
@@ -2577,8 +2585,8 @@ scale and shift, depth_route step, and the slot's window (per-layer sinks includ
 list (which excludes `split`, `moe_ffn`, `rope`, `pos_embedding` and `embedding`); `depth_route` with
 recurrent state or a windowed slot; `mask: turn_state` with `kv_rows: active`; eviction with recurrent
 state; `expr` nested deeper than 200 (the CUDA expr kernel takes up to 96 instructions, a stack of 16
-and 8 reductions, and serves larger expressions on the CPU); `attention.position_bias` (revision 1.3),
-by name, until ember implements it.
+and 8 reductions, and serves larger expressions on the CPU); `attention.position_bias` per layer or under
+`depth_route` (ember runs it on the CPU interpreter otherwise, from 1ab6a252).
 
 **ember's conformance.** At ember 39dcce9 its adapter passes keramos v1.1.2 (as v1.1.1) with 230 pass, 0
 fail and 54 skip, the skips being the single-op fixtures of ops other than `recurrence` (its `run_node` runs

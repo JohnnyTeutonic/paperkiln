@@ -1,13 +1,13 @@
 {
  "spec": {
   "repository": "keramos",
-  "tag": "v1.3.0",
-  "commit": "da9ead6175925aa6b19758aa828cdc42236a45a6"
+  "tag": "v1.3.1",
+  "commit": "c898414cc1b569b50e0a2061d01ac269edce2d30"
  },
  "engine": {
   "name": "llama.cpp b6000 (4762ad7316dcdec20016ab5985fb46a27902204d), CPU, through keramos/adapters/llamacpp/llamacpp_adapter.cpp (a JSON Lines shim over llama.h; GCC 13.3, -O2; llama.cpp Release, GGML_NATIVE off, AVX2, shared libraries, WSL ext4)",
   "environment": "the runner under CPython 3.12.3, numpy 2.3.3, WSL (Ubuntu 24.04)",
-  "run": "python3 tools/ir_conformance.py --adapter \"cmd:llamacpp_adapter --threads 2 --alias mistral=llama\", keramos working tree equal to v1.3.0 (da9ead61), 2026-10-27, the adapter and build unchanged. Settings: f32 kv cache, flash attention off, swa_full on, n_ubatch 512; the same rewrites (tokenizer 'word' as 'no_vocab', tp_mistral's 'mistral' loaded as 'llama'). Other configurations (adapters/llamacpp/FINDINGS.txt): no alias 27/9/368, f16 kv 18/21/365, flash attention 17/22/365 with either cache type. Every FAIL is a finding of FINDINGS.txt (1 GELU table, 2 tanh GELU on gptneox, 3 Mistral without its window); the IR-only models, now architecture 'paperkiln' (rule 38), are skips"
+  "run": "python3 tools/ir_conformance.py --adapter \"cmd:llamacpp_adapter --threads 2 --alias mistral=llama\", keramos working tree equal to v1.3.1 (c898414c), 2026-10-27, the adapter and build unchanged. Settings: f32 kv cache, flash attention off, swa_full on, n_ubatch 512; the same rewrites (tokenizer 'word' as 'no_vocab', tp_mistral's 'mistral' loaded as 'llama'). Other configurations (adapters/llamacpp/FINDINGS.txt): at v1.3.0 no alias 27/9/368, f16 kv 18/21/365, flash attention 17/22/365 with either cache type; v1.3.1 adds 4 refusal/accept cases, skips here. Every FAIL is a finding of FINDINGS.txt (1 GELU table, 2 tanh GELU on gptneox, 3 Mistral without its window); the IR-only models, now architecture 'paperkiln' (rule 38), are skips"
  },
  "adapter": {
   "engine": "llama.cpp",
@@ -22,7 +22,7 @@
  "counts": {
   "PASS": 27,
   "FAIL": 12,
-  "SKIP": 365,
+  "SKIP": 369,
   "XFAIL": 0,
   "XPASS": 0
  },
@@ -51,7 +51,7 @@
   "refuse": {
    "PASS": 0,
    "FAIL": 0,
-   "SKIP": 91,
+   "SKIP": 94,
    "XFAIL": 0,
    "XPASS": 0
   },
@@ -79,7 +79,7 @@
   "accept": {
    "PASS": 0,
    "FAIL": 0,
-   "SKIP": 34,
+   "SKIP": 35,
    "XFAIL": 0,
    "XPASS": 0
   },
@@ -1233,6 +1233,18 @@
    "detail": "llama.cpp does not validate IR documents (IR_SPEC section 10): it ignores paperkiln.ir"
   },
   {
+   "id": "refuse/mor_reads_tokens",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "llama.cpp does not validate IR documents (IR_SPEC section 10): it ignores paperkiln.ir"
+  },
+  {
+   "id": "refuse/mor_reads_route_out",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "llama.cpp does not validate IR documents (IR_SPEC section 10): it ignores paperkiln.ir"
+  },
+  {
    "id": "refuse/position_bias_bucket_negative",
    "kind": "refuse",
    "verdict": "SKIP",
@@ -1330,6 +1342,12 @@
   },
   {
    "id": "refuse/architecture_without_graph",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "llama.cpp does not validate IR documents (IR_SPEC section 10): it ignores paperkiln.ir"
+  },
+  {
+   "id": "refuse/architecture_substituted_document",
    "kind": "refuse",
    "verdict": "SKIP",
    "detail": "llama.cpp does not validate IR documents (IR_SPEC section 10): it ignores paperkiln.ir"
@@ -2320,6 +2338,12 @@
   },
   {
    "id": "accept/documents/example_swa_tiny",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "llama.cpp does not validate IR documents (IR_SPEC section 10): it ignores paperkiln.ir"
+  },
+  {
+   "id": "accept/documents/substituted_over_duplicate_embedded",
    "kind": "accept",
    "verdict": "SKIP",
    "detail": "llama.cpp does not validate IR documents (IR_SPEC section 10): it ignores paperkiln.ir"

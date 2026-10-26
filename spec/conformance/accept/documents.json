@@ -14,6 +14,10 @@
    "gguf": "models/pk_flex_highway/pk_flex_highway.gguf"
   },
   {
+   "name": "model_pk_flex_t5",
+   "gguf": "models/pk_flex_t5/pk_flex_t5.gguf"
+  },
+  {
    "name": "model_pk_gpt2",
    "gguf": "models/pk_gpt2/pk_gpt2.gguf"
   },

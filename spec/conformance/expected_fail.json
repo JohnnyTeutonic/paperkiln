@@ -8,6 +8,10 @@
   "refuse/architecture_swa_as_gpt2": "revision 1.3's rule 38 (IR_SPEC 3.1): not in the clean-room engine (revision 1.2); waits for its 1.3 pass",
   "refuse/architecture_metadata_disagrees": "revision 1.3's rule 38 (IR_SPEC 3.1): not in the clean-room engine (revision 1.2); waits for its 1.3 pass",
   "refuse/architecture_without_graph": "revision 1.3's rule 38 (IR_SPEC 3.1): not in the clean-room engine (revision 1.2); waits for its 1.3 pass",
-  "refuse/architecture_substituted_document": "revision 1.3's rule 38 (IR_SPEC 3.1): not in the clean-room engine (revision 1.2); waits for its 1.3 pass"
+  "refuse/architecture_substituted_document": "revision 1.3's rule 38 (IR_SPEC 3.1): not in the clean-room engine (revision 1.2); waits for its 1.3 pass",
+  "model/pk_flex_t5": "revision 1.3's attention.position_bias (IR_SPEC 5.15): the clean-room engine (revision 1.2) refuses the attribute at load (rule 1, an unknown key); waits for its 1.3 pass",
+  "trace/pk_flex_t5_decode": "revision 1.3's attention.position_bias (IR_SPEC 5.15): the clean-room engine (revision 1.2) refuses the attribute at load (rule 1, an unknown key); waits for its 1.3 pass",
+  "trace/pk_flex_t5_chunks": "revision 1.3's attention.position_bias (IR_SPEC 5.15): the clean-room engine (revision 1.2) refuses the attribute at load (rule 1, an unknown key); waits for its 1.3 pass",
+  "accept/documents/model_pk_flex_t5": "revision 1.3's attention.position_bias (IR_SPEC 5.15): the clean-room engine (revision 1.2) refuses the attribute at load (rule 1, an unknown key); waits for its 1.3 pass"
  }
 }

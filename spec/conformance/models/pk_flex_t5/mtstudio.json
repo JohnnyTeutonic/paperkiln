@@ -1,0 +1,35 @@
+{
+ "name": "pk_flex_t5",
+ "arch": {
+  "preset": "gpt2-nano",
+  "custom": {
+   "d": 16,
+   "layers": 2,
+   "heads": 2,
+   "norm": "rmsnorm",
+   "activation": "relu",
+   "position": "t5_relative",
+   "rel_buckets": 8,
+   "rel_max_distance": 12
+  }
+ },
+ "data": {
+  "T": 16,
+  "max_tokens": 0
+ },
+ "train": {
+  "steps": 30,
+  "lr": 0.003,
+  "eval_every": 1000,
+  "checkpoint_every": 1000,
+  "batch": 2,
+  "seed": 3,
+  "gradmap_every": 0
+ },
+ "export": {
+  "formats": [
+   "safetensors",
+   "gguf"
+  ]
+ }
+}

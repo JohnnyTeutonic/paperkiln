@@ -89,7 +89,8 @@ Run prepare(const json& req, bool grad) {
 
 // The thirdparty-profile single ops through the ops paperkiln trains with (LOCAL_LLM_STACK.md section 11
 // item 4.4): rope (pairing, n_rot, kv_heads; freq_scale 1 only), rmsnorm (group; weight_offset 0 only),
-// causal attention (kv_heads <= heads, no window or sinks), conv1d_causal, selective_scan. Anything else
+// causal attention (kv_heads <= heads, no window or sinks; T5's position_bias through ops::relpos_attention),
+// conv1d_causal, selective_scan. Anything else
 // these ops do not express is a skip naming the attribute.
 json run_op(const json& req) {
     NoGrad ng;
@@ -138,6 +139,22 @@ json run_op(const json& req) {
         Var q = make_var(in(0)), k = make_var(in(1)), v = make_var(in(2));
         k = ops::repeat_heads(k, KV, H / KV, hd);
         v = ops::repeat_heads(v, KV, H / KV, hd);
+        if (nd.contains("position_bias")) {
+            // keramos 1.3 (IR_SPEC 5.15): T5's bias through the training op, ops::relpos_attention per query head;
+            // the table [B, heads] is the weight, the buckets the node's own.
+            const json& pb = nd.at("position_bias");
+            Var table = make_var(decode(req.at("weights").at(pb.at("weight").get<std::string>())));
+            const auto buckets = pb.at("buckets").get<std::vector<int>>();
+            const float sc = nd.at("scale").get<float>();
+            std::vector<Var> heads;
+            for (size_t h = 0; h < H; ++h)
+                heads.push_back(ops::relpos_attention(ops::slice_cols(q, h * hd, (h + 1) * hd),
+                                                      ops::slice_cols(k, h * hd, (h + 1) * hd),
+                                                      ops::slice_cols(v, h * hd, (h + 1) * hd), table, h, buckets,
+                                                      sc, 0));
+            Var y = ops::concat_cols(heads);
+            return {{"outputs", {{nd.at("out").get<std::string>(), encode(y->data)}}}, {"state", json::object()}};
+        }
         Var y = ops::attention_heads(ops::concat_cols({q, k, v}), H, nd.at("scale").get<float>(), 0, true);
         return {{"outputs", {{nd.at("out").get<std::string>(), encode(y->data)}}}, {"state", json::object()}};
     }

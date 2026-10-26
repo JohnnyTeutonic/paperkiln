@@ -48,6 +48,21 @@
    "profile": "core"
   },
   {
+   "id": "model/pk_flex_t5",
+   "kind": "model",
+   "file": "models/pk_flex_t5/case.json",
+   "model": "models/pk_flex_t5",
+   "profile": "core",
+   "class": "ROUNDING"
+  },
+  {
+   "id": "trace/pk_flex_t5_decode",
+   "kind": "trace",
+   "file": "state/pk_flex_t5_decode.json",
+   "model": "models/pk_flex_t5",
+   "profile": "core"
+  },
+  {
    "id": "model/pk_gpt2",
    "kind": "model",
    "file": "models/pk_gpt2/case.json",
@@ -1267,7 +1282,7 @@
    "kind": "digest",
    "file": "digest/vectors.json",
    "profile": "core",
-   "n": 84
+   "n": 85
   },
   {
    "id": "dequant/blocks",
@@ -1358,6 +1373,13 @@
    "kind": "trace",
    "file": "state/pk_flex_highway_chunks.json",
    "model": "models/pk_flex_highway",
+   "profile": "state"
+  },
+  {
+   "id": "trace/pk_flex_t5_chunks",
+   "kind": "trace",
+   "file": "state/pk_flex_t5_chunks.json",
+   "model": "models/pk_flex_t5",
    "profile": "state"
   },
   {
@@ -1491,7 +1513,7 @@
    "kind": "accept",
    "file": "accept/documents.json",
    "profile": "core",
-   "n": 35
+   "n": 36
   },
   {
    "id": "chat/render",

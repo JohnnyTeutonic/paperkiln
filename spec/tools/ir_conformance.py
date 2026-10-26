@@ -788,6 +788,9 @@ def run_suite(adapter, only=None, out_json=None):
                 verdict, msg = "SKIP", str(e) or "not implemented"
             except (RuntimeError, ValueError, KeyError, SystemExit) as e:
                 verdict, msg = "FAIL", f"{type(e).__name__}: {e}"
+                if cid in xf or cid.split("/", 2)[0] + "/" + cid.split("/")[1] in xf:  # an engine error fails too
+                    verdict = "XFAIL"
+                    msg += f" [expected to fail: {xf.get(cid, '')[:80]}]"
             counts[verdict] += 1
             results.append({"id": cid, "kind": c["kind"], "verdict": verdict, "detail": msg})
             print(f"{verdict} {cid}: {msg}")
