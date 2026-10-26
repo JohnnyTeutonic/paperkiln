@@ -2495,30 +2495,13 @@
   "matching": "non-embedding parameters only; recursion multiplies FLOPs (no compute-matched verdict); the recursion cells carry 10.49M embedding against their twins' 7.34M (L8), 5.24M (L16) and 3.15M (L32), so a win over a twin is ambiguous between recursion and lexical capacity"
  },
  "E1_mor_20m": {
-  "label": "DESCRIPTIVE, PARTIAL",
+  "label": "REGISTERED (A4.5)",
   "seeds": [
    1,
    2,
    3
   ],
-  "missing": [
-   [
-    "MC2",
-    1
-   ],
-   [
-    "MC2",
-    2
-   ],
-   [
-    "MC2",
-    3
-   ],
-   [
-    "MC3",
-    3
-   ]
-  ],
+  "missing": [],
   "dropped": [],
   "cells": {
    "MoR3": {
@@ -2595,146 +2578,146 @@
    },
    "MC2": {
     "Y": {
-     "mean": null,
-     "se": null,
-     "n": 0
+     "mean": -0.07244744744744748,
+     "se": 0.01839339339339338,
+     "n": 3
     },
     "Y_all": {
-     "mean": null,
-     "se": null,
-     "n": 0
+     "mean": -0.05429999999999994,
+     "se": 0.012130952147296618,
+     "n": 3
     },
     "multi_self": {
-     "mean": null,
-     "se": null,
-     "n": 0
+     "mean": 0.47184684684684686,
+     "se": 0.011864474946906239,
+     "n": 3
     },
     "twin_self": {
-     "mean": null,
-     "se": null,
-     "n": 0
+     "mean": 0.5442942942942943,
+     "se": 0.0071911576804309305,
+     "n": 3
     },
     "noctx": {
-     "mean": null,
-     "se": null,
-     "n": 0
+     "mean": 0.2789039039039039,
+     "se": 0.0032072086131071857,
+     "n": 3
     },
     "twin_ctx": {
-     "mean": null,
-     "se": null,
-     "n": 0
+     "mean": 0.5487117552334944,
+     "se": 0.009100365986680585,
+     "n": 3
     },
     "noctx_ctx": {
-     "mean": null,
-     "se": null,
-     "n": 0
+     "mean": 0.26006441223832527,
+     "se": 0.006478855450656633,
+     "n": 3
     },
     "twin_minus_qalone_ctx": {
-     "mean": null,
-     "se": null,
-     "n": 0
+     "mean": 0.2886473429951691,
+     "se": 0.007076648885365095,
+     "n": 3
     },
     "Y_gold": {
-     "mean": null,
-     "se": null,
-     "n": 0
+     "mean": -0.06343843843843845,
+     "se": 0.015417832415850478,
+     "n": 3
     },
     "instruction_complies_self": {
-     "mean": null,
-     "se": null,
-     "n": 0
+     "mean": 0.07175925925925926,
+     "se": 0.01807928165719133,
+     "n": 3
     },
     "instruction_complies_twin": {
-     "mean": null,
-     "se": null,
-     "n": 0
+     "mean": 0.023148148148148147,
+     "se": 0.008346183508018495,
+     "n": 3
     },
     "panel_fineweb": {
-     "mean": null,
-     "se": null,
-     "n": 0
+     "mean": 3.837967403853933,
+     "se": 0.0025421436452844055,
+     "n": 3
     },
     "panel_dialogue": {
-     "mean": null,
-     "se": null,
-     "n": 0
+     "mean": 3.236593868738661,
+     "se": 0.0017766435644299638,
+     "n": 3
     },
     "sft_val": {
-     "mean": null,
-     "se": null,
-     "n": 0
+     "mean": 3.0249819833575144,
+     "se": 0.0030908096456232956,
+     "n": 3
     }
    },
    "MC3": {
     "Y": {
-     "mean": -0.03885135135135137,
-     "se": 0.0073198198198198275,
-     "n": 2
+     "mean": -0.04129129129129131,
+     "se": 0.004879879879879885,
+     "n": 3
     },
     "Y_all": {
-     "mean": -0.027649999999999952,
-     "se": 0.011149999999999993,
-     "n": 2
+     "mean": -0.027799999999999974,
+     "se": 0.00643920284921459,
+     "n": 3
     },
     "multi_self": {
-     "mean": 0.48873873873873874,
-     "se": 0.005630630630630629,
-     "n": 2
+     "mean": 0.48123123123123124,
+     "se": 0.008181116635774536,
+     "n": 3
     },
     "twin_self": {
-     "mean": 0.5275900900900901,
-     "se": 0.0016891891891891995,
-     "n": 2
+     "mean": 0.5225225225225225,
+     "se": 0.005160558215040356,
+     "n": 3
     },
     "noctx": {
-     "mean": 0.2663288288288288,
-     "se": 0.009572072072072085,
-     "n": 2
+     "mean": 0.2593843843843844,
+     "se": 0.008875067881033708,
+     "n": 3
     },
     "twin_ctx": {
-     "mean": 0.5277777777777778,
-     "se": 0.0024154589371980784,
-     "n": 2
+     "mean": 0.5229468599033816,
+     "se": 0.00502817874267184,
+     "n": 3
     },
     "noctx_ctx": {
-     "mean": 0.24939613526570048,
-     "se": 0.010265700483091778,
-     "n": 2
+     "mean": 0.2431561996779388,
+     "se": 0.008606102385842166,
+     "n": 3
     },
     "twin_minus_qalone_ctx": {
-     "mean": 0.2783816425120773,
-     "se": 0.012681159420289854,
-     "n": 2
+     "mean": 0.2797906602254428,
+     "se": 0.00745582092490021,
+     "n": 3
     },
     "Y_gold": {
-     "mean": -0.0461711711711712,
-     "se": 0.007882882882882913,
-     "n": 2
+     "mean": -0.048048048048048075,
+     "se": 0.004923001895121638,
+     "n": 3
     },
     "instruction_complies_self": {
-     "mean": 0.11805555555555555,
-     "se": 0.020833333333333336,
-     "n": 2
+     "mean": 0.12037037037037038,
+     "se": 0.01224884866233607,
+     "n": 3
     },
     "instruction_complies_twin": {
-     "mean": 0.013888888888888888,
-     "se": 0.0,
-     "n": 2
+     "mean": 0.011574074074074073,
+     "se": 0.0023148148148148147,
+     "n": 3
     },
     "panel_fineweb": {
-     "mean": 3.824909809976816,
-     "se": 0.0025643408298492427,
-     "n": 2
+     "mean": 3.824887554316471,
+     "se": 0.0014806901358132634,
+     "n": 3
     },
     "panel_dialogue": {
-     "mean": 3.224732904927805,
-     "se": 0.00140937021933496,
-     "n": 2
+     "mean": 3.2259199443894127,
+     "se": 0.001439156288176075,
+     "n": 3
     },
     "sft_val": {
-     "mean": 3.0086855965472505,
-     "se": 0.005998332984120447,
-     "n": 2
+     "mean": 3.0068984426328953,
+     "se": 0.0038970824954561558,
+     "n": 3
     }
    }
   },
@@ -2772,38 +2755,70 @@
      "noctx": 0.26851851851851855
     }
    },
-   "MC2": {},
-   "MC3": {
+   "MC2": {
     "correction": {
-     "gold": 0.3310185185185185,
-     "self": 0.3587962962962963,
-     "twin": 0.36342592592592593,
-     "noctx": 0.22685185185185186
+     "gold": 0.33641975308641975,
+     "self": 0.345679012345679,
+     "twin": 0.4058641975308642,
+     "noctx": 0.25
     },
     "instruction": {
-     "gold": 0.9826388888888888,
-     "self": 0.8506944444444444,
-     "twin": 0.8090277777777778,
-     "noctx": 0.7465277777777778,
+     "gold": 0.9675925925925926,
+     "self": 0.798611111111111,
+     "twin": 0.7407407407407407,
+     "noctx": 0.7152777777777778,
      "note": "forced choice confounded by answer length (amendment 2); not in Y"
     },
     "knowledge": {
-     "gold": 0.525,
-     "self": 0.5083333333333333,
-     "twin": 0.525,
-     "noctx": 0.5
+     "gold": 0.43333333333333335,
+     "self": 0.4722222222222222,
+     "twin": 0.48333333333333334,
+     "noctx": 0.5388888888888889
     },
     "recall": {
-     "gold": 0.5428240740740741,
-     "self": 0.5405092592592593,
-     "twin": 0.5787037037037037,
-     "noctx": 0.24768518518518517
+     "gold": 0.5354938271604939,
+     "self": 0.5192901234567902,
+     "twin": 0.5941358024691358,
+     "noctx": 0.2631172839506173
     },
     "topic": {
-     "gold": 0.5,
-     "self": 0.5138888888888888,
-     "twin": 0.6027777777777777,
-     "noctx": 0.28055555555555556
+     "gold": 0.5388888888888889,
+     "self": 0.5092592592592592,
+     "twin": 0.611111111111111,
+     "noctx": 0.2648148148148148
+    }
+   },
+   "MC3": {
+    "correction": {
+     "gold": 0.35030864197530864,
+     "self": 0.36728395061728397,
+     "twin": 0.36574074074074076,
+     "noctx": 0.2222222222222222
+    },
+    "instruction": {
+     "gold": 0.9791666666666666,
+     "self": 0.8402777777777778,
+     "twin": 0.7847222222222222,
+     "noctx": 0.7407407407407407,
+     "note": "forced choice confounded by answer length (amendment 2); not in Y"
+    },
+    "knowledge": {
+     "gold": 0.49444444444444446,
+     "self": 0.5,
+     "twin": 0.5166666666666667,
+     "noctx": 0.48333333333333334
+    },
+    "recall": {
+     "gold": 0.5308641975308642,
+     "self": 0.5362654320987654,
+     "twin": 0.5825617283950617,
+     "noctx": 0.23996913580246915
+    },
+    "topic": {
+     "gold": 0.48148148148148145,
+     "self": 0.47962962962962963,
+     "twin": 0.5685185185185185,
+     "noctx": 0.2759259259259259
     }
    }
   },
@@ -2818,11 +2833,17 @@
     "flops_per_token_realised": 246017138.67650697,
     "flops_note": "flops_per_token is MoR3's at its realised depth fractions (mean over seeds)"
    },
+   "MC2": {
+    "flops_per_token": 255394560,
+    "l4_hours_per_run": 2.4827445523578704,
+    "Y_per_l4_hour": -0.029172757630109892,
+    "runs_with_hours": 3
+   },
    "MC3": {
     "flops_per_token": 319553280,
-    "l4_hours_per_run": 3.26792085652375,
-    "Y_per_l4_hour": -0.011889204181037252,
-    "runs_with_hours": 2
+    "l4_hours_per_run": 3.2583537510262035,
+    "Y_per_l4_hour": -0.012677401109122197,
+    "runs_with_hours": 3
    }
   },
   "m_s": {
@@ -3032,6 +3053,211 @@
     },
     "depth_margin_min": 0.0012612342834472656
    }
+  },
+  "floor_ok": {
+   "MoR3": true,
+   "MC2": true,
+   "MC3": true
+  },
+  "H_MoR1_D1": {
+   "n": 3,
+   "per_seed": [
+    -0.025900900900900803,
+    0.020270270270270285,
+    0.061936936936936915
+   ],
+   "mean": 0.0187687687687688,
+   "sd": 0.04393816472129699,
+   "t": 0.7398684334956428,
+   "crit": 4.303,
+   "ci90": [
+    -0.05530494802148489,
+    0.0928424855590225
+   ],
+   "sesoi": 0.03,
+   "verdict": "NOT_RESOLVED",
+   "sign_agreement": "2/3",
+   "extend_to_5_seeds": false,
+   "m_s": [
+    1.8745350303,
+    1.873614926,
+    1.8936813010000002
+   ],
+   "Y_fix": [
+    -0.03716216216216223,
+    -0.09909909909909914,
+    -0.08108108108108109
+   ],
+   "Y_MoR3": [
+    -0.06306306306306303,
+    -0.07882882882882886,
+    -0.01914414414414417
+   ],
+   "cells_used": [
+    "MoR3",
+    "MC2"
+   ],
+   "reading": "undecided",
+   "m_s_incomplete": [],
+   "interpolation": "Y_fix = Y(MC2) + max(0, m_s - 2) (Y(MC3) - Y(MC2))"
+  },
+  "secondary_panel_fineweb_MoR3_minus_Lfix": {
+   "n": 3,
+   "per_seed": [
+    0.016349724493920803,
+    0.009897259529680014,
+    0.01586613431572914
+   ],
+   "mean": 0.014037706113109985,
+   "sd": 0.0035938751088189693,
+   "t": 6.765404882869418,
+   "crit": 4.303,
+   "ci90": [
+    0.007978925809499245,
+    0.020096486416720724
+   ],
+   "sesoi": 0.02,
+   "verdict": "CONTRADICTED",
+   "sign_agreement": "0/3",
+   "extend_to_5_seeds": false,
+   "extension": "not applicable (A4.5: the extension rule applies to D1 alone)",
+   "L_fix": [
+    3.8417072417214513,
+    3.8331145849078894,
+    3.8390803849324584
+   ],
+   "label": "SECONDARY (lower is better: the registered direction is negative)"
+  },
+  "secondary_Y_MoR3_minus_MC2": {
+   "n": 3,
+   "per_seed": [
+    -0.025900900900900803,
+    0.020270270270270285,
+    0.061936936936936915
+   ],
+   "mean": 0.0187687687687688,
+   "sd": 0.04393816472129699,
+   "t": 0.7398684334956428,
+   "crit": 4.303,
+   "ci90": [
+    -0.05530494802148489,
+    0.0928424855590225
+   ],
+   "sesoi": 0.03,
+   "verdict": "NOT_RESOLVED",
+   "sign_agreement": "2/3",
+   "extend_to_5_seeds": false,
+   "extension": "not applicable (A4.5: the extension rule applies to D1 alone)",
+   "label": "SECONDARY"
+  },
+  "secondary_Y_MoR3_minus_MC3": {
+   "n": 3,
+   "per_seed": [
+    -0.03153153153153149,
+    -0.03265765765765766,
+    0.02702702702702703
+   ],
+   "mean": -0.012387387387387372,
+   "sd": 0.034138527908162415,
+   "t": -0.628485926098262,
+   "crit": 4.303,
+   "ci90": [
+    -0.06994026115773153,
+    0.04516548638295679
+   ],
+   "sesoi": 0.03,
+   "verdict": "NOT_RESOLVED",
+   "sign_agreement": "1/3",
+   "extend_to_5_seeds": false,
+   "extension": "not applicable (A4.5: the extension rule applies to D1 alone)",
+   "label": "SECONDARY"
+  },
+  "H_MoR2a_delta": {
+   "n": 3,
+   "per_seed": [
+    -0.26919374830892084,
+    -0.12953803374114226,
+    -0.17725297447110355
+   ],
+   "mean": -0.19199491884038888,
+   "sd": 0.07098537416749692,
+   "t": -4.6846967861568825,
+   "crit": 4.303,
+   "ci90": [
+    -0.3116665195020504,
+    -0.07232331817872738
+   ],
+   "sesoi": 0.1,
+   "verdict": "CONTRADICTED",
+   "sign_agreement": "0/3",
+   "extend_to_5_seeds": false,
+   "extension": "not applicable (A4.5: the extension rule applies to D1 alone)"
+  },
+  "H_MoR2b_slope_on_distance": {
+   "n": 3,
+   "per_seed": [
+    0.009238591269841286,
+    0.00078021660052917,
+    0.02419704861111118
+   ],
+   "mean": 0.011405285493827213,
+   "sd": 0.011857821395523929,
+   "t": 1.6659496960878442,
+   "crit": 4.303,
+   "ci90": [
+    -0.00858537432032086,
+    0.031395945307975286
+   ],
+   "sesoi": 0.05,
+   "verdict": "EQUIVALENT",
+   "sign_agreement": "3/3",
+   "extend_to_5_seeds": false,
+   "extension": "not applicable (A4.5: the extension rule applies to D1 alone)"
+  },
+  "H_MoR2": {
+   "reading": "falsified",
+   "H_MoR2a": "CONTRADICTED",
+   "H_MoR2b": "EQUIVALENT",
+   "descriptive_twin_delta": [
+    -0.2817910494460629,
+    -0.061973536830794096,
+    -0.24984116354445907
+   ],
+   "descriptive_noctx_delta": [
+    -0.2673513504426057,
+    -0.061973536830794096,
+    -0.2535019323058989
+   ],
+   "descriptive_twin_answer_mean": [
+    1.467853042479908,
+    1.5298507462686568,
+    1.4804822043628014
+   ],
+   "descriptive_noctx_answer_mean": [
+    1.467853042479908,
+    1.5298507462686568,
+    1.4804822043628014
+   ]
+  },
+  "H_MoR0_collapse": {
+   "verdict": "FALSIFIED",
+   "collapsed": [
+    false,
+    false,
+    false
+   ],
+   "entropy_norm": [
+    0.9300094466842896,
+    0.7838398078868624,
+    0.7861617924146015
+   ],
+   "delta": [
+    -0.26919374830892084,
+    -0.12953803374114226,
+    -0.17725297447110355
+   ],
+   "D1_verdict": "NOT_RESOLVED",
+   "criterion": "entropy_norm < 0.35 or |Delta| < 0.05 in every seed, and D1 EQUIVALENT"
   }
  },
  "E1_x5_20m": {
@@ -11376,19 +11602,19 @@
     },
     "50%": {
      "Y_base->Y": {
-      "n": 3,
+      "n": 4,
       "verdict": "INCOMPLETE"
      },
      "acc_gold->Y": {
-      "n": 3,
+      "n": 4,
       "verdict": "INCOMPLETE"
      },
      "panel_fineweb->panel_fineweb": {
-      "n": 3,
+      "n": 4,
       "verdict": "INCOMPLETE"
      },
      "panel_dialogue->panel_dialogue": {
-      "n": 3,
+      "n": 4,
       "verdict": "INCOMPLETE"
      }
     },
@@ -11412,7 +11638,7 @@
   },
   "E1_mor": {
    "label": "DESCRIPTIVE (MoR block, A4.3)",
-   "runs": 5,
+   "runs": 9,
    "threshold": {
     "rho": 0.8,
     "ci90_lower": 0.5,
@@ -11421,92 +11647,272 @@
    "rungs": {
     "5%": {
      "Y_base->Y": {
-      "n": 5,
-      "verdict": "INCOMPLETE"
+      "n": 9,
+      "rho": -0.46218487394957986,
+      "ci90": [
+       -0.8831913668924228,
+       0.16666666666666666
+      ],
+      "cells_kept": [
+       "MC2"
+      ],
+      "best_final_cell": "MC3",
+      "best_kept": false,
+      "verdict": "NOT_PREDICTIVE"
      },
      "acc_gold->Y": {
-      "n": 5,
-      "verdict": "INCOMPLETE"
+      "n": 9,
+      "rho": -0.4117647058823529,
+      "ci90": [
+       -0.8518518518518519,
+       0.23214285714285715
+      ],
+      "cells_kept": [
+       "MC2"
+      ],
+      "best_final_cell": "MC3",
+      "best_kept": false,
+      "verdict": "NOT_PREDICTIVE"
      },
      "panel_fineweb->panel_fineweb": {
-      "n": 5,
-      "verdict": "INCOMPLETE"
+      "n": 9,
+      "rho": -0.85,
+      "ci90": [
+       -0.9826086956521739,
+       -0.5596330275229358
+      ],
+      "cells_kept": [
+       "MoR3"
+      ],
+      "best_final_cell": "MC3",
+      "best_kept": false,
+      "verdict": "NOT_PREDICTIVE"
      },
      "panel_dialogue->panel_dialogue": {
-      "n": 5,
-      "verdict": "INCOMPLETE"
+      "n": 9,
+      "rho": -0.55,
+      "ci90": [
+       -0.9473684210526315,
+       0.08771929824561403
+      ],
+      "cells_kept": [
+       "MoR3"
+      ],
+      "best_final_cell": "MC3",
+      "best_kept": false,
+      "verdict": "NOT_PREDICTIVE"
      }
     },
     "10%": {
      "Y_base->Y": {
-      "n": 5,
-      "verdict": "INCOMPLETE"
+      "n": 9,
+      "rho": 0.2845213189769458,
+      "ci90": [
+       -0.5263157894736842,
+       0.7296742189040497
+      ],
+      "cells_kept": [
+       "MC3"
+      ],
+      "best_final_cell": "MC3",
+      "best_kept": true,
+      "verdict": "NOT_PREDICTIVE"
      },
      "acc_gold->Y": {
-      "n": 5,
-      "verdict": "INCOMPLETE"
+      "n": 9,
+      "rho": -0.4303835780011536,
+      "ci90": [
+       -0.8583770043743413,
+       0.20013236268821483
+      ],
+      "cells_kept": [
+       "MC2"
+      ],
+      "best_final_cell": "MC3",
+      "best_kept": false,
+      "verdict": "NOT_PREDICTIVE"
      },
      "panel_fineweb->panel_fineweb": {
-      "n": 5,
-      "verdict": "INCOMPLETE"
+      "n": 9,
+      "rho": -0.16666666666666666,
+      "ci90": [
+       -0.7264957264957265,
+       0.4260869565217391
+      ],
+      "cells_kept": [
+       "MC2"
+      ],
+      "best_final_cell": "MC3",
+      "best_kept": false,
+      "verdict": "NOT_PREDICTIVE"
      },
      "panel_dialogue->panel_dialogue": {
-      "n": 5,
-      "verdict": "INCOMPLETE"
+      "n": 9,
+      "rho": -0.08333333333333333,
+      "ci90": [
+       -0.6842105263157895,
+       0.5263157894736842
+      ],
+      "cells_kept": [
+       "MC2"
+      ],
+      "best_final_cell": "MC3",
+      "best_kept": false,
+      "verdict": "NOT_PREDICTIVE"
      }
     },
     "25%": {
      "Y_base->Y": {
-      "n": 5,
-      "verdict": "INCOMPLETE"
+      "n": 9,
+      "rho": 0.04201680672268908,
+      "ci90": [
+       -0.5365433699886598,
+       0.6842105263157895
+      ],
+      "cells_kept": [
+       "MoR3"
+      ],
+      "best_final_cell": "MC3",
+      "best_kept": false,
+      "verdict": "NOT_PREDICTIVE"
      },
      "acc_gold->Y": {
-      "n": 5,
-      "verdict": "INCOMPLETE"
+      "n": 9,
+      "rho": -0.1924703040138163,
+      "ci90": [
+       -0.9334163073596636,
+       0.5555555555555556
+      ],
+      "cells_kept": [
+       "MC3"
+      ],
+      "best_final_cell": "MC3",
+      "best_kept": true,
+      "verdict": "NOT_PREDICTIVE"
      },
      "panel_fineweb->panel_fineweb": {
-      "n": 5,
-      "verdict": "INCOMPLETE"
+      "n": 9,
+      "rho": 0.8166666666666667,
+      "ci90": [
+       0.29292929292929293,
+       1.0
+      ],
+      "cells_kept": [
+       "MC3"
+      ],
+      "best_final_cell": "MC3",
+      "best_kept": true,
+      "verdict": "NOT_PREDICTIVE"
      },
      "panel_dialogue->panel_dialogue": {
-      "n": 5,
-      "verdict": "INCOMPLETE"
+      "n": 9,
+      "rho": 0.7333333333333333,
+      "ci90": [
+       0.1826086956521739,
+       1.0
+      ],
+      "cells_kept": [
+       "MC3"
+      ],
+      "best_final_cell": "MC3",
+      "best_kept": true,
+      "verdict": "NOT_PREDICTIVE"
      }
     },
     "50%": {
      "Y_base->Y": {
-      "n": 5,
-      "verdict": "INCOMPLETE"
+      "n": 8,
+      "rho": 0.38095238095238093,
+      "ci90": [
+       -0.4074074074074074,
+       0.96875
+      ],
+      "cells_kept": [
+       "MC3"
+      ],
+      "best_final_cell": "MC3",
+      "best_kept": true,
+      "verdict": "NOT_PREDICTIVE"
      },
      "acc_gold->Y": {
-      "n": 5,
-      "verdict": "INCOMPLETE"
+      "n": 8,
+      "rho": 0.20359646452525404,
+      "ci90": [
+       -0.4992872412627317,
+       0.774338599379501
+      ],
+      "cells_kept": [
+       "MC2"
+      ],
+      "best_final_cell": "MC3",
+      "best_kept": false,
+      "verdict": "NOT_PREDICTIVE"
      },
      "panel_fineweb->panel_fineweb": {
-      "n": 5,
-      "verdict": "INCOMPLETE"
+      "n": 8,
+      "rho": 0.9761904761904762,
+      "ci90": [
+       0.8048780487804879,
+       1.0
+      ],
+      "cells_kept": [
+       "MC3"
+      ],
+      "best_final_cell": "MC3",
+      "best_kept": true,
+      "verdict": "PREDICTIVE"
      },
      "panel_dialogue->panel_dialogue": {
-      "n": 5,
-      "verdict": "INCOMPLETE"
+      "n": 8,
+      "rho": 0.9285714285714286,
+      "ci90": [
+       0.6153846153846154,
+       1.0
+      ],
+      "cells_kept": [
+       "MC3"
+      ],
+      "best_final_cell": "MC3",
+      "best_kept": true,
+      "verdict": "PREDICTIVE"
      }
     },
     "100%": {
      "Y_base->Y": {
-      "n": 5,
-      "verdict": "INCOMPLETE"
+      "n": 9,
+      "rho": 0.3487394957983193,
+      "ci90": [
+       -0.3163098640060235,
+       0.7981651376146789
+      ],
+      "cells_kept": [
+       "MC3"
+      ],
+      "best_final_cell": "MC3",
+      "best_kept": true,
+      "verdict": "NOT_PREDICTIVE"
      },
      "acc_gold->Y": {
-      "n": 5,
-      "verdict": "INCOMPLETE"
+      "n": 9,
+      "rho": 0.06751114949037704,
+      "ci90": [
+       -0.5614035087719298,
+       0.7297297297297297
+      ],
+      "cells_kept": [
+       "MC2"
+      ],
+      "best_final_cell": "MC3",
+      "best_kept": false,
+      "verdict": "NOT_PREDICTIVE"
      }
     }
    },
    "earliest_predictive": {
     "Y_base->Y": null,
     "acc_gold->Y": null,
-    "panel_fineweb->panel_fineweb": null,
-    "panel_dialogue->panel_dialogue": null
+    "panel_fineweb->panel_fineweb": "50%",
+    "panel_dialogue->panel_dialogue": "50%"
    }
   }
  },
