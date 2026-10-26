@@ -1,0 +1,87 @@
+{
+ "rule": "The registered screen rule, per shape: among screens that did not diverge, the lowest final validation loss; any screen within SCREEN_TIE nats of it counts as tied and the smallest tied lr wins. A shape whose screens all diverged stops the programme (no rate is chosen). Amendment 2: a FAILED screen (screen_status: a crash with finite losses) is no evidence about its rate and is rerun unchanged; --art may be given several times (the first attempt, then its reruns) and each screen is read from the one folder that holds it FINISHED or DIVERGED. A shape is chosen only when all its screens are FINISHED or DIVERGED; otherwise nothing is written.",
+ "tie_nats": 0.01,
+ "lr": {
+  "150m_L8": 0.0005
+ },
+ "screens": {
+  "150m_L8": [
+   {
+    "lr": 0.00025,
+    "final_val": 4.207322757691145,
+    "status": "FINISHED",
+    "first_loss": 9.971232414245605,
+    "last_loss": 4.298356533050537,
+    "tok_per_s_steady": 7085.242852618096,
+    "job": "screen_150m_L8_lr0",
+    "art": "C:/ml_artifacts/tiny_chat/s0_150m_L8",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_150m_L8",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   },
+   {
+    "lr": 0.0005,
+    "final_val": 4.030728982761502,
+    "status": "FINISHED",
+    "first_loss": 9.971232414245605,
+    "last_loss": 4.118741989135742,
+    "tok_per_s_steady": 7073.478630986788,
+    "job": "screen_150m_L8_lr1",
+    "art": "C:/ml_artifacts/tiny_chat/s0_150m_L8",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_150m_L8",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   },
+   {
+    "lr": 0.001,
+    "final_val": 4.376348862424493,
+    "status": "FINISHED",
+    "first_loss": 9.971232414245605,
+    "last_loss": 4.483986854553223,
+    "tok_per_s_steady": 7089.235168178107,
+    "job": "screen_150m_L8_lr2",
+    "art": "C:/ml_artifacts/tiny_chat/s0_150m_L8",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_150m_L8",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   },
+   {
+    "lr": 0.002,
+    "final_val": 5.319955887272954,
+    "status": "FINISHED",
+    "first_loss": 9.971232414245605,
+    "last_loss": 5.470305919647217,
+    "tok_per_s_steady": 7116.002284837853,
+    "job": "screen_150m_L8_lr3",
+    "art": "C:/ml_artifacts/tiny_chat/s0_150m_L8",
+    "attempts": [
+     {
+      "art": "C:/ml_artifacts/tiny_chat/s0_150m_L8",
+      "status": "FINISHED",
+      "rc": 0
+     }
+    ]
+   }
+  ]
+ },
+ "grid": [
+  0.00025,
+  0.0005,
+  0.001,
+  0.002
+ ],
+ "dropped": {},
+ "rule_rec": "A3.3: the same rule over the four-rate grid; a cell whose screens all diverged is dropped and reported"
+}
