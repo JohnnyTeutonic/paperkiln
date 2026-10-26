@@ -1107,7 +1107,7 @@ embedding) with Attention Residuals (Kimi, arXiv 2603.15031) in full form at sub
   `affine(S, 0)`). Under the following RMSNorm this is Kimi's convex mixture with epsilon eps / S^2.
 - **Zero-initialised queries:** the uniform mixture times S is the plain residual stream, so at initialisation
   the model is the plain llama of the same seed to rounding. The queries draw no random numbers, so every other
-  tensor starts bit for bit as in E1's L16 run of that seed. 32 queries of d 320 add 10,240 parameters (0.05%).
+  tensor starts bit for bit as in E1's L16 run of that seed. 32 queries of d 320 add 10,240 parameters (0.04% of all parameters, 0.05% of the non-embedding ones).
   Application 0's attention query sees one source and is never read (exported as zeros).
 - **`block_size`, resolved from the code:** in `nn::AttnResStack`, `block_size` 0 is the full form and
   `block_size` 1 equals it exactly (each block is one layer; `tests/test_attn_res.cpp` and

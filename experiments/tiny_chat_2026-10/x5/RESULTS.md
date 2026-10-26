@@ -32,6 +32,31 @@ Jonathan's registered prediction (D > 0 beyond 3 points) is not supported. The r
 EQUIVALENT: no main effect on Carry-5 carry-over larger than the SESOI. The 90% interval's lower end, -0.0299,
 lies 0.0001 inside the bound.
 
+**Robustness of the verdict (descriptive; `cluster_bootstrap.py`, `cluster_bootstrap.json`).** The registered
+test treats the 2,664 item-seed pairs as independent, and its verdict stands as registered. Carry-5's items share
+answer frames and slots, so the pairs were also resampled by cluster (10,000 resamples, seed 0; whole clusters
+with replacement), with Stage L0's rule applied to each interval:
+
+| items | clusters | 90% interval | 95% interval | rule applied |
+|---|---|---|---|---|
+| Y's four families | item (888; its three seeds together) | [-0.0300, +0.0098] | [-0.0338, +0.0139] | NOT_RESOLVED |
+| | answer frame (76) | [-0.0354, +0.0104] | [-0.0408, +0.0144] | NOT_RESOLVED |
+| | slot (13) | [-0.0351, +0.0163] | [-0.0393, +0.0214] | NOT_RESOLVED |
+| | family x slot (19) | [-0.0361, +0.0151] | [-0.0414, +0.0195] | NOT_RESOLVED |
+| the planted-fact families (recall, correction, topic return; mean -0.0036) | item (828) | [-0.0242, +0.0173] | [-0.0278, +0.0213] | EQUIVALENT |
+| | answer frame (19) | [-0.0268, +0.0170] | [-0.0308, +0.0212] | EQUIVALENT |
+| | slot (12) | [-0.0276, +0.0227] | [-0.0318, +0.0274] | EQUIVALENT |
+| | family x slot (18) | [-0.0290, +0.0212] | [-0.0349, +0.0251] | EQUIVALENT |
+| knowledge (mean -0.100) | item (60) | [-0.178, -0.028] | [-0.189, -0.011] | CONTRADICTED |
+| | answer frame (57) | [-0.175, -0.023] | [-0.189, -0.011] | CONTRADICTED |
+
+- Resampled by cluster, the 90% interval over Y's items reaches below -0.03 and the equivalence no longer
+  holds. The knowledge family's negative D drives this.
+- The three planted-fact families are equivalent within 3 points under every resampling.
+- For these three trained models, no analysis leaves room for a 3-point gain: every 95% upper bound is at most
+  +0.021 (Y's items) or +0.027 (planted facts).
+- Knowledge has a single slot, so it has no slot-level resampling.
+
 **The control's item records reproduce E1 exactly.** E1's three L16 post jobs were re-run at the arm's commit
 from E1's home pretrained weights. Each re-run equals its home summary in the pretrained and SFT weights'
 sha256, every Carry-5 pool, Y, Y_all and the panels. Every data ledger (Stage 0, the re-run, the three seeds)
@@ -53,14 +78,21 @@ X5 is a better language model at this budget and carries facts across turns no b
 | Y (self) | -0.054 | -0.044 | -0.010 |
 | Y with gold history | -0.037 | -0.045 | +0.008 (item-level 95% [-0.013, +0.030]) |
 
-**The isoplot.** The run-level line of Y on the FineWeb panel loss through all 19 home plain 20M runs (E5's four
-mixes and E1's depths) has slope -0.05 Y per nat and residual SD 0.021. X5's residuals at its own panel loss
-are +0.001, -0.005 and +0.003 (mean -0.0006): X5 sits on the plain runs' line.
-- Through the 11 runs of the 35% mix alone, the slope is -0.23 Y per nat and the residual SD 0.017. X5's mean
-  residual is -0.008, but X5's panel losses (3.781-3.798) lie below every plain 35% run's (3.828-3.940), so that
-  reading is an extrapolation.
-- The literature's default, that any gain is a general language-model improvement, is the pattern: lower losses
-  and higher twin accuracy, with Y unchanged.
+**The isoplot is weak evidence** (`isoplot_robustness.py`, `isoplot_robustness.json`).
+- **Through all 22 home plain 20M runs** (E5's four mixes and E1's L2, L4, L16 and L32): the line of Y on the
+  FineWeb panel loss has slope -0.019 Y per nat, with residual SD 0.021. X5's mean residual at its own panel loss
+  is +0.002.
+- **The slope is not stable.** Leaving out one cell at a time moves it from -0.082 to +0.051. A bootstrap over
+  runs (10,000 resamples) gives a 95% interval of [-0.149, +0.091]. X5's residual ranges from -0.003 to +0.012
+  across the leave-one-out fits, and its bootstrap interval is [-0.009, +0.016].
+- **Through the 14 runs of the 35% mix alone:** the slope is +0.023 (leave-one-cell-out -0.16 to +0.15) and X5's
+  residual is +0.012. X5's panel losses (3.781-3.798) lie below every plain 35% run's (3.828-3.986), so this is
+  an extrapolation.
+- **Reading.** Among the plain runs, Y barely depends on the FineWeb panel loss. That X5 sits near the line
+  says only that its lower loss did not come with a higher Y; the line itself does not separate a general gain
+  from a carry-over gain.
+- The pattern the literature's default predicts is there in the losses and the twin accuracy: they improve
+  while Y does not.
 
 **By family and distance** (item-level paired D, descriptive):
 
@@ -94,15 +126,19 @@ embedding; source 2i + 1 is layer i's attention output and 2i + 2 its FFN output
 | seed | 1 | 2 | 3 |
 |---|---:|---:|---:|
 | mean normalised routing entropy over the 32 mixtures that see 2+ sources | 0.878 | 0.887 | 0.875 |
+| the same over layers 0-3's 7 mixtures / the 25 from layer 4 on (head included) | 0.716 / 0.923 | 0.735 / 0.929 | 0.707 / 0.922 |
 | mixtures near uniform (entropy > 0.95) | 3 | 1 | 3 |
 | embedding weight at answer positions, mean over mixtures (uniform would be 0.097) | 0.164 | 0.161 | 0.160 |
 | embedding weight, answer minus other assistant positions | +0.010 | +0.008 | +0.003 |
 | sources 0-2 (embedding, layer 0's outputs), answer minus other | +0.014 | +0.013 | +0.0003 |
 
-- **No collapse.** The routing is far from uniform in most mixtures, unlike the deep-layer collapse reported
-  for AttnRes at scale (2605.18855). The most decided mixture is layer 0's FFN input, which chooses between the
-  embedding and layer 0's attention output (entropy 0.02-0.05). The attention inputs of layers 2-4 are among
-  the closest to uniform.
+- **From layer 4 on, the routing is close to uniform.** The 25 mixtures from layer 4 on (the head included)
+  have normalised entropy 0.88-0.96, and each one's largest mean weight is 0.05-0.28 (uniform over
+  their 9-33 sources would be 0.03-0.11). This is the near-uniform deep routing reported for AttnRes in
+  2605.18855.
+- **The decided mixtures are early, and they make the 0.88 mean.** Layer 0's FFN input chooses between the
+  embedding and layer 0's attention output (entropy 0.02-0.05). Layer 1's two inputs sit at 0.58-0.77, and
+  layer 2's FFN input at 0.71-0.92.
 - **"Selective strengthening" of early activations at the answer is small.** The answer positions give the
   embedding 0.3-1.0 points more weight than the other assistant positions do, and the early sources 0-1.4
   points more. By fact distance (1-4) the embedding's and the early sources' answer-position weights are flat
@@ -111,8 +147,8 @@ embedding; source 2i + 1 is layer i's attention output and 2i + 2 its FFN output
   largest weight goes to layer 5's attention output in seeds 1 and 3 (0.10 and 0.11, against 0.02 at the other
   assistant positions) and to layer 8's in seed 2 (0.11 against 0.05). The embedding's head weight moves
   0.002-0.005.
-- Read beside HX5-main: the model routes depth by content, but that routing does not improve carry-over on
-  Carry-5.
+- Read beside HX5-main: the early layers route depth decisively and the deep ones mix nearly uniformly.
+  Neither improves carry-over on Carry-5.
 
 ## Stage L0 on X5's pick (descriptive)
 
@@ -125,8 +161,10 @@ about 0.8 for plain 20m_L16's pick (ROADMAP section 3), so the run waits behind 
 ## What this does and does not show
 
 - At 20M parameters, 163.84M tokens and 16 layers, sublayer-level Attention Residuals lower every loss by
-  0.03-0.05 nats and leave Carry-5's carry-over cost where it was. The registered verdict is EQUIVALENT within 3
-  points.
+  0.03-0.05 nats and leave Carry-5's carry-over cost where it was.
+- The registered verdict is EQUIVALENT within 3 points. Under cluster resampling the equivalence holds for the
+  planted-fact families and not for Y's four families, whose interval reaches below -0.03 through the knowledge
+  family. No analysis leaves room for a 3-point gain.
 - The gap hypothesis (a benefit that grows with distance) is not tested here. Carry-5 has no long gaps, and
   Carry-12's pre-registration keeps it (HX).
 - One budget, one shape, E1 L16's learning rate (not tuned for X5), three seeds; item-level intervals treat items

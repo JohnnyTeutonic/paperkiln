@@ -1,0 +1,163 @@
+{
+ "label": "DESCRIPTIVE (amendment 5 robustness; the registered verdict is analyze_x5.py's)",
+ "B": 10000,
+ "seed": 0,
+ "results": {
+  "Y (recall, correction, topic, knowledge)": {
+   "pairs": 2664,
+   "mean": -0.010135135135135136,
+   "item": {
+    "clusters": 888,
+    "ci90": [
+     -0.03003003003003003,
+     0.00975975975975976
+    ],
+    "ci95": [
+     -0.033783783783783786,
+     0.013888888888888888
+    ],
+    "verdict_rule_applied": "NOT_RESOLVED"
+   },
+   "frame": {
+    "clusters": 76,
+    "ci90": [
+     -0.035375479722020535,
+     0.010378986020599211
+    ],
+    "ci95": [
+     -0.040752608723431005,
+     0.014400891284526285
+    ],
+    "verdict_rule_applied": "NOT_RESOLVED"
+   },
+   "slot": {
+    "clusters": 13,
+    "ci90": [
+     -0.03511560519530591,
+     0.016317016317016316
+    ],
+    "ci95": [
+     -0.039312712007490286,
+     0.021368184955141468
+    ],
+    "verdict_rule_applied": "NOT_RESOLVED"
+   },
+   "family_slot": {
+    "clusters": 19,
+    "ci90": [
+     -0.03611111111111111,
+     0.015114741656031244
+    ],
+    "ci95": [
+     -0.041353383458646614,
+     0.019541920216362384
+    ],
+    "verdict_rule_applied": "NOT_RESOLVED"
+   }
+  },
+  "planted facts (recall, correction, topic)": {
+   "pairs": 2484,
+   "mean": -0.0036231884057971015,
+   "item": {
+    "clusters": 828,
+    "ci90": [
+     -0.024154589371980676,
+     0.017310789049919485
+    ],
+    "ci95": [
+     -0.027777777777777776,
+     0.0213365539452496
+    ],
+    "verdict_rule_applied": "EQUIVALENT"
+   },
+   "frame": {
+    "clusters": 19,
+    "ci90": [
+     -0.02678121009775396,
+     0.016950522724470063
+    ],
+    "ci95": [
+     -0.030816937870920432,
+     0.021179096457750644
+    ],
+    "verdict_rule_applied": "EQUIVALENT"
+   },
+   "slot": {
+    "clusters": 12,
+    "ci90": [
+     -0.027555555555555555,
+     0.02266666666666667
+    ],
+    "ci95": [
+     -0.031846747967479674,
+     0.02737971014492747
+    ],
+    "verdict_rule_applied": "EQUIVALENT"
+   },
+   "family_slot": {
+    "clusters": 18,
+    "ci90": [
+     -0.029007352710920718,
+     0.021164972783677804
+    ],
+    "ci95": [
+     -0.03485878536329374,
+     0.025062933883381013
+    ],
+    "verdict_rule_applied": "EQUIVALENT"
+   }
+  },
+  "knowledge": {
+   "pairs": 180,
+   "mean": -0.1,
+   "item": {
+    "clusters": 60,
+    "ci90": [
+     -0.17777777777777778,
+     -0.027777777777777776
+    ],
+    "ci95": [
+     -0.18888888888888888,
+     -0.011111111111111112
+    ],
+    "verdict_rule_applied": "CONTRADICTED"
+   },
+   "frame": {
+    "clusters": 57,
+    "ci90": [
+     -0.17543859649122806,
+     -0.023391812865497075
+    ],
+    "ci95": [
+     -0.18888888888888888,
+     -0.011111111111111112
+    ],
+    "verdict_rule_applied": "CONTRADICTED"
+   },
+   "slot": {
+    "clusters": 1,
+    "ci90": [
+     -0.1,
+     -0.1
+    ],
+    "ci95": [
+     -0.1,
+     -0.1
+    ],
+    "verdict_rule_applied": "CONTRADICTED"
+   },
+   "family_slot": {
+    "clusters": 1,
+    "ci90": [
+     -0.1,
+     -0.1
+    ],
+    "ci95": [
+     -0.1,
+     -0.1
+    ],
+    "verdict_rule_applied": "CONTRADICTED"
+   }
+  }
+ }
+}
