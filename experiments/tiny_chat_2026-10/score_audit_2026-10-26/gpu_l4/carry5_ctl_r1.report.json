@@ -1,0 +1,50 @@
+{
+ "in": "/content/chat/upload/carry5_ctl_r1_chunk0000.in.jsonl",
+ "spec": "/content/chat/upload/spec_pick_e1_L16.json",
+ "mtstudio": "/content/pk/build_cuda/mtstudio",
+ "env": {
+  "MICROTORCH_STEP_RESIDENCY": "1",
+  "MICROTORCH_ATTN_BLOCKED": "1",
+  "MICROTORCH_CUBLAS": "1",
+  "MICROTORCH_DEVICE": "cuda",
+  "MICROTORCH_DEVICE_OPS": "1",
+  "MICROTORCH_DEFER_DOWNLOADS": "1"
+ },
+ "requests": 256,
+ "lengths": {
+  "min": 21,
+  "max": 158
+ },
+ "seq_vs_alone": {
+  "compared": 64,
+  "max_abs_diff": 0.0,
+  "argmax_equal": 64,
+  "tol": 0.0001,
+  "failures": 0,
+  "first_failures": [],
+  "pass": true,
+  "name": "seq_vs_alone"
+ },
+ "seq_vs_reverse": {
+  "compared": 256,
+  "max_abs_diff": 0.0,
+  "argmax_equal": 256,
+  "tol": 0.0001,
+  "failures": 0,
+  "first_failures": [],
+  "pass": true,
+  "name": "seq_vs_reverse"
+ },
+ "seq_vs_ref": {
+  "compared": 64,
+  "max_abs_diff": 1.74884268986375e-05,
+  "argmax_equal": 64,
+  "tol": 0.001,
+  "failures": 0,
+  "first_failures": [],
+  "pass": true,
+  "name": "seq_vs_ref",
+  "ref": "/content/chat/upload/cpu_carry5_ctl_r1_chunk0000.out.jsonl"
+ },
+ "pass": true
+}
