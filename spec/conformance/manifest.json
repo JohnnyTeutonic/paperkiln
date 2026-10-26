@@ -1123,6 +1123,20 @@
    "section": "7.4"
   },
   {
+   "id": "refuse/mor_reads_tokens",
+   "kind": "refuse",
+   "file": "refuse/mor_reads_tokens.json",
+   "rule": "17a",
+   "section": "3.5"
+  },
+  {
+   "id": "refuse/mor_reads_route_out",
+   "kind": "refuse",
+   "file": "refuse/mor_reads_route_out.json",
+   "rule": "17a",
+   "section": "7.4"
+  },
+  {
    "id": "refuse/position_bias_bucket_negative",
    "kind": "refuse",
    "file": "refuse/position_bias_bucket_negative.json",
@@ -1238,6 +1252,13 @@
    "id": "refuse/architecture_without_graph",
    "kind": "refuse",
    "file": "refuse/architecture_without_graph.json",
+   "rule": 38,
+   "section": "3.1"
+  },
+  {
+   "id": "refuse/architecture_substituted_document",
+   "kind": "refuse",
+   "file": "refuse/architecture_substituted_document.json",
    "rule": 38,
    "section": "3.1"
   },
@@ -1470,7 +1491,7 @@
    "kind": "accept",
    "file": "accept/documents.json",
    "profile": "core",
-   "n": 34
+   "n": 35
   },
   {
    "id": "chat/render",

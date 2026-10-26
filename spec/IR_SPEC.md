@@ -2,7 +2,7 @@
 
 *Normative specification of the paperkiln model IR: a versioned JSON graph of a language model that an
 engine interprets, rather than recognising a fixed architecture. IR version 1, specification revision
-1.3 (27 October 2026).*
+1.3 (27 October 2026; v1.3.1).*
 
 - Repository: keramos (`github.com/JohnnyTeutonic/keramos`), which holds this text, its schema, the
   reference tools, the worked documents and the conformance suite. Paths in this document are
@@ -197,7 +197,13 @@ and records its commit.
   (`family_hint`, `tokenizer`, `inputs`, `outputs`, `modes`, `ir_version`) and attributes
   (`attention.softmax`, `moe_ffn.routing`), optional attributes written at their defaults (section
   3.5), the order of the two operands of `add` and of `mul`, the spelling of numbers (each the f32 it
-  rounds to) and whether a `linear` reaches the tensor it reads through `tied_to` (section 5.3). Every
+  rounds to) and whether a `linear` reaches the tensor it reads through `tied_to` (section 5.3). Names
+  of values are compared by the write that makes each value: every write is a new value, and a read
+  names the latest write before it in the order embed, the block's nodes once, head; so a value the
+  block carries from one application to the next (the stream `x`) is named, where the block reads it
+  before writing it, by the write that application 0 reads (the embed's), in both documents alike.
+  `rmsnorm.group` is compared as written, absent against absent (its default, the row width, would need
+  the widths section 10.1.1 does not infer). Every
   other file has the architecture `"paperkiln"`, whatever tensors it shares with a llama.cpp
   architecture. No llama.cpp release builds a graph for `"paperkiln"`, so a program that builds its
   graph from the architecture and its metadata and never reads the document (llama.cpp and the front
@@ -205,9 +211,11 @@ and records its commit.
   such a file instead of computing another model; and where a file does
   name a llama.cpp architecture, its metadata and its document describe one model, so such a program
   computes the document's model, up to its own deviations from that architecture's graph (Appendix C).
-  A file that breaks this is refused (rule 38). The rule concerns the embedded document only: a
-  document read in place of it (ember's `EMBER_IR`, the suite's `ir`) is not in the file such a
-  program reads. `tools/gguf_relabel.py` relabels a file written before the rule: general.architecture
+  A file that breaks this is refused (rule 38). Rule 38 judges the file's embedded document, whether or
+  not another document is read in place of it, and never the document read in place: that one is not in
+  the file such a program reads, while the embedded one still is (refusal
+  `architecture_substituted_document`: a valid kimi document read in place of the kimi document of a
+  gpt2-labelled file is refused). `tools/gguf_relabel.py` relabels a file written before the rule: general.architecture
   becomes `"paperkiln"` and the old architecture's keys are renamed `paperkiln.*`; the document, its
   digest and the tensors are unchanged.
 - A sidecar `<stem>.ir.json` beside the GGUF may hold the same document. When present, it must be
@@ -235,7 +243,11 @@ and records its commit.
 A document is a JSON text (RFC 8259) of one object, in UTF-8. No object in it, at any depth and `_`
 members included, holds a member name twice: a document with a duplicate member name is refused
 (rule 35), whatever the two members hold and whichever of them a parser would keep, so every engine
-reads one graph from one text. The object has these keys:
+reads one graph from one text. Rule 35 judges the document read: when a valid document is read in place
+of a file's embedded one (ember's `EMBER_IR`, the suite's `ir`), a duplicate member name in the embedded
+document is not a refusal (accept case `substituted_over_duplicate_embedded`); the container rules that
+read the embedded document (24 and 38) parse it as JSON keeping the last of two equal member names. The
+object has these keys:
 
 | Key | Required | Meaning |
 |---|---|---|
@@ -720,7 +732,10 @@ Attributes `heads`, `kv_heads`, `head_dim`, `scale`, `causal`, `window` (0 = unb
   exact below B / 2 and logarithmic up to max_distance), D = max_distance + 1. `position_bias` is
   structural (section 3.8): one table for every layer is one name, as T5 shares it; a table per layer
   names it with `{i}`. The bias depends on p - j alone, so decode needs nothing beyond the kv slot's
-  rows and their positions, and prefill and decode agree as they do without it. Refused (rule 39):
+  rows and their positions, and prefill and decode agree as they do without it. Under `depth_route`
+  (v1.3.1) p and j are the positions of the step's active rows (section 7.4), as everywhere: the
+  distance is never counted in rows, and the reference computes it so (no case yet; ember refuses the
+  combination by name, a capability refusal, section 10.3). Refused (rule 39):
   `buckets` empty or holding an integer below 0, or W not of ne {heads, B} with B greater than every
   bucket.
 - `softmax` (a string) is an informative attribute that paperkiln's exporter writes ("max-shifted,
@@ -1779,7 +1794,11 @@ State (section 6):
     (6.8.1, Q8).
 17a. A name holds `{i}` outside the block, or more than once (3.7); a node reads `tokens` or `pos`
     other than as section 3.5 allows, or writes either (3.5); a kv slot is read by more than one
-    attention node (6.1); a node reads a `depth_route`'s `out` (7.4).
+    attention node (6.1); a node reads a `depth_route`'s `out` (7.4). Under `depth_route` a block node
+    after it that reads `tokens` or the router's `out` breaks rule 17a; rule 36 follows as a consequence
+    (neither is in the step's scope, 7.4(b)), so a consumer may report either and a refusal case cites
+    17a (`mor_reads_tokens`, `mor_reads_route_out`). Rule 36 alone covers a step's read of any other
+    value from outside the step (`mor_reads_outside_value`).
 
 Recursion (section 7):
 18. `weight_index` is not `{per_layer: [block.repeat integers >= 0]}`, or leaves a stored layer
@@ -1816,7 +1835,8 @@ Container (a GGUF with `paperkiln.ir`, sections 3.1, 6.8, 7, 8.2):
 38. `general.architecture` is neither `"paperkiln"` nor an architecture of section 9.3; or it is one of
     section 9.3's and the embedded document is not the graph section 9.3's builder makes from the
     file's metadata and tensor shapes, up to what section 3.1 lists; or the metadata builds no graph
-    (3.1). Checked on the embedded document, not on one read in place of it.
+    (3.1). Checked on the embedded document always, also when another is read in place of it, and
+    never on the document read in place.
 
 Recurrence (section 6.10; `tools/ir_recurrence.py` reports these as "IR_SPEC 6.10 (rule N)"):
 31. `index` is not a map of names to positive integers; `inputs` does not declare each value of `in`
@@ -2294,7 +2314,7 @@ extractor's proposal of T5's bias (paperkiln, 26 October 2026). Each with the an
   The proposal's numpy lines matched `mtstudio score` on paperkiln's gate model within 2.62e-7 of
   max(1, |ref|), greedy 40/40, and the reference's lines give its values bit for bit on the three op
   cases. The suite has the three op cases and four refusals; the whole-model case `pk_flex_t5`
-  (paperkiln's gate recipe) follows at v1.3.1, a new case that moves no existing value (section 2.6).
+  (paperkiln's gate recipe) follows at v1.3.2, a new case that moves no existing value (section 2.6).
   ember refuses the attribute by name until it implements it (Appendix C).
 
 - **transformers' findings** (`adapters/hf/FINDINGS.txt`, H1 to H6, keramos f1b7b49). H1: a
@@ -2302,6 +2322,15 @@ extractor's proposal of T5's bias (paperkiln, 26 October 2026). Each with the an
   `<model>_chunks`), where transformers' Mamba bug showed only by chance. H2: 5.15's Decode paragraph
   counts window - 1 rows between calls. H3: a rewind into a window may be refused (section 6.9). H4:
   rule 38 covers HF-checkpoint engines as it does llama.cpp. H5 is K4. H6: a row in Appendix C.
+
+- **ember's five questions on revision 1.3** (v1.3.1; ember conforms to v1.3.0 at 355 pass, 0 fail, 49
+  skip, receipt 4d05e95, following the reference in each): rule 35 under substitution judges the document
+  read (section 3.2); rule 38 judges the embedded document even under substitution (3.1); a read of
+  `tokens` or of `depth_route`'s out under depth_route is a rule 17a fault with rule 36 as its consequence
+  (10.1); rule 38's comparison names values by their writes, the block's carried values by the embed's,
+  and compares `rmsnorm.group` as written (3.1); `position_bias` under depth_route uses positions (5.15).
+  Cases: accept `substituted_over_duplicate_embedded`, refusals `architecture_substituted_document`,
+  `mor_reads_tokens`, `mor_reads_route_out`.
 
 ### 12.5 Open
 
@@ -2402,6 +2431,17 @@ equal to dc29b5e6 bit for bit) and the pinned commits of the RunPod campaigns ar
 
 ## Appendix B. Changelog
 
+- **v1.3.1** (tag, 27 October 2026; section 2.6). ember's five questions on revision 1.3, settled by
+  stating what the reference does (section 12.4): rules 35 and 38 under substitution (3.2, 3.1), rules 17a
+  and 36 under depth_route (10.1), rule 38's comparison of carried values and `rmsnorm.group` (3.1),
+  `position_bias` under depth_route (5.15). New cases (no existing value moves): accept
+  `substituted_over_duplicate_embedded` (with `accept/pk_llama.ir.json`), refusals
+  `architecture_substituted_document`, `mor_reads_tokens`, `mor_reads_route_out`; 408 cases. Known stored
+  pre-1.3 files that rule 38 refuses, all gpt2-labelled IR-only exports kept as receipts hash them:
+  `C:/ml_artifacts/kimi_tiny/kimi_tiny.gguf`, `swa_tiny/swa_tiny.gguf` and
+  `capacity/flex_plain/flex_plain_tiny.gguf`
+  (left as they are; `tools/gguf_relabel.py` relabels copies). The whole-model case `pk_flex_t5` and
+  mtstudio's receipt follow in v1.3.2.
 - **v1.3.0** (tag, 27 October 2026; revision 1.3). What llama.cpp b6000 against the suite showed
   (`adapters/llamacpp/FINDINGS.txt`), and T5's relative position bias (section 12.4). New rules: a
   file's architecture is its document's graph or "paperkiln" (section 3.1, rule 38; checked on the
@@ -2420,7 +2460,7 @@ equal to dc29b5e6 bit for bit) and the pinned commits of the RunPod campaigns ar
   `architecture_*` (4, rule 38) and
   `position_bias_*` (4, rules 39 and 6); every earlier expected value unchanged, regenerated in the
   named environment (section 4.6). The whole-model case of T5's bias, `pk_flex_t5`, and mtstudio's
-  receipt follow in v1.3.1.
+  receipt follow in v1.3.2 (the build they need waits for CPU slots).
 - **v1.2.1** (tag, 26 October 2026; documentation patch). Appendix C's ember WebGPU row: every interpreter
   document except recurrence runs on a WGSL interpreter of the document (ember 36c61eb, gated 17b3999 on a
   software adapter). No case, schema or expected value changes.

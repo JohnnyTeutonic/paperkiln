@@ -697,6 +697,12 @@ def refusals():
     doc_case("mor_reads_outside_value", M, 36, "7.4", mor_outside)
     doc_case("mor_step_gap", M, 20, "7.4", lambda d: node(d, "depth_route").update(
         step={"per_layer": [-1, 0, -1, 1, 2]}))
+    # v1.3.1 (10.1): under depth_route a step node reading tokens, or depth_route's out, is a rule 17a fault
+    # (rule 36 follows as a consequence: neither is in the step's scope, 7.4(b)).
+    doc_case("mor_reads_tokens", M, "17a", "3.5", lambda d: d["block"]["nodes"].insert(
+        1, {"op": "add", "in": ["x", "tokens"], "out": "x"}))
+    doc_case("mor_reads_route_out", M, "17a", "7.4", lambda d: d["block"]["nodes"].insert(
+        1, {"op": "add", "in": ["x", node(d, "depth_route")["out"]], "out": "x"}))
     # v1.3: rule 39 (5.15), position_bias's buckets and its table.
     doc_case("position_bias_bucket_negative", L, 39, "5.15", lambda d: node(d, "attention").update(
         position_bias={"weight": "token_embd.weight", "buckets": [0, -1]}))
@@ -766,6 +772,10 @@ def refusals():
     arch_case("architecture_metadata_disagrees", L, lambda m: dict(m, **{"llama.rope.freq_base": (6, 500000.0)}))
     # An architecture section 9.3 does not define (nothing states what a program building from it computes).
     arch_case("architecture_without_graph", L, lambda m: relabelled(m, "phi3"))
+    # v1.3.1: rule 38 judges the file's embedded document even when a valid document is read in place of it.
+    gg.append(("architecture_substituted_document", {
+        "doc": load_model(SUITE / "models" / "pk_kimi")[0], "gguf": "refuse/architecture_kimi_as_gpt2.gguf",
+        "rule": 38, "section": "3.1"}))
     return out + gg
 
 
@@ -896,6 +906,12 @@ def accept_cases():
               for n in REC_MODELS]
     cases += [{"name": f"example_{p.name[:-len('.ir.json')]}", "ir": f"../examples/{p.name}"}
               for p in sorted((ROOT / "examples").glob("*.ir.json"))]
+    # v1.3.1 (3.2, rule 35): a valid document read in place of a file whose embedded document holds a duplicate
+    # member name is accepted; rule 35 judges the document read.
+    (SUITE / "accept" / "pk_llama.ir.json").write_text(
+        json.dumps(load_model(SUITE / "models" / "pk_llama")[0], indent=1) + "\n", encoding="utf-8")
+    cases.append({"name": "substituted_over_duplicate_embedded", "gguf": "refuse/duplicate_member_embedded.gguf",
+                  "ir": "accept/pk_llama.ir.json"})
     for c in cases:
         errs = ir_validate.check_errors(SUITE / c["gguf"] if "gguf" in c else None,
                                         SUITE / c["ir"] if "ir" in c else None)

@@ -140,6 +140,11 @@
   {
    "name": "example_swa_tiny",
    "ir": "../examples/swa_tiny.ir.json"
+  },
+  {
+   "name": "substituted_over_duplicate_embedded",
+   "gguf": "refuse/duplicate_member_embedded.gguf",
+   "ir": "accept/pk_llama.ir.json"
   }
  ]
 }

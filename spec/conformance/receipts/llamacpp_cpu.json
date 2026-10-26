@@ -1,13 +1,13 @@
 {
  "spec": {
   "repository": "keramos",
-  "tag": "v1.2.1",
-  "commit": "92b89f0baab12589f6eae548181c5d6c5e5b333f"
+  "tag": "v1.3.0",
+  "commit": "da9ead6175925aa6b19758aa828cdc42236a45a6"
  },
  "engine": {
   "name": "llama.cpp b6000 (4762ad7316dcdec20016ab5985fb46a27902204d), CPU, through keramos/adapters/llamacpp/llamacpp_adapter.cpp (a JSON Lines shim over llama.h; GCC 13.3, -O2; llama.cpp Release, GGML_NATIVE off, AVX2, shared libraries, WSL ext4)",
   "environment": "the runner under CPython 3.12.3, numpy 2.3.3, WSL (Ubuntu 24.04)",
-  "run": "python3 tools/ir_conformance.py --adapter \"cmd:llamacpp_adapter --threads 2 --alias mistral=llama\", keramos working tree equal to v1.2.1 (92b89f0b) plus adapters/llamacpp, 2026-10-27. Settings: f32 kv cache, flash attention off, swa_full on (llama_context_default_params), n_ubatch 512. Adapter rewrites: tokenizer.ggml.model 'word' -> 'no_vocab' with <arch>.vocab_size (kv overrides; the file is read unchanged), and tp_mistral's architecture 'mistral' loaded as 'llama' (llama.cpp has no 'mistral' architecture; its converter writes Mistral as 'llama'; without --alias the two tp_mistral cases are skips). Skips: files of architecture 'paperkiln' (no llama.cpp graph, IR_SPEC 9.1: 28 cases, model 10 and trace 18, 4 of the traces reported 'not implemented' by the runner's score_form fallback), open with a replacement document (4 traces), IR validation (refuse 83, accept 34), single nodes (op 59, grad 8), digest (84), render_chat (32). Every FAIL is classified in adapters/llamacpp/FINDINGS.txt."
+  "run": "python3 tools/ir_conformance.py --adapter \"cmd:llamacpp_adapter --threads 2 --alias mistral=llama\", keramos working tree equal to v1.3.0 (da9ead61), 2026-10-27, the adapter and build unchanged. Settings: f32 kv cache, flash attention off, swa_full on, n_ubatch 512; the same rewrites (tokenizer 'word' as 'no_vocab', tp_mistral's 'mistral' loaded as 'llama'). Other configurations (adapters/llamacpp/FINDINGS.txt): no alias 27/9/368, f16 kv 18/21/365, flash attention 17/22/365 with either cache type. Every FAIL is a finding of FINDINGS.txt (1 GELU table, 2 tanh GELU on gptneox, 3 Mistral without its window); the IR-only models, now architecture 'paperkiln' (rule 38), are skips"
  },
  "adapter": {
   "engine": "llama.cpp",
@@ -20,38 +20,38 @@
   ]
  },
  "counts": {
-  "PASS": 23,
-  "FAIL": 15,
-  "SKIP": 332,
+  "PASS": 27,
+  "FAIL": 12,
+  "SKIP": 365,
   "XFAIL": 0,
   "XPASS": 0
  },
  "by_kind": {
   "model": {
    "PASS": 5,
-   "FAIL": 6,
-   "SKIP": 10,
+   "FAIL": 3,
+   "SKIP": 13,
    "XFAIL": 0,
    "XPASS": 0
   },
   "trace": {
-   "PASS": 8,
+   "PASS": 12,
    "FAIL": 9,
-   "SKIP": 22,
+   "SKIP": 41,
    "XFAIL": 0,
    "XPASS": 0
   },
   "op": {
    "PASS": 0,
    "FAIL": 0,
-   "SKIP": 59,
+   "SKIP": 62,
    "XFAIL": 0,
    "XPASS": 0
   },
   "refuse": {
    "PASS": 0,
    "FAIL": 0,
-   "SKIP": 83,
+   "SKIP": 91,
    "XFAIL": 0,
    "XPASS": 0
   },
@@ -143,32 +143,32 @@
   {
    "id": "model/pk_gpt2_swa",
    "kind": "model",
-   "verdict": "FAIL",
-   "detail": "log-probs worst 5.08e-03; greedy 4/4"
+   "verdict": "SKIP",
+   "detail": "llama.cpp has no graph for general.architecture 'paperkiln'"
   },
   {
    "id": "trace/pk_gpt2_swa_decode",
    "kind": "trace",
-   "verdict": "FAIL",
-   "detail": "6 steps; step 0 logits worst 5.10e-05 of max(1, |ref|); step 1 logits worst 4.60e-05 of max(1, |ref|); step 2 logits worst 9.32e-05 of max(1, |ref|); step 3 logits worst 2.26e-02 of max(1, |ref|); step 4 logits worst 5.64e-02 of max(1, |ref|); step 5 logits worst 1.07e-01 of max(1, |ref|)"
+   "verdict": "SKIP",
+   "detail": "llama.cpp has no graph for general.architecture 'paperkiln'"
   },
   {
    "id": "model/pk_kimi",
    "kind": "model",
-   "verdict": "FAIL",
-   "detail": "log-probs worst 3.02e-03; greedy 4/4"
+   "verdict": "SKIP",
+   "detail": "llama.cpp has no graph for general.architecture 'paperkiln'"
   },
   {
    "id": "trace/pk_kimi_decode",
    "kind": "trace",
-   "verdict": "FAIL",
-   "detail": "KeyError: 'lin'"
+   "verdict": "SKIP",
+   "detail": "llama.cpp has no graph for general.architecture 'paperkiln'"
   },
   {
    "id": "trace/pk_kimi_snapshot",
    "kind": "trace",
-   "verdict": "FAIL",
-   "detail": "KeyError: 'lin'"
+   "verdict": "SKIP",
+   "detail": "llama.cpp has no graph for general.architecture 'paperkiln'"
   },
   {
    "id": "model/pk_llama",
@@ -252,7 +252,7 @@
    "id": "trace/pk_mor_decode",
    "kind": "trace",
    "verdict": "SKIP",
-   "detail": "not implemented"
+   "detail": "llama.cpp has no graph for general.architecture 'paperkiln'"
   },
   {
    "id": "trace/pk_mor_truncate",
@@ -263,20 +263,20 @@
   {
    "id": "model/pk_recurrence",
    "kind": "model",
-   "verdict": "FAIL",
-   "detail": "log-probs worst 2.89e-03; greedy 4/4"
+   "verdict": "SKIP",
+   "detail": "llama.cpp has no graph for general.architecture 'paperkiln'"
   },
   {
    "id": "trace/pk_recurrence_decode",
    "kind": "trace",
-   "verdict": "FAIL",
-   "detail": "KeyError: 'rec'"
+   "verdict": "SKIP",
+   "detail": "llama.cpp has no graph for general.architecture 'paperkiln'"
   },
   {
    "id": "trace/pk_recurrence_snapshot",
    "kind": "trace",
-   "verdict": "FAIL",
-   "detail": "KeyError: 'rec'"
+   "verdict": "SKIP",
+   "detail": "llama.cpp has no graph for general.architecture 'paperkiln'"
   },
   {
    "id": "model/pk_recursive",
@@ -288,7 +288,7 @@
    "id": "trace/pk_recursive_decode",
    "kind": "trace",
    "verdict": "SKIP",
-   "detail": "not implemented"
+   "detail": "llama.cpp has no graph for general.architecture 'paperkiln'"
   },
   {
    "id": "model/pk_srd",
@@ -318,13 +318,13 @@
    "id": "trace/pk_state_evict_on",
    "kind": "trace",
    "verdict": "SKIP",
-   "detail": "not implemented"
+   "detail": "llama.cpp has no graph for general.architecture 'paperkiln'"
   },
   {
    "id": "trace/pk_state_evict_off",
    "kind": "trace",
    "verdict": "SKIP",
-   "detail": "not implemented"
+   "detail": "llama.cpp has no graph for general.architecture 'paperkiln'"
   },
   {
    "id": "trace/pk_state_rewind_evicted",
@@ -610,6 +610,24 @@
   },
   {
    "id": "op/attention/grouped_query",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "llama.cpp runs whole graphs it builds itself, not single IR nodes"
+  },
+  {
+   "id": "op/attention/position_bias",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "llama.cpp runs whole graphs it builds itself, not single IR nodes"
+  },
+  {
+   "id": "op/attention/position_bias_window_sinks",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "llama.cpp runs whole graphs it builds itself, not single IR nodes"
+  },
+  {
+   "id": "op/attention/position_bias_grouped_query",
    "kind": "op",
    "verdict": "SKIP",
    "detail": "llama.cpp runs whole graphs it builds itself, not single IR nodes"
@@ -1215,6 +1233,30 @@
    "detail": "llama.cpp does not validate IR documents (IR_SPEC section 10): it ignores paperkiln.ir"
   },
   {
+   "id": "refuse/position_bias_bucket_negative",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "llama.cpp does not validate IR documents (IR_SPEC section 10): it ignores paperkiln.ir"
+  },
+  {
+   "id": "refuse/position_bias_buckets_empty",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "llama.cpp does not validate IR documents (IR_SPEC section 10): it ignores paperkiln.ir"
+  },
+  {
+   "id": "refuse/position_bias_table_shape",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "llama.cpp does not validate IR documents (IR_SPEC section 10): it ignores paperkiln.ir"
+  },
+  {
+   "id": "refuse/position_bias_per_layer",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "llama.cpp does not validate IR documents (IR_SPEC section 10): it ignores paperkiln.ir"
+  },
+  {
    "id": "refuse/duplicate_member_top",
    "kind": "refuse",
    "verdict": "SKIP",
@@ -1264,6 +1306,30 @@
   },
   {
    "id": "refuse/duplicate_member_embedded",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "llama.cpp does not validate IR documents (IR_SPEC section 10): it ignores paperkiln.ir"
+  },
+  {
+   "id": "refuse/architecture_kimi_as_gpt2",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "llama.cpp does not validate IR documents (IR_SPEC section 10): it ignores paperkiln.ir"
+  },
+  {
+   "id": "refuse/architecture_swa_as_gpt2",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "llama.cpp does not validate IR documents (IR_SPEC section 10): it ignores paperkiln.ir"
+  },
+  {
+   "id": "refuse/architecture_metadata_disagrees",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "llama.cpp does not validate IR documents (IR_SPEC section 10): it ignores paperkiln.ir"
+  },
+  {
+   "id": "refuse/architecture_without_graph",
    "kind": "refuse",
    "verdict": "SKIP",
    "detail": "llama.cpp does not validate IR documents (IR_SPEC section 10): it ignores paperkiln.ir"
@@ -1915,6 +1981,144 @@
    "kind": "trace",
    "verdict": "PASS",
    "detail": "3 steps"
+  },
+  {
+   "id": "trace/pk_gpt2_swa_rewind_window",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "llama.cpp has no graph for general.architecture 'paperkiln'"
+  },
+  {
+   "id": "trace/tp_gemma3_rewind_window",
+   "kind": "trace",
+   "verdict": "FAIL",
+   "detail": "3 steps; step 0 logits worst 6.90e-04 of max(1, |ref|); step 2 logits worst 4.60e-04 of max(1, |ref|)"
+  },
+  {
+   "id": "trace/pk_attnres_chunks",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "llama.cpp has no graph for general.architecture 'paperkiln'"
+  },
+  {
+   "id": "trace/pk_flex_expr_chunks",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "llama.cpp has no graph for general.architecture 'paperkiln'"
+  },
+  {
+   "id": "trace/pk_flex_highway_chunks",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "llama.cpp has no graph for general.architecture 'paperkiln'"
+  },
+  {
+   "id": "trace/pk_gpt2_chunks",
+   "kind": "trace",
+   "verdict": "FAIL",
+   "detail": "4 steps; step 0 logits worst 7.09e-05 of max(1, |ref|); step 1 logits worst 5.30e-05 of max(1, |ref|); step 2 logits worst 2.78e-05 of max(1, |ref|); step 3 logits worst 5.17e-05 of max(1, |ref|)"
+  },
+  {
+   "id": "trace/pk_gpt2_swa_chunks",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "llama.cpp has no graph for general.architecture 'paperkiln'"
+  },
+  {
+   "id": "trace/pk_kimi_chunks",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "llama.cpp has no graph for general.architecture 'paperkiln'"
+  },
+  {
+   "id": "trace/pk_llama_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
+   "id": "trace/pk_llama_attnres_chunks",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "llama.cpp has no graph for general.architecture 'paperkiln'"
+  },
+  {
+   "id": "trace/pk_llama_attnres_rec_chunks",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "llama.cpp has no graph for general.architecture 'paperkiln'"
+  },
+  {
+   "id": "trace/pk_mamba_chunks",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "llama.cpp has no graph for general.architecture 'paperkiln'"
+  },
+  {
+   "id": "trace/pk_moe_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
+   "id": "trace/pk_mor_chunks",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "llama.cpp has no graph for general.architecture 'paperkiln'"
+  },
+  {
+   "id": "trace/pk_recurrence_chunks",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "llama.cpp has no graph for general.architecture 'paperkiln'"
+  },
+  {
+   "id": "trace/pk_recursive_chunks",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "llama.cpp has no graph for general.architecture 'paperkiln'"
+  },
+  {
+   "id": "trace/pk_srd_chunks",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "llama.cpp has no graph for general.architecture 'paperkiln'"
+  },
+  {
+   "id": "trace/pk_state_chunks",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "llama.cpp has no graph for general.architecture 'paperkiln'"
+  },
+  {
+   "id": "trace/tp_gemma3_chunks",
+   "kind": "trace",
+   "verdict": "FAIL",
+   "detail": "4 steps; step 0 logits worst 9.68e-05 of max(1, |ref|); step 1 logits worst 3.52e-04 of max(1, |ref|); step 2 logits worst 2.63e-04 of max(1, |ref|); step 3 logits worst 4.06e-04 of max(1, |ref|)"
+  },
+  {
+   "id": "trace/tp_gptneox_chunks",
+   "kind": "trace",
+   "verdict": "FAIL",
+   "detail": "4 steps; step 0 logits worst 5.47e-04 of max(1, |ref|); step 1 logits worst 3.65e-04 of max(1, |ref|); step 2 logits worst 4.68e-04 of max(1, |ref|); step 3 logits worst 3.62e-04 of max(1, |ref|)"
+  },
+  {
+   "id": "trace/tp_mamba1_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
+   "id": "trace/tp_mistral_chunks",
+   "kind": "trace",
+   "verdict": "FAIL",
+   "detail": "4 steps; step 1 logits worst 3.00e-01 of max(1, |ref|); step 2 logits worst 4.98e-01 of max(1, |ref|); step 3 logits worst 1.10e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "trace/tp_qwen3_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
   },
   {
    "id": "accept/documents/model_pk_attnres",

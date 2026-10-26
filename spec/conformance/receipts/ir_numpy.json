@@ -1,13 +1,13 @@
 {
  "spec": {
   "repository": "keramos",
-  "tag": "v1.2.0",
-  "commit": "d4b880ae2a42865f4334b2c3ea27af6db02ffc84"
+  "tag": "v1.3.0",
+  "commit": "da9ead6175925aa6b19758aa828cdc42236a45a6"
  },
  "engine": {
   "name": "numpy reference (tools/ir_numpy.py)",
   "environment": "CPython 3.13.14, numpy 2.3.5, Windows 11 x86-64 (the generating environment, IR_SPEC 4.6)",
-  "run": "python tools/ir_conformance.py --adapter ir_numpy, keramos working tree equal to v1.2.0 (d4b880ae), 2026-10-26"
+  "run": "python tools/ir_conformance.py --adapter ir_numpy, keramos working tree equal to v1.3.0 (da9ead61), 2026-10-27"
  },
  "adapter": {
   "engine": "ir_numpy",
@@ -23,7 +23,7 @@
   ]
  },
  "counts": {
-  "PASS": 362,
+  "PASS": 396,
   "FAIL": 0,
   "SKIP": 8,
   "XFAIL": 0,
@@ -38,21 +38,21 @@
    "XPASS": 0
   },
   "trace": {
-   "PASS": 39,
+   "PASS": 62,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
    "XPASS": 0
   },
   "op": {
-   "PASS": 59,
+   "PASS": 62,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
    "XPASS": 0
   },
   "refuse": {
-   "PASS": 83,
+   "PASS": 91,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
@@ -613,6 +613,24 @@
   },
   {
    "id": "op/attention/grouped_query",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "a worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/attention/position_bias",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "a worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/attention/position_bias_window_sinks",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "a worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/attention/position_bias_grouped_query",
    "kind": "op",
    "verdict": "PASS",
    "detail": "a worst 0.00e+00 of max(1, |ref|)"
@@ -1218,6 +1236,30 @@
    "detail": "refused (IR_SPEC 7.4 (rule 20))"
   },
   {
+   "id": "refuse/position_bias_bucket_negative",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 5.15 (rule 39))"
+  },
+  {
+   "id": "refuse/position_bias_buckets_empty",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 5.15 (rule 39))"
+  },
+  {
+   "id": "refuse/position_bias_table_shape",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 5.15 (rule 39))"
+  },
+  {
+   "id": "refuse/position_bias_per_layer",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 3.8 (rule 6))"
+  },
+  {
    "id": "refuse/duplicate_member_top",
    "kind": "refuse",
    "verdict": "PASS",
@@ -1270,6 +1312,30 @@
    "kind": "refuse",
    "verdict": "PASS",
    "detail": "refused (IR_SPEC 3.2 (rule 35))"
+  },
+  {
+   "id": "refuse/architecture_kimi_as_gpt2",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 3.1 (rule 38))"
+  },
+  {
+   "id": "refuse/architecture_swa_as_gpt2",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 3.1 (rule 38))"
+  },
+  {
+   "id": "refuse/architecture_metadata_disagrees",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 3.1 (rule 38))"
+  },
+  {
+   "id": "refuse/architecture_without_graph",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 3.1 (rule 38))"
   },
   {
    "id": "digest/vectors/rfc8785_number_0000000000000000",
@@ -1918,6 +1984,144 @@
    "kind": "trace",
    "verdict": "PASS",
    "detail": "3 steps"
+  },
+  {
+   "id": "trace/pk_gpt2_swa_rewind_window",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "3 steps"
+  },
+  {
+   "id": "trace/tp_gemma3_rewind_window",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "3 steps"
+  },
+  {
+   "id": "trace/pk_attnres_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
+   "id": "trace/pk_flex_expr_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
+   "id": "trace/pk_flex_highway_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
+   "id": "trace/pk_gpt2_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
+   "id": "trace/pk_gpt2_swa_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
+   "id": "trace/pk_kimi_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
+   "id": "trace/pk_llama_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
+   "id": "trace/pk_llama_attnres_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
+   "id": "trace/pk_llama_attnres_rec_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
+   "id": "trace/pk_mamba_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
+   "id": "trace/pk_moe_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
+   "id": "trace/pk_mor_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
+   "id": "trace/pk_recurrence_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
+   "id": "trace/pk_recursive_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
+   "id": "trace/pk_srd_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
+   "id": "trace/pk_state_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
+   "id": "trace/tp_gemma3_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
+   "id": "trace/tp_gptneox_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
+   "id": "trace/tp_mamba1_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
+   "id": "trace/tp_mistral_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
+   "id": "trace/tp_qwen3_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
   },
   {
    "id": "accept/documents/model_pk_attnres",

@@ -8,6 +8,16 @@ never the IR document: it builds its own graph from general.architecture and the
 ignores paperkiln.ir. What follows is what the suite (keramos v1.2.1, 92b89f0b) says about it, and why
 each failure happens.
 
+At keramos v1.3.0 (da9ead61, 27 Oct 2026; IR_SPEC 12.4) K1 to K5 are settled: the IR-only models carry
+architecture "paperkiln" (rule 38), so pk_gpt2_swa, pk_kimi and pk_recurrence and their traces are now
+correct skips, not fails (finding 7 closed); 6.9 states the windowed rewind and tp_gemma3_rewind_window
+tests it (finding 4: after the cut 4.6e-4, the GELU table's error, with swa_full on or behind
+--rewind-guard; 1.04 with --swa-full 0 --n-ubatch 4 and no guard); 9.3 says llama.cpp has no "mistral";
+the runner's messages (K4); Appendix C's row (K5). Receipt at v1.3.0, the same adapter and build: 27 pass,
+12 fail, 365 skip of 404 (the new <model>_chunks traces fail exactly where findings 1 to 3 already fail
+the decode traces: pk_gpt2, tp_gemma3, tp_gptneox, tp_mistral). No alias 27/9/368; f16 kv 18/21/365; flash
+attention 17/22/365 with either cache type. The text below is the first pass, at v1.2.1.
+
 - Engine: llama.cpp tag b6000, commit 4762ad7316dcdec20016ab5985fb46a27902204d, CPU only (Release,
   GGML_NATIVE off, AVX2, shared libraries), in WSL; 2 threads.
 - Adapter: llamacpp_adapter.cpp, a JSON Lines shim over llama.h (IR_SPEC 11.3); no llama.cpp source is
