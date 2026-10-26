@@ -1,0 +1,602 @@
+{
+ "stage": "L0",
+ "smoke": false,
+ "tag": "pick_e5_s17",
+ "registration": "experiments/tiny_chat_long_2026-10/STAGE_L0.md",
+ "registration_sha256": "74889984b98d72509103cdbae3cb406f8dd3d49ec99916ba363f374a8be24e7e",
+ "model": {
+  "dir": "/mnt/c/ml_artifacts/tiny_chat/e5/pick_e5_s17",
+  "safetensors_sha256": "9b590cad81ccde0bcdf2027bf9881e147ed9fe3432a1c38ad7b23b3401da3e31",
+  "gguf_sha256": "c46d6b23457fa927b04da0319d0d354b85e502eee4a9c07a545329b2823ebb12",
+  "spec_name": "tc_sft_s17_r3",
+  "T": 512,
+  "arch": {
+   "preset": "llama-tiny",
+   "rope_heads": "all",
+   "custom": {
+    "d": 448,
+    "layers": 8,
+    "heads": 7,
+    "d_ff": 1248
+   }
+  }
+ },
+ "set": {
+  "path": "corpus/eval/carry12_v1.jsonl",
+  "sha256": "de24f2c726a1006e8e61542dd3b2dfbf8677b9e6fe689277cca035305bd32797",
+  "pinned": true
+ },
+ "eval": {
+  "argv": [
+   "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/tools/carry12_eval.py",
+   "run",
+   "--model",
+   "pick_e5_s17=/mnt/c/ml_artifacts/tiny_chat/l0/pick_e5_s17/spec_local.json",
+   "--out",
+   "/mnt/c/ml_artifacts/tiny_chat/l0/pick_e5_s17/eval",
+   "--set",
+   "/mnt/c/Users/jonat/OneDrive/Documents/research_portfolio_complete/microtorch/corpus/eval/carry12_v1.jsonl",
+   "--scorer",
+   "ir",
+   "--mtstudio",
+   "/home/jonat/pk_state_build/mtstudio",
+   "--gen",
+   "none",
+   "--self-scope",
+   "target",
+   "--max-new",
+   "24",
+   "--every",
+   "1",
+   "--port",
+   "8094"
+  ],
+  "gen": "none",
+  "every": 1,
+  "scorer": "ir",
+  "spot": 0,
+  "weights_are_weights": false,
+  "flag": "/mnt/c/ml_artifacts/tiny_chat/e5/pick_e5_s17/model.safetensors holds optimiser state, not weights (tiny_chat_run pick); forced choice by the IR scorer on the GGUF (spec/tools/ir_numpy.py)",
+  "ember_build": null
+ },
+ "validity_gate": {
+  "twin_primary": 0.48841,
+  "twin_minus_noctx_context": 0.23333,
+  "pass": true
+ },
+ "hl0": {
+  "definition": "D = acc(gold) - acc(near), raw log-prob forced choice, item-level over the context families (recall, correction, topic, load); prediction D < 0 beyond the SESOI",
+  "sesoi": 0.03,
+  "acc_gold": {
+   "mean": 0.42045,
+   "n": 1320
+  },
+  "acc_near": {
+   "mean": 0.45909,
+   "n": 1320
+  },
+  "D": {
+   "n": 1320,
+   "mean": -0.03864,
+   "se": 0.01224,
+   "ci95": [
+    -0.06263,
+    -0.01464
+   ],
+   "ci90": [
+    -0.05878,
+    -0.0185
+   ]
+  },
+  "verdict": "SUPPORTED",
+  "verdict_if_no_floor": "SUPPORTED"
+ },
+ "descriptive": {
+  "slope_gold_on_distance": {
+   "slope": 0.00352,
+   "n": 1320
+  },
+  "slope_gold_minus_near_on_distance": {
+   "slope": -0.00505,
+   "n": 1320
+  },
+  "acc_by_mode_all": {
+   "gold": 0.4373,
+   "near": 0.4738,
+   "twin": 0.4952,
+   "noctx": 0.2658
+  },
+  "pools_acc": {
+   "primary": {
+    "gold": {
+     "mean": 0.4181,
+     "n": 1380
+    },
+    "near": {
+     "mean": 0.4565,
+     "n": 1380
+    },
+    "twin": {
+     "mean": 0.4884,
+     "n": 1380
+    },
+    "noctx": {
+     "mean": 0.2674,
+     "n": 1380
+    }
+   },
+   "context": {
+    "gold": {
+     "mean": 0.4205,
+     "n": 1320
+    },
+    "near": {
+     "mean": 0.4591,
+     "n": 1320
+    },
+    "twin": {
+     "mean": 0.4924,
+     "n": 1320
+    },
+    "noctx": {
+     "mean": 0.2591,
+     "n": 1320
+    }
+   },
+   "family": {
+    "gold": {
+     "correction": {
+      "mean": 0.325,
+      "n": 360
+     },
+     "instruction": {
+      "mean": 0.8056,
+      "n": 72
+     },
+     "knowledge": {
+      "mean": 0.3667,
+      "n": 60
+     },
+     "load": {
+      "mean": 0.7917,
+      "n": 120
+     },
+     "recall": {
+      "mean": 0.3854,
+      "n": 480
+     },
+     "topic": {
+      "mean": 0.4389,
+      "n": 360
+     }
+    },
+    "near": {
+     "correction": {
+      "mean": 0.3333,
+      "n": 360
+     },
+     "instruction": {
+      "mean": 0.8056,
+      "n": 72
+     },
+     "knowledge": {
+      "mean": 0.4,
+      "n": 60
+     },
+     "load": {
+      "mean": 0.9,
+      "n": 120
+     },
+     "recall": {
+      "mean": 0.4,
+      "n": 480
+     },
+     "topic": {
+      "mean": 0.5167,
+      "n": 360
+     }
+    },
+    "twin": {
+     "correction": {
+      "mean": 0.3639,
+      "n": 360
+     },
+     "instruction": {
+      "mean": 0.625,
+      "n": 72
+     },
+     "knowledge": {
+      "mean": 0.4,
+      "n": 60
+     },
+     "load": {
+      "mean": 0.9167,
+      "n": 120
+     },
+     "recall": {
+      "mean": 0.4542,
+      "n": 480
+     },
+     "topic": {
+      "mean": 0.5306,
+      "n": 360
+     }
+    },
+    "noctx": {
+     "correction": {
+      "mean": 0.2583,
+      "n": 360
+     },
+     "instruction": {
+      "mean": 0.2361,
+      "n": 72
+     },
+     "knowledge": {
+      "mean": 0.45,
+      "n": 60
+     },
+     "load": {
+      "mean": 0.325,
+      "n": 120
+     },
+     "recall": {
+      "mean": 0.2479,
+      "n": 480
+     },
+     "topic": {
+      "mean": 0.2528,
+      "n": 360
+     }
+    }
+   }
+  },
+  "derived": {
+   "Y12_self": null,
+   "Y12_gold": -0.0703,
+   "split_cost_gold": -0.0333,
+   "distance_cost_gold": -0.0386,
+   "split_cost_self": null,
+   "distance_cost_self": null,
+   "own_replies_cost": null,
+   "validity_gate": {
+    "twin_primary": 0.4884,
+    "twin_primary_at_least_0.35": true,
+    "twin_minus_noctx_context": 0.2333,
+    "twin_minus_noctx_at_least_0.10": true
+   }
+  },
+  "gold_by_distance": {
+   "1": 0.7778,
+   "2": 0.3889,
+   "3": 0.3056,
+   "4": 0.25,
+   "5": 0.3333,
+   "6": 0.3571,
+   "7": 0.4177,
+   "8": 0.4521,
+   "9": 0.5041,
+   "10": 0.4195,
+   "11": 0.4888,
+   "12": 0.4519,
+   "13": 0.4107
+  },
+  "near_by_distance": {
+   "1": 0.6111,
+   "2": 0.4444,
+   "3": 0.2778,
+   "4": 0.3333,
+   "5": 0.3611,
+   "6": 0.381,
+   "7": 0.4873,
+   "8": 0.4734,
+   "9": 0.5369,
+   "10": 0.4534,
+   "11": 0.5449,
+   "12": 0.4904,
+   "13": 0.4643
+  },
+  "family_distance_gold": {
+   "recall": {
+    "6": {
+     "mean": 0.2917,
+     "n": 24,
+     "ci95": [
+      0.1491,
+      0.4917
+     ]
+    },
+    "7": {
+     "mean": 0.4583,
+     "n": 48,
+     "ci95": [
+      0.3258,
+      0.5971
+     ]
+    },
+    "8": {
+     "mean": 0.3333,
+     "n": 72,
+     "ci95": [
+      0.2353,
+      0.4482
+     ]
+    },
+    "9": {
+     "mean": 0.5104,
+     "n": 96,
+     "ci95": [
+      0.412,
+      0.6081
+     ]
+    },
+    "10": {
+     "mean": 0.3125,
+     "n": 96,
+     "ci95": [
+      0.2285,
+      0.4109
+     ]
+    },
+    "11": {
+     "mean": 0.4306,
+     "n": 72,
+     "ci95": [
+      0.3226,
+      0.5456
+     ]
+    },
+    "12": {
+     "mean": 0.3333,
+     "n": 48,
+     "ci95": [
+      0.2168,
+      0.4746
+     ]
+    },
+    "13": {
+     "mean": 0.25,
+     "n": 24,
+     "ci95": [
+      0.12,
+      0.449
+     ]
+    }
+   },
+   "correction": {
+    "1": {
+     "mean": 0.7778,
+     "n": 18,
+     "ci95": [
+      0.5478,
+      0.91
+     ]
+    },
+    "2": {
+     "mean": 0.3889,
+     "n": 18,
+     "ci95": [
+      0.203,
+      0.6138
+     ]
+    },
+    "3": {
+     "mean": 0.3056,
+     "n": 36,
+     "ci95": [
+      0.18,
+      0.4686
+     ]
+    },
+    "4": {
+     "mean": 0.25,
+     "n": 36,
+     "ci95": [
+      0.1375,
+      0.4107
+     ]
+    },
+    "5": {
+     "mean": 0.3333,
+     "n": 36,
+     "ci95": [
+      0.2021,
+      0.4967
+     ]
+    },
+    "6": {
+     "mean": 0.2778,
+     "n": 36,
+     "ci95": [
+      0.1585,
+      0.4399
+     ]
+    },
+    "7": {
+     "mean": 0.3148,
+     "n": 54,
+     "ci95": [
+      0.2068,
+      0.4474
+     ]
+    },
+    "8": {
+     "mean": 0.2778,
+     "n": 36,
+     "ci95": [
+      0.1585,
+      0.4399
+     ]
+    },
+    "9": {
+     "mean": 0.2778,
+     "n": 36,
+     "ci95": [
+      0.1585,
+      0.4399
+     ]
+    },
+    "10": {
+     "mean": 0.2778,
+     "n": 36,
+     "ci95": [
+      0.1585,
+      0.4399
+     ]
+    },
+    "11": {
+     "mean": 0.3889,
+     "n": 18,
+     "ci95": [
+      0.203,
+      0.6138
+     ]
+    }
+   },
+   "topic": {
+    "6": {
+     "mean": 0.4444,
+     "n": 18,
+     "ci95": [
+      0.2456,
+      0.6628
+     ]
+    },
+    "7": {
+     "mean": 0.4444,
+     "n": 36,
+     "ci95": [
+      0.2954,
+      0.6042
+     ]
+    },
+    "8": {
+     "mean": 0.4815,
+     "n": 54,
+     "ci95": [
+      0.3539,
+      0.6115
+     ]
+    },
+    "9": {
+     "mean": 0.4167,
+     "n": 72,
+     "ci95": [
+      0.3099,
+      0.5319
+     ]
+    },
+    "10": {
+     "mean": 0.4722,
+     "n": 72,
+     "ci95": [
+      0.3613,
+      0.586
+     ]
+    },
+    "11": {
+     "mean": 0.4815,
+     "n": 54,
+     "ci95": [
+      0.3539,
+      0.6115
+     ]
+    },
+    "12": {
+     "mean": 0.3333,
+     "n": 36,
+     "ci95": [
+      0.2021,
+      0.4967
+     ]
+    },
+    "13": {
+     "mean": 0.3333,
+     "n": 18,
+     "ci95": [
+      0.1628,
+      0.5625
+     ]
+    }
+   },
+   "load": {
+    "6": {
+     "mean": 0.8333,
+     "n": 6,
+     "ci95": [
+      0.4365,
+      0.9699
+     ]
+    },
+    "7": {
+     "mean": 0.5833,
+     "n": 12,
+     "ci95": [
+      0.3195,
+      0.8067
+     ]
+    },
+    "8": {
+     "mean": 1.0,
+     "n": 18,
+     "ci95": [
+      0.8241,
+      1.0
+     ]
+    },
+    "9": {
+     "mean": 0.7917,
+     "n": 24,
+     "ci95": [
+      0.5953,
+      0.9076
+     ]
+    },
+    "10": {
+     "mean": 0.7917,
+     "n": 24,
+     "ci95": [
+      0.5953,
+      0.9076
+     ]
+    },
+    "11": {
+     "mean": 0.6111,
+     "n": 18,
+     "ci95": [
+      0.3862,
+      0.797
+     ]
+    },
+    "12": {
+     "mean": 0.9167,
+     "n": 12,
+     "ci95": [
+      0.6461,
+      0.9851
+     ]
+    },
+    "13": {
+     "mean": 0.8333,
+     "n": 6,
+     "ci95": [
+      0.4365,
+      0.9699
+     ]
+    }
+   }
+  },
+  "over_ctx": {
+   "gold": 0,
+   "self": 0,
+   "near": 0,
+   "near_self": 0,
+   "twin": 0,
+   "noctx": 0
+  },
+  "gen_engine": {
+   "engine": "none"
+  },
+  "gate_replies": null,
+  "decay": null
+ }
+}
