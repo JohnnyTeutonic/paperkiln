@@ -1,0 +1,213 @@
+{
+ "_comment": "tiny-chat size arm, Stage 0 for 150m_L8 (experiments/tiny_chat_2026-10/PREREGISTRATION.md amendment 6, PROPOSED): the CUDA gate on this machine's GPU, the gate (design final, the floor pilot's PASS), the 35% data job, a 300-step probe alone on the GPU (tokens/s and peak memory at batch 16 x accum 2 x 512) and lr screens [0.00025, 0.0005, 0.001, 0.002] x 1500 steps (seed 101), one GPU job at a time. Estimated 5.7 L4 VM-hours. Afterwards, at home: copy ART/probe_150m_L8 to experiments/tiny_chat_2026-10/size/stage0/ and ART/cuda_gate/cuda_gate.json to experiments/tiny_chat_2026-10/size/stage0/cuda_gate_150m_L8.json; once the depth is fixed (make_size_jobs.py depth), python tools/colab_chat/tiny_chat_run.py choose_rec --art ART_of_that_depth --out experiments/tiny_chat_2026-10/stage0/lr_choice_150m.json; commit. Upload vocab_llama3_bpe.gguf with the runner's --upload. Dialogue levels [0, 17, 35, 70]% (copies), E1 at 35% (design.json final).",
+ "max_parallel": 1,
+ "jobs": [
+  {
+   "name": "cuda_gate",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "cuda_gate",
+    "--out",
+    "{out}"
+   ],
+   "outputs": [
+    "cuda_gate.json",
+    "cuda_gate.log"
+   ]
+  },
+  {
+   "name": "gate",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "gate",
+    "--out",
+    "{out}",
+    "--stage0",
+    "--jobs",
+    "tools/colab_chat/tiny_chat_s0_150m_L8.json",
+    "--design",
+    "experiments/tiny_chat_2026-10/design.json",
+    "--pilot-verdict",
+    "experiments/tiny_chat_2026-10/pilot/verdict.json",
+    "--need-pilot",
+    "PASS"
+   ],
+   "outputs": [
+    "gate.json"
+   ]
+  },
+  {
+   "name": "data",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_data.py",
+    "--out",
+    "{out}",
+    "--vocab",
+    "/content/chat/upload/vocab_llama3_bpe.gguf",
+    "--fineweb",
+    "corpus/data/fineweb_edu_shard0_v1",
+    "--shares",
+    "35",
+    "--mix-bytes",
+    "800000000",
+    "--max-epochs",
+    "4",
+    "--T",
+    "512",
+    "--seed",
+    "1",
+    "--human-fetch",
+    "python3 corpus/fetchers/human_dialogue.py oasst,convai2,wow,bst,taskmaster,multiwoz,self_dialogue,topical_chat,dolly,quac,empathetic,dailydialog,no_robots --allow-sa --allow-nc --out-dir {human}",
+    "--sources",
+    "oasst,convai2,wow,bst,taskmaster,multiwoz,self_dialogue,topical_chat,dolly,quac,empathetic,dailydialog,no_robots",
+    "--require-pinned"
+   ],
+   "outputs": [
+    "data.ledger.json"
+   ],
+   "after": "gate"
+  },
+  {
+   "name": "probe_150m_L8",
+   "after": [
+    "data",
+    "cuda_gate"
+   ],
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "probe",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/size/specs/shape_150m_L8.json",
+    "--corpus",
+    "/content/chat/data/mix_s35.ids",
+    "--steps",
+    "300",
+    "--cuda-gate",
+    "/content/chat/cuda_gate",
+    "--data-job",
+    "tools/colab_chat/tiny_chat_s0_150m_L8.json"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "screen_150m_L8_lr0",
+   "after": "probe_150m_L8",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "screen",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/size/specs/shape_150m_L8.json",
+    "--corpus",
+    "/content/chat/data/mix_s35.ids",
+    "--lr",
+    "0.00025",
+    "--steps",
+    "1500",
+    "--seed",
+    "101",
+    "--cuda-gate",
+    "/content/chat/cuda_gate",
+    "--data-job",
+    "tools/colab_chat/tiny_chat_s0_150m_L8.json"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "screen_150m_L8_lr1",
+   "after": "probe_150m_L8",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "screen",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/size/specs/shape_150m_L8.json",
+    "--corpus",
+    "/content/chat/data/mix_s35.ids",
+    "--lr",
+    "0.0005",
+    "--steps",
+    "1500",
+    "--seed",
+    "101",
+    "--cuda-gate",
+    "/content/chat/cuda_gate",
+    "--data-job",
+    "tools/colab_chat/tiny_chat_s0_150m_L8.json"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "screen_150m_L8_lr2",
+   "after": "probe_150m_L8",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "screen",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/size/specs/shape_150m_L8.json",
+    "--corpus",
+    "/content/chat/data/mix_s35.ids",
+    "--lr",
+    "0.001",
+    "--steps",
+    "1500",
+    "--seed",
+    "101",
+    "--cuda-gate",
+    "/content/chat/cuda_gate",
+    "--data-job",
+    "tools/colab_chat/tiny_chat_s0_150m_L8.json"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "screen_150m_L8_lr3",
+   "after": "probe_150m_L8",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "screen",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/size/specs/shape_150m_L8.json",
+    "--corpus",
+    "/content/chat/data/mix_s35.ids",
+    "--lr",
+    "0.002",
+    "--steps",
+    "1500",
+    "--seed",
+    "101",
+    "--cuda-gate",
+    "/content/chat/cuda_gate",
+    "--data-job",
+    "tools/colab_chat/tiny_chat_s0_150m_L8.json"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  }
+ ]
+}

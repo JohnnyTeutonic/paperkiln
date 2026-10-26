@@ -7,6 +7,12 @@ file `PREREGISTRATION.md` in this folder, licensed by the commit that adds it wi
 pin, the evaluation tool and the jobs files, each exercised end to end on CPU at toy size. Until then every
 number below is a planning number and every rule is open to change without an amendment.*
 
+*The base is 60M (Jonathan's change of tactics, 26 Oct 2026; `../tiny_chat_2026-10/TACTICS_2026-10-26.md`): at 20M,
+five interventions left Carry-5's carry-over cost unchanged and size is the one lever with a signal, so the
+long-gap hypotheses, Jonathan's cross-layer HX among them, are tested where the models have more capacity. Numbers
+marked † were set for the 60M base on 26 Oct 2026; section 13 lists the 20M planning values they replace. The freeze
+rule is unchanged: this file freezes only after E5, E1 (its 60M stage included) and the recursion arms report.*
+
 Receipts in this folder: `carry12_v1_build.json` (counts and balance), `carry12_v1_budget.json` (context
 lengths), `carry12_v1_decontam.json` (contamination), `dialogue_lengths_v1.json` (the human corpora in turns
 and tokens), `STAGE_L0.md` (Stage L0's frozen registration), `IR_SPEC_DRAFT.md` (spec text for ir.hpp
@@ -142,7 +148,17 @@ of it:
 | 20m_L8 | 27,948 | 23,000-25,000 | 17,100-20,600 | 1.75 / 3.5 / 7.0 GiB |
 | 20m_L16 | 25,383 | 19,600-21,600 | 13,500-16,700 | 2.5 / 5.0 / 10.0 GiB |
 | 20m_L32 | 21,856 | 16,200-18,000 | 10,600-13,300 | 3.0 / 6.0 / 12.0 GiB |
-| 60m_L8 | 13,799 | 12,000-12,800 | 9,600-11,100 | 3.0 / 6.0 / 12.0 GiB |
+| 60m_L4 | 13,803 | 13,070-13,430 † | | 2.1 / 4.3 / 8.5 GiB † |
+| 60m_L8 | 13,799 | 12,740-13,250 † | 9,600-11,100 | 3.0 / 6.0 / 12.0 GiB |
+| 60m_L16 | 12,517 | 11,220-11,830 † | | 2.0 / 4.0 / 8.0 GiB † |
+| 60m_L32 | 10,308 | 8,790-9,490 † | | 3.0 / 6.0 / 12.0 GiB † |
+| 60m_X (60m_L16 + llama_attnres) | 8,360 † (0.668 x L16) | 7,500-7,900 † | | as 60m_L16 + 15% † |
+
+† 60M rows: the attention term's share of training FLOPs at T 512 (2.8% at 60m_L4 to 8.6% at 60m_L32), doubled at
+1,024, at the same efficiency as the rest or at half of it; X at X5's measured ratio to plain L16 on one L4 (0.668,
+A5.12), which is conservative at d 512, where depth attention's cost per sublayer is a smaller share of the layer
+than at d 320. Stored softmax per micro-batch at 16,384 tokens per step (batch 16 x 1,024 for the 60M shapes at
+L <= 8; 8 x 1,024 with 2-step accumulation at L >= 16).
 
 - mtstudio materialises each layer's attention probabilities ([heads x tokens, T] floats, kept for the
   backward pass; `src/cuda_ops.cu` `attn_heads_fwd`), so that memory grows with T at fixed tokens per step. At
@@ -238,21 +254,40 @@ question: does E5/E1's best model already carry facts 10 turns, and how much doe
 
 ## 6. Cells
 
-All new cells train at **T = 1,024** with the E5 data bar and the E1 shape winner (placeholders `BAR`,
-`SHAPE` until E5/E1 report), E1's recipe otherwise (163.84M tokens, AdamW, cosine, the same SFT recipe at
-16 x 1,024 rows per step so SFT tokens per step stay 16,384), seeds 1, 2, 3 paired by seed. Rung logging is
-not registered here.
+All new cells train at **T = 1,024** at **60M non-embedding parameters†**, E1's recipe otherwise (163.84M
+tokens, AdamW, cosine, the same SFT recipe at 16 x 1,024 rows per step so SFT tokens per step stay 16,384),
+seeds 1, 2, 3 paired by seed. Rung logging is not registered here.
+- **SHAPE = 60m_L\*†**, the depth E1 at 60M favours, by the rule of the size arm (`../tiny_chat_2026-10/
+  PREREGISTRATION.md` amendment 6, A6.1, `size/make_size_jobs.py depth`): the 60M depth with the highest mean Y over
+  seeds 1-3 among cells passing the validity gate; depths within 1 point tied, the one with the higher A2.1 probe rate
+  winning. One rule, so the size arm and this programme share one 60M shape. It fires once all twelve E1 at 60M runs
+  are home.
+- **The mix: 35%†**, E1's level, on which every 60M run trained, so W512 is E1 at 60M's own L\* cell and HT reads T
+  alone. If E5's data bar comes out at another share, Jonathan decides at the freeze between 35% (HT clean) and the
+  bar (HT then reads the mix and T together, unless a W512 run at the bar is added: 3 runs, about 17-21 VM-hours).
+- **Learning rates†:** every cell trains at E1 at 60M's T 512 choice for its plain shape (`stage0/lr_choice.json`:
+  60m_L4 and 60m_L8 5e-4, 60m_L16 and 60m_L32 1e-3); D, S-gist and S-full at B's, X at P16's (Kimi's convention, as
+  A5.2). No T 1,024 screens: the rate held fixed keeps HT a contrast of T alone, and tokens per step do not change.
 
-| cell | what | parameters vs B | why |
+| cell | what | parameters vs B | status† |
 |---|---|---|---|
-| W512 | E5/E1's winner cell itself (T 512): existing runs, Stage L0 scores | = | the T contrast for free |
-| **B** | the base at T 1,024 | = | every contrast below is against it |
-| D | B's pretrained weights; SFT with 10+-turn dialogues oversampled x4 | = | data option 1 (SFT only) |
-| S-full | B + k = 4 state slots after every exchange, plain causal mask | + k d | positive control: the insertion alone |
-| S-gist | B + k = 4 state slots, `turn_state` mask (IR_SPEC_DRAFT section 1) | + k d | E4: per-turn state, finished turns dropped |
-| R | the recursion arm's winner (fixed or MoR at 20m_L4), at T 1,024 | E1-R's matching | carry the E1-R result to long carry |
-| P16 | plain 20m_L16 at T 1,024 (= B if SHAPE is 20m_L16) | = | the cross-layer arm's control |
-| X | 20m_L16 + full attention residuals (`llama_attnres`) | +10.6K (0.05%) | Jonathan's cross-layer hypothesis |
+| W512 | E1 at 60M's L\* cell itself (T 512): existing runs, Stage L0 scores | = | free |
+| **B** | 60m_L\* at T 1,024 | = | core: every contrast below is against it |
+| D | B's pretrained weights; SFT with 10+-turn dialogues oversampled x4 | = | core (data option 1, SFT only) |
+| S-gist | B + k = 4 state slots, `turn_state` mask (IR_SPEC_DRAFT section 1) | + 4d (1,536-4,352)† | core: E4, per-turn state, finished turns dropped |
+| S-full | B + k = 4 state slots after every exchange, plain causal mask | + 4d† | conditional: only if HS1 (S-gist vs B) is CONTRADICTED, to place the cost |
+| P16 | plain 60m_L16 at T 1,024 (= B if L\* = 16)† | = | core when L\* is not 16 |
+| X | 60m_L16 + full attention residuals (`llama_attnres`) | +16,384 (0.02%)† | core: Jonathan's cross-layer hypothesis |
+| R | the recursion arm's winner at 60M | E1-R's matching | conditional†: only if a recursion contrast at 20M is SUPPORTED |
+
+**Why S-gist stays and S-full and R do not, at this budget†.** S-gist is the one cell built for long carry
+(per-turn state, a cache about 5x smaller at 14 turns) and no arm has measured it, so it stays in the core and is
+read against B directly. S-full's role is to split S-gist's cost between the insertion and the mask; it is needed
+only if S-gist loses, so it runs only then (about 27-33 L4 VM-hours). R carried the recursion arm's result to long
+carry, and at 20M fixed recursion and MoR have shown no advantage so far (`INTERIM_2026-10-25.md`, n 1-2 per cell).
+R runs only if E1-R's HR2 (or HR2-J) or the MoR block's H-MoR1 is SUPPORTED, with its design (the winner's topology
+recursing a 60M stack) and its cost (about 39 VM-hours for an R2-like cell plus its own screens) put to Jonathan
+then.
 
 **E4: per-turn state tokens (S-full, S-gist).** After every `<|endoftext|>` that closes an exchange, k = 4
 learned state slots (rows of a `state_embd` [4, d] tensor, outside the vocabulary). Under the `turn_state`
@@ -278,13 +313,16 @@ initialisation it equals the plain residual model. Positioned against DenseForme
 436M in Kimi's ablation), Hyper-Connections (parallel streams, +26% activation memory), MUDDFormer (weights
 generated per position from the current state, four streams for Q, K, V and the residual; the closest to
 Jonathan's idea, but no published comparison with AttnRes and a new four-stream wiring) and value residual
-learning (first-layer values into every layer). At 20m_L16 (the shape the literature check chose: depth
-attention needs depth) against P16, paired by seed, P16's learning rate (conservative against the arm, as
-Kimi). A port is needed: the `attnres` family is GPT-2 blocks only. ember already runs the ops, but they
-have been gated only on GPT-2 blocks, so the first trained tiny `llama_attnres` model passes an ember gate
-on CPU, CUDA and WASM (the recursion gate's files) before any X run relies on it (IR_SPEC_DRAFT sections 2
-and 5). mtstudio composes depth attention from tape ops; unfused AttnRes has
-been reported at 0.2-0.5x training throughput, so tokens/s is reported and the cell is costed at 0.3x.
+learning (first-layer values into every layer). At **60m_L16†** (d 512, 8 heads, d_ff 1,760; 33 sources, 32
+pseudo-queries of d 512; the depth the literature check chose, since depth attention needs depth, at the 60M base)
+against P16, paired by seed, P16's learning rate (conservative against the arm, as Kimi). The mechanism is arm
+X5's, unchanged (`../tiny_chat_2026-10/PREREGISTRATION.md` amendment 5): `llama_attnres` (paperkiln c48ca962,
+keramos family `llama_attnres`), its CUDA kernels gated on an L4 and ember's gate passed at e115fd3 on CPU, CUDA and
+WASM (A5.12). The X cell's post jobs generate with ember after the per-run spot-check, which is the gate at d 512.
+Cost from X5's measured ratio, **0.668x plain L16's tokens/s†** (A5.12), not the 0.3x planned before the fused
+`ops::depth_attend` existed. **X5's result at 20M is the context, not a prior:** HX5-main was EQUIVALENT on Carry-5
+(D -0.010, 90% [-0.030, +0.010]), X5 lowered every loss by 0.03-0.05 nats and sat on the plain runs' loss-to-Y line,
+and Carry-5 has no long gaps. HX tests the gap interaction, which Carry-5 could not.
 
 **Step 2, registered as conditional (not costed in the core):**
 - *on X's main effect* (section 8, HX-main SUPPORTED): a separate value route (one more pseudo-query per layer
@@ -329,26 +367,28 @@ slopes on distance; 0.02 nats pairwise for panel losses.
   the data, not by the window). Falsified by EQUIVALENT or CONTRADICTED.
 - **HD, long-dialogue weighting (D vs B):** Y12(D) - Y12(B) > 0. Counter **HD-0:** EQUIVALENT (only ~10% of
   natural late turns revisit early content, so oversampling them teaches recency, not recall).
-- **HS1, the state mask's cost (S-gist vs S-full):** Y12(S-gist) - Y12(S-full) < 0 beyond the SESOI
-  (compression into 4 rows per turn loses detail at 20M; gisting's failures were exactly verbatim details,
-  and Carry-12's answers are verbatim values). Alternative **HS1-alt** (RMT: memory tokens learn compact
+- **HS1, per-turn state against the base (S-gist vs B)†:** Y12(S-gist) - Y12(B) < 0 beyond the SESOI
+  (compression into 4 rows per turn loses detail; gisting's failures were exactly verbatim details, and
+  Carry-12's answers are verbatim values). Alternative **HS1-alt** (RMT: memory tokens learn compact
   storage; a bottleneck may force fact retention): the difference is at least -3 points (EQUIVALENT or
-  positive). Descriptive beside it: the retention ratio (acc(S-gist) - acc(noctx)) / (acc(S-full) -
-  acc(noctx)) by distance, and the KV rows saved.
-- **HS0, insertion alone (S-full vs B):** EQUIVALENT within 3 points (predicted; the slots carry no
-  information under the plain mask). A SUPPORTED difference means the slots act as extra computation or
-  sinks, and HS1 is then read against S-full only.
-- **HR, recursion carried to long carry (R vs B):** the sign of Y12(R) - Y12(B) equals the sign of the
-  recursion arm's registered contrast on Carry-5 (HR2, or H-MoR1 if MoR), a sign-transfer prediction like
-  E1's 60M rule. Its direction is fixed when E1-R reports, before this file freezes.
-- **HX, Jonathan's cross-layer hypothesis (X vs P16; CROSSLAYER_LITCHECK section 4):** registered prediction
+  positive), which would make the 5x smaller cache free. Descriptive beside it: the retention ratio
+  (acc(S-gist) - acc(noctx)) / (acc(B) - acc(noctx)) by distance, and the KV rows saved.
+- **HS0, insertion alone (S-full vs B), conditional†:** S-full runs only if HS1 is CONTRADICTED. Then: EQUIVALENT
+  within 3 points (predicted; the slots carry no information under the plain mask), and the mask's own cost,
+  Y12(S-gist) - Y12(S-full), is reported beside it. A SUPPORTED HS0 means the slots act as extra computation or
+  sinks.
+- **HR, recursion carried to long carry (R vs B), conditional†:** only if a recursion contrast at 20M (HR2,
+  HR2-J or H-MoR1) is SUPPORTED. Then the sign of Y12(R) - Y12(B) equals that contrast's sign, a sign-transfer
+  prediction like E1's 60M rule.
+- **HX, Jonathan's cross-layer hypothesis (X vs P16 at 60m_L16†; CROSSLAYER_LITCHECK section 4):** registered prediction
   **H-gap**: the gap interaction
   D_X = [Y_gold,far(X) - Y_gold,far(P16)] - [Y_near(X) - Y_near(P16)] > SESOI, far = recall items (distances
   6-13, all 6+ turns back), near = the same items' near rendering; and the gain's slope on distance in the
   correction family (distances 1-11) is positive. Default counter-hypothesis (literature-led): the gain is a
   general language-model improvement: D_X inside +-3 points, and at matched FineWeb panel loss X sits on
-  the plain cells' loss-to-Y line (the isoplot test, as HR3). Second counter: no main effect at 20M
-  (**HX-main**, Y12(X) - Y12(P16), EQUIVALENT). Secondary, descriptive: the gain by distractor count; depth
+  the plain cells' loss-to-Y line (the isoplot test, as HR3; at 60M the line runs through the plain 60M T 1,024
+  cells, B and P16, and is flagged as thin†). Second counter: no main effect at 60M
+  (**HX-main**, Y12(X) - Y12(P16), EQUIVALENT; X5's Carry-5 result at 20M is this pattern). Secondary, descriptive: the gain by distractor count; depth
   weights at the answer position against the mean over other assistant positions, with the embedding and
   early sources singled out (the direct test of "selective strengthening"); routing entropy per layer
   (collapse); tokens/s.
@@ -358,45 +398,62 @@ slopes on distance; 0.02 nats pairwise for panel losses.
 One number per (cell, seed); per-seed paired contrasts, one-sample t over seeds (n = 3, critical 4.303);
 verdicts SUPPORTED, CONTRADICTED, EQUIVALENT (90% interval inside +-SESOI), SIGNIFICANT_BELOW_SESOI,
 NOT_RESOLVED; the extension rule (seeds 4-5 once, for a primary contrast NOT_RESOLVED with one sign on all
-three seeds); no peeking (`--partial` labels output DESCRIPTIVE, PARTIAL). W512's seeds are E5/E1's seeds 1-3,
-so HT pairs by seed.
+three seeds); no peeking (`--partial` labels output DESCRIPTIVE, PARTIAL). W512's seeds are E1 at 60M's seeds
+1-3†, so HT pairs by seed.
 
 ## 10. Budget (planning numbers; Stage 0's probes at T 1,024 replace them)
 
-Per run at T 1,024: pretraining at the shape's estimated rate (section 3), SFT about 0.3 h with the device
-masked cross-entropy, post jobs about 0.5 h (Carry-12 with ember generation of 14-turn conversations, Carry-5,
-panels).
+Per run at T 1,024†: pretraining at the 60M shape's T 1,024 rate (section 3's lower bound) times 1.08 for in-run
+evaluations and checkpoints (E1 at 60M ran 6-11% under its probe rate); SFT at the same rate (0.6-0.8 h); post jobs
+**4.4 h**: Carry-5 with panels and base-model Carry-5 as E1 at 60M measured them (0.78-2.88 h, median 1.36), plus
+Carry-12 with ember generation of 14-turn conversations at `--max-new` 48 and near_self history, costed at 3.0 h
+and **not yet measured**. At $0.59 per L4-hour (RunPod).
 
-| block | runs | L4 VM-hours |
+| block (60M, T 1,024)† | runs | L4 VM-hours by L\* = 4 / 8 / 16 / 32 |
 |---|---:|---:|
-| Stage L0 (forced choice on ~24 E5/E1 SFT models, self history on the winner's 3) | - | 4 |
-| Stage 0 (probes for B, S-gist, X, R at 1,024; lr screens for B, S-gist, X at 3 rates) | 13 | 6-9 |
-| B, S-full, S-gist (3 seeds each, 20m_L8-like cost ~2.9 h) | 9 | 26 |
-| D (SFT only, from B's weights) | 3 | 2 |
-| R (fixed or MoR at 20m_L4, ~4.8 h) | 3 | 14 |
-| P16 (0 if SHAPE is 20m_L16) | 3 | 0-9 |
-| X (depth attention at 0.3x throughput: ~7.5 h pretraining + 0.8 h) | 3 | 25 |
-| **core** | | **77-89** |
+| Stage L0 (forced choice on the E5/E1 picks, 60M included; self history on the winner's) | - | 4 |
+| Stage 0 (CUDA gate, the T 1,024 data job, probes of B, S-gist, X and P16; no screens) | 4 | 1.5 |
+| B (3 seeds; PT 3.8 / 3.9 / 4.4 / 5.6 h each) | 3 | 26.0 / 26.4 / 28.2 / 32.4 |
+| D (SFT and post only, from B's weights) | 3 | 14.8 / 14.8 / 15.1 / 15.6 |
+| S-gist (B's cost + 5% for the slots) | 3 | 26.7 / 27.1 / 28.9 / 33.3 |
+| P16 (0 when L\* = 16) | 3 | 28.2 / 28.2 / 0 / 28.2 |
+| X (60m_L16 at 0.668x: PT 6.6 h, SFT 1.0 h, post 4.4 h) | 3 | 35.7 |
+| data and gate jobs (one per machine) | | 1.5 |
+| **core** | 15-18 | **138 / 139 / 115 / 152** |
+| | | **$82 / $82 / $68 / $90** |
+| conditional: S-full (if HS1 is CONTRADICTED) | 3 | 26.7-33.3 |
+| conditional: R (if a 20M recursion contrast is SUPPORTED) | 3 | about 39, plus its screens |
 
-At about 4.8 compute units per L4 hour, 370-430 units. Over 80 VM-hours, section 8 rule 5's form applies:
-Jonathan decides before launch. Order if cut: L0, then B with D and the X pair, then the S cells, then R.
-X's cost falls by up to two thirds if mtstudio gets a device depth-attention path first.
+- **The core is above 80 VM-hours at every L\***, so section 8 rule 5's form applies: Jonathan decides before
+  launch. Order if cut: L0, then B with D and the X pair, then S-gist.
+- **The Carry-12 post evaluation is about half the core** (15 runs x 4.4 h = 66 VM-hours) and is unmeasured. The
+  first measurement is Stage L0's GPU leg (`tools/carry12_l0.py colab-jobs`, self history with ember) on
+  `pick_e1_60m_L32` (home), before the freeze. Cheaper reads, each a freeze-time choice: self history played to the
+  target only (`--self-scope target`, Stage L0's setting) and near_self dropped from the post jobs.
+- **Two cheaper layouts, Jonathan's call at the freeze:** when L\* is 32, X on B's shape instead of 60m_L16 (P16
+  dropped, about -28 VM-hours, at the cost of the shape the literature check chose and a different X/plain throughput
+  ratio, measured by the probe); when L\* is 4 or 8, X stays at 60m_L16 because depth attention needs depth.
+- Wall-clock: one seed per L4 (A5.10's pattern), about 9-12 h per run; with B, S-gist, X and P16 on twelve L4s and D
+  after B, the core comes home in about a day and a half of runs.
 
 ## 11. What must be known before freezing
 
-1. **E5's data bar** (the dialogue share) and its verdicts; **E1's shape winner** (20M; 60M if run) and
-   whether any E cell sat on the FLOOR (if the winner is FLOOR on Carry-5, the long programme waits).
-2. **The recursion arm** (E1-R and MoR): HR1/HR2/H-MoR1 verdicts, which fix R's design and HR's direction.
+1. **E5's data bar** (the dialogue share) and its verdicts; **E1's 60M results and L\*** (A6.1's depth rule over
+   all twelve E1 at 60M runs†) and whether any E cell sat on the FLOOR (if the 60M L\* cell is FLOOR on Carry-5, the
+   long programme waits). If the bar is not 35%, Jonathan's choice of mix (section 6).
+2. **The recursion arm** (E1-R and MoR): HR2/HR2-J/H-MoR1 verdicts, which decide whether R runs at all† and, if it
+   does, its design and HR's direction.
 3. **Stage L0's numbers**, read under `STAGE_L0.md` (frozen before any L0 scoring: the commands, the
-   models, and that only the gate's quantities and HL0 are read).
+   models, and that only the gate's quantities and HL0 are read), on the 60M picks† (`pick_e1_60m_L32` is home),
+   and the measured cost of a Carry-12 post job (section 10).
 4. **Carry-12 v1** is frozen with its pin, `tools/carry12_eval.py` and tests; still open: the VM-side
    decontamination against the FineWeb-Edu shard and Taskmaster-3.
 5. **Engine work, each through IR_SPEC_DRAFT's gates:** the `turn_state` mask and kernels in mtstudio, the
    extended embedding and the early-stop rule (`<|endoftext|>` and the state block after a reply that did
    not end with one, in the serialiser and in ember); in ember the mask with every row kept first, then
    eviction, gated bit-equal on CPU and on CUDA by greedy 40/40 with logits within ROUNDING (gate 2);
-   `llama_attnres` in mtstudio and its export, and the ember gate on its first trained tiny model; the
-   T 1,024 data job (the same sources and split at T 1,024).
+   the T 1,024 data job (the same sources and split at T 1,024). (`llama_attnres` in mtstudio, its export
+   and ember's gate are done: arm X5, A5.1 and A5.12†.)
 6. **Stage 0 at T 1,024:** probes replace section 10's estimates; Jonathan's go on the measured total.
 7. Jonathan's ruling on data option 3 (new long human sources), if wanted before the freeze.
 
@@ -411,4 +468,25 @@ X's cost falls by up to two thirds if mtstudio gets a device depth-attention pat
   windows), so the S cells see slightly fewer real tokens; reported.
 - **AttnRes cost and convergence:** a gain at this budget may be faster convergence rather than capacity
   (the literature check's failure modes); the isoplot test and the panel loss bound the reading.
-- **Embedding confound** where shapes differ (R at 20m_L4 against B at SHAPE), as E1-R states.
+- **Embedding confound** where shapes differ (X and P16 at 60m_L16 against B at 60m_L\*; R if it runs), as E1-R
+  states.
+- **Data per parameter†:** 163.84M tokens is 2.7 tokens per non-embedding parameter at 60M (8.2 at 20M), so a null
+  at 60M can be under-training as well as an absent effect; amendment 6's size slope on Carry-5 reads the same
+  budget across 20M, 60M and 150M.
+
+## 13. The 20M planning values the † numbers replace
+
+| item | 20M plan (24 Oct 2026) | 60M plan† |
+|---|---|---|
+| base shape B | `SHAPE`, E1's 20M winner | 60m_L\*, A6.1's rule on E1 at 60M |
+| mix | `BAR`, E5's data bar | 35% (E1's level), the bar at the freeze if Jonathan chooses it |
+| X and P16 | 20m_L16 (d 320), +10.6K query parameters (0.05%) | 60m_L16 (d 512), +16,384 (0.02%) |
+| X's throughput | 0.3x P16 (unfused AttnRes in the literature) | 0.668x (X5's probe, A5.12) |
+| state slots | + 4d at 20M | + 4d = 1,536-4,352 |
+| S-full | core, positive control | conditional on HS1 CONTRADICTED |
+| HS1 | S-gist vs S-full | S-gist vs B |
+| R | core, 20m_L4 recursion, about 14 VM-hours | conditional on a SUPPORTED 20M recursion contrast, about 39 |
+| learning rates | screens for B, S-gist and X at 3 rates | E1 at 60M's T 512 choice, no screens |
+| Stage 0 | 13 jobs, 6-9 VM-hours | 4 probes, 1.5 VM-hours |
+| post job per run | 0.5 h | 4.4 h (Carry-5 measured at 60M; Carry-12 unmeasured, 3.0 h) |
+| core budget | 77-89 VM-hours | 115-152 VM-hours, $68-90 |

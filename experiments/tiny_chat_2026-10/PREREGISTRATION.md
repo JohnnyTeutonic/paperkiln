@@ -1319,6 +1319,186 @@ section.
   regenerated `tiny_chat_e1_x5.json` and `tiny_chat_e1_x5_ctl.json` (`git diff --stat 585206a8`). Nothing under
   `src/`, `include/`, `tests/` or `tools/` changes except those two jobs files.
 
+### Amendment 6 (PROPOSED, not yet registered; 26 Oct 2026, before any 150M job): a size arm on Carry-5 at 150M
+
+**PROPOSED, not yet registered.** This block registers when the main session confirms it, in the commit that
+removes this paragraph, before any 150M job runs. Until then nothing below binds and no job of the arm runs.
+
+Written on 26 Oct 2026 under Jonathan's change of tactics for the programme (`TACTICS_2026-10-26.md`): five
+interventions at 20M (dialogue share, depth, recursion, MoR and Attention Residuals, X5 EQUIVALENT) have left
+Carry-5's carry-over cost where it was, and model size is the one lever with a signal (descriptive, from the
+home runs: E1 at 60M's L32 cell, mean Y -0.043 over three seeds, against 20M's L32 cell, -0.079, with no overlap
+between the seeds). When it was written, no 150M job had run; E1 at 60M had its L32 cell home (3 seeds), L4 and L8
+with two post jobs each and L16 with none; E5 and E1 at 20M were not complete. Sections 0-12 and amendments 1-5
+stand. This amendment adds one arm and changes nothing registered for any other: E1 at 60M's hypotheses, analysis
+and verdicts are untouched, and the depth rule below reads its cell means without deciding anything for it.
+Machinery: `size/make_size_jobs.py` (shapes, specs, the Stage 0 files, the budget, the depth rule),
+`size/analyze_size.py` and `tests/test_tiny_chat_size.py`.
+
+**A6.1 Shape: 150M non-embedding parameters at the depth E1 at 60M favours.**
+
+| shape | layers | d | heads | d_ff | d_ff/d | non-emb | emb | total | emb share | micro-batch |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 150m_L4 | 4 | 1728 | 27 | 4928 | 2.85 | 149.98M | 28.31M | 178.29M | 16% | 16 x 2 |
+| 150m_L8 | 8 | 1216 | 19 | 3520 | 2.89 | 150.07M | 19.92M | 169.99M | 12% | 16 x 2 |
+| 150m_L16 | 16 | 832 | 13 | 2656 | 3.19 | 150.40M | 13.63M | 164.03M | 8% | 16 x 2 |
+| 150m_L32 | 32 | 576 | 9 | 1952 | 3.39 | 150.44M | 9.44M | 159.88M | 6% | 8 x 4 |
+
+Shapes by `make_jobs.py shape_for` (section 6's rule: d a multiple of 64, d_ff/d nearest 3, d_ff a multiple of 32).
+- **The depth rule, fixed now** (`make_size_jobs.py depth`, tested). It reads only once all twelve E1 at 60M runs
+  (L4, L8, L16, L32 x seeds 1-3) have their post summaries home. The 150M depth L* is the 60M depth with the highest
+  mean Y (A2.5's primary) over seeds 1-3 among the cells that pass the validity gate. Depths within 1 point
+  (0.01) of that mean are tied, and the tied depth with the higher 60M probe rate (A2.1) wins: the cheaper run. The
+  receipt `size/depth_choice.json` is committed before any 150M run; it is written once. If every 60M cell is
+  FLOOR, no depth is chosen and Jonathan decides.
+- **Why the rule and not L32 now.** The signal was seen at L32, but 20m_L32 is the sweep's thinnest shape (d 192,
+  d_ff/d 4.33) and its worst 20M cell so far, so a slope anchored there could carry 20m_L32's own deficit. The rule
+  takes the depth the 60M models favour, which every 60M depth's 20M twin allows (E1's L8 cell is E5's 35% cell).
+- **Selection and the test.** The 60M cell is chosen for its high Y. In HS1's slope over log2 non-embedding
+  parameters the three cells weigh -0.353, +0.021 and +0.333 (L32; -0.354/+0.020/+0.334 at L4, -0.353/+0.022/+0.331
+  at L8, -0.352/+0.021/+0.331 at L16), so the chosen cell's selection bias reaches HS1 at 2% of its size. HS2 uses
+  the 60M cell directly; the selection raises Y(60M), which biases HS2 towards zero, against the arm's prediction.
+- **Confounds, stated before data.** Size changes width at fixed depth: at L* the 150M model is wider, and its
+  embedding share is lower (L32: 14%, 9% and 6% at 20M, 60M and 150M; L4: 34%, 23%, 16%). Every table reports total
+  parameters and the slope over log2 total parameters beside the registered one.
+
+**A6.2 Training.** Section 1 for everything not named here; the cell is E1's recipe at a third size.
+- The 35% mix (E1's level), 10,000 steps x 16,384 tokens (163.84M), AdamW, warmup 500, cosine to 0.1x, the rate
+  from A6.4; seeds 1, 2, 3, paired by seed with the 20M and 60M cells (`train.seed` sets the data order).
+- **Micro-batching:** 16 x 512 with 2-step accumulation at L <= 16 and 8 x 512 with 4 steps at L32 (activation
+  memory; the same 32 x 512 tokens per step and the same update, as section 1). The probes measure the peak.
+- **SFT** by section 1's recipe at the same micro-batching. `tiny_chat_run.py post` sets SFT batching by depth alone
+  (32 x 1 below 16 layers), which is too large at 150M, so the post jobs read (batch, accum) from the shape spec
+  (`post --sft-batching spec`; the flag, with a test that every existing jobs file's command is unchanged, lands
+  before the runs' commit).
+- `train.fused_head` and BF16 stay off, as in every registered arm, so the 150M cell differs from the 20M and 60M
+  cells in size alone.
+- Rungs at 5, 10, 25 and 50% as amendment 1 (b), descriptive here. The post job is E1's (panels, Carry-5 with ember
+  generation and its 40-item spot-check, base-model Carry-5) and also brings home the per-item records, the replies
+  and the SFT model, because the seeds run on separate machines and the pick runs at home (A5.10's pattern).
+
+**A6.3 Tokens: fixed at 163.84M, not fixed per parameter.**
+- *Fixed tokens* (chosen) keeps every registered 20M and 60M cell as this arm's comparison without new runs, and
+  answers the programme's practical question: with this human-only corpus and budget, does a larger model carry facts
+  across turns better? Its cost: 163.84M tokens is 8.2 tokens per non-embedding parameter at 20M, 2.7 at 60M and 1.1
+  at 150M, so a flattening at 150M can be under-training, not a limit of scale (HS-0 below states it).
+- *Fixed tokens per parameter* (8.2 per non-embedding parameter: about 1.23B tokens at 150M) would need the 60M cell
+  re-run at about 490M tokens, and 35% dialogue over 1.23B tokens is about 430M dialogue tokens, about 13 passes over
+  the pretraining dialogues: three times section 2's limit of four (Muennighoff et al.), with new mixes beyond the
+  800 MB of section 2. It would also cost about 7.5 times the pretraining. The human-only corpus rules it out here.
+
+**A6.4 Stage 0** (`tools/colab_chat/tiny_chat_s0_150m_L<4|8|16|32>.json`, one RunPod L4 per depth; one GPU job at a
+time):
+1. the CUDA gate (every leg of `tools/colab_cuda_validate.sh`) on that machine's GPU;
+2. the gate (design final, the floor pilot's PASS) and the 35% data job;
+3. a 300-step probe alone on the GPU: steady tokens/s from step 50 and peak memory at A6.2's micro-batching;
+4. lr screens at **{2.5e-4, 5e-4, 1e-3, 2e-3}**, 1,500 steps (warmup 150, cosine to 0.1x), seed 101, on the 35% mix.
+   The grid is A3.3's four-rate grid, one step below section 4's: at 60M the two widest shapes chose 5e-4 and 2e-3
+   was their worst rate by 1.02 and 1.06 nats (`stage0/lr_choice.json`), and the 150M shapes are wider still
+   (d 576-1,728). The screens wait for the probe, so a probe that fails for memory holds them back;
+5. in the L4 file only, **the plain replay** `replay_e1_60m_L32_r2`: E1 at 60M's pt_e1_60m_L32_r2 spec at this
+   arm's commit for its first 500 steps (the warmup), compared with its log at a90ec0e2 by `x5/bitid.py` into
+   `size/plain_bitid.json` (A5.3's test: specs equal but for the steps, model events equal, every step record and
+   the step-500 validation loss equal). The replay's spec equals the registered one but for the steps
+   (`tests/test_tiny_chat_size.py`).
+- **The rate, fixed now:** `tiny_chat_run.py choose_rec` over L*'s four screens (section 4's rule with A2.2's
+  statuses: the lowest final validation loss; within 0.01 nats, the smaller rate), into `stage0/lr_choice_150m.json`.
+  A choice at either end of the grid stands and is reported as an edge choice. If all four screens diverge, no rate
+  is chosen and Jonathan decides. The screens of the other depths are reported descriptively (validation loss by
+  depth and rate at 150M) and choose nothing.
+- **Launch options** (the main session's call): all four depths at once, on four L4s, so the runs can launch as soon
+  as the depth rule fires (about 25.5 L4 VM-hours, $15), or L*'s file alone after the rule fires (6-7.5 VM-hours,
+  $3.40-4.40, about 7 hours later on the clock). The jobs files are the same either way.
+
+**A6.5 Hypotheses** (three seeds per cell, paired by seed; `decide` and the verdicts of section 7; two-tailed,
+n = 3, critical 4.303; x = log2 of the non-embedding parameter count of each cell at L*).
+- **HS1 (registered prediction): the carry-over cost falls with size.** The within-seed OLS slope of Y on x over the
+  20M, 60M and 150M cells at L* is **> 0; SESOI 1 point of Y per doubling** (E1's SESOI per doubling of depth;
+  20M to 150M is 2.9 doublings, so the SESOI over the range is 2.9 points, about the pairwise SESOI).
+  - Counter-hypothesis **HS-0** (at a fixed 163.84M tokens the larger models are data-starved, 1.1 tokens per
+    parameter at 150M, and carry-over is limited by the data's carry-over signal rather than by capacity): the
+    slope is inside +-1 point per doubling.
+  - HS1 is falsified by EQUIVALENT or CONTRADICTED; NOT_RESOLVED decides neither.
+- **HS2 (registered, secondary): the cost is still falling between 60M and 150M.** b2(s) = [Y(150M, s) -
+  Y(60M, s)] / log2(N_150 / N_60) (1.32 doublings) **> 0, SESOI 1 point per doubling**.
+  - Counter **HS2-sat**: EQUIVALENT (the fall stops by 150M at this budget).
+  - Falsified by EQUIVALENT or CONTRADICTED.
+  - A6.1's selection biases b2 towards zero. With the seed SDs of the home L32 cells (about 0.01 at each size), a
+    true 2 points per doubling gives HS1 a t near 7 at three seeds but HS2 a t near 3, so HS2 will likely need the
+    extension rule.
+- **The validity gate** (A2.5) applies to each of the three cells on its means over seeds; a FLOOR cell ends both
+  contrasts as FLOOR.
+- **The extension rule** (section 7) applies to HS1 and HS2: seeds 4 and 5 for the three cells they use, once (new
+  runs at 20M and 60M as well as 150M, unless E1's own extension has run them).
+- **Descriptive (no verdicts):** the 20M -> 60M step b1 and the change of step b2 - b1; the slopes of Y with gold
+  history, of twin and multi-turn accuracy and of the panel and SFT losses; Y's slope over log2 total parameters; the
+  family table; the isoplot (A5.6's line of Y on the FineWeb panel loss through every home plain 20M run, with the
+  150M runs' residuals and an extrapolation flag); Y per L4-hour; Stage L0 on the 150M pick (Carry-12 v1 at T 512 by
+  `STAGE_L0.md`'s commands; descriptive).
+- `size/analyze_size.py` implements it, on synthetic summaries in `tests/test_tiny_chat_size.py`: the slope's weights,
+  SUPPORTED and EQUIVALENT readings, FLOOR, the L8 cell read from E5's s35 runs, the refusal of incomplete cells and
+  `--partial`.
+
+**A6.6 Failure rules.** Section 8 applies (a divergence reruns once at half the rate; resumes recorded; a lost post
+job reruns from the pretrained weights). A probe whose peak exceeds 19,500 MiB (too little of the L4 left for the
+light rung job) or that fails for memory doubles that depth's accumulation (the same tokens and update) and is
+repeated before any run: a schedule change, recorded here before the run. A Stage 0 failure of the CUDA gate or
+the replay stops the arm before any run, with the cause reported.
+
+**A6.7 Budget and the launch criterion** (`make_size_jobs.py --tables`). Planning rates: the lower of the fit through
+A2.1's nine probes (time per token in training FLOPs and layers) and 60M's probe at the same depth scaled by FLOPs
+per token; 1.08 for evaluations and checkpoints in the run (E1 at 60M ran 6-11% under its probe rate); 2.0 h per
+post job beyond its SFT (E1 at 60M: 0.78-2.88 h, median 1.36). At $0.59 per L4-hour (RunPod).
+
+| block | tok/s (planning) | L4 VM-hours | USD | runner cap |
+|---|---:|---:|---:|---:|
+| Stage 0 150m_L4 (CUDA gate, data, probe, 4 screens, the replay) | 5,950 | 6.0 | 3.51 | $5 |
+| Stage 0 150m_L8 | 5,990 | 5.7 | 3.37 | $5 |
+| Stage 0 150m_L16 | 5,320 | 6.3 | 3.75 | $5 |
+| Stage 0 150m_L32 | 4,430 | 7.5 | 4.43 | $6 |
+| runs at 150m_L4, 3 seeds (PT 8.3 h, SFT 1.2 h, post 2.0 h each) | | 36.2 | 21.33 | $10 per seed |
+| runs at 150m_L8, 3 seeds | | 36.0 | 21.23 | $10 per seed |
+| runs at 150m_L16, 3 seeds | | 39.5 | 23.31 | $11 per seed |
+| runs at 150m_L32, 3 seeds (PT 11.1 h each) | | 45.9 | 27.10 | $12 per seed |
+| **the arm, Stage 0 at all depths + runs at L*** | | **61-71** | **$36-42** | |
+
+- The caps are 1.3 times each runner's estimate, rounded up. The runs go one seed per L4 (A5.10's pattern), about
+  12-15 hours on the clock.
+- **The runs launch** when (a) `size/depth_choice.json` is committed; (b) L*'s Stage 0 CUDA gate passed; (c)
+  `size/plain_bitid.json` is ok; (d) `stage0/lr_choice_150m.json` holds a rate for 150m_L*; (e) L*'s probe peaked at
+  or under 19,500 MiB; and (f) the runs' total from L*'s own probe (`make_size_jobs.py` with the probe home) is at most
+  1.5 times the estimate above (54, 54, 59 or 69 VM-hours at L4, L8, L16, L32). Then the main session launches them;
+  otherwise Jonathan decides. The runs' commit differs from Stage 0's only in documents, receipts, the jobs files
+  and `post --sft-batching` with its test.
+
+**A6.8 Interfaces.** Now: `size/make_size_jobs.py` (it imports `make_jobs.py` and writes none of its files),
+`size/specs/shape_150m_L*.json`, `tools/colab_chat/tiny_chat_s0_150m_L*.json`, `size/analyze_size.py`,
+`tests/test_tiny_chat_size.py`. Before the runs' commit: `tiny_chat_run.py post --sft-batching spec`, the runs' jobs
+file `tools/colab_chat/tiny_chat_e1_150m.json` (generated by `make_size_jobs.py` from the depth choice and the rate),
+and the arm's block in `analyze.py` (`E1_150m`, running `analyze_size.py`).
+
+**A6.9 Launch** (the main session launches; Stage 0 from the commit that registers this amendment, SHA_S):
+
+```
+U="--upload vocab_llama3_bpe.gguf=/mnt/c/ml_artifacts/capacity/vocab/vocab_llama3_bpe.gguf"
+R="python3 -u tools/colab_chat/runner_multi.py --backend runpod --gpu L4"
+for L in 4 8 16 32; do   # or only L* once the depth rule has fired
+  $R --commit SHA_S --jobs tools/colab_chat/tiny_chat_s0_150m_L$L.json --name pk-tc-s150-L$L \
+     --art /mnt/c/ml_artifacts/tiny_chat/s0_150m_L$L --state-dir /home/jonat/pk_tc_s150_L${L}_runner \
+     --max-hours 12 --volume-gb 40 --max-usd CAP_L $U
+done
+# at home, once E1 at 60M is home:
+python experiments/tiny_chat_2026-10/size/make_size_jobs.py depth --art C:/ml_artifacts/tiny_chat
+python3 tools/colab_chat/tiny_chat_run.py choose_rec --art /mnt/c/ml_artifacts/tiny_chat/s0_150m_L$LSTAR \
+   --out experiments/tiny_chat_2026-10/stage0/lr_choice_150m.json
+python experiments/tiny_chat_2026-10/x5/bitid.py --replay ART/s0_150m_L4/replay_e1_60m_L32_r2 \
+   --e1 ART/e1_60m/pt_e1_60m_L32_r2 --commit SHA_S --e1-commit a90ec0e2b2aaf6052a5ff953acd1e0a40a9a222c \
+   --out experiments/tiny_chat_2026-10/size/plain_bitid.json
+```
+
+The root `scripts/colab_driver.json` holds the four Stage 0 entries, disabled (`pk-tc-s150-L4`, `-L8`, `-L16`,
+`-L32`).
+
 ## Implementation notes
 
 ### 24 Oct 2026, before any E5, E1, recursion, MoR or successive-halving post job: Carry-5's generation engine
