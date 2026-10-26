@@ -11,7 +11,10 @@ number below is a planning number and every rule is open to change without an am
 five interventions left Carry-5's carry-over cost unchanged and size is the one lever with a signal, so the
 long-gap hypotheses, Jonathan's cross-layer HX among them, are tested where the models have more capacity. Numbers
 marked † were set for the 60M base on 26 Oct 2026; section 13 lists the 20M planning values they replace. The freeze
-rule is unchanged: this file freezes only after E5, E1 (its 60M stage included) and the recursion arms report.*
+rule is unchanged: this file freezes only after E5, E1 (its 60M stage included) and the recursion arms report.
+Jonathan approved the 60M core on 26 Oct 2026 (section 10: 104-139 L4 VM-hours, $61-82, with self history played to
+the target only and no near_self; every registered test kept, HX included; S-full and R conditional), under that
+freeze rule.*
 
 Receipts in this folder: `carry12_v1_build.json` (counts and balance), `carry12_v1_budget.json` (context
 lengths), `carry12_v1_decontam.json` (contamination), `dialogue_lengths_v1.json` (the human corpora in turns
@@ -338,8 +341,10 @@ and Carry-5 has no long gaps. HX tests the gap interaction, which Carry-5 could 
 families minus that on their single-turn twins.** Primary families: recall, correction, topic, load and
 knowledge (1,380 items). Instruction is out of Y here and reported by forced choice and by generation-scored
 compliance; v1's instruction family is length-neutral (section 2), so its forced choice is not confounded
-as Carry-5's was (A2.5), and whether it joins Y12 is decided at the freeze. Self history at `--max-new 48`, the whole conversation played (it
-fits T 1,024: section 3).
+as Carry-5's was (A2.5), and whether it joins Y12 is decided at the freeze. Self history at `--max-new 48`,
+**played to the target turn only† (`--self-scope target`, Stage L0's setting)**: Y12 scores the target, so the
+turns after it never enter it; the self conversation after the target turn is not generated. The post jobs run
+forced choice in five modes†: gold, self, near, twin and noctx (no near_self).
 
 **Validity gate (as A2.5).** A cell's Y12 is interpreted only if, on its means over seeds, (i) twin accuracy
 over the primary families is at least chance + 10 points (0.35), and (ii) twin minus question-alone accuracy
@@ -347,7 +352,8 @@ over the context families (recall, correction, topic, load: 1,320 items) is at l
 with a cell failing either is FLOOR.
 
 **Secondary (descriptive unless named in a hypothesis):** Y12 with gold history; the decomposition
-near - twin (splitting) and full - near (distance), gold and self; accuracy by distance (6-13), by
+near - twin (splitting) and full - near (distance), with gold history† (the self-history decomposition needs
+near_self, which the post jobs do not run); self minus gold at the target (error propagation); accuracy by distance (6-13), by
 interference (0-3), by distractor window (early or late), by correction kind (early or late) and held turns,
 by load; Carry-5's Y on the same model (the short-gap reference); the two panel losses (FineWeb-Edu and
 dialogue val, 512 windows of 1,024 tokens); S12 instruction compliance at turns 10-14; tokens/s and peak
@@ -405,31 +411,36 @@ three seeds); no peeking (`--partial` labels output DESCRIPTIVE, PARTIAL). W512'
 
 Per run at T 1,024†: pretraining at the 60M shape's T 1,024 rate (section 3's lower bound) times 1.08 for in-run
 evaluations and checkpoints (E1 at 60M ran 6-11% under its probe rate); SFT at the same rate (0.6-0.8 h); post jobs
-**4.4 h**: Carry-5 with panels and base-model Carry-5 as E1 at 60M measured them (0.78-2.88 h, median 1.36), plus
-Carry-12 with ember generation of 14-turn conversations at `--max-new` 48 and near_self history, costed at 3.0 h
-and **not yet measured**. At $0.59 per L4-hour (RunPod).
+**3.5 h†**: Carry-5 with panels and base-model Carry-5 as E1 at 60M measured them (0.78-2.88 h, median 1.36), plus
+Carry-12 with ember generation at `--max-new` 48, self history played to the target only and no near_self, costed
+at **2.1 h†** and **not yet measured**. (Played to the target, about 17,400 replies per run against about 24,700
+for the whole conversation plus near_self: 30% fewer, and one forced-choice mode fewer.) At $0.59 per L4-hour
+(RunPod).
 
 | block (60M, T 1,024)† | runs | L4 VM-hours by L\* = 4 / 8 / 16 / 32 |
 |---|---:|---:|
 | Stage L0 (forced choice on the E5/E1 picks, 60M included; self history on the winner's) | - | 4 |
 | Stage 0 (CUDA gate, the T 1,024 data job, probes of B, S-gist, X and P16; no screens) | 4 | 1.5 |
-| B (3 seeds; PT 3.8 / 3.9 / 4.4 / 5.6 h each) | 3 | 26.0 / 26.4 / 28.2 / 32.4 |
-| D (SFT and post only, from B's weights) | 3 | 14.8 / 14.8 / 15.1 / 15.6 |
-| S-gist (B's cost + 5% for the slots) | 3 | 26.7 / 27.1 / 28.9 / 33.3 |
-| P16 (0 when L\* = 16) | 3 | 28.2 / 28.2 / 0 / 28.2 |
-| X (60m_L16 at 0.668x: PT 6.6 h, SFT 1.0 h, post 4.4 h) | 3 | 35.7 |
+| B (3 seeds; PT 3.8 / 3.9 / 4.4 / 5.6 h each) | 3 | 23.3 / 23.7 / 25.5 / 29.7 |
+| D (SFT and post only, from B's weights) | 3 | 12.1 / 12.1 / 12.4 / 12.9 |
+| S-gist (B's cost + 5% for the slots) | 3 | 24.0 / 24.4 / 26.2 / 30.6 |
+| P16 (0 when L\* = 16) | 3 | 25.5 / 25.5 / 0 / 25.5 |
+| X (60m_L16 at 0.668x: PT 6.6 h, SFT 1.0 h, post 3.5 h) | 3 | 33.0 |
 | data and gate jobs (one per machine) | | 1.5 |
-| **core** | 15-18 | **138 / 139 / 115 / 152** |
-| | | **$82 / $82 / $68 / $90** |
-| conditional: S-full (if HS1 is CONTRADICTED) | 3 | 26.7-33.3 |
-| conditional: R (if a 20M recursion contrast is SUPPORTED) | 3 | about 39, plus its screens |
+| **core** | 15-18 | **125 / 126 / 104 / 139** |
+| | | **$74 / $74 / $61 / $82** |
+| conditional: S-full (if HS1 is CONTRADICTED) | 3 | 24.0-30.6 |
+| conditional: R (if a 20M recursion contrast is SUPPORTED) | 3 | about 36, plus its screens |
 
-- **The core is above 80 VM-hours at every L\***, so section 8 rule 5's form applies: Jonathan decides before
-  launch. Order if cut: L0, then B with D and the X pair, then S-gist.
-- **The Carry-12 post evaluation is about half the core** (15 runs x 4.4 h = 66 VM-hours) and is unmeasured. The
-  first measurement is Stage L0's GPU leg (`tools/carry12_l0.py colab-jobs`, self history with ember) on
-  `pick_e1_60m_L32` (home), before the freeze. Cheaper reads, each a freeze-time choice: self history played to the
-  target only (`--self-scope target`, Stage L0's setting) and near_self dropped from the post jobs.
+- **Approved (Jonathan, 26 Oct 2026):** the core at 60M with these two cuts (self history to the target only, no
+  near_self), every registered test kept, HX included; S-full and R conditional as above. The approval stands under
+  the freeze rule: nothing launches before this file freezes, after E5, E1 (its 60M stage included) and the
+  recursion arms report. The core is above 80 VM-hours at every L\*, which is why it went to him (section 8 rule 5's
+  form).
+- **The Carry-12 post evaluation is the largest unmeasured cost** (15 runs x 3.5 h, about 53 VM-hours of the core).
+  The first measurement is Stage L0's GPU leg (`tools/carry12_l0.py colab-jobs`, self history with ember, played to
+  the target) on `pick_e1_60m_L32` (home), before the freeze. If it measures the core above 1.5 times these numbers,
+  the measured total goes back to Jonathan before launch.
 - **Two cheaper layouts, Jonathan's call at the freeze:** when L\* is 32, X on B's shape instead of 60m_L16 (P16
   dropped, about -28 VM-hours, at the cost of the shape the literature check chose and a different X/plain throughput
   ratio, measured by the probe); when L\* is 4 or 8, X stays at 60m_L16 because depth attention needs depth.
@@ -480,7 +491,7 @@ and **not yet measured**. At $0.59 per L4-hour (RunPod).
 |---|---|---|
 | base shape B | `SHAPE`, E1's 20M winner | 60m_L\*, A6.1's rule on E1 at 60M |
 | mix | `BAR`, E5's data bar | 35% (E1's level), the bar at the freeze if Jonathan chooses it |
-| X and P16 | 20m_L16 (d 320), +10.6K query parameters (0.05%) | 60m_L16 (d 512), +16,384 (0.02%) |
+| X and P16 | 20m_L16 (d 320), +10,240 query parameters (0.04% of all, 0.05% of non-embedding) | 60m_L16 (d 512), +16,384 (0.02%) |
 | X's throughput | 0.3x P16 (unfused AttnRes in the literature) | 0.668x (X5's probe, A5.12) |
 | state slots | + 4d at 20M | + 4d = 1,536-4,352 |
 | S-full | core, positive control | conditional on HS1 CONTRADICTED |
@@ -488,5 +499,6 @@ and **not yet measured**. At $0.59 per L4-hour (RunPod).
 | R | core, 20m_L4 recursion, about 14 VM-hours | conditional on a SUPPORTED 20M recursion contrast, about 39 |
 | learning rates | screens for B, S-gist and X at 3 rates | E1 at 60M's T 512 choice, no screens |
 | Stage 0 | 13 jobs, 6-9 VM-hours | 4 probes, 1.5 VM-hours |
-| post job per run | 0.5 h | 4.4 h (Carry-5 measured at 60M; Carry-12 unmeasured, 3.0 h) |
-| core budget | 77-89 VM-hours | 115-152 VM-hours, $68-90 |
+| Carry-12 generation in the post jobs | self history over the whole conversation, plus near_self | self history to the target only, no near_self |
+| post job per run | 0.5 h | 3.5 h (Carry-5 measured at 60M; Carry-12 unmeasured, 2.1 h) |
+| core budget | 77-89 VM-hours | 104-139 VM-hours, $61-82 (approved by Jonathan, 26 Oct 2026) |
