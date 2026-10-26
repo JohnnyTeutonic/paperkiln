@@ -1,0 +1,41 @@
+{
+ "table": "s_c8_p10.bin",
+ "bytes": 8372504,
+ "sha256": "ade26f5a7018ab24103c06afea3096a8c97bab7ac0405292833d06f82fc5c7f4",
+ "vocab": 16384,
+ "entries": [
+  14689,
+  132267,
+  154980,
+  459193
+ ],
+ "settings": {
+  "orders": 4,
+  "min_count": 8,
+  "min_conf": 0.1,
+  "prune_redundant": 1,
+  "max_bytes": 150000000
+ },
+ "gguf": "/mnt/c/ml_artifacts/next_base/base/pk_base_v1.gguf",
+ "template": "paperkiln/1",
+ "sources": [
+  {
+   "path": "/mnt/c/ml_artifacts/capacity/lever2/dialogue_soda_v1/text.txt",
+   "form": "text",
+   "sha256": "f34df8d24288f727497f3df0f30772f18f6bca299e2bb0f134b74c0e353da7f9",
+   "bytes_read": 150000104,
+   "tokens": 33666891
+  },
+  {
+   "path": "/mnt/c/ml_artifacts/capacity/lever2/dialogue_oasst_v1/text.txt",
+   "form": "text",
+   "sha256": "9d64aadbde3c2521941c0f06ca827f3e9ea9c2c1a4c31caaaaf44297f5a80a9a",
+   "bytes_read": 10644070,
+   "tokens": 2495030
+  }
+ ],
+ "corpus_tokens": 36161921,
+ "corpus_sha256": "312b91804f4e3f7c8825786b1277d3fe721c22387fef99196c79c192762ae978",
+ "builder": "ember.cpp experiments/draft_2026-10-27/dr_table.py (bace837), vendored in paperkiln tools/draft_table.py",
+ "serve": "EMBER_SPEC=8 EMBER_DRAFT=table EMBER_DRAFT_TABLE=<this file> (ember bace837 or later)"
+}

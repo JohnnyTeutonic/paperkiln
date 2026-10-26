@@ -1,0 +1,118 @@
+{
+ "table": "h_c8_p10.bin",
+ "bytes": 10294632,
+ "sha256": "5a58236ab58b6129ec326c2abca8981261bf1055639de04b214492d8be8770be",
+ "vocab": 16384,
+ "entries": [
+  14151,
+  267966,
+  231134,
+  422618
+ ],
+ "settings": {
+  "orders": 4,
+  "min_count": 8,
+  "min_conf": 0.1,
+  "prune_redundant": 1,
+  "max_bytes": 0
+ },
+ "gguf": "/mnt/c/ml_artifacts/tiny_chat/e1/pick_e1_L16/model.gguf",
+ "template": "paperkiln/1",
+ "sources": [
+  {
+   "path": "/mnt/c/ml_artifacts/human_dialogue/hd_default/human_oasst_v1/text.txt",
+   "form": "text",
+   "sha256": "e58ced2ce756b375ac240a442780007255cfc017ae51961300baf89bab92c2c2",
+   "bytes_read": 10457372,
+   "tokens": 2454506
+  },
+  {
+   "path": "/mnt/c/ml_artifacts/human_dialogue/hd_default/human_convai2_v1/text.txt",
+   "form": "text",
+   "sha256": "194aa2b2e92ba2f5004dc199d3144c1f6ec9796b2050b7b5382b135c52f59711",
+   "bytes_read": 8539241,
+   "tokens": 1883518
+  },
+  {
+   "path": "/mnt/c/ml_artifacts/human_dialogue/hd_default/human_wow_v1/text.txt",
+   "form": "text",
+   "sha256": "166976318cc43bcdbadc57d55d15b7d57b30acf1ed3ec4aa7cc97bfa2498e47b",
+   "bytes_read": 15681865,
+   "tokens": 3466236
+  },
+  {
+   "path": "/mnt/c/ml_artifacts/human_dialogue/hd_default/human_bst_v1/text.txt",
+   "form": "text",
+   "sha256": "2724c9f20522edbbd28a23bd329d02407550f46a775b09da2f4141dd22533f8e",
+   "bytes_read": 4550380,
+   "tokens": 1014819
+  },
+  {
+   "path": "/mnt/c/ml_artifacts/human_dialogue/hd_default/human_taskmaster_v1/text.txt",
+   "form": "text",
+   "sha256": "1e15540d8eef80f9c525c1f621b4addfb41a391c01884cdd6f287dc9faf0c450",
+   "bytes_read": 33225982,
+   "tokens": 7599378
+  },
+  {
+   "path": "/mnt/c/ml_artifacts/human_dialogue/hd_default/human_multiwoz_v1/text.txt",
+   "form": "text",
+   "sha256": "300431b1e23fb84b9df7e9a592d71c84e1a49c62052c24977279d04d9579465f",
+   "bytes_read": 9645420,
+   "tokens": 2209246
+  },
+  {
+   "path": "/mnt/c/ml_artifacts/human_dialogue/hd_default/human_self_dialogue_v1/text.txt",
+   "form": "text",
+   "sha256": "2f5a38d8597f702c098b3ba4054c61380e0d6cc7c6da08793aaeb26a33f45800",
+   "bytes_read": 24962152,
+   "tokens": 5527322
+  },
+  {
+   "path": "/mnt/c/ml_artifacts/human_dialogue/hd_optin/human_topical_chat_v1/text.txt",
+   "form": "text",
+   "sha256": "6e3dbe5a232dda7c1094cc241cdbd3a8ce89702cb4027decd0af2d317d47b286",
+   "bytes_read": 22039603,
+   "tokens": 5037915
+  },
+  {
+   "path": "/mnt/c/ml_artifacts/human_dialogue/hd_optin/human_dolly_v1/text.txt",
+   "form": "text",
+   "sha256": "f518002175786c096e018622edf228641c66bc19b79d57df68bd0ea40b3ef032",
+   "bytes_read": 12122377,
+   "tokens": 2934850
+  },
+  {
+   "path": "/mnt/c/ml_artifacts/human_dialogue/hd_optin/human_quac_v1/text.txt",
+   "form": "text",
+   "sha256": "2fd924978bbf5f6e25ae6f4465175943d43dba489fd65a6c2ecda688eee1783e",
+   "bytes_read": 11475127,
+   "tokens": 2571107
+  },
+  {
+   "path": "/mnt/c/ml_artifacts/human_dialogue/hd_optin/human_empathetic_v1/text.txt",
+   "form": "text",
+   "sha256": "0a0174e5838e7adf49f46aa6563770c9779e0c4a51dba2704ed610bc9fea5d11",
+   "bytes_read": 6136536,
+   "tokens": 1361911
+  },
+  {
+   "path": "/mnt/c/ml_artifacts/human_dialogue/hd_optin/human_dailydialog_v1/text.txt",
+   "form": "text",
+   "sha256": "a76fcf0d2c95a12c5524eeabca2ce42c010fc9c867a6f1a988348f34fa1d4b26",
+   "bytes_read": 5791888,
+   "tokens": 1273731
+  },
+  {
+   "path": "/mnt/c/ml_artifacts/human_dialogue/hd_optin/human_no_robots_v1/text.txt",
+   "form": "text",
+   "sha256": "be0f40d1f20275739e165380c1d09476e42f750074b8c161b37a33db5459cfc8",
+   "bytes_read": 11377481,
+   "tokens": 2789160
+  }
+ ],
+ "corpus_tokens": 40123699,
+ "corpus_sha256": "58c41de4be668d5e82d3a357483a0999d5d69536156239bc48651e139d3d5a80",
+ "builder": "ember.cpp experiments/draft_2026-10-27/dr_table.py (bace837), vendored in paperkiln tools/draft_table.py",
+ "serve": "EMBER_SPEC=8 EMBER_DRAFT=table EMBER_DRAFT_TABLE=<this file> (ember bace837 or later)"
+}

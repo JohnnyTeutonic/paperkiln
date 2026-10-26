@@ -7,6 +7,31 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **ember's draft table at export, `export.draft_table`** (27 Oct; LOCAL_LLM_STACK.md section 7, speculative
+  decoding; off by default, and off is the export as before).
+  - `tools/draft_table.py build --gguf M.gguf --out M.draft_table.bin SOURCES...`: the n-gram table ember's
+    `EMBER_DRAFT=table` drafter loads (ember bace837, `draft_table.h`; chat speculation 1.91x / 2.23x plain
+    decode on an L4), for each context of up to 4 tokens its most frequent next token, built from the chat text
+    the model was trained on through the GGUF's own vocabulary. Sources: chat-format text, or JSONL rows
+    (`{"messages"}` rendered by the GGUF's chat template, `{"segments"}`, `{"prompt", "completion"}`,
+    `{"text"}`). The builder is ember's `experiments/draft_2026-10-27/dr_table.py`, vendored; the defaults are
+    the settings ember measured. A receipt `<table>.json` records the sources' sha256, the token stream's
+    sha256 and the table's. `check` applies ember's loader's checks; the vocabulary size is the model's as
+    ember reads it, and disagreeing sizes refuse.
+  - Byte identity (`experiments/draft_table_2026-10-27/`): ember's `h_c8_p10.bin` (10.3 MB, the 13 human
+    dialogue sources, 40.1M tokens) and `s_c8_p10.bin` (8.4 MB, SODA + OASST, 36.2M tokens) are reproduced
+    byte for byte, and h_c8_p10 again from the sources' `dialogues.jsonl` rows.
+  - mtstudio: `"export": {"draft_table": true}` writes `<name>.draft_table.bin` beside the GGUF after `run`
+    (from `data.sft_examples`) and after `export`; `{"sources": [...], "max_bytes": N}` names the text. It
+    refuses at parse without a GGUF format or a source, with an unknown key, and before training when the tool
+    is missing (`MTSTUDIO_DRAFT_TABLE`, `MTSTUDIO_PYTHON`); a failure after training leaves the weights, GGUFs
+    and result.json and exits non-zero. `tests/test_draft_table.py`.
+- **The arXiv chain builds T5's bias** (27 Oct; LOCAL_LLM_STACK.md section 11 items 4.2 and 8). ember runs
+  `attention.position_bias` (keramos v1.3.3: 364 pass, 0 fail, 49 skip, pk_flex_t5 included), so
+  `positional = t5_bias` builds flex with `position: "t5_relative"` from the paper's `rel_buckets` and
+  `rel_max_distance` (the extractor's fields, quote-verified) or `--assert rel_buckets=N rel_max_distance=N`.
+  A T5-bias paper that states neither refuses by name (never mtstudio's 32 / 128), as do sizes the bucketing
+  cannot take and T5's bias on windowed attention.
 - **keramos v1.3.0 pinned** (27 Oct; `spec/`, LOCAL_LLM_STACK.md section 11 item 8).
   - Exports follow rule 38 (IR_SPEC 3.1): a file names a llama.cpp architecture only when its IR is that
     architecture's graph. gpt2_swa (windowed gpt2 and windowed gpt2-flavour flex), kimi, recurrence and plain

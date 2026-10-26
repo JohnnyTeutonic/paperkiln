@@ -28,6 +28,7 @@
 #include <random>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <vector>
 
 // cpp-httplib (third_party/httplib, MIT): the portable HTTP layer behind
@@ -245,6 +246,14 @@ struct Spec {
     // gguf_q4_0 / gguf_q4_k_m / gguf_q4_k_s): the LlamaExportConfig::quant
     // values, each written to <name>_<quant>.gguf.
     std::vector<std::string> exp_gguf_quants;
+    // export.draft_table (opt-in): ember's corpus draft table for this model (EMBER_DRAFT=table, ember
+    // bace837), <name>.draft_table.bin beside the GGUF, written by tools/draft_table.py from the chat text
+    // the model was trained on: export.draft_table.sources (chat-format .txt or JSONL rows), else
+    // data.sft_examples; at most max_bytes of each source (0: all). Unset or false: no table, the export
+    // unchanged.
+    bool draft_table = false;
+    std::vector<std::string> draft_sources;
+    size_t draft_max_bytes = 0;
     bool serve = false;
     std::string out_dir = "mtstudio_out";
 };
@@ -739,7 +748,28 @@ Spec parse_spec(const std::string& path) {
         if (fmt == "safetensors") s.exp_safetensors = true;
         if (fmt.rfind("gguf_", 0) == 0) s.exp_gguf_quants.push_back(gguf_quant_of(fmt));
     }
-    s.serve = j.value("serve", json::object()).value("on_finish", false);
+    if (ex.contains("draft_table")) {
+        const json& dt = ex["draft_table"];
+        if (dt.is_boolean()) {
+            s.draft_table = dt.get<bool>();
+        } else if (dt.is_object()) {
+            s.draft_table = true;
+            for (auto it = dt.begin(); it != dt.end(); ++it) {
+                if (it.key() == "sources" && it.value().is_array()) {
+                    s.draft_sources = it.value().get<std::vector<std::string>>();
+                } else if (it.key() == "max_bytes" && it.value().is_number_unsigned()) {
+                    s.draft_max_bytes = it.value().get<size_t>();
+                } else {
+                    throw std::runtime_error("export.draft_table: " + it.key() +
+                                             " is not a key it takes (sources: a list of paths; max_bytes: a "
+                                             "non-negative integer)");
+                }
+            }
+        } else {
+            throw std::runtime_error("export.draft_table must be true, false or {\"sources\": [...], \"max_bytes\": N}");
+        }
+    }
+    s.serve =j.value("serve", json::object()).value("on_finish", false);
     s.out_dir = j.value("out_dir", s.out_dir);
     if (s.moe_experts > 0) {
         // The auxiliary losses ride the lm/sft loss; the RL objectives and
@@ -789,6 +819,14 @@ Spec parse_spec(const std::string& path) {
             if (q == "q4_0" || q == "q4_k_m" || q == "q4_k_s")
                 throw std::runtime_error("export gguf_" + q + ": llama.cpp's mix has no reference for an "
                                          "attention-residual model (gguf and gguf_q8_0* only)");
+    }
+    if (s.draft_table) {
+        if (!s.exp_gguf && s.exp_gguf_quants.empty())
+            throw std::runtime_error("export.draft_table needs a GGUF export (export.formats gguf or gguf_*): the "
+                                     "table is written beside it, from its vocabulary");
+        if (s.draft_sources.empty() && s.sft_examples.empty())
+            throw std::runtime_error("export.draft_table needs the chat text the model was trained on: "
+                                     "data.sft_examples, or export.draft_table.sources");
     }
     return s;
 }
@@ -2038,6 +2076,10 @@ parity::FlexConfig flex_config(const Spec& s, size_t vocab) {
     return fc;
 }
 
+// export.draft_table (defined with the child-process helpers below).
+std::string draft_table_tool();
+void write_draft_table(const Spec& s, const std::string& out_dir, const std::function<void(const json&)>& emit);
+
 int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     std::printf("== mtstudio: %s ==\n", s.name.c_str());
     std::printf("arch: %s d=%zu layers=%zu heads=%zu | T=%zu vocab_cap=%zu\n", s.attention.c_str(),
@@ -2051,6 +2093,14 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     for (const auto& q : s.exp_gguf_quants) quants += " gguf_" + q;
     std::printf("export: %s%s%s | serve: %s | out: %s\n", s.exp_safetensors ? "safetensors " : "",
                 s.exp_gguf ? "gguf" : "", quants.c_str(), s.serve ? "yes" : "no", s.out_dir.c_str());
+    if (s.draft_table) {
+        std::printf("draft_table: %s from %s\n", (s.out_dir + "/" + s.name + ".draft_table.bin").c_str(),
+                    s.draft_sources.empty() ? "data.sft_examples" : "export.draft_table.sources");
+        // Before training, not after it: a missing tool must not cost a run.
+        if (!plan_only && !std::filesystem::exists(draft_table_tool()))
+            throw std::runtime_error("export.draft_table: " + draft_table_tool() +
+                                     " not found (run from the repository root, or set MTSTUDIO_DRAFT_TABLE)");
+    }
     if (s.family == "llama")
         std::printf("rope_heads: %s\n", s.rope_heads.empty()
                                             ? "unstated (all for a new run; a resumed run keeps "
@@ -3208,6 +3258,11 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
         std::ofstream rf(s.out_dir + "/result.json");
         rf << result.dump(2) << "\n";
     }
+    // After the run's record: a table that fails leaves the weights, the GGUFs and result.json in place
+    // (`mtstudio export --from` writes it again), and the run still exits non-zero. Reported on stdout and in
+    // the table's receipt (<table>.json), not in events.jsonl, whose last event stays "done".
+    if (s.draft_table)
+        write_draft_table(s, s.out_dir, [](const json& j) { std::printf("%s\n", j.dump().c_str()); });
 
     if (s.serve) {
         if (llama && s.exp_gguf) {
@@ -3595,12 +3650,17 @@ int export_cmd(Spec s, const std::string& from, const std::string& formats, cons
     }
     if (!s.exp_gguf && s.exp_gguf_quants.empty())
         throw std::runtime_error("export: no GGUF format requested (--formats or export.formats)");
+    if (s.draft_table && !std::filesystem::exists(draft_table_tool()))
+        throw std::runtime_error("export.draft_table: " + draft_table_tool() +
+                                 " not found (run from the repository root, or set MTSTUDIO_DRAFT_TABLE)");
     LoadedLM lm(from.empty() ? s : at_safetensors(s, from, "--from"));
     const std::string dest = out_dir.empty() ? s.out_dir : out_dir;
     std::filesystem::create_directories(dest);
     export_ggufs(s, lm.model(), lm.llama.get(), lm.gpt.get(), lm.flex.get(), lm.attnres.get(), lm.mamba.get(),
                  lm.tokens, lm.vocab, lm.rope_heads, dest,
                  [](const json& j) { std::printf("%s\n", j.dump().c_str()); });
+    if (s.draft_table)
+        write_draft_table(s, dest, [](const json& j) { std::printf("%s\n", j.dump().c_str()); });
     return 0;
 }
 
@@ -3821,6 +3881,54 @@ bool reap(Child& c, bool* exited_ok) {
     if (exited_ok) *exited_ok = WIFEXITED(st) && WEXITSTATUS(st) == 0;
 #endif
     return true;
+}
+
+// ---- export.draft_table: ember's corpus draft table beside the GGUF (tools/draft_table.py) ----
+std::string draft_table_tool() {
+    const char* t = std::getenv("MTSTUDIO_DRAFT_TABLE");
+    return t ? t : "tools/draft_table.py";
+}
+
+// <out_dir>/<name>.draft_table.bin and its receipt (.json), from the vocabulary of the GGUF just written (the
+// F32 file, else the first quantised one) and the chat text the model was trained on; the tool's output goes
+// to <name>.draft_table.log. Blocks until it is done; a failure throws (a run never ends without the table
+// it was asked for and without saying why).
+void write_draft_table(const Spec& s, const std::string& out_dir, const std::function<void(const json&)>& emit) {
+    std::string gguf;
+    if (s.exp_gguf) gguf = out_dir + "/" + s.name + ".gguf";
+    for (size_t i = 0; gguf.empty() && i < s.exp_gguf_quants.size(); ++i)
+        gguf = out_dir + "/" + s.name + "_" + s.exp_gguf_quants[i] + ".gguf";
+    if (gguf.empty() || !std::filesystem::exists(gguf))
+        throw std::runtime_error("export.draft_table: no GGUF was written to " + out_dir +
+                                 " (the table is built from the model's vocabulary)");
+    const char* py = std::getenv("MTSTUDIO_PYTHON");
+#ifdef _WIN32
+    const std::string python = py ? py : "python";
+#else
+    const std::string python = py ? py : "python3";
+#endif
+    const std::vector<std::string> sources = s.draft_sources.empty() ? std::vector<std::string>{s.sft_examples}
+                                                                    : s.draft_sources;
+    const std::string out = out_dir + "/" + s.name + ".draft_table.bin";
+    const std::string log = out_dir + "/" + s.name + ".draft_table.log";
+    std::vector<std::string> argv = {python, draft_table_tool(), "build", "--gguf", gguf, "--out", out};
+    if (s.draft_max_bytes) {
+        argv.push_back("--max-bytes");
+        argv.push_back(std::to_string(s.draft_max_bytes));
+    }
+    argv.insert(argv.end(), sources.begin(), sources.end());
+    std::remove(log.c_str());
+    std::remove(out.c_str());
+    std::printf("draft_table: building %s (log %s)\n", out.c_str(), log.c_str());
+    std::fflush(stdout);
+    Child c;
+    if (!spawn(c, argv, log)) throw std::runtime_error("export.draft_table: could not start " + python);
+    bool ok = false;
+    while (!reap(c, &ok)) std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    if (!ok || !std::filesystem::exists(out))
+        throw std::runtime_error("export.draft_table: " + draft_table_tool() + " failed; see " + log);
+    emit({{"event", "export"}, {"format", "draft_table"}, {"path", out}, {"gguf", gguf}, {"sources", sources},
+          {"receipt", out + ".json"}});
 }
 
 // This binary's own path, for re-launching it as "mtstudio run <spec>".

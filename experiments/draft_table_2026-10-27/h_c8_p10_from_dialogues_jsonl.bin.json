@@ -1,0 +1,118 @@
+{
+ "table": "hj.bin",
+ "bytes": 10294632,
+ "sha256": "5a58236ab58b6129ec326c2abca8981261bf1055639de04b214492d8be8770be",
+ "vocab": 16384,
+ "entries": [
+  14151,
+  267966,
+  231134,
+  422618
+ ],
+ "settings": {
+  "orders": 4,
+  "min_count": 8,
+  "min_conf": 0.1,
+  "prune_redundant": 1,
+  "max_bytes": 0
+ },
+ "gguf": "/mnt/c/ml_artifacts/tiny_chat/e1/pick_e1_L16/model.gguf",
+ "template": "paperkiln/1",
+ "sources": [
+  {
+   "path": "/mnt/c/ml_artifacts/human_dialogue/hd_default/human_oasst_v1/dialogues.jsonl",
+   "form": "jsonl",
+   "sha256": "7a2a9934e9acf73485ffae310e5b748643c34c34e1e9f3feac9c7fa9495ca14d",
+   "bytes_read": 10457372,
+   "tokens": 2454506
+  },
+  {
+   "path": "/mnt/c/ml_artifacts/human_dialogue/hd_default/human_convai2_v1/dialogues.jsonl",
+   "form": "jsonl",
+   "sha256": "804568a4d94c545bc57b867dc1084af44f2baf2e841f51a22bb7c1f16f248654",
+   "bytes_read": 8539241,
+   "tokens": 1883518
+  },
+  {
+   "path": "/mnt/c/ml_artifacts/human_dialogue/hd_default/human_wow_v1/dialogues.jsonl",
+   "form": "jsonl",
+   "sha256": "7a960abdcfe2cf75256f360986b77162b0e7a794ed81287009c5ca0d0aa2e350",
+   "bytes_read": 15681865,
+   "tokens": 3466236
+  },
+  {
+   "path": "/mnt/c/ml_artifacts/human_dialogue/hd_default/human_bst_v1/dialogues.jsonl",
+   "form": "jsonl",
+   "sha256": "e66aab659918d3cfe6b0828d05ddd1a7c790507b62737690e500814a2687f75f",
+   "bytes_read": 4550380,
+   "tokens": 1014819
+  },
+  {
+   "path": "/mnt/c/ml_artifacts/human_dialogue/hd_default/human_taskmaster_v1/dialogues.jsonl",
+   "form": "jsonl",
+   "sha256": "c3253887c0448a688adf206360632cd0b5325d301c0120f30a0924112393abee",
+   "bytes_read": 33225982,
+   "tokens": 7599378
+  },
+  {
+   "path": "/mnt/c/ml_artifacts/human_dialogue/hd_default/human_multiwoz_v1/dialogues.jsonl",
+   "form": "jsonl",
+   "sha256": "0984e5deeef4cd89efe9e32f433672864644ecfff9e6fa85840b27dc2cf0ea84",
+   "bytes_read": 9645420,
+   "tokens": 2209246
+  },
+  {
+   "path": "/mnt/c/ml_artifacts/human_dialogue/hd_default/human_self_dialogue_v1/dialogues.jsonl",
+   "form": "jsonl",
+   "sha256": "2b2ba86a9aecab1d5ddebfbfcb970dca6efe7fdc40110dca899d88164037d498",
+   "bytes_read": 24962152,
+   "tokens": 5527322
+  },
+  {
+   "path": "/mnt/c/ml_artifacts/human_dialogue/hd_optin/human_topical_chat_v1/dialogues.jsonl",
+   "form": "jsonl",
+   "sha256": "ffc6fe455ca8ec386b40ce38b3d9fd78f9c15d967f66a97587fe83245021418a",
+   "bytes_read": 22039603,
+   "tokens": 5037915
+  },
+  {
+   "path": "/mnt/c/ml_artifacts/human_dialogue/hd_optin/human_dolly_v1/dialogues.jsonl",
+   "form": "jsonl",
+   "sha256": "f6a8e975ae5d4dc6262cef7ade3034f094d994d1853f1f36d77a102c858de274",
+   "bytes_read": 12122377,
+   "tokens": 2934850
+  },
+  {
+   "path": "/mnt/c/ml_artifacts/human_dialogue/hd_optin/human_quac_v1/dialogues.jsonl",
+   "form": "jsonl",
+   "sha256": "2476a642cdc2906deb5ff175dbbd9d186dd533d837ded26a65ec4ace22b043f7",
+   "bytes_read": 11475127,
+   "tokens": 2571107
+  },
+  {
+   "path": "/mnt/c/ml_artifacts/human_dialogue/hd_optin/human_empathetic_v1/dialogues.jsonl",
+   "form": "jsonl",
+   "sha256": "835f875a4771f89ee13b4056df8b22414a156e23f2267c9aad82b9810a1ef6c5",
+   "bytes_read": 6136536,
+   "tokens": 1361911
+  },
+  {
+   "path": "/mnt/c/ml_artifacts/human_dialogue/hd_optin/human_dailydialog_v1/dialogues.jsonl",
+   "form": "jsonl",
+   "sha256": "c91228768e3d92876b81d132ac46ec5f0f21e7e870eea356b7f0670a1a766f6c",
+   "bytes_read": 5791888,
+   "tokens": 1273731
+  },
+  {
+   "path": "/mnt/c/ml_artifacts/human_dialogue/hd_optin/human_no_robots_v1/dialogues.jsonl",
+   "form": "jsonl",
+   "sha256": "2c6024c99e9e70ac2a5086397f15149cbeb6c4516e39c0a3ed37b9e297dfd53e",
+   "bytes_read": 11377481,
+   "tokens": 2789160
+  }
+ ],
+ "corpus_tokens": 40123699,
+ "corpus_sha256": "58c41de4be668d5e82d3a357483a0999d5d69536156239bc48651e139d3d5a80",
+ "builder": "ember.cpp experiments/draft_2026-10-27/dr_table.py (bace837), vendored in paperkiln tools/draft_table.py",
+ "serve": "EMBER_SPEC=8 EMBER_DRAFT=table EMBER_DRAFT_TABLE=<this file> (ember bace837 or later)"
+}
