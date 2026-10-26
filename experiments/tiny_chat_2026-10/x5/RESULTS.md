@@ -154,9 +154,19 @@ embedding; source 2i + 1 is layer i's attention output and 2i + 2 its FFN output
 
 The pick is seed 3 (Y -0.0507; the home pick over the three seeds' post folders, `ART/e1_x5/pick_e1_x5_X5`).
 
-Not yet scored: Stage L0 (`tools/carry12_l0.py run --gen none`, into `ART/l0/pick_e1_x5_X5`) holds 13 of its 91
-score chunks and resumes from them. CPU `mtstudio score` on this model runs at about 4.5 min per chunk, against
-about 0.8 for plain 20m_L16's pick (ROADMAP section 3), so the run waits behind the main session's queue.
+Carry-12 v1 at T 512, forced choice with gold history (`ART/l0/pick_e1_x5_X5/l0.json`, paperkiln 1722e784).
+These are descriptive here, because Stage L0's registered test is on the E5 and E1 winners' picks.
+
+| | pick_e1_x5_X5 (X5, seed 3) | pick_e1_L16 (plain, seed 1) |
+|---|---:|---:|
+| validity gate (twin over the primary families; twin minus question alone, context families) | pass (0.495; 0.222) | pass (0.501; 0.236) |
+| gold accuracy / near accuracy (1,320 context items) | 0.430 / 0.471 | 0.470 / 0.500 |
+| HL0's D = gold - near (the distance cost) | **-0.042**, 95% [-0.063, -0.020] | -0.030, 95% [-0.053, -0.006] |
+| HL0's rule | SUPPORTED | SIGNIFICANT_BELOW_SESOI |
+
+- X5's pick loses more accuracy to distance on Carry-12 than plain L16's pick does: 1.2 points more.
+- The two models are different seeds, one pick each, so this is not a contrast. It shows no sign that
+  attention residuals shorten the distance cost on long dialogues.
 
 ## What this does and does not show
 

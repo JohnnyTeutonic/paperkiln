@@ -12,8 +12,6 @@ where one of those documents carries a plan, this file wins.*
    E5, E1 and the recursion arm run on Colab; E1 at 60M waits for an L4 (first use of the
    RunPod backend for `tools/colab_chat/runner_multi.py`, under validation); Carry-12 and its
    Stage L0 follow E5 and E1.
-   - Arm X5 (amendment 5): HX5-main EQUIVALENT (`experiments/tiny_chat_2026-10/x5/RESULTS.md`). Left: Stage L0
-     on `pick_e1_x5_X5` (13 of 91 chunks; it resumes; behind the main session's CPU queue).
 1. **The chat model (LOCAL_LLM_STACK.md sections 8 and 11, item 2).**
    - Jonathan's pick between the winner rule's two verdicts (`experiments/chat_general/RESULTS.md`,
      "The winner": live as registered, pk_sft_v1 under amendment A1).
