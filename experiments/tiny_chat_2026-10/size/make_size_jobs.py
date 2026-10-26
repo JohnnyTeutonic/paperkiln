@@ -129,11 +129,12 @@ def home_probes():
 PROBES = home_probes()
 
 
-def tok_per_s(sid, s):
-    """The probe's rate once home; until then the planning rate, the lower of two extrapolations from
+def tok_per_s(sid, s, planning=False):
+    """The probe's rate once home (unless planning: Stage 0's files keep the plan they launched with); until then
+    the planning rate, the lower of two extrapolations from
     Stage 0's probes: the fit through all nine (time per token in FLOPs and layers) and 60M's probe at the
     same depth scaled by training FLOPs per token."""
-    if sid in PROBES:
+    if sid in PROBES and not planning:
         return PROBES[sid]["tok_per_s_steady"]
     f = mj.flops_per_token(s)
     a, b, c = FIT
@@ -143,8 +144,8 @@ def tok_per_s(sid, s):
     return min(fit, ratio)
 
 
-def hours(sid, s, steps):
-    return steps * mj.TOKENS_PER_STEP / tok_per_s(sid, s) / 3600
+def hours(sid, s, steps, planning=False):
+    return steps * mj.TOKENS_PER_STEP / tok_per_s(sid, s, planning) / 3600
 
 
 def run_hours(sid, s):
@@ -202,7 +203,7 @@ def stage0_doc(sid, s, replay=False):
                          "--steps", str(mj.PROBE_STEPS), *pre],
                  "outputs": ["summary.json"]})
     prev = f"probe_{sid}"   # a probe that fails (memory) holds the screens back: they would fail the same way
-    est = mj.CUDA_GATE_H + mj.DATA_H + hours(sid, s, mj.PROBE_STEPS)
+    est = mj.CUDA_GATE_H + mj.DATA_H + hours(sid, s, mj.PROBE_STEPS, planning=True)
     if replay:   # independent of this depth's probe and screens, so neither outcome holds the other back
         jobs.append({"name": REPLAY["job"], "model_name": f"tc_e1_60m_L32_r{REPLAY['seed']}", "after": after,
                      "spec": replay_spec()})
@@ -212,7 +213,7 @@ def stage0_doc(sid, s, replay=False):
                      "cmd": ["python3", mj.RUN, "screen", "--out", "{out}", "--spec", spec_path(sid), "--corpus", corpus,
                              "--lr", repr(lr), "--steps", str(mj.SCREEN_STEPS), "--seed", str(mj.SCREEN_SEED), *pre],
                      "outputs": ["summary.json"]})
-        est += IN_RUN * hours(sid, s, mj.SCREEN_STEPS)
+        est += IN_RUN * hours(sid, s, mj.SCREEN_STEPS, planning=True)
     rep = (f" Also the plain replay {REPLAY['job']}: E1 at 60M's pt_e1_60m_L32_r{REPLAY['seed']} spec at this commit "
            f"for its first {REPLAY['steps']} steps (the warmup), compared at home step by step with its log at "
            f"{REPLAY['commit'][:8]} by {EXP_REL}/x5/bitid.py into {REL}/plain_bitid.json.") if replay else ""
