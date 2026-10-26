@@ -20,7 +20,7 @@ os.makedirs(out, exist_ok=True)
 tr = spec["train"]
 model = {"event": "model"}
 if os.environ.get("FAKE_RECORDS") == "1":
-    for k in ("precision", "attention_kernel"):
+    for k in ("precision", "attention_kernel", "fused_head"):
         if k in tr:
             model[k] = tr[k]
 prof = os.environ.get("MICROTORCH_GPU_PROFILE") == "1"
@@ -100,3 +100,18 @@ def test_run_resumes_and_accepts_recorded_config(tmp_path, fake, monkeypatch):
     monkeypatch.setattr(sp, "run_once", lambda *a, **k: (_ for _ in ()).throw(AssertionError("reran a done cell")))
     assert sp.cmd_run(a) == 0
     assert "| pk_base_v1 | bf16_flash |" in sp.table(res)
+
+
+def test_fused_head_config_is_refused_unless_recorded(tmp_path, fake, monkeypatch):
+    a = types.SimpleNamespace(out=str(tmp_path / "o"), vocab="v.gguf", shapes="20m_L4", configs="fused_head",
+                              steps=12, warm=4)
+    monkeypatch.delenv("FAKE_RECORDS", raising=False)
+    assert sp.cmd_run(a) == 0
+    assert "refused" in json.load(open(tmp_path / "o" / "profile.json"))["runs"]["20m_L4/fused_head"]
+    spec = json.load(open(tmp_path / "o" / "runs" / "20m_L4_fused_head_clean_spec.json"))
+    assert spec["train"]["fused_head"] is True
+    b = types.SimpleNamespace(**dict(vars(a), out=str(tmp_path / "p")))
+    monkeypatch.setenv("FAKE_RECORDS", "1")
+    assert sp.cmd_run(b) == 0
+    assert json.load(open(tmp_path / "p" / "profile.json"))["runs"]["20m_L4/fused_head"]["profile"]
+    assert sp.OP_CLASS["linear_ce"] == "head_fused"

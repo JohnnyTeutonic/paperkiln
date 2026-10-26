@@ -261,6 +261,44 @@ __global__ void gemm_tiled_ops(const float* __restrict__ A,
     if (row < M && col < N) C[row * N + col] = acc;
 }
 
+// C(M,N) += op(A) * op(B): gemm_tiled_ops with the accumulator starting at
+// C's current value instead of 0, so a product split along K into chunks
+// continues each element's FMA chain where the previous chunk left it. With
+// chunks of whole tiles (a multiple of TILE rows) it is gemm_tiled_ops over
+// the whole K bit for bit; otherwise the padded zeros in between only add
+// +0 (ops::linear_cross_entropy's dW, 26 Oct 2026).
+template <bool TA, bool TB>
+__global__ void gemm_tiled_acc(const float* __restrict__ A,
+                               const float* __restrict__ B,
+                               float* __restrict__ C,
+                               int M, int N, int K) {
+    __shared__ float As[TILE][TILE];
+    __shared__ float Bs[TILE][TILE];
+    const int row = blockIdx.y * TILE + threadIdx.y;
+    const int col = blockIdx.x * TILE + threadIdx.x;
+    float acc = (row < M && col < N) ? C[static_cast<size_t>(row) * N + col] : 0.0f;
+    for (int t = 0; t < (K + TILE - 1) / TILE; ++t) {
+        const int ak = t * TILE + threadIdx.x;
+        const int bk = t * TILE + threadIdx.y;
+        As[threadIdx.y][threadIdx.x] =
+            (row < M && ak < K)
+                ? (TA ? A[static_cast<size_t>(ak) * M + row]
+                      : A[static_cast<size_t>(row) * K + ak])
+                : 0.0f;
+        Bs[threadIdx.y][threadIdx.x] =
+            (bk < K && col < N)
+                ? (TB ? B[static_cast<size_t>(col) * K + bk]
+                      : B[static_cast<size_t>(bk) * N + col])
+                : 0.0f;
+        __syncthreads();
+#pragma unroll
+        for (int k = 0; k < TILE; ++k)
+            acc += As[threadIdx.y][k] * Bs[k][threadIdx.x];
+        __syncthreads();
+    }
+    if (row < M && col < N) C[static_cast<size_t>(row) * N + col] = acc;
+}
+
 }  // namespace
 
 void set_residency(bool on) { g_residency = on; }
@@ -564,13 +602,16 @@ cublasHandle_t cublas_handle() {
 // leading dimension c, so compute C^T = op(B)^T op(A)^T:
 //   B: stored [K,N] (tb false) -> N with ldb N; stored [N,K] (tb) -> T with ldb K
 //   A: stored [M,K] (ta false) -> N with lda K; stored [K,M] (ta) -> T with lda M
-void cublas_gemm_rowmajor(const float* dA, bool ta, const float* dB, bool tb, float* dC, int M, int N, int K) {
+// beta 1 adds into C (ops::linear_cross_entropy's chunked dW); every other
+// caller passes the default 0.
+void cublas_gemm_rowmajor(const float* dA, bool ta, const float* dB, bool tb, float* dC, int M, int N, int K,
+                          float beta = 0.0f) {
     cublasHandle_t h = cublas_handle();
     static const bool tf32 = env_on("MICROTORCH_TF32");
     if (tf32) cublasSetMathMode(h, CUBLAS_TF32_TENSOR_OP_MATH);
-    const float one = 1.0f, zero = 0.0f;
+    const float one = 1.0f;
     const cublasStatus_t s = cublasSgemm(h, tb ? CUBLAS_OP_T : CUBLAS_OP_N, ta ? CUBLAS_OP_T : CUBLAS_OP_N, N, M, K,
-                                         &one, dB, tb ? K : N, dA, ta ? M : K, &zero, dC, N);
+                                         &one, dB, tb ? K : N, dA, ta ? M : K, &beta, dC, N);
     if (tf32) cublasSetMathMode(h, CUBLAS_DEFAULT_MATH);
     if (s != CUBLAS_STATUS_SUCCESS) throw std::runtime_error("cublasSgemm failed: " + std::to_string(s));
 }
@@ -606,17 +647,17 @@ void require_bf16_device() {
 // device and FP32 accumulation and output (cublas_gemm_rowmajor's operand
 // mapping). The rounded copies are temporaries, freed before return.
 void cublas_gemm_rowmajor_bf16(const float* dA, bool ta, const float* dB, bool tb, float* dC, int M, int N,
-                               int K, const char* gemm_name) {
+                               int K, const char* gemm_name, float beta = 0.0f) {
     require_bf16_device();
     detail::gpu_profile_begin("bf16_convert");
     __nv_bfloat16* a16 = to_bf16(dA, static_cast<size_t>(M) * K);
     __nv_bfloat16* b16 = to_bf16(dB, static_cast<size_t>(K) * N);
     detail::gpu_profile_end("bf16_convert");
     detail::gpu_profile_begin(gemm_name);
-    const float one = 1.0f, zero = 0.0f;
+    const float one = 1.0f;
     const cublasStatus_t s =
         cublasGemmEx(cublas_handle(), tb ? CUBLAS_OP_T : CUBLAS_OP_N, ta ? CUBLAS_OP_T : CUBLAS_OP_N, N, M, K, &one,
-                     b16, CUDA_R_16BF, tb ? K : N, a16, CUDA_R_16BF, ta ? M : K, &zero, dC, CUDA_R_32F, N,
+                     b16, CUDA_R_16BF, tb ? K : N, a16, CUDA_R_16BF, ta ? M : K, &beta, dC, CUDA_R_32F, N,
                      CUBLAS_COMPUTE_32F, CUBLAS_GEMM_DEFAULT);
     detail::gpu_profile_end(gemm_name);
     pool::dfree(a16);
@@ -687,6 +728,54 @@ bool step_resident_gemm(const Matrix& A, DevState** devA, Trans tA,
     if (own_b) pool::dfree(dB);
     return true;
 }
+
+namespace detail {
+
+float* step_operand(const Matrix& m, DevState** slot, bool& owned) {
+    if (g_step_residency && g_in_step) return window_operand(m, slot, owned);
+    return vc_operand(m.get_data(), m.rows() * m.cols(), owned);
+}
+
+void gemm_raw(const float* dA, bool ta, const float* dB, bool tb, float* dC, int M, int N, int K, Precision prec,
+              bool accumulate) {
+    if (M == 0 || N == 0) return;
+    const float beta = accumulate ? 1.0f : 0.0f;
+    if (prec == Precision::BF16) {
+        cublas_gemm_rowmajor_bf16(dA, ta, dB, tb, dC, M, N, K, gemm_profile_name(true), beta);
+        return;
+    }
+    const char* pname = gemm_profile_name(false);
+    detail::gpu_profile_begin(pname);
+    if (cublas_on()) {
+        cublas_gemm_rowmajor(dA, ta, dB, tb, dC, M, N, K, beta);
+    } else {
+        dim3 block(TILE, TILE);
+        dim3 grid((N + TILE - 1) / TILE, (M + TILE - 1) / TILE);
+        if (!accumulate) {
+            if (!ta && !tb)
+                gemm_tiled_ops<false, false><<<grid, block>>>(dA, dB, dC, M, N, K);
+            else if (ta && !tb)
+                gemm_tiled_ops<true, false><<<grid, block>>>(dA, dB, dC, M, N, K);
+            else if (!ta && tb)
+                gemm_tiled_ops<false, true><<<grid, block>>>(dA, dB, dC, M, N, K);
+            else
+                gemm_tiled_ops<true, true><<<grid, block>>>(dA, dB, dC, M, N, K);
+        } else {
+            if (!ta && !tb)
+                gemm_tiled_acc<false, false><<<grid, block>>>(dA, dB, dC, M, N, K);
+            else if (ta && !tb)
+                gemm_tiled_acc<true, false><<<grid, block>>>(dA, dB, dC, M, N, K);
+            else if (!ta && tb)
+                gemm_tiled_acc<false, true><<<grid, block>>>(dA, dB, dC, M, N, K);
+            else
+                gemm_tiled_acc<true, true><<<grid, block>>>(dA, dB, dC, M, N, K);
+        }
+        cuda_check(cudaGetLastError(), "gemm_raw launch");
+    }
+    detail::gpu_profile_end(pname);
+}
+
+}  // namespace detail
 
 bool resident_matmul(const Matrix& a, const Matrix& b, Matrix& c) {
     if (!g_residency) return false;

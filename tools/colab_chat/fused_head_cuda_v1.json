@@ -1,0 +1,17 @@
+{
+  "_comment": "Device legs of train.fused_head, the fused LM head + cross-entropy (LOCAL_LLM_STACK.md section 11 item 5.1, 26 Oct 2026), on one RunPod L4, independent jobs in order. (1) cuda_gate: every leg of tools/colab_cuda_validate.sh, with tests/test_fused_head.cpp twice: devops::linear_ce against the unfused device path inside step windows with the tiled GEMM bit for bit (loss, dh, dW, db; chunks of 32, all rows and the default), write-through, BF16 and cuBLAS to float rounding, pool memory flat over 60 fused steps. (2) fused_gate: tools/fused_head_gate.py on 20m_L4 (batch 32, 300 steps, FineWeb-Edu sample text) with the production environment: mtstudio at c6365b88 (the commit before the option) vs HEAD with it off, bitwise (every step's loss and grad norm, final val, exported safetensors/GGUF sha256); explicit-off and repeat bitwise; fused vs unfused: first-step loss within 1e-6 relative, 20-step moving average within 0.5%, final val within 0.5%, s/step each. (3) step_profile: throughput and the per-class step breakdown at the tiny-chat shapes 20m_L4, 20m_L16, 60m_L32 and pk_base_v1's shape (d768 L12), fp32 against fused_head (40 steps each; the classes head_gemm + loss against head_fused, peak MB). About 1.5 L4 VM-hours. Upload vocab_llama3_bpe.gguf (C:/ml_artifacts/capacity/vocab/) with the runner's --upload. Brings home cuda_gate.json, gate.json, profile.json; at home: python tools/step_profile.py table ART/step_profile/profile.json.",
+  "max_parallel": 1,
+  "jobs": [
+    {"name": "cuda_gate",
+     "cmd": ["python3", "tools/colab_chat/tiny_chat_run.py", "cuda_gate", "--out", "{out}"],
+     "outputs": ["cuda_gate.json", "cuda_gate.log"]},
+    {"name": "fused_gate",
+     "cmd": ["bash", "tools/colab_chat/fused_head_gate_vm.sh", "{out}", "{upload}", "c6365b88", "20m_L4", "32", "1", "300"],
+     "outputs": ["gate.json"]},
+    {"name": "step_profile",
+     "cmd": ["python3", "tools/step_profile.py", "run", "--out", "{out}", "--vocab", "{upload}/vocab_llama3_bpe.gguf",
+             "--shapes", "20m_L4,20m_L16,60m_L32,pk_base_v1", "--configs", "fp32,fused_head", "--steps", "40",
+             "--warm", "10"],
+     "outputs": ["profile.json"]}
+  ]
+}

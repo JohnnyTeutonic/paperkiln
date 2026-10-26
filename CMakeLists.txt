@@ -149,6 +149,10 @@ add_test(NAME deep_swa COMMAND test_deep_swa)
 add_executable(test_thirdparty_ops tests/test_thirdparty_ops.cpp)
 target_link_libraries(test_thirdparty_ops PRIVATE microtorch)
 add_test(NAME thirdparty_ops COMMAND test_thirdparty_ops)
+# The fused LM head + cross-entropy (ops::linear_cross_entropy, 26 Oct 2026).
+add_executable(test_fused_head tests/test_fused_head.cpp)
+target_link_libraries(test_fused_head PRIVATE microtorch)
+add_test(NAME fused_head COMMAND test_fused_head)
 add_test(NAME nn COMMAND test_nn)
 
 add_executable(test_kimi_linear tests/test_kimi_linear.cpp)

@@ -180,6 +180,10 @@ bool ce_fwd_masked(const Matrix&, const int*, size_t, Matrix&, float&) {
 bool ce_bwd_masked(const Matrix&, const int*, float, Matrix&) {
     return false;
 }
+bool linear_ce(const Matrix&, DevState**, const Matrix&, DevState**, bool, const Matrix*, const int*, size_t, float,
+               size_t, Precision, Matrix*, Matrix*, Matrix*, float&) {
+    return false;
+}
 bool adamw_step(Matrix&, const Matrix&, Matrix&, Matrix&, float, float, float, float, float, float,
                 float) {
     return false;

@@ -1099,6 +1099,112 @@ bool ce_bwd_masked(const Matrix& P, const int* targets, float g, Matrix& dl) {
     return true;
 }
 
+namespace {
+// ops::add_bias's forward on a chunk of logits: L[i, j] += b[j].
+__global__ void k_bias_rows(float* L, const float* b, size_t n, int V) {
+    for (size_t idx = blockIdx.x * static_cast<size_t>(blockDim.x) + threadIdx.x; idx < n;
+         idx += static_cast<size_t>(gridDim.x) * blockDim.x)
+        L[idx] += b[idx % V];
+}
+// ops::add_bias's backward over a chunk, continued across chunks: per column,
+// the rows added in ascending order to the running sum (first chunk: from 0),
+// one float add each, the host loop's sequence.
+__global__ void k_colsum_acc(const float* dl, float* db, int rows, int V, int first) {
+    for (int j = blockIdx.x * blockDim.x + threadIdx.x; j < V; j += gridDim.x * blockDim.x) {
+        float s = first ? 0.0f : db[j];
+        for (int r = 0; r < rows; ++r) s += dl[static_cast<size_t>(r) * V + j];
+        db[j] = s;
+    }
+}
+// A step_operand fetch, freed on every exit.
+struct StepIn {
+    float* d = nullptr;
+    bool owned = false;
+    StepIn(const Matrix& m, DevState** slot) { d = detail::step_operand(m, slot, owned); }
+    ~StepIn() {
+        if (owned) pool::dfree(d);
+    }
+    StepIn(const StepIn&) = delete;
+    StepIn& operator=(const StepIn&) = delete;
+};
+}  // namespace
+
+// The fused LM head + cross-entropy (device_cache.hpp; ops::linear_cross_entropy).
+// Not yet run on a GPU (26 Oct 2026): tests/test_fused_head.cpp's device legs
+// are its gate.
+bool linear_ce(const Matrix& h, DevState** h_slot, const Matrix& w, DevState** w_slot, bool vocab_major,
+               const Matrix* bias, const int* targets, size_t kept, float g, size_t chunk_rows, Precision prec,
+               Matrix* dh, Matrix* dw, Matrix* db, float& loss) {
+    if (!active()) return false;
+    static const char* const kOp = "linear_ce";  // MICROTORCH_GPU_PROFILE's name for the whole op
+    const size_t R = h.rows(), D = h.cols();
+    const size_t V = vocab_major ? w.rows() : w.cols();
+    const size_t chunk = std::max<size_t>(1, std::min(chunk_rows, R));
+    const bool masked = kept != R;
+    const bool grads = dh || dw || db;
+    detail::gpu_profile_begin(kOp);
+    StepIn dH(h, h_slot);
+    StepIn dW(w, w_slot);
+    std::unique_ptr<In> dB;
+    if (bias) dB.reset(new In(bias->get_data(), V));
+    IBuf dt(targets, R);
+    DBuf L(chunk * V);
+    DBuf dnll(R);
+    DBuf dsum(1);
+    std::unique_ptr<Out> odh, odw, odb;
+    if (dh) odh.reset(new Out(dh->get_data(), R * D, false, kOp));
+    if (dw) odw.reset(new Out(dw->get_data(), V * D, false, kOp));
+    if (db) odb.reset(new Out(db->get_data(), V, false, kOp));
+    const int iV = static_cast<int>(V), iD = static_cast<int>(D);
+    for (size_t c0 = 0; c0 < R; c0 += chunk) {
+        const size_t n = std::min(chunk, R - c0);
+        const int in = static_cast<int>(n);
+        const float* hc = dH.d + c0 * D;
+        // logits [n, V] = h_c W (W [D, V]: B stored [K, N]) or h_c E^T (E [V, D]: B stored [N, K])
+        detail::gemm_raw(hc, false, dW.d, vocab_major, L.d, in, iV, iD, prec, false);
+        if (bias) {
+            k_bias_rows<<<ew_grid(n * V), NTHREADS>>>(L.d, dB->d, n * V, iV);
+            cuda_check(cudaGetLastError(), "linear_ce bias");
+        }
+        // The unfused CE kernels, in place on the chunk (each thread reads an
+        // element before it writes it): P and nll, then (P - onehot) g.
+        if (masked)
+            k_ce_fwd<true><<<in, ROW_THREADS, ROW_THREADS * sizeof(float)>>>(L.d, dt.d + c0, L.d, dnll.d + c0, iV);
+        else
+            k_ce_fwd<false><<<in, ROW_THREADS, ROW_THREADS * sizeof(float)>>>(L.d, dt.d + c0, L.d, dnll.d + c0, iV);
+        cuda_check(cudaGetLastError(), "linear_ce softmax");
+        if (!grads) continue;
+        if (masked)
+            k_ce_bwd<true><<<ew_grid(n * V), NTHREADS>>>(L.d, dt.d + c0, g, L.d, iV, n * V);
+        else
+            k_ce_bwd<false><<<ew_grid(n * V), NTHREADS>>>(L.d, dt.d + c0, g, L.d, iV, n * V);
+        cuda_check(cudaGetLastError(), "linear_ce dlogits");
+        // dh rows = dl W^T (W [D, V] read as [N, K]) or dl E (E [V, D] read as [K, N])
+        if (odh) detail::gemm_raw(L.d, false, dW.d, !vocab_major, odh->d + c0 * D, in, iD, iV, prec, false);
+        // dW [D, V] += h_c^T dl, or dE [V, D] += dl^T h_c; the first chunk writes.
+        if (odw) {
+            if (!vocab_major)
+                detail::gemm_raw(hc, true, L.d, false, odw->d, iD, iV, in, prec, c0 > 0);
+            else
+                detail::gemm_raw(L.d, true, hc, false, odw->d, iV, iD, in, prec, c0 > 0);
+        }
+        if (odb) {
+            k_colsum_acc<<<ew_grid(V), NTHREADS>>>(L.d, odb->d, in, iV, c0 == 0 ? 1 : 0);
+            cuda_check(cudaGetLastError(), "linear_ce bias grad");
+        }
+    }
+    k_vec_sum<<<1, ROW_THREADS, ROW_THREADS * sizeof(float)>>>(dnll.d, dsum.d, static_cast<int>(R));
+    cuda_check(cudaGetLastError(), "linear_ce sum");
+    float s = 0.0f;
+    d2h(&s, dsum.d, 1);
+    loss = s / static_cast<float>(kept);
+    if (odh) odh->finish();
+    if (odw) odw->finish();
+    if (odb) odb->finish();
+    detail::gpu_profile_end(kOp);
+    return true;
+}
+
 // B2.3a optimizer steps: write-through parity seam (p/m/v round-trip
 // the bus every step — SLOWER than host on purpose for now; persistent
 // device optimizer state and resident params are B2.3b, exactly the

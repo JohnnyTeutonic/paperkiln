@@ -558,6 +558,18 @@ Var Llama::embed(const std::vector<int>& ids) const {
 
 Var Llama::forward(const std::vector<int>& ids, size_t seq_len, MoEAux* aux) const {
     if (attn_res) return attnres_forward(*this, ids, seq_len, aux);
+    const Var h = forward_hidden(ids, seq_len, aux);
+    // Tied head: logits = h @ E^T (gradients flow into the embedding both
+    // through the gather and through the head matmul).
+    // The head's GEMMs (forward and backward) profile as "gemm_head"
+    // (MICROTORCH_GPU_PROFILE; names only).
+    device::ProfileTag head_tag("gemm_head");
+    if (lm_head) return lm_head->forward(h);
+    return ops::matmul(h, ops::transpose(embed_tokens->weight));
+}
+
+Var Llama::forward_hidden(const std::vector<int>& ids, size_t seq_len, MoEAux* aux) const {
+    if (attn_res) return attnres_forward_hidden(*this, ids, seq_len, aux);
     // RoPE positions restart every seq_len (0 = one sequence).
     const size_t sl = seq_len == 0 ? ids.size() : seq_len;
     if (ids.size() % sl != 0) throw std::runtime_error("ids not a multiple of seq_len");
@@ -641,14 +653,7 @@ Var Llama::forward(const std::vector<int>& ids, size_t seq_len, MoEAux* aux) con
         last_depth = std::move(depth);
         last_margin = std::move(margin);
     }
-    h = ops::rmsnorm(h, norm_w);
-    // Tied head: logits = h @ E^T (gradients flow into the embedding both
-    // through the gather and through the head matmul).
-    // The head's GEMMs (forward and backward) profile as "gemm_head"
-    // (MICROTORCH_GPU_PROFILE; names only).
-    device::ProfileTag head_tag("gemm_head");
-    if (lm_head) return lm_head->forward(h);
-    return ops::matmul(h, ops::transpose(embed_tokens->weight));
+    return ops::rmsnorm(h, norm_w);
 }
 
 size_t LlamaKV::truncate(size_t n) {

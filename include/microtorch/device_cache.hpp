@@ -318,6 +318,16 @@ namespace detail {
 float* vc_operand(const float* key, size_t n, bool& owned);
 float* vc_output(const float* key, size_t n, bool& deferred, bool need_current,
                  const float* host_src);
+// A GEMM operand as step_resident_gemm fetches it: inside an open step
+// window its value-cache copy or its Variable's DevState slot (uploaded
+// once per window); outside one, vc_operand. owned: the caller frees it.
+float* step_operand(const Matrix& m, DevState** slot, bool& owned);
+// Row-major C[M,N] (+)= op(A) op(B) on device pointers, step_resident_gemm's
+// kernels: cublasGemmEx for BF16, cublasSgemm under MICROTORCH_CUBLAS, else
+// the tiled kernel (gemm_tiled_ops; accumulate: gemm_tiled_acc, each
+// element's FMA chain continued from C). ta: A stored [K, M]; tb: B stored [N, K].
+void gemm_raw(const float* dA, bool ta, const float* dB, bool tb, float* dC, int M, int N, int K, Precision prec,
+              bool accumulate);
 }  // namespace detail
 #endif
 
@@ -403,6 +413,23 @@ bool ce_bwd(const Matrix& P, const int* targets, float g, Matrix& dl);
 // loss sum's reduction tree differs, so the loss carries fp32 tolerance).
 bool ce_fwd_masked(const Matrix& logits, const int* targets, size_t kept, Matrix& P, float& loss);
 bool ce_bwd_masked(const Matrix& P, const int* targets, float g, Matrix& dl);
+// The fused LM head + cross-entropy (ops::linear_cross_entropy, 26 Oct 2026):
+// h [R, d]; w [d, V] or, vocab_major, [V, d]; bias [1, V] or null; targets
+// -1 on masked rows (the caller bounds-checks the kept ones). Chunks of
+// chunk_rows rows: the logits GEMM into one [chunk, V] device buffer, the
+// unfused path's CE kernels on it in place (k_ce_fwd, then k_ce_bwd with g:
+// P, nll and the gradient are those kernels' bits), then dh's rows = dl W^T
+// and dW += h_c^T dl (dE += dl^T h_c when vocab_major) and db += the
+// column sums. The loss is k_vec_sum over every row's nll / kept, as
+// ce_fwd[_masked]. dh, dw, db null = not wanted (all null: the loss alone).
+// h and w come through the step window's operand cache when one is open
+// (their Variables' DevState slots, as ops::matmul's gemm). The GEMMs are
+// step_resident_gemm's: cuBLAS under MICROTORCH_CUBLAS, else the tiled
+// kernel, whose accumulate form starts each element's FMA chain from the
+// previous chunks' value (so the tiled dW is the one-shot GEMM's bits).
+bool linear_ce(const Matrix& h, DevState** h_slot, const Matrix& w, DevState** w_slot, bool vocab_major,
+               const Matrix* bias, const int* targets, size_t kept, float g, size_t chunk_rows, Precision prec,
+               Matrix* dh, Matrix* dw, Matrix* db, float& loss);
 // B2.3a: optimizer steps on device, write-through parity seam (state
 // round-trips per step for now; persistent device state is B2.3b).
 // c1/c2 are the host-computed bias corrections so the per-element math

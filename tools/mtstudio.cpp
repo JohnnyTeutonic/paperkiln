@@ -221,6 +221,14 @@ struct Spec {
     // Precision) and train.attention_kernel "tiled" | "flash" (ops::AttnKernel).
     std::string precision = "fp32";
     std::string attention_kernel = "tiled";
+    // The fused LM head + cross-entropy (26 Oct 2026; opt-in, off by default,
+    // and off is the unfused step bit for bit): train.fused_head true runs the
+    // training step's head and loss as ops::linear_cross_entropy over
+    // Llama::forward_hidden, never holding the [tokens, vocab] logits;
+    // train.fused_head_chunk sets its chunk rows (0 = the op's default). The
+    // llama family's lm and sft objectives; evaluation keeps the unfused head.
+    bool fused_head = false;
+    size_t fused_head_chunk = 0;
     int gradmap_every = 5;   // per-layer grad-norm event cadence
     size_t es_patience = 0;  // early stopping (0 = off)
     float es_min_delta = 0.0f;
@@ -711,6 +719,14 @@ Spec parse_spec(const std::string& path) {
     if (s.attention_kernel == "flash" && (s.heads == 0 || s.d % s.heads != 0 ||
                                           !device::devops::flash_attention_supported(s.d / s.heads)))
         throw std::runtime_error("train.attention_kernel flash supports head widths up to 64 (d / heads)");
+    s.fused_head = tr.value("fused_head", s.fused_head);
+    s.fused_head_chunk = tr.value("fused_head_chunk", s.fused_head_chunk);
+    if (tr.contains("fused_head_chunk") && !s.fused_head)
+        throw std::runtime_error("train.fused_head_chunk needs train.fused_head true");
+    if (s.fused_head && s.family != "llama")
+        throw std::runtime_error("train.fused_head is wired for the llama family only");
+    if (s.fused_head && (s.objective == "grpo" || s.objective == "provenance_po"))
+        throw std::runtime_error("train.fused_head covers the lm and sft objectives (grpo and provenance_po read the logits)");
     s.gradmap_every = tr.value("gradmap_every", s.gradmap_every);
     if (tr.contains("early_stopping")) {
         s.es_patience = tr["early_stopping"].value("patience", size_t(0));
@@ -2415,6 +2431,8 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     ops::set_attention_kernel(s.attention_kernel == "flash" ? ops::AttnKernel::Flash : ops::AttnKernel::Tiled);
     if (s.precision != "fp32") model_ev["precision"] = s.precision;
     if (s.attention_kernel != "tiled") model_ev["attention_kernel"] = s.attention_kernel;
+    if (s.fused_head) model_ev["fused_head"] = true;  // absent when off: events unchanged
+    if (s.fused_head_chunk) model_ev["fused_head_chunk"] = s.fused_head_chunk;
     if (ops::blocked_attention_enabled()) model_ev["attention_impl"] = "blocked";  // absent = stacked  // absent for "lm": events unchanged
     ev.emit(model_ev);
     nn::Module& model_ref = model_pick;
@@ -2830,12 +2848,29 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             }
             mark("data");
             nn::MoEAux maux;
-            Var logits = s.moe_experts > 0 || routed(s) ? llama->forward(x, s.batch > 1 ? s.T : 0, &maux)
+            // Declared in the order the unfused step always declared them, so
+            // they also die in that order.
+            Var logits, task;
+            if (!s.fused_head) {
+                logits = s.moe_experts > 0 || routed(s) ? llama->forward(x, s.batch > 1 ? s.T : 0, &maux)
                                                         : fwd(x, s.batch > 1 ? s.T : 0);
-            mark("forward");
-            // State tokens: no loss at state targets or state positions.
-            if (!sft && s.state_k > 0) state_loss_mask(x, y, mask, tokens.size());
-            Var task = sft || s.state_k > 0 ? ops::cross_entropy_masked(logits, y, mask) : ops::cross_entropy(logits, y);
+                mark("forward");
+                // State tokens: no loss at state targets or state positions.
+                if (!sft && s.state_k > 0) state_loss_mask(x, y, mask, tokens.size());
+                task = sft || s.state_k > 0 ? ops::cross_entropy_masked(logits, y, mask) : ops::cross_entropy(logits, y);
+            } else {
+                // train.fused_head: the hidden states, then the head and the loss
+                // in one op (the same mask; the upstream gradient is the 1 / accum
+                // the backward below sends).
+                const Var hid = llama->forward_hidden(x, s.batch > 1 ? s.T : 0,
+                                                      s.moe_experts > 0 || routed(s) ? &maux : nullptr);
+                mark("forward");
+                if (!sft && s.state_k > 0) state_loss_mask(x, y, mask, tokens.size());
+                device::ProfileTag head_tag("gemm_head");
+                task = ops::linear_cross_entropy(hid, llama->head_weight(), llama->head_layout(), nullptr, y,
+                                                 sft || s.state_k > 0 ? mask : std::vector<uint8_t>{},
+                                                 1.0f / static_cast<float>(s.accum), s.fused_head_chunk);
+            }
             Var loss = task;
             if (is_srd) loss = ops::add(task, ops::scale(gpt->mean_gate(), s.lambda_gate));
             if (s.moe_experts > 0) {
@@ -3163,6 +3198,7 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                                                         : 0.0}};
         if (s.precision != "fp32") result["precision"] = s.precision;
         if (s.attention_kernel != "tiled") result["attention_kernel"] = s.attention_kernel;
+        if (s.fused_head) result["fused_head"] = true;
         std::ofstream rf(s.out_dir + "/result.json");
         rf << result.dump(2) << "\n";
     }

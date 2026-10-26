@@ -48,6 +48,8 @@ public:
 // support (schedule mor, inject add, MoE).
 void attnres_check(const LlamaConfig& cfg);
 Var attnres_forward(const Llama& m, const std::vector<int>& ids, size_t seq_len, MoEAux* aux);
+// attnres_forward up to its head: the final RMSNorm of the output mix (Llama::forward_hidden).
+Var attnres_forward_hidden(const Llama& m, const std::vector<int>& ids, size_t seq_len, MoEAux* aux);
 Var attnres_forward_cached(const Llama& m, const std::vector<int>& ids, LlamaKV& kv);
 ir::json attnres_export_ir(const Llama& m);
 // The GGUF names of the queries, state-dict key -> GGUF name: blk.{a}.attnres_attn_q.weight (zeros for

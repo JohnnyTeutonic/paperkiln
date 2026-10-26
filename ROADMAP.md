@@ -214,10 +214,13 @@ advisory steps that cannot fail the build.
   flash; built opt-in and CPU-gated 24 Oct 2026, CHANGELOG; v1 on an L4: CUDA legs 19/19, precision
   off bitwise equal to dc29b5e6): the noise-floor gate `tools/colab_chat/bf16_gate_v2.json` (3 seeds,
   rule in `docs/receipts/bf16_gate_v2_prereg_20261025.md`) and the throughput per shape. Then, per the profile
-  (`tools/step_profile.py`): a fused LM head + cross-entropy (chunked over the vocabulary, no
-  [tokens, vocab] logits) if the head and loss classes dominate, and launch-count work (CUDA
-  graphs or fused elementwise ops) if the idle share does; BF16 inside the attention products
-  only if attention shows up.
+  (`tools/step_profile.py`): launch-count work (CUDA graphs or fused elementwise ops) if the idle share
+  dominates; BF16 inside the attention products only if attention shows up.
+- **The fused LM head + cross-entropy** (`train.fused_head`, off by default; CPU-gated 26 Oct 2026, CHANGELOG):
+  the device legs, queued until the RunPod top-up (root `scripts/colab_driver.json` entry pk-fused-head,
+  disabled, $3 cap; `tools/colab_chat/fused_head_cuda_v1.json`: the CUDA gate with `tests/test_fused_head.cpp`
+  leg 9, the gate on 20m_L4 against c6365b88, and the throughput against fp32 at 20m_L4, 20m_L16, 60m_L32 and
+  pk_base_v1).
 - **Mamba:** a parallel scan and device kernels for Mamba-1's `ops::conv1d_causal` and
   `ops::selective_scan` (sequential, host only; the mamba preset's `ssm: "mamba1"`).
 - **int4/NF4 quantisation.**

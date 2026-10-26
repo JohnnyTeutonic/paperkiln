@@ -136,6 +136,57 @@ Var cross_entropy_masked(const Var& logits, const std::vector<int>& targets, con
 // host within fp32 rounding (the sum's order differs). Throws if every
 // row is masked.
 
+// ---- the fused LM head + cross-entropy (LOCAL_LLM_STACK.md section 11 item 5.1, 26 Oct 2026) ----
+// The head's weight as the model stores it: InOut is nn::Linear's W [d, vocab]
+// (logits = h W); VocabMajor is a tied token embedding E [vocab, d] (logits =
+// h E^T, the llama family's default head).
+enum class HeadLayout { InOut, VocabMajor };
+// mean NLL of softmax(h W + b) at the targets over the kept rows -> [1, 1],
+// without ever holding the [rows, vocab] logits: the rows go through in
+// chunks of chunk_rows (0 = linear_ce_chunk_rows), each chunk's logits are
+// computed, turned into its loss and its gradient in place, and dropped. The
+// gradients are computed in the forward (Liger-Kernel's FusedLinearCrossEntropy,
+// Hsu et al. 2024, arXiv 2410.10989: chunk over tokens, eager gradients, three
+// GEMMs per chunk), so the backward only hands them out; like Cut
+// Cross-Entropy (Wijmans et al. 2024, arXiv 2411.09009) it never materialises
+// the logits, but it keeps every gradient entry (no CCE gradient filtering).
+//   mask: empty = every row (ops::cross_entropy), else 0/1 per row
+//         (ops::cross_entropy_masked: SFT, loss policy all/final/each, state
+//         tokens, padding); a masked row's target is never read and its
+//         gradient is exactly zero. Throws if every row is masked.
+//   bias: [1, vocab] or null.
+//   upstream: the gradient the caller's graph will send into the loss (mtstudio:
+//         1 / accum). The eager gradients use g = upstream / kept, as the
+//         unfused backward does; if the backward then brings another value,
+//         the stored gradients are rescaled by its ratio (one more rounding).
+// Numerics against the unfused path (matmul [+ add_bias] -> cross_entropy[_masked]):
+//   host: per row the same GEMM, softmax, clamp and (P - onehot) g as the
+//     unfused ops, the loss summed in double in ascending row order. Loss, dh
+//     and db are bit-identical whenever host_gemm_rows_free holds for the
+//     logits GEMM (rows, vocab, d) and the dh GEMM (rows, d, vocab) at both
+//     the full row count and the chunk; dW (dE when tied) is summed over the
+//     rows in ascending order, one rounded product and add per row, and
+//     matches the vendored blocked GEMM's order only to float rounding. Every
+//     result is the same at every chunk size and OpenMP thread count.
+//   device (devops::linear_ce): the unfused kernels' own CE kernels on each
+//     chunk, the GEMMs through the step-resident path; with the tiled GEMM
+//     (MICROTORCH_CUBLAS unset) every output is the unfused device path's bit
+//     for bit, dW's chunks continuing one FMA chain per element; under cuBLAS
+//     to float rounding. Not yet run on a GPU.
+Var linear_cross_entropy(const Var& h, const Var& w, HeadLayout layout, const Var& bias,
+                         const std::vector<int>& targets, const std::vector<uint8_t>& mask, float upstream = 1.0f,
+                         size_t chunk_rows = 0);
+// The default chunk: Liger's rule, the logits chunk about the size of the
+// hidden states (next power of two >= rows / ceil(vocab / d)), at least 32
+// rows (the device GEMM's tile), at most rows.
+size_t linear_ce_chunk_rows(size_t rows, size_t d, size_t vocab);
+// True when the vendored blocked GEMM (matmul_optimized: halve M, N and K
+// together until all are <= 128) computes every row of an [M, K] x [K, N]
+// product with the summation order it would give that row alone, that is
+// when the M dimension never forces a split. Then a chunk of rows is the
+// full product's rows bit for bit.
+bool host_gemm_rows_free(size_t M, size_t N, size_t K);
+
 // ---- phase 2a additions (DiT's dependencies) ----
 Var mul_row(const Var& x, const Var& r);  // x .* broadcast row r [1, cols];
                                           // dr = colsum(dY .* x) -- the

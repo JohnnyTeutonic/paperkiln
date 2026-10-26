@@ -127,7 +127,9 @@ Var head(const Llama& m, const Var& x) {
 
 }  // namespace
 
-Var attnres_forward(const Llama& m, const std::vector<int>& ids, size_t seq_len, MoEAux*) {
+namespace {
+// The attention-residual stream up to the output mix (the input of the final norm).
+Var attnres_stream(const Llama& m, const std::vector<int>& ids, size_t seq_len) {
     const size_t sl = seq_len == 0 ? ids.size() : seq_len;
     if (ids.size() % sl != 0) throw std::runtime_error("ids not a multiple of seq_len");
     std::vector<int> pos(ids.size());
@@ -146,7 +148,16 @@ Var attnres_forward(const Llama& m, const std::vector<int>& ids, size_t seq_len,
         Var h2 = mix(q.ffn_q[a]);
         bank.push_back(ckpt ? checkpoint([b](const Var& v) { return ffn_sub(*b, v); }, h2) : ffn_sub(*b, h2));
     }
-    return head(m, mix(q.out_q));
+    return mix(q.out_q);
+}
+}  // namespace
+
+Var attnres_forward(const Llama& m, const std::vector<int>& ids, size_t seq_len, MoEAux*) {
+    return head(m, attnres_stream(m, ids, seq_len));
+}
+
+Var attnres_forward_hidden(const Llama& m, const std::vector<int>& ids, size_t seq_len, MoEAux*) {
+    return ops::rmsnorm(attnres_stream(m, ids, seq_len), m.norm_w);
 }
 
 Var attnres_forward_cached(const Llama& m, const std::vector<int>& ids, LlamaKV& kv) {

@@ -281,6 +281,16 @@ public:
     // aux (MoE models): collects every block's routing record and auxiliary
     // losses for this forward. Not supported under checkpoint_blocks.
     Var forward(const std::vector<int>& ids, size_t seq_len = 0, MoEAux* aux = nullptr) const;
+    // forward() up to its head: the final-normed hidden states [rows, d]
+    // (the same ops, bit for bit), for the fused LM head + cross-entropy
+    // (ops::linear_cross_entropy with head_weight() and head_layout();
+    // mtstudio's train.fused_head). forward() is this, then the head.
+    Var forward_hidden(const std::vector<int>& ids, size_t seq_len = 0, MoEAux* aux = nullptr) const;
+    // The head's weight in ops::linear_cross_entropy's terms: lm_head's W
+    // [d, vocab] (HeadLayout::InOut) or, tied, the token embedding [vocab, d]
+    // (HeadLayout::VocabMajor).
+    const Var& head_weight() const { return lm_head ? lm_head->W : embed_tokens->weight; }
+    ops::HeadLayout head_layout() const { return lm_head ? ops::HeadLayout::InOut : ops::HeadLayout::VocabMajor; }
     // Logits for `ids`, the tokens after the kv.len already cached (one
     // sequence, positions kv.len..), extending kv. kv.len + ids.size() must
     // not exceed cfg.n_ctx. Call under NoGrad. State models: ids may hold

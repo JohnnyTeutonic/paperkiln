@@ -1,0 +1,137 @@
+{
+ "spec": {
+  "name": "gate",
+  "arch": {
+   "preset": "llama-tiny",
+   "custom": {
+    "d": 64,
+    "layers": 2,
+    "heads": 2,
+    "d_ff": 176
+   }
+  },
+  "data": {
+   "corpus": "/home/jonat/fh_gate/text.txt",
+   "vocab": "/mnt/c/ml_artifacts/capacity/vocab/vocab_llama3_bpe.gguf",
+   "vocab_cap": 16384,
+   "T": 64,
+   "max_tokens": 0
+  },
+  "train": {
+   "steps": 60,
+   "lr": 0.002,
+   "batch": 8,
+   "accum": 2,
+   "clip": 1.0,
+   "eval_every": 60,
+   "eval_windows": 16,
+   "checkpoint_every": 10000000,
+   "gradmap_every": 0,
+   "seed": 1,
+   "optimizer": "adamw",
+   "lr_schedule": {
+    "warmup_steps": 6,
+    "decay": "cosine",
+    "min_lr_frac": 0.1
+   }
+  },
+  "export": {
+   "formats": [
+    "safetensors",
+    "gguf"
+   ]
+  }
+ },
+ "env": {
+  "OMP_NUM_THREADS": "2",
+  "MICROTORCH_DEVICE": "cpu"
+ },
+ "new": "/home/jonat/pk_fh_build/mtstudio",
+ "old": "/home/jonat/pk_fh_base_build/mtstudio",
+ "gpu": null,
+ "rule": "Gate for train.fused_head (the fused LM head + cross-entropy, 26 Oct 2026), on real text.\n\n    python3 tools/fused_head_gate.py run --new BIN [--old OLD_BIN] --text TEXT --vocab VOCAB.gguf --out DIR\n        [--shape 20m_L8 | --custom D,L,H,DFF] [--batch B] [--accum A] [--T T] [--steps N] [--text-bytes N] [--cpu]\n\nRuns mtstudio on one seeded spec (tools/precision_gate.py's: one eval at the end, safetensors + F32\nGGUF export) as legs, and writes DIR/gate.json. The rule, stated before any run:\n  off_bitwise   OLD_BIN vs BIN, the spec without the new keys: every step's loss and grad norm, the\n                final validation loss and the exported files' sha256 identical (pre-registered arms,\n                which run with the option off, train as before). Only with --old.\n  off_explicit  BIN with \"fused_head\": false vs BIN without the key: identical as above.\n  repeat        BIN twice: identical (run-to-run determinism, the precondition of the two above).\n  fused         BIN with \"fused_head\": true vs BIN without: the model event and result.json record\n                fused_head; the first step's loss identical on the host (--cpu: the op's loss is the\n                unfused loss bit for bit there) and within 1e-6 relative on the device (cuBLAS); the\n                20-step moving average of the training loss within 0.5% relative at every step and\n                the final validation loss within 0.5% (the flash gate's tolerances: only the head\n                weight's gradient changes summation order, so the runs part by rounding alone).\n                Seconds per step for both, and their ratio.\n--cpu runs the host path (MICROTORCH_DEVICE=cpu); otherwise the production device environment\n(tools/colab_chat/jobs_vm.py ENV). Exit 0 when every leg passes.\n",
+ "legs": {
+  "off_bitwise": {
+   "ok": true,
+   "steps_differ": 0,
+   "val": [
+    7.682220786809921,
+    7.682220786809921
+   ],
+   "files_identical": true,
+   "files": {
+    "gate.gguf": "a9a7a026057db7ca53afc91d58572976fc1814add02c7803f3e2e336555ea30a",
+    "gate.safetensors": "74604755a232229437b27d6acd81bda6290b5bedbd1bdad3ccbd2cd21952e22f",
+    "model.safetensors": "74604755a232229437b27d6acd81bda6290b5bedbd1bdad3ccbd2cd21952e22f",
+    "optim.safetensors": "feb3426fcb12dc5bcde30400c249fa562bafd9c5a2aabff2d216e8c56fac962a"
+   }
+  },
+  "off_explicit": {
+   "ok": true,
+   "steps_differ": 0,
+   "val": [
+    7.682220786809921,
+    7.682220786809921
+   ],
+   "files_identical": true,
+   "files": {
+    "gate.gguf": "a9a7a026057db7ca53afc91d58572976fc1814add02c7803f3e2e336555ea30a",
+    "gate.safetensors": "74604755a232229437b27d6acd81bda6290b5bedbd1bdad3ccbd2cd21952e22f",
+    "model.safetensors": "74604755a232229437b27d6acd81bda6290b5bedbd1bdad3ccbd2cd21952e22f",
+    "optim.safetensors": "feb3426fcb12dc5bcde30400c249fa562bafd9c5a2aabff2d216e8c56fac962a"
+   }
+  },
+  "repeat": {
+   "ok": true,
+   "steps_differ": 0,
+   "val": [
+    7.682220786809921,
+    7.682220786809921
+   ],
+   "files_identical": true,
+   "files": {
+    "gate.gguf": "a9a7a026057db7ca53afc91d58572976fc1814add02c7803f3e2e336555ea30a",
+    "gate.safetensors": "74604755a232229437b27d6acd81bda6290b5bedbd1bdad3ccbd2cd21952e22f",
+    "model.safetensors": "74604755a232229437b27d6acd81bda6290b5bedbd1bdad3ccbd2cd21952e22f",
+    "optim.safetensors": "feb3426fcb12dc5bcde30400c249fa562bafd9c5a2aabff2d216e8c56fac962a"
+   }
+  },
+  "fused": {
+   "recorded": true,
+   "rc": [
+    0,
+    0
+   ],
+   "first_loss": [
+    9.717246055603027,
+    9.717246055603027
+   ],
+   "first_rel": 0.0,
+   "first_ok": true,
+   "loss_raw_worst_rel": 6.186228107634677e-08,
+   "loss_ma20_worst_rel": 3.0849940930946046e-09,
+   "val": [
+    7.682220816612244,
+    7.682220786809921
+   ],
+   "val_rel": 3.879388944257468e-09,
+   "tolerance": {
+    "first": "bitwise",
+    "ma20": 0.005,
+    "val": 0.005
+   },
+   "s_per_step": [
+    5.772104014140059,
+    5.012898919939907
+   ],
+   "speedup": 0.8684699561303281,
+   "ok": true
+  }
+ },
+ "base": {
+  "rc": 0,
+  "val": 7.682220786809921,
+  "s_per_step": 5.012898919939907
+ },
+ "ok": true
+}

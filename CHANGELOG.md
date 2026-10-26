@@ -7,6 +7,44 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **The fused LM head + cross-entropy, `train.fused_head`** (26 Oct; LOCAL_LLM_STACK.md section 11 item 5.1;
+  off by default, and off is the step as before).
+  - `ops::linear_cross_entropy(h, W, layout, bias, targets, mask, upstream, chunk_rows)`: the mean NLL of
+    softmax(h W + b) over the kept rows, never holding the [tokens, vocab] logits. The design is Liger-Kernel's
+    FusedLinearCrossEntropy (arXiv 2410.10989): chunks of tokens, gradients computed in the forward, three GEMMs
+    per chunk. As in Cut Cross-Entropy (arXiv 2411.09009) no logits are stored, and no gradient entry is
+    filtered. It takes an untied head (`nn::Linear` W [d, vocab]) or a tied embedding ([vocab, d]), a bias, and
+    the 0/1 row mask of `cross_entropy_masked` (SFT under loss policy all, final or each; state tokens; padding).
+    The default chunk is Liger's rule (logits chunk about the size of the hidden states, at least 32 rows).
+    `nn::Llama::forward_hidden` is `forward` up to its head, and `forward` is it plus the head, the same ops.
+  - Host numerics against the unfused path (matmul -> cross_entropy[_masked] -> backward): the loss, dh and db
+    are bit-identical wherever `ops::host_gemm_rows_free` holds (the vendored blocked GEMM's row split fixed by
+    vocab and width alone). The head weight's gradient is summed in ascending row order, within the
+    sequential-sum bound (n + 2) u sum |h dl| (worst 0.13 of it; the unfused 0.06) and 2.6e-7 to 4.3e-7 of the
+    unfused one normwise. Every chunk size (1, 7, 32, default, all rows) and every OpenMP thread count from 1 to
+    8 gives the same bits.
+  - `tests/test_fused_head.cpp`: six cases (tied and untied, a bias, no mask, SFT, all-ones, scattered ignored
+    rows, one kept row, upstream 1 and 1/2); a shape where the GEMM's rows are not free (dh 3.1e-7, dW 7.0e-7);
+    finite differences (worst 2.9e-5); NoGrad; an unstated upstream (rescaled, 4e-7). On `nn::Llama` (tied and
+    untied, with and without an SFT mask) the loss is bitwise, and so is every parameter's gradient but the
+    head weight's (1.7e-7 to 2.3e-7).
+  - mtstudio `train.fused_head` (llama family, lm and sft objectives; `train.fused_head_chunk` sets the chunk)
+    is recorded in the model event and result.json when on. `tests/test_mtstudio_fused_head.py` (6/6): with
+    the option off, an lm run (accum 2) and an SFT run train byte-identically to mtstudio at c6365b88 (every
+    step's loss and grad norm, every eval, the safetensors and GGUF). With it on, the first step's loss is
+    bitwise and the run tracks the unfused one; another chunk size gives the same run bit for bit.
+  - `tools/fused_head_gate.py` on FineWeb-Edu text (d64 L2, T 64, batch 8, accum 2, 60 steps, the 16k llama3
+    vocabulary, CPU): off vs c6365b88 bitwise, explicit off and a repeat bitwise; fused vs unfused first step
+    bitwise, worst step 6.2e-8, final val 3.9e-9 relative, PASS
+    (`docs/receipts/fused_head_gate_cpu_20261026.json`). The host path is the reference, not a speed path: 0.87x.
+  - CUDA (`devops::linear_ce`; compiled with nvcc, not yet run on a GPU): the unfused CE kernels in place on
+    each chunk, the GEMMs through the step-resident path. A new `gemm_tiled_acc` continues each element's FMA
+    chain from the previous chunk, so with the tiled GEMM every output should be the unfused device path's bit
+    for bit; under cuBLAS, float rounding. Device legs: `test_fused_head` leg 9 in
+    `tools/colab_cuda_validate.sh` (tiled and cuBLAS), `tools/colab_chat/fused_head_cuda_v1.json` (the CUDA
+    gate, `fused_head_gate.py` on 20m_L4 against c6365b88, `step_profile.py --configs fp32,fused_head` at 20m_L4,
+    20m_L16, 60m_L32 and pk_base_v1; class head_fused).
+
 - **Standard small benchmarks, IF-tiny and compliance by turn distance** (26 Oct;
   `experiments/benchmarks_2026-10-26/RESULTS.md`).
   - `tools/bench_build.py` builds HellaSwag, ARC-Easy/Challenge, PIQA, WinoGrande, LAMBADA and BLiMP from

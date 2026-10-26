@@ -4,6 +4,7 @@
 #include "microtorch/kimi_linear.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <random>
 #include <stdexcept>
@@ -755,6 +756,223 @@ Var cross_entropy_masked(const Var& logits, const std::vector<int>& targets, con
             }
         }
         l->accumulate(dl * g);
+    });
+}
+
+// ---- the fused LM head + cross-entropy (ops.hpp) ----
+
+namespace {
+// matmul_recursive's rule (third_party/transformer_cpp/src/matmul_optimized.cpp):
+// a node with every dimension <= 128 is a leaf, any other node halves M, N
+// and K together (floor and the rest). A row's summation order is fixed by
+// the N and K halvings alone unless some node has N and K <= 128 and M > 128,
+// where M alone forces the split (and K with it).
+bool rows_free_node(size_t M, size_t N, size_t K, std::vector<std::array<size_t, 3>>& seen) {
+    constexpr size_t kLeaf = 128;
+    if (M == 0 || N == 0 || K == 0) return true;  // an empty sub-product adds nothing
+    if (M <= kLeaf && N <= kLeaf && K <= kLeaf) return true;
+    if (N <= kLeaf && K <= kLeaf) return false;
+    const std::array<size_t, 3> key{M, N, K};
+    if (std::find(seen.begin(), seen.end(), key) != seen.end()) return true;  // already checked
+    seen.push_back(key);
+    for (size_t m : {M / 2, M - M / 2})
+        for (size_t n : {N / 2, N - N / 2})
+            for (size_t k : {K / 2, K - K / 2})
+                if (!rows_free_node(m, n, k, seen)) return false;
+    return true;
+}
+}  // namespace
+
+bool host_gemm_rows_free(size_t M, size_t N, size_t K) {
+    std::vector<std::array<size_t, 3>> seen;
+    return rows_free_node(M, N, K, seen);
+}
+
+size_t linear_ce_chunk_rows(size_t rows, size_t d, size_t vocab) {
+    if (rows == 0) return 1;
+    const size_t inc = std::max<size_t>(1, (vocab + std::max<size_t>(d, 1) - 1) / std::max<size_t>(d, 1));
+    const size_t want = (rows + inc - 1) / inc;
+    size_t p = 32;
+    while (p < want) p *= 2;
+    return std::min(p, rows);
+}
+
+Var linear_cross_entropy(const Var& h, const Var& w, HeadLayout layout, const Var& bias,
+                         const std::vector<int>& targets, const std::vector<uint8_t>& mask, float upstream,
+                         size_t chunk_rows) {
+    const bool vm = layout == HeadLayout::VocabMajor;
+    const size_t R = h->data.rows(), D = h->data.cols();
+    const size_t V = vm ? w->data.rows() : w->data.cols();
+    if ((vm ? w->data.cols() : w->data.rows()) != D)
+        throw std::runtime_error("linear_cross_entropy: the head weight does not match the hidden width");
+    if (bias && (bias->data.rows() != 1 || bias->data.cols() != V))
+        throw std::runtime_error("linear_cross_entropy: bias must be [1, vocab]");
+    if (targets.size() != R) throw std::runtime_error("linear_cross_entropy: one target per row");
+    if (!mask.empty() && mask.size() != R) throw std::runtime_error("linear_cross_entropy: one mask entry per row");
+    if (!std::isfinite(upstream) || upstream == 0.0f)
+        throw std::runtime_error("linear_cross_entropy: upstream must be finite and nonzero");
+    // st: the target of a kept row, -1 on a masked one (the device kernels' convention).
+    std::vector<int> st(R);
+    size_t kept = 0;
+    for (size_t i = 0; i < R; ++i) {
+        const uint8_t m = mask.empty() ? 1 : mask[i];
+        if (m > 1) throw std::runtime_error("linear_cross_entropy: mask entries are 0 or 1");
+        if (m && (targets[i] < 0 || static_cast<size_t>(targets[i]) >= V))
+            throw std::runtime_error("linear_cross_entropy: target out of range");
+        st[i] = m ? targets[i] : -1;
+        kept += m;
+    }
+    if (kept == 0) throw std::runtime_error("linear_cross_entropy: every row is masked out");
+    const size_t chunk = chunk_rows ? std::min(chunk_rows, R) : linear_ce_chunk_rows(R, D, V);
+    // The gradients are computed now (eager, as Liger's), only those some
+    // backward can receive.
+    const bool track = grad_enabled();
+    const bool want_dh = track && h->requires_grad;
+    const bool want_dw = track && w->requires_grad;
+    const bool want_db = track && bias && bias->requires_grad;
+    // The unfused backward's factor: cross_entropy's self->grad / rows, with
+    // self->grad the upstream value the caller states.
+    const float g = upstream / static_cast<float>(kept);
+    const device::Precision prec = device::matmul_precision();
+    std::shared_ptr<Matrix> dh, dw, db;
+    if (want_dh) dh = cached(device::out_matrix(R, D));
+    if (want_dw) dw = cached(device::out_matrix(w->data.rows(), w->data.cols()));
+    if (want_db) db = cached(device::out_matrix(1, V));
+    Matrix out(1, 1);
+    float lossv = 0.0f;
+    if (device::devops::linear_ce(h->data, &h->dev, w->data, &w->dev, vm, bias ? &bias->data : nullptr, st.data(),
+                                  kept, g, chunk, prec, dh.get(), dw.get(), db.get(), lossv)) {
+        out(0, 0) = lossv;
+    } else {
+        // Host path. The unfused operands: logits = h W, or h E^T with E^T
+        // ops::transpose's copy; dh = dl W^T (gemm Trans::T: W's transpose),
+        // or dl E. Each GEMM is device::gemm at the forward's precision, as
+        // ops::matmul runs it, on operands with the same values.
+        device::materialize(h->data);
+        device::materialize(w->data);
+        if (bias) device::materialize(bias->data);
+        if (dh) device::zero_if_uninit(*dh);  // masked rows keep exact zeros
+        if (dw) device::zero_if_uninit(*dw);
+        if (db) device::zero_if_uninit(*db);
+        Matrix fwd_t, bwd_t;
+        if (vm) fwd_t = w->data.transpose();
+        if (dh && !vm) bwd_t = w->data.transpose();
+        const Matrix& F = vm ? fwd_t : w->data;  // [D, V]
+        const Matrix& B = vm ? w->data : bwd_t;  // [V, D]
+        const bool bf16 = prec == device::Precision::BF16;
+        double nll = 0.0;
+        std::vector<size_t> rows;
+        rows.reserve(chunk);
+        size_t next = 0;
+        while (next < R) {
+            // The next `chunk` kept rows, in ascending order.
+            rows.clear();
+            while (next < R && rows.size() < chunk) {
+                if (st[next] >= 0) rows.push_back(next);
+                ++next;
+            }
+            if (rows.empty()) break;
+            const size_t n = rows.size();
+            Matrix hc(n, D);
+            for (size_t r = 0; r < n; ++r)
+                std::copy(h->data.get_data() + rows[r] * D, h->data.get_data() + (rows[r] + 1) * D,
+                          hc.get_data() + r * D);
+            Matrix L = device::gemm(hc, nullptr, device::Trans::N, F, nullptr, device::Trans::N, prec);
+            device::materialize(L);
+            if (bias)  // add_bias's loop
+                for (size_t r = 0; r < n; ++r)
+                    for (size_t j = 0; j < V; ++j) L(r, j) += bias->data(0, j);
+            L.apply_softmax();  // the unfused host CE's softmax, row by row
+            for (size_t r = 0; r < n; ++r) nll -= std::log(std::max(L(r, st[rows[r]]), 1e-12f));
+            if (!dh && !dw && !db) {
+                device::discard(L);
+                continue;
+            }
+            // dlogits in place: (P - onehot) * g, the unfused backward's values.
+            for (size_t r = 0; r < n; ++r) L(r, st[rows[r]]) -= 1.0f;
+            float* lp = L.get_data();
+            for (size_t k = 0; k < n * V; ++k) lp[k] = lp[k] * g;
+            if (dh) {
+                Matrix G = device::gemm(L, nullptr, device::Trans::N, B, nullptr, device::Trans::N, prec);
+                device::materialize(G);
+                for (size_t r = 0; r < n; ++r)
+                    std::copy(G.get_data() + r * D, G.get_data() + (r + 1) * D, dh->get_data() + rows[r] * D);
+                device::discard(G);
+            }
+            if (dw) {
+                // dW(i, j) += sum over the rows, ascending, of h(r, i) dl(r, j):
+                // one rounded product and one rounded add per row, the same at
+                // every chunk size and thread count (each element is one
+                // thread's chain). Tied: dE(j, i), the same products in the
+                // same order, so dE is dW's transpose bit for bit.
+                const Matrix* hp = &hc;
+                const Matrix* dp = &L;
+                Matrix hr, dr;
+                if (bf16) {  // the GEMM's rounded inputs (device::gemm's emulation)
+                    hr = device::bf16_rounded(hc);
+                    dr = device::bf16_rounded(L);
+                    hp = &hr;
+                    dp = &dr;
+                }
+                const float* H = hp->get_data();
+                const float* G = dp->get_data();
+                float* W = dw->get_data();
+                if (!vm) {
+#pragma omp parallel for schedule(static)
+                    for (long i = 0; i < static_cast<long>(D); ++i) {
+                        float* wr = W + static_cast<size_t>(i) * V;
+                        for (size_t r = 0; r < n; ++r) {
+                            const float a = H[r * D + static_cast<size_t>(i)];
+                            const float* gr = G + r * V;
+                            for (size_t j = 0; j < V; ++j) wr[j] += a * gr[j];
+                        }
+                    }
+                } else {
+#pragma omp parallel for schedule(static)
+                    for (long j = 0; j < static_cast<long>(V); ++j) {
+                        float* er = W + static_cast<size_t>(j) * D;
+                        for (size_t r = 0; r < n; ++r) {
+                            const float a = G[r * V + static_cast<size_t>(j)];
+                            const float* hr_ = H + r * D;
+                            for (size_t i = 0; i < D; ++i) er[i] += hr_[i] * a;
+                        }
+                    }
+                }
+            }
+            if (db)  // add_bias's column sums, rows ascending (masked rows add +0 there)
+                for (size_t r = 0; r < n; ++r)
+                    for (size_t j = 0; j < V; ++j) (*db)(0, j) += L(r, j);
+            device::discard(L);
+        }
+        out(0, 0) = static_cast<float>(nll / kept);
+    }
+    std::vector<Var> parents{h, w};
+    if (bias) parents.push_back(bias);
+    return record(std::move(out), std::move(parents), [dh, dw, db, upstream](Variable* self) {
+        device::materialize(self->grad);
+        const float u = self->grad(0, 0);
+        // The gradient the caller stated: hand the stored gradients out as
+        // they are. Any other: rescale them by u / upstream (one rounding more
+        // than the unfused path; mtstudio states its 1 / accum exactly).
+        const bool as_stated = u == upstream;
+        const float f = u / upstream;
+        auto give = [&](const Var& v, const std::shared_ptr<Matrix>& m) {
+            if (!m || !v->requires_grad) return;
+            if (as_stated) {
+                v->accumulate(std::move(*m));
+                return;
+            }
+            Matrix s = device::out_matrix(m->rows(), m->cols());
+            if (!device::devops::scale(*m, f, s)) {
+                device::materialize(*m);
+                s = *m * f;
+            }
+            v->accumulate(std::move(s));
+            device::discard(*m);
+        };
+        give(self->parents[0], dh);
+        give(self->parents[1], dw);
+        if (self->parents.size() > 2) give(self->parents[2], db);
     });
 }
 
