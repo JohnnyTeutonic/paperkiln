@@ -482,6 +482,19 @@ def batching(layers):
     return (16, 2) if layers >= 16 else (32, 1)
 
 
+def sft_batching(mode, shape):
+    """The SFT stage's (batch, accum). "depth" (the default, every registered arm's): batching() by effective
+    depth, 16 x 2 from 16 layers, else 32 x 1. "spec" (amendment 6, the 150M cells, whose width needs smaller
+    micro-batches): the shape spec's pretraining (batch, accum). Both keep 32 rows of T tokens per step."""
+    if mode == "spec":
+        tr = shape["train"]
+        b, acc = tr["batch"], tr.get("accum", 1)
+        if b * acc != 32:
+            raise SystemExit(f"--sft-batching spec: batch {b} x accum {acc} is not section 1's 32 rows per step")
+        return b, acc
+    return batching(effective_layers(shape["arch"]["custom"]))
+
+
 def effective_layers(custom):
     """Layer applications per forward: prelude + block x repeats + coda with arch.custom.recursion
     (A3.3; `layers` then counts stored layers), else layers. Batching and activation memory follow it."""
@@ -934,13 +947,15 @@ def cmd_post(a):
             print(f"{done}: present")
             return 0
     preflight(a.carry5_items)
-    b, acc = batching(effective_layers(custom))
+    b, acc = sft_batching(a.sft_batching, shape)
     if not os.path.exists(a.pt_weights):
         raise SystemExit(f"pretrained weights not found: {a.pt_weights}")
     s = {"mode": "post", "cell": a.cell, "share": a.share, "seed": a.seed, "spec": a.spec, "arch": custom,
          "shape": jload(a.spec).get("_shape"), "pt_lr": a.pt_lr if a.pt_lr is not None else shape["train"]["lr"],
          "pt_weights_sha256": sha256(a.pt_weights),
          "gpu": gpu_name(), "provenance": provenance()}
+    if a.sft_batching != "depth":  # amendment 6; the default path writes the summary as before
+        s["sft_batching"] = {"mode": a.sft_batching, "batch": b, "accum": acc}
     # Pretraining receipts, when this VM ran the job (on a fresh VM they are home already).
     if os.path.exists(os.path.join(a.pt_dir, "result.json")):
         s["pt_result"] = jload(os.path.join(a.pt_dir, "result.json"))
@@ -1460,6 +1475,9 @@ def main(argv=None):
     p.add_argument("--gen", choices=["ember", "mtstudio"], default="mtstudio",
                    help="Carry-5's generation: ember = ember.cpp's server at EMBER_COMMIT when the per-run spot-check "
                         "against mtstudio chat is N/N, else mtstudio for the whole run (flagged)")
+    p.add_argument("--sft-batching", choices=["depth", "spec"], default="depth",
+                   help="SFT (batch, accum): depth = by effective depth (every registered arm); spec = the shape spec's "
+                        "pretraining micro-batching (amendment 6, the 150M cells)")
     p.add_argument("--ember-commit", default=None,
                    help="the ember commit to generate with (default EMBER_COMMIT; amendment 5 pins its own in the jobs file)")
     p = sub.add_parser("pick")

@@ -152,3 +152,102 @@ def test_depth_rule(tmp_path):
     del r[("L16", 3)]
     with pytest.raises(SystemExit):
         ms.depth_rule(r)
+
+
+# ---------------------------------------------------------------- the runs at L* (A6.2, A6.8)
+tcr = ms.tcr
+
+
+def test_sft_batching_default_is_unchanged_and_spec_follows_the_shape():
+    for L in (2, 4, 8, 16, 32):
+        sh = {"arch": {"custom": {"layers": L}}, "train": {"batch": 8, "accum": 4}}
+        assert tcr.sft_batching("depth", sh) == tcr.batching(L)
+        assert tcr.sft_batching("spec", sh) == (8, 4)
+    rec = {"arch": {"custom": {"layers": 4, "recursion": {"prelude": 0, "block": 4, "repeats": 4, "coda": 0}}},
+           "train": {"batch": 16, "accum": 2}}
+    assert tcr.sft_batching("depth", rec) == tcr.batching(16)
+    with pytest.raises(SystemExit):
+        tcr.sft_batching("spec", {"arch": {"custom": {"layers": 4}}, "train": {"batch": 16, "accum": 4}})
+    for sid, s in ms.shapes().items():
+        spec = json.loads((ROOT / ms.spec_path(sid)).read_text(encoding="utf-8"))
+        assert tcr.sft_batching("spec", spec) == ms.batching(s["layers"])
+
+
+def test_no_registered_jobs_file_uses_the_spec_batching():
+    for p in COLAB.glob("tiny_chat_*.json"):
+        if p.name.startswith(f"tiny_chat_{ms.TAG}_r"):
+            continue
+        assert "--sft-batching" not in p.read_text(encoding="utf-8"), p.name
+
+
+@pytest.mark.parametrize("L", [8, 32])
+def test_runs_files(L):
+    sid = f"150m_L{L}"
+    s = ms.shapes()[sid]
+    for seed in (1, 2, 3):
+        name, doc, est = ms.runs_doc(seed, sid, s, 5e-4)
+        assert name == f"tiny_chat_e1_150m_r{seed}.json" and doc["max_parallel"] == 1
+        jobs = {j["name"]: j for j in doc["jobs"]}
+        pt = jobs[f"pt_e1_150m_L{L}_r{seed}"]
+        tr = pt["spec"]["train"]
+        assert (tr["batch"], tr["accum"]) == ms.batching(L) and tr["lr"] == 5e-4 and tr["seed"] == seed
+        assert tr["steps"] == 10_000 and pt["spec"]["name"] == f"tc_{sid}"
+        assert set(pt["after"]) == {"data", "gate", "cuda_gate"}
+        assert len([n for n in jobs if n.startswith("rung_")]) == 4
+        assert not any(n.startswith("pick_") for n in jobs)   # the pick runs at home
+        post = jobs[f"post_e1_150m_L{L}_r{seed}"]["cmd"]
+        assert post[post.index("--sft-batching") + 1] == "spec" and post[post.index("--seed") + 1] == str(seed)
+        assert "carry5/m/items.jsonl" in jobs[f"post_e1_150m_L{L}_r{seed}"]["outputs"]
+        g = jobs["gate"]["cmd"]
+        assert "--stage0" not in g and g[g.index("--choice") + 1] == ms.CHOICE
+        assert g[g.index("--need-pilot") + 1] == "PASS"
+        assert g[g.index("--need-cuda-gate") + 1] == ms.CUDA_GATE_HOME.format(sid=sid)
+        assert g[g.index("--need-ok") + 1] == ms.BITID
+        assert 0.5 * ms.RUNS_EST_REGISTERED[L] / 3 < est < ms.RUNS_EST_REGISTERED[L] / 3 + 1
+
+
+def test_runs_gate_refuses_until_the_receipts_and_the_rate(tmp_path, monkeypatch):
+    sid = "150m_L32"
+    _, doc, _ = ms.runs_doc(1, sid, ms.shapes()[sid], 5e-4)
+    jobs = tmp_path / "jobs.json"
+    jobs.write_text(json.dumps(doc))
+    ok = tmp_path / "ok.json"
+    ok.write_text(json.dumps({"ok": True}))
+    choice = tmp_path / "choice.json"
+    monkeypatch.chdir(ROOT)
+
+    def gate(rate, cuda):
+        choice.write_text(json.dumps({"lr": {sid: rate}}))
+        out = tmp_path / f"g{rate}{cuda.name}"
+        tcr.main(["gate", "--out", str(out), "--jobs", str(jobs), "--choice", str(choice),
+                  "--design", f"{ms.EXP_REL}/design.json", *ms.PRE_GATE, "--need-cuda-gate", str(cuda),
+                  "--need-ok", str(ok)])
+        return json.loads((out / "gate.json").read_text())
+    assert gate(5e-4, ok)["ok"] is True
+    assert gate(1e-3, ok)["ok"] is False                     # the jobs' rate is not the choice
+    assert gate(5e-4, tmp_path / "missing.json")["ok"] is False
+
+
+def test_launch_check_reads_the_probe(monkeypatch):
+    sid = "150m_L16"
+    monkeypatch.setitem(ms.PROBES, sid, {"tok_per_s_steady": 5321.0, "peak_gpu_mem_mib": 15000})
+    c = ms.launch_check(16)
+    assert c["peak_ok"] and c["budget_ok"] and c["bound_vm_hours"] == pytest.approx(1.5 * 39.5, abs=0.05)
+    monkeypatch.setitem(ms.PROBES, sid, {"tok_per_s_steady": 2000.0, "peak_gpu_mem_mib": 21000})
+    c = ms.launch_check(16)
+    assert not c["peak_ok"] and not c["budget_ok"]
+    assert ms.launch_check(4) is None
+
+
+def test_analyze_runs_the_size_block(tmp_path, monkeypatch):
+    monkeypatch.syspath_prepend(str(EXP))  # analyze.py imports analyze_x5 from its own folder
+    x = {z: math.log2(N[z][0]) for z in N}
+    art = make_art(tmp_path, {z: -0.08 + 0.02 * (x[z] - x["20m"]) for z in N})
+    dc = tmp_path / "depth_choice.json"
+    dc.write_text(json.dumps({"depth": 32}))
+    out = tmp_path / "analysis.json"
+    an = _load("analyze_for_test", EXP / "analyze.py")
+    an.main(["--art", str(art), "--partial", "--size-depth-choice", str(dc), "--out", str(out)])
+    res = json.loads(out.read_text())
+    assert res["E1_150m"]["HS1_size_slope_Y"]["verdict"] == "SUPPORTED"
+    assert asz.e1_150m(str(art), False, str(tmp_path / "none.json")) is None
