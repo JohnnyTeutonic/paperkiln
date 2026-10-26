@@ -515,10 +515,101 @@ def test_norm_placements_per_sublayer():
     assert fam == "flex" and arch["custom"]["norm_placement"] == "sandwich"
 
 
-def test_t5_relative_bias_refused_until_ember_runs_it():
-    ext = ext_with(norm="layernorm", activation="relu", positional="t5_bias")
-    with pytest.raises(A.Refused, match="t5_bias.*ember does not run position_bias yet"):
+def t5_ext(attention=None, **sizes):
+    ext = ext_with(norm="layernorm", activation="relu", positional="t5_bias",
+                   **({"attention": attention} if attention else {}))
+    fl = {k: {"value": str(v), "check": "verified", "status": "stated", "where": "Sec. 2",
+              "quote": f"{v} buckets up to a distance of {v}"} for k, v in sizes.items()}
+    ext["llm"] = {"verification": {"flavours": fl}}
+    return ext
+
+
+def test_t5_relative_bias_builds_on_flex():
+    # T5's own sizes (Raffel et al. 2020, section 2.1: 32 buckets up to an offset of 128).
+    fam, arch, rep = A.build_spec(t5_ext(rel_buckets=32, rel_max_distance=128), SIZE)
+    assert fam == "flex"
+    c = arch["custom"]
+    assert c["position"] == "t5_relative" and c["rel_buckets"] == 32 and c["rel_max_distance"] == 128
+    assert c["attention"] == "exact" and "rope_heads" not in arch
+    assert any(b == "MATCHED" and d.startswith("position = t5_relative") for b, d in rep)
+    assert sum(b == "MATCHED" and d.startswith("rel_") for b, d in rep) == 2
+    # The operator settles a size the paper leaves out.
+    fam, arch, rep = A.build_spec(t5_ext(rel_buckets=32), SIZE, A.parse_asserts(["rel_max_distance=128"]))
+    assert arch["custom"]["rel_max_distance"] == 128 and any(b == "ASSERTED" for b, _ in rep)
+
+
+def test_t5_relative_bias_refused_without_its_sizes():
+    # Neither size stated: refused by name, never mtstudio's defaults (32, 128).
+    with pytest.raises(A.Refused) as e:
+        A.build_spec(t5_ext(), SIZE)
+    reasons = e.value.args[0]
+    assert any("rel_buckets (T5's number of buckets) is unresolved" in r and "--assert rel_buckets=VALUE" in r
+               for r in reasons)
+    assert any("rel_max_distance (T5's maximum distance) is unresolved" in r for r in reasons)
+    # One of the two missing still refuses; an unverified quote counts as not stated.
+    with pytest.raises(A.Refused, match="rel_max_distance .* is unresolved"):
+        A.build_spec(t5_ext(rel_buckets=32), SIZE)
+    ext = t5_ext(rel_buckets=32, rel_max_distance=128)
+    ext["llm"]["verification"]["flavours"]["rel_buckets"]["check"] = "unverified"
+    with pytest.raises(A.Refused, match=r"rel_buckets .* is unresolved.*\(unverified\)"):
         A.build_spec(ext, SIZE)
+    # Values the bucketing cannot take, and T5's bias on windowed attention.
+    with pytest.raises(A.Refused, match="maximum distance above half"):
+        A.build_spec(t5_ext(rel_buckets=32, rel_max_distance=16), SIZE)
+    ext = t5_ext("swa", rel_buckets=32, rel_max_distance=128)
+    ext["fields"]["window_size"] = {"value": 16, "evidence": "x", "verdict": "used"}
+    with pytest.raises(A.Refused, match="t5_bias with attention = swa"):
+        A.build_spec(ext, SIZE)
+    with pytest.raises(SystemExit, match="positive integer"):
+        A.parse_asserts(["rel_buckets=0"])
+
+
+MTSTUDIO_BIN = os.environ.get("MTSTUDIO_BIN")
+
+
+@pytest.mark.skipif(not MTSTUDIO_BIN or not os.path.exists(VOCAB), reason="set MTSTUDIO_BIN; needs the bpe8k vocabulary")
+def test_t5_bias_paper_trains_and_exports_end_to_end(tmp_path):
+    """A synthetic T5-bias extraction through the chain's own stages on CPU: spec (flex, t5_relative), a few
+    pretrain and SFT steps in mtstudio, the GGUF export; keramos's checker accepts the file and its IR carries
+    attention.position_bias (IR_SPEC 5.15), which the reference interpreter runs."""
+    import numpy as np
+    sys.path.insert(0, os.path.join(os.path.dirname(HERE), "spec", "tools"))
+    import ir_check
+    import ir_numpy
+
+    ext = t5_ext(rel_buckets=8, rel_max_distance=12)
+    ext["title"] = "A synthetic decoder with T5's relative position bias"
+    (tmp_path / "x.extraction.json").write_text(json.dumps(ext), encoding="utf-8")
+    words = "the cat sat on a mat and the dog ran to the log while a bird sang".split()
+    corpus = tmp_path / "corpus.txt"
+    corpus.write_text("".join(" ".join(words[(i + k) % len(words)] for k in range(12)) + "\n" for i in range(400)),
+                      encoding="utf-8")
+    sft = tmp_path / "sft.jsonl"
+    sft.write_text("".join(json.dumps({"prompt": f"<|user|>where is the {w}?<|assistant|>",
+                                       "completion": f"the {w} is on the mat"}) + "\n" for w in words), encoding="utf-8")
+    run = tmp_path / "run"
+    rc = A.main(["0000.00000", "--run-dir", str(run), "--extraction", str(tmp_path / "x.extraction.json"),
+                 "--skip-relevance-gate", "--mtstudio", MTSTUDIO_BIN, "--corpus", str(corpus), "--vocab", VOCAB,
+                 "--sft-examples", str(sft), "--sft-limit", "0", "--d", "32", "--layers", "2", "--heads", "2",
+                 "--T", "32", "--pretrain-steps", "6", "--sft-steps", "4", "--batch", "2", "--threads", "1",
+                 "--stop-after", "export"])
+    assert rc == 0
+    spec = json.loads((run / "sft_spec.json").read_text())
+    c = spec["arch"]["custom"]
+    assert (c["position"], c["rel_buckets"], c["rel_max_distance"]) == ("t5_relative", 8, 12)
+    gguf = run / "export" / "arxiv_0000_00000.gguf"
+    assert ir_check.check(str(gguf)) == []
+    meta, tensors, data_start, raw, _ = ir_check.read_gguf(str(gguf))
+    doc = json.loads(meta["paperkiln.ir"][1])
+    att = next(n for n in doc["block"]["nodes"] if n["op"] == "attention")
+    assert att["position_bias"]["weight"] == "rel_pos_bias.weight" and len(att["position_bias"]["buckets"]) == 13
+    W = {}
+    for name, dims, typ, off in tensors:
+        assert typ == 0, name
+        W[name] = np.frombuffer(raw, dtype=np.float32, count=int(np.prod(dims)),
+                                offset=data_start + off).reshape(list(reversed(dims)))
+    logits = ir_numpy.forward(doc, W, [5, 6, 7, 8, 9, 10])
+    assert logits.shape[0] == 6 and np.isfinite(logits).all()
 
 
 def qk_ext(value, positional="rope"):

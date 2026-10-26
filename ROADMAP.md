@@ -171,8 +171,7 @@ advisory steps that cannot fail the build.
   $18); check every `expr` with `spec/tools/ir_expr.py` (the parser both engines use; landed in 1159d63e); a
   studio button that runs it instead of `fetch.py` when a key is configured; prompt optimisation later.
 - **Chain gaps still refusing** (LOCAL_LLM_STACK.md section 11 item 4.2): Primer's MDHA (conv1d_causal on q, k, v:
-  the op exists, flex does not wire it) and Shaw-style relative positions; T5's bucketed bias trains
-  (flex `position: "t5_relative"`) but exports only once keramos has the op; a q/k norm on flex or over the
+  the op exists, flex does not wire it) and Shaw-style relative positions; a q/k norm on flex or over the
   full width; Mamba-1's inner LayerNorm (the paper's optional norm); MoE headline models.
 - **Two lexical gaps found while fixing the wrong assertions:** the GELU
   pattern does not match the spelling "GeLU" (Megatron, BART), and a

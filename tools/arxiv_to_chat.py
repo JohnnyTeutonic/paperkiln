@@ -60,7 +60,11 @@ when its output already exists, so a run restarts where it stopped:
             A state-space paper with ssm mamba1 builds the mamba preset from
             its d_state, d_conv, expand and dt_rank (custom.ssm "mamba1");
             --assert settles a size or a q/k norm width the paper leaves out.
-            T5's relative bias refuses until keramos has its op, and a
+            T5's bucketed relative bias (positional t5_bias) builds flex
+            with position t5_relative from the paper's rel_buckets and
+            rel_max_distance (stated and verified, or --assert; keramos
+            1.3's attention.position_bias, which ember runs); a T5-bias
+            paper that states neither refuses by name. A
             structural op in the block graph that no family wires there
             (conv1d_causal on q, k, v, a moe_ffn, ...) refuses by name.
   pretrain  mtstudio run, objective lm on --corpus -> pretrain/
@@ -313,9 +317,10 @@ def stage_extract(a, run):
 # --------------------------------------------------------------------------
 # spec
 
-# Beyond the flavours: the operator may settle a q/k norm's width and Mamba-1's sizes the paper leaves out.
+# Beyond the flavours: the operator may settle a q/k norm's width, Mamba-1's sizes and T5's bucket count and
+# maximum distance when the paper leaves them out.
 ASSERTABLE = {**{k: None for k in LEGAL}, "qk_norm": ("per_head", "none"), "d_state": int, "d_conv": int,
-              "expand": int, "dt_rank": int}
+              "expand": int, "dt_rank": int, "rel_buckets": int, "rel_max_distance": int}
 
 
 def parse_asserts(items):
@@ -397,6 +402,43 @@ def mamba_spec(fields, llm_ver, size, asserts, placement, refusals, report):
     report.append(("SIZED", f"d={size['d']} layers={size['layers']} T={size['T']} chosen for this run "
                             f"(paper: {paper or 'no dims extracted'}); the mechanism is the paper's"))
     return "mamba", {"preset": "mamba-tiny", "custom": custom}, report
+
+
+def t5_sizes(llm_ver, asserts, attention, refusals, report):
+    """T5's bucketed relative position bias (positional t5_bias) as the flex family's position t5_relative
+    (parity::FlexConfig rel_buckets, rel_max_distance; keramos IR_SPEC 5.15 attention.position_bias, which
+    ember runs since 1ab6a25). The bucket count and the maximum distance are the paper's (stated, verified)
+    or the operator's (--assert); neither has a default here, so a T5-bias paper that states neither refuses
+    by name. Returns {rel_buckets, rel_max_distance}, the resolved ones; problems go to refusals."""
+    ok = ("verified", "quote_only")
+    out = {}
+    for k, what in (("rel_buckets", "number of buckets"), ("rel_max_distance", "maximum distance")):
+        r = llm_ver.get(k) or {}
+        v = (r.get("value") or "").strip()
+        if k in asserts:
+            out[k] = int(asserts[k])
+            report.append(("ASSERTED", f"{k} = {out[k]} (by the operator, --assert; paper: {v or 'not stated'})"))
+        elif r.get("check") in ok and v:
+            try:
+                n = float(v)
+            except ValueError:
+                n = None
+            if n is None or n != int(n) or n < 1:
+                refusals.append(f"{k} = {v} (T5's {what}) is not a positive integer")
+                continue
+            out[k] = int(n)
+            report.append(("MATCHED", f"{k} = {out[k]} (“{' '.join((r.get('quote') or '').split())[:120]}”)"))
+        else:
+            refusals.append(f"positional = t5_bias, but {k} (T5's {what}) is unresolved: the paper does not state "
+                            f"it ({r.get('check') or 'not_stated'}); assert it with --assert {k}=VALUE if you know it")
+    if len(out) == 2 and (out["rel_buckets"] < 2 or out["rel_max_distance"] <= out["rel_buckets"] // 2):
+        refusals.append(f"rel_buckets = {out['rel_buckets']} with rel_max_distance = {out['rel_max_distance']}: "
+                        "T5's bucketing needs at least 2 buckets and a maximum distance above half of them "
+                        "(the exact buckets below it)")
+    if attention != "exact":
+        refusals.append(f"positional = t5_bias with attention = {attention}: the flex family adds T5's bias to "
+                        "exact attention only")
+    return out
 
 
 def expr_host_check(expr, n_inputs, values=None):
@@ -920,12 +962,11 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
                                 "hosts (papers/llm_extract.py writes one); not built")
             continue
         if k == "positional" and v == "t5_bias":
-            refusals.append("positional = t5_bias (T5's bucketed relative position bias): paperkiln trains and exports "
-                            "it (the flex family's position t5_relative, keramos 1.3's attention.position_bias), "
-                            "but ember does not run position_bias yet, so the chain could not serve the model; "
-                            "refused until ember implements it (LOCAL_LLM_STACK.md section 11 item 8)")
-        elif v not in LEGAL[k]:
+            continue  # built on flex from its bucket count and maximum distance (t5_sizes, below)
+        if v not in LEGAL[k]:
             refusals.append(f"{k} = {v} has no engine support (mtstudio takes {sorted(LEGAL[k])})")
+    t5 = t5_sizes(llm_ver, asserts, flav.get("attention", "exact"), refusals, report) \
+        if flav.get("positional") == "t5_bias" else None
 
     if nkv and nh is None:
         refusals.append(f"n_kv_heads = {nkv['value']} without n_heads: the key/value sharing cannot be sized")
@@ -1023,6 +1064,13 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
         family = "flex"
         for k in ("norm", "activation", "positional", "residual", "attention"):
             custom[SPEC_KEY[k]] = flav[k]
+        if t5:
+            custom["position"] = "t5_relative"
+            custom.update(t5)
+            report.append(("MATCHED", f"position = t5_relative on the flex family: T5's bucketed relative bias, "
+                                      f"{t5['rel_buckets']} buckets up to distance {t5['rel_max_distance']} "
+                                      "(parity::FlexConfig; keramos IR_SPEC 5.15 attention.position_bias, which "
+                                      "ember runs)"))
         for k, ins in op_inputs.items():
             if k != "embed" and custom.get(SPEC_KEY[k]) == "expr:" + hosted[k]:
                 custom[f"{k}_inputs"] = ins
