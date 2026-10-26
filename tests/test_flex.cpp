@@ -572,7 +572,7 @@ int main() {
         // Column 0 of the table belongs to head 0, which this loss never reads.
         for (size_t i = 0; i < nb; ++i) CHECK(tb->grad(i, 0) == 0.0f);
         // The flex family with position t5_relative: no position table, one bias table for every
-        // layer, a whole-model gradient check, and the export refused until keramos has the op.
+        // layer, a whole-model gradient check, and the export's attention.position_bias (keramos 1.3).
         parity::FlexConfig ft = small(V, d, H, T);
         ft.pos = "t5_relative";
         ft.rel_buckets = 8;
@@ -583,16 +583,19 @@ int main() {
         size_t nm = 0;
         const double wm = model_gradcheck(t5, ids_mod(8, V, 73), {"rel_bias", "attn.c_attn"}, 24, nm);
         CHECK(wm < 2e-3);
-        bool refused = false;
-        try {
-            (void)t5.family_export();
-        } catch (const std::exception& e) {
-            refused = std::string(e.what()).find("t5_relative") != std::string::npos;
-        }
-        CHECK(refused || std::getenv("PAPERKILN_IR_UNRATIFIED"));
+        const auto fx5 = t5.family_export();
+        CHECK(fx5.has_value() && fx5->ir["family_hint"] == "flex");
+        size_t with_bias = 0;
+        for (const auto& node : fx5->ir["block"]["nodes"])
+            if (node["op"] == "attention") {
+                CHECK(node["position_bias"]["weight"] == "rel_pos_bias.weight");
+                CHECK(node["position_bias"]["buckets"].get<std::vector<int>>() == ops::t5_position_buckets(8, 16));
+                ++with_bias;
+            }
+        CHECK(with_bias == 1);
         std::printf("11. T5 relative bias: buckets(32, 128) as HF's (16 exact, 31 from 127); zero table == causal "
                     "attention (%.2e), shift-invariant (%.2e); op gradcheck %zu entries worst %.2e; flex "
-                    "t5_relative gradcheck %zu entries %.2e; GGUF export refused\n",
+                    "t5_relative gradcheck %zu entries %.2e; exported as attention.position_bias\n",
                     dz, ds, n, worst, nm, wm);
     }
 

@@ -997,10 +997,14 @@ void export_gguf_gpt2(const std::string& path, const std::map<std::string, Matri
                                  "head_count and vocab_size must all be set");
     if (cfg.embedding_length % cfg.head_count != 0)
         throw std::runtime_error(std::string(who) + ": embedding_length must divide by head_count");
+    if (cfg.architecture != "gpt2" && cfg.architecture != "paperkiln")
+        throw std::runtime_error(std::string(who) + ": architecture must be gpt2 or paperkiln, not " + cfg.architecture);
+    if (cfg.architecture == "paperkiln" && cfg.ir.empty())
+        throw std::runtime_error(std::string(who) + ": architecture paperkiln needs the IR (only it states the model)");
     const uint64_t d = cfg.embedding_length, ff = cfg.feed_forward_length;
 
     GGUFWriter writer(path);
-    const std::string a = "gpt2";
+    const std::string a = cfg.architecture;
     writer.write_metadata_string("general.architecture", a);
     writer.write_metadata_string("general.name", cfg.name);
     writer.write_metadata_uint32("general.alignment", gguf_export::GGUF_DEFAULT_ALIGNMENT);

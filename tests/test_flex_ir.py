@@ -9,12 +9,10 @@ nodes (the learned inputs as scale nodes over a ones row, the gate's linear, the
 placement puts them); spec/tools/ir_numpy.py's forward over the GGUF equals mtstudio's own forward
 (`mtstudio score`) on 40 prompts within ROUNDING, greedy 40/40.
 
-T5's bias has no keramos op yet: its export refuses (by name), and only under PAPERKILN_IR_UNRATIFIED=t5_relative
-does mtstudio write the proposed attention attribute position_bias {weight, buckets}; that file is checked
-against ir_numpy with the proposal's few lines patched in (PROPOSED_ATTENTION_PATCH, the text proposed to
-keramos), never against keramos's validator. Needs MTSTUDIO_BIN (or ./build/mtstudio); skipped otherwise.
+T5's bias exports as keramos 1.3's attention attribute position_bias {weight, buckets} (IR_SPEC 5.15): the file
+passes keramos's validator and ir_numpy's forward equals mtstudio's. Needs MTSTUDIO_BIN (or ./build/mtstudio);
+skipped otherwise.
 """
-import importlib.util
 import json
 import os
 from pathlib import Path
@@ -56,16 +54,6 @@ CASES = {
     "none_highway": {"norm": "rmsnorm", "activation": "relu", "residual": "highway",
                      "norm_placement": {"attn": "none", "ffn": "branch_post"}},
 }
-
-# The proposed reference lines (keramos): T5's bias added to each head's scaled scores, by the bucket of p - j.
-PROPOSED_ATTENTION_PATCH = (
-    '                s = (q[:, h * hd:(h + 1) * hd] @ k[:, kh * hd:(kh + 1) * hd].T) * np.float32(nd["scale"])\n',
-    '                s = (q[:, h * hd:(h + 1) * hd] @ k[:, kh * hd:(kh + 1) * hd].T) * np.float32(nd["scale"])\n'
-    '                pb = nd.get("position_bias")\n'
-    '                if pb:  # proposed: T5\'s relative bias W[bucket(p - j)][h], p and j absolute positions\n'
-    '                    b = np.asarray(pb["buckets"])\n'
-    '                    s = (s + w(pb["weight"])[b[np.clip(p - j, 0, len(b) - 1)], h]).astype(np.float32)\n')
-
 
 def spec_of(tmp, name, custom, steps=30, formats=("safetensors", "gguf")):
     tmp.mkdir(parents=True, exist_ok=True)
@@ -143,42 +131,26 @@ def test_flex_option_exports_and_numpy_parity(tmp_path, name):
     assert n == 40 and agree == 40 and worst <= 1e-5
 
 
-def proposed_ir_numpy():
-    """spec/tools/ir_numpy.py with PROPOSED_ATTENTION_PATCH applied, as its own module."""
-    src = (ROOT / "spec" / "tools" / "ir_numpy.py").read_text(encoding="utf-8")
-    old, new = PROPOSED_ATTENTION_PATCH
-    assert src.count(old) == 1
-    spec = importlib.util.spec_from_loader("ir_numpy_proposed", loader=None)
-    mod = importlib.util.module_from_spec(spec)
-    exec(compile(src.replace(old, new), "ir_numpy_proposed", "exec"), mod.__dict__)
-    return mod
-
-
 @needs_bin
-def test_t5_relative_bias_refused_then_proposed(tmp_path, monkeypatch):
+def test_t5_relative_bias_exports_as_position_bias(tmp_path):
     custom = {"norm": "rmsnorm", "activation": "relu", "position": "t5_relative", "rel_buckets": 8,
               "rel_max_distance": 12}
-    spec = spec_of(tmp_path / "refused", "t5", custom)
-    monkeypatch.delenv("PAPERKILN_IR_UNRATIFIED", raising=False)
-    p = subprocess.run([BIN, "run", str(spec)], capture_output=True, text=True, timeout=1800)
-    assert p.returncode != 0 and "no relative position bias in attention" in (p.stdout + p.stderr)
-    # It trains (safetensors written before the GGUF export refused).
+    spec = spec_of(tmp_path, "t5", custom)
+    run(spec)
     steps = [e["loss"] for e in events(spec) if e["event"] == "step"]
     assert len(steps) == 30 and steps[-1] < steps[0] - 0.3
-    # Under the flag: the proposed attribute, checked against ir_numpy with the proposal's lines.
-    monkeypatch.setenv("PAPERKILN_IR_UNRATIFIED", "t5_relative")
-    spec = spec_of(tmp_path / "proposed", "t5", custom)
-    run(spec)
     doc, f32 = doc_of(spec)
-    att = next(n for n in doc["block"]["nodes"] if n["op"] == "attention")
-    assert att["position_bias"]["weight"] == "rel_pos_bias.weight"
-    assert att["position_bias"]["buckets"] == [0, 1, 2, 3, 4, 4, 5, 6, 6, 6, 7, 7, 7]
+    assert ir_check.check(f32) == [], ir_check.check(f32)  # keramos 1.3's validator: rules 38 and 39 included
+    meta = ir_check.read_gguf(f32)[0]
+    assert meta["general.architecture"][1] == "paperkiln"
+    atts = [n for n in doc["block"]["nodes"] if n["op"] == "attention"]
+    assert len(atts) == 1
+    assert atts[0]["position_bias"] == {"weight": "rel_pos_bias.weight",
+                                        "buckets": [0, 1, 2, 3, 4, 4, 5, 6, 6, 6, 7, 7, 7]}
     names = {t[0]: list(t[1]) for t in ir_check.read_gguf(f32)[1]}
     assert names["rel_pos_bias.weight"] == [4, 8]  # ggml ne: [heads, buckets]
-    import test_recursion_ir as R
-    monkeypatch.setitem(sys.modules, "ir_numpy", proposed_ir_numpy())
-    worst, agree, n, _ = R.parity(spec, tmp_path / "proposed")
-    print(f"t5_relative (proposed IR): numpy vs mtstudio log-probs worst {worst:.2e}; greedy {agree}/{n}")
+    worst, agree, n, _ = parity(spec, tmp_path)
+    print(f"t5_relative (IR_SPEC 5.15 position_bias): numpy vs mtstudio log-probs worst {worst:.2e}; greedy {agree}/{n}")
     assert n == 40 and agree == 40 and worst <= 1e-5
 
 

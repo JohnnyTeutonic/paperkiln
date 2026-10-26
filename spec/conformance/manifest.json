@@ -532,7 +532,7 @@
    "kind": "op",
    "file": "ops/attention.json",
    "profile": "core",
-   "n": 3
+   "n": 6
   },
   {
    "id": "op/moe_ffn",
@@ -1123,6 +1123,34 @@
    "section": "7.4"
   },
   {
+   "id": "refuse/position_bias_bucket_negative",
+   "kind": "refuse",
+   "file": "refuse/position_bias_bucket_negative.json",
+   "rule": 39,
+   "section": "5.15"
+  },
+  {
+   "id": "refuse/position_bias_buckets_empty",
+   "kind": "refuse",
+   "file": "refuse/position_bias_buckets_empty.json",
+   "rule": 39,
+   "section": "5.15"
+  },
+  {
+   "id": "refuse/position_bias_table_shape",
+   "kind": "refuse",
+   "file": "refuse/position_bias_table_shape.json",
+   "rule": 39,
+   "section": "5.15"
+  },
+  {
+   "id": "refuse/position_bias_per_layer",
+   "kind": "refuse",
+   "file": "refuse/position_bias_per_layer.json",
+   "rule": 6,
+   "section": "3.8"
+  },
+  {
    "id": "refuse/duplicate_member_top",
    "kind": "refuse",
    "file": "refuse/duplicate_member_top.json",
@@ -1186,6 +1214,34 @@
    "section": "3.2"
   },
   {
+   "id": "refuse/architecture_kimi_as_gpt2",
+   "kind": "refuse",
+   "file": "refuse/architecture_kimi_as_gpt2.json",
+   "rule": 38,
+   "section": "3.1"
+  },
+  {
+   "id": "refuse/architecture_swa_as_gpt2",
+   "kind": "refuse",
+   "file": "refuse/architecture_swa_as_gpt2.json",
+   "rule": 38,
+   "section": "3.1"
+  },
+  {
+   "id": "refuse/architecture_metadata_disagrees",
+   "kind": "refuse",
+   "file": "refuse/architecture_metadata_disagrees.json",
+   "rule": 38,
+   "section": "3.1"
+  },
+  {
+   "id": "refuse/architecture_without_graph",
+   "kind": "refuse",
+   "file": "refuse/architecture_without_graph.json",
+   "rule": 38,
+   "section": "3.1"
+  },
+  {
    "id": "digest/vectors",
    "kind": "digest",
    "file": "digest/vectors.json",
@@ -1246,6 +1302,167 @@
    "kind": "trace",
    "file": "state/tp_mamba1_truncate.json",
    "model": "models/tp_mamba1",
+   "profile": "state"
+  },
+  {
+   "id": "trace/pk_gpt2_swa_rewind_window",
+   "kind": "trace",
+   "file": "state/pk_gpt2_swa_rewind_window.json",
+   "model": "models/pk_gpt2_swa",
+   "profile": "state"
+  },
+  {
+   "id": "trace/tp_gemma3_rewind_window",
+   "kind": "trace",
+   "file": "state/tp_gemma3_rewind_window.json",
+   "model": "models/tp_gemma3",
+   "profile": "state"
+  },
+  {
+   "id": "trace/pk_attnres_chunks",
+   "kind": "trace",
+   "file": "state/pk_attnres_chunks.json",
+   "model": "models/pk_attnres",
+   "profile": "state"
+  },
+  {
+   "id": "trace/pk_flex_expr_chunks",
+   "kind": "trace",
+   "file": "state/pk_flex_expr_chunks.json",
+   "model": "models/pk_flex_expr",
+   "profile": "state"
+  },
+  {
+   "id": "trace/pk_flex_highway_chunks",
+   "kind": "trace",
+   "file": "state/pk_flex_highway_chunks.json",
+   "model": "models/pk_flex_highway",
+   "profile": "state"
+  },
+  {
+   "id": "trace/pk_gpt2_chunks",
+   "kind": "trace",
+   "file": "state/pk_gpt2_chunks.json",
+   "model": "models/pk_gpt2",
+   "profile": "state"
+  },
+  {
+   "id": "trace/pk_gpt2_swa_chunks",
+   "kind": "trace",
+   "file": "state/pk_gpt2_swa_chunks.json",
+   "model": "models/pk_gpt2_swa",
+   "profile": "state"
+  },
+  {
+   "id": "trace/pk_kimi_chunks",
+   "kind": "trace",
+   "file": "state/pk_kimi_chunks.json",
+   "model": "models/pk_kimi",
+   "profile": "state"
+  },
+  {
+   "id": "trace/pk_llama_chunks",
+   "kind": "trace",
+   "file": "state/pk_llama_chunks.json",
+   "model": "models/pk_llama",
+   "profile": "state"
+  },
+  {
+   "id": "trace/pk_llama_attnres_chunks",
+   "kind": "trace",
+   "file": "state/pk_llama_attnres_chunks.json",
+   "model": "models/pk_llama_attnres",
+   "profile": "state"
+  },
+  {
+   "id": "trace/pk_llama_attnres_rec_chunks",
+   "kind": "trace",
+   "file": "state/pk_llama_attnres_rec_chunks.json",
+   "model": "models/pk_llama_attnres_rec",
+   "profile": "state"
+  },
+  {
+   "id": "trace/pk_mamba_chunks",
+   "kind": "trace",
+   "file": "state/pk_mamba_chunks.json",
+   "model": "models/pk_mamba",
+   "profile": "state"
+  },
+  {
+   "id": "trace/pk_moe_chunks",
+   "kind": "trace",
+   "file": "state/pk_moe_chunks.json",
+   "model": "models/pk_moe",
+   "profile": "state"
+  },
+  {
+   "id": "trace/pk_mor_chunks",
+   "kind": "trace",
+   "file": "state/pk_mor_chunks.json",
+   "model": "models/pk_mor",
+   "profile": "state"
+  },
+  {
+   "id": "trace/pk_recurrence_chunks",
+   "kind": "trace",
+   "file": "state/pk_recurrence_chunks.json",
+   "model": "models/pk_recurrence",
+   "profile": "state"
+  },
+  {
+   "id": "trace/pk_recursive_chunks",
+   "kind": "trace",
+   "file": "state/pk_recursive_chunks.json",
+   "model": "models/pk_recursive",
+   "profile": "state"
+  },
+  {
+   "id": "trace/pk_srd_chunks",
+   "kind": "trace",
+   "file": "state/pk_srd_chunks.json",
+   "model": "models/pk_srd",
+   "profile": "state"
+  },
+  {
+   "id": "trace/pk_state_chunks",
+   "kind": "trace",
+   "file": "state/pk_state_chunks.json",
+   "model": "models/pk_state",
+   "profile": "state"
+  },
+  {
+   "id": "trace/tp_gemma3_chunks",
+   "kind": "trace",
+   "file": "state/tp_gemma3_chunks.json",
+   "model": "models/tp_gemma3",
+   "profile": "state"
+  },
+  {
+   "id": "trace/tp_gptneox_chunks",
+   "kind": "trace",
+   "file": "state/tp_gptneox_chunks.json",
+   "model": "models/tp_gptneox",
+   "profile": "state"
+  },
+  {
+   "id": "trace/tp_mamba1_chunks",
+   "kind": "trace",
+   "file": "state/tp_mamba1_chunks.json",
+   "model": "models/tp_mamba1",
+   "profile": "state"
+  },
+  {
+   "id": "trace/tp_mistral_chunks",
+   "kind": "trace",
+   "file": "state/tp_mistral_chunks.json",
+   "model": "models/tp_mistral",
+   "profile": "state"
+  },
+  {
+   "id": "trace/tp_qwen3_chunks",
+   "kind": "trace",
+   "file": "state/tp_qwen3_chunks.json",
+   "model": "models/tp_qwen3",
    "profile": "state"
   },
   {

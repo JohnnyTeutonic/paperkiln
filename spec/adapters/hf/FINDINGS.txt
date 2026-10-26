@@ -1,0 +1,339 @@
+Hugging Face transformers against the keramos suite: findings (first pass, 27 Oct 2026)
+=====================================================================================
+
+(Plain text, as adapters/llamacpp/FINDINGS.txt. The content is Markdown-shaped.)
+
+transformers is the second engine measured here that was not written against IR_SPEC, and the first that
+does not read GGUF natively in the path measured: each suite GGUF is exported to an HF checkpoint
+(model.safetensors + config.json) by adapters/common/gguf_to_hf.py and loaded with AutoModelForCausalLM, as
+a user of a converted checkpoint would. transformers never sees the IR document. What follows is what the
+suite (keramos v1.2.1, 92b89f0b; suite files as at d38da543) says about it, and why each failure happens.
+transformers' own GGUF reader (from_pretrained(..., gguf_file=...)) is measured as a second configuration.
+
+- Engine: transformers 5.20.2, torch 2.14.1+cpu, float32, CPU, torch.set_num_threads(2); CPython 3.12.3,
+  numpy 2.5.4, safetensors 0.8.0; WSL2 Ubuntu 24.04, venv on ext4. Pinned in requirements.txt (accelerate
+  1.15.0 and gguf 0.19.0 only for the GGUF-reader configuration).
+- Adapter: hf_adapter.py, an in-process adapter (ir_conformance.main(adapters={"hf": ...}), IR_SPEC 11.3).
+  Receipt: ../../conformance/receipts/hf_cpu.json. Probes: probe.py.
+
+
+RUNNING IT
+----------
+
+From WSL, at the keramos root, with the environment of requirements.txt in ~/hf_keramos/venv:
+
+    PY=~/hf_keramos/venv/bin/python OUT=~/hf_keramos/runs bash adapters/hf/run_suite.sh
+    ~/hf_keramos/venv/bin/python -m pytest adapters/common -q        # the exporter's tests
+
+run_suite.sh runs the suite in four configurations and then probe.py; the whole takes about a minute on 2
+threads. Exports are cached under ~/hf_keramos/export by the GGUF's sha256. The receipt is the "receipt"
+configuration. The receipt run used a clean clone of keramos at d38da543 with adapters/common and adapters/hf
+copied in (the working tree held another session's uncommitted revision 1.3 changes).
+
+
+THE EXPORTER (adapters/common/gguf_to_hf.py)
+--------------------------------------------
+
+Shared infrastructure for every engine that reads HF checkpoints (transformers here; ONNX Runtime GenAI's
+builder and vLLM next). It reads general.architecture and the <arch>.* keys, never paperkiln.ir, and undoes
+llama.cpp's convert transforms:
+
+  GGUF architecture        HF class             transforms
+  llama                    LlamaForCausalLM     q, k rows un-permuted (interleaved RoPE pairs to half-split)
+  llama + expert_count     MixtralForCausalLM   the same; ffn_gate_exps | ffn_up_exps -> experts.gate_up_proj
+  mistral                  MistralForCausalLM   the same; sliding_window from <arch>.attention.sliding_window
+  qwen3                    Qwen3ForCausalLM     none (NEOX RoPE)
+  gemma3                   Gemma3ForCausalLM    norm weights s - 1; layer_types (i % 6 < 5 sliding); local
+                                                RoPE base 10000, global rope.freq_base with linear scaling;
+                                                query_pre_attn_scalar = key_length; no softcapping
+  gptneox                  GPTNeoXForCausalLM   qkv re-interleaved per head; partial_rotary_factor; exact GELU
+  gpt2                     GPT2LMHeadModel      Conv1D transposes
+  mamba                    MambaForCausalLM     conv1d [Di, K] -> [Di, 1, K]; A_log with -exp(A_log) = ssm_a
+
+Coverage: every tp_ architecture (qwen3, mistral, gemma3, gptneox, mamba) and the pk_ files of llama.cpp
+architectures (pk_llama, pk_moe as Mixtral, pk_gpt2; pk_gpt2_swa, pk_kimi and pk_recurrence export as gpt2
+but the adapter refuses them, below). Architecture "paperkiln" raises Unsupported. Each export loads in
+float32 on CPU with no missing, unexpected or mismatched keys.
+
+Exactness (test_gguf_to_hf.py: 28 tests, 3 skips for the IR-only files): GGUF -> HF -> GGUF is bit for bit
+for every tensor of every supported file, with one exception. Gemma's s - 1 is exact because every norm
+weight lies in [0.5, 2] (Sterbenz), and transformers' 1 + w gives s back (checked in torch at load: 0 values
+differ). Mamba stores A_log, and -exp(A_log) in float32 does not reach every float32 A: the exporter picks
+the exact A_log where one exists and the nearest otherwise; by torch's exp 42 of tp_mamba1's 512 A values
+are one ulp off (relative 1.1e-7). That is an exporter limitation of ROUNDING size, below every tolerance.
+The verdicts below measure transformers, not the export.
+
+
+WHAT THE ADAPTER DOES
+---------------------
+
+- open: export (cached) and from_pretrained(dtype float32, attn_implementation sdpa or eager; Mamba takes
+  none). Skip for architecture "paperkiln" (no transformers class, IR_SPEC 9.1), for a replacement document
+  (ir), for evict true, and for a file whose own document says more than its architecture's HF config can
+  carry (an op, window, sinks, mask or GELU form with no config field): pk_gpt2_swa (sinks 2, window 4),
+  pk_kimi (linear_attention), pk_recurrence (recurrence). transformers would compute those as plain gpt2,
+  as llama.cpp does (its finding 7, K1), so they are skips here rather than failures.
+- forward: model(input_ids, past_key_values=cache (cache_params for Mamba), use_cache=True); positions from
+  the cache ("implicit", what a caller who passes only the cache gets) or position_ids len .. len + n - 1
+  ("explicit"). An exception restores the pre-call cache (11.3's error rule).
+- kv_rows, kv_positions: each layer's cached key rows. A sliding layer holds window - 1 rows between calls
+  (DynamicSlidingWindowLayer), which the runner does not check (11.3: windowed slots are not checked).
+- recurrent: Mamba's LinearAttentionLayer: conv = the last K - 1 of the K inputs HF caches, transposed to the
+  IR's [K - 1, Di]; ssm = [Di, N]; slot names "conv" and "ssm" (IR_SPEC 9.3).
+- truncate: Cache.crop(-(len - n)) (transformers 5 takes a negative count of tokens to remove; a positive
+  argument, v4's absolute length, now raises ValueError). Where transformers refuses the crop with a
+  RuntimeError (a sliding layer past its window without activate_past_recording; a recurrent layer), the
+  adapter re-prefills ids[:n] (IR_SPEC 6.9). The result's "_how" says which.
+- snapshot, restore: copy.deepcopy of the cache, with the ids.
+- check, run_node, run_node_grad, digest, render_chat, dequantize: skip (no IR validation, no single-node
+  execution, no digest, Jinja templates rather than IR template records, GGUF dequantisation by gguf-py).
+
+
+RESULTS
+-------
+
+Receipt configuration (export, sdpa, implicit positions): 18 pass, 2 fail, 350 skip.
+
+  kind      pass fail skip   the skips are
+  model        8    0   13   architecture "paperkiln" (10); IR-only semantics on gpt2 files (3)
+  trace       10    2   27   "paperkiln" (14, and 4 more the runner's score_form fallback reports as "not
+                             implemented", llama.cpp's K4b); IR-only semantics (5); a replacement document (4)
+  op           0    0   59   single nodes
+  refuse       0    0   83   IR validation
+  accept       0    0   34   IR validation
+  digest       0    0   84   no IR digest
+  dequant      0    0   10   gguf-py's code, not transformers'
+  grad         0    0    8   single nodes
+  chat         0    0   32   IR template records
+
+Every model and trace that runs, per configuration (receipt = sdpa, implicit positions; eager; explicit
+positions; gguf = transformers' own GGUF reader, below). Model case / its traces, P pass, F fail, S skip:
+
+  model          receipt   eager    explicit  gguf       model case worst log-prob error (receipt)
+  tp_qwen3       P/PP      P/PP     P/PP      F/FF       4.7e-7
+  tp_mistral     P/P       P/P      P/P       F/F        2.8e-7
+  tp_gemma3      P/P       P/P      P/P       F/F        6.9e-7
+  tp_gptneox     P/P       P/P      P/P       S/S        4.3e-7
+  tp_mamba1      P/PFF     P/PFF    P/PFF     P/PFF      3.1e-7 (decode passes; snapshot, truncate fail)
+  pk_llama       P/PP      P/PP     P/PP      P/PP       9.3e-8
+  pk_moe         P/P       P/P      P/P       F/F        7.6e-8
+  pk_gpt2        P/P       P/P      P/P       P/P        1.0e-7
+
+Counts: receipt, eager and explicit 18/2/350 each; gguf 7/11/352.
+
+Against llama.cpp's semantic findings, transformers computes what the documents say: Mistral's window is
+applied (llama.cpp finding 3), GPT-NeoX's GELU is exact (finding 2), GELU is f32 with no fp16 table (finding
+1), Gemma 3's sliding layers, per-layer RoPE bases and the global layers' linear RoPE scaling are all right
+(tp_gemma3 within 1.2e-6 over 48 ids), and an f32 computation stays f32 under both attention kernels.
+
+
+HOW EACH RESULT WAS ATTRIBUTED (probe.py)
+-----------------------------------------
+
+  model        prefill vs reference       inside transformers (sdpa)                    generate
+               sdpa      eager            prefill = decode   chunks 5+6+5   run to run   (greedy, 4 prompts)
+  tp_qwen3     1.6e-6    1.7e-6 (16 ids)  no (1.8e-6 abs)    no             bit-identical 4/4
+  tp_mistral   5.2e-7    5.2e-7 (48 ids)  no (3.5e-6)        no             bit-identical 4/4
+  tp_gemma3    1.2e-6    1.2e-6 (48 ids)  no (5.0e-6)        no             bit-identical 4/4
+  tp_gptneox   2.7e-7    3.2e-7           no (7.2e-7)        no             bit-identical 4/4
+  tp_mamba1    7.9e-7    -                no (2.5e-6)        1.06 (finding 1) bit-identical 4/4
+  pk_llama     2.4e-7    1.6e-7           no (3.0e-7)        no             bit-identical 4/4
+  pk_moe       1.6e-7    1.6e-7           no (2.4e-7)        no             bit-identical 4/4
+  pk_gpt2      2.2e-7    1.8e-7           no (2.4e-7)        no             bit-identical 4/4
+
+(error = |a - b| / max(1, max|ref|), the suite's ROUNDING measure, tol 1e-5; prefill = decode and chunks give
+the worst absolute difference inside transformers, and every token-by-token and chunked run of the attention
+models is within 1.7e-6 of the reference.) Snapshot at 8, forward 4, restore, the same 4 again: bit-identical
+for every model.
+
+
+FINDINGS
+--------
+
+Classed as in llama.cpp's FINDINGS: NUMERICS (the same function less precisely than ROUNDING allows), SEMANTIC
+(a different function), ADAPTER or EXPORTER (a limit of this measurement), SPEC (the keramos text, fixtures or
+runner). Findings 1 to 5 are transformers'; 6 and 7 are the measurement's.
+
+1. Mamba: a multi-token forward over a cache restarts the selective scan from a zero state (SEMANTIC;
+   transformers). This is both receipt FAILs.
+   MambaMixer.forward (models/mamba/modeling_mamba.py, 5.20.2) takes the recurrent form
+   (mamba_selective_state_update, which reads the cached state) only when seq_len == 1. Any longer input with
+   a cache that already holds a state goes to the full-sequence form: the conv path is right (update_conv_state
+   prepends the cached inputs), but mamba_selective_scan starts from torch.zeros ("'Initial hidden state' is not
+   supported by the kernel path, so use the same zero initialization as the kernel") and then overwrites the
+   cached state with its result. The docstring promises the opposite ("the model uses the previous state in all
+   the blocks ... as if the model add state_input_ids + input_ids as context").
+   Evidence (tp_mamba1, against the reference): prefill 16 ids 7.9e-7; token by token 6.7e-7; chunks 8 + 8:
+   0.59 from position 8; chunks 4 + 3 (the snapshot trace's shape): 0.46 from position 4. With the scan seeded
+   from the cached state (probe.py's seeded_scan_patch, a 20-line change), chunks 8 + 8 are 7.3e-7 and 4 + 3
+   4.2e-7: the cause is that one line. The suite sees it in tp_mamba1_snapshot (forward 3 after a prefill of 4:
+   logits 0.25, ssm state 0.35) and tp_mamba1_truncate (re-prefill 5, forward 2: logits 0.70); tp_mamba1_decode
+   passes because its steps after the prefill are single tokens.
+   Reach: generate() is safe on its own (prefill once, then one token per step; assisted decoding refuses
+   stateful models: "assisted generation is not supported with stateful models"). Anything that appends
+   several tokens to a live cache is wrong: chunked prefill, and the multi-turn pattern of passing a kept cache
+   with the new turn's ids. Probe: turn 1 generates 4 tokens; turn 2 passes the 4 uncached ids (the last
+   generated one and 3 new) with turn 1's cache_params to generate: first logits 0.19 off the reference (4.3e-7
+   with the scan seeded). Passing the full 13-id sequence with the cache instead is wrong differently (0.055):
+   generate slices already-cached ids only for past_key_values, and a Mamba cache has no length, so every id
+   is fed again on top of the state. A Hugging Face forum thread ("Sequential Prefilling w/ Mamba",
+   discuss.huggingface.co/t/113101) reports the symptom without a cause or a fix. Drafted issue 1.
+
+2. Gemma 3 from GGUF loses the global layers' RoPE scaling and the attention scale (SEMANTIC; transformers'
+   GGUF reader).
+   GGUF_CONFIG_MAPPING["gemma3"] (integrations/ggml.py) maps no gemma3.rope.scaling.* key and sets no
+   query_pre_attn_scalar, so a gemma3 GGUF loads with rope_parameters full_attention {"rope_type": "default"}
+   and query_pre_attn_scalar = Gemma3TextConfig's default 256. llama.cpp's convert writes
+   rope.scaling.type linear and rope.scaling.factor for every Gemma 3 whose HF config has rope_scaling (4B,
+   12B, 27B: factor 8 on the global layers), and llama.cpp computes the attention scale as 1/sqrt(key_length)
+   except for the 27B (1/sqrt(d / heads) = 1/sqrt(168)). On tp_gemma3 the reader's model is 1.30 off the
+   reference (greedy 1 of 4 prompts) while the tensors it loads are bit-identical to the export's; the export
+   with the reader's two config values substituted reproduces the reader's logits bit for bit (each alone
+   does not: 1.30 and 0.26). For real checkpoints: the 4B, 12B and 27B lose their linear RoPE factor 8 on the
+   global layers at every position; the 27B also gets scale 1/16 for 1/sqrt(168); the 1B (no scaling,
+   head_dim 256) is unaffected. Drafted issue 2.
+
+3. A llama.cpp Mixtral GGUF loads as a dense Llama with randomly initialised MLPs (SEMANTIC; transformers'
+   GGUF reader).
+   llama.cpp writes Mixtral as architecture "llama" with llama.expert_count and the merged ffn_*_exps tensors.
+   The reader maps "llama" to LlamaConfig, ignores expert_count, finds no destination for ffn_gate_inp and
+   ffn_*_exps (the tensor loop skips names not in the map), and from_pretrained initialises every MLP at
+   random with only the usual "newly initialized" warning. On pk_moe: missing_keys = every layer's
+   mlp.{gate,up,down}_proj; logits 0.82 off the reference. The keramos export loads the same file as
+   MixtralForCausalLM within 1.6e-7. Drafted issue 3.
+
+4. Smaller gaps in the GGUF reader's config mapping (SEMANTIC or loud; transformers' GGUF reader).
+   (a) qwen3.attention.key_length is not mapped, so head_dim takes Qwen3Config's default 128: a Qwen3-
+   architecture file with another head_dim loads without complaint and fails at the first forward (tp_qwen3:
+   "shape '[1, 8, -1, 128]' is invalid"). Every official Qwen3 has head_dim 128, so they load right by
+   coincidence. (b) Mistral detection tests "mistral" in model_name, where model_name is read_field's list of
+   values, so it matches only a general.name of exactly "mistral"; a llama.cpp Mistral ("Mistral-7B-v0.1")
+   loads as LlamaForCausalLM, without the window (as llama.cpp computes it; matters for v0.1 beyond 4096
+   tokens), and a file named exactly "mistral" then fails in gguf-py 0.19.0 ("Unknown gguf model_type:
+   mistral"). tp_mistral loaded as llama.cpp would write it matches the windowless reference to 5.4e-7.
+   (c) No gptneox reader (Pythia GGUFs are refused; a skip here). (d) gpt2's n_positions is not mapped
+   (1024 by default; harmless on pk_gpt2). Folded into drafted issue 4.
+
+5. Rewind into a sliding window is refused, not silently wrong (conforms; informative).
+   llama.cpp's finding 4 does not recur. DynamicSlidingWindowLayer.crop raises RuntimeError once the layer
+   has reached its window unless activate_past_recording() was called before the prefill. On tp_mistral and
+   tp_gemma3 (window 4), prefill 48 ids, crop to 10, 40 or 2: refused each time; the adapter re-prefills and
+   the next 4 tokens are within 2.3e-6 of the reference. With activate_past_recording, crop succeeds and the
+   next 4 tokens are within 3.3e-6 of the reference (not bit-identical to a fresh prefill: other shapes).
+   Full-attention layers crop in place (tp_qwen3_truncate, pk_llama_truncate pass). Mamba's layers refuse
+   crop without past recording, and the re-prefill then meets finding 1 in the next multi-token forward.
+
+6. EXPORTER: Mamba's A_log, as above: 42 of 512 A values one ulp off; ROUNDING, no verdict depends on it
+   (transformers' own reader, np.log in float32, differs from the export in 215 of 512 A_log values, by at
+   most 1.2e-7, and passes the same cases).
+
+7. ADAPTER: positions. The receipt lets transformers take positions from the cache (Cache.get_seq_length);
+   passing position_ids gives the same verdicts and values within ROUNDING (the "explicit" configuration).
+   No cache_position argument exists any more on these models' forward in 5.x.
+
+
+FOR THE KERAMOS MAINTAINER (spec, fixtures, runner)
+---------------------------------------------------
+
+Nothing here edits IR_SPEC.md (revision 1.3 is in progress in another session); these are for the editor.
+
+H1. The suite catches finding 1 only because tp_mamba1's snapshot and truncate traces happen to forward more
+    than one id after a prefill. Worth stating as intent: every recurrent model's decode trace should carry a
+    multi-id forward after the prefill (prefill, chunk of >= 2, single ids), and the attention models' decode
+    traces likewise (only tp_qwen3_truncate and pk_llama_truncate do it now, after a truncate). An engine that
+    special-cases n = 1 is the commonest way to get state handling wrong, and here it was the only way the
+    failure showed.
+H2. 5.15's Decode paragraph says the slot "must keep" the rows of the last window positions. transformers
+    keeps window - 1 rows between calls and adds the new token's row during the call, which is all the next
+    token reads. The sentence is right during a call; between calls window - 1 suffices. Suggested wording:
+    "after a call ending at position p the slot needs the rows of positions p - window + 2 .. p (window - 1 of
+    them) and of the sinks". 11.3 already leaves windowed kv_rows unchecked, so no verdict changes.
+H3. K2 (llama.cpp's) applies here too and is satisfied: the windowed-rewind trace being added for revision
+    1.3 (state/tp_gemma3_rewind_window.json, uncommitted at the time of this run) should pass under this
+    adapter, by transformers' refusal plus re-prefill; the general sentence that a lower layer may refuse and
+    the session must re-prefill (6.9, Q12) is written for turn_state segments only, and transformers' crop
+    refusal is the same pattern for windows and recurrent layers.
+H4. K1 (llama.cpp's) applies equally to every HF-checkpoint engine: pk_gpt2_swa, pk_kimi and pk_recurrence are
+    gpt2 by their metadata, and any GGUF -> HF converter (this one without its refusal; transformers' own
+    reader) yields a plain GPT-2. This adapter refuses them by comparing the document with what the
+    architecture's config can carry; an engine that does not would compute a different model silently.
+H5. K4(b) recurs: 4 traces of "paperkiln" files are reported "not implemented" (the runner's score_form
+    fallback loses open's skip reason).
+H6. Appendix C. A transformers row would read: CPU float32 ROUNDING throughout (sdpa and eager), Mistral and
+    Gemma 3 windows and Gemma 3's per-layer RoPE as specified, exact GELU on GPT-NeoX; Mamba wrong on
+    multi-token forwards over a cache (finding 1); windowed and recurrent rewind refused by Cache.crop, so an
+    engine re-prefills; via its own GGUF reader, Gemma 3 RoPE scaling and attention scale lost and llama-
+    architecture MoE files unloadable.
+
+
+DRAFTED UPSTREAM ISSUES (NOT FILED)
+-----------------------------------
+
+Posting is Jonathan's decision. Before any is filed: search the transformers tracker for duplicates (a web
+search on 27 Oct 2026 found only the forum thread under issue 1), reproduce on current main with a real
+checkpoint (state-spaces/mamba-130m-hf; a Gemma 3 4B GGUF; a Mixtral 8x7B GGUF), and drop the keramos context
+where it does not help a transformers reader.
+
+Issue 1. Mamba: a multi-token forward with cache_params ignores the cached SSM state
+
+  Summary. MambaMixer.forward uses the cached recurrent state only when seq_len == 1. With a cache that
+  already holds a state and an input of two or more tokens, the full-sequence path concatenates the cached
+  conv inputs correctly but calls mamba_selective_scan, which starts from zeros, and then overwrites the
+  cached state. MambaModel's docstring says a passed cache_params gives "the output for the input_ids
+  provided as if the model add state_input_ids + input_ids as context".
+  Reproduction. transformers 5.20.2, CPU, float32, any Mamba checkpoint:
+    out = model(ids[:, :8], use_cache=True)
+    a = model(ids[:, 8:16], cache_params=out.cache_params, use_cache=True).logits
+    b = model(ids[:, :16]).logits[:, 8:]
+  Expected. a equal to b within float32 rounding (token-by-token decode over the same cache is: 7e-7).
+  Actual. a differs from b from its first position (on a 2-layer Mamba-1 with d 16, Di 32, N 8: 0.59 relative
+  to max |logit|). Same for generate() given the new turn's ids and a kept cache_params (0.19).
+  Suggested fix. Pass the layer's cached recurrent state into the full-sequence scan as its initial state when
+  cache_params.has_previous_state(layer_idx) (the torch loop already starts from a variable; where a hub
+  kernel cannot take an initial state, fall back to the torch path in that case), or raise when seq_len > 1
+  meets a previous state. Not checked here: the CUDA kernel path. Separately, generate() could refuse or slice
+  cache_params the way it slices past_key_values.
+
+Issue 2. GGUF: Gemma 3 loads without its RoPE scaling and with the wrong attention scale
+
+  Summary. GGUF_CONFIG_MAPPING["gemma3"] has no entry for gemma3.rope.scaling.type / .factor and does not set
+  query_pre_attn_scalar. Gemma 3 4B, 12B and 27B GGUFs (llama.cpp's convert writes rope.scaling.type linear,
+  factor 8, for the global layers) load with unscaled RoPE on the global layers; the 27B also gets
+  query_pre_attn_scalar 256 instead of 168.
+  Reproduction. AutoModelForCausalLM.from_pretrained(repo, gguf_file="gemma-3-4b-it-f16.gguf") against
+  from_pretrained of google/gemma-3-4b-it in float32; compare model.config.rope_parameters and the logits of
+  any prompt.
+  Expected. rope_parameters["full_attention"] = {"rope_type": "linear", "factor": 8.0, ...} and logits within
+  float32 rounding of the HF checkpoint's.
+  Actual. rope_type "default" on the full-attention layers. On a 6-layer Gemma3-shaped GGUF (head_dim 8,
+  linear factor 2) the logits are 1.30 off; substituting the two config values into a correct conversion
+  reproduces the GGUF reader's logits bit for bit.
+  Suggested fix. Map rope.scaling.type / rope.scaling.factor into rope_parameters["full_attention"] (as was
+  done for gpt-oss), and set query_pre_attn_scalar = head_dim, or embedding_length / head_count for the 62-
+  layer 27B (llama.cpp's own rule), since the GGUF does not carry it.
+
+Issue 3. GGUF: llama-architecture MoE files (Mixtral) load as a dense Llama with random MLP weights
+
+  Summary. llama.cpp writes Mixtral as general.architecture "llama" with llama.expert_count and merged
+  blk.N.ffn_{gate,up,down}_exps tensors. The GGUF reader builds a LlamaConfig, skips the expert tensors (no
+  mapping), and from_pretrained initialises every mlp.*_proj at random; only the "newly initialized" warning
+  marks it.
+  Reproduction. from_pretrained(repo, gguf_file="mixtral-8x7b-instruct-v0.1.Q8_0.gguf"); inspect
+  output_loading_info's missing_keys and compare logits with mistralai/Mixtral-8x7B-Instruct-v0.1.
+  Expected. A MixtralForCausalLM (expert_count > 0 on a llama file), or an error.
+  Actual. LlamaForCausalLM with missing_keys = every layer's mlp.{gate,up,down}_proj; on a 2-layer test model
+  with 4 experts the logits are 0.82 off.
+  Suggested fix. Map llama + expert_count to mixtral (num_local_experts, num_experts_per_tok from
+  expert_used_count; ffn_gate_inp -> mlp.gate.weight; ffn_gate_exps | ffn_up_exps -> experts.gate_up_proj,
+  ffn_down_exps -> experts.down_proj, as Qwen2MoeTensorProcessor does), or raise on expert_count.
+
+Issue 4. GGUF config mapping: smaller gaps (Qwen3 head_dim, Mistral detection, GPT-2 positions)
+
+  (a) qwen3.attention.key_length is not mapped to head_dim (gemma3's entry maps it), so a Qwen3 GGUF whose
+  head_dim is not 128 loads silently and fails at the first forward with a reshape error.
+  (b) load_gguf_checkpoint tests `"mistral" in model_name` where model_name = read_field(reader,
+  "general.name") is a list: it is true only for a name of exactly "mistral", so llama.cpp Mistral files load
+  as Llama (no sliding window); and a file named exactly "mistral" then fails in get_gguf_hf_weights_map
+  ("Unknown gguf model_type: mistral in gguf-py", gguf 0.19.0). Suggested: test the name's text, map
+  <arch>.attention.sliding_window when present, and map the mistral model_type to gguf-py's llama names.
+  (c) gpt2.context_length maps to n_ctx but not n_positions.

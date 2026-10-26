@@ -1833,6 +1833,10 @@ void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama, 
         const std::string ir_path = out_dir + "/" + s.name + ".ir.json";
         gc.ir = write_ir_doc(s, model_ir, tokens, vocab, ir_path);
         const std::string gpath = out_dir + "/" + s.name + ".gguf";
+        // A window and sinks live in the IR only: llama.cpp's gpt2 graph has none, so the file says
+        // "paperkiln", which llama.cpp refuses, instead of a gpt2 it would compute densely (keramos rule 38).
+        const bool windowed = gpt ? gpt->windowed() : flex->windowed();
+        if (windowed) gc.architecture = "paperkiln";
         std::vector<std::string> unmapped;
         const auto sd = gpt ? gpt->gpt2_state_dict() : flex->gpt2_state_dict();
         gguf::export_gguf_gpt2(gpath, sd, gc, &unmapped);
@@ -1843,16 +1847,15 @@ void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama, 
         if (sd.size() != model_ref.named_parameters().size())
             throw std::runtime_error("export: the gpt2 state dict has " + std::to_string(sd.size()) +
                                      " tensors, the model " + std::to_string(model_ref.named_parameters().size()));
-        json xe = {{"event", "export"}, {"format", "gguf"}, {"path", gpath}, {"arch", "gpt2"}, {"ir", ir_path}};
-        if (gpt ? gpt->windowed() : flex->windowed()) {
+        json xe = {{"event", "export"}, {"format", "gguf"}, {"path", gpath}, {"arch", gc.architecture}, {"ir", ir_path}};
+        if (windowed) {
             // Absent for dense gpt2 exports: their event is unchanged.
             xe["attention"] = "swa";
             xe["window"] = s.window;
             xe["sinks"] = s.sinks;
             xe["warning"] =
-                "sliding-window attention lives in the embedded IR only: an engine reading the gpt2 "
-                "tensors without it (llama.cpp) computes dense attention and diverges once a "
-                "sequence is longer than window + sinks";
+                "sliding-window attention lives in the embedded IR only: the file's architecture is paperkiln "
+                "(gpt2's tensors), which llama.cpp refuses rather than computing dense attention";
         }
         emit(xe);
     } else if (fx) {
@@ -1867,6 +1870,9 @@ void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama, 
         const size_t n_params = model_ref.named_parameters().size();
         if (fx->arch == "gpt2") {
             gguf::Gpt2ExportConfig gc;
+            // gpt2's tensor set, but only the IR states the model (kimi, recurrence, plain flex): architecture
+            // paperkiln, so llama.cpp refuses the file instead of computing softmax gpt2 (keramos rule 38).
+            gc.architecture = "paperkiln";
             gc.name = s.name;
             gc.context_length = (uint32_t)s.T;
             gc.embedding_length = (uint32_t)s.d;
@@ -1903,7 +1909,7 @@ void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama, 
             gguf::export_gguf_paperkiln(gpath, fx->tensors, gc);
         }
         write_chat_modelfile(s, tokens, gpath);
-        json xe = {{"event", "export"},           {"format", "gguf"}, {"path", gpath}, {"arch", fx->arch},
+        json xe = {{"event", "export"},           {"format", "gguf"}, {"path", gpath}, {"arch", "paperkiln"},
                    {"family", fx->ir["family_hint"]}, {"ir", ir_path}};
         if (!fx->warning.empty()) xe["warning"] = fx->warning;
         emit(xe);

@@ -336,7 +336,8 @@ def gpt2_block_tensors(layers):
 
 @needs_bin
 def test_kimi_exports_gpt2_tensors_with_linear_attention(tmp_path):
-    path, meta, dims, doc = family_export(tmp_path, "k", {"attention": "kimi"}, "gpt2", "kimi")
+    # gpt2's tensors under architecture paperkiln: llama.cpp would compute softmax gpt2 on them (keramos rule 38).
+    path, meta, dims, doc = family_export(tmp_path, "k", {"attention": "kimi"}, "paperkiln", "kimi")
     assert set(dims) == GPT2_TENSORS | gpt2_block_tensors(2)
     assert doc["block"]["state"] == [lin_state(2, 16)]
     nodes = doc["block"]["nodes"]
@@ -393,7 +394,7 @@ def test_attnres_exports_depth_attention(tmp_path, layers):
 
 FLEX = [  # (custom, arch, hint, extra tensors per block or None)
     ({"layers": 3, "residual": "highway"}, "paperkiln", "flex_highway", ("highway_attn", "highway_ffn")),
-    ({"layers": 3, "residual": "plain"}, "gpt2", "flex_plain", ()),
+    ({"layers": 3, "residual": "plain"}, "paperkiln", "flex_plain", ()),  # gpt2's tensors; no gpt2 graph (rule 38)
     ({"layers": 3, "norm": "rmsnorm", "activation": "swiglu", "position": "sinusoidal"}, "paperkiln", "flex", None),
     ({"layers": 2, "activation": "relu", "residual": "highway", "attention": "swa", "window": 4, "sinks": 2},
      "paperkiln", "flex_highway", ("highway_attn", "highway_ffn")),
@@ -504,12 +505,14 @@ def test_swa_exports_gpt2_tensors_with_a_windowed_ir(tmp_path, layers):
     ex = [e for e in events(spec) if e["event"] == "export" and e["format"] == "gguf"]
     assert len(ex) == 1, ex
     # The event says what a GGUF-only engine would get wrong.
-    assert (ex[0]["arch"], ex[0]["attention"], ex[0]["window"], ex[0]["sinks"]) == ("gpt2", "swa", window, sinks)
+    assert (ex[0]["arch"], ex[0]["attention"], ex[0]["window"], ex[0]["sinks"]) == ("paperkiln", "swa", window, sinks)
     assert "dense attention" in ex[0]["warning"]
     path = ex[0]["path"]
-    assert ir_check.check(path) == []  # every IR weight name is a tensor of the file
+    assert ir_check.check(path) == []  # every IR weight name is a tensor of the file; rule 38 holds
     meta, tensors, *_ = ir_check.read_gguf(path)
-    assert meta["general.architecture"][1] == "gpt2"
+    # gpt2's tensors under architecture paperkiln: llama.cpp's gpt2 graph has no window (keramos rule 38).
+    assert meta["general.architecture"][1] == "paperkiln"
+    assert meta["paperkiln.embedding_length"][1] == d and "gpt2.embedding_length" not in meta
     # Exactly the dense gpt2 tensor set: no sink parameters, nothing extra.
     names = {t[0] for t in tensors}
     want = {"token_embd.weight", "position_embd.weight", "output_norm.weight", "output_norm.bias", "output.weight"}
@@ -520,7 +523,7 @@ def test_swa_exports_gpt2_tensors_with_a_windowed_ir(tmp_path, layers):
     doc = embedded(path)
     # Not "llama" (ember's dense fast path) and not plain "gpt2".
     assert doc["family_hint"] == "gpt2_swa"
-    g = {k.split(".", 1)[1]: v[1] for k, v in meta.items() if k.startswith("gpt2.")}
+    g = {k.split(".", 1)[1]: v[1] for k, v in meta.items() if k.startswith("paperkiln.")}
     assert doc["model"] == {"vocab": V, "d": d, "n_layers": layers, "ctx": T, "dtype": "f32"}
     assert (doc["model"]["d"], doc["model"]["vocab"], doc["model"]["ctx"], doc["model"]["n_layers"]) == (
         g["embedding_length"], g["vocab_size"], g["context_length"], g["block_count"])

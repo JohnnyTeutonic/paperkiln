@@ -2,7 +2,7 @@
 
 *Normative specification of the paperkiln model IR: a versioned JSON graph of a language model that an
 engine interprets, rather than recognising a fixed architecture. IR version 1, specification revision
-1.2 (26 October 2026).*
+1.3 (27 October 2026).*
 
 - Repository: keramos (`github.com/JohnnyTeutonic/keramos`), which holds this text, its schema, the
   reference tools, the worked documents and the conformance suite. Paths in this document are
@@ -48,7 +48,7 @@ not semantics: when the header and this document differ, this document holds.
 
 ## 0. Status
 
-This document is version 1 of the IR, revision 1.2. It states the semantics that
+This document is version 1 of the IR, revision 1.3. It states the semantics that
 `include/microtorch/ir.hpp`'s header comment stated under the number 0, reorganised into profiles,
 with the numerics made consistent with what the reference build computes (section 4 and Appendix A).
 Revision 1.1 adds the digest (section 3.10), the values of stored tensors (section 4.7) and the
@@ -58,7 +58,12 @@ found the text left to the reference: the container (section 3.1), duplicate mem
 values nothing writes (refused, rules 35 and 36), what is checked at load and what when the rows arrive
 (section 10.1.1), the lexical rules of `expr`, the defaults of the adapter's single-node runs, and the
 adapter's edge cases; its suite adds the documents every consumer must accept and the chat profile's
-rendering (section 11). The IR documents
+rendering (section 11). Revision 1.3 states what the first engine that reads no document, llama.cpp
+(`adapters/llamacpp/`, which builds its graph from a file's architecture and metadata), showed the text
+left open: a file's architecture must be the graph its document is, so that such a program refuses an
+IR-only model instead of computing another one (section 3.1, rule 38); a rewind into a sliding window
+(section 6.9); llama.cpp's handling of Mistral (section 9.3). It adds T5's relative position bias, an
+optional attribute of `attention` (section 5.15, rule 39). The IR documents
 that paperkiln commits before 5349ee19 exported carry `"ir_version": 0` and are version 1 documents
 (section 2.1); later exports carry 1 (section 2.3).
 
@@ -113,6 +118,11 @@ document's `ir_version` (section 3.1).
   A revision may also refuse a document that has no defined meaning: one whose meaning depends on
   which of two equal member names a parser keeps (rule 35), or one that reads a value no node writes
   (rule 36). No meaning changes, since there was none to keep, and no stored document is of either kind.
+  A revision may also refuse a container whose metadata states another model than its embedded
+  document (rule 38, revision 1.3): the document's meaning is unchanged, the same document in a file
+  labelled as section 3.1 requires (or read in place of the embedded one) stays valid, and a file
+  written before the rule is relabelled without touching its document or tensors
+  (`tools/gguf_relabel.py`).
 - **A major version** (`ir_version` + 1) is needed for any change that alters the meaning of a
   document that was valid before: a changed default, a changed evaluation order of an EXACT op, a
   changed tie rule, a removed op or attribute, or a changed name rule.
@@ -179,6 +189,27 @@ and records its commit.
   key `paperkiln.ir_sha256`, when present, follows them and holds the embedded document's digest
   (section 3.10): 64 lowercase hex digits. It is optional; a file whose digest key is not the digest
   of its embedded document is refused (rule 30). paperkiln's exporters write it.
+- **The architecture** (revision 1.3). `general.architecture` of a file with an embedded document is
+  `"paperkiln"` or an architecture of section 9.3, and it is one of section 9.3's only when the
+  embedded document is that architecture's graph: the document section 9.3's builder
+  (`tools/gguf_ir.py`, whose graphs are normative for this purpose only) builds from the same file's
+  metadata and tensor shapes, up to the names of values and slots, `_` members, the informative keys
+  (`family_hint`, `tokenizer`, `inputs`, `outputs`, `modes`, `ir_version`) and attributes
+  (`attention.softmax`, `moe_ffn.routing`), optional attributes written at their defaults (section
+  3.5), the order of the two operands of `add` and of `mul`, the spelling of numbers (each the f32 it
+  rounds to) and whether a `linear` reaches the tensor it reads through `tied_to` (section 5.3). Every
+  other file has the architecture `"paperkiln"`, whatever tensors it shares with a llama.cpp
+  architecture. No llama.cpp release builds a graph for `"paperkiln"`, so a program that builds its
+  graph from the architecture and its metadata and never reads the document (llama.cpp and the front
+  ends built on it; transformers through its GGUF reader or any converter to an HF checkpoint) refuses
+  such a file instead of computing another model; and where a file does
+  name a llama.cpp architecture, its metadata and its document describe one model, so such a program
+  computes the document's model, up to its own deviations from that architecture's graph (Appendix C).
+  A file that breaks this is refused (rule 38). The rule concerns the embedded document only: a
+  document read in place of it (ember's `EMBER_IR`, the suite's `ir`) is not in the file such a
+  program reads. `tools/gguf_relabel.py` relabels a file written before the rule: general.architecture
+  becomes `"paperkiln"` and the old architecture's keys are renamed `paperkiln.*`; the document, its
+  digest and the tensors are unchanged.
 - A sidecar `<stem>.ir.json` beside the GGUF may hold the same document. When present, it must be
   the embedded document; a consumer that reads sidecars refuses one that differs.
 - **The GGUF file.** The container is GGUF version 3, little-endian (version 2 has the same layout, and
@@ -272,7 +303,7 @@ residuals a list value, section 9.2); the head writes `logits`.
 - **Optional attributes and their defaults:** `linear.bias` and `scale.bias` null; `linear.tied_to`
   none; `embedding.state_weight` none; `rmsnorm.group` the row width and `rmsnorm.weight_offset` 0;
   `rope.kv_heads` = heads, `rope.n_rot` = head_dim and `rope.freq_scale` 1; `attention.mask`
-  `"causal"`; `depth_attend.eps` 1e-5; `conv1d_causal.bias` none; `selective_scan.d` none and
+  `"causal"` and `attention.position_bias` none; `depth_attend.eps` 1e-5; `conv1d_causal.bias` none; `selective_scan.d` none and
   `selective_scan.dt_softplus` true; a kv slot's `dtype` `"f32"`, `evict` and `kv_rows` absent.
 - **Numbers.** A float attribute (`eps`, `theta`, `scale`, `shift`, `freq_scale`, `den_floor`,
   `weight_offset`, ...) is the JSON number's binary64 value (its nearest double, as JSON readers
@@ -294,8 +325,8 @@ GGUF tensor and never state.
 
 ### 3.7 Tensors and names
 
-- `weight` (and `bias`, `router`, `experts`, `state_weight` and the tensor attributes of
-  `ssm_scan`, `conv1d_causal` and `selective_scan`) name GGUF tensors.
+- `weight` (and `bias`, `router`, `experts`, `state_weight`, the `weight` of `attention.position_bias`
+  and the tensor attributes of `ssm_scan`, `conv1d_causal` and `selective_scan`) name GGUF tensors.
 - Layout: a matrix is [out, in] row-major, as GGUF and llama.cpp store it (ggml `ne0` = in).
 - Storage: each tensor's storage type is its GGUF type (f32, f16, q8_0, ...), and its values are the
   f32 values section 4.7 defines for that type. Engines compute in `model.dtype`.
@@ -310,7 +341,7 @@ GGUF tensor and never state.
 
 Any attribute of a block node, and any field of a block state slot, may be
 `{"per_layer": [v_0, ..., v_{L-1}]}` with L = `block.repeat`: application i reads v_i, except the
-structural keys: a node's `op`, `in`, `out`, `state`, `tensor_index`, `sizes`, `expr`, a
+structural keys: a node's `op`, `in`, `out`, `state`, `tensor_index`, `sizes`, `expr`, `position_bias`, a
 recurrence's `index`, `inputs`, `weights`, `init`, `let`, `update` and `readout`, and its
 tensor names (`weight`, `bias`, `router`, `experts`, `state_weight`, `tied_to`, `a`, `b`, `c`, `d`),
 and a slot's `name`, `kind`, `op`, `dtype`, `tensors`, `evict` and `kv_rows` (`kv_from`, reserved, is
@@ -456,8 +487,8 @@ document depends on them.
 
 **The generating environment.** The stored expected values of the conformance suite (section 11)
 are the reference run under CPython 3.13.14 and numpy 2.3.5 on Windows 11 x86-64
-(`requirements-reference.txt`); `--regenerate` there reproduces all 242 generated files (JSON by
-value, the rest byte for byte). Another numpy build can round a ROUNDING value differently: numpy
+(`requirements-reference.txt`); `--regenerate` there reproduces every generated file (JSON by
+value, the rest byte for byte: 242 files at revision 1.2, 277 at 1.3). Another numpy build can round a ROUNDING value differently: numpy
 2.3.3 on Linux x86-64 (CPython 3.12.3, WSL) changes 6 of the 242, the `selective_scan` op fixture by
 at most 2 ulp and the `tp_mamba1` model case and its four traces, which carry that difference
 through the network, by at most 7.1e-7 of section 11.4's scale against their tolerance of 1e-5
@@ -648,8 +679,8 @@ agrees.
 
 softmax(q k^T * scale) v per head, over the kv slot the node names in `state` (section 6.2).
 Attributes `heads`, `kv_heads`, `head_dim`, `scale`, `causal`, `window` (0 = unbounded), `sinks`,
-`mask` (section 6.8.2; absent = `"causal"`). `causal` is true (section 12, Q6). `in [q, k, v]`, q
-[T, heads * head_dim]; head h at columns h * head_dim ... ROUNDING.
+`mask` (section 6.8.2; absent = `"causal"`), `position_bias` (below; absent = none). `causal` is true
+(section 12, Q6). `in [q, k, v]`, q [T, heads * head_dim]; head h at columns h * head_dim ... ROUNDING.
 
 - **Masking.** Masked keys contribute exactly 0, and the row maximum is taken over visible keys only.
 - **Sliding window with sinks** (`ops::swa_attention`; window >= 1). With p the query's position and
@@ -662,9 +693,12 @@ Attributes `heads`, `kv_heads`, `head_dim`, `scale`, `causal`, `window` (0 = unb
   (the sink range is cut at the window's start when they meet). paperkiln sums sinks first, then the
   window, each in ascending j (the reference order, section 4.4). window >= p + 1 with sinks 0 is
   plain causal attention.
-- **Decode.** The slot must keep the k/v rows of positions 0 .. sinks-1 and of the last `window`
-  positions (p - window + 1 .. p, the new token included). Anything older is never read again, so
-  sinks + window rows per kv head suffice. Positions stay absolute (decode pos = tokens seen, not
+- **Decode.** A query at position p reads the k/v rows of positions 0 .. sinks-1 and of the last
+  `window` positions, p - window + 1 .. p, its own row included. So after a call ending at position p
+  the slot needs the rows of the sinks and of positions p - window + 2 .. p (window - 1 of them), and
+  during the next call the new token's rows as they are written: sinks + window - 1 rows per kv head
+  suffice between calls (revision 1.3; the earlier wording, sinks + window, counted the next token's row
+  too). Anything older is never read again. Positions stay absolute (decode pos = tokens seen, not
   rows kept); the sinks are the first tokens of the prompt. Under the context contract no position
   reaches model.ctx.
 - **Consistency with the slot.** A kv slot declares the same window and sinks as the attention
@@ -672,6 +706,23 @@ Attributes `heads`, `kv_heads`, `head_dim`, `scale`, `causal`, `window` (0 = unb
   `kv_heads` or `head_dim` differs from its slot's is refused.
 - *thirdparty profile:* **grouped-query attention**, kv_heads < heads: query head h reads k/v head
   h / (heads / kv_heads); k and v are [T, kv_heads * head_dim]. heads % kv_heads == 0.
+- **Relative position bias** (`position_bias`, optional; revision 1.3; T5's bucketed bias, Raffel et
+  al. 2020 section 2.1; paperkiln's `ops::relpos_attention`). `{"weight": W, "buckets": [b_0, ...,
+  b_{D-1}]}`: W names a tensor [B, heads] (ne {heads, B}: one row per bucket, one column per query
+  head), and the buckets are D >= 1 integers in 0 .. B - 1. Head h adds W[b(p - j), h] to the scaled
+  score of every key it sees, where p and j are the positions of the query and the key (section 3.4,
+  absolute, as the window's) and b(n) = b_k with k = min(n, D - 1): the last bucket covers every larger
+  distance.
+  The score is s = (q . k) * scale, rounded, then s + W[b(p - j), h], rounded; masking is unchanged
+  (causal, window and sinks, `turn_state`), and a masked key still contributes exactly 0. Under
+  grouped-query attention the bias is the query head's. The bucketing is data, not a function the
+  engine knows: paperkiln writes `ops::t5_position_buckets(B, max_distance)` (T5's causal buckets,
+  exact below B / 2 and logarithmic up to max_distance), D = max_distance + 1. `position_bias` is
+  structural (section 3.8): one table for every layer is one name, as T5 shares it; a table per layer
+  names it with `{i}`. The bias depends on p - j alone, so decode needs nothing beyond the kv slot's
+  rows and their positions, and prefill and decode agree as they do without it. Refused (rule 39):
+  `buckets` empty or holding an integer below 0, or W not of ne {heads, B} with B greater than every
+  bucket.
 - `softmax` (a string) is an informative attribute that paperkiln's exporter writes ("max-shifted,
   masked entries exactly zero"); it carries no semantics.
 
@@ -997,6 +1048,24 @@ those n tokens would leave. Per slot:
   an engine may refuse a forward that starts inside a segment whose rows it dropped; the engine's
   session (and its conformance adapter's `truncate` and `forward`) must then succeed by
   re-prefilling (Q12).
+- **kv with a window** (window >= 1; revision 1.3): keep the rows of positions < n. The rows a window
+  dropped are gone: a query at position p reads the sinks and positions p - window + 1 .. p, so a
+  query at n reads rows of positions back to n - window + 1, and an engine that frees the rows its
+  window no longer reads (a ring buffer, a cache of about sinks + window rows) may no longer hold them
+  after a cut. When every row of positions max(sinks, n - window + 1) .. n - 1, and of the sinks below
+  n, is still held, the engine keeps the rows of positions < n. When any of them is gone, it cannot
+  rebuild them from the slot (each layer's row at a position depends on the rows of earlier positions
+  in the layers below, which may be gone too), so it re-prefills: it runs the first n tokens again from
+  the start, or restores a snapshot taken at n. Either way the slot holds what a fresh run over the
+  first n tokens holds, so prefill and decode keep agreeing across a rewind. Or the engine refuses the
+  truncate: an error naming the dropped rows, decided before anything runs, the session left as it
+  was (section 11.3); its adapter replies `skip`, so the trace is skipped, never passed. Re-prefilling
+  and refusing both conform; accepting the cut and computing the next token without those rows never
+  does. A lower layer may refuse such a cut, as transformers' `Cache.crop` does and llama.cpp's
+  `llama_memory_seq_rm` should (finding 4 of `adapters/llamacpp/FINDINGS.txt`, H3 of
+  `adapters/hf/FINDINGS.txt`); the engine above it then re-prefills or refuses. Traces `pk_gpt2_swa_rewind_window` (window 4, sinks 2: 14 tokens, a cut to 7) and
+  `tp_gemma3_rewind_window` (window 4 on its local layers: 48 tokens, more than llama.cpp's smallest
+  windowed cache, a cut to 10).
 - **kv with kv_rows active:** keep the rows whose positions are < n, per application, with each
   application's written-rows mask truncated with them (section 7.5).
 - **recurrent:** a recurrence cannot drop tokens. Prefix reuse keeps a snapshot of the slot's
@@ -1495,10 +1564,14 @@ appended to an existing vocabulary (`<|system|>`, `<|tool|>`, `<|tool_result|>`,
 
 `family_hint` labels the graph; engines never derive semantics from it (an engine may use it, with a
 structural match, to pick a tuned path that computes the same function). For paperkiln's own files
-it equals the family below; for third-party files it equals `general.architecture`. "paperkiln" is
-the GGUF architecture of a file no llama.cpp graph computes; its metadata keys are
+it equals the family below; for third-party files it equals `general.architecture`. The
+architecture itself is normative (section 3.1, rule 38): a llama.cpp architecture only for a document
+that is that architecture's graph (section 9.3), and "paperkiln" for every other file, including one
+whose tensors are a llama.cpp architecture's set (gpt2_swa, kimi, recurrence, plain flex below). No
+llama.cpp graph computes a "paperkiln" file, and llama.cpp refuses it. Its metadata keys are
 `paperkiln.{context_length, embedding_length, block_count, vocab_size, attention.head_count,
-feed_forward_length}`.
+feed_forward_length}` (a gpt2-tensor export also writes `paperkiln.attention.layer_norm_epsilon`, as a
+file relabelled by `tools/gguf_relabel.py` keeps its old architecture's keys under `paperkiln.`).
 
 ### 9.2 paperkiln families
 
@@ -1508,12 +1581,15 @@ A tensor that is the same thing as a gpt2 tensor keeps llama.cpp's gpt2 name: `t
 `blk.{i}.<name>.weight` (and `.bias`). Worked documents: `examples/*.ir.json`.
 
 - **gpt2, gpt2_swa**: as above (fused qkv split q | k | v, tanh GELU, learned positions);
-  gpt2_swa adds a window and sinks.
+  gpt2_swa adds a window and sinks. gpt2 has the architecture gpt2; gpt2_swa has gpt2's tensors and
+  the architecture "paperkiln" (llama.cpp's gpt2 graph has no window, so under gpt2 it computed dense
+  attention; paperkiln writes "paperkiln" from its revision 1.3 exporter on).
 - **llama**: pre-RMSNorm (eps 1e-5), interleaved RoPE on every head, SwiGLU, no biases, tied output
   (`examples/chat_sftfinal.ir.json`); with MoE, `moe_ffn` in place of the SwiGLU (`examples/moe_tiny.ir.json`).
 - **kimi**: gpt2 with `linear_attention` (slot "lin": num, den [heads, head_dim]) in place of
-  attention; the gpt2 tensor set exactly (architecture gpt2: llama.cpp loads it but computes softmax
-  attention, so only the IR reproduces the model).
+  attention; the gpt2 tensor set exactly, architecture "paperkiln" (under gpt2, as paperkiln exported
+  it before revision 1.3, llama.cpp loaded it and computed softmax attention: rule 38 refuses such a
+  file, and `tools/gguf_relabel.py` relabels it).
 - **srd**: gpt2 whose attention blends two paths of one qkv per token: p =
   pred_down(gelu(pred_up(h))) on the normalised input h (`blk.{i}.srd_pred_up` [d/4, d],
   `srd_pred_down` [d, d/4], both biased), g = sigmoid(affine(rms_row(h - p), 4, -1)), gi =
@@ -1537,14 +1613,28 @@ A tensor that is the same thing as a gpt2 tensor keeps llama.cpp's gpt2 name: `t
   y = e(x) * g + b row by row, g and b learned [d] (initialised to 1 and 0, layernorm's affine): an
   expr node (in [x], out h), then a scale node on h with weight g [d] and bias b [d], named
   blk.{i}.attn_norm_gain / blk.{i}.ffn_norm_gain / output_norm_gain (.weight, .bias): (e(x) * g) +
-  b, as paperkiln's mul_row then add_bias. Each sublayer f combines with its input stream x as
+  b, as paperkiln's mul_row then add_bias. Positions may instead be T5's relative bias
+  (`position: "t5_relative"`, revision 1.3): no position table and no rope node; every attention node
+  carries `position_bias` {weight `rel_pos_bias.weight` [rel_buckets, heads], one table read by every
+  layer; buckets `ops::t5_position_buckets(rel_buckets, rel_max_distance)`} (section 5.15), and the
+  attention is exact (no window). Each sublayer f combines with its input stream x as
   residual x + f, plain f, or highway x + sigmoid(W x + b) * (f - x) with W, b =
-  blk.{i}.highway_attn / highway_ffn [d, d] + bias, nodes linear, sigmoid, sub, mul, add. The GPT-2
-  flavour (layernorm, gelu, learned, residual) exports as gpt2 / gpt2_swa; plain with that flavour
-  is gpt2 tensors (gpt2 architecture, IR-only semantics); others paperkiln.
+  blk.{i}.highway_attn / highway_ffn [d, d] + bias, nodes linear, sigmoid, sub, mul, add. Two options
+  of 26 October 2026 use existing ops only. An expr activation, norm or embedding tail may read more
+  inputs than its row: a gate projection (a `linear` of the sublayer's input, `blk.{i}.ffn_gate`), and
+  learned scalars and per-channel vectors, each a `scale` node over a row of ones (an `expr` "1" on the
+  row) with weight `blk.{i}.<slot>_p_<letter>.weight`, `embd_p_<letter>.weight` or
+  `output_norm_p_<letter>.weight` ([1] repeated, or [d]); the expr reads them as a, b, .... And the
+  norm of each sublayer has a placement: pre (the default), post (on the stream after the residual),
+  sandwich (pre, and `attn_post_norm` / `ffn_post_norm` on the sublayer's output), branch_post (on the
+  sublayer's output only) or none; with both sublayers post the head has no output_norm. The GPT-2
+  flavour (layernorm, gelu, learned, residual) exports as gpt2 (dense; architecture gpt2) or gpt2_swa
+  (windowed; gpt2's tensors, architecture "paperkiln"); plain with that flavour is gpt2's tensors with
+  IR-only semantics (no gpt2 graph omits the skip connections), architecture "paperkiln"; the others
+  are "paperkiln" with tensors of their own.
 - **recurrence**: kimi's model with its linear attention replaced by a recurrence node (section 6.10) over
-  q, k and v, slot "rec": the gpt2 tensor set exactly (architecture gpt2; only the IR reproduces the
-  model). mtstudio's `arch.custom.attention` "recurrence" trains it, with `arch.custom.recurrence` the
+  q, k and v, slot "rec": the gpt2 tensor set exactly, architecture "paperkiln" (only the IR states
+  the model; gpt2 before revision 1.3, as kimi). mtstudio's `arch.custom.attention` "recurrence" trains it, with `arch.custom.recurrence` the
   node's body (index, inputs q, k, v, let, update, readout; no weights of its own); without it the body
   is section 6.10.6's linear attention, and the model is kimi's bit for bit. Documents rewritten by
   `tools/ir_recurrence.py` keep their family's tensors and take the hint `<family>_recurrence`.
@@ -1593,11 +1683,18 @@ An engine that has the capability (section 3.1) builds the document of a llama.c
 `paperkiln.ir` from `general.architecture` and its metadata, as `tools/gguf_ir.py` does (the
 reference builder; its docstring has each graph; `tools/ir_numpy.py` runs it). family_hint =
 general.architecture; llama.cpp's tensor names. The graphs below describe that builder; they are not
-normative, and an engine without the capability refuses such a file.
+normative, except that section 3.1 reads them as what a file's architecture means (rule 38: a file
+with an embedded document names one of these architectures only when its document is the graph the
+builder makes from the file), and an engine without the capability refuses such a file.
 
 - **llama, mistral**: pre-RMSNorm, interleaved RoPE, grouped-query attention, SwiGLU;
-  `<arch>.attention.sliding_window` w sets window w, sinks 0 (HF Mistral's mask; llama.cpp b6000
-  ignores it).
+  `<arch>.attention.sliding_window` w sets window w, sinks 0 (HF Mistral's mask). llama.cpp has no
+  architecture "mistral" (b6000 and its later releases refuse such a file): its converter writes a
+  Mistral checkpoint as "llama" without the window key, and its llama graph has no window, so llama.cpp
+  computes a converted Mistral without its window (the suite's `tp_mistral` tests this builder, not
+  llama.cpp). A llama file with `llama.expert_count` and `ffn_gate_inp` (Mixtral's layout, revision
+  1.3): `moe_ffn` in place of the SwiGLU (router `ffn_gate_inp`, experts `ffn_{gate,up,down}_exps`,
+  top_k `expert_used_count`, gate_norm renorm, activation silu), as llama.cpp's llama graph.
 - **qwen2, qwen3**: llama with NEOX RoPE; qwen2 biased q/k/v, qwen3 per-head q/k rmsnorm (group
   head_dim) before RoPE.
 - **gpt2**: as paperkiln's gpt2 (fused qkv split q | k | v, tanh GELU).
@@ -1621,15 +1718,15 @@ rules section 10.1.1 lists as checked when the rows arrive. Each rule names its 
 `tools/ir_validate.py` reports every violation as `IR_SPEC <section> (rule <n>): <message>`, the
 rule a single fault breaks under exactly one number (a fault can still break a second rule as a
 consequence: a wrong `block.repeat` names tensors the file lacks). Rule numbers are never reused or
-moved: a rule added by a later revision takes the next free number (35 to 37 in 1.2) and is listed
-with its section's rules.
+moved: a rule added by a later revision takes the next free number (35 to 37 in 1.2, 38 and 39 in
+1.3) and is listed with its section's rules.
 
 Document (section 3):
 1. The text is not a JSON object, or it does not match `ir.schema.json` in a respect that no other
    rule names: the types of values, the closed key sets of the document, its sections and its slots,
    and the required sections. (The version, the model's fields, an op, an attribute, an attribute's
-   value, an arity, a required attribute, a slot's kind and fields and a recurrence's declarations are
-   rules 2 to 13 and 31.)
+   value, an arity, a required attribute, a slot's kind and fields, a recurrence's declarations and a
+   position bias are rules 2 to 13, 31 and 39.)
 35. An object of the text holds a member name twice, at any depth, `_` members included (3.2).
 36. A node reads a value that no node before it writes (in the order of 3.5: embed, the block as
    application 0, head; `tokens` and `pos` excepted); the embed section writes no `x`; the head
@@ -1661,6 +1758,9 @@ Document (section 3):
     (5.14); `attention.heads` is not a multiple of `kv_heads`, or window or sinks is negative (5.15);
     `moe_ffn.top_k` is not in 1 .. n_experts (5.16); `conv1d_causal` has channels < 1 or kernel < 2
     (6.6).
+39. `attention.position_bias` is not `{weight, buckets}` with `buckets` a non-empty list of integers
+    >= 0; or (container) its weight's tensor is not of ne {heads, B} with B greater than every bucket,
+    in an application that reads it (5.15).
 
 State (section 6):
 11. A slot's kind is not kv or recurrent; a slot is declared twice or read by no node; a stateful
@@ -1713,6 +1813,10 @@ Container (a GGUF with `paperkiln.ir`, sections 3.1, 6.8, 7, 8.2):
     sidecars).
 30. `paperkiln.ir_sha256` is present but not a string equal to the digest of the embedded document,
     or the embedded document has no digest (3.10).
+38. `general.architecture` is neither `"paperkiln"` nor an architecture of section 9.3; or it is one of
+    section 9.3's and the embedded document is not the graph section 9.3's builder makes from the
+    file's metadata and tensor shapes, up to what section 3.1 lists; or the metadata builds no graph
+    (3.1). Checked on the embedded document, not on one read in place of it.
 
 Recurrence (section 6.10; `tools/ir_recurrence.py` reports these as "IR_SPEC 6.10 (rule N)"):
 31. `index` is not a map of names to positive integers; `inputs` does not declare each value of `in`
@@ -1782,10 +1886,11 @@ kind, profile, class and tolerance:
 - `ops/`: per-op fixtures: inputs, attributes, expected outputs (f32 bit patterns), class and
   tolerance.
 - `state/`: state traces: token-by-token decode against prefill; eviction on and off; rewind into an
-  evicted turn; MoR depth traces; recurrent state snapshots.
+  evicted turn and into a sliding window; MoR depth traces; recurrent state snapshots.
 - `models/`: whole models: a small document with F32 weights in a GGUF, prompts, expected greedy ids
   and log-probabilities (and depth traces under depth_route).
-- `refuse/`: documents (and GGUF metadata) every consumer must refuse, each with the rule it breaks.
+- `refuse/`: documents (and GGUF metadata) every consumer must refuse, each with the rule it breaks
+  (rule 38's cases are GGUFs whose architecture is not their document's graph).
 - `accept/documents.json`: the documents every consumer must accept (every suite model, every
   rewritten document in place of its model's own, every worked document of `examples/`), so a
   validator that refuses everything fails the suite.
@@ -2144,9 +2249,67 @@ answer adopted. Where the reference already behaved one way, that behaviour is n
 - **F22. The adapter's edge cases.** Paths, the post-error state and the edge cases (section 11.3).
 - **F23. erf in other languages.** An informative note (section 5.8).
 
-### 12.4 Open
+### 12.4 Settled in revision 1.3
 
-None. A question raised after revision 1.2 takes the number Q16.
+llama.cpp b6000 run against the suite (`adapters/llamacpp/`, FINDINGS.txt points K1 to K5), and the
+extractor's proposal of T5's bias (paperkiln, 26 October 2026). Each with the answer adopted.
+
+- **K1. The architecture of an IR-only file** (finding 7). Files whose model only their document
+  states carried a llama.cpp architecture (kimi, recurrence, gpt2_swa and plain flex as gpt2), which
+  llama.cpp loads and computes as plain gpt2 without a warning, as does transformers through any GGUF
+  to HF conversion (H4 of `adapters/hf/FINDINGS.txt`); section 9.2 contradicted 9.1. Settled
+  as the safer reading: a llama.cpp architecture only where the document is that architecture's
+  graph, "paperkiln" otherwise, and the check is mechanical (section 3.1, rule 38: the document against
+  section 9.3's builder run on the file's own metadata, so a label whose metadata disagrees with the
+  document, an epsilon or a RoPE base, is caught too). paperkiln's exporter writes "paperkiln" for
+  those families; `tools/gguf_relabel.py` relabels earlier files without touching their documents.
+  Refusals `architecture_kimi_as_gpt2`, `architecture_swa_as_gpt2`, `architecture_metadata_disagrees`,
+  `architecture_without_graph`; the suite's pk_gpt2_swa, pk_kimi and pk_recurrence are relabelled (their
+  documents, digests and expected values unchanged). To build section 9.3's graph for pk_moe the
+  builder gains llama.cpp's MoE llama (Mixtral's layout).
+- **K2. A rewind into a sliding window** (finding 4). Section 6.9 states it: the rows the window
+  dropped are gone; an engine keeps the rows of positions < n when the window's rows behind the cut are
+  still held, and otherwise re-prefills (from the start or a snapshot), so the state is a fresh run's
+  and prefill = decode holds; the reference has no cache and computes exactly that. Traces
+  `pk_gpt2_swa_rewind_window` and `tp_gemma3_rewind_window`. On llama.cpp the second separates the
+  cache settings: after the cut its logits are within 4.6e-4 of the reference (its GELU table's error,
+  as before the cut) with `swa_full` on (the library's default) and with `swa_full` off behind
+  llama-server's guard, and 1.04 away with `swa_full` off and a 4-row ubatch (a 32-cell windowed cache)
+  without the guard. transformers refuses the crop and its adapter re-prefills, within 2.3e-6 (H3 of
+  `adapters/hf/FINDINGS.txt`); refusing at the engine's level, with the session unchanged, conforms
+  too. H2 of the same file: 5.15's Decode paragraph now counts the window - 1 rows needed between calls.
+- **K3. llama.cpp and Mistral.** Section 9.3 said llama.cpp b6000 ignores Mistral's window; it has no
+  architecture "mistral" and refuses such a file, and its converter writes Mistral as llama without the
+  window. The text says so; `tp_mistral` stays (it tests the builder).
+- **K4. Runner messages.** A recurrent slot the engine does not report fails with "recurrent slot X not
+  reported", and a trace an engine skips keeps the engine's own reason when its score fallback is not
+  implemented either (`tools/ir_conformance.py`).
+- **K5. llama.cpp's capabilities.** A row in Appendix C (informative).
+- **T5's relative position bias** (LOCAL_LLM_STACK.md section 11 item 8). Adopted as proposed, an
+  optional `attention` attribute `position_bias` {weight, buckets} (section 5.15), with these
+  statements added: the distance is between positions, not rows (equal outside Mixture-of-Recursions);
+  the table is [B, heads] with ne {heads, B}, HF's and llama.cpp's `attn_rel_b` layout; the last bucket
+  covers every larger distance; the bias is added after the scaled product, each step rounded; it
+  composes with windows, sinks, `turn_state` and grouped-query attention; it is structural; rule 39.
+  The proposal's numpy lines matched `mtstudio score` on paperkiln's gate model within 2.62e-7 of
+  max(1, |ref|), greedy 40/40, and the reference's lines give its values bit for bit on the three op
+  cases. The suite has the three op cases and four refusals; the whole-model case `pk_flex_t5`
+  (paperkiln's gate recipe) follows at v1.3.1, a new case that moves no existing value (section 2.6).
+  ember refuses the attribute by name until it implements it (Appendix C).
+
+- **transformers' findings** (`adapters/hf/FINDINGS.txt`, H1 to H6, keramos f1b7b49). H1: a
+  multi-id forward over an existing state is now a case of its own for every model (traces
+  `<model>_chunks`), where transformers' Mamba bug showed only by chance. H2: 5.15's Decode paragraph
+  counts window - 1 rows between calls. H3: a rewind into a window may be refused (section 6.9). H4:
+  rule 38 covers HF-checkpoint engines as it does llama.cpp. H5 is K4. H6: a row in Appendix C.
+
+### 12.5 Open
+
+- **Q16. Windows under Mixture-of-Recursions.** Section 5.15 defines a window over positions, while
+  the reference runs a recursion step's attention over its active rows with the window counted in
+  rows (`tools/ir_numpy.py`, `_routed_blocks`). No stored document combines `depth_route` with a
+  windowed slot, and ember refuses the combination; the text and the reference must agree before one
+  is written. A question raised after revision 1.3 takes the number Q17.
 
 ## Appendix A. The `-ffast-math` audit
 
@@ -2239,6 +2402,25 @@ equal to dc29b5e6 bit for bit) and the pinned commits of the RunPod campaigns ar
 
 ## Appendix B. Changelog
 
+- **v1.3.0** (tag, 27 October 2026; revision 1.3). What llama.cpp b6000 against the suite showed
+  (`adapters/llamacpp/FINDINGS.txt`), and T5's relative position bias (section 12.4). New rules: a
+  file's architecture is its document's graph or "paperkiln" (section 3.1, rule 38; checked on the
+  embedded document against section 9.3's builder run on the file's metadata), and
+  `attention.position_bias` (section 5.15, rule 39). Schema: `attention.position_bias` {weight,
+  buckets}. Stated: a rewind into a sliding window (section 6.9); llama.cpp's Mistral (section 9.3);
+  the builder's MoE llama (section 9.3); the flex options of 26 October built from existing ops, more
+  expr inputs and norm placements (section 9.2, informative); Q16 open (section 12.5). Tools: the reference computes
+  `position_bias`; `tools/ir_validate.py` checks rules 38 and 39 (`architecture_errors`,
+  `structure`); `tools/gguf_ir.py` builds MoE llama and needs only the standard library (its f32 equals
+  numpy's shortest float32 decimal); `tools/gguf_relabel.py`; the runner's two messages (K4). Suite:
+  pk_gpt2_swa, pk_kimi and pk_recurrence relabelled "paperkiln" (their documents, digests and every
+  expected value unchanged; only the three GGUFs' metadata moved); op cases `attention/position_bias`, `_window_sinks`, `_grouped_query`; traces
+  `pk_gpt2_swa_rewind_window`, `tp_gemma3_rewind_window`, and `<model>_chunks` for all 21 models
+  (forwards of 3, 1 and 2 ids after a prefill of 4: H1 of `adapters/hf/FINDINGS.txt`); refusals
+  `architecture_*` (4, rule 38) and
+  `position_bias_*` (4, rules 39 and 6); every earlier expected value unchanged, regenerated in the
+  named environment (section 4.6). The whole-model case of T5's bias, `pk_flex_t5`, and mtstudio's
+  receipt follow in v1.3.1.
 - **v1.2.1** (tag, 26 October 2026; documentation patch). Appendix C's ember WebGPU row: every interpreter
   document except recurrence runs on a WGSL interpreter of the document (ember 36c61eb, gated 17b3999 on a
   software adapter). No case, schema or expected value changes.
@@ -2314,6 +2496,8 @@ the engine has agreed to close, the specification already states the intended be
 |---|---|---|---|---|
 | numpy reference (`tools/ir_numpy.py`) | core, state, recursion, chat, thirdparty, recurrence | the reference (prefill only: no cache; no backward) | float32 numpy (BLAS order) | none |
 | clean-room Rust engine (`cleanroom/rust`, `kcr`; informative: a third implementation written from this text alone, not a product) | core, state, recursion, thirdparty, recurrence | EXACT where this document says so (CPU) | scalar f32, ascending | GGUFs without a document (section 3.1), sidecars, `run_node_grad` |
+| llama.cpp b6000 (`adapters/llamacpp/`; informative: reads no document, builds its graph from `general.architecture` and its metadata) | none; the files whose architecture is one of its graphs (rule 38) | ROUNDING on the CPU path except: f32 GELU through an fp16 table (outside tol 1e-5); f16 attention under flash attention whatever the cache type; tanh GELU on gptneox, whose models use exact GELU; no window on llama | ggml CPU | "paperkiln" (every IR-only file) and "mistral" (no such architecture); a rewind into a window is safe only with `swa_full` or llama-server's guard (section 6.9) |
+| Hugging Face transformers 5.20.2 (`adapters/hf/`; informative: reads no document, runs HF checkpoints exported from the suite's GGUFs) | none; the files whose architecture is one of its model classes | ROUNDING on CPU in float32 (sdpa and eager); Mistral and Gemma 3 windows and Gemma 3's per-layer RoPE as specified; Mamba wrong on a multi-id forward over a cache (its finding 1) | torch CPU | "paperkiln"; windowed and recurrent rewinds are refused by `Cache.crop`, so its adapter re-prefills (section 6.9); through its own GGUF reader, Gemma 3's RoPE scaling and attention scale are lost and llama-architecture MoE files do not load |
 | paperkiln `mtstudio`, CPU | the families it trains (section 9.2), from its own runs; recurrence nodes and their gradients through `ir_eval` | EXACT ops EXACT on every build (`-ffp-contract=off`); eviction EXACT at equal chunking (Appendix A) | `matmul_optimized` (FMA, shape-dependent order) | documents it did not export (it runs its modules, not documents); recurrence bodies with weights of their own in its training lane (the op takes them) |
 | paperkiln `mtstudio`, CUDA | as CPU | ROUNDING | cuBLAS FP32; TF32 opt-in | as CPU |
 | ember interpreter, CPU | core, state, recursion, chat, thirdparty, recurrence | EXACT where this document says so | `dot_f32_as_f64`, a fixed 8-lane double order independent of T and threads | see below |
@@ -2353,7 +2537,8 @@ scale and shift, depth_route step, and the slot's window (per-layer sinks includ
 list (which excludes `split`, `moe_ffn`, `rope`, `pos_embedding` and `embedding`); `depth_route` with
 recurrent state or a windowed slot; `mask: turn_state` with `kv_rows: active`; eviction with recurrent
 state; `expr` nested deeper than 200 (the CUDA expr kernel takes up to 96 instructions, a stack of 16
-and 8 reductions, and serves larger expressions on the CPU).
+and 8 reductions, and serves larger expressions on the CPU); `attention.position_bias` (revision 1.3),
+by name, until ember implements it.
 
 **ember's conformance.** At ember 39dcce9 its adapter passes keramos v1.1.2 (as v1.1.1) with 230 pass, 0
 fail and 54 skip, the skips being the single-op fixtures of ops other than `recurrence` (its `run_node` runs

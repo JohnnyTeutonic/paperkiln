@@ -1,0 +1,80 @@
+{
+ "model": "models/tp_mistral",
+ "evict": null,
+ "class": "ROUNDING",
+ "tol": 1e-05,
+ "steps": [
+  {
+   "method": "forward",
+   "ids": [
+    16,
+    16,
+    11,
+    4
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    7,
+    13,
+    16
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    16
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    14,
+    9
+   ]
+  }
+ ],
+ "expect": [
+  {
+   "len": 4,
+   "logits": {
+    "shape": [
+     4,
+     24
+    ],
+    "f32": "3fa40cf63e420e143f778ff0bfb7c89c3f988241bf130ab23fa41f103fc884103f196cb63f54bf563f224d6fbf0c7f9ebea7065f3f461b1dbfc26874bfbc1c4a3d861049bf02de25bef781793ebb2f18bfccccd43ed54748be88283e3d9ebe583fa40cf63e420e003f778feebfb7c89a3f988240bf130ab03fa41f103fc8840e3f196cba3f54bf563f224d6cbf0c7fa2bea706683f461b19bfc26874bfbc1c483d861038bf02de24bef7817c3ebb2f28bfccccd43ed54743be8828343d9ebe543fd91e1abf21e2ae40052f2abf7f80ba3f1f779fbf48c6b43edbadeebebe1decbf4f83fcbfd6852c3eed1934402907debe20dd16402932073f2f7c01bff22980bef9016ebc989f203f72e26f3e8c7cf6bfd0d3603fe51762bfc555163e8be58c3f8a29363f232fcb3cf07dccbf7b84a0401abc52bec4eaec3fb33cce3d931900bf3be9b2bf6aa2cb3f92ccfc3fc7f8acbe9d2a7e3f78a9b23f9cf173bd0e9b0c3cf1df903f3c26af3f357b1cbe90ea78bd3b30d63f53c303bf2680b43d2cb8d0"
+   }
+  },
+  {
+   "len": 7,
+   "logits": {
+    "shape": [
+     3,
+     24
+    ],
+    "f32": "3fab8cedbf524d2e3fd2b5b5bf8b7fe2be408e153f49f1c0bf59e9023f51b1843de5bf93bfa987b3bf587181beba5c91bf0aeaaa3e6ab1e2bf9067113ed50f80bb6e672bbfd383273f4957f23f2d888abfc946f2bee6b117c01593c83e7592c3bec28d094030168abeb4dd043ab5d2c03eab07893e0f5140be0e492bbe0bd469bf2daaa13efe043dbfb11c84bed0dd7f3e7424554018cafb3e969a92c00e6c393fc703a4bf7ade9c3e221628bfb3381f3eefc7d33d937d37c00bd7ea3ea564943e9e6581beddd590bdf4453cbee64cbfbe4e0b4cbf9a2c1c3f6e189e3ff423fa3e9b45ce3fb2f83dbdd7a5edbfd845c2beab3dfabf2fa683bf4d31a83f54601a3f4f0bcd3fd548e2bf539fbe3fb357a5bf65cefa3e87c22d3f9f45b73fb3ce85"
+   }
+  },
+  {
+   "len": 8,
+   "logits": {
+    "shape": [
+     1,
+     24
+    ],
+    "f32": "3ec2579a3eacce2ebd98b8e7be8f6336bd954600bfc53ef63f60644e4016b7da3f0cc1a13f4b110abf1c83d8bffc8520bf85ed9fbe6083c2bf42eb2c3f5b0efa3e3c49b03f077a933d0c8f844017d49ebe9ec9b6bcecfa203e81b2013f942390"
+   }
+  },
+  {
+   "len": 10,
+   "logits": {
+    "shape": [
+     2,
+     24
+    ],
+    "f32": "bf79e2994019ad99bf4428373f1ae6d9bf91de99c01ca4723e1613ae3f54d7ecbdf76c213c924104bf8f79343f0c5f253f0fa76b3f51102d3fe8eb803e9aed1dbdf3db4b3ebb89cb3e902ababe8b9e443ffbb9bf3f573d73bf8c99223f25d235bedbfc393f3b9eea3df26a75bfbe7b62bea8fb6bbf97ecbabe812ad63ffe857d3f51a6dc4041dd093f20290cbfa0dc943cf49208bfd02b1cc013f209be457f12bdb3478fbefe804cbfaa9e4abf260cfd3d74d1213f0a72833f4d7b493e785513"
+   }
+  }
+ ]
+}

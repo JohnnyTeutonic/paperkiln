@@ -1,5 +1,5 @@
 {
- "_comment": "Runs of the conformance suite (spec/IR_SPEC.md section 11.4): one results file per engine, with every case's verdict and detail; each run names the keramos tag and commit it ran against. v1.2.0 has 370 cases. SKIP means the engine has no path for the case (the reference: the gradient cases, which are its own finite differences; mtstudio: the single ops it has no kernel path for, sessions other than its scored traces, document loading, refusals and acceptance, dequantisation, chat rendering; the clean-room Rust engine: the gradient cases and render_chat; ember at v1.1.2: single ops other than recurrence and the gradient cases). ember's v1.2.0 run is pending and replaces its v1.1.2 entry. reference_environment.json is the generating environment's receipt (IR_SPEC 4.6), not a run of an engine.",
+ "_comment": "Runs of the conformance suite (spec/IR_SPEC.md section 11.4): one results file per engine, with every case's verdict and detail; each run names the keramos tag and commit it ran against. v1.2.0 has 370 cases. SKIP means the engine has no path for the case (the reference: the gradient cases, which are its own finite differences; mtstudio: the single ops it has no kernel path for, sessions other than its scored traces, document loading, refusals and acceptance, dequantisation, chat rendering; the clean-room Rust engine: the gradient cases and render_chat; ember at v1.1.2: single ops other than recurrence and the gradient cases). ember's v1.2.0 run is pending and replaces its v1.1.2 entry. reference_environment.json is the generating environment's receipt (IR_SPEC 4.6), not a run of an engine. llama.cpp is the first engine measured that was not written against the spec: its FAILs are classified in adapters/llamacpp/FINDINGS.txt. transformers (5.20.2, torch 2.14.1+cpu) is measured through an export of each GGUF to an HF checkpoint (adapters/common/gguf_to_hf.py); its FAILs and the GGUF reader's are classified in adapters/hf/FINDINGS.txt.",
  "runs": [
   {
    "file": "ir_numpy.json",
@@ -290,6 +290,160 @@
      "PASS": 0,
      "FAIL": 0,
      "SKIP": 8,
+     "XFAIL": 0,
+     "XPASS": 0
+    }
+   }
+  },
+  {
+   "file": "llamacpp_cpu.json",
+   "engine": "llama.cpp b6000 (4762ad7316dcdec20016ab5985fb46a27902204d), CPU, f32 kv cache, through adapters/llamacpp (a shim over llama.h; reads the GGUF, never the IR document), against keramos v1.2.1 (92b89f0baab12589f6eae548181c5d6c5e5b333f)",
+   "date": "2026-10-27",
+   "counts": {
+    "PASS": 23,
+    "FAIL": 15,
+    "SKIP": 332,
+    "XFAIL": 0,
+    "XPASS": 0
+   },
+   "by_kind": {
+    "model": {
+     "PASS": 5,
+     "FAIL": 6,
+     "SKIP": 10,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "trace": {
+     "PASS": 8,
+     "FAIL": 9,
+     "SKIP": 22,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "op": {
+     "PASS": 0,
+     "FAIL": 0,
+     "SKIP": 59,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "refuse": {
+     "PASS": 0,
+     "FAIL": 0,
+     "SKIP": 83,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "digest": {
+     "PASS": 0,
+     "FAIL": 0,
+     "SKIP": 84,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "dequant": {
+     "PASS": 10,
+     "FAIL": 0,
+     "SKIP": 0,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "grad": {
+     "PASS": 0,
+     "FAIL": 0,
+     "SKIP": 8,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "accept": {
+     "PASS": 0,
+     "FAIL": 0,
+     "SKIP": 34,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "chat": {
+     "PASS": 0,
+     "FAIL": 0,
+     "SKIP": 32,
+     "XFAIL": 0,
+     "XPASS": 0
+    }
+   }
+  },
+  {
+   "file": "hf_cpu.json",
+   "engine": "Hugging Face transformers 5.20.2 (torch 2.14.1+cpu), CPU, float32, sdpa, through adapters/hf (in process; GGUFs exported by adapters/common/gguf_to_hf.py v1; never reads the IR document), against keramos v1.2.1 (92b89f0baab12589f6eae548181c5d6c5e5b333f), suite as at d38da543",
+   "date": "2026-10-27",
+   "counts": {
+    "PASS": 18,
+    "FAIL": 2,
+    "SKIP": 350,
+    "XFAIL": 0,
+    "XPASS": 0
+   },
+   "by_kind": {
+    "model": {
+     "PASS": 8,
+     "FAIL": 0,
+     "SKIP": 13,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "trace": {
+     "PASS": 10,
+     "FAIL": 2,
+     "SKIP": 27,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "op": {
+     "PASS": 0,
+     "FAIL": 0,
+     "SKIP": 59,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "refuse": {
+     "PASS": 0,
+     "FAIL": 0,
+     "SKIP": 83,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "digest": {
+     "PASS": 0,
+     "FAIL": 0,
+     "SKIP": 84,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "dequant": {
+     "PASS": 0,
+     "FAIL": 0,
+     "SKIP": 10,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "grad": {
+     "PASS": 0,
+     "FAIL": 0,
+     "SKIP": 8,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "accept": {
+     "PASS": 0,
+     "FAIL": 0,
+     "SKIP": 34,
+     "XFAIL": 0,
+     "XPASS": 0
+    },
+    "chat": {
+     "PASS": 0,
+     "FAIL": 0,
+     "SKIP": 32,
      "XFAIL": 0,
      "XPASS": 0
     }

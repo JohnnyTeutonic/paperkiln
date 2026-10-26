@@ -1,0 +1,64 @@
+{
+ "model": "models/pk_gpt2_swa",
+ "evict": null,
+ "class": "ROUNDING",
+ "tol": 1e-05,
+ "steps": [
+  {
+   "method": "forward",
+   "ids": [
+    13,
+    1,
+    14,
+    13,
+    3,
+    11,
+    12,
+    8,
+    2,
+    8,
+    13,
+    4,
+    8,
+    2
+   ]
+  },
+  {
+   "method": "truncate",
+   "n": 7
+  },
+  {
+   "method": "forward",
+   "ids": [
+    7,
+    14,
+    9
+   ]
+  }
+ ],
+ "expect": [
+  {
+   "len": 14,
+   "logits": {
+    "shape": [
+     14,
+     15
+    ],
+    "f32": "bd06e8373e6952483f7432d83f833646bd8968f2be1599b6becdd615be12bafbbd2c63813dcf5512bded6a0bbe688377bdd5a343bd50c040bf4d91a13ebd4e163db3e40cbd14e60bbda297043c4d1942bc4185f5be9864f5bef2fedabed3118abe94d9723f79fb653f64dea23f628bcd3f5ca03bbf1776bdbf4394bc3fb57f7f3d956f68bc0cbfadbf7e5c0cbf1a52abbd1439b2bed23ba9bf1b37013e32c5ddbe9ee9aebef858dabdd89298be93849b3eab2124bd1e15163e4ebed23f79e6b83f82ca9cbdc7759abe05f7d9bf00adeebcac3d8f3d7dd49e3e09989bbe2c906ebe802b44bde91296bd8e4bccbf446b4abe26071dbef45c88bd397d0abe24901a3dfadde23f9968b93e2adb963ed329bc3e880ecf3d8776f03d26c8febe7f7e47be69a2cabe51a243be81b369bd292e283d5789053f66c2673f7fffcf3d786bfcbe183624be6eb478bda31fb5bc7eb1d03e0ec2a9be83161bbea46806be6a31b1be336842bf1f73abbd87265c3e2591283f6fcacc3f81f7f1bcb7adb3bde27283beb4e0febdc95972bbe9ad8e3e2eb8febe431257be900f3cbe32587abdfa0f19bf493c88bf2331e83e11af58bf4b19d9bf37d46ebe60c104bf0b7da93f14574dbd5fa50dbe6ebbe53eef93bfbf4ba6bdbf31a7fcbf252f91bf2ec9933fc33c363eb18681bf6c06fbbe1dbe303e2486053f92b6223c518bf03edec908bcd7f3113e7fc0fbbe5dfabf3dc95e533e2808acbe37ce44bd43fccabded8de7bf2d407b3e921d5dbf3f061cbf31784bbeacad85bf1d66283efb0f4bbdc80841bea2edad3ef6043bbf47234cbf2ec7b7bf16ba6abf2628253fc52a87bcbb665c3e7690b33f7506c83f839631bdd17c26be503067bee7a33bbced5a9c3d4829df3d132af2be1f1565be61b4e8bdabed8ebd2ae75fbf3e24c7be565bccbdc1234cbf0500b7beb3855e3e8a3ef8bdcbe1863fccc9e0beab1d16beb83047bebf12b6be818ffabe803605beaedfa0beb1f5743efd5826bf2fe2f33e9f3612bf406a1dbf34f756bebb6a7fbf1f7d223ee13560bd949407be8db9033efc0df2bf4a4074bf33508bbf17e1a2bf2833863fc58af93ea460afbf735a19be8b81563d0f9b4f3f910da3bc9b568e3eeefc30bba039683e82d6a6be5433713dcac9ad3e3acdc9be29653abd0dc9ea3c8322bf"
+   }
+  },
+  {
+   "len": 7
+  },
+  {
+   "len": 10,
+   "logits": {
+    "shape": [
+     3,
+     15
+    ],
+    "f32": "bf2679a43e430078bf5258f8bf3eb0e3be778231bf0730143f242eeabe03ebcabea78c043ee56152bf40a17cbf2c6949bf1efa28bf2a1f4e3fc24f3fbf393b983fb6a6803d1f4d92bd0ba6f1bf80c41abf240b5fbd9adf37beca82b6bf1610ff3e1b4a69bea106adbeeb912fbdbe5910be8b7cd33ebcb0253dfe6751beceb6dd3d0f047e3d9276993e7a02383ea15f15bde8db833f84e3a13f920dd5beeb4ec0bee37363be97a5c1bea1c198be9ee5993d8aa91b"
+   }
+  }
+ ]
+}

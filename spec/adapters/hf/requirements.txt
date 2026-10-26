@@ -1,0 +1,11 @@
+# The environment of conformance/receipts/hf_cpu.json (CPython 3.12.3, WSL2 Ubuntu 24.04, x86-64).
+# CPU torch only:  pip install -r adapters/hf/requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.14.1+cpu
+transformers==5.20.2
+tokenizers==0.23.3
+safetensors==0.8.0
+numpy==2.5.4
+# only for --hf-loader gguf (transformers' own GGUF reader)
+accelerate==1.15.0
+gguf==0.19.0
+pytest==9.1.1

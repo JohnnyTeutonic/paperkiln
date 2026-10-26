@@ -62,12 +62,14 @@ inline void put_gpt2_shell(std::map<std::string, Matrix>& sd, const nn::Embeddin
     sd["lm_head.weight"] = head.W->data;  // untied: its own [d, vocab] matrix
 }
 
-// A family's GGUF + IR export (microtorch/ir.hpp, Families): the gpt2
-// architecture when the tensors are exactly llama.cpp's gpt2 set (gpt2_sd,
-// HF GPT-2 names, for gguf::export_gguf_gpt2), else "paperkiln" (tensors,
-// for gguf::export_gguf_paperkiln). Either way the IR is the model.
+// A family's GGUF + IR export (microtorch/ir.hpp, Families): the tensor set is
+// llama.cpp's gpt2 set (arch "gpt2": gpt2_sd, HF GPT-2 names, written by
+// gguf::export_gguf_gpt2) or paperkiln's own (arch "paperkiln": tensors, for
+// gguf::export_gguf_paperkiln). Either way the IR is the model, and the file's
+// general.architecture is "paperkiln" (keramos IR_SPEC 3.1, rule 38: no
+// llama.cpp graph computes these families).
 struct FamilyExport {
-    std::string arch;  // "gpt2" | "paperkiln"
+    std::string arch;  // the tensor set: "gpt2" | "paperkiln"
     ir::json ir;
     std::map<std::string, Matrix> gpt2_sd;
     std::vector<gguf::NamedTensor> tensors;
@@ -318,8 +320,8 @@ public:
             put_gpt2_shell(fx.gpt2_sd, *wte, *wpe, *ln_f, *head);
             for (int b = 0; b < 2; ++b) put_gpt2_block(fx.gpt2_sd, b, *ln1[b], *kimi[b], *ln2[b], *mlp[b]);
             fx.warning = std::string(kind_ == AttnKind::KIMI ? "kimi linear attention" : "the recurrence") +
-                         " lives in the embedded IR only: an engine reading the gpt2 tensors without it "
-                         "(llama.cpp) computes softmax attention, a different model";
+                         " lives in the embedded IR only: the file's architecture is paperkiln (gpt2's tensors), "
+                         "which llama.cpp refuses rather than computing softmax attention";
             return fx;
         }
         fx.arch = "paperkiln";
@@ -591,8 +593,9 @@ struct FlexConfig {
     }
     // position "t5_relative" (Raffel et al. 2020, section 2.1): no position table; every head adds
     // a learned bias, by bucketed query-key distance, to its attention scores
-    // (ops::relpos_attention), from one table [rel_buckets, heads] shared by every layer. Trains;
-    // keramos v1.2.0 has no IR for it, so the GGUF export refuses (FlexLM::family_export).
+    // (ops::relpos_attention), from one table [rel_buckets, heads] shared by every layer. Trains and
+    // exports: attention's position_bias {weight, buckets} (keramos IR_SPEC 5.15, revision 1.3), the
+    // buckets ops::t5_position_buckets' table (FlexLM::family_export).
     size_t rel_buckets = 32, rel_max_distance = 128;
     // What is wrong with this configuration, or "" (mtstudio and the tests refuse with it).
     std::string problem() const;
@@ -862,12 +865,6 @@ public:
     std::shared_ptr<const Expr> act_expr;        // act "expr:<e>", parsed once
 };
 
-// The keramos refusal of an export with T5's relative bias: no IR op until keramos specifies one.
-inline const char* kFlexT5Refusal =
-    "position t5_relative: keramos v1.2.0 has no relative position bias in attention, so no engine can run "
-    "this model's IR (paperkiln trains it; the op is proposed to keramos, LOCAL_LLM_STACK.md section 10, "
-    "26 Oct 2026). Export safetensors only.";
-
 class FlexLM : public nn::Module {
 public:
     FlexLM(const FlexConfig& c, unsigned seed) : cfg(c) {
@@ -990,12 +987,9 @@ public:
     std::optional<FamilyExport> family_export() const {
         if (gpt2_export_blocker().empty()) return std::nullopt;
         const auto& c = cfg;
-        const char* unratified = std::getenv("PAPERKILN_IR_UNRATIFIED");
+        // T5's bias: the attention attribute position_bias {weight, buckets} (keramos IR_SPEC 5.15, revision
+        // 1.3), the one table rel_pos_bias.weight [rel_buckets, heads] read by every layer.
         const bool t5 = c.pos == "t5_relative";
-        // The unratified attribute (attention.position_bias) is written only for paperkiln's own test of
-        // the keramos proposal (tests/test_flex_ir.py); no engine reads it.
-        if (t5 && !(unratified && std::string(unratified).find("t5_relative") != std::string::npos))
-            throw std::runtime_error(kFlexT5Refusal);
         const std::string p = "blk.{i}.";
         const auto& b0 = *blocks[0];
         const bool plain = c.residual == "plain", highway = c.residual == "highway";
@@ -1147,8 +1141,8 @@ public:
             fx.arch = "gpt2";
             fx.gpt2_sd = gpt2_tensors();
             fx.warning =
-                "residual plain lives in the embedded IR only: an engine reading the gpt2 tensors without it "
-                "(llama.cpp) adds skip connections this model does not have";
+                "residual plain lives in the embedded IR only: the file's architecture is paperkiln (gpt2's "
+                "tensors), which llama.cpp refuses rather than adding skip connections this model lacks";
             return fx;
         }
         fx.arch = "paperkiln";

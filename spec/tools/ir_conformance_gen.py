@@ -29,10 +29,10 @@ PK_PROFILES = {
     "pk_llama": "core", "pk_moe": "core", "pk_gpt2": "core", "pk_gpt2_swa": "core", "pk_kimi": "state",
     "pk_srd": "state", "pk_attnres": "core", "pk_flex_highway": "core", "pk_flex_expr": "core",
     "pk_mamba": "state", "pk_recursive": "recursion", "pk_mor": "recursion", "pk_llama_attnres": "core",
-    "pk_llama_attnres_rec": "recursion", "pk_state": "state", "pk_recurrence": "recurrence"}
+    "pk_llama_attnres_rec": "recursion", "pk_state": "state", "pk_recurrence": "recurrence", "pk_flex_t5": "core"}
 # Models added after the suite's first release draw their prompts from a stream of their own, so the cases of
 # every earlier model stay byte-identical when the suite is regenerated.
-OWN_STREAM = {"pk_recurrence"}
+OWN_STREAM = {"pk_recurrence", "pk_flex_t5"}
 
 
 # ---------------------------------------------------------------- third-party models (numpy)
@@ -452,6 +452,18 @@ def op_cases():
            "readout": "y[c] = h[c]", "out": "y"}
     add("recurrence", "read_beyond_declaration", pad, {"x": r(5, 4)}, {"W": r(3, 3, s=0.5)},
         "EXACT" if ir_recurrence.compile_node(pad).exact else "ROUNDING")
+    # v1.3 (5.15): T5's relative position bias, W[buckets[min(p - j, D - 1)], h] added to each head's scaled
+    # score: a table shorter than the rows (the last bucket covers every larger distance), with a window and
+    # sinks, and under grouped-query attention (the bias is per query head).
+    q9, k9, v9 = r(9, 8), r(9, 8), r(9, 8)
+    pbt = r(5, 2)
+    pb = {"weight": "rel", "buckets": [0, 1, 2, 3, 3, 4]}
+    add("attention", "position_bias", dict(att, position_bias=pb), {"q": q9, "k": k9, "v": v9}, {"rel": pbt},
+        "ROUNDING")
+    add("attention", "position_bias_window_sinks", dict(att, window=3, sinks=1, position_bias=pb),
+        {"q": q9, "k": k9, "v": v9}, {"rel": pbt}, "ROUNDING")
+    add("attention", "position_bias_grouped_query", dict(att, kv_heads=1, position_bias=pb),
+        {"q": q9, "k": r(9, 4), "v": r(9, 4)}, {"rel": pbt}, "ROUNDING")
     return cases
 
 
@@ -685,6 +697,15 @@ def refusals():
     doc_case("mor_reads_outside_value", M, 36, "7.4", mor_outside)
     doc_case("mor_step_gap", M, 20, "7.4", lambda d: node(d, "depth_route").update(
         step={"per_layer": [-1, 0, -1, 1, 2]}))
+    # v1.3: rule 39 (5.15), position_bias's buckets and its table.
+    doc_case("position_bias_bucket_negative", L, 39, "5.15", lambda d: node(d, "attention").update(
+        position_bias={"weight": "token_embd.weight", "buckets": [0, -1]}))
+    doc_case("position_bias_buckets_empty", L, 39, "5.15", lambda d: node(d, "attention").update(
+        position_bias={"weight": "token_embd.weight", "buckets": []}))
+    doc_case("position_bias_table_shape", L, 39, "5.15", lambda d: node(d, "attention").update(
+        position_bias={"weight": "token_embd.weight", "buckets": [0, 1, 2]}))
+    doc_case("position_bias_per_layer", L, 6, "3.8", lambda d: node(d, "attention").update(
+        position_bias={"per_layer": [{"weight": "token_embd.weight", "buckets": [0]}] * d["block"]["repeat"]}))
     # v1.2: rule 35 (3.2), a duplicate member name at any depth; the documents as JSON texts.
     base = json.dumps(load_model(SUITE / "models" / L)[0])
 
@@ -723,6 +744,28 @@ def refusals():
                                              "section": "3.2"}))
     # version_key_mismatch: rewrite the version key by hand (write_gguf derives it from the document).
     _patch_version_key(SUITE / "refuse" / "version_key_mismatch.gguf", 7)
+
+    # v1.3: rule 38 (3.1), a llama.cpp architecture on a file whose document is not that architecture's graph.
+    def relabelled(m, arch):
+        old = m["general.architecture"][1]
+        out_m = {}
+        for k, v in m.items():
+            out_m[arch + k[len(old):] if k.startswith(old + ".") and not k.startswith("paperkiln.ir") else k] = v
+        out_m["general.architecture"] = (8, arch)
+        return out_m
+
+    def arch_case(name, base, f):
+        doc, W, meta, _ = load_model(SUITE / "models" / base)
+        meta = f(dict(meta))
+        write_gguf(SUITE / "refuse" / f"{name}.gguf", meta, W, doc)
+        gg.append((name, {"gguf": f"refuse/{name}.gguf", "rule": 38, "section": "3.1"}))
+    # kimi's linear attention under gpt2 (the pre-1.3 export): llama.cpp computes softmax gpt2 on it.
+    arch_case("architecture_kimi_as_gpt2", "pk_kimi", lambda m: relabelled(m, "gpt2"))
+    arch_case("architecture_swa_as_gpt2", "pk_gpt2_swa", lambda m: relabelled(m, "gpt2"))
+    # A llama graph whose metadata states another RoPE base than its document.
+    arch_case("architecture_metadata_disagrees", L, lambda m: dict(m, **{"llama.rope.freq_base": (6, 500000.0)}))
+    # An architecture section 9.3 does not define (nothing states what a program building from it computes).
+    arch_case("architecture_without_graph", L, lambda m: relabelled(m, "phi3"))
     return out + gg
 
 
@@ -898,6 +941,39 @@ def extra_traces():
     return out
 
 
+def window_traces():
+    """v1.3 (IR_SPEC 6.9): a rewind into a sliding window, behind rows a windowed cache would have dropped: the
+    state a fresh run over the first n tokens leaves (the engine keeps or re-prefills them). Each draws from a
+    stream of its own."""
+    out = []
+    for name, total, cut, new in (("pk_gpt2_swa", 14, 7, 3), ("tp_gemma3", 48, 10, 4)):
+        doc, W, meta, _ = load_model(SUITE / "models" / name)
+        rng = np.random.default_rng(sum(map(ord, name)) + 1300)
+        V = doc["model"]["vocab"]
+        ids = [int(x) for x in rng.integers(1, V, total)]
+        out.append((f"{name}_rewind_window", trace_case(name, doc, W, [
+            {"method": "forward", "ids": ids}, {"method": "truncate", "n": cut},
+            {"method": "forward", "ids": [int(x) for x in rng.integers(1, V, new)]}])))
+    return out
+
+
+def chunk_traces():
+    """v1.3 (H1 of adapters/hf/FINDINGS.txt): every model's decode state after forwards of several ids over an
+    existing state (a prefill of 4, then 3 ids, 1 id and 2 ids), so an engine that handles only n = 1
+    correctly after a prefill fails a case of its own. Each draws from a stream of its own."""
+    out = []
+    for md in model_dirs():
+        name = md.name
+        doc, W, meta, _ = load_model(md)
+        rng = np.random.default_rng(sum(map(ord, name)) + 1400)
+        V = doc["model"]["vocab"]
+        ids = [int(x) for x in rng.integers(1, V, 10)]
+        out.append((f"{name}_chunks", trace_case(name, doc, W, [
+            {"method": "forward", "ids": ids[:4]}, {"method": "forward", "ids": ids[4:7]},
+            {"method": "forward", "ids": ids[7:8]}, {"method": "forward", "ids": ids[8:]}])))
+    return out
+
+
 # ---------------------------------------------------------------- regenerate
 
 def regenerate():
@@ -959,7 +1035,7 @@ def regenerate():
         (SUITE / f).write_text(json.dumps(case, indent=1) + "\n", encoding="utf-8")
         manifest.append({"id": f"trace/{name}_recurrence", "kind": "trace", "file": f, "model": f"models/{name}",
                          "profile": "recurrence"})
-    for name, case in extra_traces():
+    for name, case in extra_traces() + window_traces() + chunk_traces():
         f = f"state/{name}.json"
         (SUITE / f).write_text(json.dumps(case, indent=1) + "\n", encoding="utf-8")
         manifest.append({"id": f"trace/{name}", "kind": "trace", "file": f, "model": case["model"],

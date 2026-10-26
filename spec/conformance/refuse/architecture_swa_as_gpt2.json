@@ -1,0 +1,5 @@
+{
+ "gguf": "refuse/architecture_swa_as_gpt2.gguf",
+ "rule": 38,
+ "section": "3.1"
+}

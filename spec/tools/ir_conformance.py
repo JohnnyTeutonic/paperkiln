@@ -610,11 +610,16 @@ def _kv_ok(got, allowed):
 def run_trace(adapter, case, model_dir, tol):
     try:
         return _run_trace_sessions(adapter, case, model_dir, tol)
-    except NotImplementedError:
+    except NotImplementedError as e:
         if "score_form" not in case or case.get("ir"):
             raise
+        first = e
     sf = case["score_form"]
-    res = adapter.score(model_dir, sf["prompt"], sf["continuation"], kv_cache=True, evict=sf["evict"], kv_step=1)
+    try:
+        res = adapter.score(model_dir, sf["prompt"], sf["continuation"], kv_cache=True, evict=sf["evict"], kv_step=1)
+    except NotImplementedError as e:
+        # An engine without a score path: report the session's own skip reason, not the base class's empty one.
+        raise (e if str(e) else first) from None
     ref = np.array(sf["logprobs"])
     worst = float(np.max(np.abs(np.array(res["logprobs"]) - ref))) / max(1.0, float(np.max(np.abs(ref))))
     ok, msgs = worst <= tol and res["argmax"] == sf["argmax"], [f"decode by kv cache, token by token: log-probs "
@@ -675,6 +680,10 @@ def _run_trace_sessions(adapter, case, model_dir, tol):
                     msgs.append(f"step {j} positions: {mm}")
             if "recurrent" in want:
                 for slot, apps in want["recurrent"].items():
+                    if slot not in (got.get("recurrent") or {}):
+                        ok = False
+                        msgs.append(f"step {j}: recurrent slot {slot} not reported")
+                        continue
                     for i, tens in enumerate(apps):
                         for t, w in tens.items():
                             o, mm = close(got["recurrent"][slot][i][t], dec(w), "ROUNDING", tol)

@@ -45,7 +45,7 @@ TENSOR_KEYS = ("weight", "bias", "router", "state_weight", "tied_to")
 # Section 3.8: the structural keys, never per-layer (nodes, then slots).
 NOT_PER_LAYER = ("op", "in", "out", "state", "tensor_index", "sizes", "expr", "weight", "bias", "router", "experts",
                  "state_weight", "tied_to", "a", "b", "c", "d", "index", "inputs", "weights", "init", "let", "update",
-                 "readout")
+                 "readout", "position_bias")
 SLOT_NOT_PER_LAYER = ("name", "kind", "op", "dtype", "tensors", "evict", "kv_rows")
 MARKERS = {"eot": "<|endoftext|>", "user": "<|user|>", "assistant": "<|assistant|>"}  # paperkiln/1
 
@@ -405,6 +405,8 @@ def _schema_rule(doc, path, msg):
             return 4, "3.5"
         if op == "recurrence" and attr in ("index", "inputs", "weights", "init", "let", "update", "readout"):
             return 31, "6.10"
+        if op == "attention" and attr == "position_bias":
+            return 39, "5.15"
         if attr in CLOSED and "is not one of" in msg:
             return 5, CLOSED[attr]
         if attr in ("in", "out"):
@@ -484,6 +486,9 @@ def _tensor_names(node):
         for key, v in node["weights"].items():
             if isinstance(v, str):
                 yield "weights." + key, v
+    pb = node.get("position_bias")
+    if node.get("op") == "attention" and isinstance(pb, dict) and isinstance(pb.get("weight"), str):
+        yield "position_bias.weight", pb["weight"]
 
 
 def _recurrence():
@@ -1015,7 +1020,204 @@ def gguf_report(doc, meta, tensors):
             errs.append(E("7.1", f"{arch}.block_count {bc} != the {max(wmap) + 1} stored layers weight_index uses", 27))
     errs += recurrence_gguf_errors(doc, dims)
     errs += state_token_gguf_errors(doc, meta, tensors)
+    errs += position_bias_gguf_errors(doc, dims)
+    errs += architecture_errors(meta, tensors)
     return errs, sorted(set(warns))
+
+
+def position_bias_gguf_errors(doc, dims):
+    """Rule 39 (container): an attention node's position_bias tensor is ne {heads, B}, B above every bucket
+    (section 5.15), in every application that reads it."""
+    errs = []
+    blk = doc.get("block", {})
+    L = blk.get("repeat") if isinstance(blk.get("repeat"), int) else 0
+    wmap = (blk.get("weight_index") or {}).get("per_layer") if isinstance(blk.get("weight_index"), dict) else None
+    for sect, j, n in _sections(doc):
+        pb = n.get("position_bias")
+        if n.get("op") != "attention" or not isinstance(pb, dict) or not isinstance(pb.get("weight"), str):
+            continue
+        bk = pb.get("buckets")
+        if not (isinstance(bk, list) and bk and all(isinstance(b, int) and not isinstance(b, bool) for b in bk)):
+            continue  # the schema's part of rule 39
+        heads = _layers(n.get("heads"), L or 1) or []
+        apps = range(L) if sect == "block" else [None]
+        for i in apps:
+            h = heads[i] if i is not None and i < len(heads) else (heads[0] if heads else None)
+            m = (wmap[i] if isinstance(wmap, list) and i < len(wmap) else i) if i is not None else None
+            name = pb["weight"].replace("{i}", str(m)) if m is not None else pb["weight"]
+            got = dims.get(name)
+            if got is None:
+                continue  # rule 25
+            if len(got) != 2 or got[0] != h or got[1] <= max(bk):
+                where = f"{sect}[{j}] attention" + (f" (application {i})" if i is not None else "")
+                errs.append(E("5.15", f"{where}: position_bias {name} has ne {got}, not [heads {h}, B] with B > "
+                                      f"the largest bucket {max(bk)}", 39))
+    return sorted(set(errs))
+
+
+# ---------------------------------------------------------------- rule 38: the architecture and the document
+
+INFORMATIVE_ATTRS = {"attention": ("softmax",), "moe_ffn": ("routing",)}
+# Section 3.5's optional attributes at their defaults (rmsnorm.group's default, the row width, is not filled:
+# it needs widths).
+NODE_DEFAULTS = {"linear": {"bias": None, "tied_to": None}, "scale": {"bias": None},
+                 "rope": {"freq_scale": 1.0}, "attention": {"mask": "causal"},
+                 "rmsnorm": {"weight_offset": 0.0}, "depth_attend": {"eps": 1e-05},
+                 "conv1d_causal": {"bias": None}, "selective_scan": {"d": None, "dt_softplus": True}}
+COMMUTATIVE = ("add", "mul")
+
+
+def _f32_value(x):
+    """A JSON number as the f32 an attribute holds (section 3.5): the binary64 value rounded once."""
+    return struct.unpack("<f", struct.pack("<f", float(x)))[0]
+
+
+def _norm_value(v):
+    if isinstance(v, bool) or v is None or isinstance(v, str):
+        return v
+    if isinstance(v, (int, float)):
+        return _f32_value(v)
+    if isinstance(v, list):
+        return [_norm_value(x) for x in v]
+    if isinstance(v, dict):
+        return {k: _norm_value(x) for k, x in v.items() if not k.startswith("_")}
+    return v
+
+
+def structure(doc, have=None):
+    """The document's graph up to what rule 38 ignores: '_' members, the informative keys (family_hint,
+    tokenizer, inputs, outputs, modes, ir_version, the informative attributes), optional attributes written at
+    their defaults, the names of values and slots, the operand order of add and mul, the spelling of numbers
+    (each the f32 it rounds to) and, given the file's tensor names (have), how a linear names the tensor it
+    reads (its weight, or tied_to when the file lacks the weight: section 5.3)."""
+    slots = {}
+    out = {"model": _norm_value(doc.get("model")), "block": {}}
+    blk = doc.get("block") if isinstance(doc.get("block"), dict) else {}
+    state = []
+    for k, sl in enumerate(blk.get("state") or []):
+        if not isinstance(sl, dict):
+            state.append(sl)
+            continue
+        slots[sl.get("name")] = f"slot{k}"
+        sl = dict(sl, name=f"slot{k}")
+        if sl.get("kind") == "kv":
+            sl.setdefault("dtype", "f32")
+        state.append(_norm_value(sl))
+    version = {"tokens": "tokens", "pos": "pos"}
+    count = [0]
+
+    def read(name):
+        return version.get(name, "unwritten:" + str(name))
+
+    def write(name):
+        count[0] += 1
+        version[name] = f"v{count[0]}"
+        return version[name]
+
+    def nodes(sect):
+        res = []
+        for n in ((doc.get(sect) or {}).get("nodes") or []):
+            if not isinstance(n, dict):
+                res.append(n)
+                continue
+            op = n.get("op")
+            n = {k: v for k, v in n.items() if not k.startswith("_") and k not in INFORMATIVE_ATTRS.get(op, ())}
+            for k, v in NODE_DEFAULTS.get(op, {}).items():
+                n.setdefault(k, v)
+            if op == "linear" and have is not None and n.get("tied_to") is not None:
+                if n.get("weight") not in have:
+                    n["weight"] = n["tied_to"]
+                n["tied_to"] = None
+            if op == "rope":
+                n.setdefault("kv_heads", n.get("heads"))
+                n.setdefault("n_rot", n.get("head_dim"))
+            ins = [read(x) for x in n.get("in") or []]
+            if op in COMMUTATIVE:
+                ins = sorted(ins)
+            n["in"] = ins
+            outs = n.get("out")
+            n["out"] = [write(o) for o in outs] if isinstance(outs, list) else write(outs)
+            if "state" in n:
+                n["state"] = slots.get(n["state"], n["state"])
+            res.append(_norm_value(n))
+        return res
+
+    out["embed"] = nodes("embed")
+    out["block"] = {k: _norm_value(v) for k, v in blk.items() if k not in ("nodes", "state") and not k.startswith("_")}
+    out["block"]["state"] = state
+    out["block"]["nodes"] = nodes("block")
+    out["head"] = nodes("head")
+    return out
+
+
+def _first_difference(a, b, path="document"):
+    if type(a) is not type(b):
+        return f"{path}: {json.dumps(a)[:120]} against {json.dumps(b)[:120]}"
+    if isinstance(a, dict):
+        for k in sorted(set(a) | set(b), key=lambda k: (k != "op", str(k))):
+            if k not in a or k not in b:
+                return f"{path}.{k}: {'absent' if k not in a else json.dumps(a[k])[:80]} against " \
+                       f"{'absent' if k not in b else json.dumps(b[k])[:80]}"
+            d = _first_difference(a[k], b[k], f"{path}.{k}")
+            if d:
+                return d
+        return None
+    if isinstance(a, list):
+        if len(a) != len(b):
+            return f"{path}: {len(a)} entries against {len(b)}"
+        for i, (x, y) in enumerate(zip(a, b)):
+            d = _first_difference(x, y, f"{path}[{i}]")
+            if d:
+                return d
+        return None
+    return None if a == b else f"{path}: {json.dumps(a)[:80]} against {json.dumps(b)[:80]}"
+
+
+def _builder():
+    sys.path.insert(0, str(HERE))
+    try:
+        import gguf_ir  # noqa: PLC0415 (standard library only when building)
+    finally:
+        if sys.path and sys.path[0] == str(HERE):
+            sys.path.pop(0)
+    return gguf_ir
+
+
+def architecture_errors(meta, tensors):
+    """Rule 38 (section 3.1): a file whose general.architecture is not "paperkiln" holds, as its embedded
+    document, the graph that architecture's builder (section 9.3) builds from the file's own metadata and
+    tensors, up to what structure() ignores. Checked on the embedded document only: a document read in place
+    of it is not in the file a program without the IR reads."""
+    arch = meta.get("general.architecture", (None, None))[1]
+    emb = meta.get("paperkiln.ir")
+    if arch == "paperkiln" or not emb or emb[0] != 8:
+        return []
+    try:
+        doc = json.loads(emb[1])
+    except ValueError:
+        return []  # rule 1 or 35, reported with the document
+    gi = _builder()
+    tail = ("; a file whose model is not that architecture's graph has general.architecture \"paperkiln\", which "
+            "no llama.cpp release builds a graph for")
+    if arch not in gi.BUILDERS:
+        return [E("3.1", f"general.architecture {arch!r} is neither \"paperkiln\" nor an architecture of section "
+                         f"9.3, so nothing states what it computes{tail}", 38)]
+    values = {k: v for k, (_, v) in meta.items()}
+    toks = values.get("tokenizer.ggml.tokens")
+    if isinstance(toks, list):
+        values["_n_tokens"] = len(toks)
+    shapes = {t[0]: list(reversed(t[1])) for t in tensors}
+    try:
+        built = gi.build(values, shapes)
+    except (SystemExit, KeyError, TypeError, ValueError, ZeroDivisionError) as e:
+        return [E("3.1", f"general.architecture {arch!r}: its metadata builds no graph ({e}){tail}", 38)]
+    have = set(shapes)
+    diff = _first_difference(structure(doc, have), structure(built, have))
+    if diff:
+        return [E("3.1", f"general.architecture {arch!r}: the embedded document is not the {arch} graph its "
+                         f"metadata describes (section 9.3; first difference, document against graph: {diff}){tail}",
+                  38)]
+    return []
 
 
 def recurrence_gguf_errors(doc, dims):

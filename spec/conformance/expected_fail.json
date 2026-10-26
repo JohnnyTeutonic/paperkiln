@@ -1,3 +1,12 @@
 {
- "_comment": "spec/IR_SPEC.md section 11.3: cases an engine is known to fail, with the reason and the fix each waits for. Reported XFAIL; an XPASS means the entry should go."
+ "_comment": "spec/IR_SPEC.md section 11.3: cases an engine is known to fail, with the reason and the fix each waits for. Reported XFAIL; an XPASS means the entry should go.",
+ "keramos-cleanroom": {
+  "op/attention/position_bias": "revision 1.3's attention.position_bias (IR_SPEC 5.15): the clean-room engine implements revision 1.2 (keramos 1d1fd377) and its run_node ignores the attribute; waits for the engine's 1.3 pass",
+  "op/attention/position_bias_window_sinks": "revision 1.3's attention.position_bias (IR_SPEC 5.15): the clean-room engine implements revision 1.2 (keramos 1d1fd377) and its run_node ignores the attribute; waits for the engine's 1.3 pass",
+  "op/attention/position_bias_grouped_query": "revision 1.3's attention.position_bias (IR_SPEC 5.15): the clean-room engine implements revision 1.2 (keramos 1d1fd377) and its run_node ignores the attribute; waits for the engine's 1.3 pass",
+  "refuse/architecture_kimi_as_gpt2": "revision 1.3's rule 38 (IR_SPEC 3.1): not in the clean-room engine (revision 1.2); waits for its 1.3 pass",
+  "refuse/architecture_swa_as_gpt2": "revision 1.3's rule 38 (IR_SPEC 3.1): not in the clean-room engine (revision 1.2); waits for its 1.3 pass",
+  "refuse/architecture_metadata_disagrees": "revision 1.3's rule 38 (IR_SPEC 3.1): not in the clean-room engine (revision 1.2); waits for its 1.3 pass",
+  "refuse/architecture_without_graph": "revision 1.3's rule 38 (IR_SPEC 3.1): not in the clean-room engine (revision 1.2); waits for its 1.3 pass"
+ }
 }

@@ -1,0 +1,224 @@
+{
+ "model": "models/pk_kimi",
+ "evict": null,
+ "class": "ROUNDING",
+ "tol": 1e-05,
+ "steps": [
+  {
+   "method": "forward",
+   "ids": [
+    9,
+    5,
+    3,
+    9
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    3,
+    8,
+    2
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    1
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    6,
+    3
+   ]
+  }
+ ],
+ "expect": [
+  {
+   "len": 4,
+   "logits": {
+    "shape": [
+     4,
+     15
+    ],
+    "f32": "3e6e671ebf0c957a3dbbd4393e1c6f093ec7922c3eaa7e1fbe76a9cd3f82f8753f93f55bbf11e5f9be870b2bbe09f8f7be3a36e4be205efebe0fac59be7636863cf5ed48bf0a17e6bebdb4653e892eb3bd9b59ce3fce8212bebdf34abee17724bedf03ccbe87dc6cbe833221beb76160beb12d4c3f08410dbe329813bec7b510bcc9943cbe22ef47bc3430403f9c45c23de1b34f3eac0b8b3e19842d3d1e913d3e08a5bbbe3436e5be0d051fbe057e74bea0fa7e3dde38d4bee54361bdc5f01ebd9495273e80b5aa3e88f0aebe8e86c53f86856c3f9388c2bed36b72beab6fd7be3f3531be559923be5592003dcb83e9"
+   },
+   "recurrent": {
+    "lin": [
+     {
+      "num": {
+       "shape": [
+        2,
+        8
+       ],
+       "f32": "3e5c5df13d886b46be77e61d3d933952bd9560963e70c0db3e9c9b2b3ce331f4bcbca958be2b1e9a3e20f3a6bba6944c3e488dedbe7b20b93e1ecd0ebda87b00"
+      },
+      "den": {
+       "shape": [
+        2,
+        8
+       ],
+       "f32": "40754f9940710ad6408b2e7c406ed2fc40625f264083b3474062605d40869ff740841385408cf2c94087710a40776b3c408bb5444076c7ee408149274087a8e9"
+      }
+     },
+     {
+      "num": {
+       "shape": [
+        2,
+        8
+       ],
+       "f32": "bdc7d7de3e4f27a7bd0f4e39bc36a6103e1d7b473ea7c808bea73eeb3e104e3c3eda03a7bcef0e52be002e95be014e923dcbd6a0bec9e44fbeadb85c3cc8156c"
+      },
+      "den": {
+       "shape": [
+        2,
+        8
+       ],
+       "f32": "407bbed940813a4a407fee7e406d499240855278407e4586407c3e5e408998a340892b85408e9ec94092068c4088fc4f4085ca5740913c05408fa0a84080e7d2"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "len": 7,
+   "logits": {
+    "shape": [
+     3,
+     15
+    ],
+    "f32": "be0681adbef30d36bdbfde69be5de6813d1032573f9d22d53dc4e84a3ec7363b3e58fb7b3c9e99cf3e1e602abe063f14bded5053bdcec574be8fd918bf1dc2ae3e82acc4bf404ca7bf31c00abe70b9ccbf12d0dd3ed61b91bd92e732be8984013ed3e314bf429c96bf273a74bf151e54bf1e847a3fc5e6e83e98626ebf6fcc14be7871483de0b5e63f946a0b3d8711253f0439203de7d21d3eb02180beb404543dbd3df33dfe96cdbe77ba44bd9816cfbd949ab4"
+   },
+   "recurrent": {
+    "lin": [
+     {
+      "num": {
+       "shape": [
+        2,
+        8
+       ],
+       "f32": "3e51fee73c4bf218bed23d623df0d0dabe7c7d333e38a4693e2500253d570aa7bd597d74bdddf0dabc788d28bccaf6a83e9264aebec7bb2f3e520485bc6ca1ee"
+      },
+      "den": {
+       "shape": [
+        2,
+        8
+       ],
+       "f32": "40d92f6740d3d2fa40efd26b40cb659b40c978a140e111c040ca5d3f40e38b3140e42fd640f293d340efb8d140e0253a40ebc41240dfbe2c40eca3d840efb139"
+      }
+     },
+     {
+      "num": {
+       "shape": [
+        2,
+        8
+       ],
+       "f32": "be4972d73e6bb2a23d1237aebcaa576d3e9a457b3ecd7d2bbeb101c03e62fe813f34b962bd5efeaabd973bc43c67c8203e7a9864bf1ddaaabf27e34cbc268600"
+      },
+      "den": {
+       "shape": [
+        2,
+        8
+       ],
+       "f32": "40e40d5240dd36a840e53e1140d29a6140e84c2740dfb3cb40dcc93c40ed749d40f0c5eb40f66f8e40fbee3f40e963a240e9ec8040f4d55940f9487240e5232c"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "len": 8,
+   "logits": {
+    "shape": [
+     1,
+     15
+    ],
+    "f32": "3ed725103c1e7940be3b3819be5f18efbd468d8e39828400be56f1c8bea7c44ebe8650f7beb348ce3f7b1c063f6cd9013f642cfa3f5f27b7bef4167a"
+   },
+   "recurrent": {
+    "lin": [
+     {
+      "num": {
+       "shape": [
+        2,
+        8
+       ],
+       "f32": "3e3c14ee3db49fd1bf1c00343d42c672bda27dbc3e8b4d4b3e8ca9093e09cfa43d5c86bebd18ca363db4125e3c5e5f643e598497beb88dba3e572d233cc2d0dc"
+      },
+      "den": {
+       "shape": [
+        2,
+        8
+       ],
+       "f32": "40f8cc1c40fa790a41093cfa40ea233640ecf07841000cb140e6f002410303b4410667654108a8884105a62140fe1dab4106339241005c264102bfc94108dd64"
+      }
+     },
+     {
+      "num": {
+       "shape": [
+        2,
+        8
+       ],
+       "f32": "be821fc83e255ee63e331e603db8e4aa3e03c7b03edd9831bea2431a3ed0f16c3f7d76a2be69c591be827becbdd209963e82b7eebf45685cbf2921903e33c4cb"
+      },
+      "den": {
+       "shape": [
+        2,
+        8
+       ],
+       "f32": "410168b141013a9841011de040f6186041041e41410117d640fb12a541098e4e410869da410b495c410af5884109858c410578aa410b2132410c739540ff4d7b"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "len": 10,
+   "logits": {
+    "shape": [
+     2,
+     15
+    ],
+    "f32": "bf117d943e4704103d35bf7dbded26b8bee39740be231e1cbf2f85c7bead30f4bee067c13fbff1e0bee9627bbf0c6cffbeec0c3ebed853353f025e4abe2068acbef6c8e1be3ab09cbe968ced3d165c193f9b09923e44bb5a3eaebc7d3e05d95d3c3902443e2fb78bbde9e923bdd70a2dbdbbd7c7be306f11"
+   },
+   "recurrent": {
+    "lin": [
+     {
+      "num": {
+       "shape": [
+        2,
+        8
+       ],
+       "f32": "3e032a48bc964fdcbf1659aabdb928b2bceef14c3ec484293e55ff243e65282e3e5279cc3ce83bb23e102c423e43e6983e84a265bea285b43eb3abb73e01a12a"
+      },
+      "den": {
+       "shape": [
+        2,
+        8
+       ],
+       "f32": "411b68e9411dab514127a87041130b57411263c74120a33b4113557041230d6441280e3c4127c8cc41274f2e412000ca4124aec3412573f04126c6d341295d23"
+      }
+     },
+     {
+      "num": {
+       "shape": [
+        2,
+        8
+       ],
+       "f32": "be913e443dd802623ec44c0cbdd9f2c33e7f8a7d3f1335bbbe88c2f03ef3f63c3f9e70f0be095223be4975dabe1021023e4e0711bf3ffe7bbf2d4dee3a02fcc1"
+      },
+      "den": {
+       "shape": [
+        2,
+        8
+       ],
+       "f32": "41216e98411cb1884123ad9f411bf59641257c954122969b411b637f412a664c412ab413412d3e9541311c0f41269731412202ea412984d34130efe84124ea85"
+      }
+     }
+    ]
+   }
+  }
+ ]
+}

@@ -1,0 +1,393 @@
+llama.cpp against the keramos suite: findings (first pass, 27 Oct 2026)
+=======================================================================
+
+(Plain text: the authoring harness refused a .md file here. The content is Markdown-shaped.)
+
+llama.cpp is the first engine measured here that was not written against IR_SPEC. It reads the GGUF and
+never the IR document: it builds its own graph from general.architecture and the <arch>.* keys and
+ignores paperkiln.ir. What follows is what the suite (keramos v1.2.1, 92b89f0b) says about it, and why
+each failure happens.
+
+- Engine: llama.cpp tag b6000, commit 4762ad7316dcdec20016ab5985fb46a27902204d, CPU only (Release,
+  GGML_NATIVE off, AVX2, shared libraries), in WSL; 2 threads.
+- Adapter: llamacpp_adapter.cpp, a JSON Lines shim over llama.h (IR_SPEC 11.3); no llama.cpp source is
+  changed. Receipt: ../../conformance/receipts/llamacpp_cpu.json. Probe results (below):
+  probe_b6000.json, from probe.py.
+
+
+RUNNING IT
+----------
+
+From WSL (paths must be the runner's platform, IR_SPEC 11.3):
+
+    LLAMACPP=~/llamacpp_b6000_build OUT=~/lc_keramos bash adapters/llamacpp/build.sh    # about 12 s
+    cd keramos && BIN=~/lc_keramos/llamacpp_adapter OUT=~/lc_keramos bash adapters/llamacpp/run_suite.sh
+
+run_suite.sh runs the suite in five configurations and then probe.py; everything takes under a minute on
+2 threads. The receipt is the "receipt" configuration.
+
+
+WHAT THE ADAPTER DOES
+---------------------
+
+- open: llama_model_load_from_file, llama_init_from_model (n_seq_max 1, n_ctx = the file's
+  context_length, f32 kv cache, flash attention off, swa_full on: llama_context_default_params except
+  the kv type). Skip when llama.cpp has no graph for the architecture ("paperkiln": IR_SPEC 9.1 says no
+  llama.cpp graph computes such a file, so refusing it is correct), with a replacement document (ir),
+  or with evict true.
+- forward: one llama_batch per call, every row an output, positions len .. len + n - 1, sequence 0;
+  logits from llama_get_logits_ith.
+- kv_rows, kv_positions: parsed from llama.cpp's own sequence state (llama_state_seq_get_data; the
+  layout of llama_kv_cache_unified::state_write): the cells held and their positions. One cache holds
+  every layer, so each application reports the same set. Skip for a model with sliding-window layers
+  (a second cache whose layer assignment llama.h does not expose; the suite never asks for these).
+- recurrent: Mamba-1's conv and ssm states parsed from the same state
+  (llama_memory_recurrent::state_write), the conv state transposed from llama.cpp's
+  [d_inner][d_conv - 1] to the IR's [d_conv - 1, d_inner]; slot names "conv" and "ssm" as IR_SPEC 9.3's
+  builder names them.
+- truncate: llama_memory_seq_rm(mem, 0, n, -1); when it refuses (a recurrent state cannot be cut), clear
+  the sequence and re-prefill the first n ids, as IR_SPEC 6.9 prescribes. --rewind-guard adds
+  llama-server's test for a sliding-window cache (finding 4).
+- snapshot, restore: llama_state_seq_get_data / clear + llama_state_seq_set_data, with the ids.
+- dequantize: ggml's to_float for the type.
+- check, run_node, run_node_grad, digest, render_chat, the depth report: skip (llama.cpp has no IR
+  validation, single-node execution, digest, IR template records or depth routing).
+
+Two rewrites, reported in open's "_rewrites" and on stderr:
+- The suite's tokenizer "word" is not a llama.cpp tokenizer, so tokenizer.ggml.model is overridden to
+  "no_vocab" with <arch>.vocab_size (llama_model_kv_override, what --override-kv does). The file on disk
+  is read unchanged; the suite feeds ids, so no tokenizer runs.
+- --alias mistral=llama (on in the receipt): llama.cpp has no architecture "mistral" (not at b6000, not
+  on master in October 2026, which has only "mistral3" and "mistral4"); its converter writes Mistral
+  checkpoints as "llama". The adapter writes a temporary copy with the architecture and the mistral.*
+  keys renamed, tensors untouched. Without it the two tp_mistral cases are skips.
+
+
+RESULTS
+-------
+
+Receipt configuration (f32 kv cache, flash attention off): 23 pass, 15 fail, 332 skip.
+
+  kind      pass fail skip   the skips are
+  model        5    6   10   architecture "paperkiln" (10)
+  trace        8    9   22   architecture "paperkiln" (14, and 4 more that the runner's score_form
+                             fallback reports as "not implemented"); a replacement document (4: the
+                             _recurrence traces)
+  dequant     10    0    0
+  op           0    0   59   single nodes
+  refuse       0    0   83   IR validation
+  accept       0    0   34   IR validation
+  digest       0    0   84   no IR digest
+  grad         0    0    8   single nodes
+  chat         0    0   32   IR template records
+
+Per model and configuration (model case / its traces; P pass, F fail, S skip). Columns: receipt;
+no alias; f16 kv (llama.cpp's default); flash attention with an f32 kv; flash attention with f16 kv.
+
+  tp_qwen3       P/PP   P/PP   F/FF   F/FF   F/FF   f16 only (findings 5, 6)
+  tp_mamba1      P/PPP  same in every configuration   none
+  pk_llama       P/PP   P/PP   P/FF   F/FF   F/FF   f16 only
+  pk_moe         P/P    P/P    P/F    P/F    P/F    f16 only
+  pk_gpt2        P/F    P/F    P/F    P/F    P/F    GELU table (finding 1)
+  tp_gemma3      F/F    in every configuration      GELU table (finding 1)
+  tp_gptneox     F/F    in every configuration      exact GELU computed as tanh (finding 2), and the
+                                                    table; model case greedy 3/4
+  tp_mistral     F/F    S/S    F/F    F/F    F/F    the window ignored (finding 3); greedy 1/4
+  pk_gpt2_swa    F/F    in every configuration      IR-only semantics (finding 7)
+  pk_kimi        F/FF   in every configuration      IR-only semantics (finding 7)
+  pk_recurrence  F/FF   in every configuration      IR-only semantics (finding 7)
+
+Counts: receipt 23/15/332; no alias 23/13/334; f16 kv 17/21/332; flash attention 16/22/332 with either
+cache type.
+
+dequant passes 10/10 bit for bit in every configuration: IR_SPEC 4.7's statement that stored types
+read as ggml b6000's dequantize_row_* holds against ggml itself.
+
+
+HOW EACH FAILURE WAS ATTRIBUTED
+-------------------------------
+
+probe.py runs 16 ids through llama.cpp and compares the logits, per position, with three references
+(error = |a - b| / max(1, max|ref|), the suite's ROUNDING measure, tol 1e-5):
+  (1) the file's own IR document (what the suite checks);
+  (2) the same with every GELU computed as ggml's CPU does it (finding 1);
+  (3) the document tools/gguf_ir.py builds from the GGUF's llama.cpp metadata alone, with ggml's GELU,
+      windows dropped where llama.cpp's graph has none: what llama.cpp's graph is meant to compute.
+
+  model          vs (1)                 vs (2)        vs (3)        reading
+  tp_qwen3       9.0e-7                 9.0e-7        9.0e-7        conforms
+  tp_mamba1      5.1e-7                 5.1e-7        5.1e-7        conforms
+  pk_llama       1.6e-7                 1.6e-7        1.6e-7        conforms
+  pk_moe         2.0e-7                 2.0e-7        (gguf_ir has no experts)  conforms
+  pk_gpt2        3.9e-5                 1.5e-7        1.5e-7        GELU table only
+  tp_gemma3      1.0e-3                 5.9e-7        5.9e-7        GELU table only
+  tp_gptneox     4.8e-4                 5.3e-5 at positions 1 and 14 only, the rest at most 2.7e-7;
+                                        (3) the same    exact GELU computed as the tanh table; the two
+                                                        residual positions are fp16 bucket flips
+  tp_mistral     0.79 from position 4   0.79          4.4e-7 (no window)   llama.cpp computes Mistral
+                 (the window); greedy differs at 7 of 16 positions          without its window
+  pk_gpt2_swa    0.12                   0.12          1.5e-7 (no window, no sinks)  plain gpt2
+  pk_kimi        2.1e-2                 2.1e-2        1.1e-7        softmax gpt2
+  pk_recurrence  2.9e-2                 2.9e-2        1.6e-6        softmax gpt2
+
+Every failure is explained to ROUNDING level by one named cause; nothing unexplained remains.
+
+
+FINDINGS
+--------
+
+Each is classed NUMERICS (llama.cpp computes the same function less precisely than the spec's ROUNDING
+class allows), SEMANTIC (it computes a different function), ADAPTER (a limit of this adapter) or SPEC
+(the keramos text, fixtures or runner).
+
+1. ggml's CPU GELU on f32 goes through an fp16 table (NUMERICS; llama.cpp).
+   With GGML_GELU_FP16 defined (ggml-cpu vec.h, b6000 and master), ggml_vec_gelu_f32 and
+   ggml_vec_geglu_f32 return fp16(gelu_tanh(fp16(x))) from a 64K-entry table for |x| < 10: input and
+   output are both rounded to fp16. Against f32 tanh-GELU the error reaches 3.9e-3 absolute (x near 8)
+   and 4e-3 relative. This alone fails pk_gpt2's trace (3.7e-5 to 8.5e-5), tp_gemma3 (1e-3, greedy
+   kept) and part of tp_gptneox; emulating the table in the reference brings pk_gpt2 and tp_gemma3 to
+   1.5e-7 and 5.9e-7. A table quantises, so a ROUNDING-level difference upstream can move an input
+   across an fp16 rounding midpoint and change its output by a whole fp16 step: tp_gptneox's two
+   positions past tolerance after emulation are this (at position 1 the GELU input nearest a midpoint
+   is 4 f32 ulps from it; at positions without a flip the nearest is 11 to 147 ulps). The same
+   amplification makes llama.cpp's own token-by-token decode of tp_gptneox differ from its prefill by
+   7.6e-5 (finding 8). Not ROUNDING in the spec's sense (a deliberate fp16 approximation, outside tol
+   1e-5 on CPU). Drafted issue 4.
+
+2. GPT-NeoX's GELU is computed as tanh-GELU (SEMANTIC; llama.cpp).
+   Pythia's configs say hidden_act "gelu", which Hugging Face computes exactly (erf). llama.cpp's gptneox
+   graph passes LLM_FFN_GELU (tanh form, through the table of finding 1) on b6000 and still on master,
+   though LLM_FFN_GELU_ERF (ggml_gelu_erf) exists. tanh-GELU differs from erf-GELU by up to 4.7e-4
+   (x near 2.7). The model case's greedy continuation differs on 1 of 4 prompts (log-prob error
+   1.2e-4). The suite's IR uses exact GELU here on purpose (tools/gguf_ir.py mirrors llama.cpp's graph
+   except where llama.cpp approximates the trained model). Drafted issue 3.
+
+3. Mistral's sliding window is not applied (SEMANTIC; llama.cpp, long known).
+   llama.cpp has no "mistral" architecture; its converter writes Mistral as "llama" and drops
+   sliding_window, and the llama graph has no window. Loaded as llama, tp_mistral (window 4) matches
+   the windowless graph to 4.4e-7 and departs from the file's IR exactly at position 4: error 0.27 to
+   0.79, greedy different at 7 of 16 positions, model case greedy 1/4. This changes outputs only beyond
+   the window (4096 for Mistral 7B v0.1; later Mistral checkpoints dropped the window). No issue
+   drafted. The fixture's own label is a spec point (K3).
+
+4. A rewind into a sliding window silently loses rows (SEMANTIC; llama.cpp library API).
+   With swa_full = false (common's default, so llama-cli and llama-server run this way; the library's
+   llama_context_default_params has true), an iSWA model's windowed cache holds
+   GGML_PAD(n_swa + n_ubatch, 32) cells and reuses the cells of masked positions. On tp_gemma3
+   (window 4) with n_ubatch 4 (32 cells): prefill 48 ids, llama_memory_seq_rm(mem, 0, 10, -1) returns
+   TRUE, and the next 4 tokens are computed without the rows of positions 7 to 9, which the cache had
+   overwritten: error 1.22 against the reference, 2.82 absolute against a fresh prefill of the same 14
+   ids in llama.cpp, the greedy token different at all 4 positions. A rewind to 40 (rows still held) is
+   bit-identical to a fresh prefill, and with swa_full true both rewinds are. llama-server guards
+   against this (it compares llama_memory_seq_pos_min with n_past - n_swa before cutting and
+   re-processes the prompt); with that guard in the adapter (--rewind-guard) the rewind to 10 is
+   bit-identical to a fresh prefill. Library callers that use llama_memory_seq_rm as llama.h documents
+   it ("Returns false if a partial sequence cannot be removed") get no signal: on master
+   llama_kv_cache::seq_rm still returns true on every path. IR_SPEC 6.9 requires the state a fresh run
+   over the first n tokens leaves, so this is a llama.cpp deviation; but the spec does not spell out the
+   windowed case and the suite has no trace for it (K2). Drafted issue 2.
+
+5. Flash attention casts an f32 kv cache to f16 (NUMERICS; llama.cpp).
+   build_attn_mha (src/llama-graph.cpp, b6000 line 1167; unchanged on master) casts k and v to f16
+   whenever flash attention is on and they are f32, under the comment "this can happen when KV cache is
+   not used (e.g. an embedding model with non-causal attn)". It also fires when the user asked for an
+   f32 cache: the flash-attention runs with an f32 cache give the same values as with an f16 cache in
+   every case, and fail tp_qwen3 (6.9e-4), pk_llama (1.5e-4) and pk_moe. Drafted issue 1.
+
+6. llama.cpp's default f16 kv cache (NUMERICS; by configuration, not a defect).
+   With type_k = type_v = f16 (the library default), every attention model fails at 1e-5 (tp_qwen3
+   6.4e-4, pk_llama 8.3e-5, tp_gemma3 1.7e-3); greedy is kept everywhere except where findings 2, 3 and
+   7 already change it. A documented storage choice; the receipt uses an f32 cache so that the suite
+   measures the graph.
+
+7. IR-only models labelled with a llama.cpp architecture are computed as something else, silently
+   (SPEC). pk_gpt2_swa (window 4, sinks 2), pk_kimi (linear attention) and pk_recurrence (a recurrence
+   node) carry general.architecture = "gpt2" and the gpt2 tensor set. llama.cpp loads them and computes
+   plain softmax gpt2: they match gguf_ir.py's gpt2 graph to 1.5e-7, 1.1e-7 and 1.6e-6 and miss their
+   own IR by 0.12, 2.1e-2 and 2.9e-2 (greedy kept on these short prompts, which is chance). The kimi
+   and recurrence traces fail on a missing recurrent slot (the runner's KeyError 'lin' / 'rec'):
+   llama.cpp holds no such state. llama.cpp is doing what the file's metadata asks; the file is at
+   fault. IR_SPEC 9.2 says so for kimi ("llama.cpp loads it but computes softmax attention, so only the
+   IR reproduces the model"), which contradicts 9.1 ("paperkiln" is the architecture of a file no
+   llama.cpp graph computes). See K1.
+
+8. Prefill, chunks and decode inside llama.cpp (conforms; informative).
+   One prefill of 16 ids and chunks 5 + 6 + 5 are bit-identical for every model; two identical runs are
+   bit-identical. Token-by-token decode is not bit-identical to prefill for any model (single-row matrix
+   products take another kernel): within 3.6e-6 everywhere except tp_gptneox (7.6e-5: the GELU table
+   turns a ROUNDING difference into a bucket flip, finding 1). IR_SPEC 4.5 allows this: whole-model
+   prefill = decode is bit for bit only in an engine whose every upstream reduction is independent of T.
+   The Mamba-1 state after prefill matches the reference within ROUNDING (the suite's decode, snapshot
+   and truncate traces pass) and is not bit-identical between prefill and decode because its inputs are
+   not (4.5's "same inputs" condition).
+
+9. Snapshot and restore (conforms).
+   llama_state_seq_get_data / set_data restore every model so that the next 4 tokens are bit-identical
+   to the first time, except tp_gemma3 (85 of 96 values differ, at most 7.2e-7): restored cells land at
+   other indices of the iSWA caches, so attention sums in another order. ROUNDING; the suite's restore
+   traces check ROUNDING.
+
+10. Truncating a recurrent state (conforms).
+   llama_memory_seq_rm refuses to cut Mamba's state at an earlier position (returns false); the adapter
+   re-prefills the first n ids, which IR_SPEC 6.9 names as the way, and tp_mamba1_truncate passes.
+   Non-windowed attention models truncate in place and match a fresh prefill bit for bit.
+
+Adapter limits (none changes a verdict above): the kv reports of an iSWA model are skipped (the suite
+never asks); the tokenizer override and the mistral alias are rewrites of metadata only; llama.cpp's
+per-layer kv rows are reported from one shared cell set, which is what its unified cache holds.
+
+
+FOR THE KERAMOS MAINTAINER (spec, fixtures, runner)
+---------------------------------------------------
+
+Nothing here edits IR_SPEC.md; these are for the main session to decide.
+
+K1. 9.1 against 9.2 on the architecture of IR-only files. 9.1 says "paperkiln" is the GGUF architecture
+    of a file no llama.cpp graph computes; 9.2 exports kimi, recurrence, gpt2_swa and plain flex with
+    the gpt2 flavour as gpt2, which llama.cpp (and Ollama, LM Studio and every llama.cpp front end)
+    loads and computes as a different model without a warning (finding 7). Either write "paperkiln" for
+    every file whose semantics only the IR carries (llama.cpp then refuses it, as it does the other pk_
+    files), or keep gpt2 for tensor compatibility and say in 9.2 and Appendix C that llama.cpp front
+    ends silently misread such files. The first is the safer default for files that leave the
+    workspace.
+
+K2. 6.9 has no windowed-kv bullet, and the suite has no rewind into a window. 6.9's per-slot list covers
+    kv with every row kept, evict turn_state, kv_rows active and recurrent; a windowed slot is governed
+    only by the general sentence. An engine that frees rows outside the window (llama.cpp with swa_full
+    false, any ring-buffer cache) must re-prefill when a truncate lands where the next token reads freed
+    rows, as 6.9 already requires under turn_state eviction. Suggested: a bullet ("kv with a window:
+    keep the rows of positions < n; an engine that dropped rows the next token reads re-prefills them")
+    and a trace on tp_gemma3 (or a windowed llama-architecture model) with a prefill of at least
+    window + 32 ids (more than llama.cpp's smallest windowed cache), a truncate well inside it and a
+    forward with logits. The reference and llama.cpp at its library defaults pass it; llama.cpp with
+    swa_full false fails it.
+
+K3. tp_mistral's architecture, and 9.3's sentence about it. 9.3 and gguf_ir.py say of mistral
+    "llama.cpp b6000 ignores it" (the window). b6000 does more: it refuses the file, because "mistral"
+    is not one of its architectures (nor master's). A converted Mistral is general.architecture "llama"
+    without the window key. Either keep the fixture (it tests an IR builder, not llama.cpp) and change
+    the sentence to "llama.cpp has no mistral architecture; its converter writes llama and drops the
+    window, so llama.cpp computes it without one", or add a fixture written as llama.cpp would see it.
+
+K4. Runner messages. (a) A recurrent report without a slot the trace expects ends in KeyError 'lin'
+    (_run_trace_sessions indexes got["recurrent"][slot]); "recurrent slot lin not reported" would say
+    what happened. (b) run_trace falls back to score_form on a skip and reports the base Adapter.score's
+    empty NotImplementedError as "not implemented", losing the engine's own skip reason (4 traces here).
+
+K5. Appendix C. A llama.cpp row would read: CPU path ROUNDING except GELU (fp16 table, outside tol);
+    f16 attention under flash attention whatever the cache type; no windows on llama or mistral; exact
+    GELU computed as tanh on gptneox; windowed rewind safe only with swa_full or the server's guard.
+
+
+DRAFTED UPSTREAM ISSUES (NOT FILED)
+-----------------------------------
+
+Posting is Jonathan's decision. Before any is filed: search the tracker for duplicates (none found by a
+web search on 27 Oct 2026; PR #12825 added the cast of issue 1 for embeddings; PRs #13194, #13833,
+#13970 and #14163 built the SWA cache and the server's guard of issue 2), reproduce on current master
+with a real checkpoint, and drop the keramos context where it does not help a llama.cpp reader.
+
+Issue 1. CPU flash attention silently casts an f32 KV cache to f16
+
+  Summary. With -fa on and -ctk f32 -ctv f32 (or type_k = type_v = GGML_TYPE_F32 in
+  llama_context_params), build_attn_mha casts K and V to F16 before ggml_flash_attn_ext
+  (src/llama-graph.cpp, the block commented "this can happen when KV cache is not used (e.g. an
+  embedding model with non-causal attn)"). The cast also runs when a KV cache is used and the user asked
+  for f32, so the f32 cache gives f16-precision attention.
+  Reproduction. Any model, CPU. Run the same prompt four ways and dump the logits of every position
+  (llama_get_logits_ith after llama_decode with all outputs): fa off / f32 cache, fa off / f16 cache,
+  fa on / f32 cache, fa on / f16 cache.
+  Expected. fa on with an f32 cache within float32 rounding of fa off with an f32 cache.
+  Actual. fa on with an f32 cache gives the same logits as fa on with an f16 cache. On a 2-layer
+  Qwen3-shaped model (d 16, 4 heads / 2 kv heads) the logits differ from an f32 reference by 6.9e-4
+  (relative to max |logit|), against 9e-7 with fa off.
+  Suggested fix. Cast only when K/V are not a cache view (the embedding case the comment names), or
+  support f32 K/V in the CPU flash-attention kernel (its V path already handles f32), or warn about the
+  f32 cache type with fa on.
+
+Issue 2. llama_memory_seq_rm returns true after the SWA cache has dropped rows the next token needs
+
+  Summary. With swa_full = false (common's default), the SWA cache of an iSWA model (Gemma 2/3,
+  Cohere2, ...) holds n_swa + n_ubatch cells and reuses the cells of masked positions. After a long
+  prefill, llama_memory_seq_rm(mem, seq, p, -1) to a point p well inside the prompt returns true, but
+  the cells for positions p - n_swa + 1 .. p - 1 are gone; the next llama_decode attends without them
+  and returns wrong logits with no error. llama-server avoids this by comparing
+  llama_memory_seq_pos_min with n_past - n_swa before cutting and re-processing the prompt; library
+  users following llama.h ("Returns false if a partial sequence cannot be removed") get no signal.
+  Reproduction. A Gemma 3 GGUF, swa_full = false, n_ubatch = 512, one sequence:
+    1. decode a prompt longer than n_swa + n_ubatch tokens;
+    2. llama_memory_seq_rm(mem, 0, p, -1) with p small (returns true);
+    3. decode tokens p .. p + 3 again (the same ids), outputs on;
+    4. compare with a fresh context that decodes tokens 0 .. p + 3.
+  Expected. Either step 2 returns false (as llama_memory_recurrent::seq_rm does when it cannot cut), or
+  step 3 equals step 4.
+  Actual. Step 2 returns true and step 3's logits differ from step 4's. On a 6-layer Gemma3-shaped
+  model with n_swa = 4 and n_ubatch = 4 (a 32-cell window cache): prefill 48, cut to 10, decode 4: max
+  absolute logit difference 2.82, argmax different at all 4 positions; a cut to 40 is bit-identical.
+  With swa_full = true both cuts are bit-identical.
+  Suggested fix. Have the iSWA seq_rm return false when the window cache no longer holds the rows
+  position p reads (the server's own test), or document the seq_pos_min check in llama.h next to
+  llama_memory_seq_rm.
+
+Issue 3. GPT-NeoX graph uses tanh GELU; Pythia and GPT-NeoX use exact (erf) GELU
+
+  Summary. The gptneox graph passes LLM_FFN_GELU (tanh approximation) to build_ffn in both residual
+  branches. The GPT-NeoX/Pythia configs set hidden_act "gelu", which transformers computes with erf.
+  LLM_FFN_GELU_ERF exists and is used by other graphs.
+  Reproduction. Convert a Pythia checkpoint; compare llama.cpp's logits (f32 weights, f32 cache) with
+  transformers' in float32 on any prompt.
+  Expected. Agreement within float32 rounding (apart from the table of issue 4).
+  Actual. The activation differs by up to 4.7e-4 (x near 2.7); on a 2-layer Pythia-shaped model the
+  logits differ by 4.8e-4 relative and one of four greedy continuations changes.
+  Suggested fix. LLM_FFN_GELU_ERF in the gptneox graph, or read the activation from the GGUF where the
+  converter can record it.
+
+Issue 4. f32 GELU on the CPU goes through an fp16 lookup table
+
+  Summary. GGML_GELU_FP16 is defined in ggml/src/ggml-cpu/vec.h, so ggml_vec_gelu_f32 and
+  ggml_vec_geglu_f32 compute fp16(gelu(fp16(x))) by table for |x| < 10, on f32 tensors. Input and output
+  are rounded to fp16: up to 3.9e-3 absolute error (x near 8) and about 4e-3 relative, some 1e4 times
+  float32 rounding. On Gemma3- and GPT-2-shaped test models this alone moves the logits by 1e-3 and
+  4e-5 relative; matching the table in a reference brings both to 6e-7 or less.
+  Reproduction. ggml_gelu on an f32 tensor of values in [-10, 10] against
+  0.5f*x*(1 + tanhf(sqrtf(2/pi)*x*(1 + 0.044715f*x*x))) per element. (test-backend-ops compares backends
+  with each other, not against f32 arithmetic, so it does not see this.)
+  Expected. An f32 op within a few ulps of the f32 formula, as SiLU and softmax are.
+  Actual. Errors of fp16 size.
+  Suggested fix. Compute GELU in f32 (the #else branch already exists), or keep the table for f16
+  tensors only; if the table stays for speed, document its precision.
+
+
+WHAT THE NEXT ENGINE NEEDS (HF transformers, ONNX Runtime GenAI, vLLM)
+---------------------------------------------------------------------
+
+Common to all three:
+- The suite's models in their format. The tp_ fixtures are llama.cpp-style GGUFs with random F32
+  weights and a "word" tokenizer. transformers reads some GGUF architectures (from_pretrained(...,
+  gguf_file=...), dequantising to torch), but its GGUF tokenizer conversion will not accept "word"; ORT
+  GenAI's model builder and vLLM want HF checkpoints. A small exporter, GGUF to safetensors plus
+  config.json per tp_ family (undoing llama.cpp's q/k permutation for the llama family, Gemma's 1 + w
+  norm weights, GPT-NeoX's de-interleaved qkv), is the shared piece; each engine's verdicts then measure
+  the engine, not the export, provided the rewrite is stated in the receipt as this one's are.
+- Slot names. Engines do not name state after IR slots; adapters map their cache objects to "kv",
+  "conv", "ssm" by IR_SPEC 9.3, as this one does.
+- Skips by design. check, run_node, digest and render_chat will be skips for all three, as here. The
+  model and trace kinds on llama.cpp-architecture files (11 models, 17 traces) are what they measure.
+
+Per engine:
+- HF transformers (an in-process Python adapter, ir_conformance.main(adapters=...)): forward with
+  past_key_values gives prefill against decode; truncate via DynamicCache.crop; snapshot by copying the
+  cache; kv positions from the cache's length per layer. Mistral's window and Gemma 3's local layers are
+  applied in the mask, so finding 3 should not recur; Pythia uses erf GELU. Worth running in float32
+  with sdpa against eager: "The Illusion of Equivalence" (2604.15409) measured cache-on/off drift there
+  in FP16 only. Mamba via MambaCache (recurrent report from its conv and ssm states). CPU only.
+- ONNX Runtime GenAI: models through its builder from the HF export above; Generator.append_tokens and
+  get_output("logits") give forward; rewind_to gives truncate; no snapshot (skip). Its
+  GroupQueryAttention keeps a sliding window in a fixed buffer, so the K2 trace is the interesting one
+  there. Mamba is likely unsupported (skips).
+- vLLM (the optional L4 leg): returns log-probabilities of the top tokens, not full logits, so the
+  adapter either asks for full-vocabulary logprobs (feasible at vocab 24) or adds a logits processor
+  that copies the row; prefix caching gives truncate only implicitly, and there is no per-session
+  snapshot (skips). Its GGUF loader covers llama, qwen, gemma and others; its batch-invariant mode
+  decides whether prefill = decode can be bit-identical there. Run through a runner_multi entry in
+  scripts/colab_driver.json with a $3 cap, after the CPU legs.

@@ -226,6 +226,11 @@ struct Gpt2ExportConfig {
     // place in the 4-bit variants). Empty (the default) writes neither.
     std::string chat_template, chat_template_jinja;
     std::string ir;  // written as paperkiln.ir / paperkiln.ir_version when non-empty
+    // general.architecture, and the prefix of the hyperparameter keys: "gpt2" when the IR is llama.cpp's
+    // gpt2 graph, "paperkiln" when the tensors are gpt2's but only the IR states the model (a window and
+    // sinks, linear attention, a recurrence, no skip connections: keramos IR_SPEC 3.1, rule 38, revision
+    // 1.3). "paperkiln" needs the IR.
+    std::string architecture = "gpt2";
 };
 
 // Export a GPT-2 state_dict (HF GPT-2 names; every 2-D projection in the
@@ -243,8 +248,9 @@ struct Gpt2ExportConfig {
 //   ln_f.{weight,bias}                   -> output_norm.{weight,bias}
 //   lm_head.weight [d, vocab]            -> output.weight ne={d, vocab} (omitted if
 //                                           absent: llama.cpp then ties to token_embd)
-// with general.architecture = "gpt2" and gpt2.{context_length,
-// embedding_length, block_count, feed_forward_length, attention.head_count,
+// with general.architecture = cfg.architecture ("gpt2", or "paperkiln" for a
+// model only its IR states) and <arch>.{context_length, embedding_length,
+// block_count, feed_forward_length, attention.head_count,
 // attention.layer_norm_epsilon, vocab_size}. A leading "transformer." is
 // optional on every key. Every shape is checked against the config; keys
 // outside the map go to `unmapped` if given. F32 only.

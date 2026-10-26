@@ -13,6 +13,8 @@ Every op computes in f32 (IR_SPEC.md sections 5 to 7). Notes on some of them:
   expr        a runtime-defined op, evaluated by tools/ir_expr.py.
 For third-party graphs:
   attention   kv_heads < heads (grouped-query): query head h reads kv head h // (heads // kv_heads).
+              position_bias {weight, buckets} (revision 1.3; T5's relative bias): each head adds
+              W[buckets[min(p - j, D - 1)], h] to its scaled score (W [B, heads]; p, j the positions).
   rope        pairing "neox": the pair (x[j], x[j + n_rot/2]) within a head (llama.cpp NEOX, HF
               rotate_half), "interleaved" the adjacent pair (x[2j], x[2j+1]); n_rot (default
               head_dim) rotates only a head's first n_rot dims (partial rotary); the angle is
@@ -370,9 +372,20 @@ def run_nodes(nodes, env, W, i=None, no_window=False, wi=None, states=None):
             win = 0 if no_window else nd["window"]
             if win:
                 mask |= (j >= nd["sinks"]) & (j < p - win + 1)
+            pb = nd.get("position_bias")
+            if pb:  # IR_SPEC 5.15 (revision 1.3): W[buckets[min(p - j, D - 1)], h], p and j the rows' positions
+                bk = np.asarray(pb["buckets"], dtype=np.int64)
+                tab = w(pb["weight"])
+                _width(tab.ndim == 2 and tab.shape[1] == H and tab.shape[0] > int(bk.max()), "5.15",
+                       f"position_bias {pb['weight']} has shape {list(tab.shape)}, not [B, heads {H}] with B > "
+                       f"every bucket")
+                ps = np.asarray(env["pos"], dtype=np.int64) if "pos" in env else np.arange(T)
+                b_of = bk[np.clip(ps[:, None] - ps[None, :], 0, len(bk) - 1)]
             for h in range(H):
                 kh = h // (H // KV)
                 s = (q[:, h * hd:(h + 1) * hd] @ k[:, kh * hd:(kh + 1) * hd].T) * np.float32(nd["scale"])
+                if pb:
+                    s = (s + tab[b_of, h]).astype(np.float32)
                 s[mask] = -np.inf
                 s = np.exp(s - s.max(axis=1, keepdims=True))
                 s /= s.sum(axis=1, keepdims=True)

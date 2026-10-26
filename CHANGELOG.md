@@ -7,6 +7,17 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **keramos v1.3.0 pinned** (27 Oct; `spec/`, LOCAL_LLM_STACK.md section 11 item 8).
+  - Exports follow rule 38 (IR_SPEC 3.1): a file names a llama.cpp architecture only when its IR is that
+    architecture's graph. gpt2_swa (windowed gpt2 and windowed gpt2-flavour flex), kimi, recurrence and plain
+    flex keep gpt2's tensors but are written with `general.architecture = "paperkiln"` and `paperkiln.*` keys
+    (`Gpt2ExportConfig::architecture`), so llama.cpp refuses them instead of computing softmax gpt2; dense gpt2
+    stays gpt2. The export event's `arch` says which. Earlier files: keramos's `tools/gguf_relabel.py` (the
+    200 stored documents and GGUFs of `tools/ir_corpus.py` pass rule 38 as they are).
+  - T5's relative bias exports: flex `position: "t5_relative"` writes keramos 1.3's `attention.position_bias`
+    {weight `rel_pos_bias.weight`, buckets}; the `PAPERKILN_IR_UNRATIFIED` gate and the patched numpy lines are
+    gone (`tests/test_flex_ir.py` checks the file with keramos's validator and reference). The arXiv chain
+    still refuses `t5_bias` until ember runs `position_bias`. Recipe `pk_flex_t5` for the suite's model case.
 - **The fused LM head + cross-entropy, `train.fused_head`** (26 Oct; LOCAL_LLM_STACK.md section 11 item 5.1;
   off by default, and off is the step as before).
   - `ops::linear_cross_entropy(h, W, layout, bias, targets, mask, upstream, chunk_rows)`: the mean NLL of

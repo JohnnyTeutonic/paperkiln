@@ -261,6 +261,11 @@
                      "causal": {"anyOf": [{"type": "boolean"}, {"$ref": "#/$defs/per_layer"}]},
                      "window": {"$ref": "#/$defs/int_or_layers"}, "sinks": {"$ref": "#/$defs/int_or_layers"},
                      "mask": {"anyOf": [{"enum": ["causal", "turn_state"]}, {"$ref": "#/$defs/per_layer"}]},
+                     "position_bias": {"type": "object", "required": ["weight", "buckets"],
+                                       "properties": {"weight": {"$ref": "#/$defs/name"},
+                                                      "buckets": {"type": "array", "minItems": 1,
+                                                                  "items": {"$ref": "#/$defs/nonneg"}}},
+                                       "patternProperties": {"^_": true}, "additionalProperties": false},
                      "softmax": {"type": "string"}},
       "patternProperties": {"^_": true}, "additionalProperties": false
     },

@@ -515,9 +515,9 @@ def test_norm_placements_per_sublayer():
     assert fam == "flex" and arch["custom"]["norm_placement"] == "sandwich"
 
 
-def test_t5_relative_bias_refused_until_keramos_has_it():
+def test_t5_relative_bias_refused_until_ember_runs_it():
     ext = ext_with(norm="layernorm", activation="relu", positional="t5_bias")
-    with pytest.raises(A.Refused, match="t5_bias.*keramos v1.2.0 has no IR op"):
+    with pytest.raises(A.Refused, match="t5_bias.*ember does not run position_bias yet"):
         A.build_spec(ext, SIZE)
 
 

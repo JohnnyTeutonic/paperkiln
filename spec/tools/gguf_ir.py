@@ -10,8 +10,13 @@ where llama.cpp approximates):
                   query attention, SwiGLU; output.weight or the tied token_embd.weight. With
                   <arch>.attention.sliding_window = w the attention and its kv state get window w
                   (sinks 0: key j visible from query p iff p - w < j <= p, HF Mistral's mask).
-                  llama.cpp b6000 ignores the key on these graphs, and its convert does not write
-                  it for Mistral (a writer that keeps HF's sliding_window must add it).
+                  llama.cpp has no architecture "mistral" (b6000 and later refuse it): its convert
+                  writes Mistral checkpoints as "llama" without the window key, and its llama graph
+                  has no window, so llama.cpp computes such a file without one (a writer that keeps
+                  HF's sliding_window must add the key). llama with <arch>.expert_count and
+                  ffn_gate_inp (Mixtral's layout): moe_ffn in place of the SwiGLU (softmax router,
+                  top expert_used_count, gates renormalised over them, SiLU experts; llama.cpp's
+                  llama graph).
   qwen2           llama + q/k/v biases; NEOX (half-split) RoPE. No window (the GGUF does not say
                   which layers HF's use_sliding_window would cover; Qwen2 checkpoints leave it off).
   qwen3           qwen2 without the biases, with a per-head RMSNorm on q and k before RoPE
@@ -41,6 +46,7 @@ from __future__ import annotations
 
 import json
 import math
+import struct
 import sys
 
 IR_VERSION = 1  # IR_SPEC.md section 2.3
@@ -67,9 +73,17 @@ def read_meta(path):
 
 
 def f32(v):
-    """The value a float32 holds, as the shortest decimal that round-trips (ir::f32's convention)."""
-    import numpy as np
-    return float(str(np.float32(v)))  # str: numpy 2's repr is "np.float32(...)"
+    """The value a float32 holds, as the shortest decimal that round-trips (ir::f32's convention). Standard
+    library only (tools/ir_validate.py builds graphs for rule 38): the correctly rounded decimal of the fewest
+    digits that reads back as the same float32, which is numpy's str(np.float32(v))."""
+    x = struct.unpack("<f", struct.pack("<f", float(v)))[0]
+    if x != x or x in (float("inf"), float("-inf")):
+        return x
+    for p in range(1, 10):
+        d = float("%.*g" % (p, x))
+        if struct.unpack("<f", struct.pack("<f", d))[0] == x:
+            return d
+    return x
 
 
 def linear(x, weight, out, bias=None, tied_to=None):
@@ -200,13 +214,22 @@ def llama_like(m):
         linear("a", B + "attn_output.weight", "o"),
         op("add", ["x", "o"], "x"),
         rmsnorm("x", B + "ffn_norm.weight", eps, "h2"),
-        linear("h2", B + "ffn_gate.weight", "g"),
-        linear("h2", B + "ffn_up.weight", "u"),
-        op("silu", ["g"], "g"),
-        op("mul", ["g", "u"], "gu"),
-        linear("gu", B + "ffn_down.weight", "f"),
-        op("add", ["x", "f"], "x"),
     ]
+    if arch == "llama" and m.opt("expert_count") and "blk.0.ffn_gate_inp.weight" in m.shapes:
+        nodes.append(op("moe_ffn", ["h2"], "f", router=B + "ffn_gate_inp.weight",
+                        experts={"gate": B + "ffn_gate_exps.weight", "up": B + "ffn_up_exps.weight",
+                                 "down": B + "ffn_down_exps.weight"},
+                        n_experts=int(m.get("expert_count")), top_k=int(m.get("expert_used_count")),
+                        gate_norm="renorm", activation="silu"))
+    else:
+        nodes += [
+            linear("h2", B + "ffn_gate.weight", "g"),
+            linear("h2", B + "ffn_up.weight", "u"),
+            op("silu", ["g"], "g"),
+            op("mul", ["g", "u"], "gu"),
+            linear("gu", B + "ffn_down.weight", "f"),
+        ]
+    nodes.append(op("add", ["x", "f"], "x"))
     head = tied_head(m, [rmsnorm("x", "output_norm.weight", eps, "h")])
     return document(m, EMBED, [kv_state(H, KV, hd, ctx, window)], nodes, head, ctx)
 

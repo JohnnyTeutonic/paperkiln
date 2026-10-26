@@ -1,0 +1,2336 @@
+{
+ "spec": {
+  "repository": "keramos",
+  "tag": "v1.2.1",
+  "commit": "92b89f0baab12589f6eae548181c5d6c5e5b333f",
+  "suite_at": "d38da54357399e36c7f9b757d48c6e158d9eaff5"
+ },
+ "engine": {
+  "name": "Hugging Face transformers 5.20.2 with torch 2.14.1+cpu, float32, CPU (2 threads), sdpa attention (transformers' default), through keramos/adapters/hf/hf_adapter.py (an in-process adapter; each GGUF exported to an HF checkpoint by adapters/common/gguf_to_hf.py v1 and loaded with AutoModelForCausalLM.from_pretrained; transformers never reads the IR document)",
+  "environment": "CPython 3.12.3, numpy 2.5.4, safetensors 0.8.0, WSL2 (Ubuntu 24.04), venv on ext4 (adapters/hf/requirements.txt)",
+  "run": "python adapters/hf/hf_adapter.py --adapter hf, in a clean clone of keramos at d38da543 (v1.2.1, 92b89f0b, plus adapters/llamacpp; the suite unchanged) with adapters/common and adapters/hf added, 2026-10-27. Settings: positions from the cache (the caller passes only the cache), truncate by Cache.crop with re-prefill where transformers refuses the crop (sliding layers past their window, Mamba's recurrent layers; IR_SPEC 6.9), snapshot by copy.deepcopy of the cache. Export rewrites (exact, tested: adapters/common/test_gguf_to_hf.py): q/k rows un-permuted (llama, mistral), GPT-NeoX qkv re-interleaved, Gemma norm weights s - 1, GPT-2 Conv1D transposes, Mamba A_log with -exp(A_log) = ssm_a bit for bit in all but 42 of 512 values (one ulp off: float32 exp does not reach them). Eager attention and explicit position_ids give the same 18/2/350. Skips: architecture 'paperkiln' (28: model 10, trace 18, 4 of them 'not implemented' through the runner's score_form fallback), files whose document says more than their gpt2 architecture (pk_gpt2_swa, pk_kimi, pk_recurrence: 8), a replacement document (4), IR validation (refuse 83, accept 34), single nodes (op 59, grad 8), digest (84), render_chat (32), dequantize (10: transformers dequantises GGUF through gguf-py). Both FAILs are one transformers defect (Mamba's multi-token forward over a cache restarts the scan from zero), classified in adapters/hf/FINDINGS.txt."
+ },
+ "adapter": {
+  "engine": "transformers",
+  "version": "transformers 5.20.2, torch 2.14.1+cpu",
+  "backend": "cpu",
+  "exact": false,
+  "profiles": [
+   "core",
+   "state",
+   "thirdparty"
+  ],
+  "settings": {
+   "attn_implementation": "sdpa",
+   "positions": "implicit",
+   "dtype": "float32",
+   "threads": 2,
+   "truncate": "crop",
+   "loader": "export",
+   "exporter": "adapters/common/gguf_to_hf.py v1"
+  },
+  "methods": [
+   "hello",
+   "open",
+   "forward",
+   "truncate",
+   "snapshot",
+   "restore",
+   "close"
+  ]
+ },
+ "counts": {
+  "PASS": 18,
+  "FAIL": 2,
+  "SKIP": 350,
+  "XFAIL": 0,
+  "XPASS": 0
+ },
+ "by_kind": {
+  "model": {
+   "PASS": 8,
+   "FAIL": 0,
+   "SKIP": 13,
+   "XFAIL": 0,
+   "XPASS": 0
+  },
+  "trace": {
+   "PASS": 10,
+   "FAIL": 2,
+   "SKIP": 27,
+   "XFAIL": 0,
+   "XPASS": 0
+  },
+  "op": {
+   "PASS": 0,
+   "FAIL": 0,
+   "SKIP": 59,
+   "XFAIL": 0,
+   "XPASS": 0
+  },
+  "refuse": {
+   "PASS": 0,
+   "FAIL": 0,
+   "SKIP": 83,
+   "XFAIL": 0,
+   "XPASS": 0
+  },
+  "digest": {
+   "PASS": 0,
+   "FAIL": 0,
+   "SKIP": 84,
+   "XFAIL": 0,
+   "XPASS": 0
+  },
+  "dequant": {
+   "PASS": 0,
+   "FAIL": 0,
+   "SKIP": 10,
+   "XFAIL": 0,
+   "XPASS": 0
+  },
+  "grad": {
+   "PASS": 0,
+   "FAIL": 0,
+   "SKIP": 8,
+   "XFAIL": 0,
+   "XPASS": 0
+  },
+  "accept": {
+   "PASS": 0,
+   "FAIL": 0,
+   "SKIP": 34,
+   "XFAIL": 0,
+   "XPASS": 0
+  },
+  "chat": {
+   "PASS": 0,
+   "FAIL": 0,
+   "SKIP": 32,
+   "XFAIL": 0,
+   "XPASS": 0
+  }
+ },
+ "results": [
+  {
+   "id": "model/pk_attnres",
+   "kind": "model",
+   "verdict": "SKIP",
+   "detail": "general.architecture 'paperkiln': no transformers class (IR_SPEC 9.1: a file no llama.cpp-architecture graph computes)"
+  },
+  {
+   "id": "trace/pk_attnres_decode",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "general.architecture 'paperkiln': no transformers class (IR_SPEC 9.1: a file no llama.cpp-architecture graph computes)"
+  },
+  {
+   "id": "model/pk_flex_expr",
+   "kind": "model",
+   "verdict": "SKIP",
+   "detail": "general.architecture 'paperkiln': no transformers class (IR_SPEC 9.1: a file no llama.cpp-architecture graph computes)"
+  },
+  {
+   "id": "trace/pk_flex_expr_decode",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "general.architecture 'paperkiln': no transformers class (IR_SPEC 9.1: a file no llama.cpp-architecture graph computes)"
+  },
+  {
+   "id": "model/pk_flex_highway",
+   "kind": "model",
+   "verdict": "SKIP",
+   "detail": "general.architecture 'paperkiln': no transformers class (IR_SPEC 9.1: a file no llama.cpp-architecture graph computes)"
+  },
+  {
+   "id": "trace/pk_flex_highway_decode",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "general.architecture 'paperkiln': no transformers class (IR_SPEC 9.1: a file no llama.cpp-architecture graph computes)"
+  },
+  {
+   "id": "model/pk_gpt2",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 1.04e-07; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_gpt2_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "model/pk_gpt2_swa",
+   "kind": "model",
+   "verdict": "SKIP",
+   "detail": "IR-only semantics: attention sinks 2 (no gpt2 configuration in transformers has sinks); transformers would compute plain gpt2 (llama.cpp FINDINGS 7, K1)"
+  },
+  {
+   "id": "trace/pk_gpt2_swa_decode",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "IR-only semantics: attention sinks 2 (no gpt2 configuration in transformers has sinks); transformers would compute plain gpt2 (llama.cpp FINDINGS 7, K1)"
+  },
+  {
+   "id": "model/pk_kimi",
+   "kind": "model",
+   "verdict": "SKIP",
+   "detail": "IR-only semantics: its document has linear_attention, which no gpt2 configuration in transformers carries; transformers would compute plain gpt2 (llama.cpp FINDINGS 7, K1)"
+  },
+  {
+   "id": "trace/pk_kimi_decode",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "IR-only semantics: its document has linear_attention, which no gpt2 configuration in transformers carries; transformers would compute plain gpt2 (llama.cpp FINDINGS 7, K1)"
+  },
+  {
+   "id": "trace/pk_kimi_snapshot",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "IR-only semantics: its document has linear_attention, which no gpt2 configuration in transformers carries; transformers would compute plain gpt2 (llama.cpp FINDINGS 7, K1)"
+  },
+  {
+   "id": "model/pk_llama",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 9.25e-08; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_llama_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "trace/pk_llama_truncate",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "3 steps"
+  },
+  {
+   "id": "model/pk_llama_attnres",
+   "kind": "model",
+   "verdict": "SKIP",
+   "detail": "general.architecture 'paperkiln': no transformers class (IR_SPEC 9.1: a file no llama.cpp-architecture graph computes)"
+  },
+  {
+   "id": "trace/pk_llama_attnres_decode",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "general.architecture 'paperkiln': no transformers class (IR_SPEC 9.1: a file no llama.cpp-architecture graph computes)"
+  },
+  {
+   "id": "model/pk_llama_attnres_rec",
+   "kind": "model",
+   "verdict": "SKIP",
+   "detail": "general.architecture 'paperkiln': no transformers class (IR_SPEC 9.1: a file no llama.cpp-architecture graph computes)"
+  },
+  {
+   "id": "trace/pk_llama_attnres_rec_decode",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "general.architecture 'paperkiln': no transformers class (IR_SPEC 9.1: a file no llama.cpp-architecture graph computes)"
+  },
+  {
+   "id": "model/pk_mamba",
+   "kind": "model",
+   "verdict": "SKIP",
+   "detail": "general.architecture 'paperkiln': no transformers class (IR_SPEC 9.1: a file no llama.cpp-architecture graph computes)"
+  },
+  {
+   "id": "trace/pk_mamba_decode",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "general.architecture 'paperkiln': no transformers class (IR_SPEC 9.1: a file no llama.cpp-architecture graph computes)"
+  },
+  {
+   "id": "trace/pk_mamba_snapshot",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "general.architecture 'paperkiln': no transformers class (IR_SPEC 9.1: a file no llama.cpp-architecture graph computes)"
+  },
+  {
+   "id": "model/pk_moe",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 7.58e-08; greedy 4/4"
+  },
+  {
+   "id": "trace/pk_moe_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "model/pk_mor",
+   "kind": "model",
+   "verdict": "SKIP",
+   "detail": "general.architecture 'paperkiln': no transformers class (IR_SPEC 9.1: a file no llama.cpp-architecture graph computes)"
+  },
+  {
+   "id": "trace/pk_mor_decode",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "trace/pk_mor_truncate",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "general.architecture 'paperkiln': no transformers class (IR_SPEC 9.1: a file no llama.cpp-architecture graph computes)"
+  },
+  {
+   "id": "model/pk_recurrence",
+   "kind": "model",
+   "verdict": "SKIP",
+   "detail": "IR-only semantics: its document has recurrence, which no gpt2 configuration in transformers carries; transformers would compute plain gpt2 (llama.cpp FINDINGS 7, K1)"
+  },
+  {
+   "id": "trace/pk_recurrence_decode",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "IR-only semantics: its document has recurrence, which no gpt2 configuration in transformers carries; transformers would compute plain gpt2 (llama.cpp FINDINGS 7, K1)"
+  },
+  {
+   "id": "trace/pk_recurrence_snapshot",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "IR-only semantics: its document has recurrence, which no gpt2 configuration in transformers carries; transformers would compute plain gpt2 (llama.cpp FINDINGS 7, K1)"
+  },
+  {
+   "id": "model/pk_recursive",
+   "kind": "model",
+   "verdict": "SKIP",
+   "detail": "general.architecture 'paperkiln': no transformers class (IR_SPEC 9.1: a file no llama.cpp-architecture graph computes)"
+  },
+  {
+   "id": "trace/pk_recursive_decode",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "model/pk_srd",
+   "kind": "model",
+   "verdict": "SKIP",
+   "detail": "general.architecture 'paperkiln': no transformers class (IR_SPEC 9.1: a file no llama.cpp-architecture graph computes)"
+  },
+  {
+   "id": "trace/pk_srd_decode",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "general.architecture 'paperkiln': no transformers class (IR_SPEC 9.1: a file no llama.cpp-architecture graph computes)"
+  },
+  {
+   "id": "trace/pk_srd_snapshot",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "general.architecture 'paperkiln': no transformers class (IR_SPEC 9.1: a file no llama.cpp-architecture graph computes)"
+  },
+  {
+   "id": "model/pk_state",
+   "kind": "model",
+   "verdict": "SKIP",
+   "detail": "general.architecture 'paperkiln': no transformers class (IR_SPEC 9.1: a file no llama.cpp-architecture graph computes)"
+  },
+  {
+   "id": "trace/pk_state_evict_on",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "trace/pk_state_evict_off",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "trace/pk_state_rewind_evicted",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "general.architecture 'paperkiln': no transformers class (IR_SPEC 9.1: a file no llama.cpp-architecture graph computes)"
+  },
+  {
+   "id": "trace/pk_state_rewind_current",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "general.architecture 'paperkiln': no transformers class (IR_SPEC 9.1: a file no llama.cpp-architecture graph computes)"
+  },
+  {
+   "id": "trace/pk_state_rewind_at_block",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "general.architecture 'paperkiln': no transformers class (IR_SPEC 9.1: a file no llama.cpp-architecture graph computes)"
+  },
+  {
+   "id": "model/tp_gemma3",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 6.91e-07; greedy 4/4"
+  },
+  {
+   "id": "trace/tp_gemma3_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "model/tp_gptneox",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 4.28e-07; greedy 4/4"
+  },
+  {
+   "id": "trace/tp_gptneox_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "model/tp_mamba1",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 3.08e-07; greedy 4/4"
+  },
+  {
+   "id": "trace/tp_mamba1_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "trace/tp_mamba1_snapshot",
+   "kind": "trace",
+   "verdict": "FAIL",
+   "detail": "5 steps; step 2 logits worst 2.51e-01 of max(1, |ref|); step 2 recurrent conv[1].x worst 1.33e-01 of max(1, |ref|); step 2 recurrent ssm[0].s worst 1.82e-01 of max(1, |ref|); step 2 recurrent ssm[1].s worst 3.47e-01 of max(1, |ref|); step 4 logits worst 4.11e-01 of max(1, |ref|); step 4 recurrent conv[1].x worst 1.17e-01 of max(1, |ref|); step 4 recurrent ssm[0].s worst 2.92e-01 of max(1, |ref|); step 4 recurrent ssm[1].s worst 5.50e-01 of max(1, |ref|)"
+  },
+  {
+   "id": "model/tp_mistral",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 2.83e-07; greedy 4/4"
+  },
+  {
+   "id": "trace/tp_mistral_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "model/tp_qwen3",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 4.73e-07; greedy 4/4"
+  },
+  {
+   "id": "trace/tp_qwen3_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "trace/tp_qwen3_truncate",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "3 steps"
+  },
+  {
+   "id": "op/embedding/rows",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/embedding/state_weight",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/pos_embedding/rows",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/linear/bias",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/linear/no_bias",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/linear/tied_to",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/scale/bias",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/scale/no_bias",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/split/three",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/rmsnorm/row",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/rmsnorm/group",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/rmsnorm/weight_offset",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/layernorm/row",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/gelu/tanh",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/gelu/none",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/silu/x",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/sigmoid/x",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/relu/x",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/add/ab",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/mul/ab",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/sub/ab",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/affine/scale_shift",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/mul_col/x_c",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/rms_row/eps",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/rope/interleaved",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/rope/neox",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/rope/neox_partial",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/rope/freq_scale",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/rope/grouped_query",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/rope/first_head",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/attention/causal",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/attention/window_sinks",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/attention/grouped_query",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/moe_ffn/renorm",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/moe_ffn/raw",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/list/two",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/append/one",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/depth_attend/one_source",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/depth_attend/three_sources",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/depth_attend/eps_default",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/expr/gelu_sigmoid",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/expr/relu_squared",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/expr/where_rowmean",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/expr/layer_norm",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/expr/rowsum_constant",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/expr/depth_200",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/linear_attention/two_heads",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/ssm_scan/n4",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/conv1d_causal/k4",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/selective_scan/d3n2",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/recurrence/linear_attention_body",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/recurrence/ssm_scan_body",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/recurrence/conv1d_causal_body",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/recurrence/selective_scan_body",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/recurrence/rnn_init_offset",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/recurrence/ema_bias_corrected",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/recurrence/ema_exact",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/recurrence/square_weight_declaration",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "op/recurrence/read_beyond_declaration",
+   "kind": "op",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "refuse/unknown_op",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/unknown_attribute",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/unknown_top_key",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/version_2",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/repeat_ne_n_layers",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/model_ctx_missing",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/per_layer_wrong_length",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/per_layer_in_head",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/add_one_input",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/rope_pairing_unknown",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/rope_n_rot_odd",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/attention_not_causal",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/attention_heads_not_multiple",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/attention_window_differs",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/slot_declared_twice",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/slot_unread",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/slot_unknown_kind",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/attention_no_slot",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/kv_slot_field_missing",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/tensor_index_without_weight_index",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/name_with_i_outside_block",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/evict_on_causal",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/missing_tensor",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/gelu_approx_unknown",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/split_count",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/expr_does_not_parse",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/moe_top_k_too_large",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/moe_gate_norm_unknown",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/recurrent_dtype_f16",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/recurrent_shape_mismatch",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/recurrent_op_mismatch",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/linear_attention_not_causal",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/conv_kernel_one",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/weight_index_wrong_length",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/weight_index_unused_layer",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/weight_index_negative",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/mor_route_not_first",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/mor_expert_choice",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/mor_unequal_steps",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/mor_steps_descending",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/mor_step_length_wrong",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/mor_no_kv_rows_active",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/mor_kv_from",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/mor_gate_unknown",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/mor_router_with_i",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/mor_kv_rows_shared",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/mor_route_in_head",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/turn_state_with_window",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/turn_state_without_state_weight",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/evict_without_mask",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/evict_unknown",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/mask_unknown",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/state_weight_with_i",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/two_state_weights",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/state_weight_wrong_name",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/recurrence_body_does_not_parse",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/recurrence_name_twice",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/recurrence_rowsum",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/recurrence_index_size_zero",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/recurrence_index_out_of_scope",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/recurrence_init_reads_input",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/recurrence_rank_mismatch",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/recurrence_index_undeclared",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/recurrence_slot_shape",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/recurrence_slot_missing_tensor",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/recurrence_init_flag",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/recurrence_weight_size",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/recurrence_assignment_repeats_index",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/recurrence_bare_undeclared_name",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/reads_unwritten_value",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/embed_writes_no_x",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/head_writes_no_logits",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/mor_reads_outside_value",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/mor_step_gap",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/duplicate_member_top",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/duplicate_member_node",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/duplicate_member_prose",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/version_key_mismatch",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/state_tokens_k_mismatch",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/state_template_not_v1",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/weight_index_block_count",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/state_tokens_arch_llama",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/duplicate_member_embedded",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_0000000000000000",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_0000000000000001",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_8000000000000001",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_7fefffffffffffff",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_ffefffffffffffff",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_4340000000000000",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_c340000000000000",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_4430000000000000",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_44b52d02c7e14af5",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_44b52d02c7e14af6",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_44b52d02c7e14af7",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_444b1ae4d6e2ef4e",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_444b1ae4d6e2ef4f",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_444b1ae4d6e2ef50",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_3eb0c6f7a0b5ed8c",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_3eb0c6f7a0b5ed8d",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_41b3de4355555553",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_41b3de4355555554",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_41b3de4355555555",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_41b3de4355555556",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_41b3de4355555557",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_becbf647612f3696",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/rfc8785_number_43143ff3c1cb0959",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/f32_eps",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/f32_rope_theta",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/f32_scale",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/f32_den_floor",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/integer_2p53",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/negative_integer",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/minus_zero_integer_form",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/exponent_form",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/string_controls",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/string_controls_escaped",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/string_escapes",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/string_escapes_escaped",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/string_line_separators",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/string_line_separators_escaped",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/string_astral",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/string_astral_escaped",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/string_accents",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/string_accents_escaped",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/string_names",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/string_names_escaped",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/key_order_utf16",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/nesting",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/prose_removed",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/prose_kept_in_serialiser_test",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/document_pk_attnres",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/document_pk_flex_expr",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/document_pk_flex_highway",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/document_pk_gpt2",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/document_pk_gpt2_swa",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/document_pk_kimi",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/document_pk_llama",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/document_pk_llama_attnres",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/document_pk_llama_attnres_rec",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/document_pk_mamba",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/document_pk_moe",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/document_pk_mor",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/document_pk_recurrence",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/document_pk_recursive",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/document_pk_srd",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/document_pk_state",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/document_tp_gemma3",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/document_tp_gptneox",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/document_tp_mamba1",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/document_tp_mistral",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/document_tp_qwen3",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/negative_zero",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/integer_beyond_2p53",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/overflow",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/duplicate_key",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/lone_surrogate",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/nan_literal",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/prose_overflow",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/prose_negative_zero",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/prose_integer_beyond_2p53",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/prose_lone_surrogate",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/prose_key_lone_surrogate",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/prose_duplicate_key",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/fraction_form_beyond_2p53",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/exponent_form_1e300",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/negative_integer_2p53",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "digest/vectors/negative_integer_beyond_2p53",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR digest"
+  },
+  {
+   "id": "dequant/blocks/f32",
+   "kind": "dequant",
+   "verdict": "SKIP",
+   "detail": "transformers dequantises GGUF through gguf-py, not code of its own"
+  },
+  {
+   "id": "dequant/blocks/f16",
+   "kind": "dequant",
+   "verdict": "SKIP",
+   "detail": "transformers dequantises GGUF through gguf-py, not code of its own"
+  },
+  {
+   "id": "dequant/blocks/q4_0",
+   "kind": "dequant",
+   "verdict": "SKIP",
+   "detail": "transformers dequantises GGUF through gguf-py, not code of its own"
+  },
+  {
+   "id": "dequant/blocks/q5_0",
+   "kind": "dequant",
+   "verdict": "SKIP",
+   "detail": "transformers dequantises GGUF through gguf-py, not code of its own"
+  },
+  {
+   "id": "dequant/blocks/q5_1",
+   "kind": "dequant",
+   "verdict": "SKIP",
+   "detail": "transformers dequantises GGUF through gguf-py, not code of its own"
+  },
+  {
+   "id": "dequant/blocks/q8_0",
+   "kind": "dequant",
+   "verdict": "SKIP",
+   "detail": "transformers dequantises GGUF through gguf-py, not code of its own"
+  },
+  {
+   "id": "dequant/blocks/q4_k",
+   "kind": "dequant",
+   "verdict": "SKIP",
+   "detail": "transformers dequantises GGUF through gguf-py, not code of its own"
+  },
+  {
+   "id": "dequant/blocks/q5_k",
+   "kind": "dequant",
+   "verdict": "SKIP",
+   "detail": "transformers dequantises GGUF through gguf-py, not code of its own"
+  },
+  {
+   "id": "dequant/blocks/q6_k",
+   "kind": "dequant",
+   "verdict": "SKIP",
+   "detail": "transformers dequantises GGUF through gguf-py, not code of its own"
+  },
+  {
+   "id": "dequant/blocks/bf16",
+   "kind": "dequant",
+   "verdict": "SKIP",
+   "detail": "transformers dequantises GGUF through gguf-py, not code of its own"
+  },
+  {
+   "id": "grad/recurrence/linear_attention_body",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "grad/recurrence/ssm_scan_body",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "grad/recurrence/conv1d_causal_body",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "grad/recurrence/selective_scan_body",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "grad/recurrence/rnn_init_offset",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "grad/recurrence/ema_bias_corrected",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "grad/recurrence/ema_exact",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "grad/recurrence/square_weight_declaration",
+   "kind": "grad",
+   "verdict": "SKIP",
+   "detail": "transformers runs whole models, not single IR nodes"
+  },
+  {
+   "id": "trace/pk_kimi_recurrence",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "a replacement document: transformers runs the GGUF's architecture, never a document"
+  },
+  {
+   "id": "trace/pk_srd_recurrence",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "a replacement document: transformers runs the GGUF's architecture, never a document"
+  },
+  {
+   "id": "trace/pk_mamba_recurrence",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "a replacement document: transformers runs the GGUF's architecture, never a document"
+  },
+  {
+   "id": "trace/tp_mamba1_recurrence",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "a replacement document: transformers runs the GGUF's architecture, never a document"
+  },
+  {
+   "id": "trace/pk_srd_truncate",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "general.architecture 'paperkiln': no transformers class (IR_SPEC 9.1: a file no llama.cpp-architecture graph computes)"
+  },
+  {
+   "id": "trace/tp_mamba1_truncate",
+   "kind": "trace",
+   "verdict": "FAIL",
+   "detail": "3 steps; step 2 logits worst 7.03e-01 of max(1, |ref|); step 2 recurrent conv[1].x worst 9.59e-01 of max(1, |ref|); step 2 recurrent ssm[0].s worst 9.58e-01 of max(1, |ref|); step 2 recurrent ssm[1].s worst 1.17e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "accept/documents/model_pk_attnres",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/model_pk_flex_expr",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/model_pk_flex_highway",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/model_pk_gpt2",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/model_pk_gpt2_swa",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/model_pk_kimi",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/model_pk_llama",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/model_pk_llama_attnres",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/model_pk_llama_attnres_rec",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/model_pk_mamba",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/model_pk_moe",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/model_pk_mor",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/model_pk_recurrence",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/model_pk_recursive",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/model_pk_srd",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/model_pk_state",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/model_tp_gemma3",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/model_tp_gptneox",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/model_tp_mamba1",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/model_tp_mistral",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/model_tp_qwen3",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/rewritten_pk_kimi",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/rewritten_pk_srd",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/rewritten_pk_mamba",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/rewritten_tp_mamba1",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/example_attnres_tiny",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/example_chat_sftfinal",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/example_flex_highway_tiny",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/example_gpt2_tiny",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/example_kimi_tiny",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/example_mamba_tiny",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/example_moe_tiny",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/example_srd_tiny",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/example_swa_tiny",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "chat/render/one user prompt",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "transformers renders Jinja chat templates, not IR template records"
+  },
+  {
+   "id": "chat/render/system folds into the first user turn",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "transformers renders Jinja chat templates, not IR template records"
+  },
+  {
+   "id": "chat/render/a lone system message",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "transformers renders Jinja chat templates, not IR template records"
+  },
+  {
+   "id": "chat/render/a system message with no user message",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "transformers renders Jinja chat templates, not IR template records"
+  },
+  {
+   "id": "chat/render/two system messages",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "transformers renders Jinja chat templates, not IR template records"
+  },
+  {
+   "id": "chat/render/a system message mid-conversation",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "transformers renders Jinja chat templates, not IR template records"
+  },
+  {
+   "id": "chat/render/the assistant first",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "transformers renders Jinja chat templates, not IR template records"
+  },
+  {
+   "id": "chat/render/two user messages in a row",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "transformers renders Jinja chat templates, not IR template records"
+  },
+  {
+   "id": "chat/render/a training conversation ending on a user message",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "transformers renders Jinja chat templates, not IR template records"
+  },
+  {
+   "id": "chat/render/a prompt ending on an assistant message",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "transformers renders Jinja chat templates, not IR template records"
+  },
+  {
+   "id": "chat/render/user content holding a role marker",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "transformers renders Jinja chat templates, not IR template records"
+  },
+  {
+   "id": "chat/render/system content holding end-of-text",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "transformers renders Jinja chat templates, not IR template records"
+  },
+  {
+   "id": "chat/render/assistant content holding a marker",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "transformers renders Jinja chat templates, not IR template records"
+  },
+  {
+   "id": "chat/render/<unk> text is ordinary content",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "transformers renders Jinja chat templates, not IR template records"
+  },
+  {
+   "id": "chat/render/newline-only user content",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "transformers renders Jinja chat templates, not IR template records"
+  },
+  {
+   "id": "chat/render/newline-only and empty replies in the history",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "transformers renders Jinja chat templates, not IR template records"
+  },
+  {
+   "id": "chat/render/the tool role is reserved",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "transformers renders Jinja chat templates, not IR template records"
+  },
+  {
+   "id": "chat/render/an unknown role",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "transformers renders Jinja chat templates, not IR template records"
+  },
+  {
+   "id": "chat/render/three exchanges with a system message",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "transformers renders Jinja chat templates, not IR template records"
+  },
+  {
+   "id": "chat/render/a training conversation with a system message",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "transformers renders Jinja chat templates, not IR template records"
+  },
+  {
+   "id": "chat/render/loss on a user message",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "transformers renders Jinja chat templates, not IR template records"
+  },
+  {
+   "id": "chat/render/unicode content",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "transformers renders Jinja chat templates, not IR template records"
+  },
+  {
+   "id": "chat/render/system mode none refuses a system message",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "transformers renders Jinja chat templates, not IR template records"
+  },
+  {
+   "id": "chat/render/system mode none without one",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "transformers renders Jinja chat templates, not IR template records"
+  },
+  {
+   "id": "chat/render/legacy word-level prompt",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "transformers renders Jinja chat templates, not IR template records"
+  },
+  {
+   "id": "chat/render/gemma3 trims and folds",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "transformers renders Jinja chat templates, not IR template records"
+  },
+  {
+   "id": "chat/render/gemma3 trims unicode edge whitespace",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "transformers renders Jinja chat templates, not IR template records"
+  },
+  {
+   "id": "chat/render/gemma3 trims unicode whitespace in system and history",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "transformers renders Jinja chat templates, not IR template records"
+  },
+  {
+   "id": "chat/render/gemma3 keeps inner unicode whitespace and zero-width space",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "transformers renders Jinja chat templates, not IR template records"
+  },
+  {
+   "id": "chat/render/qwen3 strips past reasoning",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "transformers renders Jinja chat templates, not IR template records"
+  },
+  {
+   "id": "chat/render/qwen2.5 writes its default system turn",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "transformers renders Jinja chat templates, not IR template records"
+  },
+  {
+   "id": "chat/render/qwen3 thinking off",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "transformers renders Jinja chat templates, not IR template records"
+  }
+ ]
+}

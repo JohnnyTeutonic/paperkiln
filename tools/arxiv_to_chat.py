@@ -920,10 +920,10 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
                                 "hosts (papers/llm_extract.py writes one); not built")
             continue
         if k == "positional" and v == "t5_bias":
-            refusals.append("positional = t5_bias (T5's bucketed relative position bias): paperkiln trains it (the flex "
-                            "family's position t5_relative, ops::relpos_attention), but keramos v1.2.0 has no IR op "
-                            "for a relative bias in attention, so no engine could run the model; refused until "
-                            "keramos specifies it (proposal: LOCAL_LLM_STACK.md section 10, 26 Oct 2026)")
+            refusals.append("positional = t5_bias (T5's bucketed relative position bias): paperkiln trains and exports "
+                            "it (the flex family's position t5_relative, keramos 1.3's attention.position_bias), "
+                            "but ember does not run position_bias yet, so the chain could not serve the model; "
+                            "refused until ember implements it (LOCAL_LLM_STACK.md section 11 item 8)")
         elif v not in LEGAL[k]:
             refusals.append(f"{k} = {v} has no engine support (mtstudio takes {sorted(LEGAL[k])})")
 

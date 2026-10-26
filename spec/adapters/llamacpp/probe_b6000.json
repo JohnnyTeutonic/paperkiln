@@ -1,0 +1,2120 @@
+{
+ "adapter": {
+  "engine": "llama.cpp",
+  "backend": "cpu",
+  "exact": false,
+  "profiles": [
+   "core",
+   "state",
+   "thirdparty"
+  ]
+ },
+ "command": "/home/jonat/lc_keramos/llamacpp_adapter --threads 2 --alias mistral=llama",
+ "tol": 1e-05,
+ "models": {
+  "tp_qwen3": {
+   "attribution": {
+    "ids": [
+     22,
+     15,
+     16,
+     21,
+     14,
+     18,
+     20,
+     6,
+     2,
+     7,
+     7,
+     21,
+     21,
+     1,
+     12,
+     19
+    ],
+    "llamacpp_arch": "qwen3",
+    "llamacpp_n_swa": 0,
+    "rewrites": [
+     "tokenizer.ggml.model word -> no_vocab, qwen3.vocab_size = 24 (kv overrides)"
+    ],
+    "vs_file_ir": {
+     "worst": 9.026137231749356e-07,
+     "per_position": [
+      4.31e-07,
+      3.69e-07,
+      2.46e-07,
+      1.44e-07,
+      3.08e-07,
+      2.46e-07,
+      2.97e-07,
+      3.28e-07,
+      9.03e-07,
+      3.08e-07,
+      2.87e-07,
+      4.1e-07,
+      2.46e-07,
+      5.13e-07,
+      2.87e-07,
+      5.03e-07
+     ],
+     "first_past_tol": null,
+     "greedy_differs_at": []
+    },
+    "vs_file_ir_ggml_gelu": {
+     "worst": 9.026137231749356e-07,
+     "per_position": [
+      4.31e-07,
+      3.69e-07,
+      2.46e-07,
+      1.44e-07,
+      3.08e-07,
+      2.46e-07,
+      2.97e-07,
+      3.28e-07,
+      9.03e-07,
+      3.08e-07,
+      2.87e-07,
+      4.1e-07,
+      2.46e-07,
+      5.13e-07,
+      2.87e-07,
+      5.03e-07
+     ],
+     "first_past_tol": null,
+     "greedy_differs_at": []
+    },
+    "vs_arch_document_ggml_gelu_no_window": {
+     "worst": 9.026137231749356e-07,
+     "per_position": [
+      4.31e-07,
+      3.69e-07,
+      2.46e-07,
+      1.44e-07,
+      3.08e-07,
+      2.46e-07,
+      2.97e-07,
+      3.28e-07,
+      9.03e-07,
+      3.08e-07,
+      2.87e-07,
+      4.1e-07,
+      2.46e-07,
+      5.13e-07,
+      2.87e-07,
+      5.03e-07
+     ],
+     "first_past_tol": null,
+     "greedy_differs_at": []
+    }
+   },
+   "consistency": {
+    "prefill_vs_token_by_token": {
+     "bit_identical": false,
+     "values_differing": 359,
+     "worst_abs": 3.6209821701049805e-06
+    },
+    "prefill_vs_chunks_5_6_5": {
+     "bit_identical": true,
+     "values_differing": 0,
+     "worst_abs": 0.0
+    },
+    "prefill_run_to_run": {
+     "bit_identical": true,
+     "values_differing": 0,
+     "worst_abs": 0.0
+    }
+   },
+   "snapshot_restore": {
+    "bit_identical": true,
+    "values_differing": 0,
+    "worst_abs": 0.0
+   },
+   "rewind": [
+    {
+     "settings": "default (swa_full 1, n_ubatch 512)",
+     "L": 16,
+     "truncate_to": 8,
+     "then": 4,
+     "truncate_how": "llama_memory_seq_rm",
+     "vs_fresh_prefill_in_llamacpp": {
+      "bit_identical": true,
+      "values_differing": 0,
+      "worst_abs": 0.0
+     },
+     "vs_reference": {
+      "worst": 6.262167490834175e-07,
+      "per_position": [
+       5.57e-07,
+       2.39e-07,
+       6.26e-07,
+       4.57e-07
+      ],
+      "first_past_tol": null,
+      "greedy_differs_at": []
+     },
+     "vs_reference_ggml_gelu": {
+      "worst": 6.262167490834175e-07,
+      "per_position": [
+       5.57e-07,
+       2.39e-07,
+       6.26e-07,
+       4.57e-07
+      ],
+      "first_past_tol": null,
+      "greedy_differs_at": []
+     },
+     "fresh_prefill_vs_reference_ggml_gelu": {
+      "worst": 6.262167490834175e-07,
+      "per_position": [
+       5.57e-07,
+       2.39e-07,
+       6.26e-07,
+       4.57e-07
+      ],
+      "first_past_tol": null,
+      "greedy_differs_at": []
+     }
+    }
+   ]
+  },
+  "tp_mistral": {
+   "attribution": {
+    "ids": [
+     22,
+     15,
+     16,
+     21,
+     14,
+     18,
+     20,
+     6,
+     2,
+     7,
+     7,
+     21,
+     21,
+     1,
+     12,
+     19
+    ],
+    "llamacpp_arch": "llama",
+    "llamacpp_n_swa": 0,
+    "rewrites": [
+     "general.architecture mistral -> llama and mistral.* -> llama.* (a temporary copy; tensors unchanged)",
+     "tokenizer.ggml.model word -> no_vocab, llama.vocab_size = 24 (kv overrides)"
+    ],
+    "vs_file_ir": {
+     "worst": 0.7903547137123611,
+     "per_position": [
+      1.35e-07,
+      1.16e-07,
+      1.55e-07,
+      2.71e-07,
+      0.273,
+      0.264,
+      0.654,
+      0.632,
+      0.688,
+      0.379,
+      0.59,
+      0.582,
+      0.598,
+      0.622,
+      0.79,
+      0.45
+     ],
+     "first_past_tol": 4,
+     "greedy_differs_at": [
+      4,
+      7,
+      8,
+      11,
+      12,
+      13,
+      14
+     ]
+    },
+    "vs_file_ir_ggml_gelu": {
+     "worst": 0.7903547137123611,
+     "per_position": [
+      1.35e-07,
+      1.16e-07,
+      1.55e-07,
+      2.71e-07,
+      0.273,
+      0.264,
+      0.654,
+      0.632,
+      0.688,
+      0.379,
+      0.59,
+      0.582,
+      0.598,
+      0.622,
+      0.79,
+      0.45
+     ],
+     "first_past_tol": 4,
+     "greedy_differs_at": [
+      4,
+      7,
+      8,
+      11,
+      12,
+      13,
+      14
+     ]
+    },
+    "vs_arch_document_ggml_gelu_no_window": {
+     "worst": 4.395398826182371e-07,
+     "per_position": [
+      1.54e-07,
+      1.32e-07,
+      1.76e-07,
+      3.08e-07,
+      2.53e-07,
+      2.64e-07,
+      1.65e-07,
+      2.86e-07,
+      4.4e-07,
+      1.76e-07,
+      4.4e-07,
+      3.08e-07,
+      2.64e-07,
+      2.42e-07,
+      2.64e-07,
+      1.32e-07
+     ],
+     "first_past_tol": null,
+     "greedy_differs_at": []
+    }
+   },
+   "consistency": {
+    "prefill_vs_token_by_token": {
+     "bit_identical": false,
+     "values_differing": 356,
+     "worst_abs": 1.1920928955078125e-06
+    },
+    "prefill_vs_chunks_5_6_5": {
+     "bit_identical": true,
+     "values_differing": 0,
+     "worst_abs": 0.0
+    },
+    "prefill_run_to_run": {
+     "bit_identical": true,
+     "values_differing": 0,
+     "worst_abs": 0.0
+    }
+   },
+   "snapshot_restore": {
+    "bit_identical": true,
+    "values_differing": 0,
+    "worst_abs": 0.0
+   },
+   "rewind": [
+    {
+     "settings": "default (swa_full 1, n_ubatch 512)",
+     "L": 16,
+     "truncate_to": 8,
+     "then": 4,
+     "truncate_how": "llama_memory_seq_rm",
+     "vs_fresh_prefill_in_llamacpp": {
+      "bit_identical": true,
+      "values_differing": 0,
+      "worst_abs": 0.0
+     },
+     "vs_reference": {
+      "worst": 1.3756185201497753,
+      "per_position": [
+       0.789,
+       0.334,
+       0.646,
+       1.38
+      ],
+      "first_past_tol": 0,
+      "greedy_differs_at": [
+       1,
+       2,
+       3
+      ]
+     },
+     "vs_reference_ggml_gelu": {
+      "worst": 1.3756185201497753,
+      "per_position": [
+       0.789,
+       0.334,
+       0.646,
+       1.38
+      ],
+      "first_past_tol": 0,
+      "greedy_differs_at": [
+       1,
+       2,
+       3
+      ]
+     },
+     "fresh_prefill_vs_reference_ggml_gelu": {
+      "worst": 1.3756185201497753,
+      "per_position": [
+       0.789,
+       0.334,
+       0.646,
+       1.38
+      ],
+      "first_past_tol": 0,
+      "greedy_differs_at": [
+       1,
+       2,
+       3
+      ]
+     }
+    }
+   ]
+  },
+  "tp_gemma3": {
+   "attribution": {
+    "ids": [
+     22,
+     15,
+     16,
+     21,
+     14,
+     18,
+     20,
+     6,
+     2,
+     7,
+     7,
+     21,
+     21,
+     1,
+     12,
+     19
+    ],
+    "llamacpp_arch": "gemma3",
+    "llamacpp_n_swa": 4,
+    "rewrites": [
+     "tokenizer.ggml.model word -> no_vocab, gemma3.vocab_size = 24 (kv overrides)"
+    ],
+    "vs_file_ir": {
+     "worst": 0.0010343907105040708,
+     "per_position": [
+      0.00103,
+      0.000509,
+      0.000275,
+      0.000402,
+      0.000201,
+      0.000596,
+      0.000187,
+      0.00023,
+      0.000274,
+      0.00013,
+      8.75e-05,
+      0.000182,
+      0.000203,
+      0.000259,
+      0.000213,
+      0.00011
+     ],
+     "first_past_tol": 0,
+     "greedy_differs_at": []
+    },
+    "vs_file_ir_ggml_gelu": {
+     "worst": 5.880807524261356e-07,
+     "per_position": [
+      5.88e-07,
+      2.86e-07,
+      2.35e-07,
+      2.86e-07,
+      2.52e-07,
+      2.69e-07,
+      3.11e-07,
+      2.18e-07,
+      3.02e-07,
+      1.51e-07,
+      3.86e-07,
+      2.69e-07,
+      4.03e-07,
+      2.69e-07,
+      1.34e-07,
+      1.18e-07
+     ],
+     "first_past_tol": null,
+     "greedy_differs_at": []
+    },
+    "vs_arch_document_ggml_gelu": {
+     "worst": 5.880807524261356e-07,
+     "per_position": [
+      5.88e-07,
+      2.86e-07,
+      2.35e-07,
+      2.86e-07,
+      2.52e-07,
+      2.69e-07,
+      3.11e-07,
+      2.18e-07,
+      3.02e-07,
+      1.51e-07,
+      3.86e-07,
+      2.69e-07,
+      4.03e-07,
+      2.69e-07,
+      1.34e-07,
+      1.18e-07
+     ],
+     "first_past_tol": null,
+     "greedy_differs_at": []
+    }
+   },
+   "consistency": {
+    "prefill_vs_token_by_token": {
+     "bit_identical": false,
+     "values_differing": 348,
+     "worst_abs": 1.6689300537109375e-06
+    },
+    "prefill_vs_chunks_5_6_5": {
+     "bit_identical": true,
+     "values_differing": 0,
+     "worst_abs": 0.0
+    },
+    "prefill_run_to_run": {
+     "bit_identical": true,
+     "values_differing": 0,
+     "worst_abs": 0.0
+    }
+   },
+   "snapshot_restore": {
+    "bit_identical": false,
+    "values_differing": 85,
+    "worst_abs": 7.152557373046875e-07
+   },
+   "rewind": [
+    {
+     "settings": "default (swa_full 1, n_ubatch 512)",
+     "L": 16,
+     "truncate_to": 8,
+     "then": 4,
+     "truncate_how": "llama_memory_seq_rm",
+     "vs_fresh_prefill_in_llamacpp": {
+      "bit_identical": true,
+      "values_differing": 0,
+      "worst_abs": 0.0
+     },
+     "vs_reference": {
+      "worst": 0.0003920368488842659,
+      "per_position": [
+       0.000258,
+       0.000392,
+       0.000305,
+       0.000292
+      ],
+      "first_past_tol": 0,
+      "greedy_differs_at": []
+     },
+     "vs_reference_ggml_gelu": {
+      "worst": 5.029777313444786e-07,
+      "per_position": [
+       5.03e-07,
+       4.64e-07,
+       3.35e-07,
+       3.87e-07
+      ],
+      "first_past_tol": null,
+      "greedy_differs_at": []
+     },
+     "fresh_prefill_vs_reference_ggml_gelu": {
+      "worst": 5.029777313444786e-07,
+      "per_position": [
+       5.03e-07,
+       4.64e-07,
+       3.35e-07,
+       3.87e-07
+      ],
+      "first_past_tol": null,
+      "greedy_differs_at": []
+     }
+    }
+   ]
+  },
+  "tp_gptneox": {
+   "attribution": {
+    "ids": [
+     22,
+     15,
+     16,
+     21,
+     14,
+     18,
+     20,
+     6,
+     2,
+     7,
+     7,
+     21,
+     21,
+     1,
+     12,
+     19
+    ],
+    "llamacpp_arch": "gptneox",
+    "llamacpp_n_swa": 0,
+    "rewrites": [
+     "tokenizer.ggml.model word -> no_vocab, gptneox.vocab_size = 24 (kv overrides)"
+    ],
+    "vs_file_ir": {
+     "worst": 0.00048231812243498937,
+     "per_position": [
+      0.000135,
+      0.000213,
+      0.000219,
+      0.000194,
+      0.000262,
+      0.000392,
+      0.000159,
+      0.000187,
+      0.000199,
+      0.000482,
+      0.000372,
+      0.000119,
+      0.000133,
+      0.000247,
+      0.000235,
+      0.000121
+     ],
+     "first_past_tol": 0,
+     "greedy_differs_at": []
+    },
+    "vs_file_ir_ggml_gelu": {
+     "worst": 5.312413335629906e-05,
+     "per_position": [
+      1.06e-07,
+      4.01e-05,
+      1.06e-07,
+      1.59e-07,
+      1.06e-07,
+      1.06e-07,
+      1.59e-07,
+      1.85e-07,
+      2.38e-07,
+      2.65e-07,
+      2.38e-07,
+      1.59e-07,
+      1.85e-07,
+      1.59e-07,
+      5.31e-05,
+      2.12e-07
+     ],
+     "first_past_tol": 1,
+     "greedy_differs_at": []
+    },
+    "vs_arch_document_ggml_gelu_no_window": {
+     "worst": 5.312413335629906e-05,
+     "per_position": [
+      1.06e-07,
+      4.01e-05,
+      1.06e-07,
+      1.59e-07,
+      1.06e-07,
+      1.06e-07,
+      1.59e-07,
+      1.85e-07,
+      2.38e-07,
+      2.65e-07,
+      2.38e-07,
+      1.59e-07,
+      1.85e-07,
+      1.59e-07,
+      5.31e-05,
+      2.12e-07
+     ],
+     "first_past_tol": 1,
+     "greedy_differs_at": []
+    }
+   },
+   "consistency": {
+    "prefill_vs_token_by_token": {
+     "bit_identical": false,
+     "values_differing": 301,
+     "worst_abs": 7.617473602294922e-05
+    },
+    "prefill_vs_chunks_5_6_5": {
+     "bit_identical": true,
+     "values_differing": 0,
+     "worst_abs": 0.0
+    },
+    "prefill_run_to_run": {
+     "bit_identical": true,
+     "values_differing": 0,
+     "worst_abs": 0.0
+    }
+   },
+   "snapshot_restore": {
+    "bit_identical": true,
+    "values_differing": 0,
+    "worst_abs": 0.0
+   },
+   "rewind": [
+    {
+     "settings": "default (swa_full 1, n_ubatch 512)",
+     "L": 16,
+     "truncate_to": 8,
+     "then": 4,
+     "truncate_how": "llama_memory_seq_rm",
+     "vs_fresh_prefill_in_llamacpp": {
+      "bit_identical": true,
+      "values_differing": 0,
+      "worst_abs": 0.0
+     },
+     "vs_reference": {
+      "worst": 0.000228603422345708,
+      "per_position": [
+       0.000229,
+       0.000211,
+       0.000167,
+       0.000151
+      ],
+      "first_past_tol": 0,
+      "greedy_differs_at": []
+     },
+     "vs_reference_ggml_gelu": {
+      "worst": 5.023719643281865e-06,
+      "per_position": [
+       5.02e-06,
+       4.39e-07,
+       5.49e-07,
+       4.39e-07
+      ],
+      "first_past_tol": null,
+      "greedy_differs_at": []
+     },
+     "fresh_prefill_vs_reference_ggml_gelu": {
+      "worst": 5.023719643281865e-06,
+      "per_position": [
+       5.02e-06,
+       4.39e-07,
+       5.49e-07,
+       4.39e-07
+      ],
+      "first_past_tol": null,
+      "greedy_differs_at": []
+     }
+    }
+   ]
+  },
+  "tp_mamba1": {
+   "attribution": {
+    "ids": [
+     22,
+     15,
+     16,
+     21,
+     14,
+     18,
+     20,
+     6,
+     2,
+     7,
+     7,
+     21,
+     21,
+     1,
+     12,
+     19
+    ],
+    "llamacpp_arch": "mamba",
+    "llamacpp_n_swa": 0,
+    "rewrites": [
+     "tokenizer.ggml.model word -> no_vocab, mamba.vocab_size = 24 (kv overrides)"
+    ],
+    "vs_file_ir": {
+     "worst": 5.147454589761192e-07,
+     "per_position": [
+      6.06e-08,
+      1.21e-07,
+      5.15e-07,
+      2.42e-07,
+      3.63e-07,
+      1.21e-07,
+      1.06e-07,
+      4.24e-07,
+      1.51e-07,
+      1.51e-07,
+      3.03e-07,
+      1.97e-07,
+      2.57e-07,
+      3.33e-07,
+      5.15e-07,
+      4.24e-07
+     ],
+     "first_past_tol": null,
+     "greedy_differs_at": []
+    },
+    "vs_file_ir_ggml_gelu": {
+     "worst": 5.147454589761192e-07,
+     "per_position": [
+      6.06e-08,
+      1.21e-07,
+      5.15e-07,
+      2.42e-07,
+      3.63e-07,
+      1.21e-07,
+      1.06e-07,
+      4.24e-07,
+      1.51e-07,
+      1.51e-07,
+      3.03e-07,
+      1.97e-07,
+      2.57e-07,
+      3.33e-07,
+      5.15e-07,
+      4.24e-07
+     ],
+     "first_past_tol": null,
+     "greedy_differs_at": []
+    },
+    "vs_arch_document_ggml_gelu_no_window": {
+     "worst": 5.147454589761192e-07,
+     "per_position": [
+      6.06e-08,
+      1.21e-07,
+      5.15e-07,
+      2.42e-07,
+      3.63e-07,
+      1.21e-07,
+      1.06e-07,
+      4.24e-07,
+      1.51e-07,
+      1.51e-07,
+      3.03e-07,
+      1.97e-07,
+      2.57e-07,
+      3.33e-07,
+      5.15e-07,
+      4.24e-07
+     ],
+     "first_past_tol": null,
+     "greedy_differs_at": []
+    }
+   },
+   "consistency": {
+    "prefill_vs_token_by_token": {
+     "bit_identical": false,
+     "values_differing": 348,
+     "worst_abs": 1.6689300537109375e-06
+    },
+    "prefill_vs_chunks_5_6_5": {
+     "bit_identical": true,
+     "values_differing": 0,
+     "worst_abs": 0.0
+    },
+    "prefill_run_to_run": {
+     "bit_identical": true,
+     "values_differing": 0,
+     "worst_abs": 0.0
+    }
+   },
+   "snapshot_restore": {
+    "bit_identical": true,
+    "values_differing": 0,
+    "worst_abs": 0.0
+   },
+   "rewind": [
+    {
+     "settings": "default (swa_full 1, n_ubatch 512)",
+     "L": 16,
+     "truncate_to": 8,
+     "then": 4,
+     "truncate_how": "re-prefill (llama_memory_seq_rm refused)",
+     "vs_fresh_prefill_in_llamacpp": {
+      "bit_identical": true,
+      "values_differing": 0,
+      "worst_abs": 0.0
+     },
+     "vs_reference": {
+      "worst": 3.363774836035764e-07,
+      "per_position": [
+       2.37e-07,
+       3.36e-07,
+       1.78e-07,
+       1.58e-07
+      ],
+      "first_past_tol": null,
+      "greedy_differs_at": []
+     },
+     "vs_reference_ggml_gelu": {
+      "worst": 3.363774836035764e-07,
+      "per_position": [
+       2.37e-07,
+       3.36e-07,
+       1.78e-07,
+       1.58e-07
+      ],
+      "first_past_tol": null,
+      "greedy_differs_at": []
+     },
+     "fresh_prefill_vs_reference_ggml_gelu": {
+      "worst": 3.363774836035764e-07,
+      "per_position": [
+       2.37e-07,
+       3.36e-07,
+       1.78e-07,
+       1.58e-07
+      ],
+      "first_past_tol": null,
+      "greedy_differs_at": []
+     }
+    }
+   ]
+  },
+  "pk_llama": {
+   "attribution": {
+    "ids": [
+     14,
+     9,
+     10,
+     13,
+     9,
+     11,
+     12,
+     4,
+     1,
+     5,
+     4,
+     13,
+     13,
+     1,
+     7,
+     12
+    ],
+    "llamacpp_arch": "llama",
+    "llamacpp_n_swa": 0,
+    "rewrites": [
+     "tokenizer.ggml.model word -> no_vocab, llama.vocab_size = 15 (kv overrides)"
+    ],
+    "vs_file_ir": {
+     "worst": 1.5772860711128888e-07,
+     "per_position": [
+      1.18e-07,
+      7.89e-08,
+      1.18e-07,
+      1.58e-07,
+      7.89e-08,
+      7.89e-08,
+      3.94e-08,
+      5.91e-08,
+      7.89e-08,
+      7.89e-08,
+      7.89e-08,
+      7.89e-08,
+      7.89e-08,
+      1.18e-07,
+      7.89e-08,
+      7.89e-08
+     ],
+     "first_past_tol": null,
+     "greedy_differs_at": []
+    },
+    "vs_file_ir_ggml_gelu": {
+     "worst": 1.5772860711128888e-07,
+     "per_position": [
+      1.18e-07,
+      7.89e-08,
+      1.18e-07,
+      1.58e-07,
+      7.89e-08,
+      7.89e-08,
+      3.94e-08,
+      5.91e-08,
+      7.89e-08,
+      7.89e-08,
+      7.89e-08,
+      7.89e-08,
+      7.89e-08,
+      1.18e-07,
+      7.89e-08,
+      7.89e-08
+     ],
+     "first_past_tol": null,
+     "greedy_differs_at": []
+    },
+    "vs_arch_document_ggml_gelu_no_window": {
+     "worst": 1.5772860711128888e-07,
+     "per_position": [
+      1.18e-07,
+      7.89e-08,
+      1.18e-07,
+      1.58e-07,
+      7.89e-08,
+      7.89e-08,
+      3.94e-08,
+      5.91e-08,
+      7.89e-08,
+      7.89e-08,
+      7.89e-08,
+      7.89e-08,
+      7.89e-08,
+      1.18e-07,
+      7.89e-08,
+      7.89e-08
+     ],
+     "first_past_tol": null,
+     "greedy_differs_at": []
+    }
+   },
+   "consistency": {
+    "prefill_vs_token_by_token": {
+     "bit_identical": false,
+     "values_differing": 155,
+     "worst_abs": 2.384185791015625e-07
+    },
+    "prefill_vs_chunks_5_6_5": {
+     "bit_identical": true,
+     "values_differing": 0,
+     "worst_abs": 0.0
+    },
+    "prefill_run_to_run": {
+     "bit_identical": true,
+     "values_differing": 0,
+     "worst_abs": 0.0
+    }
+   },
+   "snapshot_restore": {
+    "bit_identical": true,
+    "values_differing": 0,
+    "worst_abs": 0.0
+   },
+   "rewind": [
+    {
+     "settings": "default (swa_full 1, n_ubatch 512)",
+     "L": 16,
+     "truncate_to": 8,
+     "then": 4,
+     "truncate_how": "llama_memory_seq_rm",
+     "vs_fresh_prefill_in_llamacpp": {
+      "bit_identical": true,
+      "values_differing": 0,
+      "worst_abs": 0.0
+     },
+     "vs_reference": {
+      "worst": 1.5768587774740046e-07,
+      "per_position": [
+       1.18e-07,
+       7.88e-08,
+       1.18e-07,
+       1.58e-07
+      ],
+      "first_past_tol": null,
+      "greedy_differs_at": []
+     },
+     "vs_reference_ggml_gelu": {
+      "worst": 1.5768587774740046e-07,
+      "per_position": [
+       1.18e-07,
+       7.88e-08,
+       1.18e-07,
+       1.58e-07
+      ],
+      "first_past_tol": null,
+      "greedy_differs_at": []
+     },
+     "fresh_prefill_vs_reference_ggml_gelu": {
+      "worst": 1.5768587774740046e-07,
+      "per_position": [
+       1.18e-07,
+       7.88e-08,
+       1.18e-07,
+       1.58e-07
+      ],
+      "first_past_tol": null,
+      "greedy_differs_at": []
+     }
+    }
+   ]
+  },
+  "pk_moe": {
+   "attribution": {
+    "ids": [
+     14,
+     9,
+     10,
+     13,
+     9,
+     11,
+     12,
+     4,
+     1,
+     5,
+     4,
+     13,
+     13,
+     1,
+     7,
+     12
+    ],
+    "llamacpp_arch": "llama",
+    "llamacpp_n_swa": 0,
+    "rewrites": [
+     "tokenizer.ggml.model word -> no_vocab, llama.vocab_size = 15 (kv overrides)"
+    ],
+    "vs_file_ir": {
+     "worst": 1.9618340103230137e-07,
+     "per_position": [
+      1.57e-07,
+      7.85e-08,
+      7.85e-08,
+      3.92e-08,
+      7.85e-08,
+      1.96e-07,
+      1.18e-07,
+      7.85e-08,
+      1.67e-07,
+      7.85e-08,
+      1.18e-07,
+      1.18e-07,
+      1.57e-07,
+      7.85e-08,
+      7.85e-08,
+      1.57e-07
+     ],
+     "first_past_tol": null,
+     "greedy_differs_at": []
+    },
+    "vs_file_ir_ggml_gelu": {
+     "worst": 1.9618340103230137e-07,
+     "per_position": [
+      1.57e-07,
+      7.85e-08,
+      7.85e-08,
+      3.92e-08,
+      7.85e-08,
+      1.96e-07,
+      1.18e-07,
+      7.85e-08,
+      1.67e-07,
+      7.85e-08,
+      1.18e-07,
+      1.18e-07,
+      1.57e-07,
+      7.85e-08,
+      7.85e-08,
+      1.57e-07
+     ],
+     "first_past_tol": null,
+     "greedy_differs_at": []
+    },
+    "arch_document_not_built": "tools/gguf_ir.py's llama graph does not fit the file's tensors (KeyError 'tied_to': no experts in its llama graph)"
+   },
+   "consistency": {
+    "prefill_vs_token_by_token": {
+     "bit_identical": false,
+     "values_differing": 132,
+     "worst_abs": 2.384185791015625e-07
+    },
+    "prefill_vs_chunks_5_6_5": {
+     "bit_identical": true,
+     "values_differing": 0,
+     "worst_abs": 0.0
+    },
+    "prefill_run_to_run": {
+     "bit_identical": true,
+     "values_differing": 0,
+     "worst_abs": 0.0
+    }
+   },
+   "snapshot_restore": {
+    "bit_identical": true,
+    "values_differing": 0,
+    "worst_abs": 0.0
+   },
+   "rewind": [
+    {
+     "settings": "default (swa_full 1, n_ubatch 512)",
+     "L": 16,
+     "truncate_to": 8,
+     "then": 4,
+     "truncate_how": "llama_memory_seq_rm",
+     "vs_fresh_prefill_in_llamacpp": {
+      "bit_identical": true,
+      "values_differing": 0,
+      "worst_abs": 0.0
+     },
+     "vs_reference": {
+      "worst": 7.849669411172749e-08,
+      "per_position": [
+       7.85e-08,
+       7.85e-08,
+       7.85e-08,
+       7.85e-08
+      ],
+      "first_past_tol": null,
+      "greedy_differs_at": []
+     },
+     "vs_reference_ggml_gelu": {
+      "worst": 7.849669411172749e-08,
+      "per_position": [
+       7.85e-08,
+       7.85e-08,
+       7.85e-08,
+       7.85e-08
+      ],
+      "first_past_tol": null,
+      "greedy_differs_at": []
+     },
+     "fresh_prefill_vs_reference_ggml_gelu": {
+      "worst": 7.849669411172749e-08,
+      "per_position": [
+       7.85e-08,
+       7.85e-08,
+       7.85e-08,
+       7.85e-08
+      ],
+      "first_past_tol": null,
+      "greedy_differs_at": []
+     }
+    }
+   ]
+  },
+  "pk_gpt2": {
+   "attribution": {
+    "ids": [
+     14,
+     9,
+     10,
+     13,
+     9,
+     11,
+     12,
+     4,
+     1,
+     5,
+     4,
+     13,
+     13,
+     1,
+     7,
+     12
+    ],
+    "llamacpp_arch": "gpt2",
+    "llamacpp_n_swa": 0,
+    "rewrites": [
+     "tokenizer.ggml.model word -> no_vocab, gpt2.vocab_size = 15 (kv overrides)"
+    ],
+    "vs_file_ir": {
+     "worst": 3.931888640296374e-05,
+     "per_position": [
+      3.23e-05,
+      1.82e-05,
+      3.14e-05,
+      3.21e-05,
+      2.88e-05,
+      2.88e-05,
+      3.03e-05,
+      1.95e-05,
+      3.27e-05,
+      3e-05,
+      3.93e-05,
+      2.27e-05,
+      2.16e-05,
+      2.58e-05,
+      3.08e-05,
+      2.96e-05
+     ],
+     "first_past_tol": 0,
+     "greedy_differs_at": []
+    },
+    "vs_file_ir_ggml_gelu": {
+     "worst": 1.4761989854231993e-07,
+     "per_position": [
+      7.38e-08,
+      7.38e-08,
+      7.38e-08,
+      4.61e-08,
+      7.38e-08,
+      3.69e-08,
+      7.38e-08,
+      7.38e-08,
+      7.38e-08,
+      1.48e-07,
+      5.54e-08,
+      7.38e-08,
+      7.38e-08,
+      3.69e-08,
+      7.38e-08,
+      7.38e-08
+     ],
+     "first_past_tol": null,
+     "greedy_differs_at": []
+    },
+    "vs_arch_document_ggml_gelu_no_window": {
+     "worst": 1.4761989854231993e-07,
+     "per_position": [
+      7.38e-08,
+      7.38e-08,
+      7.38e-08,
+      4.61e-08,
+      7.38e-08,
+      3.69e-08,
+      7.38e-08,
+      7.38e-08,
+      7.38e-08,
+      1.48e-07,
+      5.54e-08,
+      7.38e-08,
+      7.38e-08,
+      3.69e-08,
+      7.38e-08,
+      7.38e-08
+     ],
+     "first_past_tol": null,
+     "greedy_differs_at": []
+    }
+   },
+   "consistency": {
+    "prefill_vs_token_by_token": {
+     "bit_identical": false,
+     "values_differing": 130,
+     "worst_abs": 2.384185791015625e-07
+    },
+    "prefill_vs_chunks_5_6_5": {
+     "bit_identical": true,
+     "values_differing": 0,
+     "worst_abs": 0.0
+    },
+    "prefill_run_to_run": {
+     "bit_identical": true,
+     "values_differing": 0,
+     "worst_abs": 0.0
+    }
+   },
+   "snapshot_restore": {
+    "bit_identical": true,
+    "values_differing": 0,
+    "worst_abs": 0.0
+   },
+   "rewind": [
+    {
+     "settings": "default (swa_full 1, n_ubatch 512)",
+     "L": 16,
+     "truncate_to": 8,
+     "then": 4,
+     "truncate_how": "llama_memory_seq_rm",
+     "vs_fresh_prefill_in_llamacpp": {
+      "bit_identical": true,
+      "values_differing": 0,
+      "worst_abs": 0.0
+     },
+     "vs_reference": {
+      "worst": 5.0036168669715395e-05,
+      "per_position": [
+       2.27e-05,
+       4.7e-05,
+       5e-05,
+       2.04e-05
+      ],
+      "first_past_tol": 0,
+      "greedy_differs_at": []
+     },
+     "vs_reference_ggml_gelu": {
+      "worst": 1.1627331018254212e-07,
+      "per_position": [
+       1.16e-07,
+       7.75e-08,
+       7.75e-08,
+       2.91e-08
+      ],
+      "first_past_tol": null,
+      "greedy_differs_at": []
+     },
+     "fresh_prefill_vs_reference_ggml_gelu": {
+      "worst": 1.1627331018254212e-07,
+      "per_position": [
+       1.16e-07,
+       7.75e-08,
+       7.75e-08,
+       2.91e-08
+      ],
+      "first_past_tol": null,
+      "greedy_differs_at": []
+     }
+    }
+   ]
+  },
+  "pk_gpt2_swa": {
+   "attribution": {
+    "ids": [
+     14,
+     9,
+     10,
+     13,
+     9,
+     11,
+     12,
+     4,
+     1,
+     5,
+     4,
+     13,
+     13,
+     1,
+     7,
+     12
+    ],
+    "llamacpp_arch": "gpt2",
+    "llamacpp_n_swa": 0,
+    "rewrites": [
+     "tokenizer.ggml.model word -> no_vocab, gpt2.vocab_size = 15 (kv overrides)"
+    ],
+    "vs_file_ir": {
+     "worst": 0.12070268166267183,
+     "per_position": [
+      3.92e-05,
+      3.33e-05,
+      1.64e-05,
+      4.73e-05,
+      2.12e-05,
+      3.04e-05,
+      0.00488,
+      0.0341,
+      0.0362,
+      0.0738,
+      0.121,
+      0.0243,
+      0.0199,
+      0.0053,
+      0.0161,
+      0.0131
+     ],
+     "first_past_tol": 0,
+     "greedy_differs_at": []
+    },
+    "vs_file_ir_ggml_gelu": {
+     "worst": 0.1206856311056431,
+     "per_position": [
+      7.45e-08,
+      7.45e-08,
+      7.45e-08,
+      7.45e-08,
+      7.45e-08,
+      9.31e-08,
+      0.00489,
+      0.0341,
+      0.0362,
+      0.0738,
+      0.121,
+      0.0243,
+      0.0199,
+      0.00531,
+      0.0161,
+      0.0131
+     ],
+     "first_past_tol": 6,
+     "greedy_differs_at": []
+    },
+    "vs_arch_document_ggml_gelu_no_window": {
+     "worst": 1.495969894503455e-07,
+     "per_position": [
+      7.48e-08,
+      7.48e-08,
+      7.48e-08,
+      7.48e-08,
+      7.48e-08,
+      9.35e-08,
+      7.48e-08,
+      7.48e-08,
+      1.12e-07,
+      3.74e-08,
+      1.5e-07,
+      3.74e-08,
+      3.74e-08,
+      7.48e-08,
+      7.48e-08,
+      5.61e-08
+     ],
+     "first_past_tol": null,
+     "greedy_differs_at": []
+    }
+   },
+   "consistency": {
+    "prefill_vs_token_by_token": {
+     "bit_identical": false,
+     "values_differing": 190,
+     "worst_abs": 5.0961971282958984e-06
+    },
+    "prefill_vs_chunks_5_6_5": {
+     "bit_identical": true,
+     "values_differing": 0,
+     "worst_abs": 0.0
+    },
+    "prefill_run_to_run": {
+     "bit_identical": true,
+     "values_differing": 0,
+     "worst_abs": 0.0
+    }
+   },
+   "snapshot_restore": {
+    "bit_identical": true,
+    "values_differing": 0,
+    "worst_abs": 0.0
+   },
+   "rewind": [
+    {
+     "settings": "default (swa_full 1, n_ubatch 512)",
+     "L": 16,
+     "truncate_to": 8,
+     "then": 4,
+     "truncate_how": "llama_memory_seq_rm",
+     "vs_fresh_prefill_in_llamacpp": {
+      "bit_identical": true,
+      "values_differing": 0,
+      "worst_abs": 0.0
+     },
+     "vs_reference": {
+      "worst": 0.10702892114469142,
+      "per_position": [
+       0.0301,
+       0.0673,
+       0.107,
+       0.0391
+      ],
+      "first_past_tol": 0,
+      "greedy_differs_at": []
+     },
+     "vs_reference_ggml_gelu": {
+      "worst": 0.1070308887423271,
+      "per_position": [
+       0.0301,
+       0.0673,
+       0.107,
+       0.0391
+      ],
+      "first_past_tol": 0,
+      "greedy_differs_at": []
+     },
+     "fresh_prefill_vs_reference_ggml_gelu": {
+      "worst": 0.1070308887423271,
+      "per_position": [
+       0.0301,
+       0.0673,
+       0.107,
+       0.0391
+      ],
+      "first_past_tol": 0,
+      "greedy_differs_at": []
+     }
+    }
+   ]
+  },
+  "pk_kimi": {
+   "attribution": {
+    "ids": [
+     14,
+     9,
+     10,
+     13,
+     9,
+     11,
+     12,
+     4,
+     1,
+     5,
+     4,
+     13,
+     13,
+     1,
+     7,
+     12
+    ],
+    "llamacpp_arch": "gpt2",
+    "llamacpp_n_swa": 0,
+    "rewrites": [
+     "tokenizer.ggml.model word -> no_vocab, gpt2.vocab_size = 15 (kv overrides)"
+    ],
+    "vs_file_ir": {
+     "worst": 0.02129494787171091,
+     "per_position": [
+      0.0213,
+      0.0123,
+      0.00567,
+      0.0045,
+      0.00651,
+      0.00473,
+      0.00619,
+      0.00764,
+      0.00359,
+      0.0048,
+      0.0043,
+      0.00253,
+      0.00261,
+      0.00182,
+      0.00279,
+      0.00297
+     ],
+     "first_past_tol": 0,
+     "greedy_differs_at": []
+    },
+    "vs_file_ir_ggml_gelu": {
+     "worst": 0.021289826235970068,
+     "per_position": [
+      0.0213,
+      0.0123,
+      0.00566,
+      0.00448,
+      0.00649,
+      0.00473,
+      0.00619,
+      0.00764,
+      0.00361,
+      0.00479,
+      0.00431,
+      0.00256,
+      0.0026,
+      0.00178,
+      0.00278,
+      0.00299
+     ],
+     "first_past_tol": 0,
+     "greedy_differs_at": []
+    },
+    "vs_arch_document_ggml_gelu_no_window": {
+     "worst": 1.1081786242095361e-07,
+     "per_position": [
+      7.39e-08,
+      7.39e-08,
+      3.69e-08,
+      7.39e-08,
+      3.69e-08,
+      3.69e-08,
+      7.39e-08,
+      7.39e-08,
+      7.39e-08,
+      7.39e-08,
+      3.69e-08,
+      7.39e-08,
+      3.69e-08,
+      1.11e-07,
+      1.11e-07,
+      5.54e-08
+     ],
+     "first_past_tol": null,
+     "greedy_differs_at": []
+    }
+   },
+   "consistency": {
+    "prefill_vs_token_by_token": {
+     "bit_identical": false,
+     "values_differing": 131,
+     "worst_abs": 2.384185791015625e-07
+    },
+    "prefill_vs_chunks_5_6_5": {
+     "bit_identical": true,
+     "values_differing": 0,
+     "worst_abs": 0.0
+    },
+    "prefill_run_to_run": {
+     "bit_identical": true,
+     "values_differing": 0,
+     "worst_abs": 0.0
+    }
+   },
+   "snapshot_restore": {
+    "bit_identical": true,
+    "values_differing": 0,
+    "worst_abs": 0.0
+   },
+   "rewind": [
+    {
+     "settings": "default (swa_full 1, n_ubatch 512)",
+     "L": 16,
+     "truncate_to": 8,
+     "then": 4,
+     "truncate_how": "llama_memory_seq_rm",
+     "vs_fresh_prefill_in_llamacpp": {
+      "bit_identical": true,
+      "values_differing": 0,
+      "worst_abs": 0.0
+     },
+     "vs_reference": {
+      "worst": 0.009604083228392343,
+      "per_position": [
+       0.00297,
+       0.0096,
+       0.00673,
+       0.00626
+      ],
+      "first_past_tol": 0,
+      "greedy_differs_at": []
+     },
+     "vs_reference_ggml_gelu": {
+      "worst": 0.009596311203660448,
+      "per_position": [
+       0.00295,
+       0.0096,
+       0.00673,
+       0.00624
+      ],
+      "first_past_tol": 0,
+      "greedy_differs_at": []
+     },
+     "fresh_prefill_vs_reference_ggml_gelu": {
+      "worst": 0.009596311203660448,
+      "per_position": [
+       0.00295,
+       0.0096,
+       0.00673,
+       0.00624
+      ],
+      "first_past_tol": 0,
+      "greedy_differs_at": []
+     }
+    }
+   ]
+  },
+  "pk_recurrence": {
+   "attribution": {
+    "ids": [
+     14,
+     9,
+     10,
+     13,
+     9,
+     11,
+     12,
+     4,
+     1,
+     5,
+     4,
+     13,
+     13,
+     1,
+     7,
+     12
+    ],
+    "llamacpp_arch": "gpt2",
+    "llamacpp_n_swa": 0,
+    "rewrites": [
+     "tokenizer.ggml.model word -> no_vocab, gpt2.vocab_size = 15 (kv overrides)"
+    ],
+    "vs_file_ir": {
+     "worst": 0.0289818510443897,
+     "per_position": [
+      0.029,
+      0.0148,
+      0.00796,
+      0.00706,
+      0.00336,
+      0.00766,
+      0.0104,
+      0.0115,
+      0.0076,
+      0.012,
+      0.0192,
+      0.00483,
+      0.00329,
+      0.0044,
+      0.00731,
+      0.00227
+     ],
+     "first_past_tol": 0,
+     "greedy_differs_at": []
+    },
+    "vs_file_ir_ggml_gelu": {
+     "worst": 0.028971339487691494,
+     "per_position": [
+      0.029,
+      0.0147,
+      0.00794,
+      0.00706,
+      0.00336,
+      0.00765,
+      0.0104,
+      0.0115,
+      0.00758,
+      0.012,
+      0.0192,
+      0.00481,
+      0.00332,
+      0.00438,
+      0.00729,
+      0.00228
+     ],
+     "first_past_tol": 0,
+     "greedy_differs_at": []
+    },
+    "vs_arch_document_ggml_gelu_no_window": {
+     "worst": 1.5858444134684365e-06,
+     "per_position": [
+      7.38e-08,
+      7.38e-08,
+      3.69e-08,
+      7.38e-08,
+      4.61e-08,
+      1.11e-07,
+      1.48e-07,
+      1.59e-06,
+      7.38e-08,
+      4.15e-08,
+      7.38e-08,
+      7.38e-08,
+      7.38e-08,
+      7.38e-08,
+      1.11e-07,
+      7.38e-08
+     ],
+     "first_past_tol": null,
+     "greedy_differs_at": []
+    }
+   },
+   "consistency": {
+    "prefill_vs_token_by_token": {
+     "bit_identical": false,
+     "values_differing": 133,
+     "worst_abs": 1.1920928955078125e-07
+    },
+    "prefill_vs_chunks_5_6_5": {
+     "bit_identical": true,
+     "values_differing": 0,
+     "worst_abs": 0.0
+    },
+    "prefill_run_to_run": {
+     "bit_identical": true,
+     "values_differing": 0,
+     "worst_abs": 0.0
+    }
+   },
+   "snapshot_restore": {
+    "bit_identical": true,
+    "values_differing": 0,
+    "worst_abs": 0.0
+   },
+   "rewind": [
+    {
+     "settings": "default (swa_full 1, n_ubatch 512)",
+     "L": 16,
+     "truncate_to": 8,
+     "then": 4,
+     "truncate_how": "llama_memory_seq_rm",
+     "vs_fresh_prefill_in_llamacpp": {
+      "bit_identical": true,
+      "values_differing": 0,
+      "worst_abs": 0.0
+     },
+     "vs_reference": {
+      "worst": 0.015874119766590828,
+      "per_position": [
+       0.011,
+       0.015,
+       0.0159,
+       0.0133
+      ],
+      "first_past_tol": 0,
+      "greedy_differs_at": []
+     },
+     "vs_reference_ggml_gelu": {
+      "worst": 0.015885899410815793,
+      "per_position": [
+       0.011,
+       0.015,
+       0.0159,
+       0.0133
+      ],
+      "first_past_tol": 0,
+      "greedy_differs_at": []
+     },
+     "fresh_prefill_vs_reference_ggml_gelu": {
+      "worst": 0.015885899410815793,
+      "per_position": [
+       0.011,
+       0.015,
+       0.0159,
+       0.0133
+      ],
+      "first_past_tol": 0,
+      "greedy_differs_at": []
+     }
+    }
+   ]
+  }
+ },
+ "swa_rewind_tp_gemma3": [
+  {
+   "settings": "swa_full 1 (llama_context_default_params), n_ubatch 512",
+   "L": 48,
+   "truncate_to": 10,
+   "then": 4,
+   "truncate_how": "llama_memory_seq_rm",
+   "vs_fresh_prefill_in_llamacpp": {
+    "bit_identical": true,
+    "values_differing": 0,
+    "worst_abs": 0.0
+   },
+   "vs_reference": {
+    "worst": 0.0003052455415392829,
+    "per_position": [
+     0.000305,
+     0.000292,
+     0.000275,
+     0.000257
+    ],
+    "first_past_tol": 0,
+    "greedy_differs_at": []
+   },
+   "vs_reference_ggml_gelu": {
+    "worst": 6.298199637347727e-07,
+    "per_position": [
+     3.36e-07,
+     3.88e-07,
+     6.3e-07,
+     2.58e-07
+    ],
+    "first_past_tol": null,
+    "greedy_differs_at": []
+   },
+   "fresh_prefill_vs_reference_ggml_gelu": {
+    "worst": 6.298199637347727e-07,
+    "per_position": [
+     3.36e-07,
+     3.88e-07,
+     6.3e-07,
+     2.58e-07
+    ],
+    "first_past_tol": null,
+    "greedy_differs_at": []
+   }
+  },
+  {
+   "settings": "swa_full 1 (llama_context_default_params), n_ubatch 512",
+   "L": 48,
+   "truncate_to": 40,
+   "then": 4,
+   "truncate_how": "llama_memory_seq_rm",
+   "vs_fresh_prefill_in_llamacpp": {
+    "bit_identical": true,
+    "values_differing": 0,
+    "worst_abs": 0.0
+   },
+   "vs_reference": {
+    "worst": 0.0009392131431392895,
+    "per_position": [
+     0.000728,
+     0.000537,
+     0.000939,
+     0.000697
+    ],
+    "first_past_tol": 0,
+    "greedy_differs_at": []
+   },
+   "vs_reference_ggml_gelu": {
+    "worst": 4.119894197869791e-05,
+    "per_position": [
+     2.19e-05,
+     4.12e-05,
+     2.62e-05,
+     1.18e-05
+    ],
+    "first_past_tol": 0,
+    "greedy_differs_at": []
+   },
+   "fresh_prefill_vs_reference_ggml_gelu": {
+    "worst": 4.119894197869791e-05,
+    "per_position": [
+     2.19e-05,
+     4.12e-05,
+     2.62e-05,
+     1.18e-05
+    ],
+    "first_past_tol": 0,
+    "greedy_differs_at": []
+   }
+  },
+  {
+   "settings": "swa_full 0 (common/llama-server default), n_ubatch 4",
+   "L": 48,
+   "truncate_to": 10,
+   "then": 4,
+   "truncate_how": "llama_memory_seq_rm",
+   "vs_fresh_prefill_in_llamacpp": {
+    "bit_identical": false,
+    "values_differing": 96,
+    "worst_abs": 2.8221884965896606
+   },
+   "vs_reference": {
+    "worst": 1.2233650140344738,
+    "per_position": [
+     1.04,
+     1.21,
+     1.22,
+     0.947
+    ],
+    "first_past_tol": 0,
+    "greedy_differs_at": [
+     0,
+     1,
+     2,
+     3
+    ]
+   },
+   "vs_reference_ggml_gelu": {
+    "worst": 1.2234257575719991,
+    "per_position": [
+     1.04,
+     1.21,
+     1.22,
+     0.947
+    ],
+    "first_past_tol": 0,
+    "greedy_differs_at": [
+     0,
+     1,
+     2,
+     3
+    ]
+   },
+   "fresh_prefill_vs_reference_ggml_gelu": {
+    "worst": 6.298199637347727e-07,
+    "per_position": [
+     3.36e-07,
+     3.88e-07,
+     6.3e-07,
+     2.58e-07
+    ],
+    "first_past_tol": null,
+    "greedy_differs_at": []
+   }
+  },
+  {
+   "settings": "swa_full 0 (common/llama-server default), n_ubatch 4",
+   "L": 48,
+   "truncate_to": 40,
+   "then": 4,
+   "truncate_how": "llama_memory_seq_rm",
+   "vs_fresh_prefill_in_llamacpp": {
+    "bit_identical": true,
+    "values_differing": 0,
+    "worst_abs": 0.0
+   },
+   "vs_reference": {
+    "worst": 0.0009392131431392895,
+    "per_position": [
+     0.000728,
+     0.000537,
+     0.000939,
+     0.000697
+    ],
+    "first_past_tol": 0,
+    "greedy_differs_at": []
+   },
+   "vs_reference_ggml_gelu": {
+    "worst": 4.119894197869791e-05,
+    "per_position": [
+     2.19e-05,
+     4.12e-05,
+     2.62e-05,
+     1.18e-05
+    ],
+    "first_past_tol": 0,
+    "greedy_differs_at": []
+   },
+   "fresh_prefill_vs_reference_ggml_gelu": {
+    "worst": 4.119894197869791e-05,
+    "per_position": [
+     2.19e-05,
+     4.12e-05,
+     2.62e-05,
+     1.18e-05
+    ],
+    "first_past_tol": 0,
+    "greedy_differs_at": []
+   }
+  },
+  {
+   "settings": "swa_full 0, n_ubatch 4, with llama-server's rewind guard",
+   "L": 48,
+   "truncate_to": 10,
+   "then": 4,
+   "truncate_how": "re-prefill (rewind guard: the sliding-window cache no longer holds position max(0, n - n_swa))",
+   "vs_fresh_prefill_in_llamacpp": {
+    "bit_identical": true,
+    "values_differing": 0,
+    "worst_abs": 0.0
+   },
+   "vs_reference": {
+    "worst": 0.0003052455415392829,
+    "per_position": [
+     0.000305,
+     0.000292,
+     0.000275,
+     0.000257
+    ],
+    "first_past_tol": 0,
+    "greedy_differs_at": []
+   },
+   "vs_reference_ggml_gelu": {
+    "worst": 6.298199637347727e-07,
+    "per_position": [
+     3.36e-07,
+     3.88e-07,
+     6.3e-07,
+     2.58e-07
+    ],
+    "first_past_tol": null,
+    "greedy_differs_at": []
+   },
+   "fresh_prefill_vs_reference_ggml_gelu": {
+    "worst": 6.298199637347727e-07,
+    "per_position": [
+     3.36e-07,
+     3.88e-07,
+     6.3e-07,
+     2.58e-07
+    ],
+    "first_past_tol": null,
+    "greedy_differs_at": []
+   }
+  },
+  {
+   "settings": "swa_full 0, n_ubatch 4, with llama-server's rewind guard",
+   "L": 48,
+   "truncate_to": 40,
+   "then": 4,
+   "truncate_how": "llama_memory_seq_rm",
+   "vs_fresh_prefill_in_llamacpp": {
+    "bit_identical": true,
+    "values_differing": 0,
+    "worst_abs": 0.0
+   },
+   "vs_reference": {
+    "worst": 0.0009392131431392895,
+    "per_position": [
+     0.000728,
+     0.000537,
+     0.000939,
+     0.000697
+    ],
+    "first_past_tol": 0,
+    "greedy_differs_at": []
+   },
+   "vs_reference_ggml_gelu": {
+    "worst": 4.119894197869791e-05,
+    "per_position": [
+     2.19e-05,
+     4.12e-05,
+     2.62e-05,
+     1.18e-05
+    ],
+    "first_past_tol": 0,
+    "greedy_differs_at": []
+   },
+   "fresh_prefill_vs_reference_ggml_gelu": {
+    "worst": 4.119894197869791e-05,
+    "per_position": [
+     2.19e-05,
+     4.12e-05,
+     2.62e-05,
+     1.18e-05
+    ],
+    "first_past_tol": 0,
+    "greedy_differs_at": []
+   }
+  }
+ ]
+}

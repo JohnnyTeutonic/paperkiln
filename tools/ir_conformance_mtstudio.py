@@ -68,6 +68,10 @@ def _recipes():
         # The recurrence lane (IR_SPEC 6.10): kimi's projections around a recurrence node whose body is a
         # decayed elu+1 linear attention (no hand-written op computes it).
         "pk_recurrence": (with_custom(gpt2, attention="recurrence", recurrence=DECAYED_LINEAR_ATTENTION), "recurrence"),
+        # T5's relative position bias (keramos 1.3, IR_SPEC 5.15 position_bias): 8 buckets up to distance 12, so
+        # the suite's 16-token contexts reach the last bucket's clamp.
+        "pk_flex_t5": (with_custom(gpt2, norm="rmsnorm", activation="relu", position="t5_relative", rel_buckets=8,
+                                   rel_max_distance=12), "core"),
     }
     return r
 
