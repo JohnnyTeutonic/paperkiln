@@ -1,0 +1,363 @@
+{
+ "_comment": "tiny-chat size arm, seed 4 at 150m_L8 (experiments/tiny_chat_2026-10/PREREGISTRATION.md amendment 6): the CUDA gate on this machine's GPU, the gate (design final, the floor pilot's PASS, experiments/tiny_chat_2026-10/size/stage0/cuda_gate_150m_L8.json passed, experiments/tiny_chat_2026-10/size/plain_bitid.json ok, the pretraining lr equal to experiments/tiny_chat_2026-10/stage0/lr_choice_150m.json's; here 0.0005), the 35% data job, 10000 steps x 16384 tokens at batch 16 x accum 2, rungs at [500, 1000, 2500, 5000] in the light slot (cache capped at 2048 MB), and the post job (SFT at the same micro-batching, panels, Carry-5 with ember generation, base-model Carry-5), which brings home its per-item records, replies and SFT model. One GPU job at a time. Estimated 10.4 L4 VM-hours. The pick runs at home once all three seeds are home: python tools/colab_chat/tiny_chat_run.py pick --out ART/e1_150m/pick_e1_150m_L8 --run ART/e1_150m_r1/post_e1_150m_L8_r1 --run ART/e1_150m_r2/post_e1_150m_L8_r2 --run ART/e1_150m_r3/post_e1_150m_L8_r3. Upload vocab_llama3_bpe.gguf with the runner's --upload. Carry-5 generation (24 Oct 2026, PREREGISTRATION.md implementation note): ember.cpp's CUDA server at aa50a6112dfd (cloned and built once per VM by the first post job, under a lock), on the SFT model's F32 GGUF; every post job first generates 40 fixed items with ember and with mtstudio chat and lets ember generate only on 40/40 identical replies, else mtstudio for the whole run (gen_flag in its summary.json). Forced-choice scoring stays with mtstudio score. Dialogue levels [0, 17, 35, 70]% (copies), E1 at 35% (design.json final).",
+ "max_parallel": 1,
+ "max_parallel_light": 1,
+ "jobs": [
+  {
+   "name": "cuda_gate",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "cuda_gate",
+    "--out",
+    "{out}"
+   ],
+   "outputs": [
+    "cuda_gate.json",
+    "cuda_gate.log"
+   ]
+  },
+  {
+   "name": "data",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_data.py",
+    "--out",
+    "{out}",
+    "--vocab",
+    "/content/chat/upload/vocab_llama3_bpe.gguf",
+    "--fineweb",
+    "corpus/data/fineweb_edu_shard0_v1",
+    "--shares",
+    "35",
+    "--mix-bytes",
+    "800000000",
+    "--max-epochs",
+    "4",
+    "--T",
+    "512",
+    "--seed",
+    "1",
+    "--human-fetch",
+    "python3 corpus/fetchers/human_dialogue.py oasst,convai2,wow,bst,taskmaster,multiwoz,self_dialogue,topical_chat,dolly,quac,empathetic,dailydialog,no_robots --allow-sa --allow-nc --out-dir {human}",
+    "--sources",
+    "oasst,convai2,wow,bst,taskmaster,multiwoz,self_dialogue,topical_chat,dolly,quac,empathetic,dailydialog,no_robots",
+    "--require-pinned"
+   ],
+   "outputs": [
+    "data.ledger.json"
+   ]
+  },
+  {
+   "name": "gate",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "gate",
+    "--out",
+    "{out}",
+    "--jobs",
+    "tools/colab_chat/tiny_chat_e1_150m_r4.json",
+    "--choice",
+    "experiments/tiny_chat_2026-10/stage0/lr_choice_150m.json",
+    "--design",
+    "experiments/tiny_chat_2026-10/design.json",
+    "--pilot-verdict",
+    "experiments/tiny_chat_2026-10/pilot/verdict.json",
+    "--need-pilot",
+    "PASS",
+    "--need-cuda-gate",
+    "experiments/tiny_chat_2026-10/size/stage0/cuda_gate_150m_L8.json",
+    "--need-ok",
+    "experiments/tiny_chat_2026-10/size/plain_bitid.json"
+   ],
+   "outputs": [
+    "gate.json"
+   ]
+  },
+  {
+   "name": "pt_e1_150m_L8_r4",
+   "model_name": "tc_e1_150m_L8_r4",
+   "after": [
+    "data",
+    "gate",
+    "cuda_gate"
+   ],
+   "relay_every_steps": 2500,
+   "snapshot_steps": [
+    500,
+    1000,
+    2500,
+    5000
+   ],
+   "spec": {
+    "name": "tc_150m_L8",
+    "arch": {
+     "preset": "llama-tiny",
+     "rope_heads": "all",
+     "custom": {
+      "d": 1216,
+      "layers": 8,
+      "heads": 19,
+      "d_ff": 3520
+     }
+    },
+    "data": {
+     "corpus": "/content/chat/data/mix_s35.ids",
+     "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+     "vocab_cap": 16384,
+     "T": 512,
+     "max_tokens": 0
+    },
+    "train": {
+     "steps": 10000,
+     "lr": 0.0005,
+     "batch": 16,
+     "accum": 2,
+     "clip": 1.0,
+     "eval_every": 500,
+     "eval_windows": 32,
+     "checkpoint_every": 500,
+     "gradmap_every": 0,
+     "seed": 4,
+     "optimizer": "adamw",
+     "lr_schedule": {
+      "warmup_steps": 500,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     }
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf"
+     ]
+    }
+   }
+  },
+  {
+   "name": "rung_e1_150m_L8_r4_s500",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_150m_L8_r4",
+    "step": 500
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/size/specs/shape_150m_L8.json",
+    "--weights",
+    "/content/chat/pt_e1_150m_L8_r4/rung_500/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_150m_L8_r4",
+    "--step",
+    "500",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_150m_L8_r4",
+    "--cell",
+    "L8",
+    "--seed",
+    "4",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_150m_L8_r4_s1000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_150m_L8_r4",
+    "step": 1000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/size/specs/shape_150m_L8.json",
+    "--weights",
+    "/content/chat/pt_e1_150m_L8_r4/rung_1000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_150m_L8_r4",
+    "--step",
+    "1000",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_150m_L8_r4",
+    "--cell",
+    "L8",
+    "--seed",
+    "4",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_150m_L8_r4_s2500",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_150m_L8_r4",
+    "step": 2500
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/size/specs/shape_150m_L8.json",
+    "--weights",
+    "/content/chat/pt_e1_150m_L8_r4/rung_2500/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_150m_L8_r4",
+    "--step",
+    "2500",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_150m_L8_r4",
+    "--cell",
+    "L8",
+    "--seed",
+    "4",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "rung_e1_150m_L8_r4_s5000",
+   "after": "data",
+   "light": true,
+   "rung_of": {
+    "job": "pt_e1_150m_L8_r4",
+    "step": 5000
+   },
+   "env": {
+    "MICROTORCH_POOL_MB": 2048
+   },
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "rung",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/size/specs/shape_150m_L8.json",
+    "--weights",
+    "/content/chat/pt_e1_150m_L8_r4/rung_5000/model.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_150m_L8_r4",
+    "--step",
+    "5000",
+    "--drop-snapshot",
+    "--job",
+    "pt_e1_150m_L8_r4",
+    "--cell",
+    "L8",
+    "--seed",
+    "4",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl"
+   ],
+   "outputs": [
+    "rung.json"
+   ]
+  },
+  {
+   "name": "post_e1_150m_L8_r4",
+   "after": "pt_e1_150m_L8_r4",
+   "init_job": "pt_e1_150m_L8_r4",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "post",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_2026-10/size/specs/shape_150m_L8.json",
+    "--pt-weights",
+    "/content/chat/pt_e1_150m_L8_r4/tc_e1_150m_L8_r4.safetensors",
+    "--pt-dir",
+    "/content/chat/pt_e1_150m_L8_r4",
+    "--sft-template",
+    "experiments/tiny_chat_2026-10/specs/sft.json",
+    "--seed",
+    "4",
+    "--cell",
+    "L8",
+    "--share",
+    "35",
+    "--panel",
+    "fineweb=/content/chat/data/panel_fineweb.ids",
+    "--panel",
+    "dialogue=/content/chat/data/panel_dialogue.ids",
+    "--carry5-items",
+    "corpus/eval/carry5_v1.jsonl",
+    "--gen",
+    "ember",
+    "--sft-batching",
+    "spec"
+   ],
+   "outputs": [
+    "summary.json",
+    "carry5/m/items.jsonl",
+    "carry5/m/gen.jsonl",
+    "sft_spec.json",
+    "sft/tc_sft_L8_r4.safetensors",
+    "sft/tc_sft_L8_r4.gguf"
+   ]
+  }
+ ]
+}
