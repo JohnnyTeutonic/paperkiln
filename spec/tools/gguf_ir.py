@@ -48,7 +48,9 @@ Revision 1.5 (LOCAL_LLM_WORK.md E4):
   gemma2          gemma3's block without q/k norms, one RoPE base, local layers i % 2 == 0, attention
                   softcap, the final logits soft-capped by an expr node.
   deepseek2       DeepSeek-V2's multi-head latent attention (mla_attention, split groups) and its MoE
-                  (raw or renormalised softmax gates, expert_weights_scale, ungated shared experts).
+                  (raw or renormalised softmax gates, expert_weights_scale, ungated shared experts);
+                  revision 1.6: leading dense blocks (node attribute apply), DeepSeek-V3's sigmoid router
+                  with selection bias and groups, YaRN (inline freq_factors and the softmax temperature).
                   See each builder's docstring for what it refuses by name.
 Every other architecture stops with its name. The document has the shape IR_SPEC.md
 describes; tools/ir_numpy.py runs it.
@@ -451,18 +453,40 @@ def gemma2(m):
     return document(m, embed, [kv_state(H, KV, hd, ctx, windows)], nodes, head, ctx)
 
 
+def yarn_factors(dim, base, factor, orig, beta_fast=32.0, beta_slow=1.0):
+    """YaRN's per-pair divisors (Peng et al. 2023, arXiv 2309.00071, section 3.2, "NTK-by-parts"), as
+    transformers' _compute_yarn_parameters and llama.cpp's ggml_rope_yarn_corr_dims compute them, in binary64:
+    pair j's inverse frequency is theta^(-2j/dim) ((1 - e_j) / factor + e_j), e_j = 1 - ramp(j), the ramp linear
+    from 0 at the low correction dimension to 1 at the high one; the divisor is the reciprocal of that bracket."""
+    def corr(rot):
+        return (dim * math.log(orig / (rot * 2 * math.pi))) / (2 * math.log(base))
+    low, high = max(math.floor(corr(beta_fast)), 0), min(math.ceil(corr(beta_slow)), dim - 1)
+    if low == high:
+        high += 0.001
+    out = []
+    for j in range(dim // 2):
+        e = 1.0 - min(1.0, max(0.0, (j - low) / (high - low)))
+        out.append(f32(1.0 / ((1.0 - e) / factor + e)))
+    return out
+
+
 def deepseek2(m):
-    """DeepSeek-V2 (llama.cpp b6000's deepseek2 graph, its MLA form): pre-RMSNorm; q = attn_q h (V2-Lite) or
-    attn_q_b rmsnorm(attn_q_a h); q split per head into its nope and rope parts (split groups, revision 1.5);
+    """DeepSeek-V2 and V3 (llama.cpp b6000's deepseek2 graph, its MLA form): pre-RMSNorm; q = attn_q h (V2-Lite)
+    or attn_q_b rmsnorm(attn_q_a h); q split per head into its nope and rope parts (split groups, revision 1.5);
     attn_kv_a_mqa h split into the latent c and the shared rope key kr, c RMS-normed (attn_kv_a_norm);
-    interleaved RoPE on q's rope part (heads) and kr (one head); mla_attention (revision 1.5, IR_SPEC 5.20:
-    attn_k_b and attn_v_b, the kv slot one row of kv_lora_rank + rope dims per position) with scale
-    1/sqrt(qk_nope + qk_rope); attn_output; then moe_ffn (softmax gates; renormalised over the top k when
-    expert_weights_norm), times expert_weights_scale (an affine when it is not 1), plus the shared experts
-    (ffn_*_shexp, ungated). Refused by name: leading dense blocks (leading_dense_block_count > 0: the block is
-    one node list), sigmoid gating and its selection bias (DeepSeek-V3), YaRN RoPE scaling, and files written
-    before the MLA keys (attn_kv_b without attn_k_b / attn_v_b)."""
+    interleaved RoPE on q's rope part (heads) and kr (one head), with YaRN's per-pair divisors as an inline
+    freq_factors list when rope.scaling.type is yarn (revision 1.6); mla_attention (revision 1.5, IR_SPEC 5.20)
+    with scale mscale^2 / sqrt(qk_nope + qk_rope), mscale = 1 + rope.scaling.yarn_log_multiplier ln(factor)
+    under YaRN (DeepSeek's softmax temperature, as llama.cpp), else 1; attn_output; then, on the first
+    leading_dense_block_count applications, a dense SwiGLU, and on the others moe_ffn (softmax or, when
+    expert_gating_func is 2, sigmoid scores; selection bias exp_probs_b; groups from expert_group_count and
+    expert_group_used_count when the file states them; renormalised over the top k when expert_weights_norm)
+    times expert_weights_scale (an affine when it is not 1), plus the shared experts (ffn_*_shexp, ungated): the
+    two branches are selected per application by the node attribute apply (revision 1.6, IR_SPEC 3.8). Refused
+    by name: files written before llama.cpp's MLA keys (attn_kv_b without attn_k_b / attn_v_b), other gating
+    functions and other RoPE scaling."""
     d, H = int(m.get("embedding_length")), int(m.get("attention.head_count"))
+    L = int(m.get("block_count"))
     if m.opt("attention.key_length_mla") is None or "blk.0.attn_k_b.weight" not in m.shapes:
         raise SystemExit("gguf_ir: deepseek2 without attention.key_length_mla and attn_k_b / attn_v_b (a conversion "
                          "before llama.cpp's MLA layout) is not built")
@@ -470,14 +494,21 @@ def deepseek2(m):
     dn, dv = int(m.get("attention.key_length_mla")) - dr, int(m.get("attention.value_length_mla"))
     r = int(m.get("attention.kv_lora_rank"))
     ctx, eps = int(m.get("context_length")), float(m.get("attention.layer_norm_rms_epsilon"))
-    if int(m.opt("leading_dense_block_count") or 0) > 0:
-        raise SystemExit("gguf_ir: deepseek2 with leading dense blocks (leading_dense_block_count "
-                         f"{m.opt('leading_dense_block_count')}) is not built: the IR's block is one node list")
-    if m.opt("rope.scaling.type") not in (None, "none") or "rope_freqs.weight" in m.shapes:
-        raise SystemExit(f"gguf_ir: deepseek2 with RoPE scaling {m.opt('rope.scaling.type')!r} (YaRN) is not built yet")
-    if int(m.opt("expert_gating_func") or 1) != 1 or "blk.0.exp_probs_b.bias" in m.shapes:
-        raise SystemExit("gguf_ir: deepseek2 with sigmoid gating or a selection bias (DeepSeek-V3's router) is not "
-                         "built yet")
+    theta = float(m.get("rope.freq_base", 10000.0))
+    k = min(int(m.opt("leading_dense_block_count") or 0), L)
+    stype = m.opt("rope.scaling.type")
+    extra, mscale = {}, 1.0
+    if "rope_freqs.weight" in m.shapes:
+        raise SystemExit("gguf_ir: deepseek2 with rope_freqs is not built")
+    if stype == "yarn":
+        factor = float(m.get("rope.scaling.factor"))
+        extra["freq_factors"] = yarn_factors(dr, theta, factor, float(m.get("rope.scaling.original_context_length")))
+        mscale = 1.0 + float(m.opt("rope.scaling.yarn_log_multiplier") or 0.0) * math.log(factor)
+    elif stype not in (None, "none"):
+        raise SystemExit(f"gguf_ir: deepseek2 with RoPE scaling {stype!r} is not built yet")
+    gating = int(m.opt("expert_gating_func") or 1)
+    if gating not in (1, 2):
+        raise SystemExit(f"gguf_ir: deepseek2 with expert_gating_func {gating} (neither softmax 1 nor sigmoid 2)")
     nodes = [rmsnorm("x", B + "attn_norm.weight", eps, "h")]
     if "blk.0.attn_q_a.weight" in m.shapes:
         nodes += [linear("h", B + "attn_q_a.weight", "qa"), rmsnorm("qa", B + "attn_q_a_norm.weight", eps, "qa"),
@@ -489,20 +520,43 @@ def deepseek2(m):
         linear("h", B + "attn_kv_a_mqa.weight", "ckr"),
         op("split", ["ckr"], ["c", "kr"], sizes=[r, dr]),
         rmsnorm("c", B + "attn_kv_a_norm.weight", eps, "c"),
-        rope(H, 1, dr, dr, f32(float(m.get("rope.freq_base", 10000.0))), "interleaved", ins=("qr", "kr")),
+        rope(H, 1, dr, dr, f32(theta), "interleaved", ins=("qr", "kr"), **extra),
         op("mla_attention", ["qn", "qr", "c", "kr"], "a", state="kv", heads=H, kv_rank=r, qk_nope=dn, qk_rope=dr,
-           v_head_dim=dv, k_b=B + "attn_k_b.weight", v_b=B + "attn_v_b.weight", scale=f32(1.0 / math.sqrt(dn + dr)),
-           causal=True, window=0, sinks=0),
+           v_head_dim=dv, k_b=B + "attn_k_b.weight", v_b=B + "attn_v_b.weight",
+           scale=f32(mscale * mscale / math.sqrt(dn + dr)), causal=True, window=0, sinks=0),
         linear("a", B + "attn_output.weight", "o"),
         op("add", ["x", "o"], "x"),
         rmsnorm("x", B + "ffn_norm.weight", eps, "h2"),
-        moe_node(m, "renorm" if m.opt("expert_weights_norm") else "raw"),
     ]
-    ws = float(m.opt("expert_weights_scale") or 1.0)
-    if ws != 1.0:
-        nodes.append(op("affine", ["f"], "f", scale=f32(ws), shift=0.0))
-    if "blk.0.ffn_gate_shexp.weight" in m.shapes:
-        nodes += swiglu("h2", "_shexp", "sf", "s") + [op("add", ["f", "sf"], "f")]
+    dense, moe = [], []
+    if k > 0:
+        dense = swiglu("h2", "", "f")
+    if k < L:
+        mb = f"blk.{k}."  # the first application with experts
+        mn = moe_node(m, "renorm" if m.opt("expert_weights_norm") else "raw")
+        if gating == 2:
+            mn = dict(mn, scoring="sigmoid")
+        if mb + "exp_probs_b.bias" in m.shapes:
+            mn = dict(mn, selection_bias=B + "exp_probs_b.bias")
+        ng, gu = int(m.opt("expert_group_count") or 1), int(m.opt("expert_group_used_count") or 1)
+        if ng > 1:
+            mn = dict(mn, groups={"n": ng, "top": gu})
+        out = mn.pop("out")
+        mn["out"] = out
+        moe = [mn]
+        ws = float(m.opt("expert_weights_scale") or 1.0)
+        if ws != 1.0:
+            moe.append(op("affine", ["f"], "f", scale=f32(ws), shift=0.0))
+        if mb + "ffn_gate_shexp.weight" in m.shapes:
+            moe += swiglu("h2", "_shexp", "sf", "s") + [op("add", ["f", "sf"], "f")]
+    if 0 < k < L:  # revision 1.6: the leading dense applications and the mixture-of-experts ones
+        dense = [dict(nd, apply={"per_layer": [i < k for i in range(L)]}) for nd in dense]
+        moe = [dict(nd, apply={"per_layer": [i >= k for i in range(L)]}) for nd in moe]
+        for lst in (dense, moe):
+            for j, nd in enumerate(lst):
+                out = nd.pop("out")
+                nd["out"] = out
+    nodes += dense + moe
     nodes.append(op("add", ["x", "f"], "x"))
     head = tied_head(m, [rmsnorm("x", "output_norm.weight", eps, "h")])
     return document(m, EMBED, [kv_state(H, 1, r + dr, ctx)], nodes, head, ctx)

@@ -1,20 +1,20 @@
 {
  "spec": {
   "repository": "keramos",
-  "tag": "v1.4.1",
-  "commit": "a29ce6f596e2e79c6fca52e6382c962cb5f7011e"
+  "tag": "v1.4.2",
+  "commit": "6bbfe01cc7459abc2bd47c42e1f0376438705e6b"
  },
  "engine": {
   "name": "ember.cpp",
-  "commit": "b49eb5c16852e1120d10db82b9616f05c754b8c2",
-  "binary": "/home/jonat/k141cpu/build/ir_adapter (git archive of that commit, CPU only: HAS_CUDA off, Release, GCC 13.3, WSL ext4; the interpreter's IR translation units with -ffp-contract=off; sha256 68e082e24eb4f1f02d3989f06c260842a92686d99ed2fd4eb9691ad3d8e5cb1a)",
-  "hello": "ir_adapter 4 (IR versions 0 and 1; spec revision 1.4)",
-  "run": "python3 tools/ir_conformance.py --adapter cmd:\"<binary> --conformance\" from a git archive of keramos v1.4.1 (a29ce6f5) on ext4, no EMBER_* variable kept, 2026-10-27 (ember experiments/ir_rev11_2026-10-25/run_suite.sh)"
+  "commit": "1456c0c95ca213f90383f316f046354097d8428e",
+  "binary": "/home/jonat/k142cpu/build_1456c0c/ir_adapter (git archive of that commit, CPU only: HAS_CUDA off, Release, GCC 13.3, WSL ext4; the interpreter's IR translation units with -ffp-contract=off; sha256 b2364c58f45c2a4b064e1c8eb8b4fdcd511de4b101f8f99f23f73fb8fc91909d)",
+  "hello": "ir_adapter 5 (IR versions 0 and 1; spec revision 1.4.2)",
+  "run": "python3 tools/ir_conformance.py --adapter cmd:\"<binary> --conformance\" from a git archive of keramos v1.4.2 (6bbfe01c) on ext4, no EMBER_* variable kept, 2026-10-28"
  },
  "_notes": [
-  "Revisions 1.2 and 1.3 were written for ember from IR_SPEC.md at the tags (ember 1522936, 66e648e, a2340fa, 4e75c02; gates 70ed063, experiments/ir_rev13_2026-10-27), revision 1.4's attention.relative_kv and rule 40 from section 5.15 and 10.1 (ember 757e36b; experiments/d2_primitives_2026-10-27, in the stated order, bit-equal to an f32 statement of it on the op cases); no paperkiln source (src/ir.cpp, recurrence, ops::shaw_attention) and nothing in cleanroom/ was read. tools/ir_validate.py and tools/ir_numpy.py were black-box oracles only (rule citations on 171 mutations, rule 38's verdicts on the 145 stored GGUFs with a document, a whole-model position_bias check, the relative_kv cases); the runner and tools/gguf_relabel.py were read or run as tools.",
+  "Revisions 1.2 and 1.3 were written for ember from IR_SPEC.md at the tags (ember 1522936, 66e648e, a2340fa, 4e75c02; gates 70ed063, experiments/ir_rev13_2026-10-27), revision 1.4's attention.relative_kv and rule 40 from section 5.15 and 10.1 (ember 757e36b; experiments/d2_primitives_2026-10-27, in the stated order, bit-equal to an f32 statement of it on the op cases), revision 1.4.2's windows under depth_route from sections 5.15, 6.9 and 7.5, its parse_reply from 8.1.6 and 11.3, its 8.1.1 message readings and Appendix D.7's comparison (ember 1456c0c); no paperkiln source (src/ir.cpp, recurrence, ops::shaw_attention, the chat template sources beyond the header ember vendors) and nothing in cleanroom/ was read. tools/ir_validate.py and tools/ir_numpy.py were black-box oracles only (rule citations on 171 mutations, rule 38's verdicts on the 145 stored GGUFs with a document, a whole-model position_bias check, the relative_kv cases, the windows under depth_route); the runner and tools/gguf_relabel.py were read or run as tools.",
   "SKIP: op 41 = the single-op fixtures of ops other than recurrence, expr and attention (run_node runs those three; every other op is checked through whole models and traces; rope_heads \"first\" is refused at load by name); grad 11 = run_node_grad (ember is an inference engine, section 6.10.5 is for training engines).",
-  "Rule 38: the embedded document of a file labelled with a section 9.3 architecture is compared with the graph ember's own builder (build_ir_from_gguf, a port of gguf_ir.py's rules, Mixtral's layout added) makes from the file, up to section 3.1's list; the file's own document is checked also when another is read in its place. attention.position_bias and attention.relative_kv run on the CPU interpreter (CUDA builds serve such a document on the CPU; WebGPU has its own relative_kv kernel). Primer's multi-dconv-head attention (pk_flex_mdha) runs as written at ember ec3201b, on CUDA as well. ember's windowed kv cache keeps every position up to max_len, so a rewind into a window keeps the rows below the cut (section 6.9) without re-prefilling."
+  "Rule 38: the embedded document of a file labelled with a section 9.3 architecture is compared with the graph ember's own builder (build_ir_from_gguf, Appendix D's graphs) makes from the file, both in Appendix D.7's normal form; a file with a document and no general.architecture string is refused; the file's own document is checked also when another is read in its place. attention.position_bias and attention.relative_kv run on the CPU interpreter (CUDA builds serve such a document on the CPU; WebGPU has its own relative_kv kernel). Primer's multi-dconv-head attention (pk_flex_mdha) runs as written at ember ec3201b, on CUDA as well. ember's windowed kv cache keeps every position up to max_len, so a rewind into a window keeps the rows below the cut (section 6.9) without re-prefilling. Under depth_route a window and sinks count positions over the rows each application holds (section 5.15, Q16), on the CPU interpreter; CUDA builds serve such a document on the CPU."
  ],
  "adapter": {
   "engine": "ember.cpp",
@@ -30,7 +30,7 @@
   ]
  },
  "counts": {
-  "PASS": 415,
+  "PASS": 472,
   "FAIL": 0,
   "SKIP": 52,
   "XFAIL": 0,
@@ -45,7 +45,7 @@
    "XPASS": 0
   },
   "trace": {
-   "PASS": 81,
+   "PASS": 83,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
@@ -87,14 +87,14 @@
    "XPASS": 0
   },
   "accept": {
-   "PASS": 43,
+   "PASS": 44,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
    "XPASS": 0
   },
   "chat": {
-   "PASS": 32,
+   "PASS": 86,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
@@ -2455,6 +2455,18 @@
    "detail": "5 steps"
   },
   {
+   "id": "trace/pk_mor_window",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "9 steps"
+  },
+  {
+   "id": "trace/pk_mor_window_rewind",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "3 steps"
+  },
+  {
    "id": "accept/documents/model_pk_attnres",
    "kind": "accept",
    "verdict": "PASS",
@@ -2713,6 +2725,12 @@
    "detail": "accepted"
   },
   {
+   "id": "accept/documents/mor_window",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
    "id": "chat/render/one user prompt",
    "kind": "chat",
    "verdict": "PASS",
@@ -2903,6 +2921,330 @@
    "kind": "chat",
    "verdict": "PASS",
    "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 one user prompt (v1's text)",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 user and assistant only (v1's text)",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 system turn",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 empty system message",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 system turn and history",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 training conversation with a system turn",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 system and tool definitions",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 tool definitions without a system message",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 tool definitions with an empty system message",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 unicode tool definition",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 a call answered: the prompt ends on the tool message",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 a call, its result and the reply",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 content before a call",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 two calls, two results, a reply, then a user message",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 tool_call_id matching the call's id",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 a training conversation ending on a call",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 empty arguments",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 newline-only and empty contents",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 a tool message without a call",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 a tool message first",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 fewer results than calls",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 a prompt ending while a call has no result",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 a reply without its results",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 tool_call_id not the call's id",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 tool_call_id when the call has no id",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 a call name with a newline",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 an empty call name",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 arguments holding a control token",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 arguments that are not a string",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 a call type other than function",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 an empty tool_calls list",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 tool_calls on a user message",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 user content holding <|system|>",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 tool content holding a spare token",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 system content holding <|tool|>",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 a tool definition holding a control token",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 a tool definition with a non-integer number",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 a tool definition that is not an object",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 a system message mid-conversation",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 loss on a tool message",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v1 refuses tool definitions",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v1 refuses tool_calls",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/parse_reply/no call",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "content and calls equal"
+  },
+  {
+   "id": "chat/parse_reply/content then a call",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "content and calls equal"
+  },
+  {
+   "id": "chat/parse_reply/a call alone",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "content and calls equal"
+  },
+  {
+   "id": "chat/parse_reply/two calls",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "content and calls equal"
+  },
+  {
+   "id": "chat/parse_reply/empty arguments",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "content and calls equal"
+  },
+  {
+   "id": "chat/parse_reply/arguments holding a newline",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "content and calls equal"
+  },
+  {
+   "id": "chat/parse_reply/the call's text as BPE pieces is content",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "content and calls equal"
+  },
+  {
+   "id": "chat/parse_reply/a call without a newline",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "not parsed"
+  },
+  {
+   "id": "chat/parse_reply/an empty name",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "not parsed"
+  },
+  {
+   "id": "chat/parse_reply/an empty call",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "not parsed"
+  },
+  {
+   "id": "chat/parse_reply/one good call and one bad",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "not parsed"
+  },
+  {
+   "id": "chat/parse_reply/no ids",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "content and calls equal"
   }
  ]
 }

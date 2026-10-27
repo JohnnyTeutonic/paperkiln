@@ -82,6 +82,10 @@
    "gguf": "models/tp_deepseek2/tp_deepseek2.gguf"
   },
   {
+   "name": "model_tp_deepseek3",
+   "gguf": "models/tp_deepseek3/tp_deepseek3.gguf"
+  },
+  {
    "name": "model_tp_gemma2",
    "gguf": "models/tp_gemma2/tp_gemma2.gguf"
   },

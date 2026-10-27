@@ -34,7 +34,7 @@ PK_PROFILES = {
 # Models added after the suite's first release draw their prompts from a stream of their own, so the cases of
 # every earlier model stay byte-identical when the suite is regenerated.
 OWN_STREAM = {"pk_recurrence", "pk_flex_t5", "tp_llama_hd16", "tp_mistral_hd16", "tp_qwen3_hd16", "pk_flex_shaw",
-              "pk_flex_mdha", "tp_phi3", "tp_gemma2", "tp_qwen2moe", "tp_qwen3moe", "tp_deepseek2"}
+              "pk_flex_mdha", "tp_phi3", "tp_gemma2", "tp_qwen2moe", "tp_qwen3moe", "tp_deepseek2", "tp_deepseek3"}
 
 
 # ---------------------------------------------------------------- third-party models (numpy)
@@ -129,6 +129,23 @@ TP = {
                      "deepseek2.expert_gating_func": 1, "deepseek2.feed_forward_length": 32},
 }
 V15 = ("tp_phi3", "tp_gemma2", "tp_qwen2moe", "tp_qwen3moe", "tp_deepseek2")
+# v1.6.0: DeepSeek-V3 as llama.cpp converts it (architecture deepseek2): a leading dense layer (node attribute
+# apply, IR_SPEC 3.8), the sigmoid router with a selection bias and 2 groups of which 1 is kept (5.16), YaRN factor
+# 4 over an original context of 8 (inline freq_factors, 5.14) with the softmax temperature (0.1 ln 4 + 1)^2; the
+# query straight from attn_q.
+TP["tp_deepseek3"] = {
+    "general.architecture": "deepseek2", "deepseek2.embedding_length": 16, "deepseek2.block_count": 3,
+    "deepseek2.attention.head_count": 2, "deepseek2.attention.head_count_kv": 1, "deepseek2.context_length": 64,
+    "deepseek2.attention.layer_norm_rms_epsilon": 1e-6, "deepseek2.rope.freq_base": 10000.0,
+    "deepseek2.rope.dimension_count": 4, "deepseek2.attention.kv_lora_rank": 6, "deepseek2.attention.key_length": 10,
+    "deepseek2.attention.value_length": 6, "deepseek2.attention.key_length_mla": 8,
+    "deepseek2.attention.value_length_mla": 3, "deepseek2.leading_dense_block_count": 1,
+    "deepseek2.expert_count": 8, "deepseek2.expert_used_count": 2, "deepseek2.expert_feed_forward_length": 4,
+    "deepseek2.expert_shared_count": 1, "deepseek2.expert_weights_scale": 2.5, "deepseek2.expert_weights_norm": True,
+    "deepseek2.expert_gating_func": 2, "deepseek2.expert_group_count": 2, "deepseek2.expert_group_used_count": 1,
+    "deepseek2.rope.scaling.type": "yarn", "deepseek2.rope.scaling.factor": 4.0,
+    "deepseek2.rope.scaling.original_context_length": 8, "deepseek2.rope.scaling.yarn_log_multiplier": 0.1,
+    "deepseek2.feed_forward_length": 32}
 TP_VOCAB = 24
 
 
@@ -199,17 +216,27 @@ def _tp_shapes_v15(a, g, d, L, V, Hq, KV, hd, ff, sh):
                 sh.update({b + "attn_q_norm.weight": [hd], b + "attn_k_norm.weight": [hd]})
         if a == "deepseek2":
             dr, r = g["rope.dimension_count"], g["attention.kv_lora_rank"]
-            dn, dv, qr = g["attention.key_length_mla"] - dr, g["attention.value_length_mla"], g["attention.q_lora_rank"]
+            dn, dv = g["attention.key_length_mla"] - dr, g["attention.value_length_mla"]
             fs = g["expert_feed_forward_length"] * g["expert_shared_count"]
-            sh.update({b + "attn_q_a.weight": [qr, d], b + "attn_q_a_norm.weight": [qr],
-                       b + "attn_q_b.weight": [Hq * (dn + dr), qr], b + "attn_kv_a_mqa.weight": [r + dr, d],
+            if "attention.q_lora_rank" in g:
+                qr = g["attention.q_lora_rank"]
+                sh.update({b + "attn_q_a.weight": [qr, d], b + "attn_q_a_norm.weight": [qr],
+                           b + "attn_q_b.weight": [Hq * (dn + dr), qr]})
+            else:  # v1.6.0 (tp_deepseek3): the query straight from attn_q
+                sh[b + "attn_q.weight"] = [Hq * (dn + dr), d]
+            sh.update({b + "attn_kv_a_mqa.weight": [r + dr, d],
                        b + "attn_kv_a_norm.weight": [r], b + "attn_k_b.weight": [Hq, r, dn],
-                       b + "attn_v_b.weight": [Hq, dv, r], b + "attn_output.weight": [d, Hq * dv],
-                       b + "ffn_gate_shexp.weight": [fs, d], b + "ffn_up_shexp.weight": [fs, d],
+                       b + "attn_v_b.weight": [Hq, dv, r], b + "attn_output.weight": [d, Hq * dv]})
+            if i < g.get("leading_dense_block_count", 0):  # v1.6.0: a leading dense layer
+                sh.update({b + "ffn_gate.weight": [ff, d], b + "ffn_up.weight": [ff, d], b + "ffn_down.weight": [d, ff]})
+                continue
+            sh.update({b + "ffn_gate_shexp.weight": [fs, d], b + "ffn_up_shexp.weight": [fs, d],
                        b + "ffn_down_shexp.weight": [d, fs]})
         E, fe = g["expert_count"], g["expert_feed_forward_length"]
         sh.update({b + "ffn_gate_inp.weight": [E, d], b + "ffn_gate_exps.weight": [E, fe, d],
                    b + "ffn_up_exps.weight": [E, fe, d], b + "ffn_down_exps.weight": [E, d, fe]})
+        if g.get("expert_gating_func") == 2:  # v1.6.0: DeepSeek-V3's selection bias
+            sh[b + "exp_probs_b.bias"] = [E]
     sh["output_norm.weight"] = [d]
     if a == "phi3":
         n2 = g["rope.dimension_count"] // 2
@@ -417,7 +444,8 @@ def traces(name, doc, W, rng):
             {"method": "forward", "ids": ids[:4]}, {"method": "snapshot", "tag": "p"},
             {"method": "forward", "ids": ids[4:7]}, {"method": "restore", "tag": "p"},
             {"method": "forward", "ids": other}])
-    elif name in ("pk_llama", "pk_mor", "tp_qwen3", "tp_llama_hd16", "tp_qwen3_hd16", "tp_phi3", "tp_deepseek2"):
+    elif name in ("pk_llama", "pk_mor", "tp_qwen3", "tp_llama_hd16", "tp_qwen3_hd16", "tp_phi3", "tp_deepseek2",
+                  "tp_deepseek3"):
         out["truncate"] = trace_case(name, doc, W, [
             {"method": "forward", "ids": ids}, {"method": "truncate", "n": 5},
             {"method": "forward", "ids": [int(x) for x in rng.integers(1, V, 2)]}])
@@ -625,6 +653,16 @@ def op_cases():
     add("mla_attention", "one_head", dict(mla, heads=1), {"qn": mi["qn"][:, :2], "qr": mi["qr"][:, :2], "c": mi["c"],
                                                           "kr": mi["kr"]}, {"kb": mw["kb"][:1], "vb": mw["vb"][:1]},
         "ROUNDING")
+    # v1.6 (5.16, 5.14): DeepSeek-V3's router (sigmoid scores renormalised; with a selection bias and 2 groups of
+    # which 1 is kept), a selection bias under softmax scores with raw gates; freq_factors as values (YaRN's).
+    xm = r(5, 6)
+    mv = {"r": r(4, 6), "g": r(4, 8, 6), "u": r(4, 8, 6), "d": r(4, 6, 8), "sb": r(4, s=0.3)}
+    m16 = {k: v for k, v in mv.items() if k != "sb"}
+    add("moe_ffn", "sigmoid_renorm", dict(moe, scoring="sigmoid"), {"x": xm}, m16, "ROUNDING")
+    add("moe_ffn", "sigmoid_bias_groups", dict(moe, scoring="sigmoid", selection_bias="sb", groups={"n": 2, "top": 1}),
+        {"x": xm}, mv, "ROUNDING")
+    add("moe_ffn", "softmax_bias_raw", dict(moe, gate_norm="raw", selection_bias="sb"), {"x": xm}, mv, "ROUNDING")
+    add("rope", "freq_factors_values", dict(rope, freq_factors=[1.0, 4.0]), rq, {}, "ROUNDING")
     return cases
 
 
@@ -995,6 +1033,28 @@ def refusals():
     doc_case("mla_reads_three", DS, 7, "3.5", lambda d: node(d, "mla_attention")["in"].pop())
     doc_case("mla_without_k_b", DS, 8, "3.5", lambda d: node(d, "mla_attention").pop("k_b"))
     doc_case("mla_not_causal", DS, 14, "5.20", lambda d: node(d, "mla_attention").update(causal=False))
+    # v1.6: rules 43 (apply), 4, 36, 10 and 5 (moe_ffn groups and scoring), 44 (selection_bias), 41 (freq_factors
+    # as values).
+    D3 = "tp_deepseek3"
+
+    def applied(d):
+        return [n for n in d["block"]["nodes"] if "apply" in n]
+
+    doc_case("apply_entries_not_boolean", D3, 43, "3.8",
+             lambda d: applied(d)[0].update(apply={"per_layer": [1, 0, 0]}))
+    doc_case("apply_outside_block", D3, 43, "3.8", lambda d: d["head"]["nodes"][0].update(apply=True))
+    doc_case("apply_on_attention", D3, 4, "3.5", lambda d: node(d, "mla_attention").update(apply=True))
+    doc_case("apply_leaves_value_unwritten", D3, 36, "3.5", lambda d: [n.update(apply={"per_layer": [False] * 3})
+                                                                      for n in applied(d) if n["apply"]["per_layer"][0]])
+    doc_case("apply_with_depth_route", M, 43, "3.8", lambda d: [n for n in d["block"]["nodes"]
+                                                                if n["op"] == "rmsnorm"][0].update(apply=True))
+    doc_case("moe_groups_not_dividing", D3, 10, "5.16", lambda d: node(d, "moe_ffn").update(groups={"n": 3, "top": 1}))
+    doc_case("moe_scoring_unknown", D3, 5, "5.16", lambda d: node(d, "moe_ffn").update(scoring="relu"))
+    doc_case("moe_selection_bias_shape", D3, 44, "5.16",
+             lambda d: node(d, "moe_ffn").update(selection_bias="output_norm.weight"))
+    doc_case("freq_factors_values_length", D3, 41, "5.14", lambda d: node(d, "rope").update(freq_factors=[1.0]))
+    doc_case("freq_factors_values_not_positive", D3, 41, "5.14",
+             lambda d: node(d, "rope").update(freq_factors=[1.0, -4.0]))
     # v1.2: rule 35 (3.2), a duplicate member name at any depth; the documents as JSON texts.
     base = json.dumps(load_model(SUITE / "models" / L)[0])
 

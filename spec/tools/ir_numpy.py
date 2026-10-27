@@ -32,6 +32,9 @@ For third-party graphs:
   attention   softcap c (revision 1.5; Gemma 2): the scaled score s becomes c * tanh(s / c).
   split       groups g (revision 1.5): a per-group split, each of g groups of sum(sizes) columns (MLA: per head).
   mla_attention  multi-head latent attention (revision 1.5; DeepSeek-V2), IR_SPEC.md 5.20.
+  apply       (revision 1.6) a block node with apply false in application i is skipped there (IR_SPEC 3.8).
+  moe_ffn     scoring "sigmoid", selection_bias, groups {n, top} (revision 1.6; DeepSeek-V3's router, 5.16).
+  rope        freq_factors may also be the list of values itself (revision 1.6; YaRN's, from a builder).
   conv1d_causal, selective_scan  Mamba-1's ops (IR_SPEC.md 6.6, 6.7).
   recurrence  a per-token state update declared in the document (IR_SPEC.md 6.10; tools/ir_recurrence.py).
 Any attribute of a block node (and of a block state slot) may be {"per_layer": [v_0, .., v_{L-1}]}:
@@ -168,6 +171,8 @@ def run_nodes(nodes, env, W, i=None, no_window=False, wi=None, states=None):
 
     for nd in nodes:
         nd = per_layer(nd, i)
+        if nd.get("apply", True) is False:  # revision 1.6 (IR_SPEC 3.8): the node is not in this application
+            continue
         cur[0] = i if nd.get("tensor_index") == "application" else ti
         op, ins = nd["op"], nd["in"]
         x = env[ins[0]]
@@ -340,14 +345,16 @@ def run_nodes(nodes, env, W, i=None, no_window=False, wi=None, states=None):
             if ff is not None:
                 # revision 1.5 (5.14): one tensor, or {short, long, original_ctx} chosen by the sequence's length
                 # (the session's length after the call; a single node's run: its largest position + 1).
-                if isinstance(ff, str):
+                if isinstance(ff, list):  # revision 1.6: the values themselves (YaRN's, computed by a builder)
+                    fname = None
+                elif isinstance(ff, str):
                     fname = ff
                 else:
                     n_seq = env.get("_seq_len", int(np.max(pos)) + 1 if len(pos) else 0)
                     fname = ff["long"] if n_seq > ff["original_ctx"] else ff["short"]
-                factors = w(fname).reshape(-1)
-                _width(factors.shape[0] == n_rot // 2, "5.14", f"rope freq_factors {name(fname)} has "
-                       f"{factors.shape[0]} values, not n_rot / 2 = {n_rot // 2}")
+                factors = np.asarray(ff, np.float32) if fname is None else w(fname).reshape(-1)
+                _width(factors.shape[0] == n_rot // 2, "5.14", f"rope freq_factors {name(fname) if fname else 'list'} "
+                       f"has {factors.shape[0]} values, not n_rot / 2 = {n_rot // 2}")
             af = nd.get("attn_factor", 1.0)
             for o, src, heads in zip(nd["out"], ins[:2], (H, nd.get("kv_heads") or H)):
                 _width(env[src].shape[1] == heads * hd, "5.14", f"rope's {src} has width {env[src].shape[1]}, not "
@@ -372,15 +379,48 @@ def run_nodes(nodes, env, W, i=None, no_window=False, wi=None, states=None):
             logits = x @ w(nd["router"]).T
             g, u, d = (w(nd["experts"][n]) for n in ("gate", "up", "down"))  # [E][out][in]
             y = np.zeros((x.shape[0], d.shape[1]), dtype=np.float32)
+            scoring, sb, grp = nd.get("scoring", "softmax"), nd.get("selection_bias"), nd.get("groups")
+            bias = w(sb).reshape(-1) if sb else None
+            E = logits.shape[1]
+            if bias is not None:
+                _width(bias.shape[0] == E, "5.16", f"moe_ffn selection_bias {name(sb)} has {bias.shape[0]} values, "
+                       f"not n_experts {E}")
             for t_i in range(x.shape[0]):
                 lt = logits[t_i]
-                sel = sorted(np.argsort(-lt, kind="stable")[:k])
-                if nd["gate_norm"] == "renorm":
-                    e = np.exp(lt[sel] - lt[sel].max())
-                    gates = e / e.sum()
+                if scoring == "softmax" and bias is None and grp is None:
+                    sel = sorted(np.argsort(-lt, kind="stable")[:k])
+                    if nd["gate_norm"] == "renorm":
+                        e = np.exp(lt[sel] - lt[sel].max())
+                        gates = e / e.sum()
+                    else:
+                        p = np.exp(lt - lt.max())
+                        gates = (p / p.sum())[sel]
                 else:
-                    p = np.exp(lt - lt.max())
-                    gates = (p / p.sum())[sel]
+                    # revision 1.6 (IR_SPEC 5.16): scores (softmax or sigmoid), the selection score = score + bias,
+                    # group-limited candidates, top k by selection score (ties to the lower index), gates from the
+                    # scores of the selected experts, renormalised over them or raw.
+                    if scoring == "softmax":
+                        p = np.exp(lt - lt.max())
+                        p = (p / p.sum()).astype(np.float32)
+                    else:
+                        p = (np.float32(1) / (np.float32(1) + np.exp(-lt))).astype(np.float32)
+                    s = (p + bias).astype(np.float32) if bias is not None else p
+                    cand = np.ones(E, bool)
+                    if grp is not None:
+                        G, per = grp["n"], E // grp["n"]
+                        gs = []
+                        for g_i in range(G):
+                            top2 = np.sort(s[g_i * per:(g_i + 1) * per])[::-1][:2]
+                            gs.append(np.float32(top2.sum(dtype=np.float32)))
+                        keep = np.argsort(-np.asarray(gs, np.float32), kind="stable")[:grp["top"]]
+                        cand[:] = False
+                        for g_i in keep:
+                            cand[g_i * per:(g_i + 1) * per] = True
+                    idx = np.nonzero(cand)[0]
+                    sel = sorted(idx[np.argsort(-s[idx], kind="stable")[:k]])
+                    gates = p[sel]
+                    if nd["gate_norm"] == "renorm":
+                        gates = (gates / gates.sum(dtype=np.float32)).astype(np.float32)
                 for gate, e_i in zip(gates, sel):
                     hgate = g[e_i] @ x[t_i]
                     h = hgate / (1 + np.exp(-hgate)) * (u[e_i] @ x[t_i])

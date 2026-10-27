@@ -31,6 +31,7 @@
       "patternProperties": {"^_": true},
       "additionalProperties": false
     },
+    "apply": {"anyOf": [{"type": "boolean"}, {"$ref": "#/$defs/per_layer"}]},
     "int_or_layers": {"anyOf": [{"$ref": "#/$defs/nonneg"}, {"$ref": "#/$defs/per_layer"}]},
     "num_or_layers": {"anyOf": [{"type": "number"}, {"$ref": "#/$defs/per_layer"}]},
     "io": {
@@ -175,39 +176,39 @@
     },
     "op_embedding": {
       "required": ["weight"],
-      "properties": {"op": true, "in": true, "out": {"$ref": "#/$defs/name"}, "tensor_index": {"enum": ["application"]},
+      "properties": {"op": true, "in": true, "apply": {"$ref": "#/$defs/apply"}, "out": {"$ref": "#/$defs/name"}, "tensor_index": {"enum": ["application"]},
                      "weight": {"$ref": "#/$defs/name"}, "state_weight": {"$ref": "#/$defs/name"}},
       "patternProperties": {"^_": true}, "additionalProperties": false
     },
     "op_weight_only": {
       "required": ["weight"],
-      "properties": {"op": true, "in": true, "out": {"$ref": "#/$defs/name"}, "tensor_index": {"enum": ["application"]},
+      "properties": {"op": true, "in": true, "apply": {"$ref": "#/$defs/apply"}, "out": {"$ref": "#/$defs/name"}, "tensor_index": {"enum": ["application"]},
                      "weight": {"$ref": "#/$defs/name"}},
       "patternProperties": {"^_": true}, "additionalProperties": false
     },
     "op_linear": {
       "required": ["weight"],
-      "properties": {"op": true, "in": true, "out": {"$ref": "#/$defs/name"}, "tensor_index": {"enum": ["application"]},
+      "properties": {"op": true, "in": true, "apply": {"$ref": "#/$defs/apply"}, "out": {"$ref": "#/$defs/name"}, "tensor_index": {"enum": ["application"]},
                      "weight": {"$ref": "#/$defs/name"}, "bias": {"type": ["string", "null"]},
                      "tied_to": {"$ref": "#/$defs/name"}},
       "patternProperties": {"^_": true}, "additionalProperties": false
     },
     "op_scale": {
       "required": ["weight"],
-      "properties": {"op": true, "in": true, "out": {"$ref": "#/$defs/name"}, "tensor_index": {"enum": ["application"]},
+      "properties": {"op": true, "in": true, "apply": {"$ref": "#/$defs/apply"}, "out": {"$ref": "#/$defs/name"}, "tensor_index": {"enum": ["application"]},
                      "weight": {"$ref": "#/$defs/name"}, "bias": {"type": ["string", "null"]}},
       "patternProperties": {"^_": true}, "additionalProperties": false
     },
     "op_split": {
       "required": ["sizes"],
-      "properties": {"op": true, "in": true, "out": {"$ref": "#/$defs/names"},
+      "properties": {"op": true, "in": true, "apply": {"$ref": "#/$defs/apply"}, "out": {"$ref": "#/$defs/names"},
                      "sizes": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/posint"}},
                      "groups": {"$ref": "#/$defs/posint"}},
       "patternProperties": {"^_": true}, "additionalProperties": false
     },
     "op_rmsnorm": {
       "required": ["weight", "eps"],
-      "properties": {"op": true, "in": true, "out": {"$ref": "#/$defs/name"}, "tensor_index": {"enum": ["application"]},
+      "properties": {"op": true, "in": true, "apply": {"$ref": "#/$defs/apply"}, "out": {"$ref": "#/$defs/name"}, "tensor_index": {"enum": ["application"]},
                      "weight": {"$ref": "#/$defs/name"}, "eps": {"$ref": "#/$defs/num_or_layers"},
                      "group": {"anyOf": [{"$ref": "#/$defs/posint"}, {"$ref": "#/$defs/per_layer"}]},
                      "weight_offset": {"$ref": "#/$defs/num_or_layers"}},
@@ -215,35 +216,35 @@
     },
     "op_layernorm": {
       "required": ["weight", "bias", "eps"],
-      "properties": {"op": true, "in": true, "out": {"$ref": "#/$defs/name"}, "tensor_index": {"enum": ["application"]},
+      "properties": {"op": true, "in": true, "apply": {"$ref": "#/$defs/apply"}, "out": {"$ref": "#/$defs/name"}, "tensor_index": {"enum": ["application"]},
                      "weight": {"$ref": "#/$defs/name"}, "bias": {"$ref": "#/$defs/name"},
                      "eps": {"$ref": "#/$defs/num_or_layers"}},
       "patternProperties": {"^_": true}, "additionalProperties": false
     },
     "op_gelu": {
       "required": ["approx"],
-      "properties": {"op": true, "in": true, "out": {"$ref": "#/$defs/name"},
+      "properties": {"op": true, "in": true, "apply": {"$ref": "#/$defs/apply"}, "out": {"$ref": "#/$defs/name"},
                      "approx": {"anyOf": [{"enum": ["tanh", "none"]}, {"$ref": "#/$defs/per_layer"}]}},
       "patternProperties": {"^_": true}, "additionalProperties": false
     },
     "op_plain": {
-      "properties": {"op": true, "in": true, "out": {"$ref": "#/$defs/name"}},
+      "properties": {"op": true, "in": true, "apply": {"$ref": "#/$defs/apply"}, "out": {"$ref": "#/$defs/name"}},
       "patternProperties": {"^_": true}, "additionalProperties": false
     },
     "op_affine": {
       "required": ["scale", "shift"],
-      "properties": {"op": true, "in": true, "out": {"$ref": "#/$defs/name"},
+      "properties": {"op": true, "in": true, "apply": {"$ref": "#/$defs/apply"}, "out": {"$ref": "#/$defs/name"},
                      "scale": {"$ref": "#/$defs/num_or_layers"}, "shift": {"$ref": "#/$defs/num_or_layers"}},
       "patternProperties": {"^_": true}, "additionalProperties": false
     },
     "op_rms_row": {
       "required": ["eps"],
-      "properties": {"op": true, "in": true, "out": {"$ref": "#/$defs/name"}, "eps": {"$ref": "#/$defs/num_or_layers"}},
+      "properties": {"op": true, "in": true, "apply": {"$ref": "#/$defs/apply"}, "out": {"$ref": "#/$defs/name"}, "eps": {"$ref": "#/$defs/num_or_layers"}},
       "patternProperties": {"^_": true}, "additionalProperties": false
     },
     "op_rope": {
       "required": ["heads", "head_dim", "theta", "rope_heads", "pairing"],
-      "properties": {"op": true, "in": true, "out": {"$ref": "#/$defs/names"},
+      "properties": {"op": true, "in": true, "apply": {"$ref": "#/$defs/apply"}, "out": {"$ref": "#/$defs/names"},
                      "heads": {"anyOf": [{"$ref": "#/$defs/posint"}, {"$ref": "#/$defs/per_layer"}]},
                      "kv_heads": {"anyOf": [{"$ref": "#/$defs/posint"}, {"$ref": "#/$defs/per_layer"}]},
                      "head_dim": {"anyOf": [{"$ref": "#/$defs/posint"}, {"$ref": "#/$defs/per_layer"}]},
@@ -257,7 +258,8 @@
                                                  "properties": {"short": {"$ref": "#/$defs/name"},
                                                                 "long": {"$ref": "#/$defs/name"},
                                                                 "original_ctx": {"$ref": "#/$defs/posint"}},
-                                                 "patternProperties": {"^_": true}, "additionalProperties": false}]},
+                                                 "patternProperties": {"^_": true}, "additionalProperties": false},
+                                                {"type": "array", "minItems": 1, "items": {"type": "number"}}]},
                      "attn_factor": {"$ref": "#/$defs/num_or_layers"}},
       "patternProperties": {"^_": true}, "additionalProperties": false
     },
@@ -302,7 +304,7 @@
     },
     "op_moe_ffn": {
       "required": ["router", "experts", "n_experts", "top_k", "gate_norm", "activation"],
-      "properties": {"op": true, "in": true, "out": {"$ref": "#/$defs/name"}, "tensor_index": {"enum": ["application"]},
+      "properties": {"op": true, "in": true, "apply": {"$ref": "#/$defs/apply"}, "out": {"$ref": "#/$defs/name"}, "tensor_index": {"enum": ["application"]},
                      "router": {"$ref": "#/$defs/name"},
                      "experts": {"type": "object", "required": ["gate", "up", "down"],
                                  "properties": {"gate": {"$ref": "#/$defs/name"}, "up": {"$ref": "#/$defs/name"},
@@ -312,18 +314,23 @@
                      "top_k": {"anyOf": [{"$ref": "#/$defs/posint"}, {"$ref": "#/$defs/per_layer"}]},
                      "gate_norm": {"anyOf": [{"enum": ["renorm", "raw"]}, {"$ref": "#/$defs/per_layer"}]},
                      "activation": {"anyOf": [{"enum": ["silu"]}, {"$ref": "#/$defs/per_layer"}]},
+                     "scoring": {"anyOf": [{"enum": ["softmax", "sigmoid"]}, {"$ref": "#/$defs/per_layer"}]},
+                     "selection_bias": {"$ref": "#/$defs/name"},
+                     "groups": {"type": "object", "required": ["n", "top"],
+                                "properties": {"n": {"$ref": "#/$defs/posint"}, "top": {"$ref": "#/$defs/posint"}},
+                                "patternProperties": {"^_": true}, "additionalProperties": false},
                      "routing": {"type": "string"}},
       "patternProperties": {"^_": true}, "additionalProperties": false
     },
     "op_depth_attend": {
       "required": ["weight"],
-      "properties": {"op": true, "in": true, "out": {"$ref": "#/$defs/name"}, "tensor_index": {"enum": ["application"]},
+      "properties": {"op": true, "in": true, "apply": {"$ref": "#/$defs/apply"}, "out": {"$ref": "#/$defs/name"}, "tensor_index": {"enum": ["application"]},
                      "weight": {"$ref": "#/$defs/name"}, "eps": {"$ref": "#/$defs/num_or_layers"}},
       "patternProperties": {"^_": true}, "additionalProperties": false
     },
     "op_expr": {
       "required": ["expr"],
-      "properties": {"op": true, "in": true, "out": {"$ref": "#/$defs/name"}, "expr": {"type": "string"}},
+      "properties": {"op": true, "in": true, "apply": {"$ref": "#/$defs/apply"}, "out": {"$ref": "#/$defs/name"}, "expr": {"type": "string"}},
       "patternProperties": {"^_": true}, "additionalProperties": false
     },
     "op_linear_attention": {

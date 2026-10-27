@@ -1,19 +1,20 @@
 {
  "spec": {
   "repository": "keramos",
-  "tag": "v1.4.1",
-  "commit": "a29ce6f596e2e79c6fca52e6382c962cb5f7011e"
+  "tag": "v1.5.0",
+  "commit": "062c1513a3d5b1a3ae2055695da56474dffc92f8"
  },
  "engine": {
-  "name": "keramos-cleanroom (Rust), kcr --conformance, built from keramos 1d1fd3773e82b6c03d263426fe95fa10fb1cae51 (cleanroom/rust; rustc 1.98.1, release, no crates, WSL ext4)",
+  "name": "keramos-cleanroom (Rust), kcr --conformance, built from keramos v1.4.2's cleanroom/rust (unchanged at v1.5.0; rustc 1.98.1, release, no crates, WSL ext4; this copy's sha256 2ea5f92d512e197ed3fe64f4a5fbe7478fafef7c64a26721e06ba022a0efadd6)",
   "environment": "the runner under CPython 3.12.3, numpy 2.3.3, WSL",
-  "run": "python3 tools/ir_conformance.py --adapter cmd:kcr --conformance, in a clean clone of keramos at v1.4.1 (a29ce6f5), 2026-10-27, the engine unchanged since 1d1fd377 (revision 1.2, a black box here); skips: the 11 gradient cases and the 32 chat cases; XFAIL: the 24 cases expected_fail.json lists (revision 1.3's 12 and revision 1.4's 12 relative_kv cases: its run_node ignores the attribute, its loader refuses it as an unknown key). pk_flex_mdha's model, decode, snapshot, truncate, chunks, acceptance and digest cases pass from revision 1.2's text; the relative_kv refusals pass (rule 1 before rule 40); no earlier verdict moves"
+  "run": "python3 tools/ir_conformance.py --adapter cmd:kcr --conformance, in a clean export of keramos at v1.5.0 (062c1513) on ext4, 2026-10-28; the engine implements revision 1.4: the 35 cases of revision 1.5 that need its new attributes, op or architectures are XFAIL as expected_fail.json lists (rule 38 refuses the five new architectures at load, so their models, traces and acceptance cases fail; the op cases have no path); the 14 new refusals pass; skips: the 11 gradient cases; no XPASS, and no verdict of its v1.4.2 receipt moves"
  },
  "adapter": {
   "engine": "keramos-cleanroom (Rust)",
   "backend": "cpu",
   "exact": true,
   "profiles": [
+   "chat",
    "core",
    "recurrence",
    "recursion",
@@ -22,43 +23,43 @@
   ]
  },
  "counts": {
-  "PASS": 400,
+  "PASS": 532,
   "FAIL": 0,
-  "SKIP": 43,
-  "XFAIL": 24,
+  "SKIP": 11,
+  "XFAIL": 35,
   "XPASS": 0
  },
  "by_kind": {
   "model": {
-   "PASS": 25,
+   "PASS": 27,
    "FAIL": 0,
    "SKIP": 0,
-   "XFAIL": 2,
+   "XFAIL": 5,
    "XPASS": 0
   },
   "trace": {
-   "PASS": 76,
+   "PASS": 83,
    "FAIL": 0,
    "SKIP": 0,
-   "XFAIL": 5,
+   "XFAIL": 13,
    "XPASS": 0
   },
   "op": {
-   "PASS": 59,
+   "PASS": 68,
    "FAIL": 0,
    "SKIP": 0,
-   "XFAIL": 9,
+   "XFAIL": 12,
    "XPASS": 0
   },
   "refuse": {
-   "PASS": 100,
+   "PASS": 119,
    "FAIL": 0,
    "SKIP": 0,
-   "XFAIL": 5,
+   "XFAIL": 0,
    "XPASS": 0
   },
   "digest": {
-   "PASS": 90,
+   "PASS": 95,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
@@ -79,16 +80,16 @@
    "XPASS": 0
   },
   "accept": {
-   "PASS": 40,
+   "PASS": 44,
    "FAIL": 0,
    "SKIP": 0,
-   "XFAIL": 3,
+   "XFAIL": 5,
    "XPASS": 0
   },
   "chat": {
-   "PASS": 0,
+   "PASS": 86,
    "FAIL": 0,
-   "SKIP": 32,
+   "SKIP": 0,
    "XFAIL": 0,
    "XPASS": 0
   }
@@ -151,26 +152,26 @@
   {
    "id": "model/pk_flex_shaw",
    "kind": "model",
-   "verdict": "XFAIL",
-   "detail": "RuntimeError: IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key relative_kv is not defined [expected to fail: revision 1.4's attention.relative_kv (IR_SPEC 5.15): the clean-room engine (revi]"
+   "verdict": "PASS",
+   "detail": "log-probs worst 1.01e-07; greedy 4/4"
   },
   {
    "id": "trace/pk_flex_shaw_decode",
    "kind": "trace",
-   "verdict": "XFAIL",
-   "detail": "RuntimeError: IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key relative_kv is not defined [expected to fail: revision 1.4's attention.relative_kv (IR_SPEC 5.15): the clean-room engine (revi]"
+   "verdict": "PASS",
+   "detail": "6 steps"
   },
   {
    "id": "model/pk_flex_t5",
    "kind": "model",
-   "verdict": "XFAIL",
-   "detail": "RuntimeError: IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key position_bias is not defined [expected to fail: revision 1.3's attention.position_bias (IR_SPEC 5.15): the clean-room engine (re]"
+   "verdict": "PASS",
+   "detail": "log-probs worst 9.47e-08; greedy 4/4"
   },
   {
    "id": "trace/pk_flex_t5_decode",
    "kind": "trace",
-   "verdict": "XFAIL",
-   "detail": "RuntimeError: IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key position_bias is not defined [expected to fail: revision 1.3's attention.position_bias (IR_SPEC 5.15): the clean-room engine (re]"
+   "verdict": "PASS",
+   "detail": "6 steps"
   },
   {
    "id": "model/pk_gpt2",
@@ -389,6 +390,36 @@
    "detail": "3 steps"
   },
   {
+   "id": "model/tp_deepseek2",
+   "kind": "model",
+   "verdict": "XFAIL",
+   "detail": "RuntimeError: IR_SPEC 10.1 (rule 1): $.block.nodes[4]: key groups is not defined; IR_SPEC 10.1 (rule 1): $.block.nodes[9].op: \"mla_attention\" is not one of [\"embedding\",\"pos_embedding\",\"linear\",\"scale\",\"split\",\"rmsnorm\",\"layernorm\",\"gelu\",\"silu\",\"sigmoid\",\"relu\",\"add\",\"mul\",\"sub\",\"affine\",\"mul_col\",\"rms_row\",\"rope\",\"attention\",\"moe_ffn\",\"list\",\"append\",\"depth_attend\",\"expr\",\"linear_attention\",\"ssm_scan\",\"conv1d_causal\",\"selective_scan\",\"depth_route\",\"recurrence\"]; IR_SPEC 6.1 (rule 11): mla_attention names kv slot kv; IR_SPEC 3.1 (rule 38): general.architecture \"deepseek2\" is neither \"paperkiln\" nor one of Appendix D's eight [expected to fail: revision 1.5's deepseek2 (IR_SPEC 9.3, Appendix D.11): the clean-room engine (re]"
+  },
+  {
+   "id": "trace/tp_deepseek2_decode",
+   "kind": "trace",
+   "verdict": "XFAIL",
+   "detail": "RuntimeError: IR_SPEC 10.1 (rule 1): $.block.nodes[4]: key groups is not defined; IR_SPEC 10.1 (rule 1): $.block.nodes[9].op: \"mla_attention\" is not one of [\"embedding\",\"pos_embedding\",\"linear\",\"scale\",\"split\",\"rmsnorm\",\"layernorm\",\"gelu\",\"silu\",\"sigmoid\",\"relu\",\"add\",\"mul\",\"sub\",\"affine\",\"mul_col\",\"rms_row\",\"rope\",\"attention\",\"moe_ffn\",\"list\",\"append\",\"depth_attend\",\"expr\",\"linear_attention\",\"ssm_scan\",\"conv1d_causal\",\"selective_scan\",\"depth_route\",\"recurrence\"]; IR_SPEC 6.1 (rule 11): mla_attention names kv slot kv; IR_SPEC 3.1 (rule 38): general.architecture \"deepseek2\" is neither \"paperkiln\" nor one of Appendix D's eight [expected to fail: revision 1.5's deepseek2 (IR_SPEC 9.3, Appendix D.11): the clean-room engine (re]"
+  },
+  {
+   "id": "trace/tp_deepseek2_truncate",
+   "kind": "trace",
+   "verdict": "XFAIL",
+   "detail": "RuntimeError: IR_SPEC 10.1 (rule 1): $.block.nodes[4]: key groups is not defined; IR_SPEC 10.1 (rule 1): $.block.nodes[9].op: \"mla_attention\" is not one of [\"embedding\",\"pos_embedding\",\"linear\",\"scale\",\"split\",\"rmsnorm\",\"layernorm\",\"gelu\",\"silu\",\"sigmoid\",\"relu\",\"add\",\"mul\",\"sub\",\"affine\",\"mul_col\",\"rms_row\",\"rope\",\"attention\",\"moe_ffn\",\"list\",\"append\",\"depth_attend\",\"expr\",\"linear_attention\",\"ssm_scan\",\"conv1d_causal\",\"selective_scan\",\"depth_route\",\"recurrence\"]; IR_SPEC 6.1 (rule 11): mla_attention names kv slot kv; IR_SPEC 3.1 (rule 38): general.architecture \"deepseek2\" is neither \"paperkiln\" nor one of Appendix D's eight [expected to fail: revision 1.5's deepseek2 (IR_SPEC 9.3, Appendix D.11): the clean-room engine (re]"
+  },
+  {
+   "id": "model/tp_gemma2",
+   "kind": "model",
+   "verdict": "XFAIL",
+   "detail": "RuntimeError: IR_SPEC 10.1 (rule 1): $.block.nodes[5]: key softcap is not defined; IR_SPEC 3.1 (rule 38): general.architecture \"gemma2\" is neither \"paperkiln\" nor one of Appendix D's eight [expected to fail: revision 1.5's gemma2 (IR_SPEC 9.3, Appendix D.9): the clean-room engine (revisi]"
+  },
+  {
+   "id": "trace/tp_gemma2_decode",
+   "kind": "trace",
+   "verdict": "XFAIL",
+   "detail": "RuntimeError: IR_SPEC 10.1 (rule 1): $.block.nodes[5]: key softcap is not defined; IR_SPEC 3.1 (rule 38): general.architecture \"gemma2\" is neither \"paperkiln\" nor one of Appendix D's eight [expected to fail: revision 1.5's gemma2 (IR_SPEC 9.3, Appendix D.9): the clean-room engine (revisi]"
+  },
+  {
    "id": "model/tp_gemma3",
    "kind": "model",
    "verdict": "PASS",
@@ -473,6 +504,36 @@
    "detail": "6 steps"
   },
   {
+   "id": "model/tp_phi3",
+   "kind": "model",
+   "verdict": "XFAIL",
+   "detail": "RuntimeError: IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key freq_factors is not defined; IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key attn_factor is not defined; IR_SPEC 3.1 (rule 38): general.architecture \"phi3\" is neither \"paperkiln\" nor one of Appendix D's eight [expected to fail: revision 1.5's phi3 (IR_SPEC 9.3, Appendix D.8): the clean-room engine (revision]"
+  },
+  {
+   "id": "trace/tp_phi3_decode",
+   "kind": "trace",
+   "verdict": "XFAIL",
+   "detail": "RuntimeError: IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key freq_factors is not defined; IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key attn_factor is not defined; IR_SPEC 3.1 (rule 38): general.architecture \"phi3\" is neither \"paperkiln\" nor one of Appendix D's eight [expected to fail: revision 1.5's phi3 (IR_SPEC 9.3, Appendix D.8): the clean-room engine (revision]"
+  },
+  {
+   "id": "trace/tp_phi3_truncate",
+   "kind": "trace",
+   "verdict": "XFAIL",
+   "detail": "RuntimeError: IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key freq_factors is not defined; IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key attn_factor is not defined; IR_SPEC 3.1 (rule 38): general.architecture \"phi3\" is neither \"paperkiln\" nor one of Appendix D's eight [expected to fail: revision 1.5's phi3 (IR_SPEC 9.3, Appendix D.8): the clean-room engine (revision]"
+  },
+  {
+   "id": "model/tp_qwen2moe",
+   "kind": "model",
+   "verdict": "XFAIL",
+   "detail": "RuntimeError: IR_SPEC 3.1 (rule 38): general.architecture \"qwen2moe\" is neither \"paperkiln\" nor one of Appendix D's eight [expected to fail: revision 1.5's qwen2moe (IR_SPEC 9.3, Appendix D.10): the clean-room engine (rev]"
+  },
+  {
+   "id": "trace/tp_qwen2moe_decode",
+   "kind": "trace",
+   "verdict": "XFAIL",
+   "detail": "RuntimeError: IR_SPEC 3.1 (rule 38): general.architecture \"qwen2moe\" is neither \"paperkiln\" nor one of Appendix D's eight [expected to fail: revision 1.5's qwen2moe (IR_SPEC 9.3, Appendix D.10): the clean-room engine (rev]"
+  },
+  {
    "id": "model/tp_qwen3",
    "kind": "model",
    "verdict": "PASS",
@@ -507,6 +568,18 @@
    "kind": "trace",
    "verdict": "PASS",
    "detail": "3 steps"
+  },
+  {
+   "id": "model/tp_qwen3moe",
+   "kind": "model",
+   "verdict": "XFAIL",
+   "detail": "RuntimeError: IR_SPEC 3.1 (rule 38): general.architecture \"qwen3moe\" is neither \"paperkiln\" nor one of Appendix D's eight [expected to fail: revision 1.5's qwen3moe (IR_SPEC 9.3, Appendix D.10): the clean-room engine (rev]"
+  },
+  {
+   "id": "trace/tp_qwen3moe_decode",
+   "kind": "trace",
+   "verdict": "XFAIL",
+   "detail": "RuntimeError: IR_SPEC 3.1 (rule 38): general.architecture \"qwen3moe\" is neither \"paperkiln\" nor one of Appendix D's eight [expected to fail: revision 1.5's qwen3moe (IR_SPEC 9.3, Appendix D.10): the clean-room engine (rev]"
   },
   {
    "id": "op/embedding/rows",
@@ -561,6 +634,12 @@
    "kind": "op",
    "verdict": "PASS",
    "detail": "a 0 values differ in their bits; b 0 values differ in their bits; c 0 values differ in their bits"
+  },
+  {
+   "id": "op/split/groups",
+   "kind": "op",
+   "verdict": "XFAIL",
+   "detail": "RuntimeError: split: sizes [2, 1] do not cover width 6 [expected to fail: revision 1.5's split.groups (IR_SPEC 5.5): the clean-room engine implements revi]"
   },
   {
    "id": "op/rmsnorm/row",
@@ -689,6 +768,36 @@
    "detail": "q worst 8.75e-10 of max(1, |ref|); k worst 1.25e-09 of max(1, |ref|)"
   },
   {
+   "id": "op/rope/freq_factors",
+   "kind": "op",
+   "verdict": "XFAIL",
+   "detail": "q worst 1.45e+00 of max(1, |ref|); k worst 8.14e-01 of max(1, |ref|) [expected to fail: revision 1.5's rope.freq_factors and attn_factor (IR_SPEC 5.14): the clean-room ]"
+  },
+  {
+   "id": "op/rope/freq_factors_short",
+   "kind": "op",
+   "verdict": "XFAIL",
+   "detail": "q worst 1.81e+00 of max(1, |ref|); k worst 2.03e+00 of max(1, |ref|) [expected to fail: revision 1.5's rope.freq_factors and attn_factor (IR_SPEC 5.14): the clean-room ]"
+  },
+  {
+   "id": "op/rope/freq_factors_long",
+   "kind": "op",
+   "verdict": "XFAIL",
+   "detail": "q worst 1.45e+00 of max(1, |ref|); k worst 8.14e-01 of max(1, |ref|) [expected to fail: revision 1.5's rope.freq_factors and attn_factor (IR_SPEC 5.14): the clean-room ]"
+  },
+  {
+   "id": "op/rope/attn_factor",
+   "kind": "op",
+   "verdict": "XFAIL",
+   "detail": "q worst 2.00e-01 of max(1, |ref|); k worst 2.00e-01 of max(1, |ref|) [expected to fail: revision 1.5's rope.freq_factors and attn_factor (IR_SPEC 5.14): the clean-room ]"
+  },
+  {
+   "id": "op/rope/freq_factors_partial_attn_factor",
+   "kind": "op",
+   "verdict": "XFAIL",
+   "detail": "q worst 1.65e+00 of max(1, |ref|); k worst 1.00e+00 of max(1, |ref|) [expected to fail: revision 1.5's rope.freq_factors and attn_factor (IR_SPEC 5.14): the clean-room ]"
+  },
+  {
    "id": "op/attention/causal",
    "kind": "op",
    "verdict": "PASS",
@@ -709,56 +818,74 @@
   {
    "id": "op/attention/position_bias",
    "kind": "op",
-   "verdict": "XFAIL",
-   "detail": "a worst 7.02e-01 of max(1, |ref|) [expected to fail: revision 1.3's attention.position_bias (IR_SPEC 5.15): the clean-room engine imp]"
+   "verdict": "PASS",
+   "detail": "a worst 8.01e-08 of max(1, |ref|)"
   },
   {
    "id": "op/attention/position_bias_window_sinks",
    "kind": "op",
-   "verdict": "XFAIL",
-   "detail": "a worst 9.04e-01 of max(1, |ref|) [expected to fail: revision 1.3's attention.position_bias (IR_SPEC 5.15): the clean-room engine imp]"
+   "verdict": "PASS",
+   "detail": "a worst 7.93e-08 of max(1, |ref|)"
   },
   {
    "id": "op/attention/position_bias_grouped_query",
    "kind": "op",
-   "verdict": "XFAIL",
-   "detail": "a worst 5.53e-01 of max(1, |ref|) [expected to fail: revision 1.3's attention.position_bias (IR_SPEC 5.15): the clean-room engine imp]"
+   "verdict": "PASS",
+   "detail": "a worst 1.10e-07 of max(1, |ref|)"
   },
   {
    "id": "op/attention/relative_kv",
    "kind": "op",
-   "verdict": "XFAIL",
-   "detail": "a worst 3.61e-01 of max(1, |ref|) [expected to fail: revision 1.4's attention.relative_kv (IR_SPEC 5.15): the clean-room engine imple]"
+   "verdict": "PASS",
+   "detail": "a worst 7.38e-08 of max(1, |ref|)"
   },
   {
    "id": "op/attention/relative_kv_per_head",
    "kind": "op",
-   "verdict": "XFAIL",
-   "detail": "a worst 4.22e-01 of max(1, |ref|) [expected to fail: revision 1.4's attention.relative_kv (IR_SPEC 5.15): the clean-room engine imple]"
+   "verdict": "PASS",
+   "detail": "a worst 4.19e-08 of max(1, |ref|)"
   },
   {
    "id": "op/attention/relative_kv_keys_only",
    "kind": "op",
-   "verdict": "XFAIL",
-   "detail": "a worst 2.88e-01 of max(1, |ref|) [expected to fail: revision 1.4's attention.relative_kv (IR_SPEC 5.15): the clean-room engine imple]"
+   "verdict": "PASS",
+   "detail": "a worst 1.27e-07 of max(1, |ref|)"
   },
   {
    "id": "op/attention/relative_kv_window_sinks",
    "kind": "op",
-   "verdict": "XFAIL",
-   "detail": "a worst 3.20e-01 of max(1, |ref|) [expected to fail: revision 1.4's attention.relative_kv (IR_SPEC 5.15): the clean-room engine imple]"
+   "verdict": "PASS",
+   "detail": "a worst 7.38e-08 of max(1, |ref|)"
   },
   {
    "id": "op/attention/relative_kv_grouped_query",
    "kind": "op",
-   "verdict": "XFAIL",
-   "detail": "a worst 4.69e-01 of max(1, |ref|) [expected to fail: revision 1.4's attention.relative_kv (IR_SPEC 5.15): the clean-room engine imple]"
+   "verdict": "PASS",
+   "detail": "a worst 1.14e-07 of max(1, |ref|)"
   },
   {
    "id": "op/attention/relative_kv_distance_zero",
    "kind": "op",
+   "verdict": "PASS",
+   "detail": "a worst 1.19e-07 of max(1, |ref|)"
+  },
+  {
+   "id": "op/attention/softcap",
+   "kind": "op",
    "verdict": "XFAIL",
-   "detail": "a worst 7.22e-01 of max(1, |ref|) [expected to fail: revision 1.4's attention.relative_kv (IR_SPEC 5.15): the clean-room engine imple]"
+   "detail": "a worst 7.39e-01 of max(1, |ref|) [expected to fail: revision 1.5's attention.softcap (IR_SPEC 5.15): the clean-room engine implement]"
+  },
+  {
+   "id": "op/attention/softcap_window_sinks",
+   "kind": "op",
+   "verdict": "XFAIL",
+   "detail": "a worst 5.19e-01 of max(1, |ref|) [expected to fail: revision 1.5's attention.softcap (IR_SPEC 5.15): the clean-room engine implement]"
+  },
+  {
+   "id": "op/attention/softcap_position_bias",
+   "kind": "op",
+   "verdict": "XFAIL",
+   "detail": "a worst 4.17e-01 of max(1, |ref|) [expected to fail: revision 1.5's attention.softcap (IR_SPEC 5.15): the clean-room engine implement]"
   },
   {
    "id": "op/moe_ffn/renorm",
@@ -915,6 +1042,24 @@
    "kind": "op",
    "verdict": "PASS",
    "detail": "y 0 values differ in their bits; state pad.h 0 values differ in their bits"
+  },
+  {
+   "id": "op/mla_attention/two_heads",
+   "kind": "op",
+   "verdict": "XFAIL",
+   "detail": "RuntimeError: mla_attention has no slot [expected to fail: revision 1.5's op mla_attention (IR_SPEC 5.20): the clean-room engine implements]"
+  },
+  {
+   "id": "op/mla_attention/window_sinks",
+   "kind": "op",
+   "verdict": "XFAIL",
+   "detail": "RuntimeError: mla_attention has no slot [expected to fail: revision 1.5's op mla_attention (IR_SPEC 5.20): the clean-room engine implements]"
+  },
+  {
+   "id": "op/mla_attention/one_head",
+   "kind": "op",
+   "verdict": "XFAIL",
+   "detail": "RuntimeError: mla_attention has no slot [expected to fail: revision 1.5's op mla_attention (IR_SPEC 5.20): the clean-room engine implements]"
   },
   {
    "id": "refuse/unknown_op",
@@ -1376,25 +1521,25 @@
    "id": "refuse/position_bias_bucket_negative",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[5]: key position_bias is not defined"
+   "detail": "refused: IR_SPEC 5.15 (rule 39): block.nodes[5] (attention): position_bias {\"weight\":\"token_embd.weight\",\"buckets\":[0,-1]} is not"
   },
   {
    "id": "refuse/position_bias_buckets_empty",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[5]: key position_bias is not defined"
+   "detail": "refused: IR_SPEC 5.15 (rule 39): block.nodes[5] (attention): position_bias {\"weight\":\"token_embd.weight\",\"buckets\":[]} is not {we"
   },
   {
    "id": "refuse/position_bias_table_shape",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[5]: key position_bias is not defined"
+   "detail": "refused: IR_SPEC 5.15 (rule 39): position_bias table token_embd.weight has ne [16, 15], not {heads = 2, B} with B > 2 (applicatio"
   },
   {
    "id": "refuse/position_bias_per_layer",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[5]: key position_bias is not defined"
+   "detail": "refused: IR_SPEC 3.8 (rule 6): block.nodes[5] (attention): position_bias is structural and cannot be per_layer"
   },
   {
    "id": "refuse/tensor_index_in_head",
@@ -1424,43 +1569,121 @@
    "id": "refuse/relative_kv_distance_negative",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[5]: key relative_kv is not defined"
+   "detail": "refused: IR_SPEC 5.15 (rule 40): block.nodes[5] (attention): relative_kv {\"key\":\"token_embd.weight\",\"max_distance\":-1} is not {ke"
   },
   {
    "id": "refuse/relative_kv_without_key",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[5]: key relative_kv is not defined"
+   "detail": "refused: IR_SPEC 5.15 (rule 40): block.nodes[5] (attention): relative_kv {\"value\":\"token_embd.weight\",\"max_distance\":2} is not {k"
   },
   {
    "id": "refuse/relative_kv_unknown_field",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[5]: key relative_kv is not defined"
+   "detail": "refused: IR_SPEC 5.15 (rule 40): block.nodes[5] (attention): relative_kv {\"key\":\"token_embd.weight\",\"max_distance\":2,\"buckets\":[0"
   },
   {
    "id": "refuse/relative_kv_key_shape",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[5]: key relative_kv is not defined"
+   "detail": "refused: IR_SPEC 5.15 (rule 40): relative_kv.key token_embd.weight has ne [16, 15], not {8 or 16, max_distance + 1 = 4} (applicat"
   },
   {
    "id": "refuse/relative_kv_value_shape",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[5]: key relative_kv is not defined"
+   "detail": "refused: IR_SPEC 5.15 (rule 40): relative_kv.value output_norm.weight has ne [16], not {8 or 16, max_distance + 1 = 15} (applicat"
   },
   {
    "id": "refuse/relative_kv_with_position_bias",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[5]: key relative_kv is not defined; IR_SPEC 10.1 (rule 1): $.block.nodes[5]: key po"
+   "detail": "refused: IR_SPEC 5.15 (rule 40): block.nodes[5] (attention): relative_kv and position_bias on one node; IR_SPEC 5.15 (rule 39): p"
   },
   {
    "id": "refuse/relative_kv_per_layer",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[5]: key relative_kv is not defined"
+   "detail": "refused: IR_SPEC 3.8 (rule 6): block.nodes[5] (attention): relative_kv is structural and cannot be per_layer"
+  },
+  {
+   "id": "refuse/softcap_not_positive",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[5]: key softcap is not defined; IR_SPEC 3.1 (rule 38): general.architecture \"gemma2"
+  },
+  {
+   "id": "refuse/attn_factor_not_positive",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key freq_factors is not defined; IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key a"
+  },
+  {
+   "id": "refuse/freq_factors_without_original_ctx",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key freq_factors is not defined; IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key a"
+  },
+  {
+   "id": "refuse/freq_factors_unknown_field",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key freq_factors is not defined; IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key a"
+  },
+  {
+   "id": "refuse/freq_factors_tensor_shape",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key freq_factors is not defined; IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key a"
+  },
+  {
+   "id": "refuse/freq_factors_per_layer",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key freq_factors is not defined; IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key a"
+  },
+  {
+   "id": "refuse/split_groups_zero",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[4]: key groups is not defined; IR_SPEC 10.1 (rule 1): $.block.nodes[9].op: \"mla_att"
+  },
+  {
+   "id": "refuse/mla_slot_head_dim",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[4]: key groups is not defined; IR_SPEC 10.1 (rule 1): $.block.nodes[9].op: \"mla_att"
+  },
+  {
+   "id": "refuse/mla_slot_kv_heads",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[4]: key groups is not defined; IR_SPEC 10.1 (rule 1): $.block.nodes[9].op: \"mla_att"
+  },
+  {
+   "id": "refuse/mla_k_b_shape",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[4]: key groups is not defined; IR_SPEC 10.1 (rule 1): $.block.nodes[9].op: \"mla_att"
+  },
+  {
+   "id": "refuse/mla_reads_three",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[4]: key groups is not defined; IR_SPEC 10.1 (rule 1): $.block.nodes[9].op: \"mla_att"
+  },
+  {
+   "id": "refuse/mla_without_k_b",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[4]: key groups is not defined; IR_SPEC 10.1 (rule 1): $.block.nodes[9].op: \"mla_att"
+  },
+  {
+   "id": "refuse/mla_not_causal",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[4]: key groups is not defined; IR_SPEC 10.1 (rule 1): $.block.nodes[9].op: \"mla_att"
   },
   {
    "id": "refuse/duplicate_member_top",
@@ -1508,7 +1731,7 @@
    "id": "refuse/state_tokens_arch_llama",
    "kind": "refuse",
    "verdict": "PASS",
-   "detail": "refused: IR_SPEC 8.2 (rule 28): state tokens in a file of architecture \"llama\", not paperkiln"
+   "detail": "refused: IR_SPEC D.1 (rule 38): general.architecture \"llama\": the metadata builds no graph (llama.embedding_length is missing); I"
   },
   {
    "id": "refuse/duplicate_member_embedded",
@@ -1519,32 +1742,38 @@
   {
    "id": "refuse/architecture_kimi_as_gpt2",
    "kind": "refuse",
-   "verdict": "XFAIL",
-   "detail": "accepted [expected to fail: revision 1.3's rule 38 (IR_SPEC 3.1): not in the clean-room engine (revision 1.2]"
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC D.7 (rule 38): general.architecture \"gpt2\", but the embedded document is not the graph Appendix D builds from th"
   },
   {
    "id": "refuse/architecture_swa_as_gpt2",
    "kind": "refuse",
-   "verdict": "XFAIL",
-   "detail": "accepted [expected to fail: revision 1.3's rule 38 (IR_SPEC 3.1): not in the clean-room engine (revision 1.2]"
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC D.7 (rule 38): general.architecture \"gpt2\", but the embedded document is not the graph Appendix D builds from th"
   },
   {
    "id": "refuse/architecture_metadata_disagrees",
    "kind": "refuse",
-   "verdict": "XFAIL",
-   "detail": "accepted [expected to fail: revision 1.3's rule 38 (IR_SPEC 3.1): not in the clean-room engine (revision 1.2]"
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC D.7 (rule 38): general.architecture \"llama\", but the embedded document is not the graph Appendix D builds from t"
   },
   {
    "id": "refuse/architecture_without_graph",
    "kind": "refuse",
-   "verdict": "XFAIL",
-   "detail": "accepted [expected to fail: revision 1.3's rule 38 (IR_SPEC 3.1): not in the clean-room engine (revision 1.2]"
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 3.1 (rule 38): general.architecture \"falcon\" is neither \"paperkiln\" nor one of Appendix D's eight"
+  },
+  {
+   "id": "refuse/architecture_gemma2_softcap_dropped",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 3.1 (rule 38): general.architecture \"gemma2\" is neither \"paperkiln\" nor one of Appendix D's eight"
   },
   {
    "id": "refuse/architecture_substituted_document",
    "kind": "refuse",
-   "verdict": "XFAIL",
-   "detail": "accepted [expected to fail: revision 1.3's rule 38 (IR_SPEC 3.1): not in the clean-room engine (revision 1.2]"
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC D.7 (rule 38): general.architecture \"gpt2\", but the embedded document is not the graph Appendix D builds from th"
   },
   {
    "id": "digest/vectors/rfc8785_number_0000000000000000",
@@ -1943,6 +2172,18 @@
    "detail": "sha256 equal; canonical equal"
   },
   {
+   "id": "digest/vectors/document_tp_deepseek2",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_tp_gemma2",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
    "id": "digest/vectors/document_tp_gemma3",
    "kind": "digest",
    "verdict": "PASS",
@@ -1979,6 +2220,18 @@
    "detail": "sha256 equal; canonical equal"
   },
   {
+   "id": "digest/vectors/document_tp_phi3",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_tp_qwen2moe",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
    "id": "digest/vectors/document_tp_qwen3",
    "kind": "digest",
    "verdict": "PASS",
@@ -1986,6 +2239,12 @@
   },
   {
    "id": "digest/vectors/document_tp_qwen3_hd16",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_tp_qwen3moe",
    "kind": "digest",
    "verdict": "PASS",
    "detail": "sha256 equal; canonical equal"
@@ -2273,6 +2532,12 @@
    "detail": "3 steps"
   },
   {
+   "id": "trace/tp_gemma2_rewind_window",
+   "kind": "trace",
+   "verdict": "XFAIL",
+   "detail": "RuntimeError: IR_SPEC 10.1 (rule 1): $.block.nodes[5]: key softcap is not defined; IR_SPEC 3.1 (rule 38): general.architecture \"gemma2\" is neither \"paperkiln\" nor one of Appendix D's eight [expected to fail: revision 1.5's gemma2 (IR_SPEC 9.3, Appendix D.9): the clean-room engine (revisi]"
+  },
+  {
    "id": "trace/pk_attnres_chunks",
    "kind": "trace",
    "verdict": "PASS",
@@ -2299,14 +2564,14 @@
   {
    "id": "trace/pk_flex_shaw_chunks",
    "kind": "trace",
-   "verdict": "XFAIL",
-   "detail": "RuntimeError: IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key relative_kv is not defined [expected to fail: revision 1.4's attention.relative_kv (IR_SPEC 5.15): the clean-room engine (revi]"
+   "verdict": "PASS",
+   "detail": "4 steps"
   },
   {
    "id": "trace/pk_flex_t5_chunks",
    "kind": "trace",
-   "verdict": "XFAIL",
-   "detail": "RuntimeError: IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key position_bias is not defined [expected to fail: revision 1.3's attention.position_bias (IR_SPEC 5.15): the clean-room engine (re]"
+   "verdict": "PASS",
+   "detail": "4 steps"
   },
   {
    "id": "trace/pk_gpt2_chunks",
@@ -2387,6 +2652,18 @@
    "detail": "4 steps"
   },
   {
+   "id": "trace/tp_deepseek2_chunks",
+   "kind": "trace",
+   "verdict": "XFAIL",
+   "detail": "RuntimeError: IR_SPEC 10.1 (rule 1): $.block.nodes[4]: key groups is not defined; IR_SPEC 10.1 (rule 1): $.block.nodes[9].op: \"mla_attention\" is not one of [\"embedding\",\"pos_embedding\",\"linear\",\"scale\",\"split\",\"rmsnorm\",\"layernorm\",\"gelu\",\"silu\",\"sigmoid\",\"relu\",\"add\",\"mul\",\"sub\",\"affine\",\"mul_col\",\"rms_row\",\"rope\",\"attention\",\"moe_ffn\",\"list\",\"append\",\"depth_attend\",\"expr\",\"linear_attention\",\"ssm_scan\",\"conv1d_causal\",\"selective_scan\",\"depth_route\",\"recurrence\"]; IR_SPEC 6.1 (rule 11): mla_attention names kv slot kv; IR_SPEC 3.1 (rule 38): general.architecture \"deepseek2\" is neither \"paperkiln\" nor one of Appendix D's eight [expected to fail: revision 1.5's deepseek2 (IR_SPEC 9.3, Appendix D.11): the clean-room engine (re]"
+  },
+  {
+   "id": "trace/tp_gemma2_chunks",
+   "kind": "trace",
+   "verdict": "XFAIL",
+   "detail": "RuntimeError: IR_SPEC 10.1 (rule 1): $.block.nodes[5]: key softcap is not defined; IR_SPEC 3.1 (rule 38): general.architecture \"gemma2\" is neither \"paperkiln\" nor one of Appendix D's eight [expected to fail: revision 1.5's gemma2 (IR_SPEC 9.3, Appendix D.9): the clean-room engine (revisi]"
+  },
+  {
    "id": "trace/tp_gemma3_chunks",
    "kind": "trace",
    "verdict": "PASS",
@@ -2423,6 +2700,18 @@
    "detail": "4 steps"
   },
   {
+   "id": "trace/tp_phi3_chunks",
+   "kind": "trace",
+   "verdict": "XFAIL",
+   "detail": "RuntimeError: IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key freq_factors is not defined; IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key attn_factor is not defined; IR_SPEC 3.1 (rule 38): general.architecture \"phi3\" is neither \"paperkiln\" nor one of Appendix D's eight [expected to fail: revision 1.5's phi3 (IR_SPEC 9.3, Appendix D.8): the clean-room engine (revision]"
+  },
+  {
+   "id": "trace/tp_qwen2moe_chunks",
+   "kind": "trace",
+   "verdict": "XFAIL",
+   "detail": "RuntimeError: IR_SPEC 3.1 (rule 38): general.architecture \"qwen2moe\" is neither \"paperkiln\" nor one of Appendix D's eight [expected to fail: revision 1.5's qwen2moe (IR_SPEC 9.3, Appendix D.10): the clean-room engine (rev]"
+  },
+  {
    "id": "trace/tp_qwen3_chunks",
    "kind": "trace",
    "verdict": "PASS",
@@ -2435,6 +2724,12 @@
    "detail": "4 steps"
   },
   {
+   "id": "trace/tp_qwen3moe_chunks",
+   "kind": "trace",
+   "verdict": "XFAIL",
+   "detail": "RuntimeError: IR_SPEC 3.1 (rule 38): general.architecture \"qwen3moe\" is neither \"paperkiln\" nor one of Appendix D's eight [expected to fail: revision 1.5's qwen3moe (IR_SPEC 9.3, Appendix D.10): the clean-room engine (rev]"
+  },
+  {
    "id": "trace/pk_llama_attnres_rec_untagged",
    "kind": "trace",
    "verdict": "PASS",
@@ -2443,8 +2738,20 @@
   {
    "id": "trace/pk_flex_shaw_weight_index",
    "kind": "trace",
-   "verdict": "XFAIL",
-   "detail": "RuntimeError: IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key relative_kv is not defined [expected to fail: revision 1.4's attention.relative_kv (IR_SPEC 5.15): the clean-room engine (revi]"
+   "verdict": "PASS",
+   "detail": "5 steps"
+  },
+  {
+   "id": "trace/pk_mor_window",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "9 steps"
+  },
+  {
+   "id": "trace/pk_mor_window_rewind",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "3 steps"
   },
   {
    "id": "accept/documents/model_pk_attnres",
@@ -2473,14 +2780,14 @@
   {
    "id": "accept/documents/model_pk_flex_shaw",
    "kind": "accept",
-   "verdict": "XFAIL",
-   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key relative_kv is not defined [expected to fail: revision 1.4's attention.relative_kv (IR_SPEC 5.15): the clean-room engine (revi]"
+   "verdict": "PASS",
+   "detail": "accepted"
   },
   {
    "id": "accept/documents/model_pk_flex_t5",
    "kind": "accept",
-   "verdict": "XFAIL",
-   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key position_bias is not defined [expected to fail: revision 1.3's attention.position_bias (IR_SPEC 5.15): the clean-room engine (re]"
+   "verdict": "PASS",
+   "detail": "accepted"
   },
   {
    "id": "accept/documents/model_pk_gpt2",
@@ -2561,6 +2868,18 @@
    "detail": "accepted"
   },
   {
+   "id": "accept/documents/model_tp_deepseek2",
+   "kind": "accept",
+   "verdict": "XFAIL",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[4]: key groups is not defined; IR_SPEC 10.1 (rule 1): $.block.nodes[9].op: \"mla_attention\" is not one of [\"embedding\",\"pos_ [expected to fail: revision 1.5's deepseek2 (IR_SPEC 9.3, Appendix D.11): the clean-room engine (re]"
+  },
+  {
+   "id": "accept/documents/model_tp_gemma2",
+   "kind": "accept",
+   "verdict": "XFAIL",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[5]: key softcap is not defined; IR_SPEC 3.1 (rule 38): general.architecture \"gemma2\" is neither \"paperkiln\" nor one of Appe [expected to fail: revision 1.5's gemma2 (IR_SPEC 9.3, Appendix D.9): the clean-room engine (revisi]"
+  },
+  {
    "id": "accept/documents/model_tp_gemma3",
    "kind": "accept",
    "verdict": "PASS",
@@ -2597,6 +2916,18 @@
    "detail": "accepted"
   },
   {
+   "id": "accept/documents/model_tp_phi3",
+   "kind": "accept",
+   "verdict": "XFAIL",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key freq_factors is not defined; IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key attn_factor is not defined; IR_SPEC 3.1 ( [expected to fail: revision 1.5's phi3 (IR_SPEC 9.3, Appendix D.8): the clean-room engine (revision]"
+  },
+  {
+   "id": "accept/documents/model_tp_qwen2moe",
+   "kind": "accept",
+   "verdict": "XFAIL",
+   "detail": "refused: IR_SPEC 3.1 (rule 38): general.architecture \"qwen2moe\" is neither \"paperkiln\" nor one of Appendix D's eight [expected to fail: revision 1.5's qwen2moe (IR_SPEC 9.3, Appendix D.10): the clean-room engine (rev]"
+  },
+  {
    "id": "accept/documents/model_tp_qwen3",
    "kind": "accept",
    "verdict": "PASS",
@@ -2607,6 +2938,12 @@
    "kind": "accept",
    "verdict": "PASS",
    "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_tp_qwen3moe",
+   "kind": "accept",
+   "verdict": "XFAIL",
+   "detail": "refused: IR_SPEC 3.1 (rule 38): general.architecture \"qwen3moe\" is neither \"paperkiln\" nor one of Appendix D's eight [expected to fail: revision 1.5's qwen3moe (IR_SPEC 9.3, Appendix D.10): the clean-room engine (rev]"
   },
   {
    "id": "accept/documents/rewritten_pk_kimi",
@@ -2701,200 +3038,530 @@
   {
    "id": "accept/documents/relative_kv_weight_index",
    "kind": "accept",
-   "verdict": "XFAIL",
-   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key relative_kv is not defined [expected to fail: revision 1.4's attention.relative_kv (IR_SPEC 5.15): the clean-room engine (revi]"
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/mor_window",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
   },
   {
    "id": "chat/render/one user prompt",
    "kind": "chat",
-   "verdict": "SKIP",
-   "detail": "method render_chat is not implemented"
+   "verdict": "PASS",
+   "detail": "text equal"
   },
   {
    "id": "chat/render/system folds into the first user turn",
    "kind": "chat",
-   "verdict": "SKIP",
-   "detail": "method render_chat is not implemented"
+   "verdict": "PASS",
+   "detail": "text equal"
   },
   {
    "id": "chat/render/a lone system message",
    "kind": "chat",
-   "verdict": "SKIP",
-   "detail": "method render_chat is not implemented"
+   "verdict": "PASS",
+   "detail": "refused"
   },
   {
    "id": "chat/render/a system message with no user message",
    "kind": "chat",
-   "verdict": "SKIP",
-   "detail": "method render_chat is not implemented"
+   "verdict": "PASS",
+   "detail": "refused"
   },
   {
    "id": "chat/render/two system messages",
    "kind": "chat",
-   "verdict": "SKIP",
-   "detail": "method render_chat is not implemented"
+   "verdict": "PASS",
+   "detail": "refused"
   },
   {
    "id": "chat/render/a system message mid-conversation",
    "kind": "chat",
-   "verdict": "SKIP",
-   "detail": "method render_chat is not implemented"
+   "verdict": "PASS",
+   "detail": "refused"
   },
   {
    "id": "chat/render/the assistant first",
    "kind": "chat",
-   "verdict": "SKIP",
-   "detail": "method render_chat is not implemented"
+   "verdict": "PASS",
+   "detail": "refused"
   },
   {
    "id": "chat/render/two user messages in a row",
    "kind": "chat",
-   "verdict": "SKIP",
-   "detail": "method render_chat is not implemented"
+   "verdict": "PASS",
+   "detail": "refused"
   },
   {
    "id": "chat/render/a training conversation ending on a user message",
    "kind": "chat",
-   "verdict": "SKIP",
-   "detail": "method render_chat is not implemented"
+   "verdict": "PASS",
+   "detail": "refused"
   },
   {
    "id": "chat/render/a prompt ending on an assistant message",
    "kind": "chat",
-   "verdict": "SKIP",
-   "detail": "method render_chat is not implemented"
+   "verdict": "PASS",
+   "detail": "refused"
   },
   {
    "id": "chat/render/user content holding a role marker",
    "kind": "chat",
-   "verdict": "SKIP",
-   "detail": "method render_chat is not implemented"
+   "verdict": "PASS",
+   "detail": "refused"
   },
   {
    "id": "chat/render/system content holding end-of-text",
    "kind": "chat",
-   "verdict": "SKIP",
-   "detail": "method render_chat is not implemented"
+   "verdict": "PASS",
+   "detail": "refused"
   },
   {
    "id": "chat/render/assistant content holding a marker",
    "kind": "chat",
-   "verdict": "SKIP",
-   "detail": "method render_chat is not implemented"
+   "verdict": "PASS",
+   "detail": "refused"
   },
   {
    "id": "chat/render/<unk> text is ordinary content",
    "kind": "chat",
-   "verdict": "SKIP",
-   "detail": "method render_chat is not implemented"
+   "verdict": "PASS",
+   "detail": "text equal"
   },
   {
    "id": "chat/render/newline-only user content",
    "kind": "chat",
-   "verdict": "SKIP",
-   "detail": "method render_chat is not implemented"
+   "verdict": "PASS",
+   "detail": "text equal"
   },
   {
    "id": "chat/render/newline-only and empty replies in the history",
    "kind": "chat",
-   "verdict": "SKIP",
-   "detail": "method render_chat is not implemented"
+   "verdict": "PASS",
+   "detail": "text equal"
   },
   {
    "id": "chat/render/the tool role is reserved",
    "kind": "chat",
-   "verdict": "SKIP",
-   "detail": "method render_chat is not implemented"
+   "verdict": "PASS",
+   "detail": "refused"
   },
   {
    "id": "chat/render/an unknown role",
    "kind": "chat",
-   "verdict": "SKIP",
-   "detail": "method render_chat is not implemented"
+   "verdict": "PASS",
+   "detail": "refused"
   },
   {
    "id": "chat/render/three exchanges with a system message",
    "kind": "chat",
-   "verdict": "SKIP",
-   "detail": "method render_chat is not implemented"
+   "verdict": "PASS",
+   "detail": "text equal"
   },
   {
    "id": "chat/render/a training conversation with a system message",
    "kind": "chat",
-   "verdict": "SKIP",
-   "detail": "method render_chat is not implemented"
+   "verdict": "PASS",
+   "detail": "text equal"
   },
   {
    "id": "chat/render/loss on a user message",
    "kind": "chat",
-   "verdict": "SKIP",
-   "detail": "method render_chat is not implemented"
+   "verdict": "PASS",
+   "detail": "refused"
   },
   {
    "id": "chat/render/unicode content",
    "kind": "chat",
-   "verdict": "SKIP",
-   "detail": "method render_chat is not implemented"
+   "verdict": "PASS",
+   "detail": "text equal"
   },
   {
    "id": "chat/render/system mode none refuses a system message",
    "kind": "chat",
-   "verdict": "SKIP",
-   "detail": "method render_chat is not implemented"
+   "verdict": "PASS",
+   "detail": "refused"
   },
   {
    "id": "chat/render/system mode none without one",
    "kind": "chat",
-   "verdict": "SKIP",
-   "detail": "method render_chat is not implemented"
+   "verdict": "PASS",
+   "detail": "text equal"
   },
   {
    "id": "chat/render/legacy word-level prompt",
    "kind": "chat",
-   "verdict": "SKIP",
-   "detail": "method render_chat is not implemented"
+   "verdict": "PASS",
+   "detail": "text equal"
   },
   {
    "id": "chat/render/gemma3 trims and folds",
    "kind": "chat",
-   "verdict": "SKIP",
-   "detail": "method render_chat is not implemented"
+   "verdict": "PASS",
+   "detail": "text equal"
   },
   {
    "id": "chat/render/gemma3 trims unicode edge whitespace",
    "kind": "chat",
-   "verdict": "SKIP",
-   "detail": "method render_chat is not implemented"
+   "verdict": "PASS",
+   "detail": "text equal"
   },
   {
    "id": "chat/render/gemma3 trims unicode whitespace in system and history",
    "kind": "chat",
-   "verdict": "SKIP",
-   "detail": "method render_chat is not implemented"
+   "verdict": "PASS",
+   "detail": "text equal"
   },
   {
    "id": "chat/render/gemma3 keeps inner unicode whitespace and zero-width space",
    "kind": "chat",
-   "verdict": "SKIP",
-   "detail": "method render_chat is not implemented"
+   "verdict": "PASS",
+   "detail": "text equal"
   },
   {
    "id": "chat/render/qwen3 strips past reasoning",
    "kind": "chat",
-   "verdict": "SKIP",
-   "detail": "method render_chat is not implemented"
+   "verdict": "PASS",
+   "detail": "text equal"
   },
   {
    "id": "chat/render/qwen2.5 writes its default system turn",
    "kind": "chat",
-   "verdict": "SKIP",
-   "detail": "method render_chat is not implemented"
+   "verdict": "PASS",
+   "detail": "text equal"
   },
   {
    "id": "chat/render/qwen3 thinking off",
    "kind": "chat",
-   "verdict": "SKIP",
-   "detail": "method render_chat is not implemented"
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 one user prompt (v1's text)",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 user and assistant only (v1's text)",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 system turn",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 empty system message",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 system turn and history",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 training conversation with a system turn",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 system and tool definitions",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 tool definitions without a system message",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 tool definitions with an empty system message",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 unicode tool definition",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 a call answered: the prompt ends on the tool message",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 a call, its result and the reply",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 content before a call",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 two calls, two results, a reply, then a user message",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 tool_call_id matching the call's id",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 a training conversation ending on a call",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 empty arguments",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 newline-only and empty contents",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 a tool message without a call",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 a tool message first",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 fewer results than calls",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 a prompt ending while a call has no result",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 a reply without its results",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 tool_call_id not the call's id",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 tool_call_id when the call has no id",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 a call name with a newline",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 an empty call name",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 arguments holding a control token",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 arguments that are not a string",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 a call type other than function",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 an empty tool_calls list",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 tool_calls on a user message",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 user content holding <|system|>",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 tool content holding a spare token",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 system content holding <|tool|>",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 a tool definition holding a control token",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 a tool definition with a non-integer number",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 a tool definition that is not an object",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 a system message mid-conversation",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 loss on a tool message",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v1 refuses tool definitions",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v1 refuses tool_calls",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/parse_reply/no call",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "content and calls equal"
+  },
+  {
+   "id": "chat/parse_reply/content then a call",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "content and calls equal"
+  },
+  {
+   "id": "chat/parse_reply/a call alone",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "content and calls equal"
+  },
+  {
+   "id": "chat/parse_reply/two calls",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "content and calls equal"
+  },
+  {
+   "id": "chat/parse_reply/empty arguments",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "content and calls equal"
+  },
+  {
+   "id": "chat/parse_reply/arguments holding a newline",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "content and calls equal"
+  },
+  {
+   "id": "chat/parse_reply/the call's text as BPE pieces is content",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "content and calls equal"
+  },
+  {
+   "id": "chat/parse_reply/a call without a newline",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "not parsed"
+  },
+  {
+   "id": "chat/parse_reply/an empty name",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "not parsed"
+  },
+  {
+   "id": "chat/parse_reply/an empty call",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "not parsed"
+  },
+  {
+   "id": "chat/parse_reply/one good call and one bad",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "not parsed"
+  },
+  {
+   "id": "chat/parse_reply/no ids",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "content and calls equal"
   }
  ]
 }

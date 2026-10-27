@@ -60,7 +60,10 @@ import thirdparty_parity  # noqa: E402
 
 VOCAB = 512
 FAMILIES = ("mistral_swa", "gemma3", "phi3_longrope", "phi3_swa", "gemma2", "mixtral", "qwen2moe", "qwen3moe",
-            "deepseek2", "deepseek2_qlora")
+            "deepseek2", "deepseek2_qlora", "deepseek2_dense_yarn", "deepseek3")
+# deepseek3: DeepSeek-V3's router groups (n_group 2, topk_group 1), which llama.cpp b6000's converter does not write;
+# the gate writes them under the later llama.cpp key names, as it writes Mistral's window.
+DS3_GROUPS = (2, 1)
 # phi3_longrope: original_max_position_embeddings 32, so sequences of 12 (short factors throughout), 24
 # (crossing to the long ones during the greedy continuation) and 48 tokens (long throughout).
 LONGROPE_ORIG = 32
@@ -152,6 +155,47 @@ def hf_model(family, seed):
                                pad_token_id=0, bos_token_id=1, eos_token_id=2, attn_implementation="eager",
                                scoring_func="softmax")  # read by llama.cpp's convert (DeepSeek's own configs hold it)
         model = DeepseekV2ForCausalLM(cfg)
+    elif family == "deepseek2_dense_yarn":
+        from transformers import DeepseekV2Config, DeepseekV2ForCausalLM
+        # keramos 1.6: the first layer dense (first_k_dense_replace 1, the apply attribute), YaRN factor 4 over an
+        # original context of 16 (sequences of 48). mscale_all_dim 0, so llama.cpp's softmax temperature is 1, and
+        # attention_factor 1, so transformers' DeepseekV2 scales cos and sin by 1 as llama.cpp does.
+        cfg = DeepseekV2Config(vocab_size=VOCAB, hidden_size=64, intermediate_size=128, moe_intermediate_size=32,
+                               num_hidden_layers=3, num_attention_heads=4, num_key_value_heads=4,
+                               n_shared_experts=2, n_routed_experts=6, routed_scaling_factor=1.0, kv_lora_rank=20,
+                               q_lora_rank=None, qk_rope_head_dim=8, v_head_dim=12, qk_nope_head_dim=16,
+                               topk_method="greedy", n_group=1, topk_group=1, num_experts_per_tok=2,
+                               first_k_dense_replace=1, norm_topk_prob=False, max_position_embeddings=256,
+                               rms_norm_eps=1e-6, rope_theta=10000.0,
+                               rope_scaling={"type": "yarn", "factor": 4.0, "original_max_position_embeddings": 16,
+                                             "beta_fast": 32, "beta_slow": 1, "mscale": 1.0, "mscale_all_dim": 0.0,
+                                             "attention_factor": 1.0},
+                               attention_bias=False, tie_word_embeddings=False, initializer_range=0.2,
+                               pad_token_id=0, bos_token_id=1, eos_token_id=2, attn_implementation="eager",
+                               scoring_func="softmax")
+        model = DeepseekV2ForCausalLM(cfg)
+    elif family == "deepseek3":
+        from transformers import DeepseekV3Config, DeepseekV3ForCausalLM
+        # keramos 1.6: DeepSeek-V3's router (sigmoid scores, a selection bias, 2 groups of which 1 is kept,
+        # renormalised gates scaled by 2.5), a leading dense layer, the low-rank query, YaRN factor 4 over 16 with
+        # mscale = mscale_all_dim = 1: cos and sin unscaled and the softmax temperature (0.1 ln 4 + 1)^2.
+        cfg = DeepseekV3Config(vocab_size=VOCAB, hidden_size=64, intermediate_size=128, moe_intermediate_size=32,
+                               num_hidden_layers=3, num_attention_heads=4, num_key_value_heads=4,
+                               n_shared_experts=1, n_routed_experts=8, routed_scaling_factor=2.5, kv_lora_rank=20,
+                               q_lora_rank=24, qk_rope_head_dim=8, v_head_dim=12, qk_nope_head_dim=16,
+                               n_group=DS3_GROUPS[0], topk_group=DS3_GROUPS[1], num_experts_per_tok=2,
+                               first_k_dense_replace=1, norm_topk_prob=True, max_position_embeddings=256,
+                               rms_norm_eps=1e-6, rope_theta=10000.0,
+                               rope_scaling={"type": "yarn", "factor": 4.0, "original_max_position_embeddings": 16,
+                                             "beta_fast": 32, "beta_slow": 1, "mscale": 1.0, "mscale_all_dim": 1.0},
+                               rope_interleave=True, attention_bias=False, tie_word_embeddings=False,
+                               initializer_range=0.2, pad_token_id=0, bos_token_id=1, eos_token_id=2,
+                               attn_implementation="eager", scoring_func="sigmoid", topk_method="noaux_tc")
+        model = DeepseekV3ForCausalLM(cfg)
+        with torch.no_grad():
+            for name_, buf in model.named_buffers():
+                if name_.endswith("e_score_correction_bias"):
+                    buf.copy_(0.3 * torch.randn_like(buf))
     else:
         raise SystemExit(f"thirdparty_synth: unknown family {family}")
     with torch.no_grad():
@@ -186,6 +230,14 @@ def convert(model, family, llamacpp, work):
     # Gemma's modify_tensors trims token_embd to the SentencePiece vocabulary: the placeholder's size.
     cls._create_vocab_sentencepiece = lambda self: ([f"<t{i}>".encode() for i in range(VOCAB)], [0.0] * VOCAB,
                                                     [gguf.TokenType.NORMAL] * VOCAB)
+    if family == "deepseek3":
+        base3 = cls.set_gguf_parameters
+
+        def with_groups(self):
+            base3(self)
+            self.gguf_writer.add_uint32("deepseek2.expert_group_count", DS3_GROUPS[0])
+            self.gguf_writer.add_uint32("deepseek2.expert_group_used_count", DS3_GROUPS[1])
+        cls.set_gguf_parameters = with_groups
     if family == "mistral_swa":
         # llama.cpp's convert drops Mistral's sliding_window; write it as <arch>.attention.sliding_window.
         base = cls.set_gguf_parameters
@@ -286,6 +338,38 @@ def ablations(family, doc, W, model, seqs):
         d2 = json.loads(json.dumps(doc))
         d2["block"]["nodes"] = [n for n in d2["block"]["nodes"] if n["op"] not in ("sigmoid", "mul_col")]
         out["shared_gate_off_rel"] = rel_against(model, d2, W, seqs[0])
+    if any(n.get("apply") for n in nodes):  # keramos 1.6: the leading dense layer's FFN zeroed
+        d2 = json.loads(json.dumps(doc))
+        dense = [n["apply"] for n in d2["block"]["nodes"] if n.get("apply")][0]["per_layer"]  # the dense branch first
+        d2["block"]["nodes"].insert(len(d2["block"]["nodes"]) - 1, {"op": "affine", "in": ["f"], "scale": 0.0,
+                                                                     "shift": 0.0, "out": "f",
+                                                                     "apply": {"per_layer": list(dense)}})
+        out["dense_layer_zeroed_rel"] = rel_against(model, d2, W, seqs[0])
+    rp = [n for n in nodes if n["op"] == "rope" and isinstance(n.get("freq_factors"), list)]
+    if rp:  # YaRN's divisors and DeepSeek's softmax temperature
+        d2 = json.loads(json.dumps(doc))
+        for n in d2["block"]["nodes"]:
+            if n["op"] == "rope":
+                n.pop("freq_factors")
+        out["yarn_factors_off_rel"] = rel_against(model, d2, W, seqs[0])
+        mla = [n for n in nodes if n["op"] == "mla_attention"][0]
+        plain = float(np.float32(1.0 / np.sqrt(mla["qk_nope"] + mla["qk_rope"])))
+        if abs(mla["scale"] - plain) > 1e-7:
+            d3 = json.loads(json.dumps(doc))
+            for n in d3["block"]["nodes"]:
+                if n["op"] == "mla_attention":
+                    n["scale"] = plain
+            out["softmax_temperature_off_rel"] = rel_against(model, d3, W, seqs[0])
+    mo = [n for n in nodes if n["op"] == "moe_ffn"]
+    if mo and (mo[0].get("scoring") or mo[0].get("selection_bias") or mo[0].get("groups")):
+        for key, change in (("selection_bias_off_rel", lambda n: n.pop("selection_bias", None)),
+                            ("groups_off_rel", lambda n: n.pop("groups", None)),
+                            ("softmax_scoring_rel", lambda n: n.update(scoring="softmax"))):
+            d2 = json.loads(json.dumps(doc))
+            for n in d2["block"]["nodes"]:
+                if n["op"] == "moe_ffn":
+                    change(n)
+            out[key] = rel_against(model, d2, W, seqs[0])
     if any(n["op"] == "mla_attention" for n in nodes):
         d2 = json.loads(json.dumps(doc))
         for n in d2["block"]["nodes"]:

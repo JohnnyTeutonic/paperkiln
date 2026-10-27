@@ -387,6 +387,28 @@
    "profile": "thirdparty"
   },
   {
+   "id": "model/tp_deepseek3",
+   "kind": "model",
+   "file": "models/tp_deepseek3/case.json",
+   "model": "models/tp_deepseek3",
+   "profile": "thirdparty",
+   "class": "ROUNDING"
+  },
+  {
+   "id": "trace/tp_deepseek3_decode",
+   "kind": "trace",
+   "file": "state/tp_deepseek3_decode.json",
+   "model": "models/tp_deepseek3",
+   "profile": "thirdparty"
+  },
+  {
+   "id": "trace/tp_deepseek3_truncate",
+   "kind": "trace",
+   "file": "state/tp_deepseek3_truncate.json",
+   "model": "models/tp_deepseek3",
+   "profile": "thirdparty"
+  },
+  {
    "id": "model/tp_gemma2",
    "kind": "model",
    "file": "models/tp_gemma2/case.json",
@@ -725,7 +747,7 @@
    "kind": "op",
    "file": "ops/rope.json",
    "profile": "core",
-   "n": 11
+   "n": 12
   },
   {
    "id": "op/attention",
@@ -739,7 +761,7 @@
    "kind": "op",
    "file": "ops/moe_ffn.json",
    "profile": "core",
-   "n": 2
+   "n": 5
   },
   {
    "id": "op/list",
@@ -1540,6 +1562,76 @@
    "section": "5.20"
   },
   {
+   "id": "refuse/apply_entries_not_boolean",
+   "kind": "refuse",
+   "file": "refuse/apply_entries_not_boolean.json",
+   "rule": 43,
+   "section": "3.8"
+  },
+  {
+   "id": "refuse/apply_outside_block",
+   "kind": "refuse",
+   "file": "refuse/apply_outside_block.json",
+   "rule": 43,
+   "section": "3.8"
+  },
+  {
+   "id": "refuse/apply_on_attention",
+   "kind": "refuse",
+   "file": "refuse/apply_on_attention.json",
+   "rule": 4,
+   "section": "3.5"
+  },
+  {
+   "id": "refuse/apply_leaves_value_unwritten",
+   "kind": "refuse",
+   "file": "refuse/apply_leaves_value_unwritten.json",
+   "rule": 36,
+   "section": "3.5"
+  },
+  {
+   "id": "refuse/apply_with_depth_route",
+   "kind": "refuse",
+   "file": "refuse/apply_with_depth_route.json",
+   "rule": 43,
+   "section": "3.8"
+  },
+  {
+   "id": "refuse/moe_groups_not_dividing",
+   "kind": "refuse",
+   "file": "refuse/moe_groups_not_dividing.json",
+   "rule": 10,
+   "section": "5.16"
+  },
+  {
+   "id": "refuse/moe_scoring_unknown",
+   "kind": "refuse",
+   "file": "refuse/moe_scoring_unknown.json",
+   "rule": 5,
+   "section": "5.16"
+  },
+  {
+   "id": "refuse/moe_selection_bias_shape",
+   "kind": "refuse",
+   "file": "refuse/moe_selection_bias_shape.json",
+   "rule": 44,
+   "section": "5.16"
+  },
+  {
+   "id": "refuse/freq_factors_values_length",
+   "kind": "refuse",
+   "file": "refuse/freq_factors_values_length.json",
+   "rule": 41,
+   "section": "5.14"
+  },
+  {
+   "id": "refuse/freq_factors_values_not_positive",
+   "kind": "refuse",
+   "file": "refuse/freq_factors_values_not_positive.json",
+   "rule": 41,
+   "section": "5.14"
+  },
+  {
    "id": "refuse/duplicate_member_top",
    "kind": "refuse",
    "file": "refuse/duplicate_member_top.json",
@@ -1649,7 +1741,7 @@
    "kind": "digest",
    "file": "digest/vectors.json",
    "profile": "core",
-   "n": 95
+   "n": 96
   },
   {
    "id": "dequant/blocks",
@@ -1890,6 +1982,13 @@
    "profile": "state"
   },
   {
+   "id": "trace/tp_deepseek3_chunks",
+   "kind": "trace",
+   "file": "state/tp_deepseek3_chunks.json",
+   "model": "models/tp_deepseek3",
+   "profile": "state"
+  },
+  {
    "id": "trace/tp_gemma2_chunks",
    "kind": "trace",
    "file": "state/tp_gemma2_chunks.json",
@@ -2006,7 +2105,7 @@
    "kind": "accept",
    "file": "accept/documents.json",
    "profile": "core",
-   "n": 49
+   "n": 50
   },
   {
    "id": "chat/render",

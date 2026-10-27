@@ -1,13 +1,13 @@
 {
  "spec": {
   "repository": "keramos",
-  "tag": "v1.4.1",
-  "commit": "a29ce6f596e2e79c6fca52e6382c962cb5f7011e"
+  "tag": "v1.5.0",
+  "commit": "062c1513a3d5b1a3ae2055695da56474dffc92f8"
  },
  "engine": {
   "name": "numpy reference (tools/ir_numpy.py)",
   "environment": "CPython 3.13.14, numpy 2.3.5, Windows 11 x86-64 (the generating environment, IR_SPEC 4.6)",
-  "run": "python tools/ir_conformance.py --adapter ir_numpy, in a clean clone of keramos at v1.4.1 (a29ce6f5), 2026-10-27; skips: the 11 gradient cases (its own finite differences)"
+  "run": "python tools/ir_conformance.py --adapter ir_numpy, in a clean export of keramos at v1.5.0 (062c1513, git archive), 2026-10-28; skips: the 11 gradient cases (its own finite differences); the 54 new cases of revision 1.5 pass (tp_phi3, tp_gemma2, tp_qwen2moe, tp_qwen3moe, tp_deepseek2: model cases, 13 traces, acceptance and digest; 12 op cases; 14 refusals); no earlier verdict moves"
  },
  "adapter": {
   "engine": "ir_numpy",
@@ -23,7 +23,7 @@
   ]
  },
  "counts": {
-  "PASS": 456,
+  "PASS": 567,
   "FAIL": 0,
   "SKIP": 11,
   "XFAIL": 0,
@@ -31,35 +31,35 @@
  },
  "by_kind": {
   "model": {
-   "PASS": 27,
+   "PASS": 32,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
    "XPASS": 0
   },
   "trace": {
-   "PASS": 81,
+   "PASS": 96,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
    "XPASS": 0
   },
   "op": {
-   "PASS": 68,
+   "PASS": 80,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
    "XPASS": 0
   },
   "refuse": {
-   "PASS": 105,
+   "PASS": 119,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
    "XPASS": 0
   },
   "digest": {
-   "PASS": 90,
+   "PASS": 95,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
@@ -80,14 +80,14 @@
    "XPASS": 0
   },
   "accept": {
-   "PASS": 43,
+   "PASS": 49,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
    "XPASS": 0
   },
   "chat": {
-   "PASS": 32,
+   "PASS": 86,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
@@ -390,6 +390,36 @@
    "detail": "3 steps"
   },
   {
+   "id": "model/tp_deepseek2",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 0.00e+00; greedy 4/4"
+  },
+  {
+   "id": "trace/tp_deepseek2_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "trace/tp_deepseek2_truncate",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "3 steps"
+  },
+  {
+   "id": "model/tp_gemma2",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 0.00e+00; greedy 4/4"
+  },
+  {
+   "id": "trace/tp_gemma2_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
    "id": "model/tp_gemma3",
    "kind": "model",
    "verdict": "PASS",
@@ -474,6 +504,36 @@
    "detail": "6 steps"
   },
   {
+   "id": "model/tp_phi3",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 0.00e+00; greedy 4/4"
+  },
+  {
+   "id": "trace/tp_phi3_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "trace/tp_phi3_truncate",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "3 steps"
+  },
+  {
+   "id": "model/tp_qwen2moe",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 0.00e+00; greedy 4/4"
+  },
+  {
+   "id": "trace/tp_qwen2moe_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
    "id": "model/tp_qwen3",
    "kind": "model",
    "verdict": "PASS",
@@ -508,6 +568,18 @@
    "kind": "trace",
    "verdict": "PASS",
    "detail": "3 steps"
+  },
+  {
+   "id": "model/tp_qwen3moe",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 0.00e+00; greedy 4/4"
+  },
+  {
+   "id": "trace/tp_qwen3moe_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
   },
   {
    "id": "op/embedding/rows",
@@ -562,6 +634,12 @@
    "kind": "op",
    "verdict": "PASS",
    "detail": "a 0 values differ in their bits; b 0 values differ in their bits; c 0 values differ in their bits"
+  },
+  {
+   "id": "op/split/groups",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "a 0 values differ in their bits; b 0 values differ in their bits"
   },
   {
    "id": "op/rmsnorm/row",
@@ -690,6 +768,36 @@
    "detail": "q worst 0.00e+00 of max(1, |ref|); k worst 0.00e+00 of max(1, |ref|)"
   },
   {
+   "id": "op/rope/freq_factors",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "q worst 0.00e+00 of max(1, |ref|); k worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/rope/freq_factors_short",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "q worst 0.00e+00 of max(1, |ref|); k worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/rope/freq_factors_long",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "q worst 0.00e+00 of max(1, |ref|); k worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/rope/attn_factor",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "q worst 0.00e+00 of max(1, |ref|); k worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/rope/freq_factors_partial_attn_factor",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "q worst 0.00e+00 of max(1, |ref|); k worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
    "id": "op/attention/causal",
    "kind": "op",
    "verdict": "PASS",
@@ -757,6 +865,24 @@
   },
   {
    "id": "op/attention/relative_kv_distance_zero",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "a worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/attention/softcap",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "a worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/attention/softcap_window_sinks",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "a worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/attention/softcap_position_bias",
    "kind": "op",
    "verdict": "PASS",
    "detail": "a worst 0.00e+00 of max(1, |ref|)"
@@ -916,6 +1042,24 @@
    "kind": "op",
    "verdict": "PASS",
    "detail": "y 0 values differ in their bits; state pad.h 0 values differ in their bits"
+  },
+  {
+   "id": "op/mla_attention/two_heads",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "a worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/mla_attention/window_sinks",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "a worst 0.00e+00 of max(1, |ref|)"
+  },
+  {
+   "id": "op/mla_attention/one_head",
+   "kind": "op",
+   "verdict": "PASS",
+   "detail": "a worst 0.00e+00 of max(1, |ref|)"
   },
   {
    "id": "refuse/unknown_op",
@@ -1464,6 +1608,84 @@
    "detail": "refused (IR_SPEC 3.8 (rule 6))"
   },
   {
+   "id": "refuse/softcap_not_positive",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 5.15 (rule 10))"
+  },
+  {
+   "id": "refuse/attn_factor_not_positive",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 5.14 (rule 10))"
+  },
+  {
+   "id": "refuse/freq_factors_without_original_ctx",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 5.14 (rule 41))"
+  },
+  {
+   "id": "refuse/freq_factors_unknown_field",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 5.14 (rule 41))"
+  },
+  {
+   "id": "refuse/freq_factors_tensor_shape",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 5.14 (rule 41))"
+  },
+  {
+   "id": "refuse/freq_factors_per_layer",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 3.8 (rule 6))"
+  },
+  {
+   "id": "refuse/split_groups_zero",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 5.5 (rule 10))"
+  },
+  {
+   "id": "refuse/mla_slot_head_dim",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 5.20 (rule 12))"
+  },
+  {
+   "id": "refuse/mla_slot_kv_heads",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 5.20 (rule 12))"
+  },
+  {
+   "id": "refuse/mla_k_b_shape",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 5.20 (rule 42))"
+  },
+  {
+   "id": "refuse/mla_reads_three",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 3.5 (rule 7))"
+  },
+  {
+   "id": "refuse/mla_without_k_b",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 3.5 (rule 8))"
+  },
+  {
+   "id": "refuse/mla_not_causal",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 5.20 (rule 14))"
+  },
+  {
    "id": "refuse/duplicate_member_top",
    "kind": "refuse",
    "verdict": "PASS",
@@ -1537,6 +1759,12 @@
   },
   {
    "id": "refuse/architecture_without_graph",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 3.1 (rule 38))"
+  },
+  {
+   "id": "refuse/architecture_gemma2_softcap_dropped",
    "kind": "refuse",
    "verdict": "PASS",
    "detail": "refused (IR_SPEC 3.1 (rule 38))"
@@ -1944,6 +2172,18 @@
    "detail": "sha256 equal; canonical equal"
   },
   {
+   "id": "digest/vectors/document_tp_deepseek2",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_tp_gemma2",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
    "id": "digest/vectors/document_tp_gemma3",
    "kind": "digest",
    "verdict": "PASS",
@@ -1980,6 +2220,18 @@
    "detail": "sha256 equal; canonical equal"
   },
   {
+   "id": "digest/vectors/document_tp_phi3",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_tp_qwen2moe",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
    "id": "digest/vectors/document_tp_qwen3",
    "kind": "digest",
    "verdict": "PASS",
@@ -1987,6 +2239,12 @@
   },
   {
    "id": "digest/vectors/document_tp_qwen3_hd16",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_tp_qwen3moe",
    "kind": "digest",
    "verdict": "PASS",
    "detail": "sha256 equal; canonical equal"
@@ -2274,6 +2532,12 @@
    "detail": "3 steps"
   },
   {
+   "id": "trace/tp_gemma2_rewind_window",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "3 steps"
+  },
+  {
    "id": "trace/pk_attnres_chunks",
    "kind": "trace",
    "verdict": "PASS",
@@ -2388,6 +2652,18 @@
    "detail": "4 steps"
   },
   {
+   "id": "trace/tp_deepseek2_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
+   "id": "trace/tp_gemma2_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
    "id": "trace/tp_gemma3_chunks",
    "kind": "trace",
    "verdict": "PASS",
@@ -2424,6 +2700,18 @@
    "detail": "4 steps"
   },
   {
+   "id": "trace/tp_phi3_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
+   "id": "trace/tp_qwen2moe_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
    "id": "trace/tp_qwen3_chunks",
    "kind": "trace",
    "verdict": "PASS",
@@ -2431,6 +2719,12 @@
   },
   {
    "id": "trace/tp_qwen3_hd16_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
+   "id": "trace/tp_qwen3moe_chunks",
    "kind": "trace",
    "verdict": "PASS",
    "detail": "4 steps"
@@ -2446,6 +2740,18 @@
    "kind": "trace",
    "verdict": "PASS",
    "detail": "5 steps"
+  },
+  {
+   "id": "trace/pk_mor_window",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "9 steps"
+  },
+  {
+   "id": "trace/pk_mor_window_rewind",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "3 steps"
   },
   {
    "id": "accept/documents/model_pk_attnres",
@@ -2562,6 +2868,18 @@
    "detail": "accepted"
   },
   {
+   "id": "accept/documents/model_tp_deepseek2",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_tp_gemma2",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
    "id": "accept/documents/model_tp_gemma3",
    "kind": "accept",
    "verdict": "PASS",
@@ -2598,6 +2916,18 @@
    "detail": "accepted"
   },
   {
+   "id": "accept/documents/model_tp_phi3",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_tp_qwen2moe",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
    "id": "accept/documents/model_tp_qwen3",
    "kind": "accept",
    "verdict": "PASS",
@@ -2605,6 +2935,12 @@
   },
   {
    "id": "accept/documents/model_tp_qwen3_hd16",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_tp_qwen3moe",
    "kind": "accept",
    "verdict": "PASS",
    "detail": "accepted"
@@ -2701,6 +3037,12 @@
   },
   {
    "id": "accept/documents/relative_kv_weight_index",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/mor_window",
    "kind": "accept",
    "verdict": "PASS",
    "detail": "accepted"
@@ -2896,6 +3238,330 @@
    "kind": "chat",
    "verdict": "PASS",
    "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 one user prompt (v1's text)",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 user and assistant only (v1's text)",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 system turn",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 empty system message",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 system turn and history",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 training conversation with a system turn",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 system and tool definitions",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 tool definitions without a system message",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 tool definitions with an empty system message",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 unicode tool definition",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 a call answered: the prompt ends on the tool message",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 a call, its result and the reply",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 content before a call",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 two calls, two results, a reply, then a user message",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 tool_call_id matching the call's id",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 a training conversation ending on a call",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 empty arguments",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 newline-only and empty contents",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "text equal"
+  },
+  {
+   "id": "chat/render/v2 a tool message without a call",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 a tool message first",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 fewer results than calls",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 a prompt ending while a call has no result",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 a reply without its results",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 tool_call_id not the call's id",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 tool_call_id when the call has no id",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 a call name with a newline",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 an empty call name",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 arguments holding a control token",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 arguments that are not a string",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 a call type other than function",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 an empty tool_calls list",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 tool_calls on a user message",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 user content holding <|system|>",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 tool content holding a spare token",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 system content holding <|tool|>",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 a tool definition holding a control token",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 a tool definition with a non-integer number",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 a tool definition that is not an object",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 a system message mid-conversation",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v2 loss on a tool message",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v1 refuses tool definitions",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/render/v1 refuses tool_calls",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "refused"
+  },
+  {
+   "id": "chat/parse_reply/no call",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "content and calls equal"
+  },
+  {
+   "id": "chat/parse_reply/content then a call",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "content and calls equal"
+  },
+  {
+   "id": "chat/parse_reply/a call alone",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "content and calls equal"
+  },
+  {
+   "id": "chat/parse_reply/two calls",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "content and calls equal"
+  },
+  {
+   "id": "chat/parse_reply/empty arguments",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "content and calls equal"
+  },
+  {
+   "id": "chat/parse_reply/arguments holding a newline",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "content and calls equal"
+  },
+  {
+   "id": "chat/parse_reply/the call's text as BPE pieces is content",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "content and calls equal"
+  },
+  {
+   "id": "chat/parse_reply/a call without a newline",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "not parsed"
+  },
+  {
+   "id": "chat/parse_reply/an empty name",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "not parsed"
+  },
+  {
+   "id": "chat/parse_reply/an empty call",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "not parsed"
+  },
+  {
+   "id": "chat/parse_reply/one good call and one bad",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "not parsed"
+  },
+  {
+   "id": "chat/parse_reply/no ids",
+   "kind": "chat",
+   "verdict": "PASS",
+   "detail": "content and calls equal"
   }
  ]
 }

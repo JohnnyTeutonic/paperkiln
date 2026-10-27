@@ -2,7 +2,7 @@
 
 *Normative specification of the keramos IR: a versioned JSON graph of a language model that an
 engine interprets, rather than recognising a fixed architecture. IR version 1, specification revision
-1.5 (28 October 2026; v1.5.0).*
+1.6 (28 October 2026; v1.6.0).*
 
 The format's GGUF keys keep their `paperkiln.` prefix (`paperkiln.ir`, `paperkiln.ir_version`,
 `paperkiln.ir_sha256` and the rest), as does the architecture label "paperkiln" (rule 38): they are
@@ -53,7 +53,7 @@ not semantics: when the header and this document differ, this document holds.
 
 ## 0. Status
 
-This document is version 1 of the IR, revision 1.5. It states the semantics that
+This document is version 1 of the IR, revision 1.6. It states the semantics that
 `include/microtorch/ir.hpp`'s header comment stated under the number 0, reorganised into profiles,
 with the numerics made consistent with what the reference build computes (section 4 and Appendix A).
 Revision 1.1 adds the digest (section 3.10), the values of stored tensors (section 4.7) and the
@@ -81,7 +81,11 @@ optional attribute of `attention` (section 5.15); LongRoPE's per-pair frequency 
 long set and the table's attention factor, optional attributes of `rope` (section 5.14, rule 41); a
 per-group `split` (section 5.5); and DeepSeek-V2's multi-head latent attention, a new op over a kv slot whose
 row is the compressed latent and the shared rotary key (section 5.20, rule 42). Section 9.3 gains phi3,
-gemma2, qwen2moe, qwen3moe and deepseek2, whose mixture-of-experts layers are wiring of `moe_ffn`. The IR documents
+gemma2, qwen2moe, qwen3moe and deepseek2, whose mixture-of-experts layers are wiring of `moe_ffn`. Revision 1.6
+lets real DeepSeek checkpoints build (section 12.8): a node attribute `apply` that runs a block node in some
+applications only (section 3.8; Q17, leading dense layers), DeepSeek-V3's router as `moe_ffn` attributes
+(sigmoid scores, a selection bias, group-limited routing; section 5.16), and YaRN's per-pair divisors as
+`freq_factors` given by value (section 5.14). The IR documents
 that paperkiln commits before 5349ee19 exported carry `"ir_version": 0` and are version 1 documents
 (section 2.1); later exports carry 1 (section 2.3).
 
@@ -172,11 +176,11 @@ naming the op and the backend.
 
 | Profile | Contents | Sections |
 |---|---|---|
-| `core` | the document, tensors, per-layer attributes, prefill and decode, numerics and classes, the ops of section 5 except those marked otherwise, the kv slot with window and sinks | 3, 4, 5, 6.1, 6.2 |
+| `core` | the document, tensors, per-layer attributes (from revision 1.6 the node attribute `apply`), prefill and decode, numerics and classes, the ops of section 5 except those marked otherwise, the kv slot with window and sinks | 3, 4, 5, 6.1, 6.2 |
 | `state` | recurrent slots and ops (`linear_attention`, `ssm_scan`), per-turn state tokens (`state_weight`, `mask: turn_state`, `evict: turn_state`), prefix reuse, rewind and snapshots | 6 |
 | `recursion` | `weight_index`, `tensor_index`, `depth_route`, `kv_rows: active`, `kv_from` (reserved) | 7 |
 | `chat` | the template record and its resolution; the state-token template contract | 8 |
-| `thirdparty` | the attributes and ops added for graphs built from llama.cpp metadata: grouped-query attention, `rope` `neox` / `n_rot` / `freq_scale` / `kv_heads`, `rmsnorm` `group` / `weight_offset`, `conv1d_causal`, `selective_scan`; from revision 1.5 `rope` `freq_factors` / `attn_factor`, `attention` `softcap`, `split` `groups`, `mla_attention` | 5.5, 5.6, 5.14, 5.15, 5.20, 6.6, 6.7, 9.3 |
+| `thirdparty` | the attributes and ops added for graphs built from llama.cpp metadata: grouped-query attention, `rope` `neox` / `n_rot` / `freq_scale` / `kv_heads`, `rmsnorm` `group` / `weight_offset`, `conv1d_causal`, `selective_scan`; from revision 1.5 `rope` `freq_factors` / `attn_factor`, `attention` `softcap`, `split` `groups`, `mla_attention`; from revision 1.6 `moe_ffn` `scoring` / `selection_bias` / `groups` and `freq_factors` given by value | 5.5, 5.6, 5.14, 5.15, 5.16, 5.20, 6.6, 6.7, 9.3 |
 | `recurrence` | the `recurrence` op: a per-token state update declared in the document (init, let, update and readout bodies), over a recurrent slot of the state profile | 6.10 |
 
 Profiles are not declared inside the document (an engine infers them from the ops and keys it
@@ -365,7 +369,7 @@ GGUF tensor and never state.
 ### 3.7 Tensors and names
 
 - `weight` (and `bias`, `router`, `experts`, `state_weight`, the `weight` of `attention.position_bias`,
-  the `key` and `value` of `attention.relative_kv`, `rope.freq_factors` (its name, or its `short` and
+  the `key` and `value` of `attention.relative_kv`, `moe_ffn.selection_bias`, `rope.freq_factors` (its name, or its `short` and
   `long`), `mla_attention`'s `k_b` and `v_b`, and the tensor attributes of `ssm_scan`,
   `conv1d_causal` and `selective_scan`) name GGUF tensors; `"{i}"` in any of them follows the rule below.
 - Layout: a matrix is [out, in] row-major, as GGUF and llama.cpp store it (ggml `ne0` = in).
@@ -383,14 +387,28 @@ GGUF tensor and never state.
 Any attribute of a block node, and any field of a block state slot, may be
 `{"per_layer": [v_0, ..., v_{L-1}]}` with L = `block.repeat`: application i reads v_i, except the
 structural keys: a node's `op`, `in`, `out`, `state`, `tensor_index`, `sizes`, `groups`, `expr`, `position_bias`,
-`relative_kv`, `freq_factors`, a
+`relative_kv`, `freq_factors`, `moe_ffn`'s `groups`, a
 recurrence's `index`, `inputs`, `weights`, `init`, `let`, `update` and `readout`, and its
-tensor names (`weight`, `bias`, `router`, `experts`, `state_weight`, `tied_to`, `a`, `b`, `c`, `d`, `k_b`, `v_b`),
+tensor names (`weight`, `bias`, `router`, `experts`, `state_weight`, `tied_to`, `a`, `b`, `c`, `d`, `k_b`, `v_b`,
+`selection_bias`),
 and a slot's `name`, `kind`, `op`, `dtype`, `tensors`, `evict` and `kv_rows` (`kv_from`, reserved, is
 per-layer by definition). An attribute not given per layer is the same in every application.
 (Examples: gemma3's attention window and kv window, 512 on local layers and 0 on global ones; RoPE theta 10000 / 1e6; `depth_route`'s `step`; the injection
 `affine`'s `scale`.) A `per_layer` list whose length is not `block.repeat` is refused, as is a
 `per_layer` value outside the block.
+
+**apply** (revision 1.6; Q17, section 12.8). A block node may carry `apply`, true or false, or `{"per_layer":
+[b_0, ..., b_{L-1}]}` of trues and falses (default true). In an application whose value is false the node does
+not run: it reads nothing, names no tensor (section 3.7 requires its tensors only in the applications that run
+it) and writes nothing, so its outputs keep whatever value an earlier write left (section 3.5's persistence).
+This states a block whose applications differ in their nodes, as a model whose first layers are dense and the
+rest mixtures of experts (DeepSeek-V2-Lite's first layer, DeepSeek-V3's first three): both branches are listed,
+each applied where it belongs, and both write the value the next node reads. The reads are checked per
+application (rule 36): in every application each value a running node reads is written before it, in that
+application or an earlier one, or by the embed section. Stateful nodes (`attention`, `mla_attention` and the
+recurrent ops of section 6) and `depth_route` do not carry `apply` (rule 4: their slots run in every
+application), and a block with `depth_route` has no `apply` (rule 43). Refused (rule 43): `apply` outside the
+block, a per-layer entry that is not true or false, `apply` in a block with `depth_route`.
 
 ### 3.9 Prefill and decode
 
@@ -724,6 +742,14 @@ Rotates q and k: `in [q, k, pos]`, `out [q', k']`. Attributes `heads`, `head_dim
   what a fresh run over the same ids computes. Structural (section 3.8). Refused (rule 41): a value of another
   form, a member other than these, `original_ctx` not an integer >= 1; a tensor not of ne {n_rot / 2} in an
   application that reads it.
+  From revision 1.6 `freq_factors` may also be the list of the n_rot / 2 values themselves (positive numbers,
+  each read as the f32 it rounds to, section 3.5): one set, for factors a builder computes from metadata rather
+  than reads from a tensor. YaRN (Peng et al. 2023, arXiv 2309.00071, section 3.2) is such a set: pair j's
+  inverse frequency theta^(-2j/n_rot) ((1 - e_j) / s + e_j), s the scaling factor and e_j = 1 - ramp(j) with
+  the ramp linear between the correction dimensions of beta_fast = 32 and beta_slow = 1 rotations over the
+  original context (floor and ceiling), so f_j = 1 / ((1 - e_j) / s + e_j) (Appendix D.11; YaRN's attention
+  temperature is the attention node's `scale`, or `attn_factor`). A list of another length or with an entry
+  that is not positive is refused (rule 41).
 - `attn_factor` m (revision 1.5; default 1, positive): the table holds cos * m and sin * m (LongRoPE's and
   YaRN's attention scaling; for Phi-3, sqrt(1 + ln(s) / ln(N)) with s the context's extension ratio, which
   llama.cpp's converter writes as `rope.scaling.attn_factor`). Not positive: rule 10.
@@ -848,6 +874,21 @@ A mixture of SwiGLU experts in llama.cpp's layout:
   expert index.
 - `gate_norm` `"renorm"`: gates = softmax over the k selected logits (the E-way softmax renormalised
   over them); `"raw"`: the E-way softmax's selected entries.
+- *thirdparty profile (revision 1.6; DeepSeek-V3's router, DeepSeek-AI 2024, arXiv 2412.19437, eqs. 12-16, and
+  auxiliary-loss-free load balancing, Wang et al. 2024, arXiv 2408.15664):* `scoring` `"softmax"` (default:
+  the scores s_e are the E-way softmax of the logits) or `"sigmoid"` (s_e = sigmoid(logit_e)); `selection_bias`
+  b, a tensor [E] (ne {E}), added to the scores for the choice of experts only: the selection scores are c_e =
+  s_e + b_e (c = s without it); `groups` `{"n": G, "top": g}`: the E experts are G consecutive groups of E / G,
+  each group's score the sum of its two largest selection scores (its one score when a group holds one
+  expert), the g groups of the largest scores are kept (ties to the lower group index) and only their experts
+  are candidates. The k selected experts are the k candidates of the largest selection scores, ties to the
+  lower expert index; the gates are their scores s_e, divided by the sum of those k scores under `"renorm"` and
+  as they are under `"raw"` (with softmax scores and no bias this is the statement above). The reference's
+  orders: the scores and their sum in f32, ascending. Refused: `scoring` another value (rule 5); `groups` whose
+  n does not divide E, whose top is not in 1 .. n, or that keeps fewer than k experts (rule 10); a selection bias
+  not of ne {E} in an application that runs the node (rule 44). transformers' implementation keeps the experts of
+  dropped groups at a selection score of 0 rather than removing them, which differs only when fewer than k
+  candidates have a positive selection score. `selection_bias` and `groups` are structural (section 3.8).
 - `activation` `"silu"`: expert_e(x) = down_e(silu(gate_e x) * up_e x).
 - out = the sum over the selected e of gate_e * expert_e(x), accumulated in ascending expert index.
 - `routing` (a string) is an informative attribute; it carries no semantics.
@@ -2054,9 +2095,17 @@ refuses a file without a document.
   split into c | kr, c through `attn_kv_a_norm`; interleaved RoPE on qr (heads) and kr (one head);
   `mla_attention` with K `attn_k_b`, V `attn_v_b` and scale 1/sqrt(qk_nope + qk_rope); `attn_output`; then
   `moe_ffn` (renorm when `expert_weights_norm`, else raw) times `expert_weights_scale` (an `affine` when it is
-  not 1) plus the shared experts (`ffn_*_shexp`, ungated). Refused by name: leading dense blocks
-  (`leading_dense_block_count` > 0: a block is one node list), DeepSeek-V3's sigmoid router and selection
-  bias, YaRN RoPE scaling, and files converted before llama.cpp's MLA keys.
+  not 1) plus the shared experts (`ffn_*_shexp`, ungated). From revision 1.6 (DeepSeek-V2 and V3 as published,
+  section 12.8): the first `leading_dense_block_count` applications run a dense SwiGLU in place of the mixture,
+  the two branches selected by `apply`; `expert_gating_func` 2 is `moe_ffn` `scoring` sigmoid, `exp_probs_b` its
+  `selection_bias`, and `expert_group_count` / `expert_group_used_count`, when the file holds them (later
+  llama.cpp releases write them; b6000 neither writes nor reads them, so it computes V3's router without its
+  group limit), its `groups`; YaRN (`rope.scaling.type` yarn) is `freq_factors` by value, and the attention scale
+  is mscale^2 / sqrt(qk_nope + qk_rope) with mscale = 1 + `rope.scaling.yarn_log_multiplier` ln(factor)
+  (DeepSeek's softmax temperature, as llama.cpp computes it). Refused by name: files converted before llama.cpp's
+  MLA keys, other gating functions and other RoPE scaling. transformers' DeepseekV2 class (4.57) leaves the
+  temperature out of its scale, which the published model and llama.cpp apply; its DeepseekV3 class applies
+  it.
 
 ## 10. Validation
 
@@ -2068,27 +2117,29 @@ rules section 10.1.1 lists as checked when the rows arrive. Each rule names its 
 rule a single fault breaks under exactly one number (a fault can still break a second rule as a
 consequence: a wrong `block.repeat` names tensors the file lacks). Rule numbers are never reused or
 moved: a rule added by a later revision takes the next free number (35 to 37 in 1.2, 38 and 39 in
-1.3, 40 in 1.4, 41 and 42 in 1.5) and is listed with its section's rules.
+1.3, 40 in 1.4, 41 and 42 in 1.5, 43 and 44 in 1.6) and is listed with its section's rules.
 
 Document (section 3):
 1. The text is not a JSON object, or it does not match `ir.schema.json` in a respect that no other
    rule names: the types of values, the closed key sets of the document, its sections and its slots,
    and the required sections. (The version, the model's fields, an op, an attribute, an attribute's
    value, an arity, a required attribute, a slot's kind and fields, a recurrence's declarations, a
-   position bias, relative vectors, frequency factors and MLA's tensors are rules 2 to 13, 31 and 39 to 42.)
+   position bias, relative vectors, frequency factors, MLA's tensors, `apply` and a selection bias are rules 2
+   to 13, 31 and 39 to 44.)
 35. An object of the text holds a member name twice, at any depth, `_` members included (3.2).
 36. A node reads a value that no node before it writes (in the order of 3.5: embed, the block as
    application 0, head; `tokens` and `pos` excepted); the embed section writes no `x`; the head
    writes no `logits`; under `depth_route`, a block node after it reads anything but `x`, `pos` and
    values written before it in the same application, or the head reads a block value other than `x`
-   (3.4, 3.5, 7.4).
+   (3.4, 3.5, 7.4). Under `apply` (revision 1.6) every application is checked with the nodes it runs, a
+   value written in an earlier application staying readable (3.8).
 2. `ir_version` is not a version the consumer reads (2.3).
 3. `model.d`, `model.vocab`, `model.ctx` or `model.n_layers` is not a positive integer, or
    `block.repeat` != `model.n_layers` (3.3).
 4. A node's `op` is not an op of this specification, or a node carries an attribute its op does
    not define (3.5; `_` keys excepted).
 5. An attribute value is outside its op's closed set: `gelu.approx`, `rope.pairing`,
-   `rope.rope_heads`, `attention.mask`, `moe_ffn.gate_norm`, `moe_ffn.activation`,
+   `rope.rope_heads`, `attention.mask`, `moe_ffn.gate_norm`, `moe_ffn.activation`, `moe_ffn.scoring`,
    `linear_attention.feature_map`, `depth_route.route`, `depth_route.gate`, `kv.evict`,
    `kv.kv_rows`, `kv.dtype`, `tensor_index` (sections 5 to 7).
 6. A `per_layer` list outside the block, on a structural key, or of a length other than
@@ -2107,7 +2158,8 @@ Document (section 3):
     (5.14); `attention.heads` is not a multiple of `kv_heads`, or window or sinks is negative (5.15);
     `moe_ffn.top_k` is not in 1 .. n_experts (5.16); `conv1d_causal` has channels < 1 or kernel < 2
     (6.6); `split.groups` is not a positive integer (5.5); `rope.attn_factor` or `attention.softcap` is
-    not positive (5.14, 5.15).
+    not positive (5.14, 5.15); `moe_ffn.groups` does not divide `n_experts`, keeps a `top` outside 1 .. n, or
+    keeps fewer than `top_k` experts (5.16).
 39. `attention.position_bias` is not `{weight, buckets}` (with `_` members allowed, and no other) with
     `buckets` a non-empty list of integers >= 0; or (container) its weight's tensor is not of ne {heads, B} with B greater than every bucket,
     in an application that reads it (5.15).
@@ -2117,10 +2169,14 @@ Document (section 3):
     `position_bias`; or (container) its key's or value's tensor is not of ne {head_dim or heads *
     head_dim, max_distance + 1} in an application that reads it (5.15).
 41. `rope.freq_factors` is not a name or `{short, long, original_ctx}` with two names and an integer >= 1
-    (revision 1.5); or (container) one of its tensors is not of ne {n_rot / 2} in an application that reads
-    it (5.14).
+    (revision 1.5), or a list of n_rot / 2 positive numbers (revision 1.6); or (container) one of its tensors is
+    not of ne {n_rot / 2} in an application that reads it (5.14).
 42. (container) An `mla_attention` node's `k_b` is not of ne {qk_nope, kv_rank, heads}, or its `v_b` not of
     ne {kv_rank, v_head_dim, heads}, in an application that reads it (revision 1.5; 5.20).
+43. `apply` (revision 1.6) outside the block, with a per-layer entry that is not true or false, or in a block
+    with `depth_route` (3.8).
+44. (container) A `moe_ffn` node's `selection_bias` tensor is not of ne {n_experts} in an application that runs
+    the node (revision 1.6; 5.16).
 
 State (section 6):
 11. A slot's kind is not kv or recurrent; a slot is declared twice or read by no node; a stateful
@@ -2711,13 +2767,8 @@ extractor's proposal of T5's bias (paperkiln, 26 October 2026). Each with the an
 
 ### 12.5 Open
 
-Q16 is settled in v1.4.2 (section 12.6).
-
-- **Q17. Layers whose node lists differ** (revision 1.5). DeepSeek-V2-Lite's first layer and V3's first three
-  are dense where the rest are mixtures of experts (`leading_dense_block_count`), and the block is one node list
-  repeated, so section 9.3's deepseek2 refuses such files by name (as it refuses V3's sigmoid router with its
-  selection bias, and YaRN). Settling it needs a statement of a block whose applications differ in their nodes.
-  The next question takes the number Q18.
+None. Q16 is settled in v1.4.2 (section 12.6), Q17 in revision 1.6 (section 12.8). The next question takes the
+number Q18.
 
 ### 12.6 Settled in revision 1.4
 
@@ -2839,6 +2890,39 @@ section 5.4, cheapest first. Each is a published mechanism; none is new here.
   the low-rank q_a / q_b, latent 6, rope 4, nope 4, v 3; raw gates scaled by 2.5; one shared expert) with decode,
   chunks and truncate traces; refusals `split_groups_zero` and `mla_*` (7: rules 12, 42, 7, 8, 14).
 
+### 12.8 Settled in revision 1.6
+
+What real DeepSeek checkpoints need beyond revision 1.5's MLA, each taken through `LOCAL_LLM_STACK.md` section
+5.4's triage, cheapest first. Each is a published mechanism.
+
+- **Q17. Layers whose node lists differ** (opened in revision 1.5). DeepSeek-V2-Lite's first layer and V3's
+  first three are dense, the rest mixtures of experts (DeepSeek-AI 2024, arXiv 2405.04434 and 2412.19437). Three
+  statements were weighed: a per-layer choice of subgraph, a second block section of its own repeat before the
+  first, and a per-application switch on single nodes. The last is the smallest: one optional attribute,
+  `apply` (section 3.8), whose absence keeps every document's meaning; an interpreter skips a node in an
+  application, and every other rule (per-layer values, `{i}` names, `weight_index`, state) is unchanged. A
+  second section would add a document key, a second state list and a second repeat to every rule that speaks of
+  the block; a subgraph choice would add nested node lists. Stateful nodes do not take it, so every slot still
+  runs in every application. Cases: model `tp_deepseek3` (one dense layer, two mixture layers) with decode,
+  chunks and truncate traces; refusals `apply_entries_not_boolean`, `apply_outside_block`,
+  `apply_with_depth_route` (rule 43), `apply_on_attention` (rule 4), `apply_leaves_value_unwritten` (rule 36).
+- **R1. DeepSeek-V3's router** (eqs. 12-16 of arXiv 2412.19437; the bias of Wang et al. 2024, arXiv
+  2408.15664). Attributes of `moe_ffn` (triage c; section 5.16): `scoring` sigmoid, a `selection_bias` that
+  enters only the choice of experts, and `groups`, node-limited routing (the top groups by the sum of their two
+  largest biased scores). The gates come from the unbiased scores, renormalised over the k chosen; the routed
+  scaling factor stays an `affine`. The reference agrees with a float64 statement of the equations within
+  1.5e-7 of max(1, |ref|) (`tests/test_ir_v16.py`). Cases: op `moe_ffn/sigmoid_renorm`,
+  `_sigmoid_bias_groups`, `_softmax_bias_raw`; refusals `moe_groups_not_dividing` (10), `moe_scoring_unknown`
+  (5), `moe_selection_bias_shape` (44).
+- **R2. YaRN** (Peng et al. 2023, arXiv 2309.00071, sections 3.2 and 3.4). Its NTK-by-parts interpolation is a
+  fixed per-pair rescaling of the RoPE frequencies, which revision 1.5's `freq_factors` already states; the
+  values come from the metadata (scale factor, original context, the betas), so `freq_factors` may now be given
+  by value (triage c; section 5.14) and the builder computes them (Appendix D.11; within 7.5e-8 of the paper's
+  ramp written out in float64, `tests/test_ir_v16.py`). Its attention temperature is DeepSeek's mscale^2 in the
+  attention scale (or `attn_factor` for a model that scales the table). Cases: op `rope/freq_factors_values`;
+  model `tp_deepseek3` (factor 4 over an original context of 8); refusals `freq_factors_values_length` and
+  `freq_factors_values_not_positive` (41).
+
 ## Appendix A. The `-ffast-math` audit
 
 *Informative. Audit of 25 October 2026 at paperkiln c3f5ef12, with revision 1.1's additions: the
@@ -2929,6 +3013,17 @@ Nothing in this audit changes a computed value: the tiny-chat precision gate (HE
 equal to dc29b5e6 bit for bit) and the pinned commits of the RunPod campaigns are unaffected.
 
 ## Appendix B. Changelog
+
+- **v1.6.0** (tag, 28 October 2026; revision 1.6). Real DeepSeek checkpoints (section 12.8): the node attribute
+  `apply` (section 3.8, rule 43, rule 36 per application; Q17 settled), `moe_ffn` `scoring`, `selection_bias` and
+  `groups` (section 5.16, rules 5, 10 and 44), `freq_factors` by value (section 5.14, rule 41); section 9.3 and
+  Appendix D.11's deepseek2 build leading dense blocks, V3's router and YaRN. Schema: those attributes (`apply`
+  on every op that is neither stateful nor `depth_route`). Tools: the reference computes them;
+  `tools/gguf_ir.py`'s `yarn_factors`; `tools/ir_validate.py` checks rules 43 and 44 and the new clauses;
+  `tests/test_ir_v16.py` checks the reference against float64 statements. Suite: model `tp_deepseek3` with
+  decode, chunks and truncate traces, accept case and digest vector; op cases `moe_ffn/*` (3) and
+  `rope/freq_factors_values`; refusals (10): 598 cases. Every earlier expected value unchanged; regenerated in
+  the named environment (section 4.6). `conformance/expected_fail.json`: the clean-room engine's new cases.
 
 - **v1.5.0** (tag, 28 October 2026; revision 1.5). The later third-party families (section 12.7):
   `attention.softcap` (section 5.15); `rope.freq_factors` and `rope.attn_factor` (section 5.14, rule 41, with
@@ -3125,6 +3220,12 @@ the engine has agreed to close, the specification already states the intended be
 | ember WebGPU (browser) | llama and llama.cpp-layout MoE GGUFs on the tuned path's kernels; every other document ember's interpreter runs, all profiles except recurrence, on a WGSL interpreter of the document (ember 36c61eb); F32, F16, BF16 and Q8_0 matrices kept as stored | ROUNDING (WGSL; f32 accumulation, one invocation per output row) | f32, ascending columns per row | recurrence, rope_heads "first", forked lists, k-quant and Q4_0/Q5_x matrices, kv contexts past 4,096 positions (these run in WebAssembly); gated on a software adapter (SwiftShader) against ember CPU: greedy 40/40 and top-1 at every position (17b3999) |
 | ember tuned llama path, CPU and CUDA | llama | ROUNDING against the interpreter | CUDA: TF32 on by default (`EMBER_GEMM_TF32=0` gives FP32) | anything it is not selected for |
 
+**Revision 1.6 in the engines.** The numpy reference computes all of it (section 12.8 for its float64
+checks), and paperkiln's gates run it against transformers on synthetic DeepSeek-V2 (a dense first layer,
+YaRN) and DeepSeek-V3 models (`LOCAL_LLM_STACK.md` section 5.3). mtstudio has no path for third-party documents.
+The clean-room engine (revision 1.4) fails the 44 cases that need revision 1.5 or 1.6, which `expected_fail.json`
+lists. ember's interpreter implements the revision in its own session.
+
 **Revision 1.5 in the engines.** The numpy reference computes all of it; its float64 checks are in section
 12.7, and its gates against transformers on synthetic models converted by llama.cpp's own converter (Phi-3
 with LongRoPE and with a window, Gemma 2, Mixtral, Qwen2-MoE, Qwen3-MoE, DeepSeek-V2 with and without the
@@ -3144,7 +3245,7 @@ llama.cpp, transformers and ONNX Runtime GenAI read no document: the two new mod
 "paperkiln" (rule 38) and the other new cases need a document or a single node, so each of the 28 is a skip
 for them by construction; their v1.3.5 receipts stand. ember's CPU interpreter (757e36b, written from
 section 5.15's text) passes 413, fails 0 and skips 52 at v1.4.0: every new case but the three gradient
-ones (at v1.4.1, ember b49eb5c, 415, 0 and 52 with the two `weight_index` cases), with `relative_kv` in the stated order and `pk_flex_mdha` as written at ec3201b. Its CUDA builds
+ones (at v1.4.1, ember b49eb5c, 415, 0 and 52 with the two `weight_index` cases; at v1.4.2, ember 1456c0c, 472, 0 and 52, the 57 new cases passing: the windows under `depth_route`, `parse_reply` and the v2 chat cases), with `relative_kv` in the stated order and `pk_flex_mdha` as written at ec3201b. Its CUDA builds
 run `pk_flex_mdha` on the device and serve `relative_kv` on the CPU; WebAssembly is bit-equal to the CPU
 and WebGPU (a software adapter) has a `relative_kv` kernel. On the arXiv chain's model from Shaw et al.
 (1803.02155; flex d 64, 2 layers, per-head tables, max_distance 16) ember's replies equal mtstudio's
@@ -3168,7 +3269,7 @@ the host, so a depth is EXACT given its logits; each recursion step runs over it
 their absolute positions into each application's compact kv cache, and decode runs per launch.
 ROUNDING. On a T4 against ember's CPU on mor3 and mor2p0: greedy 40/40, top-1 1299/1299, logits within
 2.0e-7, depth traces 40/40 in prefill and decode, kv rows held per application equal to the CPU's,
-rewinds 160/160. A pos_embedding inside a MoR block keeps the document on the CPU.
+rewinds 160/160. A pos_embedding or a window inside a MoR block keeps the document on the CPU (the CPU interpreter counts the window in positions over each application's rows, section 5.15, from ember 1456c0c).
 
 **ember and revision 1.1.** ember 39dcce9 or later implements revision 1.1 on its CPU interpreter,
 written from this text: it checks `paperkiln.ir_sha256` at load (rule 30), answers `digest` and
@@ -3180,7 +3281,7 @@ block; per-layer values other than attention window and sinks, rope theta and fr
 scale and shift, depth_route step, and the slot's window (per-layer sinks included); `rope_heads`
 "first"; rope nodes with differing theta, freq_scale, n_rot or pairing; head ops outside its head
 list (which excludes `split`, `moe_ffn`, `rope`, `pos_embedding` and `embedding`); `depth_route` with
-recurrent state or a windowed slot; `mask: turn_state` with `kv_rows: active`; eviction with recurrent
+recurrent state; `mask: turn_state` with `kv_rows: active`; eviction with recurrent
 state; `expr` nested deeper than 200 (the CUDA expr kernel takes up to 96 instructions, a stack of 16
 and 8 reductions, and serves larger expressions on the CPU); `attention.position_bias` per layer or under
 `depth_route` (ember runs it on the CPU interpreter otherwise, from 1ab6a252).
@@ -3420,7 +3521,9 @@ document, given the file's tensor names:
    `rmsnorm.weight_offset` 0, `depth_attend.eps` 1e-5, `conv1d_causal.bias` null, `selective_scan.d` null
    and `selective_scan.dt_softplus` true, and from revision 1.5 `split.groups` 1 and `rope.attn_factor` 1;
    a kv slot without `dtype` gets `"f32"`. Attributes whose default is "none" (`position_bias`,
-   `relative_kv`, `state_weight`, and from revision 1.5 `softcap` and `freq_factors`) stay absent.
+   `relative_kv`, `state_weight`, and from revision 1.5 `softcap` and `freq_factors`) stay absent. From
+   revision 1.6 a block node without `apply` gets true, a `moe_ffn` without `scoring` gets `"softmax"`, and
+   `selection_bias` and `groups` stay absent.
 3. A `linear` with a non-null `tied_to`: when the file has no tensor named by its `weight`, `weight`
    becomes the `tied_to` name; then `tied_to` becomes null. The name is tested as written, `{i}`
    included (Appendix D ties only the head's linear, whose names hold no `{i}`).
@@ -3517,16 +3620,20 @@ G `"raw"` for qwen2moe and `"renorm"` for qwen3moe, followed, for qwen2moe when 
     LIN(h2, B ffn_gate_inp_shexp.weight) -> sgate;  sigmoid(sgate) -> sgate
     mul_col(sf, sgate) -> sf;  add(f, sf) -> f
 
-### D.11 deepseek2 (revision 1.5)
+### D.11 deepseek2 (revision 1.5; leading dense blocks, V3's router and YaRN from revision 1.6)
 
 d = K(embedding_length), L = K(block_count), H = K(attention.head_count), ctx = K(context_length), eps =
 K(attention.layer_norm_rms_epsilon); dr = K(rope.dimension_count); dn = K(attention.key_length_mla) - dr;
-dv = K(attention.value_length_mla); r = K(attention.kv_lora_rank); theta = K(rope.freq_base), default 10000;
-no RoPE scaling. The file builds no graph when it lacks `blk.0.attn_k_b.weight` (or the key
-`attention.key_length_mla`), when K(leading_dense_block_count), default 0, is above 0, when
-K(expert_gating_func), default 1 (0 reads 1), is not 1, or when it has `blk.0.exp_probs_b.bias`. G is
-`"renorm"` when K(expert_weights_norm), default false, is true, else `"raw"`; s = K(expert_weights_scale),
-default 1 (0 reads 1).
+dv = K(attention.value_length_mla); r = K(attention.kv_lora_rank); theta = K(rope.freq_base), default 10000.
+The file builds no graph when it lacks `blk.0.attn_k_b.weight` (or the key `attention.key_length_mla`), when
+K(expert_gating_func), default 1 (0 reads 1), is neither 1 nor 2, or when it has `rope_freqs.weight` or a
+K(rope.scaling.type) other than absent, `"none"` or `"yarn"`. k = K(leading_dense_block_count), default 0, at
+most L; M = `blk.{k}.` (the first mixture application). G is `"renorm"` when K(expert_weights_norm), default
+false, is true, else `"raw"`; s = K(expert_weights_scale), default 1 (0 reads 1). Under YaRN: c =
+K(rope.scaling.factor), o = K(rope.scaling.original_context_length), F = the list of dr / 2 values of
+`tools/gguf_ir.py`'s `yarn_factors(dr, theta, c, o)` (section 5.14's formula with beta_fast 32 and beta_slow 1,
+in binary64, each rounded to f32) and m = 1 + K(rope.scaling.yarn_log_multiplier), default 0, times ln(c);
+without it no F and m = 1.
 
     E  = E0
     S  = [{"name": "kv", "kind": "kv", "heads": H, "kv_heads": 1, "head_dim": r + dr, "max_len": ctx,
@@ -3541,18 +3648,30 @@ default 1 (0 reads 1).
          split(ckr) -> [c, kr] {sizes: [r, dr]}
          RMS(c, B attn_kv_a_norm.weight) -> c
          rope(qr, kr, pos) -> [qr, kr] {heads: H, kv_heads: 1, head_dim: dr, n_rot: dr, theta: theta,
-                                        rope_heads: "all", pairing: "interleaved"}
+                                        rope_heads: "all", pairing: "interleaved"[, freq_factors: F]}
          mla_attention(qn, qr, c, kr) -> a {state: "kv", heads: H, kv_rank: r, qk_nope: dn, qk_rope: dr,
                                             v_head_dim: dv, k_b: B attn_k_b.weight, v_b: B attn_v_b.weight,
-                                            scale: 1/sqrt(dn + dr), causal: true, window: 0, sinks: 0}
+                                            scale: m^2 / sqrt(dn + dr), causal: true, window: 0, sinks: 0}
          LIN(a, B attn_output.weight) -> o
          add(x, o) -> x
          RMS(x, B ffn_norm.weight) -> h2
-         moe_ffn(h2) -> f {D.10's attributes, gate_norm: G}
-         affine(f) -> f {scale: s, shift: 0}                                (only when s != 1)
-         when the file has blk.0.ffn_gate_shexp.weight:
-             LIN(h2, B ffn_gate_shexp.weight) -> sg;  LIN(h2, B ffn_up_shexp.weight) -> su
-             silu(sg) -> sg;  mul(sg, su) -> sgu;  LIN(sgu, B ffn_down_shexp.weight) -> sf
-             add(f, sf) -> f
+         DENSE   (when k > 0)
+         MOE     (when k < L)
          add(x, f) -> x
     HD = RMS(x, output_norm.weight) -> h;  HEAD
+
+with DENSE = `LIN(h2, B ffn_gate.weight) -> g; LIN(h2, B ffn_up.weight) -> u; silu(g) -> g; mul(g, u) -> gu;
+LIN(gu, B ffn_down.weight) -> f` and MOE =
+
+    moe_ffn(h2) -> f {D.10's attributes, gate_norm: G[, scoring: "sigmoid"][, selection_bias: B exp_probs_b.bias]
+                      [, groups: {"n": K(expert_group_count), "top": K(expert_group_used_count)}]}
+    affine(f) -> f {scale: s, shift: 0}                                    (only when s != 1)
+    when the file has M ffn_gate_shexp.weight:
+        LIN(h2, B ffn_gate_shexp.weight) -> sg;  LIN(h2, B ffn_up_shexp.weight) -> su
+        silu(sg) -> sg;  mul(sg, su) -> sgu;  LIN(sgu, B ffn_down_shexp.weight) -> sf
+        add(f, sf) -> f
+
+`scoring` is written when K(expert_gating_func) is 2; `selection_bias` when the file has M exp_probs_b.bias;
+`groups` when K(expert_group_count), default 1, is above 1 (`top` K(expert_group_used_count), default 1). When
+0 < k < L, every DENSE node carries `apply: {"per_layer": [i < k for i in 0 .. L - 1]}` and every MOE node
+`apply: {"per_layer": [i >= k ...]}`; otherwise no node carries `apply`.

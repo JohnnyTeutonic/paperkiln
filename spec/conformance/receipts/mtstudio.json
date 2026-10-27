@@ -1,13 +1,13 @@
 {
  "spec": {
   "repository": "keramos",
-  "tag": "v1.4.1",
-  "commit": "a29ce6f596e2e79c6fca52e6382c962cb5f7011e"
+  "tag": "v1.4.2",
+  "commit": "6bbfe01cc7459abc2bd47c42e1f0376438705e6b"
  },
  "engine": {
   "name": "paperkiln mtstudio, CPU, with ir_eval (recurrence nodes, attention with relative_kv and the thirdparty single ops, their gradients, the digest) and expr_eval",
-  "environment": "ext4 clone of paperkiln 43e32a05 (branch d2), Release, GCC 13.3, -ffp-contract=off, built in WSL (~/d2_build); runner under CPython 3.12.3, numpy 2.3.3",
-  "run": "the mtstudio adapter (tools/ir_conformance_mtstudio.py) with the runner of a clean clone of keramos at v1.4.1 (a29ce6f5), 2026-10-27. New at 1.4.0: pk_flex_shaw and pk_flex_mdha through mtstudio score; the relative_kv op cases and gradient cases through ops::shaw_attention (window and sinks: skip, as for position_bias); their traces, refusals and acceptance cases skip (mtstudio runs its own models); no earlier verdict moves; v1.4.1's trace and acceptance case of pk_flex_shaw under weight_index skip (a substituted document)"
+  "environment": "ext4 clone of paperkiln 968b4926, Release, GCC 13.3, -ffp-contract=off, built in WSL (~/e7/pk_build; sha256 mtstudio eeba7b5b, ir_eval f14d7b07, expr_eval e7bdf2ff); runner under CPython 3.12.3, numpy 2.3.3",
+  "run": "the mtstudio adapter (tools/ir_conformance_mtstudio.py) with spec/ replaced by a git archive of keramos v1.4.2 (6bbfe01c), 2026-10-28. The 57 new cases skip: the pk_mor_window traces and acceptance case need a substituted document, and mtstudio has no chat rendering or reply parsing path; no earlier verdict moves"
  },
  "adapter": {
   "engine": "mtstudio",
@@ -24,7 +24,7 @@
  "counts": {
   "PASS": 158,
   "FAIL": 0,
-  "SKIP": 309,
+  "SKIP": 366,
   "XFAIL": 0,
   "XPASS": 0
  },
@@ -39,7 +39,7 @@
   "trace": {
    "PASS": 6,
    "FAIL": 0,
-   "SKIP": 75,
+   "SKIP": 77,
    "XFAIL": 0,
    "XPASS": 0
   },
@@ -81,14 +81,14 @@
   "accept": {
    "PASS": 0,
    "FAIL": 0,
-   "SKIP": 43,
+   "SKIP": 44,
    "XFAIL": 0,
    "XPASS": 0
   },
   "chat": {
    "PASS": 0,
    "FAIL": 0,
-   "SKIP": 32,
+   "SKIP": 86,
    "XFAIL": 0,
    "XPASS": 0
   }
@@ -2447,6 +2447,18 @@
    "detail": "not implemented"
   },
   {
+   "id": "trace/pk_mor_window",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "trace/pk_mor_window_rewind",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
    "id": "accept/documents/model_pk_attnres",
    "kind": "accept",
    "verdict": "SKIP",
@@ -2705,6 +2717,12 @@
    "detail": "not implemented"
   },
   {
+   "id": "accept/documents/mor_window",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
    "id": "chat/render/one user prompt",
    "kind": "chat",
    "verdict": "SKIP",
@@ -2892,6 +2910,330 @@
   },
   {
    "id": "chat/render/qwen3 thinking off",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 one user prompt (v1's text)",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 user and assistant only (v1's text)",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 system turn",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 empty system message",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 system turn and history",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 training conversation with a system turn",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 system and tool definitions",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 tool definitions without a system message",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 tool definitions with an empty system message",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 unicode tool definition",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 a call answered: the prompt ends on the tool message",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 a call, its result and the reply",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 content before a call",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 two calls, two results, a reply, then a user message",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 tool_call_id matching the call's id",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 a training conversation ending on a call",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 empty arguments",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 newline-only and empty contents",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 a tool message without a call",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 a tool message first",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 fewer results than calls",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 a prompt ending while a call has no result",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 a reply without its results",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 tool_call_id not the call's id",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 tool_call_id when the call has no id",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 a call name with a newline",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 an empty call name",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 arguments holding a control token",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 arguments that are not a string",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 a call type other than function",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 an empty tool_calls list",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 tool_calls on a user message",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 user content holding <|system|>",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 tool content holding a spare token",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 system content holding <|tool|>",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 a tool definition holding a control token",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 a tool definition with a non-integer number",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 a tool definition that is not an object",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 a system message mid-conversation",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v2 loss on a tool message",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v1 refuses tool definitions",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/render/v1 refuses tool_calls",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/parse_reply/no call",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/parse_reply/content then a call",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/parse_reply/a call alone",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/parse_reply/two calls",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/parse_reply/empty arguments",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/parse_reply/arguments holding a newline",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/parse_reply/the call's text as BPE pieces is content",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/parse_reply/a call without a newline",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/parse_reply/an empty name",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/parse_reply/an empty call",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/parse_reply/one good call and one bad",
+   "kind": "chat",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "chat/parse_reply/no ids",
    "kind": "chat",
    "verdict": "SKIP",
    "detail": "not implemented"

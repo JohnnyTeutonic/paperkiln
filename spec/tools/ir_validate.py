@@ -47,7 +47,8 @@ TENSOR_KEYS = ("weight", "bias", "router", "state_weight", "tied_to")
 # Section 3.8: the structural keys, never per-layer (nodes, then slots).
 NOT_PER_LAYER = ("op", "in", "out", "state", "tensor_index", "sizes", "expr", "weight", "bias", "router", "experts",
                  "state_weight", "tied_to", "a", "b", "c", "d", "index", "inputs", "weights", "init", "let", "update",
-                 "readout", "position_bias", "relative_kv", "groups", "freq_factors", "k_b", "v_b")
+                 "readout", "position_bias", "relative_kv", "groups", "freq_factors", "k_b", "v_b",
+                 "selection_bias")
 SLOT_NOT_PER_LAYER = ("name", "kind", "op", "dtype", "tensors", "evict", "kv_rows")
 MARKERS = {"eot": "<|endoftext|>", "user": "<|user|>", "assistant": "<|assistant|>"}  # paperkiln/1
 
@@ -378,6 +379,7 @@ def _collect(s, v, root, path):
 
 # Rule 5: the closed sets of attribute values, and the section that defines each.
 CLOSED = {"approx": "5.8", "pairing": "5.14", "rope_heads": "5.14", "mask": "6.8.2", "gate_norm": "5.16",
+          "scoring": "5.16",
           "activation": "5.16", "feature_map": "6.4", "route": "7.7", "gate": "7.4", "tensor_index": "7.2"}
 SLOT_CLOSED = {"evict": "6.8.3", "kv_rows": "7.5"}
 _NODE = re.compile(r"^doc\.(embed|block|head)\.nodes\[(\d+)\]")
@@ -415,6 +417,10 @@ def _schema_rule(doc, path, msg):
             return 41, "5.14"
         if op == "split" and attr == "groups":
             return 10, "5.5"
+        if op == "moe_ffn" and attr == "groups":
+            return 10, "5.16"
+        if attr == "apply":
+            return 43, "3.8"
         if attr in CLOSED and "is not one of" in msg:
             return 5, CLOSED[attr]
         if attr in ("in", "out"):
@@ -510,6 +516,8 @@ def _tensor_names(node):
             for key in ("short", "long"):
                 if isinstance(ff.get(key), str):
                     yield "freq_factors." + key, ff[key]
+    if node.get("op") == "moe_ffn" and isinstance(node.get("selection_bias"), str):  # revision 1.6 (5.16)
+        yield "selection_bias", node["selection_bias"]
     if node.get("op") == "mla_attention":  # revision 1.5 (5.20)
         for key in ("k_b", "v_b"):
             if isinstance(node.get(key), str):
@@ -606,6 +614,31 @@ def node_errors(doc):
                 bad = [v for v in vals or [] if isinstance(v, (int, float)) and not isinstance(v, bool) and not v > 0]
                 if bad:
                     errs.append(E(sec, f"{where}: {key} {bad[0]} is not positive", 10))
+        # Revision 1.6: apply (3.8, rule 43), moe_ffn groups (5.16, rule 10), freq_factors as values (5.14, rule 41).
+        if "apply" in n:
+            av = n["apply"]
+            if sect != "block":
+                errs.append(E("3.8", f"{where}: apply outside the block", 43))
+            elif isinstance(av, dict) and "per_layer" in av and isinstance(av["per_layer"], list) and \
+                    not all(isinstance(x, bool) for x in av["per_layer"]):
+                errs.append(E("3.8", f"{where}: apply's per-layer entries are not all true or false", 43))
+            if sect == "block" and any(isinstance(m, dict) and m.get("op") == "depth_route"
+                                       for m in blk.get("nodes") or []):
+                errs.append(E("3.8", f"{where}: apply in a block with depth_route", 43))
+        if op == "moe_ffn" and isinstance(n.get("groups"), dict):
+            gn, gt, ne, tk = (n["groups"].get("n"), n["groups"].get("top"), n.get("n_experts"), n.get("top_k"))
+            if all(isinstance(v, int) for v in (gn, gt, ne, tk)) and gn > 0 and (
+                    ne % gn or not 1 <= gt <= gn or tk > gt * (ne // gn)):
+                errs.append(E("5.16", f"{where}: groups {{n {gn}, top {gt}}} do not divide n_experts {ne} or keep "
+                                      f"fewer than top_k {tk} experts", 10))
+        if op == "rope" and isinstance(n.get("freq_factors"), list):
+            ff = n["freq_factors"]
+            nrs = _layers(n.get("n_rot", n.get("head_dim")), L) if sect == "block" and L else [
+                n.get("n_rot", n.get("head_dim"))]
+            if any(isinstance(nr, int) and len(ff) != nr // 2 for nr in nrs or []) or not all(
+                    isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0 for v in ff):
+                errs.append(E("5.14", f"{where}: freq_factors holds {len(ff)} values, not n_rot / 2 positive "
+                                      f"numbers", 41))
         if op in ("attention", "mla_attention") and L:
             sec = "5.20" if op == "mla_attention" else "5.15"
             h, kv, w, s, c = (_layers(n.get(k), L) for k in ("heads", "kv_heads", "window", "sinks", "causal"))
@@ -931,7 +964,24 @@ def read_errors(doc):
     embed = walk("embed", sections["embed"], {"tokens", "pos"})
     if "x" not in embed:
         errs.append(E("3.5", "the embed section writes no x", 36))
-    if routed:
+    L = (doc.get("block") or {}).get("repeat") if isinstance((doc.get("block") or {}).get("repeat"), int) else 0
+    if not routed and L and any("apply" in n for n in blk_nodes):
+        # revision 1.6 (3.8): each application runs its own nodes, values persisting across applications
+        have = set(embed)
+        for i in range(L):
+            app = []
+            for n in blk_nodes:
+                av = n.get("apply", True)
+                if isinstance(av, dict) and isinstance(av.get("per_layer"), list) and i < len(av["per_layer"]):
+                    av = av["per_layer"][i]
+                if av is not False:
+                    app.append(n)
+            before = len(errs)
+            have = walk("block", app, have)
+            for k in range(before, len(errs)):
+                errs[k] = errs[k].replace("which no earlier node writes", f"which no earlier node writes (application {i})")
+        walk("head", sections["head"], have)
+    elif routed:
         walk("block", blk_nodes[:1], set(embed))
         walk("block", blk_nodes[1:], {"x", "pos"})
         walk("head", sections["head"], set(embed) | {"x"})
@@ -987,6 +1037,11 @@ def weight_refs(doc):
     for i in range(blk.get("repeat", 0) if isinstance(blk.get("repeat"), int) else 0):
         m = wmap[i] if isinstance(wmap, list) and i < len(wmap) else i
         for j, node in enumerate(blk.get("nodes", [])):
+            av = node.get("apply", True)
+            if isinstance(av, dict) and isinstance(av.get("per_layer"), list):
+                av = av["per_layer"][i] if i < len(av["per_layer"]) else True
+            if av is False:  # revision 1.6: a node not in application i names no tensor there
+                continue
             for key, n, fb in names(node):
                 t = i if node.get("tensor_index") == "application" else m
                 out.append((f"block {i}[{j}].{key}", n.replace("{i}", str(t)), fb))
@@ -1076,6 +1131,7 @@ def gguf_report(doc, meta, tensors):
     errs += relative_kv_gguf_errors(doc, dims)
     errs += freq_factors_gguf_errors(doc, dims)
     errs += mla_gguf_errors(doc, dims)
+    errs += selection_bias_gguf_errors(doc, dims)
     errs += architecture_errors(meta, tensors)
     return errs, sorted(set(warns))
 
@@ -1113,6 +1169,29 @@ def freq_factors_gguf_errors(doc, dims):
                 if got is not None and [x for x in got if x != 1] != [nr // 2]:
                     where = f"{sect}[{j}] rope" + (f" (application {i})" if i is not None else "")
                     errs.append(E("5.14", f"{where}: freq_factors {name} has ne {got}, not [n_rot / 2 = {nr // 2}]", 41))
+    return sorted(set(errs))
+
+
+def selection_bias_gguf_errors(doc, dims):
+    """Rule 44 (container, revision 1.6): a moe_ffn node's selection_bias tensor holds n_experts values (ne
+    {n_experts}), section 5.16, in every application that runs the node and reads it."""
+    errs = []
+    L = doc.get("block", {}).get("repeat") if isinstance(doc.get("block", {}).get("repeat"), int) else 0
+    for sect, j, n in _sections(doc):
+        sb = n.get("selection_bias")
+        if n.get("op") != "moe_ffn" or not isinstance(sb, str):
+            continue
+        es = _layers(n.get("n_experts"), L or 1) or []
+        ap = _layers(n.get("apply", True), L or 1) or []
+        for i, m in _apps(doc, sect):
+            if i is not None and i < len(ap) and ap[i] is False:
+                continue
+            e = es[i] if i is not None and i < len(es) else (es[0] if es else None)
+            name = sb.replace("{i}", str(m)) if m is not None else sb
+            got = dims.get(name)
+            if isinstance(e, int) and got is not None and [x for x in got if x != 1] != [e]:
+                where = f"{sect}[{j}] moe_ffn" + (f" (application {i})" if i is not None else "")
+                errs.append(E("5.16", f"{where}: selection_bias {name} has ne {got}, not [n_experts {e}]", 44))
     return sorted(set(errs))
 
 
@@ -1216,6 +1295,7 @@ INFORMATIVE_ATTRS = {"attention": ("softmax",), "moe_ffn": ("routing",)}
 # Section 3.5's optional attributes at their defaults (rmsnorm.group's default, the row width, is not filled:
 # it needs widths).
 NODE_DEFAULTS = {"linear": {"bias": None, "tied_to": None}, "scale": {"bias": None}, "split": {"groups": 1},
+                 "moe_ffn": {"scoring": "softmax"},
                  "rope": {"freq_scale": 1.0, "attn_factor": 1.0}, "attention": {"mask": "causal"},
                  "rmsnorm": {"weight_offset": 0.0}, "depth_attend": {"eps": 1e-05},
                  "conv1d_causal": {"bias": None}, "selective_scan": {"d": None, "dt_softplus": True}}
@@ -1279,6 +1359,8 @@ def structure(doc, have=None):
             n = {k: v for k, v in n.items() if not k.startswith("_") and k not in INFORMATIVE_ATTRS.get(op, ())}
             for k, v in NODE_DEFAULTS.get(op, {}).items():
                 n.setdefault(k, v)
+            if sect == "block":
+                n.setdefault("apply", True)  # revision 1.6
             if op == "linear" and have is not None and n.get("tied_to") is not None:
                 if n.get("weight") not in have:
                     n["weight"] = n["tied_to"]
