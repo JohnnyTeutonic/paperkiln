@@ -1,0 +1,14 @@
+{
+ "prompts": 195,
+ "calls": 390,
+ "failures": 0,
+ "usd": 9.4027,
+ "usd_per_call": 0.02411,
+ "total_spent_usd": 9.4027,
+ "pairs": 125,
+ "pairs_per_prompt": 0.641,
+ "position_disagreement_rate": 0.292,
+ "length_mismatched": 13,
+ "unranked": 0,
+ "projected_usd_3000_prompts": 144.66
+}

@@ -176,3 +176,55 @@ tables, including ctrl_sft's per-source numbers for ember: `receipts/general_cha
   reply differs). Sampled chat replies differ between evals1 and evals2 in 2 of 1,100 (one
   moe_sft frozen-prompt reply, one big_sft chat_prompts_v1 reply), which moves moe_sft's frozen
   reference F1 from 0.101 to 0.100; every other summary field is equal.
+
+## Preference pilot on pk_sft_v1 (27 Oct 2026)
+
+The pilot of PLAN.md's preference step on the winner, pk_sft_v1: candidates sampled on a RunPod L4, then
+ranked at home by Claude (`claude-opus-5-5`) through the Claude Code CLI. Receipts: the candidates in
+`C:/ml_artifacts/pref_pilot/sample/` (`candidates.jsonl`, sha256 c969def7...), the verdicts and pairs in
+`judge/` (`judge_cache.jsonl`, the cache the full run reuses; `pilot_pairs.jsonl`; `pilot_report.json`).
+
+### Sampling
+
+- **Run:** root `scripts/colab_driver.json` entry pk-pref-pilot (`tools/colab_chat/pref_pilot_v1.json`,
+  paperkiln 799aa7d0), one RunPod L4 (EUR-IS-1, $0.59/h), 12:50-13:32, **$0.41** (cap $2): uploads 20 min,
+  the job 17 min (data fetch, ember build, sampling). ember main 7526469 built on the pod (117 s), CUDA, `EMBER_GEMM_TF32=0`,
+  `EMBER_DETERMINISTIC=1` (its /health reports it); pk_sft_v1.gguf 4d53c7ff..., T 512.
+- **Prompts:** the first 200 eligible smol-smoltalk test-split first turns (the filters drop 38 test-split
+  prompts in all for overlap with the train split, none for the eval sets or markers); 5 skipped because
+  prompt + 128 new tokens exceed 512. **195 requests, each with 4 distinct candidates (780).**
+- **Replies:** 685 of the 780 runs stop at the 128-token budget, 95 on end-of-text; median 96 words per
+  candidate. 3 runs ended inside a UTF-8 character and were trimmed to their last whole character (rule
+  `trim_cut_tail_drop_other`); none was dropped, no candidate holds U+FFFD, and no request failed.
+- **The rule on a CPU build** of 7526469 with pk_sft_v1 (`receipts/pref_pilot_1027/`): 48 greedy requests
+  that draw Japanese text, each reply equal to the vocabulary's decode of the returned ids and none answered
+  HTTP 500; at the budgets that cut a character, 52 sampled runs, 7 trimmed, no U+FFFD in any candidate.
+
+### Judging
+
+`bash experiments/chat_general/judge_pilot.sh C:/ml_artifacts/pref_pilot/sample/candidates.jsonl 200`
+(paperkiln cf63b95b), each prompt ranked twice, the candidates in order and reversed, one call at a time.
+
+| calls | failures | cost | per call (median, range) | per prompt | pairs | pairs per prompt | position disagreements | length-mismatched |
+|---:|---:|---:|---|---:|---:|---:|---:|---:|
+| 390 | 0 | $9.40 | $0.0238 (0.0176-0.0325) | $0.048 | 125 | 0.641 | 57 of 195 (0.292) | 13 |
+
+- The two orders agree on the best reply for 156 prompts, on the worst for 170, on the whole ranking for
+  117. The candidate shown first is ranked best in 118 of 390 calls (0.30; 0.25 by chance).
+- 112 of the 125 pairs have both replies cut by the 128-token budget; 8 pair a finished chosen reply with a
+  cut rejected one, 2 the reverse, 3 are both finished.
+- A call costs about twice PLAN.md's measured $0.0117: the 128-token candidates are longer than the ones it
+  was measured on.
+- The CLI now runs in an empty directory of its own (`chat_judge.py`, paperkiln cf63b95b). Started from the
+  microtorch root it loaded both AGENTS.md files and project memory into each call: 15,610 prompt tokens and
+  $0.13 a call, against 1,177 tokens and $0.012 for the same probe from an empty directory, and the judge
+  saw the workspace's instructions. Every pilot verdict was made from the empty directory. Three probe
+  calls outside the cache cost $0.15.
+
+### The full run
+
+- At the pilot's rate, 3,000 prompts cost **$144.66** and give about 1,920 pairs. The cache already holds
+  $9.40, so the run passes the $100 cap (`--max-usd 100` stops it there): under the cap, about 1,880 more
+  prompts (about 2,075 in all, about 1,330 pairs).
+- Nine in ten pairs would train DPO on two replies the budget cut. More new tokens per candidate (T 512
+  leaves room) or a preference for finished replies changes that, and the cost per call with it.
