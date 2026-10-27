@@ -124,6 +124,23 @@ def test_derived_and_overflow():
     assert c12e.ols_slope([(1, 1.0), (2, 0.5), (3, 0.0)])["slope"] == -0.5
 
 
+def test_prompt_ids_insert_state_blocks_for_state_models():
+    """The S cells' template (IR_SPEC_DRAFT 1.2): a state block after every <|endoftext|> that closes an exchange,
+    none after the open reply; a model without state tokens gets the plain ids."""
+    class T:
+        eot, user, assistant = 1, 2, 3
+
+        @staticmethod
+        def encode(text):
+            m = {"<|endoftext|>": 1, "<|user|>": 2, "<|assistant|>": 3}
+            return [m.get(w, 10 + len(w)) for w in text.split()]
+    tok = T()
+    text = "<|user|> hi <|assistant|> hello <|endoftext|> <|user|> again <|assistant|>"
+    assert c12e.prompt_ids(tok, text) == T.encode(text)
+    tok.state = (100, 4)
+    assert c12e.prompt_ids(tok, text) == [2, 12, 3, 15, 1, 100, 101, 102, 103, 2, 15, 3]
+
+
 def test_spot_check_compare_and_spread():
     its = items()
     sp = c12e.spot_items(its, 40)
@@ -231,13 +248,34 @@ def test_end_to_end_state_tokens_model(toy_state, tmp_path):
     history through `mtstudio chat`, each inserting the state block after every closed exchange; with an ember
     CPU build also ember's /chat after the spot-check (ember inserts the blocks too, so 3/3 identical items
     means the two engines lay the conversation out alike)."""
-    _, sp = toy_state
+    t, sp = toy_state
+    spec = json.loads(sp.read_text())
+    gguf = os.path.join(spec["out_dir"], spec["name"] + ".gguf")
+    V, k = c12e.state_template(gguf)
+    assert k == 4 and c12e.state_template(str(t / "run" / "c12toy.gguf")) is None
     s = run_eval(tmp_path / "e", sp, "--gen", "mtstudio", "--port", "8199", "--no-near-self")
     m = s["models"]["m"]
     assert m["items"] == 14 and m["context"] == 1024
     for mode in ("gold", "self", "near", "twin", "noctx"):
         assert m["fc"]["acc"][mode]["all"]["n"] == 14, mode
     assert m["fc"]["over_ctx"]["gold"] == 0 and m["gen"]["server_errors"] <= 4
+    # Forced choice scored the state-block layout: the pre-tokenised gold request equals `mtstudio score` on the
+    # same prompt as text (which inserts the blocks itself), and its prompt ids hold state ids.
+    it = c12e.load_items(type("A", (), {"set": c12.OUT, "families": "", "every": 110, "limit": 0})())[0]
+    tok = ce.Tok(gguf)
+    tok.state = (V, k)
+    text = ce.template(*c12e.gold_history(it))
+    assert max(c12e.prompt_ids(tok, text)) >= V
+    got = {}
+    for f in sorted((tmp_path / "e" / "m" / "score").glob("chunk*.json")):
+        got.update(json.loads(f.read_text())["results"])
+    want = got[f"{it['id']}|gold|0"]["sum"]
+    inp, outp = tmp_path / "in.jsonl", tmp_path / "out.jsonl"
+    inp.write_text(json.dumps({"prompt": text, "continuation_ids": tok.encode(it["frame"].format(it["candidates"][0]))
+                               + [tok.eot]}) + "\n", encoding="utf-8")
+    r = subprocess.run([BIN, "score", str(sp), "--in", str(inp), "--out", str(outp)], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr[-2000:]
+    assert abs(json.loads(outp.read_text().splitlines()[0])["sum"] - want) < 1e-4
     if EMBER_DIR:
         ember = os.path.join(EMBER_DIR, "build", "tinyllama_server")
         s = run_eval(tmp_path / "f", sp, "--gen", "ember", "--ember-bin", ember, "--spot", "3", "--port", "8201",

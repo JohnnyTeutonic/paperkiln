@@ -78,6 +78,30 @@ def write_atomic(path, text):
     ce.write_atomic(path, text)
 
 
+# ---------------------------------------------------------------- per-turn state tokens (the S cells)
+def state_template(gguf):
+    """(vocab size, k) of a state-token model (GGUF paperkiln.state_tokens.k > 0; IR_SPEC_DRAFT section 1.2),
+    else None. The state ids are vocab .. vocab + k - 1."""
+    if not gguf or not os.path.exists(gguf):
+        return None
+    import llama3_bpe
+    kv = llama3_bpe.read_gguf_kv(gguf, {"paperkiln.state_tokens.k", "tokenizer.ggml.tokens"})
+    k = int(kv.get("paperkiln.state_tokens.k") or 0)
+    return (len(kv["tokenizer.ggml.tokens"]), k) if k > 0 else None
+
+
+def prompt_ids(tok, text):
+    """A rendered prompt's ids as the engines lay it out: for a state-token model (tok.state set by run_model)
+    the state block after every <|endoftext|> that closes an exchange (tools/state_tokens.py, the serialiser's
+    rule; mtstudio score validates pre-tokenised prompts but inserts nothing into them)."""
+    ids = tok.encode(text)
+    st = getattr(tok, "state", None)
+    if st:
+        import state_tokens
+        ids = state_tokens.insert(ids, st[0], st[1], tok.eot, tok.user, tok.assistant)[0]
+    return ids
+
+
 # ---------------------------------------------------------------- renderings
 def gold_history(it):
     tt = it["target_turn"]
@@ -125,7 +149,7 @@ def generate(a, items, tok, spec_path, gguf, work):
                     if "ids" in r:
                         rec["ids"] = r["ids"]
                         rec["stop_id"] = r.get("stop_id")
-                        if not rec["dropped"] and r.get("prompt_ids") != tok.encode(ce.template(history, user)):
+                        if not rec["dropped"] and r.get("prompt_ids") != prompt_ids(tok, ce.template(history, user)):
                             sys.exit(f"{it['id']}: the server's prompt ids differ from this tokeniser's encoding")
                     return rec
 
@@ -254,9 +278,9 @@ def requests(items, tok, gens):
                         continue
                     c = r["ids"] + stop_ids(tok, r)
                     if c:
-                        out.append((f"{it['id']}|gate_{mode}|{k + 1}", tok.encode(ce.template(hist[:k], users[k])), c))
+                        out.append((f"{it['id']}|gate_{mode}|{k + 1}", prompt_ids(tok, ce.template(hist[:k], users[k])), c))
         for mode, p in prompts.items():
-            pids = tok.encode(p)
+            pids = prompt_ids(tok, p)
             for c, ids in enumerate(cont):
                 out.append((f"{it['id']}|{mode}|{c}", pids, ids))
     return out
@@ -536,6 +560,7 @@ def run_model(a, tag, spec_path, items):
         spec, gguf, vocab = ce.model_paths(spec_path)
         ctx = spec.get("data", {}).get("T")
         tok = ce.Tok(vocab)
+        tok.state = state_template(gguf)
     # Wall time by phase (the post-job cost measurement, PREREGISTRATION_DRAFT.md section 10): this call's
     # own work only, so a resumed run reports what it did after the resume.
     timing = {"spot_s": 0.0, "gen_s": 0.0, "score_s": 0.0}
