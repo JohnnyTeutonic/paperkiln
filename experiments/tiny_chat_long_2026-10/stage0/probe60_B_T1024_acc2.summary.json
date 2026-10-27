@@ -1,0 +1,66 @@
+{
+ "mode": "probe",
+ "spec": "experiments/tiny_chat_long_2026-10/specs/probe60_B_T1024_acc2.json",
+ "rc": 0,
+ "steps": 300,
+ "arch": {
+  "d": 768,
+  "layers": 8,
+  "heads": 12,
+  "d_ff": 2240
+ },
+ "tokens_per_step": 16384,
+ "tok_per_s_steady": 12237.522939645158,
+ "tok_per_s_result": 11120.346628669384,
+ "wall_seconds": 442.000610604,
+ "peak_gpu_mem_mib": 10792,
+ "gpu": "NVIDIA L4",
+ "other_mtstudio_at_start": 0,
+ "params": 72758016,
+ "provenance": {
+  "provider": "runpod",
+  "pod_id": "cdssujr9rzppkf",
+  "image": "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
+  "image_digest": "sha256:61a4aafb0094cd773f11eefa378929d5a687bd775febeb78eac62fc824141fb5",
+  "image_digest_source": "Docker Hub tag lookup when the pod was created",
+  "datacenter": "EUR-IS-1",
+  "cloud": "SECURE",
+  "gpu_type_id": "NVIDIA L4",
+  "usd_per_hr": 0.59,
+  "volume": "0mo6nhm4t1",
+  "machine": {
+   "gpuTypeId": "NVIDIA L4",
+   "location": "IS",
+   "dataCenterId": "EUR-IS-1",
+   "secureCloud": true,
+   "diskThroughputMBps": 2643,
+   "maxDownloadSpeedMbps": 19113,
+   "maxUploadSpeedMbps": 38793
+  },
+  "memory_gb": 83,
+  "vcpu": 21,
+  "cgroup_cpus": 17.85,
+  "cgroup_mem_gb": 77.3,
+  "gpu": "NVIDIA L4",
+  "gpus": [
+   {
+    "name": "NVIDIA L4",
+    "driver": "595.91.07",
+    "memory": "23034 MiB",
+    "power_limit": "72.00 W",
+    "pci": "00000000:C2:00.0"
+   }
+  ],
+  "driver_version": "595.91.07",
+  "cuda_driver_api": "13.2",
+  "nvcc": "12.4",
+  "cpu": "AMD EPYC 7702 64-Core Processor",
+  "cpus": 128,
+  "mem_gb": 503.5,
+  "os": "Ubuntu 22.04.5 LTS",
+  "kernel": "6.8.0-138-generic",
+  "python": "3.11.10",
+  "paperkiln_commit": "8ba23af2b3359aaa7c023caa7e1d7e1038662cc4",
+  "written_at": "2026-10-27T02:36:09Z"
+ }
+}

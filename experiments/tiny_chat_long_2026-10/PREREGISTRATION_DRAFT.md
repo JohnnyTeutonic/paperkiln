@@ -19,8 +19,10 @@ freeze rule.*
 Receipts in this folder: `carry12_v1_build.json` (counts and balance), `carry12_v1_budget.json` (context
 lengths), `carry12_v1_decontam.json` (contamination), `dialogue_lengths_v1.json` (the human corpora in turns
 and tokens), `STAGE_L0.md` (Stage L0's frozen registration), `IR_SPEC_DRAFT.md` (spec text for ir.hpp
-review), `CROSSLAYER_LITCHECK.md` (cross-layer arm, by another agent). Tools: `tools/carry12_build.py`,
-`tools/carry12_eval.py`, `tools/carry12_l0.py`, `tools/dialogue_lengths.py`.
+review), `CROSSLAYER_LITCHECK.md` (cross-layer arm, by another agent), `stage0/` (the pre-freeze campaign's
+receipts and E1 at 60M's measured walls, `stage0/e1_60m_walls_t512.json`). Tools: `tools/carry12_build.py`,
+`tools/carry12_eval.py`, `tools/carry12_l0.py`, `tools/dialogue_lengths.py`; the pre-freeze campaign
+`tools/colab_chat/carry12_stage0_v1.json` (written by `make_stage0_jobs.py`) and its total, `stage0_total.py`.
 
 ## 0. Objective and constraints
 
@@ -96,9 +98,17 @@ span hits; 45 items' fact sentences occur somewhere (everyday sentences such as 
 them in MSC, whose personas are ConvAI2's); 7 Carry-12 user turns occur as whole training user turns ("Hi
 there! How are you today?", "I work as a chef.", "I work as an accountant.", "My favourite colour is blue.",
 "Thanks, that is all for now.", "What is my name?", "Can you tell me something interesting?"). The long
-programme's data job adds Carry-12 to the frozen sets beside Carry-5 and drops dialogues by those rules,
-counted. The VM's FineWeb-Edu shard and Taskmaster-3 are not on the laptop; their scans are VM data-job steps
-before Stage 0.
+programme's data job (`tools/colab_chat/tiny_chat_data.py --carry12`, which refuses a Carry-12 file other than
+the pinned one) adds Carry-12's user turns, gold replies and twins to the frozen sets beside Carry-5 and drops
+dialogues by decontam.py's rules, counted in its ledger. **Taskmaster-3** (`human_taskmaster3_v1`, its pinned
+bytes, on the laptop): 16,675 rows, no item leak, no 13-gram, prompt or span hit, one fact sentence ("I am 41
+years old"; `stage0/carry12_v1_decontam_taskmaster3.json`). **The VM's FineWeb-Edu shard**
+(`fineweb_edu_shard0_v1/pretrain_train.txt`, 3.46 GB, the source of every mix's FineWeb documents; pre-freeze
+campaign job `decontam_fineweb`, `stage0/carry12_v1_decontam_fineweb_shard0.json`): 728,756 rows, no item leak, no
+13-gram, prompt or span hit; 28 items' fact sentences occur in 44 rows (everyday sentences such as "I am 25 years
+old"). **The T 1,024 data job** (`stage0/carry12_data_t1024_ledger.json`) drops 53 of 170,572 dialogues by the
+prompt rule with Carry-5 and Carry-12 as targets (E1's data job: 52 with Carry-5 alone); its two panels are E1's
+byte for byte (sha256 c1aa6d42... and 7881aa1c...), and mix_s35.ids holds 184,064,335 tokens (E1's: 184,060,090).
 
 **Scoring: `tools/carry12_eval.py`** (built on carry5_eval's internals, which stay unchanged because the
 running jobs use them; tests in `tests/test_carry12_eval.py`, end to end on CPU with a toy model at T 1,024
@@ -107,13 +117,26 @@ history modes: gold, self, near, near_self (the near rendering with the model's 
 a rendering beyond the model's context is `over_ctx` (0 credit in `acc`, out of `acc_fit`, counted). Greedy
 generation through ember's server after a spot-check against `mtstudio chat` (ember only on N/N identical
 items, otherwise mtstudio for the whole run, as the tiny-chat post job), `EMBER_GEMM_TF32=0`,
-`EMBER_DETERMINISTIC=1` at ember fe01b35 or later (decode bit-identical run to run on one GPU model and build;
-ember df43463; every run's GPU model recorded, and all of a cell's generations on L4s), every
-generated reply scored again by `mtstudio score` (the parity gate); self history played to the target
+`EMBER_DETERMINISTIC=1` (both set by carry12_eval for every ember server) at ember **ec3201b** (main; the main
+session's pin, 27 Oct 2026; `carry12_l0.py --ember-commit`'s default). Its reasons: fe01b35's deterministic decode
+(bit-identical run to run on one GPU model and build, ember df43463), 7526469's valid UTF-8 on every text path (a
+reply cut inside a character at `--max-new` is no HTTP 500), and ec3201b's tiled split-K decode attention (per-layer
+attention at 385 keys about 37 µs to 6 µs; 1.69-1.70x end to end at 60M on 245-430-token Carry-12 contexts; ids
+360/360 against 7526469, deterministic mode bit-stable run to run, verify rows bit-identical to plain decode;
+`ember.cpp/experiments/decode_occupancy_2026-10-27/`). Its deterministic logits differ from 7526469's by the new
+fixed reduction order; `EMBER_DECODE_ATTN=split` on ec3201b reproduces 7526469 bit for bit. Every run's GPU model
+is recorded, and all of a cell's generations are on L4s. Every
+generated reply is scored again by `mtstudio score` (the parity gate); self history is played to the target
 (`--self-scope target`, Stage L0) or the whole conversation. Curves by distance, target turn, interference,
 distractor window, correction kind and family x distance, the self conversation by turn to 14, the HL0
-slopes, and the pools and decomposition below (Y12, twin -> near, near -> gold, gold -> self). Still to add
-for the S cells: the state-token template (section 6).
+slopes, and the pools and decomposition below (Y12, twin -> near, near -> gold, gold -> self). **The S cells'
+state-token template (section 6):** for a model whose GGUF declares `paperkiln.state_tokens.k`, carry12_eval
+inserts the state block after every `<|endoftext|>` that closes an exchange into its pre-tokenised forced-choice
+and gate prompts (`prompt_ids`, `tools/state_tokens.py`'s rule; `mtstudio score` validates the blocks of
+pre-tokenised prompts but inserts none), and checks ember's prompt ids against the same layout; `mtstudio chat`
+and ember's /chat insert the blocks themselves. Tested end to end on a toy state-token model: the gold request
+equals `mtstudio score` on the same prompt as text. carry5_eval (the post job's Carry-5) does not insert them
+yet, so the S cells' Carry-5 needs the same change before they run.
 
 **Frozen v1:** `corpus/eval/carry12_v1.jsonl`, sha256
 `de24f2c726a1006e8e61542dd3b2dfbf8677b9e6fe689277cca035305bd32797`, pinned in
@@ -209,9 +232,12 @@ late turns that revisit early content.
 
 **Options, under the human-only rule** (concatenating related dialogues to fake one long conversation is
 not allowed, and nor is any rearrangement that presents separate exchanges as one continuous conversation):
-1. **Weight what exists (cell D below):** oversample the SFT dialogues of 10+ turns (Taskmaster,
-   Topical-Chat, MultiWOZ, QuAC, DailyDialog, ConvAI2) and train them whole at T 1,024. Cheap (SFT only) and
-   within the rule.
+1. **Weight what exists (cell D below):** oversample the SFT dialogues of 10+ turns and train them whole at
+   T 1,024. Cheap (SFT only) and within the rule. In the T 1,024 data job 3,698 of the 16,932 SFT rows hold 10 or
+   more trained turns, so D's set has 28,026 rows (`stage0/carry12_data_t1024_ledger.json`, `long_sft`); by source
+   (the SFT split of `dialogue_lengths_v1.json`, 3,702 dialogues of 10+ turns): Taskmaster 1,320, Self-Dialogue
+   1,297 (every one of its dialogues has at most 10 turns, so these are exactly 10), Topical-Chat 875 (all of its
+   SFT dialogues), MultiWOZ 113, QuAC 76, DailyDialog 14, ConvAI2 7.
 2. **Train at T 1,024 throughout:** the 85% pretraining split's 12+-turn dialogues then sit whole in windows
    instead of across window boundaries (the E5/E1 mixes pack documents into 512-token windows).
 3. **Add genuinely long human sources, by the survey's rules** (`corpus/HUMAN_DIALOGUE_SURVEY.md` section 9,
@@ -281,7 +307,7 @@ seeds 1, 2, 3 paired by seed. Rung logging is not registered here.
 |---|---|---|---|
 | W512 | E1 at 60M's L\* cell itself (T 512): existing runs, Stage L0 scores | = | free |
 | **B** | 60m_L\* at T 1,024 | = | core: every contrast below is against it |
-| D | B's pretrained weights; SFT with 10+-turn dialogues oversampled x4 | = | core (data option 1, SFT only) |
+| D | B's pretrained weights; SFT with 10+-turn dialogues oversampled x4 (`sft_human_long4.jsonl`: the T 1,024 data job's SFT rows, each row of 10+ trained turns four times, `--long-sft 10:4`; B's 1,500 steps) | = | core (data option 1, SFT only) |
 | S-gist | B + k = 4 state slots, `turn_state` mask (IR_SPEC_DRAFT section 1) | + 4d (1,536-4,352)† | core: E4, per-turn state, finished turns dropped |
 | S-full | B + k = 4 state slots after every exchange, plain causal mask | + 4d† | conditional: only if HS1 (S-gist vs B) is CONTRADICTED, to place the cost |
 | P16 | plain 60m_L16 at T 1,024 (= B if L\* = 16)† | = | core when L\* is not 16 |
@@ -442,10 +468,25 @@ for the whole conversation plus near_self: 30% fewer, and one forced-choice mode
   the freeze rule: nothing launches before this file freezes, after E5, E1 (its 60M stage included) and the
   recursion arms report. The core is above 80 VM-hours at every L\*, which is why it went to him (section 8 rule 5's
   form).
-- **The Carry-12 post evaluation is the largest unmeasured cost** (15 runs x 3.5 h, about 53 VM-hours of the core).
-  The first measurement is Stage L0's GPU leg (`tools/carry12_l0.py colab-jobs`, self history with ember, played to
-  the target) on `pick_e1_60m_L32` (home), before the freeze. If it measures the core above 1.5 times these numbers,
-  the measured total goes back to Jonathan before launch.
+- **The Carry-12 post evaluation was the largest unmeasured cost** (15 runs x 3.5 h, about 53 VM-hours of the core
+  above). If the measured total is above 1.5 times these numbers, it goes back to Jonathan before launch; it goes
+  to him in any case for the go of section 11 item 6.
+- **The measurement (pre-freeze campaign `pk-c12-s0`, one RunPod L4, paperkiln 8ba23af2, $10 cap, launched 27 Oct
+  2026; `tools/colab_chat/carry12_stage0_v1.json`).** Stage 0's probes at T 1,024 (300 steps alone on the GPU): B
+  at 60m_L8 in both layouts (16 x 1,024, and 8 x 2 if that does not fit), S-gist, P16 and X. The Carry-12 part of a
+  post job: `carry12_l0.py run --cost-run` on E1 at 60M's picks of the core's two shapes (60m_L8 for B, D and
+  S-gist; 60m_L16 for P16 and X) and on `pick_e1_60m_L32`, served at context 1,024, in the post job's configuration
+  (forced choice in gold, self, near, twin and noctx by CUDA `mtstudio score`; self history to the target at
+  `--max-new` 48 by ember's CUDA server after the 20-item spot-check; no near_self; every reply through the parity
+  gate). The generation time is an upper bound twice over: the picks were trained at T 512, so their replies past
+  position 512 run to the cap more often than a T 1,024 model's, and the cost runs used ember 7526469, whose decode
+  attention ec3201b (the pin, section 2) runs 1.69-1.70x faster end to end at 60M on Carry-12 contexts. **The total** (`stage0_total.py`, `stage0/total.json`): per
+  run, E1 at 60M's measured walls at T 512 (`stage0/e1_60m_walls_t512.json`: pretraining 3.4-3.6 h at 60m_L8 and
+  4.0-4.1 h at 60m_L16; SFT 0.67 h; the rest of the post job, panels and both Carry-5 runs, 2.4-2.6 h at 60m_L8 and
+  3.1 h at 60m_L16, medians over seeds) with pretraining and SFT scaled by the probes' T 512 / T 1,024 step-time
+  ratio, plus the measured Carry-12 part and its ember build, plus 0.37 h per machine for boot, CUDA gate and data
+  job (pk-tc-s150-L8, 26 Oct 2026), on 12 machines (D follows B on B's); X's post job at P16's measured times (X's
+  own generation is not measured). **Measured total: not yet home** (written here when the campaign is home).
 - **Two cheaper layouts, Jonathan's call at the freeze:** when L\* is 32, X on B's shape instead of 60m_L16 (P16
   dropped, about -28 VM-hours, at the cost of the shape the literature check chose and a different X/plain throughput
   ratio, measured by the probe); when L\* is 4 or 8, X stays at 60m_L16 because depth attention needs depth.
@@ -459,20 +500,41 @@ for the whole conversation plus near_self: 30% fewer, and one forced-choice mode
    long programme waits). Known: the bar is 0% and the mix stays at 35% (section 6); L\* is 60m_L8
    (`../tiny_chat_2026-10/size/depth_choice.json`).
 2. **The recursion arm** (E1-R and MoR): HR2/HR2-J/H-MoR1 verdicts, which decide whether R runs at all† and, if it
-   does, its design and HR's direction.
+   does, its design and HR's direction. Known: the MoR block is complete (H_MoR1 NOT_RESOLVED, +0.019, 2/3 seeds;
+   `../tiny_chat_2026-10/analysis_2026-10-26.json`). Open: E1-R's last two seed-3 runs (R4, MC7), then HR2 and HR2-J.
 3. **Stage L0's numbers**, read under `STAGE_L0.md` (frozen before any L0 scoring: the commands, the
-   models, and that only the gate's quantities and HL0 are read), on the 60M picks† (`pick_e1_60m_L32` is home),
-   and the measured cost of a Carry-12 post job (section 10).
-4. **Carry-12 v1** is frozen with its pin, `tools/carry12_eval.py` and tests; still open: the VM-side
-   decontamination against the FineWeb-Edu shard and Taskmaster-3.
-5. **Engine work, each through IR_SPEC_DRAFT's gates:** the `turn_state` mask and kernels in mtstudio, the
-   extended embedding and the early-stop rule (`<|endoftext|>` and the state block after a reply that did
-   not end with one, in the serialiser and in ember); in ember the mask with every row kept first, then
-   eviction, gated bit-equal on CPU and on CUDA by greedy 40/40 with logits within ROUNDING (gate 2);
-   the T 1,024 data job (the same sources and split at T 1,024). (`llama_attnres` in mtstudio, its export
-   and ember's gate are done: arm X5, A5.1 and A5.12†.)
-6. **Stage 0 at T 1,024:** probes replace section 10's estimates; Jonathan's go on the measured total.
-7. Jonathan's ruling on data option 3 (new long human sources), if wanted before the freeze.
+   models, and that only the gate's quantities and HL0 are read), on the 60M picks†, and the measured cost of a
+   Carry-12 post job (section 10). Known: the registered picks are scored (`l0/pick_e5_s0`, `pick_e1_L16` and
+   `pick_e1_60m_L32`; every receipt so far passes the validity gate); the descriptive picks score on the laptop's
+   CPU. Open: the cost runs of the pre-freeze campaign (section 10).
+4. **Carry-12 v1** is frozen with its pin, `tools/carry12_eval.py` and tests. Known: Taskmaster-3 is scanned (no
+   item leak, no drop-rule hit; section 2), the FineWeb-Edu shard is scanned (no item leak, no drop-rule hit;
+   section 2), and the T 1,024 data job drops dialogues by Carry-12's rules (53 of 170,572). Nothing open.
+5. **Engine work, each through IR_SPEC_DRAFT's gates.** Known: the `turn_state` mask and kernels in mtstudio, the
+   extended embedding and the early-stop rule in the serialiser (`nn::insert_state_ids`, `tools/state_tokens.py`;
+   `state_build_receipt.json`; the CUDA leg in every CUDA gate); in ember the mask with every row kept, then
+   eviction, and the early-stop rule (ember 2cb4d2a and e5f4470 on CPU, gate 2 bit-equal 40/40 with the cut-reply
+   prompt; aadeed2 and 210f3b8 on CUDA, greedy 40/40, logits within 6.2e-7; 3b86e08 in WebAssembly);
+   `llama_attnres` in mtstudio, its export and ember's gate (arm X5, A5.1 and A5.12†); the S cells' template in
+   carry12_eval (section 2; end to end on a toy state-token model in `tests/test_carry12_eval.py`); the T 1,024 data
+   job (`tiny_chat_data.py --T 1024 --carry12 --long-sft 10:4`, tested on CPU, run in the pre-freeze campaign:
+   `stage0/carry12_data_t1024_ledger.json`). Open: the state blocks in carry5_eval's prompts, for the S cells'
+   Carry-5 (section 2). A design point for the freeze, not an engine item:
+   D's "10+ turns" takes in Self-Dialogue's 1,297 ten-turn dialogues and every Topical-Chat dialogue (section 4,
+   option 1); 11+ would leave out all of Self-Dialogue and most of Topical-Chat (its p90 is 11 turns).
+6. **Stage 0 at T 1,024:** probes replace section 10's estimates; Jonathan's go on the measured total. Open: the
+   pre-freeze campaign's probes and cost runs, then `stage0_total.py` (section 10), then his go.
+7. Jonathan's ruling on data option 3 (new long human sources), if wanted before the freeze. What the four
+   licensed long sources (Taskmaster-3, ABCD, CCPE-M, PersuasionForGood) add to the T 1,024 data job, counted by
+   the pre-freeze campaign (`stage0/carry12_data_long3_ledger.json`; nothing trains on it): 196,779 dialogues
+   against 170,572 (56 dropped by the decontamination against 53), pretraining dialogue text 178.4 MB against
+   149.5 MB (the 35% mix still takes two copies), SFT rows 19,461 against 16,932, of which 5,351 hold 10+ turns
+   against 3,698 (D's set 35,514 rows against 28,026). With them B's data is no longer W512's, so HT would read
+   T and the sources together.
+
+Also needed for the freeze itself (the header's licence: the jobs files exercised end to end on CPU): the cells'
+jobs files (pretraining, SFT and the post job with Carry-12 after Carry-5, at the freeze's pin) and section 9's
+`analyze.py`.
 
 ## 12. Threats, stated before data
 

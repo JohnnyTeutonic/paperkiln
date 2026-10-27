@@ -1,0 +1,94 @@
+{
+ "summary": {
+  "items": 1452,
+  "corpora": 1,
+  "rows_scanned": 728756,
+  "item_leaks": 0,
+  "items_with_fact_sentence_in_training": 28,
+  "eval_texts_hit": {
+   "sentence": 100
+  },
+  "rules": "decontam.py ngram (13 words), prompt (user turn equal, 4+ words), span (8-12 word user turn); sentence: any 3+ word template sentence as a span; fact_sentence: an item's value-bearing fact sentence; item_leak: fact sentence and question in one row"
+ },
+ "per_corpus": {
+  "corpus/data/fineweb_edu_shard0_v1/pretrain_train.txt": {
+   "rows": 728756,
+   "bytes": 3463414063,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 2480,
+     "patterns": 100
+    },
+    "fact_sentence": {
+     "rows": 44,
+     "patterns": 28
+    }
+   }
+  }
+ },
+ "item_leaks": {},
+ "top_sentences": {
+  "how are you": 822,
+  "you are welcome": 413,
+  "what is it about": 374,
+  "how can i help": 293,
+  "yes of course": 182,
+  "it was a pleasure": 48,
+  "nice to meet you": 38,
+  "where am i going": 34,
+  "how is it going": 30,
+  "sorry to hear that": 24,
+  "how are you today": 23,
+  "what is on your mind": 15,
+  "thanks for sharing that": 10,
+  "that is annoying": 8,
+  "i am 25 years old": 8,
+  "that is frustrating": 8,
+  "have a lovely day": 7,
+  "i hope you are well": 6,
+  "where do i live": 5,
+  "you wear a hat": 5,
+  "thanks for telling me": 5,
+  "that sounds nice": 5,
+  "i am sorry to hear that": 5,
+  "how old am i": 4,
+  "can you help me with this": 3,
+  "i am 20 years old": 3,
+  "you are 45 years old": 3,
+  "i am 19 years old": 3,
+  "you are 40 years old": 3,
+  "you are 30 years old": 3,
+  "i am 60 years old": 3,
+  "you are 20 years old": 3,
+  "i am 44 years old": 3,
+  "i am 54 years old": 3,
+  "i am 28 years old": 2,
+  "you are 19 years old": 2,
+  "you are 18 years old": 2,
+  "i work as a teacher": 2,
+  "you work as a teacher": 2,
+  "lovely to meet you": 2,
+  "you are 35 years old": 2,
+  "i am well thank you": 2,
+  "i am 21 years old": 2,
+  "that is good to know": 2,
+  "ketchup is made from tomatoes": 2,
+  "i am 18 years old": 2,
+  "i am 64 years old": 1,
+  "a cat says meow": 1,
+  "take your time and enjoy it": 1,
+  "what a nice surprise": 1,
+  "you are 70 years old": 1,
+  "my favourite sport is swimming": 1,
+  "did it make you late": 1,
+  "a baby dog is called a puppy": 1,
+  "fish live in water": 1,
+  "how many sides does a triangle have": 1,
+  "i am 22 years old": 1,
+  "i am 52 years old": 1,
+  "i am 61 years old": 1,
+  "you are 24 years old": 1
+ },
+ "drop_rule_examples": {}
+}
