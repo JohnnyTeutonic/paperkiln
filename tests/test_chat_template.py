@@ -353,6 +353,206 @@ def test_g5_third_party_records_match_hf():
         pytest.skip("no third-party templates on disk")
 
 
+def v2_cases():
+    """Schema v2's hand-written cases (paperkiln/2): (name, messages, generation_prompt, tools)."""
+    S = {"role": "system", "content": "Be brief."}
+    U = {"role": "user", "content": "What is the weather in Paris?"}
+    W = {"type": "function", "function": {"name": "get_weather", "description": "Current weather in a city",
+                                          "parameters": {"type": "object", "properties": {"city": {"type": "string"}},
+                                                         "required": ["city"]}}}
+    T = {"type": "function", "function": {"name": "get_time", "parameters": {"type": "object", "properties": {}}}}
+
+    def call(name="get_weather", args='{"city": "Paris"}', cid=None):
+        c = {"type": "function", "function": {"name": name, "arguments": args}}
+        if cid is not None:
+            c["id"] = cid
+        return c
+
+    def asst(content="", *calls):
+        m = {"role": "assistant", "content": content}
+        if calls:
+            m["tool_calls"] = list(calls)
+        return m
+
+    def tool(content='{"temp_c": 18}', cid=None):
+        m = {"role": "tool", "content": content}
+        if cid is not None:
+            m["tool_call_id"] = cid
+        return m
+    return [
+        ("v2 one user prompt (v1's text)", [{"role": "user", "content": "Hi"}], True, None),
+        ("v2 user and assistant only (v1's text)", CT.from_pairs([("a", "b"), ("c", "d")], "e"), True, None),
+        ("v2 system turn", [S, {"role": "user", "content": "Hi"}], True, None),
+        ("v2 empty system message", [{"role": "system", "content": ""}, {"role": "user", "content": "Hi"}], True, None),
+        ("v2 system turn and history", [S] + CT.from_pairs([("a", "b")], "c"), True, None),
+        ("v2 training conversation with a system turn", [S] + CT.from_pairs([("a", "b"), ("c", "d")]), False, None),
+        ("v2 system and tool definitions", [S, U], True, [W, T]),
+        ("v2 tool definitions without a system message", [U], True, [W]),
+        ("v2 tool definitions with an empty system message", [{"role": "system", "content": ""}, U], True, [W]),
+        ("v2 unicode tool definition", [U], True, [{"type": "function", "function": {
+            "name": "météo", "description": "東京 \"q\" a\\b\n\t\u0001"}}]),
+        ("v2 a call answered: the prompt ends on the tool message", [S, U, asst("", call()), tool()], True, [W]),
+        ("v2 a call, its result and the reply", [U, asst("", call()), tool(), asst("It is 18 C in Paris.")], False, [W]),
+        ("v2 content before a call", [U, asst("Let me check.", call()), tool()], True, None),
+        ("v2 two calls, two results, a reply, then a user message",
+         [U, asst("", call(), call("get_time", "{}")), tool(), tool('"09:00"'), asst("18 C at 09:00."),
+          {"role": "user", "content": "Thanks"}], True, [W, T]),
+        ("v2 tool_call_id matching the call's id", [U, asst("", call(cid="c1")), tool(cid="c1")], True, None),
+        ("v2 a training conversation ending on a call", [U, asst("", call())], False, None),
+        ("v2 empty arguments", [U, asst("", call("get_time", "")), tool()], True, None),
+        ("v2 newline-only and empty contents", [{"role": "user", "content": "\n"}, asst("", call()), tool(""),
+                                                asst("\n"), {"role": "user", "content": ""}], True, None),
+        # refused
+        ("v2 a tool message without a call", [U, asst("Hello"), tool()], True, None),
+        ("v2 a tool message first", [tool(), U], True, None),
+        ("v2 fewer results than calls", [U, asst("", call(), call("get_time", "{}")), tool(), asst("x"),
+                                         {"role": "user", "content": "y"}], True, None),
+        ("v2 a prompt ending while a call has no result", [U, asst("", call(), call("get_time", "{}")), tool()],
+         True, None),
+        ("v2 a reply without its results", [U, asst("", call()), asst("x"), {"role": "user", "content": "y"}], True, None),
+        ("v2 tool_call_id not the call's id", [U, asst("", call(cid="c1")), tool(cid="c2")], True, None),
+        ("v2 tool_call_id when the call has no id", [U, asst("", call()), tool(cid="c1")], True, None),
+        ("v2 a call name with a newline", [U, asst("", call("get\nweather")), tool()], True, None),
+        ("v2 an empty call name", [U, asst("", call("")), tool()], True, None),
+        ("v2 arguments holding a control token", [U, asst("", call(args="<|tool_call|>x")), tool()], True, None),
+        ("v2 arguments that are not a string", [U, asst("", {"type": "function", "function": {
+            "name": "f", "arguments": {"a": 1}}}), tool()], True, None),
+        ("v2 a call type other than function", [U, asst("", {"type": "code", "function": {
+            "name": "f", "arguments": "{}"}}), tool()], True, None),
+        ("v2 an empty tool_calls list", [U, {"role": "assistant", "content": "x", "tool_calls": []},
+                                         {"role": "user", "content": "y"}], True, None),
+        ("v2 tool_calls on a user message", [{"role": "user", "content": "x", "tool_calls": [call()]}], True, None),
+        ("v2 user content holding <|system|>", [{"role": "user", "content": "a <|system|> b"}], True, None),
+        ("v2 tool content holding a spare token", [U, asst("", call()), tool("x<|spare_5|>")], True, None),
+        ("v2 system content holding <|tool|>", [{"role": "system", "content": "<|tool|>"}, U], True, None),
+        ("v2 a tool definition holding a control token", [U], True,
+         [{"type": "function", "function": {"name": "f", "description": "<|user|>"}}]),
+        ("v2 a tool definition with a non-integer number", [U], True,
+         [{"type": "function", "function": {"name": "f", "parameters": {"maximum": 1.5}}}]),
+        ("v2 a tool definition that is not an object", [U], True, ["get_weather"]),
+        ("v2 a system message mid-conversation", [U, asst("x"), S, {"role": "user", "content": "y"}], True, None),
+        ("v2 loss on a tool message", [U, asst("", call()), dict(tool(), loss=False)], True, None),
+        # v1 keeps refusing tool turns
+        ("v1 refuses tool definitions", [U], True, [W]),
+        ("v1 refuses tool_calls", [U, asst("", call()), tool()], True, None),
+    ]
+
+
+def parse_reply_cases():
+    """parse_reply over a toy vocabulary (id -> text; id 9 is the call token): it splits on ids only."""
+    toks = {1: "Let me ", 2: "check.", 3: "get_weather", 4: "\n", 5: '{"city": "Paris"}', 6: "<|tool_call|>",
+            7: "get_time", 8: "{}", 9: "<|tool_call|>", 10: "x\ny"}
+
+    def dec(ids):
+        return "".join(toks[i] for i in ids)
+    rows = []
+    for name, ids in [("no call", [1, 2]), ("content then a call", [1, 2, 9, 3, 4, 5]),
+                      ("a call alone", [9, 3, 4, 5]), ("two calls", [9, 3, 4, 5, 9, 7, 4, 8]),
+                      ("empty arguments", [9, 7, 4]), ("arguments holding a newline", [9, 7, 4, 10]),
+                      ("the call's text as BPE pieces is content", [1, 6, 3, 4, 5]),
+                      ("a call without a newline", [9, 3, 5]), ("an empty name", [9, 4, 5]),
+                      ("an empty call", [1, 9]), ("one good call and one bad", [9, 3, 4, 5, 9, 7]),
+                      ("no ids", [])]:
+        rows.append({"name": name, "ids": ids, "call_id": 9, "expect": CT.parse_reply(ids, 9, dec)})
+    return {"tokens": {str(k): v for k, v in toks.items()}, "cases": rows}
+
+
+def test_parse_reply():
+    by = {c["name"]: c["expect"] for c in parse_reply_cases()["cases"]}
+    assert by["no call"] == {"content": "Let me check.", "tool_calls": []}
+    assert by["content then a call"]["content"] == "Let me check."
+    assert by["two calls"]["tool_calls"][1] == {"id": "call_1", "type": "function",
+                                                "function": {"name": "get_time", "arguments": "{}"}}
+    assert by["arguments holding a newline"]["tool_calls"][0]["function"]["arguments"] == "x\ny"
+    assert by["the call's text as BPE pieces is content"] == {
+        "content": 'Let me <|tool_call|>get_weather\n{"city": "Paris"}', "tool_calls": []}
+    for bad in ("a call without a newline", "an empty name", "an empty call", "one good call and one bad"):
+        assert by[bad] is None, bad
+
+
+def _hf_env():
+    """jinja2 configured as HF transformers' apply_chat_template: tojson(x) = json.dumps(x, ensure_ascii=False)."""
+    env, jinja2 = _jinja_env()
+
+    def tojson(x, ensure_ascii=False, indent=None, separators=None, sort_keys=False):
+        return json.dumps(x, ensure_ascii=ensure_ascii, indent=indent, separators=separators, sort_keys=sort_keys)
+    env.filters["tojson"] = tojson
+    return env, jinja2
+
+
+def random_v2_conversation(rng):
+    tools = [{"type": "function", "function": {"name": rng.choice(["f", "get_weather", "naïve"]),
+                                                "parameters": {"type": "object", "n": rng.randint(0, 9)}}}
+             for _ in range(rng.randint(0, 2))]
+    msgs = []
+    if rng.random() < 0.5:
+        msgs.append({"role": "system", "content": rng.choice(WORDS[:3] + ["Be brief.", ""])})
+    for _ in range(rng.randint(0, 4)):
+        msgs.append({"role": "user", "content": rng.choice(WORDS)})
+        while rng.random() < 0.4:
+            k = rng.randint(1, 2)
+            msgs.append({"role": "assistant", "content": rng.choice(["", "Checking."]),
+                         "tool_calls": [{"type": "function", "function": {
+                             "name": rng.choice(["f", "get_weather"]),
+                             "arguments": rng.choice(["{}", '{"a": "b\nc"}', ""])}} for _ in range(k)]})
+            msgs += [{"role": "tool", "content": rng.choice(WORDS)} for _ in range(k)]
+        msgs.append({"role": "assistant", "content": rng.choice(WORDS)})
+    msgs.append({"role": "user", "content": rng.choice(WORDS)})
+    if rng.random() < 0.3:
+        msgs.append({"role": "assistant", "content": "", "tool_calls": [
+            {"type": "function", "function": {"name": "f", "arguments": "{}"}}]})
+        msgs.append({"role": "tool", "content": rng.choice(WORDS)})
+    return msgs, (tools or None)
+
+
+def test_g5_jinja_v2_matches_record():
+    """paperkiln/2's generated Jinja renders as the record does under HF's tojson, on 1,000 random
+    conversations with system turns, tool definitions, calls and results."""
+    env, _ = _hf_env()
+    jt = env.from_string(CT.jinja(CT.V2))
+    rng = random.Random(27)
+    for _ in range(1000):
+        m, tools = random_v2_conversation(rng)
+        want = CT.render(m, CT.V2, generation_prompt=True, tools=tools)
+        assert jt.render(messages=m, tools=tools, add_generation_prompt=True) == want, (m, tools)
+
+
+def test_v2_user_assistant_is_v1():
+    """Without system or tool messages, paperkiln/2 renders exactly as paperkiln/1."""
+    rng = random.Random(3)
+    n = 0
+    for _ in range(500):
+        m, gp = random_conversation(rng)
+        m = [x for x in m if x["role"] != "system"] or [{"role": "user", "content": "x"}]
+        try:
+            want = CT.render(m, CT.V1, generation_prompt=gp)
+        except CT.TemplateError:
+            continue
+        assert CT.render(m, CT.V2, generation_prompt=gp) == want
+        n += 1
+    assert n > 300
+
+
+def test_v2_exchanges():
+    m = [{"role": "system", "content": "s"}, {"role": "user", "content": "a"},
+         {"role": "assistant", "content": "", "tool_calls": [{"function": {"name": "f", "arguments": "{}"}}]},
+         {"role": "tool", "content": "r"}, {"role": "assistant", "content": "b"}, {"role": "user", "content": "c"}]
+    assert CT.exchanges(m) == [(1, 5), (5, 6)]
+
+
+def test_v2_cases_refused():
+    by = {c["name"]: c["expect"] for c in edge_cases()}
+    assert by["v2 system turn"] == "<|system|>Be brief.<|user|>Hi<|assistant|>"
+    assert by["v2 one user prompt (v1's text)"] == by["one user prompt"]
+    assert by["v2 a call answered: the prompt ends on the tool message"] == (
+        '<|system|>Be brief.\n\n{"type": "function", "function": {"name": "get_weather", "description": "Current '
+        'weather in a city", "parameters": {"type": "object", "properties": {"city": {"type": "string"}}, '
+        '"required": ["city"]}}}<|user|>What is the weather in Paris?<|assistant|><|tool_call|>get_weather\n'
+        '{"city": "Paris"}<|endoftext|><|tool|>{"temp_c": 18}<|assistant|>')
+    refused = [n for n, e in by.items() if n.startswith(("v2 ", "v1 refuses")) and e is None]
+    assert len(refused) == 24, refused
+
+
 def edge_cases():
     """The hand-written cases (G5). Each: template, messages, generation_prompt, thinking, and the
     rendering or an error. tests/test_chat_template.cpp runs the same file."""
@@ -422,6 +622,16 @@ def edge_cases():
     out.append({"name": "qwen3 thinking off", "template": "chatml-qwen3/1", "messages": [{"role": "user", "content": "Hi"}],
                 "generation_prompt": True, "thinking": False,
                 "expect": CT.render([{"role": "user", "content": "Hi"}], "chatml-qwen3/1", True, thinking=False)})
+    for name, m, gp, tools in v2_cases():
+        t = CT.V1 if name.startswith("v1 ") else CT.V2
+        row = {"name": name, "template": t, "messages": m, "generation_prompt": gp}
+        if tools is not None:
+            row["tools"] = tools
+        try:
+            row["expect"] = CT.render(m, t, generation_prompt=gp, tools=tools)
+        except CT.TemplateError:
+            row["expect"] = None
+        out.append(row)
     return out
 
 
@@ -430,7 +640,7 @@ def fixture():
     none = dict(CT.get(CT.V1), system={"mode": "none"})
     reg = CT._registry()
     jin = {"paperkiln/1": CT.jinja(CT.V1), "paperkiln/1 none": CT.jinja(none),
-           "paperkiln/legacy-word": CT.jinja(CT.LEGACY_WORD)}
+           "paperkiln/legacy-word": CT.jinja(CT.LEGACY_WORD), "paperkiln/2": CT.jinja(CT.V2)}
     res = [
         {"declared": "", "tokens": CT.V1_SPECIALS + ["a"], "model": "gpt2", "chat_template": "", "arch": "llama",
          "expect": CT.V1},
@@ -461,7 +671,8 @@ def fixture():
         got = CT.resolve(meta)[0]
         assert (CT.rid(got) if got else None) == r["expect"], r
     return {"cases": edge_cases(), "records": {k: v for k, v in reg.items()}, "jinja": jin,
-            "modelfile": {"paperkiln/1": CT.modelfile("model.gguf")}, "resolve": res,
+            "modelfile": {"paperkiln/1": CT.modelfile("model.gguf"), "paperkiln/2": CT.modelfile("model.gguf", CT.V2)},
+            "resolve": res, "parse_reply": parse_reply_cases(),
             "sha256": {"abc": hashlib.sha256(b"abc").hexdigest(), "": hashlib.sha256(b"").hexdigest()}}
 
 

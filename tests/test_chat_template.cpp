@@ -34,17 +34,23 @@ int main(int argc, char** argv) {
     std::stringstream ss;
     ss << f.rdbuf();
     const json fx = json::parse(ss.str());
+    const chat::json fxo = chat::json::parse(ss.str());  // member order kept (tool definitions)
 
     // Edge cases: same text, or refused alike.
     size_t rendered = 0, refused = 0;
-    for (const auto& c : fx["cases"]) {
+    for (size_t ci = 0; ci < fx["cases"].size(); ++ci) {
+        const auto& c = fx["cases"][ci];
         const chat::Template t = c["template"].is_string() ? chat::get(c["template"].get<std::string>())
                                                             : chat::Template::from_json(c["template"]);
         const int thinking = c.contains("thinking") ? (c["thinking"].get<bool>() ? 1 : 0) : -1;
         std::string got;
         bool threw = false;
         try {
-            got = chat::render(chat::messages_from_json(c["messages"]), t, c["generation_prompt"].get<bool>(), thinking);
+            std::vector<chat::json> tools;
+            if (c.contains("tools"))  // ordered_json, so the definitions keep the file's member order
+                for (const auto& d : fxo["cases"][ci]["tools"]) tools.push_back(d);
+            got = chat::render(chat::messages_from_json(c["messages"]), t, c["generation_prompt"].get<bool>(), thinking,
+                               tools);
         } catch (const chat::Error&) {
             threw = true;
         }
@@ -86,6 +92,54 @@ int main(int argc, char** argv) {
     CHECK(chat::jinja(none) == fx["jinja"]["paperkiln/1 none"].get<std::string>());
     CHECK(chat::jinja(chat::legacy_word()) == fx["jinja"]["paperkiln/legacy-word"].get<std::string>());
     CHECK(chat::modelfile("model.gguf", chat::v1()) == fx["modelfile"]["paperkiln/1"].get<std::string>());
+    CHECK(chat::jinja(chat::v2()) == fx["jinja"]["paperkiln/2"].get<std::string>());
+    CHECK(chat::modelfile("model.gguf", chat::v2()) == fx["modelfile"]["paperkiln/2"].get<std::string>());
+
+    // parse_reply (v2): split on the call id over a toy vocabulary, as in Python.
+    size_t parsed = 0;
+    {
+        const auto& pr = fx["parse_reply"];
+        auto decode = [&](const std::vector<int>& ids) {
+            std::string s;
+            for (int i : ids) s += pr["tokens"][std::to_string(i)].get<std::string>();
+            return s;
+        };
+        for (const auto& c : pr["cases"]) {
+            const auto r = chat::parse_reply(c["ids"].get<std::vector<int>>(), c["call_id"].get<int>(), decode);
+            if (c["expect"].is_null()) {
+                CHECK(!r.parsed);
+            } else {
+                CHECK(r.parsed && r.content == c["expect"]["content"].get<std::string>());
+                CHECK(r.tool_calls.size() == c["expect"]["tool_calls"].size());
+                for (size_t k = 0; k < r.tool_calls.size() && k < c["expect"]["tool_calls"].size(); ++k) {
+                    const auto& e = c["expect"]["tool_calls"][k];
+                    CHECK(r.tool_calls[k].id == e["id"].get<std::string>());
+                    CHECK(r.tool_calls[k].name == e["function"]["name"].get<std::string>());
+                    CHECK(r.tool_calls[k].arguments == e["function"]["arguments"].get<std::string>());
+                }
+            }
+            ++parsed;
+        }
+    }
+
+    // check_control_tokens: a v2 file needs its control tokens as control tokens.
+    {
+        std::vector<std::string> toks(chat::kV1Specials.begin(), chat::kV1Specials.end());
+        std::vector<int32_t> types = {2, 3, 3, 3};
+        bool refused = false;
+        try {
+            chat::check_control_tokens(chat::v2(), toks, types);
+        } catch (const chat::Error&) {
+            refused = true;
+        }
+        CHECK(refused);
+        for (const char* c : chat::kV2Control) {
+            toks.push_back(c);
+            types.push_back(3);
+        }
+        chat::check_control_tokens(chat::v2(), toks, types);
+        chat::check_control_tokens(chat::v1(), {}, {});
+    }
 
     // Resolution and its sha256.
     for (const auto& [k, v] : fx["sha256"].items()) CHECK(chat::detail::sha256_hex(k) == v.get<std::string>());
@@ -116,7 +170,7 @@ int main(int argc, char** argv) {
         }
 
     std::printf("chat_template: %zu cases rendered and %zu refused as in Python, %zu records, Jinja and Modelfile "
-                "identical, %zu resolutions, %zu legacy prompts identical\n",
-                rendered, refused, records, resolved, legacy);
+                "identical, %zu resolutions, %zu legacy prompts identical, %zu replies parsed as in Python\n",
+                rendered, refused, records, resolved, legacy, parsed);
     return 0;
 }

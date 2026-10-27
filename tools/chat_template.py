@@ -12,12 +12,20 @@ A conversation is {"messages": [{"role": "system"|"user"|"assistant", "content":
 "loss": bool?}, ...], "uri": ..., ...}: at most one system message, first; then user and
 assistant strictly alternating from the user. A training conversation ends on an assistant
 message, a prompt conversation on a user message. An instruction example is a conversation with
-one exchange. The tool role is reserved (refused).
+one exchange. Under a record without a `tool` field (paperkiln/1 and every third-party record)
+the tool role is reserved (refused).
+
+Schema v2 (paperkiln/2, LOCAL_LLM_STACK.md section 3, point 3g) adds tool turns: an assistant
+message may carry "tool_calls": [{"id"?, "type"?: "function", "function": {"name", "arguments"}}]
+(arguments a string, rendered verbatim), followed by exactly as many {"role": "tool", "content",
+"tool_call_id"?} messages in call order, then an assistant message; and a conversation may carry
+"tools": [JSON objects] (tool definitions), rendered inside the system turn. A prompt conversation
+then ends on a user or a tool message.
 
 A template renders bos, then every message as open + content + close (the system message by
 its mode), then generation_prompt when a reply is wanted. Content holding one of the record's
-`reserved` strings (v1: the three role and end markers) is refused, here, in the C++ twin and
-in `parse`, so no text can forge a turn.
+`reserved` strings (v1: the three role and end markers; v2: those and its eight control tokens)
+is refused, here, in the C++ twin and in `parse`, so no text can forge a turn.
 """
 from __future__ import annotations
 
@@ -33,10 +41,15 @@ SYSTEM_MODE_V1 = "fold"        # "fold" (the system text opens the first user tu
 DEFAULT_SFT_TURNS = "all"      # train.sft_loss.turns default: "all", "final" or "each"
 
 SCHEMA = "paperkiln.conversation/1"
+SCHEMA_V2 = "paperkiln.conversation/2"
 ROLES = ("system", "user", "assistant")
 RESERVED_ROLES = ("tool",)
 SFT_TURNS = ("all", "final", "each")
 V1_SPECIALS = ["<unk>", "<|endoftext|>", "<|user|>", "<|assistant|>"]  # ids 0-3 of every paperkiln BPE vocabulary
+# paperkiln/2's control tokens, appended in this order after a vocabulary's last id (16k Llama 3-scheme
+# vocabulary: ids 16384-16391), GGUF token type 3 (control); merges and every text id unchanged.
+V2_CONTROL = ["<|system|>", "<|tool_call|>", "<|tool|>", "<|spare_3|>", "<|spare_4|>", "<|spare_5|>",
+              "<|spare_6|>", "<|spare_7|>"]
 
 
 class TemplateError(ValueError):
@@ -52,6 +65,23 @@ def _v1():
             "stop": {"eos": ["<|endoftext|>"], "turn": ["<|user|>", "<|assistant|>"]},
             "past_assistant": "keep",
             "reserved": ["<|endoftext|>", "<|user|>", "<|assistant|>"]}
+
+
+def _v2():
+    # Schema v2: the system message is its own turn behind its own control token (no fold), tool calls
+    # ride in the assistant turn after <|tool_call|>, tool results are turns behind <|tool|>, and tool
+    # definitions render inside the system turn. A user/assistant-only conversation renders as v1.
+    return {"name": "paperkiln", "version": 2, "bos": "", "content": "raw",
+            "system": {"mode": "turn", "open": "<|system|>", "close": ""},
+            "user": {"open": "<|user|>", "close": ""},
+            "assistant": {"open": "<|assistant|>", "close": "<|endoftext|>"},
+            "tool": {"open": "<|tool|>", "close": ""},
+            "tool_call": {"open": "<|tool_call|>", "join": "\n"},
+            "tools": {"join": "\n\n", "sep": "\n"},
+            "generation_prompt": "<|assistant|>",
+            "stop": {"eos": ["<|endoftext|>"], "turn": ["<|user|>", "<|assistant|>", "<|system|>", "<|tool|>"]},
+            "past_assistant": "keep",
+            "reserved": ["<|endoftext|>", "<|user|>", "<|assistant|>"] + V2_CONTROL}
 
 
 def _legacy_word():
@@ -113,7 +143,7 @@ def _registry():
     g3 = _gemma3()
     g3["match"] = ["7de1c58e208eda46e9c7f86397df37ec49883aeece39fb961e0a6b24088dd3c4"]  # gemma-3-270m-it chat_template.jinja
     g3["architectures"] = ["gemma3"]
-    return {rid(r): r for r in (_v1(), _legacy_word(), q25, q3, g3)}
+    return {rid(r): r for r in (_v1(), _v2(), _legacy_word(), q25, q3, g3)}
 
 
 def rid(rec):
@@ -132,11 +162,12 @@ def get(name_or_record="paperkiln/1"):
 
 
 V1 = "paperkiln/1"
+V2 = "paperkiln/2"
 LEGACY_WORD = "paperkiln/legacy-word"
 
 _KEYS = {"name", "version", "bos", "content", "system", "user", "assistant", "generation_prompt",
          "generation_prompt_nothink", "stop", "past_assistant", "default_system", "reserved", "markers",
-         "match", "architectures"}
+         "match", "architectures", "tool", "tool_call", "tools"}
 
 
 def check_record(rec):
@@ -154,75 +185,168 @@ def check_record(rec):
     sysm = rec.get("system", {"mode": "none"})
     if sysm.get("mode") not in ("fold", "turn", "none"):
         raise TemplateError(f"chat template system mode {sysm.get('mode')!r} is not implemented (fold, turn, none)")
-    for side in ("user", "assistant"):
-        if set(rec[side]) - {"open", "close"}:
+    for side in ("user", "assistant", "tool"):
+        if side in rec and set(rec[side]) - {"open", "close"}:
             raise TemplateError(f"chat template {side} takes open and close only")
+    if "tool_call" in rec and set(rec["tool_call"]) - {"open", "join"}:
+        raise TemplateError("chat template tool_call takes open and join only")
+    if "tools" in rec and set(rec["tools"]) - {"join", "sep"}:
+        raise TemplateError("chat template tools takes join and sep only")
+    if ("tool" in rec) != ("tool_call" in rec):
+        raise TemplateError("chat template tool and tool_call come together")
+    if "tools" in rec and "tool" not in rec:
+        raise TemplateError("chat template tools needs tool and tool_call")
+    if "tool" in rec and sysm.get("mode") != "turn":
+        raise TemplateError("chat template tool turns need system mode turn")
     return rec
 
 
 # ------------------------------------------------------------------ conversations
-def _structure(messages, prompt):
+def has_tools(tmpl):
+    """Whether a record defines tool turns (paperkiln/2)."""
+    t = tmpl if isinstance(tmpl, dict) else get(tmpl)
+    return "tool" in t
+
+
+def _calls(m):
+    """An assistant message's tool calls as [(id or None, name, arguments)]; [] when it has none."""
+    tc = m.get("tool_calls")
+    if tc is None:
+        return []
+    if not isinstance(tc, list) or not tc:
+        raise TemplateError("tool_calls is a non-empty list")
+    out = []
+    for c in tc:
+        if not isinstance(c, dict) or not isinstance(c.get("function"), dict):
+            raise TemplateError("a tool call is {id?, type?: function, function: {name, arguments}}")
+        if c.get("type", "function") != "function":
+            raise TemplateError(f"tool call type {c.get('type')!r} is not implemented (function)")
+        f = c["function"]
+        name, args = f.get("name"), f.get("arguments", "")
+        if not isinstance(name, str) or not name or "\n" in name:
+            raise TemplateError("a tool call's name is a non-empty string without a newline")
+        if not isinstance(args, str):
+            raise TemplateError("a tool call's arguments are a string (rendered verbatim)")
+        if "id" in c and not isinstance(c["id"], str):
+            raise TemplateError("a tool call's id is a string")
+        out.append((c.get("id"), name, args))
+    return out
+
+
+def _structure(messages, prompt, tools_ok=False):
     """(system text or None, the other messages). prompt: the conversation ends on a user message
-    (a reply is wanted); else on an assistant message."""
+    (a reply is wanted), or under v2 on a tool message; else on an assistant message. tools_ok: the
+    record defines tool turns (v2): an assistant message with k tool calls is followed by exactly k
+    tool messages in call order, then an assistant message; an assistant message without calls by a
+    user message."""
     if not isinstance(messages, list) or not messages:
         raise TemplateError("a conversation needs a non-empty messages list")
     for m in messages:
         if not isinstance(m, dict) or not isinstance(m.get("content"), str):
             raise TemplateError("every message needs a role and a string content")
-        if m.get("role") in RESERVED_ROLES:
+        if m.get("role") in RESERVED_ROLES and not tools_ok:
             raise TemplateError(f"role {m['role']!r} is reserved: no template defines it yet")
-        if m.get("role") not in ROLES:
+        if m.get("role") not in ROLES + (RESERVED_ROLES if tools_ok else ()):
             raise TemplateError(f"unknown role {m.get('role')!r}")
+        if "tool_calls" in m and (not tools_ok or m["role"] != "assistant"):
+            raise TemplateError("tool_calls belong on assistant messages of a template with tool turns")
+        if "tool_call_id" in m and m["role"] != "tool":
+            raise TemplateError("tool_call_id belongs on tool messages")
     sys_text, rest = None, messages
     if messages[0]["role"] == "system":
         sys_text, rest = messages[0]["content"], messages[1:]
     if not rest:
         raise TemplateError("a system message needs a user message after it")
+    want, pending = "user", []
     for i, m in enumerate(rest):
-        want = "user" if i % 2 == 0 else "assistant"
         if m["role"] == "system":
             raise TemplateError("a system message is allowed only as the first message")
         if m["role"] != want:
-            raise TemplateError(f"message {i + (sys_text is not None)} is {m['role']}, expected {want} "
-                                "(user and assistant alternate from the user)")
+            if not tools_ok:
+                raise TemplateError(f"message {i + (sys_text is not None)} is {m['role']}, expected {want} "
+                                    "(user and assistant alternate from the user)")
+            raise TemplateError(f"message {i + (sys_text is not None)} is {m['role']}, expected {want} (user, "
+                                "then assistant; an assistant message with k tool calls, then k tool messages, "
+                                "then assistant)")
         if "loss" in m and (m["role"] != "assistant" or not isinstance(m["loss"], bool)):
             raise TemplateError("loss is a bool on assistant messages only")
+        if m["role"] == "user":
+            want = "assistant"
+        elif m["role"] == "assistant":
+            pending = _calls(m)
+            want = "tool" if pending else "user"
+        else:
+            cid = pending.pop(0)[0]
+            if "tool_call_id" in m and m["tool_call_id"] != cid:
+                raise TemplateError(f"tool_call_id {m['tool_call_id']!r} is not the call's id {cid!r} "
+                                    "(tool messages answer the calls in order)")
+            want = "tool" if pending else "assistant"
     last = rest[-1]["role"]
-    if prompt and last != "user":
-        raise TemplateError("a prompt conversation ends on a user message")
+    if prompt and not (last == "user" or (last == "tool" and not pending)):
+        raise TemplateError("a prompt conversation ends on a user message"
+                            + (" or on the last tool message of a call" if tools_ok else ""))
     if not prompt and last != "assistant":
         raise TemplateError("a training conversation ends on an assistant message")
     return sys_text, rest
 
 
-def validate(conv, prompt=False):
-    """A stored conversation: the structure, plus non-empty content everywhere. Returns messages."""
+def validate(conv, prompt=False, tmpl=V1):
+    """A stored conversation: the structure, plus non-empty content everywhere (an assistant message
+    with tool calls may have empty content). Returns messages."""
     msgs = conv["messages"] if isinstance(conv, dict) else conv
-    _structure(msgs, prompt)
+    _structure(msgs, prompt, has_tools(tmpl))
     for m in msgs:
-        if not m["content"]:
+        if not m["content"] and not (m["role"] == "assistant" and m.get("tool_calls")):
             raise TemplateError(f"empty {m['role']} content")
     return msgs
 
 
-def render_pieces(messages, tmpl=V1, generation_prompt=False, thinking=None):
-    """[(text, role, kind, index)]: kind open | content | close | bos | generation; index = the
-    message's position in `messages` (-1 for bos and the generation prompt). Empty pieces are
-    left out. generation_prompt=True needs a conversation ending on a user message."""
+def _has_float(x):
+    if isinstance(x, float):
+        return True
+    if isinstance(x, dict):
+        return any(_has_float(v) for v in x.values())
+    if isinstance(x, list):
+        return any(_has_float(v) for v in x)
+    return False
+
+
+def tool_json(d):
+    """A tool definition's text: Python's json.dumps(d, ensure_ascii=False) (separators ", " and ": ",
+    member order kept), which is HF transformers' Jinja `tojson`; the C++ twin's detail::dump_py writes
+    the same. Non-integer numbers are refused (the one place two serialisers could differ)."""
+    if not isinstance(d, dict):
+        raise TemplateError("a tool definition is a JSON object")
+    if _has_float(d):
+        raise TemplateError("a tool definition holds a non-integer number (refused: its text is not portable)")
+    return json.dumps(d, ensure_ascii=False)
+
+
+def render_pieces(messages, tmpl=V1, generation_prompt=False, thinking=None, tools=None):
+    """[(text, role, kind, index)]: kind open | content | call_open | call | close | bos | generation;
+    index = the message's position in `messages` (-1 for bos and the generation prompt). Empty pieces
+    are left out. generation_prompt=True needs a prompt conversation (ending on a user message, or under
+    v2 on a tool message). tools: tool definitions (v2), rendered inside the system turn."""
     t = tmpl if isinstance(tmpl, dict) else get(tmpl)
-    sys_text, rest = _structure(messages, generation_prompt)
+    tools_ok = "tool" in t
+    if tools and not ("tools" in t):
+        raise TemplateError("this model's template has no tool definitions")
+    sys_text, rest = _structure(messages, generation_prompt, tools_ok)
     off = 1 if sys_text is not None else 0
     trim = t.get("content", "raw") == "trim"
     sysm = t.get("system", {"mode": "none"})
     reserved = [r for r in t.get("reserved", []) if r]
 
-    def body(text):
-        if trim:
-            text = text.strip()  # "trim": Python's str.strip(), as HF's Jinja trim (the C++ twin's strip_py_ws)
+    def check(text):
         for r in reserved:
             if r in text:
                 raise TemplateError(f"content holds the template's reserved text {r!r}")
         return text
+
+    def body(text):
+        if trim:
+            text = text.strip()  # "trim": Python's str.strip(), as HF's Jinja trim (the C++ twin's strip_py_ws)
+        return check(text)
 
     out = []
 
@@ -232,21 +356,24 @@ def render_pieces(messages, tmpl=V1, generation_prompt=False, thinking=None):
 
     add(t.get("bos", ""), "", "bos", -1)
     fold = None
-    sys_idx = 0 if sys_text is not None else -1  # -1: the template's default system text
+    sys_idx = 0 if sys_text is not None else -1  # -1: the template's default system text or the tools alone
     if sys_text is None and t.get("default_system"):
         sys_text = t["default_system"]
+    defs = [check(tool_json(d)) for d in (tools or [])]
+    if defs:
+        tl = t["tools"]
+        head = body(sys_text) if sys_text is not None else ""
+        sys_text = (head + tl.get("join", "") if head else "") + tl.get("sep", "").join(defs)
     if sys_text is not None:
         mode = sysm["mode"]
         if mode == "none":
             raise TemplateError("this model's template has no system role")
         if mode == "turn":
             add(sysm.get("open", ""), "system", "open", sys_idx)
-            add(body(sys_text), "system", "content", sys_idx)
+            add(sys_text if defs else body(sys_text), "system", "content", sys_idx)
             add(sysm.get("close", ""), "system", "close", sys_idx)
         else:
-            for r in reserved:
-                if r in sys_text:
-                    raise TemplateError(f"content holds the template's reserved text {r!r}")
+            check(sys_text)
             fold = sys_text + sysm.get("join", "")
     last_user = max(i for i, m in enumerate(rest) if m["role"] == "user")
     for i, m in enumerate(rest):
@@ -259,6 +386,10 @@ def render_pieces(messages, tmpl=V1, generation_prompt=False, thinking=None):
             text = text.split("</think>")[-1].lstrip("\n")
         add(side["open"], m["role"], "open", i + off)
         add(text, m["role"], "content", i + off)
+        if m["role"] == "assistant":
+            for _cid, name, args in _calls(m):
+                add(t["tool_call"]["open"], "assistant", "call_open", i + off)
+                add(check(name) + t["tool_call"].get("join", "") + check(args), "assistant", "call", i + off)
         add(side["close"], m["role"], "close", i + off)
     if generation_prompt:
         g = t["generation_prompt"]
@@ -271,8 +402,48 @@ def render_pieces(messages, tmpl=V1, generation_prompt=False, thinking=None):
     return out
 
 
-def render(messages, tmpl=V1, generation_prompt=False, thinking=None):
-    return "".join(p[0] for p in render_pieces(messages, tmpl, generation_prompt, thinking))
+def render(messages, tmpl=V1, generation_prompt=False, thinking=None, tools=None):
+    return "".join(p[0] for p in render_pieces(messages, tmpl, generation_prompt, thinking, tools))
+
+
+def exchanges(messages):
+    """[(start, end)] message index ranges of the exchanges after the system message: a user message
+    and everything before the next user message (assistant replies, tool calls, tool results). The
+    context rule (section 3, point 5) drops the oldest whole exchange; the system turn is pinned."""
+    out = []
+    for i, m in enumerate(messages):
+        if m["role"] == "user":
+            if out:
+                out[-1][1] = i
+            out.append([i, len(messages)])
+    return [tuple(x) for x in out]
+
+
+def parse_reply(ids, call_id, decode):
+    """A generated reply (ids without the stop token) under v2, split on ids, never on text: the ids
+    are cut at every `call_id` (the <|tool_call|> control token), and each part decoded. Part 0 is the
+    content; every later part must be name + "\\n" + arguments with a non-empty name. Returns
+    {"content", "tool_calls": [{"id": "call_<k>", "type": "function", "function": {"name", "arguments"}}]}
+    (no tool_calls when the ids hold no call_id), or None when a part does not parse (the engine then
+    returns the whole decoded reply as content). BPE pieces that spell "<|tool_call|>" are content."""
+    parts, cur = [], []
+    for x in ids:
+        if x == call_id:
+            parts.append(cur)
+            cur = []
+        else:
+            cur.append(x)
+    parts.append(cur)
+    content = decode(parts[0])
+    calls = []
+    for k, p in enumerate(parts[1:]):
+        text = decode(p)
+        nl = text.find("\n")
+        if nl <= 0:
+            return None
+        calls.append({"id": f"call_{k}", "type": "function",
+                      "function": {"name": text[:nl], "arguments": text[nl + 1:]}})
+    return {"content": content, "tool_calls": calls}
 
 
 def render_document(messages, tmpl=V1):
@@ -470,6 +641,67 @@ def _jstr(s):
     return "'" + s.replace("\\", "\\\\").replace("'", "\\'").replace("\n", "\\n") + "'"
 
 
+def _jinja_tools(t):
+    """The Jinja of a record with tool turns (paperkiln/2): HF-style messages (tool_calls[i].function
+    {name, arguments}), `tools` rendered through HF transformers' `tojson` (json.dumps(x,
+    ensure_ascii=False), as tool_json), add_generation_prompt. The structure rules are the engines'."""
+    sysm, u, a, tl, tc, tools = t["system"], t["user"], t["assistant"], t["tool"], t["tool_call"], t.get("tools")
+    j = []
+    if t.get("bos"):
+        j.append("{{- " + _jstr(t["bos"]) + " -}}")
+    j.append("{%- if messages and messages[0]['role'] == 'system' -%}"
+             "{%- set sys = messages[0]['content'] -%}{%- set msgs = messages[1:] -%}"
+             "{%- else -%}{%- set sys = none -%}{%- set msgs = messages -%}{%- endif -%}")
+    if tools:
+        j.append("{%- if tools -%}{%- set ns = namespace(d='') -%}{%- for x in tools -%}"
+                 "{%- if not loop.first -%}{%- set ns.d = ns.d + " + _jstr(tools.get("sep", "")) + " -%}{%- endif -%}"
+                 "{%- set ns.d = ns.d + (x | tojson) -%}{%- endfor -%}"
+                 "{%- if sys -%}{%- set sys = sys + " + _jstr(tools.get("join", "")) + " + ns.d -%}"
+                 "{%- else -%}{%- set sys = ns.d -%}{%- endif -%}{%- endif -%}")
+    j.append("{%- if sys is not none -%}{{- " + _jstr(sysm.get("open", "")) + " + sys + "
+             + _jstr(sysm.get("close", "")) + " -}}{%- endif -%}")
+    j.append("{%- for m in msgs -%}"
+             "{%- if m['role'] == 'user' -%}{{- " + _jstr(u["open"]) + " + m['content'] + " + _jstr(u["close"]) + " -}}"
+             "{%- elif m['role'] == 'assistant' -%}{{- " + _jstr(a["open"]) + " + m['content'] -}}"
+             "{%- for c in (m['tool_calls'] or []) -%}{{- " + _jstr(tc["open"]) + " + c['function']['name'] + "
+             + _jstr(tc.get("join", "")) + " -}}"
+             "{%- if c['function']['arguments'] is string -%}{{- c['function']['arguments'] -}}"
+             "{%- else -%}{{- c['function']['arguments'] | tojson -}}{%- endif -%}{%- endfor -%}"
+             "{{- " + _jstr(a["close"]) + " -}}"
+             "{%- elif m['role'] == 'tool' -%}{{- " + _jstr(tl["open"]) + " + m['content'] + " + _jstr(tl["close"]) + " -}}"
+             "{%- else -%}{{ raise_exception('roles: one leading system message, then user, assistant and tool') }}"
+             "{%- endif -%}{%- endfor -%}"
+             "{%- if add_generation_prompt -%}{{- " + _jstr(t["generation_prompt"]) + " -}}{%- endif -%}")
+    return "".join(j)
+
+
+def _modelfile_tools(gguf_name, t):
+    """Ollama's TEMPLATE for a record with tool turns. System, user, assistant and tool turns are the
+    record's text; tool definitions and call arguments go through Ollama's `json` function (Go's JSON),
+    which is not the record's tojson text, so a tools request through Ollama renders differently."""
+    sysm, u, a, tl, tc, tools = t["system"], t["user"], t["assistant"], t["tool"], t["tool_call"], t.get("tools") or {}
+
+    def go(s):
+        return s.replace("{{", "{{ \"{{\" }}")
+
+    head = go(t.get("bos", ""))
+    head += ("{{ if or .System .Tools }}" + go(sysm.get("open", "")) + "{{ if .System }}{{ .System }}{{ end }}"
+             "{{ if .Tools }}{{ if .System }}" + go(tools.get("join", "")) + "{{ end }}"
+             "{{ range $i, $t := .Tools }}{{ if $i }}" + go(tools.get("sep", "")) + "{{ end }}{{ json $t }}{{ end }}"
+             "{{ end }}" + go(sysm.get("close", "")) + "{{ end }}")
+    msgs = ("{{ range .Messages }}{{ if eq .Role \"user\" }}" + go(u["open"]) + "{{ .Content }}" + go(u["close"]) +
+            "{{ else if eq .Role \"assistant\" }}" + go(a["open"]) + "{{ .Content }}"
+            "{{ range .ToolCalls }}" + go(tc["open"]) + "{{ .Function.Name }}" + go(tc.get("join", "")) +
+            "{{ json .Function.Arguments }}{{ end }}" + go(a["close"]) +
+            "{{ else if eq .Role \"tool\" }}" + go(tl["open"]) + "{{ .Content }}" + go(tl["close"]) +
+            "{{ end }}{{ end }}" + go(t["generation_prompt"]))
+    lines = [f"# Ollama Modelfile for {gguf_name}: chat template {rid(t)} (LOCAL_LLM_STACK.md section 3, point 3).",
+             f"FROM ./{gguf_name}", 'TEMPLATE """' + head + msgs + '"""']
+    for s in t["stop"]["eos"] + t["stop"]["turn"]:
+        lines.append(f"PARAMETER stop {json.dumps(s)}")
+    return "\n".join(lines) + "\n"
+
+
 def jinja(tmpl=V1):
     """tokenizer.chat_template for a paperkiln record: the same text as render() for HF-style
     messages and add_generation_prompt (tests/test_chat_template.py renders both with jinja2)."""
@@ -478,6 +710,8 @@ def jinja(tmpl=V1):
         raise TemplateError("jinja() writes paperkiln records only; third-party files carry their own")
     if t.get("content", "raw") != "raw" or t.get("past_assistant", "keep") != "keep" or t.get("default_system"):
         raise TemplateError("jinja() covers raw content, kept replies and no default system")
+    if "tool" in t:
+        return _jinja_tools(t)
     sysm = t.get("system", {"mode": "none"})
     u, a = t["user"], t["assistant"]
     j = []
@@ -512,6 +746,8 @@ def modelfile(gguf_name, tmpl=V1):
     t = tmpl if isinstance(tmpl, dict) else get(tmpl)
     if t["name"] != "paperkiln":
         raise TemplateError("modelfile() writes paperkiln records only")
+    if "tool" in t:
+        return _modelfile_tools(gguf_name, t)
     sysm = t.get("system", {"mode": "none"})
     u, a = t["user"], t["assistant"]
 
