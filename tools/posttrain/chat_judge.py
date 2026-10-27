@@ -83,12 +83,21 @@ def parse_ranking(text, order):
     return [order[labs.index(str(x))] for x in rk], why
 
 
-def claude_cli_transport(claude_bin, model):
+def claude_cli_transport(claude_bin, model, workdir=None):
+    """The CLI runs in an empty directory of its own: started inside a repository it loads that
+    repository's instruction files and project memory into every call (27 Oct 2026, from the
+    microtorch root: both AGENTS.md files, 15,610 prompt tokens and $0.13 a call against 1,177 and
+    $0.012 from an empty directory), so the judge would see them and the cost would be tenfold."""
+    import tempfile
+    workdir = workdir or tempfile.mkdtemp(prefix="chat_judge_")
+    if os.listdir(workdir):
+        raise SystemExit(f"{workdir}: the judge's working directory must be empty")
+
     def call(system, user):
         p = subprocess.run([claude_bin, "-p", user, "--system-prompt", system, "--model", model, "--tools", "",
                             "--strict-mcp-config", "--no-session-persistence", "--max-turns", "1",
                             "--output-format", "json"], capture_output=True, text=True, timeout=300,
-                           stdin=subprocess.DEVNULL)
+                           stdin=subprocess.DEVNULL, cwd=workdir)
         d = json.loads(p.stdout)
         return d.get("result", ""), float(d.get("total_cost_usd", 0.0))
     return call

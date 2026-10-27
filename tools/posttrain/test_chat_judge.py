@@ -94,3 +94,23 @@ def test_second_pair_needs_its_own_agreement(tmp_path):
     ps = [json.loads(x) for x in out.read_text(encoding="utf-8").splitlines()]
     assert [p["rank_pair"] for p in ps] == [[0, -1]]  # rice vs Blue. fails the length match (3 vs 1 words)
     assert rep["length_mismatched"] == 1
+
+
+def test_cli_runs_in_an_empty_directory(tmp_path, monkeypatch):
+    seen = {}
+
+    class Done:
+        stdout = json.dumps({"result": "{}", "total_cost_usd": 0.01})
+
+    def run(argv, **kw):
+        seen.update(kw)
+        return Done()
+
+    monkeypatch.setattr(J.subprocess, "run", run)
+    assert J.claude_cli_transport("claude", "m")("sys", "user") == ("{}", 0.01)
+    cwd = Path(seen["cwd"])
+    assert cwd.is_dir() and not any(cwd.iterdir()) and HERE.parent.parent not in cwd.parents
+    (tmp_path / "x").write_text("x")
+    import pytest
+    with pytest.raises(SystemExit, match="must be empty"):
+        J.claude_cli_transport("claude", "m", workdir=str(tmp_path))

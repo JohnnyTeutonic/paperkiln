@@ -16,6 +16,7 @@ D=experiments/chat_general/judge
 mkdir -p "$D"
 REQ="$D/pilot_requests.jsonl"
 head -n "$N" "$CAND" > "$REQ"
+NREQ=$(wc -l < "$REQ")  # the prompts actually judged (the file may hold fewer than N)
 CLAUDE_BIN=${CLAUDE_BIN:-$(command -v claude)}
 ARGS=(--requests "$REQ" --cache "$D/judge_cache.jsonl" --rubric tools/posttrain/rubrics/chat_v1.txt
       --judge-id claude-opus-5-5)
@@ -23,7 +24,7 @@ J=tools/posttrain/chat_judge.py
 python3 "$J" plan "${ARGS[@]}" | tee "$D/pilot_plan.json"
 python3 "$J" run "${ARGS[@]}" --claude-bin "$CLAUDE_BIN" --max-calls $((2 * N)) --max-usd 100 | tee "$D/pilot_run.json"
 python3 "$J" pairs "${ARGS[@]}" --out "$D/pilot_pairs.jsonl" | tee "$D/pilot_pairs_summary.json"
-python3 - "$D" "$N" <<'PY'
+python3 - "$D" "$NREQ" <<'PY'
 import json, sys
 d, n = sys.argv[1], int(sys.argv[2])
 run = json.load(open(f"{d}/pilot_run.json"))
