@@ -1,0 +1,9 @@
+{
+ "_comment": "Claude-judged preference pilot at 256 new tokens (Jonathan, 28 Oct 2026; experiments/chat_general/PLAN.md, preference step; RESULTS.md, 'Preference pilot'): the 128-token pilot (pref_pilot_v1.json) cut 685 of 780 runs and 112 of its 125 pairs had both replies cut. Same prompts (the first 200 eligible smol-smoltalk test-split first turns; a prompt with prompt + 256 > T 512 is skipped), k 4, temperatures 0.8/0.9/1.0/0.9, seed 31, pk_sft_v1 (GGUF 4d53c7ff...). ember main 9d993f48 (its engine is b49eb5c's: schema v2 on every chat path with v1 byte-identical, ec3201b's tiled split-K decode attention gated in default and deterministic mode, 7526469's valid UTF-8 replies), EMBER_GEMM_TF32=0 and EMBER_DETERMINISTIC=1. U+FFFD rule trim_cut_tail_drop_other. judge_pilot.sh NAME pilot256 at home. Uploads: pksft.gguf, pksft.safetensors, vocab_llama3_bpe.gguf.",
+ "max_parallel": 1,
+ "jobs": [
+  {"name": "sample",
+   "cmd": ["python3", "tools/colab_chat/pref_sample_vm.py", "{out}", "pksft", "200", "256", "9d993f48de2cd976a7708d90767df3a58107baf8"],
+   "outputs": ["candidates.jsonl", "candidates.jsonl.skipped.jsonl", "sample_summary.json", "sample.log", "ember_build.json", "ember.log"]}
+ ]
+}
