@@ -1,6 +1,6 @@
 # keramos
 
-keramos is the specification of the paperkiln IR: a versioned JSON graph of a language model that a
+keramos is the specification of the keramos IR: a versioned JSON graph of a language model that a
 trainer exports and an inference engine executes. The engine interprets the graph, so it runs a new
 architecture without code written for that architecture. The document travels inside the model's
 GGUF file (the string key `paperkiln.ir`) beside the weights.

@@ -1,4 +1,4 @@
-"""The paperkiln IR's numpy reference kernels (IR_SPEC.md), as a module: engines' gates run GGUFs with
+"""The keramos IR's numpy reference kernels (IR_SPEC.md), as a module: engines' gates run GGUFs with
 embedded documents through them (paperkiln's tools/ir_run.py and tools/thirdparty_parity.py among them),
 and third-party GGUFs whose document tools/gguf_ir.py builds from llama.cpp metadata.
 

@@ -1,4 +1,4 @@
-"""The shared validator for the paperkiln IR (IR_SPEC.md section 10): the JSON Schema
+"""The shared validator for the keramos IR (IR_SPEC.md section 10): the JSON Schema
 (ir.schema.json) and every refusal rule of section 10.1, each message naming its section.
 
     python tools/ir_validate.py doc.ir.json [model.gguf ...]   # documents and GGUFs; exit 1 on a refusal

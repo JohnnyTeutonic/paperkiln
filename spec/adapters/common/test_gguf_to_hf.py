@@ -104,6 +104,37 @@ def test_gemma_norm_offset_exact():
             assert np.array_equal((np.float32(1) + (v - np.float32(1))).astype(np.float32), v)
 
 
+@pytest.mark.parametrize("name,gguf", SUPPORTED, ids=[n for n, _ in SUPPORTED])
+def test_word_tokenizer(name, gguf, tmp_path):
+    """The exported tokenizer gives each GGUF token its GGUF id, and an unknown word the unknown id."""
+    tf = pytest.importorskip("transformers")
+    meta, _ = g2h.read(gguf)
+    files = g2h.tokenizer_files(meta, 64)
+    assert meta.get("tokenizer.ggml.model") == "word" and set(files) == {"tokenizer.json", "tokenizer_config.json"}
+    for k, v in files.items():
+        (tmp_path / k).write_text(v, encoding="utf-8")
+    tok = tf.AutoTokenizer.from_pretrained(str(tmp_path))
+    words = list(meta["tokenizer.ggml.tokens"])
+    assert tok.convert_tokens_to_ids(words) == list(range(len(words)))
+    text = " ".join(words[1:]) + " no-such-word"
+    assert tok(text, add_special_tokens=False)["input_ids"] == list(range(1, len(words))) + [0]
+
+
+@pytest.mark.parametrize("name,gguf", SUPPORTED, ids=[n for n, _ in SUPPORTED])
+def test_special_ids_are_the_gguf_s(name, gguf, tmp_path):
+    """bos/eos/pad are the GGUF's ids, null where it has none (never the config class's defaults)."""
+    meta, W = g2h.read(gguf)
+    _, _, c, _, _ = g2h.convert(meta, W)
+    keys = {"bos_token_id": "bos_token_id", "eos_token_id": "eos_token_id", "pad_token_id": "padding_token_id"}
+    for k, g in keys.items():
+        assert k in c and c[k] == meta.get(f"tokenizer.ggml.{g}"), (k, c.get(k))
+    tf = pytest.importorskip("transformers")
+    (tmp_path / "config.json").write_text(json.dumps(c), encoding="utf-8")
+    cfg = tf.AutoConfig.from_pretrained(str(tmp_path))
+    for k, g in keys.items():
+        assert getattr(cfg, k, None) == meta.get(f"tokenizer.ggml.{g}"), k
+
+
 def test_unsupported():
     with pytest.raises(g2h.Unsupported):
         g2h.convert({"general.architecture": "paperkiln"}, {})

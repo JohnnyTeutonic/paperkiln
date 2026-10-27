@@ -1,8 +1,12 @@
-# The paperkiln IR, version 1
+# The keramos IR, version 1
 
-*Normative specification of the paperkiln model IR: a versioned JSON graph of a language model that an
+*Normative specification of the keramos IR: a versioned JSON graph of a language model that an
 engine interprets, rather than recognising a fixed architecture. IR version 1, specification revision
-1.3 (27 October 2026; v1.3.3).*
+1.3 (27 October 2026; v1.3.4).*
+
+The format's GGUF keys keep their `paperkiln.` prefix (`paperkiln.ir`, `paperkiln.ir_version`,
+`paperkiln.ir_sha256` and the rest), as does the architecture label "paperkiln" (rule 38): they are
+names in the format, unchanged by the specification's name.
 
 - Repository: keramos (`github.com/JohnnyTeutonic/keramos`), which holds this text, its schema, the
   reference tools, the worked documents and the conformance suite. Paths in this document are
@@ -1080,7 +1084,8 @@ those n tokens would leave. Per slot:
   `llama_memory_seq_rm` should (finding 4 of `adapters/llamacpp/FINDINGS.txt`, H3 of
   `adapters/hf/FINDINGS.txt`); the engine above it then re-prefills or refuses. Traces `pk_gpt2_swa_rewind_window` (window 4, sinks 2: 14 tokens, a cut to 7) and
   `tp_gemma3_rewind_window` (window 4 on its local layers: 48 tokens, more than llama.cpp's smallest
-  windowed cache, a cut to 10).
+  windowed cache, a cut to 10) and `tp_mistral_hd16_rewind_window` (window 4 on every layer: 14
+  tokens, a cut to 7).
 - **kv with kv_rows active:** keep the rows whose positions are < n, per application, with each
   application's written-rows mask truncated with them (section 7.5).
 - **recurrent:** a recurrence cannot drop tokens. Prefix reuse keeps a snapshot of the slot's
@@ -1281,6 +1286,38 @@ integers m_i >= 0.
 `"{i}"` in its tensor names means the application index i, not the stored layer m_i (the queries
 `rec_app.{i}.*` of llama_attnres under recursion, section 9.2). This is the only second meaning of
 `"{i}"`. Every untagged node keeps m_i.
+
+- The key belongs to the ops that name tensors, as `ir.schema.json` lists it: `embedding`,
+  `pos_embedding`, `linear`, `scale`, `rmsnorm`, `layernorm`, `moe_ffn`, `depth_attend`, `ssm_scan`,
+  `conv1d_causal`, `selective_scan` and `recurrence`. On any other op it is an attribute the op does
+  not define (rule 4). Its one value is `"application"` (rule 5).
+- It governs every tensor name of the node that holds `{i}` (`weight`, `bias`, `router`, `experts`,
+  ssm_scan's `a b c d`, a recurrence's `weights`), and only that node: the tag on one node moves no
+  other node's names. It is structural (section 3.8), so it holds in every application.
+- i runs over every application 0 .. `block.repeat` - 1, so the file holds a tensor for each
+  application that reads one (rule 25), whichever stored layer that application binds. These
+  tensors lie outside the stored layers: `<arch>.block_count` counts the stored layers 0 .. max m_i
+  alone (section 7.1, rule 27).
+- State and per-layer attributes are already per application under `weight_index` (section 7.1);
+  the tag changes tensor names only.
+- Without `weight_index`, m_i = i and the tag would change nothing; it is refused there (rule 19),
+  as it is outside the block, where `{i}` has no value (section 3.7).
+
+The two readings are far apart on a trained model. On the suite's `pk_llama_attnres_rec`
+(`weight_index` [0, 1, 1, 2], one pair of pseudo-queries per application, `rec_app.0` .. `rec_app.3`),
+the document without its tags is valid (every `rec_app.{m_i}` is a tensor of the file, and nothing
+forbids one pseudo-query serving several source counts) and computes another function: over the
+untagged trace's 8 ids its logits are 5.2e-2 of max(1, max |ref|) from the tagged document's, and
+the argmax differs at one of the 8 positions, against the ROUNDING tolerance 1e-5. Cases: the model case and its decode and chunks traces; the trace
+`pk_llama_attnres_rec_untagged`, which runs the same file under the untagged document
+(`accept/pk_llama_attnres_rec_untagged.ir.json`, also an acceptance case) and expects that
+document's values, so an engine that reads the application index wherever a name is `rec_app.{i}`,
+or in every node once one is tagged, fails it; and the refusals `tensor_index_without_weight_index`
+and `tensor_index_in_head` (rule 19), `tensor_index_value_unknown` (rule 5),
+`tensor_index_on_affine` (rule 4) and `tensor_index_absent_application_tensor` (rule 25: a tagged
+`rmsnorm` names `blk.3.attn_norm.weight` at application 3, past the stored layers 0 .. 2, which an
+engine that applies the tag to `depth_attend` alone accepts). There is no op case: `run_node` runs a
+node as application 0 of a one-node block without `weight_index`, where the key is refused.
 
 ### 7.3 Embedding re-injection
 
@@ -1683,8 +1720,8 @@ A tensor that is the same thing as a gpt2 tensor keeps llama.cpp's gpt2 name: `t
   require it present; an exporter must not drop it). Under weight_index the affine attributes and
   the bank are per APPLICATION, not per stored block: application i's source count grows with i
   even when it binds blk.{m_i}; the queries are rec_app.{i}.* with `"tensor_index": "application"`
-  (section 7.2). Architecture "paperkiln". Reference: paperkiln c48ca962; ember's ar3 gate (CPU),
-  which has no recursion and so does not cover `tensor_index`.
+  (section 7.2). Architecture "paperkiln". Reference: paperkiln c48ca962. Cases: pk_llama_attnres
+  (no recursion) and pk_llama_attnres_rec (fixed recursion, `tensor_index`; section 7.2's cases).
 - **llama_state**: the llama block (tensor names and nodes as llama) with an embedding state_weight
   (state_embd.weight [k, d]) and the state-token template; the attention mask is turn_state with kv
   evict turn_state (S-gist), or absent (causal: S-full, the insertion alone). Architecture
@@ -1706,8 +1743,8 @@ builder makes from the file), and an engine without the capability refuses such 
   `<arch>.attention.sliding_window` w sets window w, sinks 0 (HF Mistral's mask). llama.cpp has no
   architecture "mistral" (b6000 and its later releases refuse such a file): its converter writes a
   Mistral checkpoint as "llama" without the window key, and its llama graph has no window, so llama.cpp
-  computes a converted Mistral without its window (the suite's `tp_mistral` tests this builder, not
-  llama.cpp). A llama file with `llama.expert_count` and `ffn_gate_inp` (Mixtral's layout, revision
+  computes a converted Mistral without its window (the suite's `tp_mistral` and `tp_mistral_hd16`
+  test this builder, not llama.cpp). A llama file with `llama.expert_count` and `ffn_gate_inp` (Mixtral's layout, revision
   1.3): `moe_ffn` in place of the SwiGLU (router `ffn_gate_inp`, experts `ffn_{gate,up,down}_exps`,
   top_k `expert_used_count`, gate_norm renorm, activation silu), as llama.cpp's llama graph.
 - **qwen2, qwen3**: llama with NEOX RoPE; qwen2 biased q/k/v, qwen3 per-head q/k rmsnorm (group
@@ -2020,6 +2057,17 @@ snapshots), as a `skip` does; the next call sees the pre-call session.
 
 **Skips.** A `skip` covers the whole call: there is no per-report skip. The engine decides it before
 running anything, so a skipped call leaves the session as it was.
+
+An engine's own refusal of a case it cannot build is a `skip`, not an `error`: the engine declines
+the model before computing any of the case's values and says what it does not run (an architecture
+it has no graph or builder for, a kernel's shape precondition, a capability refusal of section 10.3).
+The adapter may find the refusal when it loads the model, by a throwaway run on a session of its own
+before the case's first call, and then skips every call of the case; its reason quotes the
+engine's message. An exception from a path the engine offers for the case (a builder that lists the
+architecture and stops) is an `error`, so the case fails; so is a refusal after some of the case's
+values have been computed. (ONNX Runtime GenAI's CPU kernel refusing head sizes its own builder
+emits is a skip; its builder stopping on an architecture it lists is a failure:
+`adapters/ortgenai/FINDINGS.txt`, findings 1 and 2.)
 
 **Sessions.** A session is one sequence on one loaded model. Its length `len` is the number of
 tokens seen; its state is whatever the engine keeps (kv rows, recurrent tensors, MoR row sets). A
@@ -2431,6 +2479,28 @@ equal to dc29b5e6 bit for bit) and the pinned commits of the RunPod campaigns ar
 
 ## Appendix B. Changelog
 
+- **v1.3.5** (tag, 27 October 2026; section 2.6). `tensor_index` (section 7.2) stated in full from what
+  the text and the schema already require: the ops that carry it, its reach over a node's names and no
+  other node's, applications 0 .. repeat - 1 against `block_count`'s stored layers, rule 19 in the head;
+  with the measured distance between the two readings on `pk_llama_attnres_rec` (5.2e-2 against the
+  tolerance 1e-5). New cases, no existing case or value changes: the trace `pk_llama_attnres_rec_untagged`
+  (the file under its document without the tags, `accept/pk_llama_attnres_rec_untagged.ir.json`), the
+  acceptance case `untagged_application_queries`, and the refusals `tensor_index_in_head` (rule 19),
+  `tensor_index_value_unknown` (rule 5), `tensor_index_on_affine` (rule 4) and
+  `tensor_index_absent_application_tensor` (rule 25): 437 cases; regenerated in the named environment
+  (section 4.6). Section 11.3: an engine's own refusal of a case it cannot build is a skip, an exception
+  from a path it offers a failure (Jonathan's ruling, 27 October 2026; O4 of
+  `adapters/ortgenai/FINDINGS.txt`). Appendix C: the ONNX Runtime GenAI row (its O5) and the engines'
+  `tensor_index` paths. Section 9.2's llama_attnres names the suite's cases.
+- **v1.3.4** (tag, 27 October 2026; section 2.6). The specification's name is the keramos IR (titles and
+  prose); the format's keys and labels keep their `paperkiln` names (the front matter). Three third-party
+  models with head_dim 16, the smallest head size onnxruntime's CPU GroupQueryAttention runs with fused
+  rotary (finding 1 of `adapters/ortgenai/FINDINGS.txt`; every earlier attention model of the suite has
+  head_dim 4 or 8): `tp_llama_hd16` (d 32, 2 heads, 2 kv heads), `tp_mistral_hd16` (d 32, 2 heads over 1 kv
+  head, window 4) and `tp_qwen3_hd16` (d 32, 4 heads over 2, head_dim 16 apart from d / heads, as in the
+  released Qwen3 checkpoints), 2 layers each, with their model cases, decode and chunks traces, truncate
+  traces (llama, qwen3) and a rewind into the window (mistral), accept cases and digest vectors: 431 cases,
+  no existing case or value changes; regenerated in the named environment (section 4.6) and reproduced.
 - **v1.3.3** (tag, 27 October 2026; section 2.6). The runner: an expected failure (`expected_fail.json`) covers a case the engine fails with an error as well as one it fails on values, so the clean-room engine's refusal of `position_bias` at load reports XFAIL. No case or expected value changes.
 - **v1.3.2** (tag, 27 October 2026; section 2.6). The whole-model case of T5's relative bias, `pk_flex_t5`
   (paperkiln's recipe in its `tools/ir_conformance_mtstudio.py`: flex, rmsnorm, relu, `position:
@@ -2536,7 +2606,7 @@ equal to dc29b5e6 bit for bit) and the pinned commits of the RunPod campaigns ar
 
 ## Appendix C. Engine capabilities (informative)
 
-What each engine runs, per path, as of 25 October 2026. These are statements about engines, not
+What each engine runs, per path, as of 27 October 2026. These are statements about engines, not
 semantics; `LOCAL_LLM_STACK.md` section 4's op table is the running record. Where a row lists a gap
 the engine has agreed to close, the specification already states the intended behaviour.
 
@@ -2546,6 +2616,7 @@ the engine has agreed to close, the specification already states the intended be
 | clean-room Rust engine (`cleanroom/rust`, `kcr`; informative: a third implementation written from this text alone, not a product) | core, state, recursion, thirdparty, recurrence | EXACT where this document says so (CPU) | scalar f32, ascending | GGUFs without a document (section 3.1), sidecars, `run_node_grad` |
 | llama.cpp b6000 (`adapters/llamacpp/`; informative: reads no document, builds its graph from `general.architecture` and its metadata) | none; the files whose architecture is one of its graphs (rule 38) | ROUNDING on the CPU path except: f32 GELU through an fp16 table (outside tol 1e-5); f16 attention under flash attention whatever the cache type; tanh GELU on gptneox, whose models use exact GELU; no window on llama | ggml CPU | "paperkiln" (every IR-only file) and "mistral" (no such architecture); a rewind into a window is safe only with `swa_full` or llama-server's guard (section 6.9) |
 | Hugging Face transformers 5.20.2 (`adapters/hf/`; informative: reads no document, runs HF checkpoints exported from the suite's GGUFs) | none; the files whose architecture is one of its model classes | ROUNDING on CPU in float32 (sdpa and eager); Mistral and Gemma 3 windows and Gemma 3's per-layer RoPE as specified; Mamba wrong on a multi-id forward over a cache (its finding 1) | torch CPU | "paperkiln"; windowed and recurrent rewinds are refused by `Cache.crop`, so its adapter re-prefills (section 6.9); through its own GGUF reader, Gemma 3's RoPE scaling and attention scale are lost and llama-architecture MoE files do not load |
+| ONNX Runtime GenAI 0.18.0, onnxruntime 1.31.1, CPU (`adapters/ortgenai/`; informative: reads no document; each GGUF exported to an HF checkpoint and built by its model builder, `-p fp32 -e cpu`) | none; the files whose architecture its builder takes (llama, qwen3, mistral, gemma3; its own GGUF loader for llama and mistral) | ROUNDING on CPU in float32 where it runs: Llama and Qwen3 at head_dim 16 on the stock build, Gemma 3 once its finding 3 is fixed, the GGUF loader included; Mistral's window dropped (since 0.15.2) | onnxruntime CPU (MLAS) | "paperkiln"; Mixtral, GPT-2, GPT-NeoX and Mamba (no builder); on CPU its GroupQueryAttention refuses head_size % 16 != 0 with fused rotary (head_size % 8 != 0 without), which the builder does not check; Gemma 3 does not build under 0.18.0 (KeyError 'rope_type'), and 0.15.2 builds it with its sliding layers' RoPE scaled by the global factor; `rewind_to` exact, into a window included (`adapters/ortgenai/FINDINGS.txt`) |
 | paperkiln `mtstudio`, CPU | the families it trains (section 9.2), from its own runs; recurrence nodes and their gradients through `ir_eval` | EXACT ops EXACT on every build (`-ffp-contract=off`); eviction EXACT at equal chunking (Appendix A) | `matmul_optimized` (FMA, shape-dependent order) | documents it did not export (it runs its modules, not documents); recurrence bodies with weights of their own in its training lane (the op takes them) |
 | paperkiln `mtstudio`, CUDA | as CPU | ROUNDING | cuBLAS FP32; TF32 opt-in | as CPU |
 | ember interpreter, CPU | core, state, recursion, chat, thirdparty, recurrence | EXACT where this document says so | `dot_f32_as_f64`, a fixed 8-lane double order independent of T and threads | see below |
@@ -2587,6 +2658,13 @@ recurrent state or a windowed slot; `mask: turn_state` with `kv_rows: active`; e
 state; `expr` nested deeper than 200 (the CUDA expr kernel takes up to 96 instructions, a stack of 16
 and 8 reductions, and serves larger expressions on the CPU); `attention.position_bias` per layer or under
 `depth_route` (ember runs it on the CPU interpreter otherwise, from 1ab6a252).
+
+**tensor_index** (section 7.2). The numpy reference and the clean-room engine pass every case of
+section 7.2 at v1.3.5; ember's CPU interpreter (from aa50a61, which binds a tagged node's names by
+application on every path and refuses the key nowhere at load) passed the model case and its traces
+at v1.3.4, before the six cases v1.3.5 adds; paperkiln's mtstudio exports it for llama_attnres
+under fixed recursion and scores its own models (the model case). ember's CUDA, WebAssembly and
+WebGPU paths are not yet gated on a model that carries it.
 
 **ember's conformance.** At ember 39dcce9 its adapter passes keramos v1.1.2 (as v1.1.1) with 230 pass, 0
 fail and 54 skip, the skips being the single-op fixtures of ops other than `recurrence` (its `run_node` runs

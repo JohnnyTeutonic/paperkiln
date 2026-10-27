@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""A third-party GGUF's paperkiln IR, built from its llama.cpp metadata (general.architecture and the
+"""A third-party GGUF's keramos IR document, built from its llama.cpp metadata (general.architecture and the
 <arch>.* keys) and tensor names: the reference for ember.cpp's C++ builder (IR_SPEC.md section 9.3). A file with paperkiln.ir needs none of this.
 
     python tools/gguf_ir.py MODEL.gguf [OUT.ir.json]

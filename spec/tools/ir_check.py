@@ -1,4 +1,4 @@
-"""Checks for the paperkiln IR embedded in a GGUF (IR_SPEC.md).
+"""Checks for the keramos IR document embedded in a GGUF (IR_SPEC.md).
 
     python tools/ir_check.py model.gguf                    container + specification checks
     python tools/ir_check.py model.gguf --like examples/chat_sftfinal.ir.json

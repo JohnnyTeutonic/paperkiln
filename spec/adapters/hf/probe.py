@@ -17,7 +17,7 @@ reference (tools/ir_numpy.py); nothing is written except --json and the adapter'
                 against the reference and against token-by-token decode; the same with the selective scan
                 seeded from the cached state (the fix); a single-token step after activate_past_recording
                 (the path assisted decoding takes).
-  swa_rewind    tp_mistral and tp_gemma3: prefill 48, truncate to 10 and to 40, forward 4: Cache.crop as
+  swa_rewind    tp_mistral, tp_mistral_hd16 and tp_gemma3: prefill 48, truncate to 10 and to 40, forward 4: Cache.crop as
                 transformers ships it, with activate_past_recording, and the adapter's re-prefill; each
                 against a fresh prefill and the reference.
   snapshot      snapshot at 8, forward 4, restore, forward the same 4: bit identity.
@@ -42,8 +42,9 @@ import hf_adapter  # noqa: E402
 
 SUITE = ROOT / "conformance" / "models"
 TOL = 1e-5
-MODELS = ["tp_qwen3", "tp_mistral", "tp_gemma3", "tp_gptneox", "tp_mamba1", "pk_llama", "pk_moe", "pk_gpt2"]
-WINDOWED = {"tp_mistral", "tp_gemma3"}
+MODELS = ["tp_qwen3", "tp_mistral", "tp_gemma3", "tp_gptneox", "tp_mamba1", "pk_llama", "pk_moe", "pk_gpt2",
+          "tp_llama_hd16", "tp_mistral_hd16", "tp_qwen3_hd16"]
+WINDOWED = {"tp_mistral", "tp_gemma3", "tp_mistral_hd16"}
 
 
 def ids_for(vocab, n=16, seed=7):
@@ -340,7 +341,7 @@ def gguf_loader(name, mistral_name="Mistral-7B-v0.1"):
         if "does not load cleanly" not in str(e):
             return out
         # Load it anyway, as a user who ignores the warning would, to see what runs.
-        src = gguf if name != "tp_mistral" else gg._as_llama(gguf, "x")
+        src = gguf if not name.startswith("tp_mistral") else gg._as_llama(gguf, "x")
         m = AutoModelForCausalLM.from_pretrained(str(Path(src).parent), gguf_file=Path(src).name, dtype=torch.float32)
         mg = {"model": m.eval()}
     me = ex._model(gguf)["model"]

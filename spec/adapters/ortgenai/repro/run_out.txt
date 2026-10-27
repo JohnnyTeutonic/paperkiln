@@ -1,0 +1,70 @@
+<3>WSL (576776 - Relay) ERROR: CreateProcessCommon:867: chdir(/c/Users/jonat) failed 2
+##### ort1 tf5 0.18.0
+KeyError: 'rope_type'
+Valid precision + execution provider combinations are: FP32 CPU, FP32 CUDA, FP16 CUDA, FP16 DML, FP16 TRT-RTX, BF16 CUDA, BF16 TRT-RTX, INT8 CPU, INT8 CUDA, INT8 WebGPU, INT4 CPU, INT4 CUDA, INT4 DML, INT4 WebGPU
+Extra options: {}
+WARNING: This model loses accuracy with float16 precision. It is recommended to set `--precision bf16` or `--precision int4 --extra_options use_cuda_bf16=true` by default.
+##### ort1 tf5 main
+1
+  File "/home/jonat/issues_work/ortgenai_main/src/python/py/models/builders/base.py", line 706, in make_rope_init
+    if config.rope_parameters["rope_type"] == "yarn":
+       ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+KeyError: 'rope_type'
+##### ort1 tf4 0.18.0
+    from transformers import (
+ImportError: cannot import name 'Qwen3_5ForConditionalGeneration' from 'transformers' (/home/jonat/ort_keramos/venv_tf4/lib/python3.12/site-packages/transformers/__init__.py)
+##### ort2 tf4 main + 0.18.0 runtime
+cos_cache_global: vs cos(p * inv_freq) 2.00e+00, vs cos(p * inv_freq / 8) 1.12e-06
+cos_cache_local: vs cos(p * inv_freq) 2.00e+00, vs cos(p * inv_freq / 8) 2.02e-06
+vs transformers: max |diff| / max |logit| 0.519 (position 0: 2.23e-07), argmax differs at 16 of 48 positions
+##### ort2 tf4 0.15.2
+cos_cache_global: vs cos(p * inv_freq) 2.00e+00, vs cos(p * inv_freq / 8) 1.12e-06
+cos_cache_local: vs cos(p * inv_freq) 2.00e+00, vs cos(p * inv_freq / 8) 2.02e-06
+vs transformers: max |diff| / max |logit| 0.519 (position 0: 2.23e-07), argmax differs at 16 of 48 positions
+##### ort2 tf4 main fixed + 0.18.0 runtime
+cos_cache_global: vs cos(p * inv_freq) 2.00e+00, vs cos(p * inv_freq / 8) 1.12e-06
+cos_cache_local: vs cos(p * inv_freq) 1.67e-05, vs cos(p * inv_freq / 8) 2.00e+00
+vs transformers: max |diff| / max |logit| 5.45e-07 (position 0: 2.23e-07), argmax differs at 0 of 48 positions
+##### ort3 tf5 0.18.0
+/model/layers.0/attn/GroupQueryAttention local_window_size [-1]
+/model/layers.1/attn/GroupQueryAttention local_window_size [-1]
+genai_config sliding_window: {'window_size': 8, 'slide_key_value_cache': False, 'slide_inputs': False, 'layers': [], 'cache_slack': 0}
+prompt of 16: 16 positions, max |diff| / max |logit| 0.556, first position past 1e-5: 8, argmax differs at 7
+prompt of 8, then one token at a time: 24 positions, max |diff| / max |logit| 0.677, first position past 1e-5: 8, argmax differs at 14
+prompt of 8, then one token at a time: append_tokens failed after 24 positions: /onnxruntime_src/onnxruntime/core/framework/op_kernel.cc:87 virtual OrtValue* onnxruntime::OpKernelContext::OutputMLValue(int, const onnxruntime::Tens
+prompt of 48: append_tokens failed after 0 positions: total_sequence_length must equal past_sequence_length + kv_sequence_length for a dynamic cache, or be no greater than past_sequence_length for a stati
+##### ort3 tf5 main
+/model/layers.0/attn/GroupQueryAttention local_window_size [-1]
+/model/layers.1/attn/GroupQueryAttention local_window_size [-1]
+genai_config sliding_window: {'window_size': 8, 'slide_key_value_cache': False, 'slide_inputs': False, 'layers': [], 'cache_slack': 0}
+prompt of 16: 16 positions, max |diff| / max |logit| 0.556, first position past 1e-5: 8, argmax differs at 7
+prompt of 8, then one token at a time: 24 positions, max |diff| / max |logit| 0.677, first position past 1e-5: 8, argmax differs at 14
+prompt of 8, then one token at a time: append_tokens failed after 24 positions: /onnxruntime_src/onnxruntime/core/framework/op_kernel.cc:87 virtual OrtValue* onnxruntime::OpKernelContext::OutputMLValue(int, const onnxruntime::Tens
+prompt of 48: append_tokens failed after 0 positions: total_sequence_length must equal past_sequence_length + kv_sequence_length for a dynamic cache, or be no greater than past_sequence_length for a stati
+##### ort3 tf4 0.15.2
+/model/layers.0/attn/GroupQueryAttention local_window_size [8]
+/model/layers.1/attn/GroupQueryAttention local_window_size [8]
+genai_config sliding_window: None
+prompt of 16: 16 positions, max |diff| / max |logit| 3.48e-07, first position past 1e-5: None, argmax differs at 0
+prompt of 8, then one token at a time: 48 positions, max |diff| / max |logit| 3.68e-07, first position past 1e-5: None, argmax differs at 0
+prompt of 48: 48 positions, max |diff| / max |logit| 3.43e-07, first position past 1e-5: None, argmax differs at 0
+##### ort4 tf5 0.18.0
+head_dim 8: do_rotary=[1], first append_tokens fails: head_size shall be a multiple of 16. Got head_size % 16 == 8
+head_dim 16: do_rotary=[1], runs, max |diff| vs transformers 1.79e-07
+head_dim 24: do_rotary=[1], first append_tokens fails: head_size shall be a multiple of 16. Got head_size % 16 == 8
+head_dim 32: do_rotary=[1], runs, max |diff| vs transformers 3.58e-07
+##### ort4 tf5 main
+head_dim 8: do_rotary=[1], first append_tokens fails: head_size shall be a multiple of 16. Got head_size % 16 == 8
+head_dim 16: do_rotary=[1], runs, max |diff| vs transformers 1.79e-07
+head_dim 24: do_rotary=[1], first append_tokens fails: head_size shall be a multiple of 16. Got head_size % 16 == 8
+head_dim 32: do_rotary=[1], runs, max |diff| vs transformers 3.58e-07
+##### ort4 tf4 0.15.2
+head_dim 8: do_rotary=[1], first append_tokens fails: head_size shall be a multiple of 16. Got head_size % 16 == 8
+head_dim 16: do_rotary=[1], runs, max |diff| vs transformers 1.79e-07
+head_dim 24: do_rotary=[1], first append_tokens fails: head_size shall be a multiple of 16. Got head_size % 16 == 8
+head_dim 32: do_rotary=[1], runs, max |diff| vs transformers 3.58e-07
+##### ort4 tf5 fix
+head_dim 8: do_rotary=[0], runs, max |diff| vs transformers 1.19e-07
+head_dim 16: do_rotary=[1], runs, max |diff| vs transformers 1.79e-07
+head_dim 24: do_rotary=[0], runs, max |diff| vs transformers 2.24e-07
+head_dim 32: do_rotary=[1], runs, max |diff| vs transformers 3.58e-07

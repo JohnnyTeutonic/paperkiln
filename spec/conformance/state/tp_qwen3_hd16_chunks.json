@@ -1,0 +1,226 @@
+{
+ "model": "models/tp_qwen3_hd16",
+ "evict": null,
+ "class": "ROUNDING",
+ "tol": 1e-05,
+ "steps": [
+  {
+   "method": "forward",
+   "ids": [
+    1,
+    1,
+    16,
+    17
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    12,
+    12,
+    1
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    14
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    9,
+    13
+   ]
+  }
+ ],
+ "expect": [
+  {
+   "len": 4,
+   "logits": {
+    "shape": [
+     4,
+     24
+    ],
+    "f32": "bece4ecabe251f923f6ee002bf8f8a5a3f9d5bac3fd491133e8c27cc3e44cf74bed087573f271be03e8b740a3f7e95f1bf27546f3f53eca2bf581dfebf216bf8bfa1dc34bedbb6abbf8289d8bf8ee3823f3fdb723f595a993f8fcb9f3f8bdbf0bece4ec6be251f8a3f6ee001bf8f8a5c3f9d5baa3fd491143e8c27cb3e44cf75bed087613f271be53e8b740e3f7e95f2bf2754693f53eca1bf581dfdbf216bfabfa1dc35bedbb6a5bf8289d9bf8ee3813f3fdb713f595a983f8fcba03f8bdbf0bea248403c9c92f03f9c5793bff6009ebdbed2683f0c05613ffa7646bf774f6e3c14a2c0beb3f4103f2422e1c0159f03c00be479be65238d3ec17984bfd9dc5a3ecc0e51c0109ed13eee29693e291b63bf528e923fc33338bbd1a780bf204665bf2c39bebf3b39693f7bd59bbf2cc0a2be8e5c8c3eb4f30f3fc03f8bbfa97eba3faa86a13f4d3e60bf10658abf99d977c007e517bf37eac03c6b0ee0bf7e786e3b8812e0bfe9668abe99d5e2bf125fae3e66b2b23ffc9ca6bedfdb123eec3032"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      4
+     ],
+     [
+      4
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "len": 7,
+   "logits": {
+    "shape": [
+     3,
+     24
+    ],
+    "f32": "bc9087b93f114cac3f288822bf1b5a8a3eb17b4d3f482810bdfaca6dbf32a68fbeac96453f922bb93daac028401c14573fc5853e3dcd9e8abf3d3109beea23dcbee26011bd7ff28dbe9e79a4bc4de020bf220c56bf28f6f0beaa067d3fd148ecbeaf88b73f8bb14d3f05b6d9bf21f2043e9d11dc3f66cf71bea6b48ebf101dacbda635c53f89389d3c944d9f4023d16f3f99961e3de22d78bf493ef73ccfbde6bf4d61163eaf291abe986bc53e91a6eebe94974dbf3b233bbec61f9f3ffaa7103ce30daa4017dfa63e542762bf8361e53f99ce493ba725683f9f191bbfaea14a3f376a6e3e3de41cbcd159893db5b9733f23fbecbfbd622dc0059fdcbf0d56683dd3ad313e6924593df7b8ccbf0a5f84bfbab58c3f3a7216bd97ef513eac092e"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      7
+     ],
+     [
+      7
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "len": 8,
+   "logits": {
+    "shape": [
+     1,
+     24
+    ],
+    "f32": "bf091209bf7d49b03e990effbeb79cdc3edd82c44034644ebf8397f83eab7e66bf309ff33fd531e3bf3af4424011f5713eaab8b03f2a59e0bdacfd603db4b638bf7a897e3e79576cbf6faa58be9291b03fb12da13f64b0cebebeb8b63e875b72"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      8
+     ],
+     [
+      8
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "len": 10,
+   "logits": {
+    "shape": [
+     2,
+     24
+    ],
+    "f32": "be5507b03e33ea163f721fb6bed8d4773f8ce268400fe292bf925bb03f2e5590be6e977d3ff3880fbf05ac0840470e803f1c87523e426f56bf59a228be23da32bf5980913ea647ddbf8c1c43be1191ec3fcedb01bd3247d73e3a23663fb068553daace11bf9323a03fd3f89bbf921da03eff91e43f542f083f90b76bbf4c55e73f4310093faf058b3edf2365bf00a46dbfe6640c3f43e8293e7e3029bfbee6533e4b929dbfac248dbea4f00cbf3944f83e1cf70f3f6fd5d4bf076a333dcebb67"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      10
+     ],
+     [
+      10
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7,
+       8,
+       9
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7,
+       8,
+       9
+      ]
+     ]
+    ]
+   }
+  }
+ ]
+}

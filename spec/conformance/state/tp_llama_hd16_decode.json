@@ -1,0 +1,319 @@
+{
+ "model": "models/tp_llama_hd16",
+ "evict": null,
+ "class": "ROUNDING",
+ "tol": 1e-05,
+ "steps": [
+  {
+   "method": "forward",
+   "ids": [
+    1,
+    23,
+    21,
+    2
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    3
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    18
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    13
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    22
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    2
+   ]
+  }
+ ],
+ "expect": [
+  {
+   "len": 4,
+   "logits": {
+    "shape": [
+     4,
+     24
+    ],
+    "f32": "bf5b4bf8bf9356d63f0cc7bc3f68e33cbe391ce0bf0f537abf75b8a83db89358be9e89f13fb1503abec469a0bebb0f01be88e200bf4707acbf7f9da9bfa76bedbf02bb0b3f77fc363f2c2d9d3f23d7f23f2c666a3eb76d6abef6adfc3f4f56fcbf5e39a0bf1010313fb5724a3c919660bb7697003e96b0eabf6960c63fb8cff1bfa3669bbe8ecdeabecdfdb7bea600913f3df150bfcef6763f75cd7ebfca77e439df90003f8e836a3e5fda04be12c8a5bf1155be3f8250983f005f2b3f6ec4a9be850170bc051a803faca46cbe0fd86dbef5b8953f2344b4be8d4aadbe4300d03f03ca2d3fc7fcdc3f131107bfc933e4be95264ebf8a22bf3e1948c8bf90d1c33eaa2b663fc11da03ebfa15a3f86fb5e3ea047ac400a0d8d3e8f31f03f607e12bf089df9beccb9743fcef6613d4b7db8bf11786cbf286548bf11691e3de3f240bf3605e13f91e3af3e163044bea93f84bed7489ebfbc58d2bf57684cbfab4daabee4a1fe3ef422463ea361c23e38dd87bd8659dc3fa93ff83ee472233e830d95"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      4
+     ],
+     [
+      4
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "len": 5,
+   "logits": {
+    "shape": [
+     1,
+     24
+    ],
+    "f32": "3cedceb2bf19e6c63f6db31e3f783edbbfa8f630bf17ab2abfc9879f3edc1942bf26f83b3e3d67433f5b401fbf0c39ddbf6d7066bfceed6bbe85d10fbf92efe83e935506bd5794c6be0e0765bea104c4bf65b3583f8344a43db7e890bebeac4a"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      5
+     ],
+     [
+      5
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "len": 6,
+   "logits": {
+    "shape": [
+     1,
+     24
+    ],
+    "f32": "3f0fffe0bf2f5925be2c37133ec99a6fbfe02b9cbf9a0deebfdcb745bff1230ebe16bc3f3fad9aeb3fde475fbfa87c2ebe24af9cbfba4ee83f46b0383ee19f523f3fadf43d2c34a34012706b3eeabe70bea5120e3fd2efb73e2133b0bfb0437b"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      6
+     ],
+     [
+      6
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "len": 7,
+   "logits": {
+    "shape": [
+     1,
+     24
+    ],
+    "f32": "bcd4e7afbd2a8d903f87c5493da82ec1be945930bd2d6791bfa1f0723f0146d7bf6b5a943f2bf118bf9720b63e79a8af3f0f7e8abeb5998b3f89c5c6bfbfe51dbf2891213f8bfb1fbe90ac10be97c719bf0c39413f55d5393f5db2273f3373e5"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      7
+     ],
+     [
+      7
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "len": 8,
+   "logits": {
+    "shape": [
+     1,
+     24
+    ],
+    "f32": "beaa5730bf8103083f961f7b3f2cb37abecaf673bf3c924cbf84c30a3dae1fd0bf94356c3f8a99063e8f145ebd6015b83df17b40bf9d08123dd43684beaa86843ee156483f69d5ec3f44eac03f96ed5fbf6a90ee3f399cdebc59701d3f3149a7"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      8
+     ],
+     [
+      8
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "len": 9,
+   "logits": {
+    "shape": [
+     1,
+     24
+    ],
+    "f32": "bfa4ec6bbefab1d83fa2541e3e0069483f0c159a3f534a6d3e9eb4943ddb2029bf129c743f64e774bec31177bf08004f3ebe92efbf9c92c93df67753bfcbfa3a3d578e5e3f82e69cbf265aad3ee7636dbd1fb6a33f36488d3d1d82de3f6ae35f"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      9
+     ],
+     [
+      9
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7,
+       8
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7,
+       8
+      ]
+     ]
+    ]
+   }
+  }
+ ]
+}

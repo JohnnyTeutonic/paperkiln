@@ -1,4 +1,4 @@
-# The paperkiln IR against prior art: where it can lead
+# The keramos IR against prior art: where it can lead
 
 *Survey of 25 October 2026. Sources were fetched on that date. Claims about other systems are cited.
 "UNVERIFIED" marks a claim we could not confirm from a primary source, and every claim of absence
@@ -20,7 +20,7 @@ None of them specifies the parts that make a language model a language model:
 - how numerics are classed (bit-exact against within-tolerance) per op.
 
 In every surveyed system these live in engine code, vendor ops or runtime APIs. This is the gap.
-paperkiln's IR states them normatively, and two engines are gated against one reference
+The keramos IR states them normatively, and two engines are gated against one reference
 interpreter. The way to lead is to make that layer the artefact: a standalone spec, a conformance
 suite, a primitive-definition layer for stateful ops, and a mechanised core. Adding more families is
 not the way.

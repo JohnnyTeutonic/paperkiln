@@ -1,0 +1,394 @@
+{
+ "model": "models/pk_llama_attnres_rec",
+ "evict": null,
+ "class": "ROUNDING",
+ "tol": 1e-05,
+ "steps": [
+  {
+   "method": "forward",
+   "ids": [
+    14,
+    2,
+    3,
+    12
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    1
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    11
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    5
+   ]
+  },
+  {
+   "method": "forward",
+   "ids": [
+    8
+   ]
+  }
+ ],
+ "expect": [
+  {
+   "len": 4,
+   "logits": {
+    "shape": [
+     4,
+     15
+    ],
+    "f32": "be8828733f99fa34bead5c8fbe92da35bf56e9a0bf52a568bf7198343c9a6988bba2dc81bed3b0be3e9e8bc93e8099e93e904a0b3eb8c1c43f88d3003de7280abf739ec43ef177263ebdb9ab3f8a969b3f8a9e663f536102be48deedbe6be800bdc1d017be9500dcbe8e81bbbe86837bbe8c6e74bf703eeebdbab97bbf5c3dec3e875dc63e9a90e53f6225cc3f914c623f6474b4be443c44be84afd8bde62b71be9b5cabbea16e65be907d1cbeaeef85bf4dcd8d3e60a2eebea15e1d3f88bb603f6a49743f1ab4ba3efb88cebe21a32cbf262cd0bf17f26dbf8806de3f08d55e3e4e7b513e9badd63ea5233fbf1cbce1"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      4
+     ],
+     [
+      4
+     ],
+     [
+      4
+     ],
+     [
+      4
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "len": 5,
+   "logits": {
+    "shape": [
+     1,
+     15
+    ],
+    "f32": "3cb063f63f14b1b33ea23e863e7ac3a2bec77b2cbf03f406bf20e8dabf2cb716bf343cadbf2a9f093f512a693f3960b03f4118243f4ade55be6f4d29"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      5
+     ],
+     [
+      5
+     ],
+     [
+      5
+     ],
+     [
+      5
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "len": 6,
+   "logits": {
+    "shape": [
+     1,
+     15
+    ],
+    "f32": "3e5918a0beb09bed3f8779e63f6b05a73f1ee3f93f03786bbe0cb367bf236867bf1433e4bf847cb23f02621a3e50a51a3e920b7e3e9bb7b5bf2675b5"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      6
+     ],
+     [
+      6
+     ],
+     [
+      6
+     ],
+     [
+      6
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "len": 7,
+   "logits": {
+    "shape": [
+     1,
+     15
+    ],
+    "f32": "be6061f8bf6eeec4be28feddbdd001b33f1720333f4c1cdc3f9e39f3bcc2bcabbdea5d1c3f2eebf4beddfcd6bead817cbeac749cbec822abbf481e8c"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      7
+     ],
+     [
+      7
+     ],
+     [
+      7
+     ],
+     [
+      7
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "len": 8,
+   "logits": {
+    "shape": [
+     1,
+     15
+    ],
+    "f32": "bea09d673f54dd2cbf149afdbeed6cefbf34cefcbf1b15ebbf14cb383f16bbf73f249cdc3d00411dbe7388f8be9f0515be988c18be7f6d0e3fc225b6"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      8
+     ],
+     [
+      8
+     ],
+     [
+      8
+     ],
+     [
+      8
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7
+      ]
+     ]
+    ]
+   }
+  }
+ ],
+ "ir": "accept/pk_llama_attnres_rec_untagged.ir.json"
+}

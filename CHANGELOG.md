@@ -7,6 +7,15 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **keramos v1.3.5 pinned; llama_attnres under recursion gated for ember** (27 Oct; `spec/`, LOCAL_LLM_WORK.md
+  D4). v1.3.5 states `"tensor_index": "application"` in full (IR_SPEC 7.2) with six cases on
+  pk_llama_attnres_rec, makes an engine's own refusal of a case a skip (11.3) and adds Appendix C's ONNX Runtime
+  GenAI row; no exporter change. `tests/test_llama_attnres_ir.py`: ar_rec (1 + [2] x 2 + 1, weight_index
+  [0, 1, 2, 1, 2, 3], d 32, one pair of queries per application) is a gate model (ATTNRES_GATE_DIR writes its
+  ember files, as for ar3 and ar_x5), and the test checks that the document without its tags moves the logits
+  (2.1e-2 of max(1, |ref|) on 8 prompts); numpy IR vs mtstudio score 3.2e-7, greedy 40/40. Gate files
+  `C:/ml_artifacts/attnres_gate_rec/ar_rec`.
+
 - **The extractor bench under the 26 Oct prompt** (27 Oct; prompt e6c6c505, claude-opus-5-5 at effort high;
   tag bench3, $18.08 for 39 calls, Primer a cache hit from 26 Oct; Galactica fell back to claude-opus-4-8 as
   on 22 Oct; receipts `papers/llm_extract_receipts/2026-10-27_bench3.json`, `..._bench_scores.json`).

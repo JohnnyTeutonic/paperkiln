@@ -5,8 +5,9 @@ sections 2-3, cell X).
 Tiny llama_attnres models train for 40 steps on CPU and export F32 and Q8_0 GGUFs:
   ar3     3 layers, scale "sources" (the arm's form)
   ar3n    3 layers, scale "none" (Kimi's convex mixture)
-  ar_rec  1 + [2] x 2 + 1 fixed recursion, one pair of queries per application ("tensor_index":
-          "application", not yet in ir.hpp: ahead of ember)
+  ar_rec  1 + [2] x 2 + 1 fixed recursion (weight_index [0, 1, 2, 1, 2, 3]), one pair of queries per
+          application ("tensor_index": "application", IR_SPEC 7.2); also checked against the document
+          without its tags, which reads the stored layer's queries and must move the log-probabilities
   ar_x5   the arm's shape (tiny-chat amendment 5, cell X5): 20m_L16, d 320, 16 layers, 5 heads, d_ff 864,
           rope on every head, scale "sources" (33 depth sources), on the toy vocabulary
 Checks: the run logs the attn_res model event; the files pass spec/tools/ir_check.py; architecture "paperkiln";
@@ -20,7 +21,7 @@ max(1, max |ref|)) and greedy 40/40. At step 1 an attn_res run's loss equals the
 seed (zero queries; scale "sources"). Malformed specs are refused.
 
 ATTNRES_GATE_DIR=DIR also writes the gate files for ember (F32 GGUF, IR, Q8_0 GGUF, vocabulary,
-score_in/score_out, spec and a manifest with sha256) for ar3 and ar_x5 into DIR/<name>/, the layout of
+score_in/score_out, spec and a manifest with sha256) for ar3, ar_rec and ar_x5 into DIR/<name>/, the layout of
 tests/test_mor_ir.py's MOR_GATE_DIR.
 Needs MTSTUDIO_BIN (or ./build/mtstudio); skipped otherwise.
 """
@@ -40,7 +41,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(ROOT / "spec" / "tools"))  # keramos (the IR reference)
 from test_mtstudio_chat import BIN, write_vocab_gguf  # noqa: E402
 from test_mtstudio_moe import WORDS, corpus, events, run  # noqa: E402
-from test_recursion_ir import gguf_exports, parity  # noqa: E402
+from test_recursion_ir import gguf_exports, parity, prompts, weights  # noqa: E402
 import ir_check  # noqa: E402
 
 needs_bin = pytest.mark.skipif(BIN is None, reason="set MTSTUDIO_BIN to a built mtstudio")
@@ -54,7 +55,7 @@ CASES = {
 }
 EXTRA = {"ar_x5": {"rope_heads": "all"}}  # the arm's arch (make_jobs.pt_spec)
 D = 32
-GATES = ("ar3", "ar_x5")
+GATES = ("ar3", "ar_rec", "ar_x5")
 
 
 def spec_of(tmp, name, custom, steps=40, formats=("safetensors", "gguf", "gguf_q8_0"), extra=None, train=None):
@@ -93,7 +94,23 @@ def tensor_values(path, name):
     return np.frombuffer(raw, dtype=np.float32, count=int(np.prod(t[1])), offset=data_start + t[3])
 
 
-def write_gate(name, spec, res, custom):
+def untagged_gap(doc, f32, n=8):
+    """The largest |logit| difference, relative to max(1, max |ref|), between the document and the same
+    document without its tensor_index tags (application i reading rec_app.{m_i}), over n prompts."""
+    import numpy as np
+    import ir_numpy
+    alt = json.loads(json.dumps(doc))
+    for nd in alt["block"]["nodes"]:
+        nd.pop("tensor_index", None)
+    W = weights(f32)[1]
+    gap = 0.0
+    for p in prompts()[:n]:
+        a, b = ir_numpy.forward(doc, W, list(p)), ir_numpy.forward(alt, W, list(p))
+        gap = max(gap, float(np.abs(a - b).max() / max(1.0, float(np.abs(a).max()))))
+    return gap
+
+
+def write_gate(name, spec, res, custom, extra=None):
     out = Path(os.environ["ATTNRES_GATE_DIR"]) / name
     out.mkdir(parents=True, exist_ok=True)
     ex = gguf_exports(spec)
@@ -109,6 +126,7 @@ def write_gate(name, spec, res, custom):
     manifest = {"model": name, "family_hint": "llama_attnres", "arch_custom": custom,
                 "spec": json.loads(Path(spec).read_text()),
                 "numpy_vs_mtstudio": {"worst": worst, "agree": agree, "n": n},
+                **(extra or {}),
                 "files": {f.name: sha256(out / f.name) for f in files},
                 "_note": "score_in.jsonl: prompt_ids and spec/tools/ir_numpy.py's greedy continuation over the F32 GGUF; "
                          "score_out.jsonl: mtstudio score over the same ids (logprobs, argmax). ember gate: "
@@ -169,8 +187,17 @@ def test_attnres_export_and_numpy_parity(tmp_path, name):
     print(f"{name} {custom}: numpy IR vs mtstudio log-probs worst {worst:.2e} of max(1, |ref|); greedy {agree}/{n}")
     assert n == 40 and agree == 40
     assert worst <= 1e-5
+    extra = None
+    if rec:
+        # The tags matter (IR_SPEC 7.2): the stored layer's queries give another function.
+        gap = untagged_gap(doc, f32)
+        print(f"{name}: the untagged document's logits differ by {gap:.2e} of max(1, |ref|) on 8 prompts")
+        assert gap > 1e-3, gap
+        extra = {"weight_index": doc["block"]["weight_index"]["per_layer"], "untagged_gap": gap,
+                 "_untagged_gap": "max |logit difference| / max(1, max |ref|) over the first 8 prompts between the "
+                                  "document and the same document without its tensor_index tags (IR_SPEC 7.2)"}
     if os.environ.get("ATTNRES_GATE_DIR") and name in GATES:
-        write_gate(name, spec, (worst, agree, n), custom)
+        write_gate(name, spec, (worst, agree, n), custom, extra)
 
 
 @needs_bin

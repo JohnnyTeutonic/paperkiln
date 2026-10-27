@@ -78,6 +78,10 @@
    "gguf": "models/tp_gptneox/tp_gptneox.gguf"
   },
   {
+   "name": "model_tp_llama_hd16",
+   "gguf": "models/tp_llama_hd16/tp_llama_hd16.gguf"
+  },
+  {
    "name": "model_tp_mamba1",
    "gguf": "models/tp_mamba1/tp_mamba1.gguf"
   },
@@ -86,8 +90,16 @@
    "gguf": "models/tp_mistral/tp_mistral.gguf"
   },
   {
+   "name": "model_tp_mistral_hd16",
+   "gguf": "models/tp_mistral_hd16/tp_mistral_hd16.gguf"
+  },
+  {
    "name": "model_tp_qwen3",
    "gguf": "models/tp_qwen3/tp_qwen3.gguf"
+  },
+  {
+   "name": "model_tp_qwen3_hd16",
+   "gguf": "models/tp_qwen3_hd16/tp_qwen3_hd16.gguf"
   },
   {
    "name": "rewritten_pk_kimi",
@@ -149,6 +161,11 @@
    "name": "substituted_over_duplicate_embedded",
    "gguf": "refuse/duplicate_member_embedded.gguf",
    "ir": "accept/pk_llama.ir.json"
+  },
+  {
+   "name": "untagged_application_queries",
+   "gguf": "models/pk_llama_attnres_rec/pk_llama_attnres_rec.gguf",
+   "ir": "accept/pk_llama_attnres_rec_untagged.ir.json"
   }
  ]
 }

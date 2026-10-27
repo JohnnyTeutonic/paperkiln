@@ -1,13 +1,13 @@
 {
  "spec": {
   "repository": "keramos",
-  "tag": "v1.3.1",
-  "commit": "c898414cc1b569b50e0a2061d01ac269edce2d30"
+  "tag": "v1.3.4",
+  "commit": "7a37bf6973543914e7b3f4750b91131860d11b8f"
  },
  "engine": {
   "name": "keramos-cleanroom (Rust), kcr --conformance, built from keramos 1d1fd3773e82b6c03d263426fe95fa10fb1cae51 (cleanroom/rust; rustc 1.98.1, release, no crates, WSL ext4)",
   "environment": "the runner under CPython 3.12.3, numpy 2.3.3, WSL",
-  "run": "python3 tools/ir_conformance.py --adapter cmd:kcr --conformance, keramos working tree equal to v1.3.1 (c898414c), 2026-10-27, the engine unchanged since 1d1fd377 (revision 1.2, a black box here); skips: the 8 gradient cases and the 32 chat cases; XFAIL: the 8 revision-1.3 cases expected_fail.json lists (its run_node ignores attention.position_bias; rule 38 is not built)"
+  "run": "python3 tools/ir_conformance.py --adapter cmd:kcr --conformance, in a clean clone of keramos at v1.3.4 (7a37bf69), 2026-10-27, the engine unchanged since 1d1fd377 (revision 1.2, a black box here); skips: the 8 gradient cases and the 32 chat cases; XFAIL: the 12 revision-1.3 cases expected_fail.json lists (its run_node ignores attention.position_bias, its loader refuses the attribute as an unknown key, rule 38 is not built); the 18 cases of v1.3.4 pass"
  },
  "adapter": {
   "engine": "keramos-cleanroom (Rust)",
@@ -22,25 +22,25 @@
   ]
  },
  "counts": {
-  "PASS": 360,
+  "PASS": 379,
   "FAIL": 0,
   "SKIP": 40,
-  "XFAIL": 8,
+  "XFAIL": 12,
   "XPASS": 0
  },
  "by_kind": {
   "model": {
-   "PASS": 21,
+   "PASS": 24,
    "FAIL": 0,
    "SKIP": 0,
-   "XFAIL": 0,
+   "XFAIL": 1,
    "XPASS": 0
   },
   "trace": {
-   "PASS": 62,
+   "PASS": 71,
    "FAIL": 0,
    "SKIP": 0,
-   "XFAIL": 0,
+   "XFAIL": 2,
    "XPASS": 0
   },
   "op": {
@@ -58,7 +58,7 @@
    "XPASS": 0
   },
   "digest": {
-   "PASS": 84,
+   "PASS": 88,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
@@ -79,10 +79,10 @@
    "XPASS": 0
   },
   "accept": {
-   "PASS": 35,
+   "PASS": 38,
    "FAIL": 0,
    "SKIP": 0,
-   "XFAIL": 0,
+   "XFAIL": 1,
    "XPASS": 0
   },
   "chat": {
@@ -129,6 +129,18 @@
    "kind": "trace",
    "verdict": "PASS",
    "detail": "6 steps"
+  },
+  {
+   "id": "model/pk_flex_t5",
+   "kind": "model",
+   "verdict": "XFAIL",
+   "detail": "RuntimeError: IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key position_bias is not defined [expected to fail: revision 1.3's attention.position_bias (IR_SPEC 5.15): the clean-room engine (re]"
+  },
+  {
+   "id": "trace/pk_flex_t5_decode",
+   "kind": "trace",
+   "verdict": "XFAIL",
+   "detail": "RuntimeError: IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key position_bias is not defined [expected to fail: revision 1.3's attention.position_bias (IR_SPEC 5.15): the clean-room engine (re]"
   },
   {
    "id": "model/pk_gpt2",
@@ -371,6 +383,24 @@
    "detail": "6 steps"
   },
   {
+   "id": "model/tp_llama_hd16",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 6.28e-07; greedy 4/4"
+  },
+  {
+   "id": "trace/tp_llama_hd16_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "trace/tp_llama_hd16_truncate",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "3 steps"
+  },
+  {
    "id": "model/tp_mamba1",
    "kind": "model",
    "verdict": "PASS",
@@ -401,6 +431,18 @@
    "detail": "6 steps"
   },
   {
+   "id": "model/tp_mistral_hd16",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 7.61e-07; greedy 4/4"
+  },
+  {
+   "id": "trace/tp_mistral_hd16_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
    "id": "model/tp_qwen3",
    "kind": "model",
    "verdict": "PASS",
@@ -414,6 +456,24 @@
   },
   {
    "id": "trace/tp_qwen3_truncate",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "3 steps"
+  },
+  {
+   "id": "model/tp_qwen3_hd16",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 4.72e-07; greedy 4/4"
+  },
+  {
+   "id": "trace/tp_qwen3_hd16_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "trace/tp_qwen3_hd16_truncate",
    "kind": "trace",
    "verdict": "PASS",
    "detail": "3 steps"
@@ -1655,6 +1715,12 @@
    "detail": "sha256 equal; canonical equal"
   },
   {
+   "id": "digest/vectors/document_pk_flex_t5",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
    "id": "digest/vectors/document_pk_gpt2",
    "kind": "digest",
    "verdict": "PASS",
@@ -1745,6 +1811,12 @@
    "detail": "sha256 equal; canonical equal"
   },
   {
+   "id": "digest/vectors/document_tp_llama_hd16",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
    "id": "digest/vectors/document_tp_mamba1",
    "kind": "digest",
    "verdict": "PASS",
@@ -1757,7 +1829,19 @@
    "detail": "sha256 equal; canonical equal"
   },
   {
+   "id": "digest/vectors/document_tp_mistral_hd16",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
    "id": "digest/vectors/document_tp_qwen3",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_tp_qwen3_hd16",
    "kind": "digest",
    "verdict": "PASS",
    "detail": "sha256 equal; canonical equal"
@@ -2015,6 +2099,12 @@
    "detail": "3 steps"
   },
   {
+   "id": "trace/tp_mistral_hd16_rewind_window",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "3 steps"
+  },
+  {
    "id": "trace/pk_attnres_chunks",
    "kind": "trace",
    "verdict": "PASS",
@@ -2031,6 +2121,12 @@
    "kind": "trace",
    "verdict": "PASS",
    "detail": "4 steps"
+  },
+  {
+   "id": "trace/pk_flex_t5_chunks",
+   "kind": "trace",
+   "verdict": "XFAIL",
+   "detail": "RuntimeError: IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key position_bias is not defined [expected to fail: revision 1.3's attention.position_bias (IR_SPEC 5.15): the clean-room engine (re]"
   },
   {
    "id": "trace/pk_gpt2_chunks",
@@ -2123,6 +2219,12 @@
    "detail": "4 steps"
   },
   {
+   "id": "trace/tp_llama_hd16_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
    "id": "trace/tp_mamba1_chunks",
    "kind": "trace",
    "verdict": "PASS",
@@ -2135,7 +2237,19 @@
    "detail": "4 steps"
   },
   {
+   "id": "trace/tp_mistral_hd16_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
    "id": "trace/tp_qwen3_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
+   "id": "trace/tp_qwen3_hd16_chunks",
    "kind": "trace",
    "verdict": "PASS",
    "detail": "4 steps"
@@ -2157,6 +2271,12 @@
    "kind": "accept",
    "verdict": "PASS",
    "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_pk_flex_t5",
+   "kind": "accept",
+   "verdict": "XFAIL",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[3]: key position_bias is not defined [expected to fail: revision 1.3's attention.position_bias (IR_SPEC 5.15): the clean-room engine (re]"
   },
   {
    "id": "accept/documents/model_pk_gpt2",
@@ -2249,6 +2369,12 @@
    "detail": "accepted"
   },
   {
+   "id": "accept/documents/model_tp_llama_hd16",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
    "id": "accept/documents/model_tp_mamba1",
    "kind": "accept",
    "verdict": "PASS",
@@ -2261,7 +2387,19 @@
    "detail": "accepted"
   },
   {
+   "id": "accept/documents/model_tp_mistral_hd16",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
    "id": "accept/documents/model_tp_qwen3",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/model_tp_qwen3_hd16",
    "kind": "accept",
    "verdict": "PASS",
    "detail": "accepted"

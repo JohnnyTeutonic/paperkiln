@@ -1,0 +1,26 @@
+# The environment of conformance/receipts/ortgenai_cpu.json (CPython 3.12.3, WSL2 Ubuntu 24.04, x86-64).
+# CPU torch only:  pip install -r adapters/ortgenai/requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
+# onnxruntime-genai 0.18.0 declares no transformers or torch requirement; its builder imports transformers 5
+# names (Qwen3_5ForConditionalGeneration), so transformers 5 is the only choice for it (FINDINGS 2).
+onnxruntime-genai==0.18.0
+onnxruntime==1.31.1
+onnx==1.23.2
+onnx-ir==1.1.0
+onnxscript==0.7.2
+torch==2.14.1+cpu
+transformers==5.20.2
+tokenizers==0.23.3
+safetensors==0.8.0
+numpy==2.5.4
+protobuf==7.36.2
+ml-dtypes==0.6.0
+# only for --ort-loader gguf (the builder's own GGUF weight loader)
+gguf==0.19.0
+pytest==9.1.1
+#
+# probe.py --tf4-py: a second environment, the same pins except
+#   onnxruntime-genai==0.15.2   (the newest release whose builder imports under transformers 4;
+#                                0.16.0, 0.17.1 and 0.18.0 fail with the ImportError above)
+#   transformers==4.57.6
+#   tokenizers==0.22.2
+# and without gguf and pytest.

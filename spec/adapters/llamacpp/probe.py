@@ -39,7 +39,7 @@ import ir_validate  # noqa: E402
 SUITE = ROOT / "conformance" / "models"
 TOL = 1e-5
 MODELS = ["tp_qwen3", "tp_mistral", "tp_gemma3", "tp_gptneox", "tp_mamba1", "pk_llama", "pk_moe", "pk_gpt2",
-          "pk_gpt2_swa", "pk_kimi", "pk_recurrence"]
+          "pk_gpt2_swa", "pk_kimi", "pk_recurrence", "tp_llama_hd16", "tp_mistral_hd16", "tp_qwen3_hd16"]
 
 
 # ---------------------------------------------------------------- references

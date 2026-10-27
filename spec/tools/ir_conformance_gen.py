@@ -32,7 +32,7 @@ PK_PROFILES = {
     "pk_llama_attnres_rec": "recursion", "pk_state": "state", "pk_recurrence": "recurrence", "pk_flex_t5": "core"}
 # Models added after the suite's first release draw their prompts from a stream of their own, so the cases of
 # every earlier model stay byte-identical when the suite is regenerated.
-OWN_STREAM = {"pk_recurrence", "pk_flex_t5"}
+OWN_STREAM = {"pk_recurrence", "pk_flex_t5", "tp_llama_hd16", "tp_mistral_hd16", "tp_qwen3_hd16"}
 
 
 # ---------------------------------------------------------------- third-party models (numpy)
@@ -62,6 +62,24 @@ TP = {
                   "mamba.context_length": 64, "mamba.ssm.conv_kernel": 4, "mamba.ssm.inner_size": 32,
                   "mamba.ssm.state_size": 8, "mamba.ssm.time_step_rank": 2,
                   "mamba.attention.layer_norm_rms_epsilon": 1e-5},
+    # v1.3.4: head_dim 16, the smallest head size onnxruntime's CPU GroupQueryAttention runs with fused rotary
+    # (adapters/ortgenai/FINDINGS.txt, finding 1); every other attention model of the suite has head_dim 4 or 8.
+    # Llama (MHA), Mistral (GQA 2:1, window 4) and Qwen3 (GQA 2:1, head_dim decoupled from d / heads, as in
+    # the released Qwen3 checkpoints, so the file carries value_length as theirs do).
+    "tp_llama_hd16": {"general.architecture": "llama", "llama.embedding_length": 32, "llama.block_count": 2,
+                      "llama.attention.head_count": 2, "llama.attention.head_count_kv": 2,
+                      "llama.context_length": 64, "llama.attention.layer_norm_rms_epsilon": 1e-5,
+                      "llama.rope.freq_base": 10000.0, "llama.feed_forward_length": 64},
+    "tp_mistral_hd16": {"general.architecture": "mistral", "mistral.embedding_length": 32, "mistral.block_count": 2,
+                        "mistral.attention.head_count": 2, "mistral.attention.head_count_kv": 1,
+                        "mistral.context_length": 64, "mistral.attention.layer_norm_rms_epsilon": 1e-5,
+                        "mistral.rope.freq_base": 10000.0, "mistral.attention.sliding_window": 4,
+                        "mistral.feed_forward_length": 64},
+    "tp_qwen3_hd16": {"general.architecture": "qwen3", "qwen3.embedding_length": 32, "qwen3.block_count": 2,
+                      "qwen3.attention.head_count": 4, "qwen3.attention.head_count_kv": 2,
+                      "qwen3.attention.key_length": 16, "qwen3.attention.value_length": 16,
+                      "qwen3.context_length": 64, "qwen3.attention.layer_norm_rms_epsilon": 1e-6,
+                      "qwen3.rope.freq_base": 1000000.0, "qwen3.feed_forward_length": 64},
 }
 TP_VOCAB = 24
 
@@ -304,7 +322,7 @@ def traces(name, doc, W, rng):
             {"method": "forward", "ids": ids[:4]}, {"method": "snapshot", "tag": "p"},
             {"method": "forward", "ids": ids[4:7]}, {"method": "restore", "tag": "p"},
             {"method": "forward", "ids": other}])
-    elif name in ("pk_llama", "pk_mor", "tp_qwen3"):
+    elif name in ("pk_llama", "pk_mor", "tp_qwen3", "tp_llama_hd16", "tp_qwen3_hd16"):
         out["truncate"] = trace_case(name, doc, W, [
             {"method": "forward", "ids": ids}, {"method": "truncate", "n": 5},
             {"method": "forward", "ids": [int(x) for x in rng.integers(1, V, 2)]}])
@@ -712,6 +730,17 @@ def refusals():
         position_bias={"weight": "token_embd.weight", "buckets": [0, 1, 2]}))
     doc_case("position_bias_per_layer", L, 6, "3.8", lambda d: node(d, "attention").update(
         position_bias={"per_layer": [{"weight": "token_embd.weight", "buckets": [0]}] * d["block"]["repeat"]}))
+    # v1.3.5 (7.2): tensor_index on llama_attnres under recursion (weight_index [0, 1, 1, 2], stored layers 0-2).
+    # In the head (rule 19); a value other than "application" (rule 5); on an op that names no tensor (rule 4);
+    # on a node whose application-indexed name the file lacks: a tagged rmsnorm reads blk.3.attn_norm.weight at
+    # application 3, past the stored layers (rule 25), which an engine applying the tag to depth_attend alone
+    # accepts.
+    AR = "pk_llama_attnres_rec"
+    doc_case("tensor_index_in_head", AR, 19, "7.2", lambda d: d["head"]["nodes"][0].update(tensor_index="application"))
+    doc_case("tensor_index_value_unknown", AR, 5, "7.2", lambda d: node(d, "depth_attend").update(tensor_index="stored"))
+    doc_case("tensor_index_on_affine", AR, 4, "3.5", lambda d: node(d, "affine").update(tensor_index="application"))
+    doc_case("tensor_index_absent_application_tensor", AR, 25, "3.7",
+             lambda d: node(d, "rmsnorm").update(tensor_index="application"))
     # v1.2: rule 35 (3.2), a duplicate member name at any depth; the documents as JSON texts.
     base = json.dumps(load_model(SUITE / "models" / L)[0])
 
@@ -912,6 +941,12 @@ def accept_cases():
         json.dumps(load_model(SUITE / "models" / "pk_llama")[0], indent=1) + "\n", encoding="utf-8")
     cases.append({"name": "substituted_over_duplicate_embedded", "gguf": "refuse/duplicate_member_embedded.gguf",
                   "ir": "accept/pk_llama.ir.json"})
+    # v1.3.5 (7.2): pk_llama_attnres_rec's document without its tensor_index tags (also the document of the
+    # trace pk_llama_attnres_rec_untagged).
+    (SUITE / "accept" / f"{UNTAGGED}_untagged.ir.json").write_text(
+        json.dumps(untagged_document(), indent=1) + "\n", encoding="utf-8")
+    cases.append({"name": "untagged_application_queries", "gguf": f"models/{UNTAGGED}/{UNTAGGED}.gguf",
+                  "ir": f"accept/{UNTAGGED}_untagged.ir.json"})
     for c in cases:
         errs = ir_validate.check_errors(SUITE / c["gguf"] if "gguf" in c else None,
                                         SUITE / c["ir"] if "ir" in c else None)
@@ -962,7 +997,7 @@ def window_traces():
     state a fresh run over the first n tokens leaves (the engine keeps or re-prefills them). Each draws from a
     stream of its own."""
     out = []
-    for name, total, cut, new in (("pk_gpt2_swa", 14, 7, 3), ("tp_gemma3", 48, 10, 4)):
+    for name, total, cut, new in (("pk_gpt2_swa", 14, 7, 3), ("tp_gemma3", 48, 10, 4), ("tp_mistral_hd16", 14, 7, 3)):
         doc, W, meta, _ = load_model(SUITE / "models" / name)
         rng = np.random.default_rng(sum(map(ord, name)) + 1300)
         V = doc["model"]["vocab"]
@@ -971,6 +1006,35 @@ def window_traces():
             {"method": "forward", "ids": ids}, {"method": "truncate", "n": cut},
             {"method": "forward", "ids": [int(x) for x in rng.integers(1, V, new)]}])))
     return out
+
+
+UNTAGGED = "pk_llama_attnres_rec"
+
+
+def untagged_document():
+    """v1.3.5 (7.2): pk_llama_attnres_rec's document without its tensor_index tags. Valid (every
+    rec_app.{m_i} is a tensor of the file; a pseudo-query may serve several source counts), and another
+    function: application i reads the queries of application m_i."""
+    doc = copy.deepcopy(load_model(SUITE / "models" / UNTAGGED)[0])
+    for n in doc["block"]["nodes"]:
+        n.pop("tensor_index", None)
+    return doc
+
+
+def untagged_traces():
+    """v1.3.5 (7.2): the trace of the untagged document over pk_llama_attnres_rec's file (a prefill of 4, then
+    token-by-token decode), its expected values from that document, so an engine that reads the application
+    index wherever a name is rec_app.{i}, or in every node once one is tagged, fails it while the tagged
+    model's cases pass. Draws from a stream of its own."""
+    doc, W, meta, _ = load_model(SUITE / "models" / UNTAGGED)
+    alt = untagged_document()
+    rng = np.random.default_rng(sum(map(ord, UNTAGGED)) + 1500)
+    V = doc["model"]["vocab"]
+    ids = [int(x) for x in rng.integers(1, V, 8)]
+    case = trace_case(UNTAGGED, alt, W, [{"method": "forward", "ids": ids[:4]}]
+                      + [{"method": "forward", "ids": [t]} for t in ids[4:]])
+    case["ir"] = f"accept/{UNTAGGED}_untagged.ir.json"
+    return [(f"{UNTAGGED}_untagged", case)]
 
 
 def chunk_traces():
@@ -1051,7 +1115,7 @@ def regenerate():
         (SUITE / f).write_text(json.dumps(case, indent=1) + "\n", encoding="utf-8")
         manifest.append({"id": f"trace/{name}_recurrence", "kind": "trace", "file": f, "model": f"models/{name}",
                          "profile": "recurrence"})
-    for name, case in extra_traces() + window_traces() + chunk_traces():
+    for name, case in extra_traces() + window_traces() + chunk_traces() + untagged_traces():
         f = f"state/{name}.json"
         (SUITE / f).write_text(json.dumps(case, indent=1) + "\n", encoding="utf-8")
         manifest.append({"id": f"trace/{name}", "kind": "trace", "file": f, "model": case["model"],

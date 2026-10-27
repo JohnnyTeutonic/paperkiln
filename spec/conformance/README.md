@@ -1,6 +1,6 @@
-# The paperkiln IR conformance suite
+# The keramos IR conformance suite
 
-The cases every engine that runs paperkiln IR documents should pass. The normative description is
+The cases every engine that runs keramos IR documents should pass. The normative description is
 [`IR_SPEC.md`](../IR_SPEC.md) section 11: the fixture formats are in 11.2, the adapter contract in
 11.3 and the pass rules in 11.4. This page covers only how to run the suite and how to add an engine.
 

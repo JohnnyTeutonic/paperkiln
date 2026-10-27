@@ -358,6 +358,28 @@
    "profile": "thirdparty"
   },
   {
+   "id": "model/tp_llama_hd16",
+   "kind": "model",
+   "file": "models/tp_llama_hd16/case.json",
+   "model": "models/tp_llama_hd16",
+   "profile": "thirdparty",
+   "class": "ROUNDING"
+  },
+  {
+   "id": "trace/tp_llama_hd16_decode",
+   "kind": "trace",
+   "file": "state/tp_llama_hd16_decode.json",
+   "model": "models/tp_llama_hd16",
+   "profile": "thirdparty"
+  },
+  {
+   "id": "trace/tp_llama_hd16_truncate",
+   "kind": "trace",
+   "file": "state/tp_llama_hd16_truncate.json",
+   "model": "models/tp_llama_hd16",
+   "profile": "thirdparty"
+  },
+  {
    "id": "model/tp_mamba1",
    "kind": "model",
    "file": "models/tp_mamba1/case.json",
@@ -395,6 +417,21 @@
    "profile": "thirdparty"
   },
   {
+   "id": "model/tp_mistral_hd16",
+   "kind": "model",
+   "file": "models/tp_mistral_hd16/case.json",
+   "model": "models/tp_mistral_hd16",
+   "profile": "thirdparty",
+   "class": "ROUNDING"
+  },
+  {
+   "id": "trace/tp_mistral_hd16_decode",
+   "kind": "trace",
+   "file": "state/tp_mistral_hd16_decode.json",
+   "model": "models/tp_mistral_hd16",
+   "profile": "thirdparty"
+  },
+  {
    "id": "model/tp_qwen3",
    "kind": "model",
    "file": "models/tp_qwen3/case.json",
@@ -414,6 +451,28 @@
    "kind": "trace",
    "file": "state/tp_qwen3_truncate.json",
    "model": "models/tp_qwen3",
+   "profile": "thirdparty"
+  },
+  {
+   "id": "model/tp_qwen3_hd16",
+   "kind": "model",
+   "file": "models/tp_qwen3_hd16/case.json",
+   "model": "models/tp_qwen3_hd16",
+   "profile": "thirdparty",
+   "class": "ROUNDING"
+  },
+  {
+   "id": "trace/tp_qwen3_hd16_decode",
+   "kind": "trace",
+   "file": "state/tp_qwen3_hd16_decode.json",
+   "model": "models/tp_qwen3_hd16",
+   "profile": "thirdparty"
+  },
+  {
+   "id": "trace/tp_qwen3_hd16_truncate",
+   "kind": "trace",
+   "file": "state/tp_qwen3_hd16_truncate.json",
+   "model": "models/tp_qwen3_hd16",
    "profile": "thirdparty"
   },
   {
@@ -1180,6 +1239,34 @@
    "section": "3.8"
   },
   {
+   "id": "refuse/tensor_index_in_head",
+   "kind": "refuse",
+   "file": "refuse/tensor_index_in_head.json",
+   "rule": 19,
+   "section": "7.2"
+  },
+  {
+   "id": "refuse/tensor_index_value_unknown",
+   "kind": "refuse",
+   "file": "refuse/tensor_index_value_unknown.json",
+   "rule": 5,
+   "section": "7.2"
+  },
+  {
+   "id": "refuse/tensor_index_on_affine",
+   "kind": "refuse",
+   "file": "refuse/tensor_index_on_affine.json",
+   "rule": 4,
+   "section": "3.5"
+  },
+  {
+   "id": "refuse/tensor_index_absent_application_tensor",
+   "kind": "refuse",
+   "file": "refuse/tensor_index_absent_application_tensor.json",
+   "rule": 25,
+   "section": "3.7"
+  },
+  {
    "id": "refuse/duplicate_member_top",
    "kind": "refuse",
    "file": "refuse/duplicate_member_top.json",
@@ -1282,7 +1369,7 @@
    "kind": "digest",
    "file": "digest/vectors.json",
    "profile": "core",
-   "n": 85
+   "n": 88
   },
   {
    "id": "dequant/blocks",
@@ -1352,6 +1439,13 @@
    "kind": "trace",
    "file": "state/tp_gemma3_rewind_window.json",
    "model": "models/tp_gemma3",
+   "profile": "state"
+  },
+  {
+   "id": "trace/tp_mistral_hd16_rewind_window",
+   "kind": "trace",
+   "file": "state/tp_mistral_hd16_rewind_window.json",
+   "model": "models/tp_mistral_hd16",
    "profile": "state"
   },
   {
@@ -1488,6 +1582,13 @@
    "profile": "state"
   },
   {
+   "id": "trace/tp_llama_hd16_chunks",
+   "kind": "trace",
+   "file": "state/tp_llama_hd16_chunks.json",
+   "model": "models/tp_llama_hd16",
+   "profile": "state"
+  },
+  {
    "id": "trace/tp_mamba1_chunks",
    "kind": "trace",
    "file": "state/tp_mamba1_chunks.json",
@@ -1502,6 +1603,13 @@
    "profile": "state"
   },
   {
+   "id": "trace/tp_mistral_hd16_chunks",
+   "kind": "trace",
+   "file": "state/tp_mistral_hd16_chunks.json",
+   "model": "models/tp_mistral_hd16",
+   "profile": "state"
+  },
+  {
    "id": "trace/tp_qwen3_chunks",
    "kind": "trace",
    "file": "state/tp_qwen3_chunks.json",
@@ -1509,11 +1617,25 @@
    "profile": "state"
   },
   {
+   "id": "trace/tp_qwen3_hd16_chunks",
+   "kind": "trace",
+   "file": "state/tp_qwen3_hd16_chunks.json",
+   "model": "models/tp_qwen3_hd16",
+   "profile": "state"
+  },
+  {
+   "id": "trace/pk_llama_attnres_rec_untagged",
+   "kind": "trace",
+   "file": "state/pk_llama_attnres_rec_untagged.json",
+   "model": "models/pk_llama_attnres_rec",
+   "profile": "state"
+  },
+  {
    "id": "accept/documents",
    "kind": "accept",
    "file": "accept/documents.json",
    "profile": "core",
-   "n": 36
+   "n": 40
   },
   {
    "id": "chat/render",

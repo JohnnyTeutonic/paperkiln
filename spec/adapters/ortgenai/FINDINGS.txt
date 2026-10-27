@@ -1,0 +1,393 @@
+ONNX Runtime GenAI (CPU) against the keramos suite: findings (first pass, 27 Oct 2026)
+=====================================================================================
+
+(Plain text, as adapters/llamacpp/FINDINGS.txt and adapters/hf/FINDINGS.txt. The content is Markdown-shaped.)
+
+ONNX Runtime GenAI is the third engine measured here that was not written against IR_SPEC, after llama.cpp and
+transformers. It does not read GGUF in the path a user takes: its model builder (onnxruntime_genai.models.builder)
+takes an HF checkpoint and writes model.onnx and genai_config.json, and the runtime executes that graph through
+onnxruntime. So each suite GGUF is exported to an HF checkpoint by adapters/common/gguf_to_hf.py, built by the
+builder as shipped (-p fp32 -e cpu), and run with the CPU execution provider, as a user of a converted checkpoint
+would. ONNX Runtime GenAI never sees the IR document. What follows is what the suite (keramos v1.3.4, 7a37bf69,
+431 cases) says about it, and why each failure and refusal happens.
+
+- Engine: onnxruntime-genai 0.18.0 with onnxruntime 1.31.1, CPU execution provider only, float32, 2 intra-op
+  threads (inter-op 1); the builder runs under transformers 5.20.2 and torch 2.14.1+cpu (onnx 1.23.2, onnx-ir
+  1.1.0, onnxscript 0.7.2); CPython 3.12.3, numpy 2.5.4; WSL2 Ubuntu 24.04, venv on ext4. Pinned in
+  requirements.txt. onnxruntime-genai 0.18.0 declares no transformers or torch requirement; its builder imports
+  transformers 5 names, so transformers 5 is the only choice for it (finding 2).
+- Adapter: ortgenai_adapter.py, an in-process adapter (ir_conformance.main(adapters={"ortgenai": ...}), IR_SPEC
+  11.3); build_onnx.py runs the builder in a subprocess per model, with named diagnostic patches (none for the
+  receipt). Receipt: ../../conformance/receipts/ortgenai_cpu.json. Probes: probe.py.
+- Logits: Generator.get_output("logits") is the decoder's [1, n, vocab] output for the rows of the last
+  append_tokens call (the builder does not prune the LM head unless asked), so every case, the model cases'
+  per-position log-probabilities included, goes through the GenAI API; onnxruntime is not called directly.
+
+
+RUNNING IT
+----------
+
+From WSL, at the keramos root, with the environment of requirements.txt in ~/ort_keramos/venv (and, for the
+probe's transformers 4 checks, a second one in ~/ort_keramos/venv_tf4: requirements.txt's last lines):
+
+    PY=~/ort_keramos/venv/bin/python OUT=~/ort_keramos/runs TF4_PY=~/ort_keramos/venv_tf4/bin/python \
+        bash adapters/ortgenai/run_suite.sh
+    ~/ort_keramos/venv/bin/python -m pytest adapters/common -q        # the exporter's tests
+
+run_suite.sh runs the suite in five configurations and then probe.py. With empty caches the first run exports
+and builds every model (a few seconds each); the whole takes a few minutes on 2 threads. Exports and
+builds are cached under ~/ort_keramos by the GGUF's sha256 and the configuration. The receipt is the "receipt"
+configuration, run in a clean clone of keramos at v1.3.4 with fresh export and build caches (--ort-dir).
+
+
+THE BUILD PATH
+--------------
+
+Exporter (adapters/common/gguf_to_hf.py, now v2). Two changes, both ours, both found by the builder:
+  (a) The builder loads a tokenizer with AutoTokenizer before it builds anything (get_hf_details) and again to
+      resolve special ids and to copy the processing files. v1 wrote none; for pk_llama the builder stopped
+      ("Couldn't instantiate the backend tokenizer"). v2 writes tokenizer.json and tokenizer_config.json for
+      tokenizer.ggml.model "word" (IR_SPEC 8.1.4's paperkiln/legacy-word: a tokenizers WordLevel model with a
+      WhitespaceSplit pre-tokenizer, the GGUF's own special ids). A real checkpoint ships a tokenizer.
+  (b) v1 dropped None-valued keys from config.json, so where the GGUF declares no bos/eos/pad id the config
+      class's defaults stood in (Gemma3TextConfig's eos 1, MistralConfig's and LlamaConfig's eos 2). v2 writes
+      them as null. Neither change touches the weights; transformers' verdicts do not depend on these keys.
+  The exporter's tests (test_gguf_to_hf.py, 53 at v1.3.4; among them: the tokenizer gives every GGUF token its
+  id and an unknown word the unknown id; the special ids are the GGUF's) pass under transformers 5.20.2.
+
+eos. The tp_ files declare no eos id, and the builder stops without one ("Could not resolve eos_token_id from the
+model config, text config, or tokenizer", for tp_qwen3 first). build_onnx.py --eos-fallback sets the
+configuration's eos_token_id to the file's unknown id (0) when neither the configuration nor the tokenizer has
+one. The suite only appends ids and reads logits, and bans id 0 from every argmax, so the id is never acted on.
+
+Builder coverage. Of the suite's HF architectures the builder has classes for LlamaForCausalLM,
+MistralForCausalLM, Qwen3ForCausalLM and Gemma3ForCausalLM; it declines MixtralForCausalLM, GPT2LMHeadModel,
+GPTNeoXForCausalLM and MambaForCausalLM ("The ... model is not currently supported.", its NotImplementedError):
+skips, with that reason. Its own GGUF loader (-m CONFIG_DIR -i MODEL.gguf, loaders/gguf.py) handles Llama and
+Mistral and declines Qwen3 and Gemma 3.
+
+
+WHAT THE ADAPTER DOES
+---------------------
+
+- open: export and build (cached), og.Config with the providers cleared (CPU), og.Model. Skip for architecture
+  "paperkiln" (IR_SPEC 9.1), for a file whose own document says more than its architecture's HF config can
+  carry (adapters/hf's rule; at v1.3.4 those files are all "paperkiln"), for a replacement document (ir), for
+  evict true, where the builder declines the architecture, and where onnxruntime's CPU kernel refuses the built
+  graph's shape: at load the adapter appends one id on a throwaway generator, and if that fails with the
+  kernel's head_size check (finding 1) the kernel's message is the skip reason. Any other build or run error is
+  an error, so a case FAILs: the builder stopping with an exception on an architecture it lists is one (finding 2).
+- forward: Generator.append_tokens(ids); the first call is the prefill, later ones extend the sequence by any
+  number of ids. logits from get_output("logits"). kv_rows: the generator's sequence length for every layer (its
+  past/present buffers are allocated at max_length, or window-sized for sliding layers, and shared in place, so
+  the length is what says which rows are held); kv_positions 0 .. len - 1; recurrent {}; depth [].
+- truncate: Generator.rewind_to(n); n = 0 re-creates the generator; a rewind the generator refused would
+  re-prefill (IR_SPEC 6.9; it never refused here). The result's "_how" says which.
+- snapshot, restore: the snapshot is the session's ids; restore rewinds (rewind_to) when the session's ids
+  still begin with them, else re-prefills. ONNX Runtime GenAI has no copy of a generator's state.
+- An exception restores the session (11.3's error rule): the generator is re-created and the ids re-prefilled.
+- check, run_node, run_node_grad, digest, render_chat, dequantize: skip (no IR validation, no single-node
+  execution, no digest, the tokenizer's Jinja template rather than IR template records, GGUF dequantisation
+  by gguf-py).
+
+
+RESULTS
+-------
+
+Receipt configuration (the builder as shipped, export input): 8 pass, 8 fail, 415 skip.
+
+  kind      pass fail skip   the skips are
+  model        2    2   21   architecture "paperkiln" (14); the builder declines Mixtral, GPT-2, GPT-NeoX, Mamba
+                             (4); the CPU kernel refuses the head size (3: pk_llama, tp_qwen3, tp_mistral)
+  trace        6    6   61   "paperkiln" (39); builder declines (10); kernel refuses (8); replacement document (4)
+  op           0    0   62   single nodes
+  refuse       0    0   94   IR validation
+  accept       0    0   39   IR validation
+  digest       0    0   88   no IR digest
+  dequant      0    0   10   gguf-py's code
+  grad         0    0    8   single nodes
+  chat         0    0   32   IR template records
+
+The eight passes are tp_llama_hd16 and tp_qwen3_hd16, every case: the stock CPU build runs both at head_dim 16.
+The eight FAILs are tp_gemma3's four, the builder's KeyError (finding 2), and tp_mistral_hd16's four, its
+sliding window dropped (finding 4). The suite's other attention models have head_dim 4 or 8, which the stock
+CPU kernel refuses (finding 1).
+
+The configurations, each a builder patch named in build_onnx.py, isolate the rest:
+
+  receipt   the builder as shipped
+  unfused   GroupQueryAttention without fused rotary (a separate RotaryEmbedding node, and the builder's own
+            option fuse_qkv=false), and the transformers 4 view of Gemma 3's configuration (rope_parameters =
+            the full-attention entry, rope_local_base_freq = the sliding entry's theta): head_size 8 runs
+  fixed     unfused, and Gemma 3's local RoPE caches built without the global layers' linear factor (the fix
+            of finding 3)
+  mha       MultiHeadAttention in place of GroupQueryAttention: head_size 4 runs (diagnostic only, finding 7)
+  gguf      unfused, with the builder's own GGUF loader for the weights
+
+Every model and trace of an HF architecture (model case / its traces, P pass, F fail, S skip; traces in the
+order decode, chunks, then truncate or rewind_window):
+
+  model            receipt    unfused   fixed     mha       gguf      model case worst log-prob error
+  tp_llama_hd16    P/PPP      P/PPP     P/PPP     P/PFF     P/PPP     5.10e-7 (receipt), 3.40e-7 (mha)
+  tp_qwen3_hd16    P/PPP      P/PPP     P/PPP     P/PFF     S/SSS     6.68e-7 (receipt), 5.15e-7 (mha)
+  tp_mistral_hd16  F/FFF      F/FFF     F/FFF     F/FFF     F/FFF     0.563 in every configuration (no window,
+                                                                      finding 4); greedy 2/4
+  pk_llama         S/SSS      P/PPP     P/PPP     P/PFF     P/PPP     1.05e-7 (unfused, fixed, gguf)
+  tp_qwen3         S/SSS      S/SSS     S/SSS     P/PFF     S/SSS     3.82e-7 (mha)
+  tp_mistral       S/SS       S/SS      S/SS      F/FF      S/SS      1.30 (mha: no window, finding 4)
+  tp_gemma3        F/FFF      F/FFF     P/PPP     F/FFF     S/SSS     1.23 (unfused), 2.60e-6 (fixed)
+  pk_moe           S/SS       S/SS      S/SS      S/SS      S/SS      builder declines MixtralForCausalLM
+  pk_gpt2          S/SS       S/SS      S/SS      S/SS      S/SS      builder declines GPT2LMHeadModel
+  tp_gptneox       S/SS       S/SS      S/SS      S/SS      S/SS      builder declines GPTNeoXForCausalLM
+  tp_mamba1        S/SSSS     S/SSSS    S/SSSS    S/SSSS    S/SSSS    builder declines MambaForCausalLM
+
+The gguf configuration's tp_qwen3_hd16 skips are the builder's GGUF loader declining Qwen3; through that loader
+tp_mistral_hd16 fails as it does through the export (the loader keeps no window either).
+
+Counts: receipt 8/8/415; unfused 12/8/411; fixed 16/4/411; mha 8/19/404; gguf 8/4/419.
+
+What ONNX Runtime GenAI computes right, where it runs: Llama and Qwen3 at head_dim 16 on the stock CPU build,
+Qwen3's q/k norms and a head_dim apart from d / heads included (tp_qwen3_hd16: 4 heads of 16 over d 32), with
+rewind_to (the truncate traces); pk_llama through the export and through its own GGUF loader (bit-identical
+logits: the loader's un-permutation of llama.cpp's q/k rows is exact); Qwen3 at head_dim 4 (mha: 3.8e-7,
+greedy 4/4); Gemma 3 with the one-line fix of finding 3, including its five sliding layers with window-sized
+KV buffers (sliding_window_cache) and Generator.rewind_to into a window (tp_gemma3_rewind_window passes:
+llama.cpp's finding 4 does not recur); multi-id appends after a prefill (chunks traces); float32 throughout.
+
+
+HOW EACH RESULT WAS ATTRIBUTED (probe.py)
+-----------------------------------------
+
+  kernel (one GroupQueryAttention node, onnxruntime 1.31.1, CPU):
+    head_size          4        8        16     24       32     64     72       80
+    do_rotary 0        refused  runs     runs   runs     runs   runs   runs     runs
+    do_rotary 1        refused  refused  runs   refused  runs   runs   refused  runs
+    refused: "head_size must be a multiple of 8. Got head_size % 8 == 4" (any do_rotary);
+             "head_size shall be a multiple of 16. Got head_size % 16 == 8" (do_rotary 1).
+
+  prefill vs reference (16 ids; 48 for the windowed models), error = |a - b| / max(1, max|ref|), tol 1e-5:
+    pk_llama   unfused 1.8e-7, mha 1.7e-7
+    tp_qwen3   mha 1.9e-6
+    tp_mistral mha 1.39 (first past tol at position 4, where the window starts to bite; greedy differs at 29 of
+               48 positions); against the document with its window removed: 5.2e-7
+    tp_gemma3  unfused 0.75 (from position 1; greedy differs at 17 of 48); fixed 1.07e-6
+    tp_llama_hd16    stock 8.3e-7
+    tp_qwen3_hd16    stock 5.6e-7
+    tp_mistral_hd16  stock 1.07 (16 ids, the most its stock generator holds being 20, finding 4; first past tol
+                     at position 4; greedy differs at 8 of 16); against the document without its window: 5.9e-7
+
+  inside ONNX Runtime GenAI (pk_llama unfused; tp_gemma3 fixed; tp_llama_hd16 and tp_qwen3_hd16 stock): prefill =
+  chunks 5 + 6 + 5 bit for bit; prefill = a second run bit for bit; token-by-token append_tokens not
+  bit-identical (pk_llama 150 values, worst 2.4e-7 absolute; tp_gemma3 336, worst 2.0e-6; tp_llama_hd16 337,
+  worst 1.9e-6; tp_qwen3_hd16 331, worst 1.5e-6); token by token and chunked, each within 8.4e-7 of the
+  reference; rewind_to(10) and rewind_to(3), then 4 ids: bit-identical to a fresh prefill of the same ids;
+  snapshot at 8, 4 ids, restore (by rewind_to), the same 4 ids: bit-identical.
+
+  generate (GenAI's greedy search, generate_next_token, id 0 masked through set_logits, on each model case's
+  prompts): pk_llama 4/4 (one prompt ends on id 1, the file's eos, and the generator reports is_done there, as
+  it should); tp_qwen3 (mha) 4/4; tp_gemma3 unfused 2/4, fixed 4/4; stock: tp_llama_hd16 4/4, tp_qwen3_hd16
+  4/4, tp_mistral_hd16 2/4.
+
+
+FINDINGS
+--------
+
+Classed as in llama.cpp's and transformers' FINDINGS: SEMANTIC (a different function), NUMERICS (the same
+function less precisely than ROUNDING allows), REFUSAL (the engine declines loudly; skips), BUILD (the builder
+stops with an exception on an architecture it lists), ADAPTER or EXPORTER (a limit of this measurement), SPEC
+(the keramos text, fixtures or runner). Findings 1 to 6 are ONNX Runtime GenAI's; 7 is the measurement's.
+
+1. onnxruntime's CPU GroupQueryAttention refuses head sizes the builder gives it (REFUSAL; onnxruntime kernel,
+   model builder). The 11 kernel skips of the receipt.
+   On CPU float32 the builder always emits GroupQueryAttention (is_gqa_supported: ("cpu", FLOAT)) with rotary
+   fused into it (is_fused_rope_supported: every EP but DML). The CPU kernel requires head_size % 8 == 0, and
+   with do_rotary head_size % 16 == 0 (the kernel table above). The builder checks neither, so the model builds
+   and loads and the first append_tokens fails. Every attention model of the suite before v1.3.4 is affected:
+   pk_llama and tp_gemma3 have head_dim 8 (refused with fused rotary only), tp_qwen3 and tp_mistral head_dim 4
+   (refused outright); the head_dim 16 files of v1.3.4 run on the stock build. Without fused rotary (the unfused configuration: a separate RotaryEmbedding node, which the
+   builder's own DML path already makes) head_size 8 runs and pk_llama passes every case. Reach: head sizes
+   64, 80, 96, 128 and 256 are multiples of 16 and unaffected; a head size that is a multiple of 8 but not of
+   16 (24, 40, 72, ...) fails on CPU though the kernel runs it without fused rotary, and so do small test
+   checkpoints. The receipt counts these as skips (the kernel's own refusal, decided at load; Jonathan's ruling, O4).
+   Upstream issue 4.
+
+2. Gemma 3 cannot be built with onnxruntime-genai 0.18.0 (BUILD; model builder). The receipt's four FAILs.
+   Under transformers 5, Gemma3TextConfig.rope_parameters is nested per layer type ({"sliding_attention": {...},
+   "full_attention": {...}}), whether config.json is written in transformers 5's form (the export) or as Google
+   ships Gemma 3 (rope_theta, rope_local_base_freq, rope_scaling: transformers 5 converts it to the nested form;
+   probe gemma3.hub_config). The builder's Model.make_rope_init reads config.rope_parameters["rope_type"] and
+   stops with KeyError 'rope_type' for both (probe: builder_tf5_export_config, builder_tf5_hub_config). The
+   export is not the cause. Under transformers 4.57.6 the 0.18.0 builder does not import at all ("cannot import
+   name 'Qwen3_5ForConditionalGeneration' from 'transformers'"); 0.16.0 and 0.17.1 fail the same way, and 0.15.2
+   is the newest release whose builder imports under transformers 4. The package declares no transformers
+   requirement. So with 0.18.0 no environment builds Gemma 3 (Gemma3ForCausalLM or the 4B+ checkpoints'
+   Gemma3ForConditionalGeneration, which takes the same class). Gemma 4 has its own make_rope_init that reads
+   the nested form; Gemma 3 was not given one. Upstream issue 1.
+
+3. Gemma 3's sliding layers get the global layers' RoPE linear scaling (SEMANTIC; model builder). The four
+   tp_gemma3 FAILs of the unfused configuration.
+   Where the builder does build Gemma 3 (0.15.2 under transformers 4.57.6 with the config as Google ships it;
+   0.18.0 given the transformers 4 view of the config), Gemma3Model.make_rotary_embedding_multi_cache builds the
+   local cos/sin caches by changing rope_attrs["theta"] to rope_local_base_freq and leaving
+   rope_attrs["rescale_factors"], the global layers' linear factor, in place. transformers gives the local
+   rotary embedding the default (unscaled) RoPE, as the IR document does (freq_scale 1 on layers 0-4, 0.5 on
+   layer 5). Evidence: the caches 0.15.2's stock builder writes for tp_gemma3 (factor 2) are cos/sin(p *
+   inv_freq(10000) / 2) within 1.4e-7 and 2.0 away from the unscaled ones (probe gemma3.tf4.rope_caches; its
+   graph cannot run on CPU, finding 1); transformers 4.57.6 on the same config is within 1.2e-6 of the reference.
+   With 0.18.0 and the transformers 4 view: prefill 0.75 off the reference from position 1, greedy different at
+   17 of 48 positions; with rescale_factors reset to 1 for the local caches (one line, the local_rope_unscaled
+   patch) 1.07e-6, and all four tp_gemma3 cases pass (the fixed configuration), generation 4/4. The other
+   candidate, the window (local_window_size - 1), makes it worse (1.19), and ORT's local_window_size = W gives
+   the document's window. Reach: every Gemma 3 with rope_scaling, the 4B, 12B and 27B (linear factor 8 on the
+   global layers): five of every six layers rotate at one eighth of their frequency at every position; the 1B
+   (no rope_scaling) is unaffected. A fix of finding 2 that flattens rope_parameters to its full-attention entry
+   brings this back. Upstream issue 2.
+
+4. Mistral's sliding window is dropped (SEMANTIC; model builder, since 0.15.2).
+   The 0.18.0 builder takes each layer's window from config.layer_types (Model.is_local: "sliding_attention")
+   and sets local_window_size -1 on every other layer (Model.make_attention). MistralConfig has no layer_types
+   (transformers 5.20.2 and 4.57.6), so the builder's default, all "full_attention", applies: tp_mistral's graph
+   has local_window_size -1 on both layers, and genai_config's sliding_window section lists no layers. 0.15.2's
+   stock builder on the same export writes local_window_size 4 on both (probe mistral.stock_0.15.2). The
+   receipt's four tp_mistral_hd16 FAILs are this: its stock graph runs (head_dim 16) with local_window_size -1
+   on both layers and genai_config listing no sliding layers, and its logits of 16 ids are 1.07 off the
+   reference from position 4 (greedy different at 8 of 16 positions) and 5.9e-7 off the document without its
+   window (probe mistral_hd16); every configuration fails them alike. The same build also stops: genai_config
+   keeps a sliding_window section (window_size 4, layers []), and the generator then holds window_size + 16
+   tokens and errors at the next one, in a prefill ("total_sequence_length must equal past_sequence_length +
+   kv_sequence_length for a dynamic cache, or be no greater than past_sequence_length for a static cache. Got
+   total_sequence_length=21, past_sequence_length=20") or token by token (probe mistral_hd16.capacity: 20, 24
+   and 28 tokens with window_size 4, 8 and 12; 64, max_length, with the section removed). The suite's
+   tp_mistral_hd16 sessions stay within 20 tokens, so its four FAILs are the window alone. tp_mistral (head_dim 4) is a kernel skip in the stock graph (finding 1);
+   its MHA build, which has no window at all, is 1.39 off the reference and 5.2e-7 off the document without
+   its window. The rest of the Mistral graph is right.
+   Reach: Mistral 7B v0.1 and models built on it (sliding_window 4096) beyond 4096 tokens, as llama.cpp's
+   finding 3, and, if the window_size + 16 capacity holds at that size (measured here only up to 12), an error
+   past 4,112 tokens; later Mistral 7B versions have no window. Any other configuration class with
+   sliding_window and no layer_types takes the same path. Upstream issue 3 (filed before the capacity was
+   measured).
+
+5. The builder's Gemma embedding scale is sqrt(hidden_size) rounded to two decimals (NUMERICS; model builder;
+   read in the code, not measured). GemmaModel sets embed_attrs["scale"] = np.round(np.sqrt(hidden_size),
+   decimals=2), and Gemma 3 inherits it; transformers multiplies by hidden_size ** 0.5 in the model's dtype.
+   For tp_gemma3 (d 16) the root is exact, so the suite cannot see it. For d 1152 (Gemma 3 1B) the graph scales
+   by 33.94 where float32 gives 33.941125 (3.3e-5 relative). The first RMSNorm undoes a common scale, the
+   residual stream does not. Not drafted: its effect on real logits is unmeasured here.
+
+6. Two builder paths that no stock CPU float32 build takes are broken (informative). With fused rotary off and
+   Q/K/V packing on (packing is never on for DML, the one EP whose rotary is separate), the RotaryEmbedding
+   nodes get an empty input and onnxruntime refuses the model; fuse_qkv=false avoids it. The packed Attention
+   op's CPU graph has no present.N.key outputs and does not load ("Graph output (present.0.key) does not exist").
+
+7. ADAPTER: the mha configuration's 19 FAILs are the builder's MultiHeadAttention graph, which no stock CPU
+   float32 build selects, not ORT GenAI as shipped. Its attention-mask subgraph takes one id per call after the
+   prefill: a multi-id append_tokens over a past (the chunks traces, and the truncate and rewind_window traces'
+   ids after the rewind) fails with "invalid expand shape" (12 cases), and tp_gemma3's windowed rewind fails on
+   a present buffer sized for the window (1). MultiHeadAttention has no window, so tp_mistral's and
+   tp_mistral_hd16's model cases and decode traces are the windowless model (4), and tp_gemma3's are finding 3
+   without the window as well (2). The mha configuration exists only to get head_size 4 running: tp_qwen3's
+   model case and decode trace pass.
+
+
+FOR THE KERAMOS MAINTAINER (spec, fixtures, runner)
+---------------------------------------------------
+
+O2. tp_gemma3 has d 16, an exact square root, which hides finding 5. A Gemma 3 file with d 24 (or any non-
+    square) would catch an approximated embedding scale in any engine.
+O3. The tp_ files declare no bos/eos ids. Builders that need an eos (this one) need the adapter's fallback, and
+    converters that drop absent keys pick up class defaults (exporter v1 did). Declaring eos (the unknown id, or
+    a dedicated one) in the tp_ files would remove both.
+O4. 11.3 says a skip is decided "before running anything". This adapter decides the kernel refusals at load, by
+    one id on a throwaway generator, before the case's first call. Jonathan's ruling (27 Oct 2026): a kernel's
+    own shape precondition is a skip, as here (the refusal is the engine's); 11.3 says so from v1.3.5.
+O5. Appendix C. Its row (from v1.3.5) reads: CPU float32 ROUNDING where it runs (Llama and Qwen3 at head_dim 16 on the stock
+    build, Gemma 3 once finding 3 is fixed, GGUF loader included); refuses head_size % 16 != 0 with fused rotary on CPU; Gemma 3 does not build
+    (0.18.0) or is built with its sliding layers' RoPE scaled (0.15.2); Mistral's window dropped since 0.15.2;
+    rewind_to exact, into a window included; no Mixtral, GPT-2, GPT-NeoX or Mamba builder.
+
+
+UPSTREAM ISSUES
+---------------
+
+All four are filed (27 Oct 2026, from JohnnyTeutonic, approved by Jonathan). Each carries a self-contained script
+(a small random HF checkpoint with a WordLevel tokenizer, built with the builder and run with onnxruntime-genai,
+compared with transformers), its real output, the code lines at main 6b7ff3c, versions, and a note that the
+analysis and write-up were done with an AI assistant. The repository has no AI-use policy. The duplicate search
+(gh, open and closed) found none; #2277 (Gemma 3 4B export diverging at layer 0) is cited from issue 2 as
+possibly the same cause. Each reproduces with 0.18.0 and with main's builder.py; issue 1's transformers 4 import
+failure is fixed on main (lazy class resolution), its KeyError is not.
+
+Issue 1. Model builder: Gemma 3 fails with KeyError 'rope_type' under transformers 5, and the builder does not
+import under transformers 4
+
+  Filed: https://github.com/microsoft/onnxruntime-genai/issues/2788 (also notes that main under transformers
+  4.57.6 fails on a plain Llama in make_config_init, iterating rope_scaling = None).
+
+  Summary. With onnxruntime-genai 0.18.0 and transformers 5.x, building any Gemma 3 checkpoint stops in
+  Model.make_rope_init at config.rope_parameters["rope_type"]: transformers 5 represents Gemma 3's RoPE as
+  {"sliding_attention": {...}, "full_attention": {...}}. Under transformers 4.57.6 the builder fails to import
+  (cannot import name 'Qwen3_5ForConditionalGeneration'); 0.16.0 and 0.17.1 behave the same, and 0.15.2 is the
+  newest release whose builder imports under transformers 4. The wheel declares no transformers requirement.
+  Reproduction. pip install onnxruntime-genai==0.18.0 transformers==5.20.2 torch; python -m
+  onnxruntime_genai.models.builder -m google/gemma-3-1b-it -o out -p fp32 -e cpu
+  Expected. A model, or a clear statement of the supported transformers range.
+  Actual. KeyError: 'rope_type' (builders/base.py, make_rope_init), from Gemma3Model.__init__.
+  Suggested fix. Give Gemma3Model a make_rope_init that reads the per-layer-type entries, as Gemma4Model does:
+  the full-attention entry for the global caches and the sliding-attention entry (theta, and its own
+  rope_type, "default") for the local ones; declare the transformers requirement in the package metadata. See
+  issue 2 before flattening rope_parameters to its full-attention entry.
+
+Issue 2. Model builder: Gemma 3's sliding-window layers get the global layers' linear RoPE scaling
+
+  Filed: https://github.com/microsoft/onnxruntime-genai/issues/2789 (transformers 4.57.6, main's builder and
+  0.15.2: 0.519 off transformers over 48 tokens, greedy different at 16; rescale_factors = 1 for the local
+  caches: 5.45e-7).
+
+  Summary. Gemma3Model.make_rotary_embedding_multi_cache builds the local cos/sin caches with
+  rope_attrs["theta"] = rope_local_base_freq but keeps rope_attrs["rescale_factors"] from the global layers'
+  rope_scaling (linear, factor 8 for Gemma 3 4B, 12B and 27B). transformers uses unscaled default RoPE for the
+  local layers (rope_local_base_freq, rope_type "default").
+  Reproduction. onnxruntime-genai 0.15.2, transformers 4.57.6: build google/gemma-3-4b-it (fp32, cpu) and read
+  the cos_cache_local initialiser; compare with cos(p * 10000 ** (-2i / 256)).
+  Expected. cos_cache_local equal to the unscaled cache (within float32 rounding).
+  Actual. It equals cos(p * 10000 ** (-2i / head_dim) / factor). On a 6-layer Gemma 3-shaped model (head_dim 8,
+  factor 2) the caches match the scaled form within 1.4e-7 and differ from the unscaled one by up to 2.0; the
+  logits are 0.75 off transformers' (relative to max |logit|), greedy different at 17 of 48 positions; with
+  rescale_factors = 1 for the local caches they agree within 1.1e-6 and greedy decoding matches.
+  Suggested fix. Set rope_attrs["rescale_factors"] = 1 (and leave mscale and rescale_inv_freq unset) before the
+  local caches are made, or build them from the sliding-attention rope parameters (issue 1).
+
+Issue 3. Model builder: Mistral's sliding window is no longer applied (local_window_size -1 on every layer)
+
+  Filed: https://github.com/microsoft/onnxruntime-genai/issues/2790 (head_dim 16, window 8, so the stock GQA
+  graph runs: wrong from position 8, 0.556 to 0.677; genai_config still describes a window-sized cache, so
+  append_tokens fails past 24 positions and a 48-token prompt fails outright; 0.15.2 within 3.7e-7).
+
+  Summary. Model.make_attention keeps the window only for layers whose config.layer_types entry is
+  "sliding_attention". MistralConfig has no layer_types, so every layer gets local_window_size -1 and
+  genai_config's sliding_window lists no layers. 0.15.2 wrote local_window_size = sliding_window on every
+  Mistral layer.
+  Reproduction. onnxruntime-genai 0.18.0: build mistralai/Mistral-7B-v0.1 (sliding_window 4096) and inspect the
+  GroupQueryAttention nodes' local_window_size, or compare logits with transformers beyond 4096 tokens.
+  Expected. local_window_size 4096 on every layer.
+  Actual. -1. On a 2-layer Mistral-shaped model with window 4 (MultiHeadAttention build, the GQA one cannot run
+  at its head size on CPU) the logits match the windowless model (5.2e-7) and are 1.39 off the windowed one
+  from position 4.
+  Suggested fix. Where config.layer_types is absent and sliding_window is set (Mistral, and any class like it),
+  treat every layer as sliding, as before.
+
+Issue 4. Model builder / CPU GroupQueryAttention: head sizes the CPU kernel refuses are built without a check
+
+  Filed: https://github.com/microsoft/onnxruntime-genai/issues/2791 (head_dim 8 and 24 fail at the first
+  token, 16 and 32 run; with unfused rotary for head_size % 16 != 0, 8 and 24 run within 2.3e-7).
+
+  Summary. On CPU float32 the builder always emits GroupQueryAttention with do_rotary=1. onnxruntime 1.31.1's
+  CPU kernel requires head_size % 16 == 0 with do_rotary and head_size % 8 == 0 without. A head size that is a
+  multiple of 8 but not of 16 (8, 24, 40, 72, ...) builds and loads, then fails at the first token ("head_size
+  shall be a multiple of 16. Got head_size % 16 == 8"), although the same kernel runs it with do_rotary=0.
+  Reproduction. Build any Llama-architecture checkpoint with head_dim 8 or 72 (fp32, cpu); run one token.
+  Expected. A model that runs (separate RotaryEmbedding when head_size % 16 != 0), or a build-time error.
+  Actual. A runtime error at the first forward.
+  Suggested fix. In the builder, on CPU, fall back to a separate RotaryEmbedding (with unpacked Q/K/V: the
+  packed form leaves the RotaryEmbedding inputs empty) when head_size % 16 != 0, and refuse at build time when
+  head_size % 8 != 0; or lift the kernel's restriction.

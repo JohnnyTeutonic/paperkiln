@@ -1,13 +1,13 @@
 {
  "spec": {
   "repository": "keramos",
-  "tag": "v1.3.1",
-  "commit": "c898414cc1b569b50e0a2061d01ac269edce2d30"
+  "tag": "v1.3.4",
+  "commit": "7a37bf6973543914e7b3f4750b91131860d11b8f"
  },
  "engine": {
   "name": "llama.cpp b6000 (4762ad7316dcdec20016ab5985fb46a27902204d), CPU, through keramos/adapters/llamacpp/llamacpp_adapter.cpp (a JSON Lines shim over llama.h; GCC 13.3, -O2; llama.cpp Release, GGML_NATIVE off, AVX2, shared libraries, WSL ext4)",
   "environment": "the runner under CPython 3.12.3, numpy 2.3.3, WSL (Ubuntu 24.04)",
-  "run": "python3 tools/ir_conformance.py --adapter \"cmd:llamacpp_adapter --threads 2 --alias mistral=llama\", keramos working tree equal to v1.3.1 (c898414c), 2026-10-27, the adapter and build unchanged. Settings: f32 kv cache, flash attention off, swa_full on, n_ubatch 512; the same rewrites (tokenizer 'word' as 'no_vocab', tp_mistral's 'mistral' loaded as 'llama'). Other configurations (adapters/llamacpp/FINDINGS.txt): at v1.3.0 no alias 27/9/368, f16 kv 18/21/365, flash attention 17/22/365 with either cache type; v1.3.1 adds 4 refusal/accept cases, skips here. Every FAIL is a finding of FINDINGS.txt (1 GELU table, 2 tanh GELU on gptneox, 3 Mistral without its window); the IR-only models, now architecture 'paperkiln' (rule 38), are skips"
+  "run": "python3 tools/ir_conformance.py --adapter \"cmd:llamacpp_adapter --threads 2 --alias mistral=llama\" (adapters/llamacpp/run_suite.sh's receipt configuration), in a clean clone of keramos at v1.3.4 (7a37bf69), 2026-10-27, the adapter and build unchanged; f32 kv cache, flash attention off, swa_full on, n_ubatch 512; the same rewrites as FINDINGS.txt states. Every FAIL is finding 1, 2 or 3 of adapters/llamacpp/FINDINGS.txt (tp_mistral_hd16's four: the window ignored, finding 3); every 'paperkiln' file is a skip (rule 38)"
  },
  "adapter": {
   "engine": "llama.cpp",
@@ -20,24 +20,24 @@
   ]
  },
  "counts": {
-  "PASS": 27,
-  "FAIL": 12,
-  "SKIP": 369,
+  "PASS": 35,
+  "FAIL": 16,
+  "SKIP": 380,
   "XFAIL": 0,
   "XPASS": 0
  },
  "by_kind": {
   "model": {
-   "PASS": 5,
-   "FAIL": 3,
-   "SKIP": 13,
+   "PASS": 7,
+   "FAIL": 4,
+   "SKIP": 14,
    "XFAIL": 0,
    "XPASS": 0
   },
   "trace": {
-   "PASS": 12,
-   "FAIL": 9,
-   "SKIP": 41,
+   "PASS": 18,
+   "FAIL": 12,
+   "SKIP": 43,
    "XFAIL": 0,
    "XPASS": 0
   },
@@ -58,7 +58,7 @@
   "digest": {
    "PASS": 0,
    "FAIL": 0,
-   "SKIP": 84,
+   "SKIP": 88,
    "XFAIL": 0,
    "XPASS": 0
   },
@@ -79,7 +79,7 @@
   "accept": {
    "PASS": 0,
    "FAIL": 0,
-   "SKIP": 35,
+   "SKIP": 39,
    "XFAIL": 0,
    "XPASS": 0
   },
@@ -124,6 +124,18 @@
   },
   {
    "id": "trace/pk_flex_highway_decode",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "llama.cpp has no graph for general.architecture 'paperkiln'"
+  },
+  {
+   "id": "model/pk_flex_t5",
+   "kind": "model",
+   "verdict": "SKIP",
+   "detail": "llama.cpp has no graph for general.architecture 'paperkiln'"
+  },
+  {
+   "id": "trace/pk_flex_t5_decode",
    "kind": "trace",
    "verdict": "SKIP",
    "detail": "llama.cpp has no graph for general.architecture 'paperkiln'"
@@ -369,6 +381,24 @@
    "detail": "6 steps; step 0 logits worst 6.03e-04 of max(1, |ref|); step 1 logits worst 5.06e-04 of max(1, |ref|); step 2 logits worst 4.80e-04 of max(1, |ref|); step 3 logits worst 3.56e-04 of max(1, |ref|); step 4 logits worst 1.86e-04 of max(1, |ref|); step 5 logits worst 2.44e-04 of max(1, |ref|)"
   },
   {
+   "id": "model/tp_llama_hd16",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 4.47e-07; greedy 4/4"
+  },
+  {
+   "id": "trace/tp_llama_hd16_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "trace/tp_llama_hd16_truncate",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "3 steps"
+  },
+  {
    "id": "model/tp_mamba1",
    "kind": "model",
    "verdict": "PASS",
@@ -399,6 +429,18 @@
    "detail": "6 steps; step 1 logits worst 6.63e-01 of max(1, |ref|); step 2 logits worst 3.74e-01 of max(1, |ref|); step 3 logits worst 3.34e-01 of max(1, |ref|); step 4 logits worst 6.67e-01 of max(1, |ref|); step 5 logits worst 5.55e-01 of max(1, |ref|)"
   },
   {
+   "id": "model/tp_mistral_hd16",
+   "kind": "model",
+   "verdict": "FAIL",
+   "detail": "log-probs worst 5.63e-01; greedy 2/4"
+  },
+  {
+   "id": "trace/tp_mistral_hd16_decode",
+   "kind": "trace",
+   "verdict": "FAIL",
+   "detail": "6 steps; step 1 logits worst 4.46e-01 of max(1, |ref|); step 2 logits worst 3.55e-01 of max(1, |ref|); step 3 logits worst 3.84e-01 of max(1, |ref|); step 4 logits worst 1.08e+00 of max(1, |ref|); step 5 logits worst 1.15e+00 of max(1, |ref|)"
+  },
+  {
    "id": "model/tp_qwen3",
    "kind": "model",
    "verdict": "PASS",
@@ -412,6 +454,24 @@
   },
   {
    "id": "trace/tp_qwen3_truncate",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "3 steps"
+  },
+  {
+   "id": "model/tp_qwen3_hd16",
+   "kind": "model",
+   "verdict": "PASS",
+   "detail": "log-probs worst 5.34e-07; greedy 4/4"
+  },
+  {
+   "id": "trace/tp_qwen3_hd16_decode",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "6 steps"
+  },
+  {
+   "id": "trace/tp_qwen3_hd16_truncate",
    "kind": "trace",
    "verdict": "PASS",
    "detail": "3 steps"
@@ -1653,6 +1713,12 @@
    "detail": "llama.cpp has no IR digest (IR_SPEC 3.10)"
   },
   {
+   "id": "digest/vectors/document_pk_flex_t5",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "llama.cpp has no IR digest (IR_SPEC 3.10)"
+  },
+  {
    "id": "digest/vectors/document_pk_gpt2",
    "kind": "digest",
    "verdict": "SKIP",
@@ -1743,6 +1809,12 @@
    "detail": "llama.cpp has no IR digest (IR_SPEC 3.10)"
   },
   {
+   "id": "digest/vectors/document_tp_llama_hd16",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "llama.cpp has no IR digest (IR_SPEC 3.10)"
+  },
+  {
    "id": "digest/vectors/document_tp_mamba1",
    "kind": "digest",
    "verdict": "SKIP",
@@ -1755,7 +1827,19 @@
    "detail": "llama.cpp has no IR digest (IR_SPEC 3.10)"
   },
   {
+   "id": "digest/vectors/document_tp_mistral_hd16",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "llama.cpp has no IR digest (IR_SPEC 3.10)"
+  },
+  {
    "id": "digest/vectors/document_tp_qwen3",
+   "kind": "digest",
+   "verdict": "SKIP",
+   "detail": "llama.cpp has no IR digest (IR_SPEC 3.10)"
+  },
+  {
+   "id": "digest/vectors/document_tp_qwen3_hd16",
    "kind": "digest",
    "verdict": "SKIP",
    "detail": "llama.cpp has no IR digest (IR_SPEC 3.10)"
@@ -2013,6 +2097,12 @@
    "detail": "3 steps; step 0 logits worst 6.90e-04 of max(1, |ref|); step 2 logits worst 4.60e-04 of max(1, |ref|)"
   },
   {
+   "id": "trace/tp_mistral_hd16_rewind_window",
+   "kind": "trace",
+   "verdict": "FAIL",
+   "detail": "3 steps; step 0 logits worst 1.12e+00 of max(1, |ref|); step 2 logits worst 1.01e+00 of max(1, |ref|)"
+  },
+  {
    "id": "trace/pk_attnres_chunks",
    "kind": "trace",
    "verdict": "SKIP",
@@ -2026,6 +2116,12 @@
   },
   {
    "id": "trace/pk_flex_highway_chunks",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "llama.cpp has no graph for general.architecture 'paperkiln'"
+  },
+  {
+   "id": "trace/pk_flex_t5_chunks",
    "kind": "trace",
    "verdict": "SKIP",
    "detail": "llama.cpp has no graph for general.architecture 'paperkiln'"
@@ -2121,6 +2217,12 @@
    "detail": "4 steps; step 0 logits worst 5.47e-04 of max(1, |ref|); step 1 logits worst 3.65e-04 of max(1, |ref|); step 2 logits worst 4.68e-04 of max(1, |ref|); step 3 logits worst 3.62e-04 of max(1, |ref|)"
   },
   {
+   "id": "trace/tp_llama_hd16_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
    "id": "trace/tp_mamba1_chunks",
    "kind": "trace",
    "verdict": "PASS",
@@ -2133,7 +2235,19 @@
    "detail": "4 steps; step 1 logits worst 3.00e-01 of max(1, |ref|); step 2 logits worst 4.98e-01 of max(1, |ref|); step 3 logits worst 1.10e+00 of max(1, |ref|)"
   },
   {
+   "id": "trace/tp_mistral_hd16_chunks",
+   "kind": "trace",
+   "verdict": "FAIL",
+   "detail": "4 steps; step 1 logits worst 1.34e+00 of max(1, |ref|); step 2 logits worst 1.28e+00 of max(1, |ref|); step 3 logits worst 9.63e-01 of max(1, |ref|)"
+  },
+  {
    "id": "trace/tp_qwen3_chunks",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "4 steps"
+  },
+  {
+   "id": "trace/tp_qwen3_hd16_chunks",
    "kind": "trace",
    "verdict": "PASS",
    "detail": "4 steps"
@@ -2152,6 +2266,12 @@
   },
   {
    "id": "accept/documents/model_pk_flex_highway",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "llama.cpp does not validate IR documents (IR_SPEC section 10): it ignores paperkiln.ir"
+  },
+  {
+   "id": "accept/documents/model_pk_flex_t5",
    "kind": "accept",
    "verdict": "SKIP",
    "detail": "llama.cpp does not validate IR documents (IR_SPEC section 10): it ignores paperkiln.ir"
@@ -2247,6 +2367,12 @@
    "detail": "llama.cpp does not validate IR documents (IR_SPEC section 10): it ignores paperkiln.ir"
   },
   {
+   "id": "accept/documents/model_tp_llama_hd16",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "llama.cpp does not validate IR documents (IR_SPEC section 10): it ignores paperkiln.ir"
+  },
+  {
    "id": "accept/documents/model_tp_mamba1",
    "kind": "accept",
    "verdict": "SKIP",
@@ -2259,7 +2385,19 @@
    "detail": "llama.cpp does not validate IR documents (IR_SPEC section 10): it ignores paperkiln.ir"
   },
   {
+   "id": "accept/documents/model_tp_mistral_hd16",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "llama.cpp does not validate IR documents (IR_SPEC section 10): it ignores paperkiln.ir"
+  },
+  {
    "id": "accept/documents/model_tp_qwen3",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "llama.cpp does not validate IR documents (IR_SPEC section 10): it ignores paperkiln.ir"
+  },
+  {
+   "id": "accept/documents/model_tp_qwen3_hd16",
    "kind": "accept",
    "verdict": "SKIP",
    "detail": "llama.cpp does not validate IR documents (IR_SPEC section 10): it ignores paperkiln.ir"

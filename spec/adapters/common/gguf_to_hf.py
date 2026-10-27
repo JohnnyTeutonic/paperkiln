@@ -3,7 +3,8 @@
 llama.cpp's convert transforms undone exactly, so that an engine that reads HF checkpoints (transformers,
 ONNX Runtime GenAI's builder, vLLM) runs the same weights the suite's documents describe.
 
-    python adapters/common/gguf_to_hf.py MODEL.gguf OUT_DIR        # writes OUT_DIR/{model.safetensors,config.json,keramos_export.json}
+    python adapters/common/gguf_to_hf.py MODEL.gguf OUT_DIR        # writes OUT_DIR/{model.safetensors,config.json,
+                                                                    #   tokenizer.json,tokenizer_config.json,keramos_export.json}
     python adapters/common/gguf_to_hf.py --check MODEL.gguf         # the round trip GGUF -> HF -> GGUF, bit for bit
 
 The export reads general.architecture and the <arch>.* keys and never the IR document (paperkiln.ir): it is
@@ -46,7 +47,8 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools"))
 import ir_validate  # noqa: E402
 
-EXPORTER_VERSION = 1
+EXPORTER_VERSION = 2  # v2: tokenizer files for "word" vocabularies; bos/eos/pad ids the GGUF lacks written as
+#                       null, not left to the config class's defaults (weights unchanged from v1)
 
 
 class Unsupported(Exception):
@@ -403,8 +405,11 @@ def convert(meta, W):
         raise Unsupported(f"general.architecture {arch!r} has no transformers export here")
     cls, mtype, c, S, tr = FAMILIES[arch](Arch(meta), W)
     c.pop("text_config_only", None)
+    # None is written as null where the class default would otherwise stand in: a GGUF without special ids
+    # gets none (v1 dropped them, so e.g. Gemma3TextConfig's eos 1 and MistralConfig's eos 2 appeared).
     c = {k: v for k, v in c.items() if v is not None or k in ("sliding_window", "final_logit_softcapping",
-                                                               "attn_logit_softcapping")}
+                                                               "attn_logit_softcapping", "bos_token_id",
+                                                               "eos_token_id", "pad_token_id")}
     c.update({"architectures": [cls], "model_type": mtype})
     S = {k: np.ascontiguousarray(v, dtype=np.float32) for k, v in S.items()}
     return cls, mtype, c, S, tr
@@ -522,10 +527,37 @@ def round_trip(gguf):
     return bad
 
 
+# ---------------------------------------------------------------- the tokenizer
+
+def tokenizer_files(meta, context_length=None):
+    """{file name: JSON text} of an HF tokenizer for the GGUF's vocabulary, or {} where this exporter has no
+    translation. tokenizer.ggml.model "word" (IR_SPEC 8.1.4's paperkiln/legacy-word: whitespace-separated
+    words, an unknown word to the unknown id) is a tokenizers WordLevel model with a WhitespaceSplit
+    pre-tokenizer; the special ids are the GGUF's own. Engines that need a tokenizer beside the weights
+    (ONNX Runtime GenAI's builder loads one with AutoTokenizer) read these; the suite feeds ids."""
+    if meta.get("tokenizer.ggml.model") != "word":
+        return {}
+    toks = list(meta["tokenizer.ggml.tokens"])
+    unk = int(meta.get("tokenizer.ggml.unknown_token_id", 0))
+    tok = {"version": "1.0", "truncation": None, "padding": None,
+           "added_tokens": [{"id": unk, "content": toks[unk], "single_word": False, "lstrip": False, "rstrip": False,
+                             "normalized": False, "special": True}],
+           "normalizer": None, "pre_tokenizer": {"type": "WhitespaceSplit"}, "post_processor": None, "decoder": None,
+           "model": {"type": "WordLevel", "vocab": {t: i for i, t in enumerate(toks)}, "unk_token": toks[unk]}}
+    cfg = {"tokenizer_class": "PreTrainedTokenizerFast", "unk_token": toks[unk], "clean_up_tokenization_spaces": False}
+    for key, field in (("bos_token", "bos_token_id"), ("eos_token", "eos_token_id"), ("pad_token", "padding_token_id")):
+        if f"tokenizer.ggml.{field}" in meta:
+            cfg[key] = toks[int(meta[f"tokenizer.ggml.{field}"])]
+    if context_length:
+        cfg["model_max_length"] = int(context_length)
+    return {"tokenizer.json": json.dumps(tok, indent=1) + "\n", "tokenizer_config.json": json.dumps(cfg, indent=1) + "\n"}
+
+
 # ---------------------------------------------------------------- writing
 
 def export(gguf, out_dir):
-    """Write OUT_DIR/model.safetensors, config.json and keramos_export.json; return the config."""
+    """Write OUT_DIR/model.safetensors, config.json, the tokenizer (tokenizer_files) and keramos_export.json;
+    return the config."""
     from safetensors.numpy import save_file
     meta, W = read(gguf)
     cls, mtype, c, S, transforms = convert(meta, W)
@@ -533,10 +565,14 @@ def export(gguf, out_dir):
     out.mkdir(parents=True, exist_ok=True)
     save_file(S, str(out / "model.safetensors"), metadata={"format": "pt"})
     (out / "config.json").write_text(json.dumps(c, indent=1) + "\n", encoding="utf-8")
+    tok = tokenizer_files(meta, c.get("max_position_embeddings", c.get("n_positions")))
+    for name, text in tok.items():
+        (out / name).write_text(text, encoding="utf-8")
     rt = round_trip(gguf)
     (out / "keramos_export.json").write_text(json.dumps({
         "exporter": f"keramos adapters/common/gguf_to_hf.py v{EXPORTER_VERSION}", "gguf": str(gguf),
         "general.architecture": meta.get("general.architecture"), "class": cls, "transforms": transforms,
+        "tokenizer": sorted(tok) or f"none (tokenizer.ggml.model {meta.get('tokenizer.ggml.model')!r} not translated)",
         "round_trip_not_exact": rt}, indent=1) + "\n", encoding="utf-8")
     return c
 
