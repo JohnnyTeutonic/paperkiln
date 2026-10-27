@@ -103,6 +103,9 @@ bool gpu_profile_on();
 // the first CUDA call): waits sleep, so CPU time is host work alone.
 void set_blocking_sync();
 std::vector<std::pair<std::string, double>> gpu_profile_take();
+// The number of timed spans per op name in the last gpu_profile_take() (28 Oct 2026: the launch count
+// per step beside the time; a span is one entry point, which launches one kernel or a few).
+std::vector<std::pair<std::string, size_t>> gpu_profile_counts();
 namespace detail {
 void gpu_profile_begin(const char* op);  // no-op unless on, or an op is already open
 void gpu_profile_end(const char* op);    // closes the open op if it is `op`

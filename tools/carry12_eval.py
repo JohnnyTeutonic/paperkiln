@@ -632,6 +632,8 @@ def main(argv=None):
         p.add_argument("--no-kv-cache", action="store_true",
                        help="mtstudio chat without its KV cache (the default uses it for the llama family)")
         p.add_argument("--max-new", type=int, default=24)
+        p.add_argument("--score-batch-tokens", type=int, default=0,
+                       help="mtstudio score --batch-tokens N (opt-in; carry5_eval.py's flag; 0 = one request per forward)")
         p.add_argument("--ember-bin", default="")
         p.add_argument("--chat-url", default="")
         p.add_argument("--gpu-layers", default=os.environ.get("EMBER_GPU_LAYERS", "0"),

@@ -400,22 +400,31 @@ void gpu_profile_end(const char* op) {
 }
 }  // namespace detail
 
+namespace {
+std::vector<std::pair<std::string, size_t>> g_last_counts;
+}  // namespace
+
 std::vector<std::pair<std::string, double>> gpu_profile_take() {
     std::vector<std::pair<std::string, double>> out;
     if (!gpu_profile_on()) return out;
     cuda_check(cudaDeviceSynchronize(), "profile sync");
     std::unordered_map<std::string, double> sum;
+    std::unordered_map<std::string, size_t> count;
     for (const auto& m : g_marks) {
         float ms = 0.0f;
         cuda_check(cudaEventElapsedTime(&ms, m.a, m.b), "event elapsed");
         sum[m.op] += ms;
+        ++count[m.op];
         g_free_events.push_back(m.a);
         g_free_events.push_back(m.b);
     }
     g_marks.clear();
     for (const auto& kv : sum) out.emplace_back(kv.first, kv.second);
+    g_last_counts.assign(count.begin(), count.end());
     return out;
 }
+
+std::vector<std::pair<std::string, size_t>> gpu_profile_counts() { return g_last_counts; }
 
 // ---- Phase B2.0 ----
 

@@ -382,15 +382,19 @@ class IrBackend:
         return {"over_ctx": False, "logprobs": lp, "argmax": [int(x) for x in rb.argmax(axis=1)], "sum": sum(lp)}
 
 
-def mtstudio_score(binary, spec_path, inp, raw, attempts=2):
+def mtstudio_score(binary, spec_path, inp, raw, attempts=2, batch_tokens=0):
     """`mtstudio score` on one chunk. A failed attempt's stderr is kept beside the chunk
     (RAW.stderr.txt, appended) and printed, and its tail ends the exit message, so a failure
     explains itself: a rung's score died mid-chunk on 25 Oct 2026 with exit 1 and nothing kept.
     A failed attempt is rerun once (a fresh process: GPU memory a job beside it held may be free
-    again)."""
+    again). batch_tokens > 0 (--score-batch-tokens, opt-in) packs requests into forwards of at most
+    that many ids (`mtstudio score --batch-tokens`); 0, the default, is the argv as before."""
     log = raw + ".stderr.txt"
+    argv = [binary, "score", spec_path, "--in", inp, "--out", raw]
+    if batch_tokens:
+        argv += ["--batch-tokens", str(int(batch_tokens))]
     for k in range(1, attempts + 1):
-        r = subprocess.run([binary, "score", spec_path, "--in", inp, "--out", raw], capture_output=True, text=True)
+        r = subprocess.run(argv, capture_output=True, text=True)
         if r.returncode == 0:
             return
         with open(log, "a", encoding="utf-8") as f:
@@ -423,7 +427,7 @@ def score_all(a, reqs, spec_path, gguf, work):
             with open(inp, "w", encoding="utf-8", newline="\n") as f:
                 for k, p, c in part:
                     f.write(json.dumps({"key": k, "prompt_ids": p, "continuation_ids": c}) + "\n")
-            mtstudio_score(a.mtstudio, spec_path, inp, raw)
+            mtstudio_score(a.mtstudio, spec_path, inp, raw, batch_tokens=getattr(a, "score_batch_tokens", 0))
             got = {r["key"]: {x: r[x] for x in ("over_ctx", "logprobs", "argmax", "sum") if x in r}
                    for r in read_jsonl(raw)}
             os.remove(inp)
@@ -762,6 +766,9 @@ def main(argv=None):
         p.add_argument("--no-kv-cache", action="store_true",
                        help="mtstudio chat without its KV cache (the default uses it for the llama family)")
         p.add_argument("--max-new", type=int, default=24)
+        p.add_argument("--score-batch-tokens", type=int, default=0,
+                       help="mtstudio score --batch-tokens N: pack requests into forwards of at most N ids (opt-in; "
+                            "0, the default, scores one request per forward as the registered runs do)")
         if name == "report":
             continue
         p.add_argument("--model", action="append", required=True,

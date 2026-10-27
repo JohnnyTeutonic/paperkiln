@@ -51,6 +51,9 @@ void set_blocking_sync() {}
 std::vector<std::pair<std::string, double>> gpu_profile_take() {
     return {};
 }
+std::vector<std::pair<std::string, size_t>> gpu_profile_counts() {
+    return {};
+}
 namespace detail {
 void gpu_profile_begin(const char*) {}
 void gpu_profile_end(const char*) {}

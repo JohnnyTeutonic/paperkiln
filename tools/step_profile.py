@@ -103,8 +103,58 @@ def events(run_dir):
         return [json.loads(x) for x in f if x.strip()]
 
 
-def run_once(spec, run_dir, env_extra, warm):
-    """mtstudio run; returns (rc, steady seconds per step from line arrival times, events, log tail)."""
+def stall_report(pid):
+    """What a run that passed its time limit was doing (28 Oct 2026: two profiles sat RUNNING for hours
+    with nothing home): its threads' states and kernel wait channels, its CPU time over 5 s (a host spin
+    or a host loop burns it; a blocked wait does not) and the GPU's utilisation then (a kernel that never
+    ends keeps it at 100%)."""
+    out = {}
+
+    def cpu_ticks():
+        try:
+            with open(f"/proc/{pid}/stat") as f:
+                v = f.read().rsplit(")", 1)[1].split()
+            return int(v[11]) + int(v[12])  # utime + stime
+        except (OSError, IndexError, ValueError):
+            return None
+
+    def gpu():
+        try:
+            return subprocess.run(["nvidia-smi", "--query-gpu=utilization.gpu,memory.used,power.draw",
+                                   "--format=csv,noheader"], capture_output=True, text=True,
+                                  timeout=30).stdout.strip()
+        except (OSError, subprocess.TimeoutExpired):
+            return None
+
+    t0 = cpu_ticks()
+    out["gpu_0s"] = gpu()
+    time.sleep(5)
+    t1 = cpu_ticks()
+    out["gpu_5s"] = gpu()
+    hz = os.sysconf("SC_CLK_TCK") if hasattr(os, "sysconf") else 100
+    out["cpu_seconds_in_5s"] = None if t0 is None or t1 is None else (t1 - t0) / hz
+    threads = []
+    try:
+        for tid in sorted(os.listdir(f"/proc/{pid}/task"), key=int):
+            row = {"tid": int(tid)}
+            for k in ("wchan", "stat"):
+                try:
+                    with open(f"/proc/{pid}/task/{tid}/{k}") as f:
+                        v = f.read().strip()
+                    row[k] = v if k == "wchan" else v.rsplit(")", 1)[1].split()[0]
+                except (OSError, IndexError):
+                    pass
+            threads.append(row)
+    except OSError:
+        pass
+    out["threads"] = threads
+    return out
+
+
+def run_once(spec, run_dir, env_extra, warm, timeout=None):
+    """mtstudio run; returns (rc, steady seconds per step from line arrival times, events, log tail, stall).
+    timeout (seconds of wall time): a run still going then is diagnosed (stall_report), killed and returned
+    with rc None, so one stuck run costs at most that and says where it stopped."""
     os.makedirs(run_dir, exist_ok=True)
     spec = dict(spec, out_dir=run_dir)
     sp = run_dir.rstrip("/") + "_spec.json"
@@ -115,8 +165,33 @@ def run_once(spec, run_dir, env_extra, warm):
     env.update(env_extra)
     marks, tail = {}, []
     p = subprocess.Popen([BIN, "run", sp], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1,
-                         env=env)
+                         env=env, start_new_session=True)
+    state = {"stall": None, "last_line": time.monotonic()}
+
+    def watchdog():
+        t_start = time.monotonic()
+        while p.poll() is None:
+            if timeout and time.monotonic() - t_start > timeout:
+                rep = stall_report(p.pid)
+                rep.update({"after_s": round(time.monotonic() - t_start, 1),
+                            "last_step": marks.get("last", (None,))[0],
+                            "s_since_last_line": round(time.monotonic() - state["last_line"], 1)})
+                state["stall"] = rep
+                print(json.dumps({"stalled": run_dir, **{k: rep[k] for k in ("after_s", "last_step",
+                                                                               "cpu_seconds_in_5s", "gpu_5s")}}),
+                      flush=True)
+                try:
+                    os.killpg(p.pid, 9)  # the run and anything it started (they hold the pipe open)
+                except OSError:
+                    p.kill()
+                return
+            time.sleep(2)
+
+    import threading
+    w = threading.Thread(target=watchdog, daemon=True)
+    w.start()
     for line in p.stdout:
+        state["last_line"] = time.monotonic()
         tail = (tail + [line])[-40:]
         if line.startswith('{"event":"step"'):
             try:
@@ -128,11 +203,14 @@ def run_once(spec, run_dir, env_extra, warm):
                 marks.setdefault("first", (st, now))
             marks["last"] = (st, now)
     rc = p.wait()
+    w.join(timeout=60)
     sps = None
     if "first" in marks and marks["last"][0] > marks["first"][0]:
         (s0, t0), (s1, t1) = marks["first"], marks["last"]
         sps = (t1 - t0) / (s1 - s0)
-    return rc, sps, events(run_dir), "".join(tail)
+    if state["stall"] is not None:
+        rc = None
+    return rc, sps, events(run_dir), "".join(tail), state["stall"]
 
 
 def breakdown(evs, warm):
@@ -141,12 +219,14 @@ def breakdown(evs, warm):
     if not steps:
         return None
     n = len(steps)
-    phases, ops = {}, {}
+    phases, ops, counts = {}, {}, {}
     for e in steps:
         for k, v in e["t_ms"].items():
             phases[k] = phases.get(k, 0.0) + v / n
         for k, v in e.get("gpu_ms", {}).items():
             ops[k] = ops.get(k, 0.0) + v / n
+        for k, v in e.get("gpu_n", {}).items():  # timed spans per op (binaries since 28 Oct 2026)
+            counts[k] = counts.get(k, 0.0) + v / n
     # "other" is eval/checkpoint/logging since the previous step: outside the training step.
     wall = sum(v for k, v in phases.items() if k != "other")
     classes = {}
@@ -154,10 +234,20 @@ def breakdown(evs, warm):
         c = OP_CLASS.get(op, "other")
         classes[c] = classes.get(c, 0.0) + ms
     gpu = sum(ops.values())
-    return {"steps": n, "wall_ms": wall, "gpu_ms": gpu, "idle_ms": wall - gpu,
-            "phases_ms": dict(sorted(phases.items())), "class_ms": dict(sorted(classes.items())),
-            "op_ms": dict(sorted(ops.items(), key=lambda kv: -kv[1])),
-            "peak_mb": max(e.get("peak_mb", 0.0) for e in steps)}
+    out = {"steps": n, "wall_ms": wall, "gpu_ms": gpu, "idle_ms": wall - gpu,
+           "phases_ms": dict(sorted(phases.items())), "class_ms": dict(sorted(classes.items())),
+           "op_ms": dict(sorted(ops.items(), key=lambda kv: -kv[1])),
+           "peak_mb": max(e.get("peak_mb", 0.0) for e in steps)}
+    if counts:
+        # Launch count: entry points per step (each one kernel or a few), and the GPU time per span, per class.
+        cc = {}
+        for op, k in counts.items():
+            c = OP_CLASS.get(op, "other")
+            cc[c] = cc.get(c, 0.0) + k
+        out.update({"spans_per_step": sum(counts.values()), "class_spans": dict(sorted(cc.items())),
+                    "op_spans": dict(sorted(counts.items(), key=lambda kv: -kv[1])),
+                    "us_per_span": 1000.0 * gpu / sum(counts.values()) if sum(counts.values()) else None})
+    return out
 
 
 def config_recorded(evs, cfg):
@@ -207,18 +297,25 @@ def cmd_run(a):
             cell = {"shape": shape, "config": cfg_name, "arch": spec["arch"]["custom"],
                     "tokens_per_step": spec["train"]["batch"] * spec["train"].get("accum", 1) * spec["data"]["T"]}
             base = os.path.join(a.out, "runs", f"{shape}_{cfg_name}")
-            rc, sps, evs, tail = run_once(spec, base + "_clean", {}, a.warm)
+            print(json.dumps({"start": key, "run": "clean", "t": time.strftime("%H:%M:%S")}), flush=True)
+            rc, sps, evs, tail, stall = run_once(spec, base + "_clean", {}, a.warm, a.run_timeout)
             cell.update({"clean_rc": rc, "clean_s_per_step": sps})
-            if cfg and not config_recorded(evs, cfg):
+            if stall:
+                cell.update({"done": True, "stalled": "clean", "stall": stall, "log_tail": tail})
+            elif cfg and not config_recorded(evs, cfg):
                 cell.update({"done": True, "refused": "this binary does not record " + json.dumps(cfg)})
             elif rc != 0:
                 cell.update({"done": True, "log_tail": tail})
             else:
                 if sps:
                     cell["clean_tok_per_s"] = cell["tokens_per_step"] / sps
-                rc2, _, evs2, tail2 = run_once(spec, base + "_prof",
-                                               {"MICROTORCH_STEP_TIMING": "1", "MICROTORCH_GPU_PROFILE": "1"}, a.warm)
+                print(json.dumps({"start": key, "run": "prof", "t": time.strftime("%H:%M:%S")}), flush=True)
+                rc2, _, evs2, tail2, stall2 = run_once(
+                    spec, base + "_prof", {"MICROTORCH_STEP_TIMING": "1", "MICROTORCH_GPU_PROFILE": "1"}, a.warm,
+                    a.run_timeout)
                 cell.update({"prof_rc": rc2, "profile": breakdown(evs2, a.warm), "done": True})
+                if stall2:
+                    cell.update({"stalled": "prof", "stall": stall2})
                 if rc2 != 0:
                     cell["log_tail"] = tail2
                 steps = [e for e in evs if e.get("event") == "step"]
@@ -228,19 +325,21 @@ def cmd_run(a):
                 json.dump(res, f, indent=1)
             os.replace(path + ".tmp", path)
             print(json.dumps({k: cell.get(k) for k in ("shape", "config", "clean_rc", "clean_tok_per_s",
-                                                         "refused")}), flush=True)
+                                                         "refused", "stalled")}), flush=True)
     print(table(res))
     return 0
 
 
 def table(res):
     cls = list(CLASSES) + ["other"]
-    head = ["shape", "config", "tok/s", "ms/step", "gpu ms"] + cls + ["idle ms", "peak MB"]
+    head = ["shape", "config", "tok/s", "ms/step", "gpu ms"] + cls + ["idle ms", "spans/step", "us/span", "peak MB"]
     rows = ["| " + " | ".join(head) + " |", "|" + "---|" * len(head)]
     for key, c in res.get("runs", {}).items():
         p = c.get("profile")
         if not p:
-            rows.append(f"| {c['shape']} | {c['config']} | " + (c.get("refused") or f"rc {c.get('clean_rc')}") +
+            why = c.get("refused") or (f"stalled ({c['stalled']} run)" if c.get("stalled") else
+                                       f"rc {c.get('clean_rc')}")
+            rows.append(f"| {c['shape']} | {c['config']} | " + why +
                         " |" * (len(head) - 2))
             continue
         w = p["wall_ms"]
@@ -248,6 +347,8 @@ def table(res):
         rows.append("| " + " | ".join([c["shape"], c["config"], f"{c.get('clean_tok_per_s') or 0:.0f}",
                                        f"{w:.0f}", f"{p['gpu_ms']:.0f}"] + pct +
                                       [f"{p['idle_ms']:.0f} ({100 * p['idle_ms'] / w:.0f}%)",
+                                       f"{p['spans_per_step']:.0f}" if p.get("spans_per_step") else "-",
+                                       f"{p['us_per_span']:.1f}" if p.get("us_per_span") else "-",
                                        f"{p['peak_mb']:.0f}"]) + " |")
     return "\n".join(rows)
 
@@ -262,6 +363,8 @@ def main():
     r.add_argument("--configs", default="fp32")
     r.add_argument("--steps", type=int, default=40)
     r.add_argument("--warm", type=int, default=10)
+    r.add_argument("--run-timeout", type=float, default=900,
+                   help="seconds of wall time per mtstudio run before it is diagnosed and killed (0: none)")
     t = sub.add_parser("table")
     t.add_argument("profile")
     a = ap.parse_args()

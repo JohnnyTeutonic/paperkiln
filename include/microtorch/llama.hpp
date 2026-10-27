@@ -289,6 +289,18 @@ public:
     // The head's weight in ops::linear_cross_entropy's terms: lm_head's W
     // [d, vocab] (HeadLayout::InOut) or, tied, the token embedding [vocab, d]
     // (HeadLayout::VocabMajor).
+    // Several sequences in one forward (mtstudio score --batch-tokens, 28 Oct 2026): ids holds them back to
+    // back and segs their (start, length) ranges, which tile ids. Each sequence's positions start at 0 and
+    // its rows attend within it only, through LlamaBlock::forward_rows (each range's attention is the one
+    // forward() runs on that sequence alone); every other op is row by row. Returns the final-normed hidden
+    // states of `rows` (indices into ids, in that order). packable() says whether a call can be made:
+    // not under MoE, Attention Residuals, a routed recursion schedule, or turn_state attention over ids
+    // holding a state id (forward_rows has none of those); forward_packed_hidden throws there.
+    bool packable(const std::vector<int>& ids) const;
+    Var forward_packed_hidden(const std::vector<int>& ids, const std::vector<std::pair<size_t, size_t>>& segs,
+                              const std::vector<int>& rows) const;
+    // The LM head on hidden rows, as forward() applies it (profiled as "gemm_head").
+    Var head(const Var& h) const;
     const Var& head_weight() const { return lm_head ? lm_head->W : embed_tokens->weight; }
     ops::HeadLayout head_layout() const { return lm_head ? ops::HeadLayout::InOut : ops::HeadLayout::VocabMajor; }
     // Logits for `ids`, the tokens after the kv.len already cached (one

@@ -153,6 +153,10 @@ add_test(NAME thirdparty_ops COMMAND test_thirdparty_ops)
 add_executable(test_fused_head tests/test_fused_head.cpp)
 target_link_libraries(test_fused_head PRIVATE microtorch)
 add_test(NAME fused_head COMMAND test_fused_head)
+# Packed scoring (mtstudio score --batch-tokens; nn::Llama::forward_packed_hidden, 28 Oct 2026).
+add_executable(test_score_batch tests/test_score_batch.cpp)
+target_link_libraries(test_score_batch PRIVATE microtorch)
+add_test(NAME score_batch COMMAND test_score_batch)
 add_test(NAME nn COMMAND test_nn)
 
 add_executable(test_kimi_linear tests/test_kimi_linear.cpp)

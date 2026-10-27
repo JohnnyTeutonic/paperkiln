@@ -1,0 +1,24 @@
+{
+  "_comment": "LOCAL_LLM_WORK E5.1 and E5.2 on one RunPod L4 at master (28 Oct 2026), independent jobs in order. (1) cuda_gate: every leg of tools/colab_cuda_validate.sh, with tests/test_fused_head.cpp (leg 9: devops::linear_ce against the unfused device path, the tiled GEMM bit for bit, cuBLAS to rounding) and tests/test_score_batch.cpp (packed scoring in a step window: bit for bit with the tiled GEMM against each sequence packed alone, float rounding against forward() written through). (2) fused_gate: tools/fused_head_gate.py on 20m_L4 (batch 32, 300 steps, FineWeb-Edu sample text), mtstudio at c6365b88 (before train.fused_head) against HEAD with it off, bitwise; repeat and explicit-off bitwise; fused against unfused within the stated tolerances; s/step each. (3) score_bench: tools/score_batch_bench.py on pick_e1_60m_L8 (the 60m_L8 pick, the Carry-12 cost run's model): Carry-5 at its T 512 (every 4th item) and Carry-12 at ctx 1,024 (every 6th item), history from the set (gold, twin, noctx, near), unbatched (the registered scorer), --score-batch-tokens 16384 in the job's environment (cuBLAS) and without MICROTORCH_CUBLAS (tiled): wall time, and against unbatched per request identical bits, IR_SPEC 4.3 ROUNDING (5e-5), argmax, forced choices and summaries. (4) step_profile: fp32 against fused_head at 20m_L4, 20m_L16, 60m_L32 and pk_base_v1 (40 steps, 10 warm), now with each run limited to 600 s and diagnosed when it stalls (threads' states, CPU seconds over 5 s, GPU utilisation), and the launch count (timed spans) per step: the profile pk-fused-head (26 Oct) and bf16_gate_v2 (25 Oct) never brought home. About 2 L4 VM-hours with the 291 MB upload. --upload vocab_llama3_bpe.gguf, pick_e1_60m_L8.model.safetensors and pick_e1_60m_L8.spec.json. At home: python tools/step_profile.py table ART/step_profile/profile.json; python tools/score_batch_bench.py table ART/score_bench/bench.json.",
+  "max_parallel": 1,
+  "jobs": [
+    {"name": "cuda_gate",
+     "cmd": ["python3", "tools/colab_chat/tiny_chat_run.py", "cuda_gate", "--out", "{out}"],
+     "outputs": ["cuda_gate.json", "cuda_gate.log"]},
+    {"name": "fused_gate",
+     "cmd": ["bash", "tools/colab_chat/fused_head_gate_vm.sh", "{out}", "{upload}", "c6365b88", "20m_L4", "32", "1", "300"],
+     "outputs": ["gate.json"]},
+    {"name": "score_bench",
+     "cmd": ["python3", "tools/score_batch_bench.py", "run", "--weights", "{upload}/pick_e1_60m_L8.model.safetensors",
+             "--spec-json", "{upload}/pick_e1_60m_L8.spec.json", "--vocab", "{upload}/vocab_llama3_bpe.gguf",
+             "--mtstudio", "/content/pk/build_cuda/mtstudio", "--out", "{out}", "--c5-every", "4", "--c12-every", "6",
+             "--c12-ctx", "1024", "--batch-tokens", "16384"],
+     "outputs": ["bench.json", "carry5/unbatched.log", "carry5/batched.log", "carry5/batched_tiled.log",
+                 "carry12/unbatched.log", "carry12/batched.log", "carry12/batched_tiled.log"]},
+    {"name": "step_profile",
+     "cmd": ["python3", "tools/step_profile.py", "run", "--out", "{out}", "--vocab", "{upload}/vocab_llama3_bpe.gguf",
+             "--shapes", "20m_L4,20m_L16,60m_L32,pk_base_v1", "--configs", "fp32,fused_head", "--steps", "40",
+             "--warm", "10", "--run-timeout", "600"],
+     "outputs": ["profile.json"]}
+  ]
+}

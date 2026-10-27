@@ -3076,6 +3076,9 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
             json g = json::object();
             for (const auto& [op, ms] : device::gpu_profile_take()) g[op] = ms;
             e["gpu_ms"] = g;
+            json gn = json::object();
+            for (const auto& [op, n] : device::gpu_profile_counts()) gn[op] = n;
+            e["gpu_n"] = gn;  // timed spans per op (launches, one or a few kernels each)
         }
         if (is_srd) e["gate"] = gate_mean;
         if (!moe_frac.empty()) {
@@ -4719,9 +4722,26 @@ int chat_cmd(const std::string& target, const std::string& host, int port, bool 
 // whole logits row (V float32, little-endian), appended in record order, so a
 // record's rows are its continuation positions in order; each record then
 // carries logits_rows. Nothing else changes.
+//
+// --batch-tokens N (opt-in, 28 Oct 2026; LOCAL_LLM_WORK E5.2): consecutive requests, in input order, share
+// one forward of at most N context ids (a longer request runs alone). Each sequence keeps its own positions
+// and attends within itself (nn::Llama::forward_packed_hidden: the attention per sequence as the unbatched
+// forward runs it), the LM head runs on the scored rows only, and the batch runs inside one device step
+// window (with MICROTORCH_STEP_RESIDENCY=1 the weights and activations stay on the device; --no-window
+// leaves it out). The records are the unbatched ones: same fields, values computed by the same loop, same
+// order. The log-probs equal the unbatched ones bit for bit when every GEMM gives a row the summation order
+// it gets alone (the device's tiled GEMM; on the host, shapes for which ops::host_gemm_rows_free holds),
+// and to float rounding otherwise (cuBLAS chooses its algorithm by shape; the host GEMM's recursion splits
+// K by M): IR_SPEC 4.5's "same kernel" condition. Requests the packed forward has no path for (families
+// other than llama, MoE, Attention Residuals, a routed recursion, turn_state prompts holding a state id)
+// are scored one by one exactly as without the option. Not with --kv-cache or --logits. Without the
+// option nothing changes.
 int score_cmd(const std::string& target, const std::string& in_path, const std::string& out_path, bool kv_cache,
-              bool evict, size_t kv_step, const std::string& logits_path = "") {
+              bool evict, size_t kv_step, const std::string& logits_path = "", size_t batch_tokens = 0,
+              bool batch_window = true) {
     const Spec s = resolve_chat_spec(target);
+    if (batch_tokens > 0 && (kv_cache || !logits_path.empty()))
+        throw std::runtime_error("score --batch-tokens: not with --kv-cache or --logits");
     LoadedLM lm(s);
     if (kv_cache && !lm.llama) throw std::runtime_error("score --kv-cache: only the llama family has a KV cache");
     if (evict && (!kv_cache || s.state_k == 0 || s.state_mask != "turn_state"))
@@ -4749,6 +4769,164 @@ int score_cmd(const std::string& target, const std::string& in_path, const std::
             return tokenize(chat::render(chat::messages_from_json(r["messages"]), tmpl, true), lm.vocab, 1u << 30);
         return tokenize(r.at(text_key).get<std::string>(), lm.vocab, 1u << 30);
     };
+    if (batch_tokens > 0) {
+        // The unbatched loop below, split in two: every request is read and checked first (the same rules
+        // and messages), then scored in packed batches.
+        struct Req {
+            json rec;
+            std::vector<int> ctx, c;
+            std::vector<size_t> at;  // at[j]: the position of continuation token j in prompt + continuation
+            bool over = false;
+        };
+        std::vector<Req> reqs;
+        std::string line;
+        size_t n = 0, over = 0;
+        while (std::getline(in, line)) {
+            if (line.find_first_not_of(" \t\r") == std::string::npos) continue;
+            const json r = json::parse(line);
+            const std::vector<int> p = ids_of(r, "prompt_ids", "prompt");
+            const std::vector<int> c = ids_of(r, "continuation_ids", "continuation");
+            if (p.empty() || c.empty())
+                throw std::runtime_error("score: line " + std::to_string(n) + " has an empty prompt or continuation");
+            const size_t PV = V + (lm.st.k > 0 ? lm.st.k : 0);
+            for (int t : p)
+                if (t < 0 || static_cast<size_t>(t) >= PV) throw std::runtime_error("score: prompt id out of range");
+            for (int t : c)
+                if (t < 0 || static_cast<size_t>(t) >= V) throw std::runtime_error("score: continuation id out of range");
+            Req q;
+            q.rec = {{"i", n}, {"prompt_tokens", p.size()}, {"continuation_ids", c}};
+            if (r.contains("key")) q.rec["key"] = r["key"];
+            std::vector<int> ids = p;
+            ids.insert(ids.end(), c.begin(), c.end());
+            q.at.resize(c.size());
+            for (size_t j = 0; j < c.size(); ++j) q.at[j] = p.size() + j;
+            if (lm.st.k > 0) {
+                if (r.contains("prompt_ids")) {
+                    const std::string err = nn::state_ids_error(ids, lm.st);
+                    if (!err.empty()) throw std::runtime_error("score: line " + std::to_string(n) + ": " + err);
+                } else {
+                    std::vector<uint8_t> fl(ids.size(), 0), f2;
+                    for (size_t j = p.size(); j < ids.size(); ++j) fl[j] = 1;
+                    ids = insert_state_flagged(ids, fl, lm.st, f2);
+                    q.at.clear();
+                    for (size_t k = 0; k < ids.size(); ++k)
+                        if (f2[k]) q.at.push_back(k);
+                    q.rec["prompt_tokens"] = q.at[0];
+                }
+            }
+            q.c = c;
+            if (q.at.back() + 1 > s.T + 1) {
+                q.rec["over_ctx"] = true;
+                q.over = true;
+                ++over;
+            } else {
+                q.ctx.assign(ids.begin(), ids.begin() + static_cast<long>(q.at.back()));
+            }
+            reqs.push_back(std::move(q));
+            ++n;
+        }
+        NoGrad ng;
+        // The unbatched loop's per-request record from a logits matrix: row_of(j) is the row holding the
+        // logits before continuation token j.
+        auto finish = [&](Req& q, const Matrix& L, const std::function<size_t(size_t)>& row_of) {
+            if (L.cols() != V) throw std::runtime_error("score: logits width differs from the vocabulary");
+            if (lm.st.k > 0) {
+                int seg = 0, run = 0;
+                for (int t : q.ctx) ops::turn_state_step(t, V, lm.st.k, seg, run);
+                q.rec["state_blocks"] = static_cast<size_t>(seg);
+            }
+            std::vector<double> lp;
+            std::vector<int> am;
+            double sum = 0.0;
+            for (size_t j = 0; j < q.c.size(); ++j) {
+                const size_t row = row_of(j);
+                double mx = -1e300;
+                int best = -1;
+                double best_v = -1e300;
+                for (size_t k = 0; k < V; ++k) {
+                    const double x = L(row, k);
+                    mx = std::max(mx, x);
+                    if (!banned[k] && (best < 0 || x > best_v)) {
+                        best = static_cast<int>(k);
+                        best_v = x;
+                    }
+                }
+                double z = 0.0;
+                for (size_t k = 0; k < V; ++k) z += std::exp(static_cast<double>(L(row, k)) - mx);
+                const double l = static_cast<double>(L(row, static_cast<size_t>(q.c[j]))) - mx - std::log(z);
+                lp.push_back(l);
+                am.push_back(best);
+                sum += l;
+            }
+            q.rec["over_ctx"] = false;
+            q.rec["logprobs"] = lp;
+            q.rec["argmax"] = am;
+            q.rec["sum"] = sum;
+        };
+        size_t batches = 0, packed = 0, alone = 0;
+        for (size_t i = 0; i < reqs.size();) {
+            if (reqs[i].over) {
+                ++i;
+                continue;
+            }
+            if (!lm.llama || !lm.llama->packable(reqs[i].ctx)) {
+                // The unbatched path for this request.
+                Req& q = reqs[i];
+                const Var logits = lm.forward(q.ctx);
+                if (lm.llama && lm.llama->rec_router) {
+                    q.rec["depth"] = lm.llama->last_depth;
+                    float mm = std::numeric_limits<float>::infinity();
+                    for (float m : lm.llama->last_margin) mm = std::min(mm, m);
+                    if (std::isfinite(mm)) q.rec["depth_margin_min"] = mm;
+                }
+                if (logits->data.rows() != q.ctx.size() || logits->data.cols() != V)
+                    throw std::runtime_error("score: logits shape differs from the context");
+                finish(q, logits->data, [&](size_t j) { return q.at[j] - 1; });
+                ++alone;
+                ++i;
+                continue;
+            }
+            // A batch: consecutive packable requests (over_ctx ones are skipped) while the ids fit.
+            std::vector<size_t> members;
+            size_t tok = 0, k = i;
+            for (; k < reqs.size(); ++k) {
+                if (reqs[k].over) continue;
+                if (!lm.llama->packable(reqs[k].ctx)) break;
+                if (!members.empty() && tok + reqs[k].ctx.size() > batch_tokens) break;
+                members.push_back(k);
+                tok += reqs[k].ctx.size();
+            }
+            std::vector<int> ids;
+            ids.reserve(tok);
+            std::vector<std::pair<size_t, size_t>> segs;
+            std::vector<int> rows;
+            std::vector<size_t> first_row;  // per member: its first row in `rows`
+            for (size_t m : members) {
+                const Req& q = reqs[m];
+                segs.emplace_back(ids.size(), q.ctx.size());
+                first_row.push_back(rows.size());
+                for (size_t j = 0; j < q.c.size(); ++j) rows.push_back(static_cast<int>(ids.size() + q.at[j] - 1));
+                ids.insert(ids.end(), q.ctx.begin(), q.ctx.end());
+            }
+            if (batch_window) device::step_begin();
+            Var logits = lm.llama->head(lm.llama->forward_packed_hidden(ids, segs, rows));
+            if (batch_window) device::step_end();
+            if (logits->data.rows() != rows.size()) throw std::runtime_error("score: packed logits rows differ");
+            for (size_t b = 0; b < members.size(); ++b) {
+                const size_t r0 = first_row[b];
+                finish(reqs[members[b]], logits->data, [r0](size_t j) { return r0 + j; });
+            }
+            ++batches;
+            packed += members.size();
+            i = k;
+        }
+        for (const Req& q : reqs) out << q.rec.dump() << "\n";
+        std::fprintf(stderr,
+                     "score: %zu continuations (%zu over the context of %zu; %zu in %zu packed batches of at most %zu "
+                     "ids, %zu alone) -> %s\n",
+                     n, over, static_cast<size_t>(s.T), packed, batches, batch_tokens, alone, out_path.c_str());
+        return 0;
+    }
     NoGrad ng;
     std::string line;
     size_t n = 0, over = 0;
@@ -5002,12 +5180,18 @@ int main(int argc, char** argv) {
         }
         if (cmd == "score" && argc >= 3) {
             std::string in_path, out_path, logits_path;
-            bool kv_cache = false, evict = false;
-            size_t kv_step = 0;
+            bool kv_cache = false, evict = false, window = true;
+            size_t kv_step = 0, batch_tokens = 0;
             for (int i = 3; i < argc; ++i) {
                 const std::string k = argv[i];
                 if (k == "--kv-cache") kv_cache = true;
                 else if (k == "--evict") evict = true;
+                else if (k == "--no-window") window = false;
+                else if (i + 1 < argc && k == "--batch-tokens") {
+                    const long long v = std::atoll(argv[++i]);
+                    if (v <= 0) throw std::runtime_error("score --batch-tokens needs a positive number of ids");
+                    batch_tokens = static_cast<size_t>(v);
+                }
                 else if (i + 1 < argc && k == "--in") in_path = argv[++i];
                 else if (i + 1 < argc && k == "--out") out_path = argv[++i];
                 else if (i + 1 < argc && k == "--logits") logits_path = argv[++i];
@@ -5015,7 +5199,8 @@ int main(int argc, char** argv) {
                 else throw std::runtime_error("score: unknown option " + k);
             }
             if (in_path.empty() || out_path.empty()) throw std::runtime_error("score needs --in and --out");
-            return score_cmd(argv[2], in_path, out_path, kv_cache, evict, kv_step, logits_path);
+            if (!window && batch_tokens == 0) throw std::runtime_error("score --no-window needs --batch-tokens");
+            return score_cmd(argv[2], in_path, out_path, kv_cache, evict, kv_step, logits_path, batch_tokens, window);
         }
     } catch (const std::exception& e) {
         std::fprintf(stderr, "mtstudio: %s\n", e.what());
@@ -5034,7 +5219,8 @@ int main(int argc, char** argv) {
                  "overrides the index.html path)\n"
                  "       mtstudio chat <out_dir|spec.json> [--port 8080] [--host 127.0.0.1] [--kv-cache [--evict]]\n"
                  "       mtstudio score <out_dir|spec.json> --in REQ.jsonl --out RES.jsonl [--kv-cache [--evict] "
-                 "[--kv-step N]] [--logits ROWS.f32]   (per-token log-probs of {prompt | messages, continuation})\n"
+                 "[--kv-step N]] [--logits ROWS.f32] [--batch-tokens N [--no-window]]\n"
+                 "         (per-token log-probs of {prompt | messages, continuation})\n"
                  "       mtstudio sft-dump spec.json --out ROWS.jsonl   (the SFT rows the spec trains on)\n");
     return 2;
 }

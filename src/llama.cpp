@@ -656,6 +656,45 @@ Var Llama::forward_hidden(const std::vector<int>& ids, size_t seq_len, MoEAux* a
     return ops::rmsnorm(h, norm_w);
 }
 
+bool Llama::packable(const std::vector<int>& ids) const {
+    if (attn_res || cfg.recursion.routed() || cfg.moe.experts > 0) return false;
+    if (cfg.turn_state() &&
+        std::any_of(ids.begin(), ids.end(), [&](int t) { return t >= static_cast<int>(cfg.vocab); }))
+        return false;
+    return true;
+}
+
+Var Llama::forward_packed_hidden(const std::vector<int>& ids, const std::vector<std::pair<size_t, size_t>>& segs,
+                                 const std::vector<int>& rows) const {
+    if (!packable(ids))
+        throw std::runtime_error("llama: forward_packed_hidden has no path for MoE, Attention Residuals, a routed "
+                                 "recursion or turn_state ids with a state id");
+    std::vector<int> pos(ids.size(), -1);
+    size_t covered = 0;
+    for (const auto& [s0, len] : segs) {
+        if (s0 != covered || len == 0) throw std::runtime_error("llama: packed ranges must tile the ids");
+        for (size_t i = 0; i < len; ++i) pos[s0 + i] = static_cast<int>(i);
+        covered += len;
+    }
+    if (covered != ids.size()) throw std::runtime_error("llama: packed ranges must tile the ids");
+    for (int r : rows)
+        if (r < 0 || static_cast<size_t>(r) >= ids.size()) throw std::runtime_error("llama: packed row out of range");
+    // forward_hidden's fixed schedule with each block's attention per range: the same ops on every row.
+    Var h = embed(ids);
+    const Var e = h;
+    for (size_t l = 0; l < schedule.size(); ++l) {
+        if (inject_before[l]) h = ops::add(h, e);
+        h = blocks[schedule[l]]->forward_rows(h, pos, segs);
+    }
+    return ops::rmsnorm(ops::gather_rows(h, rows), norm_w);
+}
+
+Var Llama::head(const Var& h) const {
+    device::ProfileTag head_tag("gemm_head");
+    if (lm_head) return lm_head->forward(h);
+    return ops::matmul(h, ops::transpose(embed_tokens->weight));
+}
+
 size_t LlamaKV::truncate(size_t n) {
     if (n >= len) return len;
     if (state_k > 0) {

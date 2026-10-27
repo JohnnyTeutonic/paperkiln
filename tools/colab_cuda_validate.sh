@@ -21,7 +21,7 @@ cmake .. -DCMAKE_BUILD_TYPE=Release -DMICROTORCH_CUDA=ON
 echo "== 2/3 build =="
 make microtorch test_gradcheck test_nn test_lora_quant test_resident_parity \
      test_step_residency test_cuda_ops test_recursion test_mor test_state_tokens test_llama_attnres test_mixed_precision \
-     test_pooled_gemm test_gpt2_device test_thirdparty_ops test_fused_head -j"$(nproc)"
+     test_pooled_gemm test_gpt2_device test_thirdparty_ops test_fused_head test_score_batch -j"$(nproc)"
 
 echo "== 3/3 run gradchecks on CUDA =="
 # device::set(CUDA) is process-wide; MICROTORCH_DEVICE=cuda is read by the
@@ -103,4 +103,9 @@ MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 ./test_thirdparty_ops
 # production GEMM): float rounding.
 MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 ./test_fused_head
 MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 MICROTORCH_CUBLAS=1 ./test_fused_head
-echo "CUDA validation PASSED (Phase A + B1 + B2.0 + B2.1a op set + B2.1b deferred downloads + masked CE + bf16/flash + pooled Phase A GEMM + gpt2 family under deferral + third-party ops + fused head)"
+# Packed scoring (28 Oct 2026; mtstudio score --batch-tokens, nn::Llama::forward_packed_hidden): the host legs,
+# then several sequences packed in a step window against each packed alone, bit for bit with the tiled GEMM,
+# and against forward() written through (the unbatched scorer's kernels) to float rounding; again under cuBLAS.
+MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 MICROTORCH_STEP_RESIDENCY=1 MICROTORCH_DEFER_DOWNLOADS=1 ./test_score_batch
+MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 MICROTORCH_STEP_RESIDENCY=1 MICROTORCH_DEFER_DOWNLOADS=1 MICROTORCH_CUBLAS=1 ./test_score_batch
+echo "CUDA validation PASSED (Phase A + B1 + B2.0 + B2.1a op set + B2.1b deferred downloads + masked CE + bf16/flash + pooled Phase A GEMM + gpt2 family under deferral + third-party ops + fused head + packed scoring)"
