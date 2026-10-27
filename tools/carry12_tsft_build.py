@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Carry-12's template-SFT set (cell T): hand-written templated dialogues whose later turn needs a fact, a
+"""Carry-12's template-SFT set (cell TS): hand-written templated dialogues whose later turn needs a fact, a
 correction or a standing instruction from N = 1-12 turns back. TRAINING data for one registered cell, with
 templates, entities and values disjoint from Carry-12 v1's (and Carry-5's).
 
@@ -10,7 +10,7 @@ templates, entities and values disjoint from Carry-12 v1's (and Carry-5's).
 
 experiments/tiny_chat_long_2026-10/PREREGISTRATION_DRAFT.md sections 0, 4 (option 5) and 6. The data rule keeps
 our templates out of training; Jonathan's ruling of 27 Oct 2026 (an outside reviewer's suggestion: SFT with
-explicit recall targets) makes this set the one registered exception, for cell T only, under option 5's
+explicit recall targets) makes this set the one registered exception, for cell TS only, under option 5's
 conditions: written by us as templates (no model text), sharing no template, entity or value with the
 evaluation set, and T scored on Carry-12 v1, which is built from other templates.
 
@@ -23,14 +23,14 @@ Families (one carry target per dialogue, at turn target = fact turn + N, then on
                Indeed / Certainly / Gladly / Absolutely; closer: end it with "no doubt" / "as ever" / "in fact" /
                "all in all"); every reply from then on complies, the target question N turns later.
 Carry-12's topic and load families have no counterpart here (one user fact per dialogue, no digression), so
-the analysis can read T's gain on the trained families (recall, correction) against the untrained ones (topic,
+the analysis can read TS's gain on the trained families (recall, correction) against the untrained ones (topic,
 load). Turns without an event are hand-written small talk (SMALL_TALK, ARCS), none naming a value of any list
 here or in Carry-12/Carry-5 or raising one of this set's slot subjects. No turn comes from the human dialogue
 pool: splicing a human exchange into a templated conversation would present separate exchanges as one
 conversation, which section 4's rule forbids, and the pool is not scrubbed of Carry-12's values.
 
 Counts: recall 6 slots x N 1-12 x fact turn 1-3 x 10 (2,160), correction 6 x 12 x 20 (1,440), instruction
-2 kinds x 12 x 26 (624): 4,224 dialogues, 20% of T's SFT rows beside the T 1,024 data job's 16,932 human rows.
+2 kinds x 12 x 26 (624): 4,224 dialogues, 20% of TS's SFT rows beside the T 1,024 data job's 16,932 human rows.
 Seed 20261027; byte-reproducible; pinned in corpus/hashes/carry12_tsft_v1.sha256. The data job
 (tools/colab_chat/tiny_chat_data.py --template-sft) rebuilds it and refuses bytes other than the pin.
 """
@@ -814,8 +814,8 @@ def cmd_build(a):
         f.write(data)
     if not pin:
         with open(HASH, "w", encoding="utf-8", newline="\n") as f:
-            f.write("# Carry-12 template-SFT set v1 (cell T's template rows; tools/carry12_tsft_build.py, seed 20261027):"
-                    " TRAINING data for cell T only, disjoint from Carry-12 v1 and Carry-5 v1\n")
+            f.write("# Carry-12 template-SFT set v1 (cell TS's template rows; tools/carry12_tsft_build.py, seed 20261027):"
+                    " TRAINING data for cell TS only, disjoint from Carry-12 v1 and Carry-5 v1\n")
             f.write(f"{sha}  carry12_tsft_v1.jsonl\n")
     print(json.dumps({"rows": data.count(b"\n"), "sha256": sha, "out": a.out}))
     return 0

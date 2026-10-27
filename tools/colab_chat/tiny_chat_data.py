@@ -37,7 +37,7 @@ decontamination beside Carry-5, so dialogues are dropped by the same rules and c
 SFT set at T 1,024 (the mixes are token streams and do not depend on T: mtstudio draws its windows); and
 --long-sft MIN:COPIES also writes sft_human_long<COPIES>.jsonl for cell D: the same SFT rows, each row of
 MIN or more trained turns (exchanges) present COPIES times, shuffled with the same seed; and --template-sft
-also writes sft_human_tsft.jsonl for cell T: the same SFT rows plus the template-SFT set
+also writes sft_human_tsft.jsonl for cell TS: the same SFT rows plus the template-SFT set
 (tools/carry12_tsft_build.py, 4,224 hand-written templated dialogues; rebuilt here and refused unless its bytes
 are the pin, corpus/hashes/carry12_tsft_v1.sha256, and unless this job's decontamination, with Carry-12 among its
 targets, drops none of them), every template dialogue whole at T, shuffled with the same seed. The ledger's
@@ -164,7 +164,7 @@ def long_rows(raw, dst, min_turns, copies):
 
 
 def template_rows(out, vocab, T, seed, raw, carry12, ledger):
-    """Cell T's SFT set (sft_human_tsft.jsonl): raw's human rows once each plus the template-SFT set's rows,
+    """Cell TS's SFT set (sft_human_tsft.jsonl): raw's human rows once each plus the template-SFT set's rows,
     shuffled with the seed. The set is rebuilt from tools/carry12_tsft_build.py and refused unless its bytes are
     the pin and this job's decontamination drops none of its dialogues; every dialogue must fit T whole."""
     sys.path.insert(0, os.path.join(ROOT, "tools"))
@@ -220,7 +220,7 @@ def main(argv=None):
     ap.add_argument("--carry12", action="store_true", help="Carry-12 v1 joins the decontamination (pinned bytes)")
     ap.add_argument("--long-sft", default="", help="MIN:COPIES: sft_human_long<COPIES>.jsonl, rows of MIN+ turns x COPIES")
     ap.add_argument("--template-sft", action="store_true",
-                    help="cell T: sft_human_tsft.jsonl, the SFT rows plus the pinned template-SFT set")
+                    help="cell TS: sft_human_tsft.jsonl, the SFT rows plus the pinned template-SFT set")
     a = ap.parse_args(argv)
     long_min = long_copies = 0
     if a.long_sft:

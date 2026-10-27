@@ -1,5 +1,5 @@
 {
- "_comment": "Carry-12 cell P16 (plain 60m_L16 at T 1,024), seed 2 (experiments/tiny_chat_long_2026-10/PREREGISTRATION_DRAFT.md sections 6 and 10; written by experiments/tiny_chat_long_2026-10/make_jobs.py, whose docstring says what each job does). One RunPod L4, one GPU job at a time; estimated 11.5 L4 VM-hours (stage0/total.json), cap $9. NOT LAUNCHED: the gate refuses until experiments/tiny_chat_long_2026-10/PREREGISTRATION.md is committed, and the launch needs Jonathan's go. Runner (disabled until then): python3 -u tools/colab_chat/runner_multi.py --backend runpod --gpu L4 --commit FREEZE_COMMIT --jobs tools/colab_chat/carry12_P16_r2.json --name pk-c12-p16-r2 --art /mnt/c/ml_artifacts/tiny_chat/c12_P16_r2 --state-dir /home/jonat/pk_c12_p16_r2_runner --max-hours 23.5 --volume-gb 80 --max-usd 9 --upload vocab_llama3_bpe.gguf=/mnt/c/ml_artifacts/capacity/vocab/vocab_llama3_bpe.gguf",
+ "_comment": "Carry-12 cell P16 (plain 60m_L16 at T 1,024), seed 2 (experiments/tiny_chat_long_2026-10/PREREGISTRATION_DRAFT.md sections 6 and 10; written by experiments/tiny_chat_long_2026-10/make_jobs.py, whose docstring says what each job does). One RunPod L4, one GPU job at a time; estimated 8.8 L4 VM-hours (stage0/total.json), cap $7. NOT LAUNCHED: the gate refuses until experiments/tiny_chat_long_2026-10/PREREGISTRATION.md is committed, and the launch needs Jonathan's go. Runner (disabled until then): python3 -u tools/colab_chat/runner_multi.py --backend runpod --gpu L4 --commit FREEZE_COMMIT --jobs tools/colab_chat/carry12_P16_r2.json --name pk-c12-p16-r2 --art /mnt/c/ml_artifacts/tiny_chat/c12_P16_r2 --state-dir /home/jonat/pk_c12_p16_r2_runner --max-hours 23.5 --volume-gb 80 --max-usd 7 --upload vocab_llama3_bpe.gguf=/mnt/c/ml_artifacts/capacity/vocab/vocab_llama3_bpe.gguf",
  "max_parallel": 1,
  "max_parallel_light": 2,
  "jobs": [
@@ -170,7 +170,9 @@
     "--carry12-items",
     "corpus/eval/carry12_v1.jsonl",
     "--carry12-spot",
-    "20"
+    "20",
+    "--score-batch-tokens",
+    "16384"
    ],
    "outputs": [
     "summary.json",

@@ -1090,7 +1090,7 @@ def cmd_post(a):
     sw = os.path.join(sd, model + ".safetensors")
     s["sft_weights_sha256"] = sha256(sw)
     s["sft_data_sha256"] = sha256(sft["data"]["sft_examples"])
-    if getattr(a, "sft_panels", False):  # the long programme's B, D and T: the same panels at the SFT weights
+    if getattr(a, "sft_panels", False):  # the long programme's B, D and TS: the same panels at the SFT weights
         s["sft_panels"] = zero_rate_panels(shape, sw, a.out, a.panel, prefix="sft_panel")
     # 3. Carry-5: the SFT model with generated (self) history (required), then the base model
     #    teacher-forced only (descriptive; a failure is recorded, not fatal).
@@ -1622,7 +1622,7 @@ def main(argv=None):
     p.add_argument("--no-carry5", action="store_true",
                    help="skip Carry-5 and base-model Carry-5 (cell W512's re-run SFT: Carry-12 alone)")
     p.add_argument("--sft-panels", action="store_true",
-                   help="also read the panels at the SFT weights (summary sft_panels; Carry-12 cells B, D and T)")
+                   help="also read the panels at the SFT weights (summary sft_panels; Carry-12 cells B, D and TS)")
     p.add_argument("--ember-commit", default=None,
                    help="the ember commit to generate with (default EMBER_COMMIT; amendment 5 pins its own in the jobs file)")
     p = sub.add_parser("pick")

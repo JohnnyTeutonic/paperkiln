@@ -1,5 +1,5 @@
 {
- "_comment": "Carry-12 cell B (60m_L8 at T 1,024) and, from its pretrained weights, D and T; then W512's re-run and the chat-prompt checks of B, D and T, seed 2 (experiments/tiny_chat_long_2026-10/PREREGISTRATION_DRAFT.md sections 6 and 10; written by experiments/tiny_chat_long_2026-10/make_jobs.py, whose docstring says what each job does). One RunPod L4, one GPU job at a time; estimated 24.4 L4 VM-hours (stage0/total.json), cap $19. NOT LAUNCHED: the gate refuses until experiments/tiny_chat_long_2026-10/PREREGISTRATION.md is committed, and the launch needs Jonathan's go. Runner (disabled until then): python3 -u tools/colab_chat/runner_multi.py --backend runpod --gpu L4 --commit FREEZE_COMMIT --jobs tools/colab_chat/carry12_B_r2.json --name pk-c12-b-r2 --art /mnt/c/ml_artifacts/tiny_chat/c12_B_r2 --state-dir /home/jonat/pk_c12_b_r2_runner --max-hours 32 --volume-gb 80 --max-usd 19 --upload vocab_llama3_bpe.gguf=/mnt/c/ml_artifacts/capacity/vocab/vocab_llama3_bpe.gguf --upload tc_e1_60m_L8_r2.safetensors=/mnt/c/ml_artifacts/tiny_chat/e1_60m_L8/pt_e1_60m_L8_r2/tc_e1_60m_L8_r2.safetensors",
+ "_comment": "Carry-12 cell B (60m_L8 at T 1,024) and, from its pretrained weights, D and TS; then W512's re-run and the chat-prompt checks of B, D and TS, seed 2 (experiments/tiny_chat_long_2026-10/PREREGISTRATION_DRAFT.md sections 6 and 10; written by experiments/tiny_chat_long_2026-10/make_jobs.py, whose docstring says what each job does). One RunPod L4, one GPU job at a time; estimated 15.8 L4 VM-hours (stage0/total.json), cap $13. NOT LAUNCHED: the gate refuses until experiments/tiny_chat_long_2026-10/PREREGISTRATION.md is committed, and the launch needs Jonathan's go. Runner (disabled until then): python3 -u tools/colab_chat/runner_multi.py --backend runpod --gpu L4 --commit FREEZE_COMMIT --jobs tools/colab_chat/carry12_B_r2.json --name pk-c12-b-r2 --art /mnt/c/ml_artifacts/tiny_chat/c12_B_r2 --state-dir /home/jonat/pk_c12_b_r2_runner --max-hours 23.5 --volume-gb 80 --max-usd 13 --upload vocab_llama3_bpe.gguf=/mnt/c/ml_artifacts/capacity/vocab/vocab_llama3_bpe.gguf --upload tc_e1_60m_L8_r2.safetensors=/mnt/c/ml_artifacts/tiny_chat/e1_60m_L8/pt_e1_60m_L8_r2/tc_e1_60m_L8_r2.safetensors",
  "max_parallel": 1,
  "max_parallel_light": 2,
  "jobs": [
@@ -173,6 +173,8 @@
     "corpus/eval/carry12_v1.jsonl",
     "--carry12-spot",
     "20",
+    "--score-batch-tokens",
+    "16384",
     "--sft-panels"
    ],
    "outputs": [
@@ -230,6 +232,8 @@
     "corpus/eval/carry12_v1.jsonl",
     "--carry12-spot",
     "20",
+    "--score-batch-tokens",
+    "16384",
     "--sft-panels"
    ],
    "outputs": [
@@ -247,7 +251,7 @@
    ]
   },
   {
-   "name": "post_c12_T_r2",
+   "name": "post_c12_TS_r2",
    "after": "pt_c12_B_r2",
    "init_job": "pt_c12_B_r2",
    "cmd": [
@@ -267,7 +271,7 @@
     "--seed",
     "2",
     "--cell",
-    "T",
+    "TS",
     "--share",
     "35",
     "--panel",
@@ -287,6 +291,8 @@
     "corpus/eval/carry12_v1.jsonl",
     "--carry12-spot",
     "20",
+    "--score-batch-tokens",
+    "16384",
     "--sft-panels"
    ],
    "outputs": [
@@ -299,8 +305,8 @@
     "carry5/m/gen.jsonl",
     "gen_engine.json",
     "sft_spec.json",
-    "sft/tc_sft_T_r2.safetensors",
-    "sft/tc_sft_T_r2.gguf"
+    "sft/tc_sft_TS_r2.safetensors",
+    "sft/tc_sft_TS_r2.gguf"
    ]
   },
   {
@@ -372,7 +378,9 @@
     "--carry12-items",
     "corpus/eval/carry12_v1.jsonl",
     "--carry12-gen",
-    "none"
+    "none",
+    "--score-batch-tokens",
+    "16384"
    ],
    "outputs": [
     "summary.json",
@@ -386,7 +394,7 @@
    "after": [
     "post_c12_B_r2",
     "post_c12_D_r2",
-    "post_c12_T_r2"
+    "post_c12_TS_r2"
    ],
    "cmd": [
     "bash",
@@ -394,7 +402,7 @@
     "{out}",
     "B@post_c12_B_r2/sft",
     "D@post_c12_D_r2/sft",
-    "T@post_c12_T_r2/sft"
+    "TS@post_c12_TS_r2/sft"
    ],
    "outputs": [
     "chat_eval_results.tar.gz"

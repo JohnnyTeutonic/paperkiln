@@ -2,8 +2,8 @@
 sections 6 and 10). The committed files are the script's output byte for byte; the pretraining specs are the specs
 Stage 0 probed at T 1,024 (arch, data, train, export); every rate is lr_choice.json's for its plain shape; the post
 jobs carry Carry-12 after Carry-5 at ember ec3201b with EMBER_DETERMINISTIC=1; B's machine runs D (sft_human_long4,
-B's weights), T (sft_human_tsft: the data job's --template-sft, B's weights and steps), W512 (E1's uploaded weights,
-E1's SFT, Carry-12 forced choice) and the chat-prompt checks of B, D and T, with B, D and T reading the panels at
+B's weights), TS (sft_human_tsft: the data job's --template-sft, B's weights and steps), W512 (E1's uploaded weights,
+E1's SFT, Carry-12 forced choice) and the chat-prompt checks of B, D and TS, with B, D and TS reading the panels at
 their SFT weights too; the caps follow the measured total plus T, W512 and the checks; and every file's gate refuses
 until the frozen PREREGISTRATION.md exists."""
 import importlib.util
@@ -83,7 +83,7 @@ def test_post_jobs_carry12_after_carry5_at_the_pin():
             assert "--T" in j["data"]["cmd"] and arg(j["data"]["cmd"], "--T") == "1024"
             assert "--carry12" in j["data"]["cmd"] and arg(j["data"]["cmd"], "--long-sft") == "10:4"
             assert ("--template-sft" in j["data"]["cmd"]) == (cell == "B")
-            posts = [cell] + (["D", "T"] if cell == "B" else [])
+            posts = [cell] + (["D", "TS"] if cell == "B" else [])
             for c in posts:
                 p = j[f"post_c12_{c}_r{seed}"]
                 cmd = p["cmd"]
@@ -91,11 +91,12 @@ def test_post_jobs_carry12_after_carry5_at_the_pin():
                 assert arg(cmd, "--ember-commit") == "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a"
                 assert "--ember-deterministic" in cmd and arg(cmd, "--gen") == "ember"
                 assert arg(cmd, "--carry12-items") == "corpus/eval/carry12_v1.jsonl" and arg(cmd, "--carry12-spot") == "20"
+                assert arg(cmd, "--score-batch-tokens") == "16384"  # every score batched (E5.2's bench and gates)
                 assert arg(cmd, "--carry5-items") == "corpus/eval/carry5_v1.jsonl" and arg(cmd, "--sft-batching") == "spec"
                 assert arg(cmd, "--cell") == c and arg(cmd, "--seed") == str(seed) and arg(cmd, "--share") == "35"
                 assert arg(cmd, "--pt-weights") == f"/content/chat/pt_c12_{cell}_r{seed}/tc_c12_{cell}_r{seed}.safetensors"
                 sft = arg(cmd, "--sft-template")
-                assert sft.endswith({"D": "sft_T1024_long4.json", "T": "sft_T1024_tsft.json"}.get(c, "sft_T1024.json"))
+                assert sft.endswith({"D": "sft_T1024_long4.json", "TS": "sft_T1024_tsft.json"}.get(c, "sft_T1024.json"))
                 assert ("--sft-panels" in cmd) == (cell == "B")
                 assert {"summary.json", "carry12/summary.json", "carry12/m/items.jsonl", "carry5/m/items.jsonl",
                         f"sft/tc_sft_{c}_r{seed}.gguf"} <= set(p["outputs"])
@@ -106,6 +107,7 @@ def test_post_jobs_carry12_after_carry5_at_the_pin():
             if cell == "B":
                 w = j[f"post_c12_W512_r{seed}"]["cmd"]
                 assert "--no-carry5" in w and arg(w, "--carry12-gen") == "none" and arg(w, "--cell") == "W512"
+                assert arg(w, "--score-batch-tokens") == "16384"  # W512 scored the same way
                 assert arg(w, "--pt-weights") == f"/content/chat/upload/tc_e1_60m_L8_r{seed}.safetensors"
                 assert arg(w, "--spec") == "experiments/tiny_chat_2026-10/specs/shape_60m_L8.json"
                 assert "--sft-batching" not in w  # E1's own SFT batching (32 x 1 at L8)
@@ -117,9 +119,9 @@ def test_post_jobs_carry12_after_carry5_at_the_pin():
                     {k: v for k, v in e1.items() if k != "_comment"}
                 assert f"--upload tc_e1_60m_L8_r{seed}.safetensors=" in doc["_comment"]
                 ch = j[f"chat_c12_r{seed}"]
-                assert ch["after"] == [f"post_c12_{c}_r{seed}" for c in ("B", "D", "T")]
+                assert ch["after"] == [f"post_c12_{c}_r{seed}" for c in ("B", "D", "TS")]
                 assert ch["cmd"][:3] == ["bash", "tools/colab_chat/chat_eval_vm.sh", "{out}"]
-                assert ch["cmd"][3:] == [f"{c}@post_c12_{c}_r{seed}/sft" for c in ("B", "D", "T")]
+                assert ch["cmd"][3:] == [f"{c}@post_c12_{c}_r{seed}/sft" for c in ("B", "D", "TS")]
                 assert (ROOT / "tools" / "colab_chat" / "chat_eval_vm.sh").exists()
                 assert list(j)[-1] == f"chat_c12_r{seed}"
             else:
@@ -132,8 +134,18 @@ def test_caps_and_not_launched():
     hs, w512, _ = m.hours()
     add = m.additions()
     total = json.loads((LONG / "stage0" / "total.json").read_text())
-    assert add["W512"] == w512 and abs(add["T"] - total["cells"]["D"]["per_run_h"] - m.SFT_PANELS_H) < 1e-9
-    assert abs(sum(3 * h for h in hs.values()) - 3 * sum(add.values()) - total["core_vm_hours"]) < 0.5
+    pr, c5_save, c12 = m.per_run()
+    bench = json.loads((ROOT / "docs" / "receipts" / "score_batch_bench_20261028.json").read_text())["evals"]
+    assert bench["carry12"]["variants"]["batched"]["vs_unbatched"]["choice_diffs"] == 0
+    for sid, r in total["carry12_post"].items():  # the Carry-12 part: its scoring divided by the bench's speedup
+        want = (r["eval_s"] - r["timing"]["score_s"] * (1 - 1 / bench["carry12"]["variants"]["batched"]["speedup"])
+                + r["ember_build_s"]) / 3600
+        assert abs(c12[sid] - want) < 1e-9 and c12[sid] < total["cells"]["B"]["carry12_post_h"]
+    for name, c in total["cells"].items():
+        assert abs(pr[name] - (c["per_run_h"] - c["carry12_post_h"] - c5_save + c12[c["shape"]])) < 0.01, name
+    assert add["W512"] == w512 and abs(add["TS"] - pr["D"] - m.SFT_PANELS_H) < 1e-9
+    assert abs(hs["B"] - (total["machine_h"] + pr["B"] + pr["D"] + sum(add.values()))) < 1e-9
+    assert sum(3 * m.cap(h) for h in hs.values()) < 130  # the twelve pods' caps beside the preference pod
     for cell, h in hs.items():
         doc = jobs(cell, 1)
         assert f"--max-usd {m.cap(h)} " in doc["_comment"] and "--commit FREEZE_COMMIT" in doc["_comment"]
@@ -142,7 +154,7 @@ def test_caps_and_not_launched():
         assert m.max_hours(h) >= h  # a deadline under the estimate would stop the machine early
         assert "NOT LAUNCHED" in doc["_comment"]
         assert m.cap(h) >= h * 0.59  # a cap under the estimate would stop the machine early
-    assert m.max_hours(hs["B"]) == 32.0  # B's machines (B, D, T, W512, chat checks): about 24.4 h of jobs
+    assert all(m.max_hours(h) == 23.5 for h in hs.values())  # every machine's jobs fit the default deadline
     drv = ROOT.parent / "scripts" / "colab_driver.json"  # the workspace's watchdog entries, when present
     if drv.exists():
         cells = [f"carry12_{c}_r{r}.json" for c in hs for r in (1, 2, 3)]

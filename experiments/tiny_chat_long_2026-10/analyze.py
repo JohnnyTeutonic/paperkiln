@@ -10,7 +10,7 @@ PARTIAL and no verdict is printed).
 ART holds the runners' artefact folders; every ART/*/post_c12_<cell>_r<seed>/summary.json (and ART/post_c12_*/...)
 is read, and the chat-prompt checks of B's machines, ART/*/chat_c12_r<seed>/ (chat/summary.json, chat2/summary.json,
 qa/qa_summary.json, extracted or inside chat_eval_results.tar.gz). Cells: W512 (E1 at 60M's L* runs re-SFT'd at
-T 512, Carry-12 forced choice only), B, D, T (B's weights, SFT on B's mix plus the template-SFT set), S-gist (summary
+T 512, Carry-12 forced choice only), B, D, TS (B's weights, SFT on B's mix plus the template-SFT set), S-gist (summary
 cell "Sgist"), P16 (B itself when L* = 16), X, and the conditional S-full ("Sfull") and R.
 
 One number per (cell, seed); paired contrasts over seeds 1-3 (4-5 when every cell of the contrast has them),
@@ -28,12 +28,12 @@ A contrast that uses a cell failing either is FLOOR.
 Registered contrasts (section 8):
 - HT   Y12_gold(B) - Y12_gold(W512) > 0 (gold history, which both fit); HT-0, its counter, is EQUIVALENT.
 - HD   Y12(D) - Y12(B) > 0; HD-0 is EQUIVALENT.
-- HT-SFT  Y12(T) - Y12(B) > 0; HT-SFT-0, its counter, is EQUIVALENT (the templates teach their own format, not
-       carry). The transfer reading beside it: T's gain over B on Carry-12's families whose structure T's templates
+- HT-SFT  Y12(TS) - Y12(B) > 0; HT-SFT-0, its counter, is EQUIVALENT (the templates teach their own format, not
+       carry). The transfer reading beside it: TS's gain over B on Carry-12's families whose structure TS's templates
        have (recall, correction) and on those they lack (topic, load), each Y that pool's self accuracy minus its
-       twin accuracy, and the difference. Beside it, as degradation checks (SUPPORTED = T worse than B beyond the
+       twin accuracy, and the difference. Beside it, as degradation checks (SUPPORTED = TS worse than B beyond the
        SESOI): Carry-5's Y, the panels at the SFT weights (sft_panels: FineWeb-Edu and natural dialogue), and the
-       chat-prompt checks of B, D and T (descriptive).
+       chat-prompt checks of B, D and TS (descriptive).
 - HS1  Y12(S-gist) - Y12(B) < 0; HS1-alt holds when the verdict is EQUIVALENT or CONTRADICTED (the difference is
        at least -3 points). Descriptive beside it: the retention ratio (acc(S-gist) - acc(noctx)) /
        (acc(B) - acc(noctx)) by distance, gold history, context families.
@@ -87,8 +87,8 @@ FLOOR_TEXT = ("FLOOR (twin accuracy over the primary families under 0.35, or twi
               "alone on the context families)")
 PARTIAL = "DESCRIPTIVE, PARTIAL"
 CORRECTION_DISTANCES = range(1, 12)
-TRAINED_FAMILIES = ("recall", "correction")   # Carry-12 families inside Y12 whose structure T's templates have
-UNTRAINED_FAMILIES = ("topic", "load")         # ... and those no template of T's has (no digression, one user fact)
+TRAINED_FAMILIES = ("recall", "correction")   # Carry-12 families inside Y12 whose structure TS's templates have
+UNTRAINED_FAMILIES = ("topic", "load")         # ... and those no template of TS's has (no digression, one user fact)
 
 
 # ---------------------------------------------------------------- reading the post summaries
@@ -334,7 +334,7 @@ def load_chat(art):
     return out
 
 
-def chat_beside(chat, seeds, a="T", b="B"):
+def chat_beside(chat, seeds, a="TS", b="B"):
     """Descriptive: per part and metric, the mean over seeds of each model and of a - b (chat: clean stops,
     repetition, reference bits per byte; qa: simple-QA accuracy)."""
     res = {"seeds_home": sorted(s for s in seeds if s in chat)}
@@ -348,7 +348,7 @@ def chat_beside(chat, seeds, a="T", b="B"):
         keys = CHAT_METRICS if part != "qa" else ("all", "fact", "science", "arith", "turn")
         blk = {}
         for k in keys:
-            per = {m: [r[m][k] for r in rows if m in r and r[m].get(k) is not None] for m in ("B", "D", "T")}
+            per = {m: [r[m][k] for r in rows if m in r and r[m].get(k) is not None] for m in ("B", "D", "TS")}
             diff = [r[a][k] - r[b][k] for r in rows if a in r and b in r and r[a].get(k) is not None
                     and r[b].get(k) is not None]
             blk[k] = {**{m: (st.mean(v) if v else None) for m, v in per.items()},
@@ -371,7 +371,7 @@ def paired_opt(runs, a, b, seeds, key):
 # ---------------------------------------------------------------- the analysis
 def analyze(runs, partial=False, lstar=8, r_sign=None, e1_home=None, chat=None):
     p16 = "B" if lstar == 16 else "P16"
-    core = ["W512", "B", "D", "T", "Sgist", "X"] + ([p16] if p16 != "B" else [])
+    core = ["W512", "B", "D", "TS", "Sgist", "X"] + ([p16] if p16 != "B" else [])
     seeds = seeds_of(runs, core)
     miss = missing(runs, [c for c in core if c != "W512"], seeds) + missing(runs, ["W512"], seeds, "Y12_gold")
     present = sorted({c for c, _ in runs})
@@ -396,17 +396,17 @@ def analyze(runs, partial=False, lstar=8, r_sign=None, e1_home=None, chat=None):
     hd["counter_HD_0"] = "confirmed (EQUIVALENT)" if hd["verdict"] == "EQUIVALENT" else "not confirmed"
     res["HD_D_minus_B"] = hd
     # HT-SFT: the template-SFT cell against B, the transfer reading and the degradation checks beside it.
-    hts = contrast("T", "B", "Y12", +1)
+    hts = contrast("TS", "B", "Y12", +1)
     hts["counter_HT_SFT_0"] = ("confirmed (EQUIVALENT: the templates teach their own format, not carry)"
                                if hts["verdict"] == "EQUIVALENT" else "not confirmed")
-    res["HT_SFT_T_minus_B"] = hts
-    gi, go = paired_opt(runs, "T", "B", seeds, "Y_trained"), paired_opt(runs, "T", "B", seeds, "Y_untrained")
+    res["HT_SFT_TS_minus_B"] = hts
+    gi, go = paired_opt(runs, "TS", "B", seeds, "Y_trained"), paired_opt(runs, "TS", "B", seeds, "Y_untrained")
 
     def transfer():
         tr = safe_decide(gi, SESOI, +1, "a family pool missing")
         un = safe_decide(go, SESOI, +1, "a family pool missing")
         dif = safe_decide([sub(x, y) for x, y in zip(gi, go)], SESOI, +1, "a family pool missing")
-        reading = ("the gain reaches the families no template of T's has (transfer)" if un["verdict"] == "SUPPORTED"
+        reading = ("the gain reaches the families no template of TS's has (transfer)" if un["verdict"] == "SUPPORTED"
                    else "the gain stays in the trained families" if tr["verdict"] == "SUPPORTED" and
                    un["verdict"] in ("EQUIVALENT", "CONTRADICTED", "SIGNIFICANT_BELOW_SESOI") else
                    "no transfer reading: neither family pool's gain is SUPPORTED, or the untrained pool is not resolved")
@@ -414,18 +414,18 @@ def analyze(runs, partial=False, lstar=8, r_sign=None, e1_home=None, chat=None):
                 "trained_families": {**tr, "families": list(TRAINED_FAMILIES)},
                 "untrained_families": {**un, "families": list(UNTRAINED_FAMILIES)},
                 "trained_minus_untrained": dif, "reading": reading}
-    res["HT_SFT_transfer"] = gated(runs, ["T", "B"], seeds, transfer)
+    res["HT_SFT_transfer"] = gated(runs, ["TS", "B"], seeds, transfer)
     res["HT_SFT_beside"] = {
-        "rule": "degradation checks reported beside HT-SFT, not conditions on it: SUPPORTED = T worse than B beyond "
+        "rule": "degradation checks reported beside HT-SFT, not conditions on it: SUPPORTED = TS worse than B beyond "
                 "the SESOI (Carry-5's Y lower by 3 points; a panel at the SFT weights higher by 0.02 nats)",
-        "carry5_Y_T_minus_B": safe_decide(paired_opt(runs, "T", "B", seeds, "carry5_Y"), SESOI, -1, "Carry-5 missing"),
-        "sft_panel_dialogue_T_minus_B": safe_decide(paired_opt(runs, "T", "B", seeds, "sft_panel_dialogue"),
+        "carry5_Y_TS_minus_B": safe_decide(paired_opt(runs, "TS", "B", seeds, "carry5_Y"), SESOI, -1, "Carry-5 missing"),
+        "sft_panel_dialogue_TS_minus_B": safe_decide(paired_opt(runs, "TS", "B", seeds, "sft_panel_dialogue"),
                                                     SESOI_LOSS, +1, "sft_panels missing (post --sft-panels)"),
-        "sft_panel_fineweb_T_minus_B": safe_decide(paired_opt(runs, "T", "B", seeds, "sft_panel_fineweb"),
+        "sft_panel_fineweb_TS_minus_B": safe_decide(paired_opt(runs, "TS", "B", seeds, "sft_panel_fineweb"),
                                                    SESOI_LOSS, +1, "sft_panels missing (post --sft-panels)"),
-        "instruction_complies_self": {c: res["cells"][c]["instruction_complies_self"]["mean"] for c in ("B", "T")},
+        "instruction_complies_self": {c: res["cells"][c]["instruction_complies_self"]["mean"] for c in ("B", "TS")},
         "chat_checks": chat_beside(chat or {}, seeds),
-        "pt_panels": "T's pretrained weights are B's, so its pretraining panels are B's by construction"}
+        "pt_panels": "TS's pretrained weights are B's, so its pretraining panels are B's by construction"}
     hs1 = contrast("Sgist", "B", "Y12", -1)
     hs1["HS1_alt"] = ("holds (the difference is at least -3 points)" if hs1["verdict"] in ("EQUIVALENT", "CONTRADICTED")
                       else "does not hold" if hs1["verdict"] in ("SUPPORTED", "SIGNIFICANT_BELOW_SESOI") else "undecided")

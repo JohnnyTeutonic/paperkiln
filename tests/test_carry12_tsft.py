@@ -1,8 +1,8 @@
-"""tools/carry12_tsft_build.py, cell T's template-SFT set (experiments/tiny_chat_long_2026-10/PREREGISTRATION_DRAFT.md
+"""tools/carry12_tsft_build.py, cell TS's template-SFT set (experiments/tiny_chat_long_2026-10/PREREGISTRATION_DRAFT.md
 sections 0, 4 and 6), and the data job's --template-sft path: the set is seeded and byte-reproducible (its pin), its
 design holds (families, N 1-12 balanced, one target per dialogue, at most 16 turns), the disjointness check against
 Carry-12 v1 and Carry-5 v1 passes and catches planted overlaps, the committed receipts are the tool's output, and
-tiny_chat_data.py --template-sft writes T's SFT set (the human rows once each plus the 4,224 template rows) without
+tiny_chat_data.py --template-sft writes TS's SFT set (the human rows once each plus the 4,224 template rows) without
 changing the job's other outputs."""
 import json
 from pathlib import Path
