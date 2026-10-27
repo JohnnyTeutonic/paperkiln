@@ -47,6 +47,8 @@ CASES = {
     "tp_mqa_partial": ("llama-tiny", {"d": 32, "heads": 4, "kv_heads": 1, "rope_dims": 4}, "paperkiln"),
     "tp_neox_partial": ("llama-tiny", {"d": 32, "heads": 4, "rope_pairing": "neox", "rope_dims": 4}, "paperkiln"),
     "tp_mamba1": ("mamba-tiny", {"d": 32, "layers": 2, "ssm": "mamba1", "d_state": 8}, "paperkiln"),
+    # QK-norm with a learned per-head temperature (arch.custom.qk_temp, the init value).
+    "tp_qk_temp": ("llama-tiny", {"d": 32, "heads": 4, "qk_norm": True, "qk_temp": 2.75}, "paperkiln"),
 }
 
 
@@ -121,6 +123,13 @@ def check_nodes(name, custom, doc):
         assert all(nodes.index(n) < i_rope for n in norms)  # before RoPE
     else:
         assert norms == []
+    scales = [n for n in nodes if n["op"] == "scale"]
+    if custom.get("qk_temp"):
+        # q times its head's temperature, after q's norm and before RoPE
+        assert [(n["in"], n["weight"], n["out"]) for n in scales] == [(["q"], "blk.{i}.attn_q_temp.weight", "q")]
+        assert nodes.index(norms[0]) < nodes.index(scales[0]) < nodes.index(rope)
+    else:
+        assert scales == []
 
 
 @needs_bin
@@ -139,6 +148,8 @@ def test_thirdparty_export_and_numpy_parity(tmp_path, name):
         assert model["ssm"]["kind"] == "mamba1" and model["ssm"]["dt_rank"] == 2
     elif name == "tp_gqa":
         assert model["thirdparty"]["kv_heads"] == 2
+    elif name == "tp_qk_temp":
+        assert model["thirdparty"]["qk_temp"] == 2.75
     ex = gguf_exports(spec)
     assert {e["format"] for e in ex} == ({"gguf", "gguf_q8_0"} if llama else {"gguf"})
     for e in ex:
@@ -149,6 +160,7 @@ def test_thirdparty_export_and_numpy_parity(tmp_path, name):
             assert meta[arch + ".attention.head_count_kv"][1] == custom.get("kv_heads", custom["heads"])
             names = {t[0] for t in tensors}
             assert ("blk.0.attn_q_norm.weight" in names) == bool(custom.get("qk_norm"))
+            assert ("blk.0.attn_q_temp.weight" in names) == bool(custom.get("qk_temp"))
             k = next(t for t in tensors if t[0] == "blk.0.attn_k.weight")
             assert list(k[1]) == [custom["d"], custom.get("kv_heads", custom["heads"]) * custom["d"] // custom["heads"]]
     doc = json.loads(ir_check.read_gguf(ex[0]["path"])[0]["paperkiln.ir"][1])
@@ -193,6 +205,8 @@ def test_thirdparty_single_ops_match_numpy():
     ("llama-tiny", {"d": 32, "heads": 4, "ssm": "mamba1"}, None, "need the mamba preset"),
     ("mamba-tiny", {"d": 32, "d_conv": 3}, None, "need ssm mamba1"),
     ("mamba-tiny", {"d": 32, "ssm": "mamba2"}, None, "must be s4 or mamba1"),
+    ("llama-tiny", {"d": 32, "heads": 4, "qk_temp": 2.0}, None, "qk_temp must be positive and needs qk_norm"),
+    ("llama-tiny", {"d": 32, "heads": 4, "qk_norm": True, "qk_temp": -1.0}, None, "qk_temp must be positive"),
 ])
 def test_bad_thirdparty_specs_are_refused(tmp_path, preset, custom, extra, msg):
     spec = spec_of(tmp_path, "bad", preset, custom, formats=("safetensors",), extra=extra)

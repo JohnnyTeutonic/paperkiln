@@ -103,11 +103,14 @@ struct Spec {
     // llama family, the thirdparty attention options (nn::LlamaConfig; keramos
     // IR_SPEC thirdparty profile): arch.custom.kv_heads (0 = heads; grouped-
     // query attention), rope_pairing "interleaved" | "neox", rope_dims (0 =
-    // head_dim; partial rotary), qk_norm (per-head q/k RMSNorm), rope_theta.
+    // head_dim; partial rotary), qk_norm (per-head q/k RMSNorm), rope_theta,
+    // qk_temp (0 = off; with qk_norm: a learned per-head temperature on the
+    // normed q, initialised to this value; nn::LlamaConfig::qk_temp).
     // Each left out = the plain llama block, untouched.
     size_t kv_heads = 0, rope_dims = 0;
     std::string rope_pairing = "interleaved";
     bool qk_norm = false;
+    float qk_temp = 0.0f;
     float rope_theta = 10000.0f;
     bool thirdparty() const {
         return (kv_heads && kv_heads != heads) || rope_pairing != "interleaved" ||
@@ -417,6 +420,9 @@ Spec parse_spec(const std::string& path) {
         s.rope_pairing = c.value("rope_pairing", s.rope_pairing);
         s.rope_dims = c.value("rope_dims", s.rope_dims);
         s.qk_norm = c.value("qk_norm", s.qk_norm);
+        s.qk_temp = c.value("qk_temp", s.qk_temp);
+        if (s.qk_temp != 0.0f && (!s.qk_norm || !(s.qk_temp > 0.0f)))
+            throw std::runtime_error("arch.custom.qk_temp must be positive and needs qk_norm");
         s.rope_theta = c.value("rope_theta", s.rope_theta);
         if (s.rope_pairing != "interleaved" && s.rope_pairing != "neox")
             throw std::runtime_error("arch.custom.rope_pairing must be interleaved or neox, got " + s.rope_pairing);
@@ -856,6 +862,7 @@ void apply_thirdparty(nn::LlamaConfig& lc, const Spec& s) {
     lc.rope_pairing = s.rope_pairing;
     lc.rope_dims = s.rope_dims;
     lc.qk_norm = s.qk_norm;
+    lc.qk_temp = s.qk_temp;
     lc.rope_theta = s.rope_theta;
 }
 
@@ -1841,6 +1848,20 @@ void export_ggufs(const Spec& s, nn::Module& model_ref, const nn::Llama* llama, 
         // attention alone is llama's (head_count_kv).
         if (s.rope_pairing != "interleaved" || (s.rope_dims && s.rope_dims != s.d / s.heads) || s.qk_norm)
             gc.architecture = "paperkiln";
+        // qk_temp: each stored layer's [1, H] temperatures repeated over their
+        // heads' columns, the [d] row the IR's scale node reads
+        // (blk.{i}.attn_q_temp.weight; LlamaBlock::export_ir).
+        if (s.qk_temp != 0.0f) {
+            const size_t dk = s.d / s.heads;
+            for (size_t l = 0; l < llama->blocks.size(); ++l) {
+                const Matrix& t = llama->blocks[l]->q_temp_w->data;
+                Matrix row(1, s.d);
+                for (size_t c = 0; c < s.d; ++c) row(0, c) = t(0, c / dk);
+                const std::string key = "layers." + std::to_string(l) + ".self_attn.q_temp.row";
+                sd2.emplace(key, std::move(row));
+                gc.extra_vec.emplace_back(key, "blk." + std::to_string(l) + ".attn_q_temp.weight");
+            }
+        }
         // The model's real FFN width. Exports before 19 Oct 2026 wrote 3d
         // whatever arch.custom.d_ff said; llama.cpp checks ffn tensor
         // shapes against this value.
@@ -2498,6 +2519,8 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     if (llama && s.thirdparty())
         model_ev["thirdparty"] = {{"kv_heads", llama->cfg.kv_heads()}, {"rope_pairing", s.rope_pairing},
                                   {"rope_dims", s.rope_dims ? s.rope_dims : s.d / s.heads}, {"qk_norm", s.qk_norm}};
+    // Absent without qk_temp: every other model event is unchanged.
+    if (llama && s.qk_temp != 0.0f) model_ev["thirdparty"]["qk_temp"] = s.qk_temp;
     if (llama && s.rope_theta != 10000.0f) model_ev["rope_theta"] = s.rope_theta;
     // Absent for the S4-style mamba: its model event is unchanged.
     if (mamba && s.ssm == "mamba1")

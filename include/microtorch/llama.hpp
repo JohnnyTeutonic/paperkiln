@@ -39,11 +39,18 @@ struct LlamaConfig {
     //     3; ops::rmsnorm_group with group head_dim), weights
     //     self_attn.q_norm.weight and self_attn.k_norm.weight [1, head_dim],
     //     GGUF blk.{i}.attn_q_norm.weight / attn_k_norm.weight.
+    //   qk_temp (0 = off; needs qk_norm): a learned temperature per head,
+    //     initialised to qk_temp, multiplying each head's normed q (QK-norm
+    //     with a learned scale: Henry et al. 2020; Dehghani et al. 2023).
+    //     Weight self_attn.q_temp.weight [1, n_heads]; the export writes it
+    //     repeated over each head's columns as blk.{i}.attn_q_temp.weight [d]
+    //     and an IR "scale" node on q after its norm.
     // Not wired with attn_res (llama_attnres runs its own attention).
     size_t n_kv_heads = 0;
     std::string rope_pairing = "interleaved";
     size_t rope_dims = 0;
     bool qk_norm = false;
+    float qk_temp = 0.0f;
     size_t kv_heads() const { return n_kv_heads ? n_kv_heads : n_heads; }
     // Any of the options above away from its default.
     bool thirdparty() const {
@@ -259,6 +266,7 @@ public:
     std::shared_ptr<Linear> gate_proj, up_proj, down_proj;  // dense FFN (null under MoE)
     std::shared_ptr<MoEFFN> moe;                             // MoE FFN (null when dense)
     Var q_norm_w, k_norm_w;  // qk_norm's [1, dk] weights (null otherwise)
+    Var q_temp_w;            // qk_temp's [1, H] per-head temperatures (null otherwise)
     size_t H, dk, n_ctx;
     size_t KV;          // kv heads (LlamaConfig::kv_heads())
     size_t rope_dims_;  // rotated dims per head (dk unless partial)
