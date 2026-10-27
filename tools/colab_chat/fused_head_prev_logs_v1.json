@@ -1,0 +1,9 @@
+{
+  "_comment": "Why pk-fused-head's step_profile (26 Oct 2026, paperkiln d6eab693) never finished: 3.5 h RUNNING with no profile.json home, as bf16_gate_v2's step_profile_v2 (25 Oct, c6f7c5d5) before it. Its partial outputs are still on the campaign's network volume (qxftx0jif3, EU-RO-1), mounted at /content by the same state dir. One job, no GPU work: tar the old job's directory (profile.json, every run's spec, events.jsonl and log; no weights, no corpus) with the session's logs into {out}/prev_profile.tar.gz, and list the directory with sizes and times. Run with the old state dir (pk_fused_head_runner); once home, the campaign is home and its volume is deleted. Read at home before step_profile is rerun.",
+  "max_parallel": 1,
+  "jobs": [
+    {"name": "prev_profile_logs",
+     "cmd": ["bash", "-c", "set -u; cd /content/chat; ls -laR --time-style=full-iso step_profile > {out}/listing.txt 2>&1 || true; tar czf {out}/prev_profile.tar.gz --exclude='*.safetensors' --exclude='*.gguf' --exclude='*.ids' --ignore-failed-read step_profile step_profile_train.log jobs.log boot.log prelude.log STATUS_step_profile 2>> {out}/listing.txt; ls -la {out}"],
+     "outputs": ["listing.txt", "prev_profile.tar.gz"]}
+  ]
+}
