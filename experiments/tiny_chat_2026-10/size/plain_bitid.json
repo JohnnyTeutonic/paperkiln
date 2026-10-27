@@ -1,5 +1,5 @@
 {
- "receipt": "amendment 5: plain 20m_L16 at the arm's commit against E1's pt_e1_L16_r1 log",
+ "receipt": "amendment 6: plain 60m_L32 at the arm's commit against E1 at 60M's pt_e1_60m_L32_r2 log",
  "replay_commit": "cd72fe171a7a4b101eef75503f7bd7155cb648c0",
  "e1_commit": "a90ec0e2b2aaf6052a5ff953acd1e0a40a9a222c",
  "steps_compared": 500,
@@ -10,14 +10,32 @@
  "differences": [],
  "n_differences": 0,
  "spec_equal_but_steps": true,
- "model_event_equal": false,
+ "model_event_equal": true,
  "e1_starts": 1,
  "first_loss": 9.766027450561523,
  "last_loss": 5.490143775939941,
  "val_loss": {
   "500": 5.304675370454788
  },
- "ok": false,
+ "model_event": {
+  "equal": true,
+  "rule": "The model events agree on every field both carry; a field in E1's event alone fails; a field in the replay's event alone passes only when it is in LOGGED_LATER at its fixed value.",
+  "replay_only": {
+   "final_norm": {
+    "value": true,
+    "fixed": true,
+    "ok": true
+   },
+   "norm_placement": {
+    "value": "pre",
+    "fixed": "pre",
+    "ok": true
+   }
+  },
+  "e1_only": {},
+  "shared_differences": {}
+ },
+ "ok": true,
  "replay_result": {
   "T": 512,
   "accum": 2,

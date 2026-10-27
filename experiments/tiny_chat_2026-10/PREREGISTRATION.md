@@ -1473,6 +1473,16 @@ post job beyond its SFT (E1 at 60M: 0.78-2.88 h, median 1.36). At $0.59 per L4-h
   arm's jobs files, its own tools (`size/make_size_jobs.py`, `size/analyze_size.py`, `analyze.py`'s `E1_150m` block)
   and `tiny_chat_run.py post --sft-batching` with their tests: nothing under `src/`, `include/` or CMake, and no
   change to any existing jobs file or to the post job's default path.
+- **(c)'s model events (Jonathan's ruling, 27 Oct 2026, after the replay came home).** `x5/bitid.py` compares the
+  replay's model event with E1 at 60M's on the fields both commits log: every shared field equal, and no field in
+  E1 at 60M's event alone. The replay runs at cd72fe17 and E1 at 60M ran at a90ec0e2; between them, paperkiln
+  c6365b88 added two fields to mtstudio's logged model event, `final_norm` and `norm_placement`, whose values are
+  fixed for every non-flex family (true and "pre"; this arm and E1 are llama). They are listed in `bitid.py`
+  (`LOGGED_LATER`) and checked against those values, not required to be absent; any other field in the replay's
+  event alone fails (c). They describe the model the spec already fixes, so they are a logging change, not a
+  difference in the run ("that's just a logging change, why bother?"). The receipt records them under
+  `model_event`. Amendment 5's receipt (`x5/plain_bitid.json`, both commits before c6365b88) is unchanged by the
+  rule: rerun, it is byte-identical. `tests/test_tiny_chat_x5.py` tests the rule.
 
 **A6.8 Interfaces.** Now: `size/make_size_jobs.py` (it imports `make_jobs.py` and writes none of its files),
 `size/specs/shape_150m_L*.json`, `tools/colab_chat/tiny_chat_s0_150m_L*.json`, `size/analyze_size.py`,
@@ -1507,6 +1517,9 @@ python experiments/tiny_chat_2026-10/x5/bitid.py --replay ART/s0_150m_L4/replay_
 
 The root `scripts/colab_driver.json` holds the four Stage 0 entries (`pk-tc-s150-L4`, `-L8`, `-L16`, `-L32`, caps
 $5, $5, $5 and $6), enabled on 26 Oct 2026.
+
+`bitid.py`'s receipt `size/plain_bitid.json` applies (c)'s model-event rule (A6.7; Jonathan's ruling, 27 Oct 2026)
+with the arguments above.
 
 ## Implementation notes
 
