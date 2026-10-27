@@ -1,0 +1,27 @@
+{
+ "arxiv_id": "1803.02155",
+ "title": "Self-Attention with Relative Position Representations",
+ "abstract_sha256": "d44120f0e1d745dbc165bcc827c5a282a88a68146e00885972e39e06bba6ddfe",
+ "verdict": "in_scope",
+ "reason": "The paper proposes relative position representations built into self-attention, a positional-encoding component that a language model could use.",
+ "architecture_kind": "relative positional encoding in self-attention",
+ "evidence": "extending the self-attention mechanism to efficiently consider representations of the relative positions",
+ "evidence_found": true,
+ "errors": [],
+ "passes": true,
+ "gate": {
+  "model": "claude-opus-5-5",
+  "served_by": "claude-opus-5-5",
+  "effort": "low",
+  "max_tokens": 3000,
+  "prompt_sha256": "c14d094a07ba3f62d99ba57195c8f64c9e255aaf6b8dd3c27d875920a193a418",
+  "request_id": "req_011CgSLXjDjha19nnSnKkCw4",
+  "cache_hit": true,
+  "input_tokens": 995,
+  "output_tokens": 109,
+  "cost_usd": 0.0,
+  "original_cost_usd": 0.00616,
+  "tag": "relevance_gate",
+  "extractor_sha256": "eba59e0aec78170e9022fc29c2913efa7152116631cf89ebfd75e59b4a1c79cb"
+ }
+}

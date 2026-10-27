@@ -1,13 +1,13 @@
 {
  "spec": {
   "repository": "keramos",
-  "tag": "v1.3.3",
-  "commit": "254b6b4d9feb9b2ed241b961ca8b5f3403e369bc"
+  "tag": "v1.3.5",
+  "commit": "c4696bf5578688585f6b00593eb9272daa8c5e3a"
  },
  "engine": {
   "name": "paperkiln mtstudio, CPU, with ir_eval (recurrence nodes and the thirdparty single ops, their gradients, the digest) and expr_eval",
-  "environment": "ext4 clone of paperkiln e8f66a10b0db897104f26c4bb36896936fcba265 (keramos v1.3.3 vendored at spec/), Release, GCC 13.3, vendored transformer_core, -ffp-contract=off, built in WSL (~/s13_build); runner under CPython 3.12.3, numpy 2.3.3",
-  "run": "MTSTUDIO_BIN=build/mtstudio python3 tools/ir_conformance_mtstudio.py, spec/ equal to v1.3.3 (254b6b4d), 2026-10-27. New at 1.3: the pk_flex_t5 model case through mtstudio score (log-probs within 9.7e-8, greedy 4/4) and attention.position_bias op cases through ir_eval's ops::relpos_attention (within 1.1e-7; the windowed one skips by name)"
+  "environment": "ext4 clone of paperkiln b9d5ce06 (keramos v1.3.5 vendored at spec/), Release, GCC 13.3, vendored transformer_core, -ffp-contract=off, built in WSL (~/d4_build); runner under CPython 3.12.3, numpy 2.3.3",
+  "run": "MTSTUDIO_BIN=build/mtstudio python3 tools/ir_conformance_mtstudio.py, spec/ equal to v1.3.5 (c4696bf5), 2026-10-27. pk_llama_attnres_rec (tensor_index) through mtstudio score: log-probs within 1.28e-7, greedy 4/4. The six cases of v1.3.5 (section 7.2's trace, acceptance and four refusals on pk_llama_attnres_rec) skip (mtstudio runs its own models: no document loading, refusals or substituted documents); the v1.3.4 models (tp_*_hd16) skip but for their digest vectors; no earlier verdict moves"
  },
  "adapter": {
   "engine": "mtstudio",
@@ -22,9 +22,9 @@
   ]
  },
  "counts": {
-  "PASS": 143,
+  "PASS": 146,
   "FAIL": 0,
-  "SKIP": 270,
+  "SKIP": 291,
   "XFAIL": 0,
   "XPASS": 0
  },
@@ -32,14 +32,14 @@
   "model": {
    "PASS": 17,
    "FAIL": 0,
-   "SKIP": 5,
+   "SKIP": 8,
    "XFAIL": 0,
    "XPASS": 0
   },
   "trace": {
    "PASS": 6,
    "FAIL": 0,
-   "SKIP": 58,
+   "SKIP": 68,
    "XFAIL": 0,
    "XPASS": 0
   },
@@ -53,12 +53,12 @@
   "refuse": {
    "PASS": 0,
    "FAIL": 0,
-   "SKIP": 94,
+   "SKIP": 98,
    "XFAIL": 0,
    "XPASS": 0
   },
   "digest": {
-   "PASS": 85,
+   "PASS": 88,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
@@ -81,7 +81,7 @@
   "accept": {
    "PASS": 0,
    "FAIL": 0,
-   "SKIP": 36,
+   "SKIP": 40,
    "XFAIL": 0,
    "XPASS": 0
   },
@@ -383,6 +383,24 @@
    "detail": "not implemented"
   },
   {
+   "id": "model/tp_llama_hd16",
+   "kind": "model",
+   "verdict": "SKIP",
+   "detail": "no mtstudio run record (not a paperkiln-trained model)"
+  },
+  {
+   "id": "trace/tp_llama_hd16_decode",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "trace/tp_llama_hd16_truncate",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
    "id": "model/tp_mamba1",
    "kind": "model",
    "verdict": "SKIP",
@@ -413,6 +431,18 @@
    "detail": "not implemented"
   },
   {
+   "id": "model/tp_mistral_hd16",
+   "kind": "model",
+   "verdict": "SKIP",
+   "detail": "no mtstudio run record (not a paperkiln-trained model)"
+  },
+  {
+   "id": "trace/tp_mistral_hd16_decode",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
    "id": "model/tp_qwen3",
    "kind": "model",
    "verdict": "SKIP",
@@ -426,6 +456,24 @@
   },
   {
    "id": "trace/tp_qwen3_truncate",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "model/tp_qwen3_hd16",
+   "kind": "model",
+   "verdict": "SKIP",
+   "detail": "no mtstudio run record (not a paperkiln-trained model)"
+  },
+  {
+   "id": "trace/tp_qwen3_hd16_decode",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "trace/tp_qwen3_hd16_truncate",
    "kind": "trace",
    "verdict": "SKIP",
    "detail": "not implemented"
@@ -1283,6 +1331,30 @@
    "detail": "not implemented"
   },
   {
+   "id": "refuse/tensor_index_in_head",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/tensor_index_value_unknown",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/tensor_index_on_affine",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "refuse/tensor_index_absent_application_tensor",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
    "id": "refuse/duplicate_member_top",
    "kind": "refuse",
    "verdict": "SKIP",
@@ -1763,6 +1835,12 @@
    "detail": "sha256 equal; canonical equal"
   },
   {
+   "id": "digest/vectors/document_tp_llama_hd16",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
    "id": "digest/vectors/document_tp_mamba1",
    "kind": "digest",
    "verdict": "PASS",
@@ -1775,7 +1853,19 @@
    "detail": "sha256 equal; canonical equal"
   },
   {
+   "id": "digest/vectors/document_tp_mistral_hd16",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
    "id": "digest/vectors/document_tp_qwen3",
+   "kind": "digest",
+   "verdict": "PASS",
+   "detail": "sha256 equal; canonical equal"
+  },
+  {
+   "id": "digest/vectors/document_tp_qwen3_hd16",
    "kind": "digest",
    "verdict": "PASS",
    "detail": "sha256 equal; canonical equal"
@@ -2033,6 +2123,12 @@
    "detail": "not implemented"
   },
   {
+   "id": "trace/tp_mistral_hd16_rewind_window",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
    "id": "trace/pk_attnres_chunks",
    "kind": "trace",
    "verdict": "SKIP",
@@ -2147,6 +2243,12 @@
    "detail": "not implemented"
   },
   {
+   "id": "trace/tp_llama_hd16_chunks",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
    "id": "trace/tp_mamba1_chunks",
    "kind": "trace",
    "verdict": "SKIP",
@@ -2159,7 +2261,25 @@
    "detail": "not implemented"
   },
   {
+   "id": "trace/tp_mistral_hd16_chunks",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
    "id": "trace/tp_qwen3_chunks",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "trace/tp_qwen3_hd16_chunks",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "trace/pk_llama_attnres_rec_untagged",
    "kind": "trace",
    "verdict": "SKIP",
    "detail": "not implemented"
@@ -2279,6 +2399,12 @@
    "detail": "not implemented"
   },
   {
+   "id": "accept/documents/model_tp_llama_hd16",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
    "id": "accept/documents/model_tp_mamba1",
    "kind": "accept",
    "verdict": "SKIP",
@@ -2291,7 +2417,19 @@
    "detail": "not implemented"
   },
   {
+   "id": "accept/documents/model_tp_mistral_hd16",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
    "id": "accept/documents/model_tp_qwen3",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/model_tp_qwen3_hd16",
    "kind": "accept",
    "verdict": "SKIP",
    "detail": "not implemented"
@@ -2376,6 +2514,12 @@
   },
   {
    "id": "accept/documents/substituted_over_duplicate_embedded",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "not implemented"
+  },
+  {
+   "id": "accept/documents/untagged_application_queries",
    "kind": "accept",
    "verdict": "SKIP",
    "detail": "not implemented"

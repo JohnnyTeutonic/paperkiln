@@ -1,13 +1,13 @@
 {
  "spec": {
   "repository": "keramos",
-  "tag": "v1.3.4",
-  "commit": "7a37bf6973543914e7b3f4750b91131860d11b8f"
+  "tag": "v1.3.5",
+  "commit": "c4696bf5578688585f6b00593eb9272daa8c5e3a"
  },
  "engine": {
   "name": "keramos-cleanroom (Rust), kcr --conformance, built from keramos 1d1fd3773e82b6c03d263426fe95fa10fb1cae51 (cleanroom/rust; rustc 1.98.1, release, no crates, WSL ext4)",
   "environment": "the runner under CPython 3.12.3, numpy 2.3.3, WSL",
-  "run": "python3 tools/ir_conformance.py --adapter cmd:kcr --conformance, in a clean clone of keramos at v1.3.4 (7a37bf69), 2026-10-27, the engine unchanged since 1d1fd377 (revision 1.2, a black box here); skips: the 8 gradient cases and the 32 chat cases; XFAIL: the 12 revision-1.3 cases expected_fail.json lists (its run_node ignores attention.position_bias, its loader refuses the attribute as an unknown key, rule 38 is not built); the 18 cases of v1.3.4 pass"
+  "run": "python3 tools/ir_conformance.py --adapter cmd:kcr --conformance, in a clean clone of keramos at v1.3.5 (c4696bf5), 2026-10-27, the engine unchanged since 1d1fd377 (revision 1.2, a black box here); skips: the 8 gradient cases and the 32 chat cases; XFAIL: the 12 revision-1.3 cases expected_fail.json lists (its run_node ignores attention.position_bias, its loader refuses the attribute as an unknown key, rule 38 is not built). The six cases of v1.3.5 (section 7.2's trace, acceptance and four refusals on pk_llama_attnres_rec) pass, the refusals citing rules 19, 1 (the schema, for rules 4 and 5) and 25; no earlier verdict moves"
  },
  "adapter": {
   "engine": "keramos-cleanroom (Rust)",
@@ -22,7 +22,7 @@
   ]
  },
  "counts": {
-  "PASS": 379,
+  "PASS": 385,
   "FAIL": 0,
   "SKIP": 40,
   "XFAIL": 12,
@@ -37,7 +37,7 @@
    "XPASS": 0
   },
   "trace": {
-   "PASS": 71,
+   "PASS": 72,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 2,
@@ -51,7 +51,7 @@
    "XPASS": 0
   },
   "refuse": {
-   "PASS": 89,
+   "PASS": 93,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 5,
@@ -79,7 +79,7 @@
    "XPASS": 0
   },
   "accept": {
-   "PASS": 38,
+   "PASS": 39,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 1,
@@ -1331,6 +1331,30 @@
    "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[5]: key position_bias is not defined"
   },
   {
+   "id": "refuse/tensor_index_in_head",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 7.2 (rule 19): head.nodes[0] (depth_attend): tensor_index in a block without weight_index"
+  },
+  {
+   "id": "refuse/tensor_index_value_unknown",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[0].tensor_index: \"stored\" is not one of [\"application\"]"
+  },
+  {
+   "id": "refuse/tensor_index_on_affine",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 10.1 (rule 1): $.block.nodes[1]: key tensor_index is not defined"
+  },
+  {
+   "id": "refuse/tensor_index_absent_application_tensor",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused: IR_SPEC 3.7 (rule 25): rmsnorm: tensor blk.3.attn_norm.weight is not a tensor of the file"
+  },
+  {
    "id": "refuse/duplicate_member_top",
    "kind": "refuse",
    "verdict": "PASS",
@@ -2255,6 +2279,12 @@
    "detail": "4 steps"
   },
   {
+   "id": "trace/pk_llama_attnres_rec_untagged",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "5 steps"
+  },
+  {
    "id": "accept/documents/model_pk_attnres",
    "kind": "accept",
    "verdict": "PASS",
@@ -2484,6 +2514,12 @@
   },
   {
    "id": "accept/documents/substituted_over_duplicate_embedded",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/untagged_application_queries",
    "kind": "accept",
    "verdict": "PASS",
    "detail": "accepted"

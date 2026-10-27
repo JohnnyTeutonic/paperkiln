@@ -1,0 +1,299 @@
+{
+ "model": "models/pk_flex_mdha",
+ "evict": null,
+ "class": "ROUNDING",
+ "tol": 1e-05,
+ "steps": [
+  {
+   "method": "forward",
+   "ids": [
+    3,
+    7,
+    10,
+    12
+   ]
+  },
+  {
+   "method": "snapshot",
+   "tag": "p"
+  },
+  {
+   "method": "forward",
+   "ids": [
+    4,
+    1,
+    13
+   ]
+  },
+  {
+   "method": "restore",
+   "tag": "p"
+  },
+  {
+   "method": "forward",
+   "ids": [
+    6,
+    10,
+    10
+   ]
+  }
+ ],
+ "expect": [
+  {
+   "len": 4,
+   "logits": {
+    "shape": [
+     4,
+     15
+    ],
+    "f32": "bd5677adbe3e9dc8be3a093ebe36b22a3dddc7613fb540febdd76e223e8436c23e555329be7efda63e074b7dbd2eec74bd364061bd5a0ef1bf1604bebf06da75bcd5d090be0f258ebe2814a6beead652bf15db733daf0962be35d6a5be9650a83f0b7ef9bf3c4d25bf2fb3fbbf1316a4bf04206a3fdbce54bc3f7e103e82b0743f8a298a3f8bc1bdbd9115f2be510740be66bda6be98684ebead3fc8bd41e481beb42ffdbeb09d0bbe736ec1be3c57473d7f541fbca892b43e6d6b623f893fe83f8cb63ebd24654cbe4f6b1bbe6505ccbe959bc8beaaf496bd44bbf8beb21628beb1784fbe7ed463be3c055b3d114c59"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      4
+     ],
+     [
+      4
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ]
+    ]
+   },
+   "recurrent": {
+    "qkv_conv": [
+     {
+      "x": {
+       "shape": [
+        2,
+        48
+       ],
+       "f32": "3d11cd463c0c8206bd747462be817da13d3d9730be16a87a3e299ebf3e8dbd183cc28f7fbe4b83d23e09d710be078c9a3d0fd8233e50f99d3d1959d6bde324f8bc0ba0d9bd8abfb43d64e8e5be6573aebdb8bcbe3d8b2ad0be86f11dbbac0db43e2f9a123ca8034fbd62005a3d749f5b3d6f9b2e3e1ea7cebe42460b3e93745fbe006678bd449a77bd019aabbdeac025beb6d2813e0a13b2bc851b733c981fa2bc4ada10bddfaf943c5c9c6bbdfca262bd9b5673be258ad9bb927d48bd8edaa0bd1445b03d022af4bd798ad3be7c78763da5205bbdd23edb3e05bd383e7fd9183d3f20ccbe56346e3df75dd6be1399053d52db2a3e4acc7d3d099696bda12f36bc91e620bd35f4293d751154be60ecb7bda6fdf23defb5b8be726d7bbc8224bd3e4556313cad6a93bd3406b03d966ed53dcd25643dee5935be3f93c53e97b4ebbe0c94bbbca029d6bc316495be116b6ebeb56fc53e03f23abca1be5dbc793c793c1f1f60bd5b357d3cfffd34be41d49abd899dcabe40d1d5bd004f39bde83737"
+      }
+     },
+     {
+      "x": {
+       "shape": [
+        2,
+        48
+       ],
+       "f32": "bd4085433c9195663e55d1e6be0d78cd3e1d2d20be2d32bbbdedec6fbcbaa2a5be2b5384bd9e1487bdc81a413d1dbd22be43860fbe34ee8ebdb9fa2ebea3f50f3b4359b0bdbd9830be1087ba3e3d4bc93df8b0bcbc8345783e31fd3fbc18901abb787312be1cfd47bd2baddebddf6fd93e367534be05b86ebda90f03bdae3e263d876a42bc71b7b0bde27cb73d3153133d288220bc82f0ddbda2b5c93ccc12e3bdc0228e3c9302823e85acb43e4fe4333e24707a3db65dbebe0e945d3dbd00ecbd82cbe63d34ff803e5ac5c0be0a93c13e2c6dc0be138ec4be0bd841bd2348aabe29fe96bdd4b104bd9f4db13dd2c1dcbe62f30dbe2c35ecbda59068bea34a1f3cc47a84bd725494bdeee0523e598a8d3ddd064ebca065df3e2566a9bcfae8273b42633ebe251545bcb688b4bdbf22af3e460feebdeaf11abd8e12bbbd95a38e3db94f3cbd349aaebdac27773d4d07033d70dabdbb4f69eabd89b2d1bc961e6bbe17541f3d6c9a943e81cb7c3e28d8f43e42f63d3d3272efbde372923e079223"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "len": 4
+  },
+  {
+   "len": 7,
+   "logits": {
+    "shape": [
+     3,
+     15
+    ],
+    "f32": "be688f08bea30ed0beb5957ebe2d7ddb3caec5f4be846c553fd0a498be2097fcbe188092beffd845bec005b0beb76293bf018f10beeb3a283e05c0813eebf9eb3eb406b6bdf3560dbe7b1fc3be731f3d3d465d9fbeba17b3bee56ebfbebeb9bcbe6cf09e3f8dd8c33f8c845c3f90b90c3f855da9bf3eed9dbb22ae533e4bf4a03f89d6933f8d9f30bd831fd9be21cc82be52d6a1be90a4acbea9dbccbccc71c5bea661e1bea73aa2be6bc9a4be33da56bc952b8d"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      7
+     ],
+     [
+      7
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ]
+     ]
+    ]
+   },
+   "recurrent": {
+    "qkv_conv": [
+     {
+      "x": {
+       "shape": [
+        2,
+        48
+       ],
+       "f32": "bdd82615be9347e2bdd45210be947b7c3c99551c3e1616e13ef0c0e4bde205763d30b2b6bc299c983ccdfcd63da1e470be5cdd41bd48c40bbda319cdbe84307fbe66e9ab3e0ee70fbd4657643e06b5f8be07b900bc47abd8bea390123dbddc973d810786bde671f2be0debd63e43e0dbbd1d9b0d3d9652b4be52c090bd22c0713deb589b3e665568bdd425143e7828fb3f1486a1be7625353e2ae32e3b2349a83d641a6a3d9b0cd43e4167d1bc9bc35ebdf3201b3e094c97bd61fa7bbe4032d1bd32dcaab9ff84c0bcea6321be1995bb3c093280be22ee6f3df81e623ea3ddb93cbf3693be4d2f8a3e1ec3bbbe443ef93d9ce4ef3d33fb09be5655c2be17edadbb88d4a2be28acedbd967d77be8c38b7bdafd3e63da718a4be3fc9a2bd8a560b3e531abf3e041d39bdab8896bd71ae353dc48c6e3e35a9adbde98c453e208f76bd271ffabd23082cbd233917bcf66123beb3b5b13dadd705be09b2383bb5d3a23e0831f0bc17e1993d314373be3a61513b05dfd6be55c7a1bd1962b6bd68543e"
+      }
+     },
+     {
+      "x": {
+       "shape": [
+        2,
+        48
+       ],
+       "f32": "3d8de05b3cee26123e4d047ebeb57a363ed263dcbe00b0b73e046891be8874f4beac10153dbb3326bc2a82283d5853acbe02b4cbbd8e911cbe54977dbe6a7a04be56e2123e1d1dfcbe744d1a3cea3bfd3e828782bda28aec3e0573db3eb5fad03d70a870be8341f0bee62432bc0993fc3dcc9887bb8a1cbd3d2356c6bdc80949beb153a33db9e179be91ea1f3e2fae723cc189e8be332d973e5361d2bcd771083e75714abe66851abad862c83e213161bdd4560abc226ac1bc9abb2cbda26faebcf3bf063d22b8123e4ee7d4bdfd75b53dc15ffcbe0ea972be0c25c8bd2ee274be09a022bd986fa0bdb9e9dd3dd4599dbe4dc416be247a85bd22ba5bbe9355203d2341a6bdc41b2dbd98685a3e57643d3e0b2d12bd17b4dd3e3237183a568f80bc8a2bb4be04b44dbc077f92be09e4863e49150ebe21e492bd57a12abcd04c433df2f786bd4df8ccbd8015ab3c7532f23d84ab133ca902a0bd409e2fbd085058be2280ad3d81c43e3e6c68863e258cb23e42f6d53cbe7478bd9d33b03e00d664"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "len": 4,
+   "kv_rows": {
+    "kv": [
+     [
+      4
+     ],
+     [
+      4
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ]
+    ]
+   },
+   "recurrent": {
+    "qkv_conv": [
+     {
+      "x": {
+       "shape": [
+        2,
+        48
+       ],
+       "f32": "3d11cd463c0c8206bd747462be817da13d3d9730be16a87a3e299ebf3e8dbd183cc28f7fbe4b83d23e09d710be078c9a3d0fd8233e50f99d3d1959d6bde324f8bc0ba0d9bd8abfb43d64e8e5be6573aebdb8bcbe3d8b2ad0be86f11dbbac0db43e2f9a123ca8034fbd62005a3d749f5b3d6f9b2e3e1ea7cebe42460b3e93745fbe006678bd449a77bd019aabbdeac025beb6d2813e0a13b2bc851b733c981fa2bc4ada10bddfaf943c5c9c6bbdfca262bd9b5673be258ad9bb927d48bd8edaa0bd1445b03d022af4bd798ad3be7c78763da5205bbdd23edb3e05bd383e7fd9183d3f20ccbe56346e3df75dd6be1399053d52db2a3e4acc7d3d099696bda12f36bc91e620bd35f4293d751154be60ecb7bda6fdf23defb5b8be726d7bbc8224bd3e4556313cad6a93bd3406b03d966ed53dcd25643dee5935be3f93c53e97b4ebbe0c94bbbca029d6bc316495be116b6ebeb56fc53e03f23abca1be5dbc793c793c1f1f60bd5b357d3cfffd34be41d49abd899dcabe40d1d5bd004f39bde83737"
+      }
+     },
+     {
+      "x": {
+       "shape": [
+        2,
+        48
+       ],
+       "f32": "bd4085433c9195663e55d1e6be0d78cd3e1d2d20be2d32bbbdedec6fbcbaa2a5be2b5384bd9e1487bdc81a413d1dbd22be43860fbe34ee8ebdb9fa2ebea3f50f3b4359b0bdbd9830be1087ba3e3d4bc93df8b0bcbc8345783e31fd3fbc18901abb787312be1cfd47bd2baddebddf6fd93e367534be05b86ebda90f03bdae3e263d876a42bc71b7b0bde27cb73d3153133d288220bc82f0ddbda2b5c93ccc12e3bdc0228e3c9302823e85acb43e4fe4333e24707a3db65dbebe0e945d3dbd00ecbd82cbe63d34ff803e5ac5c0be0a93c13e2c6dc0be138ec4be0bd841bd2348aabe29fe96bdd4b104bd9f4db13dd2c1dcbe62f30dbe2c35ecbda59068bea34a1f3cc47a84bd725494bdeee0523e598a8d3ddd064ebca065df3e2566a9bcfae8273b42633ebe251545bcb688b4bdbf22af3e460feebdeaf11abd8e12bbbd95a38e3db94f3cbd349aaebdac27773d4d07033d70dabdbb4f69eabd89b2d1bc961e6bbe17541f3d6c9a943e81cb7c3e28d8f43e42f63d3d3272efbde372923e079223"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "len": 7,
+   "logits": {
+    "shape": [
+     3,
+     15
+    ],
+    "f32": "bec12721bedabd85bd0e8433bdb58a9abee19825be554a80beea7c37bcbe3e89be4e92b73fcebf40be30004dbe88a0b9be988ff6be8f8fbb3f34adea3c030d8b3e7d716d3f8ad6213f8cc89bbd7e0f50be4a1e0cbe51a8acbea44b00beb7d0cdbd75fa28bea2d2c7bea0b8f8be5d4580be24662d3c9a388b3a1bca7a3e82f6d83f8a86f63f8c931dbd891754be4cdf97be49adc5beaa322abebe4cf8bd87b62cbea5c3fcbea43e75be62167fbe28f0113d166a85"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      7
+     ],
+     [
+      7
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ]
+     ]
+    ]
+   },
+   "recurrent": {
+    "qkv_conv": [
+     {
+      "x": {
+       "shape": [
+        2,
+        48
+       ],
+       "f32": "3d11cd453c0c8212bd747463be817da13d3d9730be16a87a3e299ebf3e8dbd193cc28f7fbe4b83d23e09d710be078c9a3d0fd8263e50f99d3d1959d6bde324fabc0ba0c9bd8abfb33d64e8e4be6573adbdb8bcbe3d8b2ad0be86f11dbbac0da03e2f9a113ca80352bd62005a3d749f5c3d6f9b313e1ea7cfbe42460b3e937461be006678bd449a78bd019aabbdeac025beb6d2823e0a13b1bc851b763c981fa4bc4ada14bddfaf943c5c9c6cbdfca262bd9b5674be258ad9bb927d3bbd8eda9e3d11cd453c0c8212bd747463be817da13d3d9730be16a87a3e299ebf3e8dbd193cc28f7fbe4b83d23e09d710be078c9a3d0fd8263e50f99d3d1959d6bde324fabc0ba0c9bd8abfb33d64e8e4be6573adbdb8bcbe3d8b2ad0be86f11dbbac0da03e2f9a113ca80352bd62005a3d749f5c3d6f9b313e1ea7cfbe42460b3e937461be006678bd449a78bd019aabbdeac025beb6d2823e0a13b1bc851b763c981fa4bc4ada14bddfaf943c5c9c6cbdfca262bd9b5674be258ad9bb927d3bbd8eda9e"
+      }
+     },
+     {
+      "x": {
+       "shape": [
+        2,
+        48
+       ],
+       "f32": "bd2732d93c6cb4323e59f53cbe0c61863e182c58be289418bded2613bcdd610dbe27690cbd936741bdc32c6d3d430b1abe46081dbe321cfbbdb296b6bea5e0ba3bd11c5ebdb7868cbe02d04c3e452abf3dfc9f34bcb2a4a53e361da2bb9241d8bb35d11ebe1d2b31bd218cb2bddfb9433e38a01fbe0de96ebd993b6fbd99d0463d8e4475bca65cbcbde0cdc93d0ee0c23d381a1dbc48d480bd8bc0b03c8ff378bdcb5e9f3cb2b4503e84b6773e4cd9f13e2b9d173dadfccabe07fc9d3dc36798bd0910633c830f313e607382be0c803a3e17f04ebe25ab44bdfa5f74bd0b7158be240516bd907b00bdb6132a3d6d2ba8be45f7d7be2f88f8bdb461aabea7fda33c4194bebdba66a8be015e163e48f0673e01bde8bcd67bb63e3dd45f3b0f8cf0bbaa9931be17ca88bd23e8ccbdeba2733e33df73be142843bd94aedfbd958f163d9b4487bca9c3d2bde383ed3d07bdef3d3aa7b7bc1cb988bd8182b73c8e636ebdd4e69d3cd78acd3e84a2303e4a7f593e31c29e3da80828be05a0223dccc0bb"
+      }
+     }
+    ]
+   }
+  }
+ ]
+}

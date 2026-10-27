@@ -1,0 +1,1747 @@
+{
+ "arxiv_id": "1803.02155",
+ "title": "Self-Attention with Relative Position Representations",
+ "fields": {
+  "d_model": {
+   "value": 512,
+   "evidence": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions, [Sec. 4.1 Experimental Setup]",
+   "verdict": "used"
+  },
+  "n_layers": {
+   "value": 6,
+   "evidence": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions, [Sec. 4.1 Experimental Setup]",
+   "verdict": "used"
+  },
+  "n_heads": {
+   "value": 8,
+   "evidence": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions, [Sec. 4.1 Experimental Setup]",
+   "verdict": "used"
+  },
+  "d_ff": {
+   "value": 1024,
+   "evidence": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions, [Sec. 4.1 Experimental Setup]",
+   "verdict": "used"
+  },
+  "vocab_size": {
+   "value": 32768,
+   "evidence": "For all experiments, we split tokens into a 32,768 word-piece vocabulary [Sec. 4.1 Experimental Setup]",
+   "verdict": "used"
+  },
+  "norm": {
+   "value": "layernorm",
+   "evidence": "In this work we present an efficient way of incorporating relative position representations in the self-attention mechanism of the Transformer. [Sec. 1 Introduction]",
+   "verdict": "inherited"
+  },
+  "activation": {
+   "value": "relu",
+   "evidence": "In this work we present an efficient way of incorporating relative position representations in the self-attention mechanism of the Transformer. [Sec. 1 Introduction]",
+   "verdict": "inherited"
+  },
+  "positional": {
+   "value": "shaw_relative",
+   "evidence": "We compared our model using only relative position representations to the baseline Transformer ~\\cite{vaswani2017} with sinusoidal position encodings. [Sec. 4.2 Machine Translation]",
+   "verdict": "used"
+  },
+  "residual": {
+   "value": "residual",
+   "evidence": "In this work we present an efficient way of incorporating relative position representations in the self-attention mechanism of the Transformer. [Sec. 1 Introduction]",
+   "verdict": "unverified",
+   "reasons": [
+    "inherited from transformer, whose curated entry has no residual"
+   ]
+  },
+  "attention": {
+   "value": "exact",
+   "evidence": "e_{ij} = \\frac{x_iW^Q(x_jW^K+a^K_{ij})^T}{\\sqrt{d_z}} [eq:e2]",
+   "verdict": "used"
+  }
+ },
+ "unresolved": [
+  "n_kv_heads",
+  "context_length"
+ ],
+ "unverified": [
+  {
+   "field": "residual",
+   "reasons": [
+    "inherited from transformer, whose curated entry has no residual"
+   ]
+  }
+ ],
+ "mentions": {},
+ "inherits": {
+  "ancestor": "transformer",
+  "evidence": "In this work we present an efficient way of incorporating relative position representations in the self-attention mechanism of the Transformer.",
+  "section": "Sec. 1 Introduction"
+ },
+ "variants": [
+  {
+   "d_model": 512,
+   "n_layers": 6,
+   "n_heads": 8,
+   "d_ff": 1024,
+   "vocab_size": 32768
+  },
+  {
+   "d_model": 1024,
+   "n_layers": 6,
+   "n_heads": 16,
+   "d_ff": 4096,
+   "vocab_size": 32768
+  }
+ ],
+ "mechanism_scan": [
+  {
+   "mechanism": "encoder-decoder or encoder-only model",
+   "where": "llm extraction, verified quote, Sec. 4.1 Experimental Setup",
+   "blocking": true,
+   "evidence": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions,"
+  },
+  {
+   "mechanism": "Encoder-decoder architecture: decoder layers have masked self-attention plus encoder-decoder cross-attention",
+   "where": "llm extraction, verified quote, Sec. 2.1 Transformer",
+   "blocking": true,
+   "evidence": "Decoder layers consist of three sublayers: self-attention followed by encoder-decoder attention, followed by a position-wise feed-forward layer."
+  },
+  {
+   "mechanism": "Decoder self-attention is causally masked",
+   "where": "llm extraction, verified quote, Sec. 2.1 Transformer",
+   "blocking": true,
+   "evidence": "The decoder uses masking in its self-attention to prevent a given output position from incorporating information about future output positions during training."
+  }
+ ],
+ "source": {
+  "tex_sha256": "f5ad30031bbd84737332b8da6f287eff047704ceb41a6f88a0f6065d2b456c38",
+  "sent_sha256": "7ba8da5644767e2a860c40e1938609986961a63546d1d4363fd71037abb486c1",
+  "from": "https://arxiv.org/e-print/1803.02155",
+  "extractor": "papers/llm_extract.py",
+  "extractor_sha256": "eba59e0aec78170e9022fc29c2913efa7152116631cf89ebfd75e59b4a1c79cb",
+  "model": "claude-opus-5-5",
+  "effort": "high",
+  "prompt_sha256": "7512599bb839ee7d624ff214b30a823712786725e8ad35fd5d580cb0b935959a",
+  "n_calls": 1,
+  "cost_usd": 0.222308,
+  "request_ids": [
+   "req_011CgSLYqfDS8sQeAjHnL3xG"
+  ]
+ },
+ "llm": {
+  "output": {
+   "title": "Self-Attention with Relative Position Representations",
+   "model_name": "Transformer with relative position representations (base)",
+   "family": {
+    "value": "encoder_decoder",
+    "status": "stated",
+    "quote": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions,",
+    "where": "Sec. 4.1 Experimental Setup"
+   },
+   "inherits": {
+    "ancestor": "Transformer (Vaswani et al. 2017)",
+    "quote": "In this work we present an efficient way of incorporating relative position representations in the self-attention mechanism of the Transformer.",
+    "where": "Sec. 1 Introduction"
+   },
+   "configs": [
+    {
+     "name": "base",
+     "d_model": {
+      "value": "512",
+      "status": "stated",
+      "quote": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions,",
+      "where": "Sec. 4.1 Experimental Setup"
+     },
+     "n_layers": {
+      "value": "6",
+      "status": "stated",
+      "quote": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions,",
+      "where": "Sec. 4.1 Experimental Setup"
+     },
+     "n_heads": {
+      "value": "8",
+      "status": "stated",
+      "quote": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions,",
+      "where": "Sec. 4.1 Experimental Setup"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "64",
+      "status": "stated",
+      "quote": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions,",
+      "where": "Sec. 4.1 Experimental Setup"
+     },
+     "d_ff": {
+      "value": "1024",
+      "status": "stated",
+      "quote": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions,",
+      "where": "Sec. 4.1 Experimental Setup"
+     },
+     "vocab_size": {
+      "value": "32768",
+      "status": "stated",
+      "quote": "For all experiments, we split tokens into a 32,768 word-piece vocabulary",
+      "where": "Sec. 4.1 Experimental Setup"
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     }
+    },
+    {
+     "name": "big",
+     "d_model": {
+      "value": "1024",
+      "status": "stated",
+      "quote": "For our big model, we used 6 encoder and decoder layers, $d_x = 1024$, $d_z = 64$, 16 attention heads, 4096 feed forward inner-layer dimensions",
+      "where": "Sec. 4.1 Experimental Setup"
+     },
+     "n_layers": {
+      "value": "6",
+      "status": "stated",
+      "quote": "For our big model, we used 6 encoder and decoder layers, $d_x = 1024$, $d_z = 64$, 16 attention heads, 4096 feed forward inner-layer dimensions",
+      "where": "Sec. 4.1 Experimental Setup"
+     },
+     "n_heads": {
+      "value": "16",
+      "status": "stated",
+      "quote": "For our big model, we used 6 encoder and decoder layers, $d_x = 1024$, $d_z = 64$, 16 attention heads, 4096 feed forward inner-layer dimensions",
+      "where": "Sec. 4.1 Experimental Setup"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     },
+     "head_dim": {
+      "value": "64",
+      "status": "stated",
+      "quote": "For our big model, we used 6 encoder and decoder layers, $d_x = 1024$, $d_z = 64$, 16 attention heads, 4096 feed forward inner-layer dimensions",
+      "where": "Sec. 4.1 Experimental Setup"
+     },
+     "d_ff": {
+      "value": "4096",
+      "status": "stated",
+      "quote": "For our big model, we used 6 encoder and decoder layers, $d_x = 1024$, $d_z = 64$, 16 attention heads, 4096 feed forward inner-layer dimensions",
+      "where": "Sec. 4.1 Experimental Setup"
+     },
+     "vocab_size": {
+      "value": "32768",
+      "status": "stated",
+      "quote": "For all experiments, we split tokens into a 32,768 word-piece vocabulary",
+      "where": "Sec. 4.1 Experimental Setup"
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": ""
+     }
+    }
+   ],
+   "primary_config": "base",
+   "flavours": {
+    "norm": {
+     "value": "layernorm",
+     "status": "inherited",
+     "quote": "In this work we present an efficient way of incorporating relative position representations in the self-attention mechanism of the Transformer.",
+     "where": "Sec. 1 Introduction"
+    },
+    "norm_placement": {
+     "value": "post",
+     "status": "inherited",
+     "quote": "In this work we present an efficient way of incorporating relative position representations in the self-attention mechanism of the Transformer.",
+     "where": "Sec. 1 Introduction"
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "activation": {
+     "value": "relu",
+     "status": "inherited",
+     "quote": "In this work we present an efficient way of incorporating relative position representations in the self-attention mechanism of the Transformer.",
+     "where": "Sec. 1 Introduction"
+    },
+    "positional": {
+     "value": "shaw_relative",
+     "status": "stated",
+     "quote": "We compared our model using only relative position representations to the baseline Transformer ~\\cite{vaswani2017} with sinusoidal position encodings.",
+     "where": "Sec. 4.2 Machine Translation"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rel_max_distance": {
+     "value": "16",
+     "status": "stated",
+     "quote": "When using relative position encodings, we used clipping distance $k = 16$,",
+     "where": "Sec. 4.1 Experimental Setup"
+    },
+    "rel_per_head": {
+     "value": "true",
+     "status": "stated",
+     "quote": "and used unique edge representations per layer and head.",
+     "where": "Sec. 4.1 Experimental Setup"
+    },
+    "rel_values": {
+     "value": "true",
+     "status": "stated",
+     "quote": "We modify eq.~\\eqref{eq:attn} to propagate edge information to the sublayer output:",
+     "where": "Sec. 3.1 Relation-aware Self-Attention"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_theta": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "residual": {
+     "value": "residual",
+     "status": "inherited",
+     "quote": "In this work we present an efficient way of incorporating relative position representations in the self-attention mechanism of the Transformer.",
+     "where": "Sec. 1 Introduction"
+    },
+    "parallel_block": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "attention": {
+     "value": "exact",
+     "status": "stated",
+     "quote": "e_{ij} = \\frac{x_iW^Q(x_jW^K+a^K_{ij})^T}{\\sqrt{d_z}}",
+     "where": "eq:e2"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "qkv_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "tied_embeddings": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "moe": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": ""
+    }
+   },
+   "block_ops": [
+    {
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding (word-piece)",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "x",
+     "attributes": [
+      {
+       "name": "vocab",
+       "value": "32768",
+       "status": "stated",
+       "quote": "For all experiments, we split tokens into a 32,768 word-piece vocabulary",
+       "where": "Sec. 4.1 Experimental Setup"
+      },
+      {
+       "name": "d",
+       "value": "512",
+       "status": "stated",
+       "quote": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions,",
+       "where": "Sec. 4.1 Experimental Setup"
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "query projection W^Q",
+     "inputs": [
+      "x"
+     ],
+     "output": "q",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "512",
+       "status": "stated",
+       "quote": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions,",
+       "where": "Sec. 4.1 Experimental Setup"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "key projection W^K",
+     "inputs": [
+      "x"
+     ],
+     "output": "k",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "512",
+       "status": "stated",
+       "quote": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions,",
+       "where": "Sec. 4.1 Experimental Setup"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "value projection W^V",
+     "inputs": [
+      "x"
+     ],
+     "output": "v",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "512",
+       "status": "stated",
+       "quote": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions,",
+       "where": "Sec. 4.1 Experimental Setup"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "attention",
+     "role": "self-attention with Shaw relative position representations on keys and values (clip k=16, per layer and head)",
+     "inputs": [
+      "q",
+      "k",
+      "v"
+     ],
+     "output": "a",
+     "attributes": [
+      {
+       "name": "heads",
+       "value": "8",
+       "status": "stated",
+       "quote": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions,",
+       "where": "Sec. 4.1 Experimental Setup"
+      },
+      {
+       "name": "kv_heads",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "head_dim",
+       "value": "64",
+       "status": "stated",
+       "quote": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions,",
+       "where": "Sec. 4.1 Experimental Setup"
+      },
+      {
+       "name": "scale",
+       "value": "0.125",
+       "status": "stated",
+       "quote": "e_{ij} = \\frac{x_iW^Q(x_jW^K+a^K_{ij})^T}{\\sqrt{d_z}}",
+       "where": "eq:e2"
+      },
+      {
+       "name": "causal",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "window",
+       "value": "0",
+       "status": "stated",
+       "quote": "z_i = \\sum_{j=1}^{n} \\alpha_{ij} (x_jW^V + a^V_{ij})",
+       "where": "eq:attn2"
+      },
+      {
+       "name": "sinks",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "o",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "512",
+       "status": "stated",
+       "quote": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions,",
+       "where": "Sec. 4.1 Experimental Setup"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual",
+     "inputs": [
+      "x",
+      "o"
+     ],
+     "output": "r1",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "layernorm",
+     "role": "post-attention layer norm",
+     "inputs": [
+      "r1"
+     ],
+     "output": "h",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN up projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "u",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "1024",
+       "status": "stated",
+       "quote": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions,",
+       "where": "Sec. 4.1 Experimental Setup"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "relu",
+     "role": "FFN activation (inherited from Transformer)",
+     "inputs": [
+      "u"
+     ],
+     "output": "g",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN down projection",
+     "inputs": [
+      "g"
+     ],
+     "output": "f",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "512",
+       "status": "stated",
+       "quote": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions,",
+       "where": "Sec. 4.1 Experimental Setup"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual",
+     "inputs": [
+      "h",
+      "f"
+     ],
+     "output": "r2",
+     "attributes": [],
+     "new_op": ""
+    },
+    {
+     "subgraph": "block",
+     "op": "layernorm",
+     "role": "post-FFN layer norm",
+     "inputs": [
+      "r2"
+     ],
+     "output": "x",
+     "attributes": [
+      {
+       "name": "eps",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    },
+    {
+     "subgraph": "head",
+     "op": "linear",
+     "role": "output projection to vocabulary",
+     "inputs": [
+      "x"
+     ],
+     "output": "logits",
+     "attributes": [
+      {
+       "name": "out",
+       "value": "32768",
+       "status": "stated",
+       "quote": "For all experiments, we split tokens into a 32,768 word-piece vocabulary",
+       "where": "Sec. 4.1 Experimental Setup"
+      },
+      {
+       "name": "bias",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      },
+      {
+       "name": "tied_to",
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": ""
+      }
+     ],
+     "new_op": ""
+    }
+   ],
+   "new_ops": [],
+   "mechanisms_outside_ir": [
+    {
+     "mechanism": "Encoder-decoder architecture: decoder layers have masked self-attention plus encoder-decoder cross-attention",
+     "quote": "Decoder layers consist of three sublayers: self-attention followed by encoder-decoder attention, followed by a position-wise feed-forward layer.",
+     "where": "Sec. 2.1 Transformer"
+    },
+    {
+     "mechanism": "Decoder self-attention is causally masked",
+     "quote": "The decoder uses masking in its self-attention to prevent a given output position from incorporating information about future output positions during training.",
+     "where": "Sec. 2.1 Transformer"
+    }
+   ],
+   "notes": "I describe the base configuration, which is the smallest reported; the big configuration is listed under configs as well. The main model uses only relative position representations, with no sinusoidal or absolute encodings. It applies them to both keys (a^K) and values (a^V).\n\nThe clipping distance and head sharing differ by configuration:\n- Base: k=16, with unique edge representations per layer and head.\n- Big: k=8, with unique edge representations per layer only, i.e. shared across heads.\n\nSec. 3 says the representations can be shared across heads for efficiency, but the base experiments use per-head representations.\n\nSome values are not restated in the paper and are marked inherited from the Transformer (Vaswani et al.): post-layernorm, residual connections and ReLU FFN. The inheritance rests on the sentence that the method extends the Transformer's self-attention, which is a weak inheritance claim. The background section does describe the Transformer's \"residual connections around each of the sublayers, followed by layer normalization\".\n\nThe block_ops show one encoder layer. The decoder adds causal masking and cross-attention.\n\nThe base d_ff of 1024 is reported exactly as stated in the paper. Weight tying, biases, eps and context length are not stated."
+  },
+  "verification": {
+   "errors": [],
+   "warnings": [],
+   "inherits": {
+    "ancestor": "Transformer (Vaswani et al. 2017)",
+    "resolved": "transformer",
+    "quote": "In this work we present an efficient way of incorporating relative position representations in the self-attention mechanism of the Transformer.",
+    "where": "Sec. 1 Introduction",
+    "quote_found": true
+   },
+   "family": {
+    "value": "encoder_decoder",
+    "status": "stated",
+    "quote": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions,",
+    "where": "Sec. 4.1 Experimental Setup",
+    "reasons": [],
+    "check": "verified"
+   },
+   "configs": [
+    {
+     "name": "base",
+     "d_model": {
+      "value": "512",
+      "status": "stated",
+      "quote": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions,",
+      "where": "Sec. 4.1 Experimental Setup",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "6",
+      "status": "stated",
+      "quote": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions,",
+      "where": "Sec. 4.1 Experimental Setup",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "8",
+      "status": "stated",
+      "quote": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions,",
+      "where": "Sec. 4.1 Experimental Setup",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "64",
+      "status": "stated",
+      "quote": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions,",
+      "where": "Sec. 4.1 Experimental Setup",
+      "reasons": [],
+      "check": "verified"
+     },
+     "d_ff": {
+      "value": "1024",
+      "status": "stated",
+      "quote": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions,",
+      "where": "Sec. 4.1 Experimental Setup",
+      "reasons": [],
+      "check": "verified"
+     },
+     "vocab_size": {
+      "value": "32768",
+      "status": "stated",
+      "quote": "For all experiments, we split tokens into a 32,768 word-piece vocabulary",
+      "where": "Sec. 4.1 Experimental Setup",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      },
+      {
+       "check": "head_dim * n_heads == d_model",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "name": "big",
+     "d_model": {
+      "value": "1024",
+      "status": "stated",
+      "quote": "For our big model, we used 6 encoder and decoder layers, $d_x = 1024$, $d_z = 64$, 16 attention heads, 4096 feed forward inner-layer dimensions",
+      "where": "Sec. 4.1 Experimental Setup",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_layers": {
+      "value": "6",
+      "status": "stated",
+      "quote": "For our big model, we used 6 encoder and decoder layers, $d_x = 1024$, $d_z = 64$, 16 attention heads, 4096 feed forward inner-layer dimensions",
+      "where": "Sec. 4.1 Experimental Setup",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_heads": {
+      "value": "16",
+      "status": "stated",
+      "quote": "For our big model, we used 6 encoder and decoder layers, $d_x = 1024$, $d_z = 64$, 16 attention heads, 4096 feed forward inner-layer dimensions",
+      "where": "Sec. 4.1 Experimental Setup",
+      "reasons": [],
+      "check": "verified"
+     },
+     "n_kv_heads": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "head_dim": {
+      "value": "64",
+      "status": "stated",
+      "quote": "For our big model, we used 6 encoder and decoder layers, $d_x = 1024$, $d_z = 64$, 16 attention heads, 4096 feed forward inner-layer dimensions",
+      "where": "Sec. 4.1 Experimental Setup",
+      "reasons": [],
+      "check": "verified"
+     },
+     "d_ff": {
+      "value": "4096",
+      "status": "stated",
+      "quote": "For our big model, we used 6 encoder and decoder layers, $d_x = 1024$, $d_z = 64$, 16 attention heads, 4096 feed forward inner-layer dimensions",
+      "where": "Sec. 4.1 Experimental Setup",
+      "reasons": [],
+      "check": "verified"
+     },
+     "vocab_size": {
+      "value": "32768",
+      "status": "stated",
+      "quote": "For all experiments, we split tokens into a 32,768 word-piece vocabulary",
+      "where": "Sec. 4.1 Experimental Setup",
+      "reasons": [],
+      "check": "verified"
+     },
+     "context_length": {
+      "value": "",
+      "status": "not_stated",
+      "quote": "",
+      "where": "",
+      "reasons": [],
+      "check": "not_stated"
+     },
+     "consistency": [
+      {
+       "check": "n_heads divides d_model (head_dim unstated)",
+       "ok": true
+      },
+      {
+       "check": "head_dim * n_heads == d_model",
+       "ok": true
+      }
+     ]
+    }
+   ],
+   "primary_config": "base",
+   "flavours": {
+    "norm": {
+     "value": "layernorm",
+     "status": "inherited",
+     "quote": "In this work we present an efficient way of incorporating relative position representations in the self-attention mechanism of the Transformer.",
+     "where": "Sec. 1 Introduction",
+     "reasons": [],
+     "check": "verified"
+    },
+    "norm_placement": {
+     "value": "post",
+     "status": "inherited",
+     "quote": "In this work we present an efficient way of incorporating relative position representations in the self-attention mechanism of the Transformer.",
+     "where": "Sec. 1 Introduction",
+     "reasons": [
+      "inherited from transformer, whose curated entry has no norm_placement"
+     ],
+     "check": "unverified"
+    },
+    "norm_placement_attn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_placement_ffn": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "norm_eps": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "activation": {
+     "value": "relu",
+     "status": "inherited",
+     "quote": "In this work we present an efficient way of incorporating relative position representations in the self-attention mechanism of the Transformer.",
+     "where": "Sec. 1 Introduction",
+     "reasons": [],
+     "check": "verified"
+    },
+    "positional": {
+     "value": "shaw_relative",
+     "status": "stated",
+     "quote": "We compared our model using only relative position representations to the baseline Transformer ~\\cite{vaswani2017} with sinusoidal position encodings.",
+     "where": "Sec. 4.2 Machine Translation",
+     "reasons": [],
+     "check": "verified"
+    },
+    "rel_buckets": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rel_max_distance": {
+     "value": "16",
+     "status": "stated",
+     "quote": "When using relative position encodings, we used clipping distance $k = 16$,",
+     "where": "Sec. 4.1 Experimental Setup",
+     "reasons": [],
+     "check": "verified"
+    },
+    "rel_per_head": {
+     "value": "true",
+     "status": "stated",
+     "quote": "and used unique edge representations per layer and head.",
+     "where": "Sec. 4.1 Experimental Setup",
+     "reasons": [],
+     "check": "verified"
+    },
+    "rel_values": {
+     "value": "true",
+     "status": "stated",
+     "quote": "We modify eq.~\\eqref{eq:attn} to propagate edge information to the sublayer output:",
+     "where": "Sec. 3.1 Relation-aware Self-Attention",
+     "reasons": [
+      "the quote does not name rel_values (looked for /value|a\\^\\{?V/)"
+     ],
+     "check": "unverified"
+    },
+    "rope_pairing": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_theta": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "rope_fraction": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "residual": {
+     "value": "residual",
+     "status": "inherited",
+     "quote": "In this work we present an efficient way of incorporating relative position representations in the self-attention mechanism of the Transformer.",
+     "where": "Sec. 1 Introduction",
+     "reasons": [
+      "inherited from transformer, whose curated entry has no residual"
+     ],
+     "check": "unverified"
+    },
+    "parallel_block": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "attention": {
+     "value": "exact",
+     "status": "stated",
+     "quote": "e_{ij} = \\frac{x_iW^Q(x_jW^K+a^K_{ij})^T}{\\sqrt{d_z}}",
+     "where": "eq:e2",
+     "reasons": [],
+     "check": "quote_only"
+    },
+    "window_size": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "n_sinks": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "qkv_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "mlp_bias": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "qk_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "tied_embeddings": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "moe": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "n_experts": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "top_k": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "moe_gate_norm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "ssm": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_state": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "d_conv": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "expand": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    },
+    "dt_rank": {
+     "value": "",
+     "status": "not_stated",
+     "quote": "",
+     "where": "",
+     "reasons": [],
+     "check": "not_stated"
+    }
+   },
+   "new_ops": [],
+   "block_ops": [
+    {
+     "i": 0,
+     "subgraph": "embed",
+     "op": "embedding",
+     "role": "token embedding (word-piece)",
+     "inputs": [
+      "tokens"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "32768",
+       "status": "stated",
+       "quote": "For all experiments, we split tokens into a 32,768 word-piece vocabulary",
+       "where": "Sec. 4.1 Experimental Setup",
+       "reasons": [],
+       "check": "verified",
+       "name": "vocab"
+      },
+      {
+       "value": "512",
+       "status": "stated",
+       "quote": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions,",
+       "where": "Sec. 4.1 Experimental Setup",
+       "reasons": [],
+       "check": "verified",
+       "name": "d"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 1,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "query projection W^Q",
+     "inputs": [
+      "x"
+     ],
+     "output": "q",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "512",
+       "status": "stated",
+       "quote": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions,",
+       "where": "Sec. 4.1 Experimental Setup",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 2,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "key projection W^K",
+     "inputs": [
+      "x"
+     ],
+     "output": "k",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "512",
+       "status": "stated",
+       "quote": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions,",
+       "where": "Sec. 4.1 Experimental Setup",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 3,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "value projection W^V",
+     "inputs": [
+      "x"
+     ],
+     "output": "v",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "512",
+       "status": "stated",
+       "quote": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions,",
+       "where": "Sec. 4.1 Experimental Setup",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 4,
+     "subgraph": "block",
+     "op": "attention",
+     "role": "self-attention with Shaw relative position representations on keys and values (clip k=16, per layer and head)",
+     "inputs": [
+      "q",
+      "k",
+      "v"
+     ],
+     "output": "a",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "8",
+       "status": "stated",
+       "quote": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions,",
+       "where": "Sec. 4.1 Experimental Setup",
+       "reasons": [],
+       "check": "verified",
+       "name": "heads"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "kv_heads"
+      },
+      {
+       "value": "64",
+       "status": "stated",
+       "quote": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions,",
+       "where": "Sec. 4.1 Experimental Setup",
+       "reasons": [],
+       "check": "verified",
+       "name": "head_dim"
+      },
+      {
+       "value": "0.125",
+       "status": "stated",
+       "quote": "e_{ij} = \\frac{x_iW^Q(x_jW^K+a^K_{ij})^T}{\\sqrt{d_z}}",
+       "where": "eq:e2",
+       "reasons": [
+        "0.125 does not occur in its quote"
+       ],
+       "check": "unverified",
+       "name": "scale"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "causal"
+      },
+      {
+       "value": "0",
+       "status": "stated",
+       "quote": "z_i = \\sum_{j=1}^{n} \\alpha_{ij} (x_jW^V + a^V_{ij})",
+       "where": "eq:attn2",
+       "reasons": [
+        "0 does not occur in its quote"
+       ],
+       "check": "unverified",
+       "name": "window"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "sinks"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 5,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "attention output projection",
+     "inputs": [
+      "a"
+     ],
+     "output": "o",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "512",
+       "status": "stated",
+       "quote": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions,",
+       "where": "Sec. 4.1 Experimental Setup",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 6,
+     "subgraph": "block",
+     "op": "add",
+     "role": "attention residual",
+     "inputs": [
+      "x",
+      "o"
+     ],
+     "output": "r1",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 7,
+     "subgraph": "block",
+     "op": "layernorm",
+     "role": "post-attention layer norm",
+     "inputs": [
+      "r1"
+     ],
+     "output": "h",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 8,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN up projection",
+     "inputs": [
+      "h"
+     ],
+     "output": "u",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "1024",
+       "status": "stated",
+       "quote": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions,",
+       "where": "Sec. 4.1 Experimental Setup",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 9,
+     "subgraph": "block",
+     "op": "relu",
+     "role": "FFN activation (inherited from Transformer)",
+     "inputs": [
+      "u"
+     ],
+     "output": "g",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 10,
+     "subgraph": "block",
+     "op": "linear",
+     "role": "FFN down projection",
+     "inputs": [
+      "g"
+     ],
+     "output": "f",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "512",
+       "status": "stated",
+       "quote": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions,",
+       "where": "Sec. 4.1 Experimental Setup",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 11,
+     "subgraph": "block",
+     "op": "add",
+     "role": "FFN residual",
+     "inputs": [
+      "h",
+      "f"
+     ],
+     "output": "r2",
+     "new_op": "",
+     "attributes": [],
+     "errors": []
+    },
+    {
+     "i": 12,
+     "subgraph": "block",
+     "op": "layernorm",
+     "role": "post-FFN layer norm",
+     "inputs": [
+      "r2"
+     ],
+     "output": "x",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "eps"
+      }
+     ],
+     "errors": []
+    },
+    {
+     "i": 13,
+     "subgraph": "head",
+     "op": "linear",
+     "role": "output projection to vocabulary",
+     "inputs": [
+      "x"
+     ],
+     "output": "logits",
+     "new_op": "",
+     "attributes": [
+      {
+       "value": "32768",
+       "status": "stated",
+       "quote": "For all experiments, we split tokens into a 32,768 word-piece vocabulary",
+       "where": "Sec. 4.1 Experimental Setup",
+       "reasons": [],
+       "check": "verified",
+       "name": "out"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "bias"
+      },
+      {
+       "value": "",
+       "status": "not_stated",
+       "quote": "",
+       "where": "",
+       "reasons": [],
+       "check": "not_stated",
+       "name": "tied_to"
+      }
+     ],
+     "errors": []
+    }
+   ],
+   "mechanisms_outside_ir": [
+    {
+     "mechanism": "Encoder-decoder architecture: decoder layers have masked self-attention plus encoder-decoder cross-attention",
+     "quote": "Decoder layers consist of three sublayers: self-attention followed by encoder-decoder attention, followed by a position-wise feed-forward layer.",
+     "where": "Sec. 2.1 Transformer",
+     "check": "verified"
+    },
+    {
+     "mechanism": "Decoder self-attention is causally masked",
+     "quote": "The decoder uses masking in its self-attention to prevent a given output position from incorporating information about future output positions during training.",
+     "where": "Sec. 2.1 Transformer",
+     "check": "verified"
+    }
+   ],
+   "summary": {
+    "counts": {
+     "verified": 29,
+     "quote_only": 1,
+     "unverified": 5,
+     "not_stated": 40
+    },
+    "unverified": [
+     {
+      "field": "flavours.norm_placement",
+      "reasons": [
+       "inherited from transformer, whose curated entry has no norm_placement"
+      ]
+     },
+     {
+      "field": "flavours.rel_values",
+      "reasons": [
+       "the quote does not name rel_values (looked for /value|a\\^\\{?V/)"
+      ]
+     },
+     {
+      "field": "flavours.residual",
+      "reasons": [
+       "inherited from transformer, whose curated entry has no residual"
+      ]
+     },
+     {
+      "field": "block_ops[4].scale",
+      "reasons": [
+       "0.125 does not occur in its quote"
+      ]
+     },
+     {
+      "field": "block_ops[4].window",
+      "reasons": [
+       "0 does not occur in its quote"
+      ]
+     }
+    ],
+    "new_op_errors": [],
+    "node_errors": [],
+    "n_new_ops": 0,
+    "n_block_ops": 14
+   }
+  }
+ }
+}

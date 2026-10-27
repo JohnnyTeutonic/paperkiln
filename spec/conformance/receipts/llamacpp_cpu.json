@@ -1,13 +1,13 @@
 {
  "spec": {
   "repository": "keramos",
-  "tag": "v1.3.4",
-  "commit": "7a37bf6973543914e7b3f4750b91131860d11b8f"
+  "tag": "v1.3.5",
+  "commit": "c4696bf5578688585f6b00593eb9272daa8c5e3a"
  },
  "engine": {
   "name": "llama.cpp b6000 (4762ad7316dcdec20016ab5985fb46a27902204d), CPU, through keramos/adapters/llamacpp/llamacpp_adapter.cpp (a JSON Lines shim over llama.h; GCC 13.3, -O2; llama.cpp Release, GGML_NATIVE off, AVX2, shared libraries, WSL ext4)",
   "environment": "the runner under CPython 3.12.3, numpy 2.3.3, WSL (Ubuntu 24.04)",
-  "run": "python3 tools/ir_conformance.py --adapter \"cmd:llamacpp_adapter --threads 2 --alias mistral=llama\" (adapters/llamacpp/run_suite.sh's receipt configuration), in a clean clone of keramos at v1.3.4 (7a37bf69), 2026-10-27, the adapter and build unchanged; f32 kv cache, flash attention off, swa_full on, n_ubatch 512; the same rewrites as FINDINGS.txt states. Every FAIL is finding 1, 2 or 3 of adapters/llamacpp/FINDINGS.txt (tp_mistral_hd16's four: the window ignored, finding 3); every 'paperkiln' file is a skip (rule 38)"
+  "run": "python3 tools/ir_conformance.py --adapter \"cmd:llamacpp_adapter --threads 2 --alias mistral=llama\" (adapters/llamacpp/run_suite.sh's receipt configuration), in a clean clone of keramos at v1.3.5 (c4696bf5), 2026-10-27, the adapter and build unchanged; f32 kv cache, flash attention off, swa_full on, n_ubatch 512; the same rewrites as FINDINGS.txt states. Every FAIL is finding 1, 2 or 3 of adapters/llamacpp/FINDINGS.txt (tp_mistral_hd16's four: the window ignored, finding 3); every 'paperkiln' file is a skip (rule 38). The six cases of v1.3.5 (section 7.2's trace, acceptance and four refusals on pk_llama_attnres_rec) skip (IR validation; a replacement document); no earlier verdict moves"
  },
  "adapter": {
   "engine": "llama.cpp",
@@ -22,7 +22,7 @@
  "counts": {
   "PASS": 35,
   "FAIL": 16,
-  "SKIP": 380,
+  "SKIP": 386,
   "XFAIL": 0,
   "XPASS": 0
  },
@@ -37,7 +37,7 @@
   "trace": {
    "PASS": 18,
    "FAIL": 12,
-   "SKIP": 43,
+   "SKIP": 44,
    "XFAIL": 0,
    "XPASS": 0
   },
@@ -51,7 +51,7 @@
   "refuse": {
    "PASS": 0,
    "FAIL": 0,
-   "SKIP": 94,
+   "SKIP": 98,
    "XFAIL": 0,
    "XPASS": 0
   },
@@ -79,7 +79,7 @@
   "accept": {
    "PASS": 0,
    "FAIL": 0,
-   "SKIP": 39,
+   "SKIP": 40,
    "XFAIL": 0,
    "XPASS": 0
   },
@@ -1329,6 +1329,30 @@
    "detail": "llama.cpp does not validate IR documents (IR_SPEC section 10): it ignores paperkiln.ir"
   },
   {
+   "id": "refuse/tensor_index_in_head",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "llama.cpp does not validate IR documents (IR_SPEC section 10): it ignores paperkiln.ir"
+  },
+  {
+   "id": "refuse/tensor_index_value_unknown",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "llama.cpp does not validate IR documents (IR_SPEC section 10): it ignores paperkiln.ir"
+  },
+  {
+   "id": "refuse/tensor_index_on_affine",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "llama.cpp does not validate IR documents (IR_SPEC section 10): it ignores paperkiln.ir"
+  },
+  {
+   "id": "refuse/tensor_index_absent_application_tensor",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "llama.cpp does not validate IR documents (IR_SPEC section 10): it ignores paperkiln.ir"
+  },
+  {
    "id": "refuse/duplicate_member_top",
    "kind": "refuse",
    "verdict": "SKIP",
@@ -2253,6 +2277,12 @@
    "detail": "4 steps"
   },
   {
+   "id": "trace/pk_llama_attnres_rec_untagged",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "llama.cpp ignores the IR document and cannot run a replacement one"
+  },
+  {
    "id": "accept/documents/model_pk_attnres",
    "kind": "accept",
    "verdict": "SKIP",
@@ -2482,6 +2512,12 @@
   },
   {
    "id": "accept/documents/substituted_over_duplicate_embedded",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "llama.cpp does not validate IR documents (IR_SPEC section 10): it ignores paperkiln.ir"
+  },
+  {
+   "id": "accept/documents/untagged_application_queries",
    "kind": "accept",
    "verdict": "SKIP",
    "detail": "llama.cpp does not validate IR documents (IR_SPEC section 10): it ignores paperkiln.ir"

@@ -170,9 +170,9 @@ advisory steps that cannot fail the build.
   q/k-norm or SSM paper, so those fields are measured only as false assertions. Check every `expr` with
   `spec/tools/ir_expr.py` (the parser both engines use; landed in 1159d63e); a studio button that runs it
   instead of `fetch.py` when a key is configured; prompt optimisation later.
-- **Chain gaps still refusing** (LOCAL_LLM_WORK.md E3): Primer's MDHA (conv1d_causal on q, k, v:
-  the op exists, flex does not wire it) and Shaw-style relative positions; a q/k norm on flex or over the
-  full width; Mamba-1's inner LayerNorm (the paper's optional norm); MoE headline models.
+- **Chain gaps still refusing** (LOCAL_LLM_WORK.md E3): a q/k norm on flex or over the full width;
+  Mamba-1's inner LayerNorm (the paper's optional norm); MoE headline models. Primer's positions still
+  refuse: the paper cites Shaw for the T5 and Lingvo codebases' relative attention and states no distance.
 - **Two lexical gaps found while fixing the wrong assertions:** the GELU
   pattern does not match the spelling "GeLU" (Megatron, BART), and a
   vetoed runner-up still marks a field as contested.

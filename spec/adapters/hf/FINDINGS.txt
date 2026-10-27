@@ -7,7 +7,7 @@ transformers is the second engine measured here that was not written against IR_
 does not read GGUF natively in the path measured: each suite GGUF is exported to an HF checkpoint
 (model.safetensors + config.json) by adapters/common/gguf_to_hf.py and loaded with AutoModelForCausalLM, as
 a user of a converted checkpoint would. transformers never sees the IR document. What follows is what the
-suite (keramos v1.3.4, 7a37bf69; 431 cases; exporter v2) says about it, and why each
+suite (keramos v1.3.5, c4696bf5; 437 cases; exporter v2) says about it, and why each
 failure happens.
 transformers' own GGUF reader (from_pretrained(..., gguf_file=...)) is measured as a second configuration.
 
@@ -28,7 +28,7 @@ From WSL, at the keramos root, with the environment of requirements.txt in ~/hf_
 
 run_suite.sh runs the suite in four configurations and then probe.py; the whole takes about a minute on 2
 threads. Exports are cached under ~/hf_keramos/export by the GGUF's sha256. The receipt is the "receipt"
-configuration, run in a clean clone of keramos at v1.3.4 with a fresh export cache (--hf-export-dir).
+configuration, run in a clean clone of keramos at v1.3.5 with a fresh export cache (--hf-export-dir).
 
 
 THE EXPORTER (adapters/common/gguf_to_hf.py)
@@ -92,14 +92,14 @@ WHAT THE ADAPTER DOES
 RESULTS
 -------
 
-Receipt configuration (export, sdpa, implicit positions): 38 pass, 3 fail, 390 skip.
+Receipt configuration (export, sdpa, implicit positions): 38 pass, 3 fail, 396 skip.
 
   kind      pass fail skip   the skips are
   model       11    0   14   architecture "paperkiln" (14; rule 38 labels every IR-only file so)
-  trace       27    3   43   "paperkiln" (39); a replacement document (4)
+  trace       27    3   44   "paperkiln" (39); a replacement document (5)
   op           0    0   62   single nodes
-  refuse       0    0   94   IR validation
-  accept       0    0   39   IR validation
+  refuse       0    0   98   IR validation
+  accept       0    0   40   IR validation
   digest       0    0   88   no IR digest
   dequant      0    0   10   gguf-py's code, not transformers'
   grad         0    0    8   single nodes
@@ -122,7 +122,8 @@ traces in the order chunks, decode, then (where the model has them) truncate, re
   pk_moe           P/PP      P/PP      P/PP      F/FF       7.6e-8
   pk_gpt2          P/PP      P/PP      P/PP      P/PP       1.0e-7
 
-Counts: receipt, eager and explicit 38/3/390 each; gguf 13/25/393. Every FAIL has a cause named below: the three
+Counts: receipt 38/3/396 at v1.3.5 (v1.3.5's six cases (IR_SPEC 7.2's tensor_index trace, acceptance case and four refusals) are IR-only and skip); at v1.3.4 (431 cases) receipt, eager and explicit
+38/3/390 each, gguf 13/25/393. Every FAIL has a cause named below: the three
 tp_mamba1 traces are the multi-token-over-cache scan restart (chunks appends several tokens to a cache, as
 truncate and snapshot do); the gguf configuration's other 22 are the GGUF reader's bugs, by model (the head_dim
 16 files: Qwen3's head_dim and Mistral's detection, finding 4; tp_llama_hd16 passes through the reader).

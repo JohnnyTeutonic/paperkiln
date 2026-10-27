@@ -1,13 +1,13 @@
 {
  "spec": {
   "repository": "keramos",
-  "tag": "v1.3.4",
-  "commit": "7a37bf6973543914e7b3f4750b91131860d11b8f"
+  "tag": "v1.3.5",
+  "commit": "c4696bf5578688585f6b00593eb9272daa8c5e3a"
  },
  "engine": {
   "name": "numpy reference (tools/ir_numpy.py)",
   "environment": "CPython 3.13.14, numpy 2.3.5, Windows 11 x86-64 (the generating environment, IR_SPEC 4.6)",
-  "run": "python tools/ir_conformance.py --adapter ir_numpy, in a clean clone of keramos at v1.3.4 (7a37bf69), 2026-10-27"
+  "run": "python tools/ir_conformance.py --adapter ir_numpy, in a clean clone of keramos at v1.3.5 (c4696bf5), 2026-10-27"
  },
  "adapter": {
   "engine": "ir_numpy",
@@ -23,7 +23,7 @@
   ]
  },
  "counts": {
-  "PASS": 423,
+  "PASS": 429,
   "FAIL": 0,
   "SKIP": 8,
   "XFAIL": 0,
@@ -38,7 +38,7 @@
    "XPASS": 0
   },
   "trace": {
-   "PASS": 73,
+   "PASS": 74,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
@@ -52,7 +52,7 @@
    "XPASS": 0
   },
   "refuse": {
-   "PASS": 94,
+   "PASS": 98,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
@@ -80,7 +80,7 @@
    "XPASS": 0
   },
   "accept": {
-   "PASS": 39,
+   "PASS": 40,
    "FAIL": 0,
    "SKIP": 0,
    "XFAIL": 0,
@@ -1332,6 +1332,30 @@
    "detail": "refused (IR_SPEC 3.8 (rule 6))"
   },
   {
+   "id": "refuse/tensor_index_in_head",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 7.2 (rule 19))"
+  },
+  {
+   "id": "refuse/tensor_index_value_unknown",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 7.2 (rule 5))"
+  },
+  {
+   "id": "refuse/tensor_index_on_affine",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 3.5 (rule 4))"
+  },
+  {
+   "id": "refuse/tensor_index_absent_application_tensor",
+   "kind": "refuse",
+   "verdict": "PASS",
+   "detail": "refused (IR_SPEC 3.7 (rule 25))"
+  },
+  {
    "id": "refuse/duplicate_member_top",
    "kind": "refuse",
    "verdict": "PASS",
@@ -2256,6 +2280,12 @@
    "detail": "4 steps"
   },
   {
+   "id": "trace/pk_llama_attnres_rec_untagged",
+   "kind": "trace",
+   "verdict": "PASS",
+   "detail": "5 steps"
+  },
+  {
    "id": "accept/documents/model_pk_attnres",
    "kind": "accept",
    "verdict": "PASS",
@@ -2485,6 +2515,12 @@
   },
   {
    "id": "accept/documents/substituted_over_duplicate_embedded",
+   "kind": "accept",
+   "verdict": "PASS",
+   "detail": "accepted"
+  },
+  {
+   "id": "accept/documents/untagged_application_queries",
    "kind": "accept",
    "verdict": "PASS",
    "detail": "accepted"

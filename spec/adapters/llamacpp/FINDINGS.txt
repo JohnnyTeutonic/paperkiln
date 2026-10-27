@@ -13,10 +13,10 @@ architecture "paperkiln" (rule 38), so pk_gpt2_swa, pk_kimi and pk_recurrence an
 correct skips, not fails (finding 7 closed); 6.9 states the windowed rewind and tp_gemma3_rewind_window
 tests it (finding 4: after the cut 4.6e-4, the GELU table's error, with swa_full on or behind
 --rewind-guard; 1.04 with --swa-full 0 --n-ubatch 4 and no guard); 9.3 says llama.cpp has no "mistral";
-the runner's messages (K4); Appendix C's row (K5). The receipt and RESULTS below are at keramos v1.3.4
-(7a37bf69, 431 cases), the same adapter and build: 35 pass, 16 fail, 380 skip. The findings are the first
+the runner's messages (K4); Appendix C's row (K5). The receipt and RESULTS below are at keramos v1.3.5
+(c4696bf5, 437 cases), the same adapter and build: 35 pass, 16 fail, 386 skip. The findings are the first
 pass, at v1.2.1; every later case fails exactly where they already fail (the <model>_chunks traces of
-v1.3.0 where findings 1 to 3 fail the decode traces; v1.3.4's tp_mistral_hd16 by finding 3).
+v1.3.0 where findings 1 to 3 fail the decode traces; v1.3.4's tp_mistral_hd16 by finding 3); v1.3.5's six cases (IR_SPEC 7.2's tensor_index trace, acceptance case and four refusals) are IR-only and skip.
 
 - Engine: llama.cpp tag b6000, commit 4762ad7316dcdec20016ab5985fb46a27902204d, CPU only (Release,
   GGML_NATIVE off, AVX2, shared libraries), in WSL; 2 threads.
@@ -76,16 +76,16 @@ Two rewrites, reported in open's "_rewrites" and on stderr:
 RESULTS
 -------
 
-Receipt configuration (f32 kv cache, flash attention off): 35 pass, 16 fail, 380 skip.
+Receipt configuration (f32 kv cache, flash attention off): 35 pass, 16 fail, 386 skip.
 
   kind      pass fail skip   the skips are
   model        7    4   14   architecture "paperkiln" (14; rule 38 labels every IR-only file so)
-  trace       18   12   43   architecture "paperkiln" (39); a replacement document (4: the _recurrence
-                             traces)
+  trace       18   12   44   architecture "paperkiln" (39); a replacement document (5: the _recurrence
+                             traces, pk_llama_attnres_rec_untagged)
   dequant     10    0    0
   op           0    0   62   single nodes
-  refuse       0    0   94   IR validation
-  accept       0    0   39   IR validation
+  refuse       0    0   98   IR validation
+  accept       0    0   40   IR validation
   digest       0    0   88   no IR digest
   grad         0    0    8   single nodes
   chat         0    0   32   IR template records
@@ -110,8 +110,8 @@ default); flash attention with an f32 kv; flash attention with f16 kv.
 The IR-only models (pk_gpt2_swa, pk_kimi, pk_recurrence and the other pk_ files of architecture
 "paperkiln") are skips in every configuration.
 
-Counts: receipt 35/16/380; no alias 35/9/387; f16 kv 18/33/380; flash attention 17/34/380 with either
-cache type.
+Counts: receipt 35/16/386 at v1.3.5; at v1.3.4 (431 cases) no alias 35/9/387, f16 kv 18/33/380, flash
+attention 17/34/380 with either cache type (v1.3.5's six cases skip in every configuration).
 
 dequant passes 10/10 bit for bit in every configuration: IR_SPEC 4.7's statement that stored types
 read as ggml b6000's dequantize_row_* holds against ggml itself.

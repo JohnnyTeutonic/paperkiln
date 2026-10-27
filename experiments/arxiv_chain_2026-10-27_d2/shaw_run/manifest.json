@@ -1,0 +1,320 @@
+{
+ "arxiv_id": "1803.02155",
+ "stages": {
+  "gate": {
+   "at": "2026-10-27T18:23:30",
+   "verdict": "in_scope",
+   "passes": true,
+   "reason": "The paper proposes relative position representations built into self-attention, a positional-encoding component that a language model could use.",
+   "architecture_kind": "relative positional encoding in self-attention",
+   "evidence": "extending the self-attention mechanism to efficiently consider representations of the relative positions",
+   "evidence_found": true,
+   "gate": {
+    "model": "claude-opus-5-5",
+    "served_by": "claude-opus-5-5",
+    "effort": "low",
+    "max_tokens": 3000,
+    "prompt_sha256": "c14d094a07ba3f62d99ba57195c8f64c9e255aaf6b8dd3c27d875920a193a418",
+    "request_id": "req_011CgSLXjDjha19nnSnKkCw4",
+    "cache_hit": true,
+    "input_tokens": 995,
+    "output_tokens": 109,
+    "cost_usd": 0.0,
+    "original_cost_usd": 0.00616,
+    "tag": "relevance_gate",
+    "extractor_sha256": "eba59e0aec78170e9022fc29c2913efa7152116631cf89ebfd75e59b4a1c79cb"
+   }
+  },
+  "extract": {
+   "at": "2026-10-27T18:23:30",
+   "extraction_sha256": "fa8763b99bb9e47199229fe84a0c3b9e741377c3bc27d5f2e1b5a108a421bc46",
+   "source": {
+    "tex_sha256": "f5ad30031bbd84737332b8da6f287eff047704ceb41a6f88a0f6065d2b456c38",
+    "sent_sha256": "7ba8da5644767e2a860c40e1938609986961a63546d1d4363fd71037abb486c1",
+    "from": "https://arxiv.org/e-print/1803.02155",
+    "extractor": "papers/llm_extract.py",
+    "extractor_sha256": "eba59e0aec78170e9022fc29c2913efa7152116631cf89ebfd75e59b4a1c79cb",
+    "model": "claude-opus-5-5",
+    "effort": "high",
+    "prompt_sha256": "7512599bb839ee7d624ff214b30a823712786725e8ad35fd5d580cb0b935959a",
+    "n_calls": 1,
+    "cost_usd": 0.222308,
+    "request_ids": [
+     "req_011CgSLYqfDS8sQeAjHnL3xG"
+    ],
+    "cached_from": "/home/jonat/d2_pk/experiments/arxiv_chain_2026-10-27_d2/1803.02155.extraction.json"
+   },
+   "mechanism_scan": [
+    {
+     "mechanism": "encoder-decoder or encoder-only model",
+     "where": "llm extraction, verified quote, Sec. 4.1 Experimental Setup",
+     "blocking": true,
+     "evidence": "For our base model, we used 6 encoder and decoder layers, $d_x = 512$, $d_z = 64$, 8 attention heads, 1024 feed forward inner-layer dimensions,"
+    },
+    {
+     "mechanism": "Encoder-decoder architecture: decoder layers have masked self-attention plus encoder-decoder cross-attention",
+     "where": "llm extraction, verified quote, Sec. 2.1 Transformer",
+     "blocking": true,
+     "evidence": "Decoder layers consist of three sublayers: self-attention followed by encoder-decoder attention, followed by a position-wise feed-forward layer."
+    },
+    {
+     "mechanism": "Decoder self-attention is causally masked",
+     "where": "llm extraction, verified quote, Sec. 2.1 Transformer",
+     "blocking": true,
+     "evidence": "The decoder uses masking in its self-attention to prevent a given output position from incorporating information about future output positions during training."
+    }
+   ]
+  },
+  "spec": {
+   "at": "2026-10-27T18:23:30",
+   "family": "flex",
+   "name": "arxiv_1803_02155",
+   "report": [
+    [
+     "ASSERTED",
+     "encoder-decoder or encoder-only model: llm extraction, verified quote, Sec. 4.1 Experimental Setup (built decoder-only by the operator, --assert family=decoder_only: the paper's encoder and cross-attention are not built)"
+    ],
+    [
+     "ASSERTED",
+     "Encoder-decoder architecture: decoder layers have masked self-attention plus encoder-decoder cross-attention: llm extraction, verified quote, Sec. 2.1 Transformer (built decoder-only by the operator, --assert family=decoder_only: the paper's encoder and cross-attention are not built)"
+    ],
+    [
+     "ASSERTED",
+     "Decoder self-attention is causally masked: llm extraction, verified quote, Sec. 2.1 Transformer (built decoder-only by the operator, --assert family=decoder_only: the paper's encoder and cross-attention are not built)"
+    ],
+    [
+     "MATCHED",
+     "norm = layernorm (inherited: \u201cIn this work we present an efficient way of incorporating relative position representations in the self-attention mechan\u201d)"
+    ],
+    [
+     "MATCHED",
+     "activation = relu (inherited: \u201cIn this work we present an efficient way of incorporating relative position representations in the self-attention mechan\u201d)"
+    ],
+    [
+     "MATCHED",
+     "positional = shaw_relative (used: \u201cWe compared our model using only relative position representations to the baseline Transformer ~\\cite{vaswani2017} with \u201d)"
+    ],
+    [
+     "DEFAULT",
+     "residual = residual: not stated by the paper (the extraction marks it inherited, unverified: inherited from transformer, whose curated entry has no residual); a highway or plain stream would be a stated departure"
+    ],
+    [
+     "MATCHED",
+     "attention = exact (used: \u201ce_{ij} = \\frac{x_iW^Q(x_jW^K+a^K_{ij})^T}{\\sqrt{d_z}} [eq:e2]\u201d)"
+    ],
+    [
+     "MATCHED",
+     "rel_max_distance = 16, Shaw's clipping distance k (\u201cWhen using relative position encodings, we used clipping distance $k = 16$,\u201d)"
+    ],
+    [
+     "MATCHED",
+     "rel_per_head = true (\u201cand used unique edge representations per layer and head.\u201d)"
+    ],
+    [
+     "DEFAULT",
+     "rel_values = true: no verified value (unverified: the quote does not name rel_values (looked for /value|a\\^\\{?V/)); Shaw's definition (eqs. 3 and 4) adds the relative vectors to the keys and to the values"
+    ],
+    [
+     "MATCHED",
+     "position = shaw_relative on the flex family: Shaw's relative key and value vectors, clipping distance 16, one set per head, per layer (parity::FlexConfig; keramos IR_SPEC 5.15 attention.relative_kv, revision 1.4)"
+    ],
+    [
+     "SIZED",
+     "d=64 layers=2 heads=4 T=64 chosen for this run (paper: {'d_model': 512, 'n_layers': 6, 'n_heads': 8, 'd_ff': 1024}); the mechanism is the paper's"
+    ]
+   ],
+   "pretrain_spec": {
+    "name": "arxiv_1803_02155_base",
+    "arch": {
+     "custom": {
+      "norm": "layernorm",
+      "activation": "relu",
+      "position": "shaw_relative",
+      "residual": "residual",
+      "attention": "exact",
+      "rel_max_distance": 16,
+      "rel_per_head": true,
+      "rel_values": true,
+      "d": 64,
+      "layers": 2,
+      "heads": 4
+     }
+    },
+    "data": {
+     "vocab": "/home/jonat/d2_pk/corpus/data/vocab_fineweb_tinychat_bpe8k_v1/fineweb_tinychat_bpe8k.gguf",
+     "vocab_cap": 8192,
+     "T": 64,
+     "corpus": "/home/jonat/arxiv_chain_runs/inputs/pretrain_train.txt",
+     "max_tokens": 400000
+    },
+    "train": {
+     "steps": 600,
+     "lr": 0.003,
+     "batch": 4,
+     "eval_every": 150,
+     "checkpoint_every": 200,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw"
+    },
+    "export": {
+     "formats": [
+      "safetensors"
+     ]
+    },
+    "out_dir": "/home/jonat/arxiv_chain_runs/d2_shaw/pretrain"
+   },
+   "sft_spec": {
+    "name": "arxiv_1803_02155",
+    "arch": {
+     "custom": {
+      "norm": "layernorm",
+      "activation": "relu",
+      "position": "shaw_relative",
+      "residual": "residual",
+      "attention": "exact",
+      "rel_max_distance": 16,
+      "rel_per_head": true,
+      "rel_values": true,
+      "d": 64,
+      "layers": 2,
+      "heads": 4
+     }
+    },
+    "data": {
+     "vocab": "/home/jonat/d2_pk/corpus/data/vocab_fineweb_tinychat_bpe8k_v1/fineweb_tinychat_bpe8k.gguf",
+     "vocab_cap": 8192,
+     "T": 64,
+     "sft_examples": "/home/jonat/arxiv_chain_runs/d2_shaw/sft_examples.jsonl"
+    },
+    "train": {
+     "steps": 200,
+     "lr": 0.001,
+     "batch": 4,
+     "eval_every": 100,
+     "checkpoint_every": 200,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "objective": "sft",
+     "init_from": "/home/jonat/arxiv_chain_runs/d2_shaw/pretrain/arxiv_1803_02155_base.safetensors"
+    },
+    "export": {
+     "formats": [
+      "safetensors"
+     ]
+    },
+    "out_dir": "/home/jonat/arxiv_chain_runs/d2_shaw/sft"
+   }
+  },
+  "pretrain": {
+   "at": "2026-10-27T18:32:24",
+   "corpus": "/home/jonat/arxiv_chain_runs/inputs/pretrain_train.txt",
+   "corpus_sha256": "f6a7ccbaed0e5018f9ade0a1f0ce6a3027e046f176d2b8f7ff7f5efedfaedb76",
+   "max_tokens": 400000,
+   "vocab_sha256": "c79eec5b5ec2036b7f398061e9901c34014b54096db64f9dce6f030532e75b23",
+   "weights_sha256": "a6f09dc321715a8d89a36648c64e580b910c1b001ff8895040acb6186d66bb11",
+   "result": {
+    "T": 64,
+    "accum": 1,
+    "attention": "exact",
+    "batch": 4,
+    "best_val": 4.24394416809082,
+    "checkpoint_activations": false,
+    "d": 64,
+    "early_stopped": false,
+    "family": "flex",
+    "final_step": 600,
+    "heads": 4,
+    "layers": 2,
+    "lr": 0.003000000026077032,
+    "name": "arxiv_1803_02155_base",
+    "params": 1153024,
+    "seed": 1,
+    "steps_requested": 600,
+    "tokens_per_second": 289.1430651051386,
+    "wall_seconds": 531.224914366
+   }
+  },
+  "sft": {
+   "at": "2026-10-27T18:35:38",
+   "sft_source": "/home/jonat/arxiv_chain_runs/inputs/sft_tinychat_fit64.jsonl",
+   "sft_limit": 500,
+   "sft_fit": {
+    "source": "/home/jonat/arxiv_chain_runs/inputs/sft_tinychat_fit64.jsonl",
+    "T": 64,
+    "limit": 500,
+    "seen": 500,
+    "kept": 500,
+    "dropped_longer_than_T": 0,
+    "longest_kept_tokens": 60,
+    "longest_dropped_tokens": 0,
+    "rule": "len(prompt) + len(completion) + 1 end token <= T + 1 (mtstudio load_sft), file order"
+   },
+   "sft_slice_sha256": "ea3d1e3812169ccf3543d775dd26b1d5c756da489e0dc40bef36df121f8ecef8",
+   "weights_sha256": "583ad080de825313efa4ee128a706494663d613e542a5f2ad5942ec6bb0c021b",
+   "result": {
+    "T": 64,
+    "accum": 1,
+    "attention": "exact",
+    "batch": 4,
+    "best_val": 3.733668565750122,
+    "checkpoint_activations": false,
+    "d": 64,
+    "early_stopped": false,
+    "family": "flex",
+    "final_step": 200,
+    "heads": 4,
+    "layers": 2,
+    "lr": 0.0010000000474974513,
+    "name": "arxiv_1803_02155",
+    "params": 1153024,
+    "seed": 1,
+    "steps_requested": 200,
+    "tokens_per_second": 264.1628338540639,
+    "wall_seconds": 193.819846846
+   }
+  },
+  "export": {
+   "at": "2026-10-27T18:35:38",
+   "gguf": "/home/jonat/arxiv_chain_runs/d2_shaw/export/arxiv_1803_02155.gguf",
+   "gguf_sha256": "6f5d4a5bdf8598aedcbe2edfb38010aa08bb061be39ec4912dea9a3225094949",
+   "ir_sha256": "6ef26303b720b857b69e204cbf71dafa36480bf97c4c147f66e9f81332c42a5e",
+   "family_hint": "flex",
+   "rope_heads": null
+  },
+  "chat": {
+   "at": "2026-10-27T18:36:18",
+   "parity": {
+    "engine": "numpy (tools/ir_run.py)",
+    "n": 40,
+    "identical_replies": 40,
+    "pass": true,
+    "settings": {
+     "user_input": null,
+     "max_new_tokens": 24,
+     "temperature": 1.0,
+     "top_k": 1,
+     "top_p": 1.0,
+     "seed": 0
+    },
+    "prompts_sha256": "a906b25aaf9f32848f83e8b87c8ad95e7eb8d5802129635f7e55fc62a68b3132"
+   },
+   "chat": [
+    {
+     "user": "Hello, how are you?",
+     "reply": "It is understandable to feel sad sometimes, especially when the weather is a bit sad.",
+     "tokens": 17
+    },
+    {
+     "user": "What do you like to do?",
+     "reply": "It is understandable to feel a bit sad sometimes, especially when the weather is a bit sad.",
+     "tokens": 19
+    }
+   ]
+  }
+ },
+ "relevance_gate": "in_scope",
+ "title": "Self-Attention with Relative Position Representations",
+ "parity_pass": true
+}

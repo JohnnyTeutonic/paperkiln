@@ -1,0 +1,34 @@
+{
+ "name": "pk_flex_mdha",
+ "arch": {
+  "preset": "gpt2-nano",
+  "custom": {
+   "d": 16,
+   "layers": 2,
+   "heads": 2,
+   "norm": "rmsnorm",
+   "activation": "expr:relu(x)^2",
+   "position": "rope",
+   "qkv_conv": 3
+  }
+ },
+ "data": {
+  "T": 16,
+  "max_tokens": 0
+ },
+ "train": {
+  "steps": 30,
+  "lr": 0.003,
+  "eval_every": 1000,
+  "checkpoint_every": 1000,
+  "batch": 2,
+  "seed": 3,
+  "gradmap_every": 0
+ },
+ "export": {
+  "formats": [
+   "safetensors",
+   "gguf"
+  ]
+ }
+}

@@ -15,7 +15,7 @@ The cases every engine that runs keramos IR documents should pass. The normative
 | `accept/` | `documents.json` | the documents every consumer must accept: every suite model, every rewritten document, every worked document of `../examples/` |
 | `digest/` | `vectors.json` | the IR digest (IR_SPEC 3.10): RFC 8785 serialisations and sha256 of numbers, strings, member names and every suite model's document, and texts that have no digest |
 | `quant/` | `blocks.json` | stored blocks of every GGUF storage type and their f32 values (IR_SPEC 4.7), bit for bit on every backend |
-| `grad/` | `recurrence.json` | gradients of recurrence nodes (IR_SPEC 6.10.5) against central differences of the reference in float64 |
+| `grad/` | `recurrence.json`, `attention.json` | gradients of recurrence nodes (IR_SPEC 6.10.5) and of attention with `relative_kv` (5.15) against central differences in float64 |
 | `chat/` | `render.json` | chat template records and conversations: the rendered text or the refusal (IR_SPEC 8.1.3) |
 | `recurrence/` | rewritten documents | suite models with their hand-written recurrent ops written as recurrences (IR_SPEC 6.10.6); the traces `state/<model>_recurrence.json` run them in place of each file's own document and expect the original document's values |
 

@@ -7,6 +7,21 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **New primitives drafted by Claude: Shaw-style relative positions, and Primer's MDHA wired** (27 Oct;
+  LOCAL_LLM_STACK.md 5.4, D2; keramos v1.4.0 pinned). `ops::shaw_attention` (Shaw, Uszkoreit and Vaswani 2018,
+  arXiv 1803.02155, eqs. 3-4): relative key and value vectors by the clipped query-key distance, shared by
+  the heads or one set per head, keys only optional; forward in keramos's stated order, backward, host
+  loops. flex `position: "shaw_relative"` (`rel_max_distance` = Shaw's k, `rel_per_head`, `rel_values`),
+  exported as `attention.relative_kv` (IR_SPEC 5.15, rule 40). flex `qkv_conv: K` (Primer, So et al. 2021,
+  arXiv 2109.08668): a causal depthwise convolution on the fused q, k, v projection before RoPE, no bias,
+  exported as `conv1d_causal` over 3d channels with its recurrent slot; no new op. `ir_eval` runs
+  `relative_kv` for the suite's op and gradient cases. The extractor's `positional` gains `shaw_relative`
+  with `rel_per_head` and `rel_values` (boolean quotes must name a head or the values); the chain builds
+  both mechanisms and takes `--assert family=decoder_only` to build an encoder-decoder paper's decoder.
+  Gates: `tests/test_shaw_attention.cpp` 4/4 (binary64 formula 2.5e-7, FD 9.3e-5); `test_flex` 13/13;
+  keramos v1.4.0 through mtstudio 158/0/307 (both new models within 1.4e-7, greedy 4/4; all 11 gradient
+  cases); Shaw's paper live through the chain (gate $0.006, extraction $0.22).
+
 - **keramos v1.3.5 pinned; llama_attnres under recursion gated for ember** (27 Oct; `spec/`, LOCAL_LLM_WORK.md
   D4). v1.3.5 states `"tensor_index": "application"` in full (IR_SPEC 7.2) with six cases on
   pk_llama_attnres_rec, makes an engine's own refusal of a case a skip (11.3) and adds Appendix C's ONNX Runtime

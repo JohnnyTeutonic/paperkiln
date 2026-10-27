@@ -485,8 +485,9 @@ def test_tonights_other_receipts_refuse_by_name():
         with pytest.raises(A.Refused) as r:
             A.build_spec(tonight(pid), SIZE)
         reasons[pid] = " | ".join(r.value.args[0])
-    # Primer: its placement and norm build now; its depthwise convolutions and relative positions do not.
-    assert "block op conv1d_causal" in reasons["2109.08668"] and "positional = relative" in reasons["2109.08668"]
+    # Primer: its placement, norm and depthwise convolutions (MDHA, qkv_conv) build now; its relative positions
+    # (the T5 and Lingvo codebases', a citation of Shaw with no clipping distance) and shared Q/K do not.
+    assert "block op conv1d_causal" not in reasons["2109.08668"] and "positional = relative" in reasons["2109.08668"]
     assert "norm_placement" not in reasons["2109.08668"] and "primer_layernorm" not in reasons["2109.08668"]
     # Mamba: built as Mamba-1 from N = 16 and E = 2, but the conv width is not stated and the paper's own
     # block adds a LayerNorm the block here lacks.
@@ -564,6 +565,126 @@ def test_t5_relative_bias_refused_without_its_sizes():
         A.parse_asserts(["rel_buckets=0"])
 
 
+def shaw_ext(attention=None, **fields):
+    ext = ext_with(norm="layernorm", activation="relu", positional="shaw_relative",
+                   **({"attention": attention} if attention else {}))
+    quotes = {"rel_max_distance": "we used clipping distance $k = {v}$",
+              "rel_per_head": "and used unique edge representations per layer and head",
+              "rel_values": "the relative position representations $a^V_{{ij}}$ are added to the values"}
+    fl = {k: {"value": str(v), "check": "verified", "status": "stated", "where": "Sec. 5",
+              "quote": quotes[k].format(v=v)} for k, v in fields.items()}
+    ext["llm"] = {"verification": {"flavours": fl}}
+    return ext
+
+
+def test_shaw_relative_builds_on_flex():
+    # Shaw's base model: clipping distance 16, one set of vectors per layer and head, keys and values.
+    fam, arch, rep = A.build_spec(shaw_ext(rel_max_distance=16, rel_per_head="true"), SIZE)
+    assert fam == "flex"
+    c = arch["custom"]
+    assert (c["position"], c["rel_max_distance"], c["rel_per_head"], c["rel_values"]) == ("shaw_relative", 16, True, True)
+    assert c["attention"] == "exact" and "qkv_conv" not in c
+    assert any(b == "MATCHED" and d.startswith("position = shaw_relative") for b, d in rep)
+    assert any(b == "DEFAULT" and d.startswith("rel_values = true") for b, d in rep)
+    # Keys only, stated; the heads' sharing settled by the operator.
+    fam, arch, rep = A.build_spec(shaw_ext(rel_max_distance=8, rel_values="false"), SIZE,
+                                  A.parse_asserts(["rel_per_head=false"]))
+    c = arch["custom"]
+    assert (c["rel_max_distance"], c["rel_per_head"], c["rel_values"]) == (8, False, False)
+    assert any(b == "ASSERTED" and d.startswith("rel_per_head") for b, d in rep)
+
+
+def test_shaw_relative_refused_without_its_sizes():
+    with pytest.raises(A.Refused) as e:
+        A.build_spec(shaw_ext(), SIZE)
+    reasons = " | ".join(e.value.args[0])
+    assert "rel_max_distance (Shaw's clipping distance k) is unresolved" in reasons
+    assert "rel_per_head (whether each head has its own relative vectors) is unresolved" in reasons
+    ext = shaw_ext(rel_max_distance=16, rel_per_head="true")
+    ext["llm"]["verification"]["flavours"]["rel_max_distance"]["check"] = "unverified"
+    with pytest.raises(A.Refused, match=r"rel_max_distance .* is unresolved.*\(unverified\)"):
+        A.build_spec(ext, SIZE)
+    ext = shaw_ext("swa", rel_max_distance=16, rel_per_head="true")
+    ext["fields"]["window_size"] = {"value": 16, "evidence": "x", "verdict": "used"}
+    with pytest.raises(A.Refused, match="shaw_relative with attention = swa"):
+        A.build_spec(ext, SIZE)
+    with pytest.raises(SystemExit, match="one of true, false"):
+        A.parse_asserts(["rel_per_head=yes"])
+
+
+def test_shaw_paper_receipt_builds_decoder_only_when_asserted():
+    # Shaw et al. 2018 extracted live under the 27 Oct prompt (experiments/arxiv_chain_2026-10-27_d2): the base
+    # model's clipping distance 16 and per-head vectors are verified; its encoder-decoder is refused until the
+    # operator builds the decoder only.
+    with open(os.path.join(os.path.dirname(HERE), "experiments", "arxiv_chain_2026-10-27_d2",
+                           "1803.02155.extraction.json"), encoding="utf-8") as f:
+        ext = json.load(f)
+    with pytest.raises(A.Refused, match="encoder-decoder"):
+        A.build_spec(ext, SIZE)
+    fam, arch, rep = A.build_spec(ext, SIZE, A.parse_asserts(["family=decoder_only"]))
+    c = arch["custom"]
+    assert fam == "flex" and (c["position"], c["rel_max_distance"], c["rel_per_head"], c["rel_values"]) == (
+        "shaw_relative", 16, True, True)
+    assert sum(b == "ASSERTED" and "decoder-only" in d for b, d in rep) == 3
+
+
+def mdha_ops(kernels=(3, 3, 3), bias="", which="qkv"):
+    """An extraction's verified block graph with Primer's MDHA: projections, convolutions, attention."""
+    def attr(name, v):
+        return {"name": name, "value": str(v) if v != "" else "", "status": "stated" if v != "" else "not_stated",
+                "quote": "adding 3x1 depthwise convolutions after each of the multi-head projections" if v != "" else "",
+                "where": "Sec. 3", "check": "verified" if v != "" else "not_stated", "reasons": []}
+    ops, i = [{"i": 0, "subgraph": "embed", "op": "embedding", "inputs": ["tokens"], "output": "x", "attributes": []}], 1
+    ins = []
+    for t, kk in zip("qkv", kernels):
+        ops.append({"i": i, "subgraph": "block", "op": "linear", "role": f"{t} projection", "inputs": ["h"],
+                    "output": t + "0", "attributes": [attr("bias", "")]})
+        i += 1
+        if t in which:
+            ops.append({"i": i, "subgraph": "block", "op": "conv1d_causal", "role": f"MDHA conv on {t}",
+                        "inputs": [t + "0"], "output": t, "attributes": [attr("kernel", kk), attr("bias", bias)]})
+            i += 1
+            ins.append(t)
+        else:
+            ins.append(t + "0")
+    ops.append({"i": i, "subgraph": "block", "op": "attention", "inputs": ins, "output": "a", "attributes": []})
+    return ops
+
+
+def mdha_ext(**kw):
+    ext = ext_with(norm="layernorm", activation="relu", positional="rope")
+    ext["llm"] = {"verification": {"flavours": {}, "block_ops": mdha_ops(**kw)}}
+    return ext
+
+
+def test_mdha_builds_qkv_conv_on_flex():
+    fam, arch, rep = A.build_spec(mdha_ext(), SIZE)
+    assert fam == "flex" and arch["custom"]["qkv_conv"] == 3 and arch["custom"]["position"] == "rope"
+    assert any(b == "MATCHED" and d.startswith("qkv_conv = 3") for b, d in rep)
+    assert not any("block op conv1d_causal" in d for _, d in rep)
+    # The llama block's flavours with MDHA are flex (only flex has qkv_conv).
+    ext = mdha_ext()
+    ext["fields"].update(ext_with(norm="rmsnorm", activation="swiglu")["fields"])
+    fam, arch, _ = A.build_spec(ext, SIZE)
+    assert fam == "flex" and arch["custom"]["qkv_conv"] == 3
+    # Primer's 26 Oct extraction: the MDHA graph builds once its other mechanisms are set aside.
+    pr = tonight("2109.08668")
+    pr["mechanism_scan"] = [h for h in pr["mechanism_scan"] if not h["blocking"] or h["mechanism"].startswith("new op")]
+    fam, arch, rep = A.build_spec(pr, SIZE, A.parse_asserts(["positional=rope", "residual=residual"]))
+    assert fam == "flex" and arch["custom"]["qkv_conv"] == 3 and arch["custom"]["activation"] == "expr:(relu(x)^2)"
+
+
+def test_mdha_refusals():
+    with pytest.raises(A.Refused, match="some but not all"):
+        A.build_spec(mdha_ext(which="qk"), SIZE)
+    with pytest.raises(A.Refused, match="without one stated kernel"):
+        A.build_spec(mdha_ext(kernels=(3, 3, 5)), SIZE)
+    fam, arch, rep = A.build_spec(mdha_ext(kernels=(3, 3, 5)), SIZE, A.parse_asserts(["qkv_conv=3"]))
+    assert arch["custom"]["qkv_conv"] == 3 and any(b == "ASSERTED" for b, _ in rep)
+    with pytest.raises(A.Refused, match="stated bias"):
+        A.build_spec(mdha_ext(bias="true"), SIZE)
+
+
 MTSTUDIO_BIN = os.environ.get("MTSTUDIO_BIN")
 
 
@@ -608,6 +729,55 @@ def test_t5_bias_paper_trains_and_exports_end_to_end(tmp_path):
         assert typ == 0, name
         W[name] = np.frombuffer(raw, dtype=np.float32, count=int(np.prod(dims)),
                                 offset=data_start + off).reshape(list(reversed(dims)))
+    logits = ir_numpy.forward(doc, W, [5, 6, 7, 8, 9, 10])
+    assert logits.shape[0] == 6 and np.isfinite(logits).all()
+
+
+@pytest.mark.skipif(not MTSTUDIO_BIN or not os.path.exists(VOCAB), reason="set MTSTUDIO_BIN; needs the bpe8k vocabulary")
+def test_shaw_and_mdha_paper_trains_and_exports_end_to_end(tmp_path):
+    """A synthetic extraction with Shaw's relative positions and Primer's MDHA through the chain's own stages on
+    CPU: spec (flex, shaw_relative, qkv_conv), a few pretrain and SFT steps in mtstudio, the GGUF export; keramos's
+    checker accepts the file (revision 1.4) and the reference runs its relative_kv and conv1d_causal nodes."""
+    import numpy as np
+    sys.path.insert(0, os.path.join(os.path.dirname(HERE), "spec", "tools"))
+    import ir_check
+    import ir_numpy
+
+    ext = shaw_ext(rel_max_distance=4, rel_per_head="true")
+    ext["llm"]["verification"]["block_ops"] = mdha_ops()
+    ext["title"] = "A synthetic decoder with Shaw's relative positions and multi-dconv-head attention"
+    (tmp_path / "x.extraction.json").write_text(json.dumps(ext), encoding="utf-8")
+    words = "the cat sat on a mat and the dog ran to the log while a bird sang".split()
+    corpus = tmp_path / "corpus.txt"
+    corpus.write_text("".join(" ".join(words[(i + k) % len(words)] for k in range(12)) + "\n" for i in range(400)),
+                      encoding="utf-8")
+    sft = tmp_path / "sft.jsonl"
+    sft.write_text("".join(json.dumps({"prompt": f"<|user|>where is the {w}?<|assistant|>",
+                                       "completion": f"the {w} is on the mat"}) + "\n" for w in words), encoding="utf-8")
+    run = tmp_path / "run"
+    rc = A.main(["0000.00000", "--run-dir", str(run), "--extraction", str(tmp_path / "x.extraction.json"),
+                 "--skip-relevance-gate", "--mtstudio", MTSTUDIO_BIN, "--corpus", str(corpus), "--vocab", VOCAB,
+                 "--sft-examples", str(sft), "--sft-limit", "0", "--d", "32", "--layers", "2", "--heads", "2",
+                 "--T", "32", "--pretrain-steps", "6", "--sft-steps", "4", "--batch", "2", "--threads", "1",
+                 "--stop-after", "export"])
+    assert rc == 0
+    c = json.loads((run / "sft_spec.json").read_text())["arch"]["custom"]
+    assert (c["position"], c["rel_max_distance"], c["rel_per_head"], c["qkv_conv"]) == ("shaw_relative", 4, True, 3)
+    gguf = run / "export" / "arxiv_0000_00000.gguf"
+    assert ir_check.check(str(gguf)) == []
+    meta, tensors, data_start, raw, _ = ir_check.read_gguf(str(gguf))
+    doc = json.loads(meta["paperkiln.ir"][1])
+    att = next(n for n in doc["block"]["nodes"] if n["op"] == "attention")
+    assert att["relative_kv"] == {"key": "blk.{i}.attn_rel_k.weight", "value": "blk.{i}.attn_rel_v.weight",
+                                  "max_distance": 4}
+    conv = next(n for n in doc["block"]["nodes"] if n["op"] == "conv1d_causal")
+    assert (conv["channels"], conv["kernel"], conv["bias"]) == (96, 3, None)
+    W = {}
+    for name, dims, typ, off in tensors:
+        assert typ == 0, name
+        W[name] = np.frombuffer(raw, dtype=np.float32, count=int(np.prod(dims)),
+                                offset=data_start + off).reshape(list(reversed(dims)))
+    assert W["blk.0.attn_rel_k.weight"].shape == (5, 32)
     logits = ir_numpy.forward(doc, W, [5, 6, 7, 8, 9, 10])
     assert logits.shape[0] == 6 and np.isfinite(logits).all()
 

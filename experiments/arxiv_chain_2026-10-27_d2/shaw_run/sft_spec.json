@@ -1,0 +1,42 @@
+{
+ "name": "arxiv_1803_02155",
+ "arch": {
+  "custom": {
+   "norm": "layernorm",
+   "activation": "relu",
+   "position": "shaw_relative",
+   "residual": "residual",
+   "attention": "exact",
+   "rel_max_distance": 16,
+   "rel_per_head": true,
+   "rel_values": true,
+   "d": 64,
+   "layers": 2,
+   "heads": 4
+  }
+ },
+ "data": {
+  "vocab": "/home/jonat/d2_pk/corpus/data/vocab_fineweb_tinychat_bpe8k_v1/fineweb_tinychat_bpe8k.gguf",
+  "vocab_cap": 8192,
+  "T": 64,
+  "sft_examples": "/home/jonat/arxiv_chain_runs/d2_shaw/sft_examples.jsonl"
+ },
+ "train": {
+  "steps": 200,
+  "lr": 0.001,
+  "batch": 4,
+  "eval_every": 100,
+  "checkpoint_every": 200,
+  "gradmap_every": 0,
+  "seed": 1,
+  "optimizer": "adamw",
+  "objective": "sft",
+  "init_from": "/home/jonat/arxiv_chain_runs/d2_shaw/pretrain/arxiv_1803_02155_base.safetensors"
+ },
+ "export": {
+  "formats": [
+   "safetensors"
+  ]
+ },
+ "out_dir": "/home/jonat/arxiv_chain_runs/d2_shaw/sft"
+}

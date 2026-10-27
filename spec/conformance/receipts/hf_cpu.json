@@ -1,13 +1,13 @@
 {
  "spec": {
   "repository": "keramos",
-  "tag": "v1.3.4",
-  "commit": "7a37bf6973543914e7b3f4750b91131860d11b8f"
+  "tag": "v1.3.5",
+  "commit": "c4696bf5578688585f6b00593eb9272daa8c5e3a"
  },
  "engine": {
   "name": "Hugging Face transformers 5.20.2 (torch 2.14.1+cpu), CPU, float32, sdpa, positions from the cache, through keramos/adapters/hf/hf_adapter.py (in process; each GGUF exported by adapters/common/gguf_to_hf.py v2; transformers never reads the IR document)",
   "environment": "CPython 3.12.3, numpy 2.5.4, safetensors 0.8.0; WSL2 (Ubuntu 24.04), venv on ext4 (adapters/hf/requirements.txt)",
-  "run": "python adapters/hf/hf_adapter.py --adapter hf --hf-export-dir FRESH, in a clean clone of keramos at v1.3.4 (7a37bf69), a fresh export cache, 2026-10-27. FAILs (3): tp_mamba1's chunks, truncate and snapshot traces, the multi-token-over-cache scan restart (FINDINGS 1). The 18 cases of v1.3.4: 12 pass, 6 skip (digest, accept)"
+  "run": "python adapters/hf/hf_adapter.py --adapter hf --hf-export-dir FRESH, in a clean clone of keramos at v1.3.5 (c4696bf5), a fresh export cache, 2026-10-27. FAILs (3): tp_mamba1's chunks, truncate and snapshot traces, the multi-token-over-cache scan restart (FINDINGS 1). The six cases of v1.3.5 (section 7.2's trace, acceptance and four refusals on pk_llama_attnres_rec) skip (IR validation; a replacement document); no earlier verdict moves"
  },
  "adapter": {
   "engine": "transformers",
@@ -41,7 +41,7 @@
  "counts": {
   "PASS": 38,
   "FAIL": 3,
-  "SKIP": 390,
+  "SKIP": 396,
   "XFAIL": 0,
   "XPASS": 0
  },
@@ -56,7 +56,7 @@
   "trace": {
    "PASS": 27,
    "FAIL": 3,
-   "SKIP": 43,
+   "SKIP": 44,
    "XFAIL": 0,
    "XPASS": 0
   },
@@ -70,7 +70,7 @@
   "refuse": {
    "PASS": 0,
    "FAIL": 0,
-   "SKIP": 94,
+   "SKIP": 98,
    "XFAIL": 0,
    "XPASS": 0
   },
@@ -98,7 +98,7 @@
   "accept": {
    "PASS": 0,
    "FAIL": 0,
-   "SKIP": 39,
+   "SKIP": 40,
    "XFAIL": 0,
    "XPASS": 0
   },
@@ -1348,6 +1348,30 @@
    "detail": "transformers has no IR validation (it never reads the document)"
   },
   {
+   "id": "refuse/tensor_index_in_head",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/tensor_index_value_unknown",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/tensor_index_on_affine",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/tensor_index_absent_application_tensor",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
    "id": "refuse/duplicate_member_top",
    "kind": "refuse",
    "verdict": "SKIP",
@@ -2272,6 +2296,12 @@
    "detail": "4 steps"
   },
   {
+   "id": "trace/pk_llama_attnres_rec_untagged",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "a replacement document: transformers runs the GGUF's architecture, never a document"
+  },
+  {
    "id": "accept/documents/model_pk_attnres",
    "kind": "accept",
    "verdict": "SKIP",
@@ -2501,6 +2531,12 @@
   },
   {
    "id": "accept/documents/substituted_over_duplicate_embedded",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "transformers has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/untagged_application_queries",
    "kind": "accept",
    "verdict": "SKIP",
    "detail": "transformers has no IR validation (it never reads the document)"

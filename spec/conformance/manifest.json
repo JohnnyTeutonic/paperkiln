@@ -48,6 +48,43 @@
    "profile": "core"
   },
   {
+   "id": "model/pk_flex_mdha",
+   "kind": "model",
+   "file": "models/pk_flex_mdha/case.json",
+   "model": "models/pk_flex_mdha",
+   "profile": "thirdparty",
+   "class": "ROUNDING"
+  },
+  {
+   "id": "trace/pk_flex_mdha_decode",
+   "kind": "trace",
+   "file": "state/pk_flex_mdha_decode.json",
+   "model": "models/pk_flex_mdha",
+   "profile": "thirdparty"
+  },
+  {
+   "id": "trace/pk_flex_mdha_snapshot",
+   "kind": "trace",
+   "file": "state/pk_flex_mdha_snapshot.json",
+   "model": "models/pk_flex_mdha",
+   "profile": "state"
+  },
+  {
+   "id": "model/pk_flex_shaw",
+   "kind": "model",
+   "file": "models/pk_flex_shaw/case.json",
+   "model": "models/pk_flex_shaw",
+   "profile": "core",
+   "class": "ROUNDING"
+  },
+  {
+   "id": "trace/pk_flex_shaw_decode",
+   "kind": "trace",
+   "file": "state/pk_flex_shaw_decode.json",
+   "model": "models/pk_flex_shaw",
+   "profile": "core"
+  },
+  {
    "id": "model/pk_flex_t5",
    "kind": "model",
    "file": "models/pk_flex_t5/case.json",
@@ -606,7 +643,7 @@
    "kind": "op",
    "file": "ops/attention.json",
    "profile": "core",
-   "n": 6
+   "n": 12
   },
   {
    "id": "op/moe_ffn",
@@ -1267,6 +1304,55 @@
    "section": "3.7"
   },
   {
+   "id": "refuse/relative_kv_distance_negative",
+   "kind": "refuse",
+   "file": "refuse/relative_kv_distance_negative.json",
+   "rule": 40,
+   "section": "5.15"
+  },
+  {
+   "id": "refuse/relative_kv_without_key",
+   "kind": "refuse",
+   "file": "refuse/relative_kv_without_key.json",
+   "rule": 40,
+   "section": "5.15"
+  },
+  {
+   "id": "refuse/relative_kv_unknown_field",
+   "kind": "refuse",
+   "file": "refuse/relative_kv_unknown_field.json",
+   "rule": 40,
+   "section": "5.15"
+  },
+  {
+   "id": "refuse/relative_kv_key_shape",
+   "kind": "refuse",
+   "file": "refuse/relative_kv_key_shape.json",
+   "rule": 40,
+   "section": "5.15"
+  },
+  {
+   "id": "refuse/relative_kv_value_shape",
+   "kind": "refuse",
+   "file": "refuse/relative_kv_value_shape.json",
+   "rule": 40,
+   "section": "5.15"
+  },
+  {
+   "id": "refuse/relative_kv_with_position_bias",
+   "kind": "refuse",
+   "file": "refuse/relative_kv_with_position_bias.json",
+   "rule": 40,
+   "section": "5.15"
+  },
+  {
+   "id": "refuse/relative_kv_per_layer",
+   "kind": "refuse",
+   "file": "refuse/relative_kv_per_layer.json",
+   "rule": 6,
+   "section": "3.8"
+  },
+  {
    "id": "refuse/duplicate_member_top",
    "kind": "refuse",
    "file": "refuse/duplicate_member_top.json",
@@ -1369,7 +1455,7 @@
    "kind": "digest",
    "file": "digest/vectors.json",
    "profile": "core",
-   "n": 88
+   "n": 90
   },
   {
    "id": "dequant/blocks",
@@ -1384,6 +1470,13 @@
    "file": "grad/recurrence.json",
    "profile": "recurrence",
    "n": 8
+  },
+  {
+   "id": "grad/attention",
+   "kind": "grad",
+   "file": "grad/attention.json",
+   "profile": "core",
+   "n": 3
   },
   {
    "id": "trace/pk_kimi_recurrence",
@@ -1428,6 +1521,13 @@
    "profile": "state"
   },
   {
+   "id": "trace/pk_flex_mdha_truncate",
+   "kind": "trace",
+   "file": "state/pk_flex_mdha_truncate.json",
+   "model": "models/pk_flex_mdha",
+   "profile": "state"
+  },
+  {
    "id": "trace/pk_gpt2_swa_rewind_window",
    "kind": "trace",
    "file": "state/pk_gpt2_swa_rewind_window.json",
@@ -1467,6 +1567,20 @@
    "kind": "trace",
    "file": "state/pk_flex_highway_chunks.json",
    "model": "models/pk_flex_highway",
+   "profile": "state"
+  },
+  {
+   "id": "trace/pk_flex_mdha_chunks",
+   "kind": "trace",
+   "file": "state/pk_flex_mdha_chunks.json",
+   "model": "models/pk_flex_mdha",
+   "profile": "state"
+  },
+  {
+   "id": "trace/pk_flex_shaw_chunks",
+   "kind": "trace",
+   "file": "state/pk_flex_shaw_chunks.json",
+   "model": "models/pk_flex_shaw",
    "profile": "state"
   },
   {
@@ -1635,7 +1749,7 @@
    "kind": "accept",
    "file": "accept/documents.json",
    "profile": "core",
-   "n": 40
+   "n": 42
   },
   {
    "id": "chat/render",

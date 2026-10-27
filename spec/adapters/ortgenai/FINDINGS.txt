@@ -8,8 +8,8 @@ transformers. It does not read GGUF in the path a user takes: its model builder 
 takes an HF checkpoint and writes model.onnx and genai_config.json, and the runtime executes that graph through
 onnxruntime. So each suite GGUF is exported to an HF checkpoint by adapters/common/gguf_to_hf.py, built by the
 builder as shipped (-p fp32 -e cpu), and run with the CPU execution provider, as a user of a converted checkpoint
-would. ONNX Runtime GenAI never sees the IR document. What follows is what the suite (keramos v1.3.4, 7a37bf69,
-431 cases) says about it, and why each failure and refusal happens.
+would. ONNX Runtime GenAI never sees the IR document. What follows is what the suite (keramos v1.3.5, c4696bf5,
+437 cases) says about it, and why each failure and refusal happens.
 
 - Engine: onnxruntime-genai 0.18.0 with onnxruntime 1.31.1, CPU execution provider only, float32, 2 intra-op
   threads (inter-op 1); the builder runs under transformers 5.20.2 and torch 2.14.1+cpu (onnx 1.23.2, onnx-ir
@@ -37,7 +37,7 @@ probe's transformers 4 checks, a second one in ~/ort_keramos/venv_tf4: requireme
 run_suite.sh runs the suite in five configurations and then probe.py. With empty caches the first run exports
 and builds every model (a few seconds each); the whole takes a few minutes on 2 threads. Exports and
 builds are cached under ~/ort_keramos by the GGUF's sha256 and the configuration. The receipt is the "receipt"
-configuration, run in a clean clone of keramos at v1.3.4 with fresh export and build caches (--ort-dir).
+configuration, run in a clean clone of keramos at v1.3.5 with fresh export and build caches (--ort-dir).
 
 
 THE BUILD PATH
@@ -94,15 +94,15 @@ WHAT THE ADAPTER DOES
 RESULTS
 -------
 
-Receipt configuration (the builder as shipped, export input): 8 pass, 8 fail, 415 skip.
+Receipt configuration (the builder as shipped, export input): 8 pass, 8 fail, 421 skip.
 
   kind      pass fail skip   the skips are
   model        2    2   21   architecture "paperkiln" (14); the builder declines Mixtral, GPT-2, GPT-NeoX, Mamba
                              (4); the CPU kernel refuses the head size (3: pk_llama, tp_qwen3, tp_mistral)
-  trace        6    6   61   "paperkiln" (39); builder declines (10); kernel refuses (8); replacement document (4)
+  trace        6    6   62   "paperkiln" (39); builder declines (10); kernel refuses (8); replacement document (5)
   op           0    0   62   single nodes
-  refuse       0    0   94   IR validation
-  accept       0    0   39   IR validation
+  refuse       0    0   98   IR validation
+  accept       0    0   40   IR validation
   digest       0    0   88   no IR digest
   dequant      0    0   10   gguf-py's code
   grad         0    0    8   single nodes
@@ -144,7 +144,8 @@ order decode, chunks, then truncate or rewind_window):
 The gguf configuration's tp_qwen3_hd16 skips are the builder's GGUF loader declining Qwen3; through that loader
 tp_mistral_hd16 fails as it does through the export (the loader keeps no window either).
 
-Counts: receipt 8/8/415; unfused 12/8/411; fixed 16/4/411; mha 8/19/404; gguf 8/4/419.
+Counts: receipt 8/8/421 at v1.3.5 (v1.3.5's six cases (IR_SPEC 7.2's tensor_index trace, acceptance case and four refusals) are IR-only and skip); at v1.3.4 (431 cases) receipt 8/8/415, unfused
+12/8/411, fixed 16/4/411, mha 8/19/404, gguf 8/4/419.
 
 What ONNX Runtime GenAI computes right, where it runs: Llama and Qwen3 at head_dim 16 on the stock CPU build,
 Qwen3's q/k norms and a head_dim apart from d / heads included (tp_qwen3_hd16: 4 heads of 16 over d 32), with

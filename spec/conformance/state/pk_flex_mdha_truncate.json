@@ -1,0 +1,232 @@
+{
+ "model": "models/pk_flex_mdha",
+ "evict": null,
+ "class": "ROUNDING",
+ "tol": 1e-05,
+ "steps": [
+  {
+   "method": "forward",
+   "ids": [
+    6,
+    8,
+    4,
+    5,
+    11,
+    8,
+    1,
+    12,
+    6
+   ]
+  },
+  {
+   "method": "truncate",
+   "n": 5
+  },
+  {
+   "method": "forward",
+   "ids": [
+    6,
+    6
+   ]
+  }
+ ],
+ "expect": [
+  {
+   "len": 9,
+   "logits": {
+    "shape": [
+     9,
+     15
+    ],
+    "f32": "beaf59f8bedf85eabccf12bcbda4b52ebedc3df5be41720ebefcc18dbcfb6080be4ffc383fcf152abdf78f75be5cb5a8be8079c0be7137c03f277118bf054f87bd15b1b0bde41b90be070ccabee878fcbf1c08aa3d737304be1e45f6be87b88a3f0c2cdfbf3f65b4bf312760bf1240fbbf03a2aa3fdbf9febe5c96f2be9d6cfcbebc664fbe3d4dc23c88b94cbe8d8b263fd07b7abe239917be1715b3bf0411f8bebc973fbeb0d02abefb11aabee445bf3e151027be493bbfbe96349cbea8ea5ebe18a6843ca106cabe8df0983fd0ddb6be4abe86be3d544ebf07a1b1beb1d7ddbea5ee76bef2d844beda8c543de9d2edbc96e9183e5704d83f8675e23f8fc166bc348b75be604c08be51fa64bead6f46bec44d25bd5ad0dcbe9af51dbea29f05be6c4dddbe1ceba8bc2237cdbf0620debcf6c730be15bed1be24ddfcbee0bb1bbf1a527b3da2b1d4be2972f4be8c9cdf3f08058fbf3c96ebbf2fcb65bf12d8b8bf03159d3fdb8a933eed45a73eb517d2be1a6454be8bc060be62f11c3cf96728bebed33ebed77820bead29ebbe836d7f3f8c5e1f3f8bfc6f3f9097183f85610abf390026bc00e6303e6b1efb3f8982c03f8d172dbd293728be602370be5b3fc9be9c165abeb10a07bd428401beaae4b0bea912ddbe7378f5be2ec88f3cc7752fbec0047cbeddec03bd68940bbddbda71beddbbcdbe618af4bee7467ebcc80685be4e84373fcebae3be2b7503be85e8ccbe986699be8d8f933f37d85d"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      9
+     ],
+     [
+      9
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7,
+       8
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7,
+       8
+      ]
+     ]
+    ]
+   },
+   "recurrent": {
+    "qkv_conv": [
+     {
+      "x": {
+       "shape": [
+        2,
+        48
+       ],
+       "f32": "bd1445b03d022af4bd798ad3be7c78763da5205bbdd23edb3e05bd383e7fd9183d3f20ccbe56346e3df75dd6be1399053d52db2a3e4acc7d3d099696bda12f36bc91e620bd35f4293d751154be60ecb7bda6fdf23defb5b8be726d7bbc8224bd3e4556313cad6a93bd3406b03d966ed53dcd25643dee5935be3f93c53e97b4ebbe0c94bbbca029d6bc316495be116b6ebeb56fc53e03f23abca1be5dbc793c793c1f1f60bd5b357d3cfffd34be41d49abd899dcabe40d1d5bd004f39bde837373b6e6f68be9321703da947d3be0b34bfbe845b8c3d868e5d3c5303db3d28f4ba3e93121fbe705534beaeebc83d8aef9abe92bf4abe6684a63d30d8b7bac450d0be801ea53e7d07b5be3bb26f3ea06ec0bda4750d3d60176c3d304c973dca83713ee48630be9b4fe13e7ab7bd3e7b4aa13e9bb736bd5275c13dfd90b73e73459ebda20dadbd9f9c3539e13a48bddd088e3e2d2b883e833524bb0f6766bc3249203e5f7c693e16f38b3d1a37c93db698aebdbb72de3e7d2f1b3d65aa5a3d491dd9"
+      }
+     },
+     {
+      "x": {
+       "shape": [
+        2,
+        48
+       ],
+       "f32": "bd6c5e7b3d37d56c3e55457abe07428d3e22d1fabe11fa3cbe049042bd1a5996be2bbebebdc310f4bdb029213dcd0789be5e1ba6be291e67bd98d6ccbea14c743ca77e10bd6890fcbdebb4ec3e569eae3de3e75ebcd8f1883e25a967bccd5a5b3ab3703bbe259e81bcf9cab2bdb4eed03e48a3fcbdfda5cbbd7db814bd92b5203da978c0bd2fdee2bda8a8e53d50e9f63d64687eba3272a8bd8a4bb2bcc1911fbe15595c3d51a5583e805c593e3097ed3e48adfe3d3ddb4dbde3e6003dfdddff3e2852c2be5d8df4bcd8cd673ec83e21be9853bb3e6208683d0683703d9604ca3df6ffa43db9188fbbc679b83b9128423e0a38383ead9bfa3e24d1e73e033f653ca515f83e5073663cd600183e2f4560bed820ffbcca2564be7e3f2ebe5102e3bcce6af2bd93952d3e098e5e3e8a65f83af9b268be12f54e3e47e728bc85c65d3d8ba8b9bdb833a13e948cdd3cbbb9acbda56a933d7c15683e3123a9bdd37e51be471bb93e1dafbc3d0e93563d20617f3de5b5b73cccaab43db406333d51c57b"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "len": 5,
+   "kv_rows": {
+    "kv": [
+     [
+      5
+     ],
+     [
+      5
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4
+      ]
+     ]
+    ]
+   },
+   "recurrent": {
+    "qkv_conv": [
+     {
+      "x": {
+       "shape": [
+        2,
+        48
+       ],
+       "f32": "3d875b9a3e5a48e73e24f3373dfebec13d0e03bebe2436bfbe99e86bbe13a789beb8a73e3efde3aa3ea214923e1bebb6bc2578dcbdeacd703dfd2444bec5e0eb3edd4fa5bd3f3b503e830ed8bdf1a0bcbba83a48bde3170c3d417e3cbe26fb20bec3514d3e017776be338016be3fff65bebfe1b1bdb026a03e199cc9beb460bf3e298b20bd14228d3d718c6d3e0a80e43d4b52f7be964d6abe1ffaea3d28cce0bd924817bdfb79a2be0dd7de3dfe553c3e89c744be08aa80be6a72b63e2160073a1541a03cd37147bd74fd18bda7d7b63ab6c640be54213e3e2994463ec551623d68a31abe3be3bc3e0a6778be0552983da49f5f3dae1fbcbe3de136be66228b3dd86bc6bde65da3bd7c5cf6be88a40ebd8f4c983df27b11be41c4debd1f00c63e98a1b13e2ad146bdbcc960bd0acf133b8781103e377db0be1fecd13de6cc40bce32fc4bc45a7d63c7ea29abdbb5e42bea392783c3ffc80be47a1bd3cf1c4023d951c2e3cfe3d903dcc3b71be356aa93d3c2becbe5eea3abd4c36b1bcbe624e"
+      }
+     },
+     {
+      "x": {
+       "shape": [
+        2,
+        48
+       ],
+       "f32": "3e89cade3e8c7cb9be9a36fb3d681332bedc89c73bdb01fa3d3a0d603e2e75c83ed273b33e79131c3d1314593bcee8d43db4878a3d62bb143e1cb8033e5de7f93e370a0cbe5f2d393f051957bd5dffb23e1ae10dbe8ae9ac3d1c01fd3d51a5123c44889f3eacc59a3da255dd3d2c0a28bddfab80be20ee7e3e327f033ebbe1153b38b86b3d31b0d9bc36c45cbe87a18c3db46f183db9348b3d0240babd964dbe3dc81d9bbda3523fbe7d9124bd97c7b43d686dedbd8ab09c3d5e5d7bbe2bb6aebc6fe2543d17412e3e67c48ebe0f78cd3e065c81bdf95206be20c278bd76f514bde7cd1fbd2a2d5bbd0118ed3e0d613bbe645e16be1f43f6bd7484d3be9e60083d23ab5cbda42b34bca0e4f23e7bbc5c3debd9e0bd44a1673e408e8cbbed86cebbbb5555be0f1a78bd583c4abe09245e3e4282debe229516bd02ff9e3bd7ea163dcd822abd0a4d58bdc4b0403b3a18fc3d53c7c43c9b02c7bc0c648bbd57d90ebe28b0313d3b08223e74bc503e2953923e4c94ea3d08ebf6bd778d293e11a0a1"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "len": 7,
+   "logits": {
+    "shape": [
+     2,
+     15
+    ],
+    "f32": "bebb4a34bedeeda4bdb7c3c9be0f1f14bed72a4dbe635ff8beeb1f02bc587e60be3cf3c73fce7979be16fb7ebe74dbc7be8f30e8be85056f3f32ba55beb7e1a3bedebd3dbd4c354fbdcd9f2bbed860f6be70c776beee2790bc6795b6be3e53f13fceda77be21ce84be7ce89bbe91b398be878bd63f318c27"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      7
+     ],
+     [
+      7
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ]
+     ]
+    ]
+   },
+   "recurrent": {
+    "qkv_conv": [
+     {
+      "x": {
+       "shape": [
+        2,
+        48
+       ],
+       "f32": "3b6e6f68be9321703da947d3be0b34bfbe845b8c3d868e5d3c5303db3d28f4ba3e93121fbe705534beaeebc83d8aef9abe92bf4abe6684a63d30d8b7bac450d0be801ea53e7d07b5be3bb26f3ea06ec0bda4750d3d60176c3d304c973dca83713ee48630be9b4fe13e7ab7bd3e7b4aa13e9bb736bd5275c13dfd90b73e73459ebda20dadbd9f9c3539e13a48bddd088e3e2d2b883e833524bb0f6766bc3249203e5f7c693e16f38b3d1a37c93db698aebdbb72de3e7d2f1b3d65aa5a3d491dd93b6e6f68be9321703da947d3be0b34bfbe845b8c3d868e5d3c5303db3d28f4ba3e93121fbe705534beaeebc83d8aef9abe92bf4abe6684a63d30d8b7bac450d0be801ea53e7d07b5be3bb26f3ea06ec0bda4750d3d60176c3d304c973dca83713ee48630be9b4fe13e7ab7bd3e7b4aa13e9bb736bd5275c13dfd90b73e73459ebda20dadbd9f9c3539e13a48bddd088e3e2d2b883e833524bb0f6766bc3249203e5f7c693e16f38b3d1a37c93db698aebdbb72de3e7d2f1b3d65aa5a3d491dd9"
+      }
+     },
+     {
+      "x": {
+       "shape": [
+        2,
+        48
+       ],
+       "f32": "3e254c7cbe5f3604bcee19743ec63cb6be96a8de3e621dea3d2303d33d9625d13dec32aa3db9a816bc233188b8193a003e090f033ead0ae33e25a0883e058a363c72709d3e5570093ccf718c3e2be522bed7ee95bcba2f7abe814dbfbe51651bbcb8efffbd9d977f3e037ffa3e8dc0b43ba64cdcbe0cd5423e484084bc8c560b3d6c6f7dbdb6e9473e93aed43ccd068cbda6de8b3d661f4a3e30362abdd63235be41880a3e172e883d0951f33d25ceb13ddaa1ff3cdfc4823daefbda3d3647753e1e5ca1be5cef5abd0165b33ec71517be97816f3e5d355e3d16dda93da7ae913de874323db0fd95bc881b76bbcf53963e0625a13eaa523c3e27d3153e04d4593c7b1de83e51e6143cb2aac53e2c902bbed9496cbc9e1b6ebe81b27ebe59e8cbbcc72fcebd9fdc213e0985023e8ce3213c2838ccbe0e7d683e42a138bc9d05553d783d8fbdb6a1583e948ff03ce23212bda76b963d6ac50d3e260de5bdd47a17be45828a3e17d2493d241a0a3d3ea90d3ddf0f0f3cf3ad163da70cd73d3bee1b"
+      }
+     }
+    ]
+   }
+  }
+ ]
+}

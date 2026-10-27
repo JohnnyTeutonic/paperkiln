@@ -1,13 +1,13 @@
 {
  "spec": {
   "repository": "keramos",
-  "tag": "v1.3.4",
-  "commit": "7a37bf6973543914e7b3f4750b91131860d11b8f"
+  "tag": "v1.3.5",
+  "commit": "c4696bf5578688585f6b00593eb9272daa8c5e3a"
  },
  "engine": {
   "name": "ONNX Runtime GenAI 0.18.0 (onnxruntime 1.31.1), CPU execution provider, float32, 2 intra-op threads, through keramos/adapters/ortgenai/ortgenai_adapter.py (an in-process adapter; each GGUF exported to an HF checkpoint by adapters/common/gguf_to_hf.py v2 and built by onnxruntime_genai.models.builder -p fp32 -e cpu as shipped; generation API Generator.append_tokens / get_output('logits') / rewind_to; ONNX Runtime GenAI never reads the IR document)",
   "environment": "CPython 3.12.3; the builder under transformers 5.20.2 and torch 2.14.1+cpu; onnx 1.23.2, onnx-ir 1.1.0, numpy 2.5.4; WSL2 (Ubuntu 24.04), venv on ext4 (adapters/ortgenai/requirements.txt)",
-  "run": "python adapters/ortgenai/ortgenai_adapter.py --adapter ortgenai --ort-dir FRESH (run_suite.sh's receipt configuration), in a clean clone of keramos at v1.3.4 (7a37bf69), fresh export and build caches, 2026-10-27. Settings: the builder unpatched; eos_token_id set to the file's unknown id where the file declares none (the tp_ files; the builder stops without one, and no case acts on it). PASS (8): tp_llama_hd16 and tp_qwen3_hd16, every case. FAILs (8): every tp_gemma3 case, the builder stopping with KeyError 'rope_type' on Gemma3ForCausalLM under transformers 5 (FINDINGS 2); every tp_mistral_hd16 case, the sliding window dropped (local_window_size -1 on both layers, FINDINGS 4). Skips: architecture 'paperkiln' (53: model 14, trace 39), the builder declining the architecture (14: MixtralForCausalLM, GPT2LMHeadModel, GPTNeoXForCausalLM, MambaForCausalLM), onnxruntime's CPU GroupQueryAttention refusing the built graph's head size at the first forward (11: pk_llama, head_size 8 with fused rotary; tp_qwen3 and tp_mistral, head_size 4; FINDINGS 1), a replacement document (4), IR validation (refuse 94, accept 39), single nodes (op 62, grad 8), digest (88), render_chat (32), dequantize (10)."
+  "run": "python adapters/ortgenai/ortgenai_adapter.py --adapter ortgenai --ort-dir FRESH (run_suite.sh's receipt configuration), in a clean clone of keramos at v1.3.5 (c4696bf5), fresh export and build caches, 2026-10-27. Settings: the builder unpatched; eos_token_id set to the file's unknown id where the file declares none (the tp_ files; the builder stops without one, and no case acts on it). PASS (8): tp_llama_hd16 and tp_qwen3_hd16, every case. FAILs (8): every tp_gemma3 case, the builder stopping with KeyError 'rope_type' on Gemma3ForCausalLM under transformers 5 (FINDINGS 2); every tp_mistral_hd16 case, the sliding window dropped (local_window_size -1 on both layers, FINDINGS 4). Skips: architecture 'paperkiln' (53: model 14, trace 39), the builder declining the architecture (14: MixtralForCausalLM, GPT2LMHeadModel, GPTNeoXForCausalLM, MambaForCausalLM), onnxruntime's CPU GroupQueryAttention refusing the built graph's head size at the first forward (11: pk_llama, head_size 8 with fused rotary; tp_qwen3 and tp_mistral, head_size 4; FINDINGS 1), a replacement document (5), IR validation (refuse 98, accept 40), single nodes (op 62, grad 8), digest (88), render_chat (32), dequantize (10). No earlier verdict moves."
  },
  "adapter": {
   "engine": "onnxruntime-genai",
@@ -40,7 +40,7 @@
  "counts": {
   "PASS": 8,
   "FAIL": 8,
-  "SKIP": 415,
+  "SKIP": 421,
   "XFAIL": 0,
   "XPASS": 0
  },
@@ -55,7 +55,7 @@
   "trace": {
    "PASS": 6,
    "FAIL": 6,
-   "SKIP": 61,
+   "SKIP": 62,
    "XFAIL": 0,
    "XPASS": 0
   },
@@ -69,7 +69,7 @@
   "refuse": {
    "PASS": 0,
    "FAIL": 0,
-   "SKIP": 94,
+   "SKIP": 98,
    "XFAIL": 0,
    "XPASS": 0
   },
@@ -97,7 +97,7 @@
   "accept": {
    "PASS": 0,
    "FAIL": 0,
-   "SKIP": 39,
+   "SKIP": 40,
    "XFAIL": 0,
    "XPASS": 0
   },
@@ -1347,6 +1347,30 @@
    "detail": "onnxruntime-genai has no IR validation (it never reads the document)"
   },
   {
+   "id": "refuse/tensor_index_in_head",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "onnxruntime-genai has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/tensor_index_value_unknown",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "onnxruntime-genai has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/tensor_index_on_affine",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "onnxruntime-genai has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "refuse/tensor_index_absent_application_tensor",
+   "kind": "refuse",
+   "verdict": "SKIP",
+   "detail": "onnxruntime-genai has no IR validation (it never reads the document)"
+  },
+  {
    "id": "refuse/duplicate_member_top",
    "kind": "refuse",
    "verdict": "SKIP",
@@ -2271,6 +2295,12 @@
    "detail": "4 steps"
   },
   {
+   "id": "trace/pk_llama_attnres_rec_untagged",
+   "kind": "trace",
+   "verdict": "SKIP",
+   "detail": "a replacement document: the builder runs the HF config, never a document"
+  },
+  {
    "id": "accept/documents/model_pk_attnres",
    "kind": "accept",
    "verdict": "SKIP",
@@ -2500,6 +2530,12 @@
   },
   {
    "id": "accept/documents/substituted_over_duplicate_embedded",
+   "kind": "accept",
+   "verdict": "SKIP",
+   "detail": "onnxruntime-genai has no IR validation (it never reads the document)"
+  },
+  {
+   "id": "accept/documents/untagged_application_queries",
    "kind": "accept",
    "verdict": "SKIP",
    "detail": "onnxruntime-genai has no IR validation (it never reads the document)"

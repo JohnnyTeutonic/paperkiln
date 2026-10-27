@@ -1,0 +1,58 @@
+{
+ "name": "arxiv_1803_02155",
+ "family": "flex",
+ "report": [
+  [
+   "ASSERTED",
+   "encoder-decoder or encoder-only model: llm extraction, verified quote, Sec. 4.1 Experimental Setup (built decoder-only by the operator, --assert family=decoder_only: the paper's encoder and cross-attention are not built)"
+  ],
+  [
+   "ASSERTED",
+   "Encoder-decoder architecture: decoder layers have masked self-attention plus encoder-decoder cross-attention: llm extraction, verified quote, Sec. 2.1 Transformer (built decoder-only by the operator, --assert family=decoder_only: the paper's encoder and cross-attention are not built)"
+  ],
+  [
+   "ASSERTED",
+   "Decoder self-attention is causally masked: llm extraction, verified quote, Sec. 2.1 Transformer (built decoder-only by the operator, --assert family=decoder_only: the paper's encoder and cross-attention are not built)"
+  ],
+  [
+   "MATCHED",
+   "norm = layernorm (inherited: \u201cIn this work we present an efficient way of incorporating relative position representations in the self-attention mechan\u201d)"
+  ],
+  [
+   "MATCHED",
+   "activation = relu (inherited: \u201cIn this work we present an efficient way of incorporating relative position representations in the self-attention mechan\u201d)"
+  ],
+  [
+   "MATCHED",
+   "positional = shaw_relative (used: \u201cWe compared our model using only relative position representations to the baseline Transformer ~\\cite{vaswani2017} with \u201d)"
+  ],
+  [
+   "DEFAULT",
+   "residual = residual: not stated by the paper (the extraction marks it inherited, unverified: inherited from transformer, whose curated entry has no residual); a highway or plain stream would be a stated departure"
+  ],
+  [
+   "MATCHED",
+   "attention = exact (used: \u201ce_{ij} = \\frac{x_iW^Q(x_jW^K+a^K_{ij})^T}{\\sqrt{d_z}} [eq:e2]\u201d)"
+  ],
+  [
+   "MATCHED",
+   "rel_max_distance = 16, Shaw's clipping distance k (\u201cWhen using relative position encodings, we used clipping distance $k = 16$,\u201d)"
+  ],
+  [
+   "MATCHED",
+   "rel_per_head = true (\u201cand used unique edge representations per layer and head.\u201d)"
+  ],
+  [
+   "DEFAULT",
+   "rel_values = true: no verified value (unverified: the quote does not name rel_values (looked for /value|a\\^\\{?V/)); Shaw's definition (eqs. 3 and 4) adds the relative vectors to the keys and to the values"
+  ],
+  [
+   "MATCHED",
+   "position = shaw_relative on the flex family: Shaw's relative key and value vectors, clipping distance 16, one set per head, per layer (parity::FlexConfig; keramos IR_SPEC 5.15 attention.relative_kv, revision 1.4)"
+  ],
+  [
+   "SIZED",
+   "d=64 layers=2 heads=4 T=64 chosen for this run (paper: {'d_model': 512, 'n_layers': 6, 'n_heads': 8, 'd_ff': 1024}); the mechanism is the paper's"
+  ]
+ ]
+}

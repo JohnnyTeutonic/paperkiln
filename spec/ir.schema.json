@@ -266,6 +266,11 @@
                                                       "buckets": {"type": "array", "minItems": 1,
                                                                   "items": {"$ref": "#/$defs/nonneg"}}},
                                        "patternProperties": {"^_": true}, "additionalProperties": false},
+                     "relative_kv": {"type": "object", "required": ["key", "max_distance"],
+                                     "properties": {"key": {"$ref": "#/$defs/name"},
+                                                    "value": {"anyOf": [{"$ref": "#/$defs/name"}, {"type": "null"}]},
+                                                    "max_distance": {"$ref": "#/$defs/nonneg"}},
+                                     "patternProperties": {"^_": true}, "additionalProperties": false},
                      "softmax": {"type": "string"}},
       "patternProperties": {"^_": true}, "additionalProperties": false
     },

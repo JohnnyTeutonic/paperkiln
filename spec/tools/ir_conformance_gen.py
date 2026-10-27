@@ -29,10 +29,12 @@ PK_PROFILES = {
     "pk_llama": "core", "pk_moe": "core", "pk_gpt2": "core", "pk_gpt2_swa": "core", "pk_kimi": "state",
     "pk_srd": "state", "pk_attnres": "core", "pk_flex_highway": "core", "pk_flex_expr": "core",
     "pk_mamba": "state", "pk_recursive": "recursion", "pk_mor": "recursion", "pk_llama_attnres": "core",
-    "pk_llama_attnres_rec": "recursion", "pk_state": "state", "pk_recurrence": "recurrence", "pk_flex_t5": "core"}
+    "pk_llama_attnres_rec": "recursion", "pk_state": "state", "pk_recurrence": "recurrence", "pk_flex_t5": "core",
+    "pk_flex_shaw": "core", "pk_flex_mdha": "thirdparty"}
 # Models added after the suite's first release draw their prompts from a stream of their own, so the cases of
 # every earlier model stay byte-identical when the suite is regenerated.
-OWN_STREAM = {"pk_recurrence", "pk_flex_t5", "tp_llama_hd16", "tp_mistral_hd16", "tp_qwen3_hd16"}
+OWN_STREAM = {"pk_recurrence", "pk_flex_t5", "tp_llama_hd16", "tp_mistral_hd16", "tp_qwen3_hd16", "pk_flex_shaw",
+              "pk_flex_mdha"}
 
 
 # ---------------------------------------------------------------- third-party models (numpy)
@@ -482,6 +484,24 @@ def op_cases():
         {"q": q9, "k": k9, "v": v9}, {"rel": pbt}, "ROUNDING")
     add("attention", "position_bias_grouped_query", dict(att, kv_heads=1, position_bias=pb),
         {"q": q9, "k": r(9, 4), "v": r(9, 4)}, {"rel": pbt}, "ROUNDING")
+    # v1.4 (5.15): Shaw's relative key and value vectors by the clipped distance n = min(p - j, K): K = 3 below
+    # the 9 rows (the last row covers every larger distance); vectors shared by the heads (rows of head_dim)
+    # and one set per head (rows of heads * head_dim); keys only; with a window and sinks; under grouped-query
+    # attention (the query head's vectors); K = 0 (one vector for every distance).
+    qs, ks, vs = r(9, 8), r(9, 8), r(9, 8)
+    rk1, rv1, rk2, rv2 = r(4, 4, s=0.5), r(4, 4, s=0.5), r(4, 8, s=0.5), r(4, 8, s=0.5)
+    rel = {"key": "rk", "value": "rv", "max_distance": 3}
+    qkv = {"q": qs, "k": ks, "v": vs}
+    add("attention", "relative_kv", dict(att, relative_kv=rel), qkv, {"rk": rk1, "rv": rv1}, "ROUNDING")
+    add("attention", "relative_kv_per_head", dict(att, relative_kv=rel), qkv, {"rk": rk2, "rv": rv2}, "ROUNDING")
+    add("attention", "relative_kv_keys_only", dict(att, relative_kv=dict(rel, value=None)), qkv, {"rk": rk1},
+        "ROUNDING")
+    add("attention", "relative_kv_window_sinks", dict(att, window=3, sinks=1, relative_kv=rel), qkv,
+        {"rk": rk1, "rv": rv1}, "ROUNDING")
+    add("attention", "relative_kv_grouped_query", dict(att, kv_heads=1, relative_kv=rel),
+        {"q": qs, "k": r(9, 4), "v": r(9, 4)}, {"rk": rk2, "rv": rv2}, "ROUNDING")
+    add("attention", "relative_kv_distance_zero", dict(att, relative_kv=dict(rel, max_distance=0)), qkv,
+        {"rk": r(1, 4, s=0.5), "rv": r(1, 4, s=0.5)}, "ROUNDING")
     return cases
 
 
@@ -553,6 +573,80 @@ def grad_cases():
     return {"_comment": "spec/IR_SPEC.md section 6.10.5: expect holds d sum(out * out_grad) / d(each input value "
                         "and weight tensor), central differences of tools/ir_recurrence.py in float64 (h = 1e-5 "
                         "relative). A case passes within tol * max(1, max|expect|) per tensor.", "cases": out}
+
+
+def attention64(node, ins, ws):
+    """IR_SPEC 5.15's attention with relative_kv in float64 (no window, sinks or mask: the gradient cases'
+    nodes), independent of tools/ir_numpy.py: e = (q . (k + rk[n])) * scale, n = min(p - j, K), softmax over
+    j <= p, out = sum_j a (v_j + rv[n])."""
+    q, k, v = (np.asarray(ins[n], np.float64) for n in node["in"])
+    H, KV, hd, sc = node["heads"], node["kv_heads"], node["head_dim"], float(node["scale"])
+    rel = node["relative_kv"]
+    K = rel["max_distance"]
+    tk = np.asarray(ws[rel["key"]], np.float64)
+    tv = np.asarray(ws[rel["value"]], np.float64) if rel.get("value") is not None else None
+    T = q.shape[0]
+    n_of = np.clip(np.arange(T)[:, None] - np.arange(T)[None, :], 0, K)
+    out = []
+    for h in range(H):
+        kh = h // (H // KV)
+        qh, kk, vv = q[:, h * hd:(h + 1) * hd], k[:, kh * hd:(kh + 1) * hd], v[:, kh * hd:(kh + 1) * hd]
+        ck = slice(0, hd) if tk.shape[1] == hd else slice(h * hd, (h + 1) * hd)
+        e = np.einsum("pc,pjc->pj", qh, kk[None, :, :] + tk[:, ck][n_of]) * sc
+        e[np.arange(T)[None, :] > np.arange(T)[:, None]] = -np.inf
+        a = np.exp(e - e.max(axis=1, keepdims=True))
+        a /= a.sum(axis=1, keepdims=True)
+        vals = vv[None, :, :] + (tv[:, slice(0, hd) if tv.shape[1] == hd else slice(h * hd, (h + 1) * hd)][n_of]
+                                 if tv is not None else 0.0)
+        out.append(np.einsum("pj,pjc->pc", a, vals))
+    return np.concatenate(out, axis=1)
+
+
+def grad_attention_cases():
+    """v1.4 (IR_SPEC 5.15, section 11.2's gradient kind): attention with relative_kv, d sum(out * out_grad) by
+    central differences of attention64 in float64 (h = 1e-6 relative), for q, k, v and the tables: vectors
+    shared by the heads, one set per head under grouped-query attention, keys only."""
+    rng = np.random.default_rng(1803)
+
+    def r(*sh, s=1.0):
+        return (s * rng.standard_normal(sh)).astype(np.float32)
+
+    att = {"op": "attention", "in": ["q", "k", "v"], "state": "kv", "heads": 2, "kv_heads": 2, "head_dim": 3,
+           "causal": True, "scale": 0.5, "window": 0, "sinks": 0, "out": "a"}
+    rel = {"key": "rk", "value": "rv", "max_distance": 2}
+    items = [("relative_kv", dict(att, relative_kv=rel), {"q": r(5, 6), "k": r(5, 6), "v": r(5, 6)},
+              {"rk": r(3, 3, s=0.5), "rv": r(3, 3, s=0.5)}),
+             ("relative_kv_per_head_grouped_query", dict(att, kv_heads=1, relative_kv=rel),
+              {"q": r(5, 6), "k": r(5, 3), "v": r(5, 3)}, {"rk": r(3, 6, s=0.5), "rv": r(3, 6, s=0.5)}),
+             ("relative_kv_keys_only", dict(att, relative_kv=dict(rel, value=None)),
+              {"q": r(5, 6), "k": r(5, 6), "v": r(5, 6)}, {"rk": r(3, 3, s=0.5)})]
+    out = []
+    for name, node, ins, ws in items:
+        y = attention64(node, ins, ws)
+        g = r(*y.shape).astype(np.float64)
+        expect = {}
+        for src in (ins, ws):
+            for t, val in src.items():
+                base = np.asarray(val, np.float64)
+                d = np.zeros_like(base)
+                for idx in np.ndindex(base.shape):
+                    h = 1e-6 * max(1.0, abs(base[idx]))
+                    for sgn in (1, -1):
+                        pert = base.copy()
+                        pert[idx] += sgn * h
+                        a2 = dict(ins) if src is ins else ins
+                        w2 = dict(ws) if src is ws else ws
+                        (a2 if src is ins else w2)[t] = pert
+                        d[idx] += sgn * float((attention64(node, a2, w2) * g).sum())
+                    d[idx] /= 2 * h
+                expect[t] = enc(d.astype(np.float32))
+        out.append({"name": name, "node": node, "inputs": {k: enc(v) for k, v in ins.items()},
+                    "weights": {k: enc(v) for k, v in ws.items()}, "out_grad": enc(g.astype(np.float32)),
+                    "expect": expect, "tol": 1e-4})
+    return {"_comment": "spec/IR_SPEC.md section 5.15 (revision 1.4): expect holds d sum(out * out_grad) / d(each "
+                        "input value and weight tensor) of attention with relative_kv, central differences of "
+                        "tools/ir_conformance_gen.py's attention64 in float64 (h = 1e-6 relative). A case passes "
+                        "within tol * max(1, max|expect|) per tensor.", "cases": out}
 
 
 REC_MODELS = ("pk_kimi", "pk_srd", "pk_mamba", "tp_mamba1")
@@ -741,6 +835,23 @@ def refusals():
     doc_case("tensor_index_on_affine", AR, 4, "3.5", lambda d: node(d, "affine").update(tensor_index="application"))
     doc_case("tensor_index_absent_application_tensor", AR, 25, "3.7",
              lambda d: node(d, "rmsnorm").update(tensor_index="application"))
+    # v1.4: rule 40 (5.15), relative_kv's fields, its tables' shapes and its combination with position_bias.
+    doc_case("relative_kv_distance_negative", L, 40, "5.15", lambda d: node(d, "attention").update(
+        relative_kv={"key": "token_embd.weight", "max_distance": -1}))
+    doc_case("relative_kv_without_key", L, 40, "5.15", lambda d: node(d, "attention").update(
+        relative_kv={"value": "token_embd.weight", "max_distance": 2}))
+    doc_case("relative_kv_unknown_field", L, 40, "5.15", lambda d: node(d, "attention").update(
+        relative_kv={"key": "token_embd.weight", "max_distance": 2, "buckets": [0]}))
+    doc_case("relative_kv_key_shape", L, 40, "5.15", lambda d: node(d, "attention").update(
+        relative_kv={"key": "token_embd.weight", "value": None, "max_distance": 3}))
+    doc_case("relative_kv_value_shape", L, 40, "5.15", lambda d: node(d, "attention").update(
+        relative_kv={"key": "token_embd.weight", "value": "output_norm.weight",
+                     "max_distance": d["model"]["vocab"] - 1}))
+    doc_case("relative_kv_with_position_bias", L, 40, "5.15", lambda d: node(d, "attention").update(
+        relative_kv={"key": "token_embd.weight", "max_distance": d["model"]["vocab"] - 1},
+        position_bias={"weight": "token_embd.weight", "buckets": [0]}))
+    doc_case("relative_kv_per_layer", L, 6, "3.8", lambda d: node(d, "attention").update(
+        relative_kv={"per_layer": [{"key": "token_embd.weight", "max_distance": 0}] * d["block"]["repeat"]}))
     # v1.2: rule 35 (3.2), a duplicate member name at any depth; the documents as JSON texts.
     base = json.dumps(load_model(SUITE / "models" / L)[0])
 
@@ -981,7 +1092,7 @@ def extra_traces():
     """v1.2 (IR_SPEC 6.9): truncate on models with recurrent state (a fresh run's state over the first n tokens:
     a snapshot or a run from the start). Each draws from a stream of its own."""
     out = []
-    for name in ("pk_srd", "tp_mamba1"):
+    for name in ("pk_srd", "tp_mamba1", "pk_flex_mdha"):  # pk_flex_mdha: v1.4, a conv slot beside the kv slot
         doc, W, meta, _ = load_model(SUITE / "models" / name)
         rng = np.random.default_rng(sum(map(ord, name)) + 1200)
         V = doc["model"]["vocab"]
@@ -1108,6 +1219,10 @@ def regenerate():
     (SUITE / "grad" / "recurrence.json").write_text(json.dumps(gc, indent=1) + "\n", encoding="utf-8")
     manifest.append({"id": "grad/recurrence", "kind": "grad", "file": "grad/recurrence.json", "profile": "recurrence",
                      "n": len(gc["cases"])})
+    ga = grad_attention_cases()
+    (SUITE / "grad" / "attention.json").write_text(json.dumps(ga, indent=1) + "\n", encoding="utf-8")
+    manifest.append({"id": "grad/attention", "kind": "grad", "file": "grad/attention.json", "profile": "core",
+                     "n": len(ga["cases"])})
     (SUITE / "recurrence").mkdir(exist_ok=True)
     for name, doc, case in recurrence_traces():
         (SUITE / "recurrence" / f"{name}.ir.json").write_text(json.dumps(doc, indent=1) + "\n", encoding="utf-8")

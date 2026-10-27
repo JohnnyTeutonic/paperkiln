@@ -42,7 +42,10 @@ full, unspecified, none), positional t5_bias with rel_buckets and
 rel_max_distance, ssm (mamba1, s4) with d_state, d_conv, expand and dt_rank
 (a number or ceil(d_model/K)), and each new op input's role (input, gate,
 learned_scalar, learned_vector, other) and init (an evidence object; a
-number in its quote, or sqrt(d_model) named by it). papers/bench_score.py
+number in its quote, or sqrt(d_model) named by it). Fields since 27 Oct 2026
+(LOCAL_LLM_STACK.md 5.4, keramos 1.4): positional shaw_relative (Shaw et al.'s
+relative key and value vectors) with rel_max_distance as its clipping
+distance k, rel_per_head and rel_values. papers/bench_score.py
 scores sizes and the block graph against papers/bench_truth_structure.json.
 
 Nothing the model says is trusted. A deterministic verifier (no API) checks
@@ -420,16 +423,20 @@ STATUS = ["stated", "inherited", "not_stated"]
 CONFIG_FIELDS = ["d_model", "n_layers", "n_heads", "n_kv_heads", "head_dim", "d_ff",
                  "vocab_size", "context_length"]
 FLAVOUR_FIELDS = ["norm", "norm_placement", "norm_placement_attn", "norm_placement_ffn", "norm_eps",
-                  "activation", "positional", "rel_buckets", "rel_max_distance", "rope_pairing",
+                  "activation", "positional", "rel_buckets", "rel_max_distance", "rel_per_head", "rel_values",
+                  "rope_pairing",
                   "rope_theta", "rope_fraction", "residual", "parallel_block", "attention",
                   "window_size", "n_sinks", "qkv_bias", "mlp_bias", "qk_norm", "tied_embeddings", "moe",
                   "n_experts", "top_k", "moe_gate_norm", "ssm", "d_state", "d_conv", "expand", "dt_rank"]
 NUMERIC_FLAVOURS = {"norm_eps", "rope_theta", "rope_fraction", "window_size", "n_sinks",
                     "n_experts", "top_k", "rel_buckets", "rel_max_distance", "d_state", "d_conv", "expand"}
-BOOL_FLAVOURS = {"parallel_block", "qkv_bias", "mlp_bias", "tied_embeddings", "moe"}
+BOOL_FLAVOURS = {"parallel_block", "qkv_bias", "mlp_bias", "tied_embeddings", "moe", "rel_per_head", "rel_values"}
+# A boolean's quote must name what it is about (27 Oct 2026): a head for rel_per_head, the values for rel_values.
+BOOL_CUES = {"rel_per_head": r"head", "rel_values": r"value|a\^\{?V"}
 # Fields added on 26 Oct 2026 (LOCAL_LLM_STACK.md 11 item 4.2): a reply made before them (a cached
 # extraction) lacks them, and a missing field reads as not_stated, never as an unverified value.
-LATER_FIELDS = {"norm_placement_attn", "norm_placement_ffn", "rel_buckets", "rel_max_distance", "qk_norm",
+LATER_FIELDS = {"norm_placement_attn", "norm_placement_ffn", "rel_buckets", "rel_max_distance", "rel_per_head",
+                "rel_values", "qk_norm",
                 "ssm", "d_state", "d_conv", "expand", "dt_rank"}
 _PLACEMENTS = ["pre", "post", "sandwich", "branch_post", "none"]
 ENUMS = {
@@ -439,7 +446,7 @@ ENUMS = {
     "norm_placement_attn": _PLACEMENTS,
     "norm_placement_ffn": _PLACEMENTS,
     "activation": ["relu", "gelu", "gelu_tanh", "silu", "swiglu", "geglu", "reglu"],
-    "positional": ["learned", "sinusoidal", "rope", "alibi", "t5_bias", "relative", "none"],
+    "positional": ["learned", "sinusoidal", "rope", "alibi", "t5_bias", "shaw_relative", "relative", "none"],
     "rope_pairing": ["interleaved", "neox"],
     "residual": ["residual", "highway", "plain"],
     "attention": ["exact", "swa", "linear", "sparse"],
@@ -517,7 +524,7 @@ SYSTEM_PROMPT = """You read the LaTeX source of a machine-learning paper and ext
   norm_placement: pre (normalise each sublayer's input: x + f(norm(x))), post (normalise after the residual add: norm(x + f(x))), sandwich (normalise the sublayer's input and its output: x + norm(f(norm(x)))), branch_post (normalise the sublayer's output inside the residual branch, not its input: x + norm(f(x))), none
   norm_placement_attn, norm_placement_ffn: the same names, for the attention sublayer and the FFN sublayer, ONLY when the paper places the two differently (then norm_placement is "other:<short description>"); otherwise not_stated
   activation (of the FFN): relu, gelu (exact erf form), gelu_tanh (tanh approximation), silu, swiglu, geglu, reglu
-  positional: learned (absolute, trained table), sinusoidal, rope, alibi, t5_bias (T5's learned scalar bias per head, by bucketed relative distance, added to the attention logits; give rel_buckets and rel_max_distance when stated), relative (any other relative scheme, e.g. Shaw et al.'s relative embeddings, Transformer-XL's), none
+  positional: learned (absolute, trained table), sinusoidal, rope, alibi, t5_bias (T5's learned scalar bias per head, by bucketed relative distance, added to the attention logits; give rel_buckets and rel_max_distance when stated), shaw_relative (Shaw et al.'s learned relative position representations: vectors by the clipped query-key distance added to the keys inside the attention logits, and usually to the values; give rel_max_distance = the clipping distance k, rel_per_head and rel_values when stated), relative (any other relative scheme, e.g. Transformer-XL's, DeBERTa's), none
   rope_pairing: interleaved (adjacent pairs x[2j], x[2j+1]), neox (first half with second half)
   residual: residual (x + f(x)), highway (gated carry), plain (no skip)
   attention: exact (full causal softmax attention), swa (sliding window; give window_size and n_sinks), linear, sparse
@@ -525,6 +532,7 @@ SYSTEM_PROMPT = """You read the LaTeX source of a machine-learning paper and ext
   qk_norm (a norm on the queries and keys before the attention product, QK-norm): per_head (each head's queries and keys normalised on their own), full (the whole query and key projections), unspecified (the paper normalises them but does not say over which width), none (the paper says it does not)
   ssm (for a state-space model's layer): mamba1 (Mamba's selective scan, input-dependent dt, B, C), s4 (a time-invariant structured state space), none; with d_state (the state size N per channel), d_conv (the causal depthwise convolution's width), expand (the inner width over d_model, E) and dt_rank (the rank of dt's projection: a number, or "ceil(d_model/16)" when the paper gives that rule, with the divisor as written) when stated
 - rope_fraction is the fraction of each head's dimensions that is rotated (partial rotary), when stated.
+- For shaw_relative: rel_max_distance is the clipping distance k; rel_per_head is "true" when each attention head learns its own relative vectors and "false" when the heads share them; rel_values is "true" when the relative vectors are also added to the values (the attention output), "false" when only to the keys. Report each only as the paper states it for its own model.
 - configs: every size configuration of the paper's own models that it states, in the order the paper lists them (usually smallest first), each with all eight size fields as evidence objects. primary_config = the name of the configuration a reader would build first (the smallest the paper reports, unless the paper singles one out).
 
 # The IR (block_ops)
@@ -1099,7 +1107,8 @@ FLAVOUR_CUES = {
                    "reglu": r"ReGLU|gated[- ]?ReLU"},
     "positional": {"rope": r"RoPE|rotary", "alibi": r"ALiBi|linear bias",
                    "sinusoidal": r"sinusoid|\\sin|\\cos|sine", "learned": r"learn|trainable|absolute",
-                   "t5_bias": r"T5|bucket", "relative": r"relative", "none": r"\bno\b|without|NoPE"},
+                   "t5_bias": r"T5|bucket", "shaw_relative": r"relative|Shaw|clip", "relative": r"relative",
+                   "none": r"\bno\b|without|NoPE"},
     "ssm": {"mamba1": r"selective|selection|Mamba|S6|input[- ]dependent|functions? of the input","s4": r"\bS4\b|structured state|time[- ]invariant"},
     "qk_norm": {"per_head": r"(?s)(?=.*(?:QK|quer|\bkeys?\b))(?=.*head)", "full": r"QK|quer|\bkeys?\b",
                 "unspecified": r"QK|quer|\bkeys?\b"},
@@ -1193,6 +1202,11 @@ class Verifier:
             if val not in ("true", "false"):
                 r["reasons"].append(f"value {val!r} is not true/false")
                 checks.append(False)
+            elif field in BOOL_CUES:
+                ok = bool(re.search(BOOL_CUES[field], quote, re.IGNORECASE))
+                checks.append(ok)
+                if not ok:
+                    r["reasons"].append(f"the quote does not name {field} (looked for /{BOOL_CUES[field]}/)")
         elif kind == "dt_rank":
             rule = DT_RANK_RULE.match(val.replace(" ", ""))
             num = parse_number(val) if not rule else None

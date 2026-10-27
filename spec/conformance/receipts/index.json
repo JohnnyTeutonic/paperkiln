@@ -1,12 +1,12 @@
 {
- "_comment": "Runs of the conformance suite (spec/IR_SPEC.md section 11.4): one results file per engine, with every case's verdict and detail; each run names the keramos tag and commit it ran against. v1.3.4 has 431 cases (v1.3.4 added the 18 cases of tp_llama_hd16, tp_mistral_hd16 and tp_qwen3_hd16; v1.3.3 413, v1.3.1 408, v1.3.0 404, v1.2.0 370); each run names its tag. SKIP means the engine has no path for the case (the reference: the gradient cases, which are its own finite differences; mtstudio: the single ops it has no kernel path for, sessions other than its scored traces, document loading, refusals and acceptance, dequantisation, chat rendering; the clean-room Rust engine: the gradient cases and render_chat; ember: single ops other than recurrence, expr and attention, and the gradient cases). reference_environment.json is the generating environment's receipt (IR_SPEC 4.6), not a run of an engine. llama.cpp is the first engine measured that was not written against the spec: its FAILs are classified in adapters/llamacpp/FINDINGS.txt. transformers (5.20.2, torch 2.14.1+cpu) is measured through an export of each GGUF to an HF checkpoint (adapters/common/gguf_to_hf.py); its FAILs and the GGUF reader's are classified in adapters/hf/FINDINGS.txt. ONNX Runtime GenAI (0.18.0, onnxruntime 1.31.1, CPU) is measured through the same export and its own model builder: its FAILs and the builder's and kernel's refusals are classified in adapters/ortgenai/FINDINGS.txt.",
+ "_comment": "Runs of the conformance suite (spec/IR_SPEC.md section 11.4): one results file per engine, with every case's verdict and detail; each run names the keramos tag and commit it ran against. v1.3.5 has 437 cases (v1.3.5 added the six tensor_index cases of section 7.2; v1.3.4 431, adding the 18 cases of tp_llama_hd16, tp_mistral_hd16 and tp_qwen3_hd16; v1.3.3 413, v1.3.1 408, v1.3.0 404, v1.2.0 370); each run names its tag. SKIP means the engine has no path for the case (the reference: the gradient cases, which are its own finite differences; mtstudio: the single ops it has no kernel path for, sessions other than its scored traces, document loading, refusals and acceptance, dequantisation, chat rendering; the clean-room Rust engine: the gradient cases and render_chat; ember: single ops other than recurrence, expr and attention, and the gradient cases). reference_environment.json is the generating environment's receipt (IR_SPEC 4.6), not a run of an engine. llama.cpp is the first engine measured that was not written against the spec: its FAILs are classified in adapters/llamacpp/FINDINGS.txt. transformers (5.20.2, torch 2.14.1+cpu) is measured through an export of each GGUF to an HF checkpoint (adapters/common/gguf_to_hf.py); its FAILs and the GGUF reader's are classified in adapters/hf/FINDINGS.txt. ONNX Runtime GenAI (0.18.0, onnxruntime 1.31.1, CPU) is measured through the same export and its own model builder: its FAILs and the builder's and kernel's refusals are classified in adapters/ortgenai/FINDINGS.txt.",
  "runs": [
   {
    "file": "ir_numpy.json",
-   "engine": "numpy reference (tools/ir_numpy.py) (CPython 3.13.14, numpy 2.3.5, Windows 11 x86-64: the generating environment), against keramos v1.3.4 (7a37bf6973543914e7b3f4750b91131860d11b8f)",
+   "engine": "numpy reference (tools/ir_numpy.py) (CPython 3.13.14, numpy 2.3.5, Windows 11 x86-64: the generating environment), against keramos v1.3.5 (c4696bf5578688585f6b00593eb9272daa8c5e3a)",
    "date": "2026-10-27",
    "counts": {
-    "PASS": 423,
+    "PASS": 429,
     "FAIL": 0,
     "SKIP": 8,
     "XFAIL": 0,
@@ -21,7 +21,7 @@
      "XPASS": 0
     },
     "trace": {
-     "PASS": 73,
+     "PASS": 74,
      "FAIL": 0,
      "SKIP": 0,
      "XFAIL": 0,
@@ -35,7 +35,7 @@
      "XPASS": 0
     },
     "refuse": {
-     "PASS": 94,
+     "PASS": 98,
      "FAIL": 0,
      "SKIP": 0,
      "XFAIL": 0,
@@ -63,7 +63,7 @@
      "XPASS": 0
     },
     "accept": {
-     "PASS": 39,
+     "PASS": 40,
      "FAIL": 0,
      "SKIP": 0,
      "XFAIL": 0,
@@ -80,12 +80,12 @@
   },
   {
    "file": "mtstudio.json",
-   "engine": "paperkiln mtstudio, CPU, with ir_eval and expr_eval (ext4 clone of paperkiln e8f66a10, ir_eval with position_bias; Release, GCC 13.3, -ffp-contract=off), against keramos v1.3.3 (254b6b4d9feb9b2ed241b961ca8b5f3403e369bc)",
+   "engine": "paperkiln mtstudio, CPU, with ir_eval and expr_eval (ext4 clone of paperkiln b9d5ce06; Release, GCC 13.3, -ffp-contract=off), against keramos v1.3.5 (c4696bf5578688585f6b00593eb9272daa8c5e3a)",
    "date": "2026-10-27",
    "counts": {
-    "PASS": 143,
+    "PASS": 146,
     "FAIL": 0,
-    "SKIP": 270,
+    "SKIP": 291,
     "XFAIL": 0,
     "XPASS": 0
    },
@@ -93,14 +93,14 @@
     "model": {
      "PASS": 17,
      "FAIL": 0,
-     "SKIP": 5,
+     "SKIP": 8,
      "XFAIL": 0,
      "XPASS": 0
     },
     "trace": {
      "PASS": 6,
      "FAIL": 0,
-     "SKIP": 58,
+     "SKIP": 68,
      "XFAIL": 0,
      "XPASS": 0
     },
@@ -114,12 +114,12 @@
     "refuse": {
      "PASS": 0,
      "FAIL": 0,
-     "SKIP": 94,
+     "SKIP": 98,
      "XFAIL": 0,
      "XPASS": 0
     },
     "digest": {
-     "PASS": 85,
+     "PASS": 88,
      "FAIL": 0,
      "SKIP": 0,
      "XFAIL": 0,
@@ -142,7 +142,7 @@
     "accept": {
      "PASS": 0,
      "FAIL": 0,
-     "SKIP": 36,
+     "SKIP": 40,
      "XFAIL": 0,
      "XPASS": 0
     },
@@ -157,10 +157,10 @@
   },
   {
    "file": "cleanroom.json",
-   "engine": "keramos-cleanroom (Rust, cleanroom/rust at keramos 1d1fd377; rustc 1.98.1, release, no crates, WSL ext4), against keramos v1.3.4 (7a37bf6973543914e7b3f4750b91131860d11b8f)",
+   "engine": "keramos-cleanroom (Rust, cleanroom/rust at keramos 1d1fd377; rustc 1.98.1, release, no crates, WSL ext4), against keramos v1.3.5 (c4696bf5578688585f6b00593eb9272daa8c5e3a)",
    "date": "2026-10-27",
    "counts": {
-    "PASS": 379,
+    "PASS": 385,
     "FAIL": 0,
     "SKIP": 40,
     "XFAIL": 12,
@@ -175,7 +175,7 @@
      "XPASS": 0
     },
     "trace": {
-     "PASS": 71,
+     "PASS": 72,
      "FAIL": 0,
      "SKIP": 0,
      "XFAIL": 2,
@@ -189,7 +189,7 @@
      "XPASS": 0
     },
     "refuse": {
-     "PASS": 89,
+     "PASS": 93,
      "FAIL": 0,
      "SKIP": 0,
      "XFAIL": 5,
@@ -217,7 +217,7 @@
      "XPASS": 0
     },
     "accept": {
-     "PASS": 38,
+     "PASS": 39,
      "FAIL": 0,
      "SKIP": 0,
      "XFAIL": 1,
@@ -234,10 +234,10 @@
   },
   {
    "file": "ember_cpu.json",
-   "engine": "ember.cpp ir_adapter, CPU interpreter, ember 7526469695ee3f07f2b5d6e60568cd3e09529c84, against keramos v1.3.4 (7a37bf6973543914e7b3f4750b91131860d11b8f)",
+   "engine": "ember.cpp ir_adapter, CPU interpreter, ember ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a, against keramos v1.3.5 (c4696bf5578688585f6b00593eb9272daa8c5e3a)",
    "date": "2026-10-27",
    "counts": {
-    "PASS": 382,
+    "PASS": 388,
     "FAIL": 0,
     "SKIP": 49,
     "XFAIL": 0,
@@ -252,7 +252,7 @@
      "XPASS": 0
     },
     "trace": {
-     "PASS": 73,
+     "PASS": 74,
      "FAIL": 0,
      "SKIP": 0,
      "XFAIL": 0,
@@ -266,7 +266,7 @@
      "XPASS": 0
     },
     "refuse": {
-     "PASS": 94,
+     "PASS": 98,
      "FAIL": 0,
      "SKIP": 0,
      "XFAIL": 0,
@@ -294,7 +294,7 @@
      "XPASS": 0
     },
     "accept": {
-     "PASS": 39,
+     "PASS": 40,
      "FAIL": 0,
      "SKIP": 0,
      "XFAIL": 0,
@@ -311,12 +311,12 @@
   },
   {
    "file": "llamacpp_cpu.json",
-   "engine": "llama.cpp b6000 (4762ad7316dcdec20016ab5985fb46a27902204d), CPU, f32 kv cache, through adapters/llamacpp (a shim over llama.h; reads the GGUF, never the IR document), against keramos v1.3.4 (7a37bf6973543914e7b3f4750b91131860d11b8f)",
+   "engine": "llama.cpp b6000 (4762ad7316dcdec20016ab5985fb46a27902204d), CPU, f32 kv cache, through adapters/llamacpp (a shim over llama.h; reads the GGUF, never the IR document), against keramos v1.3.5 (c4696bf5578688585f6b00593eb9272daa8c5e3a)",
    "date": "2026-10-27",
    "counts": {
     "PASS": 35,
     "FAIL": 16,
-    "SKIP": 380,
+    "SKIP": 386,
     "XFAIL": 0,
     "XPASS": 0
    },
@@ -331,7 +331,7 @@
     "trace": {
      "PASS": 18,
      "FAIL": 12,
-     "SKIP": 43,
+     "SKIP": 44,
      "XFAIL": 0,
      "XPASS": 0
     },
@@ -345,7 +345,7 @@
     "refuse": {
      "PASS": 0,
      "FAIL": 0,
-     "SKIP": 94,
+     "SKIP": 98,
      "XFAIL": 0,
      "XPASS": 0
     },
@@ -373,7 +373,7 @@
     "accept": {
      "PASS": 0,
      "FAIL": 0,
-     "SKIP": 39,
+     "SKIP": 40,
      "XFAIL": 0,
      "XPASS": 0
     },
@@ -388,12 +388,12 @@
   },
   {
    "file": "hf_cpu.json",
-   "engine": "Hugging Face transformers 5.20.2 (torch 2.14.1+cpu), CPU, float32, sdpa, through adapters/hf (in process; GGUFs exported by adapters/common/gguf_to_hf.py v2; never reads the IR document), against keramos v1.3.4 (7a37bf6973543914e7b3f4750b91131860d11b8f)",
+   "engine": "Hugging Face transformers 5.20.2 (torch 2.14.1+cpu), CPU, float32, sdpa, through adapters/hf (in process; GGUFs exported by adapters/common/gguf_to_hf.py v2; never reads the IR document), against keramos v1.3.5 (c4696bf5578688585f6b00593eb9272daa8c5e3a)",
    "date": "2026-10-27",
    "counts": {
     "PASS": 38,
     "FAIL": 3,
-    "SKIP": 390,
+    "SKIP": 396,
     "XFAIL": 0,
     "XPASS": 0
    },
@@ -408,7 +408,7 @@
     "trace": {
      "PASS": 27,
      "FAIL": 3,
-     "SKIP": 43,
+     "SKIP": 44,
      "XFAIL": 0,
      "XPASS": 0
     },
@@ -422,7 +422,7 @@
     "refuse": {
      "PASS": 0,
      "FAIL": 0,
-     "SKIP": 94,
+     "SKIP": 98,
      "XFAIL": 0,
      "XPASS": 0
     },
@@ -450,7 +450,7 @@
     "accept": {
      "PASS": 0,
      "FAIL": 0,
-     "SKIP": 39,
+     "SKIP": 40,
      "XFAIL": 0,
      "XPASS": 0
     },
@@ -465,12 +465,12 @@
   },
   {
    "file": "ortgenai_cpu.json",
-   "engine": "ONNX Runtime GenAI 0.18.0 (onnxruntime 1.31.1), CPU, float32, through adapters/ortgenai (in process; GGUFs exported by adapters/common/gguf_to_hf.py v2 and built by the stock model builder under transformers 5.20.2; never reads the IR document), against keramos v1.3.4 (7a37bf6973543914e7b3f4750b91131860d11b8f)",
+   "engine": "ONNX Runtime GenAI 0.18.0 (onnxruntime 1.31.1), CPU, float32, through adapters/ortgenai (in process; GGUFs exported by adapters/common/gguf_to_hf.py v2 and built by the stock model builder under transformers 5.20.2; never reads the IR document), against keramos v1.3.5 (c4696bf5578688585f6b00593eb9272daa8c5e3a)",
    "date": "2026-10-27",
    "counts": {
     "PASS": 8,
     "FAIL": 8,
-    "SKIP": 415,
+    "SKIP": 421,
     "XFAIL": 0,
     "XPASS": 0
    },
@@ -485,7 +485,7 @@
     "trace": {
      "PASS": 6,
      "FAIL": 6,
-     "SKIP": 61,
+     "SKIP": 62,
      "XFAIL": 0,
      "XPASS": 0
     },
@@ -499,7 +499,7 @@
     "refuse": {
      "PASS": 0,
      "FAIL": 0,
-     "SKIP": 94,
+     "SKIP": 98,
      "XFAIL": 0,
      "XPASS": 0
     },
@@ -527,7 +527,7 @@
     "accept": {
      "PASS": 0,
      "FAIL": 0,
-     "SKIP": 39,
+     "SKIP": 40,
      "XFAIL": 0,
      "XPASS": 0
     },

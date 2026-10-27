@@ -64,9 +64,18 @@ when its output already exists, so a run restarts where it stopped:
             with position t5_relative from the paper's rel_buckets and
             rel_max_distance (stated and verified, or --assert; keramos
             1.3's attention.position_bias, which ember runs); a T5-bias
-            paper that states neither refuses by name. A
-            structural op in the block graph that no family wires there
-            (conv1d_causal on q, k, v, a moe_ffn, ...) refuses by name.
+            paper that states neither refuses by name. Shaw-style relative
+            positions (positional shaw_relative; keramos 1.4's
+            attention.relative_kv, LOCAL_LLM_STACK.md 5.4) build flex with
+            position shaw_relative from the paper's clipping distance
+            (rel_max_distance) and whether each head has its own vectors
+            (rel_per_head), stated and verified or --assert; rel_values
+            unstated is Shaw's (keys and values). Primer's multi-dconv-head
+            attention (conv1d_causal after each of the q, k and v
+            projections, one stated kernel, no bias) builds flex with
+            qkv_conv. Any other structural op in the block graph that no
+            family wires there (a conv1d_causal elsewhere, a moe_ffn, ...)
+            refuses by name.
   pretrain  mtstudio run, objective lm on --corpus -> pretrain/
   sft       mtstudio run, objective sft on --sft-examples (the first
             --sft-limit examples that fit T; longer ones are dropped and
@@ -320,7 +329,9 @@ def stage_extract(a, run):
 # Beyond the flavours: the operator may settle a q/k norm's width, Mamba-1's sizes and T5's bucket count and
 # maximum distance when the paper leaves them out.
 ASSERTABLE = {**{k: None for k in LEGAL}, "qk_norm": ("per_head", "none"), "d_state": int, "d_conv": int,
-              "expand": int, "dt_rank": int, "rel_buckets": int, "rel_max_distance": int}
+              "expand": int, "dt_rank": int, "rel_buckets": int, "rel_max_distance": int,
+              "rel_per_head": ("true", "false"), "rel_values": ("true", "false"), "qkv_conv": int,
+              "family": ("decoder_only",)}
 
 
 def parse_asserts(items):
@@ -439,6 +450,120 @@ def t5_sizes(llm_ver, asserts, attention, refusals, report):
         refusals.append(f"positional = t5_bias with attention = {attention}: the flex family adds T5's bias to "
                         "exact attention only")
     return out
+
+
+def shaw_sizes(llm_ver, asserts, attention, refusals, report):
+    """Shaw-style relative positions (positional shaw_relative; Shaw, Uszkoreit and Vaswani 2018) as the flex
+    family's position shaw_relative (parity::FlexConfig rel_max_distance, rel_per_head, rel_values; keramos
+    IR_SPEC 5.15 attention.relative_kv, revision 1.4). The clipping distance and the head sharing are the
+    paper's (stated, verified) or the operator's (--assert); neither has a default, so a paper that leaves one
+    out refuses by name. rel_values unstated is Shaw's own definition (eqs. 3 and 4: keys and values), reported
+    DEFAULT. Returns the resolved custom keys; problems go to refusals."""
+    ok = ("verified", "quote_only")
+    out = {}
+    r = llm_ver.get("rel_max_distance") or {}
+    v = (r.get("value") or "").strip()
+    if "rel_max_distance" in asserts:
+        out["rel_max_distance"] = int(asserts["rel_max_distance"])
+        report.append(("ASSERTED", f"rel_max_distance = {out['rel_max_distance']} (by the operator, --assert; paper: "
+                                   f"{v or 'not stated'})"))
+    elif r.get("check") in ok and v:
+        try:
+            n = float(v)
+        except ValueError:
+            n = None
+        if n is None or n != int(n) or n < 0:
+            refusals.append(f"rel_max_distance = {v} (Shaw's clipping distance k) is not an integer >= 0")
+        else:
+            out["rel_max_distance"] = int(n)
+            report.append(("MATCHED", f"rel_max_distance = {out['rel_max_distance']}, Shaw's clipping distance k "
+                                      f"(\u201c{' '.join((r.get('quote') or '').split())[:120]}\u201d)"))
+    else:
+        refusals.append("positional = shaw_relative, but rel_max_distance (Shaw's clipping distance k) is unresolved: "
+                        f"the paper does not state it ({r.get('check') or 'not_stated'}); assert it with --assert "
+                        "rel_max_distance=K if you know it")
+    for k, what, default in (("rel_per_head", "whether each head has its own relative vectors", None),
+                             ("rel_values", "whether the relative vectors are added to the values too", True)):
+        r = llm_ver.get(k) or {}
+        v = (r.get("value") or "").strip()
+        if k in asserts:
+            out[k] = str(asserts[k]).lower() in ("true", "1", "yes")
+            report.append(("ASSERTED", f"{k} = {str(out[k]).lower()} (by the operator, --assert; paper: "
+                                       f"{v or 'not stated'})"))
+        elif r.get("check") in ok and v in ("true", "false"):
+            out[k] = v == "true"
+            report.append(("MATCHED", f"{k} = {v} (\u201c{' '.join((r.get('quote') or '').split())[:120]}\u201d)"))
+        elif default is not None:
+            out[k] = default
+            report.append(("DEFAULT", f"{k} = {str(default).lower()}: no verified value ({r.get('check') or 'not_stated'}"
+                                      f"{': ' + '; '.join(r.get('reasons') or []) if r.get('reasons') else ''}); "
+                                      "Shaw's definition (eqs. 3 and 4) adds the relative vectors to the keys and to the "
+                                      "values"))
+        else:
+            refusals.append(f"positional = shaw_relative, but {k} ({what}) is unresolved: the paper does not state "
+                            f"it ({r.get('check') or 'not_stated'}); assert it with --assert {k}=true|false")
+    if attention != "exact":
+        refusals.append(f"positional = shaw_relative with attention = {attention}: the flex family adds Shaw's "
+                        "vectors to exact attention only")
+    return out
+
+
+def mdha_kernel(nodes, asserts, refusals, report):
+    """Primer's multi-dconv-head attention in an extraction's block graph: the block's attention reads q, k and
+    v, each written by a conv1d_causal whose input a linear writes (the projection). Returns (kernel, the
+    conv nodes' indices) when all three are there with one stated, verified kernel and no stated bias (flex's
+    qkv_conv; parity::FlexConfig), (None, those indices) after a refusal, (None, set()) when the graph has
+    no convolution on the attention's inputs."""
+    ok = ("verified", "quote_only")
+    blk = [n for n in nodes if n.get("subgraph") == "block"]
+    attn = next((n for n in blk if n.get("op") == "attention"), None)
+    if attn is None or len(attn.get("inputs") or []) != 3:
+        return None, set()
+    writer = {}
+    for n in blk:
+        if n["i"] < attn["i"]:
+            writer[n.get("output")] = n
+    convs = [writer.get(x) for x in attn["inputs"]]
+    found = {c["i"] for c in convs if c and c.get("op") == "conv1d_causal"}
+    if not found:
+        return None, set()
+    if len(found) != 3 or any((writer.get((c.get("inputs") or [None])[0]) or {}).get("op") != "linear" for c in convs):
+        refusals.append("conv1d_causal on some but not all of the attention's q, k and v projections (or not "
+                        "directly after a projection): flex's qkv_conv convolves all three after the projection, "
+                        "so it would silently approximate the paper")
+        return None, found
+    kernels, quotes = set(), []
+    for c in convs:
+        attrs = {a.get("name"): a for a in c.get("attributes") or []}
+        kr, br = attrs.get("kernel") or {}, attrs.get("bias") or {}
+        if kr.get("check") in ok and (kr.get("value") or "").strip():
+            kernels.add((kr.get("value") or "").strip())
+            quotes.append(kr.get("quote") or "")
+        if br.get("check") in ok and (br.get("value") or "").strip() == "true":
+            refusals.append(f"conv1d_causal on the attention's inputs with a stated bias ({c.get('role')}): flex's "
+                            "qkv_conv has none (Primer's tf.nn.depthwise_conv2d)")
+            return None, found
+    if "qkv_conv" in asserts:
+        k = int(asserts["qkv_conv"])
+        report.append(("ASSERTED", f"qkv_conv = {k} (by the operator, --assert; paper: {sorted(kernels) or 'not stated'})"))
+    elif len(kernels) == 1:
+        try:
+            k = int(float(next(iter(kernels))))
+        except ValueError:
+            k = 0
+        report.append(("MATCHED", f"qkv_conv = {k}: conv1d_causal after each of the q, k and v projections "
+                                  f"(Primer's MDHA; \u201c{' '.join(quotes[0].split())[:120]}\u201d), on flex's fused "
+                                  "projection before RoPE, no bias (keramos IR_SPEC 9.2)"))
+    else:
+        refusals.append(f"conv1d_causal on q, k and v without one stated kernel ({sorted(kernels) or 'none verified'}); "
+                        "assert it with --assert qkv_conv=K")
+        return None, found
+    if k < 2:
+        refusals.append(f"qkv_conv = {k}: a causal convolution over time needs a kernel >= 2")
+        return None, found
+    report.append(("DEFAULT", "the convolutions' bias: none (the paper states none; flex's qkv_conv has no bias, as "
+                              "Primer's depthwise op)"))
+    return k, found
 
 
 def expr_host_check(expr, n_inputs, values=None):
@@ -862,6 +987,14 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
             report.append(("NOTED", f"{h['mechanism']}: {h['where']}, {h['evidence'][:160]} (built as Mamba-1: "
                                     "the extraction's ssm = mamba1)"))
             continue
+        if h["blocking"] and asserts.get("family") == "decoder_only" and \
+                re.search(r"encoder|decoder", f"{h.get('mechanism', '')} {h.get('evidence', '')}", re.IGNORECASE):
+            # The operator builds the paper's decoder only (its self-attention stack, causal, no encoder and no
+            # cross-attention): an encoder-decoder paper's mechanism in a decoder-only model, stated, not silent.
+            report.append(("ASSERTED", f"{h['mechanism']}: {h['where']} (built decoder-only by the operator, "
+                                       "--assert family=decoder_only: the paper's encoder and cross-attention are "
+                                       "not built)"))
+            continue
         if h["blocking"] and h.get("mechanism") == "grouped or multi-query attention" and gqa:
             # The extracted n_kv_heads builds it (below); without the field it still refuses.
             report.append(("NOTED", f"{h['mechanism']}: {h['where']}, {h['evidence']} (built from n_kv_heads)"))
@@ -877,10 +1010,12 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
     # convolutions on q, k and v as conv1d_causal nodes, 26 Oct 2026): no family below builds them there,
     # so a graph that has them refuses rather than trains without them. Mamba-1's own two are its block.
     seen_ops = set()
+    mdha_k, mdha_nodes = (None, set()) if mamba1 else mdha_kernel(llm_all.get("block_ops") or [], asserts, refusals,
+                                                                  report)
     for n in llm_all.get("block_ops") or []:
         op = n.get("op")
         if op not in GRAPH_ONLY_OPS or (mamba1 and op in ("conv1d_causal", "selective_scan")) or \
-                (op == "unsupported" and n.get("new_op") in op_names):
+                (op == "unsupported" and n.get("new_op") in op_names) or n.get("i") in mdha_nodes:
             continue
         key = (op, n.get("role", ""))
         if key in seen_ops:
@@ -961,12 +1096,14 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
                 refusals.append(f"{k} = {v}: an expr with no verified new-op record that the flex family "
                                 "hosts (papers/llm_extract.py writes one); not built")
             continue
-        if k == "positional" and v == "t5_bias":
-            continue  # built on flex from its bucket count and maximum distance (t5_sizes, below)
+        if k == "positional" and v in ("t5_bias", "shaw_relative"):
+            continue  # built on flex from its sizes (t5_sizes, shaw_sizes, below)
         if v not in LEGAL[k]:
             refusals.append(f"{k} = {v} has no engine support (mtstudio takes {sorted(LEGAL[k])})")
     t5 = t5_sizes(llm_ver, asserts, flav.get("attention", "exact"), refusals, report) \
         if flav.get("positional") == "t5_bias" else None
+    shaw = shaw_sizes(llm_ver, asserts, flav.get("attention", "exact"), refusals, report) \
+        if flav.get("positional") == "shaw_relative" else None
 
     if nkv and nh is None:
         refusals.append(f"n_kv_heads = {nkv['value']} without n_heads: the key/value sharing cannot be sized")
@@ -1006,7 +1143,7 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
     # FlexConfig).
     llama_block = all(flav.get(k, want) == want for k, want in (
         ("norm", "rmsnorm"), ("activation", "swiglu"), ("residual", "residual"), ("attention", "exact"))) \
-        and not non_pre and "embed" not in hosted
+        and not non_pre and "embed" not in hosted and not mdha_k
     if flav.get("positional") == "rope":
         # flex rotates every head with interleaved pairs and theta 10000; the llama family takes a stated theta,
         # NEOX pairs and a partial rotary fraction (arch.custom.rope_theta, rope_pairing, rope_dims).
@@ -1071,6 +1208,16 @@ def build_spec(ext, size, asserts=None, skip_scan=False):
                                       f"{t5['rel_buckets']} buckets up to distance {t5['rel_max_distance']} "
                                       "(parity::FlexConfig; keramos IR_SPEC 5.15 attention.position_bias, which "
                                       "ember runs)"))
+        if shaw:
+            custom["position"] = "shaw_relative"
+            custom.update(shaw)
+            report.append(("MATCHED", f"position = shaw_relative on the flex family: Shaw's relative key"
+                                      f"{' and value' if shaw['rel_values'] else ''} vectors, clipping distance "
+                                      f"{shaw['rel_max_distance']}, {'one set per head' if shaw['rel_per_head'] else 'shared by the heads'}, "
+                                      "per layer (parity::FlexConfig; keramos IR_SPEC 5.15 attention.relative_kv, "
+                                      "revision 1.4)"))
+        if mdha_k:
+            custom["qkv_conv"] = mdha_k
         for k, ins in op_inputs.items():
             if k != "embed" and custom.get(SPEC_KEY[k]) == "expr:" + hosted[k]:
                 custom[f"{k}_inputs"] = ins

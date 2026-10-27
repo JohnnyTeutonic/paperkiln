@@ -2,7 +2,7 @@
 
 *Normative specification of the keramos IR: a versioned JSON graph of a language model that an
 engine interprets, rather than recognising a fixed architecture. IR version 1, specification revision
-1.3 (27 October 2026; v1.3.4).*
+1.4 (27 October 2026; v1.4.0).*
 
 The format's GGUF keys keep their `paperkiln.` prefix (`paperkiln.ir`, `paperkiln.ir_version`,
 `paperkiln.ir_sha256` and the rest), as does the architecture label "paperkiln" (rule 38): they are
@@ -52,7 +52,7 @@ not semantics: when the header and this document differ, this document holds.
 
 ## 0. Status
 
-This document is version 1 of the IR, revision 1.3. It states the semantics that
+This document is version 1 of the IR, revision 1.4. It states the semantics that
 `include/microtorch/ir.hpp`'s header comment stated under the number 0, reorganised into profiles,
 with the numerics made consistent with what the reference build computes (section 4 and Appendix A).
 Revision 1.1 adds the digest (section 3.10), the values of stored tensors (section 4.7) and the
@@ -67,7 +67,11 @@ rendering (section 11). Revision 1.3 states what the first engine that reads no 
 left open: a file's architecture must be the graph its document is, so that such a program refuses an
 IR-only model instead of computing another one (section 3.1, rule 38); a rewind into a sliding window
 (section 6.9); llama.cpp's handling of Mistral (section 9.3). It adds T5's relative position bias, an
-optional attribute of `attention` (section 5.15, rule 39). The IR documents
+optional attribute of `attention` (section 5.15, rule 39). Revision 1.4 adds the first primitive written
+under the workspace's path for new primitives (`LOCAL_LLM_STACK.md` section 5.4): Shaw-style relative key and
+value vectors, an optional attribute of `attention` (section 5.15, rule 40), with gradient cases for engines
+that train (section 11.2); it states Primer's multi-dconv-head attention as `conv1d_causal` on the fused
+projection beside a kv slot, with no new op (sections 6.9 and 9.2). The IR documents
 that paperkiln commits before 5349ee19 exported carry `"ir_version": 0` and are version 1 documents
 (section 2.1); later exports carry 1 (section 2.3).
 
@@ -357,7 +361,7 @@ GGUF tensor and never state.
 
 Any attribute of a block node, and any field of a block state slot, may be
 `{"per_layer": [v_0, ..., v_{L-1}]}` with L = `block.repeat`: application i reads v_i, except the
-structural keys: a node's `op`, `in`, `out`, `state`, `tensor_index`, `sizes`, `expr`, `position_bias`, a
+structural keys: a node's `op`, `in`, `out`, `state`, `tensor_index`, `sizes`, `expr`, `position_bias`, `relative_kv`, a
 recurrence's `index`, `inputs`, `weights`, `init`, `let`, `update` and `readout`, and its
 tensor names (`weight`, `bias`, `router`, `experts`, `state_weight`, `tied_to`, `a`, `b`, `c`, `d`),
 and a slot's `name`, `kind`, `op`, `dtype`, `tensors`, `evict` and `kv_rows` (`kv_from`, reserved, is
@@ -695,7 +699,7 @@ agrees.
 
 softmax(q k^T * scale) v per head, over the kv slot the node names in `state` (section 6.2).
 Attributes `heads`, `kv_heads`, `head_dim`, `scale`, `causal`, `window` (0 = unbounded), `sinks`,
-`mask` (section 6.8.2; absent = `"causal"`), `position_bias` (below; absent = none). `causal` is true
+`mask` (section 6.8.2; absent = `"causal"`), `position_bias` and `relative_kv` (below; absent = none). `causal` is true
 (section 12, Q6). `in [q, k, v]`, q [T, heads * head_dim]; head h at columns h * head_dim ... ROUNDING.
 
 - **Masking.** Masked keys contribute exactly 0, and the row maximum is taken over visible keys only.
@@ -742,6 +746,32 @@ Attributes `heads`, `kv_heads`, `head_dim`, `scale`, `causal`, `window` (0 = unb
   combination by name, a capability refusal, section 10.3). Refused (rule 39):
   `buckets` empty or holding an integer below 0, or W not of ne {heads, B} with B greater than every
   bucket.
+- **Relative key and value vectors** (`relative_kv`, optional; revision 1.4; Shaw, Uszkoreit and Vaswani
+  2018, arXiv 1803.02155, eqs. 3 and 4 with the clipping of their section 3.3; paperkiln's
+  `ops::shaw_attention`). `{"key": RK, "value": RV, "max_distance": K}`: K an integer >= 0; RK names a
+  tensor [K + 1, w] (ne {w, K + 1}: row n is the vector of distance n), and RV, when present and not null,
+  a tensor [K + 1, w'] of its own; each width is `head_dim` (one set of vectors shared by every head, as
+  in Shaw's big model) or `heads * head_dim` (one set per query head, head h's at columns h * head_dim
+  ..., as in Shaw's base model). With p and j the positions of the query and the key (section 3.4,
+  absolute, as the window's) and n = min(p - j, K) (Shaw's clip(j - i, k) for the keys a causal query
+  sees: row n holds Shaw's w_{-n}), head h computes
+
+      s(p, j) = ((q_p . k_j) + (q_p . rk[n])) * scale
+      out_p   = (sum over the visible j of a(p, j) v_j) + (sum over the visible j of a(p, j) rv[n])
+
+  each dot product summing the head's columns in ascending order, rounded, then the sum, then the
+  product; a(p, j) is the softmax of s over the keys the query sees, with masking unchanged (causal,
+  window and sinks, `turn_state`): a masked key contributes exactly 0 to both sums. Without RV the second
+  sum is absent. Under grouped-query attention rk[n] and rv[n] are the query head's, k_j and v_j its kv
+  head's. These are the reference's orders (section 4.4); the class is ROUNDING, so an engine may sum
+  otherwise (gather q_p . rk[n] per distance first, fold rk into the keys, add up a by distance before
+  multiplying rv) within the tolerance. `relative_kv` is structural (section 3.8): a set shared by every
+  layer is one name, a set per layer (Shaw's) names it with `{i}`. The vectors depend on p - j alone, so
+  decode needs nothing beyond the kv slot's rows and their positions, and prefill and decode agree as they
+  do without it. Under `depth_route` p and j are positions, as for `position_bias`. Refused (rule 40):
+  `key` missing, `max_distance` not an integer >= 0, `value` neither a name nor null, any other member;
+  a tensor not of ne {head_dim or heads * head_dim, K + 1} in an application that reads it; `relative_kv`
+  and `position_bias` on one node (revision 1.4 defines each alone).
 - `softmax` (a string) is an informative attribute that paperkiln's exporter writes ("max-shifted,
   masked entries exactly zero"); it carries no semantics.
 
@@ -1094,7 +1124,9 @@ those n tokens would leave. Per slot:
   (section 6.10.5). Truncating a session whose model has recurrent state is defined like any other
   truncation, and an engine's session (and its adapter's `truncate`) does not refuse it: it restores a
   snapshot taken at n when it holds one, and otherwise runs the first n tokens again from the start
-  (traces `pk_srd_truncate`, a kv and a recurrent slot, and `tp_mamba1_truncate`).
+  (traces `pk_srd_truncate`, a kv and a recurrent slot, `tp_mamba1_truncate`, and, from revision 1.4,
+  `pk_flex_mdha_truncate`, a `conv1d_causal` slot beside a kv slot: the conv slot's K - 1 rows are restored
+  or recomputed with the kv rows, never kept from the longer sequence).
 
 ### 6.10 recurrence (recurrence profile)
 
@@ -1669,7 +1701,16 @@ A tensor that is the same thing as a gpt2 tensor keeps llama.cpp's gpt2 name: `t
   (`position: "t5_relative"`, revision 1.3): no position table and no rope node; every attention node
   carries `position_bias` {weight `rel_pos_bias.weight` [rel_buckets, heads], one table read by every
   layer; buckets `ops::t5_position_buckets(rel_buckets, rel_max_distance)`} (section 5.15), and the
-  attention is exact (no window). Each sublayer f combines with its input stream x as
+  attention is exact (no window). Or Shaw's relative vectors (`position: "shaw_relative"`, revision 1.4):
+  no position table and no rope node; every attention node carries `relative_kv` {key
+  `blk.{i}.attn_rel_k.weight`, value `blk.{i}.attn_rel_v.weight` or null, max_distance K} (section 5.15),
+  each layer's own vectors, shared by the heads ([K + 1, head_dim]) or one set per head ([K + 1, d]), and
+  the attention is exact. Independently of the positions, Primer's multi-dconv-head attention
+  (`qkv_conv: K`, So et al. 2021, arXiv 2109.08668) puts a `conv1d_causal` node (channels 3d, kernel K, no
+  bias, weight `blk.{i}.attn_qkv_conv.weight` [3d, K], recurrent slot `qkv_conv` with tensor x [K - 1, 3d])
+  between the fused projection `qkv` and its split, before the rope node: a depthwise convolution is per
+  column, so one node over q's, k's and v's columns is the paper's three. Each sublayer f combines with
+  its input stream x as
   residual x + f, plain f, or highway x + sigmoid(W x + b) * (f - x) with W, b =
   blk.{i}.highway_attn / highway_ffn [d, d] + bias, nodes linear, sigmoid, sub, mul, add. Two options
   of 26 October 2026 use existing ops only. An expr activation, norm or embedding tail may read more
@@ -1771,14 +1812,14 @@ rules section 10.1.1 lists as checked when the rows arrive. Each rule names its 
 rule a single fault breaks under exactly one number (a fault can still break a second rule as a
 consequence: a wrong `block.repeat` names tensors the file lacks). Rule numbers are never reused or
 moved: a rule added by a later revision takes the next free number (35 to 37 in 1.2, 38 and 39 in
-1.3) and is listed with its section's rules.
+1.3, 40 in 1.4) and is listed with its section's rules.
 
 Document (section 3):
 1. The text is not a JSON object, or it does not match `ir.schema.json` in a respect that no other
    rule names: the types of values, the closed key sets of the document, its sections and its slots,
    and the required sections. (The version, the model's fields, an op, an attribute, an attribute's
-   value, an arity, a required attribute, a slot's kind and fields, a recurrence's declarations and a
-   position bias are rules 2 to 13, 31 and 39.)
+   value, an arity, a required attribute, a slot's kind and fields, a recurrence's declarations, a
+   position bias and relative vectors are rules 2 to 13, 31, 39 and 40.)
 35. An object of the text holds a member name twice, at any depth, `_` members included (3.2).
 36. A node reads a value that no node before it writes (in the order of 3.5: embed, the block as
    application 0, head; `tokens` and `pos` excepted); the embed section writes no `x`; the head
@@ -1813,6 +1854,10 @@ Document (section 3):
 39. `attention.position_bias` is not `{weight, buckets}` with `buckets` a non-empty list of integers
     >= 0; or (container) its weight's tensor is not of ne {heads, B} with B greater than every bucket,
     in an application that reads it (5.15).
+40. `attention.relative_kv` is not `{key, max_distance}` with an optional `value`, `key` a name,
+    `value` a name or null and `max_distance` an integer >= 0; or the node also carries
+    `position_bias`; or (container) its key's or value's tensor is not of ne {head_dim or heads *
+    head_dim, max_distance + 1} in an application that reads it (5.15).
 
 State (section 6):
 11. A slot's kind is not kv or recurrent; a slot is declared twice or read by no node; a stateful
@@ -1955,7 +2000,8 @@ kind, profile, class and tolerance:
   (section 8.1.3).
 - `digest/vectors.json`: digest vectors (section 3.10).
 - `quant/blocks.json`: stored blocks of every storage type with their f32 values (section 4.7).
-- `grad/recurrence.json`: gradient cases of recurrence nodes (section 6.10.5).
+- `grad/recurrence.json`: gradient cases of recurrence nodes (section 6.10.5); `grad/attention.json`
+  (revision 1.4): gradient cases of attention with `relative_kv` (section 5.15).
 - `recurrence/`: suite models' documents with their hand-written recurrent ops rewritten as recurrences
   (section 6.10.6), which the traces `state/<model>_recurrence.json` run in place of each file's own
   document, against the original document's expected values.
@@ -2005,9 +2051,10 @@ digit order (1.0 is `3f800000`). Integer arrays are plain JSON lists.
 - **dequantisation** (`quant/blocks.json`): `{"cases": [{"name", "type", "ggml_type", "rows", "n",
   "bytes", "expect", "class"}]}`: `bytes` (hex) holds rows x n elements of the type, row-major; `expect`
   is their f32 values [rows, n]; the class is EXACT.
-- **gradient** (`grad/recurrence.json`): `{"cases": [{"name", "node", "inputs", "weights", "out_grad",
-  "expect", "tol"}]}`: `expect` maps each value of `in` and each weight tensor to d sum(out * out_grad) /
-  d(it), central differences of the reference in float64.
+- **gradient** (`grad/recurrence.json`, `grad/attention.json`): `{"cases": [{"name", "node", "inputs",
+  "weights", "out_grad", "expect", "tol"}]}`: `expect` maps each value of `in` and each weight tensor to
+  d sum(out * out_grad) / d(it), central differences in float64 of the reference's recurrence
+  (`tools/ir_recurrence.py`) or of section 5.15's formula (`tools/ir_conformance_gen.py`, `attention64`).
 - **refusal** (`refuse/<name>.json`): `{"doc"?: <document>, "text"?: <JSON text>, "gguf": "<path in
   the suite>", "rule": <10.1 rule number>, "section": "<section>"}`. With `doc` or `text` (the
   document as a JSON text, written byte for byte, for a fault a parsed value cannot hold: a duplicate
@@ -2388,6 +2435,32 @@ extractor's proposal of T5's bias (paperkiln, 26 October 2026). Each with the an
   windowed slot, and ember refuses the combination; the text and the reference must agree before one
   is written. A question raised after revision 1.3 takes the number Q17.
 
+### 12.6 Settled in revision 1.4
+
+The first primitive drafted under the workspace's path for new primitives (`LOCAL_LLM_STACK.md` section
+5.4), and the wiring the arXiv chain's Primer refusal needed. Each with the answer adopted.
+
+- **N1. Shaw-style relative positions** (Shaw, Uszkoreit and Vaswani 2018; published, not new here).
+  Neither `position_bias` (a scalar per head and distance) nor `expr` (no op of it mixes tokens) states a
+  vector added to the keys and values by distance, so the chain refused papers that use it. Adopted as an
+  optional attribute of `attention`, `relative_kv` {key, value, max_distance} (section 5.15, rule 40), not a
+  new op: the node keeps its slot, mask, window and decode rules, and an engine without the attribute
+  refuses it by name (rule 1's closed key set). The tables are rows by clipped distance, so a causal model
+  stores K + 1 vectors where Shaw's text has 2K + 1 (the K positive distances are never visible), and
+  their width selects vectors shared by the heads or one set per head, both of Shaw's configurations.
+  Cases: op `attention/relative_kv`, `_per_head`, `_keys_only`, `_window_sinks`, `_grouped_query`,
+  `_distance_zero`; gradient `grad/attention.json` (3 cases); model `pk_flex_shaw` (K 4, one set per head
+  and layer) with decode and chunks traces; refusals `relative_kv_*` (7, rules 40 and 6).
+- **N2. Primer's multi-dconv-head attention** (So et al. 2021; published). Wiring, not an op: a depthwise
+  causal convolution over time on each column of the q, k and v projections is `conv1d_causal` (section
+  6.6) on the fused projection's 3d columns, before RoPE, over a recurrent slot beside the kv slot. The
+  existing text settles the three questions ember asked: a block may declare several slots and each
+  recurrent slot has one reader (6.1); a truncate restores or recomputes the conv slot's K - 1 rows with
+  the kv rows (6.9, as `pk_srd_truncate`); the slot runs on every decode step beside the kv cache, as SRD's
+  does. Cases: model `pk_flex_mdha` (K 3, RoPE, squared ReLU) with decode, snapshot, truncate and chunks
+  traces. The clean-room engine, written from revision 1.2's text and unchanged since, passes all of them
+  and the acceptance case: the wiring needed no new text.
+
 ## Appendix A. The `-ffast-math` audit
 
 *Informative. Audit of 25 October 2026 at paperkiln c3f5ef12, with revision 1.1's additions: the
@@ -2479,6 +2552,17 @@ equal to dc29b5e6 bit for bit) and the pinned commits of the RunPod campaigns ar
 
 ## Appendix B. Changelog
 
+- **v1.4.0** (tag, 27 October 2026; revision 1.4). Shaw-style relative key and value vectors, an optional
+  attribute of `attention` (section 5.15, rule 40; section 12.6 N1), and Primer's multi-dconv-head
+  attention stated as `conv1d_causal` wiring beside a kv slot (sections 6.9, 9.2; 12.6 N2). Schema:
+  `attention.relative_kv` {key, value, max_distance}. Tools: the reference computes `relative_kv`;
+  `tools/ir_validate.py` checks rule 40 (`structure`, `relative_kv_gguf_errors`); the gradient kind's
+  second file, `grad/attention.json`, from `attention64`, a float64 statement of the formula. Suite: op
+  cases `attention/relative_kv*` (6); gradient cases (3); models `pk_flex_shaw` and `pk_flex_mdha` (paperkiln's
+  recipes in `tools/ir_conformance_mtstudio.py`, trained by mtstudio) with model case, decode, chunks (both),
+  snapshot and truncate (`pk_flex_mdha`) traces, accept cases and digest vectors; refusals `relative_kv_*`
+  (7): 465 cases. Every earlier expected value unchanged, regenerated in the named environment (section
+  4.6). `conformance/expected_fail.json`: the clean-room engine's 10 `relative_kv` cases.
 - **v1.3.5** (tag, 27 October 2026; section 2.6). `tensor_index` (section 7.2) stated in full from what
   the text and the schema already require: the ops that carry it, its reach over a node's names and no
   other node's, applications 0 .. repeat - 1 against `block_count`'s stored layers, rule 19 in the head;
@@ -2617,13 +2701,21 @@ the engine has agreed to close, the specification already states the intended be
 | llama.cpp b6000 (`adapters/llamacpp/`; informative: reads no document, builds its graph from `general.architecture` and its metadata) | none; the files whose architecture is one of its graphs (rule 38) | ROUNDING on the CPU path except: f32 GELU through an fp16 table (outside tol 1e-5); f16 attention under flash attention whatever the cache type; tanh GELU on gptneox, whose models use exact GELU; no window on llama | ggml CPU | "paperkiln" (every IR-only file) and "mistral" (no such architecture); a rewind into a window is safe only with `swa_full` or llama-server's guard (section 6.9) |
 | Hugging Face transformers 5.20.2 (`adapters/hf/`; informative: reads no document, runs HF checkpoints exported from the suite's GGUFs) | none; the files whose architecture is one of its model classes | ROUNDING on CPU in float32 (sdpa and eager); Mistral and Gemma 3 windows and Gemma 3's per-layer RoPE as specified; Mamba wrong on a multi-id forward over a cache (its finding 1) | torch CPU | "paperkiln"; windowed and recurrent rewinds are refused by `Cache.crop`, so its adapter re-prefills (section 6.9); through its own GGUF reader, Gemma 3's RoPE scaling and attention scale are lost and llama-architecture MoE files do not load |
 | ONNX Runtime GenAI 0.18.0, onnxruntime 1.31.1, CPU (`adapters/ortgenai/`; informative: reads no document; each GGUF exported to an HF checkpoint and built by its model builder, `-p fp32 -e cpu`) | none; the files whose architecture its builder takes (llama, qwen3, mistral, gemma3; its own GGUF loader for llama and mistral) | ROUNDING on CPU in float32 where it runs: Llama and Qwen3 at head_dim 16 on the stock build, Gemma 3 once its finding 3 is fixed, the GGUF loader included; Mistral's window dropped (since 0.15.2) | onnxruntime CPU (MLAS) | "paperkiln"; Mixtral, GPT-2, GPT-NeoX and Mamba (no builder); on CPU its GroupQueryAttention refuses head_size % 16 != 0 with fused rotary (head_size % 8 != 0 without), which the builder does not check; Gemma 3 does not build under 0.18.0 (KeyError 'rope_type'), and 0.15.2 builds it with its sliding layers' RoPE scaled by the global factor; `rewind_to` exact, into a window included (`adapters/ortgenai/FINDINGS.txt`) |
-| paperkiln `mtstudio`, CPU | the families it trains (section 9.2), from its own runs; recurrence nodes and their gradients through `ir_eval` | EXACT ops EXACT on every build (`-ffp-contract=off`); eviction EXACT at equal chunking (Appendix A) | `matmul_optimized` (FMA, shape-dependent order) | documents it did not export (it runs its modules, not documents); recurrence bodies with weights of their own in its training lane (the op takes them) |
+| paperkiln `mtstudio`, CPU | the families it trains (section 9.2), from its own runs; recurrence nodes, attention with `relative_kv` and their gradients through `ir_eval` | EXACT ops EXACT on every build (`-ffp-contract=off`); eviction EXACT at equal chunking (Appendix A) | `matmul_optimized` (FMA, shape-dependent order) | documents it did not export (it runs its modules, not documents); recurrence bodies with weights of their own in its training lane (the op takes them) |
 | paperkiln `mtstudio`, CUDA | as CPU | ROUNDING | cuBLAS FP32; TF32 opt-in | as CPU |
 | ember interpreter, CPU | core, state, recursion, chat, thirdparty, recurrence | EXACT where this document says so | `dot_f32_as_f64`, a fixed 8-lane double order independent of T and threads | see below |
 | ember interpreter, CUDA | as CPU, ops with device kernels | ROUNDING by construction (tiles, flash2, nvcc's default `--fmad`) | cuBLAS FP32 (its own handle at default math) | documents with an op without a device kernel are served on the CPU automatically (documents with recurrence among them); `EMBER_IR_DEVICE=cpu` forces the CPU for every document. `mask: turn_state` and its lazy eviction run on the device, ROUNDING, from ember 210f3b8; depth_route with kv_rows: active runs on the device, ROUNDING, from ember 66c8b2c (below) |
 | ember interpreter, WebAssembly | as CPU | as CPU (no FMA in the build) | as CPU | as CPU (4 GB heap for 0.5B models) |
 | ember WebGPU (browser) | llama and llama.cpp-layout MoE GGUFs on the tuned path's kernels; every other document ember's interpreter runs, all profiles except recurrence, on a WGSL interpreter of the document (ember 36c61eb); F32, F16, BF16 and Q8_0 matrices kept as stored | ROUNDING (WGSL; f32 accumulation, one invocation per output row) | f32, ascending columns per row | recurrence, rope_heads "first", forked lists, k-quant and Q4_0/Q5_x matrices, kv contexts past 4,096 positions (these run in WebAssembly); gated on a software adapter (SwiftShader) against ember CPU: greedy 40/40 and top-1 at every position (17b3999) |
 | ember tuned llama path, CPU and CUDA | llama | ROUNDING against the interpreter | CUDA: TF32 on by default (`EMBER_GEMM_TF32=0` gives FP32) | anything it is not selected for |
+
+**Revision 1.4 in the engines.** The numpy reference computes `relative_kv`. paperkiln's mtstudio runs
+it through `ops::shaw_attention`, the op it trains with, in its `ir_eval` (op and gradient cases) and in
+`pk_flex_shaw`'s model case; its window-and-sinks case is a skip, as for `position_bias`. The clean-room
+engine (revision 1.2) runs `pk_flex_mdha` and fails the `relative_kv` cases, which `expected_fail.json` lists.
+llama.cpp, transformers and ONNX Runtime GenAI read no document: the two new models are architecture
+"paperkiln" (rule 38) and the other new cases need a document or a single node, so each of the 28 is a skip
+for them by construction; their v1.3.5 receipts stand. ember writes its own receipt.
 
 **ember's tuned-path selection.** ember selects its tuned llama path by structural match (ember
 f2727c3): the node list against the canonical llama graph, with `family_hint` "llama" only as a

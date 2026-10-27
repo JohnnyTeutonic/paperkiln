@@ -45,7 +45,7 @@ TENSOR_KEYS = ("weight", "bias", "router", "state_weight", "tied_to")
 # Section 3.8: the structural keys, never per-layer (nodes, then slots).
 NOT_PER_LAYER = ("op", "in", "out", "state", "tensor_index", "sizes", "expr", "weight", "bias", "router", "experts",
                  "state_weight", "tied_to", "a", "b", "c", "d", "index", "inputs", "weights", "init", "let", "update",
-                 "readout", "position_bias")
+                 "readout", "position_bias", "relative_kv")
 SLOT_NOT_PER_LAYER = ("name", "kind", "op", "dtype", "tensors", "evict", "kv_rows")
 MARKERS = {"eot": "<|endoftext|>", "user": "<|user|>", "assistant": "<|assistant|>"}  # paperkiln/1
 
@@ -407,6 +407,8 @@ def _schema_rule(doc, path, msg):
             return 31, "6.10"
         if op == "attention" and attr == "position_bias":
             return 39, "5.15"
+        if op == "attention" and attr == "relative_kv":
+            return 40, "5.15"
         if attr in CLOSED and "is not one of" in msg:
             return 5, CLOSED[attr]
         if attr in ("in", "out"):
@@ -489,6 +491,11 @@ def _tensor_names(node):
     pb = node.get("position_bias")
     if node.get("op") == "attention" and isinstance(pb, dict) and isinstance(pb.get("weight"), str):
         yield "position_bias.weight", pb["weight"]
+    rk = node.get("relative_kv")
+    if node.get("op") == "attention" and isinstance(rk, dict):
+        for key in ("key", "value"):
+            if isinstance(rk.get(key), str):
+                yield "relative_kv." + key, rk[key]
 
 
 def _recurrence():
@@ -586,6 +593,9 @@ def node_errors(doc):
                     break
             if c and any(x is not True for x in c):
                 errs.append(E("5.15", f"{where}: causal must be true (Q6)", 14))
+        if op == "attention" and "relative_kv" in n and "position_bias" in n:
+            errs.append(E("5.15", f"{where}: relative_kv and position_bias on one node (revision 1.4 defines "
+                                  "each alone)", 40))
         if op == "linear_attention" and n.get("causal") is not True:
             errs.append(E("6.4", f"{where}: causal must be true", 14))
         if op == "moe_ffn" and isinstance(n.get("top_k"), int) and isinstance(n.get("n_experts"), int) \
@@ -1021,6 +1031,7 @@ def gguf_report(doc, meta, tensors):
     errs += recurrence_gguf_errors(doc, dims)
     errs += state_token_gguf_errors(doc, meta, tensors)
     errs += position_bias_gguf_errors(doc, dims)
+    errs += relative_kv_gguf_errors(doc, dims)
     errs += architecture_errors(meta, tensors)
     return errs, sorted(set(warns))
 
@@ -1052,6 +1063,44 @@ def position_bias_gguf_errors(doc, dims):
                 where = f"{sect}[{j}] attention" + (f" (application {i})" if i is not None else "")
                 errs.append(E("5.15", f"{where}: position_bias {name} has ne {got}, not [heads {h}, B] with B > "
                                       f"the largest bucket {max(bk)}", 39))
+    return sorted(set(errs))
+
+
+def relative_kv_gguf_errors(doc, dims):
+    """Rule 40 (container): an attention node's relative_kv tensors are ne {W, max_distance + 1} with W its
+    head_dim (vectors shared by the heads) or heads * head_dim (one set per query head), section 5.15, in
+    every application that reads them."""
+    errs = []
+    blk = doc.get("block", {})
+    L = blk.get("repeat") if isinstance(blk.get("repeat"), int) else 0
+    wmap = (blk.get("weight_index") or {}).get("per_layer") if isinstance(blk.get("weight_index"), dict) else None
+    for sect, j, n in _sections(doc):
+        rk = n.get("relative_kv")
+        if n.get("op") != "attention" or not isinstance(rk, dict):
+            continue
+        K = rk.get("max_distance")
+        if not (isinstance(K, int) and not isinstance(K, bool) and K >= 0):
+            continue  # the schema's part of rule 40
+        heads, hds = _layers(n.get("heads"), L or 1) or [], _layers(n.get("head_dim"), L or 1) or []
+        apps = range(L) if sect == "block" else [None]
+        for i in apps:
+            h = heads[i] if i is not None and i < len(heads) else (heads[0] if heads else None)
+            hd = hds[i] if i is not None and i < len(hds) else (hds[0] if hds else None)
+            if not (isinstance(h, int) and isinstance(hd, int)):
+                continue
+            m = (wmap[i] if isinstance(wmap, list) and i < len(wmap) else i) if i is not None else None
+            for key in ("key", "value"):
+                nm = rk.get(key)
+                if not isinstance(nm, str):
+                    continue
+                name = nm.replace("{i}", str(m)) if m is not None else nm
+                got = dims.get(name)
+                if got is None:
+                    continue  # rule 25
+                if len(got) != 2 or got[1] != K + 1 or got[0] not in (hd, h * hd):
+                    where = f"{sect}[{j}] attention" + (f" (application {i})" if i is not None else "")
+                    errs.append(E("5.15", f"{where}: relative_kv {key} {name} has ne {got}, not [head_dim {hd} or "
+                                          f"heads * head_dim {h * hd}, max_distance + 1 = {K + 1}]", 40))
     return sorted(set(errs))
 
 

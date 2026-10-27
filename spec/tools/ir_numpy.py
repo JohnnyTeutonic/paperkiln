@@ -15,6 +15,9 @@ For third-party graphs:
   attention   kv_heads < heads (grouped-query): query head h reads kv head h // (heads // kv_heads).
               position_bias {weight, buckets} (revision 1.3; T5's relative bias): each head adds
               W[buckets[min(p - j, D - 1)], h] to its scaled score (W [B, heads]; p, j the positions).
+              relative_kv {key, value, max_distance} (revision 1.4; Shaw et al. 2018): with n = min(p - j, K),
+              the score ((q . k) + (q . rk[n])) * scale and the output (sum a v) + (sum a rv[n]); rk, rv
+              [K + 1, head_dim] (shared by the heads) or [K + 1, heads * head_dim] (head h's at h * head_dim).
   rope        pairing "neox": the pair (x[j], x[j + n_rot/2]) within a head (llama.cpp NEOX, HF
               rotate_half), "interleaved" the adjacent pair (x[2j], x[2j+1]); n_rot (default
               head_dim) rotates only a head's first n_rot dims (partial rotary); the angle is
@@ -381,15 +384,38 @@ def run_nodes(nodes, env, W, i=None, no_window=False, wi=None, states=None):
                        f"every bucket")
                 ps = np.asarray(env["pos"], dtype=np.int64) if "pos" in env else np.arange(T)
                 b_of = bk[np.clip(ps[:, None] - ps[None, :], 0, len(bk) - 1)]
+            rkv = nd.get("relative_kv")
+            if rkv:  # IR_SPEC 5.15 (revision 1.4): Shaw's vectors by n = min(p - j, K), p and j the rows' positions
+                K = int(rkv["max_distance"])
+                tk = w(rkv["key"])
+                tv = w(rkv["value"]) if rkv.get("value") is not None else None
+                for nm, t in ((rkv["key"], tk), (rkv.get("value"), tv)):
+                    _width(t is None or (t.ndim == 2 and t.shape[0] == K + 1 and t.shape[1] in (hd, H * hd)),
+                           "5.15", f"relative_kv {nm} has shape {list(t.shape) if t is not None else None}, not "
+                                   f"[max_distance + 1 = {K + 1}, head_dim {hd} or heads * head_dim {H * hd}]")
+                ps = np.asarray(env["pos"], dtype=np.int64) if "pos" in env else np.arange(T)
+                n_of = np.clip(ps[:, None] - ps[None, :], 0, K)
             for h in range(H):
                 kh = h // (H // KV)
-                s = (q[:, h * hd:(h + 1) * hd] @ k[:, kh * hd:(kh + 1) * hd].T) * np.float32(nd["scale"])
+                if rkv:
+                    # ((q . k) + (q . rk[n])) * scale; out = (sum_j a v_j) + (sum_j a rv[n]).
+                    qh = q[:, h * hd:(h + 1) * hd]
+                    ck = slice(0, hd) if tk.shape[1] == hd else slice(h * hd, (h + 1) * hd)
+                    qr = (qh @ tk[:, ck].T).astype(np.float32)  # [T, K + 1]
+                    s = ((qh @ k[:, kh * hd:(kh + 1) * hd].T) + qr[np.arange(T)[:, None], n_of]).astype(np.float32)
+                    s = (s * np.float32(nd["scale"])).astype(np.float32)
+                else:
+                    s = (q[:, h * hd:(h + 1) * hd] @ k[:, kh * hd:(kh + 1) * hd].T) * np.float32(nd["scale"])
                 if pb:
                     s = (s + tab[b_of, h]).astype(np.float32)
                 s[mask] = -np.inf
                 s = np.exp(s - s.max(axis=1, keepdims=True))
                 s /= s.sum(axis=1, keepdims=True)
-                outs.append(s @ v[:, kh * hd:(kh + 1) * hd])
+                o = s @ v[:, kh * hd:(kh + 1) * hd]
+                if rkv and tv is not None:
+                    cv = slice(0, hd) if tv.shape[1] == hd else slice(h * hd, (h + 1) * hd)
+                    o = (o + (s[:, :, None] * tv[:, cv][n_of]).sum(axis=1, dtype=np.float32)).astype(np.float32)
+                outs.append(o)
             y = np.concatenate(outs, axis=1)
         else:
             raise SystemExit(f"ir_numpy: no kernel for op {op}")

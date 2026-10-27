@@ -1,0 +1,11 @@
+{
+ "source": "/home/jonat/arxiv_chain_runs/inputs/sft_tinychat_fit64.jsonl",
+ "T": 64,
+ "limit": 500,
+ "seen": 500,
+ "kept": 500,
+ "dropped_longer_than_T": 0,
+ "longest_kept_tokens": 60,
+ "longest_dropped_tokens": 0,
+ "rule": "len(prompt) + len(completion) + 1 end token <= T + 1 (mtstudio load_sft), file order"
+}
