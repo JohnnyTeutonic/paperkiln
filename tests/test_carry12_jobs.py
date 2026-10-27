@@ -2,9 +2,12 @@
 sections 6 and 10). The committed files are the script's output byte for byte; the pretraining specs are the specs
 Stage 0 probed at T 1,024 (arch, data, train, export); every rate is lr_choice.json's for its plain shape; the post
 jobs carry Carry-12 after Carry-5 at ember ec3201b with EMBER_DETERMINISTIC=1; B's machine runs D (sft_human_long4,
-B's weights) and W512 (E1's uploaded weights, E1's SFT, Carry-12 forced choice); the caps follow the measured total;
-and every file's gate refuses until the frozen PREREGISTRATION.md exists."""
+B's weights), T (sft_human_tsft: the data job's --template-sft, B's weights and steps), W512 (E1's uploaded weights,
+E1's SFT, Carry-12 forced choice) and the chat-prompt checks of B, D and T, with B, D and T reading the panels at
+their SFT weights too; the caps follow the measured total plus T, W512 and the checks; and every file's gate refuses
+until the frozen PREREGISTRATION.md exists."""
 import importlib.util
+import math
 import json
 from pathlib import Path
 import subprocess
@@ -79,7 +82,8 @@ def test_post_jobs_carry12_after_carry5_at_the_pin():
             assert doc["max_parallel"] == 1 and list(j)[:4] == ["cuda_gate", "data", "gate", f"pt_c12_{cell}_r{seed}"]
             assert "--T" in j["data"]["cmd"] and arg(j["data"]["cmd"], "--T") == "1024"
             assert "--carry12" in j["data"]["cmd"] and arg(j["data"]["cmd"], "--long-sft") == "10:4"
-            posts = [cell] + (["D"] if cell == "B" else [])
+            assert ("--template-sft" in j["data"]["cmd"]) == (cell == "B")
+            posts = [cell] + (["D", "T"] if cell == "B" else [])
             for c in posts:
                 p = j[f"post_c12_{c}_r{seed}"]
                 cmd = p["cmd"]
@@ -91,7 +95,8 @@ def test_post_jobs_carry12_after_carry5_at_the_pin():
                 assert arg(cmd, "--cell") == c and arg(cmd, "--seed") == str(seed) and arg(cmd, "--share") == "35"
                 assert arg(cmd, "--pt-weights") == f"/content/chat/pt_c12_{cell}_r{seed}/tc_c12_{cell}_r{seed}.safetensors"
                 sft = arg(cmd, "--sft-template")
-                assert sft.endswith("sft_T1024_long4.json" if c == "D" else "sft_T1024.json")
+                assert sft.endswith({"D": "sft_T1024_long4.json", "T": "sft_T1024_tsft.json"}.get(c, "sft_T1024.json"))
+                assert ("--sft-panels" in cmd) == (cell == "B")
                 assert {"summary.json", "carry12/summary.json", "carry12/m/items.jsonl", "carry5/m/items.jsonl",
                         f"sft/tc_sft_{c}_r{seed}.gguf"} <= set(p["outputs"])
                 shape = json.loads((ROOT / arg(cmd, "--spec")).read_text())
@@ -111,20 +116,33 @@ def test_post_jobs_carry12_after_carry5_at_the_pin():
                 assert {k: v for k, v in w512.items() if k != "_comment"} == \
                     {k: v for k, v in e1.items() if k != "_comment"}
                 assert f"--upload tc_e1_60m_L8_r{seed}.safetensors=" in doc["_comment"]
+                ch = j[f"chat_c12_r{seed}"]
+                assert ch["after"] == [f"post_c12_{c}_r{seed}" for c in ("B", "D", "T")]
+                assert ch["cmd"][:3] == ["bash", "tools/colab_chat/chat_eval_vm.sh", "{out}"]
+                assert ch["cmd"][3:] == [f"{c}@post_c12_{c}_r{seed}/sft" for c in ("B", "D", "T")]
+                assert (ROOT / "tools" / "colab_chat" / "chat_eval_vm.sh").exists()
+                assert list(j)[-1] == f"chat_c12_r{seed}"
             else:
-                assert not any(n.startswith(("post_c12_D", "post_c12_W512", "data512")) for n in j)
+                assert not any(n.startswith(("post_c12_D", "post_c12_T", "post_c12_W512", "data512", "chat_c12"))
+                               for n in j)
 
 
 def test_caps_and_not_launched():
     m = mk()
     hs, w512, _ = m.hours()
+    add = m.additions()
     total = json.loads((LONG / "stage0" / "total.json").read_text())
-    assert abs(sum(3 * h for h in hs.values()) - 3 * w512 - total["core_vm_hours"]) < 0.5
+    assert add["W512"] == w512 and abs(add["T"] - total["cells"]["D"]["per_run_h"] - m.SFT_PANELS_H) < 1e-9
+    assert abs(sum(3 * h for h in hs.values()) - 3 * sum(add.values()) - total["core_vm_hours"]) < 0.5
     for cell, h in hs.items():
         doc = jobs(cell, 1)
         assert f"--max-usd {m.cap(h)} " in doc["_comment"] and "--commit FREEZE_COMMIT" in doc["_comment"]
+        assert f"--max-hours {m.max_hours(h):g} " in doc["_comment"]
+        assert m.max_hours(h) == max(23.5, float(math.ceil(1.3 * h)))  # ceil(1.3 x estimate) when over 23.5
+        assert m.max_hours(h) >= h  # a deadline under the estimate would stop the machine early
         assert "NOT LAUNCHED" in doc["_comment"]
         assert m.cap(h) >= h * 0.59  # a cap under the estimate would stop the machine early
+    assert m.max_hours(hs["B"]) == 32.0  # B's machines (B, D, T, W512, chat checks): about 24.4 h of jobs
     drv = ROOT.parent / "scripts" / "colab_driver.json"  # the workspace's watchdog entries, when present
     if drv.exists():
         cells = [f"carry12_{c}_r{r}.json" for c in hs for r in (1, 2, 3)]

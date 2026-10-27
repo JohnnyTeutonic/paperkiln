@@ -36,7 +36,13 @@ The long-carry programme (experiments/tiny_chat_long_2026-10/PREREGISTRATION_DRA
 decontamination beside Carry-5, so dialogues are dropped by the same rules and counted; --T 1024 builds the
 SFT set at T 1,024 (the mixes are token streams and do not depend on T: mtstudio draws its windows); and
 --long-sft MIN:COPIES also writes sft_human_long<COPIES>.jsonl for cell D: the same SFT rows, each row of
-MIN or more trained turns (exchanges) present COPIES times, shuffled with the same seed.
+MIN or more trained turns (exchanges) present COPIES times, shuffled with the same seed; and --template-sft
+also writes sft_human_tsft.jsonl for cell T: the same SFT rows plus the template-SFT set
+(tools/carry12_tsft_build.py, 4,224 hand-written templated dialogues; rebuilt here and refused unless its bytes
+are the pin, corpus/hashes/carry12_tsft_v1.sha256, and unless this job's decontamination, with Carry-12 among its
+targets, drops none of them), every template dialogue whole at T, shuffled with the same seed. The ledger's
+template_sft block counts the rows and their share. Its other outputs are byte for byte those of the job without
+the option.
 
 --measure-only stops after step 3 and prints human_pt_bytes, the P of the registered level rule
 (make_jobs.py --dialogue-pt-bytes): the same files and code as the data job, so P equals what the
@@ -157,6 +163,44 @@ def long_rows(raw, dst, min_turns, copies):
             "rows_out": n + n_long * (copies - 1)}
 
 
+def template_rows(out, vocab, T, seed, raw, carry12, ledger):
+    """Cell T's SFT set (sft_human_tsft.jsonl): raw's human rows once each plus the template-SFT set's rows,
+    shuffled with the seed. The set is rebuilt from tools/carry12_tsft_build.py and refused unless its bytes are
+    the pin and this job's decontamination drops none of its dialogues; every dialogue must fit T whole."""
+    sys.path.insert(0, os.path.join(ROOT, "tools"))
+    import carry12_tsft_build as TS
+    import human_dialogue
+    data, sha = TS.build_checked()
+    dl = os.path.join(out, "tsft_dialogues.jsonl")
+    with open(dl, "wb") as f:
+        f.write(data)
+    dc, _ = human_dialogue.decontaminator(carry5=True, carry12=carry12)
+    dec = decontam.run(dl, dl + ".kept", os.path.join(out, "tsft_decontam.json"), dc=dc)
+    os.remove(dl + ".kept")
+    if dec["rows_dropped"]:
+        raise SystemExit(f"the template-SFT set: the decontamination drops {dec['rows_dropped']} of its dialogues "
+                         f"(tsft_decontam.json); it must drop none")
+    traw = os.path.join(out, "tsft_raw.jsonl")
+    info = {"set": TS.VERSION, "sha256": sha, "dialogues": data.count(b"\n"), "decontam": dec}
+    sh([sys.executable, "tools/chat_data.py", "sft", dl, "--vocab", vocab, "--T", str(T), "--all-turns",
+        "--out", traw + ".tmp"], ledger, "tsft_sft")
+    os.replace(traw + ".tmp", traw)
+    st = ledger["steps"]["tsft_sft"]
+    if st["kept"] != info["dialogues"] or st["turns_cut_over_T"] or st["dropped_over_T"]:
+        raise SystemExit(f"the template-SFT set does not fit T {T} whole: {st}")
+    dst = os.path.join(out, "sft_human_tsft.jsonl")
+    sh([sys.executable, "tools/chat_data.py", "mix", raw, traw, "--seed", str(seed), "--out", dst + ".tmp"], ledger,
+       "sft_tsft_shuffle")
+    os.replace(dst + ".tmp", dst)
+    by = ledger["steps"]["sft_tsft_shuffle"]["by_source"]
+    n_h, n_t = by.get(os.path.basename(raw), 0), by.get(os.path.basename(traw), 0)
+    info.update({"rows_human": n_h, "rows_template": n_t, "rows_out": n_h + n_t,
+                 "template_share": round(n_t / (n_h + n_t), 4) if n_h + n_t else None})
+    for f in (dl, traw):
+        os.remove(f)
+    return info
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--out", required=True)
@@ -175,6 +219,8 @@ def main(argv=None):
     ap.add_argument("--measure-only", action="store_true", help="stop after the split; print human_pt_bytes")
     ap.add_argument("--carry12", action="store_true", help="Carry-12 v1 joins the decontamination (pinned bytes)")
     ap.add_argument("--long-sft", default="", help="MIN:COPIES: sft_human_long<COPIES>.jsonl, rows of MIN+ turns x COPIES")
+    ap.add_argument("--template-sft", action="store_true",
+                    help="cell T: sft_human_tsft.jsonl, the SFT rows plus the pinned template-SFT set")
     a = ap.parse_args(argv)
     long_min = long_copies = 0
     if a.long_sft:
@@ -184,6 +230,8 @@ def main(argv=None):
             ap.error("--long-sft is MIN:COPIES, e.g. 10:4")
         if long_min < 1 or long_copies < 2:
             ap.error("--long-sft needs MIN >= 1 and COPIES >= 2")
+    if a.template_sft and not a.carry12:
+        ap.error("--template-sft needs --carry12 (the set is checked against Carry-12 by this job's decontamination)")
     if not a.measure_only and not all((a.vocab, a.fineweb, a.shares, a.mix_bytes)):
         ap.error("--vocab, --fineweb, --shares and --mix-bytes are required unless --measure-only")
     out = os.path.abspath(a.out)
@@ -269,8 +317,10 @@ def main(argv=None):
     # 4. SFT set: one row per dialogue, every assistant turn trained, shuffled.
     sft = os.path.join(out, "sft_human.jsonl")
     sft_long = os.path.join(out, f"sft_human_long{long_copies}.jsonl") if long_copies else None
+    sft_tsft = os.path.join(out, "sft_human_tsft.jsonl") if a.template_sft else None
     raw = os.path.join(out, "sft_raw.jsonl")
-    if not os.path.exists(sft) or (sft_long and not os.path.exists(sft_long)):
+    if not os.path.exists(sft) or (sft_long and not os.path.exists(sft_long)) or \
+            (sft_tsft and not os.path.exists(sft_tsft)):
         if not os.path.exists(raw):
             sh([sys.executable, "tools/chat_data.py", "sft", sft_dl, "--vocab", a.vocab, "--T", str(a.T),
                 "--all-turns", "--out", raw + ".tmp"], ledger, "sft")
@@ -285,11 +335,16 @@ def main(argv=None):
                 str(a.seed), "--out", sft_long + ".tmp"], ledger, "sft_long_shuffle")
             os.replace(sft_long + ".tmp", sft_long)
             os.remove(os.path.join(out, "sft_long_raw.jsonl"))
+        if sft_tsft and not os.path.exists(sft_tsft):
+            ledger["template_sft"] = template_rows(out, a.vocab, a.T, a.seed, raw, a.carry12, ledger)
         os.remove(raw)
     ledger.setdefault("outputs", {})["sft_human.jsonl"] = {"bytes": os.path.getsize(sft), "sha256": C.sha256_file(sft)}
     if sft_long:
         ledger["outputs"][os.path.basename(sft_long)] = {"bytes": os.path.getsize(sft_long),
                                                          "sha256": C.sha256_file(sft_long)}
+    if sft_tsft:
+        ledger["outputs"][os.path.basename(sft_tsft)] = {"bytes": os.path.getsize(sft_tsft),
+                                                         "sha256": C.sha256_file(sft_tsft)}
 
     # 5. Panels.
     ids(os.path.join(a.fineweb, "val.txt"), a.vocab, os.path.join(out, "panel_fineweb.ids"), ledger, "panel_fineweb")

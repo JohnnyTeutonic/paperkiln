@@ -8,7 +8,9 @@ PARTIAL and no verdict is printed).
         [--partial] [--lstar 8] [--r-sign +1|-1] [--e1-home C:/ml_artifacts/tiny_chat/e1_60m_L8]
 
 ART holds the runners' artefact folders; every ART/*/post_c12_<cell>_r<seed>/summary.json (and ART/post_c12_*/...)
-is read. Cells: W512 (E1 at 60M's L* runs re-SFT'd at T 512, Carry-12 forced choice only), B, D, S-gist (summary
+is read, and the chat-prompt checks of B's machines, ART/*/chat_c12_r<seed>/ (chat/summary.json, chat2/summary.json,
+qa/qa_summary.json, extracted or inside chat_eval_results.tar.gz). Cells: W512 (E1 at 60M's L* runs re-SFT'd at
+T 512, Carry-12 forced choice only), B, D, T (B's weights, SFT on B's mix plus the template-SFT set), S-gist (summary
 cell "Sgist"), P16 (B itself when L* = 16), X, and the conditional S-full ("Sfull") and R.
 
 One number per (cell, seed); paired contrasts over seeds 1-3 (4-5 when every cell of the contrast has them),
@@ -26,6 +28,12 @@ A contrast that uses a cell failing either is FLOOR.
 Registered contrasts (section 8):
 - HT   Y12_gold(B) - Y12_gold(W512) > 0 (gold history, which both fit); HT-0, its counter, is EQUIVALENT.
 - HD   Y12(D) - Y12(B) > 0; HD-0 is EQUIVALENT.
+- HT-SFT  Y12(T) - Y12(B) > 0; HT-SFT-0, its counter, is EQUIVALENT (the templates teach their own format, not
+       carry). The transfer reading beside it: T's gain over B on Carry-12's families whose structure T's templates
+       have (recall, correction) and on those they lack (topic, load), each Y that pool's self accuracy minus its
+       twin accuracy, and the difference. Beside it, as degradation checks (SUPPORTED = T worse than B beyond the
+       SESOI): Carry-5's Y, the panels at the SFT weights (sft_panels: FineWeb-Edu and natural dialogue), and the
+       chat-prompt checks of B, D and T (descriptive).
 - HS1  Y12(S-gist) - Y12(B) < 0; HS1-alt holds when the verdict is EQUIVALENT or CONTRADICTED (the difference is
        at least -3 points). Descriptive beside it: the retention ratio (acc(S-gist) - acc(noctx)) /
        (acc(B) - acc(noctx)) by distance, gold history, context families.
@@ -79,6 +87,8 @@ FLOOR_TEXT = ("FLOOR (twin accuracy over the primary families under 0.35, or twi
               "alone on the context families)")
 PARTIAL = "DESCRIPTIVE, PARTIAL"
 CORRECTION_DISTANCES = range(1, 12)
+TRAINED_FAMILIES = ("recall", "correction")   # Carry-12 families inside Y12 whose structure T's templates have
+UNTRAINED_FAMILIES = ("topic", "load")         # ... and those no template of T's has (no digression, one user fact)
 
 
 # ---------------------------------------------------------------- reading the post summaries
@@ -111,6 +121,17 @@ def sub(x, y):
     return None if x is None or y is None else x - y
 
 
+def fam_pool(s, mode, fams):
+    """Accuracy over FAMS pooled by their item counts (carry12_eval's per-family means and n); None unless every
+    family is there."""
+    rows = (((s.get("carry12") or {}).get("pools") or {}).get("acc", {}).get("family", {}) or {}).get(mode, {})
+    xs = [(rows[f]["mean"], rows[f]["n"]) for f in fams
+          if (rows.get(f) or {}).get("mean") is not None and rows[f].get("n")]
+    if len(xs) != len(fams):
+        return None
+    return sum(m * n for m, n in xs) / sum(n for _, n in xs)
+
+
 def get(s, key):
     """One run's number. Y12 and Y12_gold from the post summary (carry12_eval's derived quantities); the rest
     from Carry-12's pools (forced choice, acc; over_ctx counts 0, as Carry-5)."""
@@ -129,6 +150,10 @@ def get(s, key):
         "carry5_Y": s.get("primary"),
         "panel_fineweb": (s.get("panels") or {}).get("fineweb"),
         "panel_dialogue": (s.get("panels") or {}).get("dialogue"),
+        "sft_panel_fineweb": (s.get("sft_panels") or {}).get("fineweb"),
+        "sft_panel_dialogue": (s.get("sft_panels") or {}).get("dialogue"),
+        "Y_trained": sub(fam_pool(s, "self", TRAINED_FAMILIES), fam_pool(s, "twin", TRAINED_FAMILIES)),
+        "Y_untrained": sub(fam_pool(s, "self", UNTRAINED_FAMILIES), fam_pool(s, "twin", UNTRAINED_FAMILIES)),
         "instruction_complies_self": ((c12.get("instruction_complies") or {}).get("self") or {}).get("mean"),
     }
     return vals[key]
@@ -136,7 +161,8 @@ def get(s, key):
 
 CELL_KEYS = ["Y12", "Y12_gold", "twin_primary", "noctx_primary", "twin_ctx", "noctx_ctx", "twin_minus_noctx_ctx",
              "gold_primary", "self_primary", "near_ctx", "split_cost_gold", "distance_cost_gold", "own_replies_cost",
-             "Y_gold_far", "Y_near_recall", "carry5_Y", "panel_fineweb", "panel_dialogue", "instruction_complies_self"]
+             "Y_gold_far", "Y_near_recall", "Y_trained", "Y_untrained", "carry5_Y", "panel_fineweb",
+             "panel_dialogue", "sft_panel_fineweb", "sft_panel_dialogue", "instruction_complies_self"]
 
 
 def by_distance(s, mode, family=None):
@@ -278,10 +304,74 @@ def w512_reproduction(runs, e1_home, lstar):
     return out
 
 
+CHAT_PARTS = {"chat": "chat/summary.json", "chat2": "chat2/summary.json", "qa": "qa/qa_summary.json"}
+CHAT_METRICS = ("clean_stop", "repeat_frac", "distinct2", "ref_bpb", "words")
+
+
+def load_chat(art):
+    """{seed: {part: {model: metrics}}} from B's machines' chat_c12_r<seed> jobs (chat_eval_vm.sh): the summaries
+    extracted, or read from chat_eval_results.tar.gz."""
+    import tarfile
+    out = {}
+    for d in sorted(glob.glob(os.path.join(art, "*", "chat_c12_r*")) + glob.glob(os.path.join(art, "chat_c12_r*"))):
+        seed = int(os.path.basename(d).rsplit("_r", 1)[1])
+        got = out.setdefault(seed, {})
+        tgz = os.path.join(d, "chat_eval_results.tar.gz")
+        members = {}
+        if os.path.exists(tgz):
+            with tarfile.open(tgz) as t:
+                for m in t.getmembers():
+                    name = m.name[2:] if m.name.startswith("./") else m.name
+                    if name in CHAT_PARTS.values() and m.isfile():
+                        members[name] = json.load(t.extractfile(m))
+        for part, rel in CHAT_PARTS.items():
+            p = os.path.join(d, rel)
+            if os.path.exists(p):
+                with open(p, encoding="utf-8") as f:
+                    got[part] = json.load(f)
+            elif rel in members:
+                got[part] = members[rel]
+    return out
+
+
+def chat_beside(chat, seeds, a="T", b="B"):
+    """Descriptive: per part and metric, the mean over seeds of each model and of a - b (chat: clean stops,
+    repetition, reference bits per byte; qa: simple-QA accuracy)."""
+    res = {"seeds_home": sorted(s for s in seeds if s in chat)}
+    if not res["seeds_home"]:
+        res["note"] = "not home: no chat_c12_r<seed> summaries under ART"
+        return res
+    for part in CHAT_PARTS:
+        rows = [chat[s][part] for s in res["seeds_home"] if part in chat[s]]
+        if not rows:
+            continue
+        keys = CHAT_METRICS if part != "qa" else ("all", "fact", "science", "arith", "turn")
+        blk = {}
+        for k in keys:
+            per = {m: [r[m][k] for r in rows if m in r and r[m].get(k) is not None] for m in ("B", "D", "T")}
+            diff = [r[a][k] - r[b][k] for r in rows if a in r and b in r and r[a].get(k) is not None
+                    and r[b].get(k) is not None]
+            blk[k] = {**{m: (st.mean(v) if v else None) for m, v in per.items()},
+                      f"{a}_minus_{b}": st.mean(diff) if diff else None, "n_seeds": len(diff)}
+        res[part] = blk
+    return res
+
+
+def safe_decide(xs, sesoi, direction, why):
+    if not xs or any(x is None for x in xs):
+        return {"verdict": "NOT READ", "why": why, "per_seed": xs}
+    return decide(xs, sesoi, direction)
+
+
+def paired_opt(runs, a, b, seeds, key):
+    """paired(), with None for a seed where either number is missing."""
+    return [sub(get(runs[(a, r)], key), get(runs[(b, r)], key)) for r in seeds]
+
+
 # ---------------------------------------------------------------- the analysis
-def analyze(runs, partial=False, lstar=8, r_sign=None, e1_home=None):
+def analyze(runs, partial=False, lstar=8, r_sign=None, e1_home=None, chat=None):
     p16 = "B" if lstar == 16 else "P16"
-    core = ["W512", "B", "D", "Sgist", "X"] + ([p16] if p16 != "B" else [])
+    core = ["W512", "B", "D", "T", "Sgist", "X"] + ([p16] if p16 != "B" else [])
     seeds = seeds_of(runs, core)
     miss = missing(runs, [c for c in core if c != "W512"], seeds) + missing(runs, ["W512"], seeds, "Y12_gold")
     present = sorted({c for c, _ in runs})
@@ -305,6 +395,37 @@ def analyze(runs, partial=False, lstar=8, r_sign=None, e1_home=None):
     hd = contrast("D", "B", "Y12", +1)
     hd["counter_HD_0"] = "confirmed (EQUIVALENT)" if hd["verdict"] == "EQUIVALENT" else "not confirmed"
     res["HD_D_minus_B"] = hd
+    # HT-SFT: the template-SFT cell against B, the transfer reading and the degradation checks beside it.
+    hts = contrast("T", "B", "Y12", +1)
+    hts["counter_HT_SFT_0"] = ("confirmed (EQUIVALENT: the templates teach their own format, not carry)"
+                               if hts["verdict"] == "EQUIVALENT" else "not confirmed")
+    res["HT_SFT_T_minus_B"] = hts
+    gi, go = paired_opt(runs, "T", "B", seeds, "Y_trained"), paired_opt(runs, "T", "B", seeds, "Y_untrained")
+
+    def transfer():
+        tr = safe_decide(gi, SESOI, +1, "a family pool missing")
+        un = safe_decide(go, SESOI, +1, "a family pool missing")
+        dif = safe_decide([sub(x, y) for x, y in zip(gi, go)], SESOI, +1, "a family pool missing")
+        reading = ("the gain reaches the families no template of T's has (transfer)" if un["verdict"] == "SUPPORTED"
+                   else "the gain stays in the trained families" if tr["verdict"] == "SUPPORTED" and
+                   un["verdict"] in ("EQUIVALENT", "CONTRADICTED", "SIGNIFICANT_BELOW_SESOI") else
+                   "no transfer reading: neither family pool's gain is SUPPORTED, or the untrained pool is not resolved")
+        return {"label": "SECONDARY (the registered reading beside HT-SFT)",
+                "trained_families": {**tr, "families": list(TRAINED_FAMILIES)},
+                "untrained_families": {**un, "families": list(UNTRAINED_FAMILIES)},
+                "trained_minus_untrained": dif, "reading": reading}
+    res["HT_SFT_transfer"] = gated(runs, ["T", "B"], seeds, transfer)
+    res["HT_SFT_beside"] = {
+        "rule": "degradation checks reported beside HT-SFT, not conditions on it: SUPPORTED = T worse than B beyond "
+                "the SESOI (Carry-5's Y lower by 3 points; a panel at the SFT weights higher by 0.02 nats)",
+        "carry5_Y_T_minus_B": safe_decide(paired_opt(runs, "T", "B", seeds, "carry5_Y"), SESOI, -1, "Carry-5 missing"),
+        "sft_panel_dialogue_T_minus_B": safe_decide(paired_opt(runs, "T", "B", seeds, "sft_panel_dialogue"),
+                                                    SESOI_LOSS, +1, "sft_panels missing (post --sft-panels)"),
+        "sft_panel_fineweb_T_minus_B": safe_decide(paired_opt(runs, "T", "B", seeds, "sft_panel_fineweb"),
+                                                   SESOI_LOSS, +1, "sft_panels missing (post --sft-panels)"),
+        "instruction_complies_self": {c: res["cells"][c]["instruction_complies_self"]["mean"] for c in ("B", "T")},
+        "chat_checks": chat_beside(chat or {}, seeds),
+        "pt_panels": "T's pretrained weights are B's, so its pretraining panels are B's by construction"}
     hs1 = contrast("Sgist", "B", "Y12", -1)
     hs1["HS1_alt"] = ("holds (the difference is at least -3 points)" if hs1["verdict"] in ("EQUIVALENT", "CONTRADICTED")
                       else "does not hold" if hs1["verdict"] in ("SUPPORTED", "SIGNIFICANT_BELOW_SESOI") else "undecided")
@@ -375,7 +496,8 @@ def main(argv=None):
     if lstar is None:
         with open(os.path.join(EXP, "size", "depth_choice.json"), encoding="utf-8") as f:
             lstar = int(json.load(f)["depth"])
-    res = {"partial": a.partial, "carry12": analyze(load(a.art), a.partial, lstar, a.r_sign, a.e1_home)}
+    res = {"partial": a.partial,
+           "carry12": analyze(load(a.art), a.partial, lstar, a.r_sign, a.e1_home, chat=load_chat(a.art))}
     text = json.dumps(res, indent=1, default=str)
     if a.out:
         with open(a.out, "w", encoding="utf-8", newline="\n") as f:

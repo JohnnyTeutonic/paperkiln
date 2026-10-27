@@ -13,23 +13,34 @@ TOOL = [sys.executable, str(ROOT / "experiments" / "tiny_chat_long_2026-10" / "a
 NOISE = {1: 0.0, 2: 0.004, 3: -0.004, 4: 0.002, 5: -0.002}
 
 
+FAM_N = {"recall": 480, "correction": 360, "topic": 360, "load": 120}
+
+
 def summary(cell, seed, y12, y12_gold=None, twin=0.80, noctx=0.25, rec_gold=0.70, rec_near=0.78, rec_twin=0.85,
-            corr=(0.70, 0.0), fw=3.40, gold_by_d=None, sft_sha="s"):
-    """A post summary as tiny_chat_run.py post writes it with --carry12-items: Y12 and Y12_gold at the top, and
-    carry12_read's pools, derived quantities and curves."""
+            corr=(0.70, 0.0), fw=3.40, gold_by_d=None, sft_sha="s", y_tr=None, y_un=None, sft_fw=3.30, sft_dl=2.60,
+            carry5=-0.04):
+    """A post summary as tiny_chat_run.py post writes it with --carry12-items (and --sft-panels): Y12 and Y12_gold at
+    the top, carry12_read's pools, derived quantities and curves; per family, self minus twin is Y_TR on recall and
+    correction and Y_UN on topic and load (both Y12 unless given)."""
     y12_gold = y12 + 0.02 if y12_gold is None else y12_gold
+    y_tr = y12 if y_tr is None else y_tr
+    y_un = y12 if y_un is None else y_un
     prim = {"twin": twin, "noctx": noctx, "gold": twin + y12_gold, "self": twin + y12, "near": twin - 0.02}
     ctx = dict(prim)
-    family = {"gold": {"recall": rec_gold}, "near": {"recall": rec_near}, "twin": {"recall": rec_twin}}
+    ftwin = {"recall": rec_twin, "correction": 0.80, "topic": 0.75, "load": 0.70}
+    family = {"gold": {"recall": rec_gold}, "near": {"recall": rec_near}, "twin": dict(ftwin),
+              "self": {f: v + (y_tr if f in ("recall", "correction") else y_un) for f, v in ftwin.items()}}
     fd = {"gold": {"correction": {str(d): {"mean": corr[0] + corr[1] * d, "n": 30} for d in range(1, 12)},
                    "recall": {str(d): {"mean": v, "n": 60} for d, v in (gold_by_d or {}).items()}}}
 
     def rows(d):
         return {m: {"mean": v, "n": 1000} for m, v in d.items()}
-    return {"cell": cell, "seed": seed, "primary": -0.04, "Y12": y12 if cell != "W512" else None, "Y12_gold": y12_gold,
-            "panels": {"fineweb": fw, "dialogue": 3.0}, "sft_weights_sha256": sft_sha, "pt_weights_sha256": "p",
+    return {"cell": cell, "seed": seed, "primary": carry5, "Y12": y12 if cell != "W512" else None,
+            "Y12_gold": y12_gold, "panels": {"fineweb": fw, "dialogue": 3.0},
+            **({"sft_panels": {"fineweb": sft_fw, "dialogue": sft_dl}} if cell in ("B", "D", "T") else {}),
+            "sft_weights_sha256": sft_sha, "pt_weights_sha256": "p",
             "carry12": {"pools": {"acc": {"primary": rows(prim), "context": rows(ctx),
-                                          "family": {m: {f: {"mean": v, "n": 480} for f, v in fs.items()}
+                                          "family": {m: {f: {"mean": v, "n": FAM_N[f]} for f, v in fs.items()}
                                                      for m, fs in family.items()}}},
                         "derived": {"Y12_self": y12, "Y12_gold": y12_gold, "split_cost_gold": -0.02,
                                     "distance_cost_gold": y12_gold + 0.02, "own_replies_cost": y12 - y12_gold},
@@ -43,19 +54,21 @@ def put(art, s, machine=None):
 
 
 def core(art, seeds=(1, 2, 3), **over):
-    """The registered core with clear effects: HT +6 points, D = B, S-gist -8 points, X +1 point overall with a
-    gap gain (far recall +5 points against near +0) rising 1.5 points per turn of distance in correction."""
+    """The registered core with clear effects: HT +6 points, D = B, T +5 points (+6 on the trained families,
+    +1 on the untrained), S-gist -8 points, X +1 point overall with a gap gain (far recall +5 points against near +0)
+    rising 1.5 points per turn of distance in correction."""
     for r in seeds:
         n = NOISE[r]
         cells = {"W512": dict(y12=-0.06, y12_gold=-0.06 + n, fw=3.50),
                  "B": dict(y12=-0.03 + n, y12_gold=0.0 + n, fw=3.40, gold_by_d={6: 0.70, 9: 0.60, 12: 0.50}),
                  "D": dict(y12=-0.03 + 1.5 * n, fw=3.40),
+                 "T": dict(y12=0.02 + n, fw=3.40, y_tr=0.03 + n, y_un=-0.02 + n),
                  "Sgist": dict(y12=-0.11 + n, fw=3.41, gold_by_d={6: 0.60, 9: 0.48, 12: 0.40}),
                  "P16": dict(y12=-0.02 + n, fw=3.36, rec_gold=0.70, rec_near=0.78, corr=(0.70, 0.0)),
                  "X": dict(y12=-0.01 + 2 * n, fw=3.30, rec_gold=0.75 + n, rec_near=0.78, corr=(0.66, 0.015 + n))}
         for c, kw in cells.items():
             kw.update({k: (v(n) if callable(v) else v) for k, v in over.get(c, {}).items()})
-            put(art, summary(c, r, **kw), machine=f"c12_{'B' if c in ('D', 'W512') else c}_r{r}")
+            put(art, summary(c, r, **kw), machine=f"c12_{'B' if c in ('D', 'T', 'W512') else c}_r{r}")
 
 
 def run(art, *extra):
@@ -68,7 +81,7 @@ def test_registered_contrasts_and_verdicts(tmp_path):
     rc, res = run(tmp_path)
     assert rc == 0, res
     assert res["seeds"] == [1, 2, 3] and res["label"].startswith("REGISTERED")
-    assert all(res["validity_gate"][c] for c in ("W512", "B", "D", "Sgist", "P16", "X"))
+    assert all(res["validity_gate"][c] for c in ("W512", "B", "D", "T", "Sgist", "P16", "X"))
     ht = res["HT_B_minus_W512_Y12_gold"]
     assert ht["verdict"] == "SUPPORTED" and abs(ht["mean"] - 0.06) < 1e-9 and ht["counter_HT_0"] == "not confirmed"
     hd = res["HD_D_minus_B"]
@@ -199,3 +212,106 @@ def test_w512_reproduction_against_e1_home(tmp_path):
     w = res["w512_reproduces_e1"]
     assert w["1"]["sft_weights_identical"] and not w["2"]["sft_weights_identical"] and w["3"]["pt_weights_identical"]
     assert abs(w["1"]["panel_fineweb_diff"]) < 1e-12
+
+
+def test_ht_sft_supported_with_the_transfer_reading(tmp_path):
+    """HT-SFT: T 5 points above B is SUPPORTED, its counter not confirmed; the trained families (recall, correction)
+    gain 6 points (SUPPORTED) and the untrained ones (topic, load) 1 point (EQUIVALENT): the gain stays in the
+    trained families. The checks beside it: Carry-5 and the SFT panels equal (EQUIVALENT), chat checks not home."""
+    core(tmp_path)
+    rc, res = run(tmp_path)
+    assert rc == 0, res
+    h = res["HT_SFT_T_minus_B"]
+    assert h["verdict"] == "SUPPORTED" and abs(h["mean"] - 0.05) < 1e-9 and h["counter_HT_SFT_0"] == "not confirmed"
+    tr = res["HT_SFT_transfer"]
+    assert tr["trained_families"]["verdict"] == "SUPPORTED" and abs(tr["trained_families"]["mean"] - 0.06) < 1e-9
+    assert tr["untrained_families"]["verdict"] == "EQUIVALENT" and abs(tr["untrained_families"]["mean"] - 0.01) < 1e-9
+    assert tr["trained_minus_untrained"]["verdict"] == "SUPPORTED" and tr["reading"].startswith("the gain stays")
+    assert tr["trained_families"]["families"] == ["recall", "correction"]
+    b = res["HT_SFT_beside"]
+    assert b["carry5_Y_T_minus_B"]["verdict"] == "EQUIVALENT"
+    assert b["sft_panel_dialogue_T_minus_B"]["verdict"] == "EQUIVALENT"
+    assert b["chat_checks"]["note"].startswith("not home")
+    assert res["cells"]["T"]["Y_trained"]["n"] == 3 and res["cells"]["T"]["sft_panel_dialogue"]["mean"] == 2.60
+
+
+def test_ht_sft_equivalent_transfer_and_degradation(tmp_path):
+    """T equal to B: HT-SFT EQUIVALENT confirms its counter (the templates teach their own format). T 4 points up on
+    every family transfers; T's Carry-5 4 points down and its dialogue panel at the SFT weights 0.05 nats up are
+    SUPPORTED as degradation beside it."""
+    core(tmp_path, T={"y12": lambda n: -0.03 + n, "y_tr": lambda n: -0.03 + n, "y_un": lambda n: -0.03 + n})
+    rc, res = run(tmp_path)
+    assert res["HT_SFT_T_minus_B"]["verdict"] == "EQUIVALENT"
+    assert res["HT_SFT_T_minus_B"]["counter_HT_SFT_0"].startswith("confirmed")
+    assert res["HT_SFT_transfer"]["reading"].startswith("no transfer reading")
+    core(tmp_path, T={"y12": lambda n: 0.01 + n, "y_tr": lambda n: 0.01 + n, "y_un": lambda n: 0.01 + n,
+                      "carry5": -0.08, "sft_dl": 2.65})
+    rc, res = run(tmp_path)
+    assert rc == 0, res
+    tr = res["HT_SFT_transfer"]
+    assert tr["untrained_families"]["verdict"] == "SUPPORTED" and tr["reading"].endswith("(transfer)")
+    assert tr["trained_minus_untrained"]["verdict"] == "EQUIVALENT"
+    b = res["HT_SFT_beside"]
+    assert b["carry5_Y_T_minus_B"]["verdict"] == "SUPPORTED" and abs(b["carry5_Y_T_minus_B"]["mean"] + 0.04) < 1e-9
+    assert b["sft_panel_dialogue_T_minus_B"]["verdict"] == "SUPPORTED"
+    assert b["sft_panel_fineweb_T_minus_B"]["verdict"] == "EQUIVALENT"
+
+
+def test_ht_sft_floor_and_missing_sft_panels(tmp_path):
+    """T on the FLOOR: HT-SFT and the transfer reading are not read. Without sft_panels the panel checks say NOT
+    READ instead of failing."""
+    core(tmp_path, T={"twin": 0.30})
+    rc, res = run(tmp_path)
+    assert rc == 0, res
+    assert res["HT_SFT_T_minus_B"]["verdict"].startswith("FLOOR") and "T" in res["HT_SFT_T_minus_B"]["verdict"]
+    assert res["HT_SFT_transfer"]["verdict"].startswith("FLOOR")
+    core(tmp_path)
+    for r in (1, 2, 3):
+        p = tmp_path / f"c12_B_r{r}" / f"post_c12_T_r{r}" / "summary.json"
+        s = json.loads(p.read_text())
+        s.pop("sft_panels")
+        p.write_text(json.dumps(s))
+    rc, res = run(tmp_path)
+    assert rc == 0, res
+    assert res["HT_SFT_beside"]["sft_panel_dialogue_T_minus_B"]["verdict"] == "NOT READ"
+
+
+def test_t_is_in_the_core(tmp_path):
+    core(tmp_path)
+    (tmp_path / "c12_B_r2" / "post_c12_T_r2" / "summary.json").unlink()
+    rc, err = run(tmp_path)
+    assert rc != 0 and "'T', 2" in err
+
+
+def test_chat_checks_from_the_tarball_and_folders(tmp_path):
+    """The chat-prompt checks of B's machines: chat/summary.json and qa/qa_summary.json read from
+    chat_eval_results.tar.gz (seed 1) or extracted (seeds 2-3); T - B per metric, means over seeds."""
+    import io
+    import tarfile
+    core(tmp_path)
+
+    def chat(seed, bump):
+        return {m: {"clean_stop": 1.0 - (bump if m == "T" else 0.0), "repeat_frac": 0.01, "distinct2": 0.99,
+                    "ref_bpb": 2.5 + (bump if m == "T" else 0.0), "words": 15.0} for m in ("B", "D", "T")}
+    for r in (1, 2, 3):
+        d = tmp_path / f"c12_B_r{r}" / f"chat_c12_r{r}"
+        d.mkdir(parents=True)
+        parts = {"chat/summary.json": chat(r, 0.1), "qa/qa_summary.json": {m: {"all": 0.2} for m in ("B", "D", "T")}}
+        if r == 1:
+            with tarfile.open(d / "chat_eval_results.tar.gz", "w:gz") as t:
+                for name, obj in parts.items():
+                    data = json.dumps(obj).encode()
+                    info = tarfile.TarInfo("./" + name)
+                    info.size = len(data)
+                    t.addfile(info, io.BytesIO(data))
+        else:
+            for name, obj in parts.items():
+                (d / name).parent.mkdir(parents=True, exist_ok=True)
+                (d / name).write_text(json.dumps(obj))
+    rc, res = run(tmp_path)
+    assert rc == 0, res
+    cc = res["HT_SFT_beside"]["chat_checks"]
+    assert cc["seeds_home"] == [1, 2, 3]
+    assert abs(cc["chat"]["ref_bpb"]["T_minus_B"] - 0.1) < 1e-9 and cc["chat"]["ref_bpb"]["n_seeds"] == 3
+    assert abs(cc["chat"]["clean_stop"]["T"] - 0.9) < 1e-9 and cc["qa"]["all"]["T_minus_B"] == 0.0
+    assert "chat2" not in cc

@@ -856,16 +856,16 @@ def cmd_screen(a):
 PANEL_WINDOWS = int(os.environ.get("TINY_CHAT_PANEL_WINDOWS", 512))  # override: tests only (CPU toys)
 
 
-def zero_rate_panels(shape, weights, out, panel_kvs):
+def zero_rate_panels(shape, weights, out, panel_kvs, prefix="panel"):
     """{name: nats/token} for each NAME=IDS panel: 1 step at lr 0 from the weights, 512 held-out
-    windows (the weights stay byte-identical). Finished panels are not rerun."""
+    windows (the weights stay byte-identical), in OUT/<prefix>_<name>. Finished panels are not rerun."""
     res = {}
     for kv in panel_kvs:
         name, path = kv.split("=", 1)
-        d = os.path.join(out, f"panel_{name}")
+        d = os.path.join(out, f"{prefix}_{name}")
         if not os.path.exists(os.path.join(d, "result.json")):
             shutil.rmtree(d, ignore_errors=True)  # init_from applies to fresh runs only
-            spec = {"name": f"panel_{name}", "arch": shape["arch"],
+            spec = {"name": f"{prefix}_{name}", "arch": shape["arch"],
                     "data": {**shape["data"], "corpus": path, "max_tokens": 0},
                     "train": {"steps": 1, "lr": 0.0, "batch": 1, "accum": 1, "eval_every": 1, "eval_windows": PANEL_WINDOWS,
                               "checkpoint_every": 10 ** 7, "gradmap_every": 0, "seed": 1, "optimizer": "adamw",
@@ -1037,7 +1037,8 @@ def cmd_post(a):
         depth_ok = not mor or (bool(prev.get("mor_depth")) and "error" not in prev["mor_depth"])
         c5_ok = not c5_on or prev.get("primary") is not None
         c12_ok = not c12_on or (bool(prev.get("carry12")) and "error" not in prev["carry12"])
-        if c5_ok and depth_ok and c12_ok:
+        sp_ok = not getattr(a, "sft_panels", False) or bool(prev.get("sft_panels"))
+        if c5_ok and depth_ok and c12_ok and sp_ok:
             print(f"{done}: present")
             return 0
     preflight(a.carry5_items)
@@ -1078,6 +1079,8 @@ def cmd_post(a):
     sw = os.path.join(sd, model + ".safetensors")
     s["sft_weights_sha256"] = sha256(sw)
     s["sft_data_sha256"] = sha256(sft["data"]["sft_examples"])
+    if getattr(a, "sft_panels", False):  # the long programme's B, D and T: the same panels at the SFT weights
+        s["sft_panels"] = zero_rate_panels(shape, sw, a.out, a.panel, prefix="sft_panel")
     # 3. Carry-5: the SFT model with generated (self) history (required), then the base model
     #    teacher-forced only (descriptive; a failure is recorded, not fatal).
     #    Generation: --gen ember picks the engine by choose_engine (ember's CUDA server when its spot-check
@@ -1604,6 +1607,8 @@ def main(argv=None):
     p.add_argument("--carry12-spot", type=int, default=20, help="Carry-12's ember vs mtstudio spot-check items")
     p.add_argument("--no-carry5", action="store_true",
                    help="skip Carry-5 and base-model Carry-5 (cell W512's re-run SFT: Carry-12 alone)")
+    p.add_argument("--sft-panels", action="store_true",
+                   help="also read the panels at the SFT weights (summary sft_panels; Carry-12 cells B, D and T)")
     p.add_argument("--ember-commit", default=None,
                    help="the ember commit to generate with (default EMBER_COMMIT; amendment 5 pins its own in the jobs file)")
     p = sub.add_parser("pick")

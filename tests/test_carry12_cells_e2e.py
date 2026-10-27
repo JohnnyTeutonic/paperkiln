@@ -1,17 +1,21 @@
 """Carry-12's cells end to end on CPU at toy size (PREREGISTRATION_DRAFT.md's licence: the jobs files exercised
 end to end before the freeze). For every machine file tools/colab_chat/carry12_<cell>_r<seed>.json:
 
-- the data jobs (tiny_chat_data.py at T 1,024 with --carry12 and cell D's long set; E1's at T 512 for W512) on toy
-  FineWeb and toy dialogues;
+- the data jobs (tiny_chat_data.py at T 1,024 with --carry12, cell D's long set and cell T's template rows,
+  --template-sft; E1's at T 512 for W512) on toy FineWeb and toy dialogues;
 - the pretraining job's own spec (the jobs file's, with only the width, depth, vocabulary, corpus and step count
   made toy: T 1,024, 16 x 1 or 8 x 2, state tokens for S-gist, attention residuals for X), by `mtstudio run`, which
   exports safetensors and GGUF;
 - every post job's own command line (the jobs file's, with the VM's paths mapped here): SFT (16 x 1,024 per step by
-  --sft-batching spec; D's on the long set; W512's E1 SFT at T 512), the zero-rate panels, Carry-5 with ember
+  --sft-batching spec; D's on the long set; T's on the human rows plus the template rows; W512's E1 SFT at T 512),
+  the zero-rate panels (B, D and T: at the SFT weights too, --sft-panels), Carry-5 with ember
   generation after the spot-check and base-model Carry-5, then Carry-12 (forced choice in gold, self, near, twin and
   noctx; self history to the target at --max-new 48 by ember ec3201b after its spot-check, every reply through the
   parity gate; W512: forced choice only), on subsets of Carry-5 (every 26th item) and Carry-12 (every 110th);
-- analyze.py on the post summaries (with C12_TOY_SEEDS=1,2,3 the registered path, otherwise --partial).
+- the chat-prompt checks of B's machines (chat_c12_r<seed>: chat_eval_vm.sh on the VM) as tools/chat_eval.py on the
+  toy B, D and T SFT models through ember's CPU server, a few prompts;
+- analyze.py on the post summaries and the chat checks (with C12_TOY_SEEDS=1,2,3 the registered path, otherwise
+  --partial).
 
 Needs POSIX, MTSTUDIO_BIN and TINY_CHAT_TEST_EMBER_DIR: an ember CPU build at ec3201b laid out as
 tiny_chat_run.ensure_ember leaves it (EMBER_DIR/build/tinyllama_server and ember_build.json naming that commit).
@@ -30,6 +34,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(ROOT / "tests"))
 import bpe  # noqa: E402
 import carry5_eval as ce  # noqa: E402
+import carry12_tsft_build as TS  # noqa: E402
 from test_tiny_chat_pipeline import DATA, WORDS, dialogues, fineweb  # noqa: E402
 
 BIN = os.environ.get("MTSTUDIO_BIN")
@@ -120,15 +125,18 @@ def toy(tmp_path_factory):
     c12 = ce.read_jsonl(ROOT / "corpus" / "eval" / "carry12_v1.jsonl")[::110]
     (t / "c5.jsonl").write_text("".join(json.dumps(x) + "\n" for x in c5), encoding="utf-8")
     (t / "c12.jsonl").write_text("".join(json.dumps(x) + "\n" for x in c12), encoding="utf-8")
+    tsft = TS.build_rows()  # cell T's template rows join the toy vocabulary's text, so they fit T 1,024 whole
     text = " ".join(WORDS) * 30 + " " + " ".join(
         x["user"] + " " + x["gold"] for it in c5 + c12 for x in it["turns"]) + " " + " ".join(
-        it["frame"].format(c) for it in c5 + c12 for c in it["candidates"]) + " where is in and 0 1 2 3"
+        it["frame"].format(c) for it in c5 + c12 for c in it["candidates"]) + " " + " ".join(
+        m["content"] for r in tsft[::8] for m in r["messages"]) + " where is in and 0 1 2 3"
     bpe.write_gguf(str(t / "v.gguf"), bpe.train(text, 700))
     common = ["--vocab", str(t / "v.gguf"), "--fineweb", str(t / "fw"), "--shares", "35", "--mix-bytes", "300000",
               "--max-epochs", "4", "--seed", "1", "--human-dir", str(t / "human"), "--human-fetch", ""]
-    run(DATA + ["--out", str(t / "data"), "--T", "1024", "--carry12", "--long-sft", "3:4", *common])
+    run(DATA + ["--out", str(t / "data"), "--T", "1024", "--carry12", "--long-sft", "3:4", "--template-sft", *common])
     run(DATA + ["--out", str(t / "data512"), "--T", "512", *common])
-    for f in ("mix_s35.ids", "sft_human.jsonl", "sft_human_long4.jsonl", "panel_fineweb.ids", "panel_dialogue.ids"):
+    for f in ("mix_s35.ids", "sft_human.jsonl", "sft_human_long4.jsonl", "sft_human_tsft.jsonl", "panel_fineweb.ids",
+              "panel_dialogue.ids"):
         assert (t / "data" / f).exists(), f
     return t
 
@@ -187,7 +195,7 @@ def cells_home(toy):
         for machine in ("B", "Sgist", "P16", "X"):
             j = jobs(machine, seed)
             w = pretrain(toy, machine, seed)
-            for cell in [machine] + (["D", "W512"] if machine == "B" else []):
+            for cell in [machine] + (["D", "T", "W512"] if machine == "B" else []):
                 cmd = j[f"post_c12_{cell}_r{seed}"]["cmd"]
                 ww = pretrain(toy, "W512", seed) if cell == "W512" else w
                 got[(cell, seed)] = post(toy, machine, cmd, cell, seed, ww, art)
@@ -226,15 +234,23 @@ def test_post_summaries(cells_home):
         for mode in ("gold", "self", "near", "twin", "noctx"):
             assert c12["pools"]["acc"]["primary"][mode]["n"] > 0, (cell, mode)
         assert c12["over_ctx"]["gold"] == 0, (cell, c12["over_ctx"])
-        out = art / f"c12_{'B' if cell == 'D' else cell}_r{seed}" / f"post_c12_{cell}_r{seed}"
-        for f in json.loads((COLAB / f"carry12_{'B' if cell == 'D' else cell}_r{seed}.json").read_text())["jobs"]:
+        machine = "B" if cell in ("D", "T") else cell
+        assert ("sft_panels" in s) == (machine == "B"), cell
+        if machine == "B":
+            assert set(s["sft_panels"]) == {"fineweb", "dialogue"}
+        out = art / f"c12_{machine}_r{seed}" / f"post_c12_{cell}_r{seed}"
+        for f in json.loads((COLAB / f"carry12_{machine}_r{seed}.json").read_text())["jobs"]:
             if f["name"] == f"post_c12_{cell}_r{seed}":
                 missing = [o for o in f["outputs"] if not (out / o).exists()]
                 assert not missing, (cell, missing)  # every output the jobs file brings home exists
-    # D trained on the long set from B's weights; S-gist's GGUF declares its state tokens; X's its residuals
+    # D trained on the long set and T on the template rows, both from B's weights with B's steps; S-gist's GGUF
+    # declares its state tokens; X's its residuals
     for seed in SEEDS:
-        assert got[("D", seed)]["pt_weights_sha256"] == got[("B", seed)]["pt_weights_sha256"]
-        assert got[("D", seed)]["sft_data_sha256"] != got[("B", seed)]["sft_data_sha256"]
+        for c in ("D", "T"):
+            assert got[(c, seed)]["pt_weights_sha256"] == got[("B", seed)]["pt_weights_sha256"]
+            assert got[(c, seed)]["sft_data_sha256"] != got[("B", seed)]["sft_data_sha256"]
+            assert got[(c, seed)]["sft_result"].get("steps") == got[("B", seed)]["sft_result"].get("steps")
+        assert got[("T", seed)]["panels"] == got[("B", seed)]["panels"]  # one pretrained model
         g = art / f"c12_Sgist_r{seed}" / f"post_c12_Sgist_r{seed}" / "sft" / f"tc_sft_Sgist_r{seed}.gguf"
         assert ce.state_template(str(g))[1] == 4
         assert got[("X", seed)]["arch"]["attn_res"] == {"form": "full", "scale": "sources"}
@@ -252,6 +268,28 @@ def test_rerun_is_idempotent(cells_home, toy):
     assert (out / "summary.json").read_text() == before
 
 
+def test_chat_checks_on_the_toy_models(cells_home):
+    """B's machines' last job, chat_c12_r<seed>, runs chat_eval_vm.sh on the VM (ember's CUDA build, the CUDA
+    mtstudio); here its tools/chat_eval.py step on the toy B, D and T SFT models named by the job's own NAME@JOB
+    arguments, through ember's CPU server: the three models side by side on a few prompts."""
+    art, got = cells_home
+    for seed in SEEDS:
+        ch = jobs("B", seed)[f"chat_c12_r{seed}"]
+        out = art / f"c12_B_r{seed}" / f"chat_c12_r{seed}"
+        if not (out / "chat" / "summary.json").exists():
+            models = []
+            for x in ch["cmd"][3:]:
+                name, job = x.split("@", 1)
+                models += ["--model", f"{name}={art / f'c12_B_r{seed}' / job}_spec.json"]
+            run([sys.executable, "tools/chat_eval.py", "--mtstudio", BIN, "--ember-bin",
+                 str(Path(EMBER_DIR) / "build" / "tinyllama_server"), "--port", str(8190 + seed), *models,
+                 "--prompts", "corpus/eval/tinychat_hf_prompts_v1.jsonl", "--out", str(out / "chat"), "--n", "1",
+                 "--temp", "0.7", "--max-new", "8", "--limit", "3"])
+        s = json.loads((out / "chat" / "summary.json").read_text())
+        assert set(s) == {"B", "D", "T"} and all(s[m]["samples"] == 3 for m in s)
+        assert all(s[m]["ref_bpb"] is not None for m in s)
+
+
 def test_analyze_on_the_toy_outputs(cells_home, tmp_path):
     art, got = cells_home
     tool = [sys.executable, str(LONG / "analyze.py"), "--art", str(art), "--lstar", "8", "--out",
@@ -261,13 +299,16 @@ def test_analyze_on_the_toy_outputs(cells_home, tmp_path):
     p = subprocess.run(tool, capture_output=True, text=True, cwd=ROOT)
     assert p.returncode == 0, p.stderr[-3000:]
     res = json.loads((tmp_path / "a.json").read_text())["carry12"]
-    assert set(res["cells"]) == {"W512", "B", "D", "Sgist", "P16", "X"}
+    assert set(res["cells"]) == {"W512", "B", "D", "T", "Sgist", "P16", "X"}
     assert all(res["cells"][c]["Y12_gold"]["n"] == len(SEEDS) for c in res["cells"])
     if SEEDS == [1, 2, 3]:
-        for k in ("HT_B_minus_W512_Y12_gold", "HD_D_minus_B", "HS1_Sgist_minus_B", "HX_gap_D_X",
+        for k in ("HT_B_minus_W512_Y12_gold", "HD_D_minus_B", "HT_SFT_T_minus_B", "HT_SFT_transfer",
+                  "HS1_Sgist_minus_B", "HX_gap_D_X",
                   "HX_gap_correction_slope", "HX_H_gap", "HX_main_X_minus_P16", "HX_isoplot_residual"):
             assert "verdict" in res[k], k
         assert set(res["validity_gate"]) == set(res["cells"])
+        assert res["HT_SFT_beside"]["chat_checks"]["seeds_home"] == SEEDS
+        assert res["HT_SFT_beside"]["sft_panel_dialogue_T_minus_B"]["n"] == 3
     else:
         assert res["label"] == "DESCRIPTIVE, PARTIAL"
     shutil.copyfile(tmp_path / "a.json", art / "analysis_toy.json")

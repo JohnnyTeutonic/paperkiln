@@ -11,8 +11,9 @@ Writes
   experiments/tiny_chat_long_2026-10/specs/cell_<B|Sgist|P16|X>.json   pretraining specs at T 1,024
   experiments/tiny_chat_long_2026-10/specs/sft_T1024.json              the SFT template (16 x 1,024 per step)
   experiments/tiny_chat_long_2026-10/specs/sft_T1024_long4.json        cell D's (sft_human_long4.jsonl)
+  experiments/tiny_chat_long_2026-10/specs/sft_T1024_tsft.json         cell T's (sft_human_tsft.jsonl)
   experiments/tiny_chat_long_2026-10/specs/sft_w512.json               cell W512's re-run (E1's template, T 512)
-  tools/colab_chat/carry12_<B|Sgist|P16|X>_r<1|2|3>.json               one machine each; D and W512 on B's
+  tools/colab_chat/carry12_<B|Sgist|P16|X>_r<1|2|3>.json               one machine each; D, T and W512 on B's
 
 The cells (section 6): B is 60m_L* at T 1,024 (L* = experiments/tiny_chat_2026-10/size/depth_choice.json); S-gist
 is B plus k = 4 state slots under the turn_state mask (arch.state_tokens); P16 is plain 60m_L16 (dropped when
@@ -32,14 +33,22 @@ spot-check, base-model Carry-5) and then Carry-12 (tools/carry12_eval.py: forced
 noctx by mtstudio score; self history to the target at --max-new 48 by ember after its 20-item spot-check; no
 near_self; every reply through the parity gate), all generation at ember ec3201b with EMBER_GEMM_TF32=0 and
 EMBER_DETERMINISTIC=1. B's machine also runs D's post job from B's pretrained weights (sft_human_long4.jsonl, B's
-1,500 steps) and W512's: E1 at 60M's L* runs (T 512) have no per-seed SFT model at home (their post jobs kept them
-on the VM; Stage L0 scored the pick only), so W512's seed s is E1's pretrained weights (uploaded) through E1's own
-SFT (data512: E1's T 512 data job; E1's template; its sft_weights_sha256 is compared at home with E1's post
-summary) and Carry-12 forced choice (gold, near, twin, noctx; --carry12-gen none), all HT needs.
+1,500 steps), T's (the template-SFT cell: sft_human_tsft.jsonl, the same human rows plus the 4,224 pinned
+template dialogues of tools/carry12_tsft_build.py, 20% of its rows; B's 1,500 steps, so the SFT token budget is
+B's; its data job adds --template-sft) and W512's: E1 at 60M's L* runs (T 512) have no per-seed SFT model at home
+(their post jobs kept them on the VM; Stage L0 scored the pick only), so W512's seed s is E1's pretrained weights
+(uploaded) through E1's own SFT (data512: E1's T 512 data job; E1's template; its sft_weights_sha256 is compared at
+home with E1's post summary) and Carry-12 forced choice (gold, near, twin, noctx; --carry12-gen none), all HT
+needs. B, D and T read the panels again at their SFT weights (post --sft-panels: their pretrained weights are one,
+so only the SFT weights show what the SFT data did to general text and natural dialogue), and a last job
+(chat_c12_r<seed>, tools/colab_chat/chat_eval_vm.sh) runs the chat-prompt checks (tools/chat_eval.py on
+tinychat_hf_prompts_v1 and chat_prompts_v1: clean stops, repetition, reference bits per byte; tools/qa_eval.py on
+simple_qa_v1) on the three SFT models side by side, so a Carry-12 gain bought by degrading general chat shows.
 
 Nothing here launches: every file's gate refuses until the frozen PREREGISTRATION.md is committed, and the launch
 needs Jonathan's go on the measured total (section 11 item 6). At launch, each file runs under its own
-runner_multi.py entry (printed by this script) with its --max-usd cap: ceil(1.3 x estimate x $0.59).
+runner_multi.py entry (printed by this script) with its --max-usd cap: ceil(1.3 x estimate x $0.59), and its
+--max-hours: 23.5, or ceil(1.3 x estimate) when that is longer (B's machines, about 24 h of jobs).
 """
 from __future__ import annotations
 
@@ -87,6 +96,10 @@ E1_WALLS = os.path.join(HERE, "stage0", "e1_60m_walls_t512.json")
 COST_L8 = os.path.join(HERE, "stage0", "cost_pick_e1_60m_L8.l0.json")
 USD = 0.59
 CAP_MARGIN = 1.3
+MAX_HOURS = 23.5                 # runner_multi's default deadline; B's machines get ceil(1.3 x estimate)
+SFT_PANELS_H = 0.05              # per post job: the two panels again at the SFT weights (W512's allowance for its panels)
+CHAT_H = 0.5                     # per B machine: chat_eval_vm.sh on B, D and T (an allowance; not measured)
+TSFT_SHARE = 0.20                # T's template rows: 4,224 beside the T 1,024 data job's 16,932 human SFT rows
 VOCAB_UPLOAD = "vocab_llama3_bpe.gguf=/mnt/c/ml_artifacts/capacity/vocab/vocab_llama3_bpe.gguf"
 CELL_NAMES = {"B": "B", "Sgist": "S-gist", "P16": "P16", "X": "X"}
 
@@ -141,6 +154,7 @@ def cell_spec_path(cell):
 
 SFT_T1024 = f"{REL}/specs/sft_T1024.json"
 SFT_LONG4 = f"{REL}/specs/sft_T1024_long4.json"
+SFT_TSFT = f"{REL}/specs/sft_T1024_tsft.json"
 SFT_W512 = f"{REL}/specs/sft_w512.json"
 
 
@@ -157,21 +171,25 @@ def sft_templates():
     long4["data"]["sft_examples"] = f"{C}/data/sft_human_long4.jsonl"
     long4["_comment"] = ("Cell D's SFT: as sft_T1024.json on sft_human_long4.jsonl (the T 1,024 data job's SFT rows, "
                          "each row of 10+ trained turns four times; tiny_chat_data.py --long-sft 10:4), B's 1,500 steps.")
+    tsft = json.loads(json.dumps(t1024))
+    tsft["data"]["sft_examples"] = f"{C}/data/sft_human_tsft.jsonl"
+    tsft["_comment"] = ("Cell T's SFT: as sft_T1024.json on sft_human_tsft.jsonl (the T 1,024 data job's SFT rows once "
+                        "each plus the 4,224 pinned template dialogues of tools/carry12_tsft_build.py, 20% of the rows; "
+                        "tiny_chat_data.py --template-sft), B's 1,500 steps: the SFT token budget is B's.")
     w512 = json.loads(json.dumps(mj.SFT))
     w512["data"]["sft_examples"] = f"{C}/data512/sft_human.jsonl"
     w512["_comment"] = ("Cell W512's re-run: E1's SFT template (experiments/tiny_chat_2026-10/specs/sft.json) byte for "
                         "byte but the path: E1's T 512 data job runs as data512 beside the T 1,024 one.")
-    return {SFT_T1024: t1024, SFT_LONG4: long4, SFT_W512: w512}
+    return {SFT_T1024: t1024, SFT_LONG4: long4, SFT_TSFT: tsft, SFT_W512: w512}
 
 
 # ---------------------------------------------------------------- cost per machine (stage0/total.json)
-def hours():
-    """{cell: hours per machine} from the measured total; B's machine adds D and W512."""
+def additions():
+    """Hours per B machine beyond the measured core (stage0/total.json, whose B machine runs B and D): W512's
+    re-run; T at D's measured rates (SFT, the rest of the post job and Carry-12, from B's weights), plus its SFT
+    panels; the SFT panels of B and D; and the chat-prompt checks (an allowance)."""
     with open(TOTAL, encoding="utf-8") as f:
         tot = json.load(f)
-    c, mh = tot["cells"], tot["machine_h"]
-    with open(E1_WALLS, encoding="utf-8") as f:
-        walls = json.load(f)
     with open(COST_L8, encoding="utf-8") as f:
         cost = json.load(f)["cost_run"]["timing"]
     sid = f"60m_L{lstar()}"
@@ -180,13 +198,31 @@ def hours():
     # scaled by its rows (gold, near, twin, noctx x 4 candidates against five modes x 4 plus one gate row per reply).
     fc4, all_rows = 1452 * 4 * 4, 1452 * 5 * 4 + 17424
     w512 = sft512 + cost["score_s"] * fc4 / all_rows / 3600 + 0.05   # + its panels
-    out = {"B": mh + c["B"]["per_run_h"] + c["D"]["per_run_h"] + w512, "Sgist": mh + c["S-gist"]["per_run_h"],
-           "P16": mh + c["P16"]["per_run_h"], "X": mh + c["X"]["per_run_h"]}
-    return {k: v for k, v in out.items() if k in cells()}, w512, walls
+    return {"W512": w512, "T": tot["cells"]["D"]["per_run_h"] + SFT_PANELS_H, "sft_panels_B_D": 2 * SFT_PANELS_H,
+            "chat": CHAT_H}
+
+
+def hours():
+    """{cell: hours per machine} from the measured total; B's machine adds D (in the measured core) and
+    additions(): W512, T, the SFT panels and the chat-prompt checks."""
+    with open(TOTAL, encoding="utf-8") as f:
+        tot = json.load(f)
+    c, mh = tot["cells"], tot["machine_h"]
+    with open(E1_WALLS, encoding="utf-8") as f:
+        walls = json.load(f)
+    add = additions()
+    out = {"B": mh + c["B"]["per_run_h"] + c["D"]["per_run_h"] + sum(add.values()),
+           "Sgist": mh + c["S-gist"]["per_run_h"], "P16": mh + c["P16"]["per_run_h"], "X": mh + c["X"]["per_run_h"]}
+    return {k: v for k, v in out.items() if k in cells()}, add["W512"], walls
 
 
 def cap(h):
     return int(math.ceil(h * USD * CAP_MARGIN))
+
+
+def max_hours(h):
+    """The runner's deadline: 23.5 h, or ceil(1.3 x estimate) for a machine whose jobs run longer."""
+    return max(MAX_HOURS, float(math.ceil(h * CAP_MARGIN)))
 
 
 # ---------------------------------------------------------------- jobs
@@ -199,6 +235,19 @@ def post_outputs(cell, seed):
     return ["summary.json", "carry12/summary.json", "carry12/m/items.jsonl", "carry12/m/gen.jsonl",
             "carry12/m/gen_engine.json", "carry5/m/items.jsonl", "carry5/m/gen.jsonl", "gen_engine.json",
             "sft_spec.json", f"sft/tc_sft_{cell}_r{seed}.safetensors", f"sft/tc_sft_{cell}_r{seed}.gguf"]
+
+
+CHAT_CELLS = ["B", "D", "T"]
+
+
+def chat_job(seed):
+    """The chat-prompt checks on B's, D's and T's SFT models side by side (chat_eval_vm.sh: tools/chat_eval.py on
+    tinychat_hf_prompts_v1 and chat_prompts_v1, tools/qa_eval.py on simple_qa_v1, through ember's CUDA server and
+    the CUDA mtstudio); each model is NAME@JOB, its post job's SFT spec (/content/chat/<post>/sft_spec.json)."""
+    return {"name": f"chat_c12_r{seed}", "after": [f"post_c12_{c}_r{seed}" for c in CHAT_CELLS],
+            "cmd": ["bash", "tools/colab_chat/chat_eval_vm.sh", "{out}",
+                    *(f"{c}@post_c12_{c}_r{seed}/sft" for c in CHAT_CELLS)],
+            "outputs": ["chat_eval_results.tar.gz"]}
 
 
 def jobs_name(cell, seed):
@@ -218,6 +267,8 @@ def machine_doc(cell, seed, est):
     cuda = {"name": "cuda_gate", "cmd": ["python3", RUN, "cuda_gate", "--out", "{out}"],
             "outputs": ["cuda_gate.json", "cuda_gate.log"]}
     data = {"name": "data", "light": True, "cmd": s0.data_cmd(), "outputs": ["data.ledger.json", "human_decontam.json"]}
+    if cell == "B":  # T's SFT set: the same data job plus the pinned template rows (its other outputs unchanged)
+        data = {**data, "cmd": data["cmd"] + ["--template-sft"], "outputs": data["outputs"] + ["tsft_decontam.json"]}
     gate = {"name": "gate", "cmd": ["python3", RUN, "gate", "--out", "{out}", "--jobs", f"tools/colab_chat/{name}",
                                     "--choice", CHOICE, "--design", DESIGN, "--need-cuda-gate", CUDA_GATE_HOME,
                                     "--need-file", FROZEN],
@@ -228,16 +279,20 @@ def machine_doc(cell, seed, est):
             {"name": pt, "model_name": model, "after": ["data", "gate", "cuda_gate"], "relay_every_steps": 2500,
              "spec": spec}]
 
+    sftp = ["--sft-panels"] if cell == "B" else []   # B, D and T: the panels at the SFT weights too
+
     def post(c, sft, sp=cell_spec_path(cell)):
         return {"name": f"post_c12_{c}_r{seed}", "after": pt, "init_job": pt,
                 "cmd": ["python3", RUN, "post", "--out", "{out}", "--spec", sp, "--pt-weights",
                         f"{C}/{pt}/{model}.safetensors", "--pt-dir", f"{C}/{pt}", "--sft-template", sft,
-                        "--seed", str(seed), "--cell", c, "--share", str(SHARE), *mj.PANELS, *mj.ITEMS, *POST_C12],
+                        "--seed", str(seed), "--cell", c, "--share", str(SHARE), *mj.PANELS, *mj.ITEMS, *POST_C12,
+                        *sftp],
                 "outputs": post_outputs(c, seed)}
     jobs.append(post(cell, SFT_T1024))
     uploads = [VOCAB_UPLOAD]
     if cell == "B":
         jobs.append(post("D", SFT_LONG4))
+        jobs.append(post("T", SFT_TSFT))
         jobs.append({**mj.data_job([SHARE]), "name": "data512", "light": True})
         w, src = w512_weights(seed)
         uploads.append(f"{w}={src}")
@@ -248,7 +303,9 @@ def machine_doc(cell, seed, est):
                              "--seed", str(seed), "--cell", "W512", "--share", str(SHARE), *PANELS_T512, *mj.ITEMS,
                              "--no-carry5", "--carry12-items", CARRY12, "--carry12-gen", "none"],
                      "outputs": ["summary.json", "carry12/summary.json", "carry12/m/items.jsonl", "sft_spec.json"]})
-    title = {"B": f"B (60m_L{lstar()} at T 1,024) and, from its pretrained weights, D; then W512's re-run",
+        jobs.append(chat_job(seed))
+    title = {"B": f"B (60m_L{lstar()} at T 1,024) and, from its pretrained weights, D and T; then W512's re-run and "
+                  f"the chat-prompt checks of B, D and T",
              "Sgist": f"S-gist (60m_L{lstar()} + k {K_STATE} state slots, turn_state, at T 1,024)",
              "P16": "P16 (plain 60m_L16 at T 1,024)", "X": "X (60m_L16 + full attention residuals at T 1,024)"}[cell]
     runner = runner_command(cell, seed, est, uploads)
@@ -265,26 +322,33 @@ def runner_command(cell, seed, est, uploads):
     tag = f"pk-c12-{cell.lower()}-r{seed}"
     return (f"python3 -u tools/colab_chat/runner_multi.py --backend runpod --gpu L4 --commit FREEZE_COMMIT --jobs "
             f"tools/colab_chat/{jobs_name(cell, seed)} --name {tag} --art /mnt/c/ml_artifacts/tiny_chat/c12_{cell}_r{seed} "
-            f"--state-dir /home/jonat/{tag.replace('-', '_')}_runner --max-hours 23.5 --volume-gb 80 "
+            f"--state-dir /home/jonat/{tag.replace('-', '_')}_runner --max-hours {max_hours(est):g} --volume-gb 80 "
             f"--max-usd {cap(est)} " + " ".join(f"--upload {u}" for u in uploads))
 
 
 def table():
     hs, w512, _ = hours()
+    add = additions()
     rows = ["| machine (x 3 seeds) | cells | L4 h per machine | cap per machine | VM-hours | USD |", "|---|---|---:|---:|---:|---:|"]
     tot = 0.0
     for cell, h in hs.items():
         tot += 3 * h
-        what = "B, D, W512" if cell == "B" else CELL_NAMES[cell]
+        what = "B, D, T, W512, chat checks" if cell == "B" else CELL_NAMES[cell]
         rows.append(f"| {CELL_NAMES[cell]} | {what} | {h:.2f} | ${cap(h)} | {3 * h:.1f} | {3 * h * USD:.2f} |")
     rows.append(f"| **all {3 * len(hs)} machines** | | | ${3 * sum(cap(h) for h in hs.values())} | **{tot:.1f}** | "
                 f"**{tot * USD:.2f}** |")
     with open(TOTAL, encoding="utf-8") as f:
         core = json.load(f)["core_vm_hours"]
-    rows.append(f"\nPer machine from stage0/total.json's rounded per-run hours. W512's re-run: {w512:.2f} h per seed (E1's "
-                f"SFT at T 512, its panels and Carry-12 forced choice in four modes), {3 * w512:.1f} VM-hours "
-                f"(${3 * w512 * USD:.2f}) beyond the measured total of the core, {core} VM-hours: "
-                f"{core + 3 * w512:.1f} VM-hours, ${(core + 3 * w512) * USD:.2f} with it.")
+    t = add["T"]
+    rest = add["sft_panels_B_D"] + add["chat"]
+    rows.append(f"\nPer machine from stage0/total.json's rounded per-run hours. Beyond its measured core, {core} VM-hours "
+                f"(${core * USD:.2f}): W512's re-run, {w512:.2f} h per seed (E1's SFT at T 512, its panels and Carry-12 "
+                f"forced choice in four modes), {3 * w512:.1f} VM-hours (${3 * w512 * USD:.2f}); T at D's measured rates "
+                f"plus its SFT panels, {t:.2f} h per seed, {3 * t:.1f} VM-hours (${3 * t * USD:.2f}); B's and D's SFT "
+                f"panels and the chat-prompt checks, {rest:.2f} h per machine, {3 * rest:.1f} VM-hours "
+                f"(${3 * rest * USD:.2f}). With W512 alone: {core + 3 * w512:.1f} VM-hours, "
+                f"${(core + 3 * w512) * USD:.2f}; with all of them: {tot:.1f} VM-hours, ${tot * USD:.2f}. "
+                f"B's machines: {hs['B']:.1f} h each, --max-hours {max_hours(hs['B']):g}.")
     return "\n".join(rows)
 
 
@@ -303,7 +367,7 @@ def main(argv=None):
             for seed in SEEDS:
                 name, doc, _ = machine_doc(cell, seed, hs[cell])
                 mj.write(os.path.join(COLAB, name), doc)
-        print(f"wrote {len(cells())} cell specs, 3 SFT templates and {3 * len(cells())} jobs files "
+        print(f"wrote {len(cells())} cell specs, {len(sft_templates())} SFT templates and {3 * len(cells())} jobs files "
               f"(tools/colab_chat/carry12_*_r*.json) at L* = {lstar()}")
     print(table())
     return 0
