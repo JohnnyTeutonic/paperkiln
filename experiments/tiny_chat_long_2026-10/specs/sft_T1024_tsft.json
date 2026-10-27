@@ -30,5 +30,5 @@
    "gguf"
   ]
  },
- "_comment": "Cell T's SFT: as sft_T1024.json on sft_human_tsft.jsonl (the T 1,024 data job's SFT rows once each plus the 4,224 pinned template dialogues of tools/carry12_tsft_build.py, 20% of the rows; tiny_chat_data.py --template-sft), B's 1,500 steps: the SFT token budget is B's."
+ "_comment": "Cell TS's SFT: as sft_T1024.json on sft_human_tsft.jsonl (the T 1,024 data job's SFT rows once each plus the 4,224 pinned template dialogues of tools/carry12_tsft_build.py, 20% of the rows; tiny_chat_data.py --template-sft), B's 1,500 steps: the SFT token budget is B's."
 }

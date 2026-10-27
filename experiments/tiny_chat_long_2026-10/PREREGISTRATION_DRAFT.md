@@ -1,5 +1,7 @@
 # Tiny chat, long carry (Carry-12): pre-registration DRAFT
 
+*Frozen on 28 Oct 2026 as `PREREGISTRATION.md` in this folder, which governs; this draft is no longer edited.*
+
 *DRAFT, 24 Oct 2026. NOT FROZEN, NOT LICENSED, NOTHING LAUNCHED. This file plans the programme that follows
 E5/E1 (`../tiny_chat_2026-10/PREREGISTRATION.md` and its amendments, which this draft does not change). It
 freezes only after E5, E1 and the recursion arms have reported (section 11 lists what must be known), as a new
