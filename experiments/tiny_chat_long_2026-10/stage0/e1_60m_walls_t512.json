@@ -1,0 +1,185 @@
+{
+ "_comment": "E1 at 60M (T 512) job walls on RunPod L4s from the runners' logs (RUNNING to FINISHED, the last RUNNING before each FINISHED; a job resumed on a second VM counts from its last start, so a resumed job's wall is partial and flagged). Source: ~/pk_tc_e1_60m*_runner/runner.log (WSL). sft_s and carry5_s: the post job's own summary.json (sft_seconds, carry5_seconds; 0 or small where the job resumed past that stage).",
+ "jobs": {
+  "pt_e1_60m_L8_r1": {
+   "shape": "60m_L8",
+   "wall_s": 13104.0,
+   "starts": 1,
+   "partial": false
+  },
+  "post_e1_60m_L8_r1": {
+   "shape": "60m_L8",
+   "wall_s": 11092.0,
+   "starts": 1,
+   "partial": false,
+   "sft_s": 2427.8,
+   "carry5_s": 4895.1,
+   "summary": "C:/ml_artifacts/tiny_chat/e1_60m_L8/post_e1_60m_L8_r1/summary.json"
+  },
+  "pt_e1_60m_L8_r2": {
+   "shape": "60m_L8",
+   "wall_s": 12926.0,
+   "starts": 1,
+   "partial": false
+  },
+  "post_e1_60m_L8_r2": {
+   "shape": "60m_L8",
+   "wall_s": 11525.0,
+   "starts": 1,
+   "partial": false,
+   "sft_s": 2485.5,
+   "carry5_s": 4905.5,
+   "summary": "C:/ml_artifacts/tiny_chat/e1_60m_L8/post_e1_60m_L8_r2/summary.json"
+  },
+  "pt_e1_60m_L8_r3": {
+   "shape": "60m_L8",
+   "wall_s": 12362.0,
+   "starts": 1,
+   "partial": false
+  },
+  "post_e1_60m_L8_r3": {
+   "shape": "60m_L8",
+   "wall_s": 17339.0,
+   "starts": 1,
+   "partial": false,
+   "sft_s": 2414.0,
+   "carry5_s": 4885.0,
+   "summary": "C:/ml_artifacts/tiny_chat/e1_60m_L8/post_e1_60m_L8_r3/summary.json"
+  },
+  "pt_e1_60m_L16_r1": {
+   "shape": "60m_L16",
+   "wall_s": 14580.0,
+   "starts": 1,
+   "partial": false
+  },
+  "post_e1_60m_L16_r1": {
+   "shape": "60m_L16",
+   "wall_s": 58372.0,
+   "starts": 1,
+   "partial": false,
+   "sft_s": 0.0,
+   "carry5_s": 1345.0,
+   "summary": "C:/ml_artifacts/tiny_chat/e1_60m_L16/post_e1_60m_L16_r1/summary.json"
+  },
+  "pt_e1_60m_L16_r2": {
+   "shape": "60m_L16",
+   "wall_s": 14386.0,
+   "starts": 1,
+   "partial": false
+  },
+  "post_e1_60m_L16_r2": {
+   "shape": "60m_L16",
+   "wall_s": 13278.0,
+   "starts": 1,
+   "partial": false,
+   "sft_s": 2412.8,
+   "carry5_s": 6391.6,
+   "summary": "C:/ml_artifacts/tiny_chat/e1_60m_L16/post_e1_60m_L16_r2/summary.json"
+  },
+  "pt_e1_60m_L16_r3": {
+   "shape": "60m_L16",
+   "wall_s": 14612.0,
+   "starts": 1,
+   "partial": false
+  },
+  "post_e1_60m_L16_r3": {
+   "shape": "60m_L16",
+   "wall_s": 13477.0,
+   "starts": 1,
+   "partial": false,
+   "sft_s": 2404.7,
+   "carry5_s": 6545.5,
+   "summary": "C:/ml_artifacts/tiny_chat/e1_60m_L16/post_e1_60m_L16_r3/summary.json"
+  },
+  "pt_e1_60m_L32_r1": {
+   "shape": "60m_L32",
+   "wall_s": 17875.0,
+   "starts": 1,
+   "partial": false
+  },
+  "post_e1_60m_L32_r1": {
+   "shape": "60m_L32",
+   "wall_s": 7705.0,
+   "starts": 2,
+   "partial": true,
+   "sft_s": 2581.1,
+   "carry5_s": 2822.6,
+   "summary": "C:/ml_artifacts/tiny_chat/e1_60m/post_e1_60m_L32_r1/summary.json"
+  },
+  "pt_e1_60m_L32_r2": {
+   "shape": "60m_L32",
+   "wall_s": 16990.0,
+   "starts": 1,
+   "partial": false
+  },
+  "post_e1_60m_L32_r2": {
+   "shape": "60m_L32",
+   "wall_s": 19632.0,
+   "starts": 1,
+   "partial": false,
+   "sft_s": 2862.0,
+   "carry5_s": 9976.2,
+   "summary": "C:/ml_artifacts/tiny_chat/e1_60m/post_e1_60m_L32_r2/summary.json"
+  },
+  "pt_e1_60m_L32_r3": {
+   "shape": "60m_L32",
+   "wall_s": 17034.0,
+   "starts": 1,
+   "partial": false
+  },
+  "post_e1_60m_L32_r3": {
+   "shape": "60m_L32",
+   "wall_s": 20020.0,
+   "starts": 1,
+   "partial": false,
+   "sft_s": 2844.0,
+   "carry5_s": 10374.9,
+   "summary": "C:/ml_artifacts/tiny_chat/e1_60m/post_e1_60m_L32_r3/summary.json"
+  },
+  "pt_e1_60m_L4_r1": {
+   "shape": "60m_L4",
+   "wall_s": 12687.0,
+   "starts": 1,
+   "partial": false
+  },
+  "post_e1_60m_L4_r1": {
+   "shape": "60m_L4",
+   "wall_s": 9485.0,
+   "starts": 1,
+   "partial": false,
+   "sft_s": 2289.7,
+   "carry5_s": 4115.6,
+   "summary": "C:/ml_artifacts/tiny_chat/e1_60m_L4/post_e1_60m_L4_r1/summary.json"
+  },
+  "pt_e1_60m_L4_r2": {
+   "shape": "60m_L4",
+   "wall_s": 12819.0,
+   "starts": 1,
+   "partial": false
+  },
+  "post_e1_60m_L4_r2": {
+   "shape": "60m_L4",
+   "wall_s": 8863.0,
+   "starts": 1,
+   "partial": false,
+   "sft_s": 2257.9,
+   "carry5_s": 4059.1,
+   "summary": "C:/ml_artifacts/tiny_chat/e1_60m_L4/post_e1_60m_L4_r2/summary.json"
+  },
+  "pt_e1_60m_L4_r3": {
+   "shape": "60m_L4",
+   "wall_s": 12589.0,
+   "starts": 1,
+   "partial": false
+  },
+  "post_e1_60m_L4_r3": {
+   "shape": "60m_L4",
+   "wall_s": 15218.0,
+   "starts": 1,
+   "partial": false,
+   "sft_s": 0.0,
+   "carry5_s": 1448.1,
+   "summary": "C:/ml_artifacts/tiny_chat/e1_60m_L4/post_e1_60m_L4_r3/summary.json"
+  }
+ }
+}

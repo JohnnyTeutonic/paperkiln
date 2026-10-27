@@ -1,0 +1,51 @@
+{
+ "name": "tcl60_B_T1024",
+ "arch": {
+  "preset": "llama-tiny",
+  "rope_heads": "all",
+  "custom": {
+   "d": 768,
+   "layers": 8,
+   "heads": 12,
+   "d_ff": 2240
+  }
+ },
+ "data": {
+  "corpus": "/content/chat/data/mix_s35.ids",
+  "vocab": "/content/chat/upload/vocab_llama3_bpe.gguf",
+  "vocab_cap": 16384,
+  "T": 1024,
+  "max_tokens": 0
+ },
+ "train": {
+  "steps": 10000,
+  "lr": 0.0005,
+  "batch": 16,
+  "accum": 1,
+  "clip": 1.0,
+  "eval_every": 500,
+  "eval_windows": 32,
+  "checkpoint_every": 500,
+  "gradmap_every": 0,
+  "seed": 1,
+  "optimizer": "adamw",
+  "lr_schedule": {
+   "warmup_steps": 500,
+   "decay": "cosine",
+   "min_lr_frac": 0.1
+  }
+ },
+ "export": {
+  "formats": [
+   "safetensors",
+   "gguf"
+  ]
+ },
+ "_shape": {
+  "size": "60m",
+  "nonemb": 60175104,
+  "emb": 12582912,
+  "total": 72758016
+ },
+ "_note": "Carry-12 cell B (and D, which shares B's pretraining): 60m_L8 (L*, depth_choice.json) at T 1,024, batch 16 x 1,024 = 16,384 tokens per step (section 3: batch 16 at L <= 8), E1 at 60M's lr for 60m_L8. Throughput probe only; data.corpus is set by the probe job."
+}

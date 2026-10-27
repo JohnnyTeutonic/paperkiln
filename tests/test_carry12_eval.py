@@ -201,10 +201,49 @@ def test_end_to_end_ember_after_a_spot_check(toy, tmp_path):
     m = s["models"]["m"]
     g = m["gen_engine"]
     assert g["spot"]["pass"] and g["spot"]["items_identical"] == 3 and g["engine"] == "ember", g
-    assert g["ember_env"] == {"EMBER_GEMM_TF32": "0"}
+    assert g["ember_env"] == {"EMBER_GEMM_TF32": "0", "EMBER_DETERMINISTIC": "1"}
+    t = m["timing"]
+    assert t["gen_s"] > 0 and t["score_s"] > 0 and t["replies"] > 0, t
     assert m["gate"]["argmax_identical"] == m["gate"]["replies"] > 0, m["gate"]
     assert os.path.islink(tmp_path / "e" / "m" / "ember_cwd" / "debugging.log") or \
         os.path.islink(tmp_path / "e" / "ember_cwd" / "debugging.log")
+
+
+@pytest.fixture(scope="module")
+def toy_state(tmp_path_factory, toy):
+    """The toy with per-turn state tokens (cell S-gist's template: k 4, turn_state), SFT from scratch on the
+    same rows: mtstudio inserts the state blocks itself in training, `mtstudio score` and `chat`."""
+    t, sp = toy
+    spec = json.loads(sp.read_text())
+    spec["name"] = "c12state"
+    spec["arch"]["state_tokens"] = {"k": 4, "mask": "turn_state"}
+    spec["out_dir"] = str(t / "run_state")
+    p = t / "spec_state.json"
+    p.write_text(json.dumps(spec), encoding="utf-8")
+    r = subprocess.run([BIN, "run", str(p)], capture_output=True, text=True, timeout=1800)
+    assert r.returncode == 0, r.stdout[-2000:] + r.stderr[-2000:]
+    return t, p
+
+
+@e2e
+def test_end_to_end_state_tokens_model(toy_state, tmp_path):
+    """Carry-12 on a state-token model (the S cells, section 6): forced choice through `mtstudio score` and self
+    history through `mtstudio chat`, each inserting the state block after every closed exchange; with an ember
+    CPU build also ember's /chat after the spot-check (ember inserts the blocks too, so 3/3 identical items
+    means the two engines lay the conversation out alike)."""
+    _, sp = toy_state
+    s = run_eval(tmp_path / "e", sp, "--gen", "mtstudio", "--port", "8199", "--no-near-self")
+    m = s["models"]["m"]
+    assert m["items"] == 14 and m["context"] == 1024
+    for mode in ("gold", "self", "near", "twin", "noctx"):
+        assert m["fc"]["acc"][mode]["all"]["n"] == 14, mode
+    assert m["fc"]["over_ctx"]["gold"] == 0 and m["gen"]["server_errors"] <= 4
+    if EMBER_DIR:
+        ember = os.path.join(EMBER_DIR, "build", "tinyllama_server")
+        s = run_eval(tmp_path / "f", sp, "--gen", "ember", "--ember-bin", ember, "--spot", "3", "--port", "8201",
+                     "--no-near-self")
+        g = s["models"]["m"]["gen_engine"]
+        assert g["spot"]["items_identical"] == 3 and g["engine"] == "ember", g
 
 
 # ---------------------------------------------------------------- Stage L0 (tools/carry12_l0.py)
@@ -256,6 +295,43 @@ def test_l0_colab_jobs_file(tmp_path):
     assert "pick_e5_s35/l0.json" in j["outputs"] and "NOT LAUNCHED" in doc["_comment"]
     assert f"--upload pick_e5_s35.model.safetensors={d}/model.safetensors" in doc["_comment"]
     assert "/content/chat/upload/pick_e5_s35.spec.json" in j["cmd"]
+    assert j["cmd"][j["cmd"].index("--ember-commit") + 1] == L0.EMBER_COMMIT and "--gguf" not in j["cmd"]
+
+
+def _safetensors(path, keys):
+    import struct
+    h = json.dumps({k: {"dtype": "F32", "shape": [1], "data_offsets": [4 * i, 4 * i + 4]}
+                    for i, k in enumerate(keys)}).encode()
+    path.write_bytes(struct.pack("<Q", len(h)) + h + b"\0" * 4 * len(keys))
+
+
+def test_l0_colab_jobs_follow_amendment_a1(tmp_path):
+    """A pick whose model.safetensors is optimiser state is scored from its own GGUF on the VM too: the GGUF
+    is uploaded and passed with --gguf; without a GGUF the jobs file is refused, and `run` never exports a
+    GGUF from optimiser state."""
+    d = tmp_path / "pick_opt"
+    d.mkdir()
+    _safetensors(d / "model.safetensors", ["adamw.0.m.0", "adamw.0.v.0"])
+    (d / "spec.json").write_text(json.dumps({"name": "x", "data": {"T": 512}}))
+    out = tmp_path / "jobs.json"
+    with pytest.raises(SystemExit) as e:
+        L0.main(["colab-jobs", "--model", f"pick_opt={d}", "--jobs-out", str(out)])
+    assert "optimiser state" in str(e.value)
+    with pytest.raises(SystemExit) as e:
+        L0.main(["run", "--model-dir", str(d), "--out", str(tmp_path / "l0"), "--mtstudio", "/nonexistent"])
+    assert "has no model.gguf" in str(e.value)
+    (d / "model.gguf").write_bytes(b"GGUF")
+    assert L0.main(["colab-jobs", "--model", f"pick_opt={d}", "--jobs-out", str(out)]) == 0
+    (j,) = json.loads(out.read_text())["jobs"]
+    assert j["cmd"][j["cmd"].index("--gguf") + 1] == "/content/chat/upload/pick_opt.model.gguf"
+    assert f"--upload pick_opt.model.gguf={d}/model.gguf" in json.loads(out.read_text())["_comment"]
+
+
+def test_l0_cost_run_options_need_cost_run(tmp_path):
+    for extra in (["--ctx", "1024"], ["--no-near-self"], ["--max-new", "48"]):
+        with pytest.raises(SystemExit) as e:
+            L0.main(["run", "--model-dir", str(tmp_path), "--out", str(tmp_path / "l0"), "--mtstudio", "x", *extra])
+        assert "--cost-run" in str(e.value)
 
 
 @e2e
@@ -276,6 +352,33 @@ def test_l0_smoke_on_a_pick_folder(toy, tmp_path):
     assert rec["hl0"]["D"]["n"] == len([x for x in items()[::50] if x["family"] in L0.CONTEXT_FAMILIES])
     assert rec["hl0"]["verdict"] in ("FLOOR", "SUPPORTED", "SIGNIFICANT_BELOW_SESOI", "CONTRADICTED", "EQUIVALENT",
                                      "NOT_RESOLVED")
+
+
+@e2e
+def test_l0_cost_run_serves_at_another_context(toy, tmp_path):
+    """--cost-run --ctx: the weights re-exported at the served context in a folder of their own (the pick's
+    GGUF untouched), the receipt marked smoke and cost_run with the evaluation's timing."""
+    import shutil
+    t, sp = toy
+    pick = tmp_path / "pick_toy"
+    pick.mkdir()
+    shutil.copyfile(t / "run" / "c12toy.safetensors", pick / "model.safetensors")
+    shutil.copyfile(t / "run" / "c12toy.gguf", pick / "model.gguf")
+    spec = json.loads(sp.read_text())
+    spec["data"]["T"] = 512
+    (pick / "spec.json").write_text(json.dumps(spec))
+    before = (pick / "model.gguf").read_bytes()
+    r = subprocess.run([sys.executable, str(ROOT / "tools" / "carry12_l0.py"), "run", "--model-dir", str(pick),
+                        "--out", str(tmp_path / "l0"), "--mtstudio", BIN, "--vocab", str(t / "v.gguf"),
+                        "--every", "50", "--port", "8197", "--cost-run", "--ctx", "1024", "--max-new", "48",
+                        "--no-near-self"], capture_output=True, text=True, cwd=ROOT, timeout=3600)
+    assert r.returncode == 0, r.stdout[-3000:] + r.stderr[-3000:]
+    rec = json.loads((tmp_path / "l0" / "pick_toy" / "l0.json").read_text())
+    c = rec["cost_run"]
+    assert rec["smoke"] and c["trained_T"] == 512 and c["served_ctx"] == 1024 and c["max_new"] == 48
+    assert not c["near_self"] and c["eval_wall_s"] > 0 and c["timing"]["score_s"] > 0
+    assert rec["model"]["T"] == 1024 and (pick / "model.gguf").read_bytes() == before
+    assert (tmp_path / "l0" / "pick_toy" / "model_ctx1024" / "model.gguf").exists()
 
 
 def test_l0_detects_an_optimiser_file_posing_as_weights(tmp_path):

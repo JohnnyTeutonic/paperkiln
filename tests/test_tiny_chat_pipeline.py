@@ -180,6 +180,64 @@ def test_short_dialogue_runs_at_the_largest_covered_share(tmp_path):
     assert m["dialogue_copies"] == 4 and m["share_effective"] < 100 and "note" in m
 
 
+def _carry12_only_turn():
+    """A Carry-12 user turn of 4+ words that no Carry-5 item has."""
+    c5 = {t["user"] for line in open(ROOT / "corpus" / "eval" / "carry5_v1.jsonl", encoding="utf-8")
+          for t in json.loads(line)["turns"]}
+    for line in open(ROOT / "corpus" / "eval" / "carry12_v1.jsonl", encoding="utf-8"):
+        for t in json.loads(line)["turns"]:
+            if len(t["user"].split()) >= 6 and t["user"] not in c5:
+                return t["user"]
+
+
+def test_long_carry_data_job_carry12_decontam_and_long_sft(tmp_path):
+    """The long programme's data job (PREREGISTRATION_DRAFT.md sections 2 and 6): --carry12 drops a dialogue
+    holding a Carry-12 user turn (Carry-5 still drops its own), counted, with the set's pinned sha256 in the
+    ledger; --long-sft 3:4 writes cell D's SFT set, the same rows with each 3+-turn row four times."""
+    fineweb(tmp_path / "fw", 400)
+    d = tmp_path / "human" / "toy"
+    dialogues(d, 200)
+    rows = [json.loads(x) for x in (d / "dialogues.jsonl").read_text(encoding="utf-8").splitlines()]
+    turn12 = _carry12_only_turn()
+    rows.append({"messages": [{"role": "user", "content": turn12},
+                              {"role": "assistant", "content": "the dog slept in hay"}], "uri": "toy/carry12"})
+    for i in range(300):  # long dialogues: 4 exchanges each
+        a = WORDS[i % len(WORDS)]
+        ms = []
+        for k in range(4):
+            ms += [{"role": "user", "content": f"tell me about the {a} {i} {k}"},
+                   {"role": "assistant", "content": f"the {a} sat on a mat {k}"}]
+        rows.append({"messages": ms, "uri": f"toy/long/{i}"})
+    (d / "dialogues.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    vocab(tmp_path / "v.gguf")
+
+    def run(out, *extra):
+        p = subprocess.run(DATA + ["--out", str(out), "--vocab", str(tmp_path / "v.gguf"), "--fineweb",
+                                   str(tmp_path / "fw"), "--shares", "35", "--mix-bytes", "60000", "--T", "128",
+                                   "--human-dir", str(tmp_path / "human"), "--human-fetch", "", *extra],
+                           capture_output=True, text=True, cwd=ROOT)
+        assert p.returncode == 0, p.stdout[-2000:] + p.stderr[-2000:]
+        return json.loads((out / "data.ledger.json").read_text())
+    base = run(tmp_path / "plain")
+    led = run(tmp_path / "long", "--carry12", "--long-sft", "3:4")
+    assert base["steps"]["decontam"]["rows_dropped"] == 1 and "carry12_v1_sha256" not in base["human"]
+    assert led["steps"]["decontam"]["rows_dropped"] == 2
+    assert led["human"]["carry12_v1_sha256"] == "de24f2c726a1006e8e61542dd3b2dfbf8677b9e6fe689277cca035305bd32797"
+    sft = [json.loads(x) for x in (tmp_path / "long" / "sft_human.jsonl").read_text().splitlines()]
+    long4 = [json.loads(x) for x in (tmp_path / "long" / "sft_human_long4.jsonl").read_text().splitlines()]
+    n_long = sum(1 for r in sft if sum(s["loss"] for s in r["segments"]) >= 3)
+    ls = led["long_sft"]
+    assert n_long > 0 and ls["rows"] == len(sft) and ls["rows_long"] == n_long
+    assert len(long4) == ls["rows_out"] == len(sft) + 3 * n_long
+    key = lambda r: json.dumps(r, sort_keys=True)  # noqa: E731
+    from collections import Counter
+    c = Counter(key(r) for r in long4)
+    assert all(c[key(r)] == (4 if sum(s["loss"] for s in r["segments"]) >= 3 else 1) for r in sft)
+    assert "sft_human_long4.jsonl" in led["outputs"]
+    # The plain job's outputs are unchanged by the new options' code path when they are not given.
+    assert "long_sft" not in base and not (tmp_path / "plain" / "sft_human_long4.jsonl").exists()
+
+
 # A stand-in for tools/carry5_eval.py's `run` interface and summary schema.
 FAKE_CARRY5 = ("import json, os, sys\n"
                "arg = lambda k: sys.argv[sys.argv.index(k) + 1]\n"

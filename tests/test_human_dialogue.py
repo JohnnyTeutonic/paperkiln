@@ -200,6 +200,10 @@ def _tm3_files(tmp_path, convs, held_id):
         f = tmp_path / p.replace("/", "_")
         f.write_text(f"<U>hi<A>hello\t[A]bye\t{held_id}\n" if p.endswith("dev-aa.tsv") else "", encoding="utf-8")
         files[p] = str(f)
+    for p in H.TM3_TRAIN:  # per-turn splits (c989091e): an id held out only when no train file names it
+        f = tmp_path / p.replace("/", "_")
+        f.write_text("", encoding="utf-8")
+        files[p] = str(f)
     for p in H.TM_FILES + H.TM3_FILES:
         f = tmp_path / p.replace("/", "_")
         f.write_text(json.dumps(convs if p == "TM-3-2020/data/data_00.json" else []), encoding="utf-8")

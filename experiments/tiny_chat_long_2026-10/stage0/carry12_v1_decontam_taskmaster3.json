@@ -1,0 +1,58 @@
+{
+ "summary": {
+  "items": 1452,
+  "corpora": 1,
+  "rows_scanned": 16675,
+  "item_leaks": 0,
+  "items_with_fact_sentence_in_training": 1,
+  "eval_texts_hit": {
+   "sentence": 24
+  },
+  "rules": "decontam.py ngram (13 words), prompt (user turn equal, 4+ words), span (8-12 word user turn); sentence: any 3+ word template sentence as a span; fact_sentence: an item's value-bearing fact sentence; item_leak: fact sentence and question in one row"
+ },
+ "per_corpus": {
+  "C:/ml_artifacts/human_dialogue/hd_long/human_taskmaster3_v1/dialogues.jsonl": {
+   "rows": 16675,
+   "bytes": 31240359,
+   "done": true,
+   "by_rule": {
+    "sentence": {
+     "rows": 2272,
+     "patterns": 24
+    },
+    "fact_sentence": {
+     "rows": 1,
+     "patterns": 1
+    }
+   }
+  }
+ },
+ "item_leaks": {},
+ "top_sentences": {
+  "you are welcome": 870,
+  "how can i help": 628,
+  "how are you": 252,
+  "what is it about": 205,
+  "yes of course": 145,
+  "sorry to hear that": 39,
+  "how are you today": 36,
+  "that sounds nice": 19,
+  "it was a pleasure": 18,
+  "sorry my mistake": 17,
+  "i am sorry to hear that": 10,
+  "have a lovely day": 8,
+  "that is good to know": 6,
+  "that sounds lovely": 3,
+  "what is on your mind": 3,
+  "oh that is nice": 2,
+  "can you help me with this": 2,
+  "thanks for telling me": 2,
+  "sorry i made a mistake": 2,
+  "that sounds relaxing": 1,
+  "how is it going": 1,
+  "i hope you are well": 1,
+  "nice to meet you": 1,
+  "i am 41 years old": 1
+ },
+ "drop_rule_examples": {}
+}

@@ -18,9 +18,18 @@ paired interval, verdict against the 3-point SESOI), with the descriptive quanti
 --every N > 1 or --smoke marks the receipt SMOKE: a test of the tooling, never an L0 result.
 
 `colab-jobs` writes a jobs file (tools/colab_chat/runner_multi.py) with one job per model on the VM's GPU:
-ember built by tiny_chat_run.ensure_ember, generation on, the model read from the runner's flat uploads
-/content/chat/upload/TAG.model.safetensors and TAG.spec.json (`run --weights --spec-json`; the GGUF is
-exported on the VM), and prints the runner's --upload arguments. It never launches anything.
+ember built by tiny_chat_run.ensure_ember at --ember-commit, generation on, the model read from the
+runner's flat uploads /content/chat/upload/TAG.model.safetensors, TAG.spec.json and, when the pick folder
+has one, TAG.model.gguf (`run --weights --spec-json --gguf`), and prints the runner's --upload arguments.
+It never launches anything. Amendment A1 holds on the VM as at home: the pick's own GGUF is the model, a
+model.safetensors that holds optimiser state is scored by the IR scorer on that GGUF, and `run` refuses
+to export a GGUF from optimiser state (a pick without weights and without a GGUF stops).
+
+Post-job cost runs (PREREGISTRATION_DRAFT.md section 10): `run --cost-run` with `--ctx N` (the model
+served at context N: its spec's data.T set to N and the F32 GGUF exported from the weights at that context;
+weights required), `--max-new 48` and `--no-near-self` is the long programme's post-job Carry-12
+configuration on a model that is home. Its receipt is marked smoke and cost_run, never an L0 result, and
+carries the evaluation's wall time by phase (carry12_eval's summary `timing`).
 """
 from __future__ import annotations
 
@@ -29,6 +38,7 @@ import hashlib
 import json
 import math
 import os
+import struct
 import subprocess
 import sys
 
@@ -44,6 +54,10 @@ SESOI = 0.03
 LAPTOP_VOCAB = "C:/ml_artifacts/capacity/vocab/vocab_llama3_bpe.gguf"
 VM_VOCAB = "/content/chat/upload/vocab_llama3_bpe.gguf"
 VOCABS = (LAPTOP_VOCAB, "/mnt/c/ml_artifacts/capacity/vocab/vocab_llama3_bpe.gguf", VM_VOCAB)
+# ember for Carry-12 generation (PREREGISTRATION_DRAFT.md section 2: fe01b35 or later, EMBER_DETERMINISTIC=1):
+# 7526469 on main, the first with valid UTF-8 on every text path (a 48-token reply cut inside a character no
+# longer returns HTTP 500).
+EMBER_COMMIT = "7526469695ee3f07f2b5d6e60568cd3e09529c84"
 
 
 def sha256(path):
@@ -68,7 +82,6 @@ def jsave(p, obj):
 
 
 def safetensors_keys(path):
-    import struct
     with open(path, "rb") as f:
         n = struct.unpack("<Q", f.read(8))[0]
         return [k for k in json.loads(f.read(n)) if k != "__metadata__"]
@@ -157,23 +170,45 @@ def cmd_run(a):
     tag = a.tag or os.path.basename(os.path.normpath(a.model_dir))
     out = os.path.join(a.out, tag)
     os.makedirs(out, exist_ok=True)
+    if (a.ctx or a.no_near_self or a.max_new != 24) and not a.cost_run:
+        sys.exit("run: --ctx, --no-near-self and --max-new other than 24 are not Stage L0's registered command; "
+                 "they need --cost-run (a post-job cost measurement, never an L0 result)")
     if not a.model_dir:  # the runner's flat uploads: a pick folder assembled from them
         a.model_dir = os.path.join(out, "model")
         os.makedirs(a.model_dir, exist_ok=True)
-        for src, name in ((a.weights, "model.safetensors"), (a.spec_json, "spec.json")):
+        links = [(a.weights, "model.safetensors"), (a.spec_json, "spec.json")] + \
+            ([(a.gguf, "model.gguf")] if a.gguf else [])
+        for src, name in links:
             dst = os.path.join(a.model_dir, name)
             if not os.path.exists(dst):
                 os.symlink(os.path.abspath(src), dst)
+    w = os.path.join(a.model_dir, "model.safetensors")
+    good = weights_ok(w)
+    trained_T = jload(os.path.join(a.model_dir, "spec.json"))["data"].get("T")
+    if a.ctx:
+        # A cost run at another context: the weights (never optimiser state) re-exported with data.T = ctx in
+        # a folder of its own, so the pick's GGUF is never overwritten.
+        if not good:
+            sys.exit(f"run --ctx: {w} is not weights; a GGUF at another context cannot be exported from it")
+        cdir = os.path.join(out, f"model_ctx{a.ctx}")
+        os.makedirs(cdir, exist_ok=True)
+        if not os.path.exists(os.path.join(cdir, "model.safetensors")):
+            os.symlink(os.path.realpath(w), os.path.join(cdir, "model.safetensors"))
+        sp = jload(os.path.join(a.model_dir, "spec.json"))
+        sp["data"] = {**sp["data"], "T": a.ctx}
+        jsave(os.path.join(cdir, "spec.json"), sp)
+        a.model_dir, w = cdir, os.path.join(cdir, "model.safetensors")
     vocab = a.vocab or next((v for v in VOCABS if os.path.exists(v)), VM_VOCAB)
     spec_path, spec = local_spec(a.model_dir, vocab, out)
-    w = os.path.join(a.model_dir, "model.safetensors")
     g = os.path.join(a.model_dir, "model.gguf")
     if not os.path.exists(g):
+        if not good:  # STAGE_L0.md A1: the pick's GGUF is the model; never export one from optimiser state
+            sys.exit(f"{w} holds optimiser state, not weights, and {a.model_dir} has no model.gguf: "
+                     "upload the pick's GGUF (--gguf)")
         p = subprocess.run([a.mtstudio, "export", spec_path, "--from", w, "--formats", "gguf"], capture_output=True,
                            text=True)
         if p.returncode != 0 or not os.path.exists(g):
             sys.exit(f"mtstudio export --formats gguf failed (rc {p.returncode}): {p.stderr[-500:]}")
-    good = weights_ok(w)
     scorer = a.scorer if a.scorer != "auto" else ("mtstudio" if good else "ir")
     spot = a.spot
     flag = None
@@ -190,18 +225,23 @@ def cmd_run(a):
     if a.gen == "ember" and ember == "auto":
         sys.path.insert(0, os.path.join(HERE, "colab_chat"))
         import tiny_chat_run
-        build = tiny_chat_run.ensure_ember(os.path.join(out, "ember_build.log"))
+        build = tiny_chat_run.ensure_ember(os.path.join(out, "ember_build.log"), a.ember_commit)
         if "error" in build:
             sys.exit(f"ember build failed: {build['error']}")
         ember = build["bin"]
-    smoke = a.smoke or a.every > 1
+    smoke = a.smoke or a.every > 1 or a.cost_run
     argv = [sys.executable, os.path.join(HERE, "carry12_eval.py"), "run", "--model", f"{tag}={spec_path}",
             "--out", os.path.join(out, "eval"), "--set", c12.OUT, "--scorer", scorer, "--mtstudio", a.mtstudio,
             "--gen", a.gen, "--self-scope", "target", "--max-new", str(a.max_new), "--every", str(a.every),
             "--port", str(a.port)]
+    if a.no_near_self:
+        argv.append("--no-near-self")
     if a.gen == "ember":
         argv += ["--ember-bin", ember, "--gpu-layers", str(a.gpu_layers), "--spot", str(spot)]
+    import time
+    t0 = time.time()
     p = subprocess.run(argv, capture_output=True, text=True)
+    wall = round(time.time() - t0, 1)
     with open(os.path.join(out, "eval.log"), "w", encoding="utf-8") as f:
         f.write(p.stdout[-20000:] + p.stderr[-20000:])
     if p.returncode != 0:
@@ -217,6 +257,13 @@ def cmd_run(a):
                     "pinned": s["meta"]["sha256"] == c12.pinned()},
             "eval": {"argv": argv[1:], "gen": a.gen, "every": a.every, "scorer": scorer, "spot": spot,
                      "weights_are_weights": good, "flag": flag, "ember_build": build}}
+    if a.cost_run:
+        m = s["models"][tag]
+        meta["cost_run"] = {
+            "purpose": "post-job cost measurement (PREREGISTRATION_DRAFT.md section 10), never an L0 result",
+            "trained_T": trained_T, "served_ctx": spec["data"].get("T"), "max_new": a.max_new,
+            "near_self": not a.no_near_self, "eval_wall_s": wall, "timing": m.get("timing"),
+            "replies_generated": m.get("timing", {}).get("replies"), "gen_engine": (m.get("gen_engine") or {}).get("engine")}
     rec = l0_receipt(os.path.join(out, "eval", tag, "items.jsonl"), s["models"][tag], meta)
     jsave(os.path.join(out, "l0.json"), rec)
     print(json.dumps({k: rec[k] for k in ("tag", "smoke", "validity_gate")} | {"hl0": rec["hl0"]["D"],
@@ -260,26 +307,42 @@ def cmd_colab_jobs(a):
         for f in ("model.safetensors", "spec.json"):
             if not os.path.exists(os.path.join(d, f)) and not a.allow_missing:
                 sys.exit(f"{d}/{f} missing (--allow-missing prepares the file before the picks are home)")
-            # flat keys (the runner reassembles uploads in /content/chat/upload itself); WSL paths
-            uploads.append(f"{tag}.{f}={d.rstrip('/')}/{f}")
-        jobs.append({"name": f"l0_{tag}",
-                     "cmd": ["python3", "tools/carry12_l0.py", "run",
-                             "--weights", f"/content/chat/upload/{tag}.model.safetensors",
-                             "--spec-json", f"/content/chat/upload/{tag}.spec.json", "--tag", tag, "--out", "{out}", "--gen", "ember", "--ember-bin", "auto",
-                             "--mtstudio", "/content/pk/build_cuda/mtstudio", "--vocab", VM_VOCAB,
-                             "--gpu-layers", "-1", "--spot", "20"],
+        files = ["model.safetensors", "spec.json"]
+        has_gguf = os.path.exists(os.path.join(d, "model.gguf"))
+        if has_gguf:
+            files.append("model.gguf")
+        elif os.path.exists(os.path.join(d, "model.safetensors")):
+            try:
+                opt = not weights_ok(os.path.join(d, "model.safetensors"))
+            except (OSError, ValueError, struct.error):  # not a safetensors file (a placeholder): run decides
+                opt = False
+            if opt:
+                sys.exit(f"{d}/model.safetensors holds optimiser state and {d} has no model.gguf (STAGE_L0.md A1)")
+        # flat keys (the runner reassembles uploads in /content/chat/upload itself); WSL paths
+        uploads += [f"{tag}.{f}={d.rstrip('/')}/{f}" for f in files]
+        cmd = ["python3", "tools/carry12_l0.py", "run",
+               "--weights", f"/content/chat/upload/{tag}.model.safetensors",
+               "--spec-json", f"/content/chat/upload/{tag}.spec.json"]
+        if has_gguf:
+            cmd += ["--gguf", f"/content/chat/upload/{tag}.model.gguf"]
+        cmd += ["--tag", tag, "--out", "{out}", "--gen", "ember", "--ember-bin", "auto", "--ember-commit",
+                a.ember_commit, "--mtstudio", "/content/pk/build_cuda/mtstudio", "--vocab", VM_VOCAB,
+                "--gpu-layers", "-1", "--spot", "20"]
+        jobs.append({"name": f"l0_{tag}", "cmd": cmd,
                      "outputs": [f"{tag}/l0.json", f"{tag}/eval/summary.json", f"{tag}/eval/summary.md",
                                  f"{tag}/eval/{tag}/items.jsonl", f"{tag}/eval/{tag}/gen.jsonl",
                                  f"{tag}/eval/{tag}/gen_engine.json", f"{tag}/eval.log"]})
     uploads.append(f"vocab_llama3_bpe.gguf={LAPTOP_VOCAB.replace('C:/', '/mnt/c/')}")
     doc = {"_comment": "Stage L0 of the long-carry programme (experiments/tiny_chat_long_2026-10/STAGE_L0.md, "
-                       "frozen before any L0 scoring): each home tiny-chat SFT model scored on Carry-12 v1 "
-                       "(tools/carry12_l0.py run; forced choice gold/near/twin/noctx plus self and near_self "
-                       "history to the target through ember's CUDA server after the 20-item spot-check against "
-                       "mtstudio chat, EMBER_GEMM_TF32=0; forced choice by mtstudio score). One GPU job at a time. "
-                       "Inputs: the runner's --upload of each model's safetensors and spec.json (the F32 GGUF is "
-                       "exported on the VM) and vocab_llama3_bpe.gguf. PREPARED, NOT LAUNCHED: the main session "
-                       "launches Colab work. --upload arguments: " + " ".join(f"--upload {u}" for u in uploads),
+                       "frozen before any L0 scoring, and its amendment A1): each home tiny-chat SFT model scored "
+                       "on Carry-12 v1 (tools/carry12_l0.py run; forced choice gold/near/twin/noctx plus self and "
+                       "near_self history to the target through ember's CUDA server at --ember-commit, "
+                       "EMBER_GEMM_TF32=0 and EMBER_DETERMINISTIC=1, after the 20-item spot-check against mtstudio "
+                       "chat; forced choice by mtstudio score, or by the IR scorer on the pick's GGUF when its "
+                       "model.safetensors holds optimiser state). One GPU job at a time. Inputs: the runner's "
+                       "--upload of each model's safetensors, spec.json and GGUF, and vocab_llama3_bpe.gguf. "
+                       "PREPARED, NOT LAUNCHED: the main session launches Colab work. --upload arguments: "
+                       + " ".join(f"--upload {u}" for u in uploads),
            "max_parallel": 1, "jobs": jobs}
     with open(a.jobs_out, "w", encoding="utf-8", newline="\n") as f:
         json.dump(doc, f, indent=1)
@@ -309,6 +372,12 @@ def main(argv=None):
     p.add_argument("--smoke", action="store_true")
     p.add_argument("--scorer", default="auto", choices=["auto", "mtstudio", "ir"],
                    help="auto: mtstudio score, or the IR scorer on the GGUF when model.safetensors is not weights")
+    p.add_argument("--gguf", default="", help="with --weights and --spec-json: the pick's own GGUF (STAGE_L0.md A1)")
+    p.add_argument("--ember-commit", default=EMBER_COMMIT)
+    p.add_argument("--cost-run", action="store_true",
+                   help="a post-job cost measurement: allows --ctx, --no-near-self, --max-new; receipt smoke")
+    p.add_argument("--ctx", type=int, default=0, help="--cost-run: serve the model at this context")
+    p.add_argument("--no-near-self", action="store_true")
     p = sub.add_parser("table")
     p.add_argument("root")
     p.add_argument("--out", default="")
@@ -316,6 +385,7 @@ def main(argv=None):
     p.add_argument("--model", action="append", required=True)
     p.add_argument("--jobs-out", required=True)
     p.add_argument("--allow-missing", action="store_true")
+    p.add_argument("--ember-commit", default=EMBER_COMMIT)
     a = ap.parse_args(argv)
     if a.cmd == "run" and a.gen == "ember" and not a.ember_bin:
         ap.error("--gen ember needs --ember-bin (a binary, or auto: build at tiny_chat_run's pinned commit)")

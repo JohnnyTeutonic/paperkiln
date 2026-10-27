@@ -53,6 +53,7 @@ import hashlib
 import json
 import os
 import sys
+import time
 import urllib.error
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -67,7 +68,9 @@ MODES = ("gold", "self", "near", "near_self", "twin", "noctx")
 GEN_MODES = MODES
 PRIMARY_FAMILIES = ("recall", "correction", "topic", "load", "knowledge")
 CONTEXT_FAMILIES = ("recall", "correction", "topic", "load")
-EMBER_ENV = {"EMBER_GEMM_TF32": "0"}
+# ember fe01b35 or later: EMBER_DETERMINISTIC=1 makes decode bit-identical run to run on one GPU model and build
+# (ember df43463); earlier builds ignore it. CPU servers are deterministic either way.
+EMBER_ENV = {"EMBER_GEMM_TF32": "0", "EMBER_DETERMINISTIC": "1"}
 MAX_TURNS = 14
 
 
@@ -533,19 +536,30 @@ def run_model(a, tag, spec_path, items):
         spec, gguf, vocab = ce.model_paths(spec_path)
         ctx = spec.get("data", {}).get("T")
         tok = ce.Tok(vocab)
+    # Wall time by phase (the post-job cost measurement, PREREGISTRATION_DRAFT.md section 10): this call's
+    # own work only, so a resumed run reports what it did after the resume.
+    timing = {"spot_s": 0.0, "gen_s": 0.0, "score_s": 0.0}
     if tok and a.gen != "none":
         os.environ.update(EMBER_ENV)  # the servers inherit the environment
+        t0 = time.time()
         engine = choose_engine(a, items, tok, spec_path, gguf, work)
+        timing["spot_s"] = round(time.time() - t0, 1)
         if not a.no_generate:
             b = copy.copy(a)
             b.gen = engine["engine"]
+            t0 = time.time()
             generate(b, items, tok, spec_path, gguf, work)
+            timing["gen_s"] = round(time.time() - t0, 1)
     gens = gen_records(work)
+    timing["replies"] = sum(len(replies_of(r)) + sum(1 for m in ("gold", "near", "twin", "noctx") if m in r)
+                            for r in gens.values())
     if spec_path == "uniform":
         scores = {f"{it['id']}|{m}|{c}": {"over_ctx": False, "sum": 0.0, "logprobs": [0.0], "argmax": []}
                   for it in items for m in MODES for c in range(4)}
     elif a.scorer != "none":
+        t0 = time.time()
         scores = ce.score_all(a, requests(items, tok, gens), spec_path, gguf, work)
+        timing["score_s"] = round(time.time() - t0, 1)
     else:
         scores = {}
     recs = item_records(items, gens, scores, tok)
@@ -555,6 +569,7 @@ def run_model(a, tag, spec_path, items):
     s = aggregate(recs)
     s["gen_engine"] = engine
     s["context"] = ctx
+    s["timing"] = timing
     return s
 
 

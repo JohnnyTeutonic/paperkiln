@@ -78,6 +78,7 @@ import decontam  # noqa: E402
 
 ROOT = os.path.dirname(C.CORPUS_DIR)
 CARRY5 = os.path.join(C.CORPUS_DIR, "eval", "carry5_v1.jsonl")
+CARRY12 = os.path.join(C.CORPUS_DIR, "eval", "carry12_v1.jsonl")
 LEDGER = "human_dialogue_v1.ledger.json"
 
 # ---- pinned sources ---------------------------------------------------------
@@ -733,22 +734,51 @@ RAW = {"oasst": raw_oasst, "convai2": raw_convai2, "wow": raw_wow, "bst": raw_bs
 
 
 # ---- decontamination targets --------------------------------------------------
-def decontaminator(carry5=False):
+def decontaminator(carry5=False, carry12=False):
     """The frozen eval sets, plus Carry-5 when asked for (and present): one row per item turn, the
-    user turn as a prompt and the gold reply as its reference."""
-    if not carry5 or not os.path.exists(CARRY5):
+    user turn as a prompt and the gold reply as its reference. carry12 adds Carry-12 v1 the same way
+    (experiments/tiny_chat_long_2026-10/PREREGISTRATION_DRAFT.md section 2: the long programme's data job
+    drops dialogues by those rules), its single-turn twins as prompts too; each distinct text once. Returns
+    (Decontaminator, Carry-5's sha256 or None); carry12 requires the set (carry12_sha gives its hash)."""
+    use5 = carry5 and os.path.exists(CARRY5)
+    if carry12 and not os.path.exists(CARRY12):
+        raise SystemExit(f"{CARRY12} is missing: Carry-12 cannot join the decontamination")
+    if not use5 and not carry12:
         return decontam.Decontaminator(), None
     tmp = tempfile.NamedTemporaryFile("w", suffix=".jsonl", delete=False, encoding="utf-8")
     with tmp:
-        for line in open(CARRY5, encoding="utf-8"):
-            if line.strip():
-                for t in json.loads(line).get("turns", []):
-                    tmp.write(json.dumps({"prompt": t.get("user", ""), "reference": t.get("gold", "")}) + "\n")
+        if use5:
+            for line in open(CARRY5, encoding="utf-8"):
+                if line.strip():
+                    for t in json.loads(line).get("turns", []):
+                        tmp.write(json.dumps({"prompt": t.get("user", ""), "reference": t.get("gold", "")}) + "\n")
+    extra = []
+    if carry12:
+        seen = set()
+        tmp12 = tempfile.NamedTemporaryFile("w", suffix=".jsonl", delete=False, encoding="utf-8")
+        with tmp12:
+            for line in open(CARRY12, encoding="utf-8"):
+                if not line.strip():
+                    continue
+                it = json.loads(line)
+                rows = [(t.get("user", ""), t.get("gold", "")) for t in it.get("turns", [])]
+                rows.append((it.get("twin", ""), ""))
+                for row in rows:
+                    if row[0] and row not in seen:
+                        seen.add(row)
+                        tmp12.write(json.dumps({"prompt": row[0], "reference": row[1]}) + "\n")
+        extra = [tmp12.name]
     try:
-        sets = decontam.CHAT_SETS + [tmp.name]
-        return decontam.Decontaminator(chat_sets=sets), _sha(CARRY5)
+        sets = decontam.CHAT_SETS + ([tmp.name] if use5 else []) + extra
+        return decontam.Decontaminator(chat_sets=sets), _sha(CARRY5) if use5 else None
     finally:
         os.remove(tmp.name)
+        for x in extra:
+            os.remove(x)
+
+
+def carry12_sha():
+    return _sha(CARRY12) if os.path.exists(CARRY12) else None
 
 
 # ---- build ----------------------------------------------------------------------

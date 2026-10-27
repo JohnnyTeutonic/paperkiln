@@ -1,0 +1,415 @@
+{
+ "_comment": "Carry-12 pre-freeze VM work (experiments/tiny_chat_long_2026-10/make_stage0_jobs.py, which says what each job is and what to do at home): the CUDA gate, the FineWeb-Edu shard's Carry-12 contamination scan, the T 1,024 data job (Carry-12 in the decontamination, cell D's SFT set), option 3's counts, Stage 0 probes at T 1,024 of B, S-gist, P16 and X, and the measured cost of a Carry-12 post job on the 60m_L8, 60m_L16 and 60m_L32 picks. One GPU job at a time; nothing trains a Carry-12 cell. --upload arguments: --upload pick_e1_60m_L8.model.safetensors=/mnt/c/ml_artifacts/tiny_chat/e1_60m_L8/pick_e1_60m_L8/model.safetensors --upload pick_e1_60m_L8.spec.json=/mnt/c/ml_artifacts/tiny_chat/e1_60m_L8/pick_e1_60m_L8/spec.json --upload pick_e1_60m_L16.model.safetensors=/mnt/c/ml_artifacts/tiny_chat/e1_60m_L16/pick_e1_60m_L16/model.safetensors --upload pick_e1_60m_L16.spec.json=/mnt/c/ml_artifacts/tiny_chat/e1_60m_L16/pick_e1_60m_L16/spec.json --upload pick_e1_60m_L32.model.safetensors=/mnt/c/ml_artifacts/tiny_chat/e1_60m/pick_e1_60m_L32/model.safetensors --upload pick_e1_60m_L32.spec.json=/mnt/c/ml_artifacts/tiny_chat/e1_60m/pick_e1_60m_L32/spec.json --upload vocab_llama3_bpe.gguf=/mnt/c/ml_artifacts/capacity/vocab/vocab_llama3_bpe.gguf",
+ "max_parallel": 1,
+ "max_parallel_light": 2,
+ "jobs": [
+  {
+   "name": "cuda_gate",
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "cuda_gate",
+    "--out",
+    "{out}"
+   ],
+   "outputs": [
+    "cuda_gate.json",
+    "cuda_gate.log"
+   ]
+  },
+  {
+   "name": "decontam_fineweb",
+   "light": true,
+   "cmd": [
+    "python3",
+    "tools/carry12_build.py",
+    "decontam",
+    "--out",
+    "{out}/carry12_v1_decontam_fineweb_shard0.json",
+    "--state",
+    "{out}/carry12_v1_decontam_fineweb_shard0.state.json",
+    "corpus/data/fineweb_edu_shard0_v1/pretrain_train.txt"
+   ],
+   "outputs": [
+    "carry12_v1_decontam_fineweb_shard0.json",
+    "carry12_v1_decontam_fineweb_shard0.state.json"
+   ]
+  },
+  {
+   "name": "data",
+   "light": true,
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_data.py",
+    "--out",
+    "{out}",
+    "--vocab",
+    "/content/chat/upload/vocab_llama3_bpe.gguf",
+    "--fineweb",
+    "corpus/data/fineweb_edu_shard0_v1",
+    "--shares",
+    "35",
+    "--mix-bytes",
+    "800000000",
+    "--max-epochs",
+    "4",
+    "--T",
+    "1024",
+    "--seed",
+    "1",
+    "--human-fetch",
+    "python3 corpus/fetchers/human_dialogue.py oasst,convai2,wow,bst,taskmaster,multiwoz,self_dialogue,topical_chat,dolly,quac,empathetic,dailydialog,no_robots --allow-sa --allow-nc --out-dir {human}",
+    "--sources",
+    "oasst,convai2,wow,bst,taskmaster,multiwoz,self_dialogue,topical_chat,dolly,quac,empathetic,dailydialog,no_robots",
+    "--require-pinned",
+    "--carry12",
+    "--long-sft",
+    "10:4"
+   ],
+   "outputs": [
+    "data.ledger.json",
+    "human_decontam.json"
+   ]
+  },
+  {
+   "name": "probe60_B_T1024",
+   "after": [
+    "data",
+    "cuda_gate"
+   ],
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "probe",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_long_2026-10/specs/probe60_B_T1024.json",
+    "--corpus",
+    "/content/chat/data/mix_s35.ids",
+    "--steps",
+    "300",
+    "--cuda-gate",
+    "/content/chat/cuda_gate",
+    "--data-job",
+    "tools/colab_chat/carry12_stage0_v1.json"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "probe60_B_T1024_acc2",
+   "after": [
+    "data",
+    "cuda_gate"
+   ],
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "probe",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_long_2026-10/specs/probe60_B_T1024_acc2.json",
+    "--corpus",
+    "/content/chat/data/mix_s35.ids",
+    "--steps",
+    "300",
+    "--cuda-gate",
+    "/content/chat/cuda_gate",
+    "--data-job",
+    "tools/colab_chat/carry12_stage0_v1.json"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "probe60_Sgist_T1024",
+   "after": [
+    "data",
+    "cuda_gate"
+   ],
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "probe",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_long_2026-10/specs/probe60_Sgist_T1024.json",
+    "--corpus",
+    "/content/chat/data/mix_s35.ids",
+    "--steps",
+    "300",
+    "--cuda-gate",
+    "/content/chat/cuda_gate",
+    "--data-job",
+    "tools/colab_chat/carry12_stage0_v1.json"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "probe60_P16_T1024",
+   "after": [
+    "data",
+    "cuda_gate"
+   ],
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "probe",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_long_2026-10/specs/probe60_P16_T1024.json",
+    "--corpus",
+    "/content/chat/data/mix_s35.ids",
+    "--steps",
+    "300",
+    "--cuda-gate",
+    "/content/chat/cuda_gate",
+    "--data-job",
+    "tools/colab_chat/carry12_stage0_v1.json"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "probe60_X_T1024",
+   "after": [
+    "data",
+    "cuda_gate"
+   ],
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_run.py",
+    "probe",
+    "--out",
+    "{out}",
+    "--spec",
+    "experiments/tiny_chat_long_2026-10/specs/probe60_X_T1024.json",
+    "--corpus",
+    "/content/chat/data/mix_s35.ids",
+    "--steps",
+    "300",
+    "--cuda-gate",
+    "/content/chat/cuda_gate",
+    "--data-job",
+    "tools/colab_chat/carry12_stage0_v1.json"
+   ],
+   "outputs": [
+    "summary.json"
+   ]
+  },
+  {
+   "name": "data_long3",
+   "light": true,
+   "after": [
+    "data",
+    "probe60_B_T1024",
+    "probe60_B_T1024_acc2",
+    "probe60_Sgist_T1024",
+    "probe60_P16_T1024",
+    "probe60_X_T1024"
+   ],
+   "after_terminal": true,
+   "cmd": [
+    "python3",
+    "tools/colab_chat/tiny_chat_data.py",
+    "--out",
+    "{out}",
+    "--vocab",
+    "/content/chat/upload/vocab_llama3_bpe.gguf",
+    "--fineweb",
+    "corpus/data/fineweb_edu_shard0_v1",
+    "--shares",
+    "35",
+    "--mix-bytes",
+    "800000000",
+    "--max-epochs",
+    "4",
+    "--T",
+    "1024",
+    "--seed",
+    "1",
+    "--human-dir",
+    "{out}/long",
+    "--human-dir",
+    "/content/chat/data/human",
+    "--human-fetch",
+    "python3 corpus/fetchers/human_dialogue.py taskmaster3,abcd,ccpe,p4g --out-dir {human}",
+    "--sources",
+    "oasst,convai2,wow,bst,taskmaster,multiwoz,self_dialogue,topical_chat,dolly,quac,empathetic,dailydialog,no_robots,taskmaster3,abcd,ccpe,p4g",
+    "--require-pinned",
+    "--carry12",
+    "--long-sft",
+    "10:4"
+   ],
+   "outputs": [
+    "data.ledger.json",
+    "human_decontam.json"
+   ]
+  },
+  {
+   "name": "cost_pick_e1_60m_L8",
+   "after": [
+    "cuda_gate",
+    "probe60_B_T1024",
+    "probe60_B_T1024_acc2",
+    "probe60_Sgist_T1024",
+    "probe60_P16_T1024",
+    "probe60_X_T1024"
+   ],
+   "after_terminal": true,
+   "cmd": [
+    "python3",
+    "tools/carry12_l0.py",
+    "run",
+    "--weights",
+    "/content/chat/upload/pick_e1_60m_L8.model.safetensors",
+    "--spec-json",
+    "/content/chat/upload/pick_e1_60m_L8.spec.json",
+    "--tag",
+    "pick_e1_60m_L8",
+    "--out",
+    "{out}",
+    "--gen",
+    "ember",
+    "--ember-bin",
+    "auto",
+    "--ember-commit",
+    "7526469695ee3f07f2b5d6e60568cd3e09529c84",
+    "--mtstudio",
+    "/content/pk/build_cuda/mtstudio",
+    "--vocab",
+    "/content/chat/upload/vocab_llama3_bpe.gguf",
+    "--gpu-layers",
+    "-1",
+    "--spot",
+    "20",
+    "--cost-run",
+    "--ctx",
+    "1024",
+    "--max-new",
+    "48",
+    "--no-near-self"
+   ],
+   "outputs": [
+    "pick_e1_60m_L8/l0.json",
+    "pick_e1_60m_L8/eval/summary.json",
+    "pick_e1_60m_L8/eval/summary.md",
+    "pick_e1_60m_L8/eval/pick_e1_60m_L8/gen_engine.json",
+    "pick_e1_60m_L8/eval.log"
+   ]
+  },
+  {
+   "name": "cost_pick_e1_60m_L16",
+   "after": [
+    "cuda_gate",
+    "probe60_B_T1024",
+    "probe60_B_T1024_acc2",
+    "probe60_Sgist_T1024",
+    "probe60_P16_T1024",
+    "probe60_X_T1024"
+   ],
+   "after_terminal": true,
+   "cmd": [
+    "python3",
+    "tools/carry12_l0.py",
+    "run",
+    "--weights",
+    "/content/chat/upload/pick_e1_60m_L16.model.safetensors",
+    "--spec-json",
+    "/content/chat/upload/pick_e1_60m_L16.spec.json",
+    "--tag",
+    "pick_e1_60m_L16",
+    "--out",
+    "{out}",
+    "--gen",
+    "ember",
+    "--ember-bin",
+    "auto",
+    "--ember-commit",
+    "7526469695ee3f07f2b5d6e60568cd3e09529c84",
+    "--mtstudio",
+    "/content/pk/build_cuda/mtstudio",
+    "--vocab",
+    "/content/chat/upload/vocab_llama3_bpe.gguf",
+    "--gpu-layers",
+    "-1",
+    "--spot",
+    "20",
+    "--cost-run",
+    "--ctx",
+    "1024",
+    "--max-new",
+    "48",
+    "--no-near-self"
+   ],
+   "outputs": [
+    "pick_e1_60m_L16/l0.json",
+    "pick_e1_60m_L16/eval/summary.json",
+    "pick_e1_60m_L16/eval/summary.md",
+    "pick_e1_60m_L16/eval/pick_e1_60m_L16/gen_engine.json",
+    "pick_e1_60m_L16/eval.log"
+   ]
+  },
+  {
+   "name": "cost_pick_e1_60m_L32",
+   "after": [
+    "cuda_gate",
+    "probe60_B_T1024",
+    "probe60_B_T1024_acc2",
+    "probe60_Sgist_T1024",
+    "probe60_P16_T1024",
+    "probe60_X_T1024"
+   ],
+   "after_terminal": true,
+   "cmd": [
+    "python3",
+    "tools/carry12_l0.py",
+    "run",
+    "--weights",
+    "/content/chat/upload/pick_e1_60m_L32.model.safetensors",
+    "--spec-json",
+    "/content/chat/upload/pick_e1_60m_L32.spec.json",
+    "--tag",
+    "pick_e1_60m_L32",
+    "--out",
+    "{out}",
+    "--gen",
+    "ember",
+    "--ember-bin",
+    "auto",
+    "--ember-commit",
+    "7526469695ee3f07f2b5d6e60568cd3e09529c84",
+    "--mtstudio",
+    "/content/pk/build_cuda/mtstudio",
+    "--vocab",
+    "/content/chat/upload/vocab_llama3_bpe.gguf",
+    "--gpu-layers",
+    "-1",
+    "--spot",
+    "20",
+    "--cost-run",
+    "--ctx",
+    "1024",
+    "--max-new",
+    "48",
+    "--no-near-self"
+   ],
+   "outputs": [
+    "pick_e1_60m_L32/l0.json",
+    "pick_e1_60m_L32/eval/summary.json",
+    "pick_e1_60m_L32/eval/summary.md",
+    "pick_e1_60m_L32/eval/pick_e1_60m_L32/gen_engine.json",
+    "pick_e1_60m_L32/eval.log"
+   ]
+  }
+ ]
+}

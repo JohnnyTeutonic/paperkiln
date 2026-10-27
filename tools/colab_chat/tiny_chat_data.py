@@ -31,6 +31,13 @@ Outputs in --out: mix_s<share>.ids, panel_fineweb.ids, panel_dialogue.ids, sft_h
 data.ledger.json (counts, bytes, tokens, copies, sha256 of every output). Idempotent: a finished
 output is not rebuilt.
 
+The long-carry programme (experiments/tiny_chat_long_2026-10/PREREGISTRATION_DRAFT.md sections 2, 4 and 6):
+--carry12 adds Carry-12 v1 (corpus/eval/carry12_v1.jsonl, which must equal its pin) to step 2's
+decontamination beside Carry-5, so dialogues are dropped by the same rules and counted; --T 1024 builds the
+SFT set at T 1,024 (the mixes are token streams and do not depend on T: mtstudio draws its windows); and
+--long-sft MIN:COPIES also writes sft_human_long<COPIES>.jsonl for cell D: the same SFT rows, each row of
+MIN or more trained turns (exchanges) present COPIES times, shuffled with the same seed.
+
 --measure-only stops after step 3 and prints human_pt_bytes, the P of the registered level rule
 (make_jobs.py --dialogue-pt-bytes): the same files and code as the data job, so P equals what the
 VMs measure.
@@ -124,6 +131,32 @@ def check_pins(files):
         raise SystemExit(f"not the pinned bytes (or no pin): {bad}")
 
 
+def trained_turns(row):
+    """Exchanges trained in an all-turns SFT row (chat_data.py sft --all-turns: {"segments"}, one trained
+    segment per assistant reply)."""
+    return sum(1 for seg in row.get("segments", []) if seg.get("loss"))
+
+
+def long_rows(raw, dst, min_turns, copies):
+    """Cell D's SFT rows: every row of raw once, and each row of min_turns or more trained turns copies
+    times in all (shuffled afterwards). Returns the counts for the ledger."""
+    n = n_long = 0
+    with open(raw, encoding="utf-8") as f, open(dst, "w", encoding="utf-8", newline="\n") as g:
+        for line in f:
+            if not line.strip():
+                continue
+            n += 1
+            row = json.loads(line)
+            k = copies if trained_turns(row) >= min_turns else 1
+            n_long += k > 1
+            row.setdefault("mix_source", os.path.basename(raw))  # as in sft_human.jsonl (chat_data.py mix)
+            line = json.dumps(row, ensure_ascii=False) + "\n"
+            for _ in range(k):
+                g.write(line)
+    return {"min_turns": min_turns, "copies": copies, "rows": n, "rows_long": n_long,
+            "rows_out": n + n_long * (copies - 1)}
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--out", required=True)
@@ -140,7 +173,17 @@ def main(argv=None):
     ap.add_argument("--sources", default=None, help="comma-separated human dialogue sources (default: all found)")
     ap.add_argument("--require-pinned", action="store_true", help="refuse unless every source file matches its pin")
     ap.add_argument("--measure-only", action="store_true", help="stop after the split; print human_pt_bytes")
+    ap.add_argument("--carry12", action="store_true", help="Carry-12 v1 joins the decontamination (pinned bytes)")
+    ap.add_argument("--long-sft", default="", help="MIN:COPIES: sft_human_long<COPIES>.jsonl, rows of MIN+ turns x COPIES")
     a = ap.parse_args(argv)
+    long_min = long_copies = 0
+    if a.long_sft:
+        try:
+            long_min, long_copies = (int(x) for x in a.long_sft.split(":"))
+        except ValueError:
+            ap.error("--long-sft is MIN:COPIES, e.g. 10:4")
+        if long_min < 1 or long_copies < 2:
+            ap.error("--long-sft needs MIN >= 1 and COPIES >= 2")
     if not a.measure_only and not all((a.vocab, a.fineweb, a.shares, a.mix_bytes)):
         ap.error("--vocab, --fineweb, --shares and --mix-bytes are required unless --measure-only")
     out = os.path.abspath(a.out)
@@ -186,9 +229,15 @@ def main(argv=None):
                            "dialogues_in": n_in, "dropped_not_alternating": n_bad}
         clean = os.path.join(out, "human_clean.jsonl")
         import human_dialogue  # the fetcher's Decontaminator with Carry-5's turns added
-        dc, carry5_sha = human_dialogue.decontaminator(carry5=True)
+        dc, carry5_sha = human_dialogue.decontaminator(carry5=True, carry12=a.carry12)
         if not carry5_sha:
             raise SystemExit("corpus/eval/carry5_v1.jsonl is missing: the human dialogues cannot be decontaminated")
+        if a.carry12:
+            want = C.expected_hashes("carry12_v1").get("carry12_v1.jsonl")
+            got = human_dialogue.carry12_sha()
+            if not want or got != want:
+                raise SystemExit(f"corpus/eval/carry12_v1.jsonl is not its pinned bytes ({got} vs {want})")
+            ledger["human"]["carry12_v1_sha256"] = got
         ledger.setdefault("steps", {})["decontam"] = decontam.run(allf, clean, os.path.join(out, "human_decontam.json"),
                                                                   dc=dc)
         ledger["human"]["carry5_v1_sha256"] = carry5_sha
@@ -219,15 +268,28 @@ def main(argv=None):
 
     # 4. SFT set: one row per dialogue, every assistant turn trained, shuffled.
     sft = os.path.join(out, "sft_human.jsonl")
-    if not os.path.exists(sft):
-        raw = os.path.join(out, "sft_raw.jsonl")
-        sh([sys.executable, "tools/chat_data.py", "sft", sft_dl, "--vocab", a.vocab, "--T", str(a.T), "--all-turns",
-            "--out", raw], ledger, "sft")
-        sh([sys.executable, "tools/chat_data.py", "mix", raw, "--seed", str(a.seed), "--out", sft + ".tmp"], ledger,
-           "sft_shuffle")
-        os.replace(sft + ".tmp", sft)
+    sft_long = os.path.join(out, f"sft_human_long{long_copies}.jsonl") if long_copies else None
+    raw = os.path.join(out, "sft_raw.jsonl")
+    if not os.path.exists(sft) or (sft_long and not os.path.exists(sft_long)):
+        if not os.path.exists(raw):
+            sh([sys.executable, "tools/chat_data.py", "sft", sft_dl, "--vocab", a.vocab, "--T", str(a.T),
+                "--all-turns", "--out", raw + ".tmp"], ledger, "sft")
+            os.replace(raw + ".tmp", raw)
+        if not os.path.exists(sft):
+            sh([sys.executable, "tools/chat_data.py", "mix", raw, "--seed", str(a.seed), "--out", sft + ".tmp"],
+               ledger, "sft_shuffle")
+            os.replace(sft + ".tmp", sft)
+        if sft_long and not os.path.exists(sft_long):
+            ledger["long_sft"] = long_rows(raw, os.path.join(out, "sft_long_raw.jsonl"), long_min, long_copies)
+            sh([sys.executable, "tools/chat_data.py", "mix", os.path.join(out, "sft_long_raw.jsonl"), "--seed",
+                str(a.seed), "--out", sft_long + ".tmp"], ledger, "sft_long_shuffle")
+            os.replace(sft_long + ".tmp", sft_long)
+            os.remove(os.path.join(out, "sft_long_raw.jsonl"))
         os.remove(raw)
     ledger.setdefault("outputs", {})["sft_human.jsonl"] = {"bytes": os.path.getsize(sft), "sha256": C.sha256_file(sft)}
+    if sft_long:
+        ledger["outputs"][os.path.basename(sft_long)] = {"bytes": os.path.getsize(sft_long),
+                                                         "sha256": C.sha256_file(sft_long)}
 
     # 5. Panels.
     ids(os.path.join(a.fineweb, "val.txt"), a.vocab, os.path.join(out, "panel_fineweb.ids"), ledger, "panel_fineweb")
