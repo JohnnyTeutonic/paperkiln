@@ -14,14 +14,18 @@ marked † were set for the 60M base on 26 Oct 2026; section 13 lists the 20M pl
 rule is unchanged: this file freezes only after E5, E1 (its 60M stage included) and the recursion arms report.
 Jonathan approved the 60M core on 26 Oct 2026 (section 10: 104-139 L4 VM-hours, $61-82, with self history played to
 the target only and no near_self; every registered test kept, HX included; S-full and R conditional), under that
-freeze rule.*
+freeze rule. On 27 Oct 2026 he gave the go on the measured total (section 10), left data option 3 untaken (section 11
+item 7) and added cell T, template SFT with explicit recall targets (sections 0, 6 and 8), on an outside reviewer's
+suggestion.*
 
 Receipts in this folder: `carry12_v1_build.json` (counts and balance), `carry12_v1_budget.json` (context
 lengths), `carry12_v1_decontam.json` (contamination), `dialogue_lengths_v1.json` (the human corpora in turns
 and tokens), `STAGE_L0.md` (Stage L0's frozen registration), `IR_SPEC_DRAFT.md` (spec text for ir.hpp
 review), `CROSSLAYER_LITCHECK.md` (cross-layer arm, by another agent), `stage0/` (the pre-freeze campaign's
-receipts and E1 at 60M's measured walls, `stage0/e1_60m_walls_t512.json`). Tools: `tools/carry12_build.py`,
-`tools/carry12_eval.py`, `tools/carry12_l0.py`, `tools/dialogue_lengths.py`; the pre-freeze campaign
+receipts and E1 at 60M's measured walls, `stage0/e1_60m_walls_t512.json`), `carry12_tsft_v1_build.json` and
+`carry12_tsft_v1_disjoint.json` (cell T's template set: counts and hashes; its disjointness from Carry-12 v1 and
+Carry-5 v1). Tools: `tools/carry12_build.py`, `tools/carry12_eval.py`, `tools/carry12_l0.py`,
+`tools/dialogue_lengths.py`, `tools/carry12_tsft_build.py` (cell T's template set); the pre-freeze campaign
 `tools/colab_chat/carry12_stage0_v1.json` (written by `make_stage0_jobs.py`) and its total, `stage0_total.py`; the
 cells' specs and jobs files, `make_jobs.py` (`specs/cell_*.json`, `specs/sft_*.json`,
 `tools/colab_chat/carry12_<cell>_r<seed>.json`), and section 9's `analyze.py`.
@@ -31,7 +35,12 @@ cells' specs and jobs files, `make_jobs.py` (`specs/cell_*.json`, `specs/sft_*.j
 - **Objective (Jonathan, 24 Oct 2026):** "We do want them to get some recall to carry a conversation for, I
   don't know, at least a dozen turns." The ability measured: using a fact from turns 1-4 at turns 10-14.
 - **Human-written data only, no distillation** (as E5/E1, section 0). Templates written by us are not model
-  text; they are evaluation material and never enter training (section 4 says why they stay out).
+  text; they are evaluation material and never enter training (section 4 says why they stay out), with one
+  registered exception. **Cell T** (Jonathan's ruling, 27 Oct 2026, on an outside reviewer's suggestion of SFT with
+  explicit recall targets) trains on a template set written for it under option 5's conditions (section 4): our own
+  templates, not model-generated dialogue, sharing no template, entity or value with Carry-12 v1 or Carry-5 v1
+  (checked: `carry12_tsft_v1_disjoint.json`, section 6), with T scored on Carry-12 v1, which is built from other
+  templates. No other cell sees a template.
 - **Measurement before mechanism**, as before: the long-carry gap is measured on E5/E1's own models first
   (Stage L0, no training), then the interventions are deltas against a long-context base.
 
@@ -268,14 +277,16 @@ not allowed, and nor is any rearrangement that presents separate exchanges as on
    dialogue is held out only when its id appears in dev/test and never in train (2); 6,856 "auto template"
    dialogues drop. It adds 902 dialogues of 12+ turns (124 of 14+, none of 20+; median 10 turns), so the
    12+-turn count is 7,717 without MSC (`dialogue_lengths_long_v1.json`: the four long sources pooled hold
-   1,288 of 12+ turns).
+   1,288 of 12+ turns). **Not taken** (Jonathan, 27 Oct 2026; section 11 item 7): B trains on W512's sources, so HT
+   stays a contrast of T alone.
 4. **Packing unrelated dialogues into one window is allowed only as separate documents** (an
    `<|endoftext|>` between, as the mixes do now): it is ordinary packing, teaches nothing about long carry,
    and must never be presented as one conversation (no shared template run, no state tokens across the join).
-5. **Hand-written templated long dialogues as training data** (human-written templates, not model text) would
-   meet the letter of the rule but teach the benchmark's own templates; if ever wanted, it is a separate,
-   registered arm with disjoint templates and value lists, scored only on a Carry-12 built from other
-   templates. Not proposed here.
+5. **Hand-written templated long dialogues as training data** (human-written templates, not model text) meet the
+   letter of the rule but would teach the benchmark's own templates, so they run only as a separate, registered
+   arm with disjoint templates and value lists, scored only on a Carry-12 built from other templates. **Taken for
+   one cell, T** (Jonathan's ruling, 27 Oct 2026; section 6), on those conditions: `tools/carry12_tsft_build.py`'s
+   templates, entities and values share nothing with Carry-12 v1 or Carry-5 v1, and T is scored on Carry-12 v1.
 
 ## 5. Stage L0: the gap on E5/E1's models (no training)
 
@@ -306,7 +317,7 @@ seeds 1, 2, 3 paired by seed. Rung logging is not registered here.
   pick each: E5's 0% pick D -0.066, its 17% pick -0.039; the 35% and 70% picks are read at the freeze). The bar's
   result is reported beside every Carry-12 table.
 - **Learning rates†:** every cell trains at E1 at 60M's T 512 choice for its plain shape (`stage0/lr_choice.json`:
-  60m_L4 and 60m_L8 5e-4, 60m_L16 and 60m_L32 1e-3); D, S-gist and S-full at B's, X at P16's (Kimi's convention, as
+  60m_L4 and 60m_L8 5e-4, 60m_L16 and 60m_L32 1e-3); D, T, S-gist and S-full at B's, X at P16's (Kimi's convention, as
   A5.2). No T 1,024 screens: the rate held fixed keeps HT a contrast of T alone, and tokens per step do not change.
 
 | cell | what | parameters vs B | status† |
@@ -314,6 +325,7 @@ seeds 1, 2, 3 paired by seed. Rung logging is not registered here.
 | W512 | E1 at 60M's L\* cell itself (T 512): its three pretrained runs, re-SFT'd by E1's own SFT on B's machines and scored on Carry-12 by forced choice (its per-seed SFT models stayed on E1's VMs; Stage L0 scored the pick only) | = | 1.83 h per seed (section 10) |
 | **B** | 60m_L\* at T 1,024 | = | core: every contrast below is against it |
 | D | B's pretrained weights; SFT with 10+-turn dialogues oversampled x4 (`sft_human_long4.jsonl`: the T 1,024 data job's SFT rows, each row of 10+ trained turns four times, `--long-sft 10:4`; B's 1,500 steps) | = | core (data option 1, SFT only) |
+| T | B's pretrained weights; SFT on B's rows plus 4,224 template dialogues with explicit recall targets, 20% of the rows (`sft_human_tsft.jsonl`, `--template-sft`; B's 1,500 steps) | = | core (Jonathan's ruling, 27 Oct 2026; data option 5) |
 | S-gist | B + k = 4 state slots, `turn_state` mask (IR_SPEC_DRAFT section 1) | + 4d (1,536-4,352)† | core: E4, per-turn state, finished turns dropped |
 | S-full | B + k = 4 state slots after every exchange, plain causal mask | + 4d† | conditional: only if HS1 (S-gist vs B) is SUPPORTED (S-gist loses), to place the cost |
 | P16 | plain 60m_L16 at T 1,024 (= B if L\* = 16)† | = | core when L\* is not 16 |
@@ -328,6 +340,52 @@ carry, and at 20M fixed recursion and MoR have shown no advantage so far (`INTER
 R runs only if E1-R's HR2 (or HR2-J) or the MoR block's H-MoR1 is SUPPORTED, with its design (the winner's topology
 recursing a 60M stack) and its cost (about 39 VM-hours for an R2-like cell plus its own screens) put to Jonathan
 then.
+
+**T: template SFT with explicit recall targets (Jonathan's ruling, 27 Oct 2026, on an outside reviewer's
+suggestion; section 0's one exception).** B's pretrained weights; SFT at B's recipe for B's 1,500 steps of 16,384
+tokens, so the SFT token budget is B's and the contrast with B is the data, not more steps; on B's machines like D,
+seeds 1-3, paired by seed. Its SFT set (`sft_human_tsft.jsonl`, the data job's `--template-sft`) is B's 16,932 human
+rows once each plus the template set's 4,224 dialogues, shuffled with the data job's seed: the templates are 20% of
+T's rows (4,224 of 21,156) and about 21% of its tokens (1.01M beside the SFT split's 3.89M at T 1,024, section 4).
+- **Why 20%.** Section 4 counts a few hundred natural late turns that revisit early content in the whole SFT split;
+  4,224 dialogues with one carry target each give an order of magnitude more long-gap supervision, which a test of
+  "explicit recall targets" needs. Four rows in five stay human, so every human row is still seen about 1.2 times
+  in T's 24,000 row draws (1,500 steps of 16 rows, the last 5% of the file held out; B: about 1.5), and the checks
+  of section 12 can see what the share costs general chat; above a third, the human rows would fall under one pass
+  each. One proportion is registered; there is no dose curve.
+- **The template set** (`tools/carry12_tsft_build.py`, seed 20261027, sha256 `3dbe77b5...`, pinned in
+  `corpus/hashes/carry12_tsft_v1.sha256`; counts in `carry12_tsft_v1_build.json`). Every dialogue has one target turn
+  whose correct reply needs a fact, a correction or a standing instruction from N turns back, N = 1-12 (352
+  dialogues at each N), then a closing turn: 3-16 turns, 240 tokens on average (max 468), all whole at T 1,024.
+  - recall (2,160): a fact about the user in one of six slots of the set's own (boat name, street, gym locker
+    number, car, team, home language; 14-30 values each) at turn 1-3, asked N turns later; 0-3 same-slot facts
+    about other people (eight relations of its own: flatmate, grandad, nephew ...) before the target.
+  - correction (1,440): the fact planted at turn 1-3, corrected 1-4 turns later ("I mixed that up earlier. My boat
+    is named X rather than Y."), asked N turns after the correction; 0-2 distractors.
+  - instruction (624): a standing format instruction with a question at turn 1-3, in forms of its own (start every
+    reply with Indeed / Certainly / Gladly / Absolutely, or end it with "no doubt" / "as ever" / "in fact" / "all in
+    all"; Carry-12's are Sure / Okay / Right / Well and "of course" / "I think" / "you know" / "for sure"), every reply
+    from then on complying, the target question N turns later.
+  - Between the events: the set's own hand-written small talk (67 single exchanges, 16 two-turn arcs, 5 openers, 3
+    closings), naming no value and raising no slot's subject. **No turn comes from the human dialogue pool:**
+    splicing human exchanges into a templated conversation would present separate exchanges as one conversation
+    (section 4's rule), and the pool is not scrubbed of Carry-12's values.
+  - Carry-12's topic and load families have no counterpart (no digression; one user fact per dialogue), so the
+    transfer reading of section 8 has an untrained side.
+- **Disjointness, checked** (`carry12_tsft_v1_disjoint.json`, `python tools/carry12_tsft_build.py disjoint`):
+  decontam.py's rules (word 13-grams, prompts, spans) with the data job's targets (the frozen eval sets, Carry-5 and
+  Carry-12) drop 0 of 4,224 dialogues (6 simple-QA answer flags on everyday words such as "cold" and "light", flagged
+  and kept as the data job keeps them); carry5_build's scan of Carry-12 v1 and of Carry-5 v1 finds no 13-gram,
+  prompt, span, template sentence (any sentence of 3+ words), fact sentence or item leak; no value is shared,
+  whole or as a content word with its plural (the set's 190 values against Carry-12's 790); no word of the sets'
+  entity and slot-value lists (names, pet names, cities, jobs, favourites, topic values, animals, ages 18-79) or of
+  Carry-12's instruction forms occurs anywhere in the set's text; and no user turn, reply or raw template is equal.
+  The check catches planted overlaps (`tests/test_carry12_tsft.py`). The data job rebuilds the set, refuses bytes
+  other than the pin and refuses the set if its own decontamination drops any dialogue.
+- B, D and T also read the panels at their SFT weights (post `--sft-panels`): their pretrained weights are one, so
+  their pretraining panels are equal by construction. B's machines end with the chat-prompt checks of B, D and T
+  side by side (`chat_c12_r<seed>`: `tools/colab_chat/chat_eval_vm.sh`, tools/chat_eval.py on the frozen
+  tinychat_hf_prompts_v1 and chat_prompts_v1, tools/qa_eval.py on simple_qa_v1).
 
 **E4: per-turn state tokens (S-full, S-gist).** After every `<|endoftext|>` that closes an exchange, k = 4
 learned state slots (rows of a `state_embd` [4, d] tensor, outside the vocabulary). Under the `turn_state`
@@ -393,8 +451,10 @@ near - twin (splitting) and full - near (distance), with gold history† (the se
 near_self, which the post jobs do not run); self minus gold at the target (error propagation); accuracy by distance (6-13), by
 interference (0-3), by distractor window (early or late), by correction kind (early or late) and held turns,
 by load; Carry-5's Y on the same model (the short-gap reference); the two panel losses (FineWeb-Edu and
-dialogue val, 512 windows of 1,024 tokens); S12 instruction compliance at turns 10-14; tokens/s and peak
-memory; KV rows per turn in serving (S cells); Y12 per L4-hour.
+dialogue val, 512 windows of 1,024 tokens), for B, D and T also at the SFT weights; S12 instruction compliance at
+turns 10-14; for B, D and T the chat-prompt checks (clean stops, repetition, reference bits per byte on
+tinychat_hf_prompts_v1 and chat_prompts_v1; simple-QA accuracy); tokens/s and peak memory; KV rows per turn in
+serving (S cells); Y12 per L4-hour.
 
 **SESOI:** 3 points for pairwise contrasts and for interaction contrasts; 1 point per turn of distance for
 slopes on distance; 0.02 nats pairwise for panel losses.
@@ -410,6 +470,20 @@ slopes on distance; 0.02 nats pairwise for panel losses.
   the data, not by the window). Falsified by EQUIVALENT or CONTRADICTED.
 - **HD, long-dialogue weighting (D vs B):** Y12(D) - Y12(B) > 0. Counter **HD-0:** EQUIVALENT (only ~10% of
   natural late turns revisit early content, so oversampling them teaches recency, not recall).
+- **HT-SFT, template SFT with explicit recall targets (T vs B):** Y12(T) - Y12(B) > 0 beyond the SESOI (the template
+  rows give the long-gap supervision natural dialogue lacks). Counter **HT-SFT-0:** EQUIVALENT within 3 points (the
+  templates teach their own format, not carry: the model learns to answer the set's own slots and forms, and
+  Carry-12's other templates see no gain). Falsified by EQUIVALENT or CONTRADICTED. **Transfer reading** (registered,
+  secondary): T's gain over B in Y (self history minus twin, per pool, by item counts) on the Carry-12 families whose
+  structure T's templates have (recall and correction, 840 items) and on those they lack (topic and load, 480 items),
+  each by the verdict rule, and their difference. A SUPPORTED gain on topic and load reads as transfer beyond the
+  trained structure; a SUPPORTED gain on recall and correction with topic and load EQUIVALENT reads as a gain that
+  stays with the trained structure. Its limit: all of Carry-12's templates are new to T, so even the trained
+  families test transfer across templates, slots and values; the reading separates family structure only, and
+  knowledge and instruction are outside it (instruction is reported by compliance). **Beside HT-SFT**, as
+  degradation checks (SUPPORTED = T worse than B beyond the SESOI; reported, not conditions on HT-SFT): Carry-5's Y
+  (3 points), the dialogue and FineWeb-Edu panels at the SFT weights (0.02 nats), and, descriptively, the chat-prompt
+  checks of B, D and T and S12 instruction compliance.
 - **HS1, per-turn state against the base (S-gist vs B)†:** Y12(S-gist) - Y12(B) < 0 beyond the SESOI
   (compression into 4 rows per turn loses detail; gisting's failures were exactly verbatim details, and
   Carry-12's answers are verbatim values). Alternative **HS1-alt** (RMT: memory tokens learn compact
@@ -447,17 +521,21 @@ three seeds); no peeking (`--partial` labels output DESCRIPTIVE, PARTIAL). W512'
 `analyze.py --art ART [--partial] [--lstar L] [--r-sign +1|-1] [--e1-home DIR]` reads every
 `post_c12_<cell>_r<seed>/summary.json` the cells' jobs bring home and uses E5/E1's `decide()` (the verdict rule and
 the extension flag) unchanged. Per cell: the validity gate of section 7 on means over seeds (a contrast with a failing
-cell is FLOOR), Y12, Y12_gold, the decomposition, Carry-5's Y, the panels and instruction compliance. Registered: HT
-(Y12_gold, B - W512, with HT-0's reading), HD (D - B, HD-0), HS1 (S-gist - B, direction negative, with HS1-alt: holds
+cell is FLOOR), Y12, Y12_gold, the decomposition, Carry-5's Y, the panels (and, for B, D and T, the panels at the SFT
+weights) and instruction compliance. Registered: HT (Y12_gold, B - W512, with HT-0's reading), HD (D - B, HD-0),
+HT-SFT (T - B, HT-SFT-0) with its transfer reading (recall and correction against topic and load) and the degradation
+checks beside it (Carry-5's Y, the SFT-weight panels, and the chat-prompt checks read from B's machines'
+`chat_c12_r<seed>` outputs, extracted or in `chat_eval_results.tar.gz`), HS1 (S-gist - B, direction negative, with HS1-alt: holds
 on EQUIVALENT or CONTRADICTED) and its retention ratio by distance over the context families, HS0 and the mask's cost
 when S-full is home, HR when R is home (`--r-sign` gives the 20M contrast's sign; SUPPORTED = the sign transferred),
 HX's D_X on recall (gold far minus near, X - P16), the slope on distance of the gold-history gain in correction
 (1 point per turn), H-gap (both SUPPORTED), HX-main and the isoplot residual (the line through B and P16 per seed,
 flagged thin; none when L\* = 16, where P16 is B). Descriptive: the panel contrasts and W512's reproduction of E1's SFT
 (its `sft_weights_sha256` against E1's home post summaries). Tested on synthetic summaries
-(`tests/test_carry12_analyze.py`: every contrast and verdict, FLOOR, the extension rule and seeds 4-5, the refusal
-of an incomplete core and `--partial`, the conditional cells, L\* = 16) and on the toy cells' own post summaries
-(section 11).
+(`tests/test_carry12_analyze.py`, 14 tests: every contrast and verdict, FLOOR, the extension rule and seeds 4-5, the
+refusal of an incomplete core, T included, and `--partial`, the conditional cells, L\* = 16, HT-SFT SUPPORTED and
+EQUIVALENT with each transfer reading, the degradation checks SUPPORTED and EQUIVALENT, missing SFT panels, and the
+chat checks read from a tarball and from folders) and on the toy cells' own post summaries (section 11).
 
 ## 10. Budget (planning numbers; Stage 0's probes at T 1,024 replace them)
 
@@ -489,6 +567,11 @@ for the whole conversation plus near_self: 30% fewer, and one forced-choice mode
   the freeze rule: nothing launches before this file freezes, after E5, E1 (its 60M stage included) and the
   recursion arms report. The core is above 80 VM-hours at every L\*, which is why it went to him (section 8 rule 5's
   form).
+- **Go (Jonathan, 27 Oct 2026):** on the measured total below, 158.8 L4 VM-hours, $93.68 (the core and W512's
+  re-run), plus cell T, with a RunPod top-up of about $120 to cover the caps. With T, its SFT panels and the
+  chat-prompt checks the total is **178.5 VM-hours, $105.29**, 1.42 times the approved planning number for L\* = 8
+  (126), under the 1.5x rule. The twelve machines' caps now sum to $141 (below): the top-up covers the estimate, and
+  the caps once the account's balance before it is at least $21.
 - **The Carry-12 post evaluation was the largest unmeasured cost** (15 runs x 3.5 h, about 53 VM-hours of the core
   above). If the measured total is above 1.5 times these numbers, it goes back to Jonathan before launch; it goes
   to him in any case for the go of section 11 item 6.
@@ -509,7 +592,8 @@ for the whole conversation plus near_self: 30% fewer, and one forced-choice mode
   job (pk-tc-s150-L8, 26 Oct 2026), on 12 machines (D follows B on B's); X's post job at P16's measured times (X's
   own generation is not measured).
 - **The measured total: 153.3 L4 VM-hours, $90** (`stage0/total.json`), 1.22 times the approved planning number
-  for L\* = 8 (126, $74), under the 1.5x rule; it goes to Jonathan for item 6's go.
+  for L\* = 8 (126, $74), under the 1.5x rule; with W512's re-run, 158.8 VM-hours, $93.68, on which Jonathan gave
+  item 6's go on 27 Oct 2026. Cell T and the checks beside it come after the table.
 
   | cell (3 seeds each) | T 1,024 tok/s (probe) | PT h | SFT h | rest of post h | Carry-12 post h | machine h | VM-hours |
   |---|---:|---:|---:|---:|---:|---:|---:|
@@ -528,21 +612,29 @@ for the whole conversation plus near_self: 30% fewer, and one forced-choice mode
   Carry-12 part, 2.2-2.3 h is `mtstudio score` (forced choice in five modes and the parity gate) and 13-15 minutes
   is ember's generation, so ember ec3201b changes the total by minutes, and batching `mtstudio score` is the lever
   on the post jobs. The 60m_L32 cost run (`pick_e1_60m_L32`) is descriptive and not part of the total.
+- **Cell T and the checks beside it, from the measured rates** (`make_jobs.py --table`). T is D's job on another SFT
+  file (B's weights, B's SFT steps, the same post job), so it costs D's measured 5.85 h per seed, plus 0.05 h for its
+  panels at the SFT weights (W512's allowance for two panels): 5.90 h, **17.7 VM-hours, $10.44** over three seeds.
+  B's and D's SFT-weight panels (0.05 h each) and the chat-prompt checks of B, D and T (0.5 h per machine, an
+  allowance, not measured) add 0.60 h per B machine, 1.8 VM-hours, $1.06. Summed over the twelve machines' estimates:
+  **178.5 VM-hours, $105.29.**
 - **The cells' jobs files** (`make_jobs.py` in this folder; `tools/colab_chat/carry12_<B|Sgist|P16|X>_r<1|2|3>.json`,
   one RunPod L4 each, twelve machines): CUDA gate, the T 1,024 data job (the pre-freeze campaign's), a gate that refuses
   until this folder's `PREREGISTRATION.md` is committed (and checks the pre-freeze CUDA gate, design.json and every
   rate against `lr_choice.json`), the pretraining run on the probed spec (`specs/cell_*.json`, the Stage 0 probes'
   arch, data and train), and the post job: SFT at 16,384 tokens per step (`specs/sft_T1024.json`; D's
-  `sft_T1024_long4.json`), panels, Carry-5, then Carry-12, generation at ember ec3201b with `EMBER_DETERMINISTIC=1`.
-  B's machine also runs D and W512 (E1's pretrained weights uploaded, E1's SFT on E1's T 512 data job, Carry-12
-  forced choice: 1.83 h per seed, 5.5 VM-hours, $3.24 beyond the measured total: **158.8 VM-hours, $93.68** with it).
-  Caps, ceil(1.3 x estimate x $0.59): B's machines (B, D, W512; 17.9 h) $14, S-gist's (10.3 h) $8, P16's (11.5 h) $9,
-  X's (13.4 h) $11; $126 over the twelve. Wall-clock: B's machines are the longest, about 18 h.
+  `sft_T1024_long4.json`; T's `sft_T1024_tsft.json`), panels, Carry-5, then Carry-12, generation at ember ec3201b
+  with `EMBER_DETERMINISTIC=1`. B's machine also runs D, T (its data job adds `--template-sft`), W512 (E1's
+  pretrained weights uploaded, E1's SFT on E1's T 512 data job, Carry-12 forced choice: 1.83 h per seed, 5.5
+  VM-hours, $3.24) and, last, the chat-prompt checks of B, D and T; B, D and T read the panels at their SFT weights
+  too (`--sft-panels`). Caps, ceil(1.3 x estimate x $0.59): **B's machines (B, D, T, W512, chat checks; 24.4 h)
+  $19**, S-gist's (10.3 h) $8, P16's (11.5 h) $9, X's (13.4 h) $11; **$141 over the twelve**. Each runner's deadline
+  is 23.5 h, or ceil(1.3 x estimate) when that is longer: 32 h on B's machines.
 - **Two cheaper layouts, Jonathan's call at the freeze:** when L\* is 32, X on B's shape instead of 60m_L16 (P16
   dropped, about -28 VM-hours, at the cost of the shape the literature check chose and a different X/plain throughput
   ratio, measured by the probe); when L\* is 4 or 8, X stays at 60m_L16 because depth attention needs depth.
-- Wall-clock: one seed per L4 (A5.10's pattern), about 10-13 h per machine and 18 h on B's (B, then D and W512); with
-  the twelve machines at once the core comes home in under a day of runs.
+- Wall-clock: one seed per L4 (A5.10's pattern), about 10-13 h per machine and 24 h on B's (B, then D, T, W512 and
+  the chat checks); with the twelve machines at once the core comes home in about a day of runs.
 
 ## 11. What must be known before freezing
 
@@ -579,31 +671,41 @@ for the whole conversation plus near_self: 30% fewer, and one forced-choice mode
    out all of Self-Dialogue and most of Topical-Chat (its p90 is 11 turns) and shrink D's long rows by about half.
 6. **Stage 0 at T 1,024:** probes replace section 10's estimates; Jonathan's go on the measured total. Known: the
    probes and the measured total, 153.3 L4 VM-hours, $90 (section 10), and W512's re-run on B's machines (E1 at
-   60M's per-seed SFT models are not home; HT pairs by seed), 5.5 VM-hours, $3.24: 158.8 VM-hours, $93.68 in all.
-   Open: his go on that total, and a RunPod top-up to cover it (the twelve machines' caps sum to $126).
-7. Jonathan's ruling on data option 3 (new long human sources), if wanted before the freeze. What the four
-   licensed long sources (Taskmaster-3, ABCD, CCPE-M, PersuasionForGood) add to the T 1,024 data job, counted by
-   the pre-freeze campaign (`stage0/carry12_data_long3_ledger.json`; nothing trains on it): 196,779 dialogues
-   against 170,572 (56 dropped by the decontamination against 53), pretraining dialogue text 178.4 MB against
-   149.5 MB (the 35% mix still takes two copies), SFT rows 19,461 against 16,932, of which 5,351 hold 10+ turns
-   against 3,698 (D's set 35,514 rows against 28,026). With them B's data is no longer W512's, so HT would read
-   T and the sources together.
+   60M's per-seed SFT models are not home; HT pairs by seed), 5.5 VM-hours, $3.24: 158.8 VM-hours, $93.68.
+   Jonathan gave the go on that total on 27 Oct 2026, with cell T, and a RunPod top-up of about $120; with T and the
+   checks beside it, 178.5 VM-hours, $105.29, and the caps sum to $141. Open: the top-up itself.
+7. **Data option 3 (new long human sources): not taken** (Jonathan, 27 Oct 2026). B's data stays W512's, so HT stays a
+   contrast of T alone. What the four licensed long sources (Taskmaster-3, ABCD, CCPE-M, PersuasionForGood) would
+   have added to the T 1,024 data job, counted by the pre-freeze campaign (`stage0/carry12_data_long3_ledger.json`;
+   nothing trains on it): 196,779 dialogues against 170,572 (56 dropped by the decontamination against 53),
+   pretraining dialogue text 178.4 MB against 149.5 MB (the 35% mix still takes two copies), SFT rows 19,461 against
+   16,932, of which 5,351 hold 10+ turns against 3,698 (D's set 35,514 rows against 28,026).
 8. **S-full's trigger** (settled by the main session, 27 Oct 2026): S-full runs only if HS1 is SUPPORTED, that
    is, S-gist scores below B beyond the SESOI, the case in which S-full places S-gist's cost between the
    insertion and the mask (section 6: "only if S-gist loses"). `analyze.py` applies this one reading.
+9. **Cell T** (Jonathan's ruling, 27 Oct 2026): the template set is built, pinned and checked disjoint from Carry-12
+   v1 and Carry-5 v1 (section 6); the data job's `--template-sft`, the cell on B's machines, its SFT-weight panels,
+   the chat-prompt checks and HT-SFT in `analyze.py` are tested (`tests/test_carry12_tsft.py`, 6 tests;
+   `tests/test_carry12_analyze.py`, 14; `tests/test_carry12_jobs.py`, 5) and exercised end to end at toy size (below).
+   Nothing open.
 
 For the freeze itself (the header's licence: the jobs files exercised end to end on CPU): the cells' jobs files
 (section 10: pretraining, SFT and the post job with Carry-12 after Carry-5, generation at ember ec3201b) and section
-9's `analyze.py` exist and ran end to end on CPU at toy size on 27 Oct 2026 (`tests/test_carry12_cells_e2e.py`,
-receipt `stage0/toy_e2e_2026-10-27.json`): for each of the twelve machine files, its own pretraining spec and post
-command lines with the VM's paths mapped to the toy's (width d 64, 2 or 4 layers, a 700-token vocabulary, a few
-steps, 2,048 tokens per step and 16 panel windows through two test-only overrides, Carry-5's every 26th item and
-Carry-12's every 110th), seeds 1-3: the T 1,024 data job with Carry-12 and D's long set, E1's T 512 data job,
-pretraining with `mtstudio run` (state slots in S-gist, attention residuals in X), SFT and export, the panels,
-Carry-5 and base-model Carry-5, then Carry-12. 18 post jobs: every ember spot-check identical at ec3201b on CPU, S-gist
-and X included (Carry-5 2/2 items, Carry-12 14/14), every parity-gate reply identical (5,325 of 5,325), no rendering
-over the context, a rerun of a finished post job a no-op; `analyze.py`'s registered path on the 18 summaries (the toy
-models sit at chance, so every registered contrast reads FLOOR, the gate path). What the freeze commit adds:
+9's `analyze.py` exist and ran end to end on CPU at toy size on 28 Oct 2026 (`tests/test_carry12_cells_e2e.py`,
+4/4, on a clean ext4 clone at paperkiln 6d6af447; receipt `stage0/toy_e2e_2026-10-28.json`): for each of the twelve
+machine files, its own pretraining spec and post command lines with the VM's paths mapped to the toy's (width d 64,
+2 or 4 layers, a 700-token vocabulary whose text includes every eighth template dialogue, a few steps, 2,048 tokens
+per step and 16 panel windows through two test-only overrides, Carry-5's every 26th item and Carry-12's every
+110th), seeds 1-3: the T 1,024 data job with Carry-12, D's long set and T's template rows (the pinned set rebuilt,
+none dropped by the decontamination, every dialogue whole), E1's T 512 data job, pretraining with `mtstudio run`
+(state slots in S-gist, attention residuals in X), SFT and export, the panels (B, D and T also at the SFT weights),
+Carry-5 and base-model Carry-5, then Carry-12. 21 post jobs (T's from B's weights with B's steps, on its own SFT
+file): every ember spot-check identical at ec3201b on CPU, S-gist and X included (Carry-5 2/2 items, Carry-12
+14/14), every parity-gate reply identical (Carry-5 3,600 of 3,600, Carry-12 2,790 of 2,790), no rendering over the
+context, a rerun of a finished post job a no-op; the chat checks (the chat job's NAME@JOB models through
+tools/chat_eval.py and ember's CPU server, 3 prompts) on B, D and T for each seed; `analyze.py`'s registered path on
+the 21 summaries and the chat checks (the toy models sit at chance, so every registered contrast, HT-SFT and its
+transfer reading included, reads FLOOR, the gate path). What the freeze commit adds:
 `PREREGISTRATION.md` in this folder, which every jobs file's gate requires, and the runner entries printed in the
 jobs files' comments, their `--commit` set to that commit.
 
@@ -613,6 +715,16 @@ jobs files' comments, their `--commit` set to that commit.
   a claim of general long-conversation quality. Gold-history scores bound the self-history reading.
 - **The base changes with T:** B differs from W512 in window length for pretraining and SFT together; HT reads
   the bundle.
+- **Teaching to the test format (cell T):** with no template, slot, entity or value shared, T's rows still share
+  Carry-12's task shape (a fact, turns later a question about it, the answer in a short frame), so a gain can be the
+  shape learnt rather than carry. HT-SFT-0 names this outcome; the transfer reading separates the family structures
+  T trained on from those it did not; the twin and near decompositions show where a gain sits; and T's instruction
+  family is reported by compliance, not counted in Y12.
+- **Natural-dialogue performance (cell T):** T draws 20% fewer human SFT rows than B and spends them on templated
+  dialogue, so a Carry-12 gain can be bought with general chat. Carry-5's Y, the dialogue and FineWeb-Edu panels at
+  the SFT weights and the chat-prompt checks (clean stops, repetition, reference bits per byte, simple QA) are
+  reported beside HT-SFT for B, D and T, so that price is visible; one template share is registered, with no dose
+  curve.
 - **One budget** (163.84M tokens), three seeds, one SFT recipe, as E5/E1.
 - **State-slot positions consume window positions** (about 4 per exchange; a few per cent of dialogue
   windows), so the S cells see slightly fewer real tokens; reported.

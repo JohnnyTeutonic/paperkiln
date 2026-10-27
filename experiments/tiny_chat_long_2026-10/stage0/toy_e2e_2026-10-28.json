@@ -1,6 +1,6 @@
 {
- "_comment": "Carry-12's cells end to end on CPU at toy size, 27 Oct 2026 (tests/test_carry12_cells_e2e.py with C12_TOY_SEEDS=1,2,3; WSL, mtstudio CPU build of paperkiln 437db1f2 plus this commit's Python, ember ec3201b CPU). Every machine file's pretraining spec and post command with the VM's paths mapped to the toy's; toy changes: d 64, 2 or 4 layers, a 700-token BPE vocabulary, 4 pretraining and 3 SFT steps, 2,048 tokens per step (TINY_CHAT_SFT_TOKENS_PER_STEP), 16 panel windows (TINY_CHAT_PANEL_WINDOWS), Carry-5 every 26th item (40), Carry-12 every 110th (14). The toy models are at chance, so every registered contrast reads FLOOR: the gate path is what is exercised.",
- "clone_head": "437db1f2358f3b160112b0ec96f963e3bc347ae4",
+ "_comment": "Carry-12's cells end to end on CPU at toy size with cell T, 28 Oct 2026 (tests/test_carry12_cells_e2e.py with C12_TOY_SEEDS=1,2,3; WSL, a clean ext4 clone at the commit below, mtstudio CPU build of the same C++ (437db1f2), ember ec3201b CPU). Every machine file's pretraining spec and post command with the VM's paths mapped to the toy's; toy changes: d 64, 2 or 4 layers, a 700-token BPE vocabulary (its text includes every 8th template dialogue, so T's rows fit T 1,024 whole), 4 pretraining and 3 SFT steps, 2,048 tokens per step, 16 panel windows, Carry-5 every 26th item (40), Carry-12 every 110th (14); the chat checks as tools/chat_eval.py on 3 prompts. The toy models are at chance, so every registered contrast reads FLOOR: the gate path is what is exercised.",
+ "clone_head": "6d6af4476a283f29d9b8b1449baf32004c156495",
  "posts": [
   {
    "machine": "c12_B_r1",
@@ -46,10 +46,16 @@
      "noctx": 0
     },
     "items": 14,
-    "seconds": 10.0
+    "seconds": 51.1
    },
    "Y12": 0.0,
-   "Y12_gold": 0.0
+   "Y12_gold": 0.0769,
+   "sft_panels": {
+    "fineweb": 6.344542443752289,
+    "dialogue": 6.350355267524719
+   },
+   "sft_data_sha256": "83e90ad5e7b325a2910c4c7bde079b271496e3f6e2b64d6b571972bf99757c0c",
+   "pt_weights_sha256": "6032fd4dd1f0a0e7430ef95290b0c2d465c9ab9870bf9812b6f24c2c14f09b3c"
   },
   {
    "machine": "c12_B_r1",
@@ -95,10 +101,71 @@
      "noctx": 0
     },
     "items": 14,
-    "seconds": 9.4
+    "seconds": 57.0
    },
    "Y12": 0.0,
-   "Y12_gold": 0.0
+   "Y12_gold": 0.0769,
+   "sft_panels": {
+    "fineweb": 6.3349617421627045,
+    "dialogue": 6.350682109594345
+   },
+   "sft_data_sha256": "7368344488a331ea05e6eed9511e0b7381bb41daf8748e82fd26b3d5b590087a",
+   "pt_weights_sha256": "6032fd4dd1f0a0e7430ef95290b0c2d465c9ab9870bf9812b6f24c2c14f09b3c"
+  },
+  {
+   "machine": "c12_B_r1",
+   "cell": "T",
+   "seed": 1,
+   "sft_batching": {
+    "mode": "spec",
+    "batch": 2,
+    "accum": 1
+   },
+   "context": 1024,
+   "carry5": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "2/2",
+    "parity_gate": {
+     "replies": 200,
+     "argmax_identical": 200
+    }
+   },
+   "carry12": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "14/14",
+    "parity_gate": {
+     "replies": 155,
+     "argmax_identical": 155
+    },
+    "over_ctx": {
+     "gold": 0,
+     "self": 0,
+     "near": 0,
+     "near_self": 0,
+     "twin": 0,
+     "noctx": 0
+    },
+    "items": 14,
+    "seconds": 92.7
+   },
+   "Y12": 0.0,
+   "Y12_gold": 0.0769,
+   "sft_panels": {
+    "fineweb": 6.341570407152176,
+    "dialogue": 6.357563227415085
+   },
+   "sft_data_sha256": "0607021a3fc5c235a69440457d594b11a88db1ad7c5dced798684ae25bd3a4c5",
+   "pt_weights_sha256": "6032fd4dd1f0a0e7430ef95290b0c2d465c9ab9870bf9812b6f24c2c14f09b3c"
   },
   {
    "machine": "c12_B_r1",
@@ -122,10 +189,13 @@
      "noctx": 0
     },
     "items": 14,
-    "seconds": 2.3
+    "seconds": 21.2
    },
    "Y12": null,
-   "Y12_gold": 0.0
+   "Y12_gold": 0.1538,
+   "sft_panels": null,
+   "sft_data_sha256": "83e90ad5e7b325a2910c4c7bde079b271496e3f6e2b64d6b571972bf99757c0c",
+   "pt_weights_sha256": "00471ac89e448f07fdf10aacf3256829433cb9f0448a4343b09567b41f3307d2"
   },
   {
    "machine": "c12_B_r2",
@@ -171,10 +241,16 @@
      "noctx": 0
     },
     "items": 14,
-    "seconds": 10.0
+    "seconds": 63.8
    },
    "Y12": 0.0,
-   "Y12_gold": 0.0
+   "Y12_gold": 0.0,
+   "sft_panels": {
+    "fineweb": 6.353919327259064,
+    "dialogue": 6.411900341510773
+   },
+   "sft_data_sha256": "83e90ad5e7b325a2910c4c7bde079b271496e3f6e2b64d6b571972bf99757c0c",
+   "pt_weights_sha256": "f1d6f42d533f82576d4894812dcfa11fdd4a94dd10cbce04db2aa641a300305c"
   },
   {
    "machine": "c12_B_r2",
@@ -220,10 +296,71 @@
      "noctx": 0
     },
     "items": 14,
-    "seconds": 13.1
+    "seconds": 43.2
    },
    "Y12": 0.0,
-   "Y12_gold": 0.0
+   "Y12_gold": 0.0,
+   "sft_panels": {
+    "fineweb": 6.348815202713013,
+    "dialogue": 6.4100746512413025
+   },
+   "sft_data_sha256": "7368344488a331ea05e6eed9511e0b7381bb41daf8748e82fd26b3d5b590087a",
+   "pt_weights_sha256": "f1d6f42d533f82576d4894812dcfa11fdd4a94dd10cbce04db2aa641a300305c"
+  },
+  {
+   "machine": "c12_B_r2",
+   "cell": "T",
+   "seed": 2,
+   "sft_batching": {
+    "mode": "spec",
+    "batch": 2,
+    "accum": 1
+   },
+   "context": 1024,
+   "carry5": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "2/2",
+    "parity_gate": {
+     "replies": 200,
+     "argmax_identical": 200
+    }
+   },
+   "carry12": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "14/14",
+    "parity_gate": {
+     "replies": 155,
+     "argmax_identical": 155
+    },
+    "over_ctx": {
+     "gold": 0,
+     "self": 0,
+     "near": 0,
+     "near_self": 0,
+     "twin": 0,
+     "noctx": 0
+    },
+    "items": 14,
+    "seconds": 47.8
+   },
+   "Y12": 0.0,
+   "Y12_gold": 0.0,
+   "sft_panels": {
+    "fineweb": 6.360414236783981,
+    "dialogue": 6.424723386764526
+   },
+   "sft_data_sha256": "0607021a3fc5c235a69440457d594b11a88db1ad7c5dced798684ae25bd3a4c5",
+   "pt_weights_sha256": "f1d6f42d533f82576d4894812dcfa11fdd4a94dd10cbce04db2aa641a300305c"
   },
   {
    "machine": "c12_B_r2",
@@ -247,10 +384,13 @@
      "noctx": 0
     },
     "items": 14,
-    "seconds": 4.0
+    "seconds": 15.5
    },
    "Y12": null,
-   "Y12_gold": 0.0
+   "Y12_gold": 0.0,
+   "sft_panels": null,
+   "sft_data_sha256": "83e90ad5e7b325a2910c4c7bde079b271496e3f6e2b64d6b571972bf99757c0c",
+   "pt_weights_sha256": "cb98ce8f6324ccb15492df2e16a9d8b689b37200f428f3006584ac8dccaee5ba"
   },
   {
    "machine": "c12_B_r3",
@@ -296,10 +436,16 @@
      "noctx": 0
     },
     "items": 14,
-    "seconds": 14.8
+    "seconds": 25.1
    },
-   "Y12": 0.0,
-   "Y12_gold": 0.077
+   "Y12": -0.077,
+   "Y12_gold": -0.077,
+   "sft_panels": {
+    "fineweb": 6.312198430299759,
+    "dialogue": 6.324022859334946
+   },
+   "sft_data_sha256": "83e90ad5e7b325a2910c4c7bde079b271496e3f6e2b64d6b571972bf99757c0c",
+   "pt_weights_sha256": "b56235570ef98bde6e2da716a1035c45d18fbe64af4ae2c5128e334c00290c1d"
   },
   {
    "machine": "c12_B_r3",
@@ -345,10 +491,71 @@
      "noctx": 0
     },
     "items": 14,
-    "seconds": 14.4
+    "seconds": 28.7
    },
-   "Y12": 0.0,
-   "Y12_gold": 0.0
+   "Y12": -0.1539,
+   "Y12_gold": -0.077,
+   "sft_panels": {
+    "fineweb": 6.308529645204544,
+    "dialogue": 6.321423172950745
+   },
+   "sft_data_sha256": "7368344488a331ea05e6eed9511e0b7381bb41daf8748e82fd26b3d5b590087a",
+   "pt_weights_sha256": "b56235570ef98bde6e2da716a1035c45d18fbe64af4ae2c5128e334c00290c1d"
+  },
+  {
+   "machine": "c12_B_r3",
+   "cell": "T",
+   "seed": 3,
+   "sft_batching": {
+    "mode": "spec",
+    "batch": 2,
+    "accum": 1
+   },
+   "context": 1024,
+   "carry5": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "2/2",
+    "parity_gate": {
+     "replies": 200,
+     "argmax_identical": 200
+    }
+   },
+   "carry12": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "14/14",
+    "parity_gate": {
+     "replies": 155,
+     "argmax_identical": 155
+    },
+    "over_ctx": {
+     "gold": 0,
+     "self": 0,
+     "near": 0,
+     "near_self": 0,
+     "twin": 0,
+     "noctx": 0
+    },
+    "items": 14,
+    "seconds": 18.7
+   },
+   "Y12": -0.0769,
+   "Y12_gold": 0.0,
+   "sft_panels": {
+    "fineweb": 6.332263857126236,
+    "dialogue": 6.351632386445999
+   },
+   "sft_data_sha256": "0607021a3fc5c235a69440457d594b11a88db1ad7c5dced798684ae25bd3a4c5",
+   "pt_weights_sha256": "b56235570ef98bde6e2da716a1035c45d18fbe64af4ae2c5128e334c00290c1d"
   },
   {
    "machine": "c12_B_r3",
@@ -372,10 +579,13 @@
      "noctx": 0
     },
     "items": 14,
-    "seconds": 3.4
+    "seconds": 5.1
    },
    "Y12": null,
-   "Y12_gold": 0.0
+   "Y12_gold": -0.0769,
+   "sft_panels": null,
+   "sft_data_sha256": "83e90ad5e7b325a2910c4c7bde079b271496e3f6e2b64d6b571972bf99757c0c",
+   "pt_weights_sha256": "6e4e28d5524cb46a22ab3af8f97fadc62222b64ac775180316fc0b8da4eff20c"
   },
   {
    "machine": "c12_P16_r1",
@@ -421,10 +631,13 @@
      "noctx": 0
     },
     "items": 14,
-    "seconds": 50.8
+    "seconds": 343.9
    },
-   "Y12": -0.077,
-   "Y12_gold": -0.1539
+   "Y12": -0.0769,
+   "Y12_gold": 0.0,
+   "sft_panels": null,
+   "sft_data_sha256": "83e90ad5e7b325a2910c4c7bde079b271496e3f6e2b64d6b571972bf99757c0c",
+   "pt_weights_sha256": "c9db20584b31746d148af1a337a715c94c885e866eedab2d511bfd774e114fd2"
   },
   {
    "machine": "c12_P16_r2",
@@ -470,10 +683,13 @@
      "noctx": 0
     },
     "items": 14,
-    "seconds": 54.5
+    "seconds": 88.0
    },
-   "Y12": 0.0769,
-   "Y12_gold": 0.0
+   "Y12": 0.0,
+   "Y12_gold": 0.0,
+   "sft_panels": null,
+   "sft_data_sha256": "83e90ad5e7b325a2910c4c7bde079b271496e3f6e2b64d6b571972bf99757c0c",
+   "pt_weights_sha256": "173521cef38bfb6e7e7d4076169a28e2eb6cb72e4d48a0abe6839819c3568b9b"
   },
   {
    "machine": "c12_P16_r3",
@@ -519,10 +735,13 @@
      "noctx": 0
     },
     "items": 14,
-    "seconds": 60.4
+    "seconds": 45.5
    },
-   "Y12": 0.0769,
-   "Y12_gold": 0.0769
+   "Y12": -0.077,
+   "Y12_gold": 0.0,
+   "sft_panels": null,
+   "sft_data_sha256": "83e90ad5e7b325a2910c4c7bde079b271496e3f6e2b64d6b571972bf99757c0c",
+   "pt_weights_sha256": "dda07c6ffa21551e1169d7ca30d5f4b762665e776a26eba2b7e5de3d95cd4070"
   },
   {
    "machine": "c12_Sgist_r1",
@@ -568,10 +787,13 @@
      "noctx": 0
     },
     "items": 14,
-    "seconds": 14.0
+    "seconds": 72.1
    },
    "Y12": 0.0769,
-   "Y12_gold": 0.0769
+   "Y12_gold": 0.0769,
+   "sft_panels": null,
+   "sft_data_sha256": "83e90ad5e7b325a2910c4c7bde079b271496e3f6e2b64d6b571972bf99757c0c",
+   "pt_weights_sha256": "d19eaf5fc4c6093ee05236322fddb2927c23f1090dd0828dfa3995f2d19b8af2"
   },
   {
    "machine": "c12_Sgist_r2",
@@ -617,10 +839,13 @@
      "noctx": 0
     },
     "items": 14,
-    "seconds": 14.7
+    "seconds": 69.3
    },
-   "Y12": 0.0,
-   "Y12_gold": 0.0
+   "Y12": -0.077,
+   "Y12_gold": -0.077,
+   "sft_panels": null,
+   "sft_data_sha256": "83e90ad5e7b325a2910c4c7bde079b271496e3f6e2b64d6b571972bf99757c0c",
+   "pt_weights_sha256": "ace170df42cad95ea3d00d25adad81e27049dd5eda5759c2926e21190f21bca7"
   },
   {
    "machine": "c12_Sgist_r3",
@@ -666,10 +891,13 @@
      "noctx": 0
     },
     "items": 14,
-    "seconds": 14.4
+    "seconds": 11.9
    },
-   "Y12": 0.0,
-   "Y12_gold": 0.0
+   "Y12": -0.1539,
+   "Y12_gold": -0.1539,
+   "sft_panels": null,
+   "sft_data_sha256": "83e90ad5e7b325a2910c4c7bde079b271496e3f6e2b64d6b571972bf99757c0c",
+   "pt_weights_sha256": "46458134fa555bc286f0b1c7ab4db3b4863e65133016a34752d530bfa9b443e9"
   },
   {
    "machine": "c12_X_r1",
@@ -715,10 +943,13 @@
      "noctx": 0
     },
     "items": 14,
-    "seconds": 43.1
+    "seconds": 286.8
    },
-   "Y12": -0.077,
-   "Y12_gold": -0.1539
+   "Y12": -0.0769,
+   "Y12_gold": 0.0,
+   "sft_panels": null,
+   "sft_data_sha256": "83e90ad5e7b325a2910c4c7bde079b271496e3f6e2b64d6b571972bf99757c0c",
+   "pt_weights_sha256": "a6c030516a94067686af0f06b9768a1be01a46b8073165ea32b7d5b655adf4fc"
   },
   {
    "machine": "c12_X_r2",
@@ -764,10 +995,13 @@
      "noctx": 0
     },
     "items": 14,
-    "seconds": 52.5
+    "seconds": 117.3
    },
-   "Y12": 0.0769,
-   "Y12_gold": 0.0
+   "Y12": 0.0,
+   "Y12_gold": 0.0,
+   "sft_panels": null,
+   "sft_data_sha256": "83e90ad5e7b325a2910c4c7bde079b271496e3f6e2b64d6b571972bf99757c0c",
+   "pt_weights_sha256": "0f10994ce74c748e5de987a14d679bd34687fa2f5c7468728fd7b17d05f2ea92"
   },
   {
    "machine": "c12_X_r3",
@@ -813,16 +1047,72 @@
      "noctx": 0
     },
     "items": 14,
-    "seconds": 40.5
+    "seconds": 35.3
    },
-   "Y12": 0.0769,
-   "Y12_gold": 0.0769
+   "Y12": 0.0,
+   "Y12_gold": 0.0,
+   "sft_panels": null,
+   "sft_data_sha256": "83e90ad5e7b325a2910c4c7bde079b271496e3f6e2b64d6b571972bf99757c0c",
+   "pt_weights_sha256": "bc4637fa4ae3e27086520d9b22691c626f52ba55479ef82b4889e8341de17bdc"
   }
  ],
+ "chat_checks": {
+  "chat_c12_r1": {
+   "B": {
+    "samples": 3,
+    "clean_stop": 0.0,
+    "ref_bpb": 4.537552846258097
+   },
+   "D": {
+    "samples": 3,
+    "clean_stop": 0.0,
+    "ref_bpb": 4.537531542335465
+   },
+   "T": {
+    "samples": 3,
+    "clean_stop": 0.0,
+    "ref_bpb": 4.534710149818315
+   }
+  },
+  "chat_c12_r2": {
+   "B": {
+    "samples": 3,
+    "clean_stop": 0.0,
+    "ref_bpb": 4.584595686936685
+   },
+   "D": {
+    "samples": 3,
+    "clean_stop": 0.0,
+    "ref_bpb": 4.584962247058709
+   },
+   "T": {
+    "samples": 3,
+    "clean_stop": 0.0,
+    "ref_bpb": 4.576525471619501
+   }
+  },
+  "chat_c12_r3": {
+   "B": {
+    "samples": 3,
+    "clean_stop": 0.0,
+    "ref_bpb": 4.5589834084178165
+   },
+   "D": {
+    "samples": 3,
+    "clean_stop": 0.0,
+    "ref_bpb": 4.558182553046542
+   },
+   "T": {
+    "samples": 3,
+    "clean_stop": 0.0,
+    "ref_bpb": 4.547977801437985
+   }
+  }
+ },
  "totals": {
-  "posts": 18,
-  "parity_gate_identical": 5325,
-  "parity_gate_replies": 5325,
+  "posts": 21,
+  "parity_gate_replies": 2790,
+  "parity_gate_identical": 2790,
   "over_ctx": 0
  },
  "analyze": {
@@ -837,12 +1127,15 @@
    "D": false,
    "P16": false,
    "Sgist": false,
+   "T": false,
    "W512": false,
    "X": false
   },
   "verdicts": {
    "HT_B_minus_W512_Y12_gold": "FLOOR (twin accuracy over the primary families under 0.35, or twin within 10 points of the question alone on the context families) in B, W512",
    "HD_D_minus_B": "FLOOR (twin accuracy over the primary families under 0.35, or twin within 10 points of the question alone on the context families) in D, B",
+   "HT_SFT_T_minus_B": "FLOOR (twin accuracy over the primary families under 0.35, or twin within 10 points of the question alone on the context families) in T, B",
+   "HT_SFT_transfer": "FLOOR (twin accuracy over the primary families under 0.35, or twin within 10 points of the question alone on the context families) in T, B",
    "HS1_Sgist_minus_B": "FLOOR (twin accuracy over the primary families under 0.35, or twin within 10 points of the question alone on the context families) in Sgist, B",
    "HX_gap_D_X": "FLOOR (twin accuracy over the primary families under 0.35, or twin within 10 points of the question alone on the context families) in X, P16",
    "HX_gap_correction_slope": "FLOOR (twin accuracy over the primary families under 0.35, or twin within 10 points of the question alone on the context families) in X, P16",
@@ -851,6 +1144,11 @@
    "HX_isoplot_residual": "FLOOR (twin accuracy over the primary families under 0.35, or twin within 10 points of the question alone on the context families) in B, P16, X",
    "secondary_panel_fineweb_X_minus_P16": "EQUIVALENT",
    "secondary_panel_fineweb_B_minus_W512": "EQUIVALENT"
-  }
+  },
+  "HT_SFT_beside_chat_checks_seeds": [
+   1,
+   2,
+   3
+  ]
  }
 }
