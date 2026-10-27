@@ -184,8 +184,6 @@ advisory steps that cannot fail the build.
 ## 6. Engine
 
 - **Benchmarks** (`experiments/benchmarks_2026-10-26/`):
-  - IF-tiny for pick_e1_60m_L32 and pick_e5_s0: pk-bench3 (`tools/colab_chat/bench_v3.json`, ember e57c0fb =
-    fe01b35 + valid UTF-8 replies; root `scripts/colab_driver.json`, disabled, $2 cap), on the main session's go.
   - Batch `mtstudio score`: it scores one request at a time on the host (~75 ms each for the 14.6M live model on
     an L4).
 - **CUDA** (records: `docs/CUDA_PHASE_B2.md`):

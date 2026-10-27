@@ -1,0 +1,11 @@
+{
+ "bin": "/content/ember/build/tinyllama_server",
+ "commit": "e57c0fb8000b5079df15f4fa70ee84027eddff64",
+ "repo": "https://github.com/JohnnyTeutonic/ember.cpp.git",
+ "cuda": true,
+ "cmake_args": [
+  "-DCMAKE_CUDA_ARCHITECTURES=89"
+ ],
+ "seconds": 110.6,
+ "built_here": true
+}

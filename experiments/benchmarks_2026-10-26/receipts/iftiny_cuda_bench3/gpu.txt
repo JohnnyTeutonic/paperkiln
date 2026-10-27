@@ -1,0 +1,1 @@
+GPU 0: NVIDIA L4 (UUID: GPU-8c5ce6af-b6df-6538-9eb7-a9a986abd99e)

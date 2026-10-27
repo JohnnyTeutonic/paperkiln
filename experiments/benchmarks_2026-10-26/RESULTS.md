@@ -8,6 +8,8 @@ by turn distance). Two RunPod L4 campaigns (root `scripts/colab_driver.json`), p
   `tools/colab_chat/bench_v2.json`; ledger $0.87. It scored the three picks that came home after pk-bench
   (pick_e1_L4, pick_e1_60m_L32, pick_e5_s0), ran IF-tiny on pick_e1_L4, and ran ember's POST /score on the
   full sets for pk_sft_v1, the live model and those picks.
+- **pk-bench3** (27 Oct 2026): paperkiln ed614ee8, `tools/colab_chat/bench_v3.json`, ember e57c0fb; ledger
+  $0.32. IF-tiny for pick_e1_60m_L32 and pick_e5_s0, and pick_e1_L4 again.
 
 The tiny-chat picks' numbers are descriptive only and do not enter the registered tiny-chat analyses
 (`experiments/tiny_chat_2026-10/`).
@@ -159,7 +161,8 @@ Generation is greedy, max 64 new tokens:
 
 - **paperkiln models**: ember fe01b35 with `EMBER_DETERMINISTIC=1` and TF32 off, through `/chat` on an L4:
   pk-bench's pod (GPU f5500088) for live, pk_sft_v1 and the first three picks, pk-bench2's (GPU 15ee501a) for
-  pick_e1_L4. pick_e1_60m_L32 and pick_e5_s0 have no IF-tiny numbers yet (Open items).
+  pick_e1_L4. pick_e1_60m_L32 and pick_e5_s0 ran in pk-bench3 (GPU 8c5ce6af) at ember e57c0fb: fe01b35 with the
+  reply text made valid UTF-8, generation unchanged (pk-bench2's IF-tiny job, below).
 - **Instruct references**: HF generate with each model's own chat template, at pinned revisions
   (SmolLM2-135M-Instruct 12fd25f7, Qwen2.5-0.5B-Instruct 7ae55760).
 
@@ -173,6 +176,8 @@ with a 95% interval:
 | pick_e1_L32 | 0.135 (0.092) | 0.141 [0.115, 0.172] | 0.28 (0) | 0.15 (0) | 0.05 (0) | 0.97 (0.88) | 0.57 (0.45) | 0 (0) | 0 (0) | 0 (0) | 0 (0) |
 | pick_pilot_s35 | 0.151 (0.072) | 0.155 [0.128, 0.187] | 0.25 (0) | 0.15 (0) | 0.23 (0) | 0.95 (0.75) | 0.45 (0.30) | 0.03 (0) | 0.03 (0) | 0 (0) | 0 (0) |
 | pick_e1_L4 | 0.195 (0.077) | 0.204 [0.173, 0.239] | 0.45 (0) | 0.50 (0) | 0.47 (0) | 0.93 (0.78) | 0.45 (0.38) | 0.03 (0) | 0.03 (0) | 0 (0) | 0 (0) |
+| pick_e1_60m_L32 | 0.138 (0.085) | 0.145 [0.118, 0.176] | 0.70 (0) | 0 (0) | 0.05 (0) | 0.97 (0.62) | 0.17 (0.47) | 0 (0) | 0.07 (0) | 0.03 (0) | 0 (0) |
+| pick_e5_s0 | 0.110 (0.087) | 0.115 [0.091, 0.144] | 0.40 (0) | 0.07 (0) | 0 (0.05) | 1.00 (0.80) | 0.12 (0.42) | 0 (0) | 0.05 (0) | 0 (0) | 0 (0) |
 | pk_sft_v1 | 0.123 (0.062) | 0.129 [0.104, 0.159] | 0.42 (0) | 0.10 (0) | 0.47 (0.30) | 0.70 (0.38) | 0 (0.25) | 0.03 (0) | 0.03 (0) | 0 (0) | 0 (0) |
 | SmolLM2-135M-Instruct | 0.276 (0.073) | 0.287 [0.252, 0.326] | 0.33 (0) | 0.25 (0) | 0.97 (0.47) | 0.85 (0.38) | 0.30 (0.20) | 0.03 (0) | 0.93 (0.05) | 0 (0) | 0 (0) |
 | Qwen2.5-0.5B-Instruct | 0.515 (0.045) | 0.500 [0.459, 0.541] | 0.20 (0) | 0.42 (0) | 0.90 (0) | 0.57 (0.42) | 0.40 (0.25) | 0.68 (0) | 0.90 (0) | 0.72 (0) | 0 (0) |
@@ -181,7 +186,7 @@ All 15 families per model, and content accuracy where an item has an answer, are
 `receipts/iftiny_*/<model>/summary.json`.
 
 - **Our models follow almost nothing.** Their macro compliance is at most 0.12 above the bare base rate
-  (pick_e1_L4 0.118; the others at most 0.079). What they do comply with is lexical: using a given word, opening
+  (pick_e1_L4 0.118, pick_e1_60m_L32 0.053, pick_e5_s0 0.023; the others at most 0.079). What they do comply with is lexical: using a given word, opening
   with a given word, repeating a phrase.
 - **Format constraints are almost never met.** Our models produce one word, three words or fewer, lower case,
   capitals, quotation marks, yes or no, a number only, a numbered list or a repeated word on request in at
@@ -202,9 +207,9 @@ conversations per cell. Four conditions:
 - **nohint**: the same compliant history, with no instruction.
 - **bare**: plain history replies, with no instruction.
 
-Every server prompt for the six paperkiln models equals `chat_template.prompt(..., system=...)` tokenised at home
+Every server prompt for the eight paperkiln models equals `chat_template.prompt(..., system=...)` tokenised at home
 (1,474/1,474 per model, 224 with a system message; `receipts/iftiny_cuda/prompt_check.json`, and
-`prompt_check` in `receipts/iftiny_cuda_bench2/pick_e1_L4/summary.json`).
+`prompt_check` in `receipts/iftiny_cuda_bench2/*/summary.json` and `receipts/iftiny_cuda_bench3/*/summary.json`).
 
 Compliance at turn 1 + d (user placement; nohint in brackets):
 
@@ -215,6 +220,8 @@ Compliance at turn 1 + d (user placement; nohint in brackets):
 | pick_e1_L32 | 0.071 (0.000) | 0.131 (0.107) | 0.143 (0.131) | 0.262 (0.214) |
 | pick_pilot_s35 | 0.012 (0.000) | 0.238 (0.107) | 0.298 (0.202) | 0.452 (0.464) |
 | pick_e1_L4 | 0.083 (0.000) | 0.202 (0.095) | 0.238 (0.238) | 0.369 (0.393) |
+| pick_e1_60m_L32 | 0.083 (0.000) | 0.131 (0.071) | 0.214 (0.202) | 0.321 (0.214) |
+| pick_e5_s0 | 0.048 (0.000) | 0.131 (0.119) | 0.190 (0.238) | 0.298 (0.286) |
 | pk_sft_v1 | 0.000 (0.000) | 0.191 (0.167) | 0.309 (0.250) | 0.548 (0.476) |
 | SmolLM2-135M-Instruct | 0.071 (0.000) | 0.643 (0.452) | 0.869 (0.738) | 0.952 (0.905) |
 | Qwen2.5-0.5B-Instruct | 0.691 (0.000) | 0.714 (0.083) | 0.762 (0.298) | 0.845 (0.631) |
@@ -225,8 +232,8 @@ The paired differences over the 84 (family, sequence) pairs, with 95% intervals,
 - **Our models copy the format; the instruction adds little.** Compliance rises with d for every paperkiln model
   except live. The rise comes from the compliant replies in the history, not the instruction: user minus nohint
   is at most +0.13, and for pk_sft_v1 +0.00, +0.02, +0.06 and +0.07 at d = 0, 1, 2 and 4.
-- **The bare base rate is near zero** for every model: at most 0.024 in any cell, except pick_e1_L4 at d = 4
-  (0.060).
+- **The bare base rate is near zero** for every model: at most 0.060 in any cell (pick_e1_L4 at d = 4;
+  pick_e1_60m_L32 and pick_e5_s0 at most 0.036; the others at most 0.024).
 - **The instruction carries in Qwen2.5-0.5B-Instruct.** It follows the instruction itself (0.69 at d = 0) and
   holds it four turns later, still +0.21 over nohint at d = 4. SmolLM2-135M-Instruct gains +0.05 to +0.19 from
   the instruction over the history alone.
@@ -236,14 +243,17 @@ The paired differences over the 84 (family, sequence) pairs, with 95% intervals,
 
 ### Determinism and parity
 
-- **Replay.** Two passes in fresh server processes (ember fe01b35, `EMBER_DETERMINISTIC=1`, one L4) gave
-  bit-identical replies and ids for all 1,474 distinct prompts of each of the six models (pick_e1_L4 on
-  pk-bench2's pod). The identity holds on one GPU model and one build, not between a T4 and an L4; the GPUs'
-  UUIDs are in `receipts/iftiny_cuda/gpu.txt` and `receipts/iftiny_cuda_bench2/gpu.txt`.
+- **Replay.** Two passes in fresh server processes (`EMBER_DETERMINISTIC=1`, one L4) gave bit-identical
+  replies and ids for all 1,474 distinct prompts of each of the eight models (ember fe01b35; e57c0fb for
+  pick_e1_60m_L32 and pick_e5_s0). Across pods and builds: pick_e1_L4 at e57c0fb on pk-bench3's L4 gives its
+  fe01b35 replies from pk-bench2's L4 bit for bit, ids and text, in both passes (1,474/1,474;
+  `receipts/iftiny_cuda_bench3/pick_e1_L4_rerun_check.json`), and pick_e1_60m_L32's 374 replies from pk-bench2
+  likewise. The identity holds on one GPU model, not between a T4 and an L4; the GPUs' UUIDs are in each
+  receipts folder's `gpu.txt`.
 - **Parity.** Every reply that ended on end-of-text was re-scored with `mtstudio score` on the pod. Its argmax
   equals the reply at every position for every model: live 1,474/1,474, pick_e1_L16 1,271/1,271, pick_e1_L32
-  1,271/1,271, pick_pilot_s35 1,305/1,305, pick_e1_L4 1,222/1,222, pk_sft_v1 1,214/1,214. The rest stopped at
-  64 tokens and were not checked.
+  1,271/1,271, pick_pilot_s35 1,305/1,305, pick_e1_L4 1,222/1,222, pick_e1_60m_L32 1,234/1,234, pick_e5_s0
+  1,314/1,314, pk_sft_v1 1,214/1,214. The rest stopped at 64 tokens and were not checked.
 - **A CPU leg** on ember cbdcb915 (`/home/jonat/tc_ember`) gives the same IF-tiny numbers for live and
   pick_e1_L16, with parity against the CPU mtstudio 1,474/1,474 and 1,294/1,294. That commit ignores `/chat`'s
   `system` field: its instr_system prompts equal nohint's. So its distance cells are not used here.
@@ -266,8 +276,9 @@ CPU and the pod's CUDA give identical ids on the 374 prompts before it (next bul
   400 prompts of pick_e1_60m_L32 gives ids identical to the pod's CUDA replies at fe01b35 on all 374 the pod has.
 - **paperkiln**: `tools/iftiny_eval.py` raises with the server's message on an HTTP error
   (`tests/test_iftiny_eval.py`), and `bench_vm.sh` brings each ember server's `ember_stderr.log` home.
-- **The rerun** is `tools/colab_chat/bench_v3.json` (pick_e1_60m_L32, pick_e5_s0, then pick_e1_L4 against
-  its pk-bench2 replies), root `scripts/colab_driver.json` entry pk-bench3, disabled, $2 cap.
+- **pk-bench3** reran IF-tiny at e57c0fb (`tools/colab_chat/bench_v3.json`): all three models finished, with
+  empty `ember_stderr.log`s. One pick_e1_60m_L32 reply holds U+FFFD, prompt 375's. Its numbers are in the
+  tables above.
 
 ## Files
 
@@ -283,16 +294,15 @@ CPU and the pod's CUDA give identical ids on the 374 prompts before it (next bul
     `xcheck/`, pk-bench2's files prefixed `bench2_`);
   - `receipts/ember_score/` (ember's summary, meta and /health per model; `compare_*.json`;
     `argmax_flips_ir.json`);
-  - `receipts/iftiny_cuda/`, `receipts/iftiny_cuda_bench2/`, `receipts/iftiny_hf/` (summary, per-item records
-    and both passes' replies per model);
+  - `receipts/iftiny_cuda/`, `receipts/iftiny_cuda_bench2/`, `receipts/iftiny_cuda_bench3/`, `receipts/iftiny_hf/`
+    (summary, per-item records and both passes' replies per model; `paired.json` per folder);
   - `receipts/engine_checks/`.
 - **Full score chunks** (per-token log-probabilities) and the run folders: `C:/ml_artifacts/benchmarks/runs/`
-  (pk-bench) and `runs2/` (pk-bench2), each job's `results.tar.gz` unpacked in its `x/`.
+  (pk-bench), `runs2/` (pk-bench2) and `runs3/` (pk-bench3), each job's `results.tar.gz` unpacked in its `x/`.
 - **SmolLM2-135M** as an F32 GGUF for ember's /score gate: `C:/ml_artifacts/thirdparty/smollm2-135m/`.
 
 ## Open items
 
-- **IF-tiny for pick_e1_60m_L32 and pick_e5_s0**: pk-bench3 (above), on the main session's go.
 - **ember main** still serialises the raw reply (bace837): e57c0fb's change is for ember's owner to take
   there.
 - **mtstudio score is slow.** It scores one request at a time on the host: ~75 ms each for the 14.6M live model

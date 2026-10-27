@@ -1,0 +1,7 @@
+{
+ "what": "pick_e1_L4 IF-tiny at ember e57c0fb (pk-bench3) against its replies at ember fe01b35 (pk-bench2, receipts/iftiny_cuda_bench2/pick_e1_L4), two L4 pods, EMBER_DETERMINISTIC=1",
+ "pass1": {"prompts": 1474, "ids_prompt_ids_stop_id_equal": 1474, "replies_equal": 1474},
+ "pass2": {"prompts": 1474, "ids_prompt_ids_stop_id_equal": 1474, "replies_equal": 1474},
+ "summary_iftiny_and_ifdist_equal": true,
+ "pick_e1_60m_L32_pk_bench2_partial": {"prompts": 374, "ids_equal": 374}
+}

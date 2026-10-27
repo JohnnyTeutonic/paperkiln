@@ -23,6 +23,9 @@ Notable changes to microtorch. Format loosely follows
     cut inside a UTF-8 character. `tools/iftiny_eval.py` now raises with the server's message
     (`tests/test_iftiny_eval.py`); `bench_vm.sh` brings ember's stderr home; ember e57c0fb (branch
     `iftiny-utf8`) carries the fix, and `tools/colab_chat/bench_v3.json` reruns the two picks.
+  - pk-bench3 (one RunPod L4, 27 Oct, ed614ee8, ember e57c0fb, $0.32): IF-tiny macro pick_e1_60m_L32 0.138
+    (bare 0.085), pick_e5_s0 0.110 (bare 0.087); replay 1,474/1,474 each; parity 1,234/1,234 and 1,314/1,314.
+    pick_e1_L4 at e57c0fb gives its pk-bench2 replies at fe01b35 bit for bit (1,474/1,474, both passes).
 
 - **ember's draft table at export, `export.draft_table`** (27 Oct; LOCAL_LLM_STACK.md section 7, speculative
   decoding; off by default, and off is the export as before).

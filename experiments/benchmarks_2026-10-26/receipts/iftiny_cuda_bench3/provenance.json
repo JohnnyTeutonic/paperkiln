@@ -1,0 +1,46 @@
+{
+ "provider": "runpod",
+ "pod_id": "stewkxpu8x2h39",
+ "image": "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04",
+ "image_digest": "sha256:61a4aafb0094cd773f11eefa378929d5a687bd775febeb78eac62fc824141fb5",
+ "image_digest_source": "Docker Hub tag lookup when the pod was created",
+ "datacenter": "EU-RO-1",
+ "cloud": "SECURE",
+ "gpu_type_id": "NVIDIA L4",
+ "usd_per_hr": 0.59,
+ "volume": "kq02p9k5iq",
+ "machine": {
+  "gpuTypeId": "NVIDIA L4",
+  "location": "RO",
+  "dataCenterId": "EU-RO-1",
+  "secureCloud": true,
+  "diskThroughputMBps": 5998,
+  "maxDownloadSpeedMbps": 1846,
+  "maxUploadSpeedMbps": 944
+ },
+ "memory_gb": 62,
+ "vcpu": 6,
+ "cgroup_cpus": 5.1,
+ "cgroup_mem_gb": 57.7,
+ "gpu": "NVIDIA L4",
+ "gpus": [
+  {
+   "name": "NVIDIA L4",
+   "driver": "595.91.07",
+   "memory": "23034 MiB",
+   "power_limit": "72.00 W",
+   "pci": "00000000:04:00.0"
+  }
+ ],
+ "driver_version": "595.91.07",
+ "cuda_driver_api": "13.2",
+ "nvcc": "12.4",
+ "cpu": "AMD EPYC 9254 24-Core Processor",
+ "cpus": 48,
+ "mem_gb": 503.4,
+ "os": "Ubuntu 22.04.5 LTS",
+ "kernel": "6.8.0-138-generic",
+ "python": "3.11.10",
+ "paperkiln_commit": "ed614ee82cf3995d59dbef6611bf98b7727e221d",
+ "written_at": "2026-10-27T00:45:03Z"
+}
