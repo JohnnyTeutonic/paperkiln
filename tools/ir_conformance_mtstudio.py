@@ -72,6 +72,14 @@ def _recipes():
         # the suite's 16-token contexts reach the last bucket's clamp.
         "pk_flex_t5": (with_custom(gpt2, norm="rmsnorm", activation="relu", position="t5_relative", rel_buckets=8,
                                    rel_max_distance=12), "core"),
+        # Shaw-style relative positions (keramos 1.4, IR_SPEC 5.15 relative_kv): clipping distance 4, one set of
+        # key and value vectors per head and layer (Shaw's base model), so the 16-token contexts reach the clamp.
+        "pk_flex_shaw": (with_custom(gpt2, norm="rmsnorm", activation="relu", position="shaw_relative",
+                                     rel_max_distance=4, rel_per_head=True), "core"),
+        # Primer's MDHA (IR_SPEC 6.6 on the fused projection, before RoPE) with its squared ReLU: a conv slot
+        # beside the kv slot.
+        "pk_flex_mdha": (with_custom(gpt2, norm="rmsnorm", activation="expr:relu(x)^2", position="rope",
+                                     qkv_conv=3), "thirdparty"),
     }
     return r
 
@@ -121,8 +129,8 @@ class MtstudioAdapter(Adapter):
         return self._ir_eval({"method": "digest", "text": text, "prose": prose})
 
     def run_node_grad(self, node, inputs, weights, out_grad):
-        if node["op"] != "recurrence":
-            raise NotImplementedError("ir_eval differentiates recurrence nodes")
+        if node["op"] != "recurrence" and not (node["op"] == "attention" and "relative_kv" in node):
+            raise NotImplementedError("ir_eval differentiates recurrence nodes and attention with relative_kv")
         return self._ir_eval({"method": "run_node_grad", "node": node, "inputs": _encode_tensors(inputs),
                               "weights": _encode_tensors(weights), "out_grad": enc(out_grad)})["grads"]
 

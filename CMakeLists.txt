@@ -262,6 +262,11 @@ add_executable(test_flex tests/test_flex.cpp)
 target_link_libraries(test_flex PRIVATE microtorch)
 add_test(NAME flex COMMAND test_flex)
 
+# Shaw-style relative positions (ops::shaw_attention; keramos IR_SPEC 5.15 relative_kv).
+add_executable(test_shaw_attention tests/test_shaw_attention.cpp)
+target_link_libraries(test_shaw_attention PRIVATE microtorch)
+add_test(NAME shaw_attention COMMAND test_shaw_attention)
+
 # The gpt2 family under deferred downloads (defect D1) and NoGrad forwards in
 # a step window (the device SFT evaluation); host vs host on a CPU build.
 add_executable(test_gpt2_device tests/test_gpt2_device.cpp)

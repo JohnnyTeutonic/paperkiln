@@ -597,6 +597,17 @@ struct FlexConfig {
     // exports: attention's position_bias {weight, buckets} (keramos IR_SPEC 5.15, revision 1.3), the
     // buckets ops::t5_position_buckets' table (FlexLM::family_export).
     size_t rel_buckets = 32, rel_max_distance = 128;
+    // position "shaw_relative" (Shaw, Uszkoreit and Vaswani 2018, arXiv 1803.02155, eqs. 3-4): no position
+    // table; each block learns relative key vectors (and, with rel_values, value vectors) for the clipped
+    // query-key distance 0 .. rel_max_distance (Shaw's clipping distance k), shared by the heads or one set
+    // per head (rel_per_head; Shaw's base model), added inside attention (ops::shaw_attention). Exported as
+    // attention.relative_kv (keramos IR_SPEC 5.15, revision 1.4).
+    bool rel_per_head = false, rel_values = true;
+    // Primer's Multi-DConv-Head Attention (So et al. 2021, arXiv 2109.08668): a causal depthwise
+    // convolution of width qkv_conv over time on every column of the fused q, k, v projection, before
+    // RoPE and the heads (0 = none). No bias (Primer's tf.nn.depthwise_conv2d). Exported as a
+    // conv1d_causal node over 3d channels with its recurrent slot (IR_SPEC 6.6).
+    size_t qkv_conv = 0;
     // What is wrong with this configuration, or "" (mtstudio and the tests refuse with it).
     std::string problem() const;
 };
@@ -647,6 +658,8 @@ inline std::string FlexConfig::problem() const {
         if (rel_buckets < 2 || rel_max_distance <= rel_buckets / 2)
             return "position t5_relative needs rel_buckets >= 2 and rel_max_distance > rel_buckets / 2";
     }
+    if (pos == "shaw_relative" && attention != "exact") return "position shaw_relative needs exact attention";
+    if (qkv_conv == 1) return "qkv_conv must be 0 (none) or a width >= 2";
     return "";
 }
 
@@ -771,6 +784,36 @@ public:
                                              Matrix(1, act_in_[j].kind == "scalar" ? 1 : c.d_ff, act_in_[j].init)));
             }
         }
+        // Registered after everything else, from seeds of their own: a block without them is unchanged.
+        if (c.qkv_conv) {
+            // MDHA's depthwise kernel [3d, K] (q's columns, then k's, then v's): torch Conv1d's default at
+            // fan-in K, uniform in +-1/sqrt(K), as Mamba1Block's conv (Primer states no initialisation).
+            const size_t K = c.qkv_conv;
+            std::mt19937 g(s + 300);
+            const float cb = 1.0f / std::sqrt(static_cast<float>(K));
+            std::uniform_real_distribution<float> uc(-cb, cb);
+            Matrix w(3 * c.d, K);
+            for (size_t i = 0; i < w.rows(); ++i)
+                for (size_t k = 0; k < K; ++k) w(i, k) = uc(g);
+            qkv_conv_w = reg("attn.qkv_conv.weight", std::move(w));
+        }
+        if (c.pos == "shaw_relative") {
+            // Shaw's relative key / value vectors [K + 1, W] (row n: distance n), W = head_dim shared by the
+            // heads or d (one set per head); small normal values, seeded (the paper states no
+            // initialisation).
+            shaw_k_ = c.rel_max_distance;
+            const size_t W = c.rel_per_head ? c.d : c.d / c.n_heads;
+            auto table = [&](unsigned seed) {
+                Matrix t(c.rel_max_distance + 1, W);
+                std::mt19937 g(seed);
+                std::normal_distribution<float> nd(0.0f, 0.02f);
+                for (size_t i = 0; i < t.rows(); ++i)
+                    for (size_t j = 0; j < t.cols(); ++j) t(i, j) = nd(g);
+                return t;
+            };
+            rel_k = reg("attn.rel_k.weight", table(s + 301));
+            if (c.rel_values) rel_v = reg("attn.rel_v.weight", table(s + 302));
+        }
     }
 
     // Sublayer combine per FlexConfig::residual. Highway's identity uses
@@ -789,14 +832,18 @@ public:
     // rope, CausalSelfAttention/SlidingWindowAttention::forward with
     // ops::apply_rope (all heads) between the fused qkv projection and the
     // per-head attention, as LlamaBlock::forward places it. With T5's
-    // relative bias, ops::relpos_attention per head on the same projections.
+    // relative bias, ops::relpos_attention per head on the same projections. With Shaw's relative
+    // vectors, ops::shaw_attention per head. With MDHA, the depthwise causal convolution on the fused
+    // projection first (before RoPE), each sequence of seq_len rows from zero history.
     Var attend(const Var& n, size_t seq_len, const FlexRelPos* rel = nullptr) const {
-        if (!rope_ && !rel) return attn ? attn->forward(n, seq_len) : swa_attn->forward(n, seq_len);
+        if (!rope_ && !rel && !rel_k && !qkv_conv_w)
+            return attn ? attn->forward(n, seq_len) : swa_attn->forward(n, seq_len);
         const nn::Linear& c_attn = attn ? *attn->c_attn : *swa_attn->c_attn;
         const nn::Linear& c_proj = attn ? *attn->c_proj : *swa_attn->c_proj;
         const size_t H = attn ? attn->H : swa_attn->H, dk = attn ? attn->dk : swa_attn->dk, d = H * dk;
         const size_t rows = n->data.rows(), sl = seq_len == 0 ? rows : seq_len;
         Var qkv = c_attn.forward(n);
+        if (qkv_conv_w) qkv = ops::conv1d_causal(qkv, qkv_conv_w, nullptr, seq_len);
         if (rope_) {
             std::vector<int> pos(rows);
             for (size_t i = 0; i < rows; ++i) pos[i] = static_cast<int>(i % sl);
@@ -810,6 +857,9 @@ public:
             Var v = ops::slice_cols(qkv, 2 * d + h * dk, 2 * d + (h + 1) * dk);
             if (rel)
                 heads.push_back(ops::relpos_attention(q, k, v, rel->table, h, *rel->buckets, sc, seq_len));
+            else if (rel_k)
+                heads.push_back(ops::shaw_attention(q, k, v, rel_k, rel_v, rel_k->data.cols() == dk ? 0 : h * dk,
+                                                    shaw_k_, sc, seq_len));
             else
                 heads.push_back(attn ? ops::fused_attention(q, k, v, sc, seq_len, attn->causal)
                                      : ops::swa_attention(q, k, v, sc, swa_attn->window, swa_attn->sinks, seq_len));
@@ -862,6 +912,9 @@ public:
     std::shared_ptr<nn::Linear> fc_gate;         // activation_inputs with a "gate"
     std::vector<Var> act_params;                 // activation_inputs' learned scalars and channels
     std::shared_ptr<nn::Linear> gate_a, gate_m;  // highway only
+    Var qkv_conv_w;                              // qkv_conv (MDHA): [3d, K]
+    Var rel_k, rel_v;                            // shaw_relative: [K + 1, W] each (rel_v null: keys only)
+    size_t shaw_k_ = 0;                          // its clipping distance K
     std::shared_ptr<const Expr> act_expr;        // act "expr:<e>", parsed once
 };
 
@@ -881,8 +934,9 @@ public:
                     sin_table(p, i) =
                         static_cast<float>(i % 2 == 0 ? std::sin(angle) : std::cos(angle));
                 }
-        } else if (c.pos != "rope" && c.pos != "t5_relative") {
-            throw std::runtime_error("flex: unknown position " + c.pos + " (learned | sinusoidal | rope | t5_relative)");
+        } else if (c.pos != "rope" && c.pos != "t5_relative" && c.pos != "shaw_relative") {
+            throw std::runtime_error("flex: unknown position " + c.pos +
+                                     " (learned | sinusoidal | rope | t5_relative | shaw_relative)");
         }
         for (size_t b = 0; b < c.n_layers; ++b)
             blocks.push_back(mod<FlexBlock>("layers." + std::to_string(b), c,
@@ -937,7 +991,8 @@ public:
         Var h;
         if (wpe) {
             h = ops::add(wte->forward(ids), wpe->forward(pos));
-        } else if (cfg.pos == "rope" || cfg.pos == "t5_relative") {  // positions enter in each block's attention
+        } else if (cfg.pos == "rope" || cfg.pos == "t5_relative" ||
+                   cfg.pos == "shaw_relative") {  // positions enter in each block's attention
             h = wte->forward(ids);
         } else {
             Matrix pe(ids.size(), cfg.d);
@@ -966,6 +1021,7 @@ public:
         if (!cfg.embed_expr.empty()) return "embed " + cfg.embed_expr + " (gpt2 export has no embed expr)";
         if (cfg.place_attn != "pre" || cfg.place_ffn != "pre" || !cfg.has_final_norm())
             return "norm placement " + cfg.place_attn + "/" + cfg.place_ffn + " (gpt2 export needs pre-norm)";
+        if (cfg.qkv_conv) return "qkv_conv (gpt2 export has no convolution)";
         return "";
     }
     bool windowed() const { return cfg.attention == "swa"; }
@@ -990,6 +1046,12 @@ public:
         // T5's bias: the attention attribute position_bias {weight, buckets} (keramos IR_SPEC 5.15, revision
         // 1.3), the one table rel_pos_bias.weight [rel_buckets, heads] read by every layer.
         const bool t5 = c.pos == "t5_relative";
+        // Shaw's relative vectors: the attention attribute relative_kv {key, value, max_distance} (IR_SPEC
+        // 5.15, revision 1.4), each block's own blk.{i}.attn_rel_k / attn_rel_v [K + 1, W].
+        const bool shaw = c.pos == "shaw_relative";
+        // MDHA: a conv1d_causal node on the fused projection before the split, over the recurrent slot
+        // "qkv_conv" (its K - 1 previous rows), weight blk.{i}.attn_qkv_conv.weight [3d, K], no bias.
+        const bool mdha = c.qkv_conv > 0;
         const std::string p = "blk.{i}.";
         const auto& b0 = *blocks[0];
         const bool plain = c.residual == "plain", highway = c.residual == "highway";
@@ -1047,12 +1109,20 @@ public:
         if (pre_a) emit_norm(n, b0.ns[0], "x", "h", p + "attn_norm");
         auto attn = b0.attn ? b0.attn->export_ir(pre_a ? "h" : "x", o, p + "attn_qkv.weight", p + "attn_output.weight", "kv")
                             : b0.swa_attn->export_ir(pre_a ? "h" : "x", o, p + "attn_qkv.weight", p + "attn_output.weight", "kv");
-        if (rope || t5) {  // FlexBlock::attend: the rope node between split and attention, as LlamaBlock's
+        if (rope || t5 || shaw || mdha) {  // FlexBlock::attend: the rope node between split and attention, as LlamaBlock's
             ir::json edited = ir::json::array();
             for (auto node : attn) {
+                if (mdha && node["op"] == "split")
+                    edited.push_back({{"op", "conv1d_causal"}, {"in", ir::json::array({"qkv"})}, {"state", "qkv_conv"},
+                                      {"weight", p + "attn_qkv_conv.weight"}, {"bias", nullptr}, {"channels", 3 * c.d},
+                                      {"kernel", c.qkv_conv}, {"out", "qkv"}});
                 if (rope && node["op"] == "attention") edited.push_back(ir::rope("q", "k", "pos", H, dk, c.rope_theta, true));
                 if (t5 && node["op"] == "attention")
                     node["position_bias"] = {{"weight", "rel_pos_bias.weight"}, {"buckets", rel_buckets}};
+                if (shaw && node["op"] == "attention")
+                    node["relative_kv"] = {{"key", p + "attn_rel_k.weight"},
+                                           {"value", c.rel_values ? ir::json(p + "attn_rel_v.weight") : ir::json(nullptr)},
+                                           {"max_distance", c.rel_max_distance}};
                 edited.push_back(node);
             }
             attn = edited;
@@ -1106,7 +1176,12 @@ public:
         combine(f, b0.gate_m, "highway_ffn");
         if (c.place_ffn == "post") emit_norm(n, b0.ns[1], "x", "x", p + "ffn_norm");
         const size_t window = b0.swa_attn ? c.window : 0, sinks = b0.swa_attn ? c.sinks : 0;
-        const ir::json state = ir::json::array({ir::kv_state("kv", H, H, dk, c.n_ctx, window, sinks)});
+        ir::json state = ir::json::array({ir::kv_state("kv", H, H, dk, c.n_ctx, window, sinks)});
+        if (mdha)
+            state.push_back({{"name", "qkv_conv"}, {"kind", "recurrent"}, {"op", "conv1d_causal"}, {"dtype", "f32"},
+                             {"tensors", ir::json::array({{{"name", "x"},
+                                                           {"shape", ir::json::array({c.qkv_conv - 1, 3 * c.d})},
+                                                           {"init", 0}}})}});
         ir::json head_nodes = ir::json::array();
         if (fn.on())
             emit_norm(head_nodes, fn, "x", "h", "output_norm");
@@ -1114,8 +1189,8 @@ public:
         FamilyExport fx;
         fx.heads = H;
         fx.d_ff = c.d_ff;
-        ir::json embed_nodes = rope || t5 ? ir::json::array({wte->export_ir("tokens", "x", "token_embd.weight")})
-                                          : gpt2_embed_ir(*wte);
+        ir::json embed_nodes = rope || t5 || shaw ? ir::json::array({wte->export_ir("tokens", "x", "token_embd.weight")})
+                                                  : gpt2_embed_ir(*wte);
         if (embed_expr) {  // the expr on the embed output: its learned inputs as scale nodes over a ones row
             std::vector<std::string> ins;
             bool ones = false;
@@ -1135,7 +1210,7 @@ public:
         fx.ir = family_doc(c.residual == "residual" ? "flex" : "flex_" + c.residual, c.vocab, c.d, c.n_layers,
                            c.n_ctx, /*positions=*/true, embed_nodes, state, n, head_nodes);
         if (c.norm == "layernorm" && c.act == "gelu" && c.pos == "learned" && plain && c.place_attn == "pre" &&
-            c.place_ffn == "pre" && c.has_final_norm()) {
+            c.place_ffn == "pre" && c.has_final_norm() && !mdha) {
             // llama.cpp's gpt2 tensors exactly, but no gpt2 graph computes
             // a block without its skip connections.
             fx.arch = "gpt2";
@@ -1148,9 +1223,10 @@ public:
         fx.arch = "paperkiln";
         using L = gguf::NamedTensor::Layout;
         put_tensor(fx.tensors, "token_embd.weight", wte->weight->data, L::ROWS);
-        // Sinusoidal positions: the fixed table, as the model adds it. RoPE and T5's bias: no table.
-        if (!rope && !t5) put_tensor(fx.tensors, "position_embd.weight", wpe ? wpe->weight->data : sin_table, L::ROWS);
-        fx.constants = wpe || rope || t5 ? 0 : 1;
+        // Sinusoidal positions: the fixed table, as the model adds it. RoPE, T5's bias and Shaw's vectors: no table.
+        if (!rope && !t5 && !shaw)
+            put_tensor(fx.tensors, "position_embd.weight", wpe ? wpe->weight->data : sin_table, L::ROWS);
+        fx.constants = wpe || rope || t5 || shaw ? 0 : 1;
         // A learned expr input [1, 1] or [1, w] as its [w] tensor (a scalar repeated: the IR's scale
         // over a row of ones then gives 1 * p at every entry).
         auto put_param = [&](const std::string& name, const Var& v, size_t w) {
@@ -1178,6 +1254,9 @@ public:
             const nn::Linear& qkv = k.attn ? *k.attn->c_attn : *k.swa_attn->c_attn;
             const nn::Linear& out = k.attn ? *k.attn->c_proj : *k.swa_attn->c_proj;
             put_linear(fx.tensors, g + "attn_qkv", qkv);
+            if (k.qkv_conv_w) put_tensor(fx.tensors, g + "attn_qkv_conv.weight", k.qkv_conv_w->data, L::ROWS);  // [3d, K]
+            if (k.rel_k) put_tensor(fx.tensors, g + "attn_rel_k.weight", k.rel_k->data, L::ROWS);  // [K + 1, W]
+            if (k.rel_v) put_tensor(fx.tensors, g + "attn_rel_v.weight", k.rel_v->data, L::ROWS);
             put_linear(fx.tensors, g + "attn_output", out);
             if (k.ns[2].on()) put_norm(g + "attn_post_norm", k.ns[2]);
             if (highway) put_linear(fx.tensors, g + "highway_attn", *k.gate_a);

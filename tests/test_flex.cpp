@@ -599,6 +599,121 @@ int main() {
                     dz, ds, n, worst, nm, wm);
     }
 
-    std::printf("FLEX-OK 11/11\n");
+    // 12. Primer's MDHA (qkv_conv): a causal depthwise convolution on the fused projection ----------------
+    {
+        parity::FlexConfig mc = small(V, d, H, T);
+        mc.qkv_conv = 3;
+        parity::FlexLM m(mc, 72);
+        parity::FlexLM base(small(V, d, H, T), 72);
+        CHECK(m.parameter_count() == base.parameter_count() + mc.n_layers * 3 * d * 3);
+        const std::vector<int> ids = ids_mod(T, V, 74);
+        // The identity kernel (only the current row, weight 1) is the model without the convolution.
+        for (auto& b : m.blocks) {
+            Matrix& w = b->qkv_conv_w->data;
+            for (size_t i = 0; i < w.rows(); ++i)
+                for (size_t k = 0; k < w.cols(); ++k) w(i, k) = k + 1 == w.cols() ? 1.0f : 0.0f;
+        }
+        Var a = m.forward(ids), b = base.forward(ids);
+        float did = 0;
+        for (size_t i = 0; i < a->data.rows(); ++i)
+            for (size_t j = 0; j < a->data.cols(); ++j) did = std::max(did, std::fabs(a->data(i, j) - b->data(i, j)));
+        CHECK(did < 1e-5f);
+        parity::FlexLM m2(mc, 75);  // its own random kernels again
+        // Causal: the last token moves no earlier row; two stacked sequences equal their own forwards.
+        std::vector<int> ids2 = ids;
+        ids2.back() = (ids2.back() + 1) % static_cast<int>(V);
+        Var c1 = m2.forward(ids), c2 = m2.forward(ids2);
+        bool causal = true;
+        for (size_t i = 0; i + 1 < T; ++i)
+            for (size_t j = 0; j < V; ++j) causal = causal && c1->data(i, j) == c2->data(i, j);
+        CHECK(causal);
+        std::vector<int> two = ids;
+        two.insert(two.end(), ids2.begin(), ids2.end());
+        Var st = m2.forward(two, T);
+        float dst = 0;
+        for (size_t i = 0; i < T; ++i)
+            for (size_t j = 0; j < V; ++j)
+                dst = std::max({dst, std::fabs(st->data(i, j) - c1->data(i, j)),
+                                std::fabs(st->data(T + i, j) - c2->data(i, j))});
+        CHECK(dst < 1e-5f);
+        size_t nm = 0;
+        const double wm = model_gradcheck(m2, ids_mod(8, V, 76), {"qkv_conv", "attn.c_attn"}, 24, nm);
+        CHECK(wm < 2e-3);
+        const auto fx = m2.family_export();
+        CHECK(fx.has_value() && fx->arch == "paperkiln");
+        const auto& nodes = fx->ir["block"]["nodes"];
+        size_t conv_at = 0, split_at = 0;
+        for (size_t i = 0; i < nodes.size(); ++i) {
+            if (nodes[i]["op"] == "conv1d_causal") {
+                conv_at = i;
+                CHECK(nodes[i]["in"][0] == "qkv" && nodes[i]["out"] == "qkv" && nodes[i]["state"] == "qkv_conv");
+                CHECK(nodes[i]["channels"] == 3 * d && nodes[i]["kernel"] == 3 && nodes[i]["bias"].is_null());
+                CHECK(nodes[i]["weight"] == "blk.{i}.attn_qkv_conv.weight");
+            }
+            if (nodes[i]["op"] == "split") split_at = i;
+        }
+        CHECK(conv_at > 0 && conv_at + 1 == split_at);
+        const auto& sts = fx->ir["block"]["state"];
+        CHECK(sts.size() == 2 && sts[1]["op"] == "conv1d_causal" && sts[1]["tensors"][0]["shape"][0] == 2 &&
+              sts[1]["tensors"][0]["shape"][1] == 3 * d);
+        size_t conv_tensors = 0;
+        for (const auto& t : fx->tensors)
+            if (t.name.find("attn_qkv_conv.weight") != std::string::npos) {
+                CHECK(t.m.rows() == 3 * d && t.m.cols() == 3);
+                ++conv_tensors;
+            }
+        CHECK(conv_tensors == mc.n_layers);
+        std::printf("12. MDHA (qkv_conv 3): identity kernel = no convolution (%.2e); causal; stacked = alone "
+                    "(%.2e); gradcheck %zu entries %.2e; exported as conv1d_causal over 3d before the split\n",
+                    did, dst, nm, wm);
+    }
+
+    // 13. Shaw's relative positions (position shaw_relative) ------------------------------------------------
+    {
+        parity::FlexConfig sc = small(V, d, H, T);
+        sc.pos = "shaw_relative";
+        sc.rel_max_distance = 4;
+        parity::FlexLM s(sc, 72);
+        parity::FlexLM learned(small(V, d, H, T), 72);
+        const size_t dkh = d / H;
+        CHECK(s.parameter_count() == learned.parameter_count() - T * d + sc.n_layers * 2 * 5 * dkh);
+        size_t nm = 0;
+        const double wm = model_gradcheck(s, ids_mod(8, V, 77), {"rel_k", "rel_v", "attn.c_attn"}, 24, nm);
+        CHECK(wm < 2e-3);
+        // One set per head, keys only.
+        parity::FlexConfig sp = sc;
+        sp.rel_per_head = true;
+        sp.rel_values = false;
+        parity::FlexLM s2(sp, 78);
+        size_t nm2 = 0;
+        const double wm2 = model_gradcheck(s2, ids_mod(8, V, 79), {"rel_k", "attn.c_attn"}, 24, nm2);
+        CHECK(wm2 < 2e-3);
+        for (const auto* mm : {&s, &s2}) {
+            const auto fx = mm->family_export();
+            CHECK(fx.has_value() && fx->arch == "paperkiln");
+            size_t with = 0;
+            for (const auto& node : fx->ir["block"]["nodes"])
+                if (node["op"] == "attention") {
+                    const auto& r = node["relative_kv"];
+                    CHECK(r["key"] == "blk.{i}.attn_rel_k.weight" && r["max_distance"] == 4);
+                    CHECK(mm->cfg.rel_values ? r["value"] == "blk.{i}.attn_rel_v.weight" : r["value"].is_null());
+                    ++with;
+                }
+            CHECK(with == 1);
+            size_t tabs = 0;
+            for (const auto& t : fx->tensors) {
+                CHECK(t.name != "position_embd.weight");
+                if (t.name.find("attn_rel_") != std::string::npos) {
+                    CHECK(t.m.rows() == 5 && t.m.cols() == (mm->cfg.rel_per_head ? d : dkh));
+                    ++tabs;
+                }
+            }
+            CHECK(tabs == sc.n_layers * (mm->cfg.rel_values ? 2 : 1));
+        }
+        std::printf("13. Shaw relative positions (K 4): gradcheck shared k+v %zu entries %.2e, per-head keys only "
+                    "%zu entries %.2e; exported as attention.relative_kv\n", nm, wm, nm2, wm2);
+    }
+
+    std::printf("FLEX-OK 13/13\n");
     return 0;
 }

@@ -74,12 +74,15 @@ struct Spec {
     // norm_inputs (an expr slot's inputs in order: "up" / "gate" / "row" / "scalar" / "channel", or
     // {"kind": ..., "init": v}); norm_placement ("pre" | "post" | "sandwich" | "branch_post" | "none",
     // or {"attn": .., "ffn": ..}); final_norm (true / false; unset = parity::FlexConfig's rule);
-    // position "t5_relative" with rel_buckets and rel_max_distance.
+    // position "t5_relative" with rel_buckets and rel_max_distance; position "shaw_relative" with
+    // rel_max_distance (Shaw's clipping distance), rel_per_head and rel_values; qkv_conv (Primer's MDHA width).
     std::vector<parity::FlexConfig::ExprInput> act_inputs, norm_inputs, embed_inputs;
     std::string embed_expr;  // arch.custom.embed "expr:<e>" (parity::FlexConfig embed_expr)
     std::string place_attn = "pre", place_ffn = "pre";
     int final_norm = -1;
     size_t rel_buckets = 32, rel_max_distance = 128;
+    bool rel_per_head = false, rel_values = true;
+    size_t qkv_conv = 0;
     bool flex_only_keys = false;  // any of the above given
     float gate_bias_init = -2.0f;   // highway only (registry #0001)
     size_t d_ff = 0;                // 0 = family default (4d gpt2/flex, 3d llama)
@@ -384,6 +387,15 @@ Spec parse_spec(const std::string& path) {
             s.rel_max_distance = c.value("rel_max_distance", s.rel_max_distance);
             s.flex_only_keys = true;
         }
+        if (c.contains("rel_per_head") || c.contains("rel_values")) {
+            s.rel_per_head = c.value("rel_per_head", s.rel_per_head);
+            s.rel_values = c.value("rel_values", s.rel_values);
+            s.flex_only_keys = true;
+        }
+        if (c.contains("qkv_conv")) {
+            s.qkv_conv = c["qkv_conv"].get<size_t>();
+            s.flex_only_keys = true;
+        }
         s.gate_bias_init = c.value("gate_bias_init", s.gate_bias_init);
         s.d_ff = c.value("d_ff", s.d_ff);
         s.window = c.value("window", s.window);
@@ -539,7 +551,7 @@ Spec parse_spec(const std::string& path) {
 
     if (s.flex_only_keys && s.family != "flex")
         throw std::runtime_error("arch.custom.activation_inputs, norm_inputs, embed, embed_inputs, norm_placement, final_norm and "
-                                 "rel_buckets / rel_max_distance need the flex family");
+                                 "rel_buckets / rel_max_distance / rel_per_head / rel_values / qkv_conv need the flex family");
     if (s.attn_res && s.family != "llama")
         throw std::runtime_error("arch.custom.attn_res needs the llama family (rmsnorm, swiglu, rope, exact attention); "
                                  "the gpt2 attnres preset is its own family");
@@ -2071,6 +2083,9 @@ parity::FlexConfig flex_config(const Spec& s, size_t vocab) {
     fc.final_norm = s.final_norm;
     fc.rel_buckets = s.rel_buckets;
     fc.rel_max_distance = s.rel_max_distance;
+    fc.rel_per_head = s.rel_per_head;
+    fc.rel_values = s.rel_values;
+    fc.qkv_conv = s.qkv_conv;
     const std::string bad = fc.problem();
     if (!bad.empty()) throw std::runtime_error("arch.custom: " + bad);
     return fc;
@@ -2345,8 +2360,10 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
                         "[-20, 20]\n", fc.act.substr(5).c_str(), gc["fd_worst_rel"].get<double>());
         } else if (fc.act != "gelu" && fc.act != "relu" && fc.act != "swiglu")
             throw std::runtime_error("unknown activation " + fc.act);
-        if (fc.pos != "learned" && fc.pos != "sinusoidal" && fc.pos != "rope" && fc.pos != "t5_relative")
-            throw std::runtime_error("unknown position " + fc.pos + " (learned | sinusoidal | rope | t5_relative)");
+        if (fc.pos != "learned" && fc.pos != "sinusoidal" && fc.pos != "rope" && fc.pos != "t5_relative" &&
+            fc.pos != "shaw_relative")
+            throw std::runtime_error("unknown position " + fc.pos +
+                                     " (learned | sinusoidal | rope | t5_relative | shaw_relative)");
         if (fc.residual != "residual" && fc.residual != "highway" && fc.residual != "plain")
             throw std::runtime_error("unknown residual " + fc.residual +
                                      " (residual | highway | plain)");
@@ -2443,6 +2460,10 @@ int run(const Spec& s, bool plan_only, const std::string& spec_path = "") {
     }
     if (flex && flex->cfg.pos == "t5_relative")
         model_ev["t5_relative"] = {{"buckets", flex->cfg.rel_buckets}, {"max_distance", flex->cfg.rel_max_distance}};
+    if (flex && flex->cfg.pos == "shaw_relative")
+        model_ev["shaw_relative"] = {{"max_distance", flex->cfg.rel_max_distance},
+                                     {"per_head", flex->cfg.rel_per_head}, {"values", flex->cfg.rel_values}};
+    if (flex && flex->cfg.qkv_conv) model_ev["qkv_conv"] = flex->cfg.qkv_conv;
     if (s.lr_warmup > 0 || s.lr_decay != "none")
         model_ev["lr_schedule"] = {
             {"warmup_steps", s.lr_warmup}, {"decay", s.lr_decay}, {"min_lr_frac", s.lr_min_frac}};

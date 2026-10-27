@@ -89,7 +89,8 @@ Run prepare(const json& req, bool grad) {
 
 // The thirdparty-profile single ops through the ops paperkiln trains with (LOCAL_LLM_STACK.md section 11
 // item 4.4): rope (pairing, n_rot, kv_heads; freq_scale 1 only), rmsnorm (group; weight_offset 0 only),
-// causal attention (kv_heads <= heads, no window or sinks; T5's position_bias through ops::relpos_attention),
+// causal attention (kv_heads <= heads, no window or sinks; T5's position_bias through ops::relpos_attention,
+// Shaw's relative_kv through ops::shaw_attention),
 // conv1d_causal, selective_scan. Anything else
 // these ops do not express is a skip naming the attribute.
 json run_op(const json& req) {
@@ -152,6 +153,26 @@ json run_op(const json& req) {
                                                       ops::slice_cols(k, h * hd, (h + 1) * hd),
                                                       ops::slice_cols(v, h * hd, (h + 1) * hd), table, h, buckets,
                                                       sc, 0));
+            Var y = ops::concat_cols(heads);
+            return {{"outputs", {{nd.at("out").get<std::string>(), encode(y->data)}}}, {"state", json::object()}};
+        }
+        if (nd.contains("relative_kv")) {
+            // keramos 1.4 (IR_SPEC 5.15): Shaw's relative key and value vectors through the training op,
+            // ops::shaw_attention per query head; a table of width head_dim is shared by the heads, one of
+            // width heads * head_dim holds head h's vectors at columns h * head_dim.
+            const json& rk = nd.at("relative_kv");
+            Var tk = make_var(decode(req.at("weights").at(rk.at("key").get<std::string>())));
+            Var tv = rk.contains("value") && !rk["value"].is_null()
+                         ? make_var(decode(req.at("weights").at(rk["value"].get<std::string>())))
+                         : nullptr;
+            const size_t K = rk.at("max_distance").get<size_t>();
+            const float sc = nd.at("scale").get<float>();
+            std::vector<Var> heads;
+            for (size_t h = 0; h < H; ++h)
+                heads.push_back(ops::shaw_attention(ops::slice_cols(q, h * hd, (h + 1) * hd),
+                                                    ops::slice_cols(k, h * hd, (h + 1) * hd),
+                                                    ops::slice_cols(v, h * hd, (h + 1) * hd), tk, tv,
+                                                    tk->data.cols() == hd ? 0 : h * hd, K, sc, 0));
             Var y = ops::concat_cols(heads);
             return {{"outputs", {{nd.at("out").get<std::string>(), encode(y->data)}}}, {"state", json::object()}};
         }
@@ -223,6 +244,49 @@ json handle(const json& req) {
         for (size_t k = 0; k < st.size(); ++k) state[run.r.state()[k].name] = encode(st[k], run.r.state()[k].shape);
         return {{"outputs", {{req["node"]["out"].get<std::string>(), encode(y->data)}}},
                 {"state", {{req["node"]["state"].get<std::string>(), state}}}};
+    }
+    if (m == "run_node_grad" && req.at("node").value("op", "") == "attention") {
+        // keramos 1.4 (IR_SPEC 5.15): attention with relative_kv, d sum(out * out_grad) through
+        // ops::shaw_attention's backward (causal, no window or sinks), per query head over repeated kv heads.
+        const json& nd = req.at("node");
+        if (!nd.contains("relative_kv")) throw std::domain_error("ir_eval differentiates attention with relative_kv only");
+        if (nd.value("window", 0) != 0 || nd.value("sinks", 0) != 0 || nd.value("mask", std::string("causal")) != "causal")
+            throw std::domain_error("ir_eval: attention gradient other than plain causal");
+        const size_t H = nd.at("heads"), KV = nd.at("kv_heads"), hd = nd.at("head_dim");
+        const json& rk = nd.at("relative_kv");
+        auto leaf = [&](const json& t) { return make_var(decode(t), true); };
+        std::vector<Var> ins;
+        std::vector<std::string> in_names;
+        for (const auto& n : nd.at("in")) {
+            ins.push_back(leaf(req.at("inputs").at(n.get<std::string>())));
+            in_names.push_back(n.get<std::string>());
+        }
+        std::vector<Var> ws;
+        std::vector<std::string> w_names;
+        for (const char* key : {"key", "value"})
+            if (rk.contains(key) && !rk[key].is_null()) {
+                w_names.push_back(rk[key].get<std::string>());
+                ws.push_back(leaf(req.at("weights").at(w_names.back())));
+            }
+        Var kk = ops::repeat_heads(ins[1], KV, H / KV, hd), vv = ops::repeat_heads(ins[2], KV, H / KV, hd);
+        Var tk = ws[0], tv = ws.size() > 1 ? ws[1] : nullptr;
+        std::vector<Var> heads;
+        for (size_t h = 0; h < H; ++h)
+            heads.push_back(ops::shaw_attention(ops::slice_cols(ins[0], h * hd, (h + 1) * hd),
+                                                ops::slice_cols(kk, h * hd, (h + 1) * hd),
+                                                ops::slice_cols(vv, h * hd, (h + 1) * hd), tk, tv,
+                                                tk->data.cols() == hd ? 0 : h * hd, rk.at("max_distance").get<size_t>(),
+                                                nd.at("scale").get<float>(), 0));
+        Var y = ops::concat_cols(heads);
+        const Var g = make_var(decode(req.at("out_grad")));
+        backward(ops::scale(ops::mean(ops::mul(y, g)), static_cast<float>(y->data.rows() * y->data.cols())));
+        json grads = json::object();
+        auto put = [&](const std::string& name, const Var& v) {
+            grads[name] = encode(v->grad.rows() ? v->grad : Matrix(v->data.rows(), v->data.cols()));
+        };
+        for (size_t i = 0; i < ins.size(); ++i) put(in_names[i], ins[i]);
+        for (size_t i = 0; i < ws.size(); ++i) put(w_names[i], ws[i]);
+        return {{"grads", grads}};
     }
     if (m == "run_node_grad") {
         Run run = prepare(req, true);

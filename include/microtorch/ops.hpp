@@ -446,5 +446,20 @@ std::vector<int> t5_position_buckets(size_t num_buckets, size_t max_distance);
 Var relpos_attention(const Var& q, const Var& k, const Var& v, const Var& table, size_t head,
                      const std::vector<int>& buckets, float scale, size_t seq_len = 0);
 
+// ---- Shaw-style relative positions (Shaw, Uszkoreit and Vaswani 2018, arXiv 1803.02155, eqs. 3-4; the
+// flex family's position "shaw_relative"; keramos IR_SPEC 5.15 attention.relative_kv, revision 1.4) ----
+// One head of causal softmax attention with learned relative key and value vectors, by the clipped
+// distance n = min(i - j, max_distance) between the query row i and the key row j (inside its seq_len
+// block): score(i, j) = ((q_i . k_j) + (q_i . rk[n])) * scale, each dot summed over the columns in
+// ascending order and rounded, then the sum, then the product; out_i = (sum_j a_ij v_j) + (sum_j a_ij
+// rv[n]), each sum over ascending j, then the addition (no rv: the first sum alone). rk [max_distance + 1,
+// W] and rv [max_distance + 1, Wv] (null = keys only) hold one row per distance; this head reads columns
+// col0 .. col0 + dk of rk (col0 .. col0 + dv of rv): col0 = 0 for vectors shared by every head (W = dk),
+// head * dk for one set per head (W = heads * dk). Keys after the query are masked to exactly 0.
+// Backward: the softmax-attention gradient through k_j + rk[n] and v_j + rv[n], with d rk[n] and d rv[n]
+// the sums over the pairs at distance n. Host loops; FD-checked in tests/test_shaw_attention.cpp.
+Var shaw_attention(const Var& q, const Var& k, const Var& v, const Var& rk, const Var& rv, size_t col0,
+                   size_t max_distance, float scale, size_t seq_len = 0);
+
 }  // namespace ops
 }  // namespace microtorch

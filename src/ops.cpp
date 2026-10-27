@@ -3038,5 +3038,129 @@ Var relpos_attention(const Var& q, const Var& k, const Var& v, const Var& table,
     });
 }
 
+Var shaw_attention(const Var& q, const Var& k, const Var& v, const Var& rk, const Var& rv, size_t col0,
+                   size_t max_distance, float scale, size_t seq_len) {
+    const size_t T = q->data.rows(), dk = q->data.cols(), dv = v->data.cols(), R = max_distance + 1;
+    if (k->data.rows() != T || v->data.rows() != T || k->data.cols() != dk)
+        throw std::runtime_error("shaw_attention: shape mismatch");
+    if (!rk || rk->data.rows() != R || col0 + dk > rk->data.cols())
+        throw std::runtime_error("shaw_attention: the key table must be [max_distance + 1, W] with this head's "
+                                 "columns inside W");
+    if (rv && (rv->data.rows() != R || col0 + dv > rv->data.cols()))
+        throw std::runtime_error("shaw_attention: the value table must be [max_distance + 1, Wv] with this head's "
+                                 "columns inside Wv");
+    const size_t sl = seq_len == 0 ? T : seq_len;
+    if (T % sl != 0) throw std::runtime_error("shaw_attention: rows not a multiple of seq_len");
+    for (const Var* m : {&q, &k, &v, &rk}) device::materialize((*m)->data);
+    if (rv) device::materialize(rv->data);
+    auto dist = [max_distance](size_t i, size_t j) { return std::min(i - j, max_distance); };
+    // qr(i, n) = q_i . rk[n] (ascending columns), once per query row and distance.
+    Matrix qr(T, R);
+    for (size_t i = 0; i < T; ++i)
+        for (size_t n = 0; n < R; ++n) {
+            float dot = 0.0f;
+            for (size_t c = 0; c < dk; ++c) dot += q->data(i, c) * rk->data(n, col0 + c);
+            qr(i, n) = dot;
+        }
+    auto A = std::make_shared<Matrix>(T, T);  // zeros: masked entries stay exactly 0
+    for (size_t i = 0; i < T; ++i) {
+        const size_t b0 = (i / sl) * sl;
+        float mx = -INFINITY;
+        for (size_t j = b0; j <= i; ++j) {
+            float dot = 0.0f;
+            for (size_t c = 0; c < dk; ++c) dot += q->data(i, c) * k->data(j, c);
+            const float s = dot + qr(i, dist(i, j));
+            (*A)(i, j) = s * scale;
+            mx = std::max(mx, (*A)(i, j));
+        }
+        float z = 0.0f;
+        for (size_t j = b0; j <= i; ++j) {
+            (*A)(i, j) = std::exp((*A)(i, j) - mx);
+            z += (*A)(i, j);
+        }
+        for (size_t j = b0; j <= i; ++j) (*A)(i, j) /= z;
+    }
+    Matrix y(T, dv);
+    for (size_t i = 0; i < T; ++i) {
+        const size_t b0 = (i / sl) * sl;
+        for (size_t c = 0; c < dv; ++c) {
+            float sv = 0.0f;
+            for (size_t j = b0; j <= i; ++j) sv += (*A)(i, j) * v->data(j, c);
+            if (rv) {
+                float sa = 0.0f;
+                for (size_t j = b0; j <= i; ++j) sa += (*A)(i, j) * rv->data(dist(i, j), col0 + c);
+                sv = sv + sa;
+            }
+            y(i, c) = sv;
+        }
+    }
+    std::vector<Var> parents = {q, k, v, rk};
+    if (rv) parents.push_back(rv);
+    return record(std::move(y), parents, [A, col0, max_distance, scale, sl](Variable* self) {
+        const Var& q = self->parents[0];
+        const Var& k = self->parents[1];
+        const Var& v = self->parents[2];
+        const Var& rk = self->parents[3];
+        const Var* rvp = self->parents.size() > 4 ? &self->parents[4] : nullptr;
+        device::materialize(self->grad);
+        const Matrix& dy = self->grad;
+        const size_t T = q->data.rows(), dk = q->data.cols(), dv = v->data.cols();
+        auto dist = [max_distance](size_t i, size_t j) { return std::min(i - j, max_distance); };
+        if (v->requires_grad) {
+            Matrix dvm(T, dv);
+            for (size_t i = 0; i < T; ++i)
+                for (size_t j = (i / sl) * sl; j <= i; ++j)
+                    for (size_t c = 0; c < dv; ++c) dvm(j, c) += (*A)(i, j) * dy(i, c);
+            v->accumulate(std::move(dvm));
+        }
+        if (rvp && (*rvp)->requires_grad) {
+            Matrix drv((*rvp)->data.rows(), (*rvp)->data.cols());
+            for (size_t i = 0; i < T; ++i)
+                for (size_t j = (i / sl) * sl; j <= i; ++j)
+                    for (size_t c = 0; c < dv; ++c) drv(dist(i, j), col0 + c) += (*A)(i, j) * dy(i, c);
+            (*rvp)->accumulate(std::move(drv));
+        }
+        if (!q->requires_grad && !k->requires_grad && !rk->requires_grad) return;
+        // dS = A .* (dA - rowsum(dA .* A)), dA(i, j) = dy_i . (v_j + rv[n]) over the visible keys.
+        Matrix ds(T, T);
+        for (size_t i = 0; i < T; ++i) {
+            const size_t b0 = (i / sl) * sl;
+            float dot = 0.0f;
+            for (size_t j = b0; j <= i; ++j) {
+                float da = 0.0f;
+                for (size_t c = 0; c < dv; ++c) {
+                    const float vv = rvp ? v->data(j, c) + (*rvp)->data(dist(i, j), col0 + c) : v->data(j, c);
+                    da += dy(i, c) * vv;
+                }
+                ds(i, j) = da;
+                dot += da * (*A)(i, j);
+            }
+            for (size_t j = b0; j <= i; ++j) ds(i, j) = (*A)(i, j) * (ds(i, j) - dot);
+        }
+        if (q->requires_grad) {
+            Matrix dq(T, dk);
+            for (size_t i = 0; i < T; ++i)
+                for (size_t j = (i / sl) * sl; j <= i; ++j)
+                    for (size_t c = 0; c < dk; ++c)
+                        dq(i, c) += scale * ds(i, j) * (k->data(j, c) + rk->data(dist(i, j), col0 + c));
+            q->accumulate(std::move(dq));
+        }
+        if (k->requires_grad) {
+            Matrix dkm(T, dk);
+            for (size_t i = 0; i < T; ++i)
+                for (size_t j = (i / sl) * sl; j <= i; ++j)
+                    for (size_t c = 0; c < dk; ++c) dkm(j, c) += scale * ds(i, j) * q->data(i, c);
+            k->accumulate(std::move(dkm));
+        }
+        if (rk->requires_grad) {
+            Matrix drk(rk->data.rows(), rk->data.cols());
+            for (size_t i = 0; i < T; ++i)
+                for (size_t j = (i / sl) * sl; j <= i; ++j)
+                    for (size_t c = 0; c < dk; ++c) drk(dist(i, j), col0 + c) += scale * ds(i, j) * q->data(i, c);
+            rk->accumulate(std::move(drk));
+        }
+    });
+}
+
 }  // namespace ops
 }  // namespace microtorch
