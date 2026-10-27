@@ -140,7 +140,7 @@ tables, including ctrl_sft's per-source numbers for ember: `receipts/general_cha
   long answer (pk_sft_v1 averages 45 words there).
 - **Amendment A1 (gate on protocol failures only; written after the 23 Oct run, so post hoc):
   pk_sft_v1**, 21/60 against big_sft's 11/60, a lead of 10 questions where the rule needs 4.
-- Jonathan picks which verdict stands. pk_sft_v1 is the model the preference stage is prepared on.
+- **The verdict that stands: pk_sft_v1** (Jonathan, 27 Oct 2026). The preference stage runs on it.
 
 ### Parity and cost
 
