@@ -486,7 +486,27 @@ for the whole conversation plus near_self: 30% fewer, and one forced-choice mode
   3.1 h at 60m_L16, medians over seeds) with pretraining and SFT scaled by the probes' T 512 / T 1,024 step-time
   ratio, plus the measured Carry-12 part and its ember build, plus 0.37 h per machine for boot, CUDA gate and data
   job (pk-tc-s150-L8, 26 Oct 2026), on 12 machines (D follows B on B's); X's post job at P16's measured times (X's
-  own generation is not measured). **Measured total: not yet home** (written here when the campaign is home).
+  own generation is not measured).
+- **The measured total: 153.3 L4 VM-hours, $90** (`stage0/total.json`), 1.22 times the approved planning number
+  for L\* = 8 (126, $74), under the 1.5x rule; it goes to Jonathan for item 6's go.
+
+  | cell (3 seeds each) | T 1,024 tok/s (probe) | PT h | SFT h | rest of post h | Carry-12 post h | machine h | VM-hours |
+  |---|---:|---:|---:|---:|---:|---:|---:|
+  | B (60m_L8, 16 x 1,024; 18.95 GiB peak) | 12,511 | 3.96 | 0.74 | 2.53 | 2.58 | 0.37 | 30.5 |
+  | D (B's weights) | (B's) | 0 | 0.74 | 2.53 | 2.58 | 0 | 17.5 |
+  | S-gist (k 4, turn_state; 19.2 GiB) | 12,230 | 4.05 | 0.76 | 2.53 | 2.58 | 0.37 | 30.8 |
+  | P16 (60m_L16, 8 x 2) | 11,021 | 4.60 | 0.76 | 3.07 | 2.66 | 0.37 | 34.4 |
+  | X (60m_L16 + llama_attnres, 8 x 2) | 8,115 (0.736 x P16) | 6.25 | 1.03 | 3.07 | 2.66 | 0.37 | 40.1 |
+  | **core** | | | | | | | **153.3 ($90)** |
+
+  Against the planning table above: pretraining is close to plan (B 3.96 h against 3.9 h; the probes ran about 2% under
+  section 3's lower bounds at L8 and L16, and X 3% above its upper bound); the Carry-12 post part measured 2.58 h
+  at 60m_L8 and 2.66 h at 60m_L16 (9,179 and 9,586 s, 29,040 replies each, ember spot-check 20/20, parity gate
+  17,424/17,424) against 2.1 h planned; most of the excess is the rest of the post job, which E1 at 60M measured at
+  2.5-3.1 h against the 1.4 h the plan left for it, and 0.37 h per machine that the plan did not count. Of the
+  Carry-12 part, 2.2-2.3 h is `mtstudio score` (forced choice in five modes and the parity gate) and 13-15 minutes
+  is ember's generation, so ember ec3201b changes the total by minutes, and batching `mtstudio score` is the lever
+  on the post jobs. The 60m_L32 cost run (`pick_e1_60m_L32`) is descriptive and not part of the total.
 - **Two cheaper layouts, Jonathan's call at the freeze:** when L\* is 32, X on B's shape instead of 60m_L16 (P16
   dropped, about -28 VM-hours, at the cost of the shape the literature check chose and a different X/plain throughput
   ratio, measured by the probe); when L\* is 4 or 8, X stays at 60m_L16 because depth attention needs depth.
@@ -506,7 +526,7 @@ for the whole conversation plus near_self: 30% fewer, and one forced-choice mode
    models, and that only the gate's quantities and HL0 are read), on the 60M picks†, and the measured cost of a
    Carry-12 post job (section 10). Known: the registered picks are scored (`l0/pick_e5_s0`, `pick_e1_L16` and
    `pick_e1_60m_L32`; every receipt so far passes the validity gate); the descriptive picks score on the laptop's
-   CPU. Open: the cost runs of the pre-freeze campaign (section 10).
+   CPU. The measured cost of a Carry-12 post job is home (section 10: 2.58 h at 60m_L8, 2.66 h at 60m_L16).
 4. **Carry-12 v1** is frozen with its pin, `tools/carry12_eval.py` and tests. Known: Taskmaster-3 is scanned (no
    item leak, no drop-rule hit; section 2), the FineWeb-Edu shard is scanned (no item leak, no drop-rule hit;
    section 2), and the T 1,024 data job drops dialogues by Carry-12's rules (53 of 170,572). Nothing open.
@@ -522,8 +542,8 @@ for the whole conversation plus near_self: 30% fewer, and one forced-choice mode
    Carry-5 (section 2). A design point for the freeze, not an engine item:
    D's "10+ turns" takes in Self-Dialogue's 1,297 ten-turn dialogues and every Topical-Chat dialogue (section 4,
    option 1); 11+ would leave out all of Self-Dialogue and most of Topical-Chat (its p90 is 11 turns).
-6. **Stage 0 at T 1,024:** probes replace section 10's estimates; Jonathan's go on the measured total. Open: the
-   pre-freeze campaign's probes and cost runs, then `stage0_total.py` (section 10), then his go.
+6. **Stage 0 at T 1,024:** probes replace section 10's estimates; Jonathan's go on the measured total. Known: the
+   probes and the measured total, 153.3 L4 VM-hours, $90 (section 10). Open: his go.
 7. Jonathan's ruling on data option 3 (new long human sources), if wanted before the freeze. What the four
    licensed long sources (Taskmaster-3, ABCD, CCPE-M, PersuasionForGood) add to the T 1,024 data job, counted by
    the pre-freeze campaign (`stage0/carry12_data_long3_ledger.json`; nothing trains on it): 196,779 dialogues
