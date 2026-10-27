@@ -1,0 +1,31 @@
+{
+ "rule": "highest primary metric (forced choice, self history, multi minus twin); tie -> lower seed",
+ "runs": [
+  {
+   "run": "C:/ml_artifacts/tiny_chat/e1_150m_r1/post_e1_150m_L8_r1",
+   "seed": 1,
+   "primary": -0.07432432432432434,
+   "summary": true
+  },
+  {
+   "run": "C:/ml_artifacts/tiny_chat/e1_150m_r2/post_e1_150m_L8_r2",
+   "seed": 2,
+   "primary": -0.06644144144144143,
+   "summary": true
+  },
+  {
+   "run": "C:/ml_artifacts/tiny_chat/e1_150m_r3/post_e1_150m_L8_r3",
+   "seed": 3,
+   "primary": -0.06306306306306303,
+   "summary": true
+  }
+ ],
+ "best": {
+  "run": "C:/ml_artifacts/tiny_chat/e1_150m_r3/post_e1_150m_L8_r3",
+  "seed": 3,
+  "primary": -0.06306306306306303,
+  "summary": true
+ },
+ "weights_sha256": "02f8b00e2253272eded24341bd8bf93b11abcd6378ef693756a088e285c2f7fd",
+ "weights_match_summary": true
+}

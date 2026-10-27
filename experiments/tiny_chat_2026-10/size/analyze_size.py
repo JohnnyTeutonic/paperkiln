@@ -56,7 +56,9 @@ def load_size(art, size, depth):
             if c != cell:
                 continue
             if seed in out:
-                raise SystemExit(f"{size} {cell} seed {seed} found twice (second in {b}); keep one copy")
+                if out[seed] == s:
+                    continue  # the same summary twice: a split cell merged into its arm folder
+                raise SystemExit(f"{size} {cell} seed {seed} found twice with different summaries (second in {b})")
             out[seed] = s
     return out
 
