@@ -1,5 +1,5 @@
 {
- "_comment": "LOCAL_LLM_WORK R3, experiments/lowbit_2026-10-28: post-training quantisation cost against F32 for pk_base_v1, pk_sft_v1, pick_e1_L16 and pick_e1_60m_L32. ptq_TAG: mtstudio export of the uploaded F32 weights to F32, Q8_0 (q8_0_all), Q4_K_M, Q4_K_S and Q4_0 GGUFs, each dequantised to untied F32 weights (dequant.py: ember's arithmetic), the two text panels (E1's panel files, uploaded) and the seven benchmarks (hfgguf on the quantised file). c5_TAG_V: Carry-5 of each pick's variant (ember aa50a61 on the quantised GGUF after the 40-item spot-check, else mtstudio). Uploads: TAG.safetensors (pick weights rebuilt by rebuild_weights.py), the vocabulary, panel_fineweb.ids, panel_dialogue.ids (placed under /content/chat/data by the ptq job).",
+ "_comment": "LOCAL_LLM_WORK R3, experiments/lowbit_2026-10-28: post-training quantisation cost against F32 for pk_base_v1, pk_sft_v1, pick_e1_L16 and pick_e1_60m_L32. ptq_TAG: mtstudio export of the uploaded F32 weights to F32, Q8_0 (q8_0_all), Q4_K_M, Q4_K_S and Q4_0 GGUFs, each dequantised to untied F32 weights (dequant.py: ember's arithmetic), the two text panels (E1's panel files, uploaded) and the seven benchmarks (hfgguf on the quantised file). c5_TAG_V: Carry-5 of each pick's variant (ember aa50a61 on the quantised GGUF after the 40-item spot-check, else mtstudio). Uploads: TAG.safetensors (pick weights rebuilt by rebuild_weights.py), the vocabulary, panel_fineweb.ids, panel_dialogue.ids (placed under /content/chat/data by the ptq job). This file: pick_e1_L16, pick_e1_60m_L32 (the uploads of the other models stay off this VM).",
  "max_parallel": 2,
  "max_parallel_light": 3,
  "jobs": [
@@ -28,34 +28,6 @@
    ],
    "outputs": [
     "summary_pick_e1_60m_L32.json",
-    "deps.log"
-   ]
-  },
-  {
-   "name": "ptq_pkbase",
-   "cmd": [
-    "python3",
-    "experiments/lowbit_2026-10-28/lowbit_vm.py",
-    "ptq",
-    "{out}",
-    "pkbase"
-   ],
-   "outputs": [
-    "summary_pkbase.json",
-    "deps.log"
-   ]
-  },
-  {
-   "name": "ptq_pksft",
-   "cmd": [
-    "python3",
-    "experiments/lowbit_2026-10-28/lowbit_vm.py",
-    "ptq",
-    "{out}",
-    "pksft"
-   ],
-   "outputs": [
-    "summary_pksft.json",
     "deps.log"
    ]
   },

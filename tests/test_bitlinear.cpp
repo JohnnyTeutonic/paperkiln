@@ -246,7 +246,8 @@ void leg3_layer() {
     nn::Linear f(IN, OUT, false, 9);
     f.W->data = lin.W->data;
     const Var yf = f.forward(make_var(x0));
-    check(max_abs(yf->data, x0 * lin.W->data) == 0.0, "off: y == x W bit for bit", max_abs(yf->data, x0 * lin.W->data));
+    const Var yref = ops::matmul(make_var(x0), make_var(lin.W->data));
+    check(max_abs(yf->data, yref->data) == 0.0, "off: y == ops::matmul(x, W) bit for bit", max_abs(yf->data, yref->data));
 }
 
 nn::LlamaConfig tiny(bool bit) {
