@@ -54,7 +54,7 @@ def test_metadata_that_disagrees_and_unknown_architectures_are_refused():
     assert "theta" in " ".join(v.architecture_errors(theta, tensors))
     eps = dict(meta, **{"llama.attention.layer_norm_rms_epsilon": (6, 1e-6)})
     assert v.architecture_errors(eps, tensors)
-    assert "neither" in v.architecture_errors(_relabelled(meta, "phi3"), tensors)[0]
+    assert "neither" in v.architecture_errors(_relabelled(meta, "falcon"), tensors)[0]
 
 
 def test_rule_38_reads_the_embedded_document_only(tmp_path):

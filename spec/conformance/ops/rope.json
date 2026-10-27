@@ -369,6 +369,366 @@
    },
    "class": "ROUNDING",
    "tol": 1e-05
+  },
+  {
+   "name": "freq_factors",
+   "node": {
+    "op": "rope",
+    "in": [
+     "q",
+     "k",
+     "pos"
+    ],
+    "heads": 2,
+    "head_dim": 4,
+    "theta": 10000.0,
+    "rope_heads": "all",
+    "pairing": "neox",
+    "out": [
+     "q",
+     "k"
+    ],
+    "freq_factors": "f"
+   },
+   "inputs": {
+    "q": {
+     "shape": [
+      4,
+      8
+     ],
+     "f32": "3cbf41e83f44c29b3fe3181c3ea4d80a3fc9d784bea367c9bea845643ff692afbe8216c43f73dadd3f2089c83e60babf3e88138bbfaaf6a7bf876afcbeec62793f0db752bf94c9fdbc90f6a8bcb41f79c008407f3f09c6c93f8be7f23fa4ee943ef3692d3f61d296bf416037bf87611abf3fd13c3f60fb6b3fc3846d3e5a959f"
+    },
+    "k": {
+     "shape": [
+      4,
+      8
+     ],
+     "f32": "bfc38e183f6d2de6bfac8dcd3c3496afbf8fd60dbf6dd6403e71d025401e65913eda1bdc3fde327d3f1403d83f3d76483f03a0ddbf4900013de138e33f80f6333f305e643f378b0dbf68ddcb3d8aee283f2cd086bfd00346bf6a31284025fdd3c02deacebf9db472bf2b380bbe9138263e8d4c463f5a3fdb3e1056b43f488cae"
+    },
+    "pos": [
+     0,
+     1,
+     5,
+     9
+    ]
+   },
+   "weights": {
+    "f": {
+     "shape": [
+      2
+     ],
+     "f32": "40bcacf440ec2c22"
+    }
+   },
+   "expect": {
+    "q": {
+     "shape": [
+      4,
+      8
+     ],
+     "f32": "3cbf41e83f44c29b3fe3181c3ea4d80a3fc9d784bea367c9bea845643ff692afbeb66ad43f73c7523f13417e3e620d093ee18daabfaae21dbf7f772ebeed4fa03ec24702bf94c43b3ece928fbcf4a168c00e96ea3f0789e4bf5fa6c73fa565153f46955e3f651b853ee2049bbf85fe0dbfc794233f604c8cbf2e49083e658ac7"
+    },
+    "k": {
+     "shape": [
+      4,
+      8
+     ],
+     "f32": "bfc38e183f6d2de6bfac8dcd3c3496afbf8fd60dbf6dd6403e71d025401e65913ea503163fde11943f244c783f3e10623ef9f9c1bf49596c3e47ddc33f80d34f3f91a7223f376bdbbdae1b703d94dfe93f90f976bfd241d0bdca7248402548783f0c3229bf9d401dc02fa501be98e69fbe03a9b23f57c9a53e905c193f4b322d"
+    }
+   },
+   "class": "ROUNDING",
+   "tol": 1e-05
+  },
+  {
+   "name": "freq_factors_short",
+   "node": {
+    "op": "rope",
+    "in": [
+     "q",
+     "k",
+     "pos"
+    ],
+    "heads": 2,
+    "head_dim": 4,
+    "theta": 10000.0,
+    "rope_heads": "all",
+    "pairing": "neox",
+    "out": [
+     "q",
+     "k"
+    ],
+    "freq_factors": {
+     "short": "fs",
+     "long": "fl",
+     "original_ctx": 10
+    }
+   },
+   "inputs": {
+    "q": {
+     "shape": [
+      4,
+      8
+     ],
+     "f32": "3cbf41e83f44c29b3fe3181c3ea4d80a3fc9d784bea367c9bea845643ff692afbe8216c43f73dadd3f2089c83e60babf3e88138bbfaaf6a7bf876afcbeec62793f0db752bf94c9fdbc90f6a8bcb41f79c008407f3f09c6c93f8be7f23fa4ee943ef3692d3f61d296bf416037bf87611abf3fd13c3f60fb6b3fc3846d3e5a959f"
+    },
+    "k": {
+     "shape": [
+      4,
+      8
+     ],
+     "f32": "bfc38e183f6d2de6bfac8dcd3c3496afbf8fd60dbf6dd6403e71d025401e65913eda1bdc3fde327d3f1403d83f3d76483f03a0ddbf4900013de138e33f80f6333f305e643f378b0dbf68ddcb3d8aee283f2cd086bfd00346bf6a31284025fdd3c02deacebf9db472bf2b380bbe9138263e8d4c463f5a3fdb3e1056b43f488cae"
+    },
+    "pos": [
+     0,
+     1,
+     5,
+     9
+    ]
+   },
+   "weights": {
+    "fs": {
+     "shape": [
+      2
+     ],
+     "f32": "3fd217243f94e4d0"
+    },
+    "fl": {
+     "shape": [
+      2
+     ],
+     "f32": "40bcacf440ec2c22"
+    }
+   },
+   "expect": {
+    "q": {
+     "shape": [
+      4,
+      8
+     ],
+     "f32": "3cbf41e83f44c29b3fe3181c3ea4d80a3fc9d784bea367c9bea845643ff692afbf1136043f735cea3ebcdc463e691b433f52c901bfaa72fbbf372b3cbef24138bf0ca46abf9487d93d8ff0b6bd93491c4000fa7f3ef6f320bfa532983fa7bd61be578e3c3f76132cbf5e0a9ebf7c7e773f12cd2b3f5c15d33fcd08003e8fbe9a"
+    },
+    "k": {
+     "shape": [
+      4,
+      8
+     ],
+     "f32": "bfc38e183f6d2de6bfac8dcd3c3496afbf8fd60dbf6dd6403e71d025401e65913c9753b03fdd5fe93f37ca5e3f41467c3eb7aaebbf4b35b93ec4d38e3f8017cebf1969e23f36a09e3f7897043dc9e5bcbf15bfdabfde160c3f79924740215e76c017e43cbf9a6d4d3fbdd340bec18b083e9639143f4a1869bdcc380c3f58d19e"
+    }
+   },
+   "class": "ROUNDING",
+   "tol": 1e-05
+  },
+  {
+   "name": "freq_factors_long",
+   "node": {
+    "op": "rope",
+    "in": [
+     "q",
+     "k",
+     "pos"
+    ],
+    "heads": 2,
+    "head_dim": 4,
+    "theta": 10000.0,
+    "rope_heads": "all",
+    "pairing": "neox",
+    "out": [
+     "q",
+     "k"
+    ],
+    "freq_factors": {
+     "short": "fs",
+     "long": "fl",
+     "original_ctx": 9
+    }
+   },
+   "inputs": {
+    "q": {
+     "shape": [
+      4,
+      8
+     ],
+     "f32": "3cbf41e83f44c29b3fe3181c3ea4d80a3fc9d784bea367c9bea845643ff692afbe8216c43f73dadd3f2089c83e60babf3e88138bbfaaf6a7bf876afcbeec62793f0db752bf94c9fdbc90f6a8bcb41f79c008407f3f09c6c93f8be7f23fa4ee943ef3692d3f61d296bf416037bf87611abf3fd13c3f60fb6b3fc3846d3e5a959f"
+    },
+    "k": {
+     "shape": [
+      4,
+      8
+     ],
+     "f32": "bfc38e183f6d2de6bfac8dcd3c3496afbf8fd60dbf6dd6403e71d025401e65913eda1bdc3fde327d3f1403d83f3d76483f03a0ddbf4900013de138e33f80f6333f305e643f378b0dbf68ddcb3d8aee283f2cd086bfd00346bf6a31284025fdd3c02deacebf9db472bf2b380bbe9138263e8d4c463f5a3fdb3e1056b43f488cae"
+    },
+    "pos": [
+     0,
+     1,
+     5,
+     9
+    ]
+   },
+   "weights": {
+    "fs": {
+     "shape": [
+      2
+     ],
+     "f32": "3fd217243f94e4d0"
+    },
+    "fl": {
+     "shape": [
+      2
+     ],
+     "f32": "40bcacf440ec2c22"
+    }
+   },
+   "expect": {
+    "q": {
+     "shape": [
+      4,
+      8
+     ],
+     "f32": "3cbf41e83f44c29b3fe3181c3ea4d80a3fc9d784bea367c9bea845643ff692afbeb66ad43f73c7523f13417e3e620d093ee18daabfaae21dbf7f772ebeed4fa03ec24702bf94c43b3ece928fbcf4a168c00e96ea3f0789e4bf5fa6c73fa565153f46955e3f651b853ee2049bbf85fe0dbfc794233f604c8cbf2e49083e658ac7"
+    },
+    "k": {
+     "shape": [
+      4,
+      8
+     ],
+     "f32": "bfc38e183f6d2de6bfac8dcd3c3496afbf8fd60dbf6dd6403e71d025401e65913ea503163fde11943f244c783f3e10623ef9f9c1bf49596c3e47ddc33f80d34f3f91a7223f376bdbbdae1b703d94dfe93f90f976bfd241d0bdca7248402548783f0c3229bf9d401dc02fa501be98e69fbe03a9b23f57c9a53e905c193f4b322d"
+    }
+   },
+   "class": "ROUNDING",
+   "tol": 1e-05
+  },
+  {
+   "name": "attn_factor",
+   "node": {
+    "op": "rope",
+    "in": [
+     "q",
+     "k",
+     "pos"
+    ],
+    "heads": 2,
+    "head_dim": 4,
+    "theta": 10000.0,
+    "rope_heads": "all",
+    "pairing": "interleaved",
+    "out": [
+     "q",
+     "k"
+    ],
+    "attn_factor": 1.25
+   },
+   "inputs": {
+    "q": {
+     "shape": [
+      4,
+      8
+     ],
+     "f32": "3cbf41e83f44c29b3fe3181c3ea4d80a3fc9d784bea367c9bea845643ff692afbe8216c43f73dadd3f2089c83e60babf3e88138bbfaaf6a7bf876afcbeec62793f0db752bf94c9fdbc90f6a8bcb41f79c008407f3f09c6c93f8be7f23fa4ee943ef3692d3f61d296bf416037bf87611abf3fd13c3f60fb6b3fc3846d3e5a959f"
+    },
+    "k": {
+     "shape": [
+      4,
+      8
+     ],
+     "f32": "bfc38e183f6d2de6bfac8dcd3c3496afbf8fd60dbf6dd6403e71d025401e65913eda1bdc3fde327d3f1403d83f3d76483f03a0ddbf4900013de138e33f80f6333f305e643f378b0dbf68ddcb3d8aee283f2cd086bfd00346bf6a31284025fdd3c02deacebf9db472bf2b380bbe9138263e8d4c463f5a3fdb3e1056b43f488cae"
+    },
+    "pos": [
+     0,
+     1,
+     5,
+     9
+    ]
+   },
+   "weights": {},
+   "expect": {
+    "q": {
+     "shape": [
+      4,
+      8
+     ],
+     "f32": "3cef12623f75f342400def123ece0e0c3ffc4d65becc41bbbed256bd401a1badbf96367c3ec08e4e3f47f5e13e9076583fcacd40bf1f5d5fbfa88676bf171e51bf9938dabf89b110bca9b995bce9edc2bde0cef8402f88413fa45c2c3fd6a5d4bf7ef1a6bf427ef6bf52527fbfb366e63ecd20d1bfb186503ff056783edfed2a"
+    },
+    "k": {
+     "shape": [
+      4,
+      8
+     ],
+     "f32": "bff4719e3f943cb0bfd7b1403c61bc5bbfb3cb90bf94a5e83e9722174045fef5bfc4e3a23fcf6bc23f36a42b3f6eaa763f9628c43c2cdac03dffb8c73fa15ebb3f8d454dbf125332bf91e6ee3ce43ea2bfdab293bfb15449bfa6ed69404b9285406eb27d3b5a0a00bf4cfff7bedb4302bf40e4d0bf542c223db322a03f7db9f2"
+    }
+   },
+   "class": "ROUNDING",
+   "tol": 1e-05
+  },
+  {
+   "name": "freq_factors_partial_attn_factor",
+   "node": {
+    "op": "rope",
+    "in": [
+     "q",
+     "k",
+     "pos"
+    ],
+    "heads": 2,
+    "head_dim": 4,
+    "theta": 10000.0,
+    "rope_heads": "all",
+    "pairing": "neox",
+    "out": [
+     "q",
+     "k"
+    ],
+    "n_rot": 2,
+    "attn_factor": 1.25,
+    "freq_factors": "f1"
+   },
+   "inputs": {
+    "q": {
+     "shape": [
+      4,
+      8
+     ],
+     "f32": "3cbf41e83f44c29b3fe3181c3ea4d80a3fc9d784bea367c9bea845643ff692afbe8216c43f73dadd3f2089c83e60babf3e88138bbfaaf6a7bf876afcbeec62793f0db752bf94c9fdbc90f6a8bcb41f79c008407f3f09c6c93f8be7f23fa4ee943ef3692d3f61d296bf416037bf87611abf3fd13c3f60fb6b3fc3846d3e5a959f"
+    },
+    "k": {
+     "shape": [
+      4,
+      8
+     ],
+     "f32": "bfc38e183f6d2de6bfac8dcd3c3496afbf8fd60dbf6dd6403e71d025401e65913eda1bdc3fde327d3f1403d83f3d76483f03a0ddbf4900013de138e33f80f6333f305e643f378b0dbf68ddcb3d8aee283f2cd086bfd00346bf6a31284025fdd3c02deacebf9db472bf2b380bbe9138263e8d4c463f5a3fdb3e1056b43f488cae"
+    },
+    "pos": [
+     0,
+     1,
+     5,
+     9
+    ]
+   },
+   "weights": {
+    "f1": {
+     "shape": [
+      1
+     ],
+     "f32": "40bcacf4"
+    }
+   },
+   "expect": {
+    "q": {
+     "shape": [
+      4,
+      8
+     ],
+     "f32": "3cef12623f75f3423fe3181c3ea4d80a3ffc4d65becc41bbbea845643ff692afbf0396f93f8f5c573f2089c83e60babf3f1bf866bfcb75debf876afcbeec62793fc61286bee26456bc90f6a8bcb41f79c010f2dabfc680a53f8be7f23fa4ee94bf89a0663f248074bf416037bf87611abf91caecbf6310093fc3846d3e5a959f"
+    },
+    "k": {
+     "shape": [
+      4,
+      8
+     ],
+     "f32": "bff4719e3f943cb0bfac8dcd3c3496afbfb3cb90bf94a5e83e71d025401e65913e226612400ea20c3f1403d83f3d76483f4c9560bf5bdf753de138e33f80f633bdd1e3783f9e8cc8bf68ddcb3d8aee284005397dbf35fac2bf6a31284025fdd33fb1a72ec05d8de0bf2b380bbe913826bf8650323ec8a5f63e1056b43f488cae"
+    }
+   },
+   "class": "ROUNDING",
+   "tol": 1e-05
   }
  ]
 }

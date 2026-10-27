@@ -78,6 +78,14 @@
    "gguf": "models/pk_state/pk_state.gguf"
   },
   {
+   "name": "model_tp_deepseek2",
+   "gguf": "models/tp_deepseek2/tp_deepseek2.gguf"
+  },
+  {
+   "name": "model_tp_gemma2",
+   "gguf": "models/tp_gemma2/tp_gemma2.gguf"
+  },
+  {
    "name": "model_tp_gemma3",
    "gguf": "models/tp_gemma3/tp_gemma3.gguf"
   },
@@ -102,12 +110,24 @@
    "gguf": "models/tp_mistral_hd16/tp_mistral_hd16.gguf"
   },
   {
+   "name": "model_tp_phi3",
+   "gguf": "models/tp_phi3/tp_phi3.gguf"
+  },
+  {
+   "name": "model_tp_qwen2moe",
+   "gguf": "models/tp_qwen2moe/tp_qwen2moe.gguf"
+  },
+  {
    "name": "model_tp_qwen3",
    "gguf": "models/tp_qwen3/tp_qwen3.gguf"
   },
   {
    "name": "model_tp_qwen3_hd16",
    "gguf": "models/tp_qwen3_hd16/tp_qwen3_hd16.gguf"
+  },
+  {
+   "name": "model_tp_qwen3moe",
+   "gguf": "models/tp_qwen3moe/tp_qwen3moe.gguf"
   },
   {
    "name": "rewritten_pk_kimi",

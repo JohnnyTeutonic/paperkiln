@@ -54,6 +54,52 @@
    },
    "class": "EXACT",
    "tol": 1e-05
+  },
+  {
+   "name": "groups",
+   "node": {
+    "op": "split",
+    "in": [
+     "x"
+    ],
+    "sizes": [
+     2,
+     1
+    ],
+    "groups": 2,
+    "out": [
+     "a",
+     "b"
+    ]
+   },
+   "inputs": {
+    "x": {
+     "shape": [
+      3,
+      6
+     ],
+     "f32": "3f6850dabf44cb463fd27e1f3e05d6b6beeec575be83bc24c02962e63ed4eed8be8127513f04c6d4bf2724543ec68f3d3ff607e4be294f22bf4c65ac3c89fa7d3fa2e7d13fe42fd5"
+    }
+   },
+   "weights": {},
+   "expect": {
+    "a": {
+     "shape": [
+      3,
+      4
+     ],
+     "f32": "3f6850dabf44cb463e05d6b6beeec575c02962e63ed4eed83f04c6d4bf2724543ff607e4be294f223c89fa7d3fa2e7d1"
+    },
+    "b": {
+     "shape": [
+      3,
+      2
+     ],
+     "f32": "3fd27e1fbe83bc24be8127513ec68f3dbf4c65ac3fe42fd5"
+    }
+   },
+   "class": "EXACT",
+   "tol": 1e-05
   }
  ]
 }

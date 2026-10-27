@@ -1,0 +1,5 @@
+{
+ "gguf": "refuse/architecture_gemma2_softcap_dropped.gguf",
+ "rule": 38,
+ "section": "3.1"
+}

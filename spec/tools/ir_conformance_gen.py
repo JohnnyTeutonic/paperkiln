@@ -34,7 +34,7 @@ PK_PROFILES = {
 # Models added after the suite's first release draw their prompts from a stream of their own, so the cases of
 # every earlier model stay byte-identical when the suite is regenerated.
 OWN_STREAM = {"pk_recurrence", "pk_flex_t5", "tp_llama_hd16", "tp_mistral_hd16", "tp_qwen3_hd16", "pk_flex_shaw",
-              "pk_flex_mdha"}
+              "pk_flex_mdha", "tp_phi3", "tp_gemma2", "tp_qwen2moe", "tp_qwen3moe", "tp_deepseek2"}
 
 
 # ---------------------------------------------------------------- third-party models (numpy)
@@ -82,7 +82,53 @@ TP = {
                       "qwen3.attention.key_length": 16, "qwen3.attention.value_length": 16,
                       "qwen3.context_length": 64, "qwen3.attention.layer_norm_rms_epsilon": 1e-6,
                       "qwen3.rope.freq_base": 1000000.0, "qwen3.feed_forward_length": 64},
+    # v1.5.0 (LOCAL_LLM_WORK.md E4). Phi-3 with LongRoPE: fused qkv and gate | up, partial NEOX rotary (4 of 8
+    # dims), original_ctx 6, so the model case, decode, chunks and truncate traces cross from the short factors
+    # to the long ones (5.14), attn_factor 1.25, tied head.
+    "tp_phi3": {"general.architecture": "phi3", "phi3.embedding_length": 16, "phi3.block_count": 2,
+                "phi3.attention.head_count": 2, "phi3.attention.head_count_kv": 1, "phi3.context_length": 64,
+                "phi3.attention.layer_norm_rms_epsilon": 1e-5, "phi3.rope.dimension_count": 4,
+                "phi3.rope.freq_base": 10000.0, "phi3.rope.scaling.original_context_length": 6,
+                "phi3.rope.scaling.attn_factor": 1.25, "phi3.attention.sliding_window": 0,
+                "phi3.feed_forward_length": 32},
+    # Gemma 2: local layers 0 and 2 (window 4), attention and final logit soft-capping small enough to bind.
+    "tp_gemma2": {"general.architecture": "gemma2", "gemma2.embedding_length": 16, "gemma2.block_count": 4,
+                  "gemma2.attention.head_count": 2, "gemma2.attention.head_count_kv": 1,
+                  "gemma2.attention.key_length": 8, "gemma2.attention.value_length": 8, "gemma2.context_length": 64,
+                  "gemma2.attention.layer_norm_rms_epsilon": 1e-6, "gemma2.attention.sliding_window": 4,
+                  "gemma2.attn_logit_softcapping": 1.5, "gemma2.final_logit_softcapping": 2.5,
+                  "gemma2.feed_forward_length": 32},
+    # Qwen-MoE: raw softmax gates with a sigmoid-gated shared expert (qwen2moe); renormalised gates and q/k
+    # norms (qwen3moe).
+    "tp_qwen2moe": {"general.architecture": "qwen2moe", "qwen2moe.embedding_length": 16, "qwen2moe.block_count": 2,
+                    "qwen2moe.attention.head_count": 4, "qwen2moe.attention.head_count_kv": 2,
+                    "qwen2moe.context_length": 64, "qwen2moe.attention.layer_norm_rms_epsilon": 1e-6,
+                    "qwen2moe.rope.freq_base": 1000000.0, "qwen2moe.expert_count": 4, "qwen2moe.expert_used_count": 2,
+                    "qwen2moe.expert_feed_forward_length": 8, "qwen2moe.expert_shared_feed_forward_length": 24,
+                    "qwen2moe.feed_forward_length": 32},
+    "tp_qwen3moe": {"general.architecture": "qwen3moe", "qwen3moe.embedding_length": 16, "qwen3moe.block_count": 2,
+                    "qwen3moe.attention.head_count": 4, "qwen3moe.attention.head_count_kv": 2,
+                    "qwen3moe.attention.key_length": 4, "qwen3moe.context_length": 64,
+                    "qwen3moe.attention.layer_norm_rms_epsilon": 1e-6, "qwen3moe.rope.freq_base": 1000000.0,
+                    "qwen3moe.expert_count": 4, "qwen3moe.expert_used_count": 2,
+                    "qwen3moe.expert_feed_forward_length": 8, "qwen3moe.feed_forward_length": 32},
+    # DeepSeek-V2's multi-head latent attention (5.20): q through the low-rank q_a / q_b, latent rank 6, rope 4,
+    # nope 4, v 3 (every width distinct from the others but nope = rope); MoE with raw gates, scale 2.5 and one
+    # shared expert.
+    "tp_deepseek2": {"general.architecture": "deepseek2", "deepseek2.embedding_length": 16,
+                     "deepseek2.block_count": 2, "deepseek2.attention.head_count": 2,
+                     "deepseek2.attention.head_count_kv": 1, "deepseek2.context_length": 64,
+                     "deepseek2.attention.layer_norm_rms_epsilon": 1e-6, "deepseek2.rope.freq_base": 10000.0,
+                     "deepseek2.rope.dimension_count": 4, "deepseek2.attention.q_lora_rank": 8,
+                     "deepseek2.attention.kv_lora_rank": 6, "deepseek2.attention.key_length": 10,
+                     "deepseek2.attention.value_length": 6, "deepseek2.attention.key_length_mla": 8,
+                     "deepseek2.attention.value_length_mla": 3, "deepseek2.leading_dense_block_count": 0,
+                     "deepseek2.expert_count": 4, "deepseek2.expert_used_count": 2,
+                     "deepseek2.expert_feed_forward_length": 8, "deepseek2.expert_shared_count": 1,
+                     "deepseek2.expert_weights_scale": 2.5, "deepseek2.expert_weights_norm": False,
+                     "deepseek2.expert_gating_func": 1, "deepseek2.feed_forward_length": 32},
 }
+V15 = ("tp_phi3", "tp_gemma2", "tp_qwen2moe", "tp_qwen3moe", "tp_deepseek2")
 TP_VOCAB = 24
 
 
@@ -104,6 +150,8 @@ def _tp_shapes(meta):
     KV = g.get("attention.head_count_kv", Hq)
     hd = g.get("attention.key_length", d // Hq)
     ff = g["feed_forward_length"]
+    if a in ("phi3", "deepseek2", "qwen2moe", "qwen3moe"):
+        return _tp_shapes_v15(a, g, d, L, V, Hq, KV, hd, ff, sh)
     for i in range(L):
         b = f"blk.{i}."
         if a == "gptneox":
@@ -119,12 +167,55 @@ def _tp_shapes(meta):
                    b + "ffn_down.weight": [d, ff]})
         if a in ("qwen3", "gemma3"):
             sh.update({b + "attn_q_norm.weight": [hd], b + "attn_k_norm.weight": [hd]})
-        if a == "gemma3":
+        if a in ("gemma3", "gemma2"):
             sh.update({b + "post_attention_norm.weight": [d], b + "post_ffw_norm.weight": [d]})
     if a == "gptneox":
         sh.update({"output_norm.weight": [d], "output_norm.bias": [d], "output.weight": [V, d]})
     else:
         sh["output_norm.weight"] = [d]
+    return sh
+
+
+def _tp_shapes_v15(a, g, d, L, V, Hq, KV, hd, ff, sh):
+    """v1.5.0: phi3 (fused qkv and gate | up, LongRoPE's two factor sets, tied head), qwen2moe / qwen3moe
+    (llama.cpp's expert layout, qwen2moe's shared expert and its gate), deepseek2 (MLA's tensors, MoE with a
+    shared expert)."""
+    for i in range(L):
+        b = f"blk.{i}."
+        sh.update({b + "attn_norm.weight": [d], b + "ffn_norm.weight": [d]})
+        if a == "phi3":
+            sh.update({b + "attn_qkv.weight": [(Hq + 2 * KV) * hd, d], b + "attn_output.weight": [d, Hq * hd],
+                       b + "ffn_up.weight": [2 * ff, d], b + "ffn_down.weight": [d, ff]})
+            continue
+        if a in ("qwen2moe", "qwen3moe"):
+            sh.update({b + "attn_q.weight": [Hq * hd, d], b + "attn_k.weight": [KV * hd, d],
+                       b + "attn_v.weight": [KV * hd, d], b + "attn_output.weight": [d, Hq * hd]})
+            if a == "qwen2moe":
+                sh.update({b + "attn_q.bias": [Hq * hd], b + "attn_k.bias": [KV * hd], b + "attn_v.bias": [KV * hd]})
+                fs = g["expert_shared_feed_forward_length"]
+                sh.update({b + "ffn_gate_shexp.weight": [fs, d], b + "ffn_up_shexp.weight": [fs, d],
+                           b + "ffn_down_shexp.weight": [d, fs], b + "ffn_gate_inp_shexp.weight": [1, d]})
+            else:
+                sh.update({b + "attn_q_norm.weight": [hd], b + "attn_k_norm.weight": [hd]})
+        if a == "deepseek2":
+            dr, r = g["rope.dimension_count"], g["attention.kv_lora_rank"]
+            dn, dv, qr = g["attention.key_length_mla"] - dr, g["attention.value_length_mla"], g["attention.q_lora_rank"]
+            fs = g["expert_feed_forward_length"] * g["expert_shared_count"]
+            sh.update({b + "attn_q_a.weight": [qr, d], b + "attn_q_a_norm.weight": [qr],
+                       b + "attn_q_b.weight": [Hq * (dn + dr), qr], b + "attn_kv_a_mqa.weight": [r + dr, d],
+                       b + "attn_kv_a_norm.weight": [r], b + "attn_k_b.weight": [Hq, r, dn],
+                       b + "attn_v_b.weight": [Hq, dv, r], b + "attn_output.weight": [d, Hq * dv],
+                       b + "ffn_gate_shexp.weight": [fs, d], b + "ffn_up_shexp.weight": [fs, d],
+                       b + "ffn_down_shexp.weight": [d, fs]})
+        E, fe = g["expert_count"], g["expert_feed_forward_length"]
+        sh.update({b + "ffn_gate_inp.weight": [E, d], b + "ffn_gate_exps.weight": [E, fe, d],
+                   b + "ffn_up_exps.weight": [E, fe, d], b + "ffn_down_exps.weight": [E, d, fe]})
+    sh["output_norm.weight"] = [d]
+    if a == "phi3":
+        n2 = g["rope.dimension_count"] // 2
+        sh.update({"rope_factors_short.weight": [n2], "rope_factors_long.weight": [n2]})
+    else:
+        sh["output.weight"] = [V, d]
     return sh
 
 
@@ -152,7 +243,9 @@ def build_tp_models():
         doc = gguf_ir.build(dict(meta), shapes)
         W = {}
         for t, sh in shapes.items():
-            if t.endswith("norm.weight"):
+            if t.startswith("rope_factors_"):  # v1.5.0: LongRoPE's divisors, short near 1, long larger
+                a = (1.0 if "short" in t else 2.0) + (0.5 if "short" in t else 4.0) * np.abs(rng.standard_normal(sh))
+            elif t.endswith("norm.weight"):
                 a = 1.0 + 0.1 * rng.standard_normal(sh)
             elif t.endswith("ssm_a"):
                 a = -np.exp(0.5 * rng.standard_normal(sh))
@@ -324,7 +417,7 @@ def traces(name, doc, W, rng):
             {"method": "forward", "ids": ids[:4]}, {"method": "snapshot", "tag": "p"},
             {"method": "forward", "ids": ids[4:7]}, {"method": "restore", "tag": "p"},
             {"method": "forward", "ids": other}])
-    elif name in ("pk_llama", "pk_mor", "tp_qwen3", "tp_llama_hd16", "tp_qwen3_hd16"):
+    elif name in ("pk_llama", "pk_mor", "tp_qwen3", "tp_llama_hd16", "tp_qwen3_hd16", "tp_phi3", "tp_deepseek2"):
         out["truncate"] = trace_case(name, doc, W, [
             {"method": "forward", "ids": ids}, {"method": "truncate", "n": 5},
             {"method": "forward", "ids": [int(x) for x in rng.integers(1, V, 2)]}])
@@ -502,6 +595,36 @@ def op_cases():
         {"q": qs, "k": r(9, 4), "v": r(9, 4)}, {"rk": rk2, "rv": rv2}, "ROUNDING")
     add("attention", "relative_kv_distance_zero", dict(att, relative_kv=dict(rel, max_distance=0)), qkv,
         {"rk": r(1, 4, s=0.5), "rv": r(1, 4, s=0.5)}, "ROUNDING")
+    # v1.5 (5.15, 5.14, 5.5, 5.20): Gemma 2's attention soft cap, alone, with a window and sinks, and before a
+    # position bias; LongRoPE's per-pair divisors (one tensor; the short and the long set, chosen by the
+    # largest position + 1 = 10 against original_ctx 10 and 9) and attn_factor; a per-group split; multi-head
+    # latent attention (two heads, a window and sinks, one head).
+    add("attention", "softcap", dict(att, softcap=0.5), {"q": q9, "k": k9, "v": v9}, {}, "ROUNDING")
+    add("attention", "softcap_window_sinks", dict(att, window=3, sinks=1, softcap=0.5), {"q": q9, "k": k9, "v": v9},
+        {}, "ROUNDING")
+    add("attention", "softcap_position_bias", dict(att, softcap=0.5, position_bias=pb), {"q": q9, "k": k9, "v": v9},
+        {"rel": pbt}, "ROUNDING")
+    f_short, f_long = (1.0 + 0.5 * np.abs(r(2))).astype(np.float32), (2.0 + 4.0 * np.abs(r(2))).astype(np.float32)
+    rq = {"q": q8, "k": k8, "pos": pos}
+    add("rope", "freq_factors", dict(rope, pairing="neox", freq_factors="f"), rq, {"f": f_long}, "ROUNDING")
+    for nm, oc in (("freq_factors_short", 10), ("freq_factors_long", 9)):
+        add("rope", nm, dict(rope, pairing="neox", freq_factors={"short": "fs", "long": "fl", "original_ctx": oc}),
+            rq, {"fs": f_short, "fl": f_long}, "ROUNDING")
+    add("rope", "attn_factor", dict(rope, attn_factor=1.25), rq, {}, "ROUNDING")
+    add("rope", "freq_factors_partial_attn_factor", dict(rope, pairing="neox", n_rot=2, attn_factor=1.25,
+                                                         freq_factors="f1"), rq, {"f1": f_long[:1]}, "ROUNDING")
+    add("split", "groups", {"op": "split", "in": ["x"], "sizes": [2, 1], "groups": 2, "out": ["a", "b"]}, {"x": x}, {},
+        "EXACT")
+    mla = {"op": "mla_attention", "in": ["qn", "qr", "c", "kr"], "state": "kv", "heads": 2, "kv_rank": 3,
+           "qk_nope": 2, "qk_rope": 2, "v_head_dim": 2, "k_b": "kb", "v_b": "vb", "scale": 0.5, "causal": True,
+           "window": 0, "sinks": 0, "out": "a"}
+    mi = {"qn": r(7, 4), "qr": r(7, 4), "c": r(7, 3), "kr": r(7, 2)}
+    mw = {"kb": r(2, 3, 2), "vb": r(2, 2, 3)}
+    add("mla_attention", "two_heads", mla, mi, mw, "ROUNDING")
+    add("mla_attention", "window_sinks", dict(mla, window=3, sinks=1), mi, mw, "ROUNDING")
+    add("mla_attention", "one_head", dict(mla, heads=1), {"qn": mi["qn"][:, :2], "qr": mi["qr"][:, :2], "c": mi["c"],
+                                                          "kr": mi["kr"]}, {"kb": mw["kb"][:1], "vb": mw["vb"][:1]},
+        "ROUNDING")
     return cases
 
 
@@ -852,6 +975,26 @@ def refusals():
         position_bias={"weight": "token_embd.weight", "buckets": [0]}))
     doc_case("relative_kv_per_layer", L, 6, "3.8", lambda d: node(d, "attention").update(
         relative_kv={"per_layer": [{"key": "token_embd.weight", "max_distance": 0}] * d["block"]["repeat"]}))
+    # v1.5: rules 10 (softcap, attn_factor, split groups), 41 (freq_factors), 42 (mla_attention's tensors), 12 (its
+    # kv slot), 7, 8, 14 and 6.
+    G2, P3, DS = "tp_gemma2", "tp_phi3", "tp_deepseek2"
+    doc_case("softcap_not_positive", G2, 10, "5.15", lambda d: node(d, "attention").update(softcap=0.0))
+    doc_case("attn_factor_not_positive", P3, 10, "5.14", lambda d: node(d, "rope").update(attn_factor=-1.25))
+    doc_case("freq_factors_without_original_ctx", P3, 41, "5.14",
+             lambda d: node(d, "rope")["freq_factors"].pop("original_ctx"))
+    doc_case("freq_factors_unknown_field", P3, 41, "5.14",
+             lambda d: node(d, "rope")["freq_factors"].update(medium="rope_factors_short.weight"))
+    doc_case("freq_factors_tensor_shape", P3, 41, "5.14",
+             lambda d: node(d, "rope").update(freq_factors="output_norm.weight"))
+    doc_case("freq_factors_per_layer", P3, 6, "3.8", lambda d: node(d, "rope").update(
+        freq_factors={"per_layer": ["rope_factors_short.weight"] * d["block"]["repeat"]}))
+    doc_case("split_groups_zero", DS, 10, "5.5", lambda d: node(d, "split").update(groups=0))
+    doc_case("mla_slot_head_dim", DS, 12, "5.20", lambda d: kv(d).update(head_dim=8))
+    doc_case("mla_slot_kv_heads", DS, 12, "5.20", lambda d: kv(d).update(kv_heads=2))
+    doc_case("mla_k_b_shape", DS, 42, "5.20", lambda d: node(d, "mla_attention").update(k_b="blk.{i}.attn_v_b.weight"))
+    doc_case("mla_reads_three", DS, 7, "3.5", lambda d: node(d, "mla_attention")["in"].pop())
+    doc_case("mla_without_k_b", DS, 8, "3.5", lambda d: node(d, "mla_attention").pop("k_b"))
+    doc_case("mla_not_causal", DS, 14, "5.20", lambda d: node(d, "mla_attention").update(causal=False))
     # v1.2: rule 35 (3.2), a duplicate member name at any depth; the documents as JSON texts.
     base = json.dumps(load_model(SUITE / "models" / L)[0])
 
@@ -910,8 +1053,17 @@ def refusals():
     arch_case("architecture_swa_as_gpt2", "pk_gpt2_swa", lambda m: relabelled(m, "gpt2"))
     # A llama graph whose metadata states another RoPE base than its document.
     arch_case("architecture_metadata_disagrees", L, lambda m: dict(m, **{"llama.rope.freq_base": (6, 500000.0)}))
-    # An architecture section 9.3 does not define (nothing states what a program building from it computes).
-    arch_case("architecture_without_graph", L, lambda m: relabelled(m, "phi3"))
+    # An architecture section 9.3 does not define (nothing states what a program building from it computes;
+    # "phi3" until v1.5.0, which defines it).
+    arch_case("architecture_without_graph", L, lambda m: relabelled(m, "falcon"))
+    # v1.5.0: a gemma2 file whose embedded document drops the attention soft cap its metadata states.
+    doc, W, meta, _ = load_model(SUITE / "models" / "tp_gemma2")
+    doc = copy.deepcopy(doc)
+    for n in doc["block"]["nodes"]:
+        n.pop("softcap", None)
+    write_gguf(SUITE / "refuse" / "architecture_gemma2_softcap_dropped.gguf", dict(meta), W, doc)
+    gg.append(("architecture_gemma2_softcap_dropped", {"gguf": "refuse/architecture_gemma2_softcap_dropped.gguf",
+                                                       "rule": 38, "section": "3.1"}))
     # v1.3.1: rule 38 judges the file's embedded document even when a valid document is read in place of it.
     gg.append(("architecture_substituted_document", {
         "doc": load_model(SUITE / "models" / "pk_kimi")[0], "gguf": "refuse/architecture_kimi_as_gpt2.gguf",
@@ -1148,7 +1300,8 @@ def window_traces():
     state a fresh run over the first n tokens leaves (the engine keeps or re-prefills them). Each draws from a
     stream of its own."""
     out = []
-    for name, total, cut, new in (("pk_gpt2_swa", 14, 7, 3), ("tp_gemma3", 48, 10, 4), ("tp_mistral_hd16", 14, 7, 3)):
+    for name, total, cut, new in (("pk_gpt2_swa", 14, 7, 3), ("tp_gemma3", 48, 10, 4), ("tp_mistral_hd16", 14, 7, 3),
+                                  ("tp_gemma2", 14, 7, 3)):
         doc, W, meta, _ = load_model(SUITE / "models" / name)
         rng = np.random.default_rng(sum(map(ord, name)) + 1300)
         V = doc["model"]["vocab"]
@@ -1302,7 +1455,8 @@ def regenerate():
     for op, cs in op_cases().items():
         f = f"ops/{op}.json"
         (SUITE / f).write_text(json.dumps({"op": op, "cases": cs}, indent=1) + "\n", encoding="utf-8")
-        manifest.append({"id": f"op/{op}", "kind": "op", "file": f, "profile": "recurrence" if op == "recurrence" else "core",
+        manifest.append({"id": f"op/{op}", "kind": "op", "file": f,
+                         "profile": {"recurrence": "recurrence", "mla_attention": "thirdparty"}.get(op, "core"),
                          "n": len(cs)})
     for name, case in refusals():
         f = f"refuse/{name}.json"

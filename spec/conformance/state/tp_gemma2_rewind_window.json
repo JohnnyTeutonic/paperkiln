@@ -1,0 +1,64 @@
+{
+ "model": "models/tp_gemma2",
+ "evict": null,
+ "class": "ROUNDING",
+ "tol": 1e-05,
+ "steps": [
+  {
+   "method": "forward",
+   "ids": [
+    1,
+    6,
+    16,
+    6,
+    14,
+    15,
+    13,
+    4,
+    1,
+    1,
+    15,
+    5,
+    4,
+    5
+   ]
+  },
+  {
+   "method": "truncate",
+   "n": 7
+  },
+  {
+   "method": "forward",
+   "ids": [
+    9,
+    20,
+    20
+   ]
+  }
+ ],
+ "expect": [
+  {
+   "len": 14,
+   "logits": {
+    "shape": [
+     14,
+     24
+    ],
+    "f32": "3fef77c43f3371433eb2ef743f27ac053f10bc08be71f783bf324e67bf20a18abd263b1ebe4404a8bfb60471bc7b55163fdd40bf3f2e2ed13f9b57b03ffd9fdcbed346b93e58d6723dd5c2c2bf9092d83f2dddc03f5fa63ebee8cabebf1fa9903fd01f143f1bf5773e9dccb23e4049f83f1228e1bd87e8313c1df1edbf928fc23e0be01fbe19b5cdbfb57fb2be65716b3fdfd58e3f4177323f5e7e893feb97aebfa77c043dc87d50be82376fbfabac7a3c931f4a3f7dd14dbeebdf35be89c70d3fc15b973c9434aebe9bfbbd3ed286be3f3a01a3bf32d86e3e9af2583e9d07da3ebc157cbe4fa74bbf67184fbf7c98be3f9e48e83db1724c3f8141c03fc1ce263f96d1723d1684cfbf82e03b3d89ec173e7ed48c3ef205ccbf8258e13d72204b3fd16b7e3f3399da3ed659cb3e24cd9c3f168d5ebebba77a3e6cc1d0bf90c6523e9f4587be38b8adbfdb990abf2ea08e3fdf48313f65eb723eaa092f3ffaabbabfaddf4abe5082aabf0c3ad0bf95a8843ea8d6753f8d9619befc3086be47ddb63fae424cbd8605d13faeea603f9341403f68400abf3371b0bf702b7bbf76a9af3f21ea33bf3525c6bf89b17cbe56552f3fe3a25a3e275f9c3fc113113fe8cec6bfa9f1803f0e3dfe3eb0d3b3bfe345273f6e50e93f32a43fbe37659b3dc1040c3f935ccabee840283f08491f3f8df1aa3f4a809fbee9a9d5bf8c5ed2bef7996e3f2eb711bf39b9d7bfa148143eaefd453fbb8e9dbea8e2a63fa4ab74400b47d2bf6dca583ee666173f4f4f8fbfbc61a83fa3a7203f4adc95be727456bed957013f125c44bed93be83f722a0c3f72ce513f7960c3bf0c54fcbf74f6e2bf5048ca3e47105abf1f4d503b9614f13f40666e3fb52a67bdd572603fdbcfb23fd80a3abf9a08c73f1a526c3f099d67bfcf0c553e48e0fe3f33c6eebf538e013f0710033e335008bedb976c3f837abf3f3b7b6e3fad264abf1223fcbf00d188bf284e883f59b885bf3ab852beeec6d63f3bf0ce3fbabc7abed018863f9f39c73ff37b6dbfbebb5c3f37851e3f8af918bfd9f2803f46dc573f478108bf5679313e5185493fdc94293ec9e1553f79a1093f54edde3e824f5bbf5039d7bf4cb61ebe78a7343dcf11c03c4bd973bf485d4ebd96f19e3fe42ae83ef128d03fb3c5553ff888e3bf3737edbe39646abe0bb467bf81148d3f65aa553f054770bf3e41a5be39b4453fe73bd23f7b0217be1a90653e81cd253eb43084bee04df4bede34d3bf0cd9fbbe62a2ab3ed535babfdcbe8d3ec79d9f3faec5af3f22710b3f4646a7400310babf3ec2ce3dd7022b3e24d60abf1895e83f00ffbc3f96ffc9bea359c8bf56bb883f82b016bef759243f52c5fd3f815bc73f052be9bf2f379cbf6d8a1abee099da3f784e68bf01568dbf0b8ab33efed5643fc3b68fbeaffeae3fc94ea63ffdfd20bf7d522e3e89ed783ef648e6bfb645303f7a5cbe3e91b989bef69e1a3dce645a3face63b3ca2eb7e3f0b519e3f6ca0f93fb9d0503f0fd52ebfa11a8cbf8e2fc1be608b6cbf2372babf1a28da3f1aa7b33fcbc9793ef0f3243fde9a823fb9fd22be42b56d3f9f61263fa65c2ebfe1af4b3f162f2f3f59bb75be01feebbf4f662e3fa264c7bddd54fb3f886f993f6d4fb23f9a3c25bea4cdcebf57b592bf3bb4b73eea5756bee8ee69bed0e4133e6ba3b13feb06a03e39adfc3fd2c9963fd2c0babf32c15c3f3e621a3f4ae7dfbfdcf4ac3f4e4ae23f1945d0bf027b06bec41d413f9943cf3df031793f1f41413f6568f83fa3c57e3f2bc1a1bf9783adbfabcc923d568beebef16450bf5e1ba13f43a30b3fadf6e23e91d5333fd7b9743fb0eab9bf2b9e963f9c8a323fa15a81bfe6bab73eb7c4243f3a1d6a3e01ec55bf2585f3"
+   }
+  },
+  {
+   "len": 7
+  },
+  {
+   "len": 10,
+   "logits": {
+    "shape": [
+     3,
+     24
+    ],
+    "f32": "bceb5d58bf54327b3fdbab063f832eb4be4b076cbf8ddb89beec7b38bf90326c3f21b6ecbf3214dc3f591bcabdfad6d43fb9ec053dd079233f68a1fe3f8cf4eec001e3cbbedd21b5bf151dfebfce12e63e8f1c1f3eca4861bedc3ac93fa75f753f8ecd0ebf373ed43fc80c483fada9b43ea0679cbfa66808bfb09b78becdb72a3e8d5758bf5adeb43e6a4e183d34af273fc995b23e40f1f23fcace643fd87953bfb4c4003e39ee253e4bcbf4bfa343963fa5a2393ef42312beb0e94b3f2a3be33f8a09b1bf04ccb03fba5f353fc07a6f3dc42b29bf997ec4bfaf87f5be95c31cbebbeac4bef58f01be0fcec23e5645483fa02c7fbd8af4db3fa69ca33feae1d4bfa8a854bd8ac329bca6e81abf8a7afe3f84ebe63f54ce71bef72d623edb0348"
+   }
+  }
+ ]
+}

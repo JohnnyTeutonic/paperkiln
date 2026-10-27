@@ -1,0 +1,166 @@
+{
+ "model": "models/tp_deepseek2",
+ "evict": null,
+ "class": "ROUNDING",
+ "tol": 1e-05,
+ "steps": [
+  {
+   "method": "forward",
+   "ids": [
+    10,
+    1,
+    4,
+    7,
+    23,
+    1,
+    8,
+    17,
+    15
+   ]
+  },
+  {
+   "method": "truncate",
+   "n": 5
+  },
+  {
+   "method": "forward",
+   "ids": [
+    19,
+    7
+   ]
+  }
+ ],
+ "expect": [
+  {
+   "len": 9,
+   "logits": {
+    "shape": [
+     9,
+     24
+    ],
+    "f32": "3f1110e23ec93d413fc42b81c0198a173e03f1043fb194663f1a18f83ba49fa0bda7c7e0bda5bf4ebf47f1263f99f8083fb71bbf3f5baffdbffdf91dc006f0eabdf3e488bf385bcbbf2912913f0cb27abe8bc58bbf906720bfc32220bf1eea7c3ef8b8203ec825b13f8a9b6abfa4da42bdc0530c3f7812523fbcf26ebdfc5d09bebad970bf0943e5be4b9a403f9b0c8b3fa25bb93fa04796bff804b2bfd6ec32bf7a60cabf25e48abf23eb8e3fd128c1beb1d4a0bf1cc68bbf29d193bf766f06bf47ad1dbf45ddc23fe97998c04f310dbf3194523efe94203e022e40bf8403ffbdf91dabbf2370663c930cc0bf2663e8be2155403f5a621dbfd88f9abfbcb3b8bf983073bf8361b2bf3a45683ecf70693d611fd03e64aa02bf46ed4cbfe07cd63f67874d3f1d6e3c3ebcaa76bf8421083f3690263f8d5f743e9b6ae23f421e5ebf3a6c473ecc7cadbfb1f4e03fe8b2843fff6f4c3e882efbbf7a2388bfc83af93f6b645ebea8f6c5be35d0683ee8f4b4bea4ac67bf885b2fbf51f07c3eac4ad0bf2fbeec3fa353a63f142b46bd8c168cbd752bb23f929b4dbe001014bfedd9d7402c7d283f04f80e3e1228303ed43e1d3ee81526beee8e3cbe9d68acbf8991d03ef84e3abf0ada263fb8d0063ef9f64abdef37c8bf89b7473f3ea436bde50f4240275912bf3fdb12bf2edebdbe082e3b3ff7d21f3dbaa000bfeb0ad3bf8b0f063f9279f5be619e4abfb1243e3fa4801b3e8c4b27bfc43f87bf3721dbbeb72147c01e3af3bf7281313f78eb523fed90a23f9fc784befe42813f98759abf67c69a3fe8e93bbe198aee3e84676ebf1e5db63ff6afba3f522d4abfeef4c6bf87921740114a5f3ec1e0d8bfbd7ebc3ff52c8a3edad99ebf9ccca3bf859130bf8e0798bfd87142bfe72c563efba83e3fcd251e3fa72ecfbf90d6e23f1540b0bf6599563f9c7104be4218d43f982a8ec06d119e3e9aab6c3fe145ccbfe36532bf599d293f9d34e93f6b67cbbee51aff3bb0fe00bef678463db7a950bfc322bfbed04f82bf83f251bff2bbd0bd0bd0e03efcd17a3f7cb06a3efb5c4d3f36ac1dbfc18d0c3ffa7806be36471a3fd72055c021006d3f24e7563fcf4e75bfe6a443be0e0bc23fd4f7583f00801fbfbe10e93ff0727f3eb1f417bea3c56fbfa9c6abbf1b2dcfbf7cd93abfe00cfdbf68e21a3f6fcb323f679107be3517c93ee0f51fbf79d613"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      9
+     ],
+     [
+      9
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7,
+       8
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7,
+       8
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "len": 5,
+   "kv_rows": {
+    "kv": [
+     [
+      5
+     ],
+     [
+      5
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "len": 7,
+   "logits": {
+    "shape": [
+     2,
+     24
+    ],
+    "f32": "3f7e5f58bf0ad4603fbd3119c040dea03c650c473facac68bff51ce0bea0cf433ec30cc13f708af4bf2239e93ea45930bf324c203ee0b889bf4a9b2abe161fd2bf63b697bfe50ab8bf77334abeb8bc9d3f824fc43f5654313f409281bf9460dc3f9252473d74484e3d91cf8bbff9a70d3e3c51bc3f907bf0bdb47b643f727cd240262a553fac082abf3107c13f9623ac3fcc2294bf393eacbf89d099be472fd63f8e411fbe9795673f7ad3fb3fa21ff73f9856b83f1c24d93fb1abcc3fb2f3b0"
+   },
+   "kv_rows": {
+    "kv": [
+     [
+      7
+     ],
+     [
+      7
+     ]
+    ]
+   },
+   "kv_positions": {
+    "kv": [
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ]
+     ],
+     [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ]
+     ]
+    ]
+   }
+  }
+ ]
+}

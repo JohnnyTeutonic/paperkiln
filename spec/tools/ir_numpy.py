@@ -26,6 +26,12 @@ For third-party graphs:
               (per-head q/k norm), weight [g] shared by every group; weight_offset c (default 0):
               the weight read as (w + c), rounded to f32 once (a load-time transform; Gemma's 1 + w).
   rope        freq_scale s (default 1): the angle is (pos * s) * theta^(-2j/n_rot) (linear scaling).
+              freq_factors (revision 1.5; LongRoPE, Llama 3's rope_freqs): pair j's angle divided by f[j], f
+              one tensor or {short, long, original_ctx}, the long set when the sequence is longer than
+              original_ctx; attn_factor m: the table's cos and sin times m.
+  attention   softcap c (revision 1.5; Gemma 2): the scaled score s becomes c * tanh(s / c).
+  split       groups g (revision 1.5): a per-group split, each of g groups of sum(sizes) columns (MLA: per head).
+  mla_attention  multi-head latent attention (revision 1.5; DeepSeek-V2), IR_SPEC.md 5.20.
   conv1d_causal, selective_scan  Mamba-1's ops (IR_SPEC.md 6.6, 6.7).
   recurrence  a per-token state update declared in the document (IR_SPEC.md 6.10; tools/ir_recurrence.py).
 Any attribute of a block node (and of a block state slot) may be {"per_layer": [v_0, .., v_{L-1}]}:
@@ -99,12 +105,17 @@ def softplus(x):
     return np.where(x <= np.float32(20), np.log1p(np.exp(np.minimum(x, np.float32(20)))), x).astype(np.float32)
 
 
-def _rope(x, pos, heads, hd, n_rot, theta, pairing, freq_scale=1.0):
+def _rope(x, pos, heads, hd, n_rot, theta, pairing, freq_scale=1.0, factors=None, attn_factor=1.0):
+    """factors (revision 1.5): pair j's angle divided by factors[j]; attn_factor: the table's cos and sin
+    times it."""
     t = x.reshape(len(pos), heads, hd)
     half = n_rot // 2
     j = np.arange(half)
     ang = (pos[:, None].astype(np.float64) * float(freq_scale)) * (float(theta) ** (-2.0 * j / n_rot))[None, :]
-    c, s = np.cos(ang).astype(np.float32)[:, None, :], np.sin(ang).astype(np.float32)[:, None, :]
+    if factors is not None:
+        ang = ang / np.asarray(factors, np.float64)[None, :]
+    m = float(attn_factor)
+    c, s = (np.cos(ang) * m).astype(np.float32)[:, None, :], (np.sin(ang) * m).astype(np.float32)[:, None, :]
     out = t.copy()
     if pairing == "neox":
         a, b = t[..., :half], t[..., half:n_rot]
@@ -308,11 +319,15 @@ def run_nodes(nodes, env, W, i=None, no_window=False, wi=None, states=None):
                 y[t] = c * s + d[0] * x[t]
             keep(nd, s=s)
         elif op == "split":
+            # groups g (revision 1.5; default 1): the width is g groups of sum(sizes) columns, and o_k gathers the
+            # k-th part of every group in order (a per-head split: MLA's q into its nope and rope parts).
             outs, at = [], 0
-            _width(sum(nd["sizes"]) == x.shape[1], "5.5", f"split sizes {nd['sizes']} do not sum to the width "
-                   f"{x.shape[1]} of {ins[0]}")
+            hs = nd.get("groups", 1)
+            _width(sum(nd["sizes"]) * hs == x.shape[1], "5.5", f"split sizes {nd['sizes']}" +
+                   (f" times groups {hs}" if hs != 1 else "") + f" do not sum to the width {x.shape[1]} of {ins[0]}")
+            xs = x.reshape(x.shape[0], hs, sum(nd["sizes"]))
             for s in nd["sizes"]:
-                outs.append(x[:, at:at + s])
+                outs.append(np.ascontiguousarray(xs[:, :, at:at + s]).reshape(x.shape[0], hs * s))
                 at += s
             for o, v in zip(nd["out"], outs):
                 env[o] = v
@@ -320,18 +335,35 @@ def run_nodes(nodes, env, W, i=None, no_window=False, wi=None, states=None):
         elif op == "rope":
             H, hd, pos = nd["heads"], nd["head_dim"], env[ins[2]]
             n_rot = nd.get("n_rot") or hd
+            ff = nd.get("freq_factors")
+            factors = None
+            if ff is not None:
+                # revision 1.5 (5.14): one tensor, or {short, long, original_ctx} chosen by the sequence's length
+                # (the session's length after the call; a single node's run: its largest position + 1).
+                if isinstance(ff, str):
+                    fname = ff
+                else:
+                    n_seq = env.get("_seq_len", int(np.max(pos)) + 1 if len(pos) else 0)
+                    fname = ff["long"] if n_seq > ff["original_ctx"] else ff["short"]
+                factors = w(fname).reshape(-1)
+                _width(factors.shape[0] == n_rot // 2, "5.14", f"rope freq_factors {name(fname)} has "
+                       f"{factors.shape[0]} values, not n_rot / 2 = {n_rot // 2}")
+            af = nd.get("attn_factor", 1.0)
             for o, src, heads in zip(nd["out"], ins[:2], (H, nd.get("kv_heads") or H)):
                 _width(env[src].shape[1] == heads * hd, "5.14", f"rope's {src} has width {env[src].shape[1]}, not "
                        f"{heads} heads of {hd}")
                 if nd["rope_heads"] == "first":  # IR_SPEC 5.14: head 0 of q and of k rotates, the rest pass through
                     out = env[src].copy()
                     out[:, :hd] = _rope(env[src][:, :hd], pos, 1, hd, n_rot, nd["theta"], nd["pairing"],
-                                        nd.get("freq_scale", 1.0))
+                                        nd.get("freq_scale", 1.0), factors, af)
                     env[o] = out
                 else:
                     env[o] = _rope(env[src], pos, heads, hd, n_rot, nd["theta"], nd["pairing"],
-                                   nd.get("freq_scale", 1.0))
+                                   nd.get("freq_scale", 1.0), factors, af)
             continue
+        elif op == "mla_attention":
+            ps = np.asarray(env["pos"], dtype=np.int64) if "pos" in env else np.arange(x.shape[0])
+            y = _mla_attention(nd, [env[n] for n in ins], w, name, ps, no_window)
         elif op == "moe_ffn":
             # Softmax over the k selected router logits (= renormalised top-k
             # probabilities); ties to the lower expert index; experts summed in
@@ -380,6 +412,7 @@ def run_nodes(nodes, env, W, i=None, no_window=False, wi=None, states=None):
             win = 0 if no_window else nd["window"]
             if win:
                 mask |= (j >= nd["sinks"]) & (j < p - win + 1)
+            cap = np.float32(nd["softcap"]) if nd.get("softcap") is not None else None
             pb = nd.get("position_bias")
             if pb:  # IR_SPEC 5.15 (revision 1.3): W[buckets[min(p - j, D - 1)], h], p and j the rows' positions
                 bk = np.asarray(pb["buckets"], dtype=np.int64)
@@ -409,6 +442,8 @@ def run_nodes(nodes, env, W, i=None, no_window=False, wi=None, states=None):
                     s = (s * np.float32(nd["scale"])).astype(np.float32)
                 else:
                     s = (q[:, h * hd:(h + 1) * hd] @ k[:, kh * hd:(kh + 1) * hd].T) * np.float32(nd["scale"])
+                if cap:  # revision 1.5 (5.15): cap * tanh(s / cap), each step rounded, before any position bias
+                    s = (np.tanh((s / cap).astype(np.float32)) * cap).astype(np.float32)
                 if pb:
                     s = (s + tab[b_of, h]).astype(np.float32)
                 s[mask] = -np.inf
@@ -423,6 +458,41 @@ def run_nodes(nodes, env, W, i=None, no_window=False, wi=None, states=None):
         else:
             raise SystemExit(f"ir_numpy: no kernel for op {op}")
         env[nd["out"]] = y.astype(np.float32)
+
+
+def _mla_attention(nd, inputs, w, name, ps, no_window=False):
+    """IR_SPEC 5.20 (revision 1.5): multi-head latent attention (DeepSeek-V2) over a kv slot whose row per
+    position is the latent c [kv_rank] and the rotated key kr [qk_rope]. Head h, in the reference's order:
+    qa = k_b[h] qn_h (k_b[h] [kv_rank, qk_nope]: each entry a dot product over qk_nope); the score
+    s(p, j) = ((qa_p . c_j) + (qr_{p,h} . kr_j)) * scale; a = the softmax of s over the keys p sees;
+    u_p = sum_j a(p, j) c_j; out_{p,h} = v_b[h] u_p (v_b[h] [v_head_dim, kv_rank]). ps: the rows' positions."""
+    qn, qr, c, kr = inputs
+    H, dn, dr, r, dv = (nd[k] for k in ("heads", "qk_nope", "qk_rope", "kv_rank", "v_head_dim"))
+    for v, nm, want in ((qn, "q_nope", H * dn), (qr, "q_rope", H * dr), (c, "latent", r), (kr, "k_rope", dr)):
+        _width(v.shape[1] == want, "5.20", f"mla_attention's {nm} input has width {v.shape[1]}, not {want}")
+    kb, vb = w(nd["k_b"]), w(nd["v_b"])
+    _width(kb.shape == (H, r, dn), "5.20", f"mla_attention k_b {name(nd['k_b'])} has shape {list(kb.shape)}, not "
+           f"[heads {H}, kv_rank {r}, qk_nope {dn}]")
+    _width(vb.shape == (H, dv, r), "5.20", f"mla_attention v_b {name(nd['v_b'])} has shape {list(vb.shape)}, not "
+           f"[heads {H}, v_head_dim {dv}, kv_rank {r}]")
+    assert nd["causal"]
+    p, j = ps[:, None], ps[None, :]
+    mask = j > p
+    win = 0 if no_window else nd["window"]
+    if win:
+        mask |= (j >= nd["sinks"]) & (j < p - win + 1)
+    sc = np.float32(nd["scale"])
+    outs = []
+    for h in range(H):
+        qa = (qn[:, h * dn:(h + 1) * dn] @ kb[h].T).astype(np.float32)  # [T, kv_rank]
+        s = ((qa @ c.T).astype(np.float32) + (qr[:, h * dr:(h + 1) * dr] @ kr.T).astype(np.float32)).astype(np.float32)
+        s = (s * sc).astype(np.float32)
+        s[mask] = -np.inf
+        e = np.exp(s - s.max(axis=1, keepdims=True))
+        a = (e / e.sum(axis=1, keepdims=True)).astype(np.float32)
+        u = (a @ c).astype(np.float32)  # [T, kv_rank]
+        outs.append((u @ vb[h].T).astype(np.float32))  # [T, v_head_dim]
+    return np.concatenate(outs, axis=1)
 
 
 def _routed_blocks(doc, W, env, no_window, trace):
@@ -459,7 +529,7 @@ def _routed_blocks(doc, W, env, no_window, trace):
                 trace.extend(int(d) for d in depth)
         if first:
             x_in, act = env["x"], np.nonzero(depth > k)[0]
-            sub = {"x": x_in[act], "pos": env["pos"][act]}
+            sub = {"x": x_in[act], "pos": env["pos"][act], "_seq_len": env["_seq_len"]}
         if act.size == 0:
             continue
         run_nodes(nodes, sub, W, i, no_window=no_window, wi=weight_index(doc, i))
@@ -477,7 +547,8 @@ def forward(doc, W, ids, last_only=False, no_window=False, trace=None, states=No
     """Logits [T, vocab] for one sequence from position 0; last_only runs the head on the last row
     only (every head op is row-wise), the cheap way to decode greedily. trace (a list): under a
     depth_route block, each token's depth is appended to it."""
-    env = {"tokens": np.array(ids), "pos": np.arange(len(ids))}  # pos unused by graphs without positions
+    # pos unused by graphs without positions; _seq_len: the sequence's length (rope freq_factors short/long, 5.14)
+    env = {"tokens": np.array(ids), "pos": np.arange(len(ids)), "_seq_len": len(ids)}
     run_nodes(doc["embed"]["nodes"], env, W, no_window=no_window)
     sw = [n["state_weight"] for n in doc["embed"]["nodes"] if n.get("op") == "embedding" and n.get("state_weight")]
     if sw:  # the turn_state mask's codes, from the ids alone

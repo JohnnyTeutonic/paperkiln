@@ -1,0 +1,257 @@
+{
+ "op": "mla_attention",
+ "cases": [
+  {
+   "name": "two_heads",
+   "node": {
+    "op": "mla_attention",
+    "in": [
+     "qn",
+     "qr",
+     "c",
+     "kr"
+    ],
+    "state": "kv",
+    "heads": 2,
+    "kv_rank": 3,
+    "qk_nope": 2,
+    "qk_rope": 2,
+    "v_head_dim": 2,
+    "k_b": "kb",
+    "v_b": "vb",
+    "scale": 0.5,
+    "causal": true,
+    "window": 0,
+    "sinks": 0,
+    "out": "a"
+   },
+   "inputs": {
+    "qn": {
+     "shape": [
+      7,
+      4
+     ],
+     "f32": "bcd60ec43fa642003fba5b0ebfc1df983fceef533d967d5bc00a208f3f8c1c733ea3dee6bd331bff3fb06c46bddef8fbbf60d5c63c8697b0be36949ebd5dd60dbe76702f3fdec4ca3f4ea34cbdb058e8bfa4803bbcefd372bf0b0525bedc8f16bfa845d63f1ec54f3fc18b583e89ebbd"
+    },
+    "qr": {
+     "shape": [
+      7,
+      4
+     ],
+     "f32": "3f17a4713eebe3e53f9d5adbbff54073bf292b61bee489243f06ab4e3f950fd2bfc8c26b3db85fe3bf94aa493f5f99acbfc13418bfdd8e0f3bccbd33bf57b6af3f7472afbf10d4e23f60cd0bbf33cbb93fcc8ab5c036387a3f91db44bee6eb27bfa30aa33f56fbe63e1080d23fc7c3da"
+    },
+    "c": {
+     "shape": [
+      7,
+      3
+     ],
+     "f32": "bf437f4dbf94aad03ff21315bed1ff3ebeaebd9fbf2571d6bed4a35ac00d28fa3e8fa8f8bf0f1efb3f8be339bf7e56253f0b08d63fb4804fbf21929d3f44f94abed967dcbc00fb863e6c7926bed72e69bf8058d7"
+    },
+    "kr": {
+     "shape": [
+      7,
+      2
+     ],
+     "f32": "3f6af1273f036e263e83e4e73e19891d3f3e9b5c3f6027353f2d73e43f8dc5e53dfb2701bf560c59bf3041904018603bbfb939403fb630d1"
+    }
+   },
+   "weights": {
+    "kb": {
+     "shape": [
+      2,
+      3,
+      2
+     ],
+     "f32": "bf83ce82bfb104a53eaeb3d13dcba7603fedac42bf0729f73ec779eebf806964bf8d4a76be35721fbf6aa11b3e55c5fc"
+    },
+    "vb": {
+     "shape": [
+      2,
+      2,
+      3
+     ],
+     "f32": "3cb826a83f22c606bf06eb51bef9d9683b19129abf51c748be6cc7bdbe0e9f4cbf5f3d4a3f614c4b3fde95c1bf208556"
+    }
+   },
+   "expect": {
+    "a": {
+     "shape": [
+      7,
+      4
+     ],
+     "f32": "bfe04e1dbf9703b4bfa7c987c0782b62bfd996acbf90259abf966f0ac069d981bf8ea6f7be8be5d03e52a047c05121843d02130d3f20f5f13d646584bfd494583e9dfaf13f0d8a283e31aa74bfb0d3393f6b51cf3eb435a13d68ee593dc80bd23e781ec73f0639993e8b03cdbfb48ed0"
+    }
+   },
+   "class": "ROUNDING",
+   "tol": 1e-05
+  },
+  {
+   "name": "window_sinks",
+   "node": {
+    "op": "mla_attention",
+    "in": [
+     "qn",
+     "qr",
+     "c",
+     "kr"
+    ],
+    "state": "kv",
+    "heads": 2,
+    "kv_rank": 3,
+    "qk_nope": 2,
+    "qk_rope": 2,
+    "v_head_dim": 2,
+    "k_b": "kb",
+    "v_b": "vb",
+    "scale": 0.5,
+    "causal": true,
+    "window": 3,
+    "sinks": 1,
+    "out": "a"
+   },
+   "inputs": {
+    "qn": {
+     "shape": [
+      7,
+      4
+     ],
+     "f32": "bcd60ec43fa642003fba5b0ebfc1df983fceef533d967d5bc00a208f3f8c1c733ea3dee6bd331bff3fb06c46bddef8fbbf60d5c63c8697b0be36949ebd5dd60dbe76702f3fdec4ca3f4ea34cbdb058e8bfa4803bbcefd372bf0b0525bedc8f16bfa845d63f1ec54f3fc18b583e89ebbd"
+    },
+    "qr": {
+     "shape": [
+      7,
+      4
+     ],
+     "f32": "3f17a4713eebe3e53f9d5adbbff54073bf292b61bee489243f06ab4e3f950fd2bfc8c26b3db85fe3bf94aa493f5f99acbfc13418bfdd8e0f3bccbd33bf57b6af3f7472afbf10d4e23f60cd0bbf33cbb93fcc8ab5c036387a3f91db44bee6eb27bfa30aa33f56fbe63e1080d23fc7c3da"
+    },
+    "c": {
+     "shape": [
+      7,
+      3
+     ],
+     "f32": "bf437f4dbf94aad03ff21315bed1ff3ebeaebd9fbf2571d6bed4a35ac00d28fa3e8fa8f8bf0f1efb3f8be339bf7e56253f0b08d63fb4804fbf21929d3f44f94abed967dcbc00fb863e6c7926bed72e69bf8058d7"
+    },
+    "kr": {
+     "shape": [
+      7,
+      2
+     ],
+     "f32": "3f6af1273f036e263e83e4e73e19891d3f3e9b5c3f6027353f2d73e43f8dc5e53dfb2701bf560c59bf3041904018603bbfb939403fb630d1"
+    }
+   },
+   "weights": {
+    "kb": {
+     "shape": [
+      2,
+      3,
+      2
+     ],
+     "f32": "bf83ce82bfb104a53eaeb3d13dcba7603fedac42bf0729f73ec779eebf806964bf8d4a76be35721fbf6aa11b3e55c5fc"
+    },
+    "vb": {
+     "shape": [
+      2,
+      2,
+      3
+     ],
+     "f32": "3cb826a83f22c606bf06eb51bef9d9683b19129abf51c748be6cc7bdbe0e9f4cbf5f3d4a3f614c4b3fde95c1bf208556"
+    }
+   },
+   "expect": {
+    "a": {
+     "shape": [
+      7,
+      4
+     ],
+     "f32": "bfe04e1dbf9703b4bfa7c987c0782b62bfd996acbf90259abf966f0ac069d981bf8ea6f7be8be5d03e52a047c05121843d02130d3f20f5f13d646584bfd494583ec1e5233efa84b73c8280e4bfd059c73f9a45e43e987ed2bd84aa523f3fe58a3e5415793eef49fe3e6f43d2be251f7e"
+    }
+   },
+   "class": "ROUNDING",
+   "tol": 1e-05
+  },
+  {
+   "name": "one_head",
+   "node": {
+    "op": "mla_attention",
+    "in": [
+     "qn",
+     "qr",
+     "c",
+     "kr"
+    ],
+    "state": "kv",
+    "heads": 1,
+    "kv_rank": 3,
+    "qk_nope": 2,
+    "qk_rope": 2,
+    "v_head_dim": 2,
+    "k_b": "kb",
+    "v_b": "vb",
+    "scale": 0.5,
+    "causal": true,
+    "window": 0,
+    "sinks": 0,
+    "out": "a"
+   },
+   "inputs": {
+    "qn": {
+     "shape": [
+      7,
+      2
+     ],
+     "f32": "bcd60ec43fa642003fceef533d967d5b3ea3dee6bd331bffbf60d5c63c8697b0be76702f3fdec4cabfa4803bbcefd372bfa845d63f1ec54f"
+    },
+    "qr": {
+     "shape": [
+      7,
+      2
+     ],
+     "f32": "3f17a4713eebe3e5bf292b61bee48924bfc8c26b3db85fe3bfc13418bfdd8e0f3f7472afbf10d4e23fcc8ab5c036387abfa30aa33f56fbe6"
+    },
+    "c": {
+     "shape": [
+      7,
+      3
+     ],
+     "f32": "bf437f4dbf94aad03ff21315bed1ff3ebeaebd9fbf2571d6bed4a35ac00d28fa3e8fa8f8bf0f1efb3f8be339bf7e56253f0b08d63fb4804fbf21929d3f44f94abed967dcbc00fb863e6c7926bed72e69bf8058d7"
+    },
+    "kr": {
+     "shape": [
+      7,
+      2
+     ],
+     "f32": "3f6af1273f036e263e83e4e73e19891d3f3e9b5c3f6027353f2d73e43f8dc5e53dfb2701bf560c59bf3041904018603bbfb939403fb630d1"
+    }
+   },
+   "weights": {
+    "kb": {
+     "shape": [
+      1,
+      3,
+      2
+     ],
+     "f32": "bf83ce82bfb104a53eaeb3d13dcba7603fedac42bf0729f7"
+    },
+    "vb": {
+     "shape": [
+      1,
+      2,
+      3
+     ],
+     "f32": "3cb826a83f22c606bf06eb51bef9d9683b19129abf51c748"
+    }
+   },
+   "expect": {
+    "a": {
+     "shape": [
+      7,
+      2
+     ],
+     "f32": "bfe04e1dbf9703b4bfd996acbf90259abf8ea6f7be8be5d03d02130d3f20f5f13e9dfaf13f0d8a283f6b51cf3eb435a13e781ec73f063999"
+    }
+   },
+   "class": "ROUNDING",
+   "tol": 1e-05
+  }
+ ]
+}

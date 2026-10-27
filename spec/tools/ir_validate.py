@@ -33,19 +33,21 @@ HERE = Path(__file__).resolve().parent
 SCHEMA_PATH = HERE.parent / "ir.schema.json"
 VERSIONS = (0, 1)  # section 2.1: version 0 documents are version 1 documents
 STATEFUL = {"attention": "kv", "linear_attention": "recurrent", "ssm_scan": "recurrent",
-            "conv1d_causal": "recurrent", "selective_scan": "recurrent", "recurrence": "recurrent"}
+            "conv1d_causal": "recurrent", "selective_scan": "recurrent", "recurrence": "recurrent",
+            "mla_attention": "kv"}
 RECURRENT_OPS = ("linear_attention", "ssm_scan", "conv1d_causal", "selective_scan", "recurrence")
+KV_READERS = ("attention", "mla_attention")  # the ops that read a kv slot (one reader per slot: 6.1)
 # Rule 7: (exact input count or None, minimum, maximum) and the number of outputs.
 ARITY = {"embedding": 1, "pos_embedding": 2, "linear": 1, "scale": 1, "split": 1, "rmsnorm": 1, "layernorm": 1,
          "gelu": 1, "silu": 1, "sigmoid": 1, "relu": 1, "add": 2, "mul": 2, "sub": 2, "affine": 1, "mul_col": 2,
          "rms_row": 1, "rope": 3, "attention": 3, "moe_ffn": 1, "append": 2, "linear_attention": 3,
-         "ssm_scan": 1, "conv1d_causal": 1, "selective_scan": 4, "depth_route": 1}
+         "ssm_scan": 1, "conv1d_causal": 1, "selective_scan": 4, "depth_route": 1, "mla_attention": 4}
 AT_LEAST_ONE = {"list", "depth_attend", "expr", "recurrence"}
 TENSOR_KEYS = ("weight", "bias", "router", "state_weight", "tied_to")
 # Section 3.8: the structural keys, never per-layer (nodes, then slots).
 NOT_PER_LAYER = ("op", "in", "out", "state", "tensor_index", "sizes", "expr", "weight", "bias", "router", "experts",
                  "state_weight", "tied_to", "a", "b", "c", "d", "index", "inputs", "weights", "init", "let", "update",
-                 "readout", "position_bias", "relative_kv")
+                 "readout", "position_bias", "relative_kv", "groups", "freq_factors", "k_b", "v_b")
 SLOT_NOT_PER_LAYER = ("name", "kind", "op", "dtype", "tensors", "evict", "kv_rows")
 MARKERS = {"eot": "<|endoftext|>", "user": "<|user|>", "assistant": "<|assistant|>"}  # paperkiln/1
 
@@ -409,6 +411,10 @@ def _schema_rule(doc, path, msg):
             return 39, "5.15"
         if op == "attention" and attr == "relative_kv":
             return 40, "5.15"
+        if op == "rope" and attr == "freq_factors":
+            return 41, "5.14"
+        if op == "split" and attr == "groups":
+            return 10, "5.5"
         if attr in CLOSED and "is not one of" in msg:
             return 5, CLOSED[attr]
         if attr in ("in", "out"):
@@ -496,6 +502,18 @@ def _tensor_names(node):
         for key in ("key", "value"):
             if isinstance(rk.get(key), str):
                 yield "relative_kv." + key, rk[key]
+    ff = node.get("freq_factors")  # revision 1.5 (5.14)
+    if node.get("op") == "rope":
+        if isinstance(ff, str):
+            yield "freq_factors", ff
+        elif isinstance(ff, dict):
+            for key in ("short", "long"):
+                if isinstance(ff.get(key), str):
+                    yield "freq_factors." + key, ff[key]
+    if node.get("op") == "mla_attention":  # revision 1.5 (5.20)
+        for key in ("k_b", "v_b"):
+            if isinstance(node.get(key), str):
+                yield key, node[key]
 
 
 def _recurrence():
@@ -581,18 +599,26 @@ def node_errors(doc):
                 if fs and fs[i] is not None and isinstance(fs[i], (int, float)) and not fs[i] > 0:
                     errs.append(E("5.14", f"{where}: freq_scale {fs[i]} is not positive", 10))
                     break
-        if op == "attention" and L:
+        # Revision 1.5: rope.attn_factor and attention.softcap are positive (rule 10).
+        for key, o, sec in (("attn_factor", "rope", "5.14"), ("softcap", "attention", "5.15")):
+            if op == o and key in n:
+                vals = _layers(n[key], L) if sect == "block" and L else [n[key]]
+                bad = [v for v in vals or [] if isinstance(v, (int, float)) and not isinstance(v, bool) and not v > 0]
+                if bad:
+                    errs.append(E(sec, f"{where}: {key} {bad[0]} is not positive", 10))
+        if op in ("attention", "mla_attention") and L:
+            sec = "5.20" if op == "mla_attention" else "5.15"
             h, kv, w, s, c = (_layers(n.get(k), L) for k in ("heads", "kv_heads", "window", "sinks", "causal"))
             for i in range(L):
                 if h and kv and isinstance(h[i], int) and isinstance(kv[i], int) and kv[i] > 0 and h[i] % kv[i]:
-                    errs.append(E("5.15", f"{where}: heads {h[i]} is not a multiple of kv_heads {kv[i]}", 10))
+                    errs.append(E(sec, f"{where}: heads {h[i]} is not a multiple of kv_heads {kv[i]}", 10))
                     break
             for i in range(L):
                 if (w and isinstance(w[i], int) and w[i] < 0) or (s and isinstance(s[i], int) and s[i] < 0):
-                    errs.append(E("5.15", f"{where}: window and sinks must be >= 0", 10))
+                    errs.append(E(sec, f"{where}: window and sinks must be >= 0", 10))
                     break
             if c and any(x is not True for x in c):
-                errs.append(E("5.15", f"{where}: causal must be true (Q6)", 14))
+                errs.append(E(sec, f"{where}: causal must be true (Q6)", 14))
         if op == "attention" and "relative_kv" in n and "position_bias" in n:
             errs.append(E("5.15", f"{where}: relative_kv and position_bias on one node (revision 1.4 defines "
                                   "each alone)", 40))
@@ -702,7 +728,7 @@ def state_errors(doc):
                                  f"{slot.get('op')!r}", 13))
             continue
         used.add(node.get("state"))
-        if node["op"] in ("attention", "recurrence"):
+        if node["op"] in KV_READERS + ("recurrence",):
             readers[node.get("state")] = readers.get(node.get("state"), 0) + 1
         errs += _slot_fit(node, slot, L)
     for name, n in readers.items():
@@ -728,6 +754,22 @@ def _slot_fit(node, slot, L):
                 if a[i] != b[i]:
                     errs.append(E("5.15", f"attention {key} {a[i]} (application {i}) differs from its kv state "
                                           f"{slot.get('name')}'s {b[i]}" + (" (Q7)" if key in ("kv_heads", "head_dim") else ""), 12))
+                    break
+        return errs
+    if op == "mla_attention":  # revision 1.5 (5.20): the slot's row is the latent and the rope key, one kv head
+        r, dr = _layers(node.get("kv_rank"), L), _layers(node.get("qk_rope"), L)
+        want = {"window": _layers(node.get("window"), L), "sinks": _layers(node.get("sinks"), L),
+                "kv_heads": [1] * L,
+                "head_dim": [a + b if isinstance(a, int) and isinstance(b, int) else None for a, b in zip(r, dr)]
+                if r and dr else None}
+        for key, a in want.items():
+            b = _layers(slot.get(key), L)
+            if a is None or b is None:
+                continue
+            for i in range(L):
+                if a[i] is not None and a[i] != b[i]:
+                    errs.append(E("5.20", f"mla_attention needs its kv state {slot.get('name')}'s {key} to be "
+                                          f"{a[i]} (application {i}), not {b[i]}", 12))
                     break
         return errs
     if op == "recurrence":
@@ -1032,8 +1074,72 @@ def gguf_report(doc, meta, tensors):
     errs += state_token_gguf_errors(doc, meta, tensors)
     errs += position_bias_gguf_errors(doc, dims)
     errs += relative_kv_gguf_errors(doc, dims)
+    errs += freq_factors_gguf_errors(doc, dims)
+    errs += mla_gguf_errors(doc, dims)
     errs += architecture_errors(meta, tensors)
     return errs, sorted(set(warns))
+
+
+def _apps(doc, sect):
+    """[(application or None, stored layer or None)] a node of section sect runs as."""
+    blk = doc.get("block", {})
+    L = blk.get("repeat") if isinstance(blk.get("repeat"), int) else 0
+    wmap = (blk.get("weight_index") or {}).get("per_layer") if isinstance(blk.get("weight_index"), dict) else None
+    if sect != "block":
+        return [(None, None)]
+    return [(i, wmap[i] if isinstance(wmap, list) and i < len(wmap) else i) for i in range(L)]
+
+
+def freq_factors_gguf_errors(doc, dims):
+    """Rule 41 (container, revision 1.5): a rope node's freq_factors tensors are ne {n_rot / 2} (n_rot defaults
+    to head_dim), section 5.14, in every application that reads them."""
+    errs = []
+    L = doc.get("block", {}).get("repeat") if isinstance(doc.get("block", {}).get("repeat"), int) else 0
+    for sect, j, n in _sections(doc):
+        ff = n.get("freq_factors")
+        if n.get("op") != "rope" or ff is None:
+            continue
+        names = [ff] if isinstance(ff, str) else [ff.get(k) for k in ("short", "long")] if isinstance(ff, dict) else []
+        nrs = _layers(n.get("n_rot", n.get("head_dim")), L or 1) or []
+        for i, m in _apps(doc, sect):
+            nr = nrs[i] if i is not None and i < len(nrs) else (nrs[0] if nrs else None)
+            if not isinstance(nr, int):
+                continue
+            for nm in names:
+                if not isinstance(nm, str):
+                    continue
+                name = nm.replace("{i}", str(m)) if m is not None else nm
+                got = dims.get(name)
+                if got is not None and [x for x in got if x != 1] != [nr // 2]:
+                    where = f"{sect}[{j}] rope" + (f" (application {i})" if i is not None else "")
+                    errs.append(E("5.14", f"{where}: freq_factors {name} has ne {got}, not [n_rot / 2 = {nr // 2}]", 41))
+    return sorted(set(errs))
+
+
+def mla_gguf_errors(doc, dims):
+    """Rule 42 (container, revision 1.5): an mla_attention node's k_b is ne {qk_nope, kv_rank, heads} and its v_b
+    ne {kv_rank, v_head_dim, heads}, section 5.20, in every application that reads them."""
+    errs = []
+    L = doc.get("block", {}).get("repeat") if isinstance(doc.get("block", {}).get("repeat"), int) else 0
+    for sect, j, n in _sections(doc):
+        if n.get("op") != "mla_attention":
+            continue
+        vals = {k: _layers(n.get(k), L or 1) or [] for k in ("heads", "kv_rank", "qk_nope", "v_head_dim")}
+        for i, m in _apps(doc, sect):
+            v = {k: (x[i] if i is not None and i < len(x) else (x[0] if x else None)) for k, x in vals.items()}
+            if not all(isinstance(x, int) for x in v.values()):
+                continue
+            for key, want in (("k_b", [v["qk_nope"], v["kv_rank"], v["heads"]]),
+                              ("v_b", [v["kv_rank"], v["v_head_dim"], v["heads"]])):
+                nm = n.get(key)
+                if not isinstance(nm, str):
+                    continue
+                name = nm.replace("{i}", str(m)) if m is not None else nm
+                got = dims.get(name)
+                if got is not None and got != want:
+                    where = f"{sect}[{j}] mla_attention" + (f" (application {i})" if i is not None else "")
+                    errs.append(E("5.20", f"{where}: {key} {name} has ne {got}, not {want}", 42))
+    return sorted(set(errs))
 
 
 def position_bias_gguf_errors(doc, dims):
@@ -1109,8 +1215,8 @@ def relative_kv_gguf_errors(doc, dims):
 INFORMATIVE_ATTRS = {"attention": ("softmax",), "moe_ffn": ("routing",)}
 # Section 3.5's optional attributes at their defaults (rmsnorm.group's default, the row width, is not filled:
 # it needs widths).
-NODE_DEFAULTS = {"linear": {"bias": None, "tied_to": None}, "scale": {"bias": None},
-                 "rope": {"freq_scale": 1.0}, "attention": {"mask": "causal"},
+NODE_DEFAULTS = {"linear": {"bias": None, "tied_to": None}, "scale": {"bias": None}, "split": {"groups": 1},
+                 "rope": {"freq_scale": 1.0, "attn_factor": 1.0}, "attention": {"mask": "causal"},
                  "rmsnorm": {"weight_offset": 0.0}, "depth_attend": {"eps": 1e-05},
                  "conv1d_causal": {"bias": None}, "selective_scan": {"d": None, "dt_softplus": True}}
 COMMUTATIVE = ("add", "mul")

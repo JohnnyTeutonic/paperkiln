@@ -365,6 +365,43 @@
    "profile": "state"
   },
   {
+   "id": "model/tp_deepseek2",
+   "kind": "model",
+   "file": "models/tp_deepseek2/case.json",
+   "model": "models/tp_deepseek2",
+   "profile": "thirdparty",
+   "class": "ROUNDING"
+  },
+  {
+   "id": "trace/tp_deepseek2_decode",
+   "kind": "trace",
+   "file": "state/tp_deepseek2_decode.json",
+   "model": "models/tp_deepseek2",
+   "profile": "thirdparty"
+  },
+  {
+   "id": "trace/tp_deepseek2_truncate",
+   "kind": "trace",
+   "file": "state/tp_deepseek2_truncate.json",
+   "model": "models/tp_deepseek2",
+   "profile": "thirdparty"
+  },
+  {
+   "id": "model/tp_gemma2",
+   "kind": "model",
+   "file": "models/tp_gemma2/case.json",
+   "model": "models/tp_gemma2",
+   "profile": "thirdparty",
+   "class": "ROUNDING"
+  },
+  {
+   "id": "trace/tp_gemma2_decode",
+   "kind": "trace",
+   "file": "state/tp_gemma2_decode.json",
+   "model": "models/tp_gemma2",
+   "profile": "thirdparty"
+  },
+  {
    "id": "model/tp_gemma3",
    "kind": "model",
    "file": "models/tp_gemma3/case.json",
@@ -469,6 +506,43 @@
    "profile": "thirdparty"
   },
   {
+   "id": "model/tp_phi3",
+   "kind": "model",
+   "file": "models/tp_phi3/case.json",
+   "model": "models/tp_phi3",
+   "profile": "thirdparty",
+   "class": "ROUNDING"
+  },
+  {
+   "id": "trace/tp_phi3_decode",
+   "kind": "trace",
+   "file": "state/tp_phi3_decode.json",
+   "model": "models/tp_phi3",
+   "profile": "thirdparty"
+  },
+  {
+   "id": "trace/tp_phi3_truncate",
+   "kind": "trace",
+   "file": "state/tp_phi3_truncate.json",
+   "model": "models/tp_phi3",
+   "profile": "thirdparty"
+  },
+  {
+   "id": "model/tp_qwen2moe",
+   "kind": "model",
+   "file": "models/tp_qwen2moe/case.json",
+   "model": "models/tp_qwen2moe",
+   "profile": "thirdparty",
+   "class": "ROUNDING"
+  },
+  {
+   "id": "trace/tp_qwen2moe_decode",
+   "kind": "trace",
+   "file": "state/tp_qwen2moe_decode.json",
+   "model": "models/tp_qwen2moe",
+   "profile": "thirdparty"
+  },
+  {
    "id": "model/tp_qwen3",
    "kind": "model",
    "file": "models/tp_qwen3/case.json",
@@ -513,6 +587,21 @@
    "profile": "thirdparty"
   },
   {
+   "id": "model/tp_qwen3moe",
+   "kind": "model",
+   "file": "models/tp_qwen3moe/case.json",
+   "model": "models/tp_qwen3moe",
+   "profile": "thirdparty",
+   "class": "ROUNDING"
+  },
+  {
+   "id": "trace/tp_qwen3moe_decode",
+   "kind": "trace",
+   "file": "state/tp_qwen3moe_decode.json",
+   "model": "models/tp_qwen3moe",
+   "profile": "thirdparty"
+  },
+  {
    "id": "op/embedding",
    "kind": "op",
    "file": "ops/embedding.json",
@@ -545,7 +634,7 @@
    "kind": "op",
    "file": "ops/split.json",
    "profile": "core",
-   "n": 1
+   "n": 2
   },
   {
    "id": "op/rmsnorm",
@@ -636,14 +725,14 @@
    "kind": "op",
    "file": "ops/rope.json",
    "profile": "core",
-   "n": 6
+   "n": 11
   },
   {
    "id": "op/attention",
    "kind": "op",
    "file": "ops/attention.json",
    "profile": "core",
-   "n": 12
+   "n": 15
   },
   {
    "id": "op/moe_ffn",
@@ -714,6 +803,13 @@
    "file": "ops/recurrence.json",
    "profile": "recurrence",
    "n": 9
+  },
+  {
+   "id": "op/mla_attention",
+   "kind": "op",
+   "file": "ops/mla_attention.json",
+   "profile": "thirdparty",
+   "n": 3
   },
   {
    "id": "refuse/unknown_op",
@@ -1353,6 +1449,97 @@
    "section": "3.8"
   },
   {
+   "id": "refuse/softcap_not_positive",
+   "kind": "refuse",
+   "file": "refuse/softcap_not_positive.json",
+   "rule": 10,
+   "section": "5.15"
+  },
+  {
+   "id": "refuse/attn_factor_not_positive",
+   "kind": "refuse",
+   "file": "refuse/attn_factor_not_positive.json",
+   "rule": 10,
+   "section": "5.14"
+  },
+  {
+   "id": "refuse/freq_factors_without_original_ctx",
+   "kind": "refuse",
+   "file": "refuse/freq_factors_without_original_ctx.json",
+   "rule": 41,
+   "section": "5.14"
+  },
+  {
+   "id": "refuse/freq_factors_unknown_field",
+   "kind": "refuse",
+   "file": "refuse/freq_factors_unknown_field.json",
+   "rule": 41,
+   "section": "5.14"
+  },
+  {
+   "id": "refuse/freq_factors_tensor_shape",
+   "kind": "refuse",
+   "file": "refuse/freq_factors_tensor_shape.json",
+   "rule": 41,
+   "section": "5.14"
+  },
+  {
+   "id": "refuse/freq_factors_per_layer",
+   "kind": "refuse",
+   "file": "refuse/freq_factors_per_layer.json",
+   "rule": 6,
+   "section": "3.8"
+  },
+  {
+   "id": "refuse/split_groups_zero",
+   "kind": "refuse",
+   "file": "refuse/split_groups_zero.json",
+   "rule": 10,
+   "section": "5.5"
+  },
+  {
+   "id": "refuse/mla_slot_head_dim",
+   "kind": "refuse",
+   "file": "refuse/mla_slot_head_dim.json",
+   "rule": 12,
+   "section": "5.20"
+  },
+  {
+   "id": "refuse/mla_slot_kv_heads",
+   "kind": "refuse",
+   "file": "refuse/mla_slot_kv_heads.json",
+   "rule": 12,
+   "section": "5.20"
+  },
+  {
+   "id": "refuse/mla_k_b_shape",
+   "kind": "refuse",
+   "file": "refuse/mla_k_b_shape.json",
+   "rule": 42,
+   "section": "5.20"
+  },
+  {
+   "id": "refuse/mla_reads_three",
+   "kind": "refuse",
+   "file": "refuse/mla_reads_three.json",
+   "rule": 7,
+   "section": "3.5"
+  },
+  {
+   "id": "refuse/mla_without_k_b",
+   "kind": "refuse",
+   "file": "refuse/mla_without_k_b.json",
+   "rule": 8,
+   "section": "3.5"
+  },
+  {
+   "id": "refuse/mla_not_causal",
+   "kind": "refuse",
+   "file": "refuse/mla_not_causal.json",
+   "rule": 14,
+   "section": "5.20"
+  },
+  {
    "id": "refuse/duplicate_member_top",
    "kind": "refuse",
    "file": "refuse/duplicate_member_top.json",
@@ -1444,6 +1631,13 @@
    "section": "3.1"
   },
   {
+   "id": "refuse/architecture_gemma2_softcap_dropped",
+   "kind": "refuse",
+   "file": "refuse/architecture_gemma2_softcap_dropped.json",
+   "rule": 38,
+   "section": "3.1"
+  },
+  {
    "id": "refuse/architecture_substituted_document",
    "kind": "refuse",
    "file": "refuse/architecture_substituted_document.json",
@@ -1455,7 +1649,7 @@
    "kind": "digest",
    "file": "digest/vectors.json",
    "profile": "core",
-   "n": 90
+   "n": 95
   },
   {
    "id": "dequant/blocks",
@@ -1546,6 +1740,13 @@
    "kind": "trace",
    "file": "state/tp_mistral_hd16_rewind_window.json",
    "model": "models/tp_mistral_hd16",
+   "profile": "state"
+  },
+  {
+   "id": "trace/tp_gemma2_rewind_window",
+   "kind": "trace",
+   "file": "state/tp_gemma2_rewind_window.json",
+   "model": "models/tp_gemma2",
    "profile": "state"
   },
   {
@@ -1682,6 +1883,20 @@
    "profile": "state"
   },
   {
+   "id": "trace/tp_deepseek2_chunks",
+   "kind": "trace",
+   "file": "state/tp_deepseek2_chunks.json",
+   "model": "models/tp_deepseek2",
+   "profile": "state"
+  },
+  {
+   "id": "trace/tp_gemma2_chunks",
+   "kind": "trace",
+   "file": "state/tp_gemma2_chunks.json",
+   "model": "models/tp_gemma2",
+   "profile": "state"
+  },
+  {
    "id": "trace/tp_gemma3_chunks",
    "kind": "trace",
    "file": "state/tp_gemma3_chunks.json",
@@ -1724,6 +1939,20 @@
    "profile": "state"
   },
   {
+   "id": "trace/tp_phi3_chunks",
+   "kind": "trace",
+   "file": "state/tp_phi3_chunks.json",
+   "model": "models/tp_phi3",
+   "profile": "state"
+  },
+  {
+   "id": "trace/tp_qwen2moe_chunks",
+   "kind": "trace",
+   "file": "state/tp_qwen2moe_chunks.json",
+   "model": "models/tp_qwen2moe",
+   "profile": "state"
+  },
+  {
    "id": "trace/tp_qwen3_chunks",
    "kind": "trace",
    "file": "state/tp_qwen3_chunks.json",
@@ -1735,6 +1964,13 @@
    "kind": "trace",
    "file": "state/tp_qwen3_hd16_chunks.json",
    "model": "models/tp_qwen3_hd16",
+   "profile": "state"
+  },
+  {
+   "id": "trace/tp_qwen3moe_chunks",
+   "kind": "trace",
+   "file": "state/tp_qwen3moe_chunks.json",
+   "model": "models/tp_qwen3moe",
    "profile": "state"
   },
   {
@@ -1770,7 +2006,7 @@
    "kind": "accept",
    "file": "accept/documents.json",
    "profile": "core",
-   "n": 44
+   "n": 49
   },
   {
    "id": "chat/render",

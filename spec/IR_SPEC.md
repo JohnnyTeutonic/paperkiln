@@ -2,7 +2,7 @@
 
 *Normative specification of the keramos IR: a versioned JSON graph of a language model that an
 engine interprets, rather than recognising a fixed architecture. IR version 1, specification revision
-1.4 (28 October 2026; v1.4.2).*
+1.5 (28 October 2026; v1.5.0).*
 
 The format's GGUF keys keep their `paperkiln.` prefix (`paperkiln.ir`, `paperkiln.ir_version`,
 `paperkiln.ir_sha256` and the rest), as does the architecture label "paperkiln" (rule 38): they are
@@ -53,7 +53,7 @@ not semantics: when the header and this document differ, this document holds.
 
 ## 0. Status
 
-This document is version 1 of the IR, revision 1.4. It states the semantics that
+This document is version 1 of the IR, revision 1.5. It states the semantics that
 `include/microtorch/ir.hpp`'s header comment stated under the number 0, reorganised into profiles,
 with the numerics made consistent with what the reference build computes (section 4 and Appendix A).
 Revision 1.1 adds the digest (section 3.10), the values of stored tensors (section 4.7) and the
@@ -75,7 +75,13 @@ that train (section 11.2); it states Primer's multi-dconv-head attention as `con
 projection beside a kv slot, with no new op (sections 6.9 and 9.2). Its patch v1.4.2 states what a second
 pass of the clean-room implementation found the text left to the tools (rule 38's graphs, Appendix D),
 settles windows under Mixture-of-Recursions (Q16: positions, section 5.15) and states the chat profile's
-schema v2, `paperkiln/2`, as built (section 8.1.6). The IR documents
+schema v2, `paperkiln/2`, as built (section 8.1.6). Revision 1.5 adds what the later
+third-party families need (`LOCAL_LLM_WORK.md` E4; section 12.7): Gemma 2's attention soft-capping, an
+optional attribute of `attention` (section 5.15); LongRoPE's per-pair frequency divisors, with a short and a
+long set and the table's attention factor, optional attributes of `rope` (section 5.14, rule 41); a
+per-group `split` (section 5.5); and DeepSeek-V2's multi-head latent attention, a new op over a kv slot whose
+row is the compressed latent and the shared rotary key (section 5.20, rule 42). Section 9.3 gains phi3,
+gemma2, qwen2moe, qwen3moe and deepseek2, whose mixture-of-experts layers are wiring of `moe_ffn`. The IR documents
 that paperkiln commits before 5349ee19 exported carry `"ir_version": 0` and are version 1 documents
 (section 2.1); later exports carry 1 (section 2.3).
 
@@ -170,7 +176,7 @@ naming the op and the backend.
 | `state` | recurrent slots and ops (`linear_attention`, `ssm_scan`), per-turn state tokens (`state_weight`, `mask: turn_state`, `evict: turn_state`), prefix reuse, rewind and snapshots | 6 |
 | `recursion` | `weight_index`, `tensor_index`, `depth_route`, `kv_rows: active`, `kv_from` (reserved) | 7 |
 | `chat` | the template record and its resolution; the state-token template contract | 8 |
-| `thirdparty` | the attributes and ops added for graphs built from llama.cpp metadata: grouped-query attention, `rope` `neox` / `n_rot` / `freq_scale` / `kv_heads`, `rmsnorm` `group` / `weight_offset`, `conv1d_causal`, `selective_scan` | 5.6, 5.14, 5.15, 6.6, 6.7, 9.3 |
+| `thirdparty` | the attributes and ops added for graphs built from llama.cpp metadata: grouped-query attention, `rope` `neox` / `n_rot` / `freq_scale` / `kv_heads`, `rmsnorm` `group` / `weight_offset`, `conv1d_causal`, `selective_scan`; from revision 1.5 `rope` `freq_factors` / `attn_factor`, `attention` `softcap`, `split` `groups`, `mla_attention` | 5.5, 5.6, 5.14, 5.15, 5.20, 6.6, 6.7, 9.3 |
 | `recurrence` | the `recurrence` op: a per-token state update declared in the document (init, let, update and readout bodies), over a recurrent slot of the state profile | 6.10 |
 
 Profiles are not declared inside the document (an engine infers them from the ops and keys it
@@ -359,7 +365,8 @@ GGUF tensor and never state.
 ### 3.7 Tensors and names
 
 - `weight` (and `bias`, `router`, `experts`, `state_weight`, the `weight` of `attention.position_bias`,
-  the `key` and `value` of `attention.relative_kv` and the tensor attributes of `ssm_scan`,
+  the `key` and `value` of `attention.relative_kv`, `rope.freq_factors` (its name, or its `short` and
+  `long`), `mla_attention`'s `k_b` and `v_b`, and the tensor attributes of `ssm_scan`,
   `conv1d_causal` and `selective_scan`) name GGUF tensors; `"{i}"` in any of them follows the rule below.
 - Layout: a matrix is [out, in] row-major, as GGUF and llama.cpp store it (ggml `ne0` = in).
 - Storage: each tensor's storage type is its GGUF type (f32, f16, q8_0, ...), and its values are the
@@ -375,9 +382,10 @@ GGUF tensor and never state.
 
 Any attribute of a block node, and any field of a block state slot, may be
 `{"per_layer": [v_0, ..., v_{L-1}]}` with L = `block.repeat`: application i reads v_i, except the
-structural keys: a node's `op`, `in`, `out`, `state`, `tensor_index`, `sizes`, `expr`, `position_bias`, `relative_kv`, a
+structural keys: a node's `op`, `in`, `out`, `state`, `tensor_index`, `sizes`, `groups`, `expr`, `position_bias`,
+`relative_kv`, `freq_factors`, a
 recurrence's `index`, `inputs`, `weights`, `init`, `let`, `update` and `readout`, and its
-tensor names (`weight`, `bias`, `router`, `experts`, `state_weight`, `tied_to`, `a`, `b`, `c`, `d`),
+tensor names (`weight`, `bias`, `router`, `experts`, `state_weight`, `tied_to`, `a`, `b`, `c`, `d`, `k_b`, `v_b`),
 and a slot's `name`, `kind`, `op`, `dtype`, `tensors`, `evict` and `kv_rows` (`kv_from`, reserved, is
 per-layer by definition). An attribute not given per layer is the same in every application.
 (Examples: gemma3's attention window and kv window, 512 on local layers and 0 on global ones; RoPE theta 10000 / 1e6; `depth_route`'s `step`; the injection
@@ -627,6 +635,12 @@ operations).
 columns of x after the first s0 + ... + s_{k-1} (a fused qkv projection read as q, k, v). Copies.
 Sizes that do not sum to x's width are refused (rule 37). EXACT.
 
+*thirdparty profile (revision 1.5):* `groups` g (a positive integer, default 1; structural): x's width is g
+consecutive groups of s0 + s1 + ... columns, and o_k is the k-th part of every group, the groups in order
+(o_k has width g s_k). A per-head split: MLA's query into its rotation-free and rotated parts (section 5.20). A
+width other than g times the sizes' sum is refused (rule 37), a `groups` that is not a positive integer (rule
+10). EXACT.
+
 ### 5.6 rmsnorm
 
 x / sqrt(mean(x^2) + eps) * weight, over each row. ROUNDING.
@@ -698,12 +712,30 @@ Rotates q and k: `in [q, k, pos]`, `out [q', k']`. Attributes `heads`, `head_dim
   the rest pass through (partial rotary, GPT-NeoX). The angle of pair j is
   (pos * freq_scale) * theta^(-2j/n_rot).
 - `freq_scale` (default 1, positive): linear RoPE scaling, 1 / factor.
+- `freq_factors` (revision 1.5; LongRoPE, Ding et al. 2024, arXiv 2402.13753, as Phi-3 and Phi-3.5 ship it,
+  arXiv 2404.14219; one set is also Llama 3.1's `rope_freqs`): a tensor name, or `{"short": S, "long": L,
+  "original_ctx": N}` with two tensor names and an integer N >= 1. Each tensor holds n_rot / 2 values f_0 ..
+  f_{n_rot/2 - 1} (ne {n_rot / 2}), and pair j's angle is divided by f_j: ((pos * freq_scale) * freq_j) / f_j.
+  With two sets, the sequence's length chooses: n, the session's length after the call (positions 0 .. n - 1),
+  selects L when n > N and S otherwise, for every row of the call and every row the kv slot holds. A call that
+  takes the length past N therefore changes the rotation of every key already in the slot: the engine
+  recomputes the slot (it runs the whole sequence again, as Phi-3's own generation does at that point), and a
+  truncate back to n <= N does the same with S (section 6.9). Prefill and decode then agree, both computing
+  what a fresh run over the same ids computes. Structural (section 3.8). Refused (rule 41): a value of another
+  form, a member other than these, `original_ctx` not an integer >= 1; a tensor not of ne {n_rot / 2} in an
+  application that reads it.
+- `attn_factor` m (revision 1.5; default 1, positive): the table holds cos * m and sin * m (LongRoPE's and
+  YaRN's attention scaling; for Phi-3, sqrt(1 + ln(s) / ln(N)) with s the context's extension ratio, which
+  llama.cpp's converter writes as `rope.scaling.attn_factor`). Not positive: rule 10.
 
 **The angle table**, in f32: for pair j, freq_j = 1 / powf(theta, f32(2j) / f32(n_rot)) (the
 division rounded, then powf, then the reciprocal), and angle(pos, j) = (f32(pos) * freq_scale) *
 freq_j, each product rounded; the table holds cosf(angle) and sinf(angle). This is what paperkiln
 (`ops::apply_rope`, freq_scale 1) and ember (`graph_ir.cpp`) compute. The numpy reference computes
-the angle in double and rounds cos and sin to f32, within ROUNDING of the table (Q3).
+the angle in double and rounds cos and sin to f32, within ROUNDING of the table (Q3). With
+`freq_factors` (revision 1.5) angle(pos, j) is that product divided by f_j, rounded; with `attn_factor` m the
+table holds cosf(angle) * m and sinf(angle) * m, each product rounded. For a single node's run (section 11.2)
+the sequence's length is the largest position plus one.
 
 Class: the rotation is EXACT given the table. The table is ROUNDING across platforms (cosf, sinf and
 powf differ by an ulp between libm implementations), so two builds agree bit for bit when their libm
@@ -713,7 +745,7 @@ agrees.
 
 softmax(q k^T * scale) v per head, over the kv slot the node names in `state` (section 6.2).
 Attributes `heads`, `kv_heads`, `head_dim`, `scale`, `causal`, `window` (0 = unbounded), `sinks`,
-`mask` (section 6.8.2; absent = `"causal"`), `position_bias` and `relative_kv` (below; absent = none). `causal` is true
+`mask` (section 6.8.2; absent = `"causal"`), `position_bias`, `relative_kv` and `softcap` (below; absent = none). `causal` is true
 (section 12, Q6). `in [q, k, v]`, q [T, heads * head_dim]; head h at columns h * head_dim ... ROUNDING.
 
 - **Masking.** Masked keys contribute exactly 0, and the row maximum is taken over visible keys only.
@@ -798,6 +830,12 @@ Attributes `heads`, `kv_heads`, `head_dim`, `scale`, `causal`, `window` (0 = unb
   than `key`, `value`, `max_distance` and `_` members (prose, section 3.2);
   a tensor not of ne {head_dim or heads * head_dim, K + 1} in an application that reads it; `relative_kv`
   and `position_bias` on one node (revision 1.4 defines each alone).
+- **Soft-capping** (`softcap` c, optional; revision 1.5; Gemma 2, Gemma Team 2024, arXiv 2408.00118,
+  section 2): a positive number. The scaled score s = (q . k) * scale (with `relative_kv`, its sum of two dot
+  products times scale) becomes c * tanh(s / c): the division rounded, then tanh, then the product. A
+  `position_bias` is added after it (llama.cpp's order; no released model combines them). Masking is
+  unchanged. Per-layer values are allowed (section 3.8). Not positive: rule 10. The final-logit soft cap of
+  the same models is an `expr` node in the head, `tanh(x / c) * c` (section 9.3).
 - `softmax` (a string) is an informative attribute that paperkiln's exporter writes ("max-shifted,
   masked entries exactly zero"); it carries no semantics.
 
@@ -925,6 +963,45 @@ So `^` binds tightest and is right-associative (2^3^2 = 2^(3^2), -x^2 = -(x^2), 
 
 ROUNDING (libm transcendentals differ by an ulp between platforms).
 
+### 5.20 mla_attention (thirdparty profile; revision 1.5)
+
+Multi-head latent attention (DeepSeek-AI 2024, DeepSeek-V2, arXiv 2405.04434, section 2.1, equations 9 to
+19): every head's keys and values are linear maps of one compressed latent per token, and the rotary part of
+the key is one vector per token shared by every head, so the kv slot holds the latent and that vector, not
+per-head keys and values.
+
+`{"op": "mla_attention", "in": [qn, qr, c, kr], "state": slot, "heads": H, "kv_rank": r, "qk_nope": dn,
+"qk_rope": dr, "v_head_dim": dv, "k_b": K, "v_b": V, "scale": s, "causal": true, "window": w, "sinks": n_s,
+"out": a}`, every attribute required:
+- qn [T, H * dn]: the rotation-free part of each head's query (head h at columns h * dn ...); qr [T, H * dr]:
+  its rotated part, after RoPE; c [T, r]: the latent; kr [T, dr]: the shared rotary key, after RoPE. (A `split`
+  with `groups` H separates qn and qr in the query projection's per-head layout, section 5.5; one `rope` node
+  with heads H, kv_heads 1 and head_dim dr rotates qr and kr.)
+- K names a tensor [H, r, dn] (ne {dn, r, H}): K[h] [r, dn] is head h's up-projection of keys, W^UK,
+  transposed, the absorbed form llama.cpp's converter writes (`attn_k_b`). V names a tensor [H, dv, r] (ne {r,
+  dv, H}): V[h] [dv, r] is head h's W^UV (`attn_v_b`).
+- Head h, for a query at position p and each key position j it sees:
+
+      qa_p      = K[h] qn_{p,h}                          (qa [r]: each entry a dot product over dn)
+      s(p, j)   = ((qa_p . c_j) + (qr_{p,h} . kr_j)) * scale
+      a(p, j)   = the softmax of s(p, .) over the keys p sees (section 5.15's masking)
+      u_p       = sum over the visible j of a(p, j) c_j  (u [r])
+      out_{p,h} = V[h] u_p                               (out [dv], at columns h * dv ... of a [T, H * dv])
+
+  each dot product rounded, then the sum, then the product; these are the reference's orders. The class is
+  ROUNDING, so an engine may decompress instead (k_{j,h} = [K[h]^T c_j | kr_j], v_{j,h} = V[h] c_j, then
+  section 5.15's attention), the paper's statement and transformers' implementation, within the tolerance.
+- **The slot.** The node reads a kv slot (section 6.2) that declares `kv_heads` 1, `head_dim` r + dr and the
+  node's window and sinks: per position it holds c and kr, r + dr values, against 2 H (dn + dr) for the
+  decompressed keys and values. Decode reads the visible rows and appends the new token's c and kr; masking,
+  decode and positions follow section 5.15, rewind and snapshots section 6.9, as for `attention`. One node reads
+  a slot (section 6.1).
+- Refused: a slot with kv_heads other than 1, head_dim other than r + dr, or another window or sinks (rule 12);
+  `causal` not true (rule 14); an input of another width (rule 37, when the rows arrive); K not of ne {dn, r,
+  H} or V not of ne {r, dv, H} in an application that reads it (rule 42). `heads`, `kv_rank`, `qk_nope`,
+  `qk_rope` and `v_head_dim` are positive integers (the schema, rule 1) and may be per-layer; `k_b` and `v_b`
+  are structural (section 3.8).
+
 ## 6. The state profile
 
 ### 6.1 Slots
@@ -933,7 +1010,7 @@ ROUNDING (libm transcendentals differ by an ulp between platforms).
 per sequence; a node names its slot in `state`. A block may declare several slots (srd: one kv and
 one recurrent). Every slot is read by at least one node, a slot name is declared once, and a node
 that names a slot names a declared slot of the kind its op needs. A kv slot is read by exactly one
-attention node (two readers would append twice per application, which is not defined), and a
+attention or `mla_attention` node (two readers would append twice per application, which is not defined), and a
 recurrent slot of op `recurrence` by exactly one recurrence node (section 6.10); a block may still
 declare several kv slots. Nodes outside the block have no state, so a stateful op outside
 the block is refused.
@@ -945,7 +1022,8 @@ the tokens seen so far, `dtype` `"f32"`. window 0 and sinks 0 keep every row up 
 slot's capacity in positions: a position >= max_len is refused at run time (exporters write
 max_len = model.ctx; an engine may hold fewer positions by choice and then refuses earlier).
 Optional keys: `evict` (section 6.8.3), `kv_rows` (section 7.5) and `kv_from` (section 7.6). The
-attention nodes that read a slot declare its window, sinks, kv_heads and head_dim (section 5.15).
+attention nodes that read a slot declare its window, sinks, kv_heads and head_dim (section 5.15); an
+`mla_attention` node's slot declares kv_heads 1 and head_dim kv_rank + qk_rope (section 5.20).
 
 ### 6.3 recurrent
 
@@ -1142,6 +1220,11 @@ those n tokens would leave. Per slot:
   `tp_gemma3_rewind_window` (window 4 on its local layers: 48 tokens, more than llama.cpp's smallest
   windowed cache, a cut to 10) and `tp_mistral_hd16_rewind_window` (window 4 on every layer: 14
   tokens, a cut to 7).
+- **kv under rope with two `freq_factors` sets** (revision 1.5): the set follows the sequence's length
+  (section 5.14), so a truncate to n <= original_ctx after a longer sequence, like a forward that takes the
+  length past original_ctx, leaves rows rotated with the other set: the engine recomputes them (runs the first
+  n tokens again, or restores a snapshot taken at n); keeping them never conforms. The traces `tp_phi3_decode`,
+  `tp_phi3_chunks` and `tp_phi3_truncate` (original_ctx 6) cross the boundary, the last in both directions.
 - **kv with kv_rows active:** keep the rows whose positions are < n, per application, with each
   application's written-rows mask truncated with them (section 7.5). With a window too (v1.4.2, Q16),
   the window's rule above holds per application, over the rows that application holds: when every row
@@ -1949,6 +2032,31 @@ refuses a file without a document.
 - **mamba** (Mamba-1; not paperkiln's mamba, which has architecture "paperkiln"): rmsnorm, ssm_in ->
   split x | z, conv1d_causal (slot "conv") + silu, ssm_x -> split dt | B | C, ssm_dt (biased),
   selective_scan (slot "ssm"; a = ssm_a, d = ssm_d), * silu(z), ssm_out, residual add.
+- **phi3** (revision 1.5): pre-RMSNorm; fused `attn_qkv` split q | k | v (or separate q, k, v); NEOX RoPE over
+  `rope.dimension_count` dims, with LongRoPE's `freq_factors` {short `rope_factors_short.weight`, long
+  `rope_factors_long.weight`, original_ctx `rope.scaling.original_context_length`} and `attn_factor`
+  `rope.scaling.attn_factor` when the file holds the factor tensors; scale 1/sqrt(head_dim);
+  `attention.sliding_window` w > 0 is the window (transformers' Phi-3; llama.cpp b6000 disables Phi's window);
+  SwiGLU from the fused `ffn_up` (gate | up, a `split`); `output` or the tied embedding. Other RoPE scaling and
+  the phi3 MoE layout are refused by name.
+- **gemma2** (revision 1.5): gemma3's block without q/k norms; one RoPE base (`rope.freq_base`, default 10000)
+  on every layer; local layers i % 2 == 0 with window `attention.sliding_window` (default 4096), global ones
+  window 0; attention `softcap` = `attn_logit_softcapping` (default 50); the head's logits through `expr`
+  `tanh(x / c) * c`, c = `final_logit_softcapping` (default 30); scale 1/sqrt(key_length), 1/sqrt(d / heads)
+  for the 27B (46 layers).
+- **qwen2moe, qwen3moe** (revision 1.5; wiring, no new op): qwen2's and qwen3's attention; `moe_ffn` in
+  llama.cpp's expert layout, gate_norm raw for qwen2moe (llama.cpp b6000's graph, which ignores transformers'
+  `norm_topk_prob`) and renorm for qwen3moe; qwen2moe adds its shared expert, a SwiGLU over
+  `ffn_{gate,up,down}_shexp` times sigmoid(`ffn_gate_inp_shexp` h) per token (a `linear` with one output,
+  `sigmoid`, `mul_col`). Mixtral is the llama bullet's MoE form.
+- **deepseek2** (revision 1.5; DeepSeek-V2 in llama.cpp's MLA layout): pre-RMSNorm; the query from `attn_q`
+  (V2-Lite) or `attn_q_b`(rmsnorm(`attn_q_a` h)); `split` with groups heads into qn | qr; `attn_kv_a_mqa` h
+  split into c | kr, c through `attn_kv_a_norm`; interleaved RoPE on qr (heads) and kr (one head);
+  `mla_attention` with K `attn_k_b`, V `attn_v_b` and scale 1/sqrt(qk_nope + qk_rope); `attn_output`; then
+  `moe_ffn` (renorm when `expert_weights_norm`, else raw) times `expert_weights_scale` (an `affine` when it is
+  not 1) plus the shared experts (`ffn_*_shexp`, ungated). Refused by name: leading dense blocks
+  (`leading_dense_block_count` > 0: a block is one node list), DeepSeek-V3's sigmoid router and selection
+  bias, YaRN RoPE scaling, and files converted before llama.cpp's MLA keys.
 
 ## 10. Validation
 
@@ -1960,14 +2068,14 @@ rules section 10.1.1 lists as checked when the rows arrive. Each rule names its 
 rule a single fault breaks under exactly one number (a fault can still break a second rule as a
 consequence: a wrong `block.repeat` names tensors the file lacks). Rule numbers are never reused or
 moved: a rule added by a later revision takes the next free number (35 to 37 in 1.2, 38 and 39 in
-1.3, 40 in 1.4) and is listed with its section's rules.
+1.3, 40 in 1.4, 41 and 42 in 1.5) and is listed with its section's rules.
 
 Document (section 3):
 1. The text is not a JSON object, or it does not match `ir.schema.json` in a respect that no other
    rule names: the types of values, the closed key sets of the document, its sections and its slots,
    and the required sections. (The version, the model's fields, an op, an attribute, an attribute's
    value, an arity, a required attribute, a slot's kind and fields, a recurrence's declarations, a
-   position bias and relative vectors are rules 2 to 13, 31, 39 and 40.)
+   position bias, relative vectors, frequency factors and MLA's tensors are rules 2 to 13, 31 and 39 to 42.)
 35. An object of the text holds a member name twice, at any depth, `_` members included (3.2).
 36. A node reads a value that no node before it writes (in the order of 3.5: embed, the block as
    application 0, head; `tokens` and `pos` excepted); the embed section writes no `x`; the head
@@ -1989,7 +2097,7 @@ Document (section 3):
    `mul_col`, `append` and `pos_embedding` read two values; `embedding`, `relu`, `sigmoid`,
    `silu`, `gelu`, `affine`, `rms_row`, `scale`, `rmsnorm`, `layernorm`, `linear`, `moe_ffn`,
    `ssm_scan`, `conv1d_causal` and `depth_route` read one; `attention` and `linear_attention`
-   read [q, k, v]; `rope` reads [q, k, pos] and writes two; `selective_scan` reads four; `list`,
+   read [q, k, v]; `mla_attention` reads [qn, qr, c, kr]; `rope` reads [q, k, pos] and writes two; `selective_scan` reads four; `list`,
    `depth_attend`, `expr` and `recurrence` read at least one, `expr` at most 23 (sections 5 to 7).
 8. A required attribute is missing: `scale.weight`, `affine.scale` and `affine.shift`,
    `rms_row.eps`, `expr.expr` (a string), and the attributes each op's section lists.
@@ -1998,7 +2106,8 @@ Document (section 3):
     (5.6); `rope.n_rot` is not even and in 1 .. head_dim, or `rope.freq_scale` is not positive
     (5.14); `attention.heads` is not a multiple of `kv_heads`, or window or sinks is negative (5.15);
     `moe_ffn.top_k` is not in 1 .. n_experts (5.16); `conv1d_causal` has channels < 1 or kernel < 2
-    (6.6).
+    (6.6); `split.groups` is not a positive integer (5.5); `rope.attn_factor` or `attention.softcap` is
+    not positive (5.14, 5.15).
 39. `attention.position_bias` is not `{weight, buckets}` (with `_` members allowed, and no other) with
     `buckets` a non-empty list of integers >= 0; or (container) its weight's tensor is not of ne {heads, B} with B greater than every bucket,
     in an application that reads it (5.15).
@@ -2007,6 +2116,11 @@ Document (section 3):
     `value` a name or null and `max_distance` an integer >= 0; or the node also carries
     `position_bias`; or (container) its key's or value's tensor is not of ne {head_dim or heads *
     head_dim, max_distance + 1} in an application that reads it (5.15).
+41. `rope.freq_factors` is not a name or `{short, long, original_ctx}` with two names and an integer >= 1
+    (revision 1.5); or (container) one of its tensors is not of ne {n_rot / 2} in an application that reads
+    it (5.14).
+42. (container) An `mla_attention` node's `k_b` is not of ne {qk_nope, kv_rank, heads}, or its `v_b` not of
+    ne {kv_rank, v_head_dim, heads}, in an application that reads it (revision 1.5; 5.20).
 
 State (section 6):
 11. A slot's kind is not kv or recurrent; a slot is declared twice or read by no node; a stateful
@@ -2016,7 +2130,8 @@ State (section 6):
 13. A recurrent slot's op is not a recurrent op, or differs from the op reading it; its dtype is not
     f32; its tensors are empty, have a non-positive shape or an init other than 0 (`"body"` too, for
     op `recurrence`), or do not fit the op (6.3 to 6.7, 6.10).
-14. `attention.causal` is not true; `linear_attention.causal` is not true (5.15, 6.4).
+14. `attention.causal` is not true; `linear_attention.causal` is not true; `mla_attention.causal` is not true
+    (5.15, 6.4, 5.20).
 15. `mask: turn_state` with a window or sinks (in any application), with a windowed kv slot, or
     without an embedding `state_weight` (6.8.2).
 16. `evict: turn_state` with an attention node reading the slot whose mask is not turn_state
@@ -2089,7 +2204,8 @@ Recurrence (section 6.10; `tools/ir_recurrence.py` reports these as "IR_SPEC 6.1
 
 Widths (sections 5 and 10.1.1):
 37. A value's width does not fit the node that reads it: a `scale` weight or bias whose length is not
-    the input's width (5.4); `split` sizes that do not sum to it (5.5); an `rmsnorm` group that does
+    the input's width (5.4); `split` sizes (times `groups`) that do not sum to it (5.5); an
+    `mla_attention` input of another width than its attributes give (5.20); an `rmsnorm` group that does
     not divide it (5.6); `add`, `mul` or `sub` operands of two shapes (5.10); a `mul_col` column that
     is not [T, 1] (5.12); a `rope` input whose width is not its heads times head_dim (5.14);
     `depth_attend` sources of two shapes (5.18); `expr` inputs of two shapes (5.19).
@@ -2173,9 +2289,11 @@ digit order (1.0 is `3f800000`). Integer arrays are plain JSON lists.
   slot's tensors after the last row. A `list` value is a JSON list of tensors; `tokens` and `pos`
   are integer lists. What a one-node block lacks takes these values, which the fixtures' expected
   values assume: an `attention` node reads a kv slot made from its own `heads`, `kv_heads`,
-  `head_dim`, `window` and `sinks`, empty at the start, with room for the rows, and its rows sit at
+  `head_dim`, `window` and `sinks` (an `mla_attention` node: its `heads`, kv_heads 1, head_dim kv_rank +
+  qk_rope, `window` and `sinks`), empty at the start, with room for the rows, and its rows sit at
   positions 0 .. T-1 (the mask of section 5.15 at those positions; mask `"causal"`, as no fixture
-  has ids); a recurrent op reads a slot of its own op whose tensors are those sections 6.4 to 6.7 and
+  has ids); a `rope` node whose `freq_factors` has two sets takes the sequence's length as its largest
+  position plus one (section 5.14); a recurrent op reads a slot of its own op whose tensors are those sections 6.4 to 6.7 and
   6.10 give, at their initial values; an `embedding` with `state_weight` takes vocab as the row count
   of its `weight` (ids vocab .. vocab + k - 1 read the state rows); a node with `{i}` in a tensor name
   reads it with i = 0.
@@ -2593,8 +2711,13 @@ extractor's proposal of T5's bias (paperkiln, 26 October 2026). Each with the an
 
 ### 12.5 Open
 
-None. Q16 is settled in v1.4.2 (section 12.6). A question raised after revision 1.3 takes the number
-Q17.
+Q16 is settled in v1.4.2 (section 12.6).
+
+- **Q17. Layers whose node lists differ** (revision 1.5). DeepSeek-V2-Lite's first layer and V3's first three
+  are dense where the rest are mixtures of experts (`leading_dense_block_count`), and the block is one node list
+  repeated, so section 9.3's deepseek2 refuses such files by name (as it refuses V3's sigmoid router with its
+  selection bias, and YaRN). Settling it needs a statement of a block whose applications differ in their nodes.
+  The next question takes the number Q18.
 
 ### 12.6 Settled in revision 1.4
 
@@ -2674,6 +2797,47 @@ The first primitive drafted under the workspace's path for new primitives (`LOCA
   that resolved before resolves differently. Cases: the 42 v2 conversations of paperkiln's
   `tests/chat_template_cases.json` (18 rendered, 24 refused) in `chat/render.json` beside the 32 v1 cases,
   and its 12 reply-parsing cases in `chat/parse_reply.json` (adapter method `parse_reply`, section 11.3).
+
+### 12.7 Settled in revision 1.5
+
+The later third-party families (`LOCAL_LLM_WORK.md` E4), each taken through the triage of `LOCAL_LLM_STACK.md`
+section 5.4, cheapest first. Each is a published mechanism; none is new here.
+
+- **L1. Gemma 2's soft-capping** (Gemma Team 2024, arXiv 2408.00118). The final cap is row-wise, an `expr` in
+  the head (triage b: no new text). The attention cap acts on the scores inside the softmax, which no node
+  exposes, so it is an optional attribute of `attention`, `softcap` (triage c; section 5.15), after the scale
+  and before any position bias (llama.cpp's order; transformers' Gemma 2 also caps the scaled scores). The
+  local and global windows already existed as per-layer attributes. Cases: op `attention/softcap`,
+  `_window_sinks`, `_position_bias`; model `tp_gemma2` (local layers windowed, both caps binding) with decode,
+  chunks and rewind-into-window traces; refusals `softcap_not_positive` and `architecture_gemma2_softcap_dropped`
+  (rule 38: the file's metadata states the cap its embedded document drops).
+- **L2. LongRoPE** (Ding et al. 2024, arXiv 2402.13753; Phi-3, arXiv 2404.14219). Per-pair rescaling of the
+  RoPE frequencies is an attribute of `rope` (triage c; section 5.14): `freq_factors`, one set or a short and a
+  long set with the length that separates them, and `attn_factor`, the table's scaling. The set follows the
+  sequence's length, as in transformers' Phi-3 (its generation recomputes the cache when a sequence first
+  passes `original_max_position_embeddings`), not the context an engine is configured for (llama.cpp picks the
+  set once from its context size, so configured above original_ctx it computes another function on shorter
+  sequences); the decode and rewind rules follow (sections 5.14 and 6.9). One set is Llama 3.1's `rope_freqs`
+  as well (section 9.3's llama does not build it yet). Cases: op `rope/freq_factors`, `_short`, `_long`,
+  `rope/attn_factor`, `rope/freq_factors_partial_attn_factor`; model `tp_phi3` (original_ctx 6, partial
+  rotary, attn_factor 1.25, tied head) with decode, chunks and truncate traces that cross the boundary;
+  refusals `attn_factor_not_positive` and `freq_factors_*` (4: rules 41 and 6).
+- **L3. Third-party mixtures of experts** (Mixtral; Qwen1.5-MoE and Qwen2-MoE; Qwen3-MoE). Wiring (triage a):
+  `moe_ffn` already states llama.cpp's expert layout, top-k and both gate normalisations, and Qwen-MoE's shared
+  expert with its sigmoid gate is `linear`, `sigmoid` and `mul_col`. Section 9.3 gains qwen2moe and qwen3moe;
+  Mixtral is the llama builder's existing MoE form. Cases: models `tp_qwen2moe` and `tp_qwen3moe` with decode
+  and chunks traces.
+- **L4. Multi-head latent attention** (DeepSeek-V2, arXiv 2405.04434). No existing node computes it: its keys
+  and values are per-head linear maps of a cached latent, its query's rotary part is a separate per-head slice,
+  and its value width differs from its key width (triage d, a new op). Stated as `mla_attention` (section 5.20)
+  in the absorbed form llama.cpp converts to, over a kv slot whose row is the latent and the shared rotary key,
+  so every rule of the kv slot (window, sinks, decode, rewind, snapshots, `kv_rows`) applies unchanged and no
+  new kind of slot is needed; the per-head split of the query is `split` with `groups` (section 5.5). The
+  reference agrees with the decompressed float64 statement of the paper's equations within 2.1e-7 of max(1,
+  |ref|) (`tests/test_ir_v15.py`, with the soft cap's 3.8e-8 and LongRoPE's 8.8e-8). Cases: op
+  `mla_attention/two_heads`, `_window_sinks`, `_one_head`, `split/groups`; model `tp_deepseek2` (query through
+  the low-rank q_a / q_b, latent 6, rope 4, nope 4, v 3; raw gates scaled by 2.5; one shared expert) with decode,
+  chunks and truncate traces; refusals `split_groups_zero` and `mla_*` (7: rules 12, 42, 7, 8, 14).
 
 ## Appendix A. The `-ffast-math` audit
 
@@ -2765,6 +2929,21 @@ Nothing in this audit changes a computed value: the tiny-chat precision gate (HE
 equal to dc29b5e6 bit for bit) and the pinned commits of the RunPod campaigns are unaffected.
 
 ## Appendix B. Changelog
+
+- **v1.5.0** (tag, 28 October 2026; revision 1.5). The later third-party families (section 12.7):
+  `attention.softcap` (section 5.15); `rope.freq_factors` and `rope.attn_factor` (section 5.14, rule 41, with
+  the decode and rewind rule of the two sets, section 6.9); `split.groups` (section 5.5); the op `mla_attention`
+  (section 5.20, rule 42; rules 7, 10, 12, 14 and 37 name it); section 9.3's phi3, gemma2, qwen2moe, qwen3moe
+  and deepseek2; Q17 opened. Schema: those attributes and the op. Tools: the reference computes them;
+  `tools/gguf_ir.py` builds the five families; `tools/ir_validate.py` checks rules 41 and 42 and the new
+  clauses; `tests/test_ir_v15.py` checks the reference against float64 statements of the published formulas.
+  Suite: models `tp_phi3`, `tp_gemma2`, `tp_qwen2moe`, `tp_qwen3moe` and `tp_deepseek2` with model cases, decode
+  and chunks traces, truncate traces (`tp_phi3`, `tp_deepseek2`), a rewind into the window (`tp_gemma2`), accept
+  cases and digest vectors; op cases `attention/softcap*` (3), `rope/freq_factors*` and `rope/attn_factor` (5),
+  `split/groups`, `mla_attention/*` (3); refusals (14): 578 cases. The refusal `architecture_without_graph`
+  relabels pk_llama as "falcon" (it used "phi3", which section 9.3 now defines); its rule is unchanged. Every
+  earlier expected value unchanged; regenerated in the named environment (section 4.6).
+  `conformance/expected_fail.json`: the clean-room engine's new cases.
 
 - **v1.4.2** (tag, 28 October 2026; section 2.6). Three statements of what the reference and the
   implementations already do, none moving a valid document's meaning, the schema or an existing expected
@@ -2946,6 +3125,16 @@ the engine has agreed to close, the specification already states the intended be
 | ember WebGPU (browser) | llama and llama.cpp-layout MoE GGUFs on the tuned path's kernels; every other document ember's interpreter runs, all profiles except recurrence, on a WGSL interpreter of the document (ember 36c61eb); F32, F16, BF16 and Q8_0 matrices kept as stored | ROUNDING (WGSL; f32 accumulation, one invocation per output row) | f32, ascending columns per row | recurrence, rope_heads "first", forked lists, k-quant and Q4_0/Q5_x matrices, kv contexts past 4,096 positions (these run in WebAssembly); gated on a software adapter (SwiftShader) against ember CPU: greedy 40/40 and top-1 at every position (17b3999) |
 | ember tuned llama path, CPU and CUDA | llama | ROUNDING against the interpreter | CUDA: TF32 on by default (`EMBER_GEMM_TF32=0` gives FP32) | anything it is not selected for |
 
+**Revision 1.5 in the engines.** The numpy reference computes all of it; its float64 checks are in section
+12.7, and its gates against transformers on synthetic models converted by llama.cpp's own converter (Phi-3
+with LongRoPE and with a window, Gemma 2, Mixtral, Qwen2-MoE, Qwen3-MoE, DeepSeek-V2 with and without the
+low-rank query) are paperkiln's (`LOCAL_LLM_STACK.md` section 5.3). paperkiln's mtstudio runs only its own
+modules, so the five new models and the new op cases are skips for it. The clean-room engine (revision 1.4,
+v1.4.2) has no graph for the five architectures and no path for the new attributes and op: the 35 cases
+that use them are in `expected_fail.json`. ember's interpreter
+implements the revision in its own session. llama.cpp, transformers and ONNX Runtime GenAI keep their v1.3.5
+receipts.
+
 **Revision 1.4 in the engines.** The numpy reference computes `relative_kv`. paperkiln's mtstudio runs
 it through `ops::shaw_attention`, the op it trains with, in its `ir_eval` (op and gradient cases) and in
 `pk_flex_shaw`'s model case; its window-and-sinks case is a skip, as for `position_bias`. The clean-room
@@ -3033,7 +3222,8 @@ architecture, or the model's own Hugging Face semantics where section 9.3 says l
 ### D.1 Reading the file
 
 - arch is the string `general.architecture`; D.3 to D.6 give a graph for `"llama"`, `"mistral"`,
-  `"qwen2"`, `"qwen3"`, `"gpt2"`, `"gptneox"`, `"gemma3"` and `"mamba"`, and no other value builds one.
+  `"qwen2"`, `"qwen3"`, `"gpt2"`, `"gptneox"`, `"gemma3"` and `"mamba"`, and D.8 to D.11 (revision 1.5) for
+  `"phi3"`, `"gemma2"`, `"qwen2moe"`, `"qwen3moe"` and `"deepseek2"`; no other value builds one.
 - K(key) is the value of the metadata key `<arch>.<key>` (for a Mistral file, `mistral.embedding_length`
   and so on). Where a key is written "K(key), default v", an absent key reads v; every other key read
   is required, and a file without it builds no graph, as does a key of the wrong type. Types: a count
@@ -3052,10 +3242,10 @@ architecture, or the model's own Hugging Face semantics where section 9.3 says l
   f32 key's value is exact in binary64) and rounded to f32 once, as section 3.5 reads any attribute: the
   attention scale 1/sqrt(hd) is the f32 nearest to the binary64 quotient of 1 and the binary64 square
   root.
-- Common values (D.3 to D.5): d = K(embedding_length), L = K(block_count), H = K(attention.head_count),
+- Common values (D.3 to D.5, D.8 to D.10): d = K(embedding_length), L = K(block_count), H = K(attention.head_count),
   KV = K(attention.head_count_kv), default H, hd = K(attention.key_length), default the integer part of
   d / H, ctx = K(context_length).
-- **No RoPE scaling** (where D.3 to D.5 require it): K(rope.scaling.type) is absent or `"none"`, and the
+- **No RoPE scaling** (where D.3 to D.11 require it): K(rope.scaling.type) is absent or `"none"`, and the
   file has no `rope_freqs.weight`; otherwise the file builds no graph.
 
 ### D.2 Notation
@@ -3228,8 +3418,9 @@ document, given the file's tensor names:
    `rmsnorm.group`: `linear.bias` and `linear.tied_to` null, `scale.bias` null, `rope.freq_scale` 1,
    `rope.kv_heads` the node's `heads`, `rope.n_rot` its `head_dim`, `attention.mask` `"causal"`,
    `rmsnorm.weight_offset` 0, `depth_attend.eps` 1e-5, `conv1d_causal.bias` null, `selective_scan.d` null
-   and `selective_scan.dt_softplus` true; a kv slot without `dtype` gets `"f32"`. Attributes whose default
-   is "none" (`position_bias`, `relative_kv`, `state_weight`) stay absent.
+   and `selective_scan.dt_softplus` true, and from revision 1.5 `split.groups` 1 and `rope.attn_factor` 1;
+   a kv slot without `dtype` gets `"f32"`. Attributes whose default is "none" (`position_bias`,
+   `relative_kv`, `state_weight`, and from revision 1.5 `softcap` and `freq_factors`) stay absent.
 3. A `linear` with a non-null `tied_to`: when the file has no tensor named by its `weight`, `weight`
    becomes the `tied_to` name; then `tied_to` becomes null. The name is tested as written, `{i}`
    included (Appendix D ties only the head's linear, whose names hold no `{i}`).
@@ -3246,3 +3437,122 @@ document, given the file's tensor names:
 
 Two normal forms are equal when they have the same members with equal values, lists (nodes, slots,
 inputs, sizes, `per_layer` entries) of the same length equal in order.
+
+### D.8 phi3 (revision 1.5)
+
+eps = K(attention.layer_norm_rms_epsilon); theta = K(rope.freq_base), default 10000; n_rot =
+K(rope.dimension_count), default hd; ff = K(feed_forward_length); w = K(attention.sliding_window), default 0.
+The file has no `rope_freqs.weight`, K(rope.scaling.type) is absent or `"none"`, and the file has no
+`blk.0.ffn_gate_inp.weight`; otherwise it builds no graph. LongRoPE applies when the file has
+`rope_factors_short.weight` or `rope_factors_long.weight`: it must have both (one alone builds no graph),
+F = `{"short": "rope_factors_short.weight", "long": "rope_factors_long.weight", "original_ctx":
+K(rope.scaling.original_context_length)}` and m = K(rope.scaling.attn_factor), default 1 (0 reads 1).
+
+    E  = E0
+    S  = [KV(w)]
+    N  = RMS(x, B attn_norm.weight) -> h
+         when the file has blk.0.attn_qkv.weight:
+             LIN(h, B attn_qkv.weight[, B attn_qkv.bias]) -> qkv
+             split(qkv) -> [q, k, v] {sizes: [H hd, KV hd, KV hd]}
+         otherwise:
+             LIN(h, B attn_q.weight[, B attn_q.bias]) -> q;  LIN(h, B attn_k.weight[, B attn_k.bias]) -> k
+             LIN(h, B attn_v.weight[, B attn_v.bias]) -> v
+         ROPE(theta, "neox", n_rot), with freq_factors: F and attn_factor: m under LongRoPE (attn_factor only
+             when m != 1)
+         ATT(1/sqrt(hd), w)
+         LIN(a, B attn_output.weight[, B attn_output.bias]) -> o
+         add(x, o) -> x
+         RMS(x, B ffn_norm.weight) -> h2
+         LIN(h2, B ffn_up.weight) -> gu2;  split(gu2) -> [g, u] {sizes: [ff, ff]}
+         silu(g) -> g;  mul(g, u) -> gu;  LIN(gu, B ffn_down.weight) -> f
+         add(x, f) -> x
+    HD = RMS(x, output_norm.weight) -> h;  HEAD
+
+Each bracketed bias is present when the file has that tensor of layer 0 (`blk.0.attn_qkv.bias` and so on).
+
+### D.9 gemma2 (revision 1.5)
+
+eps = K(attention.layer_norm_rms_epsilon); n_rot = K(rope.dimension_count), default hd; theta =
+K(rope.freq_base), default 10000; no RoPE scaling. sw = K(attention.sliding_window), default 4096 (0 reads
+4096); c = K(attn_logit_softcapping), default 50 (0 reads 50); fc = K(final_logit_softcapping), default 30
+(0 reads 30). Application i is local when i mod 2 = 0 and global otherwise; windows, written as a
+`{"per_layer": [L entries]}` object, are sw for a local application and 0 for a global one. scale =
+1/sqrt(d / H) when L = 46 (the 27B model; the binary64 quotient), else 1/sqrt(hd). C is the shortest decimal
+that reads back as the f32 nearest fc (Python's repr of that float, `30.0` for 30).
+
+    E  = E0 + [affine(x) -> x {scale: sqrt(d), shift: 0}]
+    S  = [KV(windows)]
+    N  = RMS(x, B attn_norm.weight) -> h
+         LIN(h, B attn_q.weight) -> q;  LIN(h, B attn_k.weight) -> k;  LIN(h, B attn_v.weight) -> v
+         ROPE(theta, "neox", n_rot)
+         ATT(scale, windows), with softcap: c
+         LIN(a, B attn_output.weight) -> o
+         RMS(o, B post_attention_norm.weight) -> o
+         add(x, o) -> x
+         RMS(x, B ffn_norm.weight) -> h2
+         LIN(h2, B ffn_gate.weight) -> g;  LIN(h2, B ffn_up.weight) -> u
+         gelu(g) -> g {approx: "tanh"};  mul(g, u) -> gu
+         LIN(gu, B ffn_down.weight) -> f
+         RMS(f, B post_ffw_norm.weight) -> f
+         add(x, f) -> x
+    HD = RMS(x, output_norm.weight) -> h;  HEAD written to z (its out is "z", not "logits");
+         expr(z) -> logits {expr: "tanh(x / C) * C"}
+
+### D.10 qwen2moe, qwen3moe (revision 1.5)
+
+D.3's graph with qwen2moe read as qwen2 and qwen3moe as qwen3 (pairing `"neox"`, w = 0, biases and q/k norms
+by the tensors the file has), with FFN replaced by
+
+    moe_ffn(h2) -> f {router: B ffn_gate_inp.weight,
+                      experts: {"gate": B ffn_gate_exps.weight, "up": B ffn_up_exps.weight,
+                                "down": B ffn_down_exps.weight},
+                      n_experts: K(expert_count), top_k: K(expert_used_count),
+                      gate_norm: G, activation: "silu"}
+
+G `"raw"` for qwen2moe and `"renorm"` for qwen3moe, followed, for qwen2moe when the file has
+`blk.0.ffn_gate_inp_shexp.weight`, by
+
+    LIN(h2, B ffn_gate_shexp.weight) -> sg;  LIN(h2, B ffn_up_shexp.weight) -> su
+    silu(sg) -> sg;  mul(sg, su) -> sgu;  LIN(sgu, B ffn_down_shexp.weight) -> sf
+    LIN(h2, B ffn_gate_inp_shexp.weight) -> sgate;  sigmoid(sgate) -> sgate
+    mul_col(sf, sgate) -> sf;  add(f, sf) -> f
+
+### D.11 deepseek2 (revision 1.5)
+
+d = K(embedding_length), L = K(block_count), H = K(attention.head_count), ctx = K(context_length), eps =
+K(attention.layer_norm_rms_epsilon); dr = K(rope.dimension_count); dn = K(attention.key_length_mla) - dr;
+dv = K(attention.value_length_mla); r = K(attention.kv_lora_rank); theta = K(rope.freq_base), default 10000;
+no RoPE scaling. The file builds no graph when it lacks `blk.0.attn_k_b.weight` (or the key
+`attention.key_length_mla`), when K(leading_dense_block_count), default 0, is above 0, when
+K(expert_gating_func), default 1 (0 reads 1), is not 1, or when it has `blk.0.exp_probs_b.bias`. G is
+`"renorm"` when K(expert_weights_norm), default false, is true, else `"raw"`; s = K(expert_weights_scale),
+default 1 (0 reads 1).
+
+    E  = E0
+    S  = [{"name": "kv", "kind": "kv", "heads": H, "kv_heads": 1, "head_dim": r + dr, "max_len": ctx,
+           "window": 0, "sinks": 0, "dtype": "f32"}]
+    N  = RMS(x, B attn_norm.weight) -> h
+         when the file has blk.0.attn_q_a.weight:
+             LIN(h, B attn_q_a.weight) -> qa;  RMS(qa, B attn_q_a_norm.weight) -> qa
+             LIN(qa, B attn_q_b.weight) -> q
+         otherwise:  LIN(h, B attn_q.weight) -> q
+         split(q) -> [qn, qr] {sizes: [dn, dr], groups: H}
+         LIN(h, B attn_kv_a_mqa.weight) -> ckr
+         split(ckr) -> [c, kr] {sizes: [r, dr]}
+         RMS(c, B attn_kv_a_norm.weight) -> c
+         rope(qr, kr, pos) -> [qr, kr] {heads: H, kv_heads: 1, head_dim: dr, n_rot: dr, theta: theta,
+                                        rope_heads: "all", pairing: "interleaved"}
+         mla_attention(qn, qr, c, kr) -> a {state: "kv", heads: H, kv_rank: r, qk_nope: dn, qk_rope: dr,
+                                            v_head_dim: dv, k_b: B attn_k_b.weight, v_b: B attn_v_b.weight,
+                                            scale: 1/sqrt(dn + dr), causal: true, window: 0, sinks: 0}
+         LIN(a, B attn_output.weight) -> o
+         add(x, o) -> x
+         RMS(x, B ffn_norm.weight) -> h2
+         moe_ffn(h2) -> f {D.10's attributes, gate_norm: G}
+         affine(f) -> f {scale: s, shift: 0}                                (only when s != 1)
+         when the file has blk.0.ffn_gate_shexp.weight:
+             LIN(h2, B ffn_gate_shexp.weight) -> sg;  LIN(h2, B ffn_up_shexp.weight) -> su
+             silu(sg) -> sg;  mul(sg, su) -> sgu;  LIN(sgu, B ffn_down_shexp.weight) -> sf
+             add(f, sf) -> f
+         add(x, f) -> x
+    HD = RMS(x, output_norm.weight) -> h;  HEAD
