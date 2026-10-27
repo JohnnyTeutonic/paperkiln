@@ -1,0 +1,180 @@
+{
+ "pksft": [
+  {
+   "key": "hellaswag/1140|1",
+   "pos": 4,
+   "ember": 265,
+   "ref": 261,
+   "ir_top2": [
+    265,
+    261
+   ],
+   "ir_logit_gap": 5.7220458984375e-06,
+   "ir_logit_ember_minus_ref": 5.7220458984375e-06
+  },
+  {
+   "key": "hellaswag/10641|0",
+   "pos": 23,
+   "ember": 3,
+   "ref": 819,
+   "ir_top2": [
+    819,
+    3
+   ],
+   "ir_logit_gap": 1.9073486328125e-06,
+   "ir_logit_ember_minus_ref": -1.9073486328125e-06
+  },
+  {
+   "key": "hellaswag/21102|3",
+   "pos": 27,
+   "ember": 756,
+   "ref": 1393,
+   "ir_top2": [
+    1393,
+    756
+   ],
+   "ir_logit_gap": 2.86102294921875e-06,
+   "ir_logit_ember_minus_ref": -2.86102294921875e-06
+  },
+  {
+   "key": "hellaswag/22178|1",
+   "pos": 39,
+   "ember": 319,
+   "ref": 745,
+   "ir_top2": [
+    745,
+    319
+   ],
+   "ir_logit_gap": 1.9073486328125e-06,
+   "ir_logit_ember_minus_ref": -1.9073486328125e-06
+  }
+ ],
+ "live": [
+  {
+   "key": "hellaswag/11242|1",
+   "pos": 14,
+   "ember": 74,
+   "ref": 91,
+   "ir_top2": [
+    74,
+    91
+   ],
+   "ir_logit_gap": 8.58306884765625e-06,
+   "ir_logit_ember_minus_ref": 8.58306884765625e-06
+  }
+ ],
+ "pick_e1_L4": [
+  {
+   "key": "hellaswag/4992|2",
+   "pos": 1,
+   "ember": 360,
+   "ref": 265,
+   "ir_top2": [
+    360,
+    265
+   ],
+   "ir_logit_gap": 9.5367431640625e-07,
+   "ir_logit_ember_minus_ref": 9.5367431640625e-07
+  },
+  {
+   "key": "hellaswag/4590|0",
+   "pos": 11,
+   "ember": 349,
+   "ref": 319,
+   "ir_top2": [
+    349,
+    319
+   ],
+   "ir_logit_gap": 5.7220458984375e-06,
+   "ir_logit_ember_minus_ref": 5.7220458984375e-06
+  }
+ ],
+ "pick_e1_60m_L32": [
+  {
+   "key": "hellaswag/24129|0",
+   "pos": 8,
+   "ember": 290,
+   "ref": 368,
+   "ir_top2": [
+    290,
+    368
+   ],
+   "ir_logit_gap": 9.5367431640625e-07,
+   "ir_logit_ember_minus_ref": 9.5367431640625e-07
+  },
+  {
+   "key": "hellaswag/35163|1",
+   "pos": 29,
+   "ember": 319,
+   "ref": 888,
+   "ir_top2": [
+    319,
+    888
+   ],
+   "ir_logit_gap": 1.9073486328125e-06,
+   "ir_logit_ember_minus_ref": 1.9073486328125e-06
+  },
+  {
+   "key": "hellaswag/50313|0",
+   "pos": 6,
+   "ember": 814,
+   "ref": 15090,
+   "ir_top2": [
+    814,
+    15090
+   ],
+   "ir_logit_gap": 9.5367431640625e-07,
+   "ir_logit_ember_minus_ref": 9.5367431640625e-07
+  }
+ ],
+ "pick_e5_s0": [
+  {
+   "key": "hellaswag/12222|3",
+   "pos": 18,
+   "ember": 265,
+   "ref": 349,
+   "ir_top2": [
+    265,
+    349
+   ],
+   "ir_logit_gap": 7.62939453125e-06,
+   "ir_logit_ember_minus_ref": 7.62939453125e-06
+  },
+  {
+   "key": "hellaswag/2116|1",
+   "pos": 22,
+   "ember": 289,
+   "ref": 330,
+   "ir_top2": [
+    289,
+    330
+   ],
+   "ir_logit_gap": 1.049041748046875e-05,
+   "ir_logit_ember_minus_ref": 1.049041748046875e-05
+  },
+  {
+   "key": "hellaswag/36177|2",
+   "pos": 18,
+   "ember": 3176,
+   "ref": 10606,
+   "ir_top2": [
+    3176,
+    10606
+   ],
+   "ir_logit_gap": 1.52587890625e-05,
+   "ir_logit_ember_minus_ref": 1.52587890625e-05
+  },
+  {
+   "key": "hellaswag/39312|2",
+   "pos": 32,
+   "ember": 800,
+   "ref": 761,
+   "ir_top2": [
+    800,
+    761
+   ],
+   "ir_logit_gap": 4.76837158203125e-06,
+   "ir_logit_ember_minus_ref": 4.76837158203125e-06
+  }
+ ]
+}

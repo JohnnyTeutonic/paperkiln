@@ -1,0 +1,53 @@
+{
+ "method": "each first-campaign run's chunks read one at a time and keyed as tools/bench_eval.py keys them at fafc4750 (unique_ids), then bench_eval.summarise on the 10,042 HellaSwag items (experiments/benchmarks_2026-10-26/bench2.py hellaswag)",
+ "runs": {
+  "pkbase": {
+   "run": "runs/score_hfgguf/x/bench/pkbase",
+   "items": 10042,
+   "acc": 0.2845,
+   "acc_norm": 0.2986
+  },
+  "pksft": {
+   "run": "runs/score_hfgguf/x/bench/pksft",
+   "items": 10042,
+   "acc": 0.2853,
+   "acc_norm": 0.2949
+  },
+  "live": {
+   "run": "runs/score_live/x/bench/live",
+   "items": 10042,
+   "acc": 0.2609,
+   "acc_norm": 0.2695
+  },
+  "pick_e1_L16": {
+   "run": "runs/score_hfgguf/x/bench/pick_e1_L16",
+   "items": 10042,
+   "acc": 0.2645,
+   "acc_norm": 0.2662
+  },
+  "pick_e1_L32": {
+   "run": "runs/score_hfgguf/x/bench/pick_e1_L32",
+   "items": 10042,
+   "acc": 0.2635,
+   "acc_norm": 0.2669
+  },
+  "pick_pilot_s35": {
+   "run": "runs/score_hfgguf/x/bench/pick_pilot_s35",
+   "items": 10042,
+   "acc": 0.261,
+   "acc_norm": 0.2661
+  },
+  "pythia160m": {
+   "run": "runs/hf_ref/x/bench/pythia160m",
+   "items": 10042,
+   "acc": 0.2887,
+   "acc_norm": 0.3056
+  },
+  "smollm2_135m": {
+   "run": "runs/hf_ref/x/bench/smollm2_135m",
+   "items": 10042,
+   "acc": 0.3565,
+   "acc_norm": 0.4356
+  }
+ }
+}

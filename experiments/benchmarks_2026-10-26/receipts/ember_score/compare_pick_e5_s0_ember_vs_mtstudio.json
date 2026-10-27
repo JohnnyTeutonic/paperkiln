@@ -1,0 +1,47 @@
+{
+ "a": "ember runs2/ember_score/x/bench/pick_e5_s0",
+ "b": "mtstudio runs2/score_hfgguf/x/xcheck_mtstudio/pick_e5_s0",
+ "requests": 199,
+ "tokens": 3827,
+ "max_abs_logprob_diff": 1.6233272714494262e-05,
+ "mean_abs_logprob_diff": 2.204268617944037e-06,
+ "median_abs_sum_diff": 6.0667896093491436e-06,
+ "max_abs_sum_diff": 5.9839679323658856e-05,
+ "argmax_agree": "3827/3827",
+ "items": 72,
+ "per_set": {
+  "hellaswag": {
+   "items": 26,
+   "pick_agree": 26,
+   "pick_norm_agree": 26
+  },
+  "arc_easy": {
+   "items": 6,
+   "pick_agree": 6,
+   "pick_norm_agree": 6
+  },
+  "arc_challenge": {
+   "items": 2,
+   "pick_agree": 2,
+   "pick_norm_agree": 2
+  },
+  "piqa": {
+   "items": 5,
+   "pick_agree": 5,
+   "pick_norm_agree": 5
+  },
+  "winogrande": {
+   "items": 3,
+   "pick_agree": 3
+  },
+  "lambada": {
+   "items": 13,
+   "lastword_agree": 13
+  },
+  "blimp": {
+   "items": 17,
+   "pick_agree": 17
+  }
+ },
+ "disagreements": []
+}

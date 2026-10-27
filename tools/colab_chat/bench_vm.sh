@@ -17,8 +17,10 @@ shift 2
 mkdir -p "$OUT"
 cd /content/pk
 ITEMS=/content/bench/bench_v1.jsonl
+# ember's server runs in an ember_cwd folder whose debugging.log points at /dev/null; its stderr
+# (ember_stderr.log there: warnings and errors) comes home, as the cause of a failed request is logged there.
 pack() { cp /content/chat/provenance.json "$OUT/" 2>/dev/null || true; nvidia-smi -L > "$OUT/gpu.txt" 2>&1 || true
-  tar -czf /tmp/bench_results.tar.gz -C "$OUT" --exclude='*.tar.gz' --exclude='*.gguf' --exclude=www --exclude='ember_cwd' . \
+  tar -czf /tmp/bench_results.tar.gz -C "$OUT" --exclude='*.tar.gz' --exclude='*.gguf' --exclude=www --exclude='debugging.log' . \
   && mv /tmp/bench_results.tar.gz "$OUT/results.tar.gz"; }
 trap 'pack || true' ERR
 export MICROTORCH_DEVICE=cuda MICROTORCH_DEVICE_OPS=1 MICROTORCH_ATTN_BLOCKED=1 MICROTORCH_CUBLAS=1 \

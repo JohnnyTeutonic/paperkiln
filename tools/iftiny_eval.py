@@ -31,6 +31,7 @@ import os
 import subprocess
 import sys
 import time
+import urllib.error
 import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -89,6 +90,19 @@ def prompts(st, dist):
 
 
 # ---------------------------------------------------------------- generators
+def post_json(url, body, timeout=600):
+    """POST body as JSON; an HTTP error raises with the server's own message (ember's /chat returns
+    {"error": ...}), which urllib's HTTPError leaves out: pk-bench2's IF-tiny job logged only "HTTP Error 500"
+    on 26 Oct 2026 (the cause, ember's JSON refusing a reply cut inside a UTF-8 character, was in the body)."""
+    req = urllib.request.Request(url, data=json.dumps(body).encode(), headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        msg = e.read().decode("utf-8", "replace")[:800]
+        raise RuntimeError(f"{url}: HTTP {e.code}: {msg} (request {json.dumps(body)[:300]})") from None
+
+
 class EmberGen:
     def __init__(self, a, spec_path, work):
         import carry5_eval
@@ -104,10 +118,7 @@ class EmberGen:
                 "return_ids": True}
         if system:
             body["system"] = system
-        req = urllib.request.Request(self.srv.url + "/chat", data=json.dumps(body).encode(),
-                                     headers={"Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=600) as r:
-            x = json.loads(r.read())
+        x = post_json(self.srv.url + "/chat", body)
         return {"reply": x["reply"], "stop": x["stop_reason"], "ids": x.get("ids"), "stop_id": x.get("stop_id"),
                 "prompt_ids": x.get("prompt_ids"), "history_used": x.get("history_turns_used", len(history))}
 

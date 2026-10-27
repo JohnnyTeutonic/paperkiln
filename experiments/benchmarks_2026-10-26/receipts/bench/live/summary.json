@@ -1,0 +1,182 @@
+{
+ "meta": {
+  "tag": "live",
+  "scorer": "mtstudio",
+  "items_sha256": "978548d1c64f9a361c2e3d210e889955061bd7f71a496ab6a7734caf3969033c",
+  "n_items": 28548,
+  "ctx": 256,
+  "truncated": {
+   "arc_challenge": 4,
+   "piqa": 10
+  }
+ },
+ "sets": {
+  "hellaswag": {
+   "n": 10042,
+   "chance": 0.25,
+   "unfit": 0,
+   "acc": 0.2609,
+   "acc_ci95": [
+    0.2524,
+    0.2696
+   ],
+   "acc_norm": 0.2695,
+   "acc_norm_ci95": [
+    0.2609,
+    0.2782
+   ],
+   "headline": "acc_norm"
+  },
+  "arc_easy": {
+   "n": 2376,
+   "chance": 0.2502,
+   "unfit": 0,
+   "acc": 0.2723,
+   "acc_ci95": [
+    0.2548,
+    0.2906
+   ],
+   "acc_norm": 0.2698,
+   "acc_norm_ci95": [
+    0.2523,
+    0.288
+   ],
+   "headline": "acc"
+  },
+  "arc_challenge": {
+   "n": 1172,
+   "chance": 0.2502,
+   "unfit": 0,
+   "acc": 0.2176,
+   "acc_ci95": [
+    0.1949,
+    0.2421
+   ],
+   "acc_norm": 0.2509,
+   "acc_norm_ci95": [
+    0.2269,
+    0.2765
+   ],
+   "headline": "acc_norm"
+  },
+  "piqa": {
+   "n": 1838,
+   "chance": 0.5,
+   "unfit": 4,
+   "acc": 0.5316,
+   "acc_ci95": [
+    0.5087,
+    0.5543
+   ],
+   "acc_norm": 0.5141,
+   "acc_norm_ci95": [
+    0.4913,
+    0.5369
+   ],
+   "headline": "acc"
+  },
+  "winogrande": {
+   "n": 1267,
+   "chance": 0.5,
+   "unfit": 0,
+   "acc": 0.5012,
+   "acc_ci95": [
+    0.4737,
+    0.5287
+   ],
+   "headline": "acc"
+  },
+  "lambada": {
+   "n": 5153,
+   "chance": 0.0,
+   "unfit": 0,
+   "acc": 0.0052,
+   "acc_ci95": [
+    0.0036,
+    0.0076
+   ],
+   "ppl": 5019052029.802,
+   "headline": "acc"
+  },
+  "blimp": {
+   "n": 6700,
+   "chance": 0.5,
+   "unfit": 0,
+   "acc": 0.5872,
+   "acc_ci95": [
+    0.5753,
+    0.5989
+   ],
+   "per_paradigm": {
+    "adjunct_island": 0.55,
+    "anaphor_gender_agreement": 0.47,
+    "anaphor_number_agreement": 0.54,
+    "animate_subject_passive": 0.5,
+    "animate_subject_trans": 0.36,
+    "causative": 0.55,
+    "complex_NP_island": 0.52,
+    "coordinate_structure_constraint_complex_left_branch": 0.32,
+    "coordinate_structure_constraint_object_extraction": 0.63,
+    "determiner_noun_agreement_1": 0.86,
+    "determiner_noun_agreement_2": 0.76,
+    "determiner_noun_agreement_irregular_1": 0.66,
+    "determiner_noun_agreement_irregular_2": 0.74,
+    "determiner_noun_agreement_with_adj_2": 0.78,
+    "determiner_noun_agreement_with_adj_irregular_1": 0.65,
+    "determiner_noun_agreement_with_adj_irregular_2": 0.68,
+    "determiner_noun_agreement_with_adjective_1": 0.79,
+    "distractor_agreement_relational_noun": 0.48,
+    "distractor_agreement_relative_clause": 0.46,
+    "drop_argument": 0.7,
+    "ellipsis_n_bar_1": 0.44,
+    "ellipsis_n_bar_2": 0.38,
+    "existential_there_object_raising": 0.75,
+    "existential_there_quantifiers_1": 0.75,
+    "existential_there_quantifiers_2": 0.44,
+    "existential_there_subject_raising": 0.66,
+    "expletive_it_object_raising": 0.76,
+    "inchoative": 0.42,
+    "intransitive": 0.52,
+    "irregular_past_participle_adjectives": 0.84,
+    "irregular_past_participle_verbs": 0.6,
+    "irregular_plural_subject_verb_agreement_1": 0.6,
+    "irregular_plural_subject_verb_agreement_2": 0.63,
+    "left_branch_island_echo_question": 0.79,
+    "left_branch_island_simple_question": 0.45,
+    "matrix_question_npi_licensor_present": 0.23,
+    "npi_present_1": 0.39,
+    "npi_present_2": 0.42,
+    "only_npi_licensor_present": 0.26,
+    "only_npi_scope": 0.3,
+    "passive_1": 0.65,
+    "passive_2": 0.83,
+    "principle_A_c_command": 0.68,
+    "principle_A_case_1": 1.0,
+    "principle_A_case_2": 0.66,
+    "principle_A_domain_1": 0.97,
+    "principle_A_domain_2": 0.44,
+    "principle_A_domain_3": 0.51,
+    "principle_A_reconstruction": 0.47,
+    "regular_plural_subject_verb_agreement_1": 0.55,
+    "regular_plural_subject_verb_agreement_2": 0.59,
+    "sentential_negation_npi_licensor_present": 0.73,
+    "sentential_negation_npi_scope": 0.42,
+    "sentential_subject_island": 0.45,
+    "superlative_quantifiers_1": 0.57,
+    "superlative_quantifiers_2": 0.74,
+    "tough_vs_raising_1": 0.74,
+    "tough_vs_raising_2": 0.36,
+    "transitive": 0.64,
+    "wh_island": 0.36,
+    "wh_questions_object_gap": 0.57,
+    "wh_questions_subject_gap": 0.76,
+    "wh_questions_subject_gap_long_distance": 0.93,
+    "wh_vs_that_no_gap": 0.88,
+    "wh_vs_that_no_gap_long_distance": 0.94,
+    "wh_vs_that_with_gap": 0.15,
+    "wh_vs_that_with_gap_long_distance": 0.12
+   },
+   "headline": "acc"
+  }
+ }
+}

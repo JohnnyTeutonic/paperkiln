@@ -1,0 +1,425 @@
+{
+ "pksft ember vs hfgguf": {
+  "a": "ember runs2/ember_score/x/bench/pksft",
+  "b": "hfgguf runs/score_hfgguf/x/bench/pksft",
+  "requests": 79119,
+  "tokens": 1611353,
+  "max_abs_logprob_diff": 9.983025565674097e-05,
+  "mean_abs_logprob_diff": 3.416898077253357e-06,
+  "median_abs_sum_diff": 1.1778642942772422e-05,
+  "max_abs_sum_diff": 0.00019409124604408134,
+  "argmax_agree": "1611349/1611353",
+  "items": 28548,
+  "per_set": {
+   "hellaswag": {
+    "items": 10042,
+    "pick_agree": 10042,
+    "pick_norm_agree": 10042
+   },
+   "arc_easy": {
+    "items": 2376,
+    "pick_agree": 2376,
+    "pick_norm_agree": 2376
+   },
+   "arc_challenge": {
+    "items": 1172,
+    "pick_agree": 1172,
+    "pick_norm_agree": 1172
+   },
+   "piqa": {
+    "items": 1838,
+    "pick_agree": 1838,
+    "pick_norm_agree": 1838
+   },
+   "winogrande": {
+    "items": 1267,
+    "pick_agree": 1267
+   },
+   "lambada": {
+    "items": 5153,
+    "lastword_agree": 5153
+   },
+   "blimp": {
+    "items": 6700,
+    "pick_agree": 6700
+   }
+  },
+  "disagreements": 0
+ },
+ "pksft ember vs mtstudio": {
+  "a": "ember runs2/ember_score/x/bench/pksft",
+  "b": "mtstudio runs/score_hfgguf/x/xcheck_mtstudio/pksft",
+  "requests": 199,
+  "tokens": 3827,
+  "max_abs_logprob_diff": 2.3177077882241548e-05,
+  "mean_abs_logprob_diff": 2.0336749435408047e-06,
+  "median_abs_sum_diff": 5.75067512897931e-06,
+  "max_abs_sum_diff": 5.870825017950665e-05,
+  "argmax_agree": "3827/3827",
+  "items": 72,
+  "per_set": {
+   "hellaswag": {
+    "items": 26,
+    "pick_agree": 26,
+    "pick_norm_agree": 26
+   },
+   "arc_easy": {
+    "items": 6,
+    "pick_agree": 6,
+    "pick_norm_agree": 6
+   },
+   "arc_challenge": {
+    "items": 2,
+    "pick_agree": 2,
+    "pick_norm_agree": 2
+   },
+   "piqa": {
+    "items": 5,
+    "pick_agree": 5,
+    "pick_norm_agree": 5
+   },
+   "winogrande": {
+    "items": 3,
+    "pick_agree": 3
+   },
+   "lambada": {
+    "items": 13,
+    "lastword_agree": 13
+   },
+   "blimp": {
+    "items": 17,
+    "pick_agree": 17
+   }
+  },
+  "disagreements": 0
+ },
+ "live ember vs mtstudio": {
+  "a": "ember runs2/ember_score/x/bench/live",
+  "b": "mtstudio runs/score_live/x/bench/live",
+  "requests": 79119,
+  "tokens": 1863690,
+  "max_abs_logprob_diff": 7.018976495576368e-05,
+  "mean_abs_logprob_diff": 1.4895414988962266e-06,
+  "median_abs_sum_diff": 4.319536529351353e-06,
+  "max_abs_sum_diff": 8.657054473815151e-05,
+  "argmax_agree": "1863689/1863690",
+  "items": 28548,
+  "per_set": {
+   "hellaswag": {
+    "items": 10042,
+    "pick_agree": 10042,
+    "pick_norm_agree": 10042
+   },
+   "arc_easy": {
+    "items": 2376,
+    "pick_agree": 2376,
+    "pick_norm_agree": 2376
+   },
+   "arc_challenge": {
+    "items": 1172,
+    "pick_agree": 1172,
+    "pick_norm_agree": 1172
+   },
+   "piqa": {
+    "items": 1838,
+    "pick_agree": 1834,
+    "pick_norm_agree": 1834
+   },
+   "winogrande": {
+    "items": 1267,
+    "pick_agree": 1267
+   },
+   "lambada": {
+    "items": 5153,
+    "lastword_agree": 5153
+   },
+   "blimp": {
+    "items": 6700,
+    "pick_agree": 6700
+   }
+  },
+  "disagreements": 0
+ },
+ "pick_e1_L4 ember vs hfgguf": {
+  "a": "ember runs2/ember_score/x/bench/pick_e1_L4",
+  "b": "hfgguf runs2/score_hfgguf/x/bench/pick_e1_L4",
+  "requests": 79119,
+  "tokens": 1611353,
+  "max_abs_logprob_diff": 5.2042021883025313e-05,
+  "mean_abs_logprob_diff": 3.3429248427751e-06,
+  "median_abs_sum_diff": 1.031609380675036e-05,
+  "max_abs_sum_diff": 0.00014219377038671155,
+  "argmax_agree": "1611351/1611353",
+  "items": 28548,
+  "per_set": {
+   "hellaswag": {
+    "items": 10042,
+    "pick_agree": 10042,
+    "pick_norm_agree": 10042
+   },
+   "arc_easy": {
+    "items": 2376,
+    "pick_agree": 2376,
+    "pick_norm_agree": 2376
+   },
+   "arc_challenge": {
+    "items": 1172,
+    "pick_agree": 1172,
+    "pick_norm_agree": 1172
+   },
+   "piqa": {
+    "items": 1838,
+    "pick_agree": 1838,
+    "pick_norm_agree": 1838
+   },
+   "winogrande": {
+    "items": 1267,
+    "pick_agree": 1267
+   },
+   "lambada": {
+    "items": 5153,
+    "lastword_agree": 5153
+   },
+   "blimp": {
+    "items": 6700,
+    "pick_agree": 6700
+   }
+  },
+  "disagreements": 0
+ },
+ "pick_e1_L4 ember vs mtstudio": {
+  "a": "ember runs2/ember_score/x/bench/pick_e1_L4",
+  "b": "mtstudio runs2/score_hfgguf/x/xcheck_mtstudio/pick_e1_L4",
+  "requests": 199,
+  "tokens": 3827,
+  "max_abs_logprob_diff": 2.4572146497092717e-05,
+  "mean_abs_logprob_diff": 1.9720377597731033e-06,
+  "median_abs_sum_diff": 5.846004881959743e-06,
+  "max_abs_sum_diff": 4.394249023675911e-05,
+  "argmax_agree": "3827/3827",
+  "items": 72,
+  "per_set": {
+   "hellaswag": {
+    "items": 26,
+    "pick_agree": 26,
+    "pick_norm_agree": 26
+   },
+   "arc_easy": {
+    "items": 6,
+    "pick_agree": 6,
+    "pick_norm_agree": 6
+   },
+   "arc_challenge": {
+    "items": 2,
+    "pick_agree": 2,
+    "pick_norm_agree": 2
+   },
+   "piqa": {
+    "items": 5,
+    "pick_agree": 5,
+    "pick_norm_agree": 5
+   },
+   "winogrande": {
+    "items": 3,
+    "pick_agree": 3
+   },
+   "lambada": {
+    "items": 13,
+    "lastword_agree": 13
+   },
+   "blimp": {
+    "items": 17,
+    "pick_agree": 17
+   }
+  },
+  "disagreements": 0
+ },
+ "pick_e1_60m_L32 ember vs hfgguf": {
+  "a": "ember runs2/ember_score/x/bench/pick_e1_60m_L32",
+  "b": "hfgguf runs2/score_hfgguf/x/bench/pick_e1_60m_L32",
+  "requests": 79119,
+  "tokens": 1611353,
+  "max_abs_logprob_diff": 4.275315282686876e-05,
+  "mean_abs_logprob_diff": 2.8100772659350477e-06,
+  "median_abs_sum_diff": 9.417216347173962e-06,
+  "max_abs_sum_diff": 0.00021250974009490164,
+  "argmax_agree": "1611350/1611353",
+  "items": 28548,
+  "per_set": {
+   "hellaswag": {
+    "items": 10042,
+    "pick_agree": 10042,
+    "pick_norm_agree": 10042
+   },
+   "arc_easy": {
+    "items": 2376,
+    "pick_agree": 2376,
+    "pick_norm_agree": 2376
+   },
+   "arc_challenge": {
+    "items": 1172,
+    "pick_agree": 1172,
+    "pick_norm_agree": 1172
+   },
+   "piqa": {
+    "items": 1838,
+    "pick_agree": 1838,
+    "pick_norm_agree": 1838
+   },
+   "winogrande": {
+    "items": 1267,
+    "pick_agree": 1267
+   },
+   "lambada": {
+    "items": 5153,
+    "lastword_agree": 5153
+   },
+   "blimp": {
+    "items": 6700,
+    "pick_agree": 6700
+   }
+  },
+  "disagreements": 0
+ },
+ "pick_e1_60m_L32 ember vs mtstudio": {
+  "a": "ember runs2/ember_score/x/bench/pick_e1_60m_L32",
+  "b": "mtstudio runs2/score_hfgguf/x/xcheck_mtstudio/pick_e1_60m_L32",
+  "requests": 199,
+  "tokens": 3827,
+  "max_abs_logprob_diff": 1.4291961569767864e-05,
+  "mean_abs_logprob_diff": 2.208246997610093e-06,
+  "median_abs_sum_diff": 5.02667015211955e-06,
+  "max_abs_sum_diff": 5.15075365683515e-05,
+  "argmax_agree": "3827/3827",
+  "items": 72,
+  "per_set": {
+   "hellaswag": {
+    "items": 26,
+    "pick_agree": 26,
+    "pick_norm_agree": 26
+   },
+   "arc_easy": {
+    "items": 6,
+    "pick_agree": 6,
+    "pick_norm_agree": 6
+   },
+   "arc_challenge": {
+    "items": 2,
+    "pick_agree": 2,
+    "pick_norm_agree": 2
+   },
+   "piqa": {
+    "items": 5,
+    "pick_agree": 5,
+    "pick_norm_agree": 5
+   },
+   "winogrande": {
+    "items": 3,
+    "pick_agree": 3
+   },
+   "lambada": {
+    "items": 13,
+    "lastword_agree": 13
+   },
+   "blimp": {
+    "items": 17,
+    "pick_agree": 17
+   }
+  },
+  "disagreements": 0
+ },
+ "pick_e5_s0 ember vs hfgguf": {
+  "a": "ember runs2/ember_score/x/bench/pick_e5_s0",
+  "b": "hfgguf runs2/score_hfgguf/x/bench/pick_e5_s0",
+  "requests": 79119,
+  "tokens": 1611353,
+  "max_abs_logprob_diff": 7.582388848081933e-05,
+  "mean_abs_logprob_diff": 2.9267663124767612e-06,
+  "median_abs_sum_diff": 9.171128198204315e-06,
+  "max_abs_sum_diff": 0.00019308860390765403,
+  "argmax_agree": "1611349/1611353",
+  "items": 28548,
+  "per_set": {
+   "hellaswag": {
+    "items": 10042,
+    "pick_agree": 10042,
+    "pick_norm_agree": 10042
+   },
+   "arc_easy": {
+    "items": 2376,
+    "pick_agree": 2376,
+    "pick_norm_agree": 2376
+   },
+   "arc_challenge": {
+    "items": 1172,
+    "pick_agree": 1172,
+    "pick_norm_agree": 1172
+   },
+   "piqa": {
+    "items": 1838,
+    "pick_agree": 1838,
+    "pick_norm_agree": 1838
+   },
+   "winogrande": {
+    "items": 1267,
+    "pick_agree": 1267
+   },
+   "lambada": {
+    "items": 5153,
+    "lastword_agree": 5153
+   },
+   "blimp": {
+    "items": 6700,
+    "pick_agree": 6700
+   }
+  },
+  "disagreements": 0
+ },
+ "pick_e5_s0 ember vs mtstudio": {
+  "a": "ember runs2/ember_score/x/bench/pick_e5_s0",
+  "b": "mtstudio runs2/score_hfgguf/x/xcheck_mtstudio/pick_e5_s0",
+  "requests": 199,
+  "tokens": 3827,
+  "max_abs_logprob_diff": 1.6233272714494262e-05,
+  "mean_abs_logprob_diff": 2.204268617944037e-06,
+  "median_abs_sum_diff": 6.0667896093491436e-06,
+  "max_abs_sum_diff": 5.9839679323658856e-05,
+  "argmax_agree": "3827/3827",
+  "items": 72,
+  "per_set": {
+   "hellaswag": {
+    "items": 26,
+    "pick_agree": 26,
+    "pick_norm_agree": 26
+   },
+   "arc_easy": {
+    "items": 6,
+    "pick_agree": 6,
+    "pick_norm_agree": 6
+   },
+   "arc_challenge": {
+    "items": 2,
+    "pick_agree": 2,
+    "pick_norm_agree": 2
+   },
+   "piqa": {
+    "items": 5,
+    "pick_agree": 5,
+    "pick_norm_agree": 5
+   },
+   "winogrande": {
+    "items": 3,
+    "pick_agree": 3
+   },
+   "lambada": {
+    "items": 13,
+    "lastword_agree": 13
+   },
+   "blimp": {
+    "items": 17,
+    "pick_agree": 17
+   }
+  },
+  "disagreements": 0
+ }
+}

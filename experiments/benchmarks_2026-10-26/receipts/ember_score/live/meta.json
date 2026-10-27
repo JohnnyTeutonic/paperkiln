@@ -1,0 +1,252 @@
+{
+ "tag": "live",
+ "source": "/content/eval/live/spec.json",
+ "scorer": "ember",
+ "items": "bench_v1.jsonl",
+ "items_sha256": "978548d1c64f9a361c2e3d210e889955061bd7f71a496ab6a7734caf3969033c",
+ "sets": [
+  "hellaswag",
+  "arc_easy",
+  "arc_challenge",
+  "piqa",
+  "winogrande",
+  "lambada",
+  "blimp"
+ ],
+ "every": 1,
+ "blimp_per": 100,
+ "n_items": 28548,
+ "n_requests": 79119,
+ "tokeniser": {
+  "kind": "paperkiln",
+  "vocab": "chat_sftfinal.gguf",
+  "vocab_sha256": "42246a8d3d337fa4cce4948332f087496db50e4e312d55ddef6d4296fc8467ec"
+ },
+ "ctx": 256,
+ "prefix": "end-of-text id",
+ "truncated": {
+  "arc_challenge": 4,
+  "piqa": 10
+ },
+ "unfit_items": [
+  "piqa/1376",
+  "piqa/1433",
+  "piqa/1554",
+  "piqa/314"
+ ],
+ "seconds_this_run": 272.6,
+ "chunk_timing_this_run": [
+  [
+   0,
+   2048,
+   6.06
+  ],
+  [
+   1,
+   2048,
+   5.93
+  ],
+  [
+   2,
+   2048,
+   6.1
+  ],
+  [
+   3,
+   2048,
+   5.65
+  ],
+  [
+   4,
+   2048,
+   5.66
+  ],
+  [
+   5,
+   2048,
+   5.88
+  ],
+  [
+   6,
+   2048,
+   9.2
+  ],
+  [
+   7,
+   2048,
+   10.76
+  ],
+  [
+   8,
+   2048,
+   11.07
+  ],
+  [
+   9,
+   2048,
+   10.87
+  ],
+  [
+   10,
+   2048,
+   10.86
+  ],
+  [
+   11,
+   2048,
+   11.05
+  ],
+  [
+   12,
+   2048,
+   11.15
+  ],
+  [
+   13,
+   2048,
+   11.09
+  ],
+  [
+   14,
+   2048,
+   10.98
+  ],
+  [
+   15,
+   2048,
+   10.84
+  ],
+  [
+   16,
+   2048,
+   11.03
+  ],
+  [
+   17,
+   2048,
+   10.88
+  ],
+  [
+   18,
+   2048,
+   10.82
+  ],
+  [
+   19,
+   2048,
+   8.26
+  ],
+  [
+   20,
+   2048,
+   4.81
+  ],
+  [
+   21,
+   2048,
+   4.78
+  ],
+  [
+   22,
+   2048,
+   4.6
+  ],
+  [
+   23,
+   2048,
+   4.52
+  ],
+  [
+   24,
+   2048,
+   4.71
+  ],
+  [
+   25,
+   2048,
+   4.87
+  ],
+  [
+   26,
+   2048,
+   5.99
+  ],
+  [
+   27,
+   2048,
+   6.99
+  ],
+  [
+   28,
+   2048,
+   4.89
+  ],
+  [
+   29,
+   2048,
+   4.97
+  ],
+  [
+   30,
+   2048,
+   6.09
+  ],
+  [
+   31,
+   2048,
+   6.33
+  ],
+  [
+   32,
+   2048,
+   3.7
+  ],
+  [
+   33,
+   2048,
+   3.29
+  ],
+  [
+   34,
+   2048,
+   4.03
+  ],
+  [
+   35,
+   2048,
+   3.32
+  ],
+  [
+   36,
+   2048,
+   3.55
+  ],
+  [
+   37,
+   2048,
+   3.6
+  ],
+  [
+   38,
+   1295,
+   2.71
+  ]
+ ],
+ "engine": {
+  "chat_template": {
+   "name": "paperkiln",
+   "version": 1
+  },
+  "chat_template_why": "declared",
+  "context": 256,
+  "deterministic": true,
+  "hidden_size": 384,
+  "layers": 6,
+  "model": "/content/eval/live/chat_sftfinal.gguf",
+  "status": "ok",
+  "tokenizer": "bpe",
+  "vocab_size": 8192
+ },
+ "gguf": "chat_sftfinal.gguf",
+ "safetensors_sha256": "b29120f5b32544695ece8ce8380e37017dd5f767d6236df0bc3bd5faf7da4da3"
+}

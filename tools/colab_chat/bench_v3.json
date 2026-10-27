@@ -1,0 +1,24 @@
+{
+ "_comment": "IF-tiny rerun for the two picks pk-bench2's iftiny job did not reach (experiments/benchmarks_2026-10-26/RESULTS.md): ember fe01b35's /chat returned HTTP 500 at prompt 375 of pick_e1_60m_L32, whose greedy reply ended inside a UTF-8 character (nlohmann::json type_error 316), and the job stopped before pick_e5_s0. ember e57c0fb (branch iftiny-utf8) is fe01b35 plus utf8_valid on the reply text: generation and ids are unchanged. Same job as bench_v2.json's iftiny (EMBER_DETERMINISTIC=1, two passes, mtstudio parity) on pick_e1_60m_L32 and pick_e5_s0, then pick_e1_L4 again, whose replies at fe01b35 (pk-bench2) it should give bit for bit. Uploads: TAG.safetensors for the three picks; vocab_llama3_bpe.gguf.",
+ "max_parallel": 1,
+ "jobs": [
+  {
+   "name": "iftiny",
+   "cmd": [
+    "env",
+    "BENCH_EMBER_COMMIT=e57c0fb8000b5079df15f4fa70ee84027eddff64",
+    "EMBER_DETERMINISTIC=1",
+    "bash",
+    "tools/colab_chat/bench_vm.sh",
+    "iftiny",
+    "{out}",
+    "pick_e1_60m_L32",
+    "pick_e5_s0",
+    "pick_e1_L4"
+   ],
+   "outputs": [
+    "results.tar.gz"
+   ]
+  }
+ ]
+}

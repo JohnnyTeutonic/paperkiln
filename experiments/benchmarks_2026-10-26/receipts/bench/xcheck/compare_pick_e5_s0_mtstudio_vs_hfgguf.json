@@ -1,0 +1,11 @@
+{
+ "a": "/content/chat/score_hfgguf/xcheck_mtstudio/pick_e5_s0",
+ "b": "/content/chat/score_hfgguf/bench/pick_e5_s0",
+ "requests": 199,
+ "tokens": 3827,
+ "max_abs_logprob_diff": 2.566743390630677e-05,
+ "median_abs_sum_diff": 8.054015985692331e-06,
+ "max_abs_sum_diff": 5.437383214257352e-05,
+ "argmax_agree": "3827/3827",
+ "choice_agree": "59/59"
+}

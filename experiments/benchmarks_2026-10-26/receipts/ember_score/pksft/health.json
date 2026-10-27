@@ -1,0 +1,1 @@
+{"chat_template":{"name":"paperkiln","version":1},"chat_template_why":"declared","context":512,"deterministic":true,"hidden_size":768,"layers":12,"model":"/content/eval/pksft/pk_sft_v1.gguf","status":"ok","tokenizer":"bpe","vocab_size":16384}

@@ -7,6 +7,23 @@ Notable changes to microtorch. Format loosely follows
 
 ### September–October 2026
 
+- **pk-bench2 at home** (27 Oct; `experiments/benchmarks_2026-10-26/RESULTS.md`; one RunPod L4 on 26 Oct at
+  5e00cd40, $0.87).
+  - HellaSwag for every model now scores each item by its own requests. The pk-bench runs are re-aggregated
+    from their own chunks with fafc4750's keys (`bench2.py hellaswag`): acc_norm pk_base_v1 0.292 -> 0.299,
+    pk_sft_v1 0.287 -> 0.295, live 0.264 -> 0.270, the first three picks 0.262-0.263 -> 0.266-0.267,
+    Pythia-160m 0.298 -> 0.306, SmolLM2-135M 0.425 -> 0.436. ember's full-set pass gives the same values for
+    pk_sft_v1 and live.
+  - The benchmarks of pick_e1_L4, pick_e1_60m_L32 and pick_e5_s0 (hfgguf; CUDA mtstudio on every 400th item
+    within 2.6e-5, argmax 3,827/3,827 each), and IF-tiny of pick_e1_L4 (macro 0.195, bare 0.077).
+  - ember 580e108's POST /score against hfgguf and mtstudio, per item: every choice equal on all 28,548 items of
+    five models, max |dlogprob| 1.0e-4; the 14 differing argmax positions are top-two ties within 1.5e-5 in
+    the numpy IR.
+  - pk-bench2's IF-tiny job stopped at prompt 375 of pick_e1_60m_L32: ember's /chat answered HTTP 500 for a reply
+    cut inside a UTF-8 character. `tools/iftiny_eval.py` now raises with the server's message
+    (`tests/test_iftiny_eval.py`); `bench_vm.sh` brings ember's stderr home; ember e57c0fb (branch
+    `iftiny-utf8`) carries the fix, and `tools/colab_chat/bench_v3.json` reruns the two picks.
+
 - **ember's draft table at export, `export.draft_table`** (27 Oct; LOCAL_LLM_STACK.md section 7, speculative
   decoding; off by default, and off is the export as before).
   - `tools/draft_table.py build --gguf M.gguf --out M.draft_table.bin SOURCES...`: the n-gram table ember's

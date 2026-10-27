@@ -1,0 +1,244 @@
+{
+ "tag": "pick_e1_L4",
+ "source": "/content/eval/pick_e1_L4/spec.json",
+ "scorer": "ember",
+ "items": "bench_v1.jsonl",
+ "items_sha256": "978548d1c64f9a361c2e3d210e889955061bd7f71a496ab6a7734caf3969033c",
+ "sets": [
+  "hellaswag",
+  "arc_easy",
+  "arc_challenge",
+  "piqa",
+  "winogrande",
+  "lambada",
+  "blimp"
+ ],
+ "every": 1,
+ "blimp_per": 100,
+ "n_items": 28548,
+ "n_requests": 79119,
+ "tokeniser": {
+  "kind": "paperkiln",
+  "vocab": "tc_sft_L4_r1.gguf",
+  "vocab_sha256": "bea0bba9cbac6f66b4d722df590db5d26d70b36c008c3c6521b08e5f05371add"
+ },
+ "ctx": 512,
+ "prefix": "end-of-text id",
+ "truncated": {},
+ "unfit_items": [],
+ "seconds_this_run": 421.4,
+ "chunk_timing_this_run": [
+  [
+   0,
+   2048,
+   9.07
+  ],
+  [
+   1,
+   2048,
+   9.07
+  ],
+  [
+   2,
+   2048,
+   9.01
+  ],
+  [
+   3,
+   2048,
+   8.89
+  ],
+  [
+   4,
+   2048,
+   8.59
+  ],
+  [
+   5,
+   2048,
+   8.99
+  ],
+  [
+   6,
+   2048,
+   14.87
+  ],
+  [
+   7,
+   2048,
+   17.91
+  ],
+  [
+   8,
+   2048,
+   17.62
+  ],
+  [
+   9,
+   2048,
+   17.71
+  ],
+  [
+   10,
+   2048,
+   19.47
+  ],
+  [
+   11,
+   2048,
+   17.75
+  ],
+  [
+   12,
+   2048,
+   17.6
+  ],
+  [
+   13,
+   2048,
+   17.67
+  ],
+  [
+   14,
+   2048,
+   17.86
+  ],
+  [
+   15,
+   2048,
+   17.7
+  ],
+  [
+   16,
+   2048,
+   17.68
+  ],
+  [
+   17,
+   2048,
+   17.6
+  ],
+  [
+   18,
+   2048,
+   17.91
+  ],
+  [
+   19,
+   2048,
+   13.09
+  ],
+  [
+   20,
+   2048,
+   6.08
+  ],
+  [
+   21,
+   2048,
+   6.24
+  ],
+  [
+   22,
+   2048,
+   6.03
+  ],
+  [
+   23,
+   2048,
+   5.93
+  ],
+  [
+   24,
+   2048,
+   6.5
+  ],
+  [
+   25,
+   2048,
+   6.82
+  ],
+  [
+   26,
+   2048,
+   8.35
+  ],
+  [
+   27,
+   2048,
+   10.5
+  ],
+  [
+   28,
+   2048,
+   7.15
+  ],
+  [
+   29,
+   2048,
+   7.32
+  ],
+  [
+   30,
+   2048,
+   9.67
+  ],
+  [
+   31,
+   2048,
+   9.62
+  ],
+  [
+   32,
+   2048,
+   5.19
+  ],
+  [
+   33,
+   2048,
+   4.59
+  ],
+  [
+   34,
+   2048,
+   5.65
+  ],
+  [
+   35,
+   2048,
+   4.5
+  ],
+  [
+   36,
+   2048,
+   4.93
+  ],
+  [
+   37,
+   2048,
+   5.2
+  ],
+  [
+   38,
+   1295,
+   4.34
+  ]
+ ],
+ "engine": {
+  "chat_template": {
+   "name": "paperkiln",
+   "version": 1
+  },
+  "chat_template_why": "declared",
+  "context": 512,
+  "deterministic": true,
+  "hidden_size": 640,
+  "layers": 4,
+  "model": "/content/eval/pick_e1_L4/tc_sft_L4_r1.gguf",
+  "status": "ok",
+  "tokenizer": "bpe",
+  "vocab_size": 16384
+ },
+ "gguf": "tc_sft_L4_r1.gguf",
+ "safetensors_sha256": "9b057aa4a09ed97431b795f927d30aeff10abc65a1fd86c5b979cbbeeeddcffe"
+}

@@ -62,11 +62,6 @@ Settled on 10 Oct 2026:
 
 ## 3. Broken now
 
-- **The benchmarks' HellaSwag scores** read 0.003-0.005 low in acc and 0.004-0.011 low in acc_norm: HellaSwag
-  validation's `ind` is not unique (433 ids name two items), so `bench_v1.jsonl` stored the second item's
-  results over the first's. `tools/bench_eval.py` is fixed (fafc4750: repeated ids become `id#n`, colliding
-  keys refused); the published table is rescored by pk-bench2 (repinned to master). `mtstudio score` itself is
-  correct on CUDA (`experiments/tiny_chat_2026-10/SCORE_AUDIT_2026-10-26.md`).
 - **`mtstudio score` on CPU is slow for `llama_attnres`.** Stage L0 on pick_e1_x5_X5 (20m_L16 + Attention
   Residuals) scored about 4.5 min per chunk, against about 0.8 min for plain 20m_L16's pick on the same laptop
   build (`~/pk_state_build/mtstudio`, four slots; the process sat at ~210% CPU). Not diagnosed. On the L4, training
@@ -189,11 +184,8 @@ advisory steps that cannot fail the build.
 ## 6. Engine
 
 - **Benchmarks** (`experiments/benchmarks_2026-10-26/`):
-  - pk-bench2 (`tools/colab_chat/bench_v2.json`; root `scripts/colab_driver.json`, disabled until the RunPod
-    top-up):
-    - scores the picks that came home after pk-bench (pick_e1_L4, pick_e1_60m_L32, pick_e5_s0);
-    - runs ember 580e108's POST /score on the full sets for pk_sft_v1, live and those picks, for
-      `tools/bench_eval.py compare` at home.
+  - IF-tiny for pick_e1_60m_L32 and pick_e5_s0: pk-bench3 (`tools/colab_chat/bench_v3.json`, ember e57c0fb =
+    fe01b35 + valid UTF-8 replies; root `scripts/colab_driver.json`, disabled, $2 cap), on the main session's go.
   - Batch `mtstudio score`: it scores one request at a time on the host (~75 ms each for the 14.6M live model on
     an L4).
 - **CUDA** (records: `docs/CUDA_PHASE_B2.md`):

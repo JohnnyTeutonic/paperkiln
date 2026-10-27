@@ -1,0 +1,47 @@
+{
+ "a": "ember runs2/ember_score/x/bench/pksft",
+ "b": "mtstudio runs/score_hfgguf/x/xcheck_mtstudio/pksft",
+ "requests": 199,
+ "tokens": 3827,
+ "max_abs_logprob_diff": 2.3177077882241548e-05,
+ "mean_abs_logprob_diff": 2.0336749435408047e-06,
+ "median_abs_sum_diff": 5.75067512897931e-06,
+ "max_abs_sum_diff": 5.870825017950665e-05,
+ "argmax_agree": "3827/3827",
+ "items": 72,
+ "per_set": {
+  "hellaswag": {
+   "items": 26,
+   "pick_agree": 26,
+   "pick_norm_agree": 26
+  },
+  "arc_easy": {
+   "items": 6,
+   "pick_agree": 6,
+   "pick_norm_agree": 6
+  },
+  "arc_challenge": {
+   "items": 2,
+   "pick_agree": 2,
+   "pick_norm_agree": 2
+  },
+  "piqa": {
+   "items": 5,
+   "pick_agree": 5,
+   "pick_norm_agree": 5
+  },
+  "winogrande": {
+   "items": 3,
+   "pick_agree": 3
+  },
+  "lambada": {
+   "items": 13,
+   "lastword_agree": 13
+  },
+  "blimp": {
+   "items": 17,
+   "pick_agree": 17
+  }
+ },
+ "disagreements": []
+}
