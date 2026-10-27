@@ -1,0 +1,53 @@
+{
+ "arch": {
+  "preset": "llama-tiny",
+  "custom": {
+   "d": 768,
+   "layers": 12,
+   "heads": 12,
+   "d_ff": 2048
+  }
+ },
+ "data": {
+  "vocab": "/content/chat/upload/vocab_llama3_bpe_v2.gguf",
+  "vocab_cap": 16392,
+  "T": 512,
+  "sft_examples": "/content/chat/data/chat_v2_mix_v1.jsonl"
+ },
+ "chat": {
+  "template": "paperkiln/2"
+ },
+ "train": {
+  "steps": 8000,
+  "lr": 5e-05,
+  "batch": 16,
+  "eval_every": 2000,
+  "eval_examples": 512,
+  "eval_batch": 16,
+  "checkpoint_every": 1000,
+  "gradmap_every": 0,
+  "seed": 1,
+  "optimizer": "adamw",
+  "objective": "sft",
+  "sft_loss": {
+   "turns": "all"
+  },
+  "precision": "bf16",
+  "attention_kernel": "flash",
+  "lr_schedule": {
+   "warmup_steps": 200,
+   "decay": "cosine",
+   "min_lr_frac": 0.1
+  },
+  "init_from": "/content/chat/v2init/pk_sft_v1_v2rows.safetensors"
+ },
+ "export": {
+  "formats": [
+   "safetensors",
+   "gguf",
+   "gguf_q8_0_all"
+  ]
+ },
+ "name": "pk_sft_v2",
+ "out_dir": "/content/chat/sft"
+}

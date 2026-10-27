@@ -1,0 +1,14 @@
+{
+ "in": "/content/chat/upload/pksft.safetensors",
+ "in_sha256": "eae61755dc6625eb87c54ce3152774596ed4299c65c0462ed3831b0f9d7ee80e",
+ "out": "/content/chat/v2init/pk_sft_v1_v2rows.safetensors",
+ "out_sha256": "1777c80f1e89352b1cce9fbf7ddad4266e9303a759e250db2a17a3769767e18d",
+ "grown": [
+  "embed_tokens.weight"
+ ],
+ "rows": [
+  16384,
+  16392
+ ],
+ "init": "mean of the old rows"
+}

@@ -291,3 +291,78 @@ numbers are reported as they come.
   call (call made, function name, arguments as JSON, arguments equal to the gold's) and 100 whose gold
   reply makes none (false calls). glaive is templated, so held-out rows resemble training rows: this
   measures the format, not generalisation.
+
+### The run
+
+- **Campaign** pk-chat-v2 (root `scripts/colab_driver.json`; jobs `tools/colab_chat/chat_v2_v1.json`), one
+  RunPod L4 (EUR-IS-1, $0.59/h): launch 1 at paperkiln 1a8db67d, 18:45-20:38 (uploads 16 min, the SFT
+  67 min at 16.2k tokens/s); launch 2 at 88551a59, 20:40-21:05, for the evals on the same volume.
+  **$1.35** (2.28 L4-hours; cap $5). The first launch's evals, generated with `mtstudio chat` on the pod,
+  ran at about 17 s a prompt and were stopped (the amendment above); its evalv2 had also failed on a port
+  both eval jobs took. Their replacements, evalv1e and evalv2e, ran with ember.
+- **pk_sft_v2**: pk_sft_v1 (embedding rows 16384-16391 the mean of the old rows; `v2init_extend.json`) +
+  8,000 steps x 16 of the v2 mix under paperkiln/2 (135,525 rows, none over T, 20,721 later exchanges cut
+  at T 512; 6,776 held out), lr 5e-5, warmup 200, cosine to 0.1, BF16 GEMMs + flash attention. Held-out loss
+  1.299 (step 2,000), 1.274, 1.261, 1.257 (step 8,000). Files `C:/ml_artifacts/chat_v2/run/sft/`:
+  pk_sft_v2.gguf sha256 2363aa42..., pk_sft_v2.safetensors 6e17512c..., q8_0_all e88a77ce...
+- **Receipts** `receipts/chat_v2_1027/`: the mix ledger, sft_spec, sft_result, the SFT's eval events,
+  `eval/ember/` (IF-tiny with the placement set and turn distance for both models, the tool-call set for
+  pk_sft_v2, ember's build record) and `tables.md` (`v2_placement.py`).
+
+### Checks
+
+- Every server prompt equals the model's own template rendered at home: 2,158/2,158 per model, 798 with a
+  system message (paperkiln/1's fold for pk_sft_v1, paperkiln/2's system turn for pk_sft_v2).
+- **ember vs mtstudio on paperkiln/2 at scale:** `mtstudio score` re-scored all 1,864 pk_sft_v2 replies that
+  ended on end-of-text; its argmax equals ember's reply at every one of the 30,504 positions.
+- pk_sft_v1's IF-tiny numbers equal 26 Oct's (macro 0.123, micro 0.129; ember b49eb5c here, fe01b35 then).
+
+### Results
+
+Instruction placement (574 items; micro over items [Wilson 95%], macro over the 15 families):
+
+| model | user | system | bare | macro user | macro system | macro bare | system - user [95%] | system only / user only |
+|---|---|---|---|---|---|---|---|---|
+| pk_sft_v1 (system folded into the user turn) | 0.124 [0.099, 0.153] | 0.139 [0.113, 0.170] | 0.065 [0.047, 0.088] | 0.118 | 0.133 | 0.062 | +0.016 [-0.006, +0.037] | 25 / 16 |
+| pk_sft_v2 (system turn) | 0.160 [0.133, 0.193] | 0.138 [0.112, 0.168] | 0.065 [0.047, 0.088] | 0.153 | 0.133 | 0.062 | -0.023 [-0.054, +0.009] | 36 / 49 |
+
+- **pk_sft_v2 complies with the instruction in the user turn slightly more often than with the same
+  instruction as a system message**: -0.023, with an interval that includes 0; without end_full_stop
+  (bare rate 0.47) -0.032 [-0.063, -0.001] over 534 items. Both placements beat the bare question: system
+  +0.073 [+0.045, +0.102], user +0.096 [+0.069, +0.123].
+- **Against pk_sft_v1**, v2 training moved the user placement (+0.037 [+0.012, +0.061], 36 items gained, 15
+  lost) and left the system placement where the fold had it (-0.002 [-0.029, +0.025]). IF-tiny macro
+  0.158 against 0.123.
+- **By family** (pk_sft_v2, user / system / bare): the system turn carries avoid_word (0.12 / 0.35 / 0.12)
+  and yes_no (0.00 / 0.25 / 0.00); the user turn carries include_word (0.42 / 0.12 / 0.00) and
+  repeat_phrase (0.65 / 0.20 / 0.30). Lower case, upper case, quoted, repeat_word and number_only stay at 0
+  in every condition for both models. 40 items or fewer per family: these are single-family readings.
+- **Length:** 116 of pk_sft_v2's user-placement replies and 25 of its system-placement replies run to the
+  64-token budget.
+- **Turn distance** (84 per cell; system - user, paired): pk_sft_v2 -0.012, +0.036, +0.071, +0.012 at
+  d = 0, 1, 2, 4, every interval including 0; compliance at d = 4 is 0.70 (user) and 0.71 (system) against
+  pk_sft_v1's 0.55 and 0.52, with nohint at 0.64 (pk_sft_v2) and 0.48 (pk_sft_v1): most of the rise comes from the compliant history,
+  as on 26 Oct.
+
+Tool calls (pk_sft_v2, `corpus/eval/tool_calls_v1.jsonl`, greedy, 96 new tokens):
+
+| call made | right function | arguments parse as JSON | arguments equal to the gold's | false calls |
+|---|---|---|---|---|
+| 198/200 | 198/200 | 195/200 | 172/200 | 2/100 |
+
+298 of 300 replies end on end-of-text. The set is held-out glaive rows, and glaive is templated: this
+measures the call format on familiar tools, not tool use in general.
+
+### Reading
+
+- Exploratory, as designed: one model, one seed, 574 items, no registered prediction.
+- The system turn works: an instruction there lifts compliance over the bare question by about as much as
+  the folded system message did in pk_sft_v1. It does not yet carry an instruction better than the user
+  turn: the point estimate favours the user turn by 2-3 points. The training mix puts task instructions in
+  system turns (rewrite, summarise, personas, tool definitions) but few format constraints of IF-tiny's
+  kind anywhere, and none of its questions.
+- Compliance stays low in absolute terms (0.14-0.16 against the bare 0.065; Qwen2.5-0.5B-Instruct 0.50 on
+  26 Oct): v2 gives the model a place for an instruction; following one is the preference and data work's
+  job.
+- The tool half works on its own format: calls are well formed, named and argued (172/200 exact) and rarely
+  made unasked.

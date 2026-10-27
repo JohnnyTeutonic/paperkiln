@@ -1,0 +1,17 @@
+{
+ "items": 300,
+ "seconds": 25.9,
+ "call_made": 198,
+ "name_correct": 198,
+ "arguments_json": 195,
+ "arguments_equal": 172,
+ "with_call_items": 200,
+ "no_call_items": 100,
+ "false_calls": 2,
+ "call_token_unparsed": 0,
+ "stops": {
+  "eos": 298,
+  "turn": 0,
+  "length": 2
+ }
+}

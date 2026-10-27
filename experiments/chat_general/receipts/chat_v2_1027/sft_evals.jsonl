@@ -1,0 +1,9 @@
+{"completion_unk": 0, "event": "data", "examples": 135525, "objective": "sft", "provenance": {}, "tokens": 19724664, "val_examples": 6776, "vocab": 16392}
+{"chat_template": "paperkiln/2", "conversations": 135525, "dropped_over_T": 0, "event": "sft_conversations", "exchanges_cut_over_T": 20721, "rows": 135525, "sft_loss": {"turns": "all"}, "untrained": 0}
+{"T": 512, "accum": 1, "activation": "swiglu", "attention": "exact", "attention_impl": "blocked", "attention_kernel": "flash", "batch": 16, "checkpoint_activations": false, "d": 768, "d_ff": 2048, "event": "model", "family": "llama", "final_norm": true, "gate_bias_init": -2.0, "heads": 12, "layers": 12, "lr": 4.999999873689376e-05, "lr_schedule": {"decay": "cosine", "min_lr_frac": 0.10000000149011612, "warmup_steps": 200}, "norm": "rmsnorm", "norm_placement": "pre", "objective": "sft", "params": 97542912, "position": "rope", "precision": "bf16", "residual": "residual", "rope_heads": "all", "seed": 1, "sinks": 1, "vocab": 16392, "window": 64}
+{"event": "init", "from": "/content/chat/v2init/pk_sft_v1_v2rows.safetensors"}
+{"eval_device": true, "eval_s": 4.151254343, "event": "eval", "step": 2000, "val_loss": 1.2993712939977673}
+{"eval_device": true, "eval_s": 4.164448987, "event": "eval", "step": 4000, "val_loss": 1.274442249017392}
+{"eval_device": true, "eval_s": 4.171108082, "event": "eval", "step": 6000, "val_loss": 1.2610843478705447}
+{"eval_device": true, "eval_s": 4.1616491, "event": "eval", "step": 8000, "val_loss": 1.2572935882549532}
+{"best_val": 1.2572935819625854, "early_stopped": false, "event": "done", "final_step": 8000, "wall_seconds": 4034.962943109}

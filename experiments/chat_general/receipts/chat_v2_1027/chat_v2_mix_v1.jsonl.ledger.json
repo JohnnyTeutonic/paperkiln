@@ -1,0 +1,95 @@
+{
+ "set": "chat_v2_mix_v1",
+ "T": 512,
+ "seed": 1,
+ "template": "paperkiln/2",
+ "vocab": "/mnt/c/ml_artifacts/chat_v2/vocab_llama3_bpe_v2.gguf",
+ "vocab_sha256": "d44f27b2bae9a549240e370ea7a6f52aec47385bf20842fd5b3524ae2612f541",
+ "licences": {
+  "smol_system": "Apache-2.0 (HuggingFaceTB/smol-smoltalk)",
+  "no_robots_system": "CC BY-NC 4.0 (HuggingFaceH4/no_robots; non-commercial)",
+  "glaive_tools": "Apache-2.0 (glaiveai/glaive-function-calling-v2)",
+  "lever1_replay": "Apache-2.0 / TinyChat sample (lever 1's sources, LOCAL_LLM_STACK.md section 8)"
+ },
+ "sources": {
+  "smol_system": {
+   "rows": 55873,
+   "rows_cut_by_T": 3011,
+   "licence": "Apache-2.0 (HuggingFaceTB/smol-smoltalk)",
+   "parse": {
+    "smol/smollm-rewrite-30k/kept": 26123,
+    "smol/openhermes-50k/kept": 17907,
+    "smol/smol-summarize-20k/kept": 18881,
+    "smol/smol-summarize-5k/kept": 4670,
+    "smol/explore-instruct-rewrite/kept": 1492,
+    "smol/openhermes-50k/heldout_split": 378,
+    "smol/smol-summarize-20k/heldout_split": 391,
+    "smol/smollm-rewrite-30k/heldout_split": 534,
+    "smol/explore-instruct-rewrite/heldout_split": 29,
+    "smol/smol-summarize-5k/heldout_split": 79
+   }
+  },
+  "no_robots_system": {
+   "rows": 776,
+   "rows_cut_by_T": 3,
+   "licence": "CC BY-NC 4.0 (HuggingFaceH4/no_robots; non-commercial)"
+  },
+  "glaive_tools": {
+   "rows": 38880,
+   "rows_cut_by_T": 3367,
+   "licence": "Apache-2.0 (glaiveai/glaive-function-calling-v2)"
+  },
+  "lever1_replay": {
+   "rows": 39996,
+   "rows_cut_by_T": 0,
+   "licence": "Apache-2.0 / TinyChat sample (lever 1's sources, LOCAL_LLM_STACK.md section 8)"
+  }
+ },
+ "dropped": {
+  "smol_system": {
+   "iftiny_heldout": 5,
+   "decontam_ngram": 1,
+   "over_T": 13194
+  },
+  "no_robots_system": {
+   "iftiny_heldout": 4
+  },
+  "glaive_tools": {
+   "decontam_prompt": 1929,
+   "decontam_span": 1,
+   "over_T": 1120
+  },
+  "lever1_replay": {
+   "iftiny_heldout": 4
+  }
+ },
+ "glaive_parse": {
+  "definitions_only": 14980,
+  "tools": 60284,
+  "no_tools": 34594,
+  "ends_on_tool": 398,
+  "functioncall_shape": 2386,
+  "structure": 188,
+  "arguments_json": 116,
+  "control_text": 10,
+  "template:empty assistant content": 2,
+  "template:empty user content": 2
+ },
+ "out": "/mnt/c/ml_artifacts/chat_v2/data/chat_v2_mix_v1.jsonl",
+ "out_sha256": "f5933a46b67e69293cc8ea54f24b10921469900e8ca406ce1d40e63a7d454879",
+ "stats": {
+  "rows": 135525,
+  "with_system": 95529,
+  "with_tool_calls": 30740,
+  "with_tool_definitions": 38880,
+  "tool_messages": 40245,
+  "assistant_messages": 248102
+ },
+ "inputs": {
+  "glaive_sha256": "e9b5d671812b5ca2fbd7b625a37d5c99a19576c37252cdc806defe256aea6dad",
+  "lever1_sha256": "b7a43fb5d622537094f7fea1eb5df244c64007f967faed597f9324954a479a32",
+  "smol_revision": "f73fe857d519ff6ac5af2ea67c4d3834da7b8bcc",
+  "no_robots_revision": "e6f9a4ac5c37faeb744ba9ecf0473184d7f8105b",
+  "no_robots_sha256": "76d64120a2ab20eb85d6b22bdced5b1ec638a6213a97004741006745c92489ef"
+ }
+}
