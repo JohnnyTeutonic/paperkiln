@@ -3345,6 +3345,48 @@ std::string rd_str(const std::vector<uint8_t>& b, size_t& p) {
     p += n;
     return s;
 }
+// A GGUF's declared context, "<general.architecture>.context_length" (-1 when absent), read from the
+// metadata alone (streamed: the tensors are never read).
+long gguf_context_length(const std::string& path) {
+    std::ifstream f(path, std::ios::binary);
+    if (!f) throw std::runtime_error("cannot open " + path);
+    auto rd_u32 = [&]() { uint32_t v = 0; f.read(reinterpret_cast<char*>(&v), 4); return v; };
+    auto rd_u64 = [&]() { uint64_t v = 0; f.read(reinterpret_cast<char*>(&v), 8); return v; };
+    auto rd_s = [&]() { std::string s(rd_u64(), '\0'); f.read(s.data(), static_cast<std::streamsize>(s.size())); return s; };
+    static const size_t kScalar[] = {1, 1, 2, 2, 4, 4, 4, 1, 0, 0, 8, 8, 8};
+    if (rd_u32() != 0x46554747u) throw std::runtime_error(path + ": not GGUF");
+    rd_u32();
+    rd_u64();
+    const uint64_t n_meta = rd_u64();
+    std::string arch;
+    std::map<std::string, long> ctx;
+    for (uint64_t i = 0; i < n_meta && f; ++i) {
+        const std::string key = rd_s();
+        const uint32_t t = rd_u32();
+        if (t == 8) {
+            const std::string v = rd_s();
+            if (key == "general.architecture") arch = v;
+        } else if (t == 9) {
+            const uint32_t et = rd_u32();
+            const uint64_t n = rd_u64();
+            for (uint64_t k = 0; k < n && f; ++k) {
+                if (et == 8) rd_s();
+                else if (et <= 12 && kScalar[et]) f.seekg(static_cast<std::streamoff>(kScalar[et]), std::ios::cur);
+                else throw std::runtime_error(path + ": bad GGUF array type");
+            }
+        } else if (t <= 12 && kScalar[t]) {
+            uint64_t v = 0;
+            f.read(reinterpret_cast<char*>(&v), static_cast<std::streamsize>(kScalar[t]));
+            const std::string suf = ".context_length";
+            if (key.size() > suf.size() && key.compare(key.size() - suf.size(), suf.size(), suf) == 0)
+                ctx[key.substr(0, key.size() - suf.size())] = static_cast<long>(v);
+        } else {
+            throw std::runtime_error(path + ": bad GGUF metadata type");
+        }
+    }
+    const auto it = ctx.find(arch);
+    return it == ctx.end() ? -1 : it->second;
+}
 std::vector<std::string> read_gguf_vocab(const std::string& path) {
     std::ifstream f(path, std::ios::binary | std::ios::ate);
     if (!f) throw std::runtime_error("cannot open " + path);
@@ -4322,6 +4364,15 @@ int chat_cmd(const std::string& target, const std::string& host, int port, bool 
     if (evict && (!kv_cache || s.state_k == 0 || s.state_mask != "turn_state"))
         throw std::runtime_error("chat --evict needs --kv-cache and a state-token model with the turn_state mask");
     lm.kv_on = kv_cache;
+    // The served context is the spec's T, and the run's exported GGUF declares the T it was exported at
+    // (every exporter writes s.T): the two must agree, or another engine serving the file would drop
+    // turns and stop at a different length (the v2 gate, 27 Oct 2026: a GGUF exported at 256, served at 512).
+    if (const std::string g = s.out_dir + "/" + s.name + ".gguf"; std::filesystem::exists(g)) {
+        const long c = gguf_context_length(g);
+        if (c >= 0 && c != static_cast<long>(s.T))
+            throw std::runtime_error("chat: " + g + " declares context " + std::to_string(c) + " but the spec's data.T is " +
+                                     std::to_string(s.T) + ": re-export the GGUF at the served T (mtstudio export)");
+    }
     lm.kv.evict = evict;
     // The model's own token sequences for a new turn ("user :",
     // "assistant :"), unusable if a piece is out of vocabulary (it would
@@ -4586,12 +4637,12 @@ int chat_cmd(const std::string& target, const std::string& host, int port, bool 
                          {"tokens", out.size()},
                          {"history_turns_used", turns_used}};
             if (!calls.empty()) body["tool_calls"] = calls;
-            // return_ids: the prompt ids, the reply ids (without the stop) and the stop id (null at
-            // "length"), as ember's /chat reports them (the parity and prompt checks read them).
+            // return_ids: the prompt ids, the reply ids (without the stop) and the stop id (-1 at "length",
+            // ember's convention, api.h), as ember's /chat reports them (the parity and prompt checks read them).
             if (r.value("return_ids", false)) {
                 body["prompt_ids"] = prompt_ids;
                 body["ids"] = out;
-                body["stop_id"] = stop_id >= 0 ? json(stop_id) : json();
+                body["stop_id"] = stop_id;
             }
             // The cache's rows per layer after the reply (state models: n k
             // state rows plus the current turn under --evict).

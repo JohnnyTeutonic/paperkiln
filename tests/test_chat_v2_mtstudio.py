@@ -221,6 +221,14 @@ def test_v2_export_and_chat(tmp_path):
     assert CT.rid(got) == CT.V2 and why == "declared"
     assert (tmp_path / "run_v2chat" / "v2chat.Modelfile").read_text(encoding="utf-8") == CT.modelfile("v2chat.gguf", CT.V2)
 
+    # serving at a T other than the one the run's GGUF declares is refused
+    other = json.loads(sp.read_text(encoding="utf-8"))
+    other["data"]["T"] = 256
+    sp2 = tmp_path / "v2chat_T256.spec.json"
+    sp2.write_text(json.dumps(other), encoding="utf-8")
+    r2 = subprocess.run([BIN, "chat", str(sp2), "--port", str(free_port())], capture_output=True, text=True, timeout=120)
+    assert r2.returncode != 0 and "declares context 128" in r2.stderr, r2.stderr[-500:]
+
     port = free_port()
     proc = subprocess.Popen([BIN, "chat", str(sp), "--port", str(port), "--kv-cache"], stdout=subprocess.DEVNULL,
                             stderr=subprocess.DEVNULL)
@@ -253,6 +261,7 @@ def test_v2_export_and_chat(tmp_path):
             assert code == 200, x
             assert x["prompt_ids"] == enc(CT.render(msgs, CT.V2, generation_prompt=True, tools=tools)), body
             assert x["stop_reason"] in ("eos", "turn", "length")
+            assert (x["stop_id"] == -1) == (x["stop_reason"] == "length")  # -1 at a length stop, never null
         for bad in ({"history": [{"role": "user", "content": "a"}, {"role": "tool", "content": "x"}], "user_input": "b"},
                     {"history": [{"role": "user", "content": "a"}, tc], "user_input": "b"},
                     {"history": [{"role": "user", "content": "a"}, tc, {"role": "tool", "content": "x",
@@ -261,7 +270,9 @@ def test_v2_export_and_chat(tmp_path):
                     {"tools": [{"type": "function", "function": {"name": "f", "parameters": {"max": 1.5}}}],
                      "user_input": "a"},
                     {"history": [{"role": "user", "content": "a"}]},
-                    {"history": [{"role": "user", "content": "a"}], "user_input": "b"}):
+                    {"history": [{"role": "user", "content": "a"}], "user_input": "b"},
+                    {"history": [{"role": "tool", "content": "x"}], "user_input": "a"},  # a leading tool result
+                    {"history": [{"role": "tool", "content": "x"}]}):
             code, x = post(url + "/chat", {**base, **bad})
             assert code == 400, (bad, x)
         # the context: the newest exchange alone over the context is refused, never cut
