@@ -52,6 +52,46 @@ def test_context_skip_resume_and_penalty():
     assert {b["user_input"] for b in log} == {"Hi"} and all(b["repeat_penalty"] == 1.1 for b in log)
 
 
+def test_utf8_status():
+    assert S.utf8_status("café", "eos") == ("café", "ok")
+    assert S.utf8_status("caf�", "length") == ("caf", "trimmed")
+    assert S.utf8_status("a��", "length") == ("a", "trimmed")
+    assert S.utf8_status("a�b", "length") == (None, "invalid")
+    assert S.utf8_status("a�b�", "length") == (None, "invalid")
+    assert S.utf8_status("ab�", "eos") == (None, "invalid")
+    assert S.utf8_status("ab�", "turn") == (None, "invalid")
+    assert S.utf8_status("�", "length") == (None, "invalid")  # nothing whole before the cut
+    # ember's reply is Python's errors="replace" decode: a reply cut inside a character
+    cut = "naïve — ok".encode()[:9].decode("utf-8", errors="replace")
+    assert cut.endswith("�") and S.utf8_status(cut, "length") == ("naïve ", "trimmed")
+
+
+def length_send(replies):
+    def send(body):
+        prompt = f"<|user|>{body['user_input']}<|assistant|>"
+        return {"prompt_ids": encode(prompt), "reply": replies[body["seed"] % len(replies)], "stop_reason": "length",
+                "tokens": 8}
+    return send
+
+
+def test_trimmed_candidates_and_invalid_runs():
+    out = list(S.sample([("u0", "Hi")], length_send(["ab�", "ab", "c�d", "e"]), 4, [0.9], 0, 8, 1.0,
+                        encode, 256))
+    rec, why = out[0]
+    assert why == "ok" and rec["candidates"] == ["ab", "e"]
+    assert rec["sampler"]["candidate_runs"] == [[0, 1], [3]]
+    assert [r["utf8"] for r in rec["sampler"]["runs"]] == ["trimmed", "ok", "invalid", "ok"]
+
+
+def test_fewer_than_two_valid_and_distinct():
+    out = list(S.sample([("u0", "Hi")], length_send(["a�b", "x", "x", "y�z"]), 4, [0.9], 0, 8, 1.0,
+                        encode, 256))
+    assert out == [({"uri": "u0", "reason": "fewer_than_two_valid", "utf8": {"invalid": 2}}, "fewer_than_two_valid")]
+    out = list(S.sample([("u0", "Hi")], length_send(["x�", "x"]), 4, [0.9], 0, 8, 1.0, encode, 256))
+    assert out == [({"uri": "u0", "reason": "fewer_than_two_distinct", "utf8": {"trimmed": 2}},
+                    "fewer_than_two_distinct")]
+
+
 def test_prompt_id_mismatch_stops():
     def send(body):
         return {"prompt_ids": [1, 2], "reply": "r", "stop_reason": "eos", "tokens": 1}

@@ -1,0 +1,1002 @@
+{
+ "bin": "/home/jonat/pref_cpu_test/m/build/tinyllama_server",
+ "gguf": "/mnt/c/ml_artifacts/general_chat/sft/pk_sft_v1.gguf",
+ "health": {
+  "chat_template": {
+   "name": "paperkiln",
+   "version": 1
+  },
+  "chat_template_why": "declared",
+  "context": 512,
+  "hidden_size": 768,
+  "layers": 12,
+  "model": "/mnt/c/ml_artifacts/general_chat/sft/pk_sft_v1.gguf",
+  "status": "ok",
+  "tokenizer": "bpe",
+  "vocab_size": 16384
+ },
+ "greedy_requests": 48,
+ "http500": 0,
+ "decode_mismatch": 0,
+ "found": {
+  "user": "Write the Japanese word for thank you in Japanese script.",
+  "max_new": 3,
+  "reply": "が�",
+  "ids_tail": [
+   8659,
+   238,
+   8659
+  ],
+  "trimmed": [
+   "が",
+   "trimmed"
+  ]
+ },
+ "fffd_seen": [
+  {
+   "user": "Write the Japanese word for thank you in Japanese script.",
+   "max_new": 1,
+   "stop": "length",
+   "reply": "�",
+   "status": "invalid"
+  },
+  {
+   "user": "Write the Japanese word for thank you in Japanese script.",
+   "max_new": 3,
+   "stop": "length",
+   "reply": "が�",
+   "status": "trimmed"
+  },
+  {
+   "user": "Write the Japanese word for thank you in Japanese script.",
+   "max_new": 5,
+   "stop": "length",
+   "reply": "がが�",
+   "status": "trimmed"
+  },
+  {
+   "user": "Write the Japanese word for thank you in Japanese script.",
+   "max_new": 7,
+   "stop": "length",
+   "reply": "ががが�",
+   "status": "trimmed"
+  },
+  {
+   "user": "Write the Japanese word for thank you in Japanese script.",
+   "max_new": 9,
+   "stop": "length",
+   "reply": "がががが�",
+   "status": "trimmed"
+  },
+  {
+   "user": "Write the Japanese word for thank you in Japanese script.",
+   "max_new": 11,
+   "stop": "length",
+   "reply": "ががががが�",
+   "status": "trimmed"
+  },
+  {
+   "user": "Write the Japanese word for thank you in Japanese script.",
+   "max_new": 13,
+   "stop": "length",
+   "reply": "がががががが�",
+   "status": "trimmed"
+  },
+  {
+   "user": "Write the Japanese word for thank you in Japanese script.",
+   "max_new": 15,
+   "stop": "length",
+   "reply": "ががががががが�",
+   "status": "trimmed"
+  },
+  {
+   "user": "Write the Japanese word for thank you in Japanese script.",
+   "max_new": 17,
+   "stop": "length",
+   "reply": "がががががががが�",
+   "status": "trimmed"
+  },
+  {
+   "user": "Write the Japanese word for thank you in Japanese script.",
+   "max_new": 19,
+   "stop": "length",
+   "reply": "ががががががががが�",
+   "status": "trimmed"
+  },
+  {
+   "user": "Write the Japanese word for thank you in Japanese script.",
+   "max_new": 21,
+   "stop": "length",
+   "reply": "がががががががががが�",
+   "status": "trimmed"
+  },
+  {
+   "user": "Write the Japanese word for thank you in Japanese script.",
+   "max_new": 23,
+   "stop": "length",
+   "reply": "ががががががががががが�",
+   "status": "trimmed"
+  },
+  {
+   "user": "Write the Japanese word for thank you in Japanese script.",
+   "max_new": 25,
+   "stop": "length",
+   "reply": "ががががががががががが�",
+   "status": "trimmed"
+  },
+  {
+   "user": "Write the Japanese word for thank you in Japanese script.",
+   "max_new": 27,
+   "stop": "length",
+   "reply": "ががががががががががが�",
+   "status": "trimmed"
+  },
+  {
+   "user": "Write the Japanese word for thank you in Japanese script.",
+   "max_new": 29,
+   "stop": "length",
+   "reply": "ががががががががががが�",
+   "status": "trimmed"
+  },
+  {
+   "user": "Write the Japanese word for thank you in Japanese script.",
+   "max_new": 31,
+   "stop": "length",
+   "reply": "ががががががががががが�",
+   "status": "trimmed"
+  },
+  {
+   "user": "Write the Japanese word for thank you in Japanese script.",
+   "max_new": 33,
+   "stop": "length",
+   "reply": "ががががががががががが�",
+   "status": "trimmed"
+  },
+  {
+   "user": "Write the Japanese word for thank you in Japanese script.",
+   "max_new": 35,
+   "stop": "length",
+   "reply": "ががががががががががが�",
+   "status": "trimmed"
+  },
+  {
+   "user": "Write the Japanese word for thank you in Japanese script.",
+   "max_new": 37,
+   "stop": "length",
+   "reply": "ががががががががががが�",
+   "status": "trimmed"
+  },
+  {
+   "user": "Write the Japanese word for thank you in Japanese script.",
+   "max_new": 39,
+   "stop": "length",
+   "reply": "ががががががががががが�",
+   "status": "trimmed"
+  }
+ ],
+ "near_greedy": [
+  [
+   {
+    "uri": "t#0",
+    "reason": "fewer_than_two_distinct",
+    "utf8": {
+     "trimmed": 4
+    }
+   },
+   "fewer_than_two_distinct"
+  ]
+ ],
+ "pilot_temps": [
+  [
+   {
+    "prompt": "<|user|>Write the Japanese word for thank you in Japanese script.<|assistant|>",
+    "candidates": [
+     "1. \"",
+     "A sham",
+     "To thank your",
+     "I'm glad"
+    ],
+    "uri": "t#0",
+    "sampler": {
+     "runs": [
+      {
+       "temperature": 0.8,
+       "seed": 31,
+       "stop": "length",
+       "tokens": 3,
+       "utf8": "ok"
+      },
+      {
+       "temperature": 0.9,
+       "seed": 32,
+       "stop": "length",
+       "tokens": 3,
+       "utf8": "ok"
+      },
+      {
+       "temperature": 1.0,
+       "seed": 33,
+       "stop": "length",
+       "tokens": 3,
+       "utf8": "ok"
+      },
+      {
+       "temperature": 0.9,
+       "seed": 34,
+       "stop": "length",
+       "tokens": 3,
+       "utf8": "ok"
+      }
+     ],
+     "candidate_runs": [
+      [
+       0
+      ],
+      [
+       1
+      ],
+      [
+       2
+      ],
+      [
+       3
+      ]
+     ]
+    }
+   },
+   "ok"
+  ]
+ ],
+ "sweep": [
+  [
+   {
+    "prompt": "<|user|>Write the Japanese word for thank you in Japanese script.<|assistant|>",
+    "candidates": [
+     "Hakon",
+     "劂",
+     "Fair isn",
+     "Hashay"
+    ],
+    "uri": "t#0",
+    "sampler": {
+     "runs": [
+      {
+       "temperature": 0.8,
+       "seed": 34,
+       "stop": "length",
+       "tokens": 3,
+       "utf8": "ok"
+      },
+      {
+       "temperature": 0.9,
+       "seed": 35,
+       "stop": "length",
+       "tokens": 3,
+       "utf8": "ok"
+      },
+      {
+       "temperature": 1.0,
+       "seed": 36,
+       "stop": "length",
+       "tokens": 3,
+       "utf8": "ok"
+      },
+      {
+       "temperature": 0.9,
+       "seed": 37,
+       "stop": "length",
+       "tokens": 3,
+       "utf8": "ok"
+      }
+     ],
+     "candidate_runs": [
+      [
+       0
+      ],
+      [
+       1
+      ],
+      [
+       2
+      ],
+      [
+       3
+      ]
+     ]
+    }
+   },
+   "ok"
+  ],
+  [
+   {
+    "prompt": "<|user|>Write the Japanese word for thank you in Japanese script.<|assistant|>",
+    "candidates": [
+     "Êm,",
+     "Free greetings",
+     "Hankobu",
+     "ごれ"
+    ],
+    "uri": "t#0",
+    "sampler": {
+     "runs": [
+      {
+       "temperature": 0.8,
+       "seed": 35,
+       "stop": "length",
+       "tokens": 4,
+       "utf8": "ok"
+      },
+      {
+       "temperature": 0.9,
+       "seed": 36,
+       "stop": "length",
+       "tokens": 4,
+       "utf8": "ok"
+      },
+      {
+       "temperature": 1.0,
+       "seed": 37,
+       "stop": "length",
+       "tokens": 4,
+       "utf8": "ok"
+      },
+      {
+       "temperature": 0.9,
+       "seed": 38,
+       "stop": "length",
+       "tokens": 4,
+       "utf8": "ok"
+      }
+     ],
+     "candidate_runs": [
+      [
+       0
+      ],
+      [
+       1
+      ],
+      [
+       2
+      ],
+      [
+       3
+      ]
+     ]
+    }
+   },
+   "ok"
+  ],
+  [
+   {
+    "prompt": "<|user|>Write the Japanese word for thank you in Japanese script.<|assistant|>",
+    "candidates": [
+     "Greetings, I",
+     "Hashayana -",
+     "しゼ",
+     "\"Thank you for this"
+    ],
+    "uri": "t#0",
+    "sampler": {
+     "runs": [
+      {
+       "temperature": 0.8,
+       "seed": 36,
+       "stop": "length",
+       "tokens": 5,
+       "utf8": "ok"
+      },
+      {
+       "temperature": 0.9,
+       "seed": 37,
+       "stop": "length",
+       "tokens": 5,
+       "utf8": "ok"
+      },
+      {
+       "temperature": 1.0,
+       "seed": 38,
+       "stop": "length",
+       "tokens": 5,
+       "utf8": "trimmed"
+      },
+      {
+       "temperature": 0.9,
+       "seed": 39,
+       "stop": "length",
+       "tokens": 5,
+       "utf8": "ok"
+      }
+     ],
+     "candidate_runs": [
+      [
+       0
+      ],
+      [
+       1
+      ],
+      [
+       2
+      ],
+      [
+       3
+      ]
+     ]
+    }
+   },
+   "ok"
+  ],
+  [
+   {
+    "prompt": "<|user|>Write the Japanese word for thank you in Japanese script.<|assistant|>",
+    "candidates": [
+     "Hashimoto prej",
+     "ごれれ",
+     "\"One Thanksgiving Day\"",
+     "That is the point of the"
+    ],
+    "uri": "t#0",
+    "sampler": {
+     "runs": [
+      {
+       "temperature": 0.8,
+       "seed": 37,
+       "stop": "length",
+       "tokens": 6,
+       "utf8": "ok"
+      },
+      {
+       "temperature": 0.9,
+       "seed": 38,
+       "stop": "length",
+       "tokens": 6,
+       "utf8": "ok"
+      },
+      {
+       "temperature": 1.0,
+       "seed": 39,
+       "stop": "length",
+       "tokens": 6,
+       "utf8": "ok"
+      },
+      {
+       "temperature": 0.9,
+       "seed": 40,
+       "stop": "length",
+       "tokens": 6,
+       "utf8": "ok"
+      }
+     ],
+     "candidate_runs": [
+      [
+       0
+      ],
+      [
+       1
+      ],
+      [
+       2
+      ],
+      [
+       3
+      ]
+     ]
+    }
+   },
+   "ok"
+  ],
+  [
+   {
+    "prompt": "<|user|>Write the Japanese word for thank you in Japanese script.<|assistant|>",
+    "candidates": [
+     "これれ",
+     "\"Thank you for this beautiful day",
+     "Ashoku ka",
+     "There is no Japanese word for thank"
+    ],
+    "uri": "t#0",
+    "sampler": {
+     "runs": [
+      {
+       "temperature": 0.8,
+       "seed": 38,
+       "stop": "length",
+       "tokens": 7,
+       "utf8": "trimmed"
+      },
+      {
+       "temperature": 0.9,
+       "seed": 39,
+       "stop": "length",
+       "tokens": 7,
+       "utf8": "ok"
+      },
+      {
+       "temperature": 1.0,
+       "seed": 40,
+       "stop": "length",
+       "tokens": 7,
+       "utf8": "ok"
+      },
+      {
+       "temperature": 0.9,
+       "seed": 41,
+       "stop": "length",
+       "tokens": 7,
+       "utf8": "ok"
+      }
+     ],
+     "candidate_runs": [
+      [
+       0
+      ],
+      [
+       1
+      ],
+      [
+       2
+      ],
+      [
+       3
+      ]
+     ]
+    }
+   },
+   "ok"
+  ],
+  [
+   {
+    "prompt": "<|user|>Write the Japanese word for thank you in Japanese script.<|assistant|>",
+    "candidates": [
+     "\"Thank you for your kind words and",
+     "That is the point of the given sentence",
+     "To sum up one task or task for",
+     "Imaginary words\n- (p"
+    ],
+    "uri": "t#0",
+    "sampler": {
+     "runs": [
+      {
+       "temperature": 0.8,
+       "seed": 39,
+       "stop": "length",
+       "tokens": 8,
+       "utf8": "ok"
+      },
+      {
+       "temperature": 0.9,
+       "seed": 40,
+       "stop": "length",
+       "tokens": 8,
+       "utf8": "ok"
+      },
+      {
+       "temperature": 1.0,
+       "seed": 41,
+       "stop": "length",
+       "tokens": 8,
+       "utf8": "ok"
+      },
+      {
+       "temperature": 0.9,
+       "seed": 42,
+       "stop": "length",
+       "tokens": 8,
+       "utf8": "ok"
+      }
+     ],
+     "candidate_runs": [
+      [
+       0
+      ],
+      [
+       1
+      ],
+      [
+       2
+      ],
+      [
+       3
+      ]
+     ]
+    }
+   },
+   "ok"
+  ],
+  [
+   {
+    "prompt": "<|user|>Write the Japanese word for thank you in Japanese script.<|assistant|>",
+    "candidates": [
+     "In Japan, the Japanese word for thank you",
+     "There is no Japanese word for thank you in",
+     "Imak (kiwi) is a",
+     "The current word in Japanese is a simple yet"
+    ],
+    "uri": "t#0",
+    "sampler": {
+     "runs": [
+      {
+       "temperature": 0.8,
+       "seed": 40,
+       "stop": "length",
+       "tokens": 9,
+       "utf8": "ok"
+      },
+      {
+       "temperature": 0.9,
+       "seed": 41,
+       "stop": "length",
+       "tokens": 9,
+       "utf8": "ok"
+      },
+      {
+       "temperature": 1.0,
+       "seed": 42,
+       "stop": "length",
+       "tokens": 9,
+       "utf8": "ok"
+      },
+      {
+       "temperature": 0.9,
+       "seed": 43,
+       "stop": "length",
+       "tokens": 9,
+       "utf8": "ok"
+      }
+     ],
+     "candidate_runs": [
+      [
+       0
+      ],
+      [
+       1
+      ],
+      [
+       2
+      ],
+      [
+       3
+      ]
+     ]
+    }
+   },
+   "ok"
+  ],
+  [
+   {
+    "prompt": "<|user|>Write the Japanese word for thank you in Japanese script.<|assistant|>",
+    "candidates": [
+     "beeni (こくれ",
+     "Imaginary words\n- (puu",
+     "The sign of the universe, a reminder of the",
+     "ערשבר"
+    ],
+    "uri": "t#0",
+    "sampler": {
+     "runs": [
+      {
+       "temperature": 0.8,
+       "seed": 41,
+       "stop": "length",
+       "tokens": 10,
+       "utf8": "ok"
+      },
+      {
+       "temperature": 0.9,
+       "seed": 42,
+       "stop": "length",
+       "tokens": 10,
+       "utf8": "ok"
+      },
+      {
+       "temperature": 1.0,
+       "seed": 43,
+       "stop": "length",
+       "tokens": 10,
+       "utf8": "ok"
+      },
+      {
+       "temperature": 0.9,
+       "seed": 44,
+       "stop": "length",
+       "tokens": 10,
+       "utf8": "ok"
+      }
+     ],
+     "candidate_runs": [
+      [
+       0
+      ],
+      [
+       1
+      ],
+      [
+       2
+      ],
+      [
+       3
+      ]
+     ]
+    }
+   },
+   "ok"
+  ],
+  [
+   {
+    "prompt": "<|user|>Write the Japanese word for thank you in Japanese script.<|assistant|>",
+    "candidates": [
+     "Imaginary enjoyment, like a good cup of",
+     "The current word in Japanese is a simple yet effective way",
+     "太常箌",
+     "Kamakura-giri\n\"Hon"
+    ],
+    "uri": "t#0",
+    "sampler": {
+     "runs": [
+      {
+       "temperature": 0.8,
+       "seed": 42,
+       "stop": "length",
+       "tokens": 11,
+       "utf8": "ok"
+      },
+      {
+       "temperature": 0.9,
+       "seed": 43,
+       "stop": "length",
+       "tokens": 11,
+       "utf8": "ok"
+      },
+      {
+       "temperature": 1.0,
+       "seed": 44,
+       "stop": "length",
+       "tokens": 11,
+       "utf8": "trimmed"
+      },
+      {
+       "temperature": 0.9,
+       "seed": 45,
+       "stop": "length",
+       "tokens": 11,
+       "utf8": "ok"
+      }
+     ],
+     "candidate_runs": [
+      [
+       0
+      ],
+      [
+       1
+      ],
+      [
+       2
+      ],
+      [
+       3
+      ]
+     ]
+    }
+   },
+   "ok"
+  ],
+  [
+   {
+    "prompt": "<|user|>Write the Japanese word for thank you in Japanese script.<|assistant|>",
+    "candidates": [
+     "颳句。两",
+     "ערשברי",
+     "Kendo.japan (は・",
+     "Japanese language borrowed the word 秋"
+    ],
+    "uri": "t#0",
+    "sampler": {
+     "runs": [
+      {
+       "temperature": 0.8,
+       "seed": 43,
+       "stop": "length",
+       "tokens": 12,
+       "utf8": "ok"
+      },
+      {
+       "temperature": 0.9,
+       "seed": 44,
+       "stop": "length",
+       "tokens": 12,
+       "utf8": "ok"
+      },
+      {
+       "temperature": 1.0,
+       "seed": 45,
+       "stop": "length",
+       "tokens": 12,
+       "utf8": "trimmed"
+      },
+      {
+       "temperature": 0.9,
+       "seed": 46,
+       "stop": "length",
+       "tokens": 12,
+       "utf8": "ok"
+      }
+     ],
+     "candidate_runs": [
+      [
+       0
+      ],
+      [
+       1
+      ],
+      [
+       2
+      ],
+      [
+       3
+      ]
+     ]
+    }
+   },
+   "ok"
+  ],
+  [
+   {
+    "prompt": "<|user|>Write the Japanese word for thank you in Japanese script.<|assistant|>",
+    "candidates": [
+     "Ye alludo ikon,\nTakakab",
+     "Kamakura-giri\n\"Honour to",
+     "Japanese calligraphy, which is a common Japanese tradition",
+     "これんの心の"
+    ],
+    "uri": "t#0",
+    "sampler": {
+     "runs": [
+      {
+       "temperature": 0.8,
+       "seed": 44,
+       "stop": "length",
+       "tokens": 13,
+       "utf8": "ok"
+      },
+      {
+       "temperature": 0.9,
+       "seed": 45,
+       "stop": "length",
+       "tokens": 13,
+       "utf8": "ok"
+      },
+      {
+       "temperature": 1.0,
+       "seed": 46,
+       "stop": "length",
+       "tokens": 13,
+       "utf8": "ok"
+      },
+      {
+       "temperature": 0.9,
+       "seed": 47,
+       "stop": "length",
+       "tokens": 13,
+       "utf8": "ok"
+      }
+     ],
+     "candidate_runs": [
+      [
+       0
+      ],
+      [
+       1
+      ],
+      [
+       2
+      ],
+      [
+       3
+      ]
+     ]
+    }
+   },
+   "ok"
+  ],
+  [
+   {
+    "prompt": "<|user|>Write the Japanese word for thank you in Japanese script.<|assistant|>",
+    "candidates": [
+     "Japanese greetings are simple and not speculative or foreign in",
+     "Japanese language borrowed the word 秋",
+     "ざれんの方の",
+     "Ãơ ~ 畳节"
+    ],
+    "uri": "t#0",
+    "sampler": {
+     "runs": [
+      {
+       "temperature": 0.8,
+       "seed": 45,
+       "stop": "length",
+       "tokens": 14,
+       "utf8": "ok"
+      },
+      {
+       "temperature": 0.9,
+       "seed": 46,
+       "stop": "length",
+       "tokens": 14,
+       "utf8": "trimmed"
+      },
+      {
+       "temperature": 1.0,
+       "seed": 47,
+       "stop": "length",
+       "tokens": 14,
+       "utf8": "trimmed"
+      },
+      {
+       "temperature": 0.9,
+       "seed": 48,
+       "stop": "length",
+       "tokens": 14,
+       "utf8": "trimmed"
+      }
+     ],
+     "candidate_runs": [
+      [
+       0
+      ],
+      [
+       1
+      ],
+      [
+       2
+      ],
+      [
+       3
+      ]
+     ]
+    }
+   },
+   "ok"
+  ]
+ ],
+ "prompt_tokens": 13,
+ "cli_rc": 0,
+ "cli_counts": "{\"prompts\": 3, \"ok\": 2, \"over_context\": 1, \"fewer_than_two_distinct\": 0, \"fewer_than_two_valid\": 0, \"already_done\": 0, \"decontaminated\": 0, \"train_overlap\": 38, \"markers\": 0, \"utf8_trimmed\": 0, \"utf8_invalid\": 0, \"out\": \"/home/jonat/pref_cpu_test/m/utf8_cpu_test_7526469.json.candidates.jsonl\"}",
+ "cli_rows": 2,
+ "cli_fffd_in_candidates": 0,
+ "cli_runs_utf8": [
+  "ok",
+  "ok",
+  "ok",
+  "ok",
+  "ok",
+  "ok",
+  "ok",
+  "ok"
+ ],
+ "cli_stops": [
+  "length",
+  "length",
+  "length",
+  "length",
+  "length",
+  "length",
+  "length",
+  "length"
+ ],
+ "cli_config": {
+  "model_sha256": "test",
+  "vocab_sha256": "4d53c7ff236ecba3a2b34cd2d4769f08bdf0408bbc3655afa44b9ddc70929fdd",
+  "ember_commit": "7526469695ee3f07f2b5d6e60568cd3e09529c84",
+  "k": 4,
+  "temps": [
+   0.8,
+   0.9,
+   1.0,
+   0.9
+  ],
+  "seed": 31,
+  "max_new_tokens": 128,
+  "repeat_penalty": 1.0,
+  "ctx": 512,
+  "utf8_rule": "trim_cut_tail_drop_other"
+ }
+}

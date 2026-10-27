@@ -68,6 +68,30 @@ the same pipeline then scales up unchanged.
    DPO+NLL at a gentle rate. The arm fails if it repeats more than its SFT
    start (`chat_eval.py` repeat gate) or loses the ember side-by-side.
 
+   **Sampling the candidates** (`tools/colab_chat/pref_pilot_v1.json`,
+   `pref_sample_vm.py`, `tools/posttrain/sample_candidates.py`): the winner,
+   pk_sft_v1 (Jonathan's pick, 27 Oct 2026), on ember's CUDA server at ember
+   main **7526469**, with `EMBER_GEMM_TF32=0` and `EMBER_DETERMINISTIC=1` (a
+   recorded seed draws the same reply again on the same GPU and build), and
+   `EMBER_SPEC` and `EMBER_DRAFT` unset. 7526469 carries e57c0fb's
+   `utf8_valid` (cherry-picked as 2fb95b2) on every text path: /chat answers
+   a reply cut inside a UTF-8 character with U+FFFD, where fe01b35 and bace837
+   answer HTTP 500 (pk-bench2's IF-tiny job stopped on one); generated ids are
+   unchanged (ember `experiments/utf8_2026-10-27`). The tiny-chat default,
+   aa50a61 (ember main of 25 Oct: IR spec v1, the CUDA prefill rmsnorm fix),
+   and fe01b35 are ancestors. No gate holds the pilot to that line: TF32 is
+   off by the same switch; deterministic mode only adds, under speculation,
+   the exact verify pass (off here); with speculation unset the decode
+   kernels are 70ed063's unchanged; pk_sft_v1's greedy parity gate (aa50a61)
+   and its IF-tiny run (fe01b35, deterministic mode) are records of those
+   builds, not pins for sampling. Replies holding U+FFFD follow
+   sample_candidates.py's rule `trim_cut_tail_drop_other`: a reply cut by the
+   token budget inside a character is a cut reply, trimmed to its last whole
+   character; any other U+FFFD (or a cut with no whole character before it)
+   drops that run from the candidates (the run stays in the record), and a
+   prompt left with fewer than two distinct candidates is skipped as
+   `fewer_than_two_valid`.
+
 ## How it is judged
 
 - `tools/chat_eval.py` on the 200 frozen TinyChat prompts: clean stop,
