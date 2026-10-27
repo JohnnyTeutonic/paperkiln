@@ -87,6 +87,7 @@ EMBER = "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a"   # section 2's pin (carry12_
 CARRY12 = "corpus/eval/carry12_v1.jsonl"
 CARRY12_SPOT = 20
 FROZEN = f"{REL}/PREREGISTRATION.md"
+FREEZE_COMMIT = "3dc818b2476b0957b1337b4c9af22474b76350b5"   # the commit that adds PREREGISTRATION.md
 CUDA_GATE_HOME = f"{REL}/stage0/cuda_gate_c12_s0.json"
 CHOICE = f"{EXP_REL}/stage0/lr_choice.json"
 DESIGN = f"{EXP_REL}/design.json"
@@ -340,18 +341,18 @@ def machine_doc(cell, seed, est):
              "Sgist": f"S-gist (60m_L{lstar()} + k {K_STATE} state slots, turn_state, at T 1,024)",
              "P16": "P16 (plain 60m_L16 at T 1,024)", "X": "X (60m_L16 + full attention residuals at T 1,024)"}[cell]
     runner = runner_command(cell, seed, est, uploads)
-    doc = {"_comment": f"Carry-12 cell {title}, seed {seed} ({REL}/PREREGISTRATION_DRAFT.md sections 6 and 10; written "
+    doc = {"_comment": f"Carry-12 cell {title}, seed {seed} ({REL}/PREREGISTRATION.md sections 6 and 10; written "
                        f"by {REL}/make_jobs.py, whose docstring says what each job does). One RunPod L4, one GPU job "
-                       f"at a time; estimated {est:.1f} L4 VM-hours (stage0/total.json), cap ${cap(est)}. NOT "
-                       f"LAUNCHED: the gate refuses until {FROZEN} is committed, and the launch needs Jonathan's go. "
-                       f"Runner (disabled until then): {runner}",
+                       f"at a time; estimated {est:.1f} L4 VM-hours (stage0/total.json, scores batched), cap "
+                       f"${cap(est)}. FROZEN at {FREEZE_COMMIT[:8]} ({FROZEN}); the gate refuses without that file. "
+                       f"Runner (scripts/colab_driver.json's entry): {runner}",
            "max_parallel": 1, "max_parallel_light": 2, "jobs": jobs}
     return name, doc, uploads
 
 
 def runner_command(cell, seed, est, uploads):
     tag = f"pk-c12-{cell.lower()}-r{seed}"
-    return (f"python3 -u tools/colab_chat/runner_multi.py --backend runpod --gpu L4 --commit FREEZE_COMMIT --jobs "
+    return (f"python3 -u tools/colab_chat/runner_multi.py --backend runpod --gpu L4 --commit {FREEZE_COMMIT} --jobs "
             f"tools/colab_chat/{jobs_name(cell, seed)} --name {tag} --art /mnt/c/ml_artifacts/tiny_chat/c12_{cell}_r{seed} "
             f"--state-dir /home/jonat/{tag.replace('-', '_')}_runner --max-hours {max_hours(est):g} --volume-gb 80 "
             f"--max-usd {cap(est)} " + " ".join(f"--upload {u}" for u in uploads))

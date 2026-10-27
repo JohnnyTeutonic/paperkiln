@@ -148,18 +148,21 @@ def test_caps_and_not_launched():
     assert sum(3 * m.cap(h) for h in hs.values()) < 130  # the twelve pods' caps beside the preference pod
     for cell, h in hs.items():
         doc = jobs(cell, 1)
-        assert f"--max-usd {m.cap(h)} " in doc["_comment"] and "--commit FREEZE_COMMIT" in doc["_comment"]
+        assert f"--max-usd {m.cap(h)} " in doc["_comment"] and f"--commit {m.FREEZE_COMMIT} " in doc["_comment"]
         assert f"--max-hours {m.max_hours(h):g} " in doc["_comment"]
         assert m.max_hours(h) == max(23.5, float(math.ceil(1.3 * h)))  # ceil(1.3 x estimate) when over 23.5
         assert m.max_hours(h) >= h  # a deadline under the estimate would stop the machine early
-        assert "NOT LAUNCHED" in doc["_comment"]
+        assert f"FROZEN at {m.FREEZE_COMMIT[:8]}" in doc["_comment"]
         assert m.cap(h) >= h * 0.59  # a cap under the estimate would stop the machine early
     assert all(m.max_hours(h) == 23.5 for h in hs.values())  # every machine's jobs fit the default deadline
     drv = ROOT.parent / "scripts" / "colab_driver.json"  # the workspace's watchdog entries, when present
     if drv.exists():
         cells = [f"carry12_{c}_r{r}.json" for c in hs for r in (1, 2, 3)]
-        assert not any(d.get("enabled") and any(f in d["command"] for f in cells)
-                       for d in json.loads(drv.read_text())["drivers"])
+        for d in json.loads(drv.read_text())["drivers"]:  # an enabled entry runs the frozen commit at its cap
+            f = next((f for f in cells if f in d.get("command", "")), None)
+            if f and d.get("enabled"):
+                cell = f.split("_")[1]
+                assert f"--commit {m.FREEZE_COMMIT} " in d["command"] and f"--max-usd {m.cap(hs[cell])} " in d["command"]
 
 
 def test_gate_refuses_until_the_frozen_file(tmp_path):
