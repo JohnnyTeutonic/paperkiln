@@ -1670,3 +1670,39 @@ note of 24 Oct: the L4 is the study GPU on either provider, and wall-clock measu
 alike, so for E1-R each run's provider and GPU come from its runner's ledger (RunPod pod records) or Colab session
 log; the analysis records them beside S9 and S10. Each cell's artefacts come home to their own directory
 (`/mnt/c/ml_artifacts/tiny_chat/e1_60m_<cell>`, `.../e1_rec_R2`) and join the arm's directory before analysis.
+
+### 28 Oct 2026, before any seed-4 or seed-5 job: the size arm's extension (A6.5), its commits and machines
+
+An implementation note, not an amendment: no hypothesis, metric, cell, seed, item, threshold or analysis changes.
+
+**The rule fired.** At three seeds (`size/analysis_size.json`, paperkiln 21bf7245) HS1 is NOT_RESOLVED with all
+three per-seed slopes positive and HS2 NOT_RESOLVED with all three negative, so section 7's extension rule applies
+to both, as A6.5 says: seeds 4 and 5 for the three cells they use, once, as new runs at 20M and 60M as well as 150M
+(E1's own extension has not run them). The cells: E5's s35 cell (the 20M L8 cell), E1 at 60M's L8 cell and 150m_L8.
+
+**What runs.** Six runs, one L4 per seed (A5.10's pattern), each with its own data job and gate, each at its cell's
+registered recipe with `train.seed` (and the post job's `--seed`) 4 or 5:
+
+| cell | registered commit, jobs file | the runs' commit (branch) | jobs files |
+|---|---|---|---|
+| 20M L8 (E5 s35) | dc29b5e6, `tiny_chat_e5.json` | ae9ed69f (`ext-e5-s35-2026-10-28`) | `tiny_chat_e5_s35_r4.json`, `_r5.json` |
+| 60M L8 | a90ec0e2, `tiny_chat_e1_60m.json` | 163f73ad (`ext-e1-60m-L8-2026-10-28`) | `tiny_chat_e1_60m_L8_r4.json`, `_r5.json` |
+| 150M L8 | 3abfbc07, `tiny_chat_e1_150m_r3.json` | 528201fe (`ext-size-150m-2026-10-28`) | `tiny_chat_e1_150m_r4.json`, `_r5.json` |
+
+- *Why new commits.* The VM checks out the runner's commit and reads the jobs file from it (`boot_jobs.sh`), so a
+  seed's jobs file has to be in a commit. Each runs' commit is its cell's registered commit plus the two jobs files
+  and nothing else: the code, specs, SFT template, data job and ember pin are the registered ones.
+- *How the files were made.* Each by its cell's own generator at the registered tree: `make_jobs.e_doc` with seeds
+  [4] or [5] and the one cell (dc29b5e6, a90ec0e2), and `make_size_jobs.runs_doc` (3abfbc07). Each generator first
+  reproduces its registered file exactly. Checked job by job against the registered seed-3 jobs: the data job is
+  identical (E5's still builds all four mixes, so its ledger compares with E5's own), the gate differs only in
+  `--jobs` (it reads its own file), and every other job equals seed 3's with the seed changed (job and model names,
+  paths, `--seed`, `train.seed`). There is no pick job: the picks are over seeds 1-3, and Stage L0 reads the
+  registered 150M pick.
+- *Machines.* Colab L4s (the provider note of 24 Oct); the 150M cell's seeds 1-3 ran on RunPod, so its runs span
+  providers and its S10 is flagged, as that note provides. Each run's data ledger is compared with its cell's
+  existing data build before analysis (the note of 25 Oct); a mismatch holds the cell for Jonathan.
+- *Where the results land.* `ART/e5_s35_r<4|5>`, `ART/e1_60m_L8_r<4|5>`, `ART/e1_150m_r<4|5>`. `size/analyze_size.py`
+  reads the 60M and 150M folders by its globs; the 20M post summaries are copied into `ART/e5` (it reads the 20M L8
+  cell from E5's s35 runs). E5's and E1's own analyses are unchanged by the copies: `analyze.py` uses seeds 4 and 5
+  only when every cell of a block has them.
