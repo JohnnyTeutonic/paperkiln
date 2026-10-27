@@ -58,13 +58,14 @@ for a in "$@"; do
 done
 python3 tools/colab_chat/ensure_ember_vm.py "$W/ember_build.json" "$W/ember_build.log" "$EMBER_COMMIT"
 BIN=$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["bin"])' "$W/ember_build.json")
+P=${EVAL_PORT:-8095}  # two eval jobs run at once: each takes its own ports (P, P + 1)
 export EMBER_GPU_LAYERS=-1 EMBER_GEMM_TF32=0 EMBER_DETERMINISTIC=1
 python3 tools/iftiny_eval.py run --gen ember --ember-bin "$BIN" --model "$TAG=$SPEC" --placement \
-  --out "$W/iftiny" --port 8095 $PARITY > "$W/iftiny_$TAG.log" 2>&1
+  --out "$W/iftiny" --port "$P" $PARITY > "$W/iftiny_$TAG.log" 2>&1
 PARTS="ember/iftiny/$TAG ember/iftiny_$TAG.log ember/ember_build.json"
 if [ "$TOOLS" = 1 ]; then
   python3 tools/chat_v2_eval.py tools --gen ember --ember-bin "$BIN" --model "$TAG=$SPEC" --out "$W/tools" \
-    --port 8096 > "$W/tools_$TAG.log" 2>&1
+    --port "$((P + 1))" > "$W/tools_$TAG.log" 2>&1
   PARTS="$PARTS ember/tools ember/tools_$TAG.log"
 fi
 tar czf "$OUT/eval_$TAG.tar.gz.tmp" -C "$OUT" $PARTS
