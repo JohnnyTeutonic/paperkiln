@@ -1,0 +1,123 @@
+{
+ "_comment": "Conversation schema v2 (LOCAL_LLM_STACK.md section 3, point 3g; experiments/chat_general/RESULTS.md, 'Conversation schema v2'), one RunPod L4, cap $5. data: the v2 SFT mix (tools/chat_v2_data.py; 135,525 conversations, sha256 f5933a46...: smol-smoltalk's system-prompt rows, no_robots' system rows, glaive-function-calling-v2's tool rows, a 40k replay of lever 1). v2init: pk_sft_v1 (4d53c7ff... GGUF; safetensors uploaded as pksft) with 8 embedding rows appended, each the mean of the old rows (tools/chat_v2_vocab.py extend; the head is tied). sft: pk_sft_v2 = that + the mix under paperkiln/2 on the 16,392-token vocabulary (vocab_llama3_bpe_v2.gguf, sha256 d44f27b2...), T 512, train.sft_loss all, 8,000 steps x 16 (one pass in expectation over the training rows), lr 5e-5, warmup 200, cosine to 0.1, BF16 GEMMs + flash attention. evalv1 / evalv2: the placement measurement (IF-tiny + placement set + turn distance) on pk_sft_v1 (v1: a system message folds into the first user message) and pk_sft_v2, and the tool-call set on pk_sft_v2, all greedy through `mtstudio chat --kv-cache` on the CPU (tools/colab_chat/chat_v2_eval_vm.sh). Uploads: pksft.safetensors, vocab_llama3_bpe.gguf, vocab_llama3_bpe_v2.gguf, chat_v2_mix_v1.jsonl.gz.",
+ "max_parallel": 1,
+ "max_parallel_light": 2,
+ "jobs": [
+  {
+   "name": "data",
+   "light": true,
+   "cmd": [
+    "sh",
+    "-c",
+    "gunzip -c {upload}/chat_v2_mix_v1.jsonl.gz > {out}/chat_v2_mix_v1.jsonl.tmp && echo 'f5933a46b67e69293cc8ea54f24b10921469900e8ca406ce1d40e63a7d454879  {out}/chat_v2_mix_v1.jsonl.tmp' | sha256sum -c - > {out}/sha256_ok.txt && mv {out}/chat_v2_mix_v1.jsonl.tmp {out}/chat_v2_mix_v1.jsonl"
+   ],
+   "outputs": [
+    "sha256_ok.txt"
+   ]
+  },
+  {
+   "name": "v2init",
+   "light": true,
+   "cmd": [
+    "sh",
+    "-c",
+    "test -f {out}/pk_sft_v1_v2rows.safetensors || python3 tools/chat_v2_vocab.py extend {upload}/pksft.safetensors {out}/pk_sft_v1_v2rows.safetensors --rows 16384 > {out}/extend.json"
+   ],
+   "outputs": [
+    "extend.json"
+   ]
+  },
+  {
+   "name": "sft",
+   "model_name": "pk_sft_v2",
+   "after": [
+    "data",
+    "v2init"
+   ],
+   "relay_every_steps": 2000,
+   "spec": {
+    "arch": {
+     "preset": "llama-tiny",
+     "custom": {
+      "d": 768,
+      "layers": 12,
+      "heads": 12,
+      "d_ff": 2048
+     }
+    },
+    "data": {
+     "vocab": "/content/chat/upload/vocab_llama3_bpe_v2.gguf",
+     "vocab_cap": 16392,
+     "T": 512,
+     "sft_examples": "/content/chat/data/chat_v2_mix_v1.jsonl"
+    },
+    "chat": {
+     "template": "paperkiln/2"
+    },
+    "train": {
+     "steps": 8000,
+     "lr": 0.00005,
+     "batch": 16,
+     "eval_every": 2000,
+     "eval_examples": 512,
+     "eval_batch": 16,
+     "checkpoint_every": 1000,
+     "gradmap_every": 0,
+     "seed": 1,
+     "optimizer": "adamw",
+     "objective": "sft",
+     "sft_loss": {
+      "turns": "all"
+     },
+     "precision": "bf16",
+     "attention_kernel": "flash",
+     "lr_schedule": {
+      "warmup_steps": 200,
+      "decay": "cosine",
+      "min_lr_frac": 0.1
+     },
+     "init_from": "/content/chat/v2init/pk_sft_v1_v2rows.safetensors"
+    },
+    "export": {
+     "formats": [
+      "safetensors",
+      "gguf",
+      "gguf_q8_0_all"
+     ]
+    }
+   }
+  },
+  {
+   "name": "evalv1",
+   "light": true,
+   "cmd": [
+    "bash",
+    "tools/colab_chat/chat_v2_eval_vm.sh",
+    "{out}",
+    "pksft_v1",
+    "--stage",
+    "pksft",
+    "vocab_llama3_bpe.gguf"
+   ],
+   "outputs": [
+    "eval_pksft_v1.tar.gz"
+   ]
+  },
+  {
+   "name": "evalv2",
+   "light": true,
+   "after": "sft",
+   "cmd": [
+    "bash",
+    "tools/colab_chat/chat_v2_eval_vm.sh",
+    "{out}",
+    "pksft_v2",
+    "/content/chat/sft_spec.json",
+    "--tools"
+   ],
+   "outputs": [
+    "eval_pksft_v2.tar.gz"
+   ]
+  }
+ ]
+}

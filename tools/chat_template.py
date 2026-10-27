@@ -329,7 +329,7 @@ def render_pieces(messages, tmpl=V1, generation_prompt=False, thinking=None, too
     v2 on a tool message). tools: tool definitions (v2), rendered inside the system turn."""
     t = tmpl if isinstance(tmpl, dict) else get(tmpl)
     tools_ok = "tool" in t
-    if tools and not ("tools" in t):
+    if tools and "tools" not in t:
         raise TemplateError("this model's template has no tool definitions")
     sys_text, rest = _structure(messages, generation_prompt, tools_ok)
     off = 1 if sys_text is not None else 0

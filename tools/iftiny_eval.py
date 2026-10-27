@@ -72,8 +72,16 @@ def pkey(system, history, user):
     return json.dumps([system, [list(h) for h in history], user], ensure_ascii=False)
 
 
-def prompts(st, dist):
-    """Every distinct (system, history, user) the two sets ask, in a fixed order."""
+def placement_prompts(it):
+    """The placement set (conversation schema v2's measurement, experiments/chat_general/RESULTS.md): the same
+    instruction and question, (system, user) as user placement (no system message; the instruction, a space,
+    then the bare question, which is the item's own prompt for 464 of the 574 items) and system placement (the
+    instruction as the system message, the bare question as the user message)."""
+    return {"user": (None, it["instruction"] + " " + it["bare"]), "system": (it["instruction"], it["bare"])}
+
+
+def prompts(st, dist, placement=False):
+    """Every distinct (system, history, user) the sets ask, in a fixed order."""
     seen, out = set(), []
     for it in st:
         for u in (it["prompt"], it["bare"]):
@@ -81,6 +89,12 @@ def prompts(st, dist):
             if k not in seen:
                 seen.add(k)
                 out.append((k, None, [], u))
+        if placement:
+            for s, u in placement_prompts(it).values():
+                k = pkey(s, [], u)
+                if k not in seen:
+                    seen.add(k)
+                    out.append((k, s, [], u))
     for it in dist:
         k = pkey(it["system"], it["history"], it["user"])
         if k not in seen:
@@ -104,11 +118,14 @@ def post_json(url, body, timeout=600):
 
 
 class EmberGen:
+    """A /chat server on a paperkiln model: ember's (--gen ember) or `mtstudio chat --kv-cache` (--gen mtstudio,
+    paperkiln's own engine, which serves conversation schema v2 models before ember does)."""
+
     def __init__(self, a, spec_path, work):
         import carry5_eval
         _, gguf, _ = carry5_eval.model_paths(spec_path)
-        ns = argparse.Namespace(chat_url=None, port=a.port, gen="ember", out=work, ember_bin=a.ember_bin,
-                                gpu_layers=a.gpu_layers, no_kv_cache=False)
+        ns = argparse.Namespace(chat_url=None, port=a.port, gen=a.gen, out=work, ember_bin=a.ember_bin,
+                                gpu_layers=a.gpu_layers, no_kv_cache=False, mtstudio=a.mtstudio)
         self.srv = carry5_eval.ChatServer(ns, spec_path, gguf)
         self.health = json.loads(urllib.request.urlopen(self.srv.url + "/health", timeout=30).read())
 
@@ -221,20 +238,28 @@ def parity(a, spec_path, work, gens):
 
 
 def check_prompts(spec_path, gens):
-    """The server's prompt ids against this side's rendering (tools/chat_template.py, schema v1: the system
-    message folded into the first user message) for every reply whose history was not cut: a server that
-    ignored the `system` field (ember before the contract's system message) is caught here."""
+    """The server's prompt ids against this side's rendering (tools/chat_template.py, by the model's own
+    template: the record its GGUF declares, else paperkiln/1, whose system message folds into the first user
+    message) for every reply whose history was not cut: a server that ignored the `system` field (ember
+    before the contract's system message) is caught here."""
     import carry5_eval
     import chat_template
-    _, _, vocab = carry5_eval.model_paths(spec_path)
+    import llama3_bpe
+    _, gguf, vocab = carry5_eval.model_paths(spec_path)
     tok = carry5_eval.Tok(vocab)
+    tmpl = chat_template.V1
+    if os.path.exists(gguf):
+        meta = llama3_bpe.read_gguf_kv(gguf, {"paperkiln.chat_template", "tokenizer.ggml.tokens",
+                                              "tokenizer.ggml.model", "general.architecture"})
+        rec, _why = chat_template.resolve(meta)
+        tmpl = rec or tmpl
     n = bad = sysn = 0
     ex = []
     for k, g in gens.items():
         system, history, user = json.loads(k)
         if g.get("prompt_ids") is None or g["history_used"] < len(history):
             continue
-        want = tok.encode(chat_template.prompt([tuple(h) for h in history], user, system=system))
+        want = tok.encode(chat_template.prompt([tuple(h) for h in history], user, tmpl, system=system))
         n += 1
         sysn += bool(system)
         if want != g["prompt_ids"]:
@@ -257,7 +282,7 @@ def contains(reply, answers):
     return qa_eval.correct(reply, answers)
 
 
-def score(st, dist, gens):
+def score(st, dist, gens, placement=False):
     recs = []
     fam = {}
     for it in st:
@@ -283,6 +308,39 @@ def score(st, dist, gens):
     overall = {"micro": rate([r["comply"] for r in allr]), "micro_bare": rate([r["bare_comply"] for r in allr]),
                "macro": round(sum(v["comply"]["rate"] for v in st_sum.values()) / len(st_sum), 4),
                "macro_bare": round(sum(v["bare"]["rate"] for v in st_sum.values()) / len(st_sum), 4)}
+    place = None
+    if placement:
+        pfam, pairs = {}, []
+        for it in st:
+            pp = placement_prompts(it)
+            gu, gs = gens[pkey(pp["user"][0], [], pp["user"][1])], gens[pkey(pp["system"][0], [], pp["system"][1])]
+            gb = gens[pkey(None, [], it["bare"])]
+            cu, cs, cb = (iftiny_checks.check(it["check"], g["reply"]) for g in (gu, gs, gb))
+            r = {"set": "placement", "id": it["id"], "family": it["family"], "comply_user": cu, "comply_system": cs,
+                 "comply_bare": cb, "reply_user": gu["reply"], "reply_system": gs["reply"],
+                 "stop_user": gu["stop"], "stop_system": gs["stop"]}
+            recs.append(r)
+            pfam.setdefault(it["family"], []).append(r)
+            pairs.append((int(cs), int(cu), int(cb)))
+
+        def paired(a, b):
+            import math
+            d = [x - y for x, y in zip(a, b)]
+            n = len(d)
+            m = sum(d) / n
+            sd = math.sqrt(sum((x - m) ** 2 for x in d) / (n - 1)) if n > 1 else 0.0
+            h = 1.96 * sd / math.sqrt(n)
+            return {"n": n, "diff": round(m, 4), "ci95": [round(m - h, 4), round(m + h, 4)],
+                    "system_only": sum(x == 1 and y == 0 for x, y in zip(a, b)),
+                    "other_only": sum(x == 0 and y == 1 for x, y in zip(a, b))}
+        s_, u_, b_ = ([p[i] for p in pairs] for i in range(3))
+        fams = {f: {"user": rate([r["comply_user"] for r in rs]), "system": rate([r["comply_system"] for r in rs]),
+                    "bare": rate([r["comply_bare"] for r in rs])} for f, rs in sorted(pfam.items())}
+        place = {"micro": {"user": rate(u_), "system": rate(s_), "bare": rate(b_)},
+                 "macro": {c: round(sum(v[c]["rate"] for v in fams.values()) / len(fams), 4)
+                           for c in ("user", "system", "bare")},
+                 "system_minus_user": paired(s_, u_), "user_minus_bare": paired(u_, b_),
+                 "system_minus_bare": paired(s_, b_), "families": fams}
     cells = {}
     for it in dist:
         g = gens[pkey(it["system"], it["history"], it["user"])]
@@ -301,12 +359,15 @@ def score(st, dist, gens):
             x["per_family"].setdefault(r["family"], []).append(r["comply"])
         x["per_family"] = {f: round(sum(v) / len(v), 4) for f, v in sorted(x["per_family"].items())}
         dsum.setdefault(cond, {})[f"d{d}"] = x
-    return {"iftiny": {"overall": overall, "families": st_sum}, "ifdist": dsum}, recs
+    out = {"iftiny": {"overall": overall, "families": st_sum}, "ifdist": dsum}
+    if place:
+        out["placement"] = place
+    return out, recs
 
 
 def cmd_run(a):
     st, dist = read_jsonl(a.iftiny), read_jsonl(a.ifdist)
-    plist = prompts(st, dist)
+    plist = prompts(st, dist, a.placement)
     if a.limit:
         keep = {p[0] for p in plist[:a.limit]}
         st = [it for it in st if pkey(None, [], it["prompt"]) in keep and pkey(None, [], it["bare"]) in keep]
@@ -320,7 +381,7 @@ def cmd_run(a):
         for p in range(1, a.passes + 1):
             generate(a, kind, src, work, plist, os.path.join(work, f"gen_pass{p}.jsonl"), f"{tag} pass {p}")
         gens = {r["key"]: r for r in read_jsonl(os.path.join(work, "gen_pass1.jsonl"))}
-        summary, recs = score(st, dist, gens)
+        summary, recs = score(st, dist, gens, a.placement)
         summary["meta"] = {"tag": tag, "source": src, "gen": a.gen, "max_new": a.max_new, "prompts": len(plist),
                            "iftiny_sha256": sha256(a.iftiny), "ifdist_sha256": sha256(a.ifdist),
                            "engine": json.load(open(os.path.join(work, "engine_" + f"{tag} pass 1.json"),
@@ -345,7 +406,7 @@ def cmd_run(a):
                                                "pass2": g2[k]["reply"][:80]} for k in diff[:8]]}
         if kind == "pk":
             summary["prompt_check"] = check_prompts(src, gens)
-        if a.mtstudio and kind == "pk":
+        if a.mtstudio and kind == "pk" and a.gen != "mtstudio":  # mtstudio generating is its own reference
             summary["parity"] = parity(a, src, work, gens)
         write_atomic(os.path.join(work, "summary.json"), json.dumps(summary, indent=1, ensure_ascii=False))
         with gzip.open(os.path.join(work, "items.jsonl.gz"), "wt", encoding="utf-8") as f:
@@ -419,7 +480,9 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run")
-    r.add_argument("--gen", choices=("ember", "hf"), required=True)
+    r.add_argument("--gen", choices=("ember", "mtstudio", "hf"), required=True)
+    r.add_argument("--placement", action="store_true",
+                   help="also the placement set: each IF-tiny instruction as the system message vs in the user turn")
     r.add_argument("--model", action="append", help="tag=spec.json (paperkiln; ember serves its GGUF)")
     r.add_argument("--hf", action="append", help="tag=REPO@REVISION")
     r.add_argument("--ember-bin")

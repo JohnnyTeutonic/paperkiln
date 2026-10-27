@@ -228,3 +228,61 @@ ranked at home by Claude (`claude-opus-5-5`) through the Claude Code CLI. Receip
   prompts (about 2,075 in all, about 1,330 pairs).
 - Nine in ten pairs would train DPO on two replies the budget cut. More new tokens per candidate (T 512
   leaves room) or a preference for finished replies changes that, and the cost per call with it.
+
+## Conversation schema v2: system prompts and tool turns (27 Oct 2026)
+
+Design: LOCAL_LLM_STACK.md section 3, point 3g (paperkiln/2). Code: `tools/chat_template.py` and
+`include/microtorch/chat_template.hpp` (paperkiln 22f8fe6d), mtstudio's SFT path and `/chat`,
+`tools/chat_v2_vocab.py` (vocabulary and embedding rows), `tools/chat_v2_data.py` (the mix),
+`tools/chat_v2_eval.py` (tool-call set, parity prompts), `tools/iftiny_eval.py --placement`.
+
+### The corpus
+
+`tools/chat_v2_data.py build` (ledger `C:/ml_artifacts/chat_v2/data/chat_v2_mix_v1.jsonl.ledger.json`;
+mix sha256 f5933a46...): 135,525 conversations at T 512, each validated under paperkiln/2, decontaminated
+with corpus/decontam.py's rules and against the IF-tiny and turn-distance questions (4 words or more).
+
+| source | licence | rows | rows mtstudio cuts at T 512 | dropped |
+|---|---|---:|---:|---|
+| smol-smoltalk @f73fe857, rows with a system message, train split (openhermes-50k, smol-summarize-5k/20k, smollm-rewrite-30k, explore-instruct-rewrite) | Apache-2.0 | 55,873 | 3,011 | 13,194 over T, 5 IF-tiny, 1 decontam |
+| no_robots @e6f9a4ac, Chat rows with a system message (human-written) | CC BY-NC 4.0 | 776 | 3 | 4 IF-tiny |
+| glaive-function-calling-v2 @e7f4b645 (synthetic), rows with tool definitions; 40k drawn | Apache-2.0 | 38,880 | 3,367 | 1,929 + 1 decontam, 1,120 over T |
+| lever 1's conversation rows (pk_sft_v1's set), seeded 40k replay | as lever 1 | 39,996 | 0 | 4 IF-tiny |
+
+- With a system message: 95,529 rows; with tool definitions 38,880; with tool calls 30,740 (40,245 tool
+  results). Lever 1 (pk_sft_v1) read openhermes-50k with its system messages dropped
+  (`smol_smoltalk.py`'s `turns()`; 18,285 of its rows carry one) and none of the other four sources; the
+  same smol-smoltalk revision holds 70,484 rows with a system message.
+- glaive parse (112,960 rows): 60,284 with calls, 14,980 with definitions the reply does not use, 34,594
+  without definitions (left out: generic synthetic Q&A), 3,098 refused (2,386 malformed `<functioncall>`,
+  398 ending on a tool result, 188 structure, 116 arguments that are not JSON, 10 holding a control string).
+- The tool half's training data is synthetic (glaive). The general chat track allows it; the tiny-chat
+  programme (human-written only) does not use this mix.
+
+### Design of the measurement (written before any result was read)
+
+Exploratory, not pre-registered: no prediction is registered, no threshold decides anything, and the
+numbers are reported as they come.
+
+- **Question.** Does pk_sft_v2 comply with an instruction given as a system message as often as with the
+  same instruction inside the user turn?
+- **Models.** pk_sft_v2 (pk_sft_v1 + one pass of the v2 mix under paperkiln/2) and pk_sft_v1 (v1: its
+  system message folds into the first user message, so its "system" condition is user text with "\n\n").
+- **Items.** IF-tiny v1's 574 items (15 families; held out: no training row holds an IF-tiny or
+  turn-distance question). Conditions per item, the same instruction and question text:
+  user = no system message, the instruction, a space and the bare question (the item's own prompt for 464
+  items; for numbered_list, repeat_phrase and repeat_word, whose prompt is the instruction alone, the bare
+  question is appended so that both placements carry the same text); system = the instruction as the
+  system message, the bare question as the user message; bare = the bare question (the base rate). Also
+  the turn-distance set (1,344 conversations: instr_user vs instr_system at d = 0, 1, 2, 4, 84 per cell).
+- **Generation.** Greedy, 64 new tokens, `mtstudio chat --kv-cache` on the pod's CPU; every server prompt
+  checked against the model's own template rendered at home (`prompt_check`).
+- **Quantities.** Per model: compliance (micro over items, macro over families) per condition; system
+  minus user as a paired difference over the 574 items with a normal-approximation 95% interval and the
+  discordant counts; system minus bare and user minus bare; per family. Turn distance: system minus user
+  per distance (`analyze_if.py`). Between models: pk_sft_v2's system condition against pk_sft_v1's.
+  Families with a bare rate near 1 (end with a full stop) carry little.
+- **Tool half.** `corpus/eval/tool_calls_v1.jsonl`: 200 held-out glaive requests whose gold reply makes a
+  call (call made, function name, arguments as JSON, arguments equal to the gold's) and 100 whose gold
+  reply makes none (false calls). glaive is templated, so held-out rows resemble training rows: this
+  measures the format, not generalisation.

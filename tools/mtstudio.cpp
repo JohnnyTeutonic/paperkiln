@@ -1063,6 +1063,20 @@ chat::Template chat_template_of(const Spec& s) {
     if (s.state_k > 0 && t.id() != chat::kV1)
         throw std::runtime_error("arch.state_tokens is defined over the paperkiln/1 template only (chat.template is " +
                                  t.id() + ")");
+    // A template with tool turns (paperkiln/2) needs each control string as one control token of the
+    // vocabulary (tools/chat_v2_vocab.py vocab): the llama.cpp form, whose tokeniser parses them out.
+    if (t.has_tool && g_bpe) {
+        if (g_bpe->model != "gpt2")
+            throw std::runtime_error("chat template " + t.id() + " needs a llama.cpp-form vocabulary with its control "
+                                     "tokens (tools/chat_v2_vocab.py vocab)");
+        for (const auto& r : t.reserved) {
+            const auto ids = g_bpe->encode(r);
+            if (ids.size() != 1 || ids[0] < 0 || static_cast<size_t>(ids[0]) >= g_bpe->token_type.size() ||
+                g_bpe->token_type[static_cast<size_t>(ids[0])] != 3)
+                throw std::runtime_error("chat template " + t.id() + " needs '" + r +
+                                         "' as a control token of the vocabulary (tools/chat_v2_vocab.py vocab)");
+        }
+    }
     return t;
 }
 
@@ -1271,60 +1285,72 @@ SftSet load_sft(const Spec& s, const std::map<std::string, int>& vocab) {
             std::vector<chat::Piece> pieces;
             try {
                 msgs = chat::messages_from_json(r["messages"]);
-                pieces = chat::render_pieces(msgs, tmpl, /*generation_prompt=*/false);
+                // v2 tool definitions, read as ordered JSON so that they render in their own member order
+                std::vector<chat::json> tools;
+                if (r.contains("tools") && !r["tools"].is_null()) {
+                    const chat::json ro = chat::json::parse(line);  // kept alive for the loop
+                    if (!ro["tools"].is_array()) throw chat::Error("tools must be a list of tool definitions");
+                    for (const auto& t : ro["tools"]) tools.push_back(t);
+                }
+                pieces = chat::render_pieces(msgs, tmpl, /*generation_prompt=*/false, -1, tools);
             } catch (const chat::Error& e) {
                 throw std::runtime_error(s.sft_examples + ":" + std::to_string(n) + ": " + e.what());
             }
-            const size_t first = msgs[0].role == "system" ? 1 : 0;
-            const size_t E = (msgs.size() - first) / 2;
-            // Per exchange: its ids, each id's message index (-1: bos / default system) and
-            // whether it is reply content or a reply's close.
-            std::vector<std::vector<int>> ex_ids(E), ex_msg(E);
-            std::vector<std::vector<uint8_t>> ex_reply(E);
+            // Exchanges (chat::exchanges): a user message and everything before the next one (v1: one
+            // reply; v2: replies, tool calls and tool results). Per piece: its ids, its message index
+            // (-1: bos / default system) and whether it is reply text (content, a tool call, the
+            // close). Pieces come in message order, so "the pieces of messages before `end`" is a
+            // prefix of the piece list.
+            const auto exr = chat::exchanges(msgs);
+            const size_t E = exr.size();
+            std::vector<std::vector<int>> p_ids;
+            std::vector<int> p_msg;
+            std::vector<uint8_t> p_reply;
             for (const auto& p : pieces) {
-                const size_t ex = p.index < static_cast<int>(first) ? 0 : (static_cast<size_t>(p.index) - first) / 2;
-                const auto t = tokenize(p.text, vocab, 1u << 30);
-                const uint8_t reply = p.role == "assistant" && (p.kind == "content" || p.kind == "close");
-                ex_ids[ex].insert(ex_ids[ex].end(), t.begin(), t.end());
-                ex_msg[ex].insert(ex_msg[ex].end(), t.size(), p.index);
-                ex_reply[ex].insert(ex_reply[ex].end(), t.size(), reply);
+                p_ids.push_back(tokenize(p.text, vocab, 1u << 30));
+                p_msg.push_back(p.index);
+                p_reply.push_back(p.role == "assistant" && (p.kind == "content" || p.kind == "close" ||
+                                                            p.kind == "call_open" || p.kind == "call"));
             }
-            std::vector<size_t> upto(E + 1, 0);  // tokens in exchanges 0 .. k-1
-            for (size_t k = 0; k < E; ++k) upto[k + 1] = upto[k] + ex_ids[k].size();
-            auto reply_of = [&](size_t k) { return static_cast<int>(first + 2 * k + 1); };
-            auto trainable = [&](int i) { return msgs[static_cast<size_t>(i)].loss != 0; };
-            std::vector<std::pair<size_t, std::vector<int>>> rows;  // (exchanges kept, trained messages)
+            auto tokens_before = [&](size_t end) {  // tokens of every piece of messages before `end`
+                size_t c = 0;
+                for (size_t j = 0; j < pieces.size() && p_msg[j] < static_cast<int>(end); ++j) c += p_ids[j].size();
+                return c;
+            };
+            auto trainable = [&](size_t i) { return msgs[i].role == "assistant" && msgs[i].loss != 0; };
+            std::vector<std::pair<size_t, std::vector<int>>> rows;  // (messages kept, trained messages)
             if (s.sft_turns == "each") {
-                for (size_t k = 0; k < E; ++k) {
-                    if (!trainable(reply_of(k))) continue;
-                    if (upto[k + 1] > s.T + 1) {
+                for (size_t i = 0; i < msgs.size(); ++i) {
+                    if (!trainable(i)) continue;
+                    if (tokens_before(i + 1) > s.T + 1) {
                         ++d.conv_over_T;
                         continue;
                     }
-                    rows.push_back({k + 1, {reply_of(k)}});
+                    rows.push_back({i + 1, {static_cast<int>(i)}});
                 }
             } else {
                 size_t k = 0;
-                while (k < E && upto[k + 1] <= s.T + 1) ++k;
+                while (k < E && tokens_before(exr[k].second) <= s.T + 1) ++k;
                 if (k == 0) {
                     ++d.conv_over_T;
                     continue;
                 }
                 d.conv_exchanges_cut += E - k;
+                const size_t end = exr[k - 1].second;
                 std::vector<int> tr;
-                for (size_t q = 0; q < k; ++q)
-                    if (trainable(reply_of(q))) tr.push_back(reply_of(q));
-                if (s.sft_turns == "final") tr = tr.empty() || tr.back() != reply_of(k - 1) ? std::vector<int>{}
-                                                                                            : std::vector<int>{tr.back()};
-                rows.push_back({k, tr});
+                for (size_t i = 0; i < end; ++i)
+                    if (trainable(i)) tr.push_back(static_cast<int>(i));
+                if (s.sft_turns == "final")
+                    tr = tr.empty() || tr.back() != static_cast<int>(end) - 1 ? std::vector<int>{} : std::vector<int>{tr.back()};
+                rows.push_back({end, tr});
             }
-            for (const auto& [k, tr] : rows) {
+            for (const auto& [end, tr] : rows) {
                 std::vector<int> seq;
                 std::vector<uint8_t> lt;
-                for (size_t q = 0; q < k; ++q) {
-                    seq.insert(seq.end(), ex_ids[q].begin(), ex_ids[q].end());
-                    for (size_t i = 0; i < ex_ids[q].size(); ++i)
-                        lt.push_back(ex_reply[q][i] && std::find(tr.begin(), tr.end(), ex_msg[q][i]) != tr.end());
+                for (size_t j = 0; j < pieces.size() && p_msg[j] < static_cast<int>(end); ++j) {
+                    seq.insert(seq.end(), p_ids[j].begin(), p_ids[j].end());
+                    const uint8_t on = p_reply[j] && std::find(tr.begin(), tr.end(), p_msg[j]) != tr.end();
+                    lt.insert(lt.end(), p_ids[j].size(), on);
                 }
                 if (std::find(lt.begin(), lt.end(), uint8_t(1)) == lt.end()) {
                     ++d.conv_untrained;
@@ -4372,8 +4398,10 @@ int chat_cmd(const std::string& target, const std::string& host, int port, bool 
             res.set_content(json({{"error", msg}}).dump(), "application/json");
         };
         const json r = json::parse(req.body, nullptr, false);
-        if (r.is_discarded() || !r.is_object() || !r.contains("user_input") ||
-            !r["user_input"].is_string()) {
+        // v2 (a template with tool turns): user_input may be left out when the history ends on a tool
+        // message (the reply follows the tool results).
+        if (r.is_discarded() || !r.is_object() ||
+            (r.contains("user_input") && !r["user_input"].is_null() ? !r["user_input"].is_string() : !tmpl.has_tool)) {
             fail(400, "body must be JSON with a string 'user_input'");
             return;
         }
@@ -4429,35 +4457,93 @@ int chat_cmd(const std::string& target, const std::string& host, int port, bool 
             has_system = has_system && !system.empty();
             // "thinking": false selects a template's no-think generation prompt (ignored without one).
             const int thinking = r.contains("thinking") && r["thinking"].is_boolean() ? (r["thinking"].get<bool>() ? 1 : 0) : -1;
-            const json turns = history_turns(r);
-            json q = r;
-            size_t first = 0;
             std::vector<int> ids;
-            while (true) {
-                q["history"] = json(turns.begin() + static_cast<std::ptrdiff_t>(first), turns.end());
-                const std::string prompt = chat_prompt(q, tmpl, has_system ? &system : nullptr, thinking);
-                ids = tokenize(prompt, lm.vocab, prompt.size() + 1);
-                // State tokens: the template's blocks after every finished
-                // reply (the history's replies all end with <|endoftext|>).
-                if (lm.st.k > 0) ids = nn::insert_state_ids(ids, lm.st);
-                if (first == turns.size() || ids.size() + static_cast<size_t>(max_new) <= T) break;
-                ++first;
+            size_t turns_used = 0;
+            if (!tmpl.has_tool) {
+                const json turns = history_turns(r);
+                json q = r;
+                size_t first = 0;
+                while (true) {
+                    q["history"] = json(turns.begin() + static_cast<std::ptrdiff_t>(first), turns.end());
+                    const std::string prompt = chat_prompt(q, tmpl, has_system ? &system : nullptr, thinking);
+                    ids = tokenize(prompt, lm.vocab, prompt.size() + 1);
+                    // State tokens: the template's blocks after every finished
+                    // reply (the history's replies all end with <|endoftext|>).
+                    if (lm.st.k > 0) ids = nn::insert_state_ids(ids, lm.st);
+                    if (first == turns.size() || ids.size() + static_cast<size_t>(max_new) <= T) break;
+                    ++first;
+                }
+                turns_used = turns.size() - first;
+            } else {
+                // v2 (paperkiln/2): the request as messages. History entries in role form pass through
+                // as they are (user, assistant with optional tool_calls, tool with optional
+                // tool_call_id; the template checks the structure), pair-form entries are a user and an
+                // assistant message; then user_input when given. Tool definitions ("tools") and the
+                // history are read as ordered JSON (definitions render in their own member order).
+                const chat::json ro = chat::json::parse(req.body);
+                std::vector<chat::json> tools;
+                if (ro.contains("tools") && !ro["tools"].is_null()) {
+                    if (!ro["tools"].is_array()) throw chat::Error("tools must be a list of tool definitions");
+                    for (const auto& t : ro["tools"]) tools.push_back(t);
+                }
+                chat::json hist = chat::json::array();
+                if (has_system) hist.push_back({{"role", "system"}, {"content", system}});
+                if (ro.contains("history") && ro["history"].is_array())
+                    for (size_t i = 0; i < ro["history"].size(); ++i) {
+                        const auto& h = ro["history"][i];
+                        if (!h.is_object()) continue;
+                        if (h.contains("role")) {
+                            if (h["role"] == "system") continue;  // taken above (first entry only)
+                            hist.push_back(h);
+                        } else {
+                            hist.push_back({{"role", "user"}, {"content", h.value("user", std::string())}});
+                            hist.push_back({{"role", "assistant"}, {"content", h.value("assistant", std::string())}});
+                        }
+                    }
+                const bool has_input = ro.contains("user_input") && ro["user_input"].is_string();
+                const std::string last = hist.empty() ? std::string() : hist.back().value("role", std::string());
+                if (has_input && last == "user")
+                    throw chat::Error("history ends with a user message: it must end with an assistant reply or a tool "
+                                      "result (the new message goes in user_input)");
+                if (!has_input && last != "tool")
+                    throw chat::Error("user_input may be left out only when the history ends on a tool message");
+                if (has_input) hist.push_back({{"role", "user"}, {"content", ro["user_input"].get<std::string>()}});
+                const std::vector<chat::Message> msgs = chat::messages_from_json(hist);
+                // The context rule (section 3 point 5, v2): drop the OLDEST whole exchange (a user message
+                // and everything before the next one) while prompt + max_new_tokens exceeds the context;
+                // the system turn and its tool definitions are pinned, the newest exchange is never cut.
+                const auto exr = chat::exchanges(msgs);
+                const size_t head = exr.empty() ? msgs.size() : exr[0].first;
+                size_t first = 0;
+                while (true) {
+                    std::vector<chat::Message> kept(msgs.begin(), msgs.begin() + static_cast<std::ptrdiff_t>(head));
+                    if (!exr.empty())
+                        kept.insert(kept.end(), msgs.begin() + static_cast<std::ptrdiff_t>(exr[first].first), msgs.end());
+                    const std::string prompt = chat::render(kept, tmpl, /*generation_prompt=*/true, thinking, tools);
+                    ids = tokenize(prompt, lm.vocab, prompt.size() + 1);
+                    if (exr.empty() || first + 1 >= exr.size() || ids.size() + static_cast<size_t>(max_new) <= T) break;
+                    ++first;
+                }
+                turns_used = exr.empty() ? 0 : exr.size() - 1 - first;
             }
             if (ids.size() >= T) {
                 fail(400, "message is " + std::to_string(ids.size()) + " tokens; the model's context is " +
                               std::to_string(T));
                 return;
             }
+            const std::vector<int> prompt_ids = ids;
             std::lock_guard<std::mutex> lk(gen_mu);
             std::mt19937 gen(r.contains("seed") ? r["seed"].get<unsigned>() : seeder());
             NoGrad ng;
             std::vector<int> out;
             std::string stop = "length";
+            int stop_id = -1;
             for (int t = 0; t < max_new; ++t) {
                 if (ids.size() > T) break;  // the context limit: "length"
                 const int pick = lm.next(ids, temp, top_k, top_p, gen, rep_p, static_cast<size_t>(rep_n), stop_ids);
                 if (pick == lm.eos) {
                     stop = "eos";
+                    stop_id = pick;
                     break;
                 }
                 ids.push_back(pick);
@@ -4466,18 +4552,47 @@ int chat_cmd(const std::string& target, const std::string& host, int port, bool 
                     if (wordtok::ends_with(out, m)) {
                         out.resize(out.size() - m.size());
                         stop = "turn";
+                        if (m.size() == 1) stop_id = m[0];
                         break;
                     }
                 if (stop == "turn") break;
             }
-            std::string reply = g_bpe ? g_bpe->decode(out) : wordtok::detokenize(out, lm.tokens);
-            const auto b = reply.find_first_not_of(" \t\r\n");
-            const auto e = reply.find_last_not_of(" \t\r\n");
-            reply = b == std::string::npos ? "" : reply.substr(b, e - b + 1);
+            auto decode = [&](const std::vector<int>& v) {
+                return g_bpe ? g_bpe->decode(v) : wordtok::detokenize(v, lm.tokens);
+            };
+            auto trim = [](const std::string& x) {
+                const auto b = x.find_first_not_of(" \t\r\n");
+                const auto e = x.find_last_not_of(" \t\r\n");
+                return b == std::string::npos ? std::string() : x.substr(b, e - b + 1);
+            };
+            std::string reply = decode(out);
+            json calls = json::array();
+            if (tmpl.has_tool) {
+                // v2: the reply split on the <|tool_call|> id (chat::parse_reply); a part that does not
+                // parse leaves the whole reply as content. Control tokens and spares decode as their text.
+                const auto cid = tokenize(tmpl.tool_call_open, lm.vocab, 4);
+                const chat::ParsedReply pr = chat::parse_reply(out, cid.size() == 1 ? cid[0] : -2, decode);
+                if (pr.parsed) {
+                    reply = pr.content;
+                    for (const auto& c : pr.tool_calls)
+                        calls.push_back({{"id", c.id},
+                                         {"type", "function"},
+                                         {"function", {{"name", c.name}, {"arguments", c.arguments}}}});
+                }
+            }
+            reply = trim(reply);
             json body = {{"reply", reply},
                          {"stop_reason", stop},
                          {"tokens", out.size()},
-                         {"history_turns_used", turns.size() - first}};
+                         {"history_turns_used", turns_used}};
+            if (!calls.empty()) body["tool_calls"] = calls;
+            // return_ids: the prompt ids, the reply ids (without the stop) and the stop id (null at
+            // "length"), as ember's /chat reports them (the parity and prompt checks read them).
+            if (r.value("return_ids", false)) {
+                body["prompt_ids"] = prompt_ids;
+                body["ids"] = out;
+                body["stop_id"] = stop_id >= 0 ? json(stop_id) : json();
+            }
             // The cache's rows per layer after the reply (state models: n k
             // state rows plus the current turn under --evict).
             if (lm.kv_on) body["kv_rows"] = lm.kv.rows();
