@@ -265,9 +265,14 @@ seeds 1, 2, 3 paired by seed. Rung logging is not registered here.
   seeds 1-3 among cells passing the validity gate; depths within 1 point tied, the one with the higher A2.1 probe rate
   winning. One rule, so the size arm and this programme share one 60M shape. It fires once all twelve E1 at 60M runs
   are home.
-- **The mix: 35%†**, E1's level, on which every 60M run trained, so W512 is E1 at 60M's own L\* cell and HT reads T
-  alone. If E5's data bar comes out at another share, Jonathan decides at the freeze between 35% (HT clean) and the
-  bar (HT then reads the mix and T together, unless a W512 run at the bar is added: 3 runs, about 17-21 VM-hours).
+- **The mix: 35%**, E1's level, on which every 60M run trained, so W512 is E1 at 60M's own L\* cell and HT reads T
+  alone. E5's data bar came out at 0% (H5 CONTRADICTED: Carry-5's Y at 35% minus 0% is -0.046, 0/3 seeds above
+  zero). The mix stays at 35% (decided 27 Oct 2026 by the main session; Jonathan delegated the choice): at 0% the
+  pretraining mix holds no dialogue, so option 2's long dialogues whole in T 1,024 windows and S-gist's state
+  slots (trained in pretraining dialogue documents) would reach the model through SFT alone, and the design is
+  for long carry, which the bar's short-gap Y does not measure. Stage L0 points the same way descriptively (one
+  pick each: E5's 0% pick D -0.066, its 17% pick -0.039; the 35% and 70% picks are read at the freeze). The bar's
+  result is reported beside every Carry-12 table.
 - **Learning rates†:** every cell trains at E1 at 60M's T 512 choice for its plain shape (`stage0/lr_choice.json`:
   60m_L4 and 60m_L8 5e-4, 60m_L16 and 60m_L32 1e-3); D, S-gist and S-full at B's, X at P16's (Kimi's convention, as
   A5.2). No T 1,024 screens: the rate held fixed keeps HT a contrast of T alone, and tokens per step do not change.
@@ -451,7 +456,8 @@ for the whole conversation plus near_self: 30% fewer, and one forced-choice mode
 
 1. **E5's data bar** (the dialogue share) and its verdicts; **E1's 60M results and L\*** (A6.1's depth rule over
    all twelve E1 at 60M runs†) and whether any E cell sat on the FLOOR (if the 60M L\* cell is FLOOR on Carry-5, the
-   long programme waits). If the bar is not 35%, Jonathan's choice of mix (section 6).
+   long programme waits). Known: the bar is 0% and the mix stays at 35% (section 6); L\* is 60m_L8
+   (`../tiny_chat_2026-10/size/depth_choice.json`).
 2. **The recursion arm** (E1-R and MoR): HR2/HR2-J/H-MoR1 verdicts, which decide whether R runs at all† and, if it
    does, its design and HR's direction.
 3. **Stage L0's numbers**, read under `STAGE_L0.md` (frozen before any L0 scoring: the commands, the
@@ -490,7 +496,7 @@ for the whole conversation plus near_self: 30% fewer, and one forced-choice mode
 | item | 20M plan (24 Oct 2026) | 60M plan† |
 |---|---|---|
 | base shape B | `SHAPE`, E1's 20M winner | 60m_L\*, A6.1's rule on E1 at 60M |
-| mix | `BAR`, E5's data bar | 35% (E1's level), the bar at the freeze if Jonathan chooses it |
+| mix | `BAR`, E5's data bar | 35% (E1's level; the bar is 0%, section 6) |
 | X and P16 | 20m_L16 (d 320), +10,240 query parameters (0.04% of all, 0.05% of non-embedding) | 60m_L16 (d 512), +16,384 (0.02%) |
 | X's throughput | 0.3x P16 (unfused AttnRes in the literature) | 0.668x (X5's probe, A5.12) |
 | state slots | + 4d at 20M | + 4d = 1,536-4,352 |
