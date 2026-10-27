@@ -22,7 +22,9 @@ and tokens), `STAGE_L0.md` (Stage L0's frozen registration), `IR_SPEC_DRAFT.md` 
 review), `CROSSLAYER_LITCHECK.md` (cross-layer arm, by another agent), `stage0/` (the pre-freeze campaign's
 receipts and E1 at 60M's measured walls, `stage0/e1_60m_walls_t512.json`). Tools: `tools/carry12_build.py`,
 `tools/carry12_eval.py`, `tools/carry12_l0.py`, `tools/dialogue_lengths.py`; the pre-freeze campaign
-`tools/colab_chat/carry12_stage0_v1.json` (written by `make_stage0_jobs.py`) and its total, `stage0_total.py`.
+`tools/colab_chat/carry12_stage0_v1.json` (written by `make_stage0_jobs.py`) and its total, `stage0_total.py`; the
+cells' specs and jobs files, `make_jobs.py` (`specs/cell_*.json`, `specs/sft_*.json`,
+`tools/colab_chat/carry12_<cell>_r<seed>.json`), and section 9's `analyze.py`.
 
 ## 0. Objective and constraints
 
@@ -135,8 +137,12 @@ inserts the state block after every `<|endoftext|>` that closes an exchange into
 and gate prompts (`prompt_ids`, `tools/state_tokens.py`'s rule; `mtstudio score` validates the blocks of
 pre-tokenised prompts but inserts none), and checks ember's prompt ids against the same layout; `mtstudio chat`
 and ember's /chat insert the blocks themselves. Tested end to end on a toy state-token model: the gold request
-equals `mtstudio score` on the same prompt as text. carry5_eval (the post job's Carry-5) does not insert them
-yet, so the S cells' Carry-5 needs the same change before they run.
+equals `mtstudio score` on the same prompt as text. carry5_eval (the post job's Carry-5) inserts them by the same
+rule (`prompt_ids` and `state_template`, defined once in carry5_eval and imported by carry12_eval) only for a model
+whose GGUF declares state tokens, and refuses a spec with `arch.state_tokens` whose GGUF does not; every other model's
+prompts are byte-identical to its output before the change (`tests/test_carry5_state.py`: the whole Carry-5 request
+list, gold, twin, noctx, self and gate rows, hashes as before on `pick_e1_L16`'s GGUF and on a toy vocabulary), and on
+a toy state-token model its pre-tokenised gold and twin requests score what `mtstudio score` scores on the same text.
 
 **Frozen v1:** `corpus/eval/carry12_v1.jsonl`, sha256
 `de24f2c726a1006e8e61542dd3b2dfbf8677b9e6fe689277cca035305bd32797`, pinned in
@@ -305,7 +311,7 @@ seeds 1, 2, 3 paired by seed. Rung logging is not registered here.
 
 | cell | what | parameters vs B | status† |
 |---|---|---|---|
-| W512 | E1 at 60M's L\* cell itself (T 512): existing runs, Stage L0 scores | = | free |
+| W512 | E1 at 60M's L\* cell itself (T 512): its three pretrained runs, re-SFT'd by E1's own SFT on B's machines and scored on Carry-12 by forced choice (its per-seed SFT models stayed on E1's VMs; Stage L0 scored the pick only) | = | 1.83 h per seed (section 10) |
 | **B** | 60m_L\* at T 1,024 | = | core: every contrast below is against it |
 | D | B's pretrained weights; SFT with 10+-turn dialogues oversampled x4 (`sft_human_long4.jsonl`: the T 1,024 data job's SFT rows, each row of 10+ trained turns four times, `--long-sft 10:4`; B's 1,500 steps) | = | core (data option 1, SFT only) |
 | S-gist | B + k = 4 state slots, `turn_state` mask (IR_SPEC_DRAFT section 1) | + 4d (1,536-4,352)† | core: E4, per-turn state, finished turns dropped |
@@ -430,13 +436,28 @@ slopes on distance; 0.02 nats pairwise for panel losses.
   early sources singled out (the direct test of "selective strengthening"); routing entropy per layer
   (collapse); tokens/s.
 
-## 9. Analysis (as E5/E1 section 7, `analyze.py` style, to be written and tested on synthetic summaries)
+## 9. Analysis (`analyze.py` in this folder)
 
 One number per (cell, seed); per-seed paired contrasts, one-sample t over seeds (n = 3, critical 4.303);
 verdicts SUPPORTED, CONTRADICTED, EQUIVALENT (90% interval inside +-SESOI), SIGNIFICANT_BELOW_SESOI,
 NOT_RESOLVED; the extension rule (seeds 4-5 once, for a primary contrast NOT_RESOLVED with one sign on all
 three seeds); no peeking (`--partial` labels output DESCRIPTIVE, PARTIAL). W512's seeds are E1 at 60M's seeds
 1-3†, so HT pairs by seed.
+
+`analyze.py --art ART [--partial] [--lstar L] [--r-sign +1|-1] [--e1-home DIR]` reads every
+`post_c12_<cell>_r<seed>/summary.json` the cells' jobs bring home and uses E5/E1's `decide()` (the verdict rule and
+the extension flag) unchanged. Per cell: the validity gate of section 7 on means over seeds (a contrast with a failing
+cell is FLOOR), Y12, Y12_gold, the decomposition, Carry-5's Y, the panels and instruction compliance. Registered: HT
+(Y12_gold, B - W512, with HT-0's reading), HD (D - B, HD-0), HS1 (S-gist - B, direction negative, with HS1-alt: holds
+on EQUIVALENT or CONTRADICTED) and its retention ratio by distance over the context families, HS0 and the mask's cost
+when S-full is home, HR when R is home (`--r-sign` gives the 20M contrast's sign; SUPPORTED = the sign transferred),
+HX's D_X on recall (gold far minus near, X - P16), the slope on distance of the gold-history gain in correction
+(1 point per turn), H-gap (both SUPPORTED), HX-main and the isoplot residual (the line through B and P16 per seed,
+flagged thin; none when L\* = 16, where P16 is B). Descriptive: the panel contrasts and W512's reproduction of E1's SFT
+(its `sft_weights_sha256` against E1's home post summaries). Tested on synthetic summaries
+(`tests/test_carry12_analyze.py`: every contrast and verdict, FLOOR, the extension rule and seeds 4-5, the refusal
+of an incomplete core and `--partial`, the conditional cells, L\* = 16) and on the toy cells' own post summaries
+(section 11).
 
 ## 10. Budget (planning numbers; Stage 0's probes at T 1,024 replace them)
 
@@ -507,11 +528,21 @@ for the whole conversation plus near_self: 30% fewer, and one forced-choice mode
   Carry-12 part, 2.2-2.3 h is `mtstudio score` (forced choice in five modes and the parity gate) and 13-15 minutes
   is ember's generation, so ember ec3201b changes the total by minutes, and batching `mtstudio score` is the lever
   on the post jobs. The 60m_L32 cost run (`pick_e1_60m_L32`) is descriptive and not part of the total.
+- **The cells' jobs files** (`make_jobs.py` in this folder; `tools/colab_chat/carry12_<B|Sgist|P16|X>_r<1|2|3>.json`,
+  one RunPod L4 each, twelve machines): CUDA gate, the T 1,024 data job (the pre-freeze campaign's), a gate that refuses
+  until this folder's `PREREGISTRATION.md` is committed (and checks the pre-freeze CUDA gate, design.json and every
+  rate against `lr_choice.json`), the pretraining run on the probed spec (`specs/cell_*.json`, the Stage 0 probes'
+  arch, data and train), and the post job: SFT at 16,384 tokens per step (`specs/sft_T1024.json`; D's
+  `sft_T1024_long4.json`), panels, Carry-5, then Carry-12, generation at ember ec3201b with `EMBER_DETERMINISTIC=1`.
+  B's machine also runs D and W512 (E1's pretrained weights uploaded, E1's SFT on E1's T 512 data job, Carry-12
+  forced choice: 1.83 h per seed, 5.5 VM-hours, $3.24 beyond the measured total: **158.8 VM-hours, $93.68** with it).
+  Caps, ceil(1.3 x estimate x $0.59): B's machines (B, D, W512; 17.9 h) $14, S-gist's (10.3 h) $8, P16's (11.5 h) $9,
+  X's (13.4 h) $11; $126 over the twelve. Wall-clock: B's machines are the longest, about 18 h.
 - **Two cheaper layouts, Jonathan's call at the freeze:** when L\* is 32, X on B's shape instead of 60m_L16 (P16
   dropped, about -28 VM-hours, at the cost of the shape the literature check chose and a different X/plain throughput
   ratio, measured by the probe); when L\* is 4 or 8, X stays at 60m_L16 because depth attention needs depth.
-- Wall-clock: one seed per L4 (A5.10's pattern), about 9-12 h per run; with B, S-gist, X and P16 on twelve L4s and D
-  after B, the core comes home in about a day and a half of runs.
+- Wall-clock: one seed per L4 (A5.10's pattern), about 10-13 h per machine and 18 h on B's (B, then D and W512); with
+  the twelve machines at once the core comes home in under a day of runs.
 
 ## 11. What must be known before freezing
 
@@ -540,13 +571,16 @@ for the whole conversation plus near_self: 30% fewer, and one forced-choice mode
    job (`tiny_chat_data.py --T 1024 --carry12 --long-sft 10:4`, tested on CPU, run in the pre-freeze campaign:
    `stage0/carry12_data_t1024_ledger.json`). Settled by the main session (27 Oct 2026): the S cells' Carry-5 is
    scored on the layout they train on. carry5_eval inserts the state blocks only for a model whose GGUF declares
-   state tokens (the family `llama_state`), and a test holds every other model's prompts byte-identical to
-   carry5_eval's output before the change, so E5, E1, the size arm and the cells B, D, P16 and X are scored as
-   before. D's threshold stays at 10+ trained turns: the rule is a turn count, not a source list, and it takes in
+   state tokens (the family `llama_state`; section 2), and `tests/test_carry5_state.py` holds every other model's
+   prompts byte-identical to carry5_eval's output before the change (the whole Carry-5 request list on
+   `pick_e1_L16`'s GGUF and on a toy vocabulary), so E5, E1, the size arm and the cells B, D, P16 and X are scored as
+   before; on a toy state-token model its requests score what `mtstudio score` scores on the same text. D's threshold stays at 10+ trained turns: the rule is a turn count, not a source list, and it takes in
    Self-Dialogue's 1,297 ten-turn dialogues and every Topical-Chat dialogue (section 4, option 1); 11+ would leave
    out all of Self-Dialogue and most of Topical-Chat (its p90 is 11 turns) and shrink D's long rows by about half.
 6. **Stage 0 at T 1,024:** probes replace section 10's estimates; Jonathan's go on the measured total. Known: the
-   probes and the measured total, 153.3 L4 VM-hours, $90 (section 10). Open: his go.
+   probes and the measured total, 153.3 L4 VM-hours, $90 (section 10), and W512's re-run on B's machines (E1 at
+   60M's per-seed SFT models are not home; HT pairs by seed), 5.5 VM-hours, $3.24: 158.8 VM-hours, $93.68 in all.
+   Open: his go on that total, and a RunPod top-up to cover it (the twelve machines' caps sum to $126).
 7. Jonathan's ruling on data option 3 (new long human sources), if wanted before the freeze. What the four
    licensed long sources (Taskmaster-3, ABCD, CCPE-M, PersuasionForGood) add to the T 1,024 data job, counted by
    the pre-freeze campaign (`stage0/carry12_data_long3_ledger.json`; nothing trains on it): 196,779 dialogues
@@ -554,10 +588,25 @@ for the whole conversation plus near_self: 30% fewer, and one forced-choice mode
    149.5 MB (the 35% mix still takes two copies), SFT rows 19,461 against 16,932, of which 5,351 hold 10+ turns
    against 3,698 (D's set 35,514 rows against 28,026). With them B's data is no longer W512's, so HT would read
    T and the sources together.
+8. **S-full's trigger, one wording for the frozen file.** Sections 6, 8 and 13 run S-full "only if HS1 is
+   CONTRADICTED", and section 6 also says it is needed "only if S-gist loses"; HS1 predicts Y12(S-gist) - Y12(B) < 0,
+   so S-gist losing is a SUPPORTED HS1, not a CONTRADICTED one. `analyze.py` reports both readings
+   (`s_full_condition`); the frozen file states one.
 
-Also needed for the freeze itself (the header's licence: the jobs files exercised end to end on CPU): the cells'
-jobs files (pretraining, SFT and the post job with Carry-12 after Carry-5, at the freeze's pin) and section 9's
-`analyze.py`.
+For the freeze itself (the header's licence: the jobs files exercised end to end on CPU): the cells' jobs files
+(section 10: pretraining, SFT and the post job with Carry-12 after Carry-5, generation at ember ec3201b) and section
+9's `analyze.py` exist and ran end to end on CPU at toy size on 27 Oct 2026 (`tests/test_carry12_cells_e2e.py`,
+receipt `stage0/toy_e2e_2026-10-27.json`): for each of the twelve machine files, its own pretraining spec and post
+command lines with the VM's paths mapped to the toy's (width d 64, 2 or 4 layers, a 700-token vocabulary, a few
+steps, 2,048 tokens per step and 16 panel windows through two test-only overrides, Carry-5's every 26th item and
+Carry-12's every 110th), seeds 1-3: the T 1,024 data job with Carry-12 and D's long set, E1's T 512 data job,
+pretraining with `mtstudio run` (state slots in S-gist, attention residuals in X), SFT and export, the panels,
+Carry-5 and base-model Carry-5, then Carry-12. 18 post jobs: every ember spot-check identical at ec3201b on CPU, S-gist
+and X included (Carry-5 2/2 items, Carry-12 14/14), every parity-gate reply identical (5,325 of 5,325), no rendering
+over the context, a rerun of a finished post job a no-op; `analyze.py`'s registered path on the 18 summaries (the toy
+models sit at chance, so every registered contrast reads FLOOR, the gate path). What the freeze commit adds:
+`PREREGISTRATION.md` in this folder, which every jobs file's gate requires, and the runner entries printed in the
+jobs files' comments, their `--commit` set to that commit.
 
 ## 12. Threats, stated before data
 

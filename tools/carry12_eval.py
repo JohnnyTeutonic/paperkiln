@@ -9,8 +9,7 @@
     python tools/carry12_eval.py report DIR          # re-aggregate a run's records
 
 The long-carry companion of tools/carry5_eval.py, built on its internals (tokeniser, /chat servers,
-log-prob backends, ties, intervals), which it imports and never changes: the running E5/E1 jobs use
-carry5_eval as it is. Experiments/tiny_chat_long_2026-10/PREREGISTRATION_DRAFT.md sections 2 and 7.
+log-prob backends, ties, intervals, the state-token template), which it imports. Experiments/tiny_chat_long_2026-10/PREREGISTRATION_DRAFT.md sections 2 and 7.
 
 FORCED CHOICE (raw summed log-prob `acc`; per-token `acc_norm`; a tie at the top earns 1/(tied)) at the
 target turn, in six history modes:
@@ -79,27 +78,10 @@ def write_atomic(path, text):
 
 
 # ---------------------------------------------------------------- per-turn state tokens (the S cells)
-def state_template(gguf):
-    """(vocab size, k) of a state-token model (GGUF paperkiln.state_tokens.k > 0; IR_SPEC_DRAFT section 1.2),
-    else None. The state ids are vocab .. vocab + k - 1."""
-    if not gguf or not os.path.exists(gguf):
-        return None
-    import llama3_bpe
-    kv = llama3_bpe.read_gguf_kv(gguf, {"paperkiln.state_tokens.k", "tokenizer.ggml.tokens"})
-    k = int(kv.get("paperkiln.state_tokens.k") or 0)
-    return (len(kv["tokenizer.ggml.tokens"]), k) if k > 0 else None
-
-
-def prompt_ids(tok, text):
-    """A rendered prompt's ids as the engines lay it out: for a state-token model (tok.state set by run_model)
-    the state block after every <|endoftext|> that closes an exchange (tools/state_tokens.py, the serialiser's
-    rule; mtstudio score validates pre-tokenised prompts but inserts nothing into them)."""
-    ids = tok.encode(text)
-    st = getattr(tok, "state", None)
-    if st:
-        import state_tokens
-        ids = state_tokens.insert(ids, st[0], st[1], tok.eot, tok.user, tok.assistant)[0]
-    return ids
+# carry5_eval's: (vocab size, k) from a GGUF that declares state tokens, and a rendered prompt's ids with the state
+# block after every <|endoftext|> that closes an exchange (tools/state_tokens.py); one definition for both tools.
+state_template = ce.state_template
+prompt_ids = ce.prompt_ids
 
 
 # ---------------------------------------------------------------- renderings
@@ -560,7 +542,7 @@ def run_model(a, tag, spec_path, items):
         spec, gguf, vocab = ce.model_paths(spec_path)
         ctx = spec.get("data", {}).get("T")
         tok = ce.Tok(vocab)
-        tok.state = state_template(gguf)
+        tok.state = ce.check_state_spec(spec_path, gguf)
     # Wall time by phase (the post-job cost measurement, PREREGISTRATION_DRAFT.md section 10): this call's
     # own work only, so a resumed run reports what it did after the resume.
     timing = {"spot_s": 0.0, "gen_s": 0.0, "score_s": 0.0}

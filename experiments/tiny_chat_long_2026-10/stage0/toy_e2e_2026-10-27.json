@@ -1,0 +1,856 @@
+{
+ "_comment": "Carry-12's cells end to end on CPU at toy size, 27 Oct 2026 (tests/test_carry12_cells_e2e.py with C12_TOY_SEEDS=1,2,3; WSL, mtstudio CPU build of paperkiln 437db1f2 plus this commit's Python, ember ec3201b CPU). Every machine file's pretraining spec and post command with the VM's paths mapped to the toy's; toy changes: d 64, 2 or 4 layers, a 700-token BPE vocabulary, 4 pretraining and 3 SFT steps, 2,048 tokens per step (TINY_CHAT_SFT_TOKENS_PER_STEP), 16 panel windows (TINY_CHAT_PANEL_WINDOWS), Carry-5 every 26th item (40), Carry-12 every 110th (14). The toy models are at chance, so every registered contrast reads FLOOR: the gate path is what is exercised.",
+ "clone_head": "437db1f2358f3b160112b0ec96f963e3bc347ae4",
+ "posts": [
+  {
+   "machine": "c12_B_r1",
+   "cell": "B",
+   "seed": 1,
+   "sft_batching": {
+    "mode": "spec",
+    "batch": 2,
+    "accum": 1
+   },
+   "context": 1024,
+   "carry5": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "2/2",
+    "parity_gate": {
+     "replies": 200,
+     "argmax_identical": 200
+    }
+   },
+   "carry12": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "14/14",
+    "parity_gate": {
+     "replies": 155,
+     "argmax_identical": 155
+    },
+    "over_ctx": {
+     "gold": 0,
+     "self": 0,
+     "near": 0,
+     "near_self": 0,
+     "twin": 0,
+     "noctx": 0
+    },
+    "items": 14,
+    "seconds": 10.0
+   },
+   "Y12": 0.0,
+   "Y12_gold": 0.0
+  },
+  {
+   "machine": "c12_B_r1",
+   "cell": "D",
+   "seed": 1,
+   "sft_batching": {
+    "mode": "spec",
+    "batch": 2,
+    "accum": 1
+   },
+   "context": 1024,
+   "carry5": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "2/2",
+    "parity_gate": {
+     "replies": 200,
+     "argmax_identical": 200
+    }
+   },
+   "carry12": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "14/14",
+    "parity_gate": {
+     "replies": 155,
+     "argmax_identical": 155
+    },
+    "over_ctx": {
+     "gold": 0,
+     "self": 0,
+     "near": 0,
+     "near_self": 0,
+     "twin": 0,
+     "noctx": 0
+    },
+    "items": 14,
+    "seconds": 9.4
+   },
+   "Y12": 0.0,
+   "Y12_gold": 0.0
+  },
+  {
+   "machine": "c12_B_r1",
+   "cell": "W512",
+   "seed": 1,
+   "sft_batching": null,
+   "context": 512,
+   "carry5": null,
+   "carry12": {
+    "engine": "none",
+    "ember_commit": null,
+    "ember_env": null,
+    "spot": null,
+    "parity_gate": null,
+    "over_ctx": {
+     "gold": 0,
+     "self": 0,
+     "near": 0,
+     "near_self": 0,
+     "twin": 0,
+     "noctx": 0
+    },
+    "items": 14,
+    "seconds": 2.3
+   },
+   "Y12": null,
+   "Y12_gold": 0.0
+  },
+  {
+   "machine": "c12_B_r2",
+   "cell": "B",
+   "seed": 2,
+   "sft_batching": {
+    "mode": "spec",
+    "batch": 2,
+    "accum": 1
+   },
+   "context": 1024,
+   "carry5": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "2/2",
+    "parity_gate": {
+     "replies": 200,
+     "argmax_identical": 200
+    }
+   },
+   "carry12": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "14/14",
+    "parity_gate": {
+     "replies": 155,
+     "argmax_identical": 155
+    },
+    "over_ctx": {
+     "gold": 0,
+     "self": 0,
+     "near": 0,
+     "near_self": 0,
+     "twin": 0,
+     "noctx": 0
+    },
+    "items": 14,
+    "seconds": 10.0
+   },
+   "Y12": 0.0,
+   "Y12_gold": 0.0
+  },
+  {
+   "machine": "c12_B_r2",
+   "cell": "D",
+   "seed": 2,
+   "sft_batching": {
+    "mode": "spec",
+    "batch": 2,
+    "accum": 1
+   },
+   "context": 1024,
+   "carry5": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "2/2",
+    "parity_gate": {
+     "replies": 200,
+     "argmax_identical": 200
+    }
+   },
+   "carry12": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "14/14",
+    "parity_gate": {
+     "replies": 155,
+     "argmax_identical": 155
+    },
+    "over_ctx": {
+     "gold": 0,
+     "self": 0,
+     "near": 0,
+     "near_self": 0,
+     "twin": 0,
+     "noctx": 0
+    },
+    "items": 14,
+    "seconds": 13.1
+   },
+   "Y12": 0.0,
+   "Y12_gold": 0.0
+  },
+  {
+   "machine": "c12_B_r2",
+   "cell": "W512",
+   "seed": 2,
+   "sft_batching": null,
+   "context": 512,
+   "carry5": null,
+   "carry12": {
+    "engine": "none",
+    "ember_commit": null,
+    "ember_env": null,
+    "spot": null,
+    "parity_gate": null,
+    "over_ctx": {
+     "gold": 0,
+     "self": 0,
+     "near": 0,
+     "near_self": 0,
+     "twin": 0,
+     "noctx": 0
+    },
+    "items": 14,
+    "seconds": 4.0
+   },
+   "Y12": null,
+   "Y12_gold": 0.0
+  },
+  {
+   "machine": "c12_B_r3",
+   "cell": "B",
+   "seed": 3,
+   "sft_batching": {
+    "mode": "spec",
+    "batch": 2,
+    "accum": 1
+   },
+   "context": 1024,
+   "carry5": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "2/2",
+    "parity_gate": {
+     "replies": 200,
+     "argmax_identical": 200
+    }
+   },
+   "carry12": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "14/14",
+    "parity_gate": {
+     "replies": 155,
+     "argmax_identical": 155
+    },
+    "over_ctx": {
+     "gold": 0,
+     "self": 0,
+     "near": 0,
+     "near_self": 0,
+     "twin": 0,
+     "noctx": 0
+    },
+    "items": 14,
+    "seconds": 14.8
+   },
+   "Y12": 0.0,
+   "Y12_gold": 0.077
+  },
+  {
+   "machine": "c12_B_r3",
+   "cell": "D",
+   "seed": 3,
+   "sft_batching": {
+    "mode": "spec",
+    "batch": 2,
+    "accum": 1
+   },
+   "context": 1024,
+   "carry5": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "2/2",
+    "parity_gate": {
+     "replies": 200,
+     "argmax_identical": 200
+    }
+   },
+   "carry12": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "14/14",
+    "parity_gate": {
+     "replies": 155,
+     "argmax_identical": 155
+    },
+    "over_ctx": {
+     "gold": 0,
+     "self": 0,
+     "near": 0,
+     "near_self": 0,
+     "twin": 0,
+     "noctx": 0
+    },
+    "items": 14,
+    "seconds": 14.4
+   },
+   "Y12": 0.0,
+   "Y12_gold": 0.0
+  },
+  {
+   "machine": "c12_B_r3",
+   "cell": "W512",
+   "seed": 3,
+   "sft_batching": null,
+   "context": 512,
+   "carry5": null,
+   "carry12": {
+    "engine": "none",
+    "ember_commit": null,
+    "ember_env": null,
+    "spot": null,
+    "parity_gate": null,
+    "over_ctx": {
+     "gold": 0,
+     "self": 0,
+     "near": 0,
+     "near_self": 0,
+     "twin": 0,
+     "noctx": 0
+    },
+    "items": 14,
+    "seconds": 3.4
+   },
+   "Y12": null,
+   "Y12_gold": 0.0
+  },
+  {
+   "machine": "c12_P16_r1",
+   "cell": "P16",
+   "seed": 1,
+   "sft_batching": {
+    "mode": "spec",
+    "batch": 1,
+    "accum": 2
+   },
+   "context": 1024,
+   "carry5": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "2/2",
+    "parity_gate": {
+     "replies": 200,
+     "argmax_identical": 200
+    }
+   },
+   "carry12": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "14/14",
+    "parity_gate": {
+     "replies": 155,
+     "argmax_identical": 155
+    },
+    "over_ctx": {
+     "gold": 0,
+     "self": 0,
+     "near": 0,
+     "near_self": 0,
+     "twin": 0,
+     "noctx": 0
+    },
+    "items": 14,
+    "seconds": 50.8
+   },
+   "Y12": -0.077,
+   "Y12_gold": -0.1539
+  },
+  {
+   "machine": "c12_P16_r2",
+   "cell": "P16",
+   "seed": 2,
+   "sft_batching": {
+    "mode": "spec",
+    "batch": 1,
+    "accum": 2
+   },
+   "context": 1024,
+   "carry5": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "2/2",
+    "parity_gate": {
+     "replies": 200,
+     "argmax_identical": 200
+    }
+   },
+   "carry12": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "14/14",
+    "parity_gate": {
+     "replies": 155,
+     "argmax_identical": 155
+    },
+    "over_ctx": {
+     "gold": 0,
+     "self": 0,
+     "near": 0,
+     "near_self": 0,
+     "twin": 0,
+     "noctx": 0
+    },
+    "items": 14,
+    "seconds": 54.5
+   },
+   "Y12": 0.0769,
+   "Y12_gold": 0.0
+  },
+  {
+   "machine": "c12_P16_r3",
+   "cell": "P16",
+   "seed": 3,
+   "sft_batching": {
+    "mode": "spec",
+    "batch": 1,
+    "accum": 2
+   },
+   "context": 1024,
+   "carry5": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "2/2",
+    "parity_gate": {
+     "replies": 200,
+     "argmax_identical": 200
+    }
+   },
+   "carry12": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "14/14",
+    "parity_gate": {
+     "replies": 155,
+     "argmax_identical": 155
+    },
+    "over_ctx": {
+     "gold": 0,
+     "self": 0,
+     "near": 0,
+     "near_self": 0,
+     "twin": 0,
+     "noctx": 0
+    },
+    "items": 14,
+    "seconds": 60.4
+   },
+   "Y12": 0.0769,
+   "Y12_gold": 0.0769
+  },
+  {
+   "machine": "c12_Sgist_r1",
+   "cell": "Sgist",
+   "seed": 1,
+   "sft_batching": {
+    "mode": "spec",
+    "batch": 2,
+    "accum": 1
+   },
+   "context": 1024,
+   "carry5": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "2/2",
+    "parity_gate": {
+     "replies": 200,
+     "argmax_identical": 200
+    }
+   },
+   "carry12": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "14/14",
+    "parity_gate": {
+     "replies": 155,
+     "argmax_identical": 155
+    },
+    "over_ctx": {
+     "gold": 0,
+     "self": 0,
+     "near": 0,
+     "near_self": 0,
+     "twin": 0,
+     "noctx": 0
+    },
+    "items": 14,
+    "seconds": 14.0
+   },
+   "Y12": 0.0769,
+   "Y12_gold": 0.0769
+  },
+  {
+   "machine": "c12_Sgist_r2",
+   "cell": "Sgist",
+   "seed": 2,
+   "sft_batching": {
+    "mode": "spec",
+    "batch": 2,
+    "accum": 1
+   },
+   "context": 1024,
+   "carry5": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "2/2",
+    "parity_gate": {
+     "replies": 200,
+     "argmax_identical": 200
+    }
+   },
+   "carry12": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "14/14",
+    "parity_gate": {
+     "replies": 155,
+     "argmax_identical": 155
+    },
+    "over_ctx": {
+     "gold": 0,
+     "self": 0,
+     "near": 0,
+     "near_self": 0,
+     "twin": 0,
+     "noctx": 0
+    },
+    "items": 14,
+    "seconds": 14.7
+   },
+   "Y12": 0.0,
+   "Y12_gold": 0.0
+  },
+  {
+   "machine": "c12_Sgist_r3",
+   "cell": "Sgist",
+   "seed": 3,
+   "sft_batching": {
+    "mode": "spec",
+    "batch": 2,
+    "accum": 1
+   },
+   "context": 1024,
+   "carry5": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "2/2",
+    "parity_gate": {
+     "replies": 200,
+     "argmax_identical": 200
+    }
+   },
+   "carry12": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "14/14",
+    "parity_gate": {
+     "replies": 155,
+     "argmax_identical": 155
+    },
+    "over_ctx": {
+     "gold": 0,
+     "self": 0,
+     "near": 0,
+     "near_self": 0,
+     "twin": 0,
+     "noctx": 0
+    },
+    "items": 14,
+    "seconds": 14.4
+   },
+   "Y12": 0.0,
+   "Y12_gold": 0.0
+  },
+  {
+   "machine": "c12_X_r1",
+   "cell": "X",
+   "seed": 1,
+   "sft_batching": {
+    "mode": "spec",
+    "batch": 1,
+    "accum": 2
+   },
+   "context": 1024,
+   "carry5": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "2/2",
+    "parity_gate": {
+     "replies": 200,
+     "argmax_identical": 200
+    }
+   },
+   "carry12": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "14/14",
+    "parity_gate": {
+     "replies": 155,
+     "argmax_identical": 155
+    },
+    "over_ctx": {
+     "gold": 0,
+     "self": 0,
+     "near": 0,
+     "near_self": 0,
+     "twin": 0,
+     "noctx": 0
+    },
+    "items": 14,
+    "seconds": 43.1
+   },
+   "Y12": -0.077,
+   "Y12_gold": -0.1539
+  },
+  {
+   "machine": "c12_X_r2",
+   "cell": "X",
+   "seed": 2,
+   "sft_batching": {
+    "mode": "spec",
+    "batch": 1,
+    "accum": 2
+   },
+   "context": 1024,
+   "carry5": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "2/2",
+    "parity_gate": {
+     "replies": 200,
+     "argmax_identical": 200
+    }
+   },
+   "carry12": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "14/14",
+    "parity_gate": {
+     "replies": 155,
+     "argmax_identical": 155
+    },
+    "over_ctx": {
+     "gold": 0,
+     "self": 0,
+     "near": 0,
+     "near_self": 0,
+     "twin": 0,
+     "noctx": 0
+    },
+    "items": 14,
+    "seconds": 52.5
+   },
+   "Y12": 0.0769,
+   "Y12_gold": 0.0
+  },
+  {
+   "machine": "c12_X_r3",
+   "cell": "X",
+   "seed": 3,
+   "sft_batching": {
+    "mode": "spec",
+    "batch": 1,
+    "accum": 2
+   },
+   "context": 1024,
+   "carry5": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "2/2",
+    "parity_gate": {
+     "replies": 200,
+     "argmax_identical": 200
+    }
+   },
+   "carry12": {
+    "engine": "ember",
+    "ember_commit": "ec3201b04e6f2fcb6dffd3496b0c72b3bec0c54a",
+    "ember_env": {
+     "EMBER_GEMM_TF32": "0",
+     "EMBER_DETERMINISTIC": "1"
+    },
+    "spot": "14/14",
+    "parity_gate": {
+     "replies": 155,
+     "argmax_identical": 155
+    },
+    "over_ctx": {
+     "gold": 0,
+     "self": 0,
+     "near": 0,
+     "near_self": 0,
+     "twin": 0,
+     "noctx": 0
+    },
+    "items": 14,
+    "seconds": 40.5
+   },
+   "Y12": 0.0769,
+   "Y12_gold": 0.0769
+  }
+ ],
+ "totals": {
+  "posts": 18,
+  "parity_gate_identical": 5325,
+  "parity_gate_replies": 5325,
+  "over_ctx": 0
+ },
+ "analyze": {
+  "label": "REGISTERED (PREREGISTRATION.md section 9)",
+  "seeds": [
+   1,
+   2,
+   3
+  ],
+  "validity_gate": {
+   "B": false,
+   "D": false,
+   "P16": false,
+   "Sgist": false,
+   "W512": false,
+   "X": false
+  },
+  "verdicts": {
+   "HT_B_minus_W512_Y12_gold": "FLOOR (twin accuracy over the primary families under 0.35, or twin within 10 points of the question alone on the context families) in B, W512",
+   "HD_D_minus_B": "FLOOR (twin accuracy over the primary families under 0.35, or twin within 10 points of the question alone on the context families) in D, B",
+   "HS1_Sgist_minus_B": "FLOOR (twin accuracy over the primary families under 0.35, or twin within 10 points of the question alone on the context families) in Sgist, B",
+   "HX_gap_D_X": "FLOOR (twin accuracy over the primary families under 0.35, or twin within 10 points of the question alone on the context families) in X, P16",
+   "HX_gap_correction_slope": "FLOOR (twin accuracy over the primary families under 0.35, or twin within 10 points of the question alone on the context families) in X, P16",
+   "HX_H_gap": "FLOOR (twin accuracy over the primary families under 0.35, or twin within 10 points of the question alone on the context families) in X, P16",
+   "HX_main_X_minus_P16": "FLOOR (twin accuracy over the primary families under 0.35, or twin within 10 points of the question alone on the context families) in X, P16",
+   "HX_isoplot_residual": "FLOOR (twin accuracy over the primary families under 0.35, or twin within 10 points of the question alone on the context families) in B, P16, X",
+   "secondary_panel_fineweb_X_minus_P16": "EQUIVALENT",
+   "secondary_panel_fineweb_B_minus_W512": "EQUIVALENT"
+  }
+ }
+}

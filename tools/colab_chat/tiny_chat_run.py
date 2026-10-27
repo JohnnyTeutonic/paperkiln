@@ -6,7 +6,9 @@ data-job commands that tiny_chat_*.json run through jobs_vm.py, plus `choose` at
     tiny_chat_run.py screen --out D --spec SHAPE.json --corpus C.ids --lr X --steps 1500 --seed 101
     tiny_chat_run.py post   --out D --spec SHAPE.json --pt-weights W --pt-dir P --sft-template SFT.json
                             --seed S --cell C --share N --panel NAME=IDS ... --carry5-items ITEMS
-                            [--gen ember|mtstudio]
+                            [--gen ember|mtstudio] [--ember-commit C] [--ember-deterministic]
+                            [--sft-batching depth|spec] [--carry12-items C12 [--carry12-gen ember|mtstudio|none]
+                            [--carry12-spot 20] [--no-carry5]]
     tiny_chat_run.py pick  --out D --run POST_DIR [--run ...]
     tiny_chat_run.py gate   --out D --jobs JOBS.json --choice LR_CHOICE.json
                             [--pilot-lr PILOT_LR.json] [--pilot-verdict VERDICT.json --need-pilot PASS|FAIL]
@@ -47,6 +49,15 @@ generates all of it and summary.json carries gen_flag. For llama_recursive a fai
 CUDA interpreter is repeated with EMBER_IR_DEVICE=cpu (recorded and flagged when that one passes).
 OUT/gen_engine.json holds the decision, the build's commit and both spot-checks; forced-choice scoring
 stays with `mtstudio score`. post --gen mtstudio (the default) generates with mtstudio as before.
+
+Carry-12 (the long programme, experiments/tiny_chat_long_2026-10/PREREGISTRATION_DRAFT.md; its cells' jobs files
+tools/colab_chat/carry12_<cell>_r<seed>.json): post --carry12-items scores the SFT model on Carry-12 after Carry-5
+(run_carry12: tools/carry12_eval.py, forced choice in gold, self, near, twin and noctx; self history to the target
+at --max-new 48 by ember at the same --ember-commit after its spot-check; no near_self; the parity gate) and
+records summary["carry12"], Y12 and Y12_gold; --ember-deterministic adds EMBER_DETERMINISTIC=1 to Carry-5's ember
+servers (carry12_eval sets it for its own); --sft-batching spec keeps 16,384 SFT tokens per step at the template's T
+(16 rows of 1,024); --no-carry5 with --carry12-gen none is cell W512's re-run (SFT and Carry-12 forced choice).
+gate --need-file refuses until a file exists (the frozen PREREGISTRATION.md).
 
 rung, asha_train and asha_promote serve the early-stopping study (PREREGISTRATION.md amendment 1):
 rung scores a pretraining run's weights at a rung (5/10/25/50% of its steps; jobs_vm.py keeps the
@@ -350,6 +361,8 @@ def spot_check(spec_path, items, work, ember, env, tag):
     sub = ["--every", str(SPOT_EVERY), "--limit", str(SPOT_N)]
     res = {"every": SPOT_EVERY, "n": SPOT_N, "fields": list(SPOT_FIELDS), "env": {k: env.get(k) for k in
                                                                                   ("EMBER_GEMM_TF32", "EMBER_IR_DEVICE")}}
+    if env.get("EMBER_DETERMINISTIC"):  # the Carry-12 cells' post jobs; earlier receipts keep their keys
+        res["env"]["EMBER_DETERMINISTIC"] = env["EMBER_DETERMINISTIC"]
     out = {}
     os.makedirs(work, exist_ok=True)
     for eng, d in (("mtstudio", os.path.join(work, "mtstudio")), ("ember", os.path.join(work, f"ember_{tag}"))):
@@ -385,18 +398,20 @@ def read_items(p):
         return [json.loads(x) for x in f if x.strip()]
 
 
-def choose_engine(spec_path, weights, items, out, custom, commit=None):
+def choose_engine(spec_path, weights, items, out, custom, commit=None, ember_env=None):
     """OUT/gen_engine.json: the generation engine for this run's Carry-5 and why. ember when its build
     works, the F32 GGUF exists and the spot-check is N/N (for llama_recursive a failed spot-check on
     ember's CUDA interpreter is retried with EMBER_IR_DEVICE=cpu, recorded and flagged); otherwise
-    mtstudio for the whole run, flagged. Decided once per run: a rerun reads the file."""
+    mtstudio for the whole run, flagged. Decided once per run: a rerun reads the file. ember_env: the
+    server's environment (default EMBER_ENV; the Carry-12 cells add EMBER_DETERMINISTIC=1)."""
     os.makedirs(out, exist_ok=True)
     path = os.path.join(out, "gen_engine.json")
     if os.path.exists(path):
         return jload(path)
     fam = ember_family(custom)
     commit = commit or EMBER_COMMIT
-    d = {"engine": "mtstudio", "family": fam, "ember_commit_pinned": commit, "ember_env": dict(EMBER_ENV),
+    ember_env = dict(ember_env or EMBER_ENV)
+    d = {"engine": "mtstudio", "family": fam, "ember_commit_pinned": commit, "ember_env": dict(ember_env),
          "flag": None, "ir_device": None}
     t0 = time.time()
     ember = ensure_ember(os.path.join(out, "ember_build.log"), commit)
@@ -412,7 +427,7 @@ def choose_engine(spec_path, weights, items, out, custom, commit=None):
             eb = {"bin": ember["bin"], "gpu_layers": EMBER_GPU_LAYERS}
             d["gpu_layers"] = EMBER_GPU_LAYERS
             work = os.path.join(out, "spot")
-            env = {**os.environ, **EMBER_ENV}
+            env = {**os.environ, **ember_env}
             env.pop("EMBER_IR_DEVICE", None)
             spot = spot_check(spec_path, items, work, eb, env, "default")
             d["spot"] = spot
@@ -482,17 +497,27 @@ def batching(layers):
     return (16, 2) if layers >= 16 else (32, 1)
 
 
-def sft_batching(mode, shape):
+SFT_TOKENS = 32 * 512  # section 1: 32 rows of T 512; the Carry-12 cells keep it at 16 rows of T 1,024
+# override: tests only (a CPU toy at T 1,024 cannot hold 16 rows); every registered job uses SFT_TOKENS
+SFT_TOKENS_PER_STEP = int(os.environ.get("TINY_CHAT_SFT_TOKENS_PER_STEP", SFT_TOKENS))
+
+
+def sft_batching(mode, shape, sft_T=512):
     """The SFT stage's (batch, accum). "depth" (the default, every registered arm's): batching() by effective
     depth, 16 x 2 from 16 layers, else 32 x 1. "spec" (amendment 6, the 150M cells, whose width needs smaller
-    micro-batches): the shape spec's pretraining (batch, accum). Both keep 32 rows of T tokens per step."""
+    micro-batches; the Carry-12 cells at T 1,024): the shape spec's pretraining (batch, accum). Both keep
+    SFT_TOKENS_PER_STEP tokens per step: 32 rows at the SFT template's T 512, 16 rows at T 1,024."""
     if mode == "spec":
         tr = shape["train"]
         b, acc = tr["batch"], tr.get("accum", 1)
-        if b * acc != 32:
-            raise SystemExit(f"--sft-batching spec: batch {b} x accum {acc} is not section 1's 32 rows per step")
+        if b * acc * sft_T != SFT_TOKENS_PER_STEP:
+            raise SystemExit(f"--sft-batching spec: batch {b} x accum {acc} x T {sft_T} is not section 1's "
+                             f"{SFT_TOKENS_PER_STEP} tokens per step")
         return b, acc
-    return batching(effective_layers(shape["arch"]["custom"]))
+    b, acc = batching(effective_layers(shape["arch"]["custom"]))
+    if SFT_TOKENS_PER_STEP != SFT_TOKENS:  # tests only: the same layout with fewer rows
+        b = max(1, b * SFT_TOKENS_PER_STEP // SFT_TOKENS)
+    return b, acc
 
 
 def effective_layers(custom):
@@ -828,6 +853,9 @@ def cmd_screen(a):
     return 0 if rc == 0 else 1
 
 
+PANEL_WINDOWS = int(os.environ.get("TINY_CHAT_PANEL_WINDOWS", 512))  # override: tests only (CPU toys)
+
+
 def zero_rate_panels(shape, weights, out, panel_kvs):
     """{name: nats/token} for each NAME=IDS panel: 1 step at lr 0 from the weights, 512 held-out
     windows (the weights stay byte-identical). Finished panels are not rerun."""
@@ -839,7 +867,7 @@ def zero_rate_panels(shape, weights, out, panel_kvs):
             shutil.rmtree(d, ignore_errors=True)  # init_from applies to fresh runs only
             spec = {"name": f"panel_{name}", "arch": shape["arch"],
                     "data": {**shape["data"], "corpus": path, "max_tokens": 0},
-                    "train": {"steps": 1, "lr": 0.0, "batch": 1, "accum": 1, "eval_every": 1, "eval_windows": 512,
+                    "train": {"steps": 1, "lr": 0.0, "batch": 1, "accum": 1, "eval_every": 1, "eval_windows": PANEL_WINDOWS,
                               "checkpoint_every": 10 ** 7, "gradmap_every": 0, "seed": 1, "optimizer": "adamw",
                               "init_from": weights},
                     "export": {"formats": []}}
@@ -935,19 +963,89 @@ def preflight(items):
         raise SystemExit(f"Carry-5 is not in this commit: missing {missing}")
 
 
+# ---------------------------------------------------------------- Carry-12 in the post job (the long programme)
+# experiments/tiny_chat_long_2026-10/PREREGISTRATION_DRAFT.md sections 2, 6, 7 and 10: after Carry-5, the SFT model
+# is scored on Carry-12 by tools/carry12_eval.py in the post job's registered configuration: forced choice in gold,
+# self, near, twin and noctx by `mtstudio score`; self history played to the target turn only at --max-new 48 by
+# ember's server (the same build as Carry-5's, at the jobs file's --ember-commit; EMBER_GEMM_TF32=0 and
+# EMBER_DETERMINISTIC=1, which carry12_eval sets) after its spot-check against `mtstudio chat`; no near_self;
+# every reply through the parity gate. --carry12-gen none scores forced choice only (cell W512's re-run SFT).
+CARRY12_TOOL = os.environ.get("TINY_CHAT_CARRY12", "tools/carry12_eval.py")  # override: tests only
+CARRY12_MAX_NEW = 48
+
+
+def carry12_read(out_dir):
+    """What the post summary keeps of carry12_eval's summary (OUT/carry12/summary.json comes home whole): the
+    pools and derived quantities (Y12, the decomposition, the validity gate), the curves analyze.py reads
+    (by family and distance, by distance), overflow, HL0's slopes, the engine, the parity gate and the timing."""
+    s = jload(os.path.join(out_dir, "summary.json"))
+    m = s["models"]["m"]
+    comp = (m.get("gen") or {}).get("complies", {})
+    return {"meta": s["meta"], "context": m.get("context"), "items": m.get("items"), "derived": m["derived"],
+            "pools": m["pools"], "family_distance": m["fc"].get("family_distance"),
+            "distance": {mode: m["fc"]["acc"][mode]["distance"] for mode in ("gold", "near", "self", "twin")},
+            "over_ctx": m["fc"]["over_ctx"], "hl0": m.get("hl0"), "gen_engine": m.get("gen_engine"),
+            "gate": m.get("gate"), "server_errors": (m.get("gen") or {}).get("server_errors"),
+            "instruction_complies": {mode: v["family"].get("instruction") for mode, v in comp.items()},
+            "timing": m.get("timing")}
+
+
+def run_carry12(a, spec_path, weights):
+    """Carry-12 on the SFT model (SPEC_PATH, its safetensors WEIGHTS): OUT/carry12 by carry12_eval, resumable;
+    returns carry12_read's record plus the run's settings, or {"error"} (the job then exits 1 after its summary)."""
+    out = os.path.join(a.out, "carry12")
+    rec = {"items": a.carry12_items, "items_sha256": sha256(a.carry12_items), "gen_requested": a.carry12_gen,
+           "max_new": CARRY12_MAX_NEW, "self_scope": "target", "near_self": False, "spot": a.carry12_spot}
+    gen, extra = a.carry12_gen, []
+    if gen != "none":
+        g, why = ensure_f32_gguf(spec_path, weights, os.path.join(a.out, "mtstudio.log"))
+        if g is None:
+            return {**rec, "error": f"Carry-12: {why}"}
+    if gen == "ember":
+        eb = ensure_ember(os.path.join(a.out, "ember_build.log"), a.ember_commit)
+        rec["ember_build"] = eb
+        if "error" in eb:
+            gen = "mtstudio"
+            rec["flag"] = f"ember unavailable ({eb['error'][:300]}); Carry-12 generated with mtstudio"
+        else:
+            extra = ["--ember-bin", eb["bin"], "--gpu-layers", str(EMBER_GPU_LAYERS), "--spot", str(a.carry12_spot)]
+    argv = [sys.executable, CARRY12_TOOL, "run", "--model", f"m={spec_path}", "--out", out, "--set", a.carry12_items,
+            "--scorer", "mtstudio", "--mtstudio", BIN, "--gen", gen, "--self-scope", "target",
+            "--max-new", str(CARRY12_MAX_NEW), "--no-near-self", "--port", str(port_for(out)), *extra]
+    rec["argv"] = argv[1:]
+    t0 = time.time()
+    p = subprocess.run(argv, capture_output=True, text=True)
+    rec["seconds"] = round(time.time() - t0, 1)
+    with open(os.path.join(a.out, "carry12.log"), "w", encoding="utf-8") as f:
+        f.write(p.stdout[-20000:] + p.stderr[-20000:])
+    if p.returncode != 0 or not os.path.exists(os.path.join(out, "summary.json")):
+        return {**rec, "error": f"carry12_eval failed (rc {p.returncode}): {p.stderr[-800:]}"}
+    return {**rec, **carry12_read(out)}
+
+
 def cmd_post(a):
     done = os.path.join(a.out, "summary.json")
     shape = shape_spec(a.spec)
     custom = shape["arch"]["custom"]
     mor = is_mor(custom)
+    c5_on = not getattr(a, "no_carry5", False)          # off only for cell W512's re-run (Carry-12 alone)
+    c12_on = bool(getattr(a, "carry12_items", None))    # the long programme's cells: Carry-12 after Carry-5
+    if not c5_on and not c12_on:
+        raise SystemExit("post --no-carry5 needs --carry12-items: the job would score nothing")
     if os.path.exists(done):
         prev = jload(done)
         depth_ok = not mor or (bool(prev.get("mor_depth")) and "error" not in prev["mor_depth"])
-        if prev.get("primary") is not None and depth_ok:
+        c5_ok = not c5_on or prev.get("primary") is not None
+        c12_ok = not c12_on or (bool(prev.get("carry12")) and "error" not in prev["carry12"])
+        if c5_ok and depth_ok and c12_ok:
             print(f"{done}: present")
             return 0
     preflight(a.carry5_items)
-    b, acc = sft_batching(a.sft_batching, shape)
+    if c12_on and not os.path.exists(CARRY12_TOOL):
+        raise SystemExit(f"Carry-12 is not in this commit: missing {CARRY12_TOOL}")
+    sft = jload(a.sft_template)
+    sft.pop("_comment", None)
+    b, acc = sft_batching(a.sft_batching, shape, sft["data"]["T"])
     if not os.path.exists(a.pt_weights):
         raise SystemExit(f"pretrained weights not found: {a.pt_weights}")
     s = {"mode": "post", "cell": a.cell, "share": a.share, "seed": a.seed, "spec": a.spec, "arch": custom,
@@ -963,8 +1061,6 @@ def cmd_post(a):
     # 1. Panels: the zero-rate pass (1 step at lr 0 from the weights) reads the panel's held-out windows.
     s["panels"] = zero_rate_panels(shape, a.pt_weights, a.out, a.panel)
     # 2. SFT from the pretrained weights (resumes from its own checkpoint on this VM).
-    sft = jload(a.sft_template)
-    sft.pop("_comment", None)
     model = f"tc_sft_{a.cell}_r{a.seed}"
     sd = os.path.join(a.out, "sft")
     spec = {"name": model, "arch": shape["arch"], "data": sft["data"],
@@ -986,10 +1082,35 @@ def cmd_post(a):
     #    teacher-forced only (descriptive; a failure is recorded, not fatal).
     #    Generation: --gen ember picks the engine by choose_engine (ember's CUDA server when its spot-check
     #    against mtstudio chat is N/N, else mtstudio for the whole run, flagged); --gen mtstudio as before.
+    ember_env = {**EMBER_ENV, "EMBER_DETERMINISTIC": "1"} if getattr(a, "ember_deterministic", False) else None
+    if c5_on:
+        carry5_stage(a, s, sd, sw, custom, mor, shape, ember_env)
+    else:
+        s["primary"] = None
+        s["carry5"] = {"skipped": "post --no-carry5 (Carry-12 alone)"}
+    # 4. Carry-12 after Carry-5 (the long programme's cells).
+    if c12_on:
+        s["carry12"] = run_carry12(a, sd + "_spec.json", sw)
+        d = s["carry12"].get("derived") or {}
+        s["Y12"], s["Y12_gold"] = d.get("Y12_self"), d.get("Y12_gold")
+    s["other_mtstudio_at_end"] = concurrent_mtstudio()
+    jsave(os.path.join(a.out, "summary.json"), s)
+    print(json.dumps({k: s.get(k) for k in ("cell", "seed", "primary", *(("Y12",) if c12_on else ()), "panels")}))
+    if mor and "error" in s.get("mor_depth", {}):
+        print(s["mor_depth"]["error"], file=sys.stderr)
+        return 1
+    if c12_on and "error" in s["carry12"]:
+        print(s["carry12"]["error"], file=sys.stderr)
+        return 1
+    return 0
+
+
+def carry5_stage(a, s, sd, sw, custom, mor, shape, ember_env=None):
+    """3. Carry-5 on the SFT model (self history generated), then the base model teacher-forced; fills S."""
     c5 = os.path.join(a.out, "carry5")
     env, ember = dict(os.environ), None
     if a.gen == "ember":
-        eng = choose_engine(sd + "_spec.json", sw, a.carry5_items, a.out, custom, a.ember_commit)
+        eng = choose_engine(sd + "_spec.json", sw, a.carry5_items, a.out, custom, a.ember_commit, ember_env)
         s["gen_engine"] = eng
         if eng["flag"]:
             s["gen_flag"] = eng["flag"]
@@ -1020,13 +1141,6 @@ def cmd_post(a):
         s["mor_depth"] = mor_depth(sd + "_spec.json", a.carry5_items, os.path.join(a.out, "mor_depth"))
     s["carry5_base"] = carry5_base(shape, a.pt_weights, a.carry5_items, a.out)
     s["final_rung"] = rung_metrics(s["carry5_base"])  # the 100% rung of the early-ranking analysis
-    s["other_mtstudio_at_end"] = concurrent_mtstudio()
-    jsave(os.path.join(a.out, "summary.json"), s)
-    print(json.dumps({k: s[k] for k in ("cell", "seed", "primary", "panels")}))
-    if mor and "error" in s["mor_depth"]:
-        print(s["mor_depth"]["error"], file=sys.stderr)
-        return 1
-    return 0
 
 
 PICK_RULE = "highest primary metric (forced choice, self history, multi minus twin); tie -> lower seed"
@@ -1259,6 +1373,9 @@ def cmd_gate(a):
         r = jload(f) if os.path.exists(f) else {}
         if r.get("ok") is not True:
             problems.append(f"{f}: ok is {r.get('ok')}; this block needs that receipt passed and committed")
+    for f in getattr(a, "need_file", None) or []:  # the Carry-12 cells: the frozen PREREGISTRATION.md
+        if not os.path.exists(f):
+            problems.append(f"{f} missing: this block launches only once that file is committed")
     if a.need_rec_r8:  # A3.3's R8 rule, read at home (analyze.py --rec-decision) and committed
         d = jload(a.need_rec_r8) if os.path.exists(a.need_rec_r8) else {}
         if d.get("run_r8") is not True:
@@ -1478,6 +1595,15 @@ def main(argv=None):
     p.add_argument("--sft-batching", choices=["depth", "spec"], default="depth",
                    help="SFT (batch, accum): depth = by effective depth (every registered arm); spec = the shape spec's "
                         "pretraining micro-batching (amendment 6, the 150M cells)")
+    p.add_argument("--ember-deterministic", action="store_true",
+                   help="EMBER_DETERMINISTIC=1 for Carry-5's ember servers too (the Carry-12 cells' post jobs)")
+    p.add_argument("--carry12-items", default=None,
+                   help="the long programme: score the SFT model on Carry-12 after Carry-5 (tools/carry12_eval.py)")
+    p.add_argument("--carry12-gen", choices=["ember", "mtstudio", "none"], default="ember",
+                   help="Carry-12's generation (none: forced choice only, cell W512's re-run)")
+    p.add_argument("--carry12-spot", type=int, default=20, help="Carry-12's ember vs mtstudio spot-check items")
+    p.add_argument("--no-carry5", action="store_true",
+                   help="skip Carry-5 and base-model Carry-5 (cell W512's re-run SFT: Carry-12 alone)")
     p.add_argument("--ember-commit", default=None,
                    help="the ember commit to generate with (default EMBER_COMMIT; amendment 5 pins its own in the jobs file)")
     p = sub.add_parser("pick")
@@ -1497,6 +1623,8 @@ def main(argv=None):
     p.add_argument("--need-pilot", choices=["PASS", "FAIL"], default=None,
                    help="amendment 3: refuse unless the pilot verdict is this")
     p.add_argument("--need-cuda-gate", default="", help="A3.3: refuse unless this cuda_gate.json passed")
+    p.add_argument("--need-file", action="append", default=[],
+                   help="refuse unless this file exists (the Carry-12 cells: their frozen PREREGISTRATION.md)")
     p.add_argument("--need-rec-r8", default="", help="A3.3: refuse unless this rec_decision.json has run_r8 true")
     p.add_argument("--need-ok", action="append", default=[],
                    help="amendment 5: refuse unless this JSON receipt has ok true (repeatable)")

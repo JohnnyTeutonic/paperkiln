@@ -199,8 +199,9 @@ def test_end_to_end_mtstudio_whole_conversation(toy, tmp_path):
     for mode in c12e.MODES:
         assert m["fc"]["acc"][mode]["all"]["n"] == 14, mode
     assert m["fc"]["over_ctx"]["gold"] == 0  # the toy's T 1,024 holds every gold history
-    # `mtstudio chat` returns no token ids, so its replies are not gated (as Carry-5; ember's are, below).
-    assert m["gate"]["replies"] == 0 and m["gen"]["server_errors"] <= 4, (m["gate"], m["gen"]["server_errors"])
+    # `mtstudio chat` returns token ids (return_ids, paperkiln 1a8db67d), so its replies pass the parity gate too.
+    assert m["gate"]["replies"] > 0 and m["gate"]["argmax_identical"] == m["gate"]["replies"], m["gate"]
+    assert m["gen"]["server_errors"] <= 4, m["gen"]["server_errors"]
     assert "14" in m["decay"] and m["gen"]["complies"]["gold"]["all"]["n"] == 1
     # report re-aggregates the same numbers without generating
     r = subprocess.run(TOOL + ["report", "--out", str(tmp_path / "e"), "--mtstudio", BIN], capture_output=True,

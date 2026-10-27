@@ -39,6 +39,12 @@ ids plus its stop token): the backend's argmax must equal the reply at every pos
 generation server and the scorer run the same model. `gate` checks the same against `mtstudio
 chat` directly (greedy, no KV cache) on N gold-history target prompts.
 
+STATE TOKENS (the Carry-12 S cells; experiments/tiny_chat_long_2026-10/PREREGISTRATION_DRAFT.md section 11
+item 5): for a model whose GGUF declares state tokens (paperkiln.state_tokens.k, the family llama_state) every
+pre-tokenised prompt gets the state block after each <|endoftext|> that closes an exchange (prompt_ids), the
+layout the model trains on and the servers build; every other model's prompts are tok.encode's, byte-identical
+to the output before the change (tests/test_carry5_state.py).
+
 Resumable: generation appends one record per item (gen.jsonl), scoring runs in chunks whose
 outputs are written atomically; rerunning the same command continues. Writes summary.json,
 summary.md and items.jsonl (per item, per mode: scores, choice, reply, verdicts) per model.
@@ -114,6 +120,44 @@ def model_paths(spec_path):
     gguf = os.path.join(spec["out_dir"], spec["name"] + ".gguf")
     vocab = gguf if os.path.exists(gguf) else spec["data"]["vocab"]
     return spec, gguf, vocab
+
+
+# ---------------------------------------------------------------- per-turn state tokens (the Carry-12 S cells)
+def state_template(gguf):
+    """(vocab size, k) of a model whose GGUF declares state tokens (paperkiln.state_tokens.k > 0: the family
+    llama_state; experiments/tiny_chat_long_2026-10/IR_SPEC_DRAFT.md section 1.2), else None. The state ids
+    are vocab .. vocab + k - 1."""
+    if not gguf or not os.path.exists(gguf):
+        return None
+    import llama3_bpe
+    kv = llama3_bpe.read_gguf_kv(gguf, {"paperkiln.state_tokens.k", "tokenizer.ggml.tokens"})
+    k = int(kv.get("paperkiln.state_tokens.k") or 0)
+    return (len(kv["tokenizer.ggml.tokens"]), k) if k > 0 else None
+
+
+def prompt_ids(tok, text):
+    """A rendered prompt's ids as the engines lay it out. For a state-token model (tok.state set by run_model
+    from the GGUF) the state block follows every <|endoftext|> that closes an exchange (tools/state_tokens.py,
+    the serialiser's rule): `mtstudio score` validates the blocks of pre-tokenised prompts but inserts none,
+    while `mtstudio chat` and ember's /chat insert them. Any other model's ids are tok.encode(text), unchanged
+    (tests/test_carry5_state.py holds them byte-identical to the output before the S cells' change)."""
+    ids = tok.encode(text)
+    st = getattr(tok, "state", None)
+    if st:
+        import state_tokens
+        ids = state_tokens.insert(ids, st[0], st[1], tok.eot, tok.user, tok.assistant)[0]
+    return ids
+
+
+def check_state_spec(spec_path, gguf):
+    """A spec with arch.state_tokens is scored only through a GGUF that declares them (the layout comes
+    from the GGUF; without it the prompts would miss their state blocks)."""
+    spec = json.load(open(spec_path, encoding="utf-8"))
+    k = int((spec.get("arch", {}).get("state_tokens") or {}).get("k") or 0)
+    st = state_template(gguf)
+    if k and (st is None or st[1] != k):
+        sys.exit(f"{spec_path} declares {k} state tokens but {gguf} declares {st and st[1]}: export the GGUF first")
+    return st
 
 
 # ---------------------------------------------------------------- reply checks
@@ -248,7 +292,7 @@ def generate(a, items, tok, spec_path, gguf, work):
             for it in todo:
                 def one(history, user):
                     r = srv.chat(history, user, a.max_new)
-                    full = tok.encode(template(history, user))
+                    full = prompt_ids(tok, template(history, user))
                     used = r.get("history_turns_used", len(history))
                     rec = {"reply": r["reply"].strip(), "stop": r["stop_reason"], "history_used": used,
                            "dropped": used < len(history)}
@@ -292,10 +336,10 @@ def requests(items, tok, gens):
                 stop = {"eos": [tok.eot], "turn": [r["stop_id"]] if r.get("stop_id") is not None else []}.get(
                     r["stop"], [])
                 if r["ids"] + stop:
-                    out.append((f"{it['id']}|gate|{k + 1}", tok.encode(template(hist[:k], it["turns"][k]["user"])),
+                    out.append((f"{it['id']}|gate|{k + 1}", prompt_ids(tok, template(hist[:k], it["turns"][k]["user"])),
                                 r["ids"] + stop))
         for mode, p in prompts.items():
-            pids = tok.encode(p)
+            pids = prompt_ids(tok, p)
             for c, ids in enumerate(cont):
                 out.append((f"{it['id']}|{mode}|{c}", pids, ids))
     return out
@@ -608,6 +652,7 @@ def run_model(a, tag, spec_path, items):
         chat_eval.check_rope_heads(spec_path)
         _, gguf, vocab = model_paths(spec_path)
         tok = Tok(vocab)
+        tok.state = check_state_spec(spec_path, gguf)  # None for every model without state tokens
     if tok and a.gen != "none" and not getattr(a, "no_generate", False):
         generate(a, items, tok, spec_path, gguf, work)
     gp = os.path.join(work, "gen.jsonl")
@@ -669,6 +714,7 @@ def cmd_gate(a):
     tag, spec_path = a.model[0].split("=", 1)
     _, gguf, vocab = model_paths(spec_path)
     tok = Tok(vocab)
+    tok.state = check_state_spec(spec_path, gguf)
     items = load_items(a)[:a.n]
     os.makedirs(a.out, exist_ok=True)
     a.gen, a.chat_url = "mtstudio", ""
@@ -679,7 +725,7 @@ def cmd_gate(a):
             tt = it["target_turn"]
             hist = [(t["user"], t["gold"]) for t in it["turns"][:tt - 1]]
             r = srv.chat(hist, it["turns"][tt - 1]["user"], a.max_new)
-            rows.append((it["id"], tok.encode(template(hist, it["turns"][tt - 1]["user"])), r))
+            rows.append((it["id"], prompt_ids(tok, template(hist, it["turns"][tt - 1]["user"])), r))
     finally:
         srv.close()
     reqs, meta = [], []
