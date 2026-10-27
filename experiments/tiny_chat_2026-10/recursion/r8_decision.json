@@ -1,0 +1,18 @@
+{
+ "run_r8": false,
+ "gate_R2": true,
+ "gate_R4": true,
+ "mean_Y_R4_minus_R2": -0.027777777777777807,
+ "per_seed": [
+  -0.06306306306306309,
+  0.006756756756756743,
+  -0.027027027027027084
+ ],
+ "threshold": 0.01,
+ "seeds": [
+  1,
+  2,
+  3
+ ],
+ "rule": "A3.3's R8 rule, read once R2's and R4's post jobs are home: R8 runs only if R2 and R4 both pass the validity gate on their three seeds and the mean over seeds of Y(R4) - Y(R2) is at least 1 point (the SESOI per doubling). It reads only that number and the two cells' gates."
+}
