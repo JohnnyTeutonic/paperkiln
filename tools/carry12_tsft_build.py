@@ -595,6 +595,11 @@ def build_checked():
     return data, sha
 
 
+def generator_sha256():
+    """This file's sha256 with line endings normalised to LF (a Windows checkout writes CRLF)."""
+    return hashlib.sha256(open(os.path.abspath(__file__), "rb").read().replace(b"\r\n", b"\n")).hexdigest()
+
+
 # ---------------------------------------------------------------- ledger
 def ledger(rows, data, vocab=None):
     def hist(key, fam=None):
@@ -607,7 +612,8 @@ def ledger(rows, data, vocab=None):
         return dict(sorted(h.items(), key=lambda kv: (len(kv[0]), kv[0])))
     fams = sorted({r["meta"]["family"] for r in rows})
     out = {"version": VERSION, "seed": SEED, "rows": len(rows), "sha256": sha256_bytes(data), "bytes": len(data),
-           "pinned": pinned(), "generator_sha256": hashlib.sha256(open(os.path.abspath(__file__), "rb").read()).hexdigest(),
+           "pinned": pinned(),
+           "generator_sha256": generator_sha256(),
            "families": {f: {"rows": sum(1 for r in rows if r["meta"]["family"] == f), "N": hist("N", f),
                             "slot": hist("slot", f), "fact_turn": hist("fact_turn", f), "n_turns": hist("n_turns", f),
                             "distractors": {str(k): sum(1 for r in rows if r["meta"]["family"] == f and
