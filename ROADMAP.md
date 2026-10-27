@@ -7,7 +7,7 @@ where one of those documents carries a plan, this file wins.*
 
 ## 1. Now
 
-0. **Tiny chat from scratch (LOCAL_LLM_STACK.md section 11, item 1;
+0. **Tiny chat from scratch (LOCAL_LLM_WORK.md E1;
    `experiments/tiny_chat_2026-10/`, `experiments/tiny_chat_long_2026-10/`).**
    E5, E1 and the recursion arm run on Colab; E1 at 60M waits for an L4 (first use of the
    RunPod backend for `tools/colab_chat/runner_multi.py`, under validation); Carry-12 and its
@@ -18,7 +18,7 @@ where one of those documents carries a plan, this file wins.*
    - The Claude-judge pilot on pk_sft_v1, prepared, launch on Jonathan's go: candidates on a RunPod
      L4 (`tools/colab_chat/pref_pilot_v1.json`), then `experiments/chat_general/judge_pilot.sh`
      (200 prompts, $100 cap) at home; then the full ~3,000 prompts and DPO + NLL.
-2. **Conversation schema follow-ups** (LOCAL_LLM_STACK.md section 3 point 3; section 11, item 3):
+2. **Conversation schema follow-ups** (LOCAL_LLM_STACK.md section 3 point 3; LOCAL_LLM_WORK.md D3):
    instruction placement, measurable on a v2 model, and v2 (a reserved control-token block
    appended to the vocabulary) when Jonathan decides. His
    three decisions sit behind one constant each: v1's system mode (`SYSTEM_MODE_V1` /
@@ -165,7 +165,7 @@ advisory steps that cannot fail the build.
   fields: per-sublayer placement, q/k norm, Mamba-1 sizes, T5's bias, new-op input roles and inits; about
   $18); check every `expr` with `spec/tools/ir_expr.py` (the parser both engines use; landed in 1159d63e); a
   studio button that runs it instead of `fetch.py` when a key is configured; prompt optimisation later.
-- **Chain gaps still refusing** (LOCAL_LLM_STACK.md section 11 item 4.2): Primer's MDHA (conv1d_causal on q, k, v:
+- **Chain gaps still refusing** (LOCAL_LLM_WORK.md E3): Primer's MDHA (conv1d_causal on q, k, v:
   the op exists, flex does not wire it) and Shaw-style relative positions; a q/k norm on flex or over the
   full width; Mamba-1's inner LayerNorm (the paper's optional norm); MoE headline models.
 - **Two lexical gaps found while fixing the wrong assertions:** the GELU
