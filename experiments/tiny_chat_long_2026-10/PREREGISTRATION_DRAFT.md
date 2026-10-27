@@ -538,10 +538,13 @@ for the whole conversation plus near_self: 30% fewer, and one forced-choice mode
    `llama_attnres` in mtstudio, its export and ember's gate (arm X5, A5.1 and A5.12†); the S cells' template in
    carry12_eval (section 2; end to end on a toy state-token model in `tests/test_carry12_eval.py`); the T 1,024 data
    job (`tiny_chat_data.py --T 1024 --carry12 --long-sft 10:4`, tested on CPU, run in the pre-freeze campaign:
-   `stage0/carry12_data_t1024_ledger.json`). Open: the state blocks in carry5_eval's prompts, for the S cells'
-   Carry-5 (section 2). A design point for the freeze, not an engine item:
-   D's "10+ turns" takes in Self-Dialogue's 1,297 ten-turn dialogues and every Topical-Chat dialogue (section 4,
-   option 1); 11+ would leave out all of Self-Dialogue and most of Topical-Chat (its p90 is 11 turns).
+   `stage0/carry12_data_t1024_ledger.json`). Settled by the main session (27 Oct 2026): the S cells' Carry-5 is
+   scored on the layout they train on. carry5_eval inserts the state blocks only for a model whose GGUF declares
+   state tokens (the family `llama_state`), and a test holds every other model's prompts byte-identical to
+   carry5_eval's output before the change, so E5, E1, the size arm and the cells B, D, P16 and X are scored as
+   before. D's threshold stays at 10+ trained turns: the rule is a turn count, not a source list, and it takes in
+   Self-Dialogue's 1,297 ten-turn dialogues and every Topical-Chat dialogue (section 4, option 1); 11+ would leave
+   out all of Self-Dialogue and most of Topical-Chat (its p90 is 11 turns) and shrink D's long rows by about half.
 6. **Stage 0 at T 1,024:** probes replace section 10's estimates; Jonathan's go on the measured total. Known: the
    probes and the measured total, 153.3 L4 VM-hours, $90 (section 10). Open: his go.
 7. Jonathan's ruling on data option 3 (new long human sources), if wanted before the freeze. What the four
